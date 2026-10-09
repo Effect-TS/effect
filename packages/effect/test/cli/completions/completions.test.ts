@@ -4,6 +4,7 @@ import * as Completions from "effect/cli/Completions"
 import * as Bash from "effect/cli/internal/completions/bash"
 import { fromCommand } from "effect/cli/internal/completions/descriptor"
 import * as Fish from "effect/cli/internal/completions/fish"
+import * as PowerShell from "effect/cli/internal/completions/powershell"
 import * as Zsh from "effect/cli/internal/completions/zsh"
 import { ComprehensiveCli } from "../fixtures/ComprehensiveCli.ts"
 
@@ -123,6 +124,14 @@ const nested3Levels = (() => {
 const emptyCmd = Command.make("noop").pipe(
   Command.withDescription("Does nothing")
 )
+
+const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
+  name,
+  description: undefined,
+  flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
+  arguments: [],
+  subcommands: []
+})
 
 const choicesHelperSource = (script: string): string => {
   const start = script.indexOf("_deploy--choices()")
@@ -465,6 +474,14 @@ describe("Zsh completions", () => {
     )
   })
 
+  it("escapes a closing bracket in flag descriptions", () => {
+    const cmd = Command.make("deploy", {
+      level: Flag.Literals("level", ["debug", "info"]).pipe(Flag.withDescription("Log level [info]"))
+    })
+    const script = Zsh.generate("deploy", fromCommand(cmd))
+    assert.include(script, `'(--level)--level[Log level [info\\]]:value:(debug info)'`)
+  })
+
   it("uses alternative argument sets for positional arguments and subcommands", () => {
     const desc = fromCommand(withOptionalDirectoryAndSubcommands)
     const script = Zsh.generate("example", desc)
@@ -550,13 +567,6 @@ describe("Zsh completions", () => {
 
 describe("Fish completions", () => {
   it("scopes nested completions by the full command path", () => {
-    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
-      name,
-      description: undefined,
-      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
-      arguments: [],
-      subcommands: []
-    })
     const descriptor: Completions.CommandDescriptor = {
       name: "tool",
       description: undefined,
@@ -783,6 +793,103 @@ describe("Fish completions", () => {
 })
 
 // ---------------------------------------------------------------------------
+// PowerShell completions
+// ---------------------------------------------------------------------------
+
+describe("PowerShell completions", () => {
+  it("registers a native completer with a context per subcommand path", () => {
+    const script = PowerShell.generate("top", fromCommand(nested3Levels))
+    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'top'`)
+    assert.include(script, `['sub'] = @{`)
+    assert.include(script, `['sub action'] = @{`)
+    assert.include(script, `@{ name = 'action'; description = 'Perform action' }`)
+  })
+
+  it("emits flag forms, choice values and path types", () => {
+    const simple = PowerShell.generate("greet", fromCommand(simpleCmd))
+    assert.include(
+      linesWith(simple, "name = 'loud'"),
+      `forms = @('--loud', '-l'); takesValue = $false`
+    )
+    assert.include(linesWith(simple, "name = 'times'"), `forms = @('--times'); takesValue = $true`)
+
+    const choices = PowerShell.generate("deploy", fromCommand(withChoices))
+    assert.include(choices, `values = @('dev', 'staging', 'prod')`)
+    assert.include(choices, `values = @('us-east', 'eu-west', 'ap-south')`)
+
+    const paths = PowerShell.generate("process", fromCommand(withPaths))
+    assert.include(paths, `pathType = 'file'`)
+    assert.include(paths, `pathType = 'directory'`)
+    assert.include(paths, `[System.Management.Automation.CompletionCompleters]::CompleteFilename($typed)`)
+    assert.include(paths, `$entry.pathType -eq 'directory' -and $file.ResultType -ne 'ProviderContainer'`)
+  })
+
+  it("offers only positional values after --", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.include(script, `if ($endOfOptions) { $position++; continue }`)
+    assert.include(script, `if ($word -ceq '--') { $endOfOptions = $true; continue }`)
+    assert.include(script, `if (-not $endOfOptions) {`)
+  })
+
+  it("does not treat an option as a pending flag value", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.match(script, /if \(\$flag\.takesValue\) \{\s+if \(-not \$isOption\) \{ continue \}/)
+    assert.include(script, "if ($null -ne $pending -and $pending.takesValue -and -not $typedIsOption) {")
+  })
+
+  it("completes a negative number as a value, not a flag", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.notInclude(script, "$typed.StartsWith('-')")
+    assert.include(script, "if ($typedIsOption) {")
+  })
+
+  it("offers option-shaped choices only where the CLI reads them as values", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.include(script, "& $optionLike $value")
+  })
+
+  it("tracks used flags case-sensitively", () => {
+    const script = PowerShell.generate("server", fromCommand(withSubcommands))
+    assert.notInclude(script, "$used = @{}")
+    assert.include(script, "$used = [hashtable]::new([System.StringComparer]::Ordinal)")
+  })
+
+  it("emits non-ASCII text as [char] code units", () => {
+    const script = PowerShell.generate("deploy", fromCommand(withTrickyChoices))
+    assert.notMatch(script, /[^\n\x20-\x7e]/)
+    assert.include(script, `('a' + [char]0xD83D + [char]0xDE00 + 'b')`)
+  })
+
+  it("preserves line breaks in choice values", () => {
+    const cmd = Command.make("tool", { mode: Flag.Literals("mode", ["line\nbreak"]) })
+    const script = PowerShell.generate("tool", fromCommand(cmd))
+    assert.include(script, `values = @(('line' + [char]0x000A + 'break'))`)
+  })
+
+  it("escapes values for single-quoted PowerShell literals", () => {
+    const script = PowerShell.generate("deploy", fromCommand(withTrickyChoices))
+    assert.include(script, `'it''s-fine'`)
+    assert.include(script, `'foo'''`)
+    assert.include(script, `'o''clock'`)
+    assert.include(script, `'$HOME'`)
+  })
+
+  it("keeps case-distinct subcommand contexts and emits a repeated path once", () => {
+    const script = PowerShell.generate("tool", {
+      name: "tool",
+      description: undefined,
+      flags: [],
+      arguments: [],
+      subcommands: [leaf("config", "lower"), leaf("config", "lower"), leaf("Config", "upper")]
+    })
+    assert.lengthOf(script.match(/\['config'\] = @\{/g) ?? [], 1)
+    assert.lengthOf(script.match(/\['Config'\] = @\{/g) ?? [], 1)
+    assert.lengthOf(script.match(/forms = @\('--lower'\)/g) ?? [], 1)
+    assert.lengthOf(script.match(/forms = @\('--upper'\)/g) ?? [], 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Completions dispatcher
 // ---------------------------------------------------------------------------
 
@@ -803,6 +910,12 @@ describe("Completions", () => {
     const desc = fromCommand(simpleCmd)
     const script = Completions.generate("greet", "fish", desc)
     assert.include(script, "complete -c greet")
+  })
+
+  it("dispatches to powershell generator", () => {
+    const desc = fromCommand(simpleCmd)
+    const script = Completions.generate("greet", "powershell", desc)
+    assert.include(script, `Register-ArgumentCompleter -Native -CommandName 'greet'`)
   })
 })
 

@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Equal, Graph, Hash, Option } from "effect"
+import { runInNewContext } from "node:vm"
 
 const directed = <N, E>(
   nodes: ReadonlyArray<N>,
@@ -1995,6 +1996,81 @@ describe("Graph", () => {
           "Negative cycle affects path to node 0"
         )
       }
+    })
+
+    for (const [name, cycleWeight, distance] of [["integer", 16, 1], ["floating-point", 0.1, 0.01]] as const) {
+      it(`reconstructs Floyd-Warshall paths with ${name} weights on a zero-cost cycle`, () => {
+        const graph = directed([0, 1, 2], [[0, 1, cycleWeight], [1, 0, -cycleWeight], [0, 2, distance]])
+        // A Vitest timeout cannot interrupt synchronous path reconstruction if next hops form a cycle.
+        const result: Graph.AllPairsResult<number> = runInNewContext(
+          "Graph.floydWarshall(graph, (edge) => edge)",
+          { Graph, graph },
+          { timeout: 1000 }
+        )
+        assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 2])
+        assert.deepStrictEqual(result.edges.get(0)?.get(2), [2])
+        assert.deepStrictEqual(result.costs.get(0)?.get(2), [distance])
+        assert.closeTo(result.distances.get(0)!.get(2)!, distance, 1e-15)
+      })
+    }
+
+    it("reconstructs every Floyd-Warshall path through overlapping zero-cost cycles", () => {
+      const connections: Array<[number, number, number]> = [
+        [0, 1, 0.1],
+        [1, 0, -0.1],
+        [1, 2, -0.1],
+        [2, 1, 0.1],
+        [2, 3, 0.1],
+        [3, 2, -0.1],
+        [0, 4, 0.01],
+        [4, 5, 0],
+        [5, 0, 1]
+      ]
+      const graph = directed([0, 1, 2, 3, 4, 5], connections)
+      const result: Graph.AllPairsResult<number> = runInNewContext(
+        "Graph.floydWarshall(graph, (edge) => edge)",
+        { Graph, graph },
+        { timeout: 1000 }
+      )
+      const distances = [
+        [0, 0.1, 0, 0.1, 0.01, 0.01],
+        [-0.1, 0, -0.1, 0, -0.09, -0.09],
+        [0, 0.1, 0, 0.1, 0.01, 0.01],
+        [-0.1, 0, -0.1, 0, -0.09, -0.09],
+        [1, 1.1, 1, 1.1, 0, 0],
+        [1, 1.1, 1, 1.1, 1.01, 0]
+      ]
+      for (let source = 0; source < 6; source++) {
+        for (let target = 0; target < 6; target++) {
+          const path = result.paths.get(source)!.get(target)!
+          const edges = result.edges.get(source)!.get(target)!
+          const costs = result.costs.get(source)!.get(target)!
+          assert.strictEqual(path[0], source)
+          assert.strictEqual(path[path.length - 1], target)
+          assert.strictEqual(new Set(path).size, path.length)
+          assert.strictEqual(edges.length, path.length - 1)
+          assert.strictEqual(costs.length, edges.length)
+          for (let i = 0; i < edges.length; i++) {
+            assert.deepStrictEqual(connections[edges[i]], [path[i], path[i + 1], costs[i]])
+          }
+          assert.closeTo(result.distances.get(source)!.get(target)!, distances[source][target], 1e-15)
+          assert.closeTo(costs.reduce((sum, cost) => sum + cost, 0), distances[source][target], 1e-15)
+        }
+      }
+    })
+
+    it("preserves tiny Floyd-Warshall improvements", () => {
+      const graph = directed([0, 1, 2], [[0, 2, 3e-20], [0, 1, 1e-20], [1, 2, 1e-20]])
+      const result = Graph.floydWarshall(graph, (edge) => edge)
+      assert.strictEqual(result.distances.get(0)?.get(2), 2e-20)
+      assert.deepStrictEqual(result.paths.get(0)?.get(2), [0, 1, 2])
+      assert.deepStrictEqual(result.edges.get(0)?.get(2), [1, 2])
+      assert.deepStrictEqual(result.costs.get(0)?.get(2), [1e-20, 1e-20])
+    })
+
+    it("detects tiny Floyd-Warshall negative cycles", () => {
+      const graph = directed([0, 1], [[0, 1, 1e-20], [1, 0, -2e-20]])
+      assertGraphError(() => Graph.floydWarshall(graph, (edge) => edge), "Negative cycle detected involving node 0")
     })
 
     it("preserves null edge payloads in Floyd-Warshall multihop paths", () => {

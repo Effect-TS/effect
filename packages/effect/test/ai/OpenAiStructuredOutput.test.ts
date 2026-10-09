@@ -365,10 +365,14 @@ describe("toCodecOpenAI", () => {
     describe("Int", () => {
       it("Int", () => {
         assertJsonSchema(Schema.Int, {
-          "type": "integer"
+          "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+          "maximum": globalThis.Number.MAX_SAFE_INTEGER
         })
         assertJsonSchema(Schema.Int.annotate({ description: "description" }), {
           "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+          "maximum": globalThis.Number.MAX_SAFE_INTEGER,
           "description": "description"
         })
       })
@@ -376,6 +380,8 @@ describe("toCodecOpenAI", () => {
       it("Int + string format", () => {
         assertJsonSchema(Schema.Int.annotate({ format: "duration" }), {
           "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+          "maximum": globalThis.Number.MAX_SAFE_INTEGER,
           "description": "a value with a format of duration"
         })
       })
@@ -383,6 +389,8 @@ describe("toCodecOpenAI", () => {
       it("Int + unsupported format", () => {
         assertJsonSchema(Schema.Int.annotate({ format: "int32" }), {
           "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+          "maximum": globalThis.Number.MAX_SAFE_INTEGER,
           "description": "a value with a format of int32"
         })
       })
@@ -390,6 +398,8 @@ describe("toCodecOpenAI", () => {
       it("Int + isGreaterThan", () => {
         assertJsonSchema(Schema.Int.check(Schema.isGreaterThan(1)), {
           "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+          "maximum": globalThis.Number.MAX_SAFE_INTEGER,
           "description": "a value greater than 1",
           "exclusiveMinimum": 1
         })
@@ -398,6 +408,7 @@ describe("toCodecOpenAI", () => {
       it("Int + isGreaterThan + isLessThan", () => {
         assertJsonSchema(Schema.Int.check(Schema.isGreaterThan(1), Schema.isLessThan(2)), {
           "type": "integer",
+          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
           "description": "a value greater than 1 and a value less than 2",
           "exclusiveMinimum": 1,
           "exclusiveMaximum": 2
@@ -443,7 +454,11 @@ describe("toCodecOpenAI", () => {
       assertJsonSchema(Schema.Union([Schema.NonEmptyString, Schema.Int]), {
         "anyOf": [
           { "type": "string", "description": "a value with a length of at least 1" },
-          { "type": "integer" }
+          {
+            "type": "integer",
+            "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+            "maximum": globalThis.Number.MAX_SAFE_INTEGER
+          }
         ]
       })
     })

@@ -3,6 +3,7 @@
  *
  * This module uses Deno's global Web Crypto API.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -14,6 +15,7 @@ import * as PlatformError from "effect/PlatformError"
 /**
  * Provides the Web Crypto API used by the Crypto service implementation.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -24,6 +26,7 @@ export const WebCrypto = Context.Reference<Crypto>("@effect/platform-deno/Crypto
 /**
  * A layer that provides Effect's Crypto service using Deno's Web Crypto API.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

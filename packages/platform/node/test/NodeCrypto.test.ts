@@ -34,8 +34,8 @@ describe("NodeCrypto", () => {
   it.effect("generates UUIDv4 values", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
-      const uuid1 = yield* crypto.randomUUIDv4
-      const uuid2 = yield* crypto.randomUUIDv4
+      const uuid1 = yield* crypto.randomUUIDv4()
+      const uuid2 = yield* crypto.randomUUIDv4()
       assert.match(uuid1, uuidV4Regex)
       assert.match(uuid2, uuidV4Regex)
       assert.notStrictEqual(uuid1, uuid2)
@@ -45,7 +45,7 @@ describe("NodeCrypto", () => {
     Effect.gen(function*() {
       yield* TestClock.setTime(0x0123456789ab)
       const crypto = yield* Crypto.Crypto
-      const uuid = yield* crypto.randomUUIDv7
+      const uuid = yield* crypto.randomUUIDv7()
       assert.match(uuid, uuidV7Regex)
       assert.strictEqual(uuid.slice(0, 13), "01234567-89ab")
     }).pipe(Effect.provide(NodeCrypto.layer)))

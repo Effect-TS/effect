@@ -70,6 +70,34 @@ describe("LanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("records resolved request options on a client span", () =>
+      LanguageModel.generateText({ prompt: "hi" }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.kind, "client")
+            strictEqual(span.attributes.get("gen_ai.output.type"), "text")
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), "auto")
+            strictEqual(span.attributes.get("effect.ai.concurrency"), "unbounded")
+            return []
+          }
+        })
+      ))
+
+    it.effect("JSON-encodes object tool choices", () =>
+      LanguageModel.generateText({
+        prompt: "hi",
+        toolkit: MyToolkit,
+        toolChoice: { oneOf: ["MyTool"] }
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), JSON.stringify({ oneOf: ["MyTool"] }))
+            return []
+          }
+        }),
+        Effect.provide(MyToolkitLayer)
+      ))
+
     it.effect("does not resolve tool calls after an incomplete finish", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)
@@ -250,6 +278,71 @@ describe("LanguageModel", () => {
         }),
         Effect.provide(TransformToolkitLayer)
       ))
+
+    it.effect("validates tool parameters against the schemas of each request", () =>
+      Effect.gen(function*() {
+        const StructTransformToolkit = Toolkit.make(Tool.make("TransformTool", {
+          parameters: Schema.Struct({ value: Schema.Finite }),
+          success: Schema.Finite
+        }))
+
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: TransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(Effect.provide(TransformToolkitLayer))
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: StructTransformToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(StructTransformToolkit.toLayer({ TransformTool: ({ value }) => Effect.succeed(value) })),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: [{
+            type: "tool-call",
+            id: "tool-transform",
+            name: "TransformTool",
+            params: "21"
+          }]
+        })
+      ))
+
+    it.effect("validates encoded tool parameters after a request with tool call resolution enabled", () => {
+      // A tool unused by other tests, so the opaque request decodes it first
+      const toolkit = Toolkit.make(Tool.make("TransformTool", {
+        parameters: Schema.FiniteFromString,
+        success: Schema.Finite
+      }))
+      const responses: Array<Array<Response.PartEncoded>> = [
+        [{ type: "tool-call", id: "tool-valid", name: "TransformTool", params: "21" }],
+        [{ type: "tool-call", id: "tool-invalid", name: "TransformTool", params: { invalid: true } }]
+      ]
+      return Effect.gen(function*() {
+        yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit
+        })
+
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(Effect.flip)
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: () => responses.shift()!
+        }),
+        Effect.provide(toolkit.toLayer({ TransformTool: (value) => Effect.succeed(value * 2) }))
+      )
+    })
 
     it.effect("validates provider-executed tool call parameters", () =>
       Effect.gen(function*() {
@@ -1197,6 +1290,19 @@ describe("LanguageModel", () => {
   })
 
   describe("generateObject", () => {
+    it.effect("records json output type on the span", () =>
+      LanguageModel.generateObject({
+        prompt: "hi",
+        schema: Schema.Struct({ count: Schema.Number })
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.attributes.get("gen_ai.output.type"), "json")
+            return [{ type: "text", text: "{\"count\":1}" }]
+          }
+        })
+      ))
+
     it.effect("includes full generated text in StructuredOutputError", () =>
       Effect.gen(function*() {
         const error = yield* LanguageModel.generateObject({

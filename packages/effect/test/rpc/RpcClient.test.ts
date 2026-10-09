@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Exit, Fiber, Layer, Queue, Schedule, Schema, Stream, Tracer } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/rpc"
-import { RpcClientError } from "effect/rpc/RpcClientError"
+import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
+import { RpcClientDefect, RpcClientError } from "effect/rpc/RpcClientError"
 import * as Socket from "effect/socket/Socket"
 import { TestClock } from "effect/testing"
 import * as Worker from "effect/workers/Worker"
@@ -15,6 +15,37 @@ const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
   Rpc.make("Events", { success: RpcSchema.Stream(Schema.String, Schema.Never) })
 )
+
+const ChunkGroup = RpcGroup.make(
+  Rpc.make("Bad", { success: RpcSchema.Stream(Schema.Number, Schema.Never) }),
+  Rpc.make("Good", { success: RpcSchema.Stream(Schema.String, Schema.Never) }),
+  Rpc.make("Unary", { success: Schema.String })
+)
+
+const makeChunkProtocol = (beforeInterrupt: Effect.Effect<void> = Effect.void) =>
+  Effect.gen(function*() {
+    const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+    const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+    const protocol = RpcClient.Protocol.of({
+      codecFor: RpcSerialization.json.codecFor,
+      supportsAck: false,
+      supportsTransferables: false,
+      run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+      send: (_clientId, message) =>
+        Effect.andThen(
+          message._tag === "Interrupt" ? beforeInterrupt : Effect.void,
+          Effect.asVoid(Queue.offer(sent, message))
+        )
+    })
+    const client = yield* RpcClient.make(ChunkGroup).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+    const handle = yield* Deferred.await(received)
+    return { client, handle, sent }
+  })
+
+const takeRequestId = (message: Parameters<RpcClient.Protocol["Service"]["send"]>[1]) => {
+  assert(message._tag === "Request")
+  return message.id
+}
 
 const makeHttpClient = (body: string): HttpClient.HttpClient =>
   HttpClient.make((request) =>
@@ -62,6 +93,101 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      const caller = yield* client.Unary().pipe(
+        Effect.catch((received) => {
+          assert.strictEqual(received, error)
+          return client.Unary()
+        }),
+        Effect.exit,
+        Effect.forkChild
+      )
+      takeRequestId(yield* Queue.take(sent))
+      // Let the first call suspend before delivering the error.
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "ClientProtocolError", error })
+
+      const retryRequestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const bad = yield* client.Bad().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+      const badRequestId = takeRequestId(yield* Queue.take(sent))
+
+      const good = yield* client.Good().pipe(Stream.runCollect, Effect.forkChild)
+      const goodRequestId = takeRequestId(yield* Queue.take(sent))
+
+      const unary = yield* client.Unary().pipe(Effect.forkChild)
+      const unaryRequestId = takeRequestId(yield* Queue.take(sent))
+
+      // A decode defect must not escape into the shared protocol receive loop.
+      yield* handle({ _tag: "Chunk", requestId: badRequestId, values: ["not a number"] })
+      const badExit = yield* Fiber.join(bad)
+      assert(Exit.isFailure(badExit))
+      assert.isFalse(Cause.hasInterruptsOnly(badExit.cause))
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId: badRequestId })
+
+      yield* handle({ _tag: "Chunk", requestId: goodRequestId, values: ["alive"] })
+      yield* handle({ _tag: "Exit", requestId: goodRequestId, exit: { _tag: "Success", value: null } })
+      yield* handle({ _tag: "Exit", requestId: unaryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(Array.from(yield* Fiber.join(good)), ["alive"])
+      assert.strictEqual(yield* Fiber.join(unary), "ok")
+    }))
+
+  it.effect("preserves cancellation and the server Interrupt during chunk failure cleanup", () =>
+    Effect.gen(function*() {
+      const sendingInterrupt = yield* Deferred.make<void>()
+      const releaseInterrupt = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol(
+        Deferred.succeed(sendingInterrupt, void 0).pipe(Effect.andThen(Deferred.await(releaseInterrupt)))
+      )
+      const reader = yield* client.Bad().pipe(Stream.runDrain, Effect.forkChild)
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      let observedInterrupt = false
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["not a number"] }).pipe(
+        Effect.onInterrupt(() => Effect.sync(() => void (observedInterrupt = true))),
+        Effect.forkChild
+      )
+      yield* Deferred.await(sendingInterrupt)
+      assert(Exit.isFailure(yield* Fiber.await(reader)))
+
+      // Request cancellation while the Interrupt send is suspended, without waiting for it.
+      yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+      yield* Deferred.succeed(releaseInterrupt, void 0)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert.deepStrictEqual(yield* Queue.clear(sent), [{ _tag: "Interrupt", requestId }])
+      // The cancelled handler must end interrupted, not with the decode defect it already handled.
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      assert.isTrue(observedInterrupt)
+    }))
+
+  it.effect("releases a chunk blocked on a full buffer when its stream consumer is interrupted", () =>
+    Effect.gen(function*() {
+      const consuming = yield* Deferred.make<void>()
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const reader = yield* client.Good(undefined, { streamBufferSize: 1 }).pipe(
+        Stream.runForEach(() => Deferred.succeed(consuming, void 0).pipe(Effect.andThen(Effect.never))),
+        Effect.forkChild
+      )
+      const requestId = takeRequestId(yield* Queue.take(sent))
+      const receiver = yield* handle({ _tag: "Chunk", requestId, values: ["a", "b", "c"] }).pipe(Effect.forkChild)
+      yield* Deferred.await(consuming)
+      assert.isUndefined(receiver.pollUnsafe())
+      yield* Fiber.interrupt(reader)
+
+      assert(Exit.isSuccess(yield* Fiber.await(receiver)))
+      assert.deepStrictEqual(yield* Queue.take(sent), { _tag: "Interrupt", requestId })
+    }))
+
   for (const consumer of ["queue", "stream"] as const) {
     it.effect(`releases the ${consumer} consumer when the request write is interrupted`, () =>
       Effect.gen(function*() {
@@ -257,6 +383,133 @@ describe("RpcClient", () => {
       assert.isUndefined(streamFiber.pollUnsafe())
     }))
 
+  it.effect("fails in-flight streams on a missed pong while retrying socket errors", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      let writes = 0
+      const write = () =>
+        Effect.sync(() => writes++).pipe(Effect.andThen(Deferred.succeed(requestSent, void 0)), Effect.asVoid)
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Effect.never,
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({
+          write,
+          writeAll: write
+        })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryTransientErrors: true,
+        retryPolicy: Schedule.spaced("1 hour")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runDrain,
+        Effect.timeout("11 seconds"),
+        Effect.flip,
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(requestSent)
+      yield* TestClock.adjust("11 seconds")
+      const error = yield* Fiber.join(streamFiber)
+
+      assert.isAtLeast(writes, 2) // request and unanswered ping
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+    }))
+
+  it.effect("keeps in-flight streams alive on non-pong frames without any pongs", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const events = yield* Queue.unbounded<string>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket().pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup, {
+        generateRequestId: () => RpcMessage.RequestId("0")
+      }).pipe(Effect.provideService(RpcClient.Protocol, protocol))
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runForEach((event) => Queue.offer(events, event)),
+        Effect.forkChild
+      )
+
+      yield* Deferred.await(requestSent)
+      for (const event of ["first", "second", "third"]) {
+        yield* TestClock.adjust("4 seconds")
+        assert.isUndefined(streamFiber.pollUnsafe())
+        yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId: "0", values: [event] }) + "\n")
+        assert.strictEqual(yield* Queue.take(events), event)
+      }
+      // Cross another ping tick after the third frame, still without a pong.
+      yield* TestClock.adjust("4 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+    }))
+
+  it.effect("allows a delayed pong within a custom ping timeout but fails after silence", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const frames = yield* Queue.unbounded<string>()
+      const frameRead = yield* Deferred.make<void>()
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        reader: Effect.succeed({
+          pull: Queue.take(frames).pipe(
+            Effect.tap(() => Deferred.succeed(frameRead, void 0)),
+            Effect.map((frame) => [frame] as const)
+          ),
+          upgrade: Socket.SocketUpgradeError.unsupported
+        }),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const context = yield* Layer.build(
+        RpcClient.layerProtocolSocket({
+          pingInterval: "2 seconds",
+          pingTimeout: "15 seconds",
+          retryPolicy: Schedule.spaced("1 hour")
+        }).pipe(
+          Layer.provide(RpcSerialization.layerNdjson),
+          Layer.provide(Layer.succeed(Socket.Socket, socket))
+        )
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(Effect.provide(context))
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.exit, Effect.forkChild)
+
+      yield* Deferred.await(requestSent)
+      // The old fixed timeout fails at 10s, before this delayed pong arrives.
+      yield* TestClock.adjust("12 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+      yield* Queue.offer(frames, JSON.stringify({ _tag: "Pong" }) + "\n")
+      yield* Deferred.await(frameRead)
+      yield* TestClock.adjust("14 seconds")
+      assert.isUndefined(streamFiber.pollUnsafe())
+
+      // At 28s the next 2s tick is 16s after the last frame, beyond the 15s timeout.
+      yield* TestClock.adjust("2 seconds")
+      assert.isDefined(streamFiber.pollUnsafe())
+      const exit = yield* Fiber.join(streamFiber)
+      assert(Exit.isFailure(exit))
+      const error = Cause.squash(exit.cause)
+      assert.instanceOf(error, RpcClientError)
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
@@ -348,4 +601,72 @@ describe("RpcClient", () => {
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
     }))
+
+  describe("tracing", () => {
+    const SpanGroup = TestGroup.prefix("Echo.")
+
+    const call = (
+      method: "Ping" | "Events",
+      options: { spanPrefix?: string; spanAttributes?: Record<string, unknown> } = {}
+    ) => {
+      const spans: Array<Tracer.NativeSpan> = []
+      return Effect.gen(function*() {
+        // oxlint-disable-next-line prefer-const
+        let client!: Effect.Success<
+          ReturnType<typeof RpcClient.makeNoSerialization<RpcGroup.Rpcs<typeof SpanGroup>, never>>
+        >
+        const server = yield* RpcServer.makeNoSerialization(SpanGroup, {
+          ...options,
+          onFromServer: (response) => client.write(response)
+        })
+        client = yield* RpcClient.makeNoSerialization(SpanGroup, {
+          ...options,
+          supportsAck: true,
+          onFromClient: ({ message }) => server.write(0, message)
+        })
+        yield* method === "Ping" ? client.client["Echo.Ping"]() : Stream.runDrain(client.client["Echo.Events"]())
+        return spans
+      }).pipe(
+        Effect.provide(SpanGroup.toLayer({
+          "Echo.Ping": () => Effect.succeed("pong"),
+          "Echo.Events": () => Stream.make("event")
+        })),
+        Effect.provideService(
+          Tracer.Tracer,
+          Tracer.make({
+            span(options) {
+              const span = new Tracer.NativeSpan(options)
+              spans.push(span)
+              return span
+            }
+          })
+        )
+      )
+    }
+
+    it.effect("records RPC span defaults for streaming calls", () =>
+      Effect.gen(function*() {
+        const spans = yield* call("Events")
+        assert.deepStrictEqual(spans.map((span) => span.kind).sort(), ["client", "server"])
+        for (const span of spans) {
+          assert.strictEqual(span.name, "Echo.Events")
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "effect_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "Echo.Events")
+        }
+      }))
+
+    it.effect("uses spanPrefix and spanAttributes for unary calls", () =>
+      Effect.gen(function*() {
+        const spans = yield* call("Ping", {
+          spanPrefix: "Custom",
+          spanAttributes: { "rpc.system.name": "custom_rpc", "rpc.method": "custom_method" }
+        })
+        assert.deepStrictEqual(spans.map((span) => span.kind).sort(), ["client", "server"])
+        for (const span of spans) {
+          assert.strictEqual(span.name, "Custom.Echo.Ping")
+          assert.strictEqual(span.attributes.get("rpc.system.name"), "custom_rpc")
+          assert.strictEqual(span.attributes.get("rpc.method"), "custom_method")
+        }
+      }))
+  })
 })

@@ -7,6 +7,7 @@
  * `process.stdout` and `process.stderr`. Standard input remains open, and
  * standard output and error output are not ended unless requested.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -21,6 +22,7 @@ import { fromReadable } from "./NodeStream.ts"
  * and `process.stderr`; stdin remains open and stdout/stderr are not ended by
  * default.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -30,6 +32,7 @@ export const layer: Layer.Layer<Stdio.Stdio> = Layer.succeed(
     args: Effect.sync(() => process.argv.slice(2)),
     stdinIsTerminal: Effect.sync(() => process.stdin.isTTY === true),
     stdoutIsTerminal: Effect.sync(() => process.stdout.isTTY === true),
+    stderrIsTerminal: Effect.sync(() => process.stderr.isTTY === true),
     stdout: (options) =>
       fromWritable({
         evaluate: () => process.stdout,

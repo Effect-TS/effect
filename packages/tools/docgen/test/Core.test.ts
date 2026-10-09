@@ -156,7 +156,9 @@ describe("Core", () => {
       ))
   })
 
-  describe("[internal] getModuleMarkdownFiles", () => {
+  // The first case initializes ts-morph and renders Markdown for three modules.
+  // Concurrent Bun CI projects can push that cold start beyond the 5s default.
+  describe("[internal] getModuleMarkdownFiles", { timeout: 20_000 }, () => {
     for (const srcDir of [".", "src", "source/lib", path.resolve("source/lib"), process.cwd()]) {
       it.effect(`generates distinct source-relative pages for ${srcDir}`, () =>
         Effect.gen(function*() {

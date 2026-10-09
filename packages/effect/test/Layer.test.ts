@@ -41,6 +41,37 @@ describe("Layer", () => {
       assert.deepStrictEqual(array, [acquire1, release1])
     }))
 
+  it.effect("preserves a failure when a shared layer build is interrupted", () =>
+    Effect.gen(function*() {
+      const Shared = Context.Service<number>("Shared")
+      const Dying = Context.Service<number>("Dying")
+      const Runtime = Context.Service<boolean>("Runtime")
+
+      for (const kind of ["die", "fail"] as const) {
+        const sharedStarted = Latch.makeUnsafe()
+        const outerStarted = Latch.makeUnsafe()
+        const shared = Layer.effect(Shared)(sharedStarted.open.pipe(Effect.andThen(Effect.never)))
+        const dying = Layer.effect(Dying)(
+          Effect.all([sharedStarted.await, outerStarted.await]).pipe(
+            Effect.andThen(Effect.yieldNow),
+            Effect.andThen(kind === "die" ? Effect.die("layer defect") : Effect.fail("layer failure"))
+          )
+        )
+        const runtime = Layer.effect(Runtime)(Effect.as(Effect.all([Shared, Dying]), true)).pipe(
+          Layer.provide([shared, dying])
+        )
+        const outerShared = Layer.fromBuild((memoMap, scope) =>
+          sharedStarted.await.pipe(
+            Effect.andThen(outerStarted.open),
+            Effect.andThen(shared.build(memoMap, scope))
+          )
+        )
+
+        const exit = yield* Layer.mergeAll(runtime, outerShared).pipe(Layer.build, Effect.scoped, Effect.exit)
+        assert.isTrue(kind === "die" ? Exit.hasDies(exit) : Exit.hasFails(exit))
+      }
+    }))
+
   it.effect("sharing itself with merge", () =>
     Effect.gen(function*() {
       const service1 = new Service1()
@@ -455,6 +486,29 @@ describe("Layer", () => {
   })
 
   describe("MemoMap", () => {
+    it.effect("retrying a buildWithMemoMap effect keeps the resource alive until its scope closes", () =>
+      Effect.gen(function*() {
+        const Resource = Context.Service<{ live: boolean }>("Resource")
+        let attempts = 0
+        const layer = Layer.effect(
+          Resource,
+          Effect.suspend(() =>
+            ++attempts === 1
+              ? Effect.fail("transient")
+              : Effect.acquireRelease(Effect.succeed<{ live: boolean }>({ live: true }), (resource) =>
+                Effect.sync(() => resource.live = false))
+          )
+        )
+        const owner = yield* Effect.acquireRelease(Scope.make(), (scope, exit) => Scope.close(scope, exit))
+        const build = Layer.buildWithMemoMap(layer, Layer.makeMemoMapUnsafe(), owner)
+        const context = yield* Effect.retry(build, { times: 1 })
+        const resource = Context.get(context, Resource)
+
+        assert.isTrue(resource.live)
+        yield* Scope.close(owner, Exit.void)
+        assert.isFalse(resource.live)
+      }).pipe(Effect.scoped))
+
     class Shared extends Context.Service<Shared, { readonly n: number }>()("Shared") {}
 
     const releaseCounted = (released: Ref.Ref<number>) =>

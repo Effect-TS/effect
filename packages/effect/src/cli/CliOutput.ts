@@ -16,6 +16,7 @@ import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as CliError from "./CliError.ts"
 import type { HelpDoc } from "./HelpDoc.ts"
+import * as Ansi from "./internal/ansi.ts"
 
 /**
  * Defines the service interface for formatting CLI output including help, errors, and version info.
@@ -306,17 +307,7 @@ const escapeControlCharacters = (text: string): string =>
  * @since 4.0.0
  */
 export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
-  const globalProcess = (globalThis as any).process
-  const hasProcess = typeof globalProcess === "object" && globalProcess !== null
-
-  const useColor = options?.colors !== undefined
-    ? options.colors
-    // Auto-detect based on environment
-    : (hasProcess &&
-      typeof globalProcess.stdout === "object" &&
-      globalProcess.stdout !== null &&
-      globalProcess.stdout.isTTY === true &&
-      !globalProcess.env?.NO_COLOR)
+  const useColor = options?.colors ?? Ansi.detectColors()
 
   // Color palette using ANSI escape codes
   const colors = useColor

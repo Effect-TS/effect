@@ -7,6 +7,7 @@
  * services and request options, and defines a lower-level `node:http` /
  * `node:https` client with scoped HTTP agent layers.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -51,6 +52,7 @@ export {
    * Use to access or override the fetch implementation used by the Node
    * fetch-based HTTP client.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -58,6 +60,7 @@ export {
   /**
    * Layer that provides the fetch-based HTTP client implementation.
    *
+   * @stability unstable
    * @category layers
    * @since 4.0.0
    */
@@ -69,6 +72,7 @@ export {
    *
    * Use to provide default fetch request options for Node HTTP requests.
    *
+   * @stability unstable
    * @category services
    * @since 4.0.0
    */
@@ -83,6 +87,7 @@ export {
  * Service tag for the Undici `Dispatcher` used by the Undici-backed HTTP
  * client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -96,6 +101,7 @@ const loadUndici = Effect.promise(() => import("./Undici.ts"))
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
  * scope is finalized.
  *
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -107,6 +113,7 @@ export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope
 /**
  * Provides the `Dispatcher` service using a scoped Undici `Agent`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -116,6 +123,7 @@ export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)
  * Provides the `Dispatcher` service from Undici's process-global dispatcher,
  * without creating or owning a new agent.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -127,6 +135,7 @@ export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = Layer.effect(Dispa
  * Fiber reference containing default Undici request options applied to requests
  * sent by `makeUndici`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -140,6 +149,7 @@ export const UndiciOptions = Context.Reference<Partial<Undici.Dispatcher.Request
  * `Dispatcher`, converts Effect HTTP bodies to Undici bodies, and maps
  * transport and decode failures to `HttpClientError`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -350,6 +360,7 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
  * Provides an Undici-backed `HttpClient` using the current `Dispatcher`
  * service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -363,6 +374,7 @@ export const layerUndiciNoDispatcher: Layer.Layer<
  * Provides an Undici-backed `HttpClient` together with a scoped default
  * Undici `Agent` dispatcher.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -376,6 +388,7 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
  * Service tag for the paired Node `http` and `https` agents used by the
  * node:http-backed HTTP client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -388,6 +401,7 @@ export class HttpAgent extends Context.Service<HttpAgent, {
  * Acquires Node `http` and `https` agents with the supplied options and
  * destroys both agents when the enclosing scope is finalized.
  *
+ * @stability unstable
  * @category resource management
  * @since 4.0.0
  */
@@ -408,6 +422,7 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent
  * Provides the `HttpAgent` service using scoped Node `http` and `https`
  * agents configured with the supplied options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -419,6 +434,7 @@ export const layerAgentOptions: (options?: Https.AgentOptions | undefined) => La
  * Provides the `HttpAgent` service using default scoped Node `http` and
  * `https` agents.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -429,6 +445,7 @@ export const layerAgent: Layer.Layer<HttpAgent> = layerAgentOptions()
  * current `HttpAgent`, streaming request bodies, and wrapping Node responses
  * as `HttpClientResponse` values.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -648,6 +665,7 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
  * Provides a node:http-backed `HttpClient` using the current `HttpAgent`
  * service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -661,6 +679,7 @@ export const layerNodeHttpNoAgent: Layer.Layer<
  * Provides a node:http-backed `HttpClient` together with default scoped Node
  * `http` and `https` agents.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

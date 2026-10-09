@@ -633,6 +633,53 @@ describe("OpenAiLanguageModel", () => {
         ])
       }))
 
+    it.effect("echoes tool call extra_content in follow-up requests", () =>
+      Effect.gen(function*() {
+        const extraContent = { google: { thought_signature: "signature-1" } }
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(
+                request,
+                requests.length > 1 ? makeChatCompletion() : makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      content: null,
+                      tool_calls: [{
+                        id: "call_1",
+                        type: "function",
+                        extra_content: extraContent,
+                        function: { name: "TestTool", arguments: JSON.stringify({ input: "hello" }) }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            })
+          ))
+        )
+
+        const generate = (prompt: Prompt.Prompt) =>
+          LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(layer)
+          )
+
+        const prompt = Prompt.make("use the tool")
+        const first = yield* generate(prompt)
+        yield* generate(Prompt.concat(prompt, Prompt.fromResponseParts(first.content)))
+
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages[1].tool_calls[0].extra_content, extraContent)
+      }))
+
     it.effect("converts dynamic tools to function type", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
@@ -1110,6 +1157,7 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("preserves streamed text and tool args with nullable delta fields", () =>
       Effect.gen(function*() {
+        const extraContent = { google: { thought_signature: "signature-1" } }
         const chunk = (delta: Record<string, unknown>) => ({
           id: "chatcmpl_nullable_delta_fields",
           object: "chat.completion.chunk",
@@ -1129,11 +1177,17 @@ describe("OpenAiLanguageModel", () => {
                     index: 0,
                     id: "call_1",
                     type: "function",
+                    extra_content: extraContent,
                     function: { name: "TestTool", arguments: "" }
                   }]
                 }),
                 chunk({
-                  tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "{\"in" } }]
+                  tool_calls: [{
+                    index: 0,
+                    id: null,
+                    extra_content: null,
+                    function: { name: null, arguments: "{\"in" }
+                  }]
                 }),
                 chunk({
                   tool_calls: [{ index: 0, id: null, function: { name: null, arguments: "put\":\"hel" } }]
@@ -1179,6 +1233,7 @@ describe("OpenAiLanguageModel", () => {
         }
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
+        assert.deepStrictEqual(toolCall.metadata.openai as unknown, { itemId: "call_1", extraContent })
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
@@ -1712,10 +1767,11 @@ describe("OpenAiLanguageModel", () => {
             HttpClient.HttpClient,
             makeHttpClient((request) =>
               Effect.succeed(sseResponse(request, [
-                chunk({ reasoning: "Let me think" }),
-                chunk({ reasoning: " about this." }),
+                chunk({ content: "", reasoning: "Let me think" }),
+                chunk({ content: "", reasoning: " about this." }),
                 chunk({ content: "Hello" }),
-                chunk({ content: " there" }, "stop"),
+                chunk({ content: " there" }),
+                chunk({ content: "" }, "stop"),
                 "[DONE]"
               ]))
             )

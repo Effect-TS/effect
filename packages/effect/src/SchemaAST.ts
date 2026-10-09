@@ -8,6 +8,7 @@
  * ASTs programmatically, change encoded or decoded views, collect issues, or
  * run low-level schema checks.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -46,6 +47,7 @@ import type * as Types from "./Types.ts"
  * - Discriminate on the `_tag` field (e.g. `"String"`, `"Objects"`, `"Union"`).
  *
  * @see {@link isAST}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -85,6 +87,7 @@ function makeGuard<T extends AST["_tag"]>(tag: T) {
  * objects.
  *
  * @see {@link AST}
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -102,6 +105,7 @@ export function isAST(u: unknown): u is AST {
  *
  * @see {@link Declaration} for the AST node type narrowed by this guard
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -119,6 +123,7 @@ export const isDeclaration = makeGuard("Declaration")
  * @see {@link null_ null} for the singleton `Null` AST instance
  * @see {@link isLiteral} for exact primitive literal AST nodes
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -134,6 +139,7 @@ export const isNull = makeGuard("Null")
  *
  * @see {@link isVoid} for narrowing AST nodes that represent TypeScript `void` instead of exact `undefined`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -149,6 +155,7 @@ export const isUndefined = makeGuard("Undefined")
  *
  * @see {@link isUndefined} for narrowing AST nodes that represent the literal `undefined` value instead of TypeScript `void`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -165,6 +172,7 @@ export const isVoid = makeGuard("Void")
  * @see {@link Never} for the AST node type narrowed by this guard
  * @see {@link never} for the singleton `Never` AST instance
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -180,6 +188,7 @@ export const isNever = makeGuard("Never")
  *
  * @see {@link isAny} for the guard for the `Any` node, whose parsed result is typed as `any` rather than `unknown`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -195,6 +204,7 @@ export const isUnknown = makeGuard("Unknown")
  *
  * @see {@link isUnknown} for the guard for the `Unknown` node, whose parsed result is typed as `unknown` rather than `any`
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -212,6 +222,7 @@ export const isAny = makeGuard("Any")
  * @see {@link string} for the singleton `String` AST instance
  * @see {@link isLiteral} for exact primitive literal AST nodes, including exact string literals
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -225,6 +236,7 @@ export const isString = makeGuard("String")
  * Use to detect `Number` AST nodes while inspecting, traversing, or transforming
  * schema ASTs.
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -241,6 +253,7 @@ export const isNumber = makeGuard("Number")
  * @see {@link Boolean} for the AST node type matched by this guard
  * @see {@link boolean} for the singleton instance to use when constructing a boolean AST directly
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -256,6 +269,7 @@ export const isBoolean = makeGuard("Boolean")
  * @see {@link BigInt} for the AST node matched by this guard
  * @see {@link bigInt} for the singleton instance; use `isBigInt` when narrowing an existing `AST` value
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -271,6 +285,7 @@ export const isBigInt = makeGuard("BigInt")
  *
  * @see {@link isUniqueSymbol} for the sibling guard that narrows the `UniqueSymbol` variant for one exact symbol value
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -286,6 +301,7 @@ export const isSymbol = makeGuard("Symbol")
  * @see {@link Literal} for the AST node type narrowed by this guard
  * @see {@link LiteralValue} for the values stored by literal nodes
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -294,6 +310,7 @@ export const isLiteral = makeGuard("Literal")
 /**
  * Narrows an {@link AST} to {@link UniqueSymbol}.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -311,6 +328,7 @@ export const isUniqueSymbol = makeGuard("UniqueSymbol")
  * @see {@link objectKeyword} for the singleton `ObjectKeyword` AST instance
  * @see {@link isObjects} for struct and record AST nodes
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -326,6 +344,7 @@ export const isObjectKeyword = makeGuard("ObjectKeyword")
  *
  * @see {@link Enum} for the AST node type narrowed by this guard
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -334,6 +353,7 @@ export const isEnum = makeGuard("Enum")
 /**
  * Narrows an {@link AST} to {@link TemplateLiteral}.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -349,6 +369,7 @@ export const isTemplateLiteral = makeGuard("TemplateLiteral")
  *
  * @see {@link Arrays} for the AST node type narrowed by this guard
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -357,6 +378,7 @@ export const isArrays = makeGuard("Arrays")
 /**
  * Narrows an {@link AST} to {@link Objects}.
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -365,6 +387,7 @@ export const isObjects = makeGuard("Objects")
 /**
  * Narrows an {@link AST} to {@link Union}.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -373,6 +396,7 @@ export const isUnion = makeGuard("Union")
 /**
  * Narrows an {@link AST} to {@link Suspend}.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -394,6 +418,7 @@ export const isSuspend = makeGuard("Suspend")
  *
  * @see {@link Encoding}
  * @see {@link decodeTo}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -407,6 +432,7 @@ export interface Link {
 /**
  * Constructs a {@link Link}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -443,6 +469,7 @@ export const Link: new(
  *
  * @see {@link Link}
  * @see {@link toEncoded}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -473,6 +500,7 @@ export type Encoding = readonly [Link, ...Array<Link>]
  * Object property order is unspecified, including in values passed to checks.
  * Decoding and encoding do not guarantee preservation of input key order.
  *
+ * @stability stable
  * @category options
  * @since 3.10.0
  */
@@ -591,6 +619,7 @@ export const defaultParseOptions: ParseOptions = {}
  *
  * @see `Schema.optionalKey`
  * @see {@link isOptional}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -605,6 +634,7 @@ export interface Context {
 /**
  * Constructs a {@link Context}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -646,6 +676,7 @@ export const Context: new(
  * @see {@link Check}
  * @see {@link Filter}
  * @see {@link FilterGroup}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -707,6 +738,7 @@ type DeclarationRun = (
  *   complete synchronously.
  *
  * @see {@link isDeclaration}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -737,6 +769,7 @@ export interface Declaration extends ASTNode {
 /**
  * Constructs a {@link Declaration}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -822,6 +855,7 @@ export const Declaration: new(
  *
  * @see {@link null_ null}
  * @see {@link isNull}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -838,6 +872,7 @@ export interface Null extends ASTNode {
 /**
  * Constructs a {@link Null}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -868,6 +903,7 @@ export {
    * Use when you need the shared AST node for exact null values while inspecting
    * or constructing schema ASTs.
    *
+   * @stability stable
    * @category constants
    * @since 4.0.0
    */
@@ -883,6 +919,7 @@ export {
  *
  * @see {@link undefined}
  * @see {@link isUndefined}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -902,6 +939,7 @@ export interface Undefined extends ASTNode {
 /**
  * Constructs a {@link Undefined}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -944,6 +982,7 @@ export {
    * Use when you need the shared AST node for exact undefined values while
    * inspecting or constructing schema ASTs.
    *
+   * @stability stable
    * @category constants
    * @since 4.0.0
    */
@@ -967,6 +1006,7 @@ export {
  * @see {@link undefined} for the AST singleton that matches only exact `undefined`
  * @see {@link void_ void}
  * @see {@link isVoid}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -988,6 +1028,7 @@ export interface Void extends ASTNode {
 /**
  * Constructs a {@link Void}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1032,6 +1073,7 @@ export {
    * @see {@link undefined} for the sibling AST singleton that matches exactly `undefined`
    * @see {@link isVoid} for narrowing an AST to a `Void` node
    *
+   * @stability stable
    * @category constructors
    * @since 4.0.0
    */
@@ -1048,6 +1090,7 @@ export {
  *
  * @see {@link never}
  * @see {@link isNever}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1064,6 +1107,7 @@ export interface Never extends ASTNode {
 /**
  * Constructs a {@link Never}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1095,6 +1139,7 @@ export const Never: new(
  * @see {@link Never} for the AST node class
  * @see {@link isNever} for narrowing an AST to a `Never` node
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1106,6 +1151,7 @@ export const never = new Never()
  * @see {@link any}
  * @see {@link isAny}
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1122,6 +1168,7 @@ export interface Any extends ASTNode {
 /**
  * Constructs a {@link Any}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1152,6 +1199,7 @@ export const Any: new(
  *
  * @see {@link unknown} for the sibling AST singleton that also accepts every value while preserving the safer `unknown` type
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1167,6 +1215,7 @@ export const any = new Any()
  *
  * @see {@link unknown}
  * @see {@link isUnknown}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1183,6 +1232,7 @@ export interface Unknown extends ASTNode {
 /**
  * Constructs a {@link Unknown}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1213,6 +1263,7 @@ export const Unknown: new(
  *
  * @see {@link any} for the singleton that accepts every value as `any`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1225,6 +1276,7 @@ export const unknown = new Unknown()
  * @see {@link objectKeyword}
  * @see {@link isObjectKeyword}
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1241,6 +1293,7 @@ export interface ObjectKeyword extends ASTNode {
 /**
  * Constructs a {@link ObjectKeyword}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1272,6 +1325,7 @@ export const ObjectKeyword: new(
  * @see {@link ObjectKeyword} for the AST node class
  * @see {@link isObjectKeyword} for narrowing an AST to an `ObjectKeyword` node
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -1286,6 +1340,7 @@ export const objectKeyword = new ObjectKeyword()
  * `string | number`. Parsing succeeds when the input matches any enum value.
  *
  * @see {@link isEnum}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1311,6 +1366,7 @@ export interface Enum extends ASTNode {
 /**
  * Constructs a {@link Enum}. Numeric values must be finite.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1434,6 +1490,7 @@ function isTemplateLiteralPart(
  * strings at runtime.
  *
  * @see {@link isTemplateLiteral}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1465,6 +1522,7 @@ export interface TemplateLiteral extends ASTNode {
  * Throws if a part contains an encoding, including inside unions or nested
  * template literals. Parts must describe their values without transformations.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1588,6 +1646,7 @@ function templateLiteralTransformation(template: TemplateLiteral) {
  * `symbol`.
  *
  * @see {@link isUniqueSymbol}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1608,6 +1667,7 @@ export interface UniqueSymbol extends ASTNode {
 /**
  * Constructs a {@link UniqueSymbol}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1656,6 +1716,7 @@ export const UniqueSymbol: new(
  *
  * @see {@link Literal}
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -1684,6 +1745,7 @@ export type LiteralValue = string | number | boolean | bigint
  *
  * @see {@link LiteralValue}
  * @see {@link isLiteral}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1710,6 +1772,7 @@ export interface Literal extends ASTNode {
 /**
  * Constructs a {@link Literal}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1777,6 +1840,7 @@ function literalToString(ast: Literal): Literal {
  * @see {@link string}
  * @see {@link isString}
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1796,6 +1860,7 @@ export interface String extends ASTNode {
 /**
  * Constructs a {@link String}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1831,6 +1896,7 @@ export const String: new(
  * @see {@link String} for the AST node class
  * @see {@link isString} for narrowing an AST to a string node
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1852,6 +1918,7 @@ export const string = new String()
  *
  * @see {@link number}
  * @see {@link isNumber}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1880,6 +1947,7 @@ export interface Number extends ASTNode {
 /**
  * Constructs a {@link Number}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1949,6 +2017,7 @@ function hasCheck(checks: ReadonlyArray<Check<unknown>>, id: string): boolean {
  * @see {@link Number} for the AST node class and serialization behavior
  * @see {@link Literal} for exact finite numeric literal AST nodes
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1960,6 +2029,7 @@ export const number = new Number()
  * @see {@link boolean}
  * @see {@link isBoolean}
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1976,6 +2046,7 @@ export interface Boolean extends ASTNode {
 /**
  * Constructs a {@link Boolean}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2007,6 +2078,7 @@ export const Boolean: new(
  * @see {@link Boolean} for the AST node class
  * @see {@link Literal} for exact boolean literal AST nodes
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2027,6 +2099,7 @@ export const boolean = new Boolean()
  *
  * @see {@link symbol}
  * @see {@link isSymbol}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2049,6 +2122,7 @@ export interface Symbol extends ASTNode {
 /**
  * Constructs a {@link Symbol}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2093,6 +2167,7 @@ export const Symbol: new(
  *
  * @see {@link UniqueSymbol} for an AST node that matches one specific symbol
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2108,6 +2183,7 @@ export const symbol = new Symbol()
  *
  * @see {@link bigInt}
  * @see {@link isBigInt}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2130,6 +2206,7 @@ export interface BigInt extends ASTNode {
 /**
  * Constructs a {@link BigInt}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2172,6 +2249,7 @@ export const BigInt: new(
  * @see {@link BigInt} for the AST node class and string-codec behavior
  * @see {@link isBigInt} for narrowing an AST to a `BigInt` node
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2216,6 +2294,7 @@ export const bigInt = new BigInt()
  *
  * @see {@link isArrays}
  * @see {@link Objects}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2245,6 +2324,7 @@ export interface Arrays extends ASTNode {
 /**
  * Constructs a {@link Arrays}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2565,6 +2645,7 @@ export function getIndexSignatureKeys(
  * {@link Context}.
  *
  * @see {@link Objects}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2576,6 +2657,7 @@ export interface PropertySignature {
 /**
  * Constructs a {@link PropertySignature}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2653,6 +2735,7 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  *
  * @see {@link Objects}
  * @see {@link PropertySignature}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2664,6 +2747,7 @@ export interface IndexSignature {
 /**
  * Constructs a {@link IndexSignature}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2725,6 +2809,7 @@ export const IndexSignature: new(parameter: AST, type: AST) => IndexSignature = 
  * @see {@link PropertySignature}
  * @see {@link IndexSignature}
  * @see {@link Arrays}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2753,6 +2838,7 @@ export interface Objects extends ASTNode {
 /**
  * Constructs a {@link Objects}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2783,21 +2869,6 @@ export const Objects: new(
     this.propertySignatures = propertySignatures
     this.indexSignatures = indexSignatures
     this.encodingChecks = encodingChecks
-
-    // Duplicate property signatures
-    const seen = new Set<PropertyKey>()
-    const duplicates: Array<PropertyKey> = []
-    for (const propertySignature of propertySignatures) {
-      const name = propertySignature.name
-      if (seen.has(name)) {
-        duplicates.push(name)
-      } else {
-        seen.add(name)
-      }
-    }
-    if (duplicates.length > 0) {
-      throw new Error(`Duplicate identifiers: ${JSON.stringify(duplicates)}. ts(2300)`)
-    }
   }
   /** @internal */
   getParser(
@@ -3245,6 +3316,11 @@ export function structWithRest(ast: Objects, records: ReadonlyArray<Objects>): O
   let indexSignatures = ast.indexSignatures
   let checks = ast.checks
   for (const record of records) {
+    for (const propertySignature of record.propertySignatures) {
+      if (propertySignatures.some((ps) => ps.name === propertySignature.name)) {
+        throw new Error(`Duplicate identifier: ${JSON.stringify(propertySignature.name)}. ts(2300)`)
+      }
+    }
     propertySignatures = propertySignatures.concat(record.propertySignatures)
     indexSignatures = indexSignatures.concat(record.indexSignatures)
     checks = combineChecks(checks, record.checks)
@@ -3404,7 +3480,8 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
   }
 }
 
-type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<AST>
+/** @internal */
+export type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<number>
 type SentinelEntry = readonly [
   byValue: Map<LiteralValue | symbol, Set<number>>,
   all: Set<number>
@@ -3419,15 +3496,17 @@ const getRuntimeType = (input: unknown): Type => input === null ? "null" : Array
 const hasPropertySignature = (input: object, key: PropertyKey): boolean =>
   key === "__proto__" ? Object.hasOwn(input, key) : key in input
 
-function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
+/** @internal */
+export function getCandidateIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
   if (index) return index
 
   let bySentinel: SentinelIndex | undefined
   let sentinelCandidateCount = 0
   let otherwise: { [K in Type]?: Array<number> } | undefined
-  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
+  let literalCandidates: Map<LiteralValue | symbol, Array<number>> | undefined
   let onlyLiterals = true
+  const literalOf: Array<LiteralValue | symbol | undefined> = []
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toCandidate(a)
@@ -3436,9 +3515,10 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
       literalCandidates ??= new Map()
       const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
+      literalOf[i] = literal
       let arr = literalCandidates.get(literal)
       if (!arr) literalCandidates.set(literal, arr = [])
-      arr.push(a)
+      arr.push(i)
     } else {
       onlyLiterals = false
     }
@@ -3464,24 +3544,25 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   }
 
   // Non-discriminated members are grouped by runtime type once and reused by every decode.
-  const fallbacks: { [K in Type]?: ReadonlyArray<AST> } = {}
-  const getFallback = (type: Type): ReadonlyArray<AST> =>
-    fallbacks[type] ??= Object.freeze((otherwise?.[type] ?? emptyCandidates).map((i) => types[i]))
+  const fallbacks: { [K in Type]?: ReadonlyArray<number> } = {}
+  const getFallback = (type: Type): ReadonlyArray<number> =>
+    fallbacks[type] ??= Object.freeze(otherwise?.[type] ?? emptyCandidates)
 
   if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
     index = (input) => literalCandidates.get(input) ?? emptyCandidates
   } else if (bySentinel?.size === 1 && !otherwise) {
     const [key, [byValue]] = bySentinel.entries().next().value!
-    const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
+    const candidates = new Map<LiteralValue | symbol, ReadonlyArray<number>>()
     for (const [literal, indexes] of byValue) {
-      candidates.set(literal, Object.freeze(Array.from(indexes, (index) => types[index])))
+      candidates.set(literal, Object.freeze(Array.from(indexes)))
     }
+    const all = Object.freeze(types.map((_, i) => i))
     index = (input, isConstructor) => {
       if (Predicate.isObjectKeyword(input)) {
         const value = hasPropertySignature(input, key) ? (input as any)[key] : undefined
         if (value !== undefined) return candidates.get(value) ?? emptyCandidates
-        if (isConstructor) return types
+        if (isConstructor) return all
       }
       return emptyCandidates
     }
@@ -3548,42 +3629,17 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
           }
         }
       }
-      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
+      return Array.from(selected).sort((a, b) => a - b)
     }
   } else {
     index = (input) => {
       const fallback = getFallback(getRuntimeType(input))
-      return literalCandidates ? fallback.filter(filterLiterals(input)) : fallback
+      return literalCandidates ? fallback.filter((i) => literalOf[i] === undefined || literalOf[i] === input) : fallback
     }
   }
 
   candidateIndexCache.set(types, index)
   return index
-}
-
-function filterLiterals(input: any) {
-  return (ast: AST) => {
-    const encoded = toCandidate(ast)
-    return encoded._tag === "Literal" ?
-      encoded.literal === input
-      : encoded._tag === "UniqueSymbol" ?
-      encoded.symbol === input
-      : true
-  }
-}
-
-/**
- * The goal is to reduce the number of a union members that will be checked.
- * This is useful to reduce the number of issues that will be returned.
- *
- * @internal
- */
-export function getCandidates(
-  input: any,
-  types: ReadonlyArray<AST>,
-  isConstructor = false
-): ReadonlyArray<AST> {
-  return getIndex(types)(input, isConstructor)
 }
 
 /**
@@ -3613,6 +3669,7 @@ export function getCandidates(
  * ```
  *
  * @see {@link isUnion}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3641,6 +3698,7 @@ export interface Union<A extends AST = AST> extends ASTNode {
 /**
  * Local matching options stored on {@link Union} nodes.
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -3652,6 +3710,7 @@ export interface UnionOptions {
 /**
  * Constructs a {@link Union}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3690,43 +3749,28 @@ export const Union: new<A extends AST = AST>(
   ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
+    const isConstructor = compileField !== undefined
+    const parsers: Array<SchemaParser.Parser> = []
+    const parser = (i: number): SchemaParser.Parser => parsers[i] ??= compile(ast.types[i])
+    let index: CandidateIndex | undefined
 
     return (input, options) => {
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
-      const candidates = getCandidates(input, ast.types, compileField !== undefined)
+      const candidates = (index ??= getCandidateIndex(ast.types))(input, isConstructor)
 
       if (candidates.length === 0) {
         return Effect.fail(new SchemaIssue.AnyOf(ast, [], input, options))
       }
       if (candidates.length === 1) {
-        const result = compile(candidates[0])(input, options)
+        const result = parser(candidates[0])(input, options)
         if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
         return effectIsExit(result)
           ? failSingleUnionCandidate(ast, (result as Exit.Failure<unknown, SchemaIssue.Issue>).cause, input, options)
-          : Effect.catchCause(result, (cause) => failSingleUnionCandidate(ast, cause, input, options))
+          : catchSingleUnionCandidate(ast, result, input, options)
       }
-
-      const state = {
-        ast,
-        compile,
-        input,
-        out: undefined,
-        successes: ast.options?.mode === "oneOf" ? [] : undefined,
-        issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
-        options
-      }
-      const eff = parseUnion(state, candidates)
-      if (!eff) {
-        if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
-      }
-      return Effect.flatMapEager(eff, (_) => {
-        if (state.out === InternalParser.sameExit) return Effect.succeed(input)
-        if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
-      })
+      return parseUnionCandidates(ast, parser, candidates, input, options)
     }
   }
   private _rebuild(
@@ -3805,20 +3849,72 @@ function failSingleUnionCandidate(
   return Exit.fail(new SchemaIssue.AnyOf(ast, [issue], input, options))
 }
 
-const parseUnion = iterateEager<{
-  readonly compile: (ast: AST) => SchemaParser.Parser
+function catchSingleUnionCandidate(
+  ast: Union,
+  result: Effect.Effect<unknown, SchemaIssue.Issue, unknown>,
+  input: unknown,
+  options: ParseOptions
+) {
+  return Effect.catchCause(result, (cause) => failSingleUnionCandidate(ast, cause, input, options))
+}
+
+type UnionParserState = {
+  readonly parser: (i: number) => SchemaParser.Parser
   readonly ast: Union
   readonly input: unknown
   readonly options: ParseOptions
   out: Exit.Success<unknown, SchemaIssue.Issue> | undefined
   readonly successes: Array<AST> | undefined
   issues: Array<SchemaIssue.Issue> | undefined
-}, AST>()({
-  onItem(s, ast) {
-    const parser = s.compile(ast)
-    return parser(s.input, s.options)
+}
+
+function parseUnionCandidates(
+  ast: Union,
+  parser: (i: number) => SchemaParser.Parser,
+  candidates: ReadonlyArray<number>,
+  input: unknown,
+  options: ParseOptions
+): Effect.Effect<unknown, SchemaIssue.Issue, any> {
+  const state: UnionParserState = {
+    ast,
+    parser,
+    input,
+    out: undefined,
+    successes: ast.options?.mode === "oneOf" ? [] : undefined,
+    issues: undefined,
+    options
+  }
+  const eff = parseUnion(state, candidates)
+  if (!eff) {
+    if (state.out) return state.out
+    return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
+  }
+  if (effectIsExit(eff)) return resumeUnion(eff, state)
+  // Reparse on later runs to avoid reusing mutable traversal state.
+  let first = true
+  return Effect.suspend(() => {
+    if (!first) return parseUnionCandidates(ast, parser, candidates, input, options)
+    first = false
+    return resumeUnion(eff, state)
+  })
+}
+
+function resumeUnion(
+  eff: Effect.Effect<void, SchemaIssue.Issue, any>,
+  state: UnionParserState
+): Effect.Effect<unknown, SchemaIssue.Issue, any> {
+  return Effect.flatMapEager(eff, (_) => {
+    if (state.out === InternalParser.sameExit) return Effect.succeed(state.input)
+    if (state.out) return state.out
+    return Effect.fail(new SchemaIssue.AnyOf(state.ast, state.issues ?? [], state.input, state.options))
+  })
+}
+
+const parseUnion = iterateEager<UnionParserState, number>()({
+  onItem(s, i) {
+    return s.parser(i)(s.input, s.options)
   },
-  step(s, candidate, exit) {
+  step(s, i, exit) {
     if (exit._tag === "Failure") {
       const issue = InternalSchemaCause.getSchemaIssue(exit.cause)
       if (issue === undefined) {
@@ -3828,12 +3924,12 @@ const parseUnion = iterateEager<{
       else s.issues = [issue]
     } else {
       if (s.out && s.successes) {
-        s.successes.push(candidate)
+        s.successes.push(s.ast.types[i])
         return Exit.fail(new SchemaIssue.OneOf(s.ast, s.successes, s.input, s.options))
       }
       s.out = exit
       if (s.successes) {
-        s.successes.push(candidate)
+        s.successes.push(s.ast.types[i])
       } else {
         return Exit.void
       }
@@ -3883,6 +3979,7 @@ function formatIsOptional(isOptional: boolean | undefined): string {
  * ```
  *
  * @see {@link isSuspend}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3903,6 +4000,7 @@ export interface Suspend extends ASTNode {
 /**
  * Constructs a {@link Suspend}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3973,6 +4071,7 @@ export const Suspend: new(
  * @see {@link FilterGroup}
  * @see {@link Check}
  * @see {@link isPattern}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3992,6 +4091,7 @@ export interface Filter<in E> extends Pipeable.Pipeable {
 /**
  * Constructs a {@link Filter}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4046,6 +4146,7 @@ export const Filter: new<E>(
  *
  * @see {@link Filter}
  * @see {@link Check}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4063,6 +4164,7 @@ export interface FilterGroup<in E> extends Pipeable.Pipeable {
 /**
  * Constructs a {@link FilterGroup}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4104,6 +4206,7 @@ export const FilterGroup: new<E>(
  *
  * @see {@link Filter}
  * @see {@link FilterGroup}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4202,6 +4305,7 @@ const numberToJson = new Link(
  * ```
  *
  * @see {@link Filter}
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4230,32 +4334,33 @@ export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annota
   )
 }
 
-function modifyOwnPropertyDescriptors<A extends AST>(
-  ast: A,
-  f: (
-    d: { [P in keyof A]: TypedPropertyDescriptor<A[P]> }
-  ) => void
-): A {
-  const d = Object.getOwnPropertyDescriptors(ast)
-  f(d)
-  return Object.create(Object.getPrototypeOf(ast), d)
+// Copies that update only context or encoding share a body.
+// All other fields describe the body itself, including child contexts.
+const bodyOwners = new WeakMap<AST, AST>()
+
+function copy<A extends AST>(ast: A, changes: Partial<AST>): A {
+  // AST copies preserve the prototype and enumerable values, not property descriptors.
+  const out = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, changes) as A
+  if (Reflect.ownKeys(changes).every((key) => key === "context" || key === "encoding")) {
+    bodyOwners.set(out, getContextOwner(ast))
+  }
+  return out
 }
 
-const contextOwners = new WeakMap<AST, AST>()
-
 /** @internal */
-export function getContextOwner(ast: AST): AST {
-  return contextOwners.get(ast) ?? ast
+export function getContextOwner<A extends AST>(ast: A): A {
+  const existing = bodyOwners.get(ast)
+  if (existing !== undefined) return existing as A
+  if (ast.encoding === undefined) return ast
+  // A body representative must not expose or retain the node's own codec.
+  const owner = Object.assign(Object.create(Object.getPrototypeOf(ast)), ast, { encoding: undefined }) as A
+  bodyOwners.set(ast, owner)
+  return owner
 }
 
 /** @internal */
 export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | undefined): A {
-  if (ast.encoding === encoding) {
-    return ast
-  }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.encoding.value = encoding
-  })
+  return ast.encoding === encoding ? ast : copy(ast, { encoding })
 }
 
 /** @internal */
@@ -4264,14 +4369,10 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
     return ast
   }
   const owner = getContextOwner(ast)
-  if (owner.context === context) {
-    return owner as A
+  if (owner.context === context && owner.encoding === ast.encoding) {
+    return owner
   }
-  const out = modifyOwnPropertyDescriptors(ast, (d) => {
-    d.context.value = context
-  })
-  contextOwners.set(out, owner)
-  return out
+  return copy(ast, { context })
 }
 
 /** @internal */
@@ -4285,9 +4386,7 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
     const last = ast.checks[ast.checks.length - 1]
     return replaceChecks(ast, Arr.append(ast.checks.slice(0, -1), last.annotate(annotations)))
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.annotations.value = { ...d.annotations.value, ...annotations }
-  })
+  return copy(ast, { annotations: { ...ast.annotations, ...annotations } })
 }
 
 /** @internal */
@@ -4298,9 +4397,7 @@ export function replaceChecks<A extends AST>(ast: A, checks: Checks | undefined)
   if (ast.checks === checks) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
-    d.checks.value = checks
-  })
+  return copy(ast, { checks })
 }
 
 /** @internal */
@@ -4381,13 +4478,6 @@ function appendTransformation<A extends AST>(
   return replaceEncoding(to, to.encoding ? [...to.encoding, link] : [link])
 }
 
-/** @internal */
-export function brand(ast: AST, brand: string): AST {
-  const existing = InternalAnnotations.resolveBrands(ast)
-  const brands = existing ? [...existing, brand] : [brand]
-  return annotate(ast, { brands })
-}
-
 /**
  * Maps over the array but will return the original array if no changes occur.
  * @internal
@@ -4395,17 +4485,21 @@ export function brand(ast: AST, brand: string): AST {
 export function mapOrSame<A>(as: Arr.NonEmptyReadonlyArray<A>, f: (a: A) => A): Arr.NonEmptyReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A>
 export function mapOrSame<A>(as: ReadonlyArray<A>, f: (a: A) => A): ReadonlyArray<A> {
-  let changed = false
-  const out: Array<A> = new Array(as.length)
+  let out: Array<A> | undefined
   for (let i = 0; i < as.length; i++) {
     const a = as[i]
     const fa = f(a)
-    if (fa !== a) {
-      changed = true
+    if (out) {
+      out[i] = fa
+    } else if (fa !== a) {
+      out = new Array(as.length)
+      for (let j = 0; j < i; j++) {
+        out[j] = as[j]
+      }
+      out[i] = fa
     }
-    out[i] = fa
   }
-  return changed ? out : as
+  return out ?? as
 }
 
 /** @internal */
@@ -4475,6 +4569,7 @@ export function withConstructorDefault<A extends AST>(
  * @see {@link Link}
  * @see {@link Encoding}
  * @see {@link flip}
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -4495,12 +4590,14 @@ function parseParameter(ast: AST): {
   function go(ast: AST) {
     switch (ast._tag) {
       case "Literal":
-        if (Predicate.isPropertyKey(ast.literal)) {
+        if (Predicate.isPropertyKey(ast.literal) && !literals.includes(ast.literal)) {
           literals.push(ast.literal)
         }
         return
       case "UniqueSymbol":
-        literals.push(ast.symbol)
+        if (!literals.includes(ast.symbol)) {
+          literals.push(ast.symbol)
+        }
         return
       case "Never":
         return
@@ -4540,6 +4637,7 @@ export function record(key: AST, value: AST): Objects {
  *
  * @see `Schema.optionalKey`
  * @see {@link Context}
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -4566,6 +4664,17 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
   return Arr.isArrayNonEmpty(out) ? out : undefined
 }
 
+function canPreserveEncodingChecks(ast: AST): boolean {
+  let preserve = true
+  function visit(child: AST): AST {
+    preserve = preserve && !child.encoding && !isSuspend(child)
+    if (preserve && "recur" in child) child.recur(visit)
+    return child
+  }
+  if ("recur" in ast) ast.recur(visit)
+  return preserve
+}
+
 /**
  * Strips all encoding transformations from an AST, returning the decoded
  * (type-level) representation.
@@ -4588,25 +4697,26 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  *
  * @see {@link toEncoded}
  * @see {@link flip}
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
 export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
-  if (ast.encoding) {
-    return toType(replaceEncoding(ast, undefined))
+  const owner = getContextOwner(ast)
+  if (owner !== ast) {
+    const type = toType(owner)
+    return type === owner && ast.encoding === undefined ? ast : replaceContext(type, ast.context)
   }
-  const out: any = ast
-  const type = out.recur?.(toType) ?? out
-  const encodingChecks: Checks | undefined = type.encodingChecks
-  if (encodingChecks) {
-    const checks = type === ast
-      ? encodingChecks
+  const type = ("recur" in ast ? ast.recur(toType) : ast) as A
+  if ("encodingChecks" in type && type.encodingChecks) {
+    const checks = canPreserveEncodingChecks(ast)
+      ? type.encodingChecks
       : isArrays(type) || isObjects(type) || isDeclaration(type) && type.typeParameters.length > 0
-      ? extractStructuralChecks(encodingChecks)
+      ? extractStructuralChecks(type.encodingChecks)
       : undefined
-    return modifyOwnPropertyDescriptors(type, (d) => {
-      d.encodingChecks.value = undefined
-      d.checks.value = combineChecks(type.checks, checks)
+    return copy(type, {
+      encodingChecks: undefined,
+      checks: combineChecks(type.checks, checks)
     })
   }
   return type
@@ -4635,6 +4745,7 @@ export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
  *
  * @see {@link toType}
  * @see {@link flip}
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -4674,6 +4785,7 @@ function flipEncoding(ast: AST, encoding: Encoding): AST {
  *
  * @see {@link toType}
  * @see {@link toEncoded}
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -4681,8 +4793,12 @@ export const flip = memoize((ast: AST): AST => {
   if (ast.encoding) {
     return flipEncoding(ast, ast.encoding)
   }
-  const out: any = ast
-  return out.flip?.(flip) ?? out.recur?.(flip) ?? out
+  const owner = getContextOwner(ast)
+  if (owner !== ast) {
+    const flipped = flip(owner)
+    return flipped === owner ? ast : replaceContext(flipped, ast.context)
+  }
+  return "flip" in ast ? ast.flip(flip) : "recur" in ast ? ast.recur(flip) : ast
 })
 
 /** @internal */
@@ -5011,6 +5127,7 @@ export function getConstructorDescriptor(ast: AST): ConstructorDescriptor | unde
  * @see {@link resolveIdentifier}
  * @see {@link resolveTitle}
  * @see {@link resolveDescription}
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -5025,6 +5142,7 @@ export const resolve: (ast: AST) => Schema.Annotations.Annotations | undefined =
  * are present. Returns `undefined` if the key is not found.
  *
  * @see {@link resolve}
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -5040,6 +5158,7 @@ export const resolveAt: <A>(key: string) => (ast: AST) => A | undefined = Intern
  *
  * @see {@link resolve}
  * @see {@link resolveTitle}
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -5052,6 +5171,7 @@ export const resolveIdentifier: (ast: AST) => string | undefined = InternalAnnot
  * @see {@link resolveIdentifier}
  * @see {@link resolveDescription}
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -5064,6 +5184,7 @@ export const resolveTitle: (ast: AST) => string | undefined = InternalAnnotation
  * @see {@link resolveTitle}
  * @see {@link resolveIdentifier}
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */

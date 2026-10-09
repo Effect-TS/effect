@@ -274,6 +274,9 @@ export class WorkflowInstance extends Context.Service<
     /** Deferred names this run parked on; their completions preempt the run. */
     readonly awaitedDeferreds: Set<string>
 
+    /** Deferred names this run completed itself; their completions need not wake it. */
+    readonly completedDeferreds: Set<string>
+
     readonly activityState: {
       count: number
       readonly latch: Latch.Latch
@@ -294,6 +297,7 @@ export class WorkflowInstance extends Context.Service<
       abandoned: false,
       cause: undefined,
       awaitedDeferreds: new Set(),
+      completedDeferreds: new Set(),
       activityState: {
         count: 0,
         latch: Latch.makeUnsafe()
@@ -822,7 +826,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           Workflow.intoResult,
           Effect.provideService(WorkflowInstance, activityInstance),
           Effect.onExit((exit) => {
-            state.exit = exit
+            // A preempted activity must run again on the next replay.
+            state.exit = Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) ? undefined : exit
             return Effect.void
           })
         )

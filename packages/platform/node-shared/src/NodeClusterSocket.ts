@@ -6,6 +6,7 @@
  * and wraps them in the current RPC serialization protocol. `layerSocketServer`
  * exposes the socket server that receives incoming runner RPC traffic.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Runners from "effect/cluster/Runners"
@@ -24,6 +25,7 @@ import * as NodeSocketServer from "./NodeSocketServer.ts"
  * Provides the cluster `RpcClientProtocol` by opening TCP sockets to runner
  * addresses and using the current RPC serialization service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -56,6 +58,7 @@ export const layerClientProtocol: Layer.Layer<
  * Provides the socket server used by cluster runners, listening on
  * `ShardingConfig.runnerListenAddress` or `runnerAddress`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

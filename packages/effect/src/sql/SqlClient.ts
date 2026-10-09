@@ -9,7 +9,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Cause from "../Cause.ts"
+import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -143,7 +143,8 @@ export declare namespace SqlClient {
     readonly prepareTransactionControls?: boolean | undefined
     readonly beginTransaction?: string | undefined
     readonly rollback?: string | undefined
-    readonly commit?: string | undefined
+    /** Commit SQL, or an effect that commits on the connection and checks the result. */
+    readonly commit?: string | ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     /** Cleanup on the same connection when COMMIT fails. Omit when the driver already ends the transaction. */
     readonly onCommitFailure?: ((conn: Connection.Connection) => Effect.Effect<void, SqlError>) | undefined
     readonly savepoint?: ((name: string) => string) | undefined
@@ -210,7 +211,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     releaseSavepoint: releaseSavepoint
       ? (conn, id) => control(conn, releaseSavepoint(`effect_sql_${id}`))
       : undefined,
-    commit: (conn) => control(conn, commit),
+    commit: typeof commit === "string" ? (conn) => control(conn, commit) : commit,
     onCommitFailure: options.onCommitFailure,
     rollback: (conn) => control(conn, rollback),
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
@@ -279,6 +280,12 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  *
  * **Details**
  *
+ * Both acquirers lease the connection into the current scope and hold the
+ * semaphore until that scope closes, so a statement or stream keeps the
+ * connection until it finishes and another fiber cannot begin a transaction
+ * underneath it. Effects that use the connection directly, such as an export,
+ * have to run inside `Effect.scoped`.
+ *
  * SQLite can keep a transaction open after COMMIT fails, for example on a
  * deferred foreign key violation. `onCommitFailure` rolls it back before the
  * connection is reused. If that ROLLBACK fails, the connection is rejected, and
@@ -299,7 +306,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
   readonly semaphore: Semaphore.Semaphore
   readonly isTransaction?: ((conn: C) => boolean) | undefined
 }): {
-  readonly acquirer: Effect.Effect<C, SqlError>
+  readonly acquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly transactionAcquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly onCommitFailure: (conn: Connection.Connection) => Effect.Effect<void, SqlError>
 } => {
@@ -335,15 +342,17 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
     })
   })
 
+  const lease = Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(Effect.scope, (scope) =>
+      restore(semaphore.take(1)).pipe(
+        Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
+        Effect.andThen(available)
+      ))
+  )
+
   return {
-    acquirer: semaphore.withPermits(1)(available),
-    transactionAcquirer: Effect.uninterruptibleMask((restore) =>
-      Effect.flatMap(Effect.scope, (scope) =>
-        restore(semaphore.take(1)).pipe(
-          Effect.andThen(Scope.addFinalizer(scope, semaphore.release(1))),
-          Effect.andThen(available)
-        ))
-    ),
+    acquirer: lease,
+    transactionAcquirer: lease,
     onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause)))
   }
 }
@@ -357,6 +366,18 @@ const isNoTransactionError = (error: SqlError): boolean => {
     : ""
   return /no transaction is active/i.test(message)
 }
+
+/**
+ * A failed COMMIT cleanup leaves the connection in an unsafe state, so both the
+ * COMMIT error and the cleanup error are promoted to defects: typed recovery
+ * must not be able to hide them.
+ */
+const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
+  Cause.fromReasons(cause.reasons.map((reason) =>
+    Cause.isFailReason(reason)
+      ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
+      : reason
+  ))
 
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses
@@ -393,7 +414,7 @@ export const makeWithTransaction = <I, S>(options: {
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
         "sql.transaction",
-        { kind: "client" },
+        { kind: "internal" },
         (span) =>
           Effect.withFiber<A, E | SqlError, R>((fiber) => {
             for (const [key, value] of options.spanAttributes) {
@@ -423,21 +444,25 @@ export const makeWithTransaction = <I, S>(options: {
                         )
                       ),
                       (exit) => {
-                        let effect: Effect.Effect<void>
+                        let effect: Effect.Effect<void, SqlError>
                         if (Exit.isSuccess(exit)) {
                           if (id === 0) {
-                            span.event("db.transaction.commit", clock.currentTimeNanosUnsafe())
+                            span.event("effect.sql.transaction.commit", clock.currentTimeNanosUnsafe())
                             const onCommitFailure = options.onCommitFailure
-                            effect = Effect.orDie(options.commit(conn))
-                            if (onCommitFailure) {
-                              effect = Effect.onError(effect, () => Effect.orDie(onCommitFailure(conn)))
-                            }
+                            effect = onCommitFailure
+                              ? Effect.catchCause(options.commit(conn), (commitCause) =>
+                                Effect.matchCauseEffect(onCommitFailure(conn), {
+                                  onFailure: (cleanupCause) =>
+                                    Effect.failCause(failuresToDefects(Cause.combine(commitCause, cleanupCause))),
+                                  onSuccess: () => Effect.failCause(commitCause)
+                                }))
+                              : options.commit(conn)
                           } else {
-                            span.event("db.transaction.savepoint", clock.currentTimeNanosUnsafe())
+                            span.event("effect.sql.transaction.savepoint", clock.currentTimeNanosUnsafe())
                             effect = Effect.void
                           }
                         } else {
-                          span.event("db.transaction.rollback", clock.currentTimeNanosUnsafe())
+                          span.event("effect.sql.transaction.rollback", clock.currentTimeNanosUnsafe())
                           effect = Effect.orDie(
                             id > 0
                               ? options.rollbackSavepoint(conn, id)

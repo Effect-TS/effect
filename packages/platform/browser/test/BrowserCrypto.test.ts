@@ -79,7 +79,7 @@ describe("BrowserCrypto", () => {
   it.effect("generates UUIDv4 values from getRandomValues", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
-      const uuid = yield* crypto.randomUUIDv4
+      const uuid = yield* crypto.randomUUIDv4()
       assert.strictEqual(uuid, "00010203-0405-4607-8809-0a0b0c0d0e0f")
       assert.match(uuid, uuidV4Regex)
     }).pipe(Effect.provide(BrowserCrypto.layer.pipe(
@@ -93,7 +93,7 @@ describe("BrowserCrypto", () => {
     Effect.gen(function*() {
       yield* TestClock.setTime(0x0123456789ab)
       const crypto = yield* Crypto.Crypto
-      const uuid = yield* crypto.randomUUIDv7
+      const uuid = yield* crypto.randomUUIDv7()
       assert.strictEqual(uuid, "01234567-89ab-7607-8809-0a0b0c0d0e0f")
       assert.match(uuid, uuidV7Regex)
     }).pipe(Effect.provide(BrowserCrypto.layer.pipe(

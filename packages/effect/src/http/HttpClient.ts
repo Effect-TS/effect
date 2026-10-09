@@ -18,15 +18,18 @@ import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constant, constFalse, constTrue, dual, flow, identity } from "../Function.ts"
 import * as Inspectable from "../Inspectable.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Ref from "../Ref.ts"
+import * as References from "../References.ts"
 import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import type * as Scope from "../Scope.ts"
@@ -42,6 +45,7 @@ import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
+import * as tracing from "./internal/tracing.ts"
 import * as Url from "./Url.ts"
 
 const TypeId = "~effect/http/HttpClient"
@@ -722,26 +726,10 @@ export const make = (
           { kind: "client" },
           (span) => {
             span.attribute("http.request.method", request.method)
-            span.attribute("server.address", url.origin)
-            if (url.port !== "") {
-              span.attribute("server.port", +url.port)
-            }
-            span.attribute("url.full", url.toString())
-            span.attribute("url.path", url.pathname)
-            span.attribute("url.scheme", url.protocol.slice(0, -1))
-            const query = url.search.slice(1)
-            if (query !== "") {
-              span.attribute("url.query", query)
-            }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+            tracing.addUrlAttributes(span, url)
             const headerFilter = fiber.getRef(TracerHeaderFilter)
-            for (const name in request.headers) {
-              if (!headerFilter(name, "request")) continue
-              span.attribute(
-                `http.request.header.${name}`,
-                Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : request.headers[name]
-              )
-            }
+            tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
             request = fiber.getRef(TracerPropagationEnabled)
               ? HttpClientRequest.setHeaders(request, TraceContext.toHeaders(span))
               : request
@@ -751,12 +739,12 @@ export const make = (
                 Effect.matchCauseEffect({
                   onSuccess: (response) => {
                     span.attribute("http.response.status_code", response.status)
-                    for (const name in response.headers) {
-                      if (!headerFilter(name, "response")) continue
-                      span.attribute(
-                        `http.response.header.${name}`,
-                        Headers.isRedactedName(name, redactedHeaderNames) ? "<redacted>" : response.headers[name]
-                      )
+                    tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+                    // OpenTelemetry marks client spans as failed for 4xx and
+                    // 5xx responses, while the response itself still succeeds.
+                    if (response.status >= 400 && response.status < 600) {
+                      span.attribute("error.type", String(response.status))
+                      endSpanWithStatusError(fiber, span, request, response)
                     }
 
                     if (scopedController) return Effect.succeed(response)
@@ -775,6 +763,26 @@ export const make = (
           }
         )
       })), Effect.succeed as HttpClient.Preprocess<never, never>)
+
+const endSpanWithStatusError = (
+  fiber: Fiber.Fiber<unknown, unknown>,
+  span: Tracer.Span,
+  request: HttpClientRequest.HttpClientRequest,
+  response: HttpClientResponse.HttpClientResponse
+): void => {
+  const stackTraceLimit = getStackTraceLimit()
+  setStackTraceLimit(0)
+  let exit: Exit.Exit<never, Error.HttpClientError>
+  try {
+    exit = Exit.fail(new Error.HttpClientError({ reason: new Error.StatusCodeError({ request, response }) }))
+  } finally {
+    setStackTraceLimit(stackTraceLimit)
+  }
+  span.end(
+    fiber.getRef(References.TracerTimingEnabled) ? fiber.getRef(Clock).currentTimeNanosUnsafe() : BigInt(0),
+    exit
+  )
+}
 
 /**
  * Appends a transformation of the request object before sending it.
@@ -1142,6 +1150,8 @@ export declare namespace WithRateLimiter {
  * It can update limits by inspecting common rate limit response headers and
  * automatically retries HTTP `429` responses (or `HttpClientError` values
  * wrapping a `429` response) by forcing the retry back through the limiter.
+ * When a response reports the remaining budget, requests wait for the
+ * reported reset once that budget is exhausted.
  *
  * **Gotchas**
  *
@@ -1192,13 +1202,35 @@ export const withRateLimiter: {
     return initialState
   }
 
+  const budgets = new Map<string, RateLimitBudget>()
+  const getBudget = (key: string): RateLimitBudget => {
+    let budget = budgets.get(key)
+    if (budget === undefined) {
+      budget = { sent: 0, observed: 0, remaining: 0, resetAt: 0 }
+      budgets.set(key, budget)
+    }
+    return budget
+  }
+
   const onResponse = options.disableResponseInspection
     ? undefined
-    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number) => {
+    : (clock: Clock, key: string, headers: Headers.Headers, tokens: number, sent: number) => {
       const current = getState(key)
       const next = parseRateLimiterState(current, clock, headers, tokens, headerNames)
       if (next.limit !== current.limit || !Duration.equals(next.window, current.window)) {
         states.set(key, next)
+      }
+      const remaining = parseRateLimitRemaining(headers, headerNames)
+      const budget = getBudget(key)
+      // responses to earlier requests carry stale counts
+      if (remaining === undefined || sent <= budget.observed) {
+        return
+      }
+      const resetAfter = parseRateLimitWindow(clock, headers, headerNames)
+      budget.observed = sent
+      budget.remaining = remaining
+      if (resetAfter !== undefined) {
+        budget.resetAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(resetAfter)
       }
     }
 
@@ -1211,6 +1243,15 @@ export const withRateLimiter: {
     const clock = fiber.getRef(Clock)
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
+    const budget = getBudget(key)
+    const now = clock.currentTimeMillisUnsafe()
+    // requests admitted after the observed one are not reflected in its count
+    if (budget.resetAt > now && budget.remaining - (budget.sent - budget.observed) < tokens) {
+      return Effect.flatMap(Effect.sleep(budget.resetAt - now), () => loop(effect, request, retries))
+    }
+    // counted at admission, so requests already admitted are sent even if a
+    // later response exhausts the budget
+    const sent = budget.sent += tokens
     const current = getState(key)
     const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
@@ -1222,7 +1263,7 @@ export const withRateLimiter: {
       response: HttpClientResponse.HttpClientResponse,
       adaptive: RateLimiter.AdaptiveConsumeResult | undefined
     ) => {
-      onResponse?.(clock, key, response.headers, tokens)
+      onResponse?.(clock, key, response.headers, tokens, sent)
       if (options.disableResponseInspection || response.status !== 429) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
@@ -1338,6 +1379,17 @@ interface RateLimiterState {
   readonly limit: number
   readonly window: Duration.Duration
   readonly initial: boolean
+}
+
+interface RateLimitBudget {
+  /** Total tokens admitted for the key. */
+  sent: number
+  /** The `sent` total of the request whose remaining count was last applied. */
+  observed: number
+  /** The remaining count reported in response to the `observed` request. */
+  remaining: number
+  /** When the server budget resets, in epoch milliseconds. */
+  resetAt: number
 }
 
 const parseRateLimiterState = (
@@ -1669,6 +1721,11 @@ export const TracerDisabledWhen = Context.Reference<
 /**
  * Context reference for filtering request and response headers added to client spans.
  *
+ * **Details**
+ *
+ * Header capture is opt-in: the default filter records no headers. Captured
+ * headers listed in `Headers.CurrentRedactedNames` are recorded as `<redacted>`.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -1676,7 +1733,7 @@ export const TracerDisabledWhen = Context.Reference<
 export const TracerHeaderFilter = Context.Reference<
   (headerName: string, phase: "request" | "response") => boolean
 >("effect/http/HttpClient/TracerHeaderFilter", {
-  defaultValue: () => constTrue
+  defaultValue: () => constFalse
 })
 
 /**
@@ -1693,6 +1750,10 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 /**
  * Context reference for generating the span name used for outgoing client request spans.
  *
+ * **Details**
+ *
+ * Defaults to the request method unchanged.
+ *
  * @stability unstable
  * @category services
  * @since 4.0.0
@@ -1700,7 +1761,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/http/
 export const SpanNameGenerator = Context.Reference<
   (request: HttpClientRequest.HttpClientRequest) => string
 >("effect/http/HttpClient/SpanNameGenerator", {
-  defaultValue: () => (request) => `http.client ${request.method}`
+  defaultValue: () => (request) => request.method
 })
 
 /**
@@ -1742,7 +1803,7 @@ const responseRegistry = (() => {
     }
   }
 
-  const timers = new Map<HttpClientResponse.HttpClientResponse, any>()
+  const timers = new WeakMap<HttpClientResponse.HttpClientResponse, any>()
   return {
     register(response: HttpClientResponse.HttpClientResponse, controller: AbortController) {
       timers.set(response, setTimeout(() => controller.abort(), 5000))

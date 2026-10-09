@@ -9,7 +9,8 @@ const runFixture = (mode: string, input: string) =>
   spawnSync(process.execPath, [fixture, mode], {
     encoding: "utf8",
     input,
-    timeout: 2_000
+    // Includes Node startup and loading the fixture imports under CI worker load.
+    timeout: 10_000
   })
 
 const assertResult = (mode: string, input: string, expected: string) => {
@@ -41,9 +42,60 @@ const assertOpenResult = (mode: string, input: string, expected: string) =>
     return Effect.sync(() => child.kill())
   })
 
+const runOpenSelect = (input: string, customQuit = false) =>
+  Effect.callback<{ stdout: string; stderr: string }>((resume) => {
+    const child = spawn(process.execPath, [fixture, customQuit ? "select-custom-quit" : "select"])
+    let stdout = ""
+    let stderr = ""
+    let submitted = false
+    child.stdout.setEncoding("utf8")
+    child.stderr.setEncoding("utf8")
+    child.stdout.on("data", (data) => {
+      stdout += data
+      // Wait for bare Esc to be decoded before submitting the custom prompt.
+      if (customQuit && !submitted && stdout.includes("\x07")) {
+        submitted = true
+        child.stdin.write("\r")
+      }
+    })
+    child.stderr.on("data", (data) => {
+      stderr += data
+      if (stderr.includes("RESULT ")) {
+        child.stdin.end()
+      }
+    })
+    child.on("error", (error) => resume(Effect.die(error)))
+    child.on("close", (code) => {
+      resume(code === 0 ? Effect.succeed({ stdout, stderr }) : Effect.die(new Error(stderr)))
+    })
+    child.stdin.write(input)
+    return Effect.sync(() => child.kill())
+  })
+
 // spawnSync blocks the Vitest worker; concurrent tests share a running timeout
 // while waiting for other fixture processes to finish.
-describe("NodeTerminal", { concurrent: false }, () => {
+describe("NodeTerminal", { concurrent: false, timeout: 15_000 }, () => {
+  it.effect("bare Esc cancels Select with QuitError and restores the cursor while stdin remains open", () =>
+    Effect.gen(function*() {
+      const { stderr, stdout } = yield* runOpenSelect("\x1b")
+      assert.include(stderr, "RESULT \"QuitError\"", `Bare Esc output: ${JSON.stringify(stdout)}`)
+      assert.include(stdout, "\x1b[?25l")
+      assert.isTrue(stdout.endsWith("\x1b[?25h"), stdout)
+    }))
+
+  it.effect("an arrow escape sequence navigates Select and Enter submits", () =>
+    Effect.gen(function*() {
+      const { stderr } = yield* runOpenSelect("\x1b[B\r")
+      assert.include(stderr, "RESULT \"banana\"")
+    }))
+
+  it.effect("an explicit shouldQuit predicate can keep Esc non-cancelling", () =>
+    Effect.gen(function*() {
+      const { stderr, stdout } = yield* runOpenSelect("\x1b", true)
+      assert.include(stdout, "\x07")
+      assert.include(stderr, "RESULT \"apple\"")
+    }))
+
   it("does not install a readline interface until the terminal is used", () => {
     assertResult("unused", "", "{\"dataListeners\":0}")
   })

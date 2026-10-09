@@ -1,6 +1,7 @@
 /**
  * Base64 encoding and decoding helpers.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Result from "../Result.ts"
@@ -34,6 +35,7 @@ import { EncodingError } from "./EncodingError.ts"
  * @see {@link decode} for decoding standard Base64 to bytes
  * @see {@link decodeString} for decoding standard Base64 to UTF-8 text
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -62,6 +64,7 @@ export const encode: (input: Uint8Array | string) => string = (input) =>
  * Base64.decode("SGVsbG8=") // => Result.succeed(new Uint8Array([72, 101, 108, 108, 111]))
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -138,6 +141,7 @@ export const decode = (str: string): Result.Result<Uint8Array, EncodingError> =>
  * Base64.decodeString("aGVsbG8=") // => Result.succeed("hello")
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */

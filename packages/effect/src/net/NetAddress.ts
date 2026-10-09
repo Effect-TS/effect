@@ -54,6 +54,23 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
 export type IpAddress = Ipv4Address | Ipv6Address
 
 /**
+ * An IPv6 literal with a zone, such as `fe80::1%eth0` or `fe80::1%3`.
+ *
+ * **Details**
+ *
+ * Named zones are kept as written because mapping an interface name to a
+ * numeric scope ID requires the operating system's interface table. Numeric
+ * zones must be unsigned 32-bit integers and are stored without leading zeros,
+ * and the address part is stored in canonical form.
+ *
+ * @see {@link scopedIpv6LiteralFromString} for parsing scoped IPv6 literals
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type ScopedIpv6Literal = Brand.Branded<string, "~effect/net/NetAddress/ScopedIpv6Literal">
+
+/**
  * An immutable 48-bit IEEE 802 MAC address.
  *
  * @stability unstable
@@ -339,6 +356,29 @@ export type Family<A extends IpAddress | InetAddress> = A extends Ipv4Address | 
   : Ipv6Address
 
 /**
+ * The name of an IP address family, spelled as in `os.networkInterfaces()` and
+ * socket address information on Node.js, Deno, and Bun.
+ *
+ * @see {@link familyOf} for reading the family of an address
+ * @see {@link FamilyAddress} for the address type of a family
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type IpFamily = "IPv4" | "IPv6"
+
+/**
+ * The IP address type for an IP address family name. `FamilyAddress<IpFamily>`
+ * is `IpAddress`.
+ *
+ * @see {@link Family} for the inverse mapping from an address type
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type FamilyAddress<F extends IpFamily> = F extends "IPv4" ? Ipv4Address : Ipv6Address
+
+/**
  * The internet address type for an IP address family.
  *
  * **Details**
@@ -443,6 +483,49 @@ export const isIpAddress = (u: unknown): u is IpAddress => isIpv4Address(u) || i
  * @since 4.0.0
  */
 export const width = (address: IpAddress): 32 | 128 => isIpv4Address(address) ? 32 : 128
+
+/**
+ * Returns the family of an IP address or internet address.
+ *
+ * **Example** (Reading address families)
+ *
+ * ```ts import.meta.vitest
+ * import { NetAddress } from "effect/net"
+ *
+ * NetAddress.familyOf(NetAddress.ipv4Loopback) // => "IPv4"
+ * NetAddress.familyOf(NetAddress.inetAddressFromStringUnsafe("[::1]:80")) // => "IPv6"
+ * ```
+ *
+ * @stability experimental
+ * @category getters
+ * @since 4.0.0
+ */
+export const familyOf = (self: IpAddress | InetAddress): IpFamily =>
+  isIpv4Address(self) || isInetAddressV4(self) ? "IPv4" : "IPv6"
+
+/**
+ * Returns `true` when an IP address or internet address belongs to a family,
+ * narrowing it to that family.
+ *
+ * @stability experimental
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isFamily: {
+  (
+    family: "IPv4"
+  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, Ipv4Address | InetAddressV4>
+  (
+    family: "IPv6"
+  ): <A extends IpAddress | InetAddress>(self: A) => self is Extract<A, Ipv6Address | InetAddressV6>
+  (family: IpFamily): (self: IpAddress | InetAddress) => boolean
+  <A extends IpAddress | InetAddress>(self: A, family: "IPv4"): self is Extract<A, Ipv4Address | InetAddressV4>
+  <A extends IpAddress | InetAddress>(self: A, family: "IPv6"): self is Extract<A, Ipv6Address | InetAddressV6>
+  (self: IpAddress | InetAddress, family: IpFamily): boolean
+} = dual(
+  2,
+  <A extends IpAddress | InetAddress>(self: A, family: IpFamily): self is A => familyOf(self) === family
+)
 
 /**
  * Returns `true` when a value is a MAC address.
@@ -874,6 +957,46 @@ export const ipFromString = (input: string): Result.Result<IpAddress, NetAddress
  * @since 4.0.0
  */
 export const ipFromStringUnsafe = (input: string): IpAddress => Result.getOrThrow(ipFromString(input))
+
+/**
+ * Returns `true` when a value is a canonical scoped IPv6 literal.
+ *
+ * @stability experimental
+ * @category guards
+ * @since 4.0.0
+ */
+export const isScopedIpv6Literal = (u: unknown): u is ScopedIpv6Literal => {
+  if (typeof u !== "string" || !u.includes("%")) return false
+  const result = scopedIpv6LiteralFromString(u)
+  return Result.isSuccess(result) && result.success === u
+}
+
+/**
+ * Parses an IPv6 literal with a numeric or named zone, such as `fe80::1%eth0`.
+ *
+ * @stability experimental
+ * @category decoding
+ * @since 4.0.0
+ */
+export const scopedIpv6LiteralFromString = (
+  input: string
+): Result.Result<ScopedIpv6Literal, NetAddressError> => {
+  const separator = input.indexOf("%")
+  if (separator === -1) return addressError(input, "expected an IPv6 zone")
+  let zone = input.slice(separator + 1)
+  if (zone.length === 0 || /[%[\]/\s\p{Cc}]/u.test(zone)) {
+    return addressError(input, "invalid IPv6 scope identifier")
+  }
+  if (/^\d+$/.test(zone)) {
+    const scopeId = Number(zone)
+    if (scopeId > 0xffffffff) return addressError(input, "scope identifier must be an unsigned 32-bit integer")
+    zone = String(scopeId)
+  }
+  return Result.map(
+    ipv6FromString(input.slice(0, separator)),
+    (address) => `${formatIp(address)}%${zone}` as ScopedIpv6Literal
+  )
+}
 
 /**
  * Returns the four numeric octets of an IPv4 address in a fresh tuple.
@@ -1378,6 +1501,112 @@ export const inetAddressFromIpStringUnsafe = (address: string, port: number): In
   Result.getOrThrow(inetAddressFromIpString(address, port))
 
 /**
+ * Creates an internet address from a trusted native numeric host and port.
+ * Named IPv6 zones are resolved using the supplied interface-to-scope map.
+ * Use only for runtime-supplied socket addresses: this skips input validation,
+ * so malformed strings or ports may silently produce incorrect values. An
+ * unknown named IPv6 zone throws rather than losing its scope.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const inetAddressFromNativeUnsafe = (
+  host: string,
+  port: number,
+  scopeIds?: ReadonlyMap<string, number>
+): InetAddress => {
+  const zoneStart = host.indexOf("%")
+  const end = zoneStart === -1 ? host.length : zoneStart
+  if (host.indexOf(":") === -1) {
+    const self = Object.create(InetV4Proto)
+    self.address = makeIpv4(parseNativeIpv4(host, 0, end))
+    self.port = port
+    return Object.freeze(self)
+  }
+
+  let scopeId = 0
+  if (zoneStart !== -1) {
+    const zone = host.slice(zoneStart + 1)
+    const resolved = numericZone.test(zone) ? Number(zone) : scopeIds?.get(zone)
+    if (resolved === undefined) throw new Error(`unknown IPv6 interface: ${zone}`)
+    scopeId = resolved
+  }
+
+  let w0 = 0
+  let w1 = 0
+  let w2 = 0
+  let w3 = 0
+  let segment = 0
+  let i = 0
+  while (i < end) {
+    if (host.charCodeAt(i) === 58) {
+      // The rest of a compressed address is anchored at the last segment.
+      i += 2
+      if (i === end) break
+      let remaining = 1
+      for (let j = i; j < end; j++) {
+        if (host.charCodeAt(j) === 58) remaining++
+      }
+      const dot = host.indexOf(".", i)
+      if (dot !== -1 && dot < end) remaining++
+      segment = 8 - remaining
+    }
+    const start = i
+    let value = 0
+    while (i < end) {
+      const ch = host.charCodeAt(i)
+      if (ch === 58 || ch === 46) break
+      value = (value << 4) | (ch <= 57 ? ch - 48 : (ch & 0x5f) - 55)
+      i++
+    }
+    if (i < end && host.charCodeAt(i) === 46) {
+      w3 = parseNativeIpv4(host, start, end)
+      break
+    }
+    // even segments fill the high half of their 32-bit word
+    const shifted = value << ((1 - (segment & 1)) * 16)
+    switch (segment >>> 1) {
+      case 0:
+        w0 |= shifted
+        break
+      case 1:
+        w1 |= shifted
+        break
+      case 2:
+        w2 |= shifted
+        break
+      default:
+        w3 |= shifted
+    }
+    segment++
+    if (i < end && host.charCodeAt(i + 1) !== 58) i++
+  }
+  const self = Object.create(InetV6Proto)
+  self.address = makeIpv6(w0, w1, w2, w3)
+  self.port = port
+  self.scopeId = scopeId
+  return Object.freeze(self)
+}
+
+const numericZone = /^\d+$/
+
+const parseNativeIpv4 = (host: string, start: number, end: number): number => {
+  let value = 0
+  let octet = 0
+  for (let i = start; i < end; i++) {
+    const ch = host.charCodeAt(i)
+    if (ch === 46) {
+      value = (value << 8) | octet
+      octet = 0
+    } else {
+      octet = octet * 10 + ch - 48
+    }
+  }
+  return ((value << 8) | octet) >>> 0
+}
+
+/**
  * Parses an unbracketed numeric host and port, resolving named IPv6 zones using
  * a supplied map of interface names to numeric scope IDs.
  *
@@ -1424,7 +1653,33 @@ export const inetAddressFromHostString = (
  */
 export interface NetworkInterfaceAddress {
   readonly family: string
-  readonly scopeid?: number | undefined
+  readonly scopeid?: number | null | undefined
+}
+
+/**
+ * Returns the IPv6 scope ID of a network interface from its addresses.
+ *
+ * **Details**
+ *
+ * The first IPv6 address with a positive scope ID supplies the result. Accepts
+ * the addresses of one interface, such as `os.networkInterfaces()[name]` or the
+ * entries of `Deno.networkInterfaces()` with that name, without performing any
+ * operating-system lookup itself.
+ *
+ * @see {@link scopeIdsFromInterfaces} for mapping every interface at once
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const scopeIdFromInterface = (
+  addresses: ReadonlyArray<NetworkInterfaceAddress> | undefined
+): Option.Option<number> => {
+  for (const address of addresses ?? []) {
+    if (address.family === "IPv6" && typeof address.scopeid === "number" && address.scopeid > 0) {
+      return Option.some(address.scopeid)
+    }
+  }
+  return Option.none()
 }
 
 /**
@@ -1449,8 +1704,8 @@ export const scopeIdsFromInterfaces = (
 ): Map<string, number> => {
   const scopeIds = new Map<string, number>()
   for (const [name, addresses] of interfaces) {
-    const address = addresses?.find((address) => address.family === "IPv6" && (address.scopeid ?? 0) > 0)
-    if (address?.scopeid !== undefined) scopeIds.set(name, address.scopeid)
+    const scopeId = scopeIdFromInterface(addresses)
+    if (Option.isSome(scopeId)) scopeIds.set(name, scopeId.value)
   }
   return scopeIds
 }

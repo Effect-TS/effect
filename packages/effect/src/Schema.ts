@@ -9,6 +9,7 @@
  * generation, formatting, equivalence, optics, and differs derived from schema
  * definitions.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -36,6 +37,7 @@ import * as HashSet_ from "./HashSet.ts"
 import * as Cookies_ from "./http/Cookies.ts"
 import * as Headers_ from "./http/Headers.ts"
 import * as UrlParams_ from "./http/UrlParams.ts"
+import { NodeInspectSymbol } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
 import { effectIsExit } from "./internal/effect.ts"
 import * as InternalGraph from "./internal/graph.ts"
@@ -55,6 +57,8 @@ import { isSchemaError as isSchemaErrorInternal, SchemaErrorTypeId } from "./int
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as JsonPatch from "./JsonPatch.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
+import * as Dns_ from "./net/Dns.ts"
+import * as Host_ from "./net/Host.ts"
 import * as IpInterface_ from "./net/IpInterface.ts"
 import * as IpNetwork_ from "./net/IpNetwork.ts"
 import * as NetAddress_ from "./net/NetAddress.ts"
@@ -77,7 +81,7 @@ import * as SchemaTransformation from "./SchemaTransformation.ts"
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from "./StandardSchema.ts"
 import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
-import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
+import type { IsUnion, RequiredKeys } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
 
 const TypeId = InternalMake.TypeId
@@ -87,6 +91,7 @@ const TypeId = InternalMake.TypeId
  * @see {@link optionalKey} — mark a struct field as optional
  * @see {@link optional} — mark a struct field as optional with `| undefined`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -96,6 +101,7 @@ export type Optionality = "required" | "optional"
  *
  * @see {@link mutableKey} — mark a struct field as mutable
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -106,6 +112,7 @@ export type Mutability = "readonly" | "mutable"
  * @see {@link withConstructorDefault} — add a default to a schema field
  * @see {@link tag} — creates a literal field with a constructor default
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -121,6 +128,7 @@ export type ConstructorDefault = "no-default" | "with-default"
  * @see {@link BottomWithoutNew.makeEffect}
  * @see {@link BottomWithoutNew.make}
  *
+ * @stability stable
  * @category options
  * @since 3.13.4
  */
@@ -150,6 +158,7 @@ export interface MakeOptions {
  * Use as the base for schema interfaces that provide a specialized construct
  * signature.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -286,6 +295,7 @@ export interface BottomWithoutNew<
  *
  * @see {@link BottomWithoutNew} for the schema protocol without a construct signature
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -347,6 +357,7 @@ export interface Bottom<
  * @see {@link BottomWithoutNew} for the fully parameterized schema interface when every
  * view must be supplied directly.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -395,6 +406,7 @@ export interface BottomLazyWithoutNew<
  *
  * @see {@link BottomLazyWithoutNew} for the lazy schema protocol without a construct signature
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -424,6 +436,7 @@ export interface BottomLazy<
 /**
  * Type-level representation returned by {@link declareConstructor}.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -492,6 +505,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  * Effect.runSync(Schema.decodeUnknownEffect(schema)({ value: 1 })) // => { value: 1 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -521,6 +535,7 @@ export function declareConstructor<T, E = T, Iso = T>() {
 /**
  * Type-level representation returned by {@link declare}.
  *
+ * @stability stable
  * @category constructors
  * @since 3.13.3
  */
@@ -556,6 +571,7 @@ export interface declare<T, Iso = T> extends declareConstructor<T, T, readonly [
  *
  * @see {@link declareConstructor} for creating schemas for parametric types.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -598,6 +614,7 @@ export function declare<T, Iso = T>(
  * type E = typeof bottom["Encoded"]  // string
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -648,6 +665,7 @@ export function revealBottom<S extends Top>(
  *
  * @see {@link annotateEncoded} to annotate the encoded side instead.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -680,6 +698,7 @@ export function annotate<S extends Top>(annotations: Annotations.Bottom<S["Type"
  *
  * @see {@link annotate} to annotate the type side instead.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -714,6 +733,7 @@ export function annotateEncoded<S extends Top>(annotations: Annotations.Bottom<S
  * schema.fields.username.ast.context?.annotations?.messageMissingKey // => "Username is required"
  * ```
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -737,6 +757,7 @@ export function annotateKey<S extends Top>(annotations: Annotations.Key<S["Type"
  * - {@link ConstraintDecoder}`<T, RD>` — for decode-only APIs
  * - {@link ConstraintEncoder}`<E, RE>` — for encode-only APIs
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -778,6 +799,7 @@ export interface Top extends
  *
  * @see {@link Top} for the complete schema protocol.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -814,6 +836,7 @@ export interface Constraint {
  * @see {@link Constraint} for the generic lightweight schema constraint.
  * @see {@link Codec} for the full schema protocol with codec type views.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -837,6 +860,7 @@ export interface ConstraintCodec<out T, out E = T, out RD = never, out RE = neve
  * @see {@link ConstraintCodec} for APIs that need both decoded and encoded codec views.
  * @see {@link Codec} for the full schema protocol with codec type views.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -855,6 +879,7 @@ export interface ConstraintDecoder<out T, out RD = never> extends ConstraintCode
  * @see {@link ConstraintCodec} for APIs that need both decoded and encoded codec views.
  * @see {@link Codec} for the full schema protocol with codec type views.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -869,6 +894,7 @@ export interface ConstraintEncoder<out E, out RE = never> extends ConstraintCode
  * exposed by {@link Constraint}, but does not call methods such as `annotate`,
  * `check`, `rebuild`, `make`, or `makeEffect`.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -878,6 +904,7 @@ export interface ConstraintRebuildable extends Constraint {
 /**
  * Namespace of type-level helpers for {@link Schema}.
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace Schema {
@@ -929,6 +956,7 @@ export declare namespace Schema {
  * @see {@link Codec} — also tracks Encoded, DecodingServices, EncodingServices
  * @see {@link Schema.Type} — extract the decoded type at the type level
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -939,6 +967,7 @@ export interface Schema<out T> extends Top {
 /**
  * Namespace of type-level helpers for {@link Codec}.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace Codec {
@@ -1034,6 +1063,7 @@ export declare namespace Codec {
  * @see {@link Codec.EncodingServices} — extract required encoding services
  * @see {@link revealCodec} — helper to make TypeScript infer the full Codec type
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1056,6 +1086,7 @@ export interface Codec<out T, out E = T, out RD = never, out RE = never> extends
  * @see {@link Codec} for preserving both decoded and encoded type information.
  * @see {@link Encoder} for the encode-only view.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1078,6 +1109,7 @@ export interface Decoder<out T, out RD = never> extends Schema<T> {
  * @see {@link Codec} for preserving both decoded and encoded type information.
  * @see {@link Decoder} for the decode-only view.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1109,6 +1141,7 @@ export interface Encoder<out E, out RE = never> extends Schema<unknown> {
  * type Enc = typeof codec["Encoded"] // string
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1130,6 +1163,7 @@ export function revealCodec<T, E, RD, RE>(codec: Codec<T, E, RD, RE>) {
  * `Optic` automatically. You normally interact with this interface through
  * {@link Optic_} utilities rather than constructing it directly.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -1166,6 +1200,7 @@ export interface Optic<out T, out Iso> extends Schema<T> {
  * ```
  *
  * @see {@link isSchemaError} for narrowing unknown values
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -1184,6 +1219,15 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
   }
   override get message() {
     return SchemaIssue.defaultFormatter(this.issue)
+  }
+  override toJSON() {
+    return {
+      _tag: this._tag,
+      message: this.message
+    }
+  }
+  override [NodeInspectSymbol]() {
+    return this.toJSON()
   }
   override toString() {
     return `SchemaError(${this.message})`
@@ -1206,6 +1250,7 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
  * Schema.isSchemaError(error) // => true
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1333,6 +1378,7 @@ function runSchemaErrorSync<A>(
  * invalidResult.issues?.map((issue) => issue.path) // => [["name"], ["age"]]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1353,6 +1399,7 @@ export function toStandardSchemaV1<S extends ConstraintDecoder<unknown>>(
  *
  * https://github.com/standard-schema/standard-schema/pull/134
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1395,6 +1442,7 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  * }
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -1444,6 +1492,7 @@ export const is: typeof SchemaParser.is = SchemaParser.is
  * }
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -1467,6 +1516,7 @@ export const asserts: <S extends Constraint, I>(schema: S, input: I) => asserts 
  *
  * @see {@link SchemaParser.decodeUnknownEffect} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1497,6 +1547,7 @@ export function decodeUnknownEffect<S extends Constraint>(schema: S, options?: S
  *
  * @see {@link SchemaParser.decodeEffect} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1534,6 +1585,7 @@ export const decodeEffect: <S extends Constraint>(
  *
  * @see {@link SchemaParser.decodeUnknownExit} for the adapter whose failure contains `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1570,6 +1622,7 @@ export function decodeUnknownExit<S extends ConstraintDecoder<unknown>>(schema: 
  *
  * @see {@link SchemaParser.decodeExit} for the adapter whose failure contains `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1600,6 +1653,7 @@ export const decodeExit: <S extends ConstraintDecoder<unknown>>(
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -1629,6 +1683,7 @@ export const decodeUnknownOption: <S extends ConstraintDecoder<unknown>>(
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -1662,6 +1717,7 @@ export const decodeOption: <S extends ConstraintDecoder<unknown>>(
  *
  * @see {@link SchemaParser.decodeUnknownResult} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1696,6 +1752,7 @@ export function decodeUnknownResult<S extends ConstraintDecoder<unknown>>(schema
  *
  * @see {@link SchemaParser.decodeResult} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1728,6 +1785,7 @@ export const decodeResult: <S extends ConstraintDecoder<unknown>>(
  *
  * @see {@link SchemaParser.decodeUnknownPromise} for the adapter that rejects with an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -1764,6 +1822,7 @@ export function decodeUnknownPromise<S extends ConstraintDecoder<unknown>>(
  *
  * @see {@link SchemaParser.decodePromise} for the adapter that rejects with an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -1805,6 +1864,7 @@ export const decodePromise: <S extends ConstraintDecoder<unknown>>(
  *
  * @see {@link SchemaParser.decodeUnknownSync} for the adapter that throws an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1837,6 +1897,7 @@ export function decodeUnknownSync<S extends ConstraintDecoder<unknown>>(schema: 
  *
  * @see {@link SchemaParser.decodeSync} for the adapter that throws an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1872,6 +1933,7 @@ export const decodeSync: <S extends ConstraintDecoder<unknown>>(
  *
  * @see {@link SchemaParser.encodeUnknownEffect} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1902,6 +1964,7 @@ export function encodeUnknownEffect<S extends Constraint>(schema: S, options?: S
  *
  * @see {@link SchemaParser.encodeEffect} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1938,6 +2001,7 @@ export const encodeEffect: <S extends Constraint>(
  *
  * @see {@link SchemaParser.encodeUnknownExit} for the adapter whose failure contains `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1974,6 +2038,7 @@ export function encodeUnknownExit<S extends ConstraintEncoder<unknown>>(schema: 
  *
  * @see {@link SchemaParser.encodeExit} for the adapter whose failure contains `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2004,6 +2069,7 @@ export const encodeExit: <S extends ConstraintEncoder<unknown>>(
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -2034,6 +2100,7 @@ export const encodeUnknownOption: <S extends ConstraintEncoder<unknown>>(
  * that contain defects, interruptions, or other non-schema reasons throw
  * instead.
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -2066,6 +2133,7 @@ export const encodeOption: <S extends ConstraintEncoder<unknown>>(
  *
  * @see {@link SchemaParser.encodeUnknownResult} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2100,6 +2168,7 @@ export function encodeUnknownResult<S extends ConstraintEncoder<unknown>>(schema
  *
  * @see {@link SchemaParser.encodeResult} for the adapter that fails with `SchemaIssue.Issue` directly
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2131,6 +2200,7 @@ export const encodeResult: <S extends ConstraintEncoder<unknown>>(
  *
  * @see {@link SchemaParser.encodeUnknownPromise} for the adapter that rejects with an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -2167,6 +2237,7 @@ export function encodeUnknownPromise<S extends ConstraintEncoder<unknown>>(
  *
  * @see {@link SchemaParser.encodePromise} for the adapter that rejects with an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -2197,6 +2268,7 @@ export const encodePromise: <S extends ConstraintEncoder<unknown>>(
  *
  * @see {@link SchemaParser.encodeUnknownSync} for the adapter that throws an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2227,6 +2299,7 @@ export function encodeUnknownSync<S extends ConstraintEncoder<unknown>>(schema: 
  *
  * @see {@link SchemaParser.encodeSync} for the adapter that throws an `Error` whose cause is `SchemaIssue.Issue`
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2248,6 +2321,7 @@ export const encodeSync: <S extends ConstraintEncoder<unknown>>(
  * the bridge between the untyped AST representation and the strongly-typed
  * schema.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -2255,6 +2329,7 @@ export const make: <S extends Constraint>(ast: S["ast"], options?: object) => S 
 /**
  * Checks whether a value is a `Schema`.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -2264,6 +2339,7 @@ export function isSchema(u: unknown): u is Top {
 /**
  * Type-level representation returned by {@link optionalKey}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2311,6 +2387,7 @@ interface optionalKeyLambda extends Lambda {
  * type Person = typeof schema["Type"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2330,6 +2407,7 @@ interface requiredKeyLambda extends Lambda {
  * Use to remove optional-key wrapping from a schema field that was previously
  * wrapped with {@link optionalKey}.
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2337,6 +2415,7 @@ export const requiredKey: requiredKeyLambda = Struct_.lambda<requiredKeyLambda>(
 /**
  * Type-level representation returned by {@link optional}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2373,6 +2452,7 @@ interface optionalLambda extends Lambda {
  * type Person = typeof schema.Type
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 3.10.0
  */
@@ -2397,6 +2477,7 @@ interface requiredLambda extends Lambda {
  *
  * This also unwraps the `UndefinedOr` member added by `optional`.
  *
+ * @stability stable
  * @category combinators
  * @since 3.10.0
  */
@@ -2404,6 +2485,7 @@ export const required: requiredLambda = Struct_.lambda<requiredLambda>((self) =>
 /**
  * Type-level representation returned by {@link mutableKey}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2436,6 +2518,7 @@ interface mutableKeyLambda extends Lambda {
  * Makes a struct field mutable (removes the `readonly` modifier on the property).
  * Use {@link readonlyKey} to reverse.
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2455,6 +2538,7 @@ interface readonlyKeyLambda extends Lambda {
  * Use to remove mutable-key wrapping from a schema field that was previously
  * wrapped with {@link mutableKey}.
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -2462,6 +2546,7 @@ export const readonlyKey: readonlyKeyLambda = Struct_.lambda<readonlyKeyLambda>(
 /**
  * Type-level representation returned by {@link toType}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2494,6 +2579,7 @@ interface toTypeLambda extends Lambda {
  * Extracts the type-side schema: sets `Encoded` to equal the decoded `Type`,
  * discarding the encoding transformation path.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2503,6 +2589,7 @@ export const toType: toTypeLambda = Struct_.lambda<toTypeLambda>((schema) =>
 /**
  * Type-level representation returned by {@link toEncoded}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2535,6 +2622,7 @@ interface toEncodedLambda extends Lambda {
  * Extracts the encoded-side schema: sets `Type` to equal the `Encoded`,
  * discarding the decoding transformation path.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2545,6 +2633,7 @@ const FlipTypeId = "~effect/Schema/flip"
 /**
  * Type-level representation returned by {@link flip}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2595,6 +2684,7 @@ function isFlip$(schema: Top): schema is flip<any> {
  * Schema.decodeSync(flipped)(42) // => "42"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2608,6 +2698,7 @@ export function flip<S extends Top>(schema: S): flip<S> {
 /**
  * Type-level representation returned by {@link Literal}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2633,6 +2724,7 @@ export interface Literal<L extends SchemaAST.LiteralValue>
  * @see {@link Literals} for a schema that represents a union of literals.
  * @see {@link tag} for a schema that represents a literal value that can be
  * used as a discriminator field in tagged unions and has a constructor default.
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -2651,6 +2743,7 @@ export function Literal<L extends SchemaAST.LiteralValue>(literal: L): Literal<L
 /**
  * Namespace for {@link TemplateLiteral} helper types.
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace TemplateLiteral {
@@ -2708,6 +2801,7 @@ export declare namespace TemplateLiteral {
 /**
  * Type-level representation returned by {@link TemplateLiteral}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2759,6 +2853,7 @@ function templateLiteralParts(parts: TemplateLiteral.Parts) {
  * ```
  *
  * @see {@link TemplateLiteralParser} for a schema that also parses matched parts into a tuple.
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -2768,6 +2863,7 @@ export function TemplateLiteral<const Parts extends TemplateLiteral.Parts>(parts
 /**
  * Namespace for {@link TemplateLiteralParser} helper types.
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace TemplateLiteralParser {
@@ -2791,6 +2887,7 @@ export declare namespace TemplateLiteralParser {
 /**
  * Type-level representation returned by {@link TemplateLiteralParser}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2841,6 +2938,7 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
  * ```
  *
  * @see {@link TemplateLiteral} for a validation-only version that keeps the string encoded.
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -2852,6 +2950,7 @@ export function TemplateLiteralParser<const Parts extends TemplateLiteral.Parts>
 /**
  * Type-level representation returned by {@link Enum}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2882,6 +2981,7 @@ export interface Enum<A extends { [x: string]: string | number }>
  * Schema.decodeSync(schema)(Direction.Up) // => "Up"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2898,6 +2998,7 @@ export function Enum<A extends { [x: string]: string | number }>(enums: A): Enum
 /**
  * Type-level representation of {@link Never}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2905,6 +3006,7 @@ export interface Never extends Bottom<never, never, never, never, SchemaAST.Neve
 /**
  * Schema for the `never` type. Always fails validation — no value satisfies it.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -2912,6 +3014,7 @@ export const Never: Never = make(SchemaAST.never)
 /**
  * Type-level representation of {@link Any}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2920,6 +3023,7 @@ export interface Any extends Bottom<any, any, never, never, SchemaAST.Any, Any> 
  * Schema for the `any` type. Accepts any value without validation.
  *
  * @see {@link Unknown} for a safer alternative that uses `unknown`.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -2927,6 +3031,7 @@ export const Any: Any = make(SchemaAST.any)
 /**
  * Type-level representation of {@link Unknown}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2940,6 +3045,7 @@ export interface Unknown extends Bottom<unknown, unknown, never, never, SchemaAS
  * TypeScript's `unknown` safety at use sites.
  *
  * @see {@link Any} for the `any` variant.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -2947,6 +3053,7 @@ export const Unknown: Unknown = make(SchemaAST.unknown)
 /**
  * Type-level representation of {@link Null}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2955,6 +3062,7 @@ export interface Null extends Bottom<null, null, never, never, SchemaAST.Null, N
  * Schema for the `null` literal. Validates that the input is strictly `null`.
  *
  * @see {@link NullOr} for a union with another schema.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -2962,6 +3070,7 @@ export const Null: Null = make(SchemaAST.null)
 /**
  * Type-level representation of {@link Undefined}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -2970,6 +3079,7 @@ export interface Undefined extends Bottom<undefined, undefined, never, never, Sc
  * Schema for the `undefined` literal. Validates that the input is strictly `undefined`.
  *
  * @see {@link UndefinedOr} for a union with another schema.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -2977,6 +3087,7 @@ export const Undefined: Undefined = make(SchemaAST.undefined)
 /**
  * Type-level representation of {@link String}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2984,6 +3095,7 @@ export interface String extends Bottom<string, string, never, never, SchemaAST.S
 /**
  * Schema for `string` values. Validates that the input is `typeof` `"string"`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -2992,6 +3104,7 @@ export const String: String = make(SchemaAST.string)
 /**
  * Type-level representation of {@link StringForLiteralAutocomplete}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3036,6 +3149,7 @@ export interface StringForLiteralAutocomplete extends
  *
  * @see {@link String} for a schema whose type is plain `string`.
  * @see {@link Literals} for the known literals to include in the union.
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3043,6 +3157,7 @@ export const StringForLiteralAutocomplete: StringForLiteralAutocomplete = String
 /**
  * Type-level representation of {@link Number}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3058,6 +3173,7 @@ export interface Number extends Bottom<number, number, never, never, SchemaAST.N
  * - Non-finite values are serialized as strings (`"NaN"`, `"Infinity"`, `"-Infinity"`).
  *
  * @see {@link Finite} for a schema that excludes non-finite values.
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3065,6 +3181,7 @@ export const Number: Number = make(SchemaAST.number)
 /**
  * Type-level representation of {@link Boolean}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3078,6 +3195,7 @@ export interface Boolean extends Bottom<boolean, boolean, never, never, SchemaAS
  *
  * @see {@link BooleanFromBit} for a schema that decodes bit literals `0` or `1` into a boolean
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3085,6 +3203,7 @@ export const Boolean: Boolean = make(SchemaAST.boolean)
 /**
  * Type-level representation of {@link Symbol}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3093,6 +3212,7 @@ export interface Symbol extends Bottom<symbol, symbol, never, never, SchemaAST.S
  * Schema for `symbol` values. Validates that the input is `typeof` `"symbol"`.
  *
  * @see {@link UniqueSymbol} for a schema that matches a specific symbol.
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3100,6 +3220,7 @@ export const Symbol: Symbol = make(SchemaAST.symbol)
 /**
  * Type-level representation of {@link BigInt}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3114,6 +3235,7 @@ export interface BigInt extends Bottom<bigint, bigint, never, never, SchemaAST.B
  *
  * @see {@link BigIntFromString} for parsing string input into a bigint
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3121,6 +3243,7 @@ export const BigInt: BigInt = make(SchemaAST.bigInt)
 /**
  * Type-level representation of {@link Void}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -3141,6 +3264,7 @@ export interface Void extends Bottom<void, void, never, never, SchemaAST.Void, V
  * as `void`.
  *
  * @see {@link Undefined} for a schema that matches only the exact `undefined` value.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -3148,6 +3272,7 @@ export const Void: Void = make(SchemaAST.void)
 /**
  * Type-level representation of {@link ObjectKeyword}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3156,6 +3281,7 @@ export interface ObjectKeyword extends Bottom<object, object, never, never, Sche
  * Schema for the `object` type. Validates that the input is a non-null object or function
  * (i.e. `typeof value === "object" && value !== null || typeof value === "function"`).
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -3163,6 +3289,7 @@ export const ObjectKeyword: ObjectKeyword = make(SchemaAST.objectKeyword)
 /**
  * Type-level representation returned by {@link UniqueSymbol}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3189,6 +3316,7 @@ export interface UniqueSymbol<sym extends symbol>
  * ```
  *
  * @see {@link Symbol} for a schema that accepts any symbol.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -3210,6 +3338,7 @@ export function UniqueSymbol<const sym extends symbol>(symbol: sym): UniqueSymbo
  * - `Struct.MakeIn<F>` — constructor input (optional/defaulted fields may be omitted)
  * - `Struct.DecodingServices<F>` / `Struct.EncodingServices<F>` — required services
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace Struct {
@@ -3344,6 +3473,7 @@ export declare namespace Struct {
 /**
  * Type-level representation returned by {@link Struct}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -3448,6 +3578,7 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  * Schema.decodeUnknownSync(Person)({ name: "Alice", age: 30 }) // => { name: "Alice", age: 30 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -3487,6 +3618,7 @@ interface fieldsAssign<NewFields extends Struct.Fields> extends Lambda {
  * Schema.decodeSync(schema)({ a: "a", c: 1 }) // => { a: "a", c: 1 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -3496,6 +3628,7 @@ export function fieldsAssign<const NewFields extends Struct.Fields>(fields: NewF
 /**
  * Type-level representation returned by {@link encodeKeys}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -3540,6 +3673,7 @@ const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
  * Schema.decodeUnknownSync(Encoded)({ full_name: "Alice", age: 30 }) // => { name: "Alice", age: 30 }
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -3603,6 +3737,7 @@ export function encodeKeys<
  * alice.fullName // => "Alice Smith"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -3649,6 +3784,7 @@ export function extendTo<S extends Struct<Struct.Fields>, const Fields extends S
  * - `Record.Type<K, V>` — decoded type of the record
  * - `Record.Encoded<K, V>` — encoded type of the record
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace Record {
@@ -3807,6 +3943,7 @@ export declare namespace Record {
 /**
  * Type-level representation returned by {@link Record}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -3861,6 +3998,7 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * Schema.decodeUnknownSync(schema)({ a: 1, b: 2 }) // => { a: 1, b: 2 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -3878,6 +4016,7 @@ export function Record<Key extends Record.Key, Value extends Constraint>(
  * - `StructWithRest.Type<S, R>` — decoded type (struct type intersected with record types)
  * - `StructWithRest.Encoded<S, R>` — encoded type
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace StructWithRest {
@@ -4030,6 +4169,7 @@ export declare namespace StructWithRest {
 /**
  * Type-level representation returned by {@link StructWithRest}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4077,6 +4217,7 @@ export interface StructWithRest<
  * type T = typeof schema.Type
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4099,6 +4240,7 @@ export function StructWithRest<
  * - `Tuple.Encoded<E>` — encoded tuple type
  * - `Tuple.MakeIn<E>` — constructor input tuple
  *
+ * @stability stable
  * @since 3.10.0
  */
 export declare namespace Tuple {
@@ -4212,6 +4354,7 @@ export declare namespace Tuple {
 /**
  * Type-level representation returned by {@link Tuple}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4281,6 +4424,7 @@ function makeTuple<Elements extends Tuple.Elements>(ast: SchemaAST.Arrays, eleme
  * Schema.decodeUnknownSync(schema)(["hello", 42]) // => ["hello", 42]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4297,6 +4441,7 @@ export function Tuple<const Elements extends ReadonlyArray<Constraint>>(elements
  * - `TupleWithRest.Type<T, R>` — decoded type (fixed elements + rest)
  * - `TupleWithRest.Encoded<T, R>` — encoded type
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace TupleWithRest {
@@ -4414,6 +4559,7 @@ export declare namespace TupleWithRest {
 /**
  * Type-level representation returned by {@link TupleWithRest}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4461,6 +4607,7 @@ export interface TupleWithRest<
  * Schema.decodeUnknownSync(schema)(["hello", 1, true, false]) // => ["hello", 1, true, false]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4473,6 +4620,7 @@ export function TupleWithRest<S extends Tuple<Tuple.Elements>, const Rest extend
 /**
  * Type-level representation returned by {@link Array}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4516,6 +4664,7 @@ export {
    * Schema.decodeUnknownSync(schema)(["a", "b", "c"]) // => ["a", "b", "c"]
    * ```
    *
+   * @stability stable
    * @category constructors
    * @since 4.0.0
    */
@@ -4538,6 +4687,7 @@ export function withArrayLengthConstraints<Item extends Constraint>(
 /**
  * Type-level representation returned by {@link NonEmptyArray}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4574,6 +4724,7 @@ interface NonEmptyArrayLambda extends Lambda {
  * Schema.decodeUnknownSync(schema)([1, 2, 3]) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4583,6 +4734,7 @@ export const NonEmptyArray: NonEmptyArrayLambda = Struct_.lambda<NonEmptyArrayLa
 /**
  * Type-level representation returned by {@link ArrayEnsure}.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4612,6 +4764,7 @@ export interface ArrayEnsure<S extends Constraint> extends decodeTo<$Array<toTyp
  * @see {@link Array} for accepting only array input
  * @see {@link NonEmptyArray} for requiring at least one decoded element
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4630,6 +4783,7 @@ export function ArrayEnsure<S extends Constraint>(schema: S): ArrayEnsure<S> {
 /**
  * Type-level representation returned by {@link UniqueArray}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4644,6 +4798,7 @@ export interface UniqueArray<S extends Constraint> extends $Array<S> {
  * The equivalence used to determine uniqueness is the one provided by
  * `Schema.toEquivalence(item)`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4653,6 +4808,7 @@ export function UniqueArray<S extends Constraint>(item: S): UniqueArray<S> {
 /**
  * Type-level representation returned by {@link mutable}.
  *
+ * @stability stable
  * @category transforming
  * @since 3.10.0
  */
@@ -4710,6 +4866,7 @@ interface mutableLambda extends Lambda {
  * value // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 3.10.0
  */
@@ -4719,6 +4876,7 @@ export const mutable: mutableLambda = Struct_.lambda<mutableLambda>((schema) =>
 /**
  * Type-level representation returned by {@link Union}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4802,6 +4960,7 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
  * Schema.decodeUnknownSync(schema)(42) // => 42
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4814,6 +4973,7 @@ export function Union<const Members extends ReadonlyArray<Constraint>>(
 /**
  * Type-level representation returned by {@link Literals}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -4846,6 +5006,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
  * ```
  *
  * @see {@link Literal} for a schema that represents a single literal.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -4873,6 +5034,7 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
 /**
  * Type-level representation returned by {@link NullOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4886,6 +5048,7 @@ interface NullOrLambda extends Lambda {
 /**
  * Creates a union schema of `S | null`.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4893,6 +5056,7 @@ export const NullOr: NullOrLambda = Struct_.lambda<NullOrLambda>((self) => Union
 /**
  * Type-level representation returned by {@link UndefinedOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4906,6 +5070,7 @@ interface UndefinedOrLambda extends Lambda {
 /**
  * Creates a union schema of `S | undefined`.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4913,6 +5078,7 @@ export const UndefinedOr: UndefinedOrLambda = Struct_.lambda<UndefinedOrLambda>(
 /**
  * Type-level representation returned by {@link NullishOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4926,6 +5092,7 @@ interface NullishOrLambda extends Lambda {
 /**
  * Creates a union schema of `S | null | undefined`.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -4933,6 +5100,7 @@ export const NullishOr: NullishOrLambda = Struct_.lambda<NullishOrLambda>((self)
 /**
  * Type-level representation returned by {@link suspend}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -4978,6 +5146,7 @@ export interface suspend<S extends Constraint> extends
  * Schema.decodeSync(Tree)({ value: 1, children: [] }) // => { value: 1, children: [] }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -5000,6 +5169,7 @@ export function suspend<S extends Constraint>(f: () => S): suspend<S> {
  * Schema.is(AgeSchema)(121) // => false
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -5011,6 +5181,7 @@ export function check<S extends Top>(
 /**
  * Type-level representation returned by {@link refine}.
  *
+ * @stability stable
  * @category filtering
  * @since 3.10.0
  */
@@ -5047,6 +5218,7 @@ export interface refine<T extends S["Type"], S extends Constraint> extends
  * names type-level failures before the refinement runs; it does not name the
  * failed refinement itself.
  *
+ * @stability stable
  * @category filtering
  * @since 3.10.0
  */
@@ -5057,14 +5229,20 @@ export function refine<S extends Constraint, T extends S["Type"]>(
   return (schema: S): refine<T, S> =>
     make(SchemaAST.appendChecks(schema.ast, [SchemaAST.makeFilterByGuard(refinement, annotations)]), { schema })
 }
-type DistributeBrands<B> = UnionToIntersection<B extends infer U extends string ? Brand.Brand<U> : never>
+// A concrete key requires a property; broad and open template keys do not.
+type EnsureSingleBrandKey<K extends PropertyKey> = IsUnion<K> extends false
+  ? {} extends Record<K, unknown> ? never : unknown
+  : never
+// Collect all keys, including those not shared by every union member.
+type FromBrandKeys<A extends Brand.Brand<any>> = A extends unknown ? Brand.Brand.Keys<A> : never
 /**
  * Type-level representation returned by {@link brand}.
  *
+ * @stability stable
  * @category branding
  * @since 3.10.0
  */
-export interface brand<S extends Constraint, B> extends
+export interface brand<S extends Constraint, B extends string> extends
   BottomLazy<
     S["ast"],
     brand<S, B>,
@@ -5076,19 +5254,19 @@ export interface brand<S extends Constraint, B> extends
     S["~encoded.optionality"]
   >
 {
-  readonly "Type": S["Type"] & DistributeBrands<B>
+  readonly "Type": S["Type"] & Brand.Brand<B>
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]
   readonly "EncodingServices": S["EncodingServices"]
   readonly "~type.make.in": S["~type.make.in"]
-  readonly "~type.make": S["Type"] & DistributeBrands<B>
-  readonly "Iso": S["Type"] & DistributeBrands<B>
+  readonly "~type.make": S["Type"] & Brand.Brand<B>
+  readonly "Iso": S["Type"] & Brand.Brand<B>
   readonly schema: S
   readonly identifier: string
 }
 /**
- * Adds a nominal brand to a schema, intersecting the output type with
- * `Brand.Brand<B>` to prevent accidental mixing of structurally identical types.
+ * Intersects a schema's output type with `Brand.Brand<B>` to prevent accidental
+ * mixing of structurally identical types.
  *
  * **When to use**
  *
@@ -5097,35 +5275,59 @@ export interface brand<S extends Constraint, B> extends
  *
  * **Gotchas**
  *
- * `brand` adds brand metadata and narrows the TypeScript output type, but it
- * does not add runtime checks.
+ * - `identifier` must be a single concrete string literal. Widened strings,
+ *   unions, and open template literal types are rejected.
+ * - `brand` only narrows the TypeScript output type. It does not change the
+ *   schema's runtime AST or add runtime checks.
+ * - Schema representations and generated schema code omit the brand. Reapply
+ *   `brand` after rebuilding or generating a schema when the nominal type is
+ *   still required.
  *
- * @see {@link fromBrand} for applying a Brand constructor's checks along with the brand tag
+ * @see {@link fromBrand} for applying a Brand constructor's checks along with its branded type
  *
+ * @stability stable
  * @category branding
  * @since 3.10.0
  */
-export function brand<B extends string>(identifier: B) {
+export function brand<B extends string>(identifier: B & EnsureSingleBrandKey<B>) {
   return <S extends ConstraintRebuildable>(schema: S): brand<S["Rebuild"], B> =>
-    make(SchemaAST.brand(schema.ast, identifier), { schema, identifier })
+    make(schema.ast, { schema, identifier })
 }
 /**
  * Creates a branded schema from a {@link Brand.Constructor}, applying the
- * constructor's checks and brand tag to the underlying schema.
+ * constructor's checks and branded type to the underlying schema.
  *
+ * **When to use**
+ *
+ * Use to reuse the checks from a constructor with one concrete brand key.
+ *
+ * **Gotchas**
+ *
+ * `identifier` must match the constructor's only brand key. Apply `fromBrand`
+ * repeatedly to compose distinct brands, and use {@link Union} to represent
+ * alternatives.
+ *
+ * @see {@link brand} for adding a brand without constructor checks
+ *
+ * @stability stable
  * @category branding
  * @since 3.10.0
  */
-export function fromBrand<A extends Brand.Brand<any>>(identifier: string, ctor: Brand.Constructor<A>) {
+export function fromBrand<A extends Brand.Brand<any>>(
+  identifier: Brand.Brand.Keys<A> & string,
+  ctor: Brand.Constructor<A> & EnsureSingleBrandKey<FromBrandKeys<A>>
+) {
+  type B = Brand.Brand.Keys<A> & string
   return <S extends Top & { readonly "Type": Brand.Brand.Unbranded<A> }>(
     self: S
-  ): brand<S["Rebuild"], Brand.Brand.Keys<A>> => {
-    return (ctor.checks ? self.check(...ctor.checks) : self).pipe(brand(identifier))
-  }
+  ): brand<S["Rebuild"], B> =>
+    // The constructor already guarantees a single concrete brand key.
+    (ctor.checks ? self.check(...ctor.checks) : self).pipe(brand<B>(identifier as B & EnsureSingleBrandKey<B>))
 }
 /**
  * Type-level representation returned by {@link middlewareDecoding}.
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5175,6 +5377,7 @@ export interface middlewareDecoding<S extends Constraint, RD> extends
  * ```
  *
  * @see {@link catchDecoding} for a simpler error-recovery variant
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5193,6 +5396,7 @@ export function middlewareDecoding<S extends Constraint, RD>(
 /**
  * Type-level representation returned by {@link middlewareEncoding}.
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -5242,6 +5446,7 @@ export interface middlewareEncoding<S extends Constraint, RE> extends
  * ```
  *
  * @see {@link catchEncoding} for a simpler error-recovery variant
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -5277,6 +5482,7 @@ export function middlewareEncoding<S extends Constraint, RE>(
  * ```
  *
  * @see {@link catchDecodingWithContext} to add service requirements to the handler
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5302,6 +5508,7 @@ export function catchDecoding<S extends Constraint>(
  * @see {@link catchDecoding} for recovery handlers that do not require services
  * @see {@link middlewareDecoding} for intercepting or replacing the full decoding pipeline
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5320,6 +5527,7 @@ export function catchDecodingWithContext<S extends Constraint, R = never>(
  * succeeds with a fallback value or re-fails with a (possibly different) issue.
  *
  * @see {@link catchEncodingWithContext} to add service requirements to the handler
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5345,6 +5553,7 @@ export function catchEncoding<S extends Constraint>(
  * @see {@link catchEncoding} for recovery handlers that do not require services
  * @see {@link middlewareEncoding} for intercepting or replacing the full encoding pipeline
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5357,6 +5566,7 @@ export function catchEncodingWithContext<S extends Constraint, R = never>(
 /**
  * Type-level representation returned by {@link decodeTo}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -5385,6 +5595,7 @@ export interface decodeTo<To extends Constraint, From extends Constraint, RD = n
 /**
  * Type-level representation returned by {@link decodeTo} without a custom transformation.
  *
+ * @stability stable
  * @category transforming
  * @since 3.10.0
  */
@@ -5433,6 +5644,7 @@ export interface compose<To extends Constraint, From extends Constraint> extends
  * Schema.decodeUnknownSync(NumberFromString)("123") // => 123
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -5536,6 +5748,7 @@ export const BooleanLiterals = Literals([...TrueLiterals.literals, ...FalseLiter
  * Schema.decodeUnknownSync(Trimmed)("  hello  ") // => "hello"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -5574,6 +5787,7 @@ export function decode<S extends Constraint, RD = never, RE = never>(transformat
  * Schema.decodeSync(NumberFromString)("42") // => 42
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -5623,6 +5837,7 @@ export function encodeTo<To extends Constraint, From extends Constraint, RD = ne
  * Schema.encodeSync(UpperFromLower)("hello") // => "HELLO"
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -5641,6 +5856,7 @@ export function encode<S extends Constraint, RD = never, RE = never>(transformat
  *
  * Only schemas that satisfy this constraint can be passed to {@link withConstructorDefault}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -5650,6 +5866,7 @@ export interface WithoutConstructorDefault {
 /**
  * Type-level representation returned by {@link withConstructorDefault}.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -5697,6 +5914,7 @@ export interface withConstructorDefault<S extends Constraint & WithoutConstructo
  * MySchema.make({}).name // => "anonymous"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -5711,6 +5929,7 @@ export function withConstructorDefault<S extends Constraint & WithoutConstructor
 /**
  * Type-level representation returned by {@link withDecodingDefaultKey}.
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5728,6 +5947,7 @@ export interface withDecodingDefaultKey<S extends Constraint, R = never>
  *   - `"passthrough"` (default): pass the value through during encoding
  *   - `"omit"`: omit the key from the encoded output
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -5770,6 +5990,7 @@ function toIssueEffect<A, R>(
  *
  * @see {@link withDecodingDefault} for the value-level variant (key absent **or** `undefined`)
  * @see {@link withDecodingDefaultTypeKey} for the variant where the default is a `Type` value
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5788,6 +6009,7 @@ export function withDecodingDefaultKey<S extends Constraint, R = never>(
 /**
  * Type-level representation returned by {@link withDecodingDefaultTypeKey}.
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5815,6 +6037,7 @@ export interface withDecodingDefaultTypeKey<S extends Constraint, R = never>
  *
  * @see {@link withDecodingDefaultKey} for the variant where the default is an `Encoded` value
  * @see {@link withDecodingDefaultType} for the value-level variant
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5832,6 +6055,7 @@ export function withDecodingDefaultTypeKey<S extends Constraint, R = never>(
 /**
  * Type-level representation returned by {@link withDecodingDefault}.
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -5873,6 +6097,7 @@ export interface withDecodingDefault<S extends Constraint, R = never> extends de
  *
  * @see {@link withDecodingDefaultKey} for the key-level variant (key absent only, not `undefined`)
  * @see {@link withDecodingDefaultType} for the variant where the default is a `Type` value
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -5891,6 +6116,7 @@ export function withDecodingDefault<S extends Constraint, R = never>(
 /**
  * Type-level representation returned by {@link withDecodingDefaultType}.
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5923,6 +6149,7 @@ export interface withDecodingDefaultType<S extends Constraint, R = never>
  *
  * @see {@link withDecodingDefault} for the variant where the default is an `Encoded` value
  * @see {@link withDecodingDefaultTypeKey} for the key-level variant
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -5940,6 +6167,7 @@ export function withDecodingDefaultType<S extends Constraint, R = never>(
 /**
  * Type-level representation returned by {@link tag}.
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -5963,6 +6191,7 @@ export interface tag<Tag extends SchemaAST.LiteralValue> extends withConstructor
  *
  * @see {@link tagDefaultOmit} to also omit the tag during encoding
  * @see {@link TaggedStruct} for a shorthand that adds `_tag` automatically
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -5997,6 +6226,7 @@ export function tag<Tag extends SchemaAST.LiteralValue>(literal: Tag): tag<Tag> 
  * ```
  *
  * @see {@link tag} for the variant that keeps the tag during encoding
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -6006,6 +6236,7 @@ export function tagDefaultOmit<Tag extends SchemaAST.LiteralValue>(literal: Tag)
 /**
  * Type-level representation returned by {@link TaggedStruct}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -6056,6 +6287,7 @@ export type TaggedStruct<Tag extends SchemaAST.LiteralValue, Fields extends Stru
  * tagged.fields._tag.schema.literal // => "A"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -6085,6 +6317,10 @@ type TaggedUnionUtils<
     Members
   >
 > = {
+  /**
+   * Property key used to discriminate union members.
+   */
+  readonly tag: Tag
   /**
    * Discriminant values in flattened member order.
    */
@@ -6138,6 +6374,7 @@ type TaggedUnionUtils<
 /**
  * Type-level representation returned by {@link toTaggedUnion}.
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -6172,6 +6409,7 @@ export type toTaggedUnion<
  * ```
  *
  * @see {@link TaggedUnion} for a shorthand that builds the union from scratch
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -6187,7 +6425,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
 
     walk(self)
 
-    return Object.assign(self, { cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
+    return Object.assign(self, { tag, cases, discriminants, isAnyOf, guards, match, matchOrElse }) as any
 
     function walk(schema: Constraint) {
       const ast = schema.ast
@@ -6256,6 +6494,7 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
 /**
  * Type-level representation returned by {@link TaggedUnion}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -6272,6 +6511,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
   readonly "~type.make.in": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
   readonly "~type.make": { [K in keyof Cases]: Cases[K]["~type.make"] }[keyof Cases]
   readonly "Iso": { [K in keyof Cases]: Cases[K]["Type"] }[keyof Cases]
+  readonly tag: "_tag"
   readonly cases: Cases
   readonly isAnyOf: <const Keys>(
     keys: ReadonlyArray<Keys>
@@ -6301,7 +6541,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
 /**
  * Builds a discriminated union from a record of field sets, one per variant.
  * Each key becomes the `_tag` literal and the value is passed to {@link TaggedStruct}.
- * The result includes `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
+ * The result includes `tag`, `cases`, `guards`, `isAnyOf`, `match`, and `matchOrElse` utilities.
  *
  * **Example** (Pattern matching a discriminated union)
  *
@@ -6322,6 +6562,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
  * ```
  *
  * @see {@link toTaggedUnion} to augment an existing union instead
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -6336,12 +6577,13 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
     members.push(member)
   }
   const union = Union(members)
-  const { guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
-  return make(union.ast, { cases, isAnyOf, guards, match, matchOrElse })
+  const { tag, guards, isAnyOf, match, matchOrElse } = toTaggedUnion("_tag")(union)
+  return make(union.ast, { tag, cases, isAnyOf, guards, match, matchOrElse })
 }
 /**
  * Type-level representation returned by {@link Opaque}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -6387,6 +6629,7 @@ export interface Opaque<Self, S extends Top, Brand> extends
  * person.name // => "Alice"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -6398,6 +6641,7 @@ export function Opaque<Self, Brand = {}>() {
 /**
  * Type-level representation returned by {@link instanceOf}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -6419,6 +6663,7 @@ export interface instanceOf<T, Iso = T> extends declare<T, Iso> {
  * decoded.toISOString() // => "2024-01-01T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -6432,6 +6677,7 @@ export function instanceOf<C extends abstract new(...args: any) => any, Iso = In
  * Constructs an `SchemaAST.Link` that describes how a value of type `T` encodes to and decodes from a `To` schema.
  * Used when building low-level AST transformations that bridge two schema types.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -6501,6 +6747,7 @@ export function link<T>() {
  * }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -6525,6 +6772,7 @@ export const makeFilter: <T>(
  *   `reportInput`) or a full {@link SchemaIssue.Issue} (returned unchanged);
  *   the result is wrapped in an {@link SchemaIssue.Pointer} at the given `path`.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -6552,6 +6800,7 @@ export type FilterIssue = string | SchemaIssue.Issue | {
  *   to returning that element directly; otherwise the entries are grouped
  *   into an {@link SchemaIssue.Composite}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -6560,6 +6809,7 @@ export type FilterOutput = undefined | boolean | FilterIssue | ReadonlyArray<Fil
  * Groups multiple checks into a single {@link SchemaAST.FilterGroup}, applying
  * optional shared annotations to the group as a whole.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -6586,6 +6836,7 @@ const TRIMMED_PATTERN = "^\\S[\\s\\S]*\\S$|^\\S$|^$"
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the trimmed pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6624,6 +6875,7 @@ export function isTrimmed(annotations?: Annotations.Filter) {
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the specified RegExp pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6658,6 +6910,7 @@ export function isPattern(
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the number string pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6681,6 +6934,7 @@ export function isStringFinite(annotations?: Annotations.Filter): SchemaAST.Filt
  * This check corresponds to a `pattern` constraint with the same signed
  * base-10 integer pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6699,6 +6953,7 @@ export function isStringBigInt(annotations?: Annotations.Filter): SchemaAST.Filt
  * The check uses the pattern `^Symbol\((.*)\)$`. It is not a general test for
  * whether a string can be passed to JavaScript's `Symbol()` function.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6744,6 +6999,7 @@ const getUUIDRegExp = (version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8): globalThis.RegE
  * constraint to ensure generated strings match the UUID pattern.
  *
  * @see {@link isGUID} for shape-only GUID validation.
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6786,6 +7042,7 @@ const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
  * constraint to ensure generated strings match the GUID pattern.
  *
  * @see {@link isUUID} for strict UUID validation.
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6820,6 +7077,7 @@ export function isGUID(annotations?: Annotations.Filter) {
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the ULID pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6853,6 +7111,7 @@ export function isULID(annotations?: Annotations.Filter) {
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the Base64 pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6888,6 +7147,7 @@ export function isBase64(annotations?: Annotations.Filter) {
  * During arbitrary generation, this applies a `patterns`
  * constraint to ensure generated strings match the Base64URL pattern.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6927,6 +7187,7 @@ function literalToJsonSchema(
  * metadata. If the prefix ends with a high surrogate, the JSON Schema pattern
  * omits that code unit so Unicode matching cannot reject a valid string.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6960,6 +7221,7 @@ export function isStartingWith(startsWith: string, annotations?: Annotations.Fil
  * metadata. If the suffix begins with a low surrogate, the JSON Schema pattern
  * omits that code unit so Unicode matching cannot reject a valid string.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -6994,6 +7256,7 @@ export function isEndingWith(endsWith: string, annotations?: Annotations.Filter)
  * omitted from the JSON Schema pattern so Unicode matching cannot reject a
  * valid string.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7029,6 +7292,7 @@ const UPPERCASED_PATTERN = "^[^a-z]*$"
  * such as digits, punctuation, and whitespace. It rejects strings that would
  * change when uppercased.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7062,6 +7326,7 @@ const LOWERCASED_PATTERN = "^[^A-Z]*$"
  * such as digits, punctuation, and whitespace. It rejects strings that would
  * change when lowercased.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7095,6 +7360,7 @@ const CAPITALIZED_PATTERN = "^(?:[^a-z][\\s\\S]*)?$"
  * Empty strings pass. Strings whose first character has no lowercase form, such
  * as a digit, punctuation mark, or whitespace, also pass.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7128,6 +7394,7 @@ const UNCAPITALIZED_PATTERN = "^(?:[^A-Z][\\s\\S]*)?$"
  * Empty strings pass. Strings whose first character has no uppercase form, such
  * as a digit, punctuation mark, or whitespace, also pass.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7153,6 +7420,7 @@ export function isUncapitalized(annotations?: Annotations.Filter) {
 /**
  * Type-level representation of {@link Finite}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -7162,6 +7430,7 @@ export interface Finite extends Number {
 /**
  * Schema for finite numbers, rejecting `NaN`, `Infinity`, and `-Infinity`.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -7180,6 +7449,7 @@ export const Finite: Finite = make(SchemaAST.finite)
  *
  * During arbitrary generation, this applies a finite-number constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7188,6 +7458,7 @@ export const isFinite: (annotations?: Annotations.Filter) => SchemaAST.Filter<nu
  * Creates a greater-than (`>`) check for any ordered type from an
  * `Order.Order` instance.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7218,6 +7489,7 @@ export function makeIsGreaterThan<T>(options: {
  * Creates a greater-than-or-equal-to (`>=`) check for any ordered type from an
  * `Order.Order` instance.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7247,6 +7519,7 @@ export function makeIsGreaterThanOrEqualTo<T>(options: {
  * Creates a less-than (`<`) check for any ordered type from an `Order.Order`
  * instance.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7277,6 +7550,7 @@ export function makeIsLessThan<T>(options: {
  * Creates a less-than-or-equal-to (`<=`) check for any ordered type from an
  * `Order.Order` instance.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7306,6 +7580,7 @@ export function makeIsLessThanOrEqualTo<T>(options: {
  * Creates an inclusive or exclusive range check for any ordered type from an
  * `Order.Order` instance.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7357,6 +7632,7 @@ export function makeIsBetween<T>(deriveOptions: {
  * Creates a divisibility check for any numeric type from a remainder function
  * and a zero value.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7400,6 +7676,7 @@ function encodeNumberPayload(number: number): number {
  * `exclusiveMinimum` constraint to ensure generated numbers are greater than
  * the specified value.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7430,6 +7707,7 @@ export const isGreaterThan: (exclusiveMinimum: number, annotations?: Annotations
  * During arbitrary generation, this applies a `minimum` constraint
  * to ensure generated numbers are greater than or equal to the specified value.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7460,6 +7738,7 @@ export const isGreaterThanOrEqualTo: (minimum: number, annotations?: Annotations
  * `exclusiveMaximum` constraint to ensure generated numbers are less than the
  * specified value.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7490,6 +7769,7 @@ export const isLessThan: (exclusiveMaximum: number, annotations?: Annotations.Fi
  * During arbitrary generation, this applies a `maximum` constraint
  * to ensure generated numbers are less than or equal to the specified value.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7523,6 +7803,7 @@ export const isLessThanOrEqualTo: (maximum: number, annotations?: Annotations.Fi
  * `exclusiveMaximum` flags to ensure generated numbers fall within the
  * specified range.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7574,6 +7855,7 @@ export const isBetween: (options: {
  *
  * Throws a `RangeError` when `divisor` is zero or is not finite.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7607,12 +7889,14 @@ export function isMultipleOf(
  *
  * JSON Schema:
  *
- * This check corresponds to the `type: "integer"` constraint in JSON Schema.
+ * This check corresponds to `type: "integer"` with `minimum: Number.MIN_SAFE_INTEGER`
+ * and `maximum: Number.MAX_SAFE_INTEGER` in JSON Schema.
  *
  * Arbitrary:
  *
  * During arbitrary generation, this applies an integer constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7625,7 +7909,11 @@ export function isInt(annotations?: Annotations.Filter) {
         id: "effect/schema/isInt",
         payload: null
       },
-      toJsonSchema: () => [{ type: "integer" }, true],
+      toJsonSchema: () => ({
+        type: "integer",
+        minimum: globalThis.Number.MIN_SAFE_INTEGER,
+        maximum: globalThis.Number.MAX_SAFE_INTEGER
+      }),
       toCode: () => ({ runtime: "Schema.isInt()" }),
       arbitraryConstraint: {
         number: "integer"
@@ -7637,6 +7925,7 @@ export function isInt(annotations?: Annotations.Filter) {
 /**
  * Type-level representation of {@link Int}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -7646,6 +7935,7 @@ export interface Int extends Number {
 /**
  * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -7653,6 +7943,7 @@ export const Int: Int = Number.check(isInt())
 /**
  * Type-level representation of {@link Natural}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -7668,6 +7959,7 @@ export interface Natural extends Int {
  *
  * @see {@link Int} for safe integers that may be negative
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -7688,6 +7980,7 @@ export const Natural: Natural = Int.check(isGreaterThanOrEqualTo(0))
  * During arbitrary generation, this applies integer and range
  * constraints to ensure generated numbers are 32-bit signed integers.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7719,6 +8012,7 @@ export function isInt32(annotations?: Annotations.Filter) {
  * During arbitrary generation, this applies integer and range
  * constraints to ensure generated numbers are 32-bit unsigned integers.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7754,6 +8048,7 @@ function formatDateRuntime(date: globalThis.Date): string {
  *
  * During arbitrary generation, this applies an exclusive lower bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7789,6 +8084,7 @@ export const isGreaterThanDate: (
  *
  * During arbitrary generation, this applies an inclusive lower bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7818,6 +8114,7 @@ export const isGreaterThanOrEqualToDate: (
  *
  * During arbitrary generation, this applies an exclusive upper bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7853,6 +8150,7 @@ export const isLessThanDate: (
  *
  * During arbitrary generation, this applies an inclusive upper bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7888,6 +8186,7 @@ export const isLessThanOrEqualToDate: (
  *
  * During arbitrary generation, this applies the specified lower and upper bounds.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7930,6 +8229,7 @@ export const isBetweenDate: (options: {
  *
  * During arbitrary generation, this applies an exclusive lower bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7960,6 +8260,7 @@ export const isGreaterThanBigInt: (
  *
  * During arbitrary generation, this applies an inclusive lower bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -7989,6 +8290,7 @@ export const isGreaterThanOrEqualToBigInt: (
  *
  * During arbitrary generation, this applies an exclusive upper bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8019,6 +8321,7 @@ export const isLessThanBigInt: (
  *
  * During arbitrary generation, this applies an inclusive upper bound.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8049,6 +8352,7 @@ export const isLessThanOrEqualToBigInt: (
  *
  * During arbitrary generation, this applies the specified lower and upper bounds.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8114,6 +8418,7 @@ export const isBetweenBigInt: (options: {
  * Schema.is(NonEmptyArraySchema)([1]) // => true
  * ```
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8166,6 +8471,7 @@ function makeIsMinLength(minLength: number, minCodePoints: number, annotations?:
  * During arbitrary generation, this applies a `minLength: 1`
  * constraint to ensure generated strings or arrays are non-empty.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8191,6 +8497,7 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  * constraint to ensure generated strings or arrays have at most the required
  * length.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8241,6 +8548,7 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  * `maxLength` constraints to ensure generated strings or arrays have a length
  * within the specified range.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8301,6 +8609,7 @@ export function isBetweenLength(minimum: number, maximum: number, annotations?: 
  * @see {@link isMinLength} for counting UTF-16 code units
  * @see {@link isMaxCodePoints}
  * @see {@link isBetweenCodePoints}
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8339,6 +8648,7 @@ export function isMinCodePoints(minCodePoints: number, annotations?: Annotations
  * @see {@link isMaxLength} for counting UTF-16 code units
  * @see {@link isMinCodePoints}
  * @see {@link isBetweenCodePoints}
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8377,6 +8687,7 @@ export function isMaxCodePoints(maxCodePoints: number, annotations?: Annotations
  * @see {@link isBetweenLength} for counting UTF-16 code units
  * @see {@link isMinCodePoints}
  * @see {@link isMaxCodePoints}
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8437,6 +8748,7 @@ function normalizeCardinality(value: number): number {
  *
  * During arbitrary generation, this applies a node-local `minSize` constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8477,6 +8789,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
  *
  * During arbitrary generation, this applies a node-local `maxSize` constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8517,6 +8830,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  *
  * During arbitrary generation, this applies node-local `minSize` and `maxSize` constraints.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8565,6 +8879,7 @@ export function isBetweenSize(minimum: number, maximum: number, annotations?: An
  *
  * During arbitrary generation, this applies a node-local `minProperties` constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8607,6 +8922,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
  *
  * During arbitrary generation, this applies a node-local `maxProperties` constraint.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8649,6 +8965,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  *
  * During arbitrary generation, this applies node-local `minProperties` and `maxProperties` constraints.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8695,6 +9012,7 @@ export function isBetweenProperties(minimum: number, maximum: number, annotation
  * names in the original input. Property transformations and excess-property
  * handling can therefore produce different results.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8744,6 +9062,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  * During arbitrary generation, this applies a node-local identity selector
  * for constructive uniqueness using Effect equality.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8777,6 +9096,7 @@ export function isUnique<T>(annotations?: Annotations.Filter) {
  * JSON Schema has no equivalent constraint, so this check is omitted from generated documents.
  *
  * @see {@link isUnique} for validating uniqueness of complete array elements
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -8800,6 +9120,7 @@ export function isUniqueKey<Key, Value>(annotations?: Annotations.Filter) {
 /**
  * Type-level representation of {@link NonEmptyString}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -8810,6 +9131,7 @@ export interface NonEmptyString extends String {
  * Schema for non-empty strings. Validates that a string has at least one
  * character.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -8817,6 +9139,7 @@ export const NonEmptyString: NonEmptyString = String.check(isNonEmpty())
 /**
  * Type-level representation of {@link Char}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -8839,6 +9162,7 @@ export interface Char extends String {
  * @see {@link NonEmptyString} for strings with length greater than zero
  * @see {@link isBetweenLength} for the underlying length check
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -8846,6 +9170,7 @@ export const Char: Char = String.check(isBetweenLength(1, 1))
 /**
  * Type-level representation of {@link ErrorInstance}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -8855,6 +9180,7 @@ export interface ErrorInstance extends instanceOf<globalThis.Error> {
 /**
  * Options for {@link ErrorInstance} and {@link Defect}.
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -8911,6 +9237,7 @@ const errorSchemaCache: Array<ErrorInstance | undefined> = []
  * traces are omitted by default for security. Pass `{ includeStack: true }` to
  * include stack traces, or `{ excludeCause: true }` to omit causes.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -8941,6 +9268,7 @@ export function ErrorInstance(options?: ErrorOptions): ErrorInstance {
 /**
  * Type-level representation of {@link Defect}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -8987,6 +9315,7 @@ const defectSchemaCache: Array<Defect | undefined> = []
  *   string representation.
  *
  * @see {@link ErrorInstance} for a schema that only accepts JavaScript `Error` values.
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9003,6 +9332,7 @@ export function Defect(options?: ErrorOptions): Defect {
 /**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9022,6 +9352,7 @@ export interface $ReadonlyMap<Key extends Constraint, Value extends Constraint> 
  * Iso representation used for `ReadonlyMap` schemas: an array of readonly
  * `[key, value]` tuples using each entry schema's `Iso` type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -9032,6 +9363,7 @@ export type ReadonlyMapIso<Key extends Constraint, Value extends Constraint> = R
  * Schema for readonly maps whose keys and values conform to the provided
  * schemas.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9085,6 +9417,7 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
 /**
  * Type-level representation returned by {@link ReadonlySet}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9103,6 +9436,7 @@ export interface $ReadonlySet<Value extends Constraint> extends
  * Iso representation used for `ReadonlySet` schemas: an array of element values
  * using the element schema's `Iso` type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -9110,6 +9444,7 @@ export type ReadonlySetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"
 /**
  * Schema for readonly sets whose values conform to the provided element schema.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9160,6 +9495,7 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
 /**
  * Type-level representation of {@link RegExp}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9173,6 +9509,7 @@ export interface RegExp extends instanceOf<globalThis.RegExp> {
  *
  * The default JSON serializer encodes a `RegExp` as `{ source, flags }`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9217,6 +9554,7 @@ export const RegExp: RegExp = instanceOf(
 /**
  * Type-level representation of {@link URL}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9234,6 +9572,7 @@ const URLString = String.annotate({ expected: "a string that will be decoded as 
  *
  * - encodes `URL` as a `string`
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9259,6 +9598,7 @@ export const URL: URL = instanceOf(
 /**
  * Type-level representation of {@link URLFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9276,6 +9616,7 @@ export interface URLFromString extends decodeTo<URL, String> {
  * Encoding:
  * - A `URL` is encoded as a `string`
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9283,6 +9624,7 @@ export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaT
 /**
  * Type-level representation of {@link Date}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9316,6 +9658,7 @@ const DateString = String.annotate({ expected: "a string that will be decoded as
  * @see {@link DateFromString} for decoding strings into Date instances
  * @see {@link DateFromMillis} for decoding epoch milliseconds into Date instances
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9341,6 +9684,7 @@ export const Date: Date = declare(
 /**
  * Type-level representation of {@link DateFromString}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -9369,6 +9713,7 @@ export interface DateFromString extends decodeTo<Date, String> {
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link Date} for accepting Date instances directly
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9376,6 +9721,7 @@ export const DateFromString: DateFromString = DateString.pipe(decodeTo(Date, Sch
 /**
  * Type-level representation of {@link DateFromMillis}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9407,6 +9753,7 @@ export interface DateFromMillis extends decodeTo<Date, Int> {
  * @see {@link DateFromString} for decoding string-encoded dates
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9416,6 +9763,7 @@ export const DateFromMillis: DateFromMillis = Int.pipe(
 /**
  * Type-level representation returned by {@link fromJsonString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9453,6 +9801,7 @@ const JsonString = String.annotate({
  * Schema.encodeSync(schemaFromJsonString)({ a: 1 }) // => "{\n  \"a\": 1\n}"
  * ```
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9471,6 +9820,7 @@ export const UnknownFromJsonString: fromJsonString<Unknown> = fromJsonString(Unk
 /**
  * Type-level representation of {@link File}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9485,6 +9835,7 @@ export interface File extends instanceOf<globalThis.File> {
  * The default JSON serializer encodes a `File` as `{ data, type, name, lastModified }`
  * where `data` is base64-encoded.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9548,6 +9899,7 @@ export const File: File = instanceOf(globalThis.File, {
 /**
  * Type-level representation of {@link FormData}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9562,6 +9914,7 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * The default JSON serializer encodes a `FormData` as an array of `[key, entry]`
  * pairs where each entry is tagged as `"String"` or `"File"`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9611,6 +9964,7 @@ export const FormData: FormData = instanceOf(globalThis.FormData, {
 /**
  * Type-level representation returned by {@link fromFormData}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9696,6 +10050,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  * Schema.decodeUnknownSync(schema)(formData) // => { a: 1 }
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -9705,6 +10060,7 @@ export function fromFormData<S extends Constraint>(schema: S): fromFormData<S> {
 /**
  * Type-level representation of {@link URLSearchParams}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9718,6 +10074,7 @@ export interface URLSearchParams extends instanceOf<globalThis.URLSearchParams> 
  *
  * The default JSON serializer encodes a `URLSearchParams` as a query string.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9743,6 +10100,7 @@ export const URLSearchParams: URLSearchParams = instanceOf(globalThis.URLSearchP
 /**
  * Type-level representation returned by {@link fromURLSearchParams}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9823,6 +10181,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  * Schema.decodeUnknownSync(schema)(urlSearchParams) // => { a: 1 }
  * ```
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -9832,6 +10191,7 @@ export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSea
 /**
  * Type-level representation of {@link NumberFromString}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -9852,6 +10212,7 @@ export interface NumberFromString extends decodeTo<Number, String> {
  * Encoding:
  * A number is encoded as a `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9861,6 +10222,7 @@ export const NumberFromString: NumberFromString = String.annotate({
 /**
  * Type-level representation of {@link FiniteFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9879,6 +10241,7 @@ export interface FiniteFromString extends decodeTo<Finite, String> {
  * Encoding:
  * - A finite number is encoded as a `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9888,6 +10251,7 @@ export const FiniteFromString: FiniteFromString = String.annotate({
 /**
  * Type-level representation of {@link BigIntFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -9919,6 +10283,7 @@ export interface BigIntFromString extends decodeTo<BigInt, String> {
  * @see {@link NumberFromString} for parsing JavaScript number strings, including non-finite values
  * @see {@link BigDecimalFromString} for parsing decimal number strings
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -9928,6 +10293,7 @@ export const BigIntFromString: BigIntFromString = make<String>(SchemaAST.bigIntS
 /**
  * Type-level representation of {@link Trimmed}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -9937,6 +10303,7 @@ export interface Trimmed extends String {
 /**
  * Schema for strings that contains no leading or trailing whitespaces.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9944,6 +10311,7 @@ export const Trimmed: Trimmed = String.check(isTrimmed())
 /**
  * Type-level representation of {@link Trim}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -9961,6 +10329,7 @@ export interface Trim extends decodeTo<Trimmed, String> {
  * Encoding:
  * - The trimmed string is encoded as is.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9970,6 +10339,7 @@ export const Trim: Trim = String.annotate({
 /**
  * Type-level representation of {@link StringFromBase64}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -9987,6 +10357,7 @@ export interface StringFromBase64 extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a base64-encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -9998,6 +10369,7 @@ export const StringFromBase64: StringFromBase64 = String.annotate({
 /**
  * Type-level representation of {@link StringFromBase64Url}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10015,6 +10387,7 @@ export interface StringFromBase64Url extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a base64 (URL) encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10026,6 +10399,7 @@ export const StringFromBase64Url: StringFromBase64Url = String.annotate({
 /**
  * Type-level representation of {@link StringFromHex}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10043,6 +10417,7 @@ export interface StringFromHex extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a hex string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10054,6 +10429,7 @@ export const StringFromHex: StringFromHex = String.annotate({
 /**
  * Type-level representation of {@link StringFromUriComponent}.
  *
+ * @stability stable
  * @category models
  * @since 3.12.0
  */
@@ -10089,6 +10465,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  * Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }) // => "%7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D"
  * ```
  *
+ * @stability stable
  * @category schemas
  * @since 3.12.0
  */
@@ -10101,6 +10478,7 @@ export const StringFromUriComponent: StringFromUriComponent = String.annotate({
  * Schema for property keys accepted by Effect schemas: finite `number`,
  * `symbol`, or `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10113,6 +10491,7 @@ export const PropertyKey: Union<readonly [Finite, Symbol, String]> = Union([Fini
  * The result contains an `issues` array where each issue has a message and an
  * optional path made of property keys or keyed path segments.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10143,6 +10522,7 @@ export const StandardSchemaV1FailureResult: Struct<{
 /**
  * Type-level representation of {@link BooleanFromBit}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -10165,6 +10545,7 @@ export interface BooleanFromBit extends decodeTo<Boolean, Literals<readonly [0, 
  * @see {@link Boolean} for validating values that are already booleans
  * @see {@link Literals} for keeping bit literals instead of decoding them
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10180,6 +10561,7 @@ export const BooleanFromBit: BooleanFromBit = Literals([0, 1]).pipe(
 /**
  * Type-level representation of {@link Uint8Array}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -10201,6 +10583,7 @@ const Base64String = String.annotate({
  *
  * The default JSON serializer encodes Uint8Array as a Base64 encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10223,6 +10606,7 @@ export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBuff
 /**
  * Type-level representation of {@link Uint8ArrayFromBase64}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10241,6 +10625,7 @@ export interface Uint8ArrayFromBase64 extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a base64-encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10250,6 +10635,7 @@ export const Uint8ArrayFromBase64: Uint8ArrayFromBase64 = Base64String.pipe(
 /**
  * Type-level representation of {@link Uint8ArrayFromBase64Url}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10268,6 +10654,7 @@ export interface Uint8ArrayFromBase64Url extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a base64 (URL) encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10282,6 +10669,7 @@ export const Uint8ArrayFromBase64Url: Uint8ArrayFromBase64Url = String.annotate(
 /**
  * Type-level representation of {@link Uint8ArrayFromHex}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10300,6 +10688,7 @@ export interface Uint8ArrayFromHex extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a hex encoded string.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10335,6 +10724,7 @@ const bigDecimalFromString: SchemaTransformation.Transformation<BigDecimal_.BigD
 /**
  * Validates that a BigDecimal is greater than the specified value (exclusive).
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -10349,6 +10739,7 @@ export const isGreaterThanBigDecimal: (
  * Validates that a BigDecimal is greater than or equal to the specified value
  * (inclusive).
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -10362,6 +10753,7 @@ export const isGreaterThanOrEqualToBigDecimal: (
 /**
  * Validates that a BigDecimal is less than the specified value (exclusive).
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -10376,6 +10768,7 @@ export const isLessThanBigDecimal: (
  * Validates that a BigDecimal is less than or equal to the specified value
  * (inclusive).
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -10394,6 +10787,7 @@ export const isLessThanOrEqualToBigDecimal: (
  * The minimum and maximum boundaries are inclusive by default. Pass
  * `exclusiveMinimum` or `exclusiveMaximum` to exclude either boundary.
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -10409,6 +10803,7 @@ export const isBetweenBigDecimal: (options: {
 /**
  * Type-level representation of {@link BigDecimal}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10432,6 +10827,7 @@ const BigDecimalString = String.annotate({ expected: "a string that will be deco
  *
  * @see {@link BigDecimalFromString} for parsing string input into a BigDecimal
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10459,6 +10855,7 @@ export const BigDecimal: BigDecimal = declare(
 /**
  * Type-level representation of {@link BigDecimalFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -10489,6 +10886,7 @@ export interface BigDecimalFromString extends decodeTo<BigDecimal, String> {
  * @see {@link BigIntFromString} for parsing base-10 integer strings into bigint values
  * @see {@link NumberFromString} for parsing JavaScript number strings
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10503,6 +10901,7 @@ export const BigDecimalFromString: BigDecimalFromString = BigDecimalString.pipe(
 /**
  * Type-level representation of {@link ByteSize}.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10518,6 +10917,7 @@ export interface ByteSize extends declare<ByteSize_.ByteSize> {
  * beyond JavaScript's safe-integer range. The StringTree codec uses the
  * human-readable byte-size syntax exposed by {@link ByteSizeFromString}.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10553,6 +10953,7 @@ const ByteSizeString = String.annotate({ expected: "a string that will be decode
 /**
  * Type-level representation of {@link ByteSizeFromString}.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10585,6 +10986,7 @@ export interface ByteSizeFromString extends decodeTo<ByteSize, String> {
  * A unit is required. Signs, exponent notation, digit separators, and ambiguous
  * unit spellings such as `KB`, `mb`, `Mb`, or `b` are rejected.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10594,6 +10996,7 @@ export const ByteSizeFromString: ByteSizeFromString = ByteSizeString.pipe(
 /**
  * Type-level representation of {@link ByteSizeFromBigInt}.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10603,6 +11006,7 @@ export interface ByteSizeFromBigInt extends decodeTo<ByteSize, BigInt> {
 /**
  * Schema that decodes non-negative bigint byte counts.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10612,6 +11016,7 @@ export const ByteSizeFromBigInt: ByteSizeFromBigInt = BigInt.pipe(
 /**
  * Type-level representation of {@link ByteSizeFromNumber}.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -10625,6 +11030,7 @@ export interface ByteSizeFromNumber extends decodeTo<ByteSize, Number> {
  *
  * Encoding fails when the byte count exceeds `Number.MAX_SAFE_INTEGER`.
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -10639,6 +11045,7 @@ export const ByteSizeFromNumber: ByteSizeFromNumber = Number.pipe(
 /**
  * Type-level representation returned by {@link CauseReason}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -10662,6 +11069,7 @@ export interface CauseReason<E extends Constraint, D extends Constraint> extends
  * Failures are represented with a `Fail` tag and encoded error, defects with a
  * `Die` tag and encoded defect, and interrupts with an optional `fiberId`.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -10692,6 +11100,7 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
  * @see {@link Cause} for constructing schemas for full Cause values
  * @see {@link CauseReasonIso} for the ISO shape of each cause reason
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -10781,6 +11190,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(
 /**
  * Type-level representation returned by {@link Cause}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10808,6 +11218,7 @@ export interface Cause<E extends Constraint, D extends Constraint> extends
  * @see {@link Cause} for constructing schemas for full Cause values
  * @see {@link CauseReasonIso} for the ISO shape of each array element
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -10830,6 +11241,7 @@ export type CauseIso<E extends Constraint, D extends Constraint> = ReadonlyArray
  * @see {@link CauseReason} for the schema used by each individual cause reason
  * @see {@link CauseIso} for the ordered array representation used by the schema ISO
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -10888,6 +11300,7 @@ function chunkLink<Value>(values: Schema<ReadonlyArray<Value>>) {
 /**
  * Type-level representation returned by {@link Chunk}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -10913,6 +11326,7 @@ export interface Chunk<Value extends Constraint> extends
  *
  * @see {@link Chunk} for the schema interface and constructor that use this ISO representation
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -10920,6 +11334,7 @@ export type ChunkIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
 /**
  * Schema for chunks whose values conform to the provided element schema.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11102,6 +11517,7 @@ function timeZoneArbitrarySchema(): Codec<number | string> {
 /**
  * Type-level representation of {@link DateTimeUtc}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -11126,6 +11542,7 @@ export interface DateTimeUtc extends declare<DateTime.Utc> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link DateTimeZoned} for preserving zoned DateTime values
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11164,6 +11581,7 @@ export const DateTimeUtc: DateTimeUtc = declare(
 /**
  * Type-level representation of {@link DateTimeUtcFromDate}.
  *
+ * @stability stable
  * @category models
  * @since 3.12.0
  */
@@ -11191,6 +11609,7 @@ export interface DateTimeUtcFromDate extends decodeTo<DateTimeUtc, Date> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link Date} for validating Date instances without converting them
  *
+ * @stability stable
  * @category schemas
  * @since 3.12.0
  */
@@ -11203,6 +11622,7 @@ export const DateTimeUtcFromDate: DateTimeUtcFromDate = Date.pipe(
 /**
  * Type-level representation of {@link DateTimeUtcFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -11227,6 +11647,7 @@ export interface DateTimeUtcFromString extends decodeTo<DateTimeUtc, String> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link DateFromString} for decoding strings into JavaScript Date instances
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -11241,6 +11662,7 @@ export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
 /**
  * Type-level representation of {@link DateTimeUtcFromMillis}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -11262,6 +11684,7 @@ export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link DateFromMillis} for decoding epoch milliseconds into JavaScript Date instances
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -11274,6 +11697,7 @@ export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Int.pipe(
 /**
  * Type-level representation of {@link TimeZoneOffset}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -11289,6 +11713,7 @@ export interface TimeZoneOffset extends declare<DateTime.TimeZone.Offset> {
  *
  * - encodes `DateTime.TimeZone.Offset` as a number (offset in milliseconds)
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11316,6 +11741,7 @@ export const TimeZoneOffset: TimeZoneOffset = declare(
 /**
  * Type-level representation of {@link TimeZoneNamed}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -11332,6 +11758,7 @@ const TimeZoneNamedString = String.annotate({ expected: "an IANA time zone ident
  *
  * - encodes `DateTime.TimeZone.Named` as a string (IANA time zone identifier)
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11364,6 +11791,7 @@ export const TimeZoneNamed: TimeZoneNamed = declare(
 /**
  * Type-level representation of {@link TimeZoneNamedFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -11381,6 +11809,7 @@ export interface TimeZoneNamedFromString extends decodeTo<TimeZoneNamed, String>
  * Encoding:
  * - A `DateTime.TimeZone.Named` is encoded as a `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -11390,6 +11819,7 @@ export const TimeZoneNamedFromString: TimeZoneNamedFromString = TimeZoneNamedStr
 /**
  * Type-level representation of {@link TimeZone}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -11409,6 +11839,7 @@ const TimeZoneString = String.annotate({
  * - encodes `DateTime.TimeZone` as a string (IANA identifier or offset like
  *   `+03:00`)
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11443,6 +11874,7 @@ export const TimeZone: TimeZone = declare(
 /**
  * Type-level representation of {@link TimeZoneFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -11460,6 +11892,7 @@ export interface TimeZoneFromString extends decodeTo<TimeZone, String> {
  * Encoding:
  * - A `DateTime.TimeZone` is encoded as a `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -11469,6 +11902,7 @@ export const TimeZoneFromString: TimeZoneFromString = TimeZoneString.pipe(
 /**
  * Type-level representation of {@link DateTimeZoned}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -11490,6 +11924,7 @@ const DateTimeZonedString = String.annotate({
  * - encodes named zones by appending the IANA identifier in brackets, such as
  *   `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -11534,6 +11969,7 @@ export const DateTimeZoned: DateTimeZoned = declare(
 /**
  * Type-level representation of {@link DateTimeZonedFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -11551,6 +11987,7 @@ export interface DateTimeZonedFromString extends decodeTo<DateTimeZoned, String>
  * Encoding:
  * - A `DateTime.Zoned` is encoded as a `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -11558,10 +11995,10 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
   decodeTo(DateTimeZoned, dateTimeZonedFromString)
 )
 
-const netAddressFromString = <S extends declare<any>, E extends { readonly message: string }>(
+const netAddressFromString = <S extends Constraint, E extends { readonly message: string }>(
   declaration: S,
-  parse: (input: string) => Result_.Result<S["Type"], E>,
-  encode: (value: S["Type"]) => string,
+  parse: (input: string) => Result_.Result<S["Encoded"], E>,
+  encode: (value: S["Encoded"]) => string,
   identifier: string
 ) =>
   String.pipe(decodeTo(
@@ -12912,6 +13349,229 @@ export const SocketAddress: SocketAddress = declare(NetAddress_.isSocketAddress,
   identifier: "SocketAddress"
 })
 
+/**
+ * Type-level representation of {@link DomainName}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainName extends brand<String, "~effect/net/Host/DomainName"> {
+  readonly "Rebuild": DomainName
+}
+
+/**
+ * Schema for normalized DNS domain names.
+ *
+ * **Details**
+ *
+ * Only names already in normalized form (lowercase ASCII, with
+ * internationalized labels in `xn--` form) are accepted. Use
+ * {@link DomainNameFromString} to normalize arbitrary input.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainName: DomainName = String.check(
+  makeFilter(Host_.isDomainName, { expected: "a normalized domain name" })
+).pipe(brand("~effect/net/Host/DomainName")).annotate({ identifier: "DomainName" })
+
+/**
+ * Type-level representation of {@link DomainNameFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DomainNameFromString extends decodeTo<DomainName, String> {
+  readonly "Rebuild": DomainNameFromString
+}
+
+/**
+ * Schema for DNS domain names decoded from strings, normalizing case and
+ * converting internationalized names to their ASCII form.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DomainNameFromString: DomainNameFromString = netAddressFromString(
+  DomainName,
+  Host_.domainNameFromString,
+  (name) => name,
+  "DomainNameFromString"
+)
+
+/**
+ * Type-level representation of {@link ScopedIpv6Literal}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ScopedIpv6Literal extends brand<String, "~effect/net/NetAddress/ScopedIpv6Literal"> {
+  readonly "Rebuild": ScopedIpv6Literal
+}
+
+/**
+ * Schema for canonical scoped IPv6 literals such as `fe80::1%eth0`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ScopedIpv6Literal: ScopedIpv6Literal = String.check(
+  makeFilter(NetAddress_.isScopedIpv6Literal, { expected: "a canonical scoped IPv6 literal" })
+).pipe(brand("~effect/net/NetAddress/ScopedIpv6Literal")).annotate({ identifier: "ScopedIpv6Literal" })
+
+/**
+ * Type-level representation of {@link ScopedIpv6LiteralFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ScopedIpv6LiteralFromString extends decodeTo<ScopedIpv6Literal, String> {
+  readonly "Rebuild": ScopedIpv6LiteralFromString
+}
+
+/**
+ * Schema for scoped IPv6 literals decoded from strings, normalizing the address
+ * and numeric zones.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ScopedIpv6LiteralFromString: ScopedIpv6LiteralFromString = netAddressFromString(
+  ScopedIpv6Literal,
+  NetAddress_.scopedIpv6LiteralFromString,
+  (literal) => literal,
+  "ScopedIpv6LiteralFromString"
+)
+
+/**
+ * Type-level representation of {@link Host}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Host extends Union<readonly [IpAddress, ScopedIpv6Literal, DomainName]> {
+  readonly "Rebuild": Host
+}
+
+/**
+ * Schema for hosts: numeric IP addresses, scoped IPv6 literals, or domain names.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Host: Host = Union([IpAddress, ScopedIpv6Literal, DomainName]).annotate({ identifier: "Host" })
+
+/**
+ * Type-level representation of {@link HostFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostFromString
+  extends Union<readonly [IpAddressFromString, ScopedIpv6LiteralFromString, DomainNameFromString]>
+{
+  readonly "Rebuild": HostFromString
+}
+
+/**
+ * Schema for hosts decoded from strings. Numeric IP strings decode to IP
+ * addresses; other strings decode to scoped IPv6 literals or domain names.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostFromString: HostFromString = Union([
+  IpAddressFromString,
+  ScopedIpv6LiteralFromString,
+  DomainNameFromString
+]).annotate({ identifier: "HostFromString" })
+
+/**
+ * Type-level representation of {@link HostPort}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPort extends declare<Host_.HostPort> {
+  readonly "Rebuild": HostPort
+}
+
+/**
+ * Schema for already-constructed unresolved host and port values.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPort: HostPort = declare(Host_.isHostPort, {
+  identifier: "HostPort"
+})
+
+/**
+ * Type-level representation of {@link HostPortFromString}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPortFromString extends decodeTo<HostPort, String> {
+  readonly "Rebuild": HostPortFromString
+}
+
+/**
+ * Schema for unresolved endpoints encoded as `host:port` or `[IPv6]:port`
+ * strings.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const HostPortFromString: HostPortFromString = netAddressFromString(
+  HostPort,
+  Host_.hostPortFromString,
+  Host_.formatHostPort,
+  "HostPortFromString"
+)
+
+/**
+ * Type-level representation of {@link Port}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Port extends Int {
+  readonly "Rebuild": Port
+}
+
+/**
+ * Schema for TCP and UDP port numbers from 0 through 65535.
+ *
+ * **Details**
+ *
+ * Port 0 is accepted because it asks the operating system to choose a port
+ * when binding, and it matches the port range of `InetAddress` and `HostPort`.
+ * `Config.Port` accepts only 1 through 65535.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Port: Port = Int.check(isBetween({ minimum: 0, maximum: 65535 }, { expected: "a port number" }))
+
 // -----------------------------------------------------------------------------
 // Duration schemas
 // -----------------------------------------------------------------------------
@@ -12956,6 +13616,7 @@ const durationFromMillis: SchemaTransformation.Transformation<Duration_.Duration
 /**
  * Type-level representation of {@link Duration}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -12978,6 +13639,7 @@ export interface Duration extends declare<Duration_.Duration> {
  * Schema.decodeUnknownSync(Schema.Duration)(Duration.seconds(5)) // => Duration.seconds(5)
  * ```
  *
+ * @stability stable
  * @category schemas
  *
  * @since 3.10.0
@@ -13036,6 +13698,7 @@ const DurationString = String.annotate({ expected: "a string that will be decode
 /**
  * Type-level representation of {@link DurationFromString}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -13054,6 +13717,7 @@ export interface DurationFromString extends decodeTo<Duration, String> {
  * Encoding:
  * - A `Duration` is encoded as a parseable `string`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -13063,6 +13727,7 @@ export const DurationFromString: DurationFromString = DurationString.pipe(
 /**
  * Type-level representation of {@link DurationFromNanos}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13083,6 +13748,7 @@ export interface DurationFromNanos extends decodeTo<Duration, BigInt> {
  * fails when the duration cannot be represented as nanoseconds, such as
  * `Duration.infinity` or `Duration.negativeInfinity`.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13092,6 +13758,7 @@ export const DurationFromNanos: DurationFromNanos = BigInt.pipe(
 /**
  * Type-level representation of {@link DurationFromMillis}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13114,6 +13781,7 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
  *
  * `NaN` is decoded as `Duration.zero`, matching `Duration.millis`.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13122,12 +13790,433 @@ export const DurationFromMillis: DurationFromMillis = Number.pipe(
 )
 
 // -----------------------------------------------------------------------------
+// DNS schemas
+// -----------------------------------------------------------------------------
+
+/**
+ * Type-level representation of {@link DnsRecordType}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecordType extends Literals<ReadonlyArray<Dns_.RecordType>> {}
+
+/**
+ * Schema for supported DNS record types such as `"A"` or `"SRV"`.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecordType: DnsRecordType = Literals(Dns_.recordTypes)
+
+// Addresses in JSON records must already be canonical; normalizing input is
+// left to the `*FromString` schemas.
+const dnsCanonicalAddress = <A extends NetAddress_.IpAddress>(
+  schema: Codec<A>,
+  parse: (input: string) => Result_.Result<A, NetAddress_.NetAddressError>
+) =>
+  String.pipe(decodeTo(
+    schema,
+    SchemaTransformation.transformEffect({
+      decode: (input, options) => {
+        const result = parse(input)
+        if (Result_.isFailure(result)) {
+          return Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+        }
+        return NetAddress_.formatIp(result.success) === input
+          ? Effect.succeed(result.success)
+          : Effect.fail(new SchemaIssue.InvalidValue({ message: "expected a canonical address" }, input, options))
+      },
+      encode: (address) => Effect.succeed(NetAddress_.formatIp(address))
+    })
+  ))
+
+const dnsUint8 = Int.check(isBetween({ minimum: 0, maximum: 0xff }))
+
+const dnsUint16 = Int.check(isBetween({ minimum: 0, maximum: 0xffff }))
+
+const dnsUint32 = Int.check(isBetween({ minimum: 0, maximum: 0xffffffff }))
+
+// SOA timers are written as whole seconds, as in zone files.
+const dnsSeconds = dnsUint32.pipe(decodeTo(
+  Duration,
+  SchemaTransformation.transform({ decode: Duration_.seconds, encode: Duration_.toSeconds })
+))
+
+// Each record type is an opaque value whose JSON form is a plain object tagged
+// by record type, such as `{ "_tag": "MX", "exchange": "mail.example.com", "priority": 10 }`.
+const dnsRecordOfType = <T extends Dns_.RecordType>(
+  type: T,
+  fields: { readonly [K in keyof Dns_.RecordFields<T>]-?: Codec<Dns_.RecordFields<T>[K], unknown> }
+) =>
+  declare((u): u is Dns_.RecordFor<T> => Dns_.isDnsRecord(u) && u._tag === type, {
+    identifier: `Dns${type.charAt(0)}${type.slice(1).toLowerCase()}Record`,
+    toCodecJson: () => {
+      const json = TaggedStruct(type, fields)
+      return link<Dns_.RecordFor<T>>()(
+        json,
+        SchemaTransformation.transformEffect({
+          decode: (input, options) => {
+            const { _tag, ...rest } = input as { readonly _tag: T }
+            const result = Dns_.makeRecord(type, rest as Dns_.RecordFields<T>)
+            return Result_.isSuccess(result)
+              ? Effect.succeed(result.success)
+              : Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, input, options))
+          },
+          // Records hold only their tag and fields as own properties.
+          encode: (record) => Effect.succeed({ ...record } as unknown as typeof json["Type"])
+        })
+      )
+    }
+  })
+
+/**
+ * Type-level representation of {@link DnsARecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsARecord extends declare<Dns_.A> {
+  readonly "Rebuild": DnsARecord
+}
+
+/**
+ * Schema for already-constructed IPv4 address (`A`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsARecord: DnsARecord = dnsRecordOfType("A", {
+  address: dnsCanonicalAddress(Ipv4Address, NetAddress_.ipv4FromString)
+})
+
+/**
+ * Type-level representation of {@link DnsAaaaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsAaaaRecord extends declare<Dns_.Aaaa> {
+  readonly "Rebuild": DnsAaaaRecord
+}
+
+/**
+ * Schema for already-constructed IPv6 address (`AAAA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsAaaaRecord: DnsAaaaRecord = dnsRecordOfType("AAAA", {
+  address: dnsCanonicalAddress(Ipv6Address, NetAddress_.ipv6FromString)
+})
+
+/**
+ * Type-level representation of {@link DnsCaaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsCaaRecord extends declare<Dns_.Caa> {
+  readonly "Rebuild": DnsCaaRecord
+}
+
+/**
+ * Schema for already-constructed certification authority authorization (`CAA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsCaaRecord: DnsCaaRecord = dnsRecordOfType("CAA", {
+  critical: Boolean,
+  tag: String.check(isPattern(/^[a-z0-9]+$/i)),
+  value: String
+})
+
+/**
+ * Type-level representation of {@link DnsCnameRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsCnameRecord extends declare<Dns_.Cname> {
+  readonly "Rebuild": DnsCnameRecord
+}
+
+/**
+ * Schema for already-constructed canonical name (`CNAME`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsCnameRecord: DnsCnameRecord = dnsRecordOfType("CNAME", { target: DomainName })
+
+/**
+ * Type-level representation of {@link DnsMxRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsMxRecord extends declare<Dns_.Mx> {
+  readonly "Rebuild": DnsMxRecord
+}
+
+/**
+ * Schema for already-constructed mail exchange (`MX`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsMxRecord: DnsMxRecord = dnsRecordOfType("MX", { exchange: DomainName, priority: dnsUint16 })
+
+/**
+ * Type-level representation of {@link DnsNaptrRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsNaptrRecord extends declare<Dns_.Naptr> {
+  readonly "Rebuild": DnsNaptrRecord
+}
+
+/**
+ * Schema for already-constructed naming authority pointer (`NAPTR`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsNaptrRecord: DnsNaptrRecord = dnsRecordOfType("NAPTR", {
+  order: dnsUint16,
+  preference: dnsUint16,
+  flags: String,
+  service: String,
+  regexp: String,
+  replacement: DomainName
+})
+
+/**
+ * Type-level representation of {@link DnsNsRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsNsRecord extends declare<Dns_.Ns> {
+  readonly "Rebuild": DnsNsRecord
+}
+
+/**
+ * Schema for already-constructed name server (`NS`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsNsRecord: DnsNsRecord = dnsRecordOfType("NS", { host: DomainName })
+
+/**
+ * Type-level representation of {@link DnsPtrRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsPtrRecord extends declare<Dns_.Ptr> {
+  readonly "Rebuild": DnsPtrRecord
+}
+
+/**
+ * Schema for already-constructed pointer (`PTR`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsPtrRecord: DnsPtrRecord = dnsRecordOfType("PTR", { host: NonEmptyString })
+
+/**
+ * Type-level representation of {@link DnsSoaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsSoaRecord extends declare<Dns_.Soa> {
+  readonly "Rebuild": DnsSoaRecord
+}
+
+/**
+ * Schema for already-constructed start of authority (`SOA`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsSoaRecord: DnsSoaRecord = dnsRecordOfType("SOA", {
+  primary: DomainName,
+  admin: NonEmptyString,
+  serial: dnsUint32,
+  refresh: dnsSeconds,
+  retry: dnsSeconds,
+  expire: dnsSeconds,
+  minimum: dnsSeconds
+})
+
+/**
+ * Type-level representation of {@link DnsSrvRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsSrvRecord extends declare<Dns_.Srv> {
+  readonly "Rebuild": DnsSrvRecord
+}
+
+/**
+ * Schema for already-constructed service locator (`SRV`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsSrvRecord: DnsSrvRecord = dnsRecordOfType("SRV", {
+  target: DomainName,
+  port: dnsUint16,
+  priority: dnsUint16,
+  weight: dnsUint16
+})
+
+/**
+ * Type-level representation of {@link DnsTlsaRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsTlsaRecord extends declare<Dns_.Tlsa> {
+  readonly "Rebuild": DnsTlsaRecord
+}
+
+/**
+ * Schema for already-constructed TLS authentication (`TLSA`) DNS records.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes the certificate association `data` as a
+ * hex string.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsTlsaRecord: DnsTlsaRecord = dnsRecordOfType("TLSA", {
+  certUsage: dnsUint8,
+  selector: dnsUint8,
+  matchingType: dnsUint8,
+  data: Uint8ArrayFromHex
+})
+
+/**
+ * Type-level representation of {@link DnsTxtRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsTxtRecord extends declare<Dns_.Txt> {
+  readonly "Rebuild": DnsTxtRecord
+}
+
+/**
+ * Schema for already-constructed text (`TXT`) DNS records.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsTxtRecord: DnsTxtRecord = dnsRecordOfType("TXT", { chunks: NonEmptyArray(String) })
+
+/**
+ * Type-level representation of {@link DnsRecord}.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsRecord extends
+  Union<
+    readonly [
+      DnsARecord,
+      DnsAaaaRecord,
+      DnsCaaRecord,
+      DnsCnameRecord,
+      DnsMxRecord,
+      DnsNaptrRecord,
+      DnsNsRecord,
+      DnsPtrRecord,
+      DnsSoaRecord,
+      DnsSrvRecord,
+      DnsTlsaRecord,
+      DnsTxtRecord
+    ]
+  >
+{
+  readonly "Rebuild": DnsRecord
+}
+
+/**
+ * Schema for already-constructed DNS records of any supported record type.
+ *
+ * **Details**
+ *
+ * The default JSON serializer encodes records as objects tagged by record type,
+ * with addresses and names as canonical strings, SOA timers as whole seconds,
+ * and TLSA data as hex, such as
+ * `{ "_tag": "SRV", "target": "db.internal", "port": 5432, "priority": 10, "weight": 5 }`.
+ * Decoding accepts only canonical addresses and normalized domain names, and
+ * reports invalid fields with their path.
+ *
+ * @stability experimental
+ * @category schemas
+ * @since 4.0.0
+ */
+export const DnsRecord: DnsRecord = Union([
+  DnsARecord,
+  DnsAaaaRecord,
+  DnsCaaRecord,
+  DnsCnameRecord,
+  DnsMxRecord,
+  DnsNaptrRecord,
+  DnsNsRecord,
+  DnsPtrRecord,
+  DnsSoaRecord,
+  DnsSrvRecord,
+  DnsTlsaRecord,
+  DnsTxtRecord
+]).annotate({ identifier: "DnsRecord" })
+
+// -----------------------------------------------------------------------------
 // Exit schemas
 // -----------------------------------------------------------------------------
 
 /**
  * Type-level representation returned by {@link Exit}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13152,6 +14241,7 @@ export interface Exit<A extends Constraint, E extends Constraint, D extends Cons
  * Successful exits are represented as `{ _tag: "Success", value }`, while failed
  * exits are represented as `{ _tag: "Failure", cause }`.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -13171,6 +14261,7 @@ export type ExitIso<A extends Constraint, E extends Constraint, D extends Constr
  * Use when serializing or validating an effect outcome where success, typed
  * failure, and defects each need their own schema.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13258,6 +14349,7 @@ export function Exit<
 /**
  * Encoded representation of an immutable Effect graph.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13265,6 +14357,7 @@ export type EncodedGraph<N, E, T extends Graph_.Kind> = Graph_.Snapshot<N, E, T>
 /**
  * Iso representation used for {@link Graph} schemas.
  *
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -13276,6 +14369,7 @@ export type GraphIso<T extends Graph_.Kind, Node extends Constraint, Edge extend
 /**
  * Type-level representation returned by {@link Graph}.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -13454,6 +14548,7 @@ function graphToArbitrary<N, E, T extends Graph_.Kind>(
  * encoded.edges // => [{ index: 0, source: 0, target: 1, data: 1 }]
  * ```
  *
+ * @stability unstable
  * @category schemas
  * @since 4.0.0
  */
@@ -13537,6 +14632,7 @@ function hashMapLink<Key, Value>(entries: Schema<ReadonlyArray<readonly [Key, Va
 /**
  * Type-level representation returned by {@link HashMap}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13556,6 +14652,7 @@ export interface HashMap<Key extends Constraint, Value extends Constraint> exten
  * Iso representation used for `HashMap` schemas: an array of readonly
  * `[key, value]` tuples using each entry schema's `Iso` type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -13565,6 +14662,7 @@ export type HashMapIso<Key extends Constraint, Value extends Constraint> = Reado
 /**
  * Schema for hash maps whose keys and values conform to the provided schemas.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13632,6 +14730,7 @@ function hashSetLink<Value>(values: Schema<ReadonlyArray<Value>>) {
 /**
  * Type-level representation returned by {@link HashSet}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13650,6 +14749,7 @@ export interface HashSet<Value extends Constraint> extends
  * Iso representation used for `HashSet` schemas: an array of element values
  * using the element schema's `Iso` type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -13657,6 +14757,7 @@ export type HashSetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
 /**
  * Schema for hash sets whose values conform to the provided element schema.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13714,6 +14815,7 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
 /**
  * Type-level representation returned by {@link Option}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13736,6 +14838,7 @@ export interface Option<A extends Constraint> extends
  * `None` is represented as `{ _tag: "None" }`, while `Some` is represented as
  * `{ _tag: "Some", value }` using the wrapped schema's `Iso` type.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -13748,6 +14851,7 @@ export type OptionIso<A extends Constraint> = {
 /**
  * Schema for `Option<A>` values.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13802,6 +14906,7 @@ export function Option<A extends Constraint>(value: A): Option<A> {
 /**
  * Type-level representation returned by {@link OptionFromNullOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13816,6 +14921,7 @@ export interface OptionFromNullOr<S extends Constraint> extends decodeTo<Option<
  * Decoding maps `null` to `None` and all other values to `Some`. Encoding maps
  * `None` to `null` and maps `Some` to its value.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13828,6 +14934,7 @@ export function OptionFromNullOr<S extends Constraint>(schema: S): OptionFromNul
 /**
  * Type-level representation returned by {@link OptionFromUndefinedOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13843,6 +14950,7 @@ export interface OptionFromUndefinedOr<S extends Constraint> extends decodeTo<Op
  * Decoding maps `undefined` to `None` and all other values to `Some`. Encoding
  * maps `None` to `undefined` and maps `Some` to its value.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -13855,6 +14963,7 @@ export function OptionFromUndefinedOr<S extends Constraint>(schema: S): OptionFr
 /**
  * Type-level representation returned by {@link OptionFromNullishOr}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -13871,6 +14980,7 @@ export interface OptionFromNullishOr<S extends Constraint> extends decodeTo<Opti
  * `options.onNoneEncoding`, which defaults to `undefined`, and maps `Some` to
  * its value.
  *
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -14234,6 +15344,7 @@ export const RecordFromUrlParams: RecordFromUrlParams = UrlParams.pipe(
 /**
  * Type-level representation returned by {@link OptionFromOptionalKey}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14248,6 +15359,7 @@ export interface OptionFromOptionalKey<S extends Constraint> extends decodeTo<Op
  * Decoding maps a missing key to `None` and a present value to `Some`.
  * Encoding maps `None` to a missing key and maps `Some` to its value.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -14260,6 +15372,7 @@ export function OptionFromOptionalKey<S extends Constraint>(schema: S): OptionFr
 /**
  * Type-level representation returned by {@link OptionFromOptional}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14276,6 +15389,7 @@ export interface OptionFromOptional<S extends Constraint> extends decodeTo<Optio
  * maps all other values to `Some`. Encoding maps `None` to a missing key and
  * maps `Some` to its value.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -14288,6 +15402,7 @@ export function OptionFromOptional<S extends Constraint>(schema: S): OptionFromO
 /**
  * Type-level representation returned by {@link OptionFromOptionalNullOr}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14307,6 +15422,7 @@ export interface OptionFromOptionalNullOr<S extends Constraint>
  * according to `options.onNoneEncoding`: `"omit"` encodes a missing key,
  * `null` encodes `null`, and `undefined` encodes `undefined`.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -14338,6 +15454,7 @@ export function OptionFromOptionalNullOr<S extends Constraint>(
 /**
  * Type-level representation returned by {@link Redacted}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -14372,6 +15489,7 @@ type NormalizedRedactedOptions =
  *   sensitive and should not be exposed in JSON.
  *
  * @see {@link RedactedFromValue} for decoding raw values and wrapping them in `Redacted`.
+ * @stability stable
  * @category schemas
  * @since 3.10.0
  */
@@ -14459,6 +15577,7 @@ export function Redacted<S extends Constraint>(value: S, options?: {
 /**
  * Type-level representation returned by {@link RedactedFromValue}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14471,6 +15590,7 @@ export interface RedactedFromValue<S extends Constraint> extends decodeTo<Redact
  * the raw value and wraps it.
  *
  * @see {@link Redacted} for schemas whose input is already a `Redacted` value.
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -14502,6 +15622,7 @@ export function RedactedFromValue<S extends Constraint>(value: S, options?: {
 /**
  * Type-level representation returned by {@link Result}.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14525,6 +15646,7 @@ export interface Result<A extends Constraint, E extends Constraint> extends
  * Successful results are represented as `{ _tag: "Success", success }`, while
  * failed results are represented as `{ _tag: "Failure", failure }`.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -14538,6 +15660,7 @@ export type ResultIso<A extends Constraint, E extends Constraint> = {
 /**
  * Schema for `Result<A, E>` values.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -14602,6 +15725,7 @@ export function Result<A extends Constraint, E extends Constraint>(
 /**
  * Type-level representation returned by {@link Class}.
  *
+ * @stability stable
  * @category models
  * @since 3.10.0
  */
@@ -14676,6 +15800,10 @@ export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fi
    * combined with checks from the base class schema.
    *
    * **Gotchas**
+   *
+   * Fields with the same name replace inherited fields. Use this to refine
+   * validation or change encoding. Effect does not check compatibility; the
+   * caller must ensure the replacement preserves the base class contract.
    *
    * Checks from a `Struct` argument are evaluated against the full subclass
    * value after inherited and extension fields are merged. Object-wide checks
@@ -14941,6 +16069,7 @@ function isStruct(schema: Struct.Fields | Struct<Struct.Fields>): schema is Stru
  * @see {@link Error} for defining schema-backed error classes
  * @see {@link TaggedError} for defining tagged schema-backed error classes
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -15000,6 +16129,7 @@ export const Class: {
  * c.radius // => 5
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -15059,6 +16189,7 @@ export const TaggedClass: {
  * error.id // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -15119,6 +16250,7 @@ export const Error: {
  * error.id // => 42
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 3.10.0
  */
@@ -15166,6 +16298,7 @@ export const TaggedError: {
  * The annotation is applied through this helper because adding it directly to
  * `Annotations.Bottom` would make schemas invariant.
  *
+ * @stability stable
  * @category formatting
  * @since 4.0.0
  */
@@ -15182,6 +16315,7 @@ export function overrideToFormatter<S extends Top>(toFormatter: () => Formatter<
  * The optional `onBefore` hook lets you intercept specific AST nodes before
  * the default formatting logic runs.
  *
+ * @stability stable
  * @category formatting
  * @since 4.0.0
  */
@@ -15201,6 +16335,7 @@ export function toFormatter<S extends Constraint>(schema: S, options?: {
  * Use when you need a custom equivalence instead of the default structural
  * equivalence derived by {@link toEquivalence}.
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -15223,6 +16358,7 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  * eq({ id: 1, name: "Alice" }, { id: 2, name: "Alice" }) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 4.0.0
  */
@@ -15242,9 +16378,12 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  * Use {@link toType} before this function to represent the type side instead.
  * The optional reference policy controls which candidates are extracted into the document's reference table. By
  * default, only candidates with a resolved identifier become references; recursive candidates always require one.
+ * TypeScript-only distinctions such as those added by {@link brand} are not
+ * part of the schema AST and are therefore omitted.
  *
  * @see {@link SchemaRepresentation.toRepresentation} for converting a `SchemaAST.AST` directly
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15268,6 +16407,7 @@ export function toRepresentation(
  * `SchemaRepresentation.toJsonSchemaMultiDocument`, reference allocation has already happened and `referencePolicy`
  * has no effect.
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -15407,6 +16547,7 @@ export interface ToJsonSchemaOptions extends SchemaRepresentation.ToRepresentati
  * @see {@link toCodecJson} for decoding and encoding the canonical JSON representation
  * @see {@link SchemaRepresentation.toJsonSchemaDocument} for compiling an existing live representation document
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15423,6 +16564,7 @@ export function toJsonSchemaDocument(
 /**
  * Type-level representation returned by {@link toCodecJson}.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15468,6 +16610,7 @@ export interface toCodecJson<S extends Constraint> extends
  * checks and annotations remain on its source node rather than being copied to
  * the JSON target. Source checks still run after the transformation.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15488,6 +16631,7 @@ export const toCodecJson: {
  * Links cannot require services because the returned `Codec` does not expose
  * service requirements.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15498,6 +16642,7 @@ export const toCodecIso: {
  * A {@link Tree} of `string | undefined` nodes. Leaf values are either a
  * string representation or `undefined` for opaque/declaration types.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15505,6 +16650,7 @@ export type StringTree = Tree<string | undefined>
 /**
  * Type-level representation returned by {@link toCodecStringTree}.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15546,6 +16692,7 @@ export interface toCodecStringTree<S extends Constraint> extends
  * `toCodec` encoding. A callback can return `undefined` when the declaration is
  * already in canonical StringTree form.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15555,6 +16702,7 @@ export const toCodecStringTree: {
 /**
  * Type-level representation returned by {@link toCodecArrayFromSingle}.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15593,6 +16741,7 @@ export interface toCodecArrayFromSingle<S extends Constraint> extends
  * decoding convenience rather than a canonical StringTree representation. It
  * does not parse comma-separated strings.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15620,6 +16769,7 @@ type XmlEncoderOptions = {
  * an `Effect` that succeeds with the XML string or fails with a
  * {@link SchemaIssue.Issue} if codec encoding fails.
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -15646,6 +16796,7 @@ export function toEncoderXml<T, RE>(
  * `SchemaIssue.makeFormatterDefault()`. Consume {@link toCodecIso} with an
  * effectful parser for asynchronous execution or explicit failure handling.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15655,6 +16806,7 @@ export function toIso<S extends Constraint>(schema: S): Optic_.Iso<S["Type"], S[
 /**
  * Returns an identity `Iso` over the schema's source (`Type`) side.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -15664,6 +16816,7 @@ export function toIsoSource<S extends Constraint>(schema: S): Optic_.Iso<S["Type
 /**
  * Returns an identity `Iso` over the schema's focus (`Iso`) side.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -15673,6 +16826,7 @@ export function toIsoFocus<S extends Constraint>(schema: S): Optic_.Iso<S["Iso"]
 /**
  * Type-level representation returned by {@link overrideToCodecIso}.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -15711,6 +16865,7 @@ export interface overrideToCodecIso<S extends Constraint, Iso> extends
  * provided `decode` and `encode` getters to transform between the schema type
  * and the target codec.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -15748,6 +16903,7 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  * `SchemaIssue.makeFormatterDefault()`. Invalid patch operations instead produce
  * {@link JsonPatch.apply} errors.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -15758,6 +16914,7 @@ export function toDifferJsonPatch<T>(schema: ConstraintCodec<T, unknown>): Diffe
  * Recursive tree type whose leaves are `Node` values and whose branches are
  * readonly arrays or string-keyed records of child trees.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15766,6 +16923,7 @@ export type Tree<Node> = Node | TreeRecord<Node> | ReadonlyArray<Tree<Node>>
  * A record node in a {@link Tree}: an object mapping string keys to child
  * `Tree` nodes.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15777,6 +16935,7 @@ export interface TreeRecord<A> {
  * The resulting schema accepts a single node value, an array of trees, or an
  * object whose values are trees.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -15800,6 +16959,7 @@ export function Tree<S extends Constraint>(node: S) {
  * readonly record of `string → Json`. For the corresponding schema, see the
  * {@link Json} const.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15807,6 +16967,7 @@ export type Json = null | number | boolean | string | JsonArray | JsonObject
 /**
  * A readonly array of {@link Json} values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15814,6 +16975,7 @@ export interface JsonArray extends ReadonlyArray<Json> {}
 /**
  * A readonly record whose values are {@link Json} values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15831,6 +16993,7 @@ export interface JsonObject {
  * Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] }) // => Option.some({ key: [1, true, null] })
  * ```
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -15857,6 +17020,7 @@ export const Json: Codec<Json> = make(SchemaAST.annotate(SchemaAST.Json, {
  * ```
  *
  * @see {@link Json} for a schema that also accepts JSON arrays and primitive values
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -15865,6 +17029,7 @@ export const JsonObject: $Record<String, Codec<Json, Json, never, never>> = Reco
  * Recursive TypeScript type for mutable JSON values: `null`, `number`,
  * `boolean`, `string`, mutable arrays, or mutable string-keyed records.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15872,6 +17037,7 @@ export type MutableJson = null | number | boolean | string | MutableJsonArray | 
 /**
  * A mutable array of {@link MutableJson} values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15879,6 +17045,7 @@ export interface MutableJsonArray extends Array<MutableJson> {}
 /**
  * A mutable record whose values are {@link MutableJson} values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -15896,6 +17063,7 @@ const JsonError = Struct({
  * Schema that accepts any mutable JSON-compatible value. See {@link Json} for
  * the immutable variant.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -15911,6 +17079,7 @@ export const MutableJson: Codec<MutableJson> = make(SchemaAST.annotate(SchemaAST
  * annotations are taken from the last check; otherwise they are taken from
  * the base schema instance.
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -15924,6 +17093,7 @@ export function resolveAnnotations<S extends Constraint>(
  * annotations are those attached via `annotateKey` and live on the AST's
  * `context` rather than on the schema node itself.
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -15940,6 +17110,7 @@ export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotati
  * Use {@link resolveAnnotations} to read the annotations attached to a schema at
  * runtime.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -16045,8 +17216,8 @@ export declare namespace Annotations {
   }
   /**
    * Base annotations shared by all composite schema nodes. Extends
-   * {@link Documentation} with error messages, branding, and arbitrary
-   * generation hooks. {@link Declaration} and other annotation
+   * {@link Documentation} with error messages and arbitrary generation hooks.
+   * {@link Declaration} and other annotation
    * interfaces build on top of this.
    *
    * @category models
@@ -16084,10 +17255,6 @@ export declare namespace Annotations {
      * filter/refinement instead.
      */
     readonly identifier?: string | undefined
-    /**
-     * Accumulated brands when multiple brands are added with `Schema.brand`.
-     */
-    readonly brands?: ReadonlyArray<string> | undefined
   }
   /**
    * Helpers for projecting declaration type-parameter schemas into decoded or

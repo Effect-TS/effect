@@ -6,6 +6,7 @@
  * that return `Option`, integer square roots, aggregation, ordering,
  * equivalence, reducers, and combiners.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -43,6 +44,7 @@ import * as Reducer from "./Reducer.ts"
  * BigInt.BigInt("456") // => 456n
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -68,6 +70,7 @@ const bigint2 = BigInt(2)
  * BigInt.isBigInt(1) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -91,6 +94,7 @@ export const isBigInt: (u: unknown) => u is bigint = predicate.isBigInt
  *
  * @see {@link sumAll} for summing an iterable of `bigint` values
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -116,6 +120,7 @@ export const sum: {
  *
  * @see {@link multiplyAll} for multiplying an iterable of `bigint` values
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -139,6 +144,7 @@ export const multiply: {
  * BigInt.subtract(2n, 3n) // => -1n
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -172,6 +178,7 @@ export const subtract: {
  * @see {@link divideUnsafe} for division that throws when the divisor is `0n`
  * @see {@link remainder} for the JavaScript remainder operation
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -211,6 +218,7 @@ export const divide: {
  *
  * @see {@link divide} for division that returns `Option.none` when the divisor is `0n`
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -234,6 +242,7 @@ export const divideUnsafe: {
  * BigInt.increment(2n) // => 3n
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -254,6 +263,7 @@ export const increment = (n: bigint): bigint => n + bigint1
  * BigInt.decrement(3n) // => 2n
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -281,6 +291,7 @@ export const decrement = (n: bigint): bigint => n - bigint1
  * BigInt.Order(a, c) // => 0
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -303,6 +314,7 @@ export const Order: order.Order<bigint> = order.BigInt
  * BigInt.Equivalence(1n, 2n) // => false
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -325,6 +337,7 @@ export const Equivalence: Equ.Equivalence<bigint> = Equ.BigInt
  * BigInt.isLessThan(4n, 3n) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -350,6 +363,7 @@ export const isLessThan: {
  * BigInt.isLessThanOrEqualTo(4n, 3n) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -375,6 +389,7 @@ export const isLessThanOrEqualTo: {
  * BigInt.isGreaterThan(4n, 3n) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -400,6 +415,7 @@ export const isGreaterThan: {
  * BigInt.isGreaterThanOrEqualTo(4n, 3n) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -429,6 +445,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * @see {@link clamp} for forcing a `bigint` into an inclusive range
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -470,6 +487,7 @@ export const between: {
  *
  * @see {@link between} for checking whether a `bigint` is already inside a range
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -501,6 +519,7 @@ export const clamp: {
  *
  * @see {@link max} for selecting the larger value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -526,6 +545,7 @@ export const min: {
  *
  * @see {@link min} for selecting the smaller value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -551,6 +571,7 @@ export const max: {
  * BigInt.sign(5n) // => 1
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -573,6 +594,7 @@ export const sign = (n: bigint): Ordering => order.BigInt(n, bigint0)
  * BigInt.abs(5n) // => 5n
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -597,6 +619,7 @@ export const abs = (n: bigint): bigint => (n < bigint0 ? -n : n)
  *
  * @see {@link lcm} for computing the least common multiple
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -631,6 +654,7 @@ export const gcd: {
  *
  * @see {@link gcd} for computing the greatest common divisor
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -673,6 +697,7 @@ export const lcm: {
  *
  * @see {@link sqrt} for returning `Option.none` when the input is negative
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -717,6 +742,7 @@ export const sqrtUnsafe = (n: bigint): bigint => {
  *
  * @see {@link sqrtUnsafe} for square root computation that throws on negative input
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -742,6 +768,7 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
  * @see {@link sum} for adding two `bigint` values
  * @see {@link ReducerSum} for summing through APIs that consume a `Reducer`
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -771,6 +798,7 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  * @see {@link multiply} for multiplying two `bigint` values
  * @see {@link ReducerMultiply} for multiplying through APIs that consume a `Reducer`
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -810,6 +838,7 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  *
  * @see {@link fromNumber} for converting a safe integer number to `bigint`
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -844,6 +873,7 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  *
  * @see {@link BigInt} for native constructor coercion that throws on invalid input
  *
+ * @stability stable
  * @category converting
  * @since 2.4.12
  */
@@ -883,6 +913,7 @@ export const fromString = (s: string): Option.Option<bigint> => {
  * @see {@link toNumber} for converting `bigint` values back to safe integer numbers
  * @see {@link BigInt} for native constructor coercion
  *
+ * @stability stable
  * @category converting
  * @since 2.4.12
  */
@@ -921,6 +952,7 @@ export function fromNumber(n: number): Option.Option<bigint> {
  *
  * @see {@link divide} for quotient calculation with division-by-zero represented as `Option.none`
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -943,6 +975,7 @@ export const remainder: {
  * @see {@link sumAll} for summing an iterable directly
  * @see {@link ReducerMultiply} for multiplying `bigint` values
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -962,6 +995,7 @@ export const ReducerSum: Reducer.Reducer<bigint> = Reducer.make((a, b) => a + b,
  * @see {@link multiplyAll} for multiplying an iterable directly
  * @see {@link ReducerSum} for summing `bigint` values
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -984,6 +1018,7 @@ export const ReducerMultiply: Reducer.Reducer<bigint> = Reducer.make((a, b) => a
  * @see {@link CombinerMin} for keeping the smallest `bigint`
  * @see {@link max} for comparing two `bigint` values directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -999,6 +1034,7 @@ export const CombinerMax: Combiner.Combiner<bigint> = Combiner.max(Order)
  * @see {@link CombinerMax} for keeping the largest `bigint`
  * @see {@link min} for comparing two `bigint` values directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */

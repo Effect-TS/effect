@@ -4,6 +4,7 @@
  * difference, combines patches in order, and applies a patch to an old value to
  * produce an updated value.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -21,6 +22,7 @@
  * combines patches, and applies a patch to an old value to produce an updated
  * value.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */

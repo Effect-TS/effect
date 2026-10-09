@@ -15,7 +15,6 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Headers from "../http/Headers.ts"
-import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import * as PrimaryKey from "../PrimaryKey.ts"
@@ -132,7 +131,6 @@ export const make = Effect.gen(function*() {
     readonly context: Context.Context<any>
   }>()
   const interruptedActivities = new Set<string>()
-  const activityLatches = new Map<string, Latch.Latch>()
   const deferredState = WorkflowEngine.makeDeferredState()
   // Rebuilds share an activation; overlapping activations have separate results.
   // Weak keys do not retain scopes, but contexts captured by clients, activities,
@@ -299,7 +297,14 @@ export const make = Effect.gen(function*() {
     )
 
     if (Option.isNone(maybeSuspended)) return
-    yield* sharding.reset(Snowflake.Snowflake(maybeSuspended.value.requestId))
+    if (
+      !(yield* sharding.reset(
+        Snowflake.Snowflake(maybeSuspended.value.requestId),
+        { expectedReplyId: Snowflake.Snowflake(maybeSuspended.value.id) }
+      ))
+    ) {
+      return yield* Effect.fail(new Error("Failed to reset workflow run"))
+    }
     yield* sharding.pollStorage
   })
 
@@ -404,7 +409,7 @@ export const make = Effect.gen(function*() {
             // Replays reuse the request id but track a fresh set of awaits.
             let currentRun: {
               readonly request: Entity.Request<any>
-              readonly awaitedDeferreds: ReadonlySet<string>
+              readonly instance: WorkflowEngine.WorkflowInstance["Service"]
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
@@ -421,7 +426,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                currentRun = { request, awaitedDeferreds: instance.awaitedDeferreds }
+                currentRun = { request, instance }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -469,23 +474,19 @@ export const make = Effect.gen(function*() {
                 const activityId = `${executionId}/${payload.name}`
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 interruptedActivities.delete(activityId)
-                return Effect.gen(function*() {
-                  let entry = activities.get(activityId)
-                  while (!entry) {
-                    const latch = Latch.makeUnsafe()
-                    activityLatches.set(activityId, latch)
-                    yield* latch.await
-                    entry = activities.get(activityId)
-                  }
-                  const context = entry.context.pipe(
-                    Context.add(WorkflowEngine.WorkflowInstance, instance),
-                    Context.add(CurrentActivationScope, activation),
-                    Context.add(Activity.CurrentAttempt, payload.attempt)
-                  )
-                  return yield* entry.activity.executeEncoded.pipe(
-                    Effect.provideContext(context)
-                  )
-                }).pipe(
+                const entry = activities.get(activityId)
+                if (!entry) {
+                  // Replay may never register a losing race activity. Answer it
+                  // without waiting; a later registration can reset this reply.
+                  return Effect.succeed(new Workflow.Suspended({})).pipe(Rpc.wrap({ fork: true }))
+                }
+                const context = entry.context.pipe(
+                  Context.add(WorkflowEngine.WorkflowInstance, instance),
+                  Context.add(CurrentActivationScope, activation),
+                  Context.add(Activity.CurrentAttempt, payload.attempt)
+                )
+                return entry.activity.executeEncoded.pipe(
+                  Effect.provideContext(context),
                   Workflow.intoResult,
                   Effect.catchCause((cause) => {
                     // we only want to store interrupts as suspends when the
@@ -515,9 +516,13 @@ export const make = Effect.gen(function*() {
                 // registered yet, a later await will see the result just stored.
                 // Check when the wake runs and skip preemption too: interrupting
                 // a later await would require waiting for its reply before reset.
+                // A run completing its own deferred also reads it from the cache
+                // when it awaits later, so that completion never wakes the run.
                 const wake = Effect.suspend(() =>
-                  currentRun && !currentRun.awaitedDeferreds.has(payload.name)
-                    ? ensureSuccess(resume(workflow, executionId))
+                  currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
+                    ? currentRun.instance.completedDeferreds.has(payload.name)
+                      ? Effect.void
+                      : ensureSuccess(resume(workflow, executionId))
                     : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
                 )
                 // An asynchronous reply releases the RPC concurrency permit while
@@ -622,11 +627,6 @@ export const make = Effect.gen(function*() {
         while (true) {
           if (!activities.has(activityId)) {
             activities.set(activityId, { activity, context: services })
-            const latch = activityLatches.get(activityId)
-            if (latch) {
-              yield* latch.open
-              activityLatches.delete(activityId)
-            }
           }
           const result = yield* Effect.orDie(
             client.activity({
@@ -696,6 +696,16 @@ export const make = Effect.gen(function*() {
 
     deferredDone: Effect.fnUntraced(
       function*({ deferredName, executionId, exit, workflowName }) {
+        const instance = yield* Effect.serviceOption(WorkflowEngine.WorkflowInstance)
+        // Activities run with their own instance, so their completions still
+        // wake a run that suspended before reaching the await. An interrupt
+        // must wake the run even when it signals itself.
+        if (
+          Option.isSome(instance) && instance.value.executionId === executionId &&
+          deferredName !== InterruptSignal.name
+        ) {
+          instance.value.completedDeferreds.add(deferredName)
+        }
         const workflow = workflows.get(workflowName)
         if (workflow) {
           return yield* Effect.orDie(sendDiscard({

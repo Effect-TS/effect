@@ -1,11 +1,27 @@
 import { assert, describe, it, vi } from "@effect/vitest"
-import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
+import { Effect, Option, Schema, SchemaAST, SchemaParser } from "effect"
 import * as Codegen from "effect/internal/schema/codegen"
 import * as Registry from "effect/internal/schema/compilerRegistry"
 import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { constructionCases, constructionEvents, constructionOptions } from "./fixtures/construction.ts"
 
 describe("Schema compiler construction", { concurrent: false }, () => {
+  it.effect("initializes and caches makers on first access", () =>
+    Effect.gen(function*() {
+      const schema = Schema.Struct({ value: Schema.NumberFromString })
+      assert.isFalse(Object.hasOwn(schema, "make"))
+      assert.isFalse(Object.hasOwn(schema, "makeEffect"))
+      assert.isFalse(Object.hasOwn(schema, "makeOption"))
+
+      const { make, makeEffect, makeOption } = schema
+      assert.strictEqual(schema.make, make)
+      assert.strictEqual(schema.makeEffect, makeEffect)
+      assert.strictEqual(schema.makeOption, makeOption)
+      assert.deepStrictEqual(make({ value: 0 }), { value: 0 })
+      assert.deepStrictEqual(yield* makeEffect({ value: 1 }), { value: 1 })
+      assert.deepStrictEqual(makeOption({ value: 2 }), Option.some({ value: 2 }))
+    }))
+
   it.effect("matches interpreted construction, effects and options", () =>
     Effect.gen(function*() {
       const fixtures = Object.entries(constructionCases)

@@ -179,7 +179,9 @@ interface TestState {
   capabilityInvocations: number
 }
 
-const makeFixture = Effect.fnUntraced(function*() {
+const makeFixture = Effect.fnUntraced(function*(
+  extensions?: NonNullable<McpSchema.ServerCapabilities["extensions"]>
+) {
   const state: TestState = {
     sharedInvocations: 0,
     structuredInvocations: 0,
@@ -250,6 +252,7 @@ const makeFixture = Effect.fnUntraced(function*() {
         sizes: ["any"]
       })],
       path: "/mcp",
+      extensions,
       protocols: [
         McpProtocol.v2026_07_28,
         McpProtocol.v2025_11_25,
@@ -372,6 +375,11 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
               }]
             })
           })
+      })
+      yield* server.addTool({
+        tool: makeTool("internal-failure", "Fails with an internal error"),
+        annotations: Context.empty(),
+        handle: () => Effect.fail(new McpSchema.InternalError({ message: "database unavailable" }))
       })
       yield* server.addTool({
         tool: makeTool("arguments", "Argument normalization probe"),
@@ -1234,6 +1242,18 @@ describe("McpServer protocol adapters", () => {
         assert.isUndefined(yield* protocol.projectNotification(elicitationComplete))
       }
     }))
+
+  for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
+    it.effect(`should preserve server extensions when initializing ${protocolVersion} requests`, () =>
+      Effect.gen(function*() {
+        const extensions = { "example/extension": { enabled: true } }
+        const fixture = yield* makeFixture(extensions)
+        const client = yield* initialize(fixture.post, protocolVersion)
+
+        assert.deepNestedPropertyVal(client.initializeResult, "capabilities.extensions", extensions)
+      }))
+  }
+
   it.effect("should omit elicitation when the negotiated protocol predates v2025-06-18", () =>
     Effect.gen(function*() {
       const fixture = yield* makeFixture()
@@ -1449,13 +1469,29 @@ describe("McpServer protocol adapters", () => {
       assert.isDefined(currentShared)
       assert.notProperty(oldShared, "title")
       assert.strictEqual(currentShared.title, "Shared tool title")
+
+      const response = yield* fixture.post({ jsonrpc: "2.0", id: 2, method: "ping", params: {} }, {
+        "Mcp-Protocol-Version": "2025-11-25",
+        "Mcp-Session-Id": currentClient.sessionId
+      })
+
+      assert.strictEqual(response.status, 400)
+      assert.deepStrictEqual(yield* readJsonRpcResponse(response), {
+        jsonrpc: "2.0",
+        id: 2,
+        error: {
+          code: McpSchema.HEADER_MISMATCH_ERROR_CODE,
+          message: "MCP-Protocol-Version header '2025-11-25' does not match negotiated protocol version '2025-06-18'"
+        }
+      })
     }))
 
-  for (const protocolVersion of ["2025-06-18", "2024-11-05"] as const) {
+  for (const protocolVersion of ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"] as const) {
     it.effect(`should expose the negotiated client profile when serving ${protocolVersion} requests`, () =>
       Effect.gen(function*() {
         const fixture = yield* makeFixture()
         const advertisedCapabilities = {
+          extensions: { "example/extension": { enabled: true } },
           roots: { listChanged: true },
           sampling: {}
         }
@@ -1925,6 +1961,26 @@ describe("McpServer protocol adapters", () => {
       )
       assert.strictEqual(fixture.state.audioInvocations, 1)
       assert.strictEqual(fixture.state.resourceLinkInvocations, 1)
+    }))
+
+  it.effect("should return an error result for tool execution failures on 2025-11-25", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      const client = yield* initialize(fixture.post, "2025-11-25")
+      const result = resultOf(yield* client.request("tools/call", { name: "internal-failure" }))
+      assert.isTrue(result.isError)
+      assert.deepStrictEqual(result.content, [{ type: "text", text: "database unavailable" }])
+    }))
+
+  it.effect("should report tool execution failures as internal errors on older revisions", () =>
+    Effect.gen(function*() {
+      const fixture = yield* makeLowLevelFixture()
+      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05"] as const) {
+        const client = yield* initialize(fixture.post, protocolVersion)
+        const error = errorOf(yield* client.request("tools/call", { name: "internal-failure" }))
+        assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
+        assert.strictEqual(error.message, "database unavailable")
+      }
     }))
 
   it.effect("should reject invalid structured content at the protocol serialization boundary", () =>

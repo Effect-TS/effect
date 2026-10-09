@@ -494,6 +494,62 @@ export const encodeHistogram = (histogram: {
   )
 
 /**
+ * Encodes a SummaryDataPoint message.
+ *
+ * message SummaryDataPoint {
+ *   repeated KeyValue attributes = 7;
+ *   fixed64 start_time_unix_nano = 2;
+ *   fixed64 time_unix_nano = 3;
+ *   fixed64 count = 4;
+ *   double sum = 5;
+ *   repeated ValueAtQuantile quantile_values = 6;
+ *   uint32 flags = 8;
+ * }
+ *
+ * message ValueAtQuantile {
+ *   double quantile = 1;
+ *   double value = 2;
+ * }
+ *
+ * @internal
+ */
+export const encodeSummaryDataPoint = (point: {
+  readonly attributes: ReadonlyArray<KeyValue>
+  readonly startTimeUnixNano: string
+  readonly timeUnixNano: string
+  readonly count: string | number | bigint
+  readonly sum: number
+  readonly quantileValues: ReadonlyArray<{ readonly quantile: number; readonly value: number }>
+  readonly flags?: number | undefined
+}): Uint8Array =>
+  Proto.concat(
+    Proto.fixed64Field(2, BigInt(point.startTimeUnixNano)),
+    Proto.fixed64Field(3, BigInt(point.timeUnixNano)),
+    Proto.fixed64Field(4, BigInt(point.count)),
+    Proto.doubleField(5, point.sum),
+    Proto.repeatedField(
+      6,
+      point.quantileValues,
+      (q) => Proto.concat(Proto.doubleField(1, q.quantile), Proto.doubleField(2, q.value))
+    ),
+    Proto.repeatedField(7, point.attributes, encodeKeyValue),
+    point.flags !== undefined ? Proto.varintField(8, point.flags) : new Uint8Array(0)
+  )
+
+/**
+ * Encodes a Summary message.
+ *
+ * message Summary {
+ *   repeated SummaryDataPoint data_points = 1;
+ * }
+ *
+ * @internal
+ */
+export const encodeSummary = (summary: {
+  readonly dataPoints: ReadonlyArray<Parameters<typeof encodeSummaryDataPoint>[0]>
+}): Uint8Array => Proto.repeatedField(1, summary.dataPoints, encodeSummaryDataPoint)
+
+/**
  * Encodes a Metric message.
  *
  * message Metric {
@@ -518,6 +574,7 @@ export const encodeMetric = (metric: {
   readonly gauge?: Parameters<typeof encodeGauge>[0] | undefined
   readonly sum?: Parameters<typeof encodeSum>[0] | undefined
   readonly histogram?: Parameters<typeof encodeHistogram>[0] | undefined
+  readonly summary?: Parameters<typeof encodeSummary>[0] | undefined
 }): Uint8Array =>
   Proto.concat(
     Proto.stringField(1, metric.name),
@@ -531,6 +588,9 @@ export const encodeMetric = (metric: {
       : new Uint8Array(0),
     metric.histogram !== undefined
       ? Proto.messageField(9, encodeHistogram(metric.histogram))
+      : new Uint8Array(0),
+    metric.summary !== undefined
+      ? Proto.messageField(11, encodeSummary(metric.summary))
       : new Uint8Array(0)
   )
 

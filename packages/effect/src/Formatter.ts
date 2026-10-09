@@ -7,6 +7,7 @@
  * wraps JSON formatting with redaction and circular-reference handling, and the
  * module also includes helpers for property keys, paths, and dates.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Predicate from "./Predicate.ts"
@@ -35,6 +36,7 @@ import { getRedacted, redact, symbolRedactable } from "./Redactable.ts"
  *
  * @see {@link format}
  * @see {@link formatJson}
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * @see {@link formatJson}
  * @see {@link Formatter}
+ * @stability stable
  * @category formatting
  * @since 2.0.0
  */
@@ -298,6 +301,7 @@ function safeGet(input: object, key: PropertyKey): unknown {
  *
  * @see {@link format}
  * @see {@link Formatter}
+ * @stability stable
  * @category serialization
  * @since 4.0.0
  */
@@ -331,8 +335,45 @@ export function formatJson(input: unknown, options?: {
       if (current !== redacted) {
         ancestors.push(current)
       }
-      return current
+      // Leave boxed primitives intact so JSON.stringify can unbox them natively.
+      if (!hasGetter(current) || isJsonPrimitiveWrapper(current)) {
+        return current
+      }
+      // JSON.stringify reads a getter once, then calls toJSON on the result
+      // before the replacer sees it. Intercept that read to redact the value
+      // first, instead of re-reading the getter in the replacer, which could
+      // repeat side effects or return a different value.
+      const serialized = new Proxy(current, {
+        get(target, key) {
+          const value = Reflect.get(target, key, target)
+          return Object.getOwnPropertyDescriptor(target, key)?.get !== undefined ? redact(value) : value
+        }
+      })
+      ancestors.push(serialized)
+      return serialized
     },
     options?.space
   ) ?? "null"
+}
+
+function hasGetter(object: object): boolean {
+  for (const key of Object.getOwnPropertyNames(object)) {
+    if (Object.getOwnPropertyDescriptor(object, key)?.get !== undefined) {
+      return true
+    }
+  }
+  return false
+}
+
+function isJsonPrimitiveWrapper(object: object): boolean {
+  // Built-in valueOf checks internal slots across realms without calling user code.
+  for (const valueOf of [Number.prototype.valueOf, Boolean.prototype.valueOf, String.prototype.valueOf]) {
+    try {
+      Reflect.apply(valueOf, object, [])
+      return true
+    } catch {
+      // Try the next wrapper type.
+    }
+  }
+  return false
 }

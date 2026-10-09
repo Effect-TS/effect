@@ -338,13 +338,6 @@ class RouterImpl<A> implements Router.Router<A> {
         path = path.replace(FULL_PATH_REGEXP, "/")
       }
 
-      // This must be run before sanitizeUrl as the resulting function
-      // .sliceParameter must be constructed with same URL string used
-      // throughout the rest of this function.
-      if (this.options.ignoreDuplicateSlashes) {
-        path = removeDuplicateSlashes(path)
-      }
-
       let sanitizedUrl
       try {
         sanitizedUrl = safeDecodeURI(path)
@@ -353,6 +346,10 @@ class RouterImpl<A> implements Router.Router<A> {
         shouldDecodeParam = sanitizedUrl.shouldDecodeParam
       } catch (error) {
         return undefined
+      }
+
+      if (this.options.ignoreDuplicateSlashes) {
+        path = removeDuplicateSlashes(path)
       }
 
       if (this.options.ignoreTrailingSlash) {
@@ -551,7 +548,7 @@ class HandlerStorage {
     const handler: Handler = {
       params: route.params,
       handler: route.handler,
-      createParams: compileCreateParams(route.params)
+      createParams: makeCreateParams(route.params)
     }
     this.handlers.push(handler)
     this.unconstrainedHandler = this.handlers[0]
@@ -844,28 +841,12 @@ function trimLastSlash(path: string): Router.PathInput {
   return path as Router.PathInput
 }
 
-// Compile safe, unique parameter names into a stable null-prototype shape.
-// Other names and codegen-restricted runtimes use assignment.
-const safeParamName = /^[A-Za-z_$][A-Za-z0-9_$]*$/
-const isCompilableParamName = (name: string): boolean => name !== "__proto__" && safeParamName.test(name)
-
-function compileCreateParams(
+function makeCreateParams(
   params: ReadonlyArray<string>
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
   if (len === 0) {
     return () => Object.create(null)
-  }
-  if (params.every(isCompilableParamName) && new Set(params).size === len) {
-    try {
-      // eslint-disable-next-line no-new-func
-      return new Function(
-        "a",
-        `return {__proto__:null,${params.map((name, i) => `${name}:a[${i}]`).join(",")}}`
-      ) as (paramsArray: ReadonlyArray<string>) => Record<string, string>
-    } catch {
-      // Use assignment when CSP blocks Function construction.
-    }
   }
   return function(paramsArray) {
     const paramsObject: Record<string, string> = Object.create(null)

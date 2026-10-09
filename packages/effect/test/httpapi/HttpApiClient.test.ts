@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Cause, Effect, Schema, Stream } from "effect"
+import { Cause, Effect, Exit, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -156,6 +156,187 @@ describe("HttpApiClient", () => {
       const urls = HttpApiClient.urlBuilder(Api)
       assert.throws(() => urls.users.get({ query: {} as typeof Person.Type }), /firstName[\s\S]*lastName/)
     })
+  })
+
+  describe("slot ParseOptions", () => {
+    const Strict = { onExcessProperty: "error" } as const
+    const Person = Schema.Struct({ name: Schema.String })
+    const adaWithExtra = { name: "Ada", extra: true }
+
+    it.effect("API slot annotations replace endpoint ParseOptions for request codecs", () =>
+      Effect.gen(function*() {
+        const Group = HttpApiGroup.make("test").add(
+          HttpApiEndpoint.post("create", "/users/:id", {
+            params: { id: Schema.String },
+            query: { q: Schema.String },
+            headers: { "x-api-key": Schema.String },
+            payload: Person
+          }).annotate(HttpApi.ParseOptions, Strict)
+        )
+        const request = {
+          params: { id: "1", extraParam: "p" },
+          query: { q: "x", extraQuery: "q" },
+          headers: { "x-api-key": "key", "x-extra": "h" },
+          payload: { name: "Ada", extraPayload: true }
+        }
+        const requests: Array<{ readonly url: string; readonly headers: Record<string, string> }> = []
+        const create = (api: HttpApi.HttpApi<"Api", typeof Group>) =>
+          HttpApiClient.makeWith(api, {
+            baseUrl: "http://test",
+            httpClient: HttpClient.make((request, url) =>
+              Effect.sync(() => {
+                requests.push({ url: url.toString(), headers: request.headers })
+                return HttpClientResponse.fromWeb(request, new Response(null, { status: 204 }))
+              })
+            )
+          }).pipe(Effect.flatMap((client) => Effect.exit(client.test.create(request))), Effect.map(String))
+
+        // Encoded in order: params, payload, headers, query.
+        let api = HttpApi.make("Api").add(Group)
+        assert.include(yield* create(api), "extraParam")
+        api = api.annotate(HttpApi.ParamsParseOptions, {})
+        assert.include(yield* create(api), "extraPayload")
+        // Replaces ParseOptions: onExcessProperty is not merged in.
+        api = api.annotate(HttpApi.PayloadParseOptions, { errors: "first" })
+        assert.include(yield* create(api), "x-extra")
+        api = api.annotate(HttpApi.HeadersParseOptions, {})
+        assert.include(yield* create(api), "extraQuery")
+        api = api.annotate(HttpApi.QueryParseOptions, {})
+        yield* create(api)
+        assert.strictEqual(requests.length, 1)
+        assert.strictEqual(requests[0]!.url, "http://test/users/1?q=x")
+        assert.strictEqual(requests[0]!.headers["x-api-key"], "key")
+        assert.isUndefined(requests[0]!.headers["x-extra"])
+        strictEqual(HttpApiClient.urlBuilder(api).test.create(request), "/users/1?q=x")
+      }))
+
+    it.effect("buffered responses decode headers, success and error bodies with their own slots", () =>
+      Effect.gen(function*() {
+        const Group = HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/user", {
+            success: HttpApiSchema.WithHeaders(Person, { "x-count": Schema.Int }),
+            error: Person.pipe(HttpApiSchema.status(400))
+          }).annotate(HttpApi.ParseOptions, Strict)
+        )
+        const get = (api: HttpApi.HttpApi<"Api", typeof Group>, status: number) =>
+          HttpApiClient.makeWith(api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(JSON.stringify(adaWithExtra), {
+                status,
+                headers: { "content-type": "application/json", "server": "test", "x-count": "1" }
+              })
+            )
+          }).pipe(Effect.flatMap((client) => Effect.exit(client.test.get({}))))
+
+        let api = HttpApi.make("Api").add(Group).annotate(HttpApi.SuccessParseOptions, {})
+        const headersError = yield* get(api, 200)
+        assert.strictEqual(headersError._tag, "Failure")
+        assert.include(String(headersError), `["content-type"]`)
+
+        api = api.annotate(HttpApi.HeadersParseOptions, {})
+        const value = yield* get(api, 200)
+        assert.deepStrictEqual(
+          value,
+          Exit.succeed(HttpApiSchema.withHeaders({ body: { name: "Ada" }, headers: { "x-count": 1 } }))
+        )
+
+        const strictError = yield* get(api, 400)
+        assert.ok(strictError._tag === "Failure" && HttpClientError.isHttpClientError(Cause.squash(strictError.cause)))
+        assert.deepStrictEqual(yield* get(api.annotate(HttpApi.ErrorParseOptions, {}), 400), Exit.fail({ name: "Ada" }))
+      }))
+
+    it.effect("streamed WithHeaders responses decode headers and events with their own slots", () =>
+      Effect.gen(function*() {
+        const Group = HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("events", "/events", {
+            success: HttpApiSchema.WithHeaders(
+              HttpApiSchema.StreamSse({ data: Person, error: StreamError }),
+              { "x-count": Schema.Int }
+            )
+          })
+        )
+        const events = (api: HttpApi.HttpApi<"Api", typeof Group>) =>
+          HttpApiClient.makeWith(api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(textStream([`data: ${JSON.stringify(adaWithExtra)}\n\n`]), {
+                headers: { "content-type": "text/event-stream", "x-count": "1" }
+              })
+            )
+          }).pipe(
+            Effect.flatMap((client) => client.test.events({})),
+            Effect.flatMap(({ body, headers }) =>
+              Effect.map(Stream.runCollect(body), (events) => ({ events, headers }))
+            ),
+            Effect.exit
+          )
+
+        const api = HttpApi.make("Api").add(Group)
+          .annotate(HttpApi.ParseOptions, Strict)
+          .annotate(HttpApi.HeadersParseOptions, {})
+        const strictEvents = yield* events(api)
+        assert.include(String(strictEvents), `["data"]["extra"]`)
+        assert.deepStrictEqual(
+          yield* events(api.annotate(HttpApi.SuccessParseOptions, {})),
+          Exit.succeed({ events: [{ name: "Ada" }], headers: { "x-count": 1 } })
+        )
+      }))
+
+    it.effect("encodeToWithHeaders decodes header transformations with HeadersParseOptions", () =>
+      Effect.gen(function*() {
+        class Invalid extends Schema.TaggedError<Invalid>()("Invalid", { a: Schema.Finite, b: Schema.Finite }) {}
+        const InvalidResponse = Invalid.pipe(HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(400), HttpApiSchema.asText()),
+          headers: { "x-a": Schema.FiniteFromString, "x-b": Schema.FiniteFromString }
+        }, {
+          decode: ({ headers }) => new Invalid({ a: headers["x-a"], b: headers["x-b"] }),
+          encode: (error) => ({ body: "invalid", headers: { "x-a": error.a, "x-b": error.b } })
+        }))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/invalid", { error: InvalidResponse }))
+        )
+          .annotate(HttpApi.ParseOptions, { errors: "first" })
+          .annotate(HttpApi.HeadersParseOptions, { errors: "all" })
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response("invalid", {
+              status: 400,
+              headers: { "content-type": "text/plain", "x-a": "bad", "x-b": "bad" }
+            })
+          )
+        })
+
+        const exit = String(yield* Effect.exit(client.test.get({})))
+        assert.include(exit, `["x-a"]`)
+        assert.include(exit, `["x-b"]`)
+      }))
+
+    it.effect("encodeToWithHeaders validates the mapped response value", () =>
+      Effect.gen(function*() {
+        const Positive = Schema.Number.check(Schema.isGreaterThan(0))
+        const ResponseSchema = Positive.pipe(HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.asText()),
+          headers: { "x-value": Schema.FiniteFromString }
+        }, {
+          decode: ({ headers }) => headers["x-value"],
+          encode: (value) => ({ body: "value", headers: { "x-value": value } })
+        }))
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(HttpApiEndpoint.get("get", "/value", { success: ResponseSchema }))
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response("value", { headers: { "content-type": "text/plain", "x-value": "-1" } })
+          )
+        })
+
+        const exit = yield* Effect.exit(client.test.get({}))
+        assert.strictEqual(exit._tag, "Failure")
+        assert.include(String(exit), "greater than 0")
+      }))
   })
 
   describe("literal action suffixes", () => {

@@ -7,6 +7,7 @@
  * batch updates. This module also includes constructors, iteration, conversion,
  * mapping, filtering, and reducing helpers.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -44,6 +45,7 @@ const TypeId = internal.HashMapTypeId
  * HashMap.set(map, "d", 4) // => HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -85,6 +87,7 @@ export interface HashMap<out Key, out Value> extends Iterable<[Key, Value]>, Equ
  * updatedInventory // => HashMap.make(["laptop", { quantity: 5, price: 999 }], ["mouse", { quantity: 20, price: 29 }], ["tablet", newProduct])
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace HashMap {
@@ -221,6 +224,7 @@ export declare namespace HashMap {
  * HashMap.isHashMap(null) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -240,6 +244,7 @@ export const isHashMap: {
  * HashMap.empty<string, number>() // => HashMap.empty()
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -256,6 +261,7 @@ export const empty: <K = never, V = never>() => HashMap<K, V> = internal.empty
  * HashMap.make(["a", 1], ["b", 2], ["c", 3]) // => HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -278,6 +284,7 @@ export const make: <Entries extends ReadonlyArray<readonly [any, any]>>(
  * HashMap.fromIterable(entries) // => HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -298,6 +305,7 @@ export const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => HashMap
  * HashMap.isEmpty(nonEmptyMap) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -321,6 +329,7 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = internal.isEmpty
  * HashMap.get("b")(map) // => Option.some(2)
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -354,6 +363,7 @@ export const get: {
  * HashMap.getHash(userMap, "user999", Hash.string("user999")) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -397,6 +407,7 @@ export const getHash: {
  * // Error: "HashMap.getUnsafe: key not found"
  * ```
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
@@ -422,6 +433,7 @@ export const getUnsafe: {
  * HashMap.has("b")(map) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -457,6 +469,7 @@ export const has: {
  * HashMap.hasHash(userMap, "Admin", lowercaseHash) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -478,6 +491,7 @@ export const hasHash: {
  * HashMap.hasBy(hm, (value) => value === "b") // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 3.16.0
  */
@@ -502,6 +516,7 @@ export const hasBy: {
  * map1 // => HashMap.make(["a", 1])
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -522,6 +537,7 @@ export const set: {
  * Array.from(HashMap.keys(map)).sort() // => ["a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -539,6 +555,7 @@ export const keys: <K, V>(self: HashMap<K, V>) => IterableIterator<K> = internal
  * Array.from(HashMap.values(map)).sort() // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -569,6 +586,7 @@ export const values: <K, V>(self: HashMap<K, V>) => IterableIterator<V> = intern
  * allEmployees.filter((emp) => emp.department === "engineering").length // => 2
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 3.13.0
  */
@@ -600,6 +618,7 @@ export const toValues = <K, V>(self: HashMap<K, V>): Array<V> => Array.from(valu
  * Array.from(HashMap.entries(config)).length // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -633,6 +652,7 @@ export const entries: <K, V>(self: HashMap<K, V>) => IterableIterator<[K, V]> = 
  * HashMap.fromIterable(scoreEntries) // => HashMap.make(["alice", 1250], ["charlie", 1100], ["bob", 980])
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -653,6 +673,7 @@ export const toEntries = <K, V>(self: HashMap<K, V>): Array<[K, V]> => Array.fro
  * HashMap.size(map) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -685,6 +706,7 @@ export const size: <K, V>(self: HashMap<K, V>) => number = internal.size
  * HashMap.endMutation(mutable) // => HashMap.make(["b", 2], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -713,6 +735,7 @@ export const beginMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V> = inter
  * HashMap.endMutation(mutable) // => HashMap.make(["y", 20], ["z", 30], ["w", 40])
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -740,6 +763,7 @@ export const endMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V> = interna
  * map2 // => HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -772,6 +796,7 @@ export const mutate: {
  * HashMap.get(updated, "a") // => Option.some(2)
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -827,6 +852,7 @@ export const modifyAt: {
  * HashMap.get(withClicks, "clicks") // => Option.some(1)
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -850,6 +876,7 @@ export const modifyHash: {
  * HashMap.get(map2, "b") // => Option.some(2)
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -879,6 +906,7 @@ export const modify: {
  * HashMap.get(union, "b") // => Option.some(20)
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -902,6 +930,7 @@ export const union: {
  * map2 // => HashMap.make(["a", 1], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -924,6 +953,7 @@ export const remove: {
  * map2 // => HashMap.make(["a", 1], ["c", 3])
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 2.0.0
  */
@@ -948,6 +978,7 @@ export const removeMany: {
  * HashMap.get(map2, "a") // => Option.some(10)
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -971,6 +1002,7 @@ export const setMany: {
  * HashMap.get(map2, "b") // => Option.some("b:4")
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -1001,6 +1033,7 @@ export const map: {
  * HashMap.get(map2, "b2") // => Option.some(4)
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1027,6 +1060,7 @@ export const flatMap: {
  * collected.sort() // => [["a", 1], ["b", 2]]
  * ```
  *
+ * @stability stable
  * @category traversing
  * @since 2.0.0
  */
@@ -1047,6 +1081,7 @@ export const forEach: {
  * HashMap.reduce(map, 0, (acc, value) => acc + value) // => 6
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -1069,6 +1104,7 @@ export const reduce: {
  * map2 // => HashMap.make(["b", 2], ["d", 4])
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1096,6 +1132,7 @@ export const filter: {
  * HashMap.get(map2, "a") // => Option.some(1)
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1120,6 +1157,7 @@ export const compact: <K, A>(self: HashMap<K, Option<A>>) => HashMap<K, A> = int
  * HashMap.get(map2, "b") // => Option.some(4)
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1141,6 +1179,7 @@ export const filterMap: {
  * HashMap.findFirst(map, (value, key) => key === "b" && value > 1) // => Option.some(["b", 2])
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -1163,6 +1202,7 @@ export const findFirst: {
  * HashMap.some(map, (value) => value > 5) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 3.13.0
  */
@@ -1185,6 +1225,7 @@ export const some: {
  * HashMap.every(map, (value) => value > 1) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 3.14.0
  */

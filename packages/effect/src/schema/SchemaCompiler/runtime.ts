@@ -65,12 +65,15 @@ const makeObjectBase = (
   const runFallback: SchemaIssueParser = (input, options) =>
     (fallback ??= ast.getParser(compile, compileField))(input, options)
   const resume = (
-    state: ObjectParserState,
+    snapshot: ObjectParserState,
     index: number,
     pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
   ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
     const property = properties![index]
     return Effect.flatMap(Effect.exit(pending), (exit) => {
+      // Each execution gets its own output; `issues` is still undefined here
+      // because `errors: "all"` is routed to the fallback before suspending.
+      const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
       const terminal = SchemaAST.stepProperty(state, property, exit)
       if (terminal) return terminal
       const done = () => InternalParser.succeed(state.out)
@@ -237,6 +240,21 @@ const invalidEncoding = (
     ? invalidType(ast, value, options)
     : Interpreter.wrapEncoding(ast, input, options, invalidType(ast.encoding[index - 1].to, value, options))
 
+const invalidEncodingChecks = (
+  ast: SchemaAST.AST & { readonly encoding: SchemaAST.Encoding },
+  input: unknown,
+  issues: readonly [SchemaIssue.Issue, ...Array<SchemaIssue.Issue>],
+  options: SchemaAST.ParseOptions
+) => {
+  const source = ast.encoding[ast.encoding.length - 1].to
+  return Interpreter.wrapEncoding(
+    ast,
+    input,
+    options,
+    Effect.fail(new SchemaIssue.Composite(source, issues, input, options))
+  )
+}
+
 /**
  * @internal
  */
@@ -255,6 +273,7 @@ export const runtime = {
   die: Effect.die,
   invalidType,
   invalidEncoding,
+  invalidEncodingChecks,
   getCheckIssues,
   check,
   getExpectedKeys: (ast: SchemaAST.Objects) =>
@@ -262,7 +281,7 @@ export const runtime = {
   hasExcessProperties,
   matchesTemplateLiteral: (ast: SchemaAST.TemplateLiteral, input: unknown, options: SchemaAST.ParseOptions) =>
     typeof input === "string" && ast.matchPart(input, options) !== undefined,
-  getCandidates: SchemaAST.getCandidates,
+  getCandidateIndex: SchemaAST.getCandidateIndex,
   getIndexSignatureKeys: SchemaAST.getIndexSignatureKeys,
   parameterFromPropertyKey: SchemaAST.parameterFromPropertyKey,
   getConstructorDescriptor: SchemaAST.getConstructorDescriptor,

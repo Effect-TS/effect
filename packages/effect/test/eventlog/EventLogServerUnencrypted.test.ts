@@ -115,3 +115,118 @@ it.effect("indexes conflicts from the sliced history", () =>
     assert.isDefined(originBConflicts)
     assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
   }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+const makeAuthClient = (options: {
+  readonly storage: EventLogServerUnencrypted.Storage["Service"]
+  readonly authorization: EventLogServerUnencrypted.EventLogServerAuthorization["Service"]
+}) =>
+  RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
+    Effect.provide(EventLogServerUnencrypted.layerRpcHandlers.pipe(
+      Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, options.storage)),
+      Layer.provide(EventLog.layerRegistry),
+      Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+        resolve: ({ storeId }) => Effect.succeed(storeId),
+        hasStore: () => Effect.succeed(true)
+      })),
+      Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, options.authorization))
+    ))
+  )
+
+const makeRecordingStorage = Effect.gen(function*() {
+  const bindingCalls = yield* Ref.make(0)
+  const inner = yield* EventLogServerUnencrypted.makeStorageMemory
+  const storage = EventLogServerUnencrypted.Storage.of({
+    ...inner,
+    getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
+      Ref.update(bindingCalls, (count) => count + 1).pipe(
+        Effect.andThen(inner.getOrCreateSessionAuthBinding(publicKey, signingPublicKey))
+      )
+  })
+  return { storage, bindingCalls }
+})
+
+it.effect("Authenticate denies a first-use identity without creating a binding", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const policyCalls = yield* Ref.make<ReadonlyArray<string>>([])
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        authorizeWrite: () => Effect.void,
+        authorizeRead: () => Effect.void,
+        authorizeIdentity: ({ publicKey }) =>
+          Ref.update(policyCalls, (calls) => [...calls, publicKey]).pipe(
+            Effect.andThen(Effect.fail(
+              new EventLogServerUnencrypted.EventLogServerAuthError({
+                reason: "Forbidden",
+                publicKey,
+                message: "Identity denied"
+              })
+            ))
+          )
+      }
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.match({
+      onFailure: (error) => ({ tag: "Failed" as const, error }),
+      onSuccess: () => ({ tag: "Succeeded" as const })
+    }))
+    assert.strictEqual(result.tag, "Failed")
+    if (result.tag === "Failed") {
+      assert.strictEqual(result.error._tag, "EventLogProtocolError")
+      assert.strictEqual(result.error.code, "Forbidden")
+    }
+    assert.deepStrictEqual(yield* Ref.get(policyCalls), [identity.publicKey])
+    assert.strictEqual(yield* Ref.get(bindingCalls), 0)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate re-checks identity authorization on a cached binding", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const allowed = yield* Ref.make(true)
+    const policyCalls = yield* Ref.make<ReadonlyArray<string>>([])
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        authorizeWrite: () => Effect.void,
+        authorizeRead: () => Effect.void,
+        authorizeIdentity: ({ publicKey }) =>
+          Ref.update(policyCalls, (calls) => [...calls, publicKey]).pipe(
+            Effect.andThen(Ref.get(allowed)),
+            Effect.andThen((allow) =>
+              allow ? Effect.void : Effect.fail(
+                new EventLogServerUnencrypted.EventLogServerAuthError({
+                  reason: "Forbidden",
+                  publicKey,
+                  message: "Identity denied"
+                })
+              )
+            )
+          )
+      }
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    )
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+
+    yield* Ref.set(allowed, false)
+    const retryHello = yield* client["EventLog.Hello"]()
+    const result = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: retryHello.challenge, remoteId: retryHello.remoteId })
+    ).pipe(Effect.match({
+      onFailure: (error) => ({ tag: "Failed" as const, error }),
+      onSuccess: () => ({ tag: "Succeeded" as const })
+    }))
+    assert.strictEqual(result.tag, "Failed")
+    if (result.tag === "Failed") {
+      assert.strictEqual(result.error._tag, "EventLogProtocolError")
+      assert.strictEqual(result.error.code, "Forbidden")
+    }
+    assert.deepStrictEqual(yield* Ref.get(policyCalls), [identity.publicKey, identity.publicKey])
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))

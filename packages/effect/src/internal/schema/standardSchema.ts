@@ -53,7 +53,7 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
       })
     })
   }
-  if ("~standard" in self) {
+  if (Object.hasOwn(self, "~standard")) {
     const out = self as any
     if ("validate" in out["~standard"]) return out
     Object.assign(out["~standard"], { validate })
@@ -109,7 +109,7 @@ export function toStandardJSONSchemaV1<S extends Schema.Constraint>(
       return toBaseStandardJSONSchemaV1(SchemaAST.toType(self.ast), options.target)
     }
   }
-  if ("~standard" in self) {
+  if (Object.hasOwn(self, "~standard")) {
     const out = self as any
     if ("jsonSchema" in out["~standard"]) return out
     Object.assign(out["~standard"], { jsonSchema })

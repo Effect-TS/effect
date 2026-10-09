@@ -80,8 +80,29 @@ const readLineDisposed = Effect.gen(function*() {
 })
 
 const mode = process.argv[2]
+const select = Prompt.run(Prompt.Select({
+  message: "Pick fruit",
+  choices: [
+    { title: "Apple", value: "apple" },
+    { title: "Banana", value: "banana" }
+  ]
+})).pipe(
+  Effect.catchTag("QuitError", () => Effect.succeed("QuitError")),
+  // Bound the regression without closing stdin: EOF would mask ignored Esc.
+  Effect.timeoutOption("2 seconds"),
+  Effect.map(Option.getOrElse(() => "TimedOut"))
+)
+
 const program = Effect.gen(function*() {
-  if (mode === "prompts") {
+  if (mode === "select" || mode === "select-custom-quit") {
+    return yield* select.pipe(Effect.provide(Layer.mergeAll(
+      mode === "select-custom-quit"
+        ? Layer.effect(Terminal.Terminal, NodeTerminal.make(() => false))
+        : NodeTerminal.layer,
+      FileSystem.layerNoop({}),
+      Path.layer
+    )))
+  } else if (mode === "prompts") {
     return yield* prompts
   } else if (mode === "read-input") {
     return yield* readInput

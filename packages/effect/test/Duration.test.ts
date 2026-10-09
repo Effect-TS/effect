@@ -113,6 +113,11 @@ describe("Duration", () => {
     )
   })
 
+  it("fromInputUnsafe normalizes infinite nanosecond totals", () => {
+    deepStrictEqual(Duration.fromInputUnsafe([1e300, 1]), Duration.infinity)
+    deepStrictEqual(Duration.fromInputUnsafe({ seconds: -Infinity, nanoseconds: 1 }), Duration.negativeInfinity)
+  })
+
   it("fromInput", () => {
     const millis100 = Duration.millis(100)
     assertSome(Duration.fromInput(millis100), millis100)

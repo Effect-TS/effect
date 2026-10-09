@@ -25,6 +25,8 @@ jobs:
         uses: ./.github/actions/setup
       - name: Lint
         run: pnpm lint
+      - name: Check JSDoc
+        run: pnpm jsdocs --check
       - name: Check circular dependencies
         run: pnpm circular
       - name: Generate AI documentation
@@ -146,6 +148,7 @@ jobs:
           docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
+          docker pull coredns/coredns:1.14.7 &
           wait
 
       - name: Install dependencies

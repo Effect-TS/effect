@@ -2811,6 +2811,15 @@ const refined = Schema.Array(Schema.String).pipe(
 
 Use `Schema.brand` to add a brand to a schema.
 
+The identifier must be a single concrete string literal. `Schema.brand` adds
+a nominal distinction to the decoded TypeScript type. It does not add runtime
+validation or metadata to the schema AST. Apply it once per identifier when a
+type has multiple brands.
+
+Because branding is type-only, `SchemaRepresentation` does not preserve it.
+Reapply `Schema.brand` after rebuilding a representation or generating schema
+code when the branded TypeScript type is still required.
+
 **Example** (Brand a string as a UserId)
 
 ```ts
@@ -2819,6 +2828,32 @@ import { Schema } from "effect"
 //      ┌─── Schema.brand<Schema.String, "UserId">
 //      ▼
 const branded = Schema.String.pipe(Schema.brand("UserId"))
+```
+
+### Using Brand constructors
+
+Use `Schema.fromBrand` to reuse the checks from a `Brand.Constructor`. The
+constructor must have exactly one concrete brand key, and the identifier must
+match that key. Apply `Schema.fromBrand` once per constructor to compose
+distinct brands. Use `Schema.Union` for alternatives instead.
+
+With a string enum brand key, pass the enum member rather than its string value.
+
+**Example** (Compose checked brands)
+
+```ts
+import { Brand, Schema } from "effect"
+
+type Int = number & Brand.Brand<"Int">
+const Int = Brand.check<Int>(Schema.isInt())
+
+type Positive = number & Brand.Brand<"Positive">
+const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
+
+const PositiveInt = Schema.Number.pipe(
+  Schema.fromBrand("Int", Int),
+  Schema.fromBrand("Positive", Positive)
+)
 ```
 
 ## Structural Filters
@@ -4358,6 +4393,8 @@ console.log(A.ast.annotations?.title)
 
 Use `extend` to create a subclass that adds fields to the base schema. Instance fields declared on the base class are also available on the subclass.
 
+Fields with the same name replace inherited fields. Use this to refine validation or change encoding. Effect does not check compatibility; the caller must ensure the replacement preserves the base class contract.
+
 **Example** (Extending a class with new fields)
 
 ```ts
@@ -4634,32 +4671,26 @@ Serialization converts typed values into a format suitable for storage or transm
 
 ## JSON Support
 
-#### UnknownFromJsonString
-
-A schema that decodes a JSON-encoded string into an unknown value.
-
-This schema takes a string as input and attempts to parse it as JSON during decoding. If parsing succeeds, the result is passed along as an unknown value. If the string is not valid JSON, decoding fails.
-
-When encoding, any value is converted back into a JSON string using JSON.stringify. If the value is not a valid JSON value, encoding fails.
-
-**Example**
-
-```ts
-import { Schema } from "effect"
-
-Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(`{"a":1,"b":2}`)
-// => { a: 1, b: 2 }
-```
-
 #### fromJsonString
 
 Returns a schema that decodes a JSON string and then decodes the parsed value using the given schema.
 
-This is useful when working with JSON-encoded strings where the actual structure of the value is known and described by an existing schema.
+Use `Schema.Unknown` to parse the JSON string without validating its structure, or provide a more specific schema to validate the parsed value.
 
-The resulting schema first parses the input string as JSON, and then runs the provided schema on the parsed result.
+Decoding fails if the input is not valid JSON or the parsed value does not satisfy the provided schema.
 
-**Example**
+During encoding, the schema encodes the value with the provided schema and then converts the result to a JSON string.
+
+**Example** (Parsing without validation)
+
+```ts
+import { Schema } from "effect"
+
+Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(`{"a":1,"b":2}`)
+// => { a: 1, b: 2 }
+```
+
+**Example** (Parsing and validating a known structure)
 
 ```ts
 import { Schema } from "effect"
@@ -6004,6 +6035,13 @@ console.log(decoded.representation._tag)
 Consequently, rebuilding `encoded` produces a schema for the string representation; it does not recreate the original
 string-to-number transformation.
 
+Representations describe runtime schema structure, so they do not preserve
+TypeScript-only distinctions. `Schema.brand` is absent because it does not
+change the AST. A check introduced by `Schema.refine` can remain part of the
+runtime representation, but its narrowed TypeScript type cannot be recovered.
+Reapply these type-level operations after rebuilding a representation or
+generating schema code when needed.
+
 ### Live and persisted documents
 
 A live `Document` can contain functions in its ordinary annotations. These callbacks allow compilers to handle custom
@@ -6071,10 +6109,12 @@ inline even when the same AST occurs more than once. Recursive schemas always re
 available, the converter assigns a synthetic name such as `Objects_` or `Suspend_`.
 
 The default policy uses an explicit `identifier` as the reference name. Reusing the same schema shares its reference.
-Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
-across several successive context changes. Context still belongs to each occurrence and does not, by itself, create a new
-candidate. Independently constructed ASTs are not canonicalized merely because they are structurally equal. When distinct
-schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes in encounter order,
+AST copies that change only their own `context` or `encoding` share a decoded body. Type and encoded projections preserve
+this sharing while keeping each occurrence's context and following its actual encoding chain. Changing checks, value
+annotations, or children creates a distinct body; child contexts are part of the parent's structure. Reference owners omit
+their own encoding, so reference policies inspect the represented body. Independently constructed ASTs are not
+canonicalized merely because they are structurally equal. When distinct schemas request the same name, the first schema
+keeps it and later schemas receive numeric suffixes in encounter order,
 such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their generated names
 use the `Encoded` suffix and follow the same collision rules.
 

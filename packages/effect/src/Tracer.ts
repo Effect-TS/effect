@@ -7,6 +7,7 @@
  * external span support, trace propagation settings, and the default in-memory
  * span implementation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
@@ -23,6 +24,7 @@ import * as Option from "./Option.ts"
  * `span` to allocate a span from the supplied name, parent, annotations,
  * links, start time, kind, root flag, and sampling decision.
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -48,6 +50,7 @@ const evaluate = "~effect/Effect/evaluate" satisfies core.evaluate
  * A low-level Effect primitive that can be evaluated by a tracer-specific
  * context for the current fiber.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -85,6 +88,7 @@ export interface EffectPrimitive<X> {
  * endedStatus.endTime - endedStatus.startTime // => 500_000_000n
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -119,6 +123,7 @@ export type SpanStatus = {
  * await Effect.runPromise(getSpanIds(externalSpan)) // => ["span-123", "trace-456"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -141,6 +146,7 @@ export type AnySpan = Span | ExternalSpan
  * Tracer.ParentSpanKey // => "effect/Tracer/ParentSpan"
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -165,6 +171,7 @@ export const ParentSpanKey = "effect/Tracer/ParentSpan"
  * await Effect.runPromise(Effect.provideService(program, Tracer.ParentSpan, parent)) // => "span-123"
  * ```
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -193,6 +200,7 @@ export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpa
  * externalSpan.spanId // => "span-abc-123"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -240,6 +248,7 @@ export interface ExternalSpan {
  * spans[0]?.status._tag // => "Ended"
  * ```
  *
+ * @stability stable
  * @category options
  * @since 3.1.0
  */
@@ -250,6 +259,7 @@ export interface SpanOptions extends SpanOptionsNoTrace, TraceOptions {}
  * attributes, links, parent or root selection, annotations, span kind,
  * sampling, and the trace level used for filtering.
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -268,6 +278,7 @@ export interface SpanOptionsNoTrace {
  * Options that control stack trace capture for tracing wrappers.
  * `captureStackTrace` can disable capture or provide a lazy stack string.
  *
+ * @stability stable
  * @category options
  * @since 4.0.0
  */
@@ -304,6 +315,7 @@ export interface TraceOptions {
  * spans[0]?.kind // => "server"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 3.1.0
  */
@@ -366,6 +378,7 @@ export type SpanKind = "internal" | "server" | "client" | "producer" | "consumer
  * events // => [["loaded", 1_250_000_000n, { "cache.hit": true }]]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -425,6 +438,7 @@ export interface Span {
  * spans[0]?.links[0]?.attributes["link.type"] // => "follows-from"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -449,6 +463,7 @@ export interface SpanLink {
  *
  * @see {@link Span} for the span values returned by tracer implementations
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -490,6 +505,7 @@ export const make = (options: Tracer): Tracer => options
  * spans.map((span) => Option.getOrUndefined(span.parent)?.spanId) // => ["span-abc-123"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -534,6 +550,7 @@ export const externalSpan = (
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category services
  * @since 3.12.0
  */
@@ -557,6 +574,7 @@ export const DisablePropagation = Context.Reference<boolean>(
  *
  * @see {@link MinimumTraceLevel} for the threshold that decides whether spans at that level are sampled
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -586,6 +604,7 @@ export const CurrentTraceLevel: Context.Reference<LogLevel> = Context.Reference<
  *
  * @see {@link CurrentTraceLevel} for the default span level used when options do not specify one
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -601,6 +620,7 @@ export const MinimumTraceLevel = Context.Reference<
  * Use when you need the raw context key for active tracer lookup in lower-level
  * tracing code.
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -626,6 +646,7 @@ export const TracerKey = "effect/Tracer"
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -644,6 +665,7 @@ export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(Trace
  * that no tracing backend is installed and skip work that only a backend could
  * observe, such as recording span attributes.
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -666,6 +688,7 @@ export const nativeTracer: Tracer = make({
  *
  * @see {@link Span} for the interface implemented by native spans
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */

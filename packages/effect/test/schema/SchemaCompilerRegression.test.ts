@@ -15,6 +15,22 @@ import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual } from "../utils/assert.ts"
 
 describe("compiler regression contracts", () => {
+  it.effect("re-running a compiled Struct decoder keeps earlier results intact", () =>
+    Effect.gen(function*() {
+      let ids = 0
+      const schema = Schema.Struct({
+        id: Schema.Number.pipe(Schema.decode({
+          decode: SchemaGetter.transformEffect(() => Effect.sync(() => ++ids)),
+          encode: SchemaGetter.passthrough()
+        }))
+      })
+      SchemaJITCompiler.enable(schema.ast)
+      const program = SchemaParser.decodeUnknownEffect(schema)({ id: 0 })
+      const first = yield* program
+      const second = yield* program
+      assert.deepStrictEqual([first, second], [{ id: 1 }, { id: 2 }])
+    }))
+
   it("preserves template literal issues after compilation", () => {
     const schema = Schema.TemplateLiteral(["count:", Schema.Int.check(Schema.isGreaterThan(0))])
     const inputs = ["count:1", "count:0", "count:1.5", "invalid", null]
@@ -298,6 +314,33 @@ describe("compiler regression contracts", () => {
       assert.isUndefined(Codegen.generate(ast, "decode"))
     }
     assert.isBelow(reads, 10)
+  })
+
+  it("preserves repeated Union members when selecting generated decoders", () => {
+    const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.Number })
+    for (const mode of ["anyOf", "oneOf"] as const) {
+      const schema = Schema.Union([
+        member,
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String }),
+        member,
+        Schema.Never
+      ], { mode })
+      SchemaJITCompiler.enable(schema.ast)
+      const decode = SchemaParser.decodeUnknownResult(schema)
+      const is = SchemaParser.is(schema)
+      const input = { kind: "a", value: 1 } as const
+      strictEqual(is(input), mode === "anyOf")
+      const result = decode(input)
+      if (mode === "anyOf") {
+        deepStrictEqual(result, Result.succeed(input))
+      } else {
+        assert(Result.isFailure(result))
+        strictEqual(result.failure._tag, "OneOf")
+      }
+      const other = { kind: "b", value: "value" } as const
+      strictEqual(is(other), true)
+      deepStrictEqual(decode(other), Result.succeed(other))
+    }
   })
 
   it("stops oneOf after its second successful candidate", () => {

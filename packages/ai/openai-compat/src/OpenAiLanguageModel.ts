@@ -6,6 +6,7 @@
  * or streaming chat completion results back into Effect AI response content and
  * metadata.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as AiError from "effect/ai/AiError"
@@ -111,6 +112,7 @@ type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknow
  *
  * @see {@link withConfigOverride} for scoping language model request overrides
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -127,6 +129,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for file prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -145,6 +148,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for reasoning prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -169,6 +173,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for assistant tool-call prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -185,12 +190,17 @@ declare module "effect/ai/Prompt" {
        * The status to send for the tool-call item.
        */
       readonly status?: MessageStatus | null
+      /**
+       * Provider-specific extra content to echo back with the tool call.
+       */
+      readonly extraContent?: Schema.JsonObject | null
     } | null
   }
 
   /**
    * OpenAI-compatible options for tool-result prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -213,6 +223,7 @@ declare module "effect/ai/Prompt" {
   /**
    * OpenAI-compatible options for text prompt parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -241,6 +252,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to a complete text response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -273,6 +285,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed text part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -291,6 +304,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed text part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -313,6 +327,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to a complete reasoning response part.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -335,6 +350,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed reasoning part starts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -357,6 +373,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted for a streamed reasoning delta.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -375,6 +392,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata emitted when a streamed reasoning part ends.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -397,6 +415,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to tool-call response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -409,12 +428,17 @@ declare module "effect/ai/Response" {
        * The OpenAI item ID associated with the tool call.
        */
       readonly itemId?: string | null
+      /**
+       * Provider-specific extra content returned with the tool call.
+       */
+      readonly extraContent?: Schema.JsonObject | null
     } | null
   }
 
   /**
    * OpenAI-compatible metadata attached to document source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -471,6 +495,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to URL source citations.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -497,6 +522,7 @@ declare module "effect/ai/Response" {
   /**
    * OpenAI-compatible metadata attached to finish response parts.
    *
+   * @stability unstable
    * @category models
    * @since 4.0.0
    */
@@ -528,6 +554,7 @@ declare module "effect/ai/Response" {
  * @see {@link layer} for creating a `LanguageModel.LanguageModel` layer directly
  * @see {@link make} for constructing the language model service effectfully
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -566,6 +593,7 @@ export const model = (
  * @see {@link layer} for providing the service as a `Layer`
  * @see {@link model} for creating a model descriptor for `AiModel.provide`
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -675,6 +703,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
  * @see {@link make} for constructing the language model service effectfully
  * @see {@link model} for creating an AI model descriptor
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -699,6 +728,7 @@ export const layer = (options: {
  *
  * @see {@link Config} for the configuration shape
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -938,12 +968,14 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 const toolName = toolNameMapper.getProviderName(part.name)
+                const extraContent = getExtraContent(part)
 
                 messages.push({
                   type: "function_call",
                   name: toolName,
                   call_id: part.id,
                   arguments: JSON.stringify(part.params),
+                  ...(Predicate.isNotNull(extraContent) ? { extra_content: extraContent } : {}),
                   ...(Predicate.isNotNull(id) ? { id } : {}),
                   ...(Predicate.isNotNull(status) ? { status } : {})
                 })
@@ -1038,6 +1070,7 @@ type ActiveToolCall = {
   readonly id: string
   name: string
   arguments: string
+  extraContent: Schema.JsonObject | undefined
 }
 
 const makeResponse = Effect.fnUntraced(
@@ -1106,7 +1139,12 @@ const makeResponse = Effect.fnUntraced(
             id: toolId,
             name: toolName,
             params,
-            metadata: { openai: { ...makeItemIdMetadata(toolCall.id) } }
+            metadata: {
+              openai: {
+                ...makeItemIdMetadata(toolCall.id),
+                ...makeExtraContentMetadata(toolCall.extra_content ?? undefined)
+              }
+            }
           })
         }
       }
@@ -1198,7 +1236,12 @@ const makeStreamResponse = Effect.fnUntraced(
               id: toolCall.id,
               name: toolCall.name,
               params,
-              metadata: { openai: { ...makeItemIdMetadata(toolCall.id) } }
+              metadata: {
+                openai: {
+                  ...makeItemIdMetadata(toolCall.id),
+                  ...makeExtraContentMetadata(toolCall.extraContent)
+                }
+              }
             })
             hasToolCalls = true
           }
@@ -1260,7 +1303,7 @@ const makeStreamResponse = Effect.fnUntraced(
           parts.push({ type: "reasoning-delta", id: reasoningId, delta: reasoningDelta })
         }
 
-        if (choice.delta?.content !== undefined && Predicate.isNotNull(choice.delta.content)) {
+        if (Predicate.isNotNullish(choice.delta?.content) && choice.delta.content.length > 0) {
           if (reasoningStarted) {
             reasoningStarted = false
             parts.push({
@@ -1297,12 +1340,16 @@ const makeStreamResponse = Effect.fnUntraced(
               activeToolCalls[toolIndex] = {
                 id: toolId,
                 name: toolName,
-                arguments: argumentsDelta
+                arguments: argumentsDelta,
+                extraContent: deltaTool.extra_content ?? undefined
               }
               parts.push({ type: "tool-params-start", id: toolId, name: toolName })
             } else {
               activeToolCall.name = toolName
               activeToolCall.arguments = `${activeToolCall.arguments}${argumentsDelta}`
+              if (Predicate.isNotNullish(deltaTool.extra_content)) {
+                activeToolCall.extraContent = deltaTool.extra_content
+              }
             }
 
             if (argumentsDelta.length > 0) {
@@ -1331,7 +1378,7 @@ const annotateRequest = (
   request: CreateResponseRequestJson
 ): void => {
   addGenAIAnnotations(span, {
-    system: "openai",
+    provider: { name: "openai" },
     operation: { name: "chat" },
     request: {
       model: request.model as string,
@@ -1341,7 +1388,6 @@ const annotateRequest = (
     },
     openai: {
       request: {
-        responseFormat: request.response_format?.type,
         serviceTier: request.service_tier as string | undefined
       }
     }
@@ -1783,7 +1829,8 @@ const toChatToolCall = (
   function: {
     name: item.name,
     arguments: item.arguments
-  }
+  },
+  ...(item.extra_content !== undefined ? { extra_content: item.extra_content } : undefined)
 })
 
 const toAssistantChatMessageContent = (
@@ -1889,10 +1936,16 @@ const getStatus = (
 const getEncryptedContent = (
   part: Prompt.ReasoningPart
 ): string | null => part.options.openai?.encryptedContent ?? null
+const getExtraContent = (
+  part: Prompt.ToolCallPart
+): Schema.JsonObject | null => part.options.openai?.extraContent ?? null
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 
 const makeItemIdMetadata = (itemId: string | undefined) => itemId !== undefined ? { itemId } : undefined
+
+const makeExtraContentMetadata = (extraContent: Schema.JsonObject | undefined) =>
+  extraContent !== undefined ? { extraContent } : undefined
 
 const normalizeServiceTier = (
   serviceTier: string | undefined

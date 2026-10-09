@@ -1,9 +1,9 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
+import { Cause, DateTime, Deferred, Effect, Fiber, Option, Queue, Schedule, Schema, Stream, String } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Model } from "effect/schema"
-import { SqlClient, SqlModel } from "effect/sql"
+import { SqlClient, SqlError, SqlModel } from "effect/sql"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { PgContainer } from "./utils.ts"
@@ -356,7 +356,45 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
 
       assert.deepStrictEqual(rows, [{ value: "first" }])
     }).pipe(TestClock.withLive))
+
+  it.effect("fails a transaction whose COMMIT rolls back after a caught error", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const cause = yield* sql.withTransaction(Effect.gen(function*() {
+        yield* Effect.ignore(sql`SELECT 1 / 0`)
+      })).pipe(Effect.sandbox, Effect.flip)
+
+      assert.isFalse(Cause.hasDies(cause))
+      assert.isTrue(Cause.hasFails(cause))
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, SqlError.SqlError)
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.strictEqual(error.reason.operation, "commit")
+    }))
 })
+
+it.layer(PgContainer.layerMakeClientUnprepared, { timeout: "30 seconds" })(
+  "PgClient.makeClient without preparation",
+  (it) => {
+    it.effect("fails an aborted COMMIT and reuses the connection", () =>
+      Effect.gen(function*() {
+        const sql = yield* PgClient.PgClient
+        const cause = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* Effect.ignore(sql`SELECT 1 / 0`)
+        })).pipe(Effect.sandbox, Effect.flip)
+
+        assert.isFalse(Cause.hasDies(cause))
+        assert.isTrue(Cause.hasFails(cause))
+        const error = Cause.squash(cause)
+        assert.instanceOf(error, SqlError.SqlError)
+        assert.strictEqual(error.reason._tag, "UnknownError")
+        assert.strictEqual(error.reason.operation, "commit")
+
+        const rows = yield* sql.withTransaction(sql<{ value: number }>`SELECT 1 AS value`)
+        assert.deepStrictEqual(rows, [{ value: 1 }])
+      }))
+  }
+)
 
 it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeClient", (it) => {
   it.effect("connects before executing queries", () =>

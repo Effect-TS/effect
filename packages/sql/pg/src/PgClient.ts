@@ -1,6 +1,7 @@
 /**
  * PostgreSQL support for Effect SQL, backed by the native wire protocol client.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -15,7 +16,7 @@ import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import * as Client from "effect/sql/SqlClient"
 import type { Borrower, Connection } from "effect/sql/SqlConnection"
-import type { SqlError } from "effect/sql/SqlError"
+import { SqlError, UnknownError } from "effect/sql/SqlError"
 import type { Custom, Fragment } from "effect/sql/Statement"
 import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
@@ -29,6 +30,7 @@ import * as PgTypes from "./PgTypes.ts"
 /**
  * The runtime type identifier for `PgClient`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -37,6 +39,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgClient"
 /**
  * The type-level identifier for `PgClient`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -45,6 +48,7 @@ export type TypeId = "~@effect/sql-pg/PgClient"
 /**
  * A PostgreSQL `SqlClient` with JSON and `LISTEN`/`NOTIFY` helpers.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -68,6 +72,7 @@ export interface PgClient extends Client.SqlClient {
 /**
  * The service tag for `PgClient`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -76,6 +81,7 @@ export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
 /**
  * Connection and query settings for a PostgreSQL client.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -149,6 +155,7 @@ export interface PgClientConfig {
 /**
  * PostgreSQL client settings with connection pool limits and timeouts.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -163,6 +170,7 @@ export interface PgPoolConfig extends PgClientConfig {
 /**
  * Creates a scoped PostgreSQL client backed by a connection pool.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -179,6 +187,7 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
 /**
  * Creates a scoped PostgreSQL client backed by one connection.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -237,6 +246,7 @@ const makeImpl = Effect.fnUntraced(function*(
       // Postgres prepares transaction control like anything else, and a client
       // with preparation turned off falls back to the unnamed path anyway.
       prepareTransactionControls: true,
+      commit,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer: options.transactionAcquirer,
       compiler,
@@ -328,6 +338,24 @@ class ConnectionImpl implements Connection {
   }
 }
 
+/** PostgreSQL returns `ROLLBACK` for `COMMIT` when a transaction is aborted. */
+const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
+  Effect.flatMap(
+    conn.executeRaw("COMMIT", []) as Effect.Effect<PgConnection.Result, SqlError>,
+    (result) =>
+      result.command === "ROLLBACK"
+        ? Effect.fail(
+          new SqlError({
+            reason: new UnknownError({
+              cause: new Error("COMMIT rolled back an aborted transaction"),
+              message: "PgClient: COMMIT rolled back an aborted transaction",
+              operation: "commit"
+            })
+          })
+        )
+        : Effect.void
+  )
+
 const makeConnection = (
   connection: PgConnection.PgConnection,
   streamAcquirer?: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope> | undefined
@@ -336,6 +364,7 @@ const makeConnection = (
 /**
  * Provides both `PgClient` and `SqlClient` from an acquisition effect.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -352,6 +381,7 @@ export const layerFrom = <E, R>(
 /**
  * Creates a client layer from wrapped pool configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -366,6 +396,7 @@ export const layerConfig = (
 /**
  * Creates a client layer from pool configuration.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -376,6 +407,7 @@ export const layer = (
 /**
  * Creates the PostgreSQL statement compiler.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -426,6 +458,7 @@ const escape = Statement.defaultEscape("\"")
 /**
  * PostgreSQL-specific statement fragments.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */

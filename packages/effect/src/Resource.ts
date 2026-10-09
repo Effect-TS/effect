@@ -6,6 +6,7 @@
  * schedule. Resource acquisition runs in a scope, so replacements and final
  * cleanup release the resources owned by previous values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
@@ -35,6 +36,7 @@ const TypeId = "~effect/Resource" as const
  * @see {@link get} for reading the currently stored acquisition result
  * @see {@link refresh} for forcing a new acquisition
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -56,6 +58,7 @@ export interface Resource<in out A, in out E = never> extends Pipeable {
  *
  * This predicate narrows the input to `Resource<unknown, unknown>`.
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -93,6 +96,7 @@ const makeUnsafe = <A, E>(
  *
  * @see {@link auto} for schedule-driven automatic refreshes
  * @see {@link refresh} to manually trigger a resource refresh
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -122,6 +126,7 @@ export const manual = <A, E, R>(
  * @see {@link manual} for caller-controlled refresh timing
  * @see {@link refresh} to trigger a refresh explicitly
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -148,6 +153,7 @@ export const auto = <A, E, R, Out, E2, R2>(
  *
  * @see {@link refresh} to re-run acquisition and update the stored value before a later read
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -177,6 +183,7 @@ export const get = <A, E>(self: Resource<A, E>): Effect.Effect<A, E> =>
  * @see {@link manual} for resources refreshed only by caller action
  * @see {@link auto} for schedule-driven automatic refreshes
  *
+ * @stability stable
  * @category resource management
  * @since 2.0.0
  */

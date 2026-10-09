@@ -742,7 +742,7 @@ Expected no excess property
     })
 
     throws(() => SchemaParser.decodeUnknownSync(schema)({ value: "blocked" }))
-    strictEqual(sourceChecks, 2)
+    strictEqual(sourceChecks, 1)
     strictEqual(firstTransformations, 0)
     strictEqual(secondTransformations, 0)
 
@@ -751,7 +751,7 @@ Expected no excess property
     strictEqual(sourceChecks, 1)
     strictEqual(firstTransformations, 1)
     strictEqual(secondTransformations, 0)
-    strictEqual(checks, 2)
+    strictEqual(checks, 1)
   })
 
   it("preserves mixed causes from interpreted encoding chains", () => {
