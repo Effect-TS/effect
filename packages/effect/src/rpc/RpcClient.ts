@@ -1058,9 +1058,9 @@ export const makeProtocolSocket = (options?: {
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
   /**
-   * Runs when the connection is dropped because no server frame arrived within
-   * `pingTimeout`, before `ConnectionHooks.onDisconnect` and before in-flight
-   * calls fail with a `SocketReadError`. Defects are logged and ignored.
+   * Runs when an open connection is dropped because no server frame arrived
+   * within `pingTimeout`, before `ConnectionHooks.onDisconnect` and before
+   * in-flight calls fail with a `SocketReadError`. Defects are logged and ignored.
    *
    * @since 4.0.3
    */
@@ -1091,6 +1091,8 @@ export const makeProtocolSocket = (options?: {
       }) :
       Effect.void
     let currentError: RpcClientError | undefined
+    let connected = false
+    let pingTimeoutError: Socket.SocketError | undefined
 
     const broadcast = (response: FromServerEncoded) =>
       Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
@@ -1143,9 +1145,11 @@ export const makeProtocolSocket = (options?: {
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
       pinger.reset()
+      connected = false
       return Effect.gen(function*() {
         const { pull } = yield* socket.reader
         currentError = undefined
+        connected = true
         if (Option.isSome(hooks)) {
           yield* hooks.value.onConnect
         }
@@ -1160,19 +1164,18 @@ export const makeProtocolSocket = (options?: {
         Effect.raceFirst(Effect.flatMap(
           pinger.timeout,
           () =>
-            Effect.andThen(
-              onPingTimeout,
-              Effect.fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketReadError({
-                    cause: new Error("ping timeout")
-                  })
+            Effect.fail(
+              pingTimeoutError = new Socket.SocketError({
+                reason: new Socket.SocketReadError({
+                  cause: new Error("ping timeout")
                 })
-              )
+              })
             )
         ))
       )
     }).pipe(
+      // runs once the socket is closed, so a concurrent socket error cannot cut it short
+      Effect.tapError((error) => connected && error === pingTimeoutError ? onPingTimeout : Effect.void),
       Option.isSome(hooks) ? Effect.ensuring(hooks.value.onDisconnect) : identity,
       Effect.tapCause((cause) => {
         const error = Cause.findError(cause)
@@ -1289,9 +1292,9 @@ export const layerProtocolSocket = (options?: {
    */
   readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
   /**
-   * Runs when the connection is dropped because no server frame arrived within
-   * `pingTimeout`, before `ConnectionHooks.onDisconnect` and before in-flight
-   * calls fail with a `SocketReadError`. Defects are logged and ignored.
+   * Runs when an open connection is dropped because no server frame arrived
+   * within `pingTimeout`, before `ConnectionHooks.onDisconnect` and before
+   * in-flight calls fail with a `SocketReadError`. Defects are logged and ignored.
    *
    * @since 4.0.3
    */
