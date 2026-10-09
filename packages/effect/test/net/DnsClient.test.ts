@@ -467,6 +467,41 @@ describe("DnsClient", () => {
       assert.isTrue(Exit.hasDies(yield* Effect.exit(udpTransport(network, { nameServers: ["ns.example"] }))))
     }))
 
+  it.effect("parses and normalizes names given as strings", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) => [answer(request)])
+      const client = yield* DnsClient.make().pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network, { nameServers: [primary] }))
+      )
+      yield* client.query("Bücher.Example.", "A")
+      assert.deepStrictEqual(network.requests.map((request) => request.header.questions[0].name), [
+        "xn--bcher-kva.example."
+      ])
+      const error = yield* Effect.flip(client.query("not a name", "A"))
+      assert.deepStrictEqual([error.reason, error.method, error.hostname, error.recordType], [
+        "BadName",
+        "resolve",
+        "not a name",
+        "A"
+      ])
+      assert.strictEqual(network.requests.length, 1)
+    }))
+
+  it.effect("parses search domains given as strings", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork(() => [])
+      const client = yield* DnsClient.make({ search: ["Corp.Example", "example."] }).pipe(
+        Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network))
+      )
+      assert.deepStrictEqual<ReadonlyArray<string>>(client.search, ["corp.example", "example."])
+      const exit = yield* Effect.exit(
+        DnsClient.make({ search: ["bad..name"] }).pipe(
+          Effect.provideServiceEffect(DnsClient.Transport, udpTransport(network))
+        )
+      )
+      assert.isTrue(Exit.hasDies(exit))
+    }))
+
   it.effect("sends queries without recursion when requested", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) => [answer(request)])

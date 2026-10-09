@@ -20,7 +20,7 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as DnsClient from "effect/net/DnsClient"
-import type * as Host from "effect/net/Host"
+import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as NodeCrypto from "./NodeCrypto.ts"
 import * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
@@ -41,9 +41,9 @@ import * as NodeSocket from "./NodeSocket.ts"
  *
  * **Gotchas**
  *
- * Invalid name servers, and IPv6 name servers with a scope ID such as
- * link-local addresses, which the sockets cannot be bound to, fail with a
- * `NetAddress.NetAddressError` when the service is created. Name servers with
+ * Invalid name servers and search domains, and IPv6 name servers with a scope
+ * ID such as link-local addresses, which the sockets cannot be bound to, fail
+ * with a `NetAddress.NetAddressError` when the service is created. Name servers with
  * a scope ID in `resolv.conf` are skipped.
  *
  * @stability experimental
@@ -52,7 +52,7 @@ import * as NodeSocket from "./NodeSocket.ts"
  */
 export interface Options {
   readonly nameServers?: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput> | undefined
-  readonly search?: ReadonlyArray<Host.DomainName> | undefined
+  readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
   readonly ndots?: number | undefined
   readonly timeout?: Duration.Input | undefined
   readonly attempts?: number | undefined
@@ -128,6 +128,9 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
   const readFile = (path: string) => fs.readFileString(path).pipe(Effect.orElseSucceed(() => ""))
   const nameServers = options?.nameServers ?? []
   yield* checkNameServers(nameServers)
+  const search = options?.search === undefined
+    ? undefined
+    : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
   const system = config.nameServers.filter((server) => !isScoped(server))
   const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), DnsClient.parseHosts), "5 seconds")
@@ -137,7 +140,7 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
       : Arr.isReadonlyArrayNonEmpty(system)
       ? system
       : localNameServers,
-    search: options?.search ?? config.search,
+    search: search ?? config.search,
     ndots: options?.ndots ?? config.ndots,
     timeout: options?.timeout ?? config.timeout,
     attempts: options?.attempts ?? config.attempts,

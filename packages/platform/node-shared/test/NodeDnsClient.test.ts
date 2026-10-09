@@ -1,3 +1,4 @@
+import * as NodeDns from "@effect/platform-node-shared/NodeDns"
 import * as NodeDnsClient from "@effect/platform-node-shared/NodeDnsClient"
 import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
@@ -17,7 +18,7 @@ const files = (contents: Record<string, string>) => {
 }
 
 describe("NodeDnsClient", () => {
-  it.effect("rejects invalid name servers and name servers with a scope ID", () =>
+  it.effect("rejects invalid name servers and search domains, and name servers with a scope ID", () =>
     Effect.gen(function*() {
       const effects: ReadonlyArray<Effect.Effect<unknown, NetAddress.NetAddressError>> = [
         NodeDnsClient.makeTransportUdp({ nameServers: [global, scoped] }),
@@ -25,7 +26,10 @@ describe("NodeDnsClient", () => {
         NodeDnsClient.make({ nameServers: [scoped] }),
         NodeDnsClient.makeTransportUdp({ nameServers: ["fe80::1%1"] }),
         NodeDnsClient.makeTransportTcp({ nameServers: ["192.0.2.53", "ns.example"] }),
-        NodeDnsClient.make({ nameServers: ["ns.example"] })
+        NodeDnsClient.make({ nameServers: ["ns.example"] }),
+        NodeDnsClient.make({ search: ["bad..name"] }),
+        Effect.scoped(NodeDns.make({ nameServers: ["192.0.2.53", "ns.example"] })),
+        Effect.scoped(NodeDns.make({ nameServers: ["fe80::1%1"] }))
       ]
       for (const effect of effects) {
         const error = yield* Effect.flip(effect)
@@ -39,6 +43,9 @@ describe("NodeDnsClient", () => {
       assert.strictEqual(transport.servers.length, 2)
       const fromStrings = yield* NodeDnsClient.makeTransportTcp({ nameServers: ["192.0.2.53", "[2001:db8::53]:5353"] })
       assert.strictEqual(fromStrings.servers.length, 2)
+      const config = yield* NodeDnsClient.systemOptions({ search: ["Corp.Example"] }).pipe(Effect.provide(files({})))
+      assert.deepStrictEqual<ReadonlyArray<string> | undefined>(config.search, ["corp.example"])
+      yield* Effect.scoped(NodeDns.make({ nameServers: ["192.0.2.53", "[2001:db8::53]:5353"] }))
     }))
 
   it.effect("reads the system configuration with the FileSystem service", () =>

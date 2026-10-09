@@ -153,12 +153,13 @@ export class DnsClient extends Context.Service<DnsClient, {
    * Responses with no error and responses for names that do not exist
    * (NXDOMAIN) both succeed; read `rcode` to tell them apart. Other response
    * codes, timeouts, and transport errors fail with a `Dns.DnsError` once
-   * every name server has been tried. Names are queried as given, without
+   * every name server has been tried. Names are parsed and normalized, and
+   * invalid names fail with `BadName`; they are queried as given, without
    * search domains. Recursion is requested unless `recursionDesired` is
    * `false`.
    */
   query(
-    name: Host.DomainName,
+    name: Host.DomainNameInput,
     type: Dns.RecordType,
     options?: { readonly recursionDesired?: boolean | undefined }
   ): Effect.Effect<Response, Dns.DnsError>
@@ -645,7 +646,7 @@ export interface MakeOptions {
   readonly timeout?: Duration.Input | undefined
   readonly attempts?: number | undefined
   readonly rotate?: boolean | undefined
-  readonly search?: ReadonlyArray<Host.DomainName> | undefined
+  readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
   readonly ndots?: number | undefined
   readonly hosts?: Effect.Effect<Hosts> | undefined
 }
@@ -665,8 +666,8 @@ export interface MakeOptions {
  * **Gotchas**
  *
  * Invalid options cause a defect when the service is created: `attempts` must
- * be a positive integer, `timeout` a positive finite duration, and `ndots` a
- * non-negative integer.
+ * be a positive integer, `timeout` a positive finite duration, `ndots` a
+ * non-negative integer, and `search` a list of valid domain names.
  *
  * @see {@link MakeOptions} for the options and their defaults
  * @see {@link layer} for a layer
@@ -688,14 +689,19 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
     if (!Number.isSafeInteger(ndots) || ndots < 0) {
       throw new RangeError(`DnsClient ndots must be a non-negative integer, received ${ndots}`)
     }
+    const search = Arr.map(options.search ?? [], (domain) => Host.domainNameFromStringUnsafe(domain))
     const { servers } = transport
     let rotation = 0
 
     const query = Effect.fnUntraced(function*(
-      name: Host.DomainName,
+      input: Host.DomainNameInput,
       type: Dns.RecordType,
       queryOptions?: { readonly recursionDesired?: boolean | undefined }
     ) {
+      const name = yield* Effect.mapError(
+        Effect.fromResult(Host.domainNameFromString(input)),
+        (cause) => new Dns.DnsError({ reason: "BadName", method: "resolve", hostname: input, recordType: type, cause })
+      )
       const fail = (reason: Dns.DnsErrorReason, cause?: unknown) =>
         new Dns.DnsError({ reason, method: "resolve", hostname: name, recordType: type, cause })
       const question = { name: absolute(name), type: DnsMessage.typeCodes[type] }
@@ -748,7 +754,7 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
 
     return DnsClient.of({
       query,
-      search: options.search ?? [],
+      search,
       ndots,
       hosts: options.hosts ?? Effect.succeed(new Map())
     })
