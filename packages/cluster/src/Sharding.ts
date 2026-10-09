@@ -516,12 +516,16 @@ const make = Effect.gen(function*() {
       Effect.catchAllCause(() => Effect.void)
     )
 
-    // Once the drain window has passed, release the shard locks without waiting
-    // for entities to stop, so a stuck shutdown cannot hold them indefinitely.
+    // Once the drain window has passed, stop renewing shard locks and release
+    // them on every tick without waiting for entities to stop, so a stuck
+    // shutdown cannot hold them indefinitely. Releasing on every tick also
+    // covers failed releases and acquisitions that complete late.
     const drainWindow = Duration.toMillis(config.entityTerminationTimeout)
-    let shardsReleasedAfterDrain = false
+    let drainWindowExpired = false
     const releaseShardsAfterDrain = Effect.suspend(() => {
       const affectedShards = [...acquiredShards, ...releasingShards]
+      const syncSingletonsNeeded = !drainWindowExpired || affectedShards.length > 0
+      drainWindowExpired = true
       MutableHashSet.clear(selfShards)
       MutableHashSet.clear(acquiredShards)
       MutableHashSet.clear(releasingShards)
@@ -529,6 +533,9 @@ const make = Effect.gen(function*() {
       ClusterMetrics.shards.unsafeUpdate(BigInt(0), [])
 
       return Effect.gen(function*() {
+        if (syncSingletonsNeeded) {
+          yield* Effect.forkIn(syncSingletons, shardingScope)
+        }
         for (const shardId of affectedShards) {
           for (const state of entityManagers.values()) {
             if (state.status === "closed") continue
@@ -536,15 +543,13 @@ const make = Effect.gen(function*() {
           }
         }
         yield* runnerStorage.releaseAll(selfAddress).pipe(Effect.timeout(shardLockInterval))
-        shardsReleasedAfterDrain = true
       }).pipe(
         Effect.catchAllCause((cause) => Effect.logWarning("Could not release shards after shutdown", cause))
       )
     })
     const isDrainWindowExpired = () =>
-      shutdownStartedAt !== undefined &&
-      !shardsReleasedAfterDrain &&
-      clock.unsafeCurrentTimeMillis() >= shutdownStartedAt + drainWindow
+      drainWindowExpired ||
+      (shutdownStartedAt !== undefined && clock.unsafeCurrentTimeMillis() >= shutdownStartedAt + drainWindow)
 
     yield* Effect.suspend(() =>
       isDrainWindowExpired()
