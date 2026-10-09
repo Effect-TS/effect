@@ -72,7 +72,7 @@ export const describeCrypto = (
         } else {
           const error = yield* Effect.flip(Crypto.digest("MD5", encode("abc")))
           assert.strictEqual(error.reason.method, "digest")
-          assert.strictEqual(error.reason._tag, "BadArgument")
+          assert.strictEqual(error.reason._tag, "Unsupported")
         }
       }).pipe(Effect.provide(layer)))
 
@@ -102,6 +102,18 @@ export const describeCrypto = (
           hex(yield* Crypto.hmac("SHA-256", new Uint8Array(), data)),
           NodeCrypto.createHmac("sha256", new Uint8Array()).update(data).digest("hex")
         )
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("verifies HMACs and rejects altered or truncated MACs", () =>
+      Effect.gen(function*() {
+        const key = view(new Uint8Array(20).fill(0x0b))
+        const data = view(encode("Hi There"))
+        const signature = view("b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7")
+        assert.strictEqual(yield* Crypto.hmacVerify("SHA-256", key, signature, data), true)
+        const altered = signature.slice()
+        altered[0] ^= 1
+        assert.strictEqual(yield* Crypto.hmacVerify("SHA-256", key, altered, data), false)
+        assert.strictEqual(yield* Crypto.hmacVerify("SHA-256", key, signature.subarray(0, 16), data), false)
       }).pipe(Effect.provide(layer)))
 
     it.effect("derives PBKDF2 and HKDF keys", () =>
@@ -164,7 +176,9 @@ export const describeCrypto = (
         if (options.native && supportsArgon2id()) {
           assert.strictEqual(hex(yield* derive), "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659")
         } else {
-          assert.strictEqual((yield* Effect.flip(derive)).reason.method, "argon2id")
+          const error = yield* Effect.flip(derive)
+          assert.strictEqual(error.reason.method, "argon2id")
+          assert.strictEqual(error.reason._tag, "Unsupported")
         }
       }).pipe(Effect.provide(layer)))
 
@@ -182,6 +196,7 @@ export const describeCrypto = (
         if (!(options.native && NodeCrypto.getCiphers().includes("chacha20-poly1305"))) {
           const error = yield* Effect.flip(Crypto.xchacha20poly1305Encrypt(input))
           assert.strictEqual(error.reason.method, "xchacha20poly1305Encrypt")
+          assert.strictEqual(error.reason._tag, "Unsupported")
           return
         }
         const ciphertext = yield* Crypto.xchacha20poly1305Encrypt(input)

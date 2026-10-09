@@ -11,6 +11,7 @@ describe("Crypto", () => {
     expect(Crypto.make).type.toBeCallableWith({ randomBytes, digest })
     expect(Crypto.make).type.toBeCallableWith({ randomBytes, subtle: {} as SubtleCrypto })
     expect(Crypto.make).type.not.toBeCallableWith({ digest })
+    expect(Crypto.make).type.not.toBeCallableWith({ randomBytes, encrypt: crypto.encrypt })
   })
 
   it("rejects options that do not match the selected algorithm", () => {
