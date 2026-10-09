@@ -178,6 +178,61 @@ describe("Context", () => {
     }
   })
 
+  it("inherits maxDepth across additions, rebases, and merge", () => {
+    // Depth has no public accessor; inspect rebase boundaries, not policy storage.
+    let context = Context.makeUnsafe(new Map(), { maxDepth: 2 })
+    for (let cycle = 0; cycle < 2; cycle++) {
+      context = Context.add(context, A, 1).pipe(Context.add(B, 2))
+      strictEqual((context as unknown as { depth: number }).depth, 2)
+      context = Context.add(context, C, 3)
+      strictEqual((context as unknown as { depth: number }).depth, 0)
+    }
+
+    context = Context.merge(context, Context.make(A, 4)).pipe(
+      Context.add(B, 5),
+      Context.add(C, 6),
+      Context.add(A, 7)
+    )
+    strictEqual((context as unknown as { depth: number }).depth, 0)
+  })
+
+  it("uses depth 8 by default, for invalid options, and after mergeAll", () => {
+    const contexts = [
+      Context.makeUnsafe(new Map()),
+      ...[NaN, -1, 1.5, Infinity].map((maxDepth) => Context.makeUnsafe(new Map(), { maxDepth })),
+      Context.mergeAll(
+        Context.makeUnsafe(new Map([[A.key, 1]]), { maxDepth: 2 }),
+        Context.makeUnsafe(new Map([[B.key, 2]]), { maxDepth: 32 })
+      )
+    ]
+    for (let context of contexts) {
+      for (let i = 0; i < 8; i++) {
+        context = Context.add(context, A, i)
+      }
+      strictEqual((context as unknown as { depth: number }).depth, 8)
+      context = Context.add(context, B, 8)
+      strictEqual((context as unknown as { depth: number }).depth, 0)
+    }
+  })
+
+  it.each(["materialization", "rebase"])("handles large overlay depths during %s", (operation) => {
+    const maxDepth = 20_000
+    let context = Context.makeUnsafe(new Map(), { maxDepth })
+    for (let i = 0; i < maxDepth; i++) {
+      context = Context.addUnsafe(context, i % 2 === 0 ? A.key : B.key, i)
+    }
+
+    // Exercise rebasing before materialization can cache the flattened map.
+    if (operation === "rebase") {
+      context = Context.addUnsafe(context, C.key, maxDepth)
+    }
+    deepStrictEqual([...context.mapUnsafe], [
+      [A.key, maxDepth - 2],
+      [B.key, maxDepth - 1],
+      ...(operation === "rebase" ? [[C.key, maxDepth]] : [])
+    ])
+  })
+
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
