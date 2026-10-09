@@ -15796,6 +15796,10 @@ export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fi
    *
    * **Gotchas**
    *
+   * Fields with the same name replace inherited fields. Use this to refine
+   * validation or change encoding. Effect does not check compatibility; the
+   * caller must ensure the replacement preserves the base class contract.
+   *
    * Checks from a `Struct` argument are evaluated against the full subclass
    * value after inherited and extension fields are merged. Object-wide checks
    * such as `isMaxProperties` count inherited fields too.
