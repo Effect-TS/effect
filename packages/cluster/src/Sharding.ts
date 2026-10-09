@@ -1226,7 +1226,11 @@ const make = Effect.gen(function*() {
               // volatile requests are interrupted on the runner processing
               // them, which may differ from the current shard owner
               return Effect.ignore(
-                entry.runner ? sendToRunner(entry.runner, message) : sendOutgoing(message, false, 3)
+                entry.runner ?
+                  sendToRunner(entry.runner, message).pipe(
+                    Effect.retry({ times: 3, schedule: Schedule.spaced(config.sendRetryInterval) })
+                  ) :
+                  sendOutgoing(message, false, 3)
               )
             }
           }
