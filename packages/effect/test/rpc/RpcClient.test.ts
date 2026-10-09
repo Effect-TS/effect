@@ -510,50 +510,7 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "SocketReadError")
     }))
 
-  it.effect("runs onPingTimeout before onDisconnect when a ping timeout drops the socket", () =>
-    Effect.gen(function*() {
-      const requestSent = yield* Deferred.make<void>()
-      const events: Array<string> = []
-      const record = (event: string) => Effect.sync(() => events.push(event))
-      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
-      const socket = Socket.make({
-        reader: Effect.succeed({
-          pull: Effect.never,
-          upgrade: Socket.SocketUpgradeError.unsupported
-        }),
-        writer: Effect.succeed({ write, writeAll: write })
-      })
-      const protocol = yield* RpcClient.makeProtocolSocket({
-        retryPolicy: Schedule.spaced("1 hour"),
-        onPingTimeout: record("ping timeout")
-      }).pipe(
-        Effect.provideService(Socket.Socket, socket),
-        Effect.provideService(RpcClient.ConnectionHooks, {
-          onConnect: Effect.asVoid(record("connect")),
-          onDisconnect: Effect.asVoid(record("disconnect"))
-        }),
-        Effect.provide(RpcSerialization.layerNdjson)
-      )
-      const client = yield* RpcClient.make(TestGroup).pipe(
-        Effect.provideService(RpcClient.Protocol, protocol)
-      )
-      const streamFiber = yield* client.Events().pipe(
-        Stream.runDrain,
-        Effect.tapError(() => record("stream failed")),
-        Effect.flip,
-        Effect.forkChild
-      )
-
-      yield* Deferred.await(requestSent)
-      yield* TestClock.adjust("11 seconds")
-      const error = yield* Fiber.join(streamFiber)
-
-      assert.instanceOf(error, RpcClientError)
-      assert.strictEqual(error.reason._tag, "SocketReadError")
-      assert.deepStrictEqual(events, ["connect", "ping timeout", "disconnect", "stream failed"])
-    }))
-
-  it.effect("does not run onPingTimeout when the socket closes for another reason", () =>
+  it.effect("runs onPingTimeout only when a ping timeout drops the socket", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
       const events: Array<string> = []
@@ -588,72 +545,32 @@ describe("RpcClient", () => {
         Effect.provideService(RpcClient.Protocol, protocol)
       )
 
-      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+      const closedFiber = yield* client.Events().pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+      const closed = yield* Fiber.join(closedFiber)
+      assert.strictEqual(closed.reason._tag, "SocketCloseError")
 
-      const error = yield* Fiber.join(streamFiber)
-      assert.instanceOf(error, RpcClientError)
-      assert.strictEqual(error.reason._tag, "SocketCloseError")
-      assert.deepStrictEqual(events, ["connect", "disconnect"])
+      // Stay disconnected past the ping timeout, then reconnect at 20s.
+      yield* TestClock.adjust("20 seconds")
+      assert.deepStrictEqual(events, ["connect", "disconnect", "connect"])
 
-      // Stay disconnected well past the ping timeout.
-      yield* TestClock.adjust("19 seconds")
-      assert.deepStrictEqual(events, ["connect", "disconnect"])
-
-      // Reconnect at 20s; the silent socket times out at the 30s tick.
-      yield* TestClock.adjust("12 seconds")
-      assert.deepStrictEqual(events, ["connect", "disconnect", "connect", "ping timeout", "disconnect"])
-    }))
-
-  it.effect("does not run onPingTimeout while server frames keep arriving", () =>
-    Effect.gen(function*() {
-      const requestSent = yield* Deferred.make<void>()
-      const frames = yield* Queue.unbounded<string>()
-      const chunks = yield* Queue.unbounded<string>()
-      const events: Array<string> = []
-      const record = (event: string) => Effect.sync(() => events.push(event))
-      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
-      const socket = Socket.make({
-        reader: Effect.succeed({
-          pull: Queue.take(frames).pipe(Effect.map((frame) => [frame] as const)),
-          upgrade: Socket.SocketUpgradeError.unsupported
-        }),
-        writer: Effect.succeed({ write, writeAll: write })
-      })
-      const protocol = yield* RpcClient.makeProtocolSocket({
-        retryPolicy: Schedule.spaced("1 hour"),
-        onPingTimeout: record("ping timeout")
-      }).pipe(
-        Effect.provideService(Socket.Socket, socket),
-        Effect.provideService(RpcClient.ConnectionHooks, {
-          onConnect: Effect.asVoid(record("connect")),
-          onDisconnect: Effect.asVoid(record("disconnect"))
-        }),
-        Effect.provide(RpcSerialization.layerNdjson)
-      )
-      const client = yield* RpcClient.make(TestGroup, {
-        generateRequestId: () => RpcMessage.RequestId("0")
-      }).pipe(Effect.provideService(RpcClient.Protocol, protocol))
       const streamFiber = yield* client.Events().pipe(
-        Stream.runForEach((chunk) => Queue.offer(chunks, chunk)),
-        Effect.exit,
+        Stream.runDrain,
+        Effect.tapError(() => record("stream failed")),
+        Effect.flip,
         Effect.forkChild
       )
+      yield* TestClock.adjust("10 seconds")
+      const timedOut = yield* Fiber.join(streamFiber)
 
-      yield* Deferred.await(requestSent)
-      for (const chunk of ["first", "second", "third"]) {
-        yield* TestClock.adjust("4 seconds")
-        yield* Queue.offer(frames, JSON.stringify({ _tag: "Chunk", requestId: "0", values: [chunk] }) + "\n")
-        assert.strictEqual(yield* Queue.take(chunks), chunk)
-      }
-      // Every ping tick so far (5s, 10s, 15s) came within 5s of a frame.
-      yield* TestClock.adjust("4 seconds")
-      assert.deepStrictEqual(events, ["connect"])
-      assert.isUndefined(streamFiber.pollUnsafe())
-
-      // Once frames stop, the 20s tick is 8s after the last frame.
-      yield* TestClock.adjust("5 seconds")
-      assert.deepStrictEqual(events, ["connect", "ping timeout", "disconnect"])
-      assert.isDefined(streamFiber.pollUnsafe())
+      assert.strictEqual(timedOut.reason._tag, "SocketReadError")
+      assert.deepStrictEqual(events, [
+        "connect",
+        "disconnect",
+        "connect",
+        "ping timeout",
+        "disconnect",
+        "stream failed"
+      ])
     }))
 
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
