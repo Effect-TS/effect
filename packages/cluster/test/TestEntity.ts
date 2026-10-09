@@ -117,6 +117,10 @@ export const TestEntityNoState = TestEntity.toLayer(
       NeverStreamVolatile: (envelope) =>
         Rpc.fork(Stream.suspend(() => {
           state.envelopes.unsafeOffer(envelope)
+          if (state.defectTrigger.current) {
+            MutableRef.set(state.defectTrigger, false)
+            return Stream.die("Stream defect")
+          }
           return Stream.never
         })),
       RequestWithKey: (envelope) => {
