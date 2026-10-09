@@ -549,14 +549,10 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   return self._flat = map
 }
 
-// Every Context value is a ContextImpl at runtime; this is how withFlat
-// reads maxDepthOverride off `self` without a type assertion.
-const isContextImpl = (self: Context<any>): self is ContextImpl<any> => self !== null
-
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return makeImpl(undefined, map, undefined, 0, isContextImpl(self) ? self.maxDepthOverride : undefined)
+  return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepthOverride)
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
@@ -594,6 +590,20 @@ const lookup = (self: Context<any>, key: string): unknown => {
  * construction. Prefer `empty`, `make`, `add`, or `merge` for normal Context
  * construction.
  *
+ * **Details**
+ *
+ * `options.maxDepth` sets how many `add` calls are kept as overlays before the
+ * context is rebased into a flat map (default `8`). Lower values make lookups
+ * cheaper, higher values make additions to a large base cheaper. Values that
+ * are not non-negative integers fall back to the default.
+ *
+ * The setting is inherited by contexts derived through `add`, `addOrOmit`,
+ * `merge`, `pick`, and `omit`. `merge` keeps the setting of its first argument,
+ * or returns the second argument unchanged when the first is empty. `make`,
+ * `empty`, and `mergeAll` start from the default. Layers are combined with
+ * `mergeAll`, so apply the setting to the final context rather than inside a
+ * layer.
+ *
  * **Example** (Creating a context from a map)
  *
  * ```ts import.meta.vitest
@@ -612,8 +622,6 @@ const lookup = (self: Context<any>, key: string): unknown => {
  * @category constructors
  * @since 4.0.0
  */
-// `options.maxDepth` overrides `MaxDepth` for this context and every one
-// derived from it via `add`.
 export const makeUnsafe = <Services = never>(
   mapUnsafe: ReadonlyMap<string, any>,
   options?: { readonly maxDepth?: number }
