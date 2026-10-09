@@ -115,7 +115,17 @@ export interface Header {
 }
 
 const utf8 = new TextDecoder("utf-8", { ignoreBOM: true })
-const latin1 = new TextDecoder("latin1")
+
+// Decodes ASCII bytes, returning `undefined` when there are other bytes. The
+// "latin1" `TextDecoder` is windows-1252, which does not map bytes one to one.
+const ascii = (bytes: Uint8Array): string | undefined => {
+  let out = ""
+  for (const byte of bytes) {
+    if (byte > 0x7f) return undefined
+    out += String.fromCharCode(byte)
+  }
+  return out
+}
 
 // Writes a name as text, like `Dns.Ptr` host names: each label is decoded as
 // UTF-8, with dots and backslashes inside a label escaped as `\.` and `\\`.
@@ -128,9 +138,9 @@ const hostLabel = /^[a-z0-9_-]+$/i
 // hyphens, and underscores; other bytes must not go through IDNA conversion.
 const domainName = (labels: ReadonlyArray<Uint8Array>): Host.DomainName | undefined => {
   if (labels.length === 0) return "." as Host.DomainName
-  const ascii = labels.map((label) => latin1.decode(label))
-  return ascii.every((label) => hostLabel.test(label))
-    ? Result.getOrUndefined(Host.domainNameFromString(`${ascii.join(".")}.`))
+  const text = labels.map(ascii)
+  return text.every((label) => label !== undefined && hostLabel.test(label))
+    ? Result.getOrUndefined(Host.domainNameFromString(`${text.join(".")}.`))
     : undefined
 }
 
@@ -247,7 +257,7 @@ const readData = (reader: MessageReader, type: number, end: number): Dns.DnsReco
       return record("AAAA", { address: NetAddress.ipv6FromBytesUnsafe(reader.take(16, "AAAA record")) })
     case typeCodes.CAA: {
       const flags = reader.u8("CAA flags")
-      const tag = latin1.decode(reader.take(reader.u8("CAA tag"), "CAA tag"))
+      const tag = ascii(reader.take(reader.u8("CAA tag"), "CAA tag"))
       if (reader.offset > end) reader.fail("CAA tag exceeds the record data")
       const value = utf8.decode(reader.take(end - reader.offset, "CAA value"))
       // Only the issuer critical flag (bit 7) is defined; other flag bits are reserved.
