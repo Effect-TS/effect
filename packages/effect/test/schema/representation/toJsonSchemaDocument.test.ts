@@ -657,7 +657,9 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
 
       assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaDocument(document).schema, {
         type: "integer",
-        minimum: 0
+        minimum: globalThis.Number.MIN_SAFE_INTEGER,
+        maximum: globalThis.Number.MAX_SAFE_INTEGER,
+        allOf: [{ minimum: 0 }]
       })
       assert.strictEqual(receivedType, "integer")
     })
