@@ -524,24 +524,16 @@ const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): voi
   map.set(overlay.key, overlay.value)
 }
 
-// forEach avoids the per-entry [key, value] tuple a for...of loop or
-// `new Map(otherMap)` would allocate, and measures faster on Node 22.
-const copyMap = <K, V>(source: ReadonlyMap<K, V>): Map<K, V> => {
-  const map = new Map<K, V>()
-  source.forEach((value, key) => map.set(key, value))
-  return map
-}
-
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   if (self._flat) return self._flat
   if (!self.overlay) return self._flat = self.base
-  const map = copyMap(self.base)
+  const map = new Map(self.base)
   applyOverlays(map, self.overlay)
   return self._flat = map
 }
 
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
-  const map = copyMap(self.mapUnsafe)
+  const map = new Map(self.mapUnsafe)
   f(map)
   return makeUnsafe(map)
 }
@@ -825,7 +817,7 @@ export const addUnsafe = <Services, I, S>(
     // rebase on an ordinary key does not invalidate fiber caches. Copy
     // `_flat` if cached, else `base` + overlays -- `mapUnsafe` would flatten
     // and then copy again.
-    const map = copyMap(impl._flat ?? impl.base)
+    const map = new Map(impl._flat ?? impl.base)
     if (!impl._flat) applyOverlays(map, impl.overlay)
     map.set(key, service)
     return makeImpl(cacheRoot, map, undefined, 0)
