@@ -39,14 +39,14 @@ const connect = (port: number) =>
     return Effect.sync(() => socket.destroy())
   })
 
-describe("HttpServer", () => {
+describe.skipIf(typeof Bun === "undefined")("HttpServer", () => {
   it.scoped("negotiates permessage-deflate and compresses outgoing WebSocket text", () =>
     Effect.gen(function*() {
       const server = yield* BunHttpServer.make({
         hostname: "127.0.0.1",
         port: 0,
         websocket: { perMessageDeflate: true }
-      } as BunHttpServer.ServeOptions<{}>)
+      })
       yield* server.serve(
         Effect.gen(function*() {
           const request = yield* HttpServerRequest.HttpServerRequest
