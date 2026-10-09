@@ -698,13 +698,17 @@ export const make: <Rpcs extends Rpc.Any>(
             collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
             schemas.context
           ),
-          (cause) =>
-            Effect.withFiber((fiber) => {
+          (cause) => {
+            if (Cause.hasInterruptsOnly(cause)) {
+              return Effect.failCause(cause)
+            }
+            return Effect.withFiber((fiber) => {
               const error = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
               const defect = Cause.die(`Failed to encode response for RPC "${schemas.tag}": ${error}`)
               reportCauseUnsafe(fiber, defect)
               return Effect.failCause(defect)
             })
+          }
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )
