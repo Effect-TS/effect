@@ -197,8 +197,9 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
  *
  * **Details**
  *
- * HMAC lengths are measured in bits and default to the hash's block size.
- * AES-GCM and AES-CTR keys contain 128, 192, or 256 bits.
+ * AES-GCM and AES-CTR keys contain 128, 192, or 256 bits. Generated HMAC keys
+ * use the hash's block size, and imported HMAC keys use the length of the key
+ * material.
  *
  * @stability unstable
  * @category models
@@ -207,7 +208,7 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
 export type SecretKeyAlgorithm =
   | { readonly name: "AES-GCM"; readonly length: 128 | 192 | 256 }
   | { readonly name: "AES-CTR"; readonly length: 128 | 192 | 256 }
-  | { readonly name: "HMAC"; readonly hash: HashAlgorithm; readonly length?: number | undefined }
+  | { readonly name: "HMAC"; readonly hash: HashAlgorithm }
 
 /**
  * Algorithms for RSA, ECDSA, Ed25519, ECDH, and X25519 key pairs.
@@ -449,6 +450,16 @@ export interface Crypto {
     key: Uint8Array,
     data: Uint8Array
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+
+  /**
+   * Checks an HMAC for the supplied key and data in constant time.
+   */
+  hmacVerify(
+    algorithm: HashAlgorithm,
+    key: Uint8Array,
+    signature: Uint8Array,
+    data: Uint8Array
+  ): Effect.Effect<boolean, PlatformError.PlatformError>
 
   /**
    * Derives a password key with PBKDF2.
@@ -860,9 +871,9 @@ export const randomULID: Effect.Effect<string, PlatformError.PlatformError, Cryp
  *
  * **Gotchas**
  *
- * Comparing a computed MAC with `===` or a byte loop can leak timing. To check
- * a received MAC, import the key with `importKey` and use `verify`, which
- * compares in constant time. SHA-1 is available for legacy protocols.
+ * Comparing a computed MAC with `===` or an early-exit loop can leak timing.
+ * Use `hmacVerify` to check a received MAC. SHA-1 is available for legacy
+ * protocols.
  *
  * @stability unstable
  * @category hashing
@@ -874,6 +885,46 @@ export const hmac = (
   data: Uint8Array
 ): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.hmac(algorithm, key, data))
+
+/**
+ * Checks a received HMAC, such as a webhook signature, using the Crypto service.
+ *
+ * **Details**
+ *
+ * Returns `true` when `signature` equals the HMAC of `data`. The comparison
+ * takes the same time wherever the bytes differ; only the signature length can
+ * be observed. Truncated MACs return `false`.
+ *
+ * **Example** (Verifying a webhook signature)
+ *
+ * ```ts import.meta.vitest
+ * import { Crypto, Effect } from "effect"
+ *
+ * const service = Crypto.make({
+ *   subtle: globalThis.crypto.subtle,
+ *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+ * })
+ * const program = Effect.gen(function*() {
+ *   const secret = new TextEncoder().encode("webhook secret")
+ *   const body = new TextEncoder().encode("{\"event\":\"paid\"}")
+ *   const signature = yield* Crypto.hmac("SHA-256", secret, body)
+ *   return yield* Crypto.hmacVerify("SHA-256", secret, signature, body)
+ * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provideService(Crypto.Crypto, service))) // => true
+ * ```
+ *
+ * @stability unstable
+ * @category hashing
+ * @since 4.0.0
+ */
+export const hmacVerify = (
+  algorithm: HashAlgorithm,
+  key: Uint8Array,
+  signature: Uint8Array,
+  data: Uint8Array
+): Effect.Effect<boolean, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.hmacVerify(algorithm, key, signature, data))
 
 /**
  * Derives a password key with PBKDF2 using the Crypto service.
@@ -933,7 +984,7 @@ export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, Pl
  *
  * Requires a 32-byte key and a unique 24-byte nonce. The output includes a
  * 16-byte authentication tag. Backends without native ChaCha20-Poly1305 fail
- * with `PlatformError.BadArgument`.
+ * with a `SystemError` tagged `Unsupported`.
  *
  * @stability unstable
  * @category encryption
@@ -1239,8 +1290,37 @@ export const deriveSharedSecret = (
   Effect.flatMap(Crypto, (crypto) => crypto.deriveSharedSecret(privateKey, publicKey))
 
 /**
- * Creates a `Crypto` service from secure random bytes and optional
- * cryptographic backends.
+ * Platform primitives used to construct a `Crypto` service with `make`.
+ *
+ * **Details**
+ *
+ * `randomBytes` must return fresh, cryptographically secure bytes of the
+ * requested length. `subtle` provides digests, HMAC, PBKDF2, HKDF, and every
+ * key operation. The byte-level fields replace or add to the `subtle`
+ * implementation, for example MD5 digests or Argon2id. Key operations come
+ * only from `subtle`, because a `Key` can only be used by the backend that
+ * created it.
+ *
+ * @see {@link make}
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface Backend {
+  readonly randomBytes: (size: number) => Uint8Array
+  readonly subtle?: SubtleCrypto | undefined
+  readonly digest?: Crypto["digest"] | undefined
+  readonly hmac?: Crypto["hmac"] | undefined
+  readonly pbkdf2?: Crypto["pbkdf2"] | undefined
+  readonly hkdf?: Crypto["hkdf"] | undefined
+  readonly argon2id?: Crypto["argon2id"] | undefined
+  readonly xchacha20poly1305Encrypt?: Crypto["xchacha20poly1305Encrypt"] | undefined
+  readonly xchacha20poly1305Decrypt?: Crypto["xchacha20poly1305Decrypt"] | undefined
+}
+
+/**
+ * Creates a `Crypto` service from platform primitives.
  *
  * **When to use**
  *
@@ -1250,29 +1330,25 @@ export const deriveSharedSecret = (
  * **Details**
  *
  * Random numbers, booleans, integer ranges, shuffling, UUIDs, and ULIDs are
- * derived from `impl.randomBytes`. When `impl.subtle` is supplied, every other
- * operation defaults to that Web Crypto backend; operations passed directly
- * take precedence. Operations with neither fail with
- * `PlatformError.BadArgument`.
+ * derived from `backend.randomBytes`. Other operations use the byte-level
+ * primitive when one is supplied, then `backend.subtle`. Operations with
+ * neither fail with a `SystemError` tagged `Unsupported`, as do algorithms the
+ * backend rejects as unsupported.
  *
  * Arguments that do not depend on the backend, such as derivation lengths,
- * iteration counts, IV and counter lengths, HMAC key lengths, RSA modulus
- * lengths, and RSA-PSS salt lengths, are validated before any operation runs.
- * Invalid arguments fail with `PlatformError.BadArgument`.
+ * iteration counts, IV and counter lengths, RSA modulus lengths, and RSA-PSS
+ * salt lengths, are validated before any operation runs. Invalid arguments
+ * fail with `PlatformError.BadArgument`. Failed authenticated decryption and
+ * malformed key data fail with a `SystemError` tagged `InvalidData`.
  *
  * The Web Crypto backend copies input bytes before its first asynchronous
  * step, so callers may reuse their buffers once an operation has started.
- * Failed authenticated decryption and malformed key data fail with a
- * `SystemError` tagged `InvalidData`, and algorithms the backend does not
- * support fail with `BadArgument`.
  *
  * **Gotchas**
  *
- * `impl.randomBytes` must return cryptographically secure bytes of the
- * requested length. UUID formatting mutates the byte array returned for UUID
- * generation, so the implementation should return a fresh array for each call.
- * Keys belong to the backend that created them; services sharing the same
- * `subtle` object share keys.
+ * UUID formatting mutates the byte array returned for UUID generation, so
+ * `randomBytes` should return a fresh array for each call. Services sharing
+ * the same `subtle` object share keys.
  *
  * **Example** (Creating a Crypto service)
  *
@@ -1292,36 +1368,12 @@ export const deriveSharedSecret = (
  * @category constructors
  * @since 4.0.0
  */
-export const make = (
-  impl: {
-    readonly randomBytes: (size: number) => Uint8Array
-    readonly subtle?: SubtleCrypto | undefined
-    readonly digest?: Crypto["digest"] | undefined
-    readonly hmac?: Crypto["hmac"] | undefined
-    readonly pbkdf2?: Crypto["pbkdf2"] | undefined
-    readonly hkdf?: Crypto["hkdf"] | undefined
-    readonly argon2id?: Crypto["argon2id"] | undefined
-    readonly xchacha20poly1305Encrypt?: Crypto["xchacha20poly1305Encrypt"] | undefined
-    readonly xchacha20poly1305Decrypt?: Crypto["xchacha20poly1305Decrypt"] | undefined
-    readonly importJwk?: Crypto["importJwk"] | undefined
-    readonly exportJwk?: Crypto["exportJwk"] | undefined
-    readonly generateSecretKey?: Crypto["generateSecretKey"] | undefined
-    readonly generateKeyPair?: Crypto["generateKeyPair"] | undefined
-    readonly importKey?: Crypto["importKey"] | undefined
-    readonly exportKey?: Crypto["exportKey"] | undefined
-    readonly encrypt?: Crypto["encrypt"] | undefined
-    readonly decrypt?: Crypto["decrypt"] | undefined
-    readonly sign?: Crypto["sign"] | undefined
-    readonly verify?: Crypto["verify"] | undefined
-    readonly deriveSharedSecret?: Crypto["deriveSharedSecret"] | undefined
-  }
-): Crypto => {
-  // `"subtle" in impl` keeps an unavailable `subtle` (as in insecure browser
-  // contexts) distinct from no Web Crypto backend at all.
-  const subtle = "subtle" in impl ? makeSubtle(impl.subtle) : undefined
-  const backend = Object.fromEntries(
-    operations.map((name) => [name, impl[name] ?? subtle?.[name] ?? unsupported(name)])
-  ) as Backend
+export const make = (impl: Backend): Crypto => {
+  const subtle = impl.subtle ? makeSubtle(impl.subtle) : undefined
+  const backend = Object.fromEntries([
+    ...byteOperations.map((name) => [name, impl[name] ?? subtle?.[name] ?? unsupported(name)]),
+    ...keyOperations.map((name) => [name, subtle?.[name] ?? unsupported(name)])
+  ]) as Operations
   const randomBytesUnsafe = impl.randomBytes
 
   const tryRandom = <A>(method: string, f: () => A): Effect.Effect<A, PlatformError.PlatformError> =>
@@ -1426,6 +1478,11 @@ export const make = (
     nextIntUnsafe,
     digest: backend.digest,
     hmac: backend.hmac,
+    hmacVerify: (algorithm, key, signature, data) =>
+      Effect.suspend(() => {
+        const expected = new Uint8Array(signature)
+        return Effect.map(backend.hmac(algorithm, key, data), (actual) => equalBytes(actual, expected))
+      }),
     pbkdf2: (options) =>
       // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
       // larger values instead of rejecting them. Node.js accepts only signed
@@ -1569,17 +1626,19 @@ const validateXChaCha = (
 const failArgument = (method: string, description: string): Effect.Effect<never, PlatformError.PlatformError> =>
   Effect.fail(PlatformError.badArgument({ module: "Crypto", method, description }))
 
-const isIntegerIn = (n: number, min: number, max: number): boolean =>
-  Number.isSafeInteger(n) && n >= min && n <= max
+const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
 
-const operations = [
+const byteOperations = [
   "digest",
   "hmac",
   "pbkdf2",
   "hkdf",
   "argon2id",
   "xchacha20poly1305Encrypt",
-  "xchacha20poly1305Decrypt",
+  "xchacha20poly1305Decrypt"
+] as const
+
+const keyOperations = [
   "importJwk",
   "exportJwk",
   "generateSecretKey",
@@ -1593,12 +1652,26 @@ const operations = [
   "deriveSharedSecret"
 ] as const
 
-type Operation = typeof operations[number]
+type Operation = typeof byteOperations[number] | typeof keyOperations[number]
 
-type Backend = { readonly [K in Operation]: Crypto[K] }
+type Operations = { readonly [K in Operation]: Crypto[K] }
 
 const unsupported = (method: Operation): any => () =>
-  failArgument(method, `${method} is not supported by this Crypto service`)
+  Effect.fail(PlatformError.systemError({
+    module: "Crypto",
+    method,
+    _tag: "Unsupported",
+    description: `${method} is not supported by this Crypto service`
+  }))
+
+const equalBytes = (a: Uint8Array, b: Uint8Array): boolean => {
+  if (a.length !== b.length) return false
+  // Accumulates every difference so the comparison time does not depend on
+  // where the first mismatch is.
+  let difference = 0
+  for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
+  return difference === 0
+}
 
 const validateCipher = (method: string, options: CipherOptions): Effect.Effect<void, PlatformError.PlatformError> => {
   if (options.name === "AES-GCM" && options.iv.length !== 12) {
@@ -1618,15 +1691,6 @@ const validateKeyAlgorithm = (
   algorithm: KeyAlgorithm,
   generating: boolean
 ): Effect.Effect<void, PlatformError.PlatformError> => {
-  if (algorithm.name === "HMAC") {
-    const length = algorithm.length
-    if (
-      length !== undefined &&
-      (!Number.isSafeInteger(length) || length <= 0 || length > 0xffff_ffff || length % 8 !== 0)
-    ) {
-      return failArgument(method, "HMAC key length must be a positive multiple of 8 bits below 2^32")
-    }
-  }
   if (
     generating &&
     (algorithm.name === "RSA-OAEP" || algorithm.name === "RSA-PSS" || algorithm.name === "RSASSA-PKCS1-v1_5")
@@ -1678,20 +1742,7 @@ const hasRawPublicKey = (name: string): boolean =>
 
 // Web Crypto backend for `make`. Arguments that do not depend on the backend
 // are validated by `make` before these operations run.
-const makeSubtle = (subtle: SubtleCrypto | undefined): Partial<Backend> => {
-  if (!subtle) {
-    // Browsers omit SubtleCrypto outside secure contexts.
-    return Object.fromEntries(operations.map((method) => [
-      method,
-      () =>
-        Effect.fail(PlatformError.systemError({
-          module: "Crypto",
-          method,
-          _tag: "Unknown",
-          description: "SubtleCrypto is not available"
-        }))
-    ]))
-  }
+const makeSubtle = (subtle: SubtleCrypto): Partial<Operations> => {
   const handles = nativeKeys.get(subtle) ?? new WeakMap<Key, CryptoKey>()
   nativeKeys.set(subtle, handles)
 
@@ -1711,11 +1762,20 @@ const makeSubtle = (subtle: SubtleCrypto | undefined): Partial<Backend> => {
             cause
           })
         }
-        if (name === "NotSupportedError" || name === "InvalidAccessError" || name === "SyntaxError") {
+        if (name === "NotSupportedError") {
+          return PlatformError.systemError({
+            module: "Crypto",
+            method,
+            _tag: "Unsupported",
+            description: `${method} does not support the requested algorithm`,
+            cause
+          })
+        }
+        if (name === "InvalidAccessError" || name === "SyntaxError") {
           return PlatformError.badArgument({
             module: "Crypto",
             method,
-            description: `${method} does not support the requested algorithm, key, or usages`,
+            description: `${method} does not permit the requested key or usages`,
             cause
           })
         }
@@ -1742,7 +1802,7 @@ const makeSubtle = (subtle: SubtleCrypto | undefined): Partial<Backend> => {
         algorithm = { name: native.name, length: native.length as 128 | 192 | 256 }
         break
       case "HMAC":
-        algorithm = { name: "HMAC", hash: native.hash.name as HashAlgorithm, length: native.length }
+        algorithm = { name: "HMAC", hash: native.hash.name as HashAlgorithm }
         break
       case "RSA-OAEP":
       case "RSA-PSS":
@@ -1788,11 +1848,7 @@ const makeSubtle = (subtle: SubtleCrypto | undefined): Partial<Backend> => {
       case "AES-CTR":
         return { name: algorithm.name, length: algorithm.length } as AesKeyGenParams
       case "HMAC":
-        return {
-          name: algorithm.name,
-          hash: algorithm.hash,
-          ...(algorithm.length === undefined ? {} : { length: algorithm.length })
-        } as HmacKeyGenParams
+        return { name: algorithm.name, hash: algorithm.hash } as HmacKeyGenParams
       case "RSA-OAEP":
       case "RSA-PSS":
       case "RSASSA-PKCS1-v1_5":

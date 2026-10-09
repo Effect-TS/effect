@@ -77,9 +77,10 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
           cause
         }))
       if (typeof NodeCrypto.argon2 !== "function") {
-        return resume(Effect.fail(PlatformError.badArgument({
+        return resume(Effect.fail(PlatformError.systemError({
           module: "Crypto",
           method: "argon2id",
+          _tag: "Unsupported",
           description: "argon2id is not supported by this Crypto service"
         })))
       }
