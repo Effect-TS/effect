@@ -498,6 +498,31 @@ describe("DateTime", () => {
       }))
   })
 
+  describe("toDate", () => {
+    it("matches the documented example, where Europe/London has no offset in January", () => {
+      const utc = DateTime.makeUnsafe("2024-01-01T12:00:00Z")
+      const zoned = DateTime.makeZonedUnsafe("2024-01-01T12:00:00Z", {
+        timeZone: "Europe/London"
+      })
+
+      strictEqual(DateTime.toDate(utc).toISOString(), "2024-01-01T12:00:00.000Z")
+      strictEqual(DateTime.toDate(zoned).toISOString(), "2024-01-01T12:00:00.000Z")
+      strictEqual(DateTime.toDate(zoned).getTime(), DateTime.toEpochMillis(zoned))
+    })
+
+    it("returns a different instant for the same example in July, when Europe/London is UTC+1", () => {
+      const utc = DateTime.makeUnsafe("2024-07-01T12:00:00Z")
+      const zoned = DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", {
+        timeZone: "Europe/London"
+      })
+
+      strictEqual(DateTime.toDate(utc).toISOString(), "2024-07-01T12:00:00.000Z")
+      strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
+      strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
+      strictEqual(DateTime.toDate(zoned).getTime() - DateTime.toEpochMillis(zoned), 60 * 60 * 1000)
+    })
+  })
+
   describe("nowAsDate", () => {
     it.effect("should return the current Date", () =>
       Effect.gen(function*() {
