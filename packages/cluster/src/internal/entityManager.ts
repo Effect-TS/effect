@@ -75,7 +75,6 @@ export type ActiveRequest = {
   sequence: number
 }
 
-// Represents the entities managed by this entity manager
 /** @internal */
 export type EntityState = {
   readonly address: EntityAddress
@@ -329,8 +328,7 @@ export const make = Effect.fnUntraced(function*<
           processedRequestIds.add(requestId)
           activeRequests.delete(requestId)
 
-          // ensure that the reaper does not remove the entity as we haven't
-          // been "idle" yet
+          // Start the idle period when the last request finishes.
           if (activeRequests.size === 0) {
             state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
           }
@@ -348,8 +346,7 @@ export const make = Effect.fnUntraced(function*<
       if (isRestartingDueToDefect) {
         return Effect.void
       }
-      // Non-persisted streams cannot resume, so interrupt them instead of
-      // replaying them into the new server
+      // Interrupt non-persisted streams instead of replaying them.
       defectRequestIds = new Set()
       const interrupted: Array<ActiveRequest> = []
       for (const [id, request] of activeRequests) {
@@ -404,10 +401,7 @@ export const make = Effect.fnUntraced(function*<
       return yield* new EntityNotAssignedToRunner({ address })
     }
 
-    // During shutdown, interrupt non-persisted streams, signal that no more
-    // messages will be processed and wait for the fiber to complete.
-    //
-    // If the termination timeout is reached, let the server clean itself up
+    // Interrupt non-persisted streams, then drain other requests until the termination timeout.
     yield* Scope.addFinalizer(
       scope,
       Effect.withFiberRuntime((fiber) => {
