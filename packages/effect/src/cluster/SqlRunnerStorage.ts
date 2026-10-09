@@ -507,9 +507,10 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  // A runner that is no longer registered, such as one that is shutting down,
-  // cannot renew row-based leases. Its locks stay held until it releases them
-  // or they expire.
+  // A refresh that finds no runner row, such as after shutdown starts, does not
+  // renew row-based leases, though a refresh already past this check may still
+  // complete one final renewal. The locks stay held until they are released or
+  // expire after their last renewal.
   const usesRowLocks = sql.onDialectOrElse({
     pg: () => disableAdvisoryLocks,
     mysql: () => disableAdvisoryLocks,
