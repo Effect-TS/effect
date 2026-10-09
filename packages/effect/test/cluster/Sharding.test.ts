@@ -18,6 +18,7 @@ import {
   Result,
   Schedule,
   Schema,
+  Scope,
   Stream
 } from "effect"
 import {
@@ -3516,9 +3517,10 @@ const saveGetUserRequest = Effect.fnUntraced(function*(entityId: string, id: num
 interface SingletonStorageState {
   assignSelf: boolean
   runner: Runner.Runner | undefined
+  releases: Array<ShardId.ShardId>
 }
 
-const makeSingletonStorageState = (): SingletonStorageState => ({ assignSelf: true, runner: undefined })
+const makeSingletonStorageState = (): SingletonStorageState => ({ assignSelf: true, runner: undefined, releases: [] })
 
 const singletonOtherRunner = Runner.make({
   address: RunnerAddress.make("localhost", 5678),
@@ -3550,7 +3552,10 @@ const SingletonReassignmentSharding = (state: SingletonStorageState) => {
       setRunnerHealth: () => Effect.void,
       acquire: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
       refresh: (_address, shards) => Effect.succeed(globalThis.Array.from(shards)),
-      release: () => Effect.void,
+      release: (_address, shardId) =>
+        Effect.sync(() => {
+          state.releases.push(shardId)
+        }),
       releaseAll: () => Effect.void
     }))
   )
@@ -3705,5 +3710,240 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
         assert.isTrue(sharding.hasShardId(destinationShard))
         assert.strictEqual(duringFinalization, 0, "teardown must include singleton finalizers")
       }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
+    }))
+})
+
+interface ShutdownStorageState {
+  runner: Runner.Runner | undefined
+  holdSingletonShard: boolean
+  singletonAcquires: number
+  readonly acquireGate: Deferred.Deferred<void>
+  readonly refreshes: Array<ReadonlyArray<ShardId.ShardId>>
+  readonly releases: Array<ShardId.ShardId>
+  releaseAlls: number
+}
+
+const makeShutdownStorageState = (holdSingletonShard = false): ShutdownStorageState => ({
+  runner: undefined,
+  holdSingletonShard,
+  singletonAcquires: 0,
+  acquireGate: Deferred.makeUnsafe<void>(),
+  refreshes: [],
+  releases: [],
+  releaseAlls: 0
+})
+
+// `unregister` leaves the runner assigned, as when deregistration fails or has
+// not been observed yet. The first acquisition of the singleton shard finds it
+// held elsewhere, and the retry waits for `acquireGate`.
+const ShutdownRunnerStorage = (state: ShutdownStorageState) =>
+  Layer.succeed(
+    RunnerStorage.RunnerStorage,
+    RunnerStorage.RunnerStorage.of({
+      getRunners: Effect.sync(() => state.runner ? [[state.runner, true] as const] : []),
+      register: (runner) =>
+        Effect.sync(() => {
+          state.runner = runner
+          return MachineId.make(1)
+        }),
+      unregister: () => Effect.void,
+      setRunnerHealth: () => Effect.void,
+      acquire: (_address, shardIds) =>
+        Effect.suspend(() => {
+          const shards = globalThis.Array.from(shardIds)
+          if (!state.holdSingletonShard || !shards.some((shard) => shard.group === "singleton")) {
+            return Effect.succeed(shards)
+          }
+          state.singletonAcquires++
+          return state.singletonAcquires === 1
+            ? Effect.succeed(shards.filter((shard) => shard.group !== "singleton"))
+            : Effect.as(Deferred.await(state.acquireGate), shards)
+        }),
+      refresh: (_address, shardIds) =>
+        Effect.sync(() => {
+          const shards = globalThis.Array.from(shardIds)
+          state.refreshes.push(shards)
+          return shards
+        }),
+      release: (_address, shardId) =>
+        Effect.sync(() => {
+          state.releases.push(shardId)
+        }),
+      releaseAll: () =>
+        Effect.sync(() => {
+          state.releaseAlls++
+        })
+    })
+  )
+
+const shutdownConfig = {
+  ...testConfigDefaults,
+  runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+  availableShardGroups: ["default", "singleton"],
+  assignedShardGroups: ["default", "singleton"],
+  shardsPerGroup: 1,
+  entityTerminationTimeout: 1000,
+  shardLockExpiration: 3000,
+  shardLockRefreshInterval: 1000,
+  entityMessagePollInterval: 10,
+  refreshAssignmentsInterval: 10,
+  sendRetryInterval: 10
+}
+
+const ShutdownSharding = <E, R>(entities: Layer.Layer<never, E, R>, state: ShutdownStorageState) =>
+  entities.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(ShutdownRunnerStorage(state)),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer(shutdownConfig))
+  )
+
+const StuckShutdownEntity = Entity.make("StuckShutdown", [
+  Rpc.make("Hang").annotate(ClusterSchema.Persisted, false)
+])
+
+const waitUntil = Effect.fnUntraced(function*(message: string, condition: () => boolean) {
+  for (let i = 0; i < 300; i++) {
+    if (condition()) return
+    yield* TestClock.adjust(10)
+  }
+  assert.isTrue(condition(), message)
+})
+
+// These tests share the internal teardown registry, so do not run concurrently.
+describe("Sharding shutdown safety", { concurrent: false }, () => {
+  it.effect("interrupts every singleton on a released shard while one is still stopping", () =>
+    Effect.gen(function*() {
+      const storageState = makeSingletonStorageState()
+      const finish = yield* Deferred.make<void>()
+      const firstStopping = yield* Deferred.make<void>()
+      const secondStopping = yield* Deferred.make<void>()
+      const stopSlowly = (stopping: Deferred.Deferred<void>) =>
+        Effect.never.pipe(
+          Effect.ensuring(Deferred.succeed(stopping, void 0).pipe(Effect.andThen(Deferred.await(finish))))
+        )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitForSingletonOwnership(sharding, true)
+        yield* sharding.registerSingleton("first", stopSlowly(firstStopping), { shardGroup: "singleton" })
+        yield* sharding.registerSingleton("second", stopSlowly(secondStopping), { shardGroup: "singleton" })
+
+        storageState.assignSelf = false
+        yield* waitForSingletonOwnership(sharding, false)
+        yield* TestClock.adjust(100)
+        assert.isTrue(yield* Deferred.isDone(firstStopping), "the first singleton was not interrupted")
+        assert.isTrue(yield* Deferred.isDone(secondStopping), "the second singleton was not interrupted")
+      }).pipe(
+        Effect.ensuring(Deferred.succeed(finish, void 0)),
+        Effect.provide(SingletonReassignmentSharding(storageState)),
+        Effect.scoped
+      )
+    }))
+
+  it.effect("keeps a singleton shard locked until its singletons have stopped", () =>
+    Effect.gen(function*() {
+      const storageState = makeSingletonStorageState()
+      const finish = yield* Deferred.make<void>()
+      const stopping = yield* Deferred.make<void>()
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitForSingletonOwnership(sharding, true)
+        yield* sharding.registerSingleton(
+          "slow-stop",
+          Effect.never.pipe(
+            Effect.ensuring(Deferred.succeed(stopping, void 0).pipe(Effect.andThen(Deferred.await(finish))))
+          ),
+          { shardGroup: "singleton" }
+        )
+
+        storageState.assignSelf = false
+        yield* waitForSingletonOwnership(sharding, false)
+        for (let i = 0; i < 100 && !(yield* Deferred.isDone(stopping)); i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.isTrue(yield* Deferred.isDone(stopping), "the singleton was not interrupted")
+        yield* TestClock.adjust(100)
+        assert.isFalse(
+          storageState.releases.some((shardId) => shardId.group === "singleton"),
+          "the singleton shard lock was released while its singleton was still running"
+        )
+      }).pipe(
+        Effect.ensuring(Deferred.succeed(finish, void 0)),
+        Effect.provide(SingletonReassignmentSharding(storageState)),
+        Effect.scoped
+      )
+    }))
+
+  it.effect("does not start singletons from an acquisition that completes after shutdown starts", () =>
+    Effect.gen(function*() {
+      const state = makeShutdownStorageState(true)
+      let started = false
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(ShutdownSharding(TestEntityNoState, state), scope)
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityState = yield* TestEntityState
+        yield* waitUntil("the default shard was not acquired", () => sharding.hasShardId(destinationShard))
+        yield* sharding.registerSingleton("late", Effect.sync(() => started = true), { shardGroup: "singleton" })
+        yield* waitUntil("the singleton shard was not retried", () => state.singletonAcquires === 2)
+
+        // Keep shutdown open while an entity drains.
+        const client = (yield* TestEntity.client)("draining")
+        yield* client.Never().pipe(Effect.forkDetach({ startImmediately: true }))
+        yield* Queue.take(entityState.envelopes)
+        const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkDetach({ startImmediately: true }))
+        yield* TestClock.adjust(1)
+        assert.isTrue(yield* sharding.isShutdown)
+
+        yield* Deferred.succeed(state.acquireGate, void 0)
+        yield* TestClock.adjust(100)
+        assert.isFalse(started, "a singleton started after shutdown began")
+
+        yield* TestClock.adjust(shutdownConfig.entityTerminationTimeout)
+        yield* Fiber.join(closing)
+      }).pipe(Effect.provideContext(context))
+    }))
+
+  it.effect("stops renewing and releases shard locks when shutdown cannot finish", () =>
+    Effect.gen(function*() {
+      const state = makeShutdownStorageState()
+      const entered = yield* Deferred.make<void>()
+      const unblock = yield* Deferred.make<void>()
+      const entities = StuckShutdownEntity.toLayer({
+        Hang: () =>
+          Deferred.succeed(entered, void 0).pipe(Effect.andThen(Deferred.await(unblock)), Effect.uninterruptible)
+      })
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(ShutdownSharding(entities, state), scope)
+      const renewals = () =>
+        state.refreshes.filter((shards) => shards.some((shard) => shard.group === "default")).length
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitUntil("the default shard was not acquired", () => sharding.hasShardId(destinationShard))
+        const client = (yield* StuckShutdownEntity.client)("stuck")
+        yield* client.Hang().pipe(Effect.forkDetach({ startImmediately: true }))
+        yield* Deferred.await(entered)
+        const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkDetach({ startImmediately: true }))
+
+        // Well past the termination timeout and several lease periods.
+        yield* TestClock.adjust(shutdownConfig.entityTerminationTimeout + 4 * shutdownConfig.shardLockExpiration)
+        const before = renewals()
+        yield* TestClock.adjust(2 * shutdownConfig.shardLockExpiration)
+        assert.strictEqual(renewals(), before, "the runner kept renewing after its shutdown deadline")
+        assert.isTrue(
+          state.releaseAlls > 0 || state.releases.length > 0,
+          "the runner did not release its shard locks after its shutdown deadline"
+        )
+
+        yield* Deferred.succeed(unblock, void 0)
+        yield* TestClock.adjust(shutdownConfig.entityTerminationTimeout)
+        yield* Fiber.join(closing)
+      }).pipe(
+        Effect.ensuring(Deferred.succeed(unblock, void 0)),
+        Effect.provideContext(context)
+      )
     }))
 })

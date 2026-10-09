@@ -2,19 +2,41 @@ import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { PgClient } from "@effect/sql-pg"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Duration, Effect, Exit, Fiber, FileSystem, Latch, Layer, Redacted, Result, Schedule } from "effect"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  FileSystem,
+  Latch,
+  Layer,
+  Option,
+  Redacted,
+  Result,
+  Schedule,
+  Scope
+} from "effect"
 import {
   ClusterError,
+  ClusterSchema,
+  Entity,
   MessageStorage,
   Runner,
   RunnerAddress,
+  RunnerHealth,
+  Runners,
   RunnerStorage,
   ShardId,
+  Sharding,
   ShardingConfig,
   Snowflake,
   SqlMessageStorage,
   SqlRunnerStorage
 } from "effect/cluster"
+import { Rpc } from "effect/rpc"
 import { Migrator, SqlClient, type SqlConnection, SqlError } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
@@ -813,3 +835,59 @@ const SqliteLayer = Effect.gen(function*() {
     filename: dir + "/test.db"
   })
 }).pipe(Layer.unwrap, Layer.provide(NodeFileSystem.layer))
+
+const DrainEntity = Entity.make("DrainEntity", [
+  Rpc.make("Drain").annotate(ClusterSchema.Persisted, false)
+])
+
+describe("Sharding with SqlRunnerStorage", () => {
+  it.live("keeps a draining runner's shard locked for its termination timeout", () =>
+    Effect.gen(function*() {
+      const shard = ShardId.make("default", 1)
+      const entered = yield* Deferred.make<void>()
+      const finish = yield* Deferred.make<void>()
+      const runner = DrainEntity.toLayer({
+        Drain: () => Deferred.succeed(entered, void 0).pipe(Effect.andThen(Deferred.await(finish)))
+      }).pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide([SqlRunnerStorage.layerWith({ prefix: "drain" }), RunnerHealth.layerNoop, Runners.layerNoop]),
+        Layer.provideMerge(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(runnerAddress1),
+          shardsPerGroup: 1,
+          // The drain may outlast the lease.
+          entityTerminationTimeout: 30_000,
+          shardLockExpiration: 3000,
+          shardLockRefreshInterval: 1000,
+          refreshAssignmentsInterval: 100,
+          entityMessagePollInterval: 100
+        }))
+      )
+      const contender = yield* SqlRunnerStorage.make({ prefix: "drain" }).pipe(
+        Effect.provide(ShardingConfig.layer({ shardLockExpiration: 3000 }))
+      )
+      yield* contender.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
+
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(runner, scope)
+      const sharding = Context.get(context, Sharding.Sharding)
+      for (let i = 0; i < 100 && !sharding.hasShardId(shard); i++) {
+        yield* Effect.sleep(100)
+      }
+      assert.isTrue(sharding.hasShardId(shard), "the runner did not acquire the shard")
+      const client = yield* DrainEntity.client.pipe(Effect.provideContext(context))
+      yield* client("draining").Drain().pipe(Effect.forkDetach({ startImmediately: true }))
+      yield* Deferred.await(entered)
+
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkDetach({ startImmediately: true }))
+      // Three lease periods into a drain that the termination timeout still allows.
+      for (let i = 0; i < 36; i++) {
+        expect(yield* contender.acquire(runnerAddress2, [shard])).toEqual([])
+        yield* Effect.sleep(250)
+      }
+
+      yield* Deferred.succeed(finish, void 0)
+      yield* Fiber.join(closing)
+      expect(yield* contender.acquire(runnerAddress2, [shard])).toEqual([shard])
+    }).pipe(Effect.provide(Layer.orDie(SqliteLayer))), { timeout: 60_000 })
+})
