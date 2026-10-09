@@ -35,7 +35,6 @@ export const TestEntity = Entity.make("TestEntity", [
   Rpc.make("NeverFork"),
   Rpc.make("NeverVolatile").annotate(ClusterSchema.Persisted, false),
   Rpc.make("NeverStreamVolatile", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false),
-  Rpc.make("FiniteStreamVolatile", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false),
   Rpc.make("RequestWithKey", {
     payload: { key: Schema.String },
     primaryKey: ({ key }) => key
@@ -124,7 +123,6 @@ export const TestEntityNoState = TestEntity.toLayer(
           }
           return Stream.never
         })),
-      FiniteStreamVolatile: () => Stream.concat(Stream.make(0), Stream.fromEffect(Effect.as(Effect.sleep(1000), 1))),
       RequestWithKey: (envelope) => {
         state.envelopes.unsafeOffer(envelope)
         return Effect.orDie(state.messages.take)

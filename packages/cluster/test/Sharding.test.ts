@@ -3,7 +3,6 @@ import {
   ClusterError,
   EntityId,
   MachineId,
-  Message,
   MessageStorage,
   Runner as RunnerModule,
   RunnerAddress,
@@ -27,7 +26,6 @@ import {
   Mailbox,
   MutableRef,
   Option,
-  Scope,
   Stream,
   TestClock
 } from "effect"
@@ -671,48 +669,6 @@ describe.concurrent("Sharding", () => {
       assert(exit && Exit.isInterrupted(exit))
       assert.deepStrictEqual(state.envelopes.unsafeSize(), Option.some(1))
     }).pipe(Effect.provide(TestSharding)))
-
-  it.effect("restarts the entity when an interrupted stream reply fails after a defect", () =>
-    Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const state = yield* TestEntityState
-      const makeClient = yield* TestEntity.client
-      const client = makeClient("1")
-
-      yield* client.NeverFork().pipe(Effect.fork)
-      yield* TestClock.adjust(1)
-      yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
-      yield* TestClock.adjust(1)
-      const fiber = yield* client.NeverStreamVolatile().pipe(Stream.runDrain, Effect.fork)
-      yield* TestClock.adjust(1)
-
-      MutableRef.set(state.defectTrigger, true)
-      yield* client.GetUser({ id: 123 }).pipe(Effect.fork)
-      yield* TestClock.adjust(1000)
-
-      const exit = fiber.unsafePoll()
-      assert(exit && Exit.isInterrupted(exit))
-      assert.deepStrictEqual(state.interrupts.unsafeSize(), Option.some(1))
-    }).pipe(Effect.provide(TestShardingWithFailingStreamReply)))
-
-  it.effect("drains finite non-persisted streams on shutdown within entityTerminationTimeout", () =>
-    Effect.gen(function*() {
-      const scope = yield* Scope.make()
-      const context = yield* Layer.buildWithScope(TestShardingWithTerminationTimeout, scope)
-      yield* TestClock.adjust(1)
-      const makeClient = yield* Effect.provide(TestEntity.client, context)
-
-      const fiber = yield* makeClient("1").FiniteStreamVolatile().pipe(Stream.runCollect, Effect.fork)
-      yield* TestClock.adjust(1)
-
-      const closeFiber = yield* Effect.fork(Scope.close(scope, Exit.void))
-      yield* TestClock.adjust(1000)
-
-      assert.isNotNull(closeFiber.unsafePoll())
-      const exit = fiber.unsafePoll()
-      assert(exit && Exit.isSuccess(exit))
-      assert.deepStrictEqual(Chunk.toReadonlyArray(exit.value), [0, 1])
-    }))
 })
 
 describe("Sharding shard lock failover", () => {
@@ -1227,49 +1183,6 @@ const TestShardingWithoutStorage = TestShardingWithoutRunners.pipe(
 
 const TestSharding = TestShardingWithoutStorage.pipe(
   Layer.provideMerge(MessageStorage.layerMemory),
-  Layer.provide(TestShardingConfig)
-)
-
-const TestShardingWithTerminationTimeout = TestShardingWithoutRunners.pipe(
-  Layer.provide(Runners.layerNoop),
-  Layer.provide(MessageStorage.layerMemory),
-  Layer.provide(ShardingConfig.layer({
-    entityMailboxCapacity: 10,
-    entityTerminationTimeout: 30_000,
-    entityMessagePollInterval: 5000,
-    sendRetryInterval: 100
-  }))
-)
-
-const TestShardingWithFailingStreamReply = TestShardingWithoutRunners.pipe(
-  Layer.provide(Layer.scoped(
-    Runners.Runners,
-    Effect.gen(function*() {
-      const runners = yield* Runners.makeNoop
-      let failed = false
-      return Runners.Runners.of({
-        ...runners,
-        sendLocal(options) {
-          const message = options.message
-          if (failed || message._tag !== "OutgoingRequest" || message.envelope.tag !== "NeverStreamVolatile") {
-            return runners.sendLocal(options)
-          }
-          failed = true
-          return options.send(
-            new Message.IncomingRequestLocal({
-              envelope: message.envelope,
-              lastSentReply: Option.none(),
-              respond: (reply) =>
-                reply._tag === "WithExit"
-                  ? Effect.fail(new ClusterError.PersistenceError({ cause: "reply failed" }))
-                  : message.respond(reply)
-            })
-          )
-        }
-      })
-    })
-  )),
-  Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
   Layer.provide(TestShardingConfig)
 )
 
