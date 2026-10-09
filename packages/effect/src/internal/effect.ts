@@ -446,6 +446,9 @@ const captureAsyncContext = (): AsyncContext | undefined =>
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
+// Shared by completed fibers, which never push again; frozen so a push throws
+const completedStack: Array<any> = Object.freeze([]) as any
+
 // JavaScriptCore is the engine whose errors carry a `line` property
 const isJavaScriptCore = typeof (new Error() as any).line === "number"
 
@@ -586,12 +589,12 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       }
     }
     // Release the stack's backing store. V8's length setter is a runtime call,
-    // so a new array is cheaper there, and JavaScriptCore truncates in place
-    // faster than it allocates.
+    // so the stack is swapped for the shared empty one there, and
+    // JavaScriptCore truncates in place faster.
     if (isJavaScriptCore) {
       this._stack.length = 0
     } else {
-      this._stack = []
+      this._stack = completedStack
     }
     this._children = undefined
     this.context = Context.empty()
