@@ -715,6 +715,63 @@ describe("Sharding shard lock failover", () => {
       )
     }), 10_000)
 
+  it.effect("delivers client interrupts during graceful shard reassignment", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 3000,
+        shardLockRefreshInterval: 100,
+        entityTerminationTimeout: 1000,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.Default),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityState = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        const entityFiber = yield* client.NeverVolatile().pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+
+        storageState.assignSelf = false
+        for (let i = 0; i < 100 && sharding.hasShardId(shardId); i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.isFalse(sharding.hasShardId(shardId))
+
+        yield* Effect.fork(Fiber.interrupt(entityFiber))
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 0)
+        assert.deepStrictEqual(entityState.interrupts.unsafeSize(), Option.some(1))
+      }).pipe(
+        Effect.ensuring(TestClock.adjust(2000)),
+        Effect.provide(layer),
+        Effect.scoped
+      )
+    }), 10_000)
+
   it.effect("does not wait for entity construction before a forced shard release", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
