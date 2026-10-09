@@ -5,10 +5,12 @@
  *
  * @internal
  */
+import * as Context from "../../Context.ts"
 import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64 from "../../encoding/Base64.ts"
 import * as Base64Url from "../../encoding/Base64Url.ts"
+import * as Layer from "../../Layer.ts"
 import type { SshError } from "../SshError.ts"
 import { protocolErrorFrom, trySync } from "./errors.ts"
 import type { Bytes } from "./wire.ts"
@@ -149,7 +151,7 @@ const verifyPlan = (blob: Uint8Array, algorithm: string): VerifyPlan => {
  *
  * @internal
  */
-export interface Signatures {
+export class Signatures extends Context.Service<Signatures, {
   /**
    * Verifies an SSH signature blob (`string algorithm, string signature`)
    * against a public key blob. When `expectedAlgorithm` is provided, the
@@ -165,39 +167,40 @@ export interface Signatures {
    * Computes the OpenSSH `SHA256:` fingerprint of a public key blob.
    */
   readonly fingerprint: (blob: Uint8Array) => Effect.Effect<string, SshError>
-}
-
-/** @internal */
-export const make: Effect.Effect<Signatures, never, Crypto.Crypto> = Effect.map(Crypto.Crypto, (crypto) => {
-  const verify = Effect.fnUntraced(function*(options: {
-    readonly publicKey: Uint8Array
-    readonly signature: Uint8Array
-    readonly data: Uint8Array
-    readonly expectedAlgorithm?: string | undefined
-  }) {
-    const { algorithm, raw } = yield* trySync("malformed signature", () => {
-      const reader = new Reader(options.signature)
-      return { algorithm: reader.utf8(), raw: reader.string() }
+}>()("effect/ssh/internal/Signatures", {
+  make: Effect.map(Crypto.Crypto, (crypto) => {
+    const verify = Effect.fnUntraced(function*(options: {
+      readonly publicKey: Uint8Array
+      readonly signature: Uint8Array
+      readonly data: Uint8Array
+      readonly expectedAlgorithm?: string | undefined
+    }) {
+      const { algorithm, raw } = yield* trySync("malformed signature", () => {
+        const reader = new Reader(options.signature)
+        return { algorithm: reader.utf8(), raw: reader.string() }
+      })
+      if (options.expectedAlgorithm !== undefined && algorithm !== options.expectedAlgorithm) return false
+      const plan = yield* trySync("malformed public key", () => verifyPlan(options.publicKey, algorithm))
+      const signature = yield* trySync("malformed signature", () => plan.signature(raw))
+      if (signature === undefined) return false
+      const key = yield* Effect.mapError(
+        crypto.importJwk(plan.jwk, plan.algorithm, { usages: ["verify"] }),
+        protocolErrorFrom(`could not import ${algorithm} public key`)
+      )
+      return yield* Effect.mapError(
+        crypto.verify(plan.options, key, signature, options.data),
+        protocolErrorFrom(`could not verify ${algorithm} signature`)
+      )
     })
-    if (options.expectedAlgorithm !== undefined && algorithm !== options.expectedAlgorithm) return false
-    const plan = yield* trySync("malformed public key", () => verifyPlan(options.publicKey, algorithm))
-    const signature = yield* trySync("malformed signature", () => plan.signature(raw))
-    if (signature === undefined) return false
-    const key = yield* Effect.mapError(
-      crypto.importJwk(plan.jwk, plan.algorithm, { usages: ["verify"] }),
-      protocolErrorFrom(`could not import ${algorithm} public key`)
-    )
-    return yield* Effect.mapError(
-      crypto.verify(plan.options, key, signature, options.data),
-      protocolErrorFrom(`could not verify ${algorithm} signature`)
-    )
+
+    const fingerprint = (blob: Uint8Array): Effect.Effect<string, SshError> =>
+      crypto.digest("SHA-256", blob).pipe(
+        Effect.map((hash) => "SHA256:" + Base64.encode(hash).replace(/=+$/, "")),
+        Effect.mapError(protocolErrorFrom("could not compute fingerprint"))
+      )
+
+    return { verify, fingerprint }
   })
-
-  const fingerprint = (blob: Uint8Array): Effect.Effect<string, SshError> =>
-    crypto.digest("SHA-256", blob).pipe(
-      Effect.map((hash) => "SHA256:" + Base64.encode(hash).replace(/=+$/, "")),
-      Effect.mapError(protocolErrorFrom("could not compute fingerprint"))
-    )
-
-  return { verify, fingerprint }
-})
+}) {
+  static readonly layer: Layer.Layer<Signatures, never, Crypto.Crypto> = Layer.effect(this)(this.make)
+}

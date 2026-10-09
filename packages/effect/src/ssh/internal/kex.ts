@@ -5,8 +5,10 @@
  *
  * @internal
  */
+import * as Context from "../../Context.ts"
 import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
+import * as Layer from "../../Layer.ts"
 import type { SshError } from "../SshError.ts"
 import { protocolErrorFrom } from "./errors.ts"
 import { concat, utf8, Writer } from "./wire.ts"
@@ -49,7 +51,7 @@ export const kexMethods: Record<string, KexMethod> = {
  *
  * @internal
  */
-export interface Kex {
+export class Kex extends Context.Service<Kex, {
   /**
    * Generates an ephemeral key pair for a key exchange method. The public key
    * and the peer's public key travel as raw bytes (RFC 8731, RFC 5656).
@@ -66,47 +68,48 @@ export interface Kex {
     sessionId: Uint8Array,
     length: number
   ) => Effect.Effect<Uint8Array, SshError>
+}>()("effect/ssh/internal/Kex", {
+  make: Effect.map(Crypto.Crypto, (crypto) => {
+    const generateKeyAgreement = Effect.fnUntraced(function*(method: KexMethod) {
+      const { algorithm } = method
+      const pair = yield* Effect.mapError(
+        crypto.generateKeyPair(algorithm),
+        protocolErrorFrom(`${method.name} key generation failed`)
+      )
+      const publicKey = yield* Effect.mapError(
+        crypto.exportKey("raw", pair.publicKey),
+        protocolErrorFrom(`${method.name} key generation failed`)
+      )
+      return {
+        publicKey,
+        agree: (peer) =>
+          crypto.importKey("raw", peer, algorithm).pipe(
+            Effect.flatMap((peerKey) => crypto.deriveSharedSecret(pair.privateKey, peerKey)),
+            Effect.mapError(protocolErrorFrom(`${method.name} key agreement failed`))
+          )
+      } satisfies KeyAgreement
+    })
+
+    const deriveKey = Effect.fnUntraced(function*(
+      hash: Crypto.HmacAlgorithm,
+      sharedSecret: Uint8Array,
+      exchangeHash: Uint8Array,
+      letter: string,
+      sessionId: Uint8Array,
+      length: number
+    ) {
+      const k = new Writer().mpint(sharedSecret).finish()
+      const hashOf = (data: Uint8Array) =>
+        Effect.mapError(crypto.digest(hash, data), protocolErrorFrom("key derivation failed"))
+      let out = yield* hashOf(concat([k, exchangeHash, utf8(letter), sessionId]))
+      while (out.length < length) {
+        out = concat([out, yield* hashOf(concat([k, exchangeHash, out]))])
+      }
+      return out.subarray(0, length)
+    })
+
+    return { generateKeyAgreement, deriveKey }
+  })
+}) {
+  static readonly layer: Layer.Layer<Kex, never, Crypto.Crypto> = Layer.effect(this)(this.make)
 }
-
-/** @internal */
-export const make: Effect.Effect<Kex, never, Crypto.Crypto> = Effect.map(Crypto.Crypto, (crypto) => {
-  const generateKeyAgreement = Effect.fnUntraced(function*(method: KexMethod) {
-    const { algorithm } = method
-    const pair = yield* Effect.mapError(
-      crypto.generateKeyPair(algorithm),
-      protocolErrorFrom(`${method.name} key generation failed`)
-    )
-    const publicKey = yield* Effect.mapError(
-      crypto.exportKey("raw", pair.publicKey),
-      protocolErrorFrom(`${method.name} key generation failed`)
-    )
-    return {
-      publicKey,
-      agree: (peer) =>
-        crypto.importKey("raw", peer, algorithm).pipe(
-          Effect.flatMap((peerKey) => crypto.deriveSharedSecret(pair.privateKey, peerKey)),
-          Effect.mapError(protocolErrorFrom(`${method.name} key agreement failed`))
-        )
-    } satisfies KeyAgreement
-  })
-
-  const deriveKey = Effect.fnUntraced(function*(
-    hash: Crypto.HmacAlgorithm,
-    sharedSecret: Uint8Array,
-    exchangeHash: Uint8Array,
-    letter: string,
-    sessionId: Uint8Array,
-    length: number
-  ) {
-    const k = new Writer().mpint(sharedSecret).finish()
-    const hashOf = (data: Uint8Array) =>
-      Effect.mapError(crypto.digest(hash, data), protocolErrorFrom("key derivation failed"))
-    let out = yield* hashOf(concat([k, exchangeHash, utf8(letter), sessionId]))
-    while (out.length < length) {
-      out = concat([out, yield* hashOf(concat([k, exchangeHash, out]))])
-    }
-    return out.subarray(0, length)
-  })
-
-  return { generateKeyAgreement, deriveKey }
-})

@@ -525,7 +525,7 @@ export class SshKeys extends Context.Service<SshKeys, {
  */
 export const make: Effect.Effect<SshKeys["Service"], never, Crypto.Crypto> = Effect.gen(function*() {
   const crypto = yield* Crypto.Crypto
-  const signatures = yield* Signatures.make
+  const signatures = yield* Signatures.Signatures
 
   /**
    * Imports private key material as non-extractable signing keys and builds the
@@ -666,7 +666,7 @@ export const make: Effect.Effect<SshKeys["Service"], never, Crypto.Crypto> = Eff
         (cause) => keyError("could not compute fingerprint", cause)
       )
   })
-})
+}).pipe(Effect.provide(Signatures.Signatures.layer))
 
 /**
  * Layer that provides `SshKeys` using the context's `Crypto` service.

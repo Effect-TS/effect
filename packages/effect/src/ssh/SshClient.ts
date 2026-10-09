@@ -56,7 +56,7 @@
  * @since 4.0.0
  */
 import type * as Cause from "../Cause.ts"
-import * as Crypto from "../Crypto.ts"
+import type * as Crypto from "../Crypto.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as InternalVersion from "../internal/version.ts"
@@ -686,26 +686,12 @@ const proxyAgent = (agent: SshAgent.SshAgent["Service"], channel: SshChannel) =>
       }))
   }).pipe(Effect.ensuring(channel.close), Effect.ignore)
 
-/**
- * Connects, verifies the server, and authenticates over a socket.
- *
- * **Details**
- *
- * The connection lives until the surrounding scope closes, at which point a
- * disconnect message is sent and the socket is released. Channels opened
- * through the client should be closed first; they are closed implicitly
- * otherwise.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const make = Effect.fnUntraced(function*(
+const makeClient = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: ConnectOptions
-): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Scope.Scope> {
+): Effect.fn.Return<SshClient, SshError, Crypto.Crypto | Transport.Services | Scope.Scope> {
   const scope = yield* Effect.scope
-  const signatures = yield* Signatures.make
+  const signatures = yield* Signatures.Signatures
   const port = options.port ?? 22
   // Unsupported algorithm names are dropped so they can never be negotiated.
   const supported = (category: keyof AlgorithmPreferences) => {
@@ -939,6 +925,26 @@ export const make = Effect.fnUntraced(function*(
 })
 
 /**
+ * Connects, verifies the server, and authenticates over a socket.
+ *
+ * **Details**
+ *
+ * The connection lives until the surrounding scope closes, at which point a
+ * disconnect message is sent and the socket is released. Channels opened
+ * through the client should be closed first; they are closed implicitly
+ * otherwise.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (
+  socket: Socket.Socket,
+  options: ConnectOptions
+): Effect.Effect<SshClient, SshError, Crypto.Crypto | Scope.Scope> =>
+  Effect.provide(makeClient(socket, options), Transport.layer)
+
+/**
  * Options for `layer`: connection settings shared by every connection,
  * plus how to open the transport socket.
  *
@@ -969,10 +975,13 @@ export interface LayerOptions extends Omit<ConnectOptions, "host" | "port" | "us
  * @category constructors
  * @since 4.0.0
  */
-export const makeConnector = Effect.fnUntraced(function*(
+export const makeConnector = (options: LayerOptions): Effect.Effect<Ssh.Ssh["Service"], never, Crypto.Crypto> =>
+  Effect.provide(makeConnectorWith(options), Transport.layer)
+
+const makeConnectorWith = Effect.fnUntraced(function*(
   options: LayerOptions
-): Effect.fn.Return<Ssh.Ssh["Service"], never, Crypto.Crypto> {
-  const crypto = yield* Crypto.Crypto
+): Effect.fn.Return<Ssh.Ssh["Service"], never, Crypto.Crypto | Transport.Services> {
+  const context = yield* Effect.context<Crypto.Crypto | Transport.Services>()
   const { makeSocket, port: defaultPort, username: defaultUsername, ...connectOptions } = options
   return Ssh.Ssh.of({
     connect: Effect.fnUntraced(function*(destination) {
@@ -984,8 +993,8 @@ export const makeConnector = Effect.fnUntraced(function*(
       }
       const port = destination.port ?? defaultPort ?? 22
       const socket = yield* makeSocket({ host: destination.host, port })
-      const client = yield* make(socket, { ...connectOptions, host: destination.host, port, username }).pipe(
-        Effect.provideService(Crypto.Crypto, crypto)
+      const client = yield* makeClient(socket, { ...connectOptions, host: destination.host, port, username }).pipe(
+        Effect.provideContext(context)
       )
       return Ssh.fromClient(client)
     })

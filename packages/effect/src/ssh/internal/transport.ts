@@ -10,6 +10,7 @@ import * as Deferred from "../../Deferred.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Latch from "../../Latch.ts"
+import * as Layer from "../../Layer.ts"
 import * as Queue from "../../Queue.ts"
 import * as Result from "../../Result.ts"
 import type * as Scope from "../../Scope.ts"
@@ -236,16 +237,30 @@ const STRICT_KEX_CLIENT = "kex-strict-c-v00@openssh.com"
 const STRICT_KEX_SERVER = "kex-strict-s-v00@openssh.com"
 const EXT_INFO_CLIENT = "ext-info-c"
 
+/**
+ * The internal services used by the transport.
+ *
+ * @internal
+ */
+export type Services = Kex.Kex | Packet.Packet | Signatures.Signatures
+
+/** @internal */
+export const layer: Layer.Layer<Services, never, Crypto.Crypto> = Layer.mergeAll(
+  Kex.Kex.layer,
+  Packet.Packet.layer,
+  Signatures.Signatures.layer
+)
+
 /** @internal */
 export const make = Effect.fnUntraced(function*(
   socket: Socket.Socket,
   options: TransportOptions
-): Effect.fn.Return<Transport, SshError, Crypto.Crypto | Scope.Scope> {
+): Effect.fn.Return<Transport, SshError, Crypto.Crypto | Services | Scope.Scope> {
   const scope = yield* Effect.scope
   const crypto = yield* Crypto.Crypto
-  const kex = yield* Kex.make
-  const packet = yield* Packet.make
-  const signatures = yield* Signatures.make
+  const kex = yield* Kex.Kex
+  const packet = yield* Packet.Packet
+  const signatures = yield* Signatures.Signatures
   const pull = yield* Socket.readerBytes(socket).pipe(Effect.mapError(connectionError))
   const socketWriter = yield* socket.writer
 

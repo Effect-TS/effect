@@ -137,8 +137,8 @@ class ProtocolFailure extends Error {}
 export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptions) {
   const scope = yield* Effect.scope
   const crypto = yield* EffectCrypto.Crypto
-  const kex = yield* Kex.make
-  const packet = yield* Packet.make
+  const kex = yield* Kex.Kex
+  const packet = yield* Packet.Packet
   const sshKeys = yield* SshKey.make
   const hostKey = options.hostKey
   const hostKeyAlgorithm = options.hostKeyAlgorithm ?? SshKey.signatureAlgorithms(hostKey.type)[0]
@@ -811,9 +811,10 @@ export const runServer = (options: ServerOptions) =>
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
     yield* Effect.forkIn(
-      Effect.flatMap(make(pipe, options), (server) => Deferred.succeed(deferred, server)).pipe(
-        Effect.provideService(Scope.Scope, scope)
-      ),
+      Effect.flatMap(Effect.provide(make(pipe, options), [Kex.Kex.layer, Packet.Packet.layer]), (server) =>
+        Deferred.succeed(deferred, server)).pipe(
+          Effect.provideService(Scope.Scope, scope)
+        ),
       scope
     )
     return { socket: pipe.clientSocket, server: Deferred.await(deferred), pipe }
