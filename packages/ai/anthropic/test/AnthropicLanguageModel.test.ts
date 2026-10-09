@@ -668,7 +668,7 @@ describe("AnthropicLanguageModel", () => {
           from: { model: "claude-opus-5-5" },
           to: { model: "claude-opus-4-8" },
           trigger: { type: "refusal", category: "cyber" }
-        }
+        } as const
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
           Layer.provide(Layer.succeed(
             HttpClient.HttpClient,
@@ -721,7 +721,10 @@ describe("AnthropicLanguageModel", () => {
           part.type === "response-metadata" && part.metadata.anthropic?.fallback !== undefined
         )
         assert.strictEqual(metadata?.type === "response-metadata" ? metadata.modelId : undefined, "claude-opus-4-8")
-        assert.deepStrictEqual(metadata?.metadata.anthropic?.fallback, fallback)
+        assert.deepStrictEqual(
+          metadata?.type === "response-metadata" ? metadata.metadata.anthropic?.fallback : undefined,
+          fallback
+        )
       }))
   })
 
@@ -776,7 +779,7 @@ describe("AnthropicLanguageModel", () => {
           from: { model: "claude-opus-5-5" },
           to: { model: "claude-opus-4-8" },
           trigger: { type: "refusal", category: "cyber" }
-        }
+        } as const
         const iterations = [
           {
             type: "message",
@@ -796,7 +799,7 @@ describe("AnthropicLanguageModel", () => {
             input_tokens: 10,
             output_tokens: 5
           }
-        ]
+        ] as const
         const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
           Layer.provide(Layer.succeed(
             HttpClient.HttpClient,
@@ -831,7 +834,10 @@ describe("AnthropicLanguageModel", () => {
           part.type === "response-metadata" && part.metadata.anthropic?.fallback !== undefined
         )
         assert.strictEqual(metadata?.type === "response-metadata" ? metadata.modelId : undefined, "claude-opus-4-8")
-        assert.deepStrictEqual(metadata?.metadata.anthropic?.fallback, fallback)
+        assert.deepStrictEqual(
+          metadata?.type === "response-metadata" ? metadata.metadata.anthropic?.fallback : undefined,
+          fallback
+        )
         const finish = response.content.find((part) => part.type === "finish")
         assert.deepStrictEqual(
           finish?.type === "finish" ? finish.metadata.anthropic?.usage?.iterations : undefined,
