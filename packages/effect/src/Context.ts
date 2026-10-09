@@ -1220,6 +1220,11 @@ export const merge: {
   if (extendsContext(that as ContextImpl<R1>, self as ContextImpl<Services>)) return that as any
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
+  return mergeFlat(self as ContextImpl<Services>, that as ContextImpl<R1>)
+})
+
+// Kept out of `merge` so that its fast paths stay small enough to inline
+const mergeFlat = <Services, R1>(self: ContextImpl<Services>, that: ContextImpl<R1>): Context<Services | R1> => {
   const map = new Map(self.mapUnsafe)
   let cached = false
   that.mapUnsafe.forEach((value, key) => {
@@ -1230,9 +1235,9 @@ export const merge: {
   // Without a cached key from `that`, the result resolves every cached key
   // exactly like `self`, so it can reuse `self`'s computed fiber cache. It
   // stays its own cache root so that it does not keep `self` alive.
-  if (!cached) merged._fiberCache = (self as ContextImpl<Services>).cacheRoot?._fiberCache
+  if (!cached) merged._fiberCache = self.cacheRoot?._fiberCache
   return merged
-})
+}
 
 // Whether `that` is `self` with zero or more overlays added on top: both share
 // the immutable base and `self`'s overlay node is in `that`'s chain, so the
