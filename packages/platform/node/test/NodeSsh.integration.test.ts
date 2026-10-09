@@ -51,6 +51,9 @@ const provideCrypto = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A
 const runWithCrypto = <A, E>(effect: Effect.Effect<A, E, Crypto.Crypto>): Promise<A> =>
   Effect.runPromise(provideCrypto(effect))
 
+/** SSH key operations, capturing the Node `Crypto` service once. */
+const sshKeys = await Effect.runPromise(provideCrypto(SshKey.make))
+
 type CryptoTest = <A, E>(
   name: string,
   self: () => Effect.Effect<A, E, Scope.Scope | Crypto.Crypto>,
@@ -272,13 +275,13 @@ const startSshd = async (): Promise<Fixture> => {
     const userKeys: Record<string, SshKey.PrivateKey> = {}
     for (const name of Object.keys(userKeyFiles)) {
       userKeys[name] = await runWithCrypto(
-        SshKey.parsePrivateKey(Fs.readFileSync(Path.join(dir, `user_${name}`), "utf8"))
+        sshKeys.parsePrivateKey(Fs.readFileSync(Path.join(dir, `user_${name}`), "utf8"))
       )
     }
-    userKeys["generated-ed25519"] = await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "gen" }))
-    userKeys["generated-ecdsa-p384"] = await runWithCrypto(SshKey.generate("ecdsa-sha2-nistp384"))
-    userKeys["generated-rsa"] = await runWithCrypto(SshKey.generate("ssh-rsa", { bits: 2048 }))
-    const unauthorizedKey = await runWithCrypto(SshKey.generate("ssh-ed25519"))
+    userKeys["generated-ed25519"] = await runWithCrypto(sshKeys.generate("ssh-ed25519", { comment: "gen" }))
+    userKeys["generated-ecdsa-p384"] = await runWithCrypto(sshKeys.generate("ecdsa-sha2-nistp384"))
+    userKeys["generated-rsa"] = await runWithCrypto(sshKeys.generate("ssh-rsa", { bits: 2048 }))
+    const unauthorizedKey = await runWithCrypto(sshKeys.generate("ssh-ed25519"))
 
     Fs.writeFileSync(
       Path.join(dir, "authorized_keys"),
@@ -355,7 +358,7 @@ const connect = (options: Partial<SshClient.ConnectOptions> = {}) =>
       port,
       username,
       auth: SshClient.publicKey(userKeys["ed25519"]),
-      verifyHostKey: SshKnownHosts.verifier(SshKnownHosts.parse(getFixture().knownHosts)),
+      verifyHostKey: (yield* SshKnownHosts.make(SshKnownHosts.parse(getFixture().knownHosts))).verifier,
       ...options
     })
   })
@@ -521,7 +524,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
           assert.strictEqual(seen?.fingerprint, expected.fingerprint)
           assert.strictEqual(seen?.host, "127.0.0.1")
           assert.strictEqual(seen?.port, getFixture().port)
-          assert.strictEqual(yield* SshKey.fingerprint(client.hostKey), expected.fingerprint)
+          assert.strictEqual(yield* sshKeys.fingerprint(client.hostKey), expected.fingerprint)
           assert.strictEqual((yield* client.run("echo ok")).stdout, "ok\n")
         }))
     }
@@ -616,7 +619,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
           const { line } = getFixture().hostKeys[name]
           const knownHosts = `[127.0.0.1]:${getFixture().port} ${line.split(" ").slice(0, 2).join(" ")}\n`
           const client = yield* Effect.scoped(
-            connect({ verifyHostKey: SshKnownHosts.verifier(SshKnownHosts.parse(knownHosts)) }).pipe(
+            connect({ verifyHostKey: (yield* SshKnownHosts.make(SshKnownHosts.parse(knownHosts))).verifier }).pipe(
               Effect.map((client) => ({ hostKey: client.hostKey, algorithm: client.algorithms.hostKey }))
             )
           )
@@ -638,7 +641,9 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         })
         const hashed = Fs.readFileSync(file, "utf8")
         assert.match(hashed, /^\|1\|/)
-        const client = yield* connect({ verifyHostKey: SshKnownHosts.verifier(SshKnownHosts.parse(hashed)) })
+        const client = yield* connect({
+          verifyHostKey: (yield* SshKnownHosts.make(SshKnownHosts.parse(hashed))).verifier
+        })
         assert.strictEqual((yield* client.run("echo ok")).stdout, "ok\n")
       }))
 
@@ -646,8 +651,10 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
       Effect.gen(function*() {
         const { port, hostKeys } = getFixture()
         const file = tmpPath("known_hosts")
-        const plain = yield* SshKnownHosts.formatEntry("127.0.0.1", port, hostKeys.ed25519.key)
-        const hashed = yield* SshKnownHosts.formatEntry("127.0.0.1", port, hostKeys.rsa.key, { hash: true })
+        const plain = yield* (yield* SshKnownHosts.make("")).formatEntry("127.0.0.1", port, hostKeys.ed25519.key)
+        const hashed = yield* (yield* SshKnownHosts.make("")).formatEntry("127.0.0.1", port, hostKeys.rsa.key, {
+          hash: true
+        })
         Fs.writeFileSync(file, `${plain}\n${hashed}\n`)
         const found = yield* Effect.promise(() => run(bin.sshKeygen!, ["-F", `[127.0.0.1]:${port}`, "-f", file]))
         assert.include(found, hostKeys.ed25519.line.split(" ")[1])
@@ -656,12 +663,16 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
 
     it.live("rejects a host key that does not match known_hosts", () =>
       Effect.gen(function*() {
-        const other = yield* SshKey.generate("ssh-ed25519")
-        const knownHosts = yield* SshKnownHosts.formatEntry("127.0.0.1", getFixture().port, other.publicKey)
+        const other = yield* sshKeys.generate("ssh-ed25519")
+        const knownHosts = yield* (yield* SshKnownHosts.make("")).formatEntry(
+          "127.0.0.1",
+          getFixture().port,
+          other.publicKey
+        )
         const reason = yield* sshReason(
           connect({
             algorithms: { hostKey: ["ssh-ed25519"] },
-            verifyHostKey: SshKnownHosts.verifier(SshKnownHosts.parse(knownHosts))
+            verifyHostKey: (yield* SshKnownHosts.make(SshKnownHosts.parse(knownHosts))).verifier
           })
         )
         assert.strictEqual(reason._tag, "SshHostKeyError")
@@ -675,13 +686,16 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
       Effect.gen(function*() {
         const { hostKeys, port } = getFixture()
         const unknown = yield* sshReason(
-          connect({ verifyHostKey: SshKnownHosts.verifier(SshKnownHosts.parse(`otherhost ${hostKeys.ed25519.line}`)) })
+          connect({
+            verifyHostKey:
+              (yield* SshKnownHosts.make(SshKnownHosts.parse(`otherhost ${hostKeys.ed25519.line}`))).verifier
+          })
         )
         assert.strictEqual(unknown._tag === "SshHostKeyError" && unknown.kind, "Unknown")
         const revoked = yield* sshReason(connect({
-          verifyHostKey: SshKnownHosts.verifier(
+          verifyHostKey: (yield* SshKnownHosts.make(
             SshKnownHosts.parse(`[127.0.0.1]:${port} ${hostKeys.ed25519.line}\n@revoked * ${hostKeys.ed25519.line}`)
-          )
+          )).verifier
         }))
         assert.strictEqual(revoked._tag === "SshHostKeyError" && revoked.kind, "Revoked")
       }))
@@ -1404,7 +1418,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
         assert.strictEqual(identities[0].publicKey.comment, "agent-key")
         const data = encoder.encode("sign me")
         const signature = yield* identities[0].sign(data, "ecdsa-sha2-nistp384")
-        assert.isTrue(yield* SshKey.verify(agentKey!, data, signature))
+        assert.isTrue(yield* sshKeys.verify(agentKey!, data, signature))
       }))
 
     it.live("authenticates with the agent", () =>
@@ -1450,7 +1464,7 @@ describe.skipIf(!sshdProbe.usable)("NodeSsh (OpenSSH integration)", { timeout: 6
 
     it.live("forwards an in-memory agent", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.generate("ssh-ed25519", { comment: "in-memory" })
+        const key = yield* sshKeys.generate("ssh-ed25519", { comment: "in-memory" })
         const client = yield* connect({ agentForwarding: SshAgent.fromKeys([key]) })
         const listed = yield* client.run(sh(`${bin.sshAdd} -L`), { forwardAgent: true })
         assert.deepStrictEqual(listed.exit, { _tag: "ExitStatus", code: 0 }, listed.stderr)

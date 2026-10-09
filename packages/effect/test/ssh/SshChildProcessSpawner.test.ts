@@ -22,7 +22,10 @@ const CryptoLive = Layer.succeed(
   })
 )
 
-const hostKey = await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive))
+// SSH key operations, capturing the `Crypto` service once.
+const sshKeys = await Effect.runPromise(Effect.provide(SshKey.make, CryptoLive))
+
+const hostKey = await Effect.runPromise(sshKeys.generate("ssh-ed25519"))
 
 /**
  * Interprets the command lines produced by the spawner. Each recognised

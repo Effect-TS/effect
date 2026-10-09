@@ -24,13 +24,16 @@ const CryptoLive = Layer.succeed(
   })
 )
 
+// SSH key operations, capturing the `Crypto` service once.
+const sshKeys = await Effect.runPromise(Effect.provide(SshKey.make, CryptoLive))
+
 const decoder = new TextDecoder()
 const text = (stream: Stream.Stream<Uint8Array, SshError.SshError>) =>
   Effect.map(Stream.runCollect(stream), (chunks) => chunks.map((chunk) => decoder.decode(chunk)).join(""))
 
-const hostKey = Effect.succeed(await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive)))
+const hostKey = Effect.succeed(await Effect.runPromise(sshKeys.generate("ssh-ed25519")))
 const userKey = Effect.succeed(
-  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519", { comment: "user" }), CryptoLive))
+  await Effect.runPromise(sshKeys.generate("ssh-ed25519", { comment: "user" }))
 )
 
 /** Session handler implementing a few commands used by the tests. */
@@ -143,7 +146,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
     for (const [type, algorithm] of hostKeyCases) {
       it.effect(`verifies ${algorithm} host keys`, () =>
         Effect.gen(function*() {
-          const key = yield* SshKey.generate(type, { bits: 2048 })
+          const key = yield* sshKeys.generate(type, { bits: 2048 })
           const { client } = yield* connect({ hostKey: key, hostKeyAlgorithm: algorithm })
           assert.strictEqual(client.algorithms.hostKey, algorithm)
           assert.isTrue(SshKey.equals(client.hostKey, key.publicKey))
@@ -256,7 +259,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
     it.effect("passes the verified host key to the verifier", () =>
       Effect.gen(function*() {
         const key = yield* hostKey
-        const fingerprint = yield* SshKey.fingerprint(key.publicKey)
+        const fingerprint = yield* sshKeys.fingerprint(key.publicKey)
         let seen: SshClient.HostKeyInfo | undefined
         yield* connect({}, {
           port: 2200,
@@ -272,7 +275,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
 
     it.effect("accepts trusted fingerprints", () =>
       Effect.gen(function*() {
-        const fingerprint = yield* SshKey.fingerprint((yield* hostKey).publicKey)
+        const fingerprint = yield* sshKeys.fingerprint((yield* hostKey).publicKey)
         const { client } = yield* connect({}, { verifyHostKey: SshClient.trustFingerprints([fingerprint]) })
         assert.strictEqual((yield* client.run("echo ok")).stdout, "ok\n")
       }))
@@ -293,7 +296,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
               return preferred
             })
         })
-        const key = yield* SshKey.generate("ecdsa-sha2-nistp256")
+        const key = yield* sshKeys.generate("ecdsa-sha2-nistp256")
         const { client } = yield* connect({ hostKey: key }, { verifyHostKey: verifier })
         assert.deepStrictEqual(preferred, ["ecdsa-sha2-nistp256"])
         assert.strictEqual(client.algorithms.hostKey, "ecdsa-sha2-nistp256")
@@ -310,7 +313,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
     for (const type of ["ecdsa-sha2-nistp256", "ssh-rsa"] as const) {
       it.effect(`authenticates with a ${type} key`, () =>
         Effect.gen(function*() {
-          const key = yield* SshKey.generate(type, { bits: 2048 })
+          const key = yield* sshKeys.generate(type, { bits: 2048 })
           const { server } = yield* connect({ publicKeys: [key.publicKey] }, { auth: SshClient.publicKey(key) })
           assert.strictEqual(yield* Deferred.await(server.authenticated), "publickey")
         }))
@@ -345,7 +348,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
 
     it.effect("authenticates with an agent", () =>
       Effect.gen(function*() {
-        const other = yield* SshKey.generate("ssh-ed25519")
+        const other = yield* sshKeys.generate("ssh-ed25519")
         const agent = SshAgent.fromKeys([other, yield* userKey])
         const { server } = yield* connect({}, { auth: SshClient.agent(agent) })
         assert.strictEqual(yield* Deferred.await(server.authenticated), "publickey")
@@ -355,7 +358,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
 
     it.effect("falls back to the next method", () =>
       Effect.gen(function*() {
-        const stranger = yield* SshKey.generate("ssh-ed25519")
+        const stranger = yield* sshKeys.generate("ssh-ed25519")
         const { server } = yield* connect({}, {
           auth: [SshClient.publicKey(stranger), SshClient.password("secret")]
         })

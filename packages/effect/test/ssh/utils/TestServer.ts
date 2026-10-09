@@ -137,6 +137,7 @@ class ProtocolFailure extends Error {}
 export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptions) {
   const scope = yield* Effect.scope
   const crypto = yield* EffectCrypto.Crypto
+  const sshKeys = yield* SshKey.make
   const hostKey = options.hostKey
   const hostKeyAlgorithm = options.hostKeyAlgorithm ?? SshKey.signatureAlgorithms(hostKey.type)[0]
   const kexAlgorithms = options.kex ?? defaultKex
@@ -459,7 +460,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
             .string(sessionId!)
             .raw(payload.subarray(0, payload.length - signature.length - 4))
             .finish()
-          const valid = yield* Effect.orDie(SshKey.verify(known, data, signature))
+          const valid = yield* Effect.orDie(sshKeys.verify(known, data, signature))
           return yield* authOutcome("publickey", valid)
         }
         case "keyboard-interactive": {

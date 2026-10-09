@@ -18,6 +18,9 @@ const CryptoLive = Layer.succeed(
   })
 )
 
+// SSH key operations, capturing the `Crypto` service once.
+const sshKeys = await Effect.runPromise(Effect.provide(SshKey.make, CryptoLive))
+
 // Fixtures were generated with OpenSSH_10.5p1 `ssh-keygen`. The fingerprints
 // below are the output of `ssh-keygen -lf <name>.pub` for each fixture.
 const fixture = (name: string): string => readFileSync(new URL(`./fixtures/keys/${name}`, import.meta.url), "utf8")
@@ -155,9 +158,9 @@ const signAndVerify = (key: SshKey.PrivateKey) =>
     for (const algorithm of algorithms) {
       const signature = yield* key.sign(data, algorithm)
       assert.strictEqual(signatureAlgorithm(signature), algorithm)
-      assert.isTrue(yield* SshKey.verify(key.publicKey, data, signature))
-      assert.isFalse(yield* SshKey.verify(key.publicKey, utf8("other data"), signature))
-      assert.isFalse(yield* SshKey.verify(key.publicKey, data, tamper(signature)))
+      assert.isTrue(yield* sshKeys.verify(key.publicKey, data, signature))
+      assert.isFalse(yield* sshKeys.verify(key.publicKey, utf8("other data"), signature))
+      assert.isFalse(yield* sshKeys.verify(key.publicKey, data, tamper(signature)))
     }
   })
 
@@ -166,60 +169,60 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
     for (const { comment, fingerprint, format, name, type } of privateKeyFixtures) {
       it.effect(`parses ${format} ${type} (${name})`, () =>
         Effect.gen(function*() {
-          const key = yield* SshKey.parsePrivateKey(fixture(name))
+          const key = yield* sshKeys.parsePrivateKey(fixture(name))
           assert.isTrue(SshKey.isPrivateKey(key))
           assert.isTrue(SshKey.isPublicKey(key.publicKey))
           assert.strictEqual(key.type, type)
           assert.strictEqual(key.publicKey.type, type)
           assert.strictEqual(key.publicKey.comment, comment)
-          assert.strictEqual(yield* SshKey.fingerprint(key.publicKey), fingerprint)
+          assert.strictEqual(yield* sshKeys.fingerprint(key.publicKey), fingerprint)
 
           const publicKey = parsePublicKeyUnsafe(fixture(`${name}.pub`))
           assert.isTrue(SshKey.equals(key.publicKey, publicKey))
-          assert.strictEqual(yield* SshKey.fingerprint(publicKey), fingerprint)
+          assert.strictEqual(yield* sshKeys.fingerprint(publicKey), fingerprint)
 
           yield* signAndVerify(key)
           for (const algorithm of SshKey.signatureAlgorithms(type)) {
-            assert.isTrue(yield* SshKey.verify(publicKey, data, yield* key.sign(data, algorithm)))
+            assert.isTrue(yield* sshKeys.verify(publicKey, data, yield* key.sign(data, algorithm)))
           }
         }))
     }
 
     it.effect("accepts UTF-8 bytes", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.parsePrivateKey(utf8(fixture("openssh_ed25519")))
+        const key = yield* sshKeys.parsePrivateKey(utf8(fixture("openssh_ed25519")))
         assert.strictEqual(key.type, "ssh-ed25519")
         assert.strictEqual(key.publicKey.comment, "ed25519@fixture")
       }))
 
     it.effect("accepts PEM blocks surrounded by other text", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.parsePrivateKey(`leading text\n${fixture("pkcs8_ecdsa256")}\ntrailing text\n`)
+        const key = yield* sshKeys.parsePrivateKey(`leading text\n${fixture("pkcs8_ecdsa256")}\ntrailing text\n`)
         assert.strictEqual(key.type, "ecdsa-sha2-nistp256")
       }))
 
     it.effect("accepts CRLF line endings", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.parsePrivateKey(fixture("openssh_rsa").replace(/\n/g, "\r\n"))
+        const key = yield* sshKeys.parsePrivateKey(fixture("openssh_rsa").replace(/\n/g, "\r\n"))
         assert.strictEqual(key.type, "ssh-rsa")
         assert.strictEqual(key.publicKey.comment, "rsa@fixture")
       }))
 
     it.effect("options.comment overrides the comment", () =>
       Effect.gen(function*() {
-        const openssh = yield* SshKey.parsePrivateKey(fixture("openssh_ed25519"), { comment: "override" })
+        const openssh = yield* sshKeys.parsePrivateKey(fixture("openssh_ed25519"), { comment: "override" })
         assert.strictEqual(openssh.publicKey.comment, "override")
         assert.strictEqual(openssh.type, "ssh-ed25519")
         assert.isTrue(SshKey.isPrivateKey(openssh))
 
-        const pkcs8 = yield* SshKey.parsePrivateKey(fixture("pkcs8_rsa"), { comment: "pkcs8 comment" })
+        const pkcs8 = yield* sshKeys.parsePrivateKey(fixture("pkcs8_rsa"), { comment: "pkcs8 comment" })
         assert.strictEqual(pkcs8.publicKey.comment, "pkcs8 comment")
 
-        const empty = yield* SshKey.parsePrivateKey(fixture("openssh_rsa"), { comment: "" })
+        const empty = yield* sshKeys.parsePrivateKey(fixture("openssh_rsa"), { comment: "" })
         assert.strictEqual(empty.publicKey.comment, "")
 
         // the override keeps the key material and signing capability
-        const original = yield* SshKey.parsePrivateKey(fixture("openssh_ed25519"))
+        const original = yield* sshKeys.parsePrivateKey(fixture("openssh_ed25519"))
         assert.isTrue(SshKey.equals(openssh.publicKey, original.publicKey))
         yield* signAndVerify(openssh)
         yield* signAndVerify(pkcs8)
@@ -227,14 +230,14 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
 
     it.effect("fails for passphrase-protected OpenSSH keys", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(SshKey.parsePrivateKey(fixture("encrypted_ed25519")))
+        const error = yield* Effect.flip(sshKeys.parsePrivateKey(fixture("encrypted_ed25519")))
         assertKeyError(error, "encrypted")
         assert.include(error.message, "OpenSSH")
       }))
 
     it.effect("fails for passphrase-protected PEM keys", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(SshKey.parsePrivateKey(fixture("encrypted_pem_rsa")))
+        const error = yield* Effect.flip(sshKeys.parsePrivateKey(fixture("encrypted_pem_rsa")))
         assertKeyError(error, "SSH key error")
         // Without the blank line after the BEGIN marker the encryption headers are detected.
         const compact = fixture("encrypted_pem_rsa").replace(
@@ -242,37 +245,37 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           "-----BEGIN RSA PRIVATE KEY-----"
         )
         assertKeyError(
-          yield* Effect.flip(SshKey.parsePrivateKey(compact)),
+          yield* Effect.flip(sshKeys.parsePrivateKey(compact)),
           "encrypted PEM private keys are not supported"
         )
       }))
 
     it.effect("reports encryption for passphrase-protected PEM keys written by ssh-keygen", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(SshKey.parsePrivateKey(fixture("encrypted_pem_rsa")))
+        const error = yield* Effect.flip(sshKeys.parsePrivateKey(fixture("encrypted_pem_rsa")))
         assertKeyError(error, "encrypted")
       }))
 
     it.effect("fails for passphrase-protected PKCS#8 keys", () =>
       Effect.gen(function*() {
-        const error = yield* Effect.flip(SshKey.parsePrivateKey(fixture("encrypted_pkcs8_ecdsa256")))
+        const error = yield* Effect.flip(sshKeys.parsePrivateKey(fixture("encrypted_pkcs8_ecdsa256")))
         assertKeyError(error, "encrypted")
         assert.include(error.message, "PKCS#8")
       }))
 
     it.effect("fails for input without a PEM block", () =>
       Effect.gen(function*() {
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey("not a private key")), "could not parse private key")
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey("")), "could not parse private key")
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(new Uint8Array([0xff, 0, 1]))), "could not parse")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey("not a private key")), "could not parse private key")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey("")), "could not parse private key")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(new Uint8Array([0xff, 0, 1]))), "could not parse")
         // a public key is not a private key
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(fixture("openssh_ed25519.pub"))), "could not parse")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(fixture("openssh_ed25519.pub"))), "could not parse")
       }))
 
     it.effect("fails for unsupported PEM blocks", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(
-          SshKey.parsePrivateKey("-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n")
+          sshKeys.parsePrivateKey("-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n")
         )
         assertKeyError(error, "unsupported PEM block CERTIFICATE")
       }))
@@ -282,17 +285,17 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
         const pem = (label: string, body: string) => `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----\n`
         const garbage = "Z2FyYmFnZSBrZXkgbWF0ZXJpYWw="
         for (const label of ["OPENSSH PRIVATE KEY", "PRIVATE KEY", "RSA PRIVATE KEY", "EC PRIVATE KEY"]) {
-          assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(pem(label, garbage))), "SSH key error")
+          assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(pem(label, garbage))), "SSH key error")
         }
         assertKeyError(
-          yield* Effect.flip(SshKey.parsePrivateKey(pem("OPENSSH PRIVATE KEY", "!!!not base64!!!"))),
+          yield* Effect.flip(sshKeys.parsePrivateKey(pem("OPENSSH PRIVATE KEY", "!!!not base64!!!"))),
           "could not parse private key"
         )
 
         // a truncated OpenSSH key
         const lines = fixture("openssh_ed25519").trim().split("\n")
         const truncated = [lines[0], ...lines.slice(1, 3), lines[lines.length - 1]].join("\n")
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(truncated)), "could not parse private key")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(truncated)), "could not parse private key")
       }))
 
     it.effect("fails for OpenSSH keys with mismatched check bytes", () =>
@@ -308,7 +311,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           .string(section)
           .finish()
         const text = `-----BEGIN OPENSSH PRIVATE KEY-----\n${Base64.encode(body)}\n-----END OPENSSH PRIVATE KEY-----\n`
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(text)), "could not parse private key")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(text)), "could not parse private key")
       }))
 
     it.effect("fails for unsupported OpenSSH key types", () =>
@@ -324,7 +327,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           .string(section)
           .finish()
         const text = `-----BEGIN OPENSSH PRIVATE KEY-----\n${Base64.encode(body)}\n-----END OPENSSH PRIVATE KEY-----\n`
-        assertKeyError(yield* Effect.flip(SshKey.parsePrivateKey(text)), "unsupported key type ssh-dss")
+        assertKeyError(yield* Effect.flip(sshKeys.parsePrivateKey(text)), "unsupported key type ssh-dss")
       }))
   })
 
@@ -464,7 +467,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
   describe("sign / verify", () => {
     it.effect("RSA keys sign with rsa-sha2-256 and rsa-sha2-512", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.parsePrivateKey(fixture("openssh_rsa"))
+        const key = yield* sshKeys.parsePrivateKey(fixture("openssh_rsa"))
         const sha256 = yield* key.sign(data, "rsa-sha2-256")
         const sha512 = yield* key.sign(data, "rsa-sha2-512")
         assert.strictEqual(signatureAlgorithm(sha256), "rsa-sha2-256")
@@ -473,22 +476,22 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
         const reader = new Reader(sha256)
         reader.string()
         assert.strictEqual(reader.string().length, 256)
-        assert.isTrue(yield* SshKey.verify(key.publicKey, data, sha256))
-        assert.isTrue(yield* SshKey.verify(key.publicKey, data, sha512))
+        assert.isTrue(yield* sshKeys.verify(key.publicKey, data, sha256))
+        assert.isTrue(yield* sshKeys.verify(key.publicKey, data, sha512))
         // a signature labelled with the other hash does not verify
         const relabelled = new Writer().string("rsa-sha2-512").string(new Reader(sha256, 4 + 12).string()).finish()
-        assert.isFalse(yield* SshKey.verify(key.publicKey, data, relabelled))
+        assert.isFalse(yield* sshKeys.verify(key.publicKey, data, relabelled))
       }))
 
     it.effect("ed25519 and ECDSA signatures are well formed", () =>
       Effect.gen(function*() {
-        const ed25519 = yield* SshKey.parsePrivateKey(fixture("openssh_ed25519"))
+        const ed25519 = yield* sshKeys.parsePrivateKey(fixture("openssh_ed25519"))
         const signature = new Reader(yield* ed25519.sign(data, "ssh-ed25519"))
         assert.strictEqual(signature.utf8(), "ssh-ed25519")
         assert.strictEqual(signature.string().length, 64)
         assert.strictEqual(signature.remaining, 0)
 
-        const ecdsa = yield* SshKey.parsePrivateKey(fixture("openssh_ecdsa521"))
+        const ecdsa = yield* sshKeys.parsePrivateKey(fixture("openssh_ecdsa521"))
         const ecdsaSignature = new Reader(yield* ecdsa.sign(data, "ecdsa-sha2-nistp521"))
         assert.strictEqual(ecdsaSignature.utf8(), "ecdsa-sha2-nistp521")
         const inner = new Reader(ecdsaSignature.string())
@@ -500,11 +503,11 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
     it.effect("signs empty data", () =>
       Effect.gen(function*() {
         for (const name of ["openssh_ed25519", "openssh_ecdsa256", "openssh_rsa"]) {
-          const key = yield* SshKey.parsePrivateKey(fixture(name))
+          const key = yield* sshKeys.parsePrivateKey(fixture(name))
           const algorithm = SshKey.signatureAlgorithms(key.type)[0]
           const signature = yield* key.sign(new Uint8Array(0), algorithm)
-          assert.isTrue(yield* SshKey.verify(key.publicKey, new Uint8Array(0), signature))
-          assert.isFalse(yield* SshKey.verify(key.publicKey, data, signature))
+          assert.isTrue(yield* sshKeys.verify(key.publicKey, new Uint8Array(0), signature))
+          assert.isFalse(yield* sshKeys.verify(key.publicKey, data, signature))
         }
       }))
 
@@ -516,10 +519,10 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           ["openssh_rsa", "pkcs8_rsa"]
         ]
         for (const [signerName, otherName] of pairs) {
-          const signer = yield* SshKey.parsePrivateKey(fixture(signerName))
-          const other = yield* SshKey.parsePrivateKey(fixture(otherName))
+          const signer = yield* sshKeys.parsePrivateKey(fixture(signerName))
+          const other = yield* sshKeys.parsePrivateKey(fixture(otherName))
           const signature = yield* signer.sign(data, SshKey.signatureAlgorithms(signer.type)[0])
-          assert.isFalse(yield* SshKey.verify(other.publicKey, data, signature))
+          assert.isFalse(yield* sshKeys.verify(other.publicKey, data, signature))
         }
       }))
 
@@ -532,22 +535,22 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           ["openssh_rsa", "ssh-ed25519"]
         ]
         for (const [name, algorithm] of cases) {
-          const key = yield* SshKey.parsePrivateKey(fixture(name))
+          const key = yield* sshKeys.parsePrivateKey(fixture(name))
           assertKeyError(yield* Effect.flip(key.sign(data, algorithm)), `unsupported signature algorithm ${algorithm}`)
         }
       }))
 
     it.effect("verify fails for undecodable signatures and mismatched algorithms", () =>
       Effect.gen(function*() {
-        const ed25519 = yield* SshKey.parsePrivateKey(fixture("openssh_ed25519"))
-        const rsa = yield* SshKey.parsePrivateKey(fixture("openssh_rsa"))
+        const ed25519 = yield* sshKeys.parsePrivateKey(fixture("openssh_ed25519"))
+        const rsa = yield* sshKeys.parsePrivateKey(fixture("openssh_rsa"))
         const rsaSignature = yield* rsa.sign(data, "rsa-sha2-256")
         assertKeyError(
-          yield* Effect.flip(SshKey.verify(ed25519.publicKey, data, rsaSignature)),
+          yield* Effect.flip(sshKeys.verify(ed25519.publicKey, data, rsaSignature)),
           "could not verify signature"
         )
         assertKeyError(
-          yield* Effect.flip(SshKey.verify(ed25519.publicKey, data, new Uint8Array([0, 0, 0, 9, 1]))),
+          yield* Effect.flip(sshKeys.verify(ed25519.publicKey, data, new Uint8Array([0, 0, 0, 9, 1]))),
           "could not verify signature"
         )
         const unsupported = parsePublicKeyUnsafe(
@@ -555,7 +558,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
         )
         assertKeyError(
           yield* Effect.flip(
-            SshKey.verify(unsupported, data, new Writer().string("ssh-dss").string(new Uint8Array(40)).finish())
+            sshKeys.verify(unsupported, data, new Writer().string("ssh-dss").string(new Uint8Array(40)).finish())
           ),
           "could not verify signature"
         )
@@ -566,13 +569,13 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
     for (const type of allKeyTypes) {
       it.effect(`generates ${type} keys`, () =>
         Effect.gen(function*() {
-          const key = yield* SshKey.generate(type, { comment: `${type}@generated`, bits: 2048 })
+          const key = yield* sshKeys.generate(type, { comment: `${type}@generated`, bits: 2048 })
           assert.isTrue(SshKey.isPrivateKey(key))
           assert.strictEqual(key.type, type)
           assert.strictEqual(key.publicKey.type, type)
           assert.strictEqual(key.publicKey.comment, `${type}@generated`)
           assert.deepStrictEqual(key.toJSON(), { _id: "PrivateKey", type, comment: `${type}@generated` })
-          assert.match(yield* SshKey.fingerprint(key.publicKey), /^SHA256:[A-Za-z0-9+/]{43}$/)
+          assert.match(yield* sshKeys.fingerprint(key.publicKey), /^SHA256:[A-Za-z0-9+/]{43}$/)
 
           // the public key survives a text round trip
           const text = SshKey.formatPublicKey(key.publicKey)
@@ -580,15 +583,15 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
           assert.isTrue(text.endsWith(` ${type}@generated`))
           const parsed = parsePublicKeyUnsafe(text)
           assert.isTrue(SshKey.equals(parsed, key.publicKey))
-          assert.strictEqual(yield* SshKey.fingerprint(parsed), yield* SshKey.fingerprint(key.publicKey))
+          assert.strictEqual(yield* sshKeys.fingerprint(parsed), yield* sshKeys.fingerprint(key.publicKey))
 
           yield* signAndVerify(key)
           for (const algorithm of SshKey.signatureAlgorithms(type)) {
-            assert.isTrue(yield* SshKey.verify(parsed, data, yield* key.sign(data, algorithm)))
+            assert.isTrue(yield* sshKeys.verify(parsed, data, yield* key.sign(data, algorithm)))
           }
 
           // keys are fresh
-          const other = yield* SshKey.generate(type, { bits: 2048 })
+          const other = yield* sshKeys.generate(type, { bits: 2048 })
           assert.isFalse(SshKey.equals(other.publicKey, key.publicKey))
           assert.strictEqual(other.publicKey.comment, "")
         }))
@@ -596,7 +599,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
 
     it.effect("honours bits for RSA", () =>
       Effect.gen(function*() {
-        const key = yield* SshKey.generate("ssh-rsa", { bits: 2048 })
+        const key = yield* sshKeys.generate("ssh-rsa", { bits: 2048 })
         const signature = new Reader(yield* key.sign(data, "rsa-sha2-512"))
         signature.string()
         assert.strictEqual(signature.string().length, 256)
@@ -608,7 +611,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
 
     it.effect("fails for invalid options", () =>
       Effect.gen(function*() {
-        assertKeyError(yield* Effect.flip(SshKey.generate("ssh-rsa", { bits: 7 })), "could not generate ssh-rsa key")
+        assertKeyError(yield* Effect.flip(sshKeys.generate("ssh-rsa", { bits: 7 })), "could not generate ssh-rsa key")
       }))
   })
 })

@@ -183,62 +183,90 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
           `revoked.example.com ${ed25519Text}`,
           `@revoked revoked.example.com ${ed25519Text}`
         ].join("\n"))
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ecdsa), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, otherEd25519), "Mismatch")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ecdsa), "Match")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, otherEd25519),
+          "Mismatch"
+        )
         // a key type that is not recorded for the host is unknown, not a mismatch
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, rsa), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "other.example.com", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "revoked.example.com", 22, ed25519), "Revoked")
-        assert.strictEqual(yield* SshKnownHosts.check({ entries: [] }, "example.com", 22, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, rsa), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("other.example.com", 22, ed25519),
+          "Unknown"
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("revoked.example.com", 22, ed25519),
+          "Revoked"
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make({ entries: [] })).check("example.com", 22, ed25519),
+          "Unknown"
+        )
       }))
 
     it.effect("a matching key wins over mismatching entries regardless of order", () =>
       Effect.gen(function*() {
         const before = SshKnownHosts.parse(`example.com ${otherEd25519Text}\nexample.com ${ed25519Text}`)
         const after = SshKnownHosts.parse(`example.com ${ed25519Text}\nexample.com ${otherEd25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(before, "example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(after, "example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(before)).check("example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(after)).check("example.com", 22, ed25519), "Match")
       }))
 
     it.effect("@revoked applies to any matching host and takes precedence", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`example.com ${ed25519Text}\n@revoked * ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Revoked")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "anything", 2222, ed25519), "Revoked")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Revoked")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("anything", 2222, ed25519), "Revoked")
         // a revoked entry for another key does not affect this one
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "anything", 22, otherEd25519), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("anything", 22, otherEd25519),
+          "Unknown"
+        )
         // a revoked entry for a non-matching host does not apply
         const scoped = SshKnownHosts.parse(`example.com ${ed25519Text}\n@revoked other.com ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(scoped, "example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(scoped)).check("example.com", 22, ed25519), "Match")
       }))
 
     it.effect("@cert-authority entries are ignored", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`@cert-authority example.com ${ed25519Text}`)
         assert.strictEqual(knownHosts.entries.length, 1)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, otherEd25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, otherEd25519),
+          "Unknown"
+        )
       }))
 
     it.effect("uses [host]:port for non-standard ports", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`[example.org]:2222 ${ed25519Text}\nexample.com ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.org", 2222, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.org", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.org", 2223, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 2222, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.org", 2222, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.org", 22, ed25519), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("example.org", 2223, ed25519),
+          "Unknown"
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 2222, ed25519),
+          "Unknown"
+        )
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Match")
       }))
 
     it.effect("supports comma-separated patterns", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`example.com,10.0.0.1,[example.com]:2222 ${ed25519Text}`)
         for (const [host, port] of [["example.com", 22], ["10.0.0.1", 22], ["example.com", 2222]] as const) {
-          assert.strictEqual(yield* SshKnownHosts.check(knownHosts, host, port, ed25519), "Match", `${host}:${port}`)
+          assert.strictEqual(
+            yield* (yield* SshKnownHosts.make(knownHosts)).check(host, port, ed25519),
+            "Match",
+            `${host}:${port}`
+          )
         }
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "10.0.0.2", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "10.0.0.1", 2222, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("10.0.0.2", 22, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("10.0.0.1", 2222, ed25519), "Unknown")
       }))
 
     it.effect("supports * and ? wildcards", () =>
@@ -246,7 +274,8 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
         const knownHosts = SshKnownHosts.parse(
           `*.example.com ${ed25519Text}\nhost?.example.org ${ed25519Text}\n[*.example.net]:2222 ${ed25519Text}`
         )
-        const status = (host: string, port = 22) => SshKnownHosts.check(knownHosts, host, port, ed25519)
+        const service = yield* SshKnownHosts.make(knownHosts)
+        const status = (host: string, port = 22) => service.check(host, port, ed25519)
         assert.strictEqual(yield* status("a.example.com"), "Match")
         assert.strictEqual(yield* status("a.b.example.com"), "Match")
         assert.strictEqual(yield* status("example.com"), "Unknown")
@@ -265,43 +294,61 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("supports negated patterns", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`*.example.com,!bad.example.com ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "good.example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "bad.example.com", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "bad.example.com", 22, otherEd25519), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("good.example.com", 22, ed25519),
+          "Match"
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("bad.example.com", 22, ed25519),
+          "Unknown"
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("bad.example.com", 22, otherEd25519),
+          "Unknown"
+        )
         // the negation also applies when it is listed first
         const first = SshKnownHosts.parse(`!bad.example.com,*.example.com ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(first, "bad.example.com", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(first, "good.example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(first)).check("bad.example.com", 22, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(first)).check("good.example.com", 22, ed25519), "Match")
         // a list with only negated patterns matches nothing
         const negatedOnly = SshKnownHosts.parse(`!bad.example.com ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(negatedOnly, "good.example.com", 22, ed25519), "Unknown")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(negatedOnly)).check("good.example.com", 22, ed25519),
+          "Unknown"
+        )
         // wildcard negations
         const wildcard = SshKnownHosts.parse(`*,!*.internal ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(wildcard, "db.internal", 22, ed25519), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(wildcard, "example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(wildcard)).check("db.internal", 22, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(wildcard)).check("example.com", 22, ed25519), "Match")
       }))
 
     it.effect("matches plain patterns case-insensitively", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`Example.COM,*.Example.Org ${ed25519Text}`)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "EXAMPLE.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "WWW.example.ORG", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("EXAMPLE.com", 22, ed25519), "Match")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("WWW.example.ORG", 22, ed25519),
+          "Match"
+        )
       }))
 
     it.effect("matches hashed entries produced by ssh-keygen -H", () =>
       Effect.gen(function*() {
         const knownHosts = SshKnownHosts.parse(`${hashedExampleCom}\n${hashedExampleOrg2222}`)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, otherEd25519), "Mismatch")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.org", 2222, ecdsa), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.org", 22, ecdsa), "Unknown")
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.net", 22, ed25519), "Unknown")
-        assert.isTrue(yield* SshKnownHosts.matches(knownHosts.entries[0], "example.com", 22))
-        assert.isFalse(yield* SshKnownHosts.matches(knownHosts.entries[0], "example.com", 2222))
-        assert.isTrue(yield* SshKnownHosts.matches(knownHosts.entries[1], "example.org", 2222))
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Match")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, otherEd25519),
+          "Mismatch"
+        )
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.org", 2222, ecdsa), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.org", 22, ecdsa), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.net", 22, ed25519), "Unknown")
+        assert.isTrue(yield* (yield* SshKnownHosts.make("")).matches(knownHosts.entries[0], "example.com", 22))
+        assert.isFalse(yield* (yield* SshKnownHosts.make("")).matches(knownHosts.entries[0], "example.com", 2222))
+        assert.isTrue(yield* (yield* SshKnownHosts.make("")).matches(knownHosts.entries[1], "example.org", 2222))
         // OpenSSH lower-cases host names before hashing them.
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "EXAMPLE.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("EXAMPLE.com", 22, ed25519), "Match")
       }))
 
     it.effect("ignores malformed hashed entries", () =>
@@ -312,7 +359,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
           `|1| ${ed25519Text}`
         ].join("\n"))
         assert.strictEqual(knownHosts.entries.length, 3)
-        assert.strictEqual(yield* SshKnownHosts.check(knownHosts, "example.com", 22, ed25519), "Unknown")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check("example.com", 22, ed25519), "Unknown")
       }))
   })
 
@@ -320,9 +367,9 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("tests a single entry", () =>
       Effect.gen(function*() {
         const [entry] = SshKnownHosts.parse(`*.example.com,!bad.example.com ${ed25519Text}`).entries
-        assert.isTrue(yield* SshKnownHosts.matches(entry, "a.example.com", 22))
-        assert.isFalse(yield* SshKnownHosts.matches(entry, "bad.example.com", 22))
-        assert.isFalse(yield* SshKnownHosts.matches(entry, "a.example.com", 2222))
+        assert.isTrue(yield* (yield* SshKnownHosts.make("")).matches(entry, "a.example.com", 22))
+        assert.isFalse(yield* (yield* SshKnownHosts.make("")).matches(entry, "bad.example.com", 22))
+        assert.isFalse(yield* (yield* SshKnownHosts.make("")).matches(entry, "a.example.com", 2222))
       }))
   })
 
@@ -330,9 +377,12 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("formats plain entries", () =>
       Effect.gen(function*() {
         const commented = parseKey(`${ed25519Text} user@host`)
-        assert.strictEqual(yield* SshKnownHosts.formatEntry("example.com", 22, commented), `example.com ${ed25519Text}`)
         assert.strictEqual(
-          yield* SshKnownHosts.formatEntry("example.com", 2222, ecdsa, { hash: false }),
+          yield* (yield* SshKnownHosts.make("")).formatEntry("example.com", 22, commented),
+          `example.com ${ed25519Text}`
+        )
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make("")).formatEntry("example.com", 2222, ecdsa, { hash: false }),
           `[example.com]:2222 ${ecdsaText}`
         )
       }))
@@ -340,32 +390,35 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("plain entries round trip through parse and check", () =>
       Effect.gen(function*() {
         for (const [host, port, key] of [["example.com", 22, ed25519], ["10.1.2.3", 2222, rsa]] as const) {
-          const line = yield* SshKnownHosts.formatEntry(host, port, key)
+          const line = yield* (yield* SshKnownHosts.make("")).formatEntry(host, port, key)
           const knownHosts = SshKnownHosts.parse(line)
           assert.strictEqual(knownHosts.entries.length, 1)
           assert.isTrue(SshKey.equals(knownHosts.entries[0].key, key))
-          assert.strictEqual(yield* SshKnownHosts.check(knownHosts, host, port, key), "Match")
+          assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check(host, port, key), "Match")
         }
       }))
 
     it.effect("formats hashed entries that round trip through check", () =>
       Effect.gen(function*() {
         for (const [host, port, key] of [["example.com", 22, ed25519], ["example.org", 2222, ecdsa]] as const) {
-          const line = yield* SshKnownHosts.formatEntry(host, port, key, { hash: true })
+          const line = yield* (yield* SshKnownHosts.make("")).formatEntry(host, port, key, { hash: true })
           assert.match(line, /^\|1\|[A-Za-z0-9+/]{27}=\|[A-Za-z0-9+/]{27}= /)
           assert.isFalse(line.includes(host))
           assert.isTrue(line.endsWith(` ${key.type} ${SshKey.formatPublicKey({ ...key, comment: "" }).split(" ")[1]}`))
           const knownHosts = SshKnownHosts.parse(line)
-          assert.strictEqual(yield* SshKnownHosts.check(knownHosts, host, port, key), "Match")
-          assert.strictEqual(yield* SshKnownHosts.check(knownHosts, host, port === 22 ? 2222 : 22, key), "Unknown")
-          assert.strictEqual(yield* SshKnownHosts.check(knownHosts, `x${host}`, port, key), "Unknown")
+          assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check(host, port, key), "Match")
+          assert.strictEqual(
+            yield* (yield* SshKnownHosts.make(knownHosts)).check(host, port === 22 ? 2222 : 22, key),
+            "Unknown"
+          )
+          assert.strictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).check(`x${host}`, port, key), "Unknown")
         }
       }))
 
     it.effect("hashed entries use a fresh salt", () =>
       Effect.gen(function*() {
-        const a = yield* SshKnownHosts.formatEntry("example.com", 22, ed25519, { hash: true })
-        const b = yield* SshKnownHosts.formatEntry("example.com", 22, ed25519, { hash: true })
+        const a = yield* (yield* SshKnownHosts.make("")).formatEntry("example.com", 22, ed25519, { hash: true })
+        const b = yield* (yield* SshKnownHosts.make("")).formatEntry("example.com", 22, ed25519, { hash: true })
         assert.notStrictEqual(a, b)
         assert.strictEqual(a.split(" ").slice(1).join(" "), b.split(" ").slice(1).join(" "))
       }))
@@ -383,13 +436,17 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
           `[example.com]:2222 ${rsaText}`,
           hashedExampleCom
         ].join("\n"))
-        assert.deepStrictEqual(yield* SshKnownHosts.keyTypes(knownHosts, "example.com", 22), [
+        assert.deepStrictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).keyTypes("example.com", 22), [
           "ecdsa-sha2-nistp256",
           "ssh-ed25519"
         ])
-        assert.deepStrictEqual(yield* SshKnownHosts.keyTypes(knownHosts, "example.com", 2222), ["ssh-rsa"])
-        assert.deepStrictEqual(yield* SshKnownHosts.keyTypes(knownHosts, "other.com", 22), ["ssh-ed25519"])
-        assert.deepStrictEqual(yield* SshKnownHosts.keyTypes(knownHosts, "example.org", 22), [])
+        assert.deepStrictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).keyTypes("example.com", 2222), [
+          "ssh-rsa"
+        ])
+        assert.deepStrictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).keyTypes("other.com", 22), [
+          "ssh-ed25519"
+        ])
+        assert.deepStrictEqual(yield* (yield* SshKnownHosts.make(knownHosts)).keyTypes("example.org", 22), [])
       }))
   })
 
@@ -403,14 +460,14 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
 
     it.effect("accepts matching keys", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts)
+        const verify = (yield* SshKnownHosts.make(knownHosts)).verifier
         yield* verify(info("example.com", 22, ed25519))
         yield* verify(info("example.org", 2222, ecdsa))
       }))
 
     it.effect("rejects unknown keys", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts)
+        const verify = (yield* SshKnownHosts.make(knownHosts)).verifier
         assertHostKeyError(
           yield* Effect.flip(verify(info("unknown.example.com", 22, ed25519))),
           "Unknown",
@@ -433,7 +490,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
 
     it.effect("rejects mismatched keys", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts, { onUnknown: () => Effect.succeed(true) })
+        const verify = (yield* SshKnownHosts.make(knownHosts, { onUnknown: () => Effect.succeed(true) })).verifier
         const error = yield* Effect.flip(verify(info("example.com", 22, otherEd25519)))
         assertHostKeyError(error, "Mismatch", "example.com", "ssh-ed25519")
         assert.include(error.message, "does not match")
@@ -441,7 +498,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
 
     it.effect("rejects revoked keys", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts, { onUnknown: () => Effect.succeed(true) })
+        const verify = (yield* SshKnownHosts.make(knownHosts, { onUnknown: () => Effect.succeed(true) })).verifier
         const error = yield* Effect.flip(verify(info("revoked.example.com", 22, ed25519)))
         assertHostKeyError(error, "Revoked", "revoked.example.com", "ssh-ed25519")
         assert.include(error.message, "revoked")
@@ -450,9 +507,9 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("consults onUnknown for unknown keys only", () =>
       Effect.gen(function*() {
         const seen: Array<HostKeyInfo> = []
-        const accepting = SshKnownHosts.verifier(knownHosts, {
+        const accepting = (yield* SshKnownHosts.make(knownHosts, {
           onUnknown: (info) => Effect.sync(() => seen.push(info)).pipe(Effect.as(true))
-        })
+        })).verifier
         const unknown = info("new.example.com", 2200, rsa)
         yield* accepting(unknown)
         assert.deepStrictEqual(seen, [unknown])
@@ -461,7 +518,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
         yield* Effect.flip(accepting(info("example.com", 22, otherEd25519)))
         assert.strictEqual(seen.length, 1)
 
-        const rejecting = SshKnownHosts.verifier(knownHosts, { onUnknown: () => Effect.succeed(false) })
+        const rejecting = (yield* SshKnownHosts.make(knownHosts, { onUnknown: () => Effect.succeed(false) })).verifier
         assertHostKeyError(
           yield* Effect.flip(rejecting(unknown)),
           "Unknown",
@@ -472,17 +529,18 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
 
     it.effect("propagates onUnknown failures", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts, {
-          // a verifier that trusts nothing rejects every key as Unknown
-          onUnknown: (info) => Effect.as(SshKnownHosts.verifier({ entries: [] })(info), true)
-        })
+        // a verifier that trusts nothing rejects every key as Unknown
+        const trustsNothing = (yield* SshKnownHosts.make({ entries: [] })).verifier
+        const verify = (yield* SshKnownHosts.make(knownHosts, {
+          onUnknown: (info) => Effect.as(trustsNothing(info), true)
+        })).verifier
         const error = yield* Effect.flip(verify(info("new.example.com", 22, ed25519)))
         assertHostKeyError(error, "Unknown", "new.example.com", "ssh-ed25519")
       }))
 
     it.effect("exposes keyTypes", () =>
       Effect.gen(function*() {
-        const verify = SshKnownHosts.verifier(knownHosts)
+        const verify = (yield* SshKnownHosts.make(knownHosts)).verifier
         assert.isDefined(verify.keyTypes)
         assert.deepStrictEqual(yield* verify.keyTypes!("example.com", 22), ["ssh-ed25519"])
         assert.deepStrictEqual(yield* verify.keyTypes!("example.org", 2222), ["ecdsa-sha2-nistp256"])
@@ -496,7 +554,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("reads the file", () =>
       Effect.gen(function*() {
         const files = new Map([[path, `# known hosts\nexample.com ${ed25519Text}\n${hashedExampleOrg2222}\n`]])
-        const verify = yield* SshKnownHosts.fromFile(path).pipe(
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path), (knownHosts) => knownHosts.verifier).pipe(
           Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
         )
         yield* verify(info("example.com", 22, ed25519))
@@ -521,7 +579,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("treats a missing file as empty", () =>
       Effect.gen(function*() {
         const files = new Map<string, string>()
-        const verify = yield* SshKnownHosts.fromFile(path).pipe(
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path), (knownHosts) => knownHosts.verifier).pipe(
           Effect.provide(FileSystem.layerNoop({ exists: (p) => Effect.succeed(files.has(p)) }))
         )
         assertHostKeyError(
@@ -537,7 +595,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("propagates read failures", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(
-          SshKnownHosts.fromFile(path).pipe(
+          Effect.map(SshKnownHosts.fromFile(path), (knownHosts) => knownHosts.verifier).pipe(
             Effect.provide(FileSystem.layerNoop({ exists: () => Effect.succeed(true) }))
           )
         )
@@ -547,9 +605,10 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("acceptNew appends unknown hosts to a missing file", () =>
       Effect.gen(function*() {
         const files = new Map<string, string>()
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true }).pipe(
-          Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
-        )
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path, { acceptNew: true }), (knownHosts) =>
+          knownHosts.verifier).pipe(
+            Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
+          )
         yield* verify(info("example.com", 22, ed25519))
         assert.strictEqual(files.get(path), `example.com ${ed25519Text}\n`)
         yield* verify(info("example.org", 2222, ecdsa))
@@ -560,17 +619,18 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
         assert.strictEqual(files.get(path), `example.com ${ed25519Text}\n[example.org]:2222 ${ecdsaText}\n`)
 
         const reread = SshKnownHosts.parse(files.get(path)!)
-        assert.strictEqual(yield* SshKnownHosts.check(reread, "example.com", 22, ed25519), "Match")
-        assert.strictEqual(yield* SshKnownHosts.check(reread, "example.org", 2222, ecdsa), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(reread)).check("example.com", 22, ed25519), "Match")
+        assert.strictEqual(yield* (yield* SshKnownHosts.make(reread)).check("example.org", 2222, ecdsa), "Match")
       }))
 
     it.effect("acceptNew appends after existing content with a trailing newline", () =>
       Effect.gen(function*() {
         const original = `example.com ${ed25519Text}\n`
         const files = new Map([[path, original]])
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true }).pipe(
-          Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
-        )
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path, { acceptNew: true }), (knownHosts) =>
+          knownHosts.verifier).pipe(
+            Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
+          )
         yield* verify(info("example.com", 22, ed25519))
         assert.strictEqual(files.get(path), original)
         yield* verify(info("new.example.com", 22, rsa))
@@ -581,9 +641,10 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
       Effect.gen(function*() {
         const original = `example.com ${ed25519Text}`
         const files = new Map([[path, original]])
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true }).pipe(
-          Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
-        )
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path, { acceptNew: true }), (knownHosts) =>
+          knownHosts.verifier).pipe(
+            Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
+          )
         yield* verify(info("a.example.com", 22, ed25519))
         assert.strictEqual(files.get(path), `${original}\na.example.com ${ed25519Text}\n`)
         // the newline is only inserted once
@@ -593,17 +654,25 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
           `${original}\na.example.com ${ed25519Text}\nb.example.com ${ecdsaText}\n`
         )
         const reread = SshKnownHosts.parse(files.get(path)!)
-        assert.deepStrictEqual(reread.entries.map((entry) => entry.hosts), [
-          "example.com",
-          "a.example.com",
-          "b.example.com"
-        ])
+        assert.deepStrictEqual(
+          reread.entries.map((entry) =>
+            entry.hosts
+          ),
+          [
+            "example.com",
+            "a.example.com",
+            "b.example.com"
+          ]
+        )
       }))
 
     it.effect("acceptNew with hashHosts appends hashed entries", () =>
       Effect.gen(function*() {
         const files = new Map<string, string>()
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true, hashHosts: true }).pipe(
+        const verify = yield* Effect.map(
+          SshKnownHosts.fromFile(path, { acceptNew: true, hashHosts: true }),
+          (knownHosts) => knownHosts.verifier
+        ).pipe(
           Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
         )
         yield* verify(info("secret.example.com", 2222, ed25519))
@@ -611,16 +680,20 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
         assert.match(content, /^\|1\|[^ ]+ ssh-ed25519 [^ ]+\n$/)
         assert.isFalse(content.includes("secret.example.com"))
         const reread = SshKnownHosts.parse(content)
-        assert.strictEqual(yield* SshKnownHosts.check(reread, "secret.example.com", 2222, ed25519), "Match")
+        assert.strictEqual(
+          yield* (yield* SshKnownHosts.make(reread)).check("secret.example.com", 2222, ed25519),
+          "Match"
+        )
       }))
 
     it.effect("acceptNew never accepts mismatched or revoked keys", () =>
       Effect.gen(function*() {
         const original = `example.com ${ed25519Text}\n@revoked * ${otherEd25519Text}\n`
         const files = new Map([[path, original]])
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true }).pipe(
-          Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
-        )
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path, { acceptNew: true }), (knownHosts) =>
+          knownHosts.verifier).pipe(
+            Effect.provideService(FileSystem.FileSystem, makeFileSystem(files))
+          )
         assertHostKeyError(
           yield* Effect.flip(verify(info("example.com", 22, otherEd25519))),
           "Revoked",
@@ -640,9 +713,10 @@ layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
     it.effect("acceptNew fails when the file cannot be updated", () =>
       Effect.gen(function*() {
         const files = new Map<string, string>()
-        const verify = yield* SshKnownHosts.fromFile(path, { acceptNew: true }).pipe(
-          Effect.provideService(FileSystem.FileSystem, makeFileSystem(files, { failWrites: true }))
-        )
+        const verify = yield* Effect.map(SshKnownHosts.fromFile(path, { acceptNew: true }), (knownHosts) =>
+          knownHosts.verifier).pipe(
+            Effect.provideService(FileSystem.FileSystem, makeFileSystem(files, { failWrites: true }))
+          )
         const error = yield* Effect.flip(verify(info("example.com", 22, ed25519)))
         assert.strictEqual(error.reason._tag, "SshKeyError")
         assert.include(error.message, `could not update ${path}`)

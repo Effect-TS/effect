@@ -24,23 +24,32 @@
  * **Example** (Running a remote command on Node)
  *
  * ```ts skip-type-checking
- * import { NodeSocket } from "@effect/platform-node"
- * import { Effect } from "effect"
+ * import { NodeServices, NodeSocket } from "@effect/platform-node"
+ * import { Effect, Layer } from "effect"
  * import { SshClient, SshKey, SshKnownHosts } from "effect/ssh"
  *
  * const program = Effect.gen(function*() {
+ *   const keys = yield* SshKey.SshKeys
+ *   const knownHosts = yield* SshKnownHosts.SshKnownHosts
  *   const client = yield* SshClient.make(
  *     yield* NodeSocket.makeNet({ host: "example.com", port: 22 }),
  *     {
  *       host: "example.com",
  *       username: "deploy",
- *       auth: SshClient.publicKey(yield* SshKey.parsePrivateKey(privateKeyText)),
- *       verifyHostKey: yield* SshKnownHosts.fromFile("/home/me/.ssh/known_hosts")
+ *       auth: SshClient.publicKey(yield* keys.parsePrivateKey(privateKeyText)),
+ *       verifyHostKey: knownHosts.verifier
  *     }
  *   )
  *   const result = yield* client.run("uname -a")
  *   yield* Effect.log(result.stdout)
- * }).pipe(Effect.scoped)
+ * }).pipe(
+ *   Effect.scoped,
+ *   Effect.provide(
+ *     Layer.mergeAll(SshKey.layer, SshKnownHosts.layerFromFile("/home/me/.ssh/known_hosts")).pipe(
+ *       Layer.provideMerge(NodeServices.layer)
+ *     )
+ *   )
+ * )
  * ```
  *
  * @stability experimental
@@ -61,13 +70,14 @@ import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import * as Auth from "./internal/auth.ts"
 import * as Connection from "./internal/connection.ts"
+import * as SshCrypto from "./internal/crypto.ts"
 import * as Streams from "./internal/streams.ts"
 import * as Transport from "./internal/transport.ts"
 import { concat, Reader, Writer } from "./internal/wire.ts"
 import * as Ssh from "./Ssh.ts"
 import type * as SshAgent from "./SshAgent.ts"
 import { SshError, SshHostKeyError, SshTimeoutError } from "./SshError.ts"
-import * as SshKey from "./SshKey.ts"
+import type * as SshKey from "./SshKey.ts"
 
 // -----------------------------------------------------------------------------
 // Host key verification
@@ -108,10 +118,8 @@ export interface HostKeyInfo {
  * @since 4.0.0
  */
 export interface HostKeyVerifier {
-  (info: HostKeyInfo): Effect.Effect<void, SshError, Crypto.Crypto>
-  readonly keyTypes?:
-    | ((host: string, port: number) => Effect.Effect<ReadonlyArray<string>, never, Crypto.Crypto>)
-    | undefined
+  (info: HostKeyInfo): Effect.Effect<void, SshError>
+  readonly keyTypes?: ((host: string, port: number) => Effect.Effect<ReadonlyArray<string>>) | undefined
 }
 
 /**
@@ -722,9 +730,9 @@ export const make = Effect.fnUntraced(function*(
       algorithms,
       verifyHostKey: (key) =>
         Effect.flatMap(
-          SshKey.fingerprint(key),
+          SshCrypto.fingerprintSha256(crypto, key.blob),
           (fingerprint) => verifier({ host: options.host, port, key, fingerprint })
-        ).pipe(Effect.provideService(Crypto.Crypto, crypto)),
+        ),
       rekeyBytes: options.rekeyLimit?.bytes ?? 1024 * 1024 * 1024,
       rekeyInterval: Duration.fromInputUnsafe(options.rekeyLimit?.interval ?? Duration.hours(1))
     })

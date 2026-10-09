@@ -12,11 +12,13 @@
  * @stability experimental
  * @since 4.0.0
  */
+import * as Context from "../Context.ts"
 import * as Crypto from "../Crypto.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Inspectable from "../Inspectable.ts"
+import * as Layer from "../Layer.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Result from "../Result.ts"
 import * as SshCrypto from "./internal/crypto.ts"
@@ -224,22 +226,6 @@ export const formatPublicKey = (key: PublicKey): string =>
   `${key.type} ${Base64.encode(key.blob)}${key.comment ? ` ${key.comment}` : ""}`
 
 /**
- * Computes the OpenSSH `SHA256:` fingerprint of a public key, as printed by
- * `ssh-keygen -l`.
- *
- * @stability experimental
- * @category getters
- * @since 4.0.0
- */
-export const fingerprint = (key: PublicKey): Effect.Effect<string, SshError, Crypto.Crypto> =>
-  Effect.flatMap(
-    Crypto.Crypto,
-    (crypto) =>
-      Effect.mapError(SshCrypto.fingerprintSha256(crypto, key.blob), (cause) =>
-        keyError("could not compute fingerprint", cause))
-  )
-
-/**
  * Returns the signature algorithms this module supports for a key type, in
  * preference order.
  *
@@ -249,31 +235,6 @@ export const fingerprint = (key: PublicKey): Effect.Effect<string, SshError, Cry
  */
 export const signatureAlgorithms = (keyType: string): ReadonlyArray<string> =>
   SshCrypto.signatureAlgorithmsForKeyType(keyType)
-
-/**
- * Verifies an SSH signature blob produced for `data` by the private half of
- * `key`.
- *
- * **Details**
- *
- * Succeeds with `false` for invalid signatures and fails with an
- * `SshKeyError` when the key or signature cannot be decoded or uses an
- * unsupported algorithm.
- *
- * @stability experimental
- * @category utility
- * @since 4.0.0
- */
-export const verify = (
-  key: PublicKey,
-  data: Uint8Array,
-  signature: Uint8Array
-): Effect.Effect<boolean, SshError, Crypto.Crypto> =>
-  Effect.flatMap(Crypto.Crypto, (crypto) =>
-    Effect.mapError(
-      SshCrypto.verifySignature(crypto, { publicKey: key.blob, signature, data }),
-      (cause) => keyError("could not verify signature", cause)
-    ))
 
 // -----------------------------------------------------------------------------
 // Private keys
@@ -589,31 +550,11 @@ const decodePrivateKey = (input: string | Uint8Array): KeyMaterial => {
   }
 }
 
-/**
- * Parses an unencrypted private key file.
- *
- * **Details**
- *
- * Accepts `OPENSSH PRIVATE KEY`, `PRIVATE KEY` (PKCS#8), `RSA PRIVATE KEY`
- * (PKCS#1), and `EC PRIVATE KEY` (SEC1) PEM blocks, as text or UTF-8 bytes.
- * The comment of OpenSSH keys is preserved; `options.comment` overrides it.
- * Keys are imported through the `Crypto` service as non-extractable signing
- * keys.
- *
- * **Gotchas**
- *
- * Passphrase-protected keys fail with an `SshKeyError`; decrypt them first
- * (for example with `ssh-keygen -p`) or load them into an SSH agent.
- *
- * @stability experimental
- * @category decoding
- * @since 4.0.0
- */
-export const parsePrivateKey = Effect.fnUntraced(function*(
+const parsePrivateKey = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
   input: string | Uint8Array,
   options?: { readonly comment?: string | undefined }
-): Effect.fn.Return<PrivateKey, SshError, Crypto.Crypto> {
-  const crypto = yield* Crypto.Crypto
+): Effect.fn.Return<PrivateKey, SshError> {
   const material = yield* Effect.try({
     try: () => decodePrivateKey(input),
     catch: (cause) =>
@@ -633,26 +574,14 @@ export const parsePrivateKey = Effect.fnUntraced(function*(
   return yield* fromJwk(crypto, jwk, options?.comment ?? "")
 })
 
-/**
- * Generates a new private key with the `Crypto` service.
- *
- * **Details**
- *
- * RSA keys default to 3072 bits. The generated key material is not
- * extractable after import.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const generate = Effect.fnUntraced(function*(
+const generate = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
   type: KeyType,
   options?: {
     readonly comment?: string | undefined
     readonly bits?: number | undefined
   }
-): Effect.fn.Return<PrivateKey, SshError, Crypto.Crypto> {
-  const crypto = yield* Crypto.Crypto
+): Effect.fn.Return<PrivateKey, SshError> {
   const algorithm: Crypto.KeyPairAlgorithm = type === "ssh-ed25519"
     ? { name: "Ed25519" }
     : type === "ssh-rsa"
@@ -664,3 +593,87 @@ export const generate = Effect.fnUntraced(function*(
   )
   return yield* fromJwk(crypto, jwk, options?.comment ?? "")
 })
+
+// -----------------------------------------------------------------------------
+// Service
+// -----------------------------------------------------------------------------
+
+/**
+ * Service for SSH key operations that need cryptography: parsing and
+ * generating private keys, verifying signatures, and computing fingerprints.
+ *
+ * **Details**
+ *
+ * - `parsePrivateKey` accepts unencrypted `OPENSSH PRIVATE KEY`,
+ *   `PRIVATE KEY` (PKCS#8), `RSA PRIVATE KEY` (PKCS#1), and `EC PRIVATE KEY`
+ *   (SEC1) PEM blocks, as text or UTF-8 bytes. The comment of OpenSSH keys is
+ *   preserved; `options.comment` overrides it.
+ * - `generate` creates a new key; RSA keys default to 3072 bits.
+ * - `verify` succeeds with `false` for invalid signatures and fails with an
+ *   `SshKeyError` when the key or signature cannot be decoded or uses an
+ *   unsupported algorithm.
+ * - `fingerprint` computes the OpenSSH `SHA256:` fingerprint printed by
+ *   `ssh-keygen -l`.
+ *
+ * Private keys are held as non-extractable `Crypto.Key`s and sign without
+ * requiring any service.
+ *
+ * **Gotchas**
+ *
+ * Passphrase-protected keys fail with an `SshKeyError`; decrypt them first
+ * (for example with `ssh-keygen -p`) or load them into an SSH agent.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.0.0
+ */
+export class SshKeys extends Context.Service<SshKeys, {
+  readonly parsePrivateKey: (
+    input: string | Uint8Array,
+    options?: { readonly comment?: string | undefined }
+  ) => Effect.Effect<PrivateKey, SshError>
+  readonly generate: (
+    type: KeyType,
+    options?: {
+      readonly comment?: string | undefined
+      readonly bits?: number | undefined
+    }
+  ) => Effect.Effect<PrivateKey, SshError>
+  readonly verify: (key: PublicKey, data: Uint8Array, signature: Uint8Array) => Effect.Effect<boolean, SshError>
+  readonly fingerprint: (key: PublicKey) => Effect.Effect<string, SshError>
+}>()("effect/ssh/SshKey/SshKeys") {}
+
+/**
+ * Creates the `SshKeys` service, capturing the `Crypto` service once.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make: Effect.Effect<SshKeys["Service"], never, Crypto.Crypto> = Effect.map(
+  Crypto.Crypto,
+  (crypto) =>
+    SshKeys.of({
+      parsePrivateKey: (input, options) => parsePrivateKey(crypto, input, options),
+      generate: (type, options) => generate(crypto, type, options),
+      verify: (key, data, signature) =>
+        Effect.mapError(
+          SshCrypto.verifySignature(crypto, { publicKey: key.blob, signature, data }),
+          (cause) => keyError("could not verify signature", cause)
+        ),
+      fingerprint: (key) =>
+        Effect.mapError(
+          SshCrypto.fingerprintSha256(crypto, key.blob),
+          (cause) => keyError("could not compute fingerprint", cause)
+        )
+    })
+)
+
+/**
+ * Layer that provides `SshKeys` using the context's `Crypto` service.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<SshKeys, never, Crypto.Crypto> = Layer.effect(SshKeys, make)

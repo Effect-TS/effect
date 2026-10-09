@@ -19,6 +19,9 @@ const CryptoLive = Layer.succeed(
   })
 )
 
+// SSH key operations, capturing the `Crypto` service once.
+const sshKeys = await Effect.runPromise(Effect.provide(SshKey.make, CryptoLive))
+
 const AGENT_FAILURE = 5
 const AGENTC_REQUEST_IDENTITIES = 11
 const AGENT_IDENTITIES_ANSWER = 12
@@ -26,13 +29,13 @@ const AGENTC_SIGN_REQUEST = 13
 const AGENT_SIGN_RESPONSE = 14
 
 const ed25519 = Effect.succeed(
-  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519", { comment: "ed25519 key" }), CryptoLive))
+  await Effect.runPromise(sshKeys.generate("ssh-ed25519", { comment: "ed25519 key" }))
 )
 const ecdsa = Effect.succeed(
-  await Effect.runPromise(Effect.provide(SshKey.generate("ecdsa-sha2-nistp384", { comment: "ecdsa key" }), CryptoLive))
+  await Effect.runPromise(sshKeys.generate("ecdsa-sha2-nistp384", { comment: "ecdsa key" }))
 )
 const rsa = Effect.succeed(
-  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-rsa", { comment: "rsa key", bits: 2048 }), CryptoLive))
+  await Effect.runPromise(sshKeys.generate("ssh-rsa", { comment: "rsa key", bits: 2048 }))
 )
 const keys = Effect.all([ed25519, ecdsa, rsa])
 
@@ -165,8 +168,8 @@ const verifyAll = (signers: ReadonlyArray<SshKey.Signer>) =>
       for (const algorithm of SshKey.signatureAlgorithms(signer.publicKey.type)) {
         const signature = yield* signer.sign(data, algorithm)
         assert.strictEqual(signatureAlgorithm(signature), algorithm)
-        assert.isTrue(yield* SshKey.verify(signer.publicKey, data, signature), algorithm)
-        assert.isFalse(yield* SshKey.verify(signer.publicKey, utf8("other"), signature), algorithm)
+        assert.isTrue(yield* sshKeys.verify(signer.publicKey, data, signature), algorithm)
+        assert.isFalse(yield* sshKeys.verify(signer.publicKey, utf8("other"), signature), algorithm)
       }
     }
   })
@@ -223,7 +226,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
         assert.strictEqual(sha256.byte(), AGENT_SIGN_RESPONSE)
         const sha256Signature = sha256.string()
         assert.strictEqual(signatureAlgorithm(sha256Signature), "rsa-sha2-256")
-        assert.isTrue(yield* SshKey.verify(key.publicKey, data, sha256Signature))
+        assert.isTrue(yield* sshKeys.verify(key.publicKey, data, sha256Signature))
 
         const sha512 = yield* response(4)
         assert.strictEqual(sha512.byte(), AGENT_SIGN_RESPONSE)
@@ -416,7 +419,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
           const identities = yield* agent.identities
           assert.strictEqual(identities.length, 3, `chunk size ${chunkSize}`)
           const rsaSignature = yield* identities[2].sign(data, "rsa-sha2-512")
-          assert.isTrue(yield* SshKey.verify(privateKeys[2].publicKey, data, rsaSignature))
+          assert.isTrue(yield* sshKeys.verify(privateKeys[2].publicKey, data, rsaSignature))
         }
       }))
 
@@ -462,7 +465,7 @@ layer(CryptoLive, { excludeTestServices: true })("SshAgent", (it) => {
           { concurrency: "unbounded" }
         )
         for (const [i, signature] of signatures) {
-          assert.isTrue(yield* SshKey.verify(privateKeys[i].publicKey, data, signature))
+          assert.isTrue(yield* sshKeys.verify(privateKeys[i].publicKey, data, signature))
         }
         assert.strictEqual(backend.opened(), 7)
         assert.strictEqual(backend.closed(), 7)

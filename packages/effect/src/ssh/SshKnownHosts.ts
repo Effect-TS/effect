@@ -9,10 +9,12 @@
  * @stability experimental
  * @since 4.0.0
  */
+import * as Context from "../Context.ts"
 import * as Crypto from "../Crypto.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as FileSystem from "../FileSystem.ts"
+import * as Layer from "../Layer.ts"
 import type * as PlatformError from "../PlatformError.ts"
 import * as Result from "../Result.ts"
 import { equals, utf8 } from "./internal/wire.ts"
@@ -129,109 +131,67 @@ const matchesPatterns = (crypto: Crypto.Crypto, hosts: string, name: string): Ef
   return Effect.succeed(matched)
 }
 
-/**
- * Returns `true` when an entry applies to a host and port.
- *
- * @stability experimental
- * @category predicates
- * @since 4.0.0
- */
-export const matches = (entry: Entry, host: string, port: number): Effect.Effect<boolean, never, Crypto.Crypto> =>
-  Effect.flatMap(Crypto.Crypto, (crypto) => matchesPatterns(crypto, entry.hosts, hostName(host, port)))
-
-/**
- * Checks a server host key against `known_hosts`.
- *
- * **Details**
- *
- * Returns `Revoked` when the key appears in a matching `@revoked` entry,
- * `Match` when a matching entry has the same key, `Mismatch` when matching
- * entries list a different key of the same type, and `Unknown` otherwise.
- *
- * @stability experimental
- * @category utility
- * @since 4.0.0
- */
-export const check = (
-  knownHosts: KnownHosts,
+const checkWith = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
+  entries: ReadonlyArray<Entry>,
   host: string,
   port: number,
   key: SshKey.PublicKey
-): Effect.Effect<Status, never, Crypto.Crypto> =>
-  Effect.gen(function*() {
-    const crypto = yield* Crypto.Crypto
-    const name = hostName(host, port)
-    let status: Status = "Unknown"
-    for (const entry of knownHosts.entries) {
-      if (entry.marker === "cert-authority") continue
-      if (!(yield* matchesPatterns(crypto, entry.hosts, name))) continue
-      const same = SshKey.equals(entry.key, key)
-      if (entry.marker === "revoked") {
-        if (same) return "Revoked"
-        continue
-      }
-      if (same) {
-        status = "Match"
-      } else if (entry.key.type === key.type && status !== "Match") {
-        status = "Mismatch"
-      }
+) {
+  const name = hostName(host, port)
+  let status: Status = "Unknown"
+  for (const entry of entries) {
+    if (entry.marker === "cert-authority") continue
+    if (!(yield* matchesPatterns(crypto, entry.hosts, name))) continue
+    const same = SshKey.equals(entry.key, key)
+    if (entry.marker === "revoked") {
+      if (same) return "Revoked" as Status
+      continue
     }
-    return status
-  })
+    if (same) {
+      status = "Match"
+    } else if (entry.key.type === key.type && status !== "Match") {
+      status = "Mismatch"
+    }
+  }
+  return status
+})
 
-/**
- * Returns the key types recorded for a host, used to prefer host key
- * algorithms that can be verified.
- *
- * @stability experimental
- * @category getters
- * @since 4.0.0
- */
-export const keyTypes = (
-  knownHosts: KnownHosts,
+const keyTypesWith = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
+  entries: ReadonlyArray<Entry>,
   host: string,
   port: number
-): Effect.Effect<ReadonlyArray<string>, never, Crypto.Crypto> =>
-  Effect.gen(function*() {
-    const crypto = yield* Crypto.Crypto
-    const name = hostName(host, port)
-    const types: Array<string> = []
-    for (const entry of knownHosts.entries) {
-      if (entry.marker !== undefined || types.includes(entry.key.type)) continue
-      if (yield* matchesPatterns(crypto, entry.hosts, name)) types.push(entry.key.type)
-    }
-    return types
-  })
+) {
+  const name = hostName(host, port)
+  const types: Array<string> = []
+  for (const entry of entries) {
+    if (entry.marker !== undefined || types.includes(entry.key.type)) continue
+    if (yield* matchesPatterns(crypto, entry.hosts, name)) types.push(entry.key.type)
+  }
+  return types as ReadonlyArray<string>
+})
 
-/**
- * Formats a `known_hosts` line for a host key, optionally hashing the host
- * name as `ssh-keygen -H` does.
- *
- * @stability experimental
- * @category encoding
- * @since 4.0.0
- */
-export const formatEntry = (
+const formatEntryWith = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
   host: string,
   port: number,
   key: SshKey.PublicKey,
   options?: { readonly hash?: boolean | undefined }
-): Effect.Effect<string, SshError, Crypto.Crypto> =>
-  Effect.gen(function*() {
-    const name = hostName(host, port)
-    const keyText = `${key.type} ${Base64.encode(key.blob)}`
-    if (options?.hash !== true) return `${name} ${keyText}`
-    const crypto = yield* Crypto.Crypto
-    const { hash, salt } = yield* Effect.gen(function*() {
-      const salt = yield* crypto.randomBytes(20)
-      return { salt, hash: yield* crypto.hmac("SHA-1", salt, utf8(name)) }
-    }).pipe(
-      Effect.mapError((cause) =>
-        new SshError({ reason: new SshKeyError({ description: "could not hash host name", cause }) })
-      )
+) {
+  const name = hostName(host, port)
+  const keyText = `${key.type} ${Base64.encode(key.blob)}`
+  if (options?.hash !== true) return `${name} ${keyText}`
+  const { hash, salt } = yield* Effect.gen(function*() {
+    const salt = yield* crypto.randomBytes(20)
+    return { salt, hash: yield* crypto.hmac("SHA-1", salt, utf8(name)) }
+  }).pipe(
+    Effect.mapError((cause) =>
+      new SshError({ reason: new SshKeyError({ description: "could not hash host name", cause }) })
     )
-    return `|1|${Base64.encode(salt)}|${Base64.encode(hash)} ${keyText}`
-  })
+  )
+  return `|1|${Base64.encode(salt)}|${Base64.encode(hash)} ${keyText}`
+})
 
 const hostKeyError = (kind: SshHostKeyError["kind"], info: HostKeyInfo) =>
   new SshError({
@@ -244,54 +204,107 @@ const hostKeyError = (kind: SshHostKeyError["kind"], info: HostKeyInfo) =>
   })
 
 /**
- * Creates a host key verifier from parsed `known_hosts` contents.
+ * Service that verifies server host keys against a set of `known_hosts`
+ * entries.
  *
  * **Details**
  *
- * Matching keys are accepted. Revoked and mismatched keys are rejected.
- * Unknown keys are rejected unless `onUnknown` returns `true`.
+ * - `check` returns `Revoked` when the key appears in a matching `@revoked`
+ *   entry, `Match` when a matching entry has the same key, `Mismatch` when
+ *   matching entries list a different key of the same type, and `Unknown`
+ *   otherwise.
+ * - `verifier` accepts matching keys and rejects revoked and mismatched
+ *   ones. Unknown keys are rejected unless the service was created with
+ *   `onUnknown` (or `acceptNew` for files) and it accepts them. Its
+ *   `keyTypes` makes `SshClient` prefer host key algorithms it can verify.
+ * - `formatEntry` formats a `known_hosts` line, optionally hashing the host
+ *   name as `ssh-keygen -H` does.
+ *
+ * @stability experimental
+ * @category services
+ * @since 4.0.0
+ */
+export class SshKnownHosts extends Context.Service<SshKnownHosts, {
+  readonly entries: ReadonlyArray<Entry>
+  readonly matches: (entry: Entry, host: string, port: number) => Effect.Effect<boolean>
+  readonly check: (host: string, port: number, key: SshKey.PublicKey) => Effect.Effect<Status>
+  readonly keyTypes: (host: string, port: number) => Effect.Effect<ReadonlyArray<string>>
+  readonly formatEntry: (
+    host: string,
+    port: number,
+    key: SshKey.PublicKey,
+    options?: { readonly hash?: boolean | undefined }
+  ) => Effect.Effect<string, SshError>
+  readonly verifier: HostKeyVerifier
+}>()("effect/ssh/SshKnownHosts") {}
+
+const makeWith = (
+  crypto: Crypto.Crypto,
+  entries: ReadonlyArray<Entry>,
+  onUnknown: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
+): SshKnownHosts["Service"] => {
+  const check: SshKnownHosts["Service"]["check"] = (host, port, key) => checkWith(crypto, entries, host, port, key)
+  const keyTypes: SshKnownHosts["Service"]["keyTypes"] = (host, port) => keyTypesWith(crypto, entries, host, port)
+  const verify = (info: HostKeyInfo): Effect.Effect<void, SshError> =>
+    Effect.flatMap(check(info.host, info.port, info.key), (status) => {
+      switch (status) {
+        case "Match":
+          return Effect.void
+        case "Unknown":
+          return onUnknown === undefined
+            ? Effect.fail(hostKeyError("Unknown", info))
+            : Effect.flatMap(
+              onUnknown(info),
+              (accepted) => accepted ? Effect.void : Effect.fail(hostKeyError("Unknown", info))
+            )
+        default:
+          return Effect.fail(hostKeyError(status, info))
+      }
+    })
+  return SshKnownHosts.of({
+    entries,
+    matches: (entry, host, port) => matchesPatterns(crypto, entry.hosts, hostName(host, port)),
+    check,
+    keyTypes,
+    formatEntry: (host, port, key, options) => formatEntryWith(crypto, host, port, key, options),
+    verifier: Object.assign(verify, { keyTypes })
+  })
+}
+
+/**
+ * Creates an `SshKnownHosts` service from `known_hosts` contents, capturing
+ * the `Crypto` service used for hashed entries.
+ *
+ * **Details**
+ *
+ * Accepts the file contents or entries returned by `parse`. Unknown keys are
+ * rejected unless `onUnknown` returns `true`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const verifier = (
-  knownHosts: KnownHosts,
+export const make = Effect.fnUntraced(function*(
+  knownHosts: string | KnownHosts,
   options?: {
-    readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError, Crypto.Crypto>) | undefined
+    readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
   }
-): HostKeyVerifier =>
-  Object.assign(
-    (info: HostKeyInfo): Effect.Effect<void, SshError, Crypto.Crypto> =>
-      Effect.flatMap(check(knownHosts, info.host, info.port, info.key), (status) => {
-        switch (status) {
-          case "Match":
-            return Effect.void
-          case "Unknown":
-            return options?.onUnknown === undefined
-              ? Effect.fail(hostKeyError("Unknown", info))
-              : Effect.flatMap(
-                options.onUnknown(info),
-                (accepted) => accepted ? Effect.void : Effect.fail(hostKeyError("Unknown", info))
-              )
-          default:
-            return Effect.fail(hostKeyError(status, info))
-        }
-      }),
-    {
-      keyTypes: (host: string, port: number) => keyTypes(knownHosts, host, port)
-    }
-  )
+): Effect.fn.Return<SshKnownHosts["Service"], never, Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
+  const entries = typeof knownHosts === "string" ? parse(knownHosts).entries : knownHosts.entries
+  return makeWith(crypto, entries, options?.onUnknown)
+})
 
 /**
- * Creates a host key verifier backed by a `known_hosts` file.
+ * Creates an `SshKnownHosts` service backed by a `known_hosts` file.
  *
  * **Details**
  *
- * The file is read when the verifier is created; a missing file is treated
- * as empty. With `acceptNew: true`, unknown hosts are trusted on first use and
- * appended to the file, matching OpenSSH's `StrictHostKeyChecking=accept-new`.
- * Changed or revoked keys are always rejected.
+ * The file is read when the service is created; a missing file is treated as
+ * empty. With `acceptNew: true`, unknown hosts are trusted on first use and
+ * appended to the file, matching OpenSSH's `StrictHostKeyChecking=accept-new`;
+ * later checks by the same service recognize them. Changed or revoked keys
+ * are always rejected.
  *
  * @stability experimental
  * @category constructors
@@ -303,28 +316,62 @@ export const fromFile = Effect.fnUntraced(function*(
     readonly acceptNew?: boolean | undefined
     readonly hashHosts?: boolean | undefined
   }
-): Effect.fn.Return<HostKeyVerifier, PlatformError.PlatformError, FileSystem.FileSystem> {
+): Effect.fn.Return<SshKnownHosts["Service"], PlatformError.PlatformError, FileSystem.FileSystem | Crypto.Crypto> {
+  const crypto = yield* Crypto.Crypto
   const fs = yield* FileSystem.FileSystem
   const exists = yield* fs.exists(path)
   const content = exists ? yield* fs.readFileString(path) : ""
   const entries = [...parse(content).entries]
-  const knownHosts: KnownHosts = { entries }
   let needsNewline = content.length > 0 && !content.endsWith("\n")
-  return verifier(knownHosts, {
-    onUnknown: options?.acceptNew === true
+  return makeWith(
+    crypto,
+    entries,
+    options?.acceptNew === true
       ? (info) =>
         Effect.gen(function*() {
-          const line = yield* formatEntry(info.host, info.port, info.key, { hash: options.hashHosts })
+          const line = yield* formatEntryWith(crypto, info.host, info.port, info.key, { hash: options.hashHosts })
           yield* fs.writeFileString(path, `${needsNewline ? "\n" : ""}${line}\n`, { flag: "a" }).pipe(
             Effect.mapError((cause) =>
               new SshError({ reason: new SshKeyError({ description: `could not update ${path}`, cause }) })
             )
           )
           needsNewline = false
-          // Remember the new entry so later checks with this verifier match it.
+          // Remember the new entry so later checks by this service match it.
           entries.push(...parse(line).entries)
           return true
         })
       : undefined
-  })
+  )
 })
+
+/**
+ * Layer that provides `SshKnownHosts` from `known_hosts` contents.
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer = (
+  knownHosts: string | KnownHosts,
+  options?: {
+    readonly onUnknown?: ((info: HostKeyInfo) => Effect.Effect<boolean, SshError>) | undefined
+  }
+): Layer.Layer<SshKnownHosts, never, Crypto.Crypto> => Layer.effect(SshKnownHosts, make(knownHosts, options))
+
+/**
+ * Layer that provides `SshKnownHosts` backed by a `known_hosts` file.
+ *
+ * @see {@link fromFile} for the file semantics
+ *
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerFromFile = (
+  path: string,
+  options?: {
+    readonly acceptNew?: boolean | undefined
+    readonly hashHosts?: boolean | undefined
+  }
+): Layer.Layer<SshKnownHosts, PlatformError.PlatformError, FileSystem.FileSystem | Crypto.Crypto> =>
+  Layer.effect(SshKnownHosts, fromFile(path, options))

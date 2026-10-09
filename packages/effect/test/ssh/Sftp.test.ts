@@ -23,6 +23,9 @@ const CryptoLive = Layer.succeed(
   })
 )
 
+// SSH key operations, capturing the `Crypto` service once.
+const sshKeys = await Effect.runPromise(Effect.provide(SshKey.make, CryptoLive))
+
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 const bytes = (value: string) => encoder.encode(value)
@@ -49,9 +52,9 @@ const concatAll = (chunks: ReadonlyArray<Uint8Array>) => {
   return out
 }
 
-const hostKey = Effect.succeed(await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive)))
+const hostKey = Effect.succeed(await Effect.runPromise(sshKeys.generate("ssh-ed25519")))
 const userKey = Effect.succeed(
-  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519", { comment: "user" }), CryptoLive))
+  await Effect.runPromise(sshKeys.generate("ssh-ed25519", { comment: "user" }))
 )
 
 const connectClient = Effect.fnUntraced(function*(server: SftpServer.SftpServer) {

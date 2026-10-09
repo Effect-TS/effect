@@ -18,25 +18,31 @@ export const SshLive = Layer.unwrap(Effect.gen(function*() {
   const host = yield* Config.String("DEPLOY_HOST")
   const fs = yield* FileSystem.FileSystem
 
-  // Private keys are imported with the `Crypto` service, which
-  // `NodeServices.layer` provides. Passphrase-protected keys are not
-  // supported directly; load them into an SSH agent and use
-  // `SshClient.agent(...)` instead.
-  const key = yield* SshKey.parsePrivateKey(yield* fs.readFileString("/home/deploy/.ssh/id_ed25519"))
+  // `SshKeys` and `SshKnownHosts` are services that capture the `Crypto`
+  // service (provided by `NodeServices.layer`) once, so their operations have
+  // no further requirements.
+  const keys = yield* SshKey.SshKeys
+  const knownHosts = yield* SshKnownHosts.SshKnownHosts
 
-  // `verifyHostKey` is required. `SshKnownHosts.fromFile` checks the server's
-  // key against an OpenSSH `known_hosts` file and rejects changed keys.
-  const verifyHostKey = yield* SshKnownHosts.fromFile("/home/deploy/.ssh/known_hosts")
+  // Passphrase-protected keys are not supported directly; load them into an
+  // SSH agent and use `SshClient.agent(...)` instead.
+  const key = yield* keys.parsePrivateKey(yield* fs.readFileString("/home/deploy/.ssh/id_ed25519"))
 
   return SshClient.layer({
     host,
     username: "deploy",
     auth: SshClient.publicKey(key),
-    verifyHostKey,
+    // `verifyHostKey` is required. The known hosts verifier checks the
+    // server's key against an OpenSSH `known_hosts` file and rejects changed
+    // keys.
+    verifyHostKey: knownHosts.verifier,
     // Detect dead connections instead of hanging forever.
     keepAlive: { interval: "30 seconds" }
   }).pipe(Layer.provide(NodeSocket.layerNet({ host, port: 22 })))
-})).pipe(Layer.provide(NodeServices.layer))
+})).pipe(
+  Layer.provide([SshKey.layer, SshKnownHosts.layerFromFile("/home/deploy/.ssh/known_hosts")]),
+  Layer.provide(NodeServices.layer)
+)
 
 export class Deployer extends Context.Service<Deployer, {
   release(version: string, artifact: Uint8Array): Effect.Effect<string, DeployError>
