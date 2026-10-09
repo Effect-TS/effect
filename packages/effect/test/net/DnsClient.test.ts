@@ -286,6 +286,23 @@ describe("DnsClient", () => {
       assert.notStrictEqual(network.requests[0].header.id, network.requests[1].header.id)
     }))
 
+  it.effect("retries over TCP with the name server that truncated", () =>
+    Effect.gen(function*() {
+      const network = fakeNetwork((request) =>
+        Equal.equals(request.server, primary)
+          ? []
+          : request.transport === "udp"
+          ? [answer(request, { truncated: true })]
+          : [answer(request)]
+      )
+      assert.isTrue(Exit.isSuccess(yield* run(udpTransport(network))))
+      assert.deepStrictEqual(network.requests.map((request) => [request.transport, request.server]), [
+        ["udp", primary],
+        ["udp", secondary],
+        ["tcp", secondary]
+      ])
+    }))
+
   it.effect("rejects TCP responses that do not match the query", () =>
     Effect.gen(function*() {
       const network = fakeNetwork((request) =>

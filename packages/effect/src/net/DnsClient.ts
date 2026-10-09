@@ -187,9 +187,6 @@ const rcodeReasons: Record<number, Dns.DnsErrorReason> = {
   5: "Refused"
 }
 
-// Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
-const randomId = (crypto: Crypto.Crypto): Effect.Effect<number> => crypto.randomIntBetween(0, 0xffff)
-
 const absolute = (name: Host.DomainName): string => name.endsWith(".") ? name : `${name}.`
 
 // Names compare case-insensitively in ASCII only (RFC 4343).
@@ -290,31 +287,77 @@ const nameServerAddresses = (
   )
 }
 
-// Sends a query with a new random ID over a new TCP connection and returns the
-// response, which must match the query.
-const sendTcp = Effect.fnUntraced(function*(
-  crypto: Crypto.Crypto,
-  open: Effect.Effect<Socket.Socket>,
-  udpPayloadSize: number,
-  { encode, fail, limit, matches }: Exchange
-) {
-  const id = yield* randomId(crypto)
-  const payload = yield* limit(Effect.gen(function*() {
-    const socket = yield* open
-    const pull = yield* Socket.readerBytes(socket)
-    const writer = yield* socket.writer
-    yield* writer.write(tcpFrame(encode({ id, udpPayloadSize })))
-    let buffer: Uint8Array = new Uint8Array(0)
-    while (buffer.length < 2 || buffer.length < 2 + ((buffer[0] << 8) | buffer[1])) {
-      buffer = concat(buffer, yield* pull)
-    }
-    return buffer.subarray(2, 2 + ((buffer[0] << 8) | buffer[1]))
-  }))
-  if (!matches(payload, id)) {
-    return yield* fail("InvalidResponse", new Error("the TCP response does not match the query"))
-  }
-  return payload
-})
+/**
+ * Options for `makeTransportTcp`.
+ *
+ * **Details**
+ *
+ * Name servers given as IP addresses use port 53, and `tcp(server)` opens the
+ * connection for one attempt.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface TransportTcpOptions {
+  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
+  readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
+}
+
+/**
+ * Creates a `Transport` that sends every query over TCP.
+ *
+ * **When to use**
+ *
+ * Use when UDP is blocked or unreliable on the path to the name servers, like
+ * the `use-vc` option of `resolv.conf`. The platform packages provide it with
+ * their sockets, for example with `NodeDnsClient.layerTransportTcp`.
+ *
+ * **Details**
+ *
+ * Each attempt opens a new connection and uses a new random query ID from the
+ * `Crypto` service. A response must match the query, or the attempt fails
+ * with `InvalidResponse`.
+ *
+ * **Gotchas**
+ *
+ * An empty `nameServers` list causes a defect.
+ *
+ * @see {@link TransportTcpOptions} for the options
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeTransportTcp = (
+  options: TransportTcpOptions
+): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
+  Effect.gen(function*() {
+    const crypto = yield* Crypto.Crypto
+    return Transport.of({
+      servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
+        send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
+          // Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
+          const id = yield* crypto.randomIntBetween(0, 0xffff)
+          const payload = yield* limit(Effect.gen(function*() {
+            const socket = yield* options.tcp(server)
+            const pull = yield* Socket.readerBytes(socket)
+            const writer = yield* socket.writer
+            // Advertises EDNS(0) support; the UDP payload size does not apply over TCP.
+            yield* writer.write(tcpFrame(encode({ id, udpPayloadSize: 1232 })))
+            let buffer: Uint8Array = new Uint8Array(0)
+            while (buffer.length < 2 || buffer.length < 2 + ((buffer[0] << 8) | buffer[1])) {
+              buffer = concat(buffer, yield* pull)
+            }
+            return buffer.subarray(2, 2 + ((buffer[0] << 8) | buffer[1]))
+          }))
+          if (!matches(payload, id)) {
+            return yield* fail("InvalidResponse", new Error("the TCP response does not match the query"))
+          }
+          return payload
+        })
+      }))
+    })
+  })
 
 /**
  * Options for `makeTransportUdp`.
@@ -373,15 +416,18 @@ export interface TransportUdpOptions {
 export const makeTransportUdp = (
   options: TransportUdpOptions
 ): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
-  Effect.map(Effect.service(Crypto.Crypto), (crypto) => {
+  Effect.gen(function*() {
+    const crypto = yield* Crypto.Crypto
     const udpPayloadSize = options.udpPayloadSize ?? 1232
     if (!Number.isInteger(udpPayloadSize) || udpPayloadSize < 512 || udpPayloadSize > 0xffff) {
       throw new RangeError(`DnsClient udpPayloadSize must be an integer from 512 to 65535, received ${udpPayloadSize}`)
     }
+    const tcp = yield* makeTransportTcp(options)
     return Transport.of({
-      servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
+      servers: Arr.map(nameServerAddresses(options.nameServers), (server, index) => ({
         send: Effect.fnUntraced(function*(exchange) {
-          const id = yield* randomId(crypto)
+          // Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
+          const id = yield* crypto.randomIntBetween(0, 0xffff)
           const received = yield* exchange.limit(Effect.gen(function*() {
             const socket = yield* options.udp(server)
             const reader = yield* socket.reader
@@ -396,65 +442,11 @@ export const makeTransportUdp = (
             }
           }))
           // The TC bit of a matching response, which has a complete header.
-          return (received[2] & 0x02) !== 0
-            ? yield* sendTcp(crypto, options.tcp(server), udpPayloadSize, exchange)
-            : received
+          return (received[2] & 0x02) !== 0 ? yield* tcp.servers[index].send(exchange) : received
         })
       }))
     })
   })
-
-/**
- * Options for `makeTransportTcp`.
- *
- * **Details**
- *
- * Name servers given as IP addresses use port 53, and `tcp(server)` opens the
- * connection for one attempt.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface TransportTcpOptions {
-  readonly nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress>
-  readonly tcp: (server: NetAddress.InetAddress) => Effect.Effect<Socket.Socket>
-}
-
-/**
- * Creates a `Transport` that sends every query over TCP.
- *
- * **When to use**
- *
- * Use when UDP is blocked or unreliable on the path to the name servers, like
- * the `use-vc` option of `resolv.conf`. The platform packages provide it with
- * their sockets, for example with `NodeDnsClient.layerTransportTcp`.
- *
- * **Details**
- *
- * Each attempt opens a new connection and uses a new random query ID from the
- * `Crypto` service. A response must match the query, or the attempt fails
- * with `InvalidResponse`.
- *
- * **Gotchas**
- *
- * An empty `nameServers` list causes a defect.
- *
- * @see {@link TransportTcpOptions} for the options
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const makeTransportTcp = (
-  options: TransportTcpOptions
-): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
-  Effect.map(Effect.service(Crypto.Crypto), (crypto) =>
-    Transport.of({
-      servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
-        // Advertises EDNS(0) support; the UDP payload size does not apply over TCP.
-        send: (exchange) => sendTcp(crypto, options.tcp(server), 1232, exchange)
-      }))
-    }))
 
 /**
  * Options for `makeTransportHttps`.
@@ -896,62 +888,6 @@ export const parseHosts = (text: string): Hosts => {
 // CNAME records followed per lookup, including those of follow-up queries.
 const maxAliases = 8
 
-// Returns the names to query for a host: fully qualified names as given,
-// names with at least `ndots` dots first as given and then with each search
-// domain, and other names with the search domains first.
-const candidates = (client: DnsClient["Service"], host: Host.DomainName): ReadonlyArray<Host.DomainName> => {
-  if (Host.isFullyQualified(host)) return [host]
-  const searched = Arr.filterMap(
-    client.search.filter((domain) => domain !== "."),
-    (domain) => Host.domainNameFromString(`${host}.${relative(domain)}.`)
-  )
-  const absoluteHost = `${host}.` as Host.DomainName
-  return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
-}
-
-// Queries the records of a type, following CNAME records in the answer and
-// querying the target of an alias whose records the answer does not include.
-// Fails with `InvalidResponse` when the name has records of the type but none
-// can be represented.
-const resolveChain = <T extends Dns.RecordType>(
-  client: DnsClient["Service"],
-  name: Host.DomainName,
-  type: T,
-  aliases = maxAliases
-): Effect.Effect<ReadonlyArray<Dns.RecordFor<T>>, Dns.DnsError> =>
-  Effect.flatMap(client.query(name, type), (response) => {
-    let owner = absolute(name)
-    let target: Host.DomainName | undefined
-    for (let hops = 0; hops <= aliases; hops++) {
-      const atOwner = response.answer.filter((record) => asciiLowerCase(record.owner) === owner)
-      const records = atOwner.flatMap((record) => record.data._tag === type ? [record.data as Dns.RecordFor<T>] : [])
-      if (records.length > 0) return Effect.succeed(records)
-      const raw = atOwner.find((record) =>
-        record.data._tag === "Raw" && record.data.type === DnsMessage.typeCodes[type]
-      )
-      if (raw !== undefined) {
-        return Effect.fail(
-          new Dns.DnsError({
-            reason: "InvalidResponse",
-            method: "resolve",
-            hostname: name,
-            recordType: type,
-            cause: raw
-          })
-        )
-      }
-      const alias = atOwner.find((record) => record.data._tag === "CNAME")?.data as Dns.Cname | undefined
-      if (alias === undefined) {
-        return target === undefined || response.rcode !== 0
-          ? Effect.succeed([])
-          : resolveChain(client, target, type, aliases - hops)
-      }
-      target = alias.target
-      owner = absolute(target)
-    }
-    return Effect.succeed([])
-  })
-
 const withMethod = (method: "lookup" | "reverse", hostname: string) => (error: Dns.DnsError) =>
   new Dns.DnsError({ reason: error.reason, method, hostname, cause: error.cause })
 
@@ -984,8 +920,67 @@ const withMethod = (method: "lookup" | "reverse", hostname: string) => (error: D
  */
 export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
   Dns.Dns,
-  Effect.map(Effect.service(DnsClient), (client) =>
-    Dns.make({
+  Effect.gen(function*() {
+    const client = yield* DnsClient
+
+    // Returns the names to query for a host: fully qualified names as given,
+    // names with at least `ndots` dots first as given and then with each search
+    // domain, and other names with the search domains first.
+    const candidates = (host: Host.DomainName): ReadonlyArray<Host.DomainName> => {
+      if (Host.isFullyQualified(host)) return [host]
+      const searched = Arr.filterMap(
+        client.search.filter((domain) => domain !== "."),
+        (domain) => Host.domainNameFromString(`${host}.${relative(domain)}.`)
+      )
+      const absoluteHost = `${host}.` as Host.DomainName
+      return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
+    }
+
+    // Queries the records of a type, following CNAME records in the answer and
+    // querying the target of an alias whose records the answer does not
+    // include. Fails with `InvalidResponse` when the name has records of the
+    // type but none can be represented.
+    const resolveChain = <T extends Dns.RecordType>(
+      name: Host.DomainName,
+      type: T,
+      aliases = maxAliases
+    ): Effect.Effect<ReadonlyArray<Dns.RecordFor<T>>, Dns.DnsError> =>
+      Effect.flatMap(client.query(name, type), (response) => {
+        let owner = absolute(name)
+        let target: Host.DomainName | undefined
+        for (let hops = 0; hops <= aliases; hops++) {
+          const atOwner = response.answer.filter((record) => asciiLowerCase(record.owner) === owner)
+          const records = atOwner.flatMap((record) =>
+            record.data._tag === type ? [record.data as Dns.RecordFor<T>] : []
+          )
+          if (records.length > 0) return Effect.succeed(records)
+          const raw = atOwner.find((record) =>
+            record.data._tag === "Raw" && record.data.type === DnsMessage.typeCodes[type]
+          )
+          if (raw !== undefined) {
+            return Effect.fail(
+              new Dns.DnsError({
+                reason: "InvalidResponse",
+                method: "resolve",
+                hostname: name,
+                recordType: type,
+                cause: raw
+              })
+            )
+          }
+          const alias = atOwner.find((record) => record.data._tag === "CNAME")?.data as Dns.Cname | undefined
+          if (alias === undefined) {
+            return target === undefined || response.rcode !== 0
+              ? Effect.succeed([])
+              : resolveChain(target, type, aliases - hops)
+          }
+          target = alias.target
+          owner = absolute(target)
+        }
+        return Effect.succeed([])
+      })
+
+    return Dns.make({
       lookup: Effect.fnUntraced(function*(host, family) {
         const listed = (yield* client.hosts).get(relative(host) as Host.DomainName) ?? []
         const fromHosts = listed.filter((address) => family === undefined || NetAddress.isFamily(address, family))
@@ -996,8 +991,8 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
           ? ["AAAA" as const]
           : ["A", "AAAA"] as const
         let error: Dns.DnsError | undefined
-        for (const name of candidates(client, host)) {
-          const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(client, name, type)), {
+        for (const name of candidates(host)) {
+          const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(name, type)), {
             concurrency: "unbounded"
           })
           const addresses = results.flatMap((result) =>
@@ -1009,11 +1004,12 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
         if (error !== undefined) return yield* withMethod("lookup", host)(error)
         return []
       }),
-      resolve: (name, type) => resolveChain(client, name, type),
+      resolve: (name, type) => resolveChain(name, type),
       reverse: (address) =>
-        resolveChain(client, Dns.reverseName(address), "PTR").pipe(
+        resolveChain(Dns.reverseName(address), "PTR").pipe(
           Effect.map(Arr.map((record) => record.host)),
           Effect.mapError(withMethod("reverse", NetAddress.formatIp(address)))
         )
-    }))
+    })
+  })
 )
