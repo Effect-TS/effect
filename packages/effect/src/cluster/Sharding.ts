@@ -389,8 +389,10 @@ const make = Effect.gen(function*() {
         }
       }
       yield* Fiber.joinAll(fibers)
-      // stop the singletons of shards that are no longer acquired
+      // stop the singletons of shards that are no longer acquired, and wait
+      // for any that are still stopping
       yield* syncSingletons
+      yield* awaitStoppingSingletons(shardIds)
       yield* shardLocksHealthyLatch.await
       yield* release
       for (const shardId of shardIds) {
@@ -1684,6 +1686,48 @@ const make = Effect.gen(function*() {
   const singletonFibers = yield* FiberMap.make<SingletonAddress>()
   const withSingletonLock = Semaphore.makeUnsafe(1).withPermits(1)
 
+  // Singletons that are stopping. They count as running, so they are not
+  // restarted, and shard releases wait for them. Their teardown is awaited
+  // without the singleton lock, as it can register or stop other singletons.
+  const stoppingSingletons = MutableHashMap.empty<SingletonAddress, Latch.Latch>()
+  const isSingletonRegistered = (address: SingletonAddress) => {
+    const map = singletons.get(address.shardId)
+    return map !== undefined && MutableHashMap.has(map, address)
+  }
+
+  // Called with the singleton lock held. Starts stopping the singleton and
+  // returns the wait for its teardown, to run without the lock.
+  const stopSingletonUnsafe = (address: SingletonAddress, activeTeardown: boolean): Effect.Effect<void> => {
+    const stopping = MutableHashMap.get(stoppingSingletons, address)
+    if (Option.isSome(stopping)) return stopping.value.await
+    const fiber = FiberMap.getUnsafe(singletonFibers, address)
+    if (Option.isNone(fiber)) return Effect.void
+    const stopped = Latch.makeUnsafe()
+    MutableHashMap.set(stoppingSingletons, address, stopped)
+    const interrupt = Fiber.interrupt(fiber.value)
+    Effect.runForkWith(services)(
+      activeTeardown ? ActiveTeardown.aroundShard(address.shardId, interrupt) : interrupt
+    ).addObserver(() => {
+      MutableHashMap.remove(stoppingSingletons, address)
+      stopped.openUnsafe()
+      // a registration made while the previous singleton was stopping
+      if (isSingletonRegistered(address)) runFork(syncSingletons)
+    })
+    return stopped.await
+  }
+
+  // Waits for the singletons of the given shards that are still stopping
+  const awaitStoppingSingletons = (shardIds: ReadonlyArray<ShardId>) =>
+    Effect.suspend(() => {
+      const waits = Arr.empty<Effect.Effect<void>>()
+      MutableHashMap.forEach(stoppingSingletons, (stopped, address) => {
+        if (shardIds.some((shardId) => Equal.equals(shardId, address.shardId))) {
+          waits.push(stopped.await)
+        }
+      })
+      return Effect.all(waits, { discard: true })
+    })
+
   const registerSingleton: Sharding["Service"]["registerSingleton"] = Effect.fnUntraced(
     function*(name, run, options) {
       const shardGroup = options?.shardGroup ?? "default"
@@ -1714,37 +1758,36 @@ const make = Effect.gen(function*() {
 
       yield* PubSub.publish(events, SingletonRegistered({ address }))
 
-      // start if we are on the right shard
-      if (MutableHashSet.has(acquiredShards, address.shardId)) {
+      // start if we are on the right shard, unless a previous registration of
+      // this singleton is still stopping
+      if (
+        MutableHashSet.has(acquiredShards, address.shardId) &&
+        !MutableHashMap.has(stoppingSingletons, address)
+      ) {
         yield* Effect.logDebug("Starting singleton", address)
         yield* FiberMap.run(singletonFibers, address, wrappedRun)
       }
 
-      // Hold the singleton lock until the singleton has stopped, so a shard
-      // release, which syncs singletons first, waits for its teardown, and a
-      // sync cannot restart it in between.
       yield* Effect.addFinalizer(() =>
-        withSingletonLock(Effect.suspend(() => {
-          const map = singletons.get(address.shardId)!
-          MutableHashMap.remove(map, address)
-          return FiberMap.remove(singletonFibers, address)
-        }))
+        withSingletonLock(Effect.sync(() => {
+          MutableHashMap.remove(singletons.get(address.shardId)!, address)
+          return stopSingletonUnsafe(address, false)
+        })).pipe(Effect.flatten)
       )
     },
     withSingletonLock
   )
 
-  const syncSingletons = withSingletonLock(Effect.gen(function*() {
+  const syncSingletons: Effect.Effect<void> = withSingletonLock(Effect.gen(function*() {
+    const stops = Arr.empty<Effect.Effect<void>>()
     for (const [shardId, map] of singletons) {
       for (const [address, run] of map) {
-        const running = FiberMap.hasUnsafe(singletonFibers, address)
+        const stopping = MutableHashMap.has(stoppingSingletons, address)
+        const running = stopping || FiberMap.hasUnsafe(singletonFibers, address)
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
-          yield* Effect.logDebug("Stopping singleton", address)
-          yield* ActiveTeardown.aroundShard(
-            address.shardId,
-            FiberMap.remove(singletonFibers, address)
-          )
+          if (!stopping) yield* Effect.logDebug("Stopping singleton", address)
+          stops.push(stopSingletonUnsafe(address, true))
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
@@ -1755,7 +1798,11 @@ const make = Effect.gen(function*() {
       BigInt(yield* FiberMap.size(singletonFibers)),
       Context.empty()
     )
-  }))
+    return stops
+  })).pipe(
+    // wait for the stopped singletons without the lock
+    Effect.flatMap((stops) => Effect.all(stops, { discard: true }))
+  )
 
   // --- Entities ---
 
