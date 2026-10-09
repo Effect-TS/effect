@@ -4454,7 +4454,7 @@ export const cachedInvalidateWithTTL: {
 const infiniteTTL = constant(Infinity)
 
 interface CachedRun<A, E> {
-  fiber: FiberImpl<A, E> | undefined
+  readonly fiber: FiberImpl<A, E>
   awaiters: number
 }
 
@@ -4467,6 +4467,7 @@ const makeCachedUnsafe = <A, E, R>(
   let current: CachedRun<A, E> | undefined
 
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
+    if (fiber === run.fiber) return fiberJoin(run.fiber)
     run.awaiters++
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
@@ -4474,9 +4475,9 @@ const makeCachedUnsafe = <A, E, R>(
       // Detach it first so new callers start a fresh run instead of joining
       // one that is being interrupted.
       current = undefined
-      return fiberInterrupt(run.fiber!)
+      return fiberInterrupt(run.fiber)
     })
-    return fiberJoin(run.fiber!)
+    return fiberJoin(run.fiber)
   }
 
   return [
@@ -4490,10 +4491,12 @@ const makeCachedUnsafe = <A, E, R>(
       }
       exit = undefined
       const clock = fiber.getRef(ClockRef)
-      const run: CachedRun<A, E> = { fiber: undefined, awaiters: 0 }
+      const run: CachedRun<A, E> = {
+        fiber: new FiberImpl(fiber.context),
+        awaiters: 1
+      }
       current = run
-      run.fiber = forkUnsafe(
-        fiber,
+      run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
           // An abandoned run must not overwrite or clear a replacement run.
           if (current !== run) return
@@ -4503,11 +4506,11 @@ const makeCachedUnsafe = <A, E, R>(
           const duration = ttlMillis(exit_)
           expiresAt = duration === Infinity ? Infinity : clock.currentTimeMillisUnsafe() + duration
           exit = exit_
-        }),
-        true,
-        true
+        }) as any
       )
-      return run.fiber._exit ?? join(fiber, run)
+      if (run.fiber._exit) return run.fiber._exit
+      run.awaiters--
+      return join(fiber, run)
     }),
     sync(() => {
       exit = undefined
