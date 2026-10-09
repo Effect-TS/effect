@@ -1,15 +1,17 @@
 /**
  * Node-compatible implementation of Effect's `Crypto` service.
  *
- * This module builds the service from `node:crypto`, using `randomBytes` for
- * random data, `createHash` and `createHmac` for digests and authentication,
- * asynchronous `pbkdf2` for password derivation, and `publicEncrypt` for RSA-OAEP
- * encryption. Node's native `webcrypto.subtle` provides managed keys, AES-GCM,
- * AES-CTR, RSA-OAEP decryption, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, Ed25519, and
- * ECDH and X25519 key agreement. Native
- * Argon2id is used when available. XChaCha20-Poly1305 uses HChaCha20 nonce
- * extension followed by native ChaCha20-Poly1305. It exports `make` as the
- * concrete service value and `layer` for providing it through Effect context.
+ * This module builds the service from `node:crypto`. Random data comes from
+ * `randomFillSync`, with small requests served from a 4 KiB buffer that is
+ * discarded before a V8 startup snapshot is serialized. `createHash` and
+ * `createHmac` provide digests and authentication, asynchronous `pbkdf2`
+ * derives password keys, and `publicEncrypt` performs RSA-OAEP encryption.
+ * Node's native `webcrypto.subtle` provides managed keys, AES-GCM, AES-CTR,
+ * RSA-OAEP decryption, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, Ed25519, and ECDH
+ * and X25519 key agreement. Native Argon2id is used when available.
+ * XChaCha20-Poly1305 uses HChaCha20 nonce extension followed by native
+ * ChaCha20-Poly1305. It exports `make` as the concrete service value and
+ * `layer` for providing it through Effect context.
  *
  * @stability unstable
  * @since 1.0.0
@@ -19,6 +21,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
 import * as NodeCrypto from "node:crypto"
+import * as RandomPool from "./internal/randomPool.ts"
 import * as XChaCha from "./internal/xchacha.ts"
 
 const toHashAlgorithm = (algorithm: EffectCrypto.DigestAlgorithm): string => {
@@ -58,7 +61,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  */
 export const make: EffectCrypto.Crypto = EffectCrypto.make({
   ...EffectCrypto.makeSubtle(NodeCrypto.webcrypto.subtle as unknown as SubtleCrypto),
-  randomBytes: NodeCrypto.randomBytes,
+  randomBytes: RandomPool.make((bytes) => NodeCrypto.randomFillSync(bytes)),
   digest,
   xchacha20poly1305Encrypt: XChaCha.encrypt,
   xchacha20poly1305Decrypt: XChaCha.decrypt,
