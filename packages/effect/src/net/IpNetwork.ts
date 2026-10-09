@@ -32,7 +32,6 @@ export interface IpNetwork<out A extends NetAddress.IpAddress = NetAddress.IpAdd
   readonly address: A
   readonly prefixLength: number
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**

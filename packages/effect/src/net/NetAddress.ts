@@ -27,7 +27,6 @@ const TypeId = "~effect/net/NetAddress" as const
 export interface Ipv4Address extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "Ipv4Address"
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
@@ -40,7 +39,6 @@ export interface Ipv4Address extends Equal.Equal, Hash.Hash, Inspectable.Inspect
 export interface Ipv6Address extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "Ipv6Address"
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
@@ -145,7 +143,6 @@ export type ScopedIpv6LiteralInput = ScopedIpv6Literal | string
 export interface MacAddress extends Equal.Equal, Hash.Hash, Inspectable.Inspectable {
   readonly _tag: "MacAddress"
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
@@ -323,7 +320,6 @@ export interface InetAddressV4 extends Equal.Equal, Hash.Hash, Inspectable.Inspe
   readonly address: Ipv4Address
   readonly port: number
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
@@ -339,7 +335,6 @@ export interface InetAddressV6 extends Equal.Equal, Hash.Hash, Inspectable.Inspe
   readonly port: number
   readonly scopeId: number
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
@@ -388,7 +383,6 @@ export interface UnixPathAddress extends Equal.Equal, Hash.Hash, Inspectable.Ins
   readonly _tag: "UnixPathAddress"
   readonly path: string
   readonly [TypeId]: typeof TypeId
-  toJSON(): string
 }
 
 /**
