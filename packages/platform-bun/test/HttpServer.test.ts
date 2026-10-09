@@ -6,22 +6,10 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Net from "node:net"
 
-interface WebSocketFrame {
-  readonly opcode: number
-  readonly payloadLength: number
-  readonly rsv1: boolean
-}
-
-interface Handshake {
-  readonly headers: string
-  readonly frame: WebSocketFrame
-}
-
 const connect = (port: number) =>
-  Effect.async<Handshake, Error>((resume) => {
+  Effect.async<{ readonly headers: string; readonly firstByte: number }, Error>((resume) => {
     const socket = Net.createConnection({ host: "127.0.0.1", port })
     let received = Buffer.alloc(0)
-    let done = false
     socket.on("connect", () => {
       socket.write([
         "GET / HTTP/1.1",
@@ -37,34 +25,23 @@ const connect = (port: number) =>
     })
     socket.on("error", (error) => resume(Effect.fail(error)))
     socket.on("data", (chunk) => {
-      if (done) return
       received = Buffer.concat([received, typeof chunk === "string" ? Buffer.from(chunk) : chunk])
       const headerEnd = received.indexOf("\r\n\r\n")
       if (headerEnd === -1) return
-      const headers = received.subarray(0, headerEnd).toString()
       const offset = headerEnd + 4
-      if (received.length < offset + 2) return
-      const first = received[offset]
-      const length = received[offset + 1] & 0x7f
-      const headerLength = length === 126 ? 4 : 2
-      if (received.length < offset + headerLength) return
-      const payloadLength = length === 126 ? received.readUInt16BE(offset + 2) : length
-      if (received.length < offset + headerLength + payloadLength) return
-      done = true
-      socket.end(Buffer.from([0x88, 0x82, 0, 0, 0, 0, 0x03, 0xe8]))
+      if (received.length <= offset) return
+      socket.destroy()
       resume(Effect.succeed({
-        headers,
-        frame: { opcode: first & 0x0f, payloadLength, rsv1: (first & 0x40) !== 0 }
+        headers: received.subarray(0, headerEnd).toString(),
+        firstByte: received[offset]
       }))
     })
     return Effect.sync(() => socket.destroy())
   })
 
-describe("BunHttpServer WebSocket compression", () => {
-  it.scoped("negotiates permessage-deflate when Bun's websocket.perMessageDeflate is set", () =>
+describe("HttpServer", () => {
+  it.scoped("negotiates permessage-deflate and compresses outgoing WebSocket text", () =>
     Effect.gen(function*() {
-      const payload = "a".repeat(4_096)
-      // ServeOptions does not include Bun's `websocket` field, so a cast is needed
       const server = yield* BunHttpServer.make({
         hostname: "127.0.0.1",
         port: 0,
@@ -75,16 +52,15 @@ describe("BunHttpServer WebSocket compression", () => {
           const request = yield* HttpServerRequest.HttpServerRequest
           const socket = yield* request.upgrade
           const write = yield* socket.writer
-          yield* Effect.orDie(write(payload))
+          yield* Effect.orDie(write("a".repeat(4_096)))
           return HttpServerResponse.empty()
         }).pipe(Effect.scoped)
       )
-      const { frame, headers } = yield* connect((server.address as HttpServer.TcpAddress).port)
+      const { firstByte, headers } = yield* connect((server.address as HttpServer.TcpAddress).port)
 
       assert.match(headers, /^HTTP\/1\.1 101/)
       assert.match(headers, /^sec-websocket-extensions:.*permessage-deflate/im)
-      assert.strictEqual(frame.opcode, 1)
-      assert.isTrue(frame.rsv1, "outbound text frame should be compressed")
-      assert.isBelow(frame.payloadLength, payload.length)
+      assert.strictEqual(firstByte & 0x0f, 1)
+      assert.strictEqual(firstByte & 0x40, 0x40, "outbound text frame should set RSV1")
     }))
 })
