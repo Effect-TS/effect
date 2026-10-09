@@ -46,7 +46,7 @@ import * as EntityManager from "effect/cluster/internal/entityManager"
 import { EntityReaper } from "effect/cluster/internal/entityReaper"
 import * as ActiveTeardown from "effect/cluster/internal/interruptors"
 import { Headers } from "effect/http"
-import { Rpc, type RpcGroup } from "effect/rpc"
+import { Rpc, type RpcGroup, type RpcSerialization } from "effect/rpc"
 import { TestClock } from "effect/testing"
 import {
   CallerId,
@@ -2961,6 +2961,45 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sentTo)), Effect.scoped)
     }))
 
+  it.effect("holds a remote request on the new owner until it acquires the shard lock", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const state = yield* TestEntityState
+        const entityId = EntityId.make("1")
+        const shardId = sharding.getShardId(entityId, "default")
+        // The ring assigns the shard here, but the previous owner still holds its lock.
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+
+        // A sending runner delivers a volatile request through the runner server.
+        const delivery = yield* sharding.send(
+          new Message.IncomingRequest({
+            envelope: {
+              _tag: "Request",
+              requestId: Snowflake.Snowflake(BigInt(1)),
+              address: EntityAddress.make({ shardId, entityType: EntityType.make(TestEntity.type), entityId }),
+              tag: "GetUserVolatile",
+              payload: { id: 1 },
+              headers: Headers.empty
+            },
+            lastSentReply: Option.none(),
+            respond: () => Effect.void,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        assert.deepStrictEqual(yield* Fiber.await(delivery), Exit.void)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
+    }))
+
   it.effect("does not wait for entity construction before a forced shard release", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -3185,6 +3224,8 @@ interface FailoverStorageState {
   /** Hang only non-empty refreshes, so the empty liveness probe can succeed. */
   blackholeNonEmptyRefresh: boolean
   assignSelf: boolean
+  /** Fail lock acquisition, as when another runner still holds the locks. */
+  lockHeldElsewhere: boolean
   otherRunnerHealthy: boolean
   /** Test clock duration `releaseAll` stays in flight for. */
   releaseAllDuration: number
@@ -3207,6 +3248,7 @@ const makeFailoverStorageState = (
   blackholed: false,
   blackholeNonEmptyRefresh: false,
   assignSelf: true,
+  lockHeldElsewhere: false,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
   runner: undefined,
@@ -3238,7 +3280,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
           shards,
           completedReleaseAlls: state.releaseAllCalls.filter((call) => call.completed).length
         })
-        return shards
+        return state.lockHeldElsewhere ? [] : shards
       }),
     refresh: (_address, shardIds) =>
       Effect.suspend(() => {
