@@ -138,21 +138,24 @@ describe("Context", () => {
     context = Context.add(context, keys[0], 0)
     context = Context.add(context, keys[1], 1)
     // Still within the override: no rebase yet, even though the base is tiny
-    strictEqual((context as any).overlay !== undefined, true)
-    strictEqual((context as any).depth, 2)
-    strictEqual((context as any).maxDepthOverride, 2)
+    let impl = context as any
+    strictEqual(impl.overlay !== undefined, true)
+    strictEqual(impl.depth, 2)
+    strictEqual(impl.maxDepthOverride, 2)
 
     context = Context.add(context, keys[2], 2)
     // One push past the override -> rebase, well below the default floor of 8
-    strictEqual((context as any).overlay, undefined)
-    strictEqual((context as any).depth, 0)
-    strictEqual((context as any).maxDepthOverride, 2)
+    impl = context as any
+    strictEqual(impl.overlay, undefined)
+    strictEqual(impl.depth, 0)
+    strictEqual(impl.maxDepthOverride, 2)
 
     // The override survives the rebase and keeps applying afterwards
     context = Context.add(context, keys[3], 3)
-    strictEqual((context as any).overlay !== undefined, true)
-    strictEqual((context as any).depth, 1)
-    strictEqual((context as any).maxDepthOverride, 2)
+    impl = context as any
+    strictEqual(impl.overlay !== undefined, true)
+    strictEqual(impl.depth, 1)
+    strictEqual(impl.maxDepthOverride, 2)
 
     strictEqual(context.mapUnsafe.size, keys.length)
     for (let i = 0; i < keys.length; i++) {
@@ -162,8 +165,8 @@ describe("Context", () => {
 
   it("falls back to the default depth for an invalid maxDepth", () => {
     for (const invalid of [Number.NaN, -1, 1.5, -Infinity]) {
-      const context = Context.makeUnsafe(new Map(), { maxDepth: invalid })
-      strictEqual((context as any).maxDepthOverride, undefined)
+      const impl = Context.makeUnsafe(new Map(), { maxDepth: invalid }) as any
+      strictEqual(impl.maxDepthOverride, undefined)
     }
 
     // A NaN override must not disable rebasing: depth(n) >= NaN is always
@@ -193,13 +196,15 @@ describe("Context", () => {
     for (let i = 0; i < keys.length; i++) {
       context = Context.add(context, keys[i], i)
     }
-    strictEqual((context as any).overlay !== undefined, true)
-    strictEqual((context as any).depth, 8)
-    strictEqual((context as any).maxDepthOverride, undefined)
+    let impl = context as any
+    strictEqual(impl.overlay !== undefined, true)
+    strictEqual(impl.depth, 8)
+    strictEqual(impl.maxDepthOverride, undefined)
 
     context = Context.add(context, Context.Service<number>("ContextTest/DefaultPush"), -1)
-    strictEqual((context as any).overlay, undefined)
-    strictEqual((context as any).depth, 0)
+    impl = context as any
+    strictEqual(impl.overlay, undefined)
+    strictEqual(impl.depth, 0)
   })
 
   it("flattens after repeated base fall-throughs", () => {
