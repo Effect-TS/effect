@@ -143,11 +143,9 @@ describe("Context", () => {
     // preRebase.depth === 8: the next push crosses MaxDepth and rebases.
     const context = Context.add(preRebase, pushKeys[pushKeys.length - 1], pushKeys.length - 1)
 
-    // A rebase that goes through `impl.mapUnsafe` (flatten, then copy again)
-    // would populate `_flat` on the discarded pre-rebase context as a side
-    // effect. A single-copy rebase builds the new map directly from
-    // `_flat ?? base` and never touches `impl.mapUnsafe`, so `_flat` here
-    // stays undefined.
+    // A rebase through `impl.mapUnsafe` would warm `_flat` on the discarded
+    // pre-rebase context as a side effect; building from `_flat ?? base`
+    // directly does not.
     strictEqual((preRebase as any)._flat, undefined)
 
     strictEqual(context.mapUnsafe.size, baseSize + pushKeys.length)
