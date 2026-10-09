@@ -2933,6 +2933,34 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
+  it.effect("delivers a client interrupt to a request still draining on the lock holder", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const { request } = yield* startGracefulHandoff(storageState)
+
+        yield* Fiber.interrupt(request).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
+        assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
+    }))
+
+  it.effect("does not send requests to the new owner while the shard lock is still held", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const sentTo: Array<RunnerAddress.RunnerAddress> = []
+      yield* Effect.gen(function*() {
+        const { client } = yield* startGracefulHandoff(storageState)
+
+        yield* client.GetUserVolatile({ id: 1 }).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
+        assert.deepStrictEqual(sentTo, [])
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sentTo)), Effect.scoped)
+    }))
+
   it.effect("does not wait for entity construction before a forced shard release", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -3244,6 +3272,61 @@ const otherRunner = Runner.make({
   address: RunnerAddress.make("localhost", 5678),
   groups: ["default"],
   weight: 1
+})
+
+// Clearing `assignSelf` moves every shard to `otherRunner`, whose RPCs fail
+// with EntityNotAssignedToRunner. Records the addresses requests are sent to.
+const GracefulHandoffSharding = (
+  storageState: FailoverStorageState,
+  sentTo: Array<RunnerAddress.RunnerAddress>
+) =>
+  TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Layer.effect(
+      Runners.Runners,
+      Effect.map(Runners.makeNoop, (runners) =>
+        Runners.Runners.of({
+          ...runners,
+          send: (options) =>
+            Effect.suspend(() => {
+              sentTo.push(options.address)
+              return runners.send(options)
+            })
+        }))
+    )),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      entityTerminationTimeout: 1000,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+
+// Moves the shard of an in-flight request to `otherRunner`. The request keeps
+// the shard draining, so this runner still holds its lock.
+const startGracefulHandoff = Effect.fnUntraced(function*(storageState: FailoverStorageState) {
+  const sharding = yield* Sharding.Sharding
+  const client = (yield* TestEntity.client)("1")
+  const shardId = sharding.getShardId(EntityId.make("1"), "default")
+  while (!sharding.hasShardId(shardId)) {
+    yield* TestClock.adjust(10)
+  }
+  const request = yield* client.NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+  yield* Queue.take((yield* TestEntityState).envelopes)
+  storageState.assignSelf = false
+  while (sharding.hasShardId(shardId)) {
+    yield* TestClock.adjust(10)
+  }
+  return { client, request } as const
 })
 
 class RegistrationContext extends Context.Service<RegistrationContext, string>()(
