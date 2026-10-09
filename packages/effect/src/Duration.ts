@@ -1464,7 +1464,9 @@ export const times: {
         const nanosNumber = Number(nanos)
         if (Number.isSafeInteger(nanosNumber)) {
           const scaled = nanosNumber * times
-          if (Math.abs(scaled) <= Number.MAX_SAFE_INTEGER) return fromNanosNumber(scaled)
+          if (Math.abs(scaled) <= Number.MAX_SAFE_INTEGER) {
+            return Number.isInteger(scaled) ? make(BigInt(scaled)) : fromNanosNumber(scaled)
+          }
         }
         let numerator = times
         let denominator = bigint1
