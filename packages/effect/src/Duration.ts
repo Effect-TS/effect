@@ -1434,9 +1434,10 @@ export const divideUnsafe: {
  *
  * **Details**
  *
- * For nanosecond-backed durations, non-integer multipliers round the result to
- * the nearest nanosecond. Infinite durations return positive infinity,
- * negative infinity, or zero depending on the multiplier sign.
+ * Fractional multipliers on nanosecond-backed durations round the result to
+ * the nearest nanosecond, with ties rounding away from zero. Infinite
+ * durations return positive infinity, negative infinity, or zero depending on
+ * the multiplier sign.
  *
  * **Example** (Multiplying durations)
  *
