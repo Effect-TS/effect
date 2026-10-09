@@ -50,11 +50,13 @@
     "./schema": "./src/schema/index.ts",
     "./socket": "./src/socket/index.ts",
     "./sql": "./src/sql/index.ts",
+    "./ssh": "./src/ssh/index.ts",
     "./workflow": "./src/workflow/index.ts",
     "./workers": "./src/workers/index.ts",
     "./*": "./src/*.ts",
     "./cli/internal/*": null,
     "./cluster/internal/*": null,
+    "./ssh/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -93,12 +95,14 @@
       "./schema": "./dist/schema/index.js",
       "./socket": "./dist/socket/index.js",
       "./sql": "./dist/sql/index.js",
+      "./ssh": "./dist/ssh/index.js",
       "./workflow": "./dist/workflow/index.js",
       "./workers": "./dist/workers/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./cli/internal/*": null,
       "./cluster/internal/*": null,
+      "./ssh/internal/*": null,
       "./index": null,
       "./*/index": null
     }
