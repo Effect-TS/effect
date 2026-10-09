@@ -2,7 +2,7 @@
 "effect": patch
 ---
 
-Render and execute HTTP `QUERY` operations in API documentation. Update the embedded Swagger UI to 5.32.15 and Scalar API Reference to 1.69.0.
+Render and execute HTTP `QUERY` operations in API documentation. Update the embedded Swagger UI to 5.33.1 and Scalar API Reference to 1.73.1.
 
 `OpenApi.fromApi` now emits OpenAPI 3.2.0 with native `query` path operations when an included endpoint uses `QUERY`. APIs without included `QUERY` endpoints continue to emit OpenAPI 3.1.0.
 

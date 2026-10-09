@@ -2,12 +2,12 @@
 import { createHash } from "node:crypto"
 import * as Fs from "fs/promises"
 
-const version = "5.32.15"
+const version = "5.33.1"
 const baseUrl = `https://unpkg.com/swagger-ui-dist@${version}/`
 const checksums = {
-  "swagger-ui-bundle.js": "a7e344f2770b2f07527ce828e0951626983b8f2dcdb7a826689c0232023f995b",
-  "swagger-ui-standalone-preset.js": "1ad2ffd7a236dca4e570ce2ba2ef3de721d7553d4e7449db58df66cb294311e9",
-  "swagger-ui.css": "d7f39f764aa18c7b47dd05b9af5613e373e4ac0f3557c2693d52d0abc2464d76",
+  "swagger-ui-bundle.js": "050bc415ee7048dcd881682678f720264e7da5e373f7461d7c58c755305255f7",
+  "swagger-ui-standalone-preset.js": "5243d492e14505e0cab87ac8b0195d0e615943e651743b2b698450a46eb470be",
+  "swagger-ui.css": "1ac324f7dcd27e4b9386b4bd6421271ec147e922a22c05ba24b11515e9aa6321",
   "swagger-ui-bundle.js.LICENSE.txt": "63818894e4b04cd0e3180d9cb20761e227a939121e7484f8e1d528227c756f89",
   "swagger-ui-standalone-preset.js.LICENSE.txt": "000580e4e2255ea6ccde0c47f6d75e2f703a1931298fde58756793b67c0daed9",
   "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",

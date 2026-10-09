@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto"
 import * as Fs from "fs/promises"
 
-const version = "1.69.0"
+const version = "1.73.1"
 // Use the published bundle rather than jsDelivr's dynamically minified .min.js.
 const bundleUrl = `https://cdn.jsdelivr.net/npm/@scalar/api-reference@${version}/dist/browser/standalone.js`
 const licenseUrl = "https://raw.githubusercontent.com/scalar/scalar/f701820a1592b93390faf8b605416da7ff81c08e/LICENSE"
@@ -18,7 +18,7 @@ const fetchAsset = async (url, checksum) => {
 }
 
 const [jsBundle, license] = await Promise.all([
-  fetchAsset(bundleUrl, "48289f8a965d73ae510c469462cac0d8f72865de705e186278d5485058b2a5fc"),
+  fetchAsset(bundleUrl, "62c34a0dda38945864011ebaf6e7fa7812a332429120d18922b34d01c4f7ccc8"),
   fetchAsset(licenseUrl, "380cd0a6ad700e1f821f2a509f0dd9ff835041cee2d43daf5dedc1adb2bcc620")
 ])
 // Preserve upstream notices and include the full license in the delivered script.
