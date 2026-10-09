@@ -8,8 +8,10 @@
  *
  * Unrepresentable records, such as invalid `Host.DomainName` values, are
  * skipped. If every record is skipped, the query fails with `InvalidResponse`.
- * `make` decodes Node.js's Latin-1 TXT and CAA strings as UTF-8. Other runtimes
- * reuse `lookup`, `resolver`, and the conversion helpers to build their services.
+ * `make` decodes Node.js's Latin-1 TXT and CAA strings as UTF-8. TLSA queries
+ * need Node.js 22.15 or 23.9 and later, and fail with `Unsupported` on runtimes
+ * without `resolveTlsa`. Other runtimes reuse `lookup`, `resolver`, and the
+ * conversion helpers to build their services.
  *
  * @stability experimental
  * @since 4.0.0
@@ -305,6 +307,18 @@ const queries: {
       priority: srv.priority,
       weight: srv.weight
     })),
+  // `resolveTlsa` was added in Node.js 22.15 and 23.9; Bun and Deno lack it.
+  TLSA: async (resolver, name) =>
+    typeof resolver.resolveTlsa === "function"
+      ? recordsFromResolver(name, "TLSA", await resolver.resolveTlsa(name), (tlsa) => ({
+        certUsage: tlsa.certUsage,
+        selector: tlsa.selector,
+        matchingType: tlsa.match,
+        data: new Uint8Array(tlsa.data)
+      }))
+      : Result.fail(
+        new Dns.DnsError({ reason: "Unsupported", method: "resolve", hostname: name, recordType: "TLSA" })
+      ),
   TXT: async (resolver, name) =>
     recordsFromResolver(name, "TXT", await resolver.resolveTxt(name), (chunks) => ({
       chunks: chunks as unknown as Arr.NonEmptyReadonlyArray<string>

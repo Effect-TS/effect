@@ -21,6 +21,9 @@ describe("Dns", () => {
     expect(dns.resolve("db.example.com", "SRV")).type.toBe<
       Effect.Effect<Arr.NonEmptyReadonlyArray<Dns.Srv>, Dns.DnsError>
     >()
+    expect(dns.resolve("_443._tcp.example.com", "TLSA")).type.toBe<
+      Effect.Effect<Arr.NonEmptyReadonlyArray<Dns.Tlsa>, Dns.DnsError>
+    >()
   })
 
   it("keeps platform inputs and stored record names branded", () => {

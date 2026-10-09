@@ -10,6 +10,8 @@ const name = Host.domainNameFromStringUnsafe
 const srv = (target: string, priority: number, weight: number) =>
   Dns.makeRecordUnsafe("SRV", { target: name(target), port: 5432, priority, weight })
 
+const tlsa = (data: Uint8Array) => Dns.makeRecordUnsafe("TLSA", { certUsage: 3, selector: 1, matchingType: 1, data })
+
 describe("Dns", () => {
   describe("records", () => {
     it("rejects invalid fields", () => {
@@ -21,6 +23,21 @@ describe("Dns", () => {
       assert.isTrue(
         Result.isFailure(Dns.makeRecord("A", { address: ip("2001:db8::1") as NetAddress.Ipv4Address }))
       )
+      assert.isTrue(
+        Result.isFailure(
+          Dns.makeRecord("TLSA", { certUsage: 256, selector: 1, matchingType: 1, data: new Uint8Array([1]) })
+        )
+      )
+      assert.isTrue(
+        Result.isFailure(Dns.makeRecord("TLSA", { certUsage: 3, selector: 1, matchingType: 1, data: new Uint8Array() }))
+      )
+    })
+
+    it("copies TLSA data", () => {
+      const data = new Uint8Array([0xab, 0xcd])
+      const record = tlsa(data)
+      data[0] = 0
+      assert.deepStrictEqual(record.data, new Uint8Array([0xab, 0xcd]))
     })
 
     it("formats records in presentation format", () => {
@@ -33,6 +50,7 @@ describe("Dns", () => {
         Dns.formatRecord(Dns.makeRecordUnsafe("PTR", { host: "Office Printer._ipp._tcp.local." })),
         "PTR Office\\032Printer._ipp._tcp.local."
       )
+      assert.strictEqual(Dns.formatRecord(tlsa(new Uint8Array([0x0a, 0xbc, 0xde]))), "TLSA 3 1 1 0ABCDE")
     })
 
     it("implements equality and hashing", () => {
@@ -40,6 +58,10 @@ describe("Dns", () => {
       assert.isTrue(Equal.equals(a, srv("db.internal", 10, 5)))
       assert.strictEqual(Hash.hash(a), Hash.hash(srv("db.internal", 10, 5)))
       assert.isFalse(Equal.equals(a, srv("db.internal", 10, 6)))
+      const b = tlsa(new Uint8Array([1, 2]))
+      assert.isTrue(Equal.equals(b, tlsa(new Uint8Array([1, 2]))))
+      assert.strictEqual(Hash.hash(b), Hash.hash(tlsa(new Uint8Array([1, 2]))))
+      assert.isFalse(Equal.equals(b, tlsa(new Uint8Array([1, 3]))))
     })
 
     it("builds reverse lookup names", () => {
@@ -74,6 +96,11 @@ describe("Dns", () => {
       assert.deepStrictEqual(Schema.encodeSync(codec)(soa), json)
       assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(json), soa))
       assert.throws(() => Schema.decodeUnknownSync(codec)({ _tag: "CNAME", target: "Example.com" }))
+      const record = tlsa(new Uint8Array([0x0a, 0xbc]))
+      const tlsaJson = { _tag: "TLSA", certUsage: 3, selector: 1, matchingType: 1, data: "0abc" }
+      assert.deepStrictEqual(Schema.encodeSync(codec)(record), tlsaJson)
+      assert.isTrue(Equal.equals(Schema.decodeUnknownSync(codec)(tlsaJson), record))
+      assert.throws(() => Schema.decodeUnknownSync(codec)({ ...tlsaJson, data: "" }))
     })
   })
 

@@ -17,6 +17,7 @@ import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Hex from "../encoding/Hex.ts"
 import * as Equal from "../Equal.ts"
 import * as Hash from "../Hash.ts"
 import * as Inspectable from "../Inspectable.ts"
@@ -181,6 +182,37 @@ export interface Srv extends RecordProto<"SRV"> {
 }
 
 /**
+ * A TLS authentication record (RFC 6698), which pins the certificate or public
+ * key that a TLS service presents, for DNS-Based Authentication of Named
+ * Entities (DANE). Records are published at a name made of the service's port
+ * and protocol, such as `_443._tcp.example.com`.
+ *
+ * **Details**
+ *
+ * `certUsage` says how the record constrains the certificate chain (0 to 3:
+ * PKIX-TA, PKIX-EE, DANE-TA, DANE-EE), `selector` whether `data` matches the
+ * full certificate (0) or its public key (1), and `matchingType` whether
+ * `data` holds the selected content itself (0) or its SHA-256 (1) or SHA-512
+ * (2) digest. Unassigned values are kept as they are.
+ *
+ * **Gotchas**
+ *
+ * `data` is a copy of the bytes the record was made from, but typed arrays
+ * cannot be frozen; treat it as read-only, because changing it changes the
+ * record's equality.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Tlsa extends RecordProto<"TLSA"> {
+  readonly certUsage: number
+  readonly selector: number
+  readonly matchingType: number
+  readonly data: Uint8Array
+}
+
+/**
  * A text record. DNS stores text as one or more character strings, which are
  * kept as separate chunks; protocols such as SPF read them joined, for example
  * with `record.chunks.join("")`.
@@ -214,7 +246,7 @@ export interface Txt extends RecordProto<"TXT"> {
  * @category models
  * @since 4.0.0
  */
-export type DnsRecord = A | Aaaa | Caa | Cname | Mx | Naptr | Ns | Ptr | Soa | Srv | Txt
+export type DnsRecord = A | Aaaa | Caa | Cname | Mx | Naptr | Ns | Ptr | Soa | Srv | Tlsa | Txt
 
 /**
  * The type of a DNS record, such as `"A"` or `"SRV"`.
@@ -223,7 +255,19 @@ export type DnsRecord = A | Aaaa | Caa | Cname | Mx | Naptr | Ns | Ptr | Soa | S
  * @category models
  * @since 4.0.0
  */
-export type RecordType = "A" | "AAAA" | "CAA" | "CNAME" | "MX" | "NAPTR" | "NS" | "PTR" | "SOA" | "SRV" | "TXT"
+export type RecordType =
+  | "A"
+  | "AAAA"
+  | "CAA"
+  | "CNAME"
+  | "MX"
+  | "NAPTR"
+  | "NS"
+  | "PTR"
+  | "SOA"
+  | "SRV"
+  | "TLSA"
+  | "TXT"
 
 /**
  * The record value for a record type.
@@ -245,6 +289,7 @@ export type RecordFor<T extends RecordType> = Extract<DnsRecord, { readonly _tag
 export type RecordFields<T extends RecordType> = T extends RecordType ? Omit<RecordFor<T>, keyof RecordProto<T>>
   : never
 
+const isUint8 = (u: unknown): boolean => Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 0xff
 const isUint16 = (u: unknown): boolean => Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 0xffff
 const isUint32 = (u: unknown): boolean => Number.isInteger(u) && (u as number) >= 0 && (u as number) <= 0xffffffff
 const isString = (u: unknown): u is string => typeof u === "string"
@@ -301,6 +346,12 @@ const recordFields: {
     port: isUint16,
     priority: isUint16,
     weight: isUint16
+  },
+  TLSA: {
+    certUsage: isUint8,
+    selector: isUint8,
+    matchingType: isUint8,
+    data: (u) => u instanceof Uint8Array && u.length > 0
   },
   TXT: {
     chunks: (u) => Array.isArray(u) && u.length > 0 && u.every(isString)
@@ -360,9 +411,10 @@ const RecordPrototype = {
  * Every field is checked at runtime: addresses must belong to the record's
  * address family, names must be normalized domain names, priorities, weights,
  * and ports must be 16-bit unsigned integers, the SOA serial and timers must be
- * 32-bit unsigned integers (the timers in whole seconds), TXT records need at
- * least one chunk, and CAA property tags must be alphanumeric. Fields that do
- * not belong to the record type are ignored.
+ * 32-bit unsigned integers (the timers in whole seconds), the TLSA fields must
+ * be 8-bit unsigned integers with non-empty `data`, which is copied, TXT
+ * records need at least one chunk, and CAA property tags must be alphanumeric.
+ * Fields that do not belong to the record type are ignored.
  *
  * **Example** (Creating a service record)
  *
@@ -399,7 +451,11 @@ export const makeRecord = <T extends RecordType>(
     if (!check(value)) {
       return Result.fail(new NetAddress.NetAddressError({ input: fields, message: `invalid ${type} record ${key}` }))
     }
-    self[key] = Array.isArray(value) ? Object.freeze([...value]) : value
+    self[key] = Array.isArray(value)
+      ? Object.freeze([...value])
+      : value instanceof Uint8Array
+      ? new Uint8Array(value)
+      : value
   }
 
   return Result.succeed(Object.freeze(self))
@@ -493,6 +549,8 @@ export const formatRecord = (self: DnsRecord): string => {
       } ${Duration.toSeconds(self.expire)} ${Duration.toSeconds(self.minimum)}`
     case "SRV":
       return `SRV ${self.priority} ${self.weight} ${self.port} ${self.target}`
+    case "TLSA":
+      return `TLSA ${self.certUsage} ${self.selector} ${self.matchingType} ${Hex.encode(self.data).toUpperCase()}`
     case "TXT":
       return `TXT ${self.chunks.map(quote).join(" ")}`
   }
