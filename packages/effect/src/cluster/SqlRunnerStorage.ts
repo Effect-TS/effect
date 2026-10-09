@@ -187,6 +187,14 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     orElse: () => sql`datetime(${sqlNow}, '-${expiresSeconds} seconds')`
   })
 
+  // A lock can be taken over once its holder is no longer a live runner, even
+  // if the holder keeps refreshing it.
+  const lockHolderIsLive = sql`EXISTS (
+    SELECT 1 FROM ${runnersTableSql}
+    WHERE ${runnersTableSql}.address = ${locksTableSql}.address
+    AND ${runnersTableSql}.last_heartbeat > ${lockExpiresAt}
+  )`
+
   const encodeBoolean = sql.onDialectOrElse({
     mssql: () => (b: boolean) => (b ? 1 : 0),
     sqlite: () => (b: boolean) => (b ? 1 : 0),
@@ -279,6 +287,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
             SET address = ${address}, acquired_at = ${sqlNow}
             WHERE ${locksTableSql}.address = ${address}
               OR ${locksTableSql}.acquired_at < ${lockExpiresAt}
+              OR NOT ${lockHolderIsLive}
 `.pipe(
             execWithLockConn,
             Effect.andThen(acquiredLocks(address, shardIds))
@@ -316,6 +325,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
 
     mysql: () => {
       if (disableAdvisoryLocks) {
+        const canTakeLock = sql`address = VALUES(address) OR acquired_at < ${lockExpiresAt} OR NOT ${lockHolderIsLive}`
         return (address: string, shardIds: ReadonlyArray<string>) => {
           const values = shardIds.map((shardId) =>
             sql`(${stringLiteral(shardId)}, ${stringLiteral(address)}, ${sqlNow})`
@@ -323,8 +333,8 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           return sql`
             INSERT INTO ${locksTableSql} (shard_id, address, acquired_at) VALUES ${sql.csv(values)}
             ON DUPLICATE KEY UPDATE
-            address = IF(address = VALUES(address) OR acquired_at < ${lockExpiresAt}, VALUES(address), address),
-            acquired_at = IF(address = VALUES(address) OR acquired_at < ${lockExpiresAt}, VALUES(acquired_at), acquired_at)
+            address = IF(${canTakeLock}, VALUES(address), address),
+            acquired_at = IF(${canTakeLock}, VALUES(acquired_at), acquired_at)
 `.pipe(
             execWithLockConnUnprepared,
             Effect.andThen(acquiredLocks(address, shardIds))
@@ -361,6 +371,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     mssql: () => (address: string, shardIds: ReadonlyArray<string>) => {
       const values = shardIds.map((shardId) => sql`(${stringLiteral(shardId)}, ${stringLiteral(address)}, ${sqlNow})`)
       return sql`
+        DELETE FROM ${locksTableSql}
+        WHERE shard_id IN ${stringLiteralArr(shardIds)}
+        AND address != ${address}
+        AND NOT ${lockHolderIsLive}
+      `.pipe(
+        Effect.andThen(sql`
         MERGE ${locksTableSql} WITH (HOLDLOCK) AS target
         USING (SELECT * FROM (VALUES ${sql.csv(values)})) AS source (shard_id, address, acquired_at)
         ON target.shard_id = source.shard_id
@@ -369,7 +385,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         WHEN NOT MATCHED THEN
           INSERT (shard_id, address, acquired_at)
           VALUES (source.shard_id, source.address, source.acquired_at);
-      `.pipe(
+      `),
         Effect.andThen(acquiredLocks(address, shardIds)),
         sql.withTransaction
       )
@@ -387,6 +403,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
           WHERE shard_id = source.shard_id
           AND address != ${address}
           AND (strftime('%s', ${sqlNow}) - strftime('%s', acquired_at)) <= ${expiresSeconds}
+          AND ${lockHolderIsLive}
         )
         ON CONFLICT(shard_id) DO UPDATE
         SET address = ${address}, acquired_at = ${sqlNow}
