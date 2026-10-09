@@ -575,12 +575,14 @@ describe("SqlRunnerStorage", () => {
             const shard = ShardId.make("default", 5)
 
             yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
-            yield* storage.acquire(runnerAddress1, [shard])
+            yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
+            expect(yield* storage.acquire(runnerAddress1, [shard])).toEqual([shard])
+            expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([])
+
             yield* storage.unregister(runnerAddress1)
             yield* storage.refresh(runnerAddress1, [shard])
-
-            yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
             expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([shard])
+            expect(yield* storage.refresh(runnerAddress1, [shard])).toEqual([])
           }))
       }
 
