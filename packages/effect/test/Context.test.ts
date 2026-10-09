@@ -180,6 +180,24 @@ describe("Context", () => {
     }
   })
 
+  it.each(["materialization", "rebase"])("handles large overlay depths during %s", (operation) => {
+    const maxDepth = 20_000
+    let context = Context.makeUnsafe(new Map(), { maxDepth })
+    for (let i = 0; i < maxDepth; i++) {
+      context = Context.addUnsafe(context, i % 2 === 0 ? A.key : B.key, i)
+    }
+
+    // Exercise rebasing before materialization can cache the flattened map.
+    if (operation === "rebase") {
+      context = Context.addUnsafe(context, C.key, maxDepth)
+    }
+    deepStrictEqual([...context.mapUnsafe], [
+      [A.key, maxDepth - 2],
+      [B.key, maxDepth - 1],
+      ...(operation === "rebase" ? [[C.key, maxDepth]] : [])
+    ])
+  })
+
   it("falls back to the default depth for an invalid maxDepth", () => {
     const keys = Array.from({ length: 9 }, (_, i) => Context.Service<number>(`ContextTest/Invalid${i}`))
     for (const invalid of [Number.NaN, -1, 1.5, -Infinity, Infinity]) {
