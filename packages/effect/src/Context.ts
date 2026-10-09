@@ -524,15 +524,9 @@ const makeImpl = <Services>(
 }
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
-  const overlays: Array<Overlay> = []
-  for (; overlay; overlay = overlay.parent) {
-    overlays.push(overlay)
-  }
-  // Apply oldest first to preserve precedence and insertion order. Iterative,
-  // as a large maxDepth would overflow the stack if recursive
-  for (let i = overlays.length - 1; i >= 0; i--) {
-    map.set(overlays[i].key, overlays[i].value)
-  }
+  if (!overlay) return
+  applyOverlays(map, overlay.parent)
+  map.set(overlay.key, overlay.value)
 }
 
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
@@ -591,6 +585,9 @@ const lookup = (self: Context<any>, key: string): unknown => {
  * final context rather than inside a layer.
  *
  * **Gotchas**
+ *
+ * Excessively large `maxDepth` values can cause stack overflow when overlays
+ * are materialized or rebased. Choose a modest value.
  *
  * The provided map is retained without copying and must not be mutated after
  * construction. Prefer `empty`, `make`, `add`, or `merge` for normal Context
