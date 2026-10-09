@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import type * as Layer from "effect/Layer"
 import * as NodeCrypto from "node:crypto"
 
@@ -71,6 +72,7 @@ export const describeCrypto = (
         } else {
           const error = yield* Effect.flip(Crypto.digest("MD5", encode("abc")))
           assert.strictEqual(error.reason.method, "digest")
+          assert.strictEqual(error.reason._tag, "BadArgument")
         }
       }).pipe(Effect.provide(layer)))
 
@@ -108,26 +110,42 @@ export const describeCrypto = (
         const password = view(encode("password"))
         const salt = view(encode("salt"))
         assert.strictEqual(
-          hex(yield* Crypto.pbkdf2("SHA-1", password, salt, 2, 20)),
+          hex(yield* Crypto.pbkdf2({ hash: "SHA-1", password, salt, iterations: 2, length: 20 })),
           "ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957"
         )
         assert.strictEqual(
-          hex(yield* Crypto.pbkdf2("SHA-256", password, salt, 2, 32)),
+          hex(yield* Crypto.pbkdf2({ hash: "SHA-256", password, salt, iterations: 2, length: 32 })),
           "ae4d0c95af6b46d32d0adff928f06dd02a303f8ef3c251dfd6e2d85a95474c43"
         )
         // RFC 5869, Appendix A.1.
         assert.strictEqual(
           hex(
-            yield* Crypto.hkdf(
-              "SHA-256",
-              view(new Uint8Array(22).fill(0x0b)),
-              view("000102030405060708090a0b0c"),
-              view("f0f1f2f3f4f5f6f7f8f9"),
-              42
-            )
+            yield* Crypto.hkdf({
+              hash: "SHA-256",
+              key: view(new Uint8Array(22).fill(0x0b)),
+              salt: view("000102030405060708090a0b0c"),
+              info: view("f0f1f2f3f4f5f6f7f8f9"),
+              length: 42
+            })
           ),
           "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"
         )
+        assert.strictEqual(
+          hex(yield* Crypto.hkdf({ hash: "SHA-256", key: view(new Uint8Array(22).fill(0x0b)), length: 42 })),
+          "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"
+        )
+      }).pipe(Effect.provide(layer)))
+
+    it.effect("owns KDF inputs before asynchronous work", () =>
+      Effect.gen(function*() {
+        const password = view(encode("password"))
+        const salt = view(encode("salt"))
+        const fiber = yield* Crypto.pbkdf2({ hash: "SHA-1", password, salt, iterations: 2, length: 20 }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        password.fill(0)
+        salt.fill(0)
+        assert.strictEqual(hex(yield* Fiber.join(fiber)), "ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957")
       }).pipe(Effect.provide(layer)))
 
     it.effect("derives Argon2id keys where the runtime supports them", () =>
@@ -178,6 +196,7 @@ export const describeCrypto = (
         tampered[0] ^= 1
         const error = yield* Effect.flip(Crypto.xchacha20poly1305Decrypt({ ...input, data: tampered }))
         assert.strictEqual(error.reason.method, "xchacha20poly1305Decrypt")
+        assert.strictEqual(error.reason._tag, "InvalidData")
       }).pipe(Effect.provide(layer)))
 
     it.effect("encrypts with AES-GCM and rejects tampered ciphertext", () =>
@@ -192,6 +211,7 @@ export const describeCrypto = (
           Crypto.decrypt({ ...cipher, additionalData: Uint8Array.of(1) }, key, ciphertext)
         )
         assert.strictEqual(withData.reason.method, "decrypt")
+        assert.strictEqual(withData.reason._tag, "InvalidData")
       }).pipe(Effect.provide(layer)))
 
     it.effect("encrypts with AES-CTR", () =>
@@ -218,7 +238,8 @@ export const describeCrypto = (
         const publicKey = yield* Crypto.exportKey("spki", pair.publicKey)
         const data = view(Uint8Array.of(0, 255, 128, 42))
         const label = view(encode("label"))
-        const ciphertext = yield* Crypto.rsaOaepEncrypt({ publicKey: view(publicKey), data, label })
+        const imported = yield* Crypto.importKey("spki", view(publicKey), { name: "RSA-OAEP", hash: "SHA-256" })
+        const ciphertext = yield* Crypto.encrypt({ name: "RSA-OAEP", label }, imported, data)
         assert.deepStrictEqual(yield* Crypto.decrypt({ name: "RSA-OAEP", label }, pair.privateKey, ciphertext), data)
         const native = NodeCrypto.privateDecrypt({
           key: NodeCrypto.createPrivateKey({
@@ -336,6 +357,7 @@ export const describeCrypto = (
 
         const malformed = yield* Effect.flip(Crypto.importKey("spki", Uint8Array.of(0, 1, 2), { name: "Ed25519" }))
         assert.strictEqual(malformed.reason.method, "importKey")
+        assert.strictEqual(malformed.reason._tag, "InvalidData")
       }).pipe(Effect.provide(layer)))
 
     it.effect("round-trips keys through JWK", () =>

@@ -6,7 +6,7 @@ import * as Exit from "effect/Exit"
 import type * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 
-const backend = Crypto.makeSubtle(globalThis.crypto.subtle)
+const backend = { subtle: globalThis.crypto.subtle }
 
 const testCrypto = Crypto.make({
   ...backend,
@@ -250,7 +250,7 @@ describe("Crypto", () => {
         throw new Error("invalid arguments reached the backend")
       }
       const crypto = Crypto.make({
-        ...Object.fromEntries(Object.keys(backend).map((name) => [name, unreachable])) as unknown as typeof backend,
+        subtle: new Proxy({} as SubtleCrypto, { get: unreachable }),
         randomBytes: unreachable
       })
       const bytes = new Uint8Array(16)
@@ -261,13 +261,12 @@ describe("Crypto", () => {
       for (
         const [method, operation] of [
           ["randomBytes", crypto.randomBytes(-1)],
-          ["pbkdf2", crypto.pbkdf2("SHA-256", bytes, bytes, 0, 32)],
-          ["pbkdf2", crypto.pbkdf2("SHA-256", bytes, bytes, 2 ** 31, 32)],
-          ["hkdf", crypto.hkdf("SHA-256", bytes, bytes, bytes, 255 * 32 + 1)],
+          ["pbkdf2", crypto.pbkdf2({ hash: "SHA-256", password: bytes, salt: bytes, iterations: 0, length: 32 })],
+          ["pbkdf2", crypto.pbkdf2({ hash: "SHA-256", password: bytes, salt: bytes, iterations: 2 ** 31, length: 32 })],
+          ["hkdf", crypto.hkdf({ hash: "SHA-256", key: bytes, length: 255 * 32 + 1 })],
           ["argon2id", crypto.argon2id({ ...argon2id, salt: new Uint8Array(7) })],
           ["argon2id", crypto.argon2id({ ...argon2id, memoryKiB: 7 })],
           ["xchacha20poly1305Encrypt", crypto.xchacha20poly1305Encrypt({ key: bytes, nonce: bytes, data: bytes })],
-          ["rsaOaepEncrypt", crypto.rsaOaepEncrypt({ publicKey: bytes, data: bytes, hash: "MD5" as "SHA-1" })],
           ["generateSecretKey", crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256", length: 7 })],
           ["generateKeyPair", crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256", modulusLength: 1024 })],
           ["encrypt", crypto.encrypt({ name: "AES-GCM", iv: bytes }, key, bytes)],
@@ -280,6 +279,13 @@ describe("Crypto", () => {
         assert.strictEqual(error.reason._tag, "BadArgument")
         assert.strictEqual(error.reason.method, method)
       }
+    }))
+
+  it.effect("reports operations without a backend as unsupported", () =>
+    Effect.gen(function*() {
+      const crypto = Crypto.make({ randomBytes: (size) => new Uint8Array(size) })
+      const error = yield* Effect.flip(crypto.digest("SHA-256", new Uint8Array()))
+      assert.strictEqual(error.reason._tag, "BadArgument")
     }))
 
   it.effect("rejects all-zero X25519 shared secrets", () =>
@@ -304,7 +310,7 @@ describe("Crypto", () => {
     Effect.gen(function*() {
       const key = yield* testCrypto.generateSecretKey({ name: "AES-GCM", length: 128 })
       const other = Crypto.make({
-        ...Crypto.makeSubtle(Object.create(globalThis.crypto.subtle)),
+        subtle: Object.create(globalThis.crypto.subtle),
         randomBytes: (size) => new Uint8Array(size)
       })
       const error = yield* Effect.flip(
