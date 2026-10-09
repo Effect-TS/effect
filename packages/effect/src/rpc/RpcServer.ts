@@ -82,6 +82,14 @@ export interface RpcServer<A extends Rpc.Any> {
  * handlers for a group and sending decoded server responses through
  * `onFromServer`.
  *
+ * **Details**
+ *
+ * If `onFromServer` fails with anything other than an interruption while
+ * writing a stream `Chunk`, the stream stops and the request fails with that
+ * cause. The server assumes `onFromServer` has already answered the client and
+ * reported the failure, so it sends no other response for that request and does
+ * not report the failure again.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -279,8 +287,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     const isUninterruptible = isWrapper && result.uninterruptible
     // unwrap the fork data type
     const streamOrEffect = isWrapper ? result.value : result
+    // set when a chunk could not be written; the writer has already responded
+    let writeFailed = false
     const handler = isStream
-      ? (streamEffect(client, request, streamOrEffect) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
+      ? (streamEffect(client, request, streamOrEffect, () => {
+        writeFailed = true
+      }) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
       : (streamOrEffect as Effect.Effect<{} | Deferred.Deferred<any, any>>)
 
     const withMiddleware = rpc.middlewares.size > 0
@@ -304,8 +316,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             exit: exit as any
           })
         }
-      } else if (isResponseEncodeFailure(exit.cause)) {
-        // the defect response was sent and reported when encoding failed
+      } else if (writeFailed) {
+        // onFromServer has already answered the client and reported the failure
         return Scope.closeUnsafe(scope, exit) ?? Effect.void
       } else if (
         !disableFatalDefects &&
@@ -412,8 +424,17 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     request: Request<Rpcs>,
     stream:
       | Stream.Stream<any, any>
-      | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>
+      | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>,
+    onWriteFailure: () => void
   ) => {
+    const writeChunk = (values: NonEmptyReadonlyArray<any>) =>
+      Effect.onError(
+        options.onFromServer({ _tag: "Chunk", clientId: client.id, requestId: request.id, values }),
+        (cause) => {
+          if (!Cause.hasInterruptsOnly(cause)) onWriteFailure()
+          return Effect.void
+        }
+      )
     let latch: Latch.Latch | undefined
     if (supportsAck) {
       client.latches ??= new Map()
@@ -430,12 +451,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             while: constTrue,
             body: constant(
               Effect.flatMap(Queue.takeAll(queue), (values) => {
-                const write = options.onFromServer({
-                  _tag: "Chunk",
-                  clientId: client.id,
-                  requestId: request.id,
-                  values
-                })
+                const write = writeChunk(values)
                 if (!latch) return write
                 latch.closeUnsafe()
                 return Effect.flatMap(write, () => latch.await)
@@ -449,12 +465,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       )
     }
     return Stream.runForEachArray(stream, (values) => {
-      const write = options.onFromServer({
-        _tag: "Chunk",
-        clientId: client.id,
-        requestId: request.id,
-        values
-      })
+      const write = writeChunk(values)
       if (!latch) return write
       latch.closeUnsafe()
       return Effect.andThen(write, latch.await)
@@ -478,17 +489,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     disconnect
   })
 })
-
-// Marks a request failure whose defect response has already been sent and
-// reported, because the response could not be encoded.
-class ResponseEncodeFailure extends Context.Service<ResponseEncodeFailure, true>()(
-  "effect/rpc/RpcServer/ResponseEncodeFailure"
-) {
-  static annotation = this.context(true)
-}
-
-const isResponseEncodeFailure = (cause: Cause.Cause<unknown>): boolean =>
-  Context.getOrUndefined(Cause.annotations(cause), ResponseEncodeFailure) === true
 
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
@@ -702,6 +702,7 @@ export const make: <Rpcs extends Rpc.Any>(
     tag: "Chunk" | "Exit"
   ) => {
     const collector = schemas.collector
+    let encodeFailed = false
     // The schema encoders evaluate eagerly, so an encode that needs no
     // services is already a resolved success and can skip the effect wrappers.
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
@@ -718,7 +719,8 @@ export const make: <Rpcs extends Rpc.Any>(
                 `Failed to encode response for RPC "${schemas.tag}": ${SchemaIssue.defaultFormatter(error.issue)}`
               )
               reportCauseUnsafe(fiber, defect)
-              return Effect.failCause(Cause.annotate(defect, ResponseEncodeFailure.annotation))
+              encodeFailed = true
+              return Effect.failCause(defect)
             })
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
@@ -728,7 +730,7 @@ export const make: <Rpcs extends Rpc.Any>(
       const respond = sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause))
       // An encode failure ends the request with the defect, so the request
       // span records it. Other failures stop the request as a cancellation.
-      return isResponseEncodeFailure(cause)
+      return encodeFailed
         ? Effect.andThen(respond, Effect.failCause(cause))
         : Effect.andThen(respond, server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] }))
     })
