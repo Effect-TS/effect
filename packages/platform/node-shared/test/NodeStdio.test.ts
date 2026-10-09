@@ -35,16 +35,16 @@ describe("NodeStdio", () => {
       Effect.gen(function*() {
         const stdio = yield* Stdio.Stdio
 
-        yield* setIsTTY(true, false, true)
+        yield* setIsTTY(false, false, true)
         assert.deepStrictEqual(
           yield* Effect.all([stdio.stdinIsTerminal, stdio.stdoutIsTerminal, stdio.stderrIsTerminal]),
-          [true, false, true]
+          [false, false, true]
         )
 
-        yield* setIsTTY(false, true, false)
+        yield* setIsTTY(true, true, false)
         assert.deepStrictEqual(
           yield* Effect.all([stdio.stdinIsTerminal, stdio.stdoutIsTerminal, stdio.stderrIsTerminal]),
-          [false, true, false]
+          [true, true, false]
         )
         yield* setIsTTY(false, true, undefined)
         assert.isFalse(yield* stdio.stderrIsTerminal)
