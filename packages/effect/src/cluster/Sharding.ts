@@ -291,6 +291,11 @@ const make = Effect.gen(function*() {
   const drainingLatch = Latch.makeUnsafe(false)
   // open once a draining runner holds no shard locks
   const drainedLatch = Latch.makeUnsafe(false)
+  // serializes runner registration with unregistration, so a registration
+  // in flight cannot re-advertise a draining runner
+  const withRegistrationLock = Semaphore.makeUnsafe(1).withPermits(1)
+  // open once this runner's unregistration has succeeded
+  const unregisteredLatch = Latch.makeUnsafe(false)
 
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
   const getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent> = Stream.fromPubSub(events)
@@ -395,6 +400,8 @@ const make = Effect.gen(function*() {
         }
       }
       yield* Fiber.joinAll(fibers)
+      // stop the singletons of shards that are no longer acquired
+      yield* syncSingletons
       yield* shardLocksHealthyLatch.await
       yield* release
       for (const shardId of shardIds) {
@@ -1349,9 +1356,12 @@ const make = Effect.gen(function*() {
     while (true) {
       // Ensure the current runner is registered
       if (selfRunner && !isShutdown.current && !drainingLatch.isOpen() && !MutableHashMap.has(allRunners, selfRunner)) {
-        yield* Effect.logDebug("Registering runner", selfRunner)
-        const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
-        yield* snowflakeGen.setMachineId(machineId)
+        yield* withRegistrationLock(Effect.gen(function*() {
+          if (isShutdown.current || drainingLatch.isOpen()) return
+          yield* Effect.logDebug("Registering runner", selfRunner)
+          const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
+          yield* snowflakeGen.setMachineId(machineId)
+        }))
       }
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
@@ -1883,20 +1893,41 @@ const make = Effect.gen(function*() {
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
     yield* notifyShardLockWaiters
-    if (selfRunner && !drainingLatch.isOpen()) {
-      yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
-    }
+    yield* Effect.ignore(unregister)
   })
 
-  // Stop taking shards, then release the held ones through the per-shard path
+  const unregister = withRegistrationLock(Effect.suspend(() =>
+    !selfRunner || unregisteredLatch.isOpen()
+      ? Effect.void
+      : Effect.tap(
+        runnerStorage.unregister(selfRunner.address),
+        () => Effect.sync(() => unregisteredLatch.openUnsafe())
+      )
+  ))
+
+  // Stop taking shards, then release the held ones through the per-shard
+  // path. Sharding owns the unregistration, so it is retried until it
+  // succeeds even if the caller is interrupted.
   const startDrain = Effect.suspend(() => {
     if (!selfRunner || !drainingLatch.openUnsafe()) return Effect.void
     MutableHashSet.clear(selfShards)
     activeShardsLatch.openUnsafe()
-    return isShutdown.current ? Effect.void : Effect.ignore(runnerStorage.unregister(selfRunner.address))
+    if (isShutdown.current) return Effect.void
+    return unregister.pipe(
+      Effect.tapError((error) => Effect.logWarning("Could not unregister runner, retrying", error)),
+      Effect.retry(Schedule.spaced(config.refreshAssignmentsInterval)),
+      Effect.annotateLogs({
+        module: "effect/cluster/Sharding",
+        runner: selfRunner.address
+      }),
+      Effect.forkIn(shardingScope),
+      Effect.asVoid
+    )
   })
 
-  const drain = selfRunner ? Effect.andThen(startDrain, drainedLatch.await) : Effect.void
+  const drain = selfRunner
+    ? startDrain.pipe(Effect.andThen(drainedLatch.await), Effect.andThen(unregisteredLatch.await))
+    : Effect.void
 
   // Hand the shards off before the loops stop. Anything still held afterwards
   // is dropped by the final `releaseAll`.
