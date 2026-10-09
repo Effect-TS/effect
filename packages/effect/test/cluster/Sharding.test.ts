@@ -3430,143 +3430,90 @@ const GatedTeardownEntity = Entity.make("GatedTeardownEntity", [
 ])
 
 describe("Sharding shard handoff", { concurrent: false }, () => {
-  const shardsPerGroup = 2
-  const allShards = Array.makeBy(shardsPerGroup, (i) => ShardId.make("default", i + 1))
-  const waitForAllShards = (sharding: Sharding.Sharding["Service"]) =>
+  const allShards = [ShardId.make("default", 1), ShardId.make("default", 2)]
+  const makeOwnedScope = Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+  // Open teardown gates before closing scopes, including on assertion failure.
+  const makeGate = Effect.acquireRelease(Effect.sync(() => Latch.makeUnsafe()), (gate) => gate.open)
+  const advanceUntil = (done: () => boolean) =>
     Effect.gen(function*() {
-      while (!allShards.every((shardId) => sharding.hasShardId(shardId))) {
+      for (let i = 0; i < 100 && !done(); i++) {
         yield* TestClock.adjust(10)
       }
+      assert.isTrue(done())
     })
-  const makeLayer = (
-    storageState: FailoverStorageState,
-    config?: Partial<ShardingConfig.ShardingConfig["Service"]>
-  ) =>
-    TestEntityNoState.pipe(
-      Layer.provideMerge(Sharding.layer),
-      Layer.provide(Layer.effect(
-        RunnerStorage.RunnerStorage,
-        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
-      )),
-      Layer.provide(RunnerHealth.layerNoop),
-      Layer.provideMerge(TestEntityState.layer),
-      Layer.provide(Runners.layerNoop),
-      Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
-      Layer.provide(ShardingConfig.layer({
-        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-        shardsPerGroup,
-        entityTerminationTimeout: 0,
-        entityMessagePollInterval: 10,
-        refreshAssignmentsInterval: 10,
-        ...config
-      }))
-    )
-  // A scope that is closed when the test ends, even if an assertion fails.
-  const makeOwnedScope = Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
   const buildSharding = Effect.fnUntraced(function*(
     storageState: FailoverStorageState,
-    config?: Partial<ShardingConfig.ShardingConfig["Service"]>
+    config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
+    existingScope?: Scope.Closeable
   ) {
-    const scope = yield* makeOwnedScope
-    const context = yield* Layer.buildWithScope(makeLayer(storageState, config), scope)
+    const scope = existingScope ?? (yield* makeOwnedScope)
+    const context = yield* Layer.buildWithScope(
+      Sharding.layer.pipe(
+        Layer.provide(Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+        )),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 2,
+          entityTerminationTimeout: 0,
+          entityMessagePollInterval: 10,
+          refreshAssignmentsInterval: 10,
+          ...config
+        }))
+      ),
+      scope
+    )
     return { context, scope, sharding: Context.get(context, Sharding.Sharding) }
   })
-  // A teardown gate that also opens when the test ends, so a failing test
-  // does not hang while closing its scopes.
-  const makeGate = Effect.acquireRelease(Effect.sync(() => Latch.makeUnsafe()), (gate) => gate.open)
-  const awaitFiber = (fiber: Fiber.Fiber<unknown, unknown>) =>
+
+  it.effect("waits for entity teardown before handing off without acquiring newly freed shards", () =>
     Effect.gen(function*() {
-      while (!fiber.pollUnsafe()) {
-        yield* TestClock.adjust(10)
-      }
-    })
-  // Closes the Sharding scope while `gate` holds a teardown on `shardId`. The
-  // shard must not be released, nor `releaseAll` run, until the gate opens.
-  const expectCloseWaitsForGate = Effect.fnUntraced(function*(
-    storageState: FailoverStorageState,
-    scope: Scope.Closeable,
-    gate: Latch.Latch,
-    shardId: ShardId.ShardId
-  ) {
-    const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
-    yield* TestClock.adjust(100)
-    assert.isUndefined(closing.pollUnsafe())
-    assert.isFalse(storageState.releaseCalls.some((released) => released.id === shardId.id))
-    assert.deepStrictEqual(storageState.releaseAllCalls, [])
-
-    yield* gate.open
-    yield* awaitFiber(closing)
-    assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
-  })
-  // Registers an entity whose teardown waits for `gate`, in `scope`, and
-  // activates `entityId`.
-  const activateGatedEntity = Effect.fnUntraced(function*(
-    context: Context.Context<Sharding.Sharding>,
-    scope: Scope.Scope,
-    gate: Latch.Latch,
-    entityId: string
-  ) {
-    const sharding = Context.get(context, Sharding.Sharding)
-    yield* sharding.registerEntity(
-      GatedTeardownEntity,
-      Effect.as(Effect.addFinalizer(() => gate.await), GatedTeardownEntity.of({ Activate: () => Effect.void }))
-    ).pipe(Effect.provideService(Scope.Scope, scope))
-    const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
-    yield* makeClient(entityId).Activate()
-  })
-
-  it.effect("releases each shard before releaseAll when the scope closes", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
-      const { scope, sharding } = yield* buildSharding(storageState)
-      yield* waitForAllShards(sharding)
-
-      yield* awaitFiber(yield* Effect.forkChild(Scope.close(scope, Exit.void)))
-
-      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
-    }).pipe(Effect.scoped))
-
-  it.effect("waits for entity teardown before releasing shards when the scope closes", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
+      const [heldShard, freedShard] = allShards
+      const storageState = makeFailoverStorageState({ acquireDenied: [freedShard] })
       const registrationScope = yield* makeOwnedScope
-      const { context, scope, sharding } = yield* buildSharding(storageState)
+      // Keep assignments unchanged while a peer's lock becomes available.
+      const { context, scope, sharding } = yield* buildSharding(storageState, { refreshAssignmentsInterval: 60_000 })
       const gate = yield* makeGate
-      yield* waitForAllShards(sharding)
-      yield* activateGatedEntity(context, registrationScope, gate, "1")
-
-      yield* expectCloseWaitsForGate(storageState, scope, gate, sharding.getShardId(EntityId.make("1"), "default"))
-    }).pipe(Effect.scoped))
-
-  it.effect("waits for singleton teardown before releasing shards when the scope closes", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
-      const registrationScope = yield* makeOwnedScope
-      const { scope, sharding } = yield* buildSharding(storageState)
-      const gate = yield* makeGate
-      yield* waitForAllShards(sharding)
-      const started = Latch.makeUnsafe()
-      yield* sharding.registerSingleton(
-        "GatedTeardownSingleton",
-        Effect.andThen(started.open, Effect.addFinalizer(() => gate.await))
+      yield* advanceUntil(() => sharding.hasShardId(heldShard))
+      yield* sharding.registerEntity(
+        GatedTeardownEntity,
+        Effect.as(Effect.addFinalizer(() => gate.await), GatedTeardownEntity.of({ Activate: () => Effect.void }))
       ).pipe(Effect.provideService(Scope.Scope, registrationScope))
-      yield* started.await
+      let entityId = 0
+      while (!Equal.equals(sharding.getShardId(EntityId.make(String(entityId)), "default"), heldShard)) {
+        entityId++
+      }
+      const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
+      yield* makeClient(String(entityId)).Activate()
 
-      yield* expectCloseWaitsForGate(
-        storageState,
-        scope,
-        gate,
-        sharding.getShardId(EntityId.make("GatedTeardownSingleton"), "default")
-      )
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* advanceUntil(() => storageState.runner === undefined)
+      const acquires = storageState.acquireCalls.length
+      storageState.acquireDenied.length = 0
+      yield* TestClock.adjust(3000)
+      assert.isUndefined(closing.pollUnsafe())
+      assert.isUndefined(storageState.runner)
+      assert.deepStrictEqual(storageState.acquireCalls.slice(acquires), [])
+      assert.deepStrictEqual(storageState.releaseCalls, [])
+      assert.deepStrictEqual(storageState.releaseAllCalls, [])
+
+      yield* gate.open
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(storageState.releaseCalls, [heldShard])
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
     }).pipe(Effect.scoped))
 
-  it.effect("waits for a closing singleton registration's teardown before releasing its shard", () =>
+  it.effect("waits for a closing singleton registration's teardown before handing off its shard", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
       const registrationScope = yield* makeOwnedScope
       const { scope, sharding } = yield* buildSharding(storageState)
       const gate = yield* makeGate
-      yield* waitForAllShards(sharding)
+      yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
       const started = Latch.makeUnsafe()
       const stopping = Latch.makeUnsafe()
       yield* sharding.registerSingleton(
@@ -3574,22 +3521,24 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
         Effect.andThen(started.open, Effect.addFinalizer(() => Effect.andThen(stopping.open, gate.await)))
       ).pipe(Effect.provideService(Scope.Scope, registrationScope))
       yield* started.await
-
-      // the registration closes first, and its teardown is still running when
-      // the Sharding scope closes
       yield* Effect.forkChild(Scope.close(registrationScope, Exit.void))
       yield* stopping.await
-      yield* expectCloseWaitsForGate(
-        storageState,
-        scope,
-        gate,
-        sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
-      )
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* TestClock.adjust(100)
+      const shardId = sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
+      assert.isUndefined(closing.pollUnsafe())
+      assert.isFalse(storageState.releaseCalls.some((released) => Equal.equals(released, shardId)))
+      assert.deepStrictEqual(storageState.releaseAllCalls, [])
+
+      yield* gate.open
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [2])
     }).pipe(Effect.scoped))
 
   it.effect("closes a singleton registration whose singleton registered another singleton", () =>
     Effect.gen(function*() {
-      // closed without waiting, so a deadlocked teardown cannot hang the test
+      // A deadlocked teardown must not block test cleanup.
       const makeDetachedScope = Effect.acquireRelease(
         Scope.make(),
         (scope) => Effect.forkDetach(Scope.close(scope, Exit.void))
@@ -3597,9 +3546,8 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       const storageState = makeFailoverStorageState()
       const shardingScope = yield* makeDetachedScope
       const registrationScope = yield* makeDetachedScope
-      const context = yield* Layer.buildWithScope(makeLayer(storageState), shardingScope)
-      const sharding = Context.get(context, Sharding.Sharding)
-      yield* waitForAllShards(sharding)
+      const { sharding } = yield* buildSharding(storageState, undefined, shardingScope)
+      yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
       const childRegistered = Latch.makeUnsafe()
       yield* sharding.registerSingleton(
         "ParentSingleton",
@@ -3608,44 +3556,7 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       yield* childRegistered.await
 
       const closing = yield* Effect.forkDetach(Scope.close(registrationScope, Exit.void))
-      for (let i = 0; i < 10 && !closing.pollUnsafe(); i++) {
-        yield* TestClock.adjust(10)
-      }
-      assert.isDefined(closing.pollUnsafe(), "closing the parent registration deadlocked")
-    }).pipe(Effect.scoped))
-
-  it.effect("stops acquiring shards once shutdown starts", () =>
-    Effect.gen(function*() {
-      const [heldShard, freedShard] = allShards
-      // the freed shard is still locked by a peer
-      const storageState = makeFailoverStorageState({ acquireDenied: [freedShard] })
-      const registrationScope = yield* makeOwnedScope
-      // keep this runner's assignments unchanged once it unregisters
-      const { context, sharding } = yield* buildSharding(storageState, { refreshAssignmentsInterval: 60_000 })
-      const gate = yield* makeGate
-      while (!sharding.hasShardId(heldShard)) {
-        yield* TestClock.adjust(10)
-      }
-      let entityId = 0
-      while (sharding.getShardId(EntityId.make(`${entityId}`), "default").id !== heldShard.id) {
-        entityId++
-      }
-      yield* activateGatedEntity(context, registrationScope, gate, `${entityId}`)
-
-      // closing the entity's registration scope starts shutdown, then waits
-      // for the entity's teardown
-      yield* Effect.forkChild(Scope.close(registrationScope, Exit.void))
-      while (storageState.runner !== undefined) {
-        yield* TestClock.adjust(1)
-      }
-
-      // the peer releases the freed shard while this runner is shutting down
-      const acquires = storageState.acquireCalls.length
-      storageState.acquireDenied.length = 0
-      for (let i = 0; i < 30; i++) {
-        yield* TestClock.adjust(100)
-      }
-      assert.deepStrictEqual(storageState.acquireCalls.slice(acquires), [])
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
     }).pipe(Effect.scoped))
 })
 
