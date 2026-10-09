@@ -48,17 +48,17 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       }
       return bytes
     }
-    const subtle = EffectCrypto.makeSubtle(crypto.subtle)
+    const web = EffectCrypto.make({ subtle: crypto.subtle, randomBytes })
 
     return EffectCrypto.make({
-      ...subtle,
+      subtle: crypto.subtle,
       randomBytes,
       argon2id: NodeCrypto.make.argon2id,
       xchacha20poly1305Encrypt: NodeCrypto.make.xchacha20poly1305Encrypt,
       xchacha20poly1305Decrypt: NodeCrypto.make.xchacha20poly1305Decrypt,
       // Web Crypto has no MD5, so legacy MD5 digests use the Node-compatible backend.
       digest: (algorithm, data) =>
-        algorithm === "MD5" ? NodeCrypto.make.digest(algorithm, data) : subtle.digest(algorithm, data)
+        algorithm === "MD5" ? NodeCrypto.make.digest(algorithm, data) : web.digest(algorithm, data)
     })
   })
 )

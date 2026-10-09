@@ -39,8 +39,8 @@ import * as Random from "../Random.ts"
  * random operations are evaluated. UUIDv7 and ULID values also include the
  * current `Clock` time, which must be controlled separately when their complete
  * output needs to be reproducible. Delegated operations use the platform's
- * secure randomness, so `generateSecretKey`, `generateKeyPair`,
- * `rsaOaepEncrypt`, and RSA-PSS or ECDSA signatures differ between runs.
+ * secure randomness, so `generateSecretKey`, `generateKeyPair`, RSA-OAEP
+ * encryption, and RSA-PSS or ECDSA signatures differ between runs.
  *
  * @see {@link layer} for providing the service as a layer
  *
@@ -67,7 +67,6 @@ export const make: (
       pbkdf2: crypto.pbkdf2,
       hkdf: crypto.hkdf,
       argon2id: crypto.argon2id,
-      rsaOaepEncrypt: crypto.rsaOaepEncrypt,
       xchacha20poly1305Encrypt: crypto.xchacha20poly1305Encrypt,
       xchacha20poly1305Decrypt: crypto.xchacha20poly1305Decrypt,
       generateSecretKey: crypto.generateSecretKey,
