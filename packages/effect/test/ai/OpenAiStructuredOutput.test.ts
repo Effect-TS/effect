@@ -377,6 +377,22 @@ describe("toCodecOpenAI", () => {
         })
       })
 
+      it("Int + isBetween preserves tighter bounds in either check order", () => {
+        for (
+          const schema of [
+            Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
+            Schema.Number.check(Schema.isBetween({ minimum: 1, maximum: 10 }), Schema.isInt())
+          ]
+        ) {
+          assertJsonSchema(schema, {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "a value between 1 and 10"
+          })
+        }
+      })
+
       it("Int + string format", () => {
         assertJsonSchema(Schema.Int.annotate({ format: "duration" }), {
           "type": "integer",
