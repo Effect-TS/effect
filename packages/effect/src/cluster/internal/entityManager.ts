@@ -104,6 +104,8 @@ export type EntityState = {
     /** Excludes requests awaiting their first dispatch from replay. */
     delivered: boolean
     sentExit: boolean
+    /** Treat early termination interrupts like shutdown interrupts. */
+    terminating?: boolean | undefined
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
     /** Set when the request should not outlive its caller. */
@@ -276,9 +278,9 @@ export const make = Effect.fnUntraced(function*<
                 if (
                   persisted &&
                   Exit.hasInterrupts(response.exit) &&
-                  (isShuttingDown || isUninterruptibleForServer(request.message.annotations))
+                  (isShuttingDown || request.terminating || isUninterruptibleForServer(request.message.annotations))
                 ) {
-                  if (!isShuttingDown) {
+                  if (!isShuttingDown && !request.terminating) {
                     request.sentExit = false
                     return server.write(0, requestEnvelope(request), requestWriteOptions(request)).pipe(
                       Effect.setContext(handlerContext),
@@ -470,7 +472,18 @@ export const make = Effect.fnUntraced(function*<
         acquireEntity(address)
         drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
-          state.write(0, { _tag: "Eof" }).pipe(
+          Effect.gen(function*() {
+            for (const [requestId, request] of activeRequests) {
+              if (
+                !request.delivered || request.sentExit ||
+                !Context.get(request.message.annotations, ClusterSchema.InterruptOnTermination) ||
+                isUninterruptibleForServer(request.message.annotations)
+              ) continue
+              request.terminating = true
+              yield* state.write(0, { _tag: "Interrupt", requestId: requestId as any, interruptors: [] })
+            }
+            yield* state.write(0, { _tag: "Eof" })
+          }).pipe(
             Effect.andThen(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
