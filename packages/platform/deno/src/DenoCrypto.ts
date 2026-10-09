@@ -51,7 +51,6 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
     return EffectCrypto.make({
       subtle: crypto.subtle,
       randomBytes,
-      // Web Crypto has no MD5, so digests use Deno's native `node:crypto`.
       digest: NodeCrypto.make.digest,
       argon2id: NodeCrypto.make.argon2id,
       xchacha20poly1305Encrypt: NodeCrypto.make.xchacha20poly1305Encrypt,

@@ -63,8 +63,7 @@ export const make: (
         return bytes
       }
     })
-    // Typed as every member except the type ID and random operations, so a new
-    // operation must be delegated here.
+    // Require delegation of every non-random operation, including future additions.
     const delegated: Omit<Crypto.Crypto, `~${string}` | `next${string}` | `random${string}`> = {
       digest: crypto.digest,
       hmac: crypto.hmac,

@@ -279,9 +279,9 @@ export interface KeyOptions {
  *
  * **Gotchas**
  *
- * Keys belong to their native backend. Key material is available only through
- * `exportKey` or `exportJwk` when the key is extractable. Metadata does not contain the key
- * material, and changing it cannot grant additional usages.
+ * Keys belong to their native backend. Only extractable keys expose material
+ * through `exportKey` or `exportJwk`. Metadata contains no key material and
+ * cannot grant additional usages.
  *
  * @see {@link importKey}
  * @see {@link exportKey}
@@ -344,8 +344,9 @@ export type KeyFormat = "raw" | "spki" | "pkcs8"
  *
  * Never reuse an AES-GCM IV or AES-CTR counter block with the same key.
  * AES-CTR does not authenticate data, so pair it with a MAC. Some backends,
- * such as Deno, accept only 32-, 64-, or 128-bit AES-CTR counter lengths. Decryption must
- * use the same IV, counter, additional data, or OAEP label as encryption.
+ * such as Deno, accept only 32-, 64-, or 128-bit AES-CTR counter lengths.
+ * Decryption must use the same IV, counter, additional data, or OAEP label as
+ * encryption.
  *
  * @stability unstable
  * @category models
@@ -1339,12 +1340,13 @@ export interface Backend {
  *
  * Arguments that do not depend on the backend, such as derivation lengths,
  * iteration counts, IV and counter lengths, RSA modulus lengths, and RSA-PSS
- * salt lengths, are validated before any operation runs. Invalid arguments
- * fail with `PlatformError.BadArgument`. Failed authenticated decryption and
- * malformed key data fail with a `SystemError` tagged `InvalidData`.
+ * salt lengths, are validated when the effect starts, before backend execution.
+ * Invalid arguments fail with `PlatformError.BadArgument`. Failed authenticated
+ * decryption and malformed key data fail with a `SystemError` tagged `InvalidData`.
  *
- * The Web Crypto backend copies input bytes before its first asynchronous
- * step, so callers may reuse their buffers once an operation has started.
+ * Options are snapshotted when the effect starts. The Web Crypto backend copies
+ * input bytes before its first asynchronous step, so callers may reuse options
+ * and buffers once an operation has started.
  *
  * **Gotchas**
  *
@@ -1413,10 +1415,8 @@ export const make = (impl: Backend): Crypto => {
     }
   }
 
-  // Serves 7-byte draws for one operation from a local buffer, so a batch of
-  // draws costs one native fill. Refills never request more draws than the
-  // operation still expects, which keeps the consumed byte stream identical to
-  // drawing one value at a time, and no random bytes outlive the operation.
+  // Batch 7-byte draws without consuming extra bytes or retaining randomness
+  // across operations. Rejection draws refill one at a time after the batch.
   const makeDrawSource = (expected: number): () => Uint8Array => {
     let bytes: Uint8Array = new Uint8Array(0)
     let offset = 0
@@ -1653,10 +1653,8 @@ const failArgument = (method: string, description: string): Effect.Effect<never,
 
 const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
 
-// Validates and runs an operation on a shallow copy of its options taken when
-// the effect starts, so a caller that changes the options object afterwards
-// cannot alter or bypass the validated values. Backends copy byte fields
-// before their first asynchronous step.
+// Snapshot options at effect start so validation and execution see the same
+// values. Backends copy byte fields before their first asynchronous step.
 const owned = <O extends object, A>(
   options: O,
   f: (options: O) => Effect.Effect<A, PlatformError.PlatformError>
@@ -1700,8 +1698,7 @@ const unsupported = (method: Operation): any => () =>
 
 const equalBytes = (a: Uint8Array, b: Uint8Array): boolean => {
   if (a.length !== b.length) return false
-  // Accumulates every difference so the comparison time does not depend on
-  // where the first mismatch is.
+  // Accumulate all differences; never exit early on a byte mismatch.
   let difference = 0
   for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
   return difference === 0
@@ -1741,7 +1738,6 @@ const validateKeyAlgorithm = (
 }
 
 const validateSigning = (method: string, options: SigningOptions): Effect.Effect<void, PlatformError.PlatformError> => {
-  // An omitted RSA-PSS salt length defaults to the hash length, which is valid.
   if (options.name === "RSA-PSS" && options.saltLength !== undefined) {
     const saltLength = options.saltLength
     if (!Number.isSafeInteger(saltLength) || saltLength < 0 || saltLength > 0xffff_ffff) {
@@ -1787,7 +1783,6 @@ const makeSubtle = (subtle: SubtleCrypto): Partial<Operations> => {
       catch: (cause) => {
         if (PlatformError.isPlatformError(cause)) return cause
         const name = (cause as { readonly name?: unknown } | undefined)?.name
-        // Failed decryption or key agreement, or malformed key data.
         if (
           (name === "OperationError" && (method === "decrypt" || method === "deriveSharedSecret")) ||
           name === "DataError"
@@ -1879,7 +1874,6 @@ const makeSubtle = (subtle: SubtleCrypto): Partial<Operations> => {
     return handle ?? badArgument(method, "key does not belong to this cryptographic backend")
   }
 
-  // Key algorithm parameters are validated by `make`.
   const algorithmParams = (algorithm: KeyAlgorithm, generating: boolean): AlgorithmIdentifier => {
     switch (algorithm.name) {
       case "AES-GCM":
@@ -1917,7 +1911,6 @@ const makeSubtle = (subtle: SubtleCrypto): Partial<Operations> => {
     return type === "public" ? ["verify"] : type === "private" ? ["sign"] : ["sign", "verify"]
   }
 
-  // Cipher and signing options are validated by `make`.
   const cipherParams = (options: CipherOptions): AlgorithmIdentifier => {
     if (options.name === "AES-GCM") {
       return {
