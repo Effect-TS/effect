@@ -1038,8 +1038,6 @@ export const layerProtocolHttp = (options: {
  * `pingInterval` defaults to 5 seconds. `pingTimeout` defaults to the interval
  * and measures time since the last decoded server frame, not the last pong.
  * The timeout is checked on each ping tick; any decoded frame counts as liveness.
- * When the timeout drops the connection, `onPingTimeout` runs before
- * `ConnectionHooks.onDisconnect`.
  *
  * @stability unstable
  * @category protocols
@@ -1080,9 +1078,7 @@ export const makeProtocolSocket = (options?: {
 
     let parser = serialization.makeUnsafe()
 
-    // `parser` is replaced on every connect, and a stateful serialization
-    // encodes against the connection it is writing to, so the ping is encoded
-    // when it is sent rather than once up front.
+    // Encode each ping with the current connection's parser.
     const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)), options)
     const onPingTimeout = options?.onPingTimeout ?
       Effect.ignoreCause(options.onPingTimeout, {
@@ -1174,7 +1170,7 @@ export const makeProtocolSocket = (options?: {
         ))
       )
     }).pipe(
-      // runs once the socket is closed, so a concurrent socket error cannot cut it short
+      // Run the hook after socket cleanup so socket errors cannot interrupt it.
       Effect.tapError((error) => connected && error === pingTimeoutError ? onPingTimeout : Effect.void),
       Option.isSome(hooks) ? Effect.ensuring(hooks.value.onDisconnect) : identity,
       Effect.tapCause((cause) => {
@@ -1271,9 +1267,7 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
  * `pingInterval` defaults to 5 seconds. `pingTimeout` defaults to the interval
  * and measures time since the last decoded server frame, not the last pong.
  * The timeout is checked on each ping tick; any decoded frame counts as liveness.
- * When the timeout drops the connection, `onPingTimeout` runs before
- * `ConnectionHooks.onDisconnect`. `retryPolicy` configures retries after socket
- * errors.
+ * `retryPolicy` configures retries after socket errors.
  *
  * @stability unstable
  * @category layers
