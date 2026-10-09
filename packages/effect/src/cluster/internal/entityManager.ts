@@ -165,6 +165,7 @@ export const make = Effect.fnUntraced(function*<
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch
+    closing: boolean
   }>()
   const processedRequestIds = new Set<Snowflake.Snowflake>()
 
@@ -191,7 +192,8 @@ export const make = Effect.fnUntraced(function*<
     const keepAliveLatch = Latch.makeUnsafe()
     const closeLatches = {
       closed: Latch.makeUnsafe(),
-      force: Latch.makeUnsafe()
+      force: Latch.makeUnsafe(),
+      closing: false
     }
 
     yield* Scope.addFinalizer(
@@ -469,6 +471,7 @@ export const make = Effect.fnUntraced(function*<
       Effect.suspend(() => {
         activeServers.delete(address.entityId)
         retired.openUnsafe()
+        closeLatches.closing = true
         acquireEntity(address)
         drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
@@ -714,13 +717,13 @@ export const make = Effect.fnUntraced(function*<
             }
           })
         }
-        activeServers.forEach((state) => {
-          if (shardId[Equal.symbol](state.address.shardId)) {
-            fibers.push(runFork(entities.removeIgnore(state.address)))
-          }
-        })
+        // Look entities up by address: `activeServers` is keyed by entity id,
+        // so an entity with the same id on another shard can hide this one.
         serverCloseLatches.forEach((latches, address) => {
           if (shardId[Equal.symbol](address.shardId)) {
+            if (!latches.closing) {
+              fibers.push(runFork(entities.removeIgnore(address)))
+            }
             fibers.push(runFork(latches.closed.await))
           }
         })
