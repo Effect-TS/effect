@@ -26,7 +26,15 @@ export type ServeOptions<R extends { [K in keyof R]: Bun.RouterTypes.RouteValue<
     | Bun.UnixServeOptions
     | Bun.UnixTLSServeOptions
   )
-  & { readonly routes?: R }
+  & {
+    readonly routes?: R
+    readonly websocket?:
+      | Omit<
+        Bun.WebSocketHandler<unknown>,
+        "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
+      >
+      | undefined
+  }
 
 /**
  * @since 1.0.0
