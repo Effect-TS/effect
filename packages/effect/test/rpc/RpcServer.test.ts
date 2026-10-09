@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
+import {
+  Deferred,
+  Effect,
+  ErrorReporter,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Ref,
+  Schema,
+  Scope,
+  Sink,
+  Stdio,
+  Stream
+} from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
@@ -74,6 +88,34 @@ describe("RpcServer", () => {
         assert.strictEqual(body, "")
       }))
   }
+
+  it.effect("reports success encode failures with the rpc tag", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ getUserAge: () => Effect.succeed("not a number" as unknown as number) }),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      const body = yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      const message = `Failed to encode response for RPC "getUserAge": Expected number\n  at ["value"]`
+      const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
+      assert.deepStrictEqual(response.exit, { _tag: "Failure", cause: [{ _tag: "Die", defect: message }] })
+      assert.deepStrictEqual(reports, [message])
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
 
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
