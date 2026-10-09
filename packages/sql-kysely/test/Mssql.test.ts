@@ -1,5 +1,5 @@
 import * as MssqlKysely from "@effect/sql-kysely/Mssql"
-import { assert, describe, it } from "@effect/vitest"
+import { assert, it } from "@effect/vitest"
 import { Context, Effect, Layer } from "effect"
 import type { Generated } from "kysely"
 import { MssqlContainer } from "./utils.js"
@@ -18,7 +18,7 @@ class MssqlDB extends Context.Tag("PgDB")<MssqlDB, MssqlKysely.EffectKysely<Data
 
 const MssqlLive = Layer.effect(MssqlDB, MssqlKysely.make<Database>()).pipe(Layer.provide(MssqlContainer.ClientLive))
 
-describe("MssqlKysely", () => {
+it.layer(MssqlLive, { timeout: "120 seconds" })("MssqlKysely", (it) => {
   it.effect("queries", () =>
     Effect.gen(function*() {
       const db = yield* MssqlDB
@@ -38,5 +38,5 @@ describe("MssqlKysely", () => {
       assert.deepStrictEqual(inserted, [{ id: 1, name: "Alice", nickname: null }])
       assert.deepStrictEqual(updated, [{ id: 1, name: "Bob", nickname: "The Bobinator" }])
       assert.deepStrictEqual(deleted, [])
-    }).pipe(Effect.provide(MssqlLive)), { timeout: 60000 })
+    }), { timeout: 60000 })
 })
