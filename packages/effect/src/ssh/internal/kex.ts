@@ -25,13 +25,13 @@ export interface KeyAgreement {
 /** @internal */
 export interface KexMethod {
   readonly name: string
-  readonly hash: Crypto.HmacAlgorithm
+  readonly hash: Crypto.HashAlgorithm
   readonly algorithm: { readonly name: "X25519" } | { readonly name: "ECDH"; readonly namedCurve: Crypto.NamedCurve }
 }
 
 const curve25519 = (name: string): KexMethod => ({ name, hash: "SHA-256", algorithm: { name: "X25519" } })
 
-const ecdh = (name: string, namedCurve: Crypto.NamedCurve, hash: Crypto.HmacAlgorithm): KexMethod => ({
+const ecdh = (name: string, namedCurve: Crypto.NamedCurve, hash: Crypto.HashAlgorithm): KexMethod => ({
   name,
   hash,
   algorithm: { name: "ECDH", namedCurve }
@@ -61,7 +61,7 @@ export class Kex extends Context.Service<Kex, {
    * Derives session key material (RFC 4253 §7.2).
    */
   readonly deriveKey: (
-    hash: Crypto.HmacAlgorithm,
+    hash: Crypto.HashAlgorithm,
     sharedSecret: Uint8Array,
     exchangeHash: Uint8Array,
     letter: string,
@@ -91,7 +91,7 @@ export class Kex extends Context.Service<Kex, {
     })
 
     const deriveKey = Effect.fnUntraced(function*(
-      hash: Crypto.HmacAlgorithm,
+      hash: Crypto.HashAlgorithm,
       sharedSecret: Uint8Array,
       exchangeHash: Uint8Array,
       letter: string,

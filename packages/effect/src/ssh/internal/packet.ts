@@ -34,7 +34,7 @@ export const cipherAlgorithms: Record<string, CipherAlgorithm> = {
 /** @internal */
 export interface MacAlgorithm {
   readonly name: string
-  readonly hash: Crypto.HmacAlgorithm
+  readonly hash: Crypto.HashAlgorithm
   readonly keyLength: number
   readonly etm: boolean
 }
@@ -209,7 +209,7 @@ export class Packet extends Context.Service<Packet, {
 
     const importMac = (mac: MacAlgorithm, key: Uint8Array) =>
       Effect.mapError(
-        crypto.importKey("raw", key, { name: "HMAC", hash: mac.hash, length: key.length * 8 }, {
+        crypto.importKey("raw", key, { name: "HMAC", hash: mac.hash }, {
           usages: ["sign", "verify"]
         }),
         protocolErrorFrom("could not import MAC key")

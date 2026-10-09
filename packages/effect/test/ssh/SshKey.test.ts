@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs"
 const CryptoLive = Layer.succeed(
   Crypto.Crypto,
   Crypto.make({
-    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    subtle: globalThis.crypto.subtle,
     randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
   })
 )

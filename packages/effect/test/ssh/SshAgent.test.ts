@@ -14,7 +14,7 @@ import * as SshKey from "effect/ssh/SshKey"
 const CryptoLive = Layer.succeed(
   Crypto.Crypto,
   Crypto.make({
-    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    subtle: globalThis.crypto.subtle,
     randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
   })
 )

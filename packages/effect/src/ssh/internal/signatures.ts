@@ -20,7 +20,7 @@ import { concat, padStart, Reader, stripLeadingZeros, WireError, Writer } from "
 export interface EcdsaCurve {
   readonly identifier: string
   readonly namedCurve: Crypto.NamedCurve
-  readonly hash: Crypto.HmacAlgorithm
+  readonly hash: Crypto.HashAlgorithm
   readonly size: number
 }
 
@@ -32,7 +32,7 @@ export const ecdsaCurves: Record<string, EcdsaCurve> = {
 }
 
 /** @internal */
-export const rsaSignatureHashes: Record<string, Crypto.HmacAlgorithm> = {
+export const rsaSignatureHashes: Record<string, Crypto.HashAlgorithm> = {
   "rsa-sha2-256": "SHA-256",
   "rsa-sha2-512": "SHA-512"
 }
