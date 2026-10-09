@@ -401,6 +401,7 @@ const make = Effect.gen(function*() {
         for (const shardId of acquired) {
           if (
             !shardLocksHealthy ||
+            isShutdown.current ||
             forcedReleasePending ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
@@ -1405,15 +1406,22 @@ const make = Effect.gen(function*() {
     withSingletonLock
   )
 
-  const syncSingletons = withSingletonLock(Effect.gen(function*() {
+  const syncSingletons: Effect.Effect<void> = withSingletonLock(Effect.gen(function*() {
     for (const [shardId, map] of singletons) {
       for (const [address, run] of map) {
         const running = FiberMap.unsafeHas(singletonFibers, address)
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
           yield* Effect.logDebug("Stopping singleton", address)
-          internalInterruptors.add(Option.getOrThrow(Fiber.getCurrentFiber()).id())
-          yield* FiberMap.remove(singletonFibers, address)
+          const fiberId = yield* Effect.fiberId
+          internalInterruptors.add(fiberId)
+          const fiber = FiberMap.unsafeGet(singletonFibers, address)
+          if (Option.isSome(fiber)) {
+            // don't wait for the singleton to stop, so a stuck singleton cannot
+            // delay the others. Sync again once it has stopped.
+            yield* Fiber.interruptAsFork(fiber.value, fiberId)
+            yield* Effect.forkIn(Effect.andThen(Fiber.await(fiber.value), syncSingletons), shardingScope)
+          }
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
