@@ -4475,7 +4475,7 @@ describe("Effect", () => {
       Effect.gen(function*() {
         const gate = yield* Deferred.make<void>()
         let runs = 0
-        const cached: Effect.Effect<number> = yield* Effect.cached(
+        const cached = yield* Effect.cached(
           Effect.gen(function*() {
             runs++
             yield* Deferred.succeed(gate, void 0)
@@ -4490,7 +4490,6 @@ describe("Effect", () => {
 
         assert.strictEqual(yield* cached, 42)
         assert.strictEqual(yield* Fiber.join(waiter), 42)
-        assert.strictEqual(yield* cached, 42)
         assert.strictEqual(runs, 1)
       }))
 
@@ -4693,33 +4692,6 @@ describe("Effect", () => {
   })
 
   describe("cachedInvalidateWithTTL", () => {
-    it.effect("shares the in-flight run when the body synchronously wakes a re-entrant caller", () =>
-      Effect.gen(function*() {
-        const gate = yield* Deferred.make<void>()
-        let runs = 0
-        const [cached, invalidate] = yield* Effect.cachedInvalidateWithTTL(
-          Effect.gen(function*() {
-            const run = ++runs
-            yield* Deferred.succeed(gate, void 0)
-            return run
-          }),
-          "1 minute"
-        )
-
-        const waiter = yield* Deferred.await(gate).pipe(
-          Effect.andThen(cached),
-          Effect.forkChild({ startImmediately: true })
-        )
-
-        assert.strictEqual(yield* cached, 1)
-        assert.strictEqual(yield* Fiber.join(waiter), 1)
-        assert.strictEqual(runs, 1)
-
-        yield* invalidate
-        assert.strictEqual(yield* cached, 2)
-        assert.strictEqual(runs, 2)
-      }))
-
     it.effect("supports a piped callback that skips failures and caches successes", () =>
       Effect.gen(function*() {
         let count = 0

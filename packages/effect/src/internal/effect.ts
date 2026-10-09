@@ -4467,8 +4467,6 @@ const makeCachedUnsafe = <A, E, R>(
   let current: CachedRun<A, E> | undefined
 
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
-    if (fiber === run.fiber) return fiberJoin(run.fiber)
-    run.awaiters++
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
       if (--run.awaiters > 0 || current !== run) return
@@ -4482,7 +4480,11 @@ const makeCachedUnsafe = <A, E, R>(
 
   return [
     withFiber((fiber) => {
-      if (current !== undefined) return join(fiber, current)
+      if (current !== undefined) {
+        if (fiber === current.fiber) return fiberJoin(current.fiber)
+        current.awaiters++
+        return join(fiber, current)
+      }
       if (
         exit !== undefined &&
         (expiresAt === Infinity || fiber.getRef(ClockRef).currentTimeMillisUnsafe() < expiresAt)
@@ -4508,9 +4510,7 @@ const makeCachedUnsafe = <A, E, R>(
           exit = exit_
         }) as any
       )
-      if (run.fiber._exit) return run.fiber._exit
-      run.awaiters--
-      return join(fiber, run)
+      return run.fiber._exit ?? join(fiber, run)
     }),
     sync(() => {
       exit = undefined
