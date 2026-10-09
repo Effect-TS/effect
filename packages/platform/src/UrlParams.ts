@@ -229,6 +229,15 @@ export const makeUrl = (url: string, params: UrlParams, hash: Option.Option<stri
  */
 export const toString = (self: UrlParams): string => new URLSearchParams(self as any).toString()
 
+/**
+ * @since 1.0.0
+ * @category conversions
+ */
+export const toPercentEncoded = (self: UrlParams): string =>
+  self.map(([key, value]) =>
+    `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+  ).join("&")
+
 const baseUrl = (): string | undefined => {
   if (
     "location" in globalThis &&
