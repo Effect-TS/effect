@@ -3596,6 +3596,35 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
     }).pipe(Effect.scoped))
 
+  it.effect("closes a singleton registration whose singleton registered another singleton", () =>
+    Effect.gen(function*() {
+      // closed without waiting, so a deadlocked teardown cannot hang the test
+      const makeDetachedScope = Effect.acquireRelease(
+        Scope.make(),
+        (scope) => Effect.forkDetach(Scope.close(scope, Exit.void))
+      )
+      const storageState = makeFailoverStorageState()
+      const shardingScope = yield* makeDetachedScope
+      const registrationScope = yield* makeDetachedScope
+      const context = yield* Layer.buildWithScope(makeLayer(storageState), shardingScope)
+      const sharding = Context.get(context, Sharding.Sharding)
+      while (!ownsAllShards(sharding)) {
+        yield* TestClock.adjust(10)
+      }
+      const childRegistered = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        "ParentSingleton",
+        Effect.andThen(sharding.registerSingleton("ChildSingleton", Effect.never), childRegistered.open)
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* childRegistered.await
+
+      const closing = yield* Effect.forkDetach(Scope.close(registrationScope, Exit.void))
+      for (let i = 0; i < 10 && !closing.pollUnsafe(); i++) {
+        yield* TestClock.adjust(10)
+      }
+      assert.isDefined(closing.pollUnsafe(), "closing the parent registration deadlocked")
+    }).pipe(Effect.scoped))
+
   it.effect("stops acquiring shards once shutdown starts", () =>
     Effect.gen(function*() {
       const [heldShard, freedShard] = allShards
