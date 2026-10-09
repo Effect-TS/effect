@@ -688,6 +688,45 @@ describe("Socket", () => {
         )
       }))
 
+    it.live("passes headers and a subprotocol to the opening handshake", () =>
+      Effect.gen(function*() {
+        const handshake = yield* Deferred.make<{ authorization: string | undefined; protocol: string }>()
+        const server = yield* Effect.acquireRelease(
+          Effect.callback<NodeSocket.NodeWS.WebSocketServer>((resume) => {
+            const server = new NodeSocket.NodeWS.WebSocketServer({ host: "127.0.0.1", port: 0 })
+            server.once("listening", () => resume(Effect.succeed(server)))
+            server.once("error", (error) => resume(Effect.die(error)))
+            server.on("connection", (client, request) => {
+              Deferred.doneUnsafe(
+                handshake,
+                Effect.succeed({
+                  authorization: request.headers.authorization,
+                  protocol: client.protocol
+                })
+              )
+            })
+          }),
+          (server) =>
+            Effect.promise(() => {
+              for (const client of server.clients) client.terminate()
+              return new Promise<void>((resolve) => server.close(() => resolve()))
+            })
+        )
+        const address = server.address()
+        assert.isTrue(typeof address === "object" && address !== null)
+        if (typeof address !== "object" || address === null) return
+        const options = {
+          protocols: "graphql-transport-ws",
+          headers: { Authorization: "Bearer test" }
+        }
+        const socket = yield* Socket.makeWebSocket(`ws://127.0.0.1:${address.port}`, options)
+        yield* socket.reader
+        assert.deepStrictEqual(yield* Deferred.await(handshake).pipe(Effect.timeout("1 second")), {
+          authorization: "Bearer test",
+          protocol: "graphql-transport-ws"
+        })
+      }).pipe(Effect.provide(NodeSocket.layerWebSocketConstructorWS)))
+
     it.effect("passes headers to the opening handshake", () =>
       Effect.gen(function*() {
         const authorization = yield* Deferred.make<string | undefined>()
