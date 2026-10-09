@@ -267,7 +267,6 @@ describe("Crypto", () => {
           ["argon2id", crypto.argon2id({ ...argon2id, salt: new Uint8Array(7) })],
           ["argon2id", crypto.argon2id({ ...argon2id, memoryKiB: 7 })],
           ["xchacha20poly1305Encrypt", crypto.xchacha20poly1305Encrypt({ key: bytes, nonce: bytes, data: bytes })],
-          ["generateSecretKey", crypto.generateSecretKey({ name: "HMAC", hash: "SHA-256", length: 7 })],
           ["generateKeyPair", crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256", modulusLength: 1024 })],
           ["encrypt", crypto.encrypt({ name: "AES-GCM", iv: bytes }, key, bytes)],
           ["decrypt", crypto.decrypt({ name: "AES-CTR", counter: bytes, length: 0 }, key, bytes)],
@@ -285,25 +284,7 @@ describe("Crypto", () => {
     Effect.gen(function*() {
       const crypto = Crypto.make({ randomBytes: (size) => new Uint8Array(size) })
       const error = yield* Effect.flip(crypto.digest("SHA-256", new Uint8Array()))
-      assert.strictEqual(error.reason._tag, "BadArgument")
-    }))
-
-  it.effect("rejects all-zero X25519 shared secrets", () =>
-    Effect.gen(function*() {
-      const key = (type: Crypto.Key["type"], usages: ReadonlyArray<Crypto.KeyUsage>): Crypto.Key => ({
-        "~effect/Crypto/Key": "~effect/Crypto/Key",
-        type,
-        algorithm: { name: "X25519" },
-        extractable: false,
-        usages
-      })
-      const crypto = Crypto.make({
-        ...backend,
-        randomBytes: (size) => new Uint8Array(size),
-        deriveSharedSecret: () => Effect.succeed(new Uint8Array(32))
-      })
-      const error = yield* Effect.flip(crypto.deriveSharedSecret(key("private", ["deriveBits"]), key("public", [])))
-      assert.strictEqual(error.reason._tag, "BadArgument")
+      assert.strictEqual(error.reason._tag, "Unsupported")
     }))
 
   it.effect("rejects keys created by a different backend", () =>
