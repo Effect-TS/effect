@@ -192,7 +192,7 @@ describe("SqlRunnerStorage", () => {
           }
 
           expect(refreshed).toEqual([])
-        }).pipe(TestServices.provideLive))
+        }).pipe(TestServices.provideLive), 30_000)
     })
   })
 })
