@@ -95,13 +95,10 @@ export class Sharding extends Context.Tag("@effect/cluster/Sharding")<Sharding, 
   readonly isShutdown: Effect.Effect<boolean>
 
   /**
-   * Hands off every shard owned by this runner, e.g. from a Kubernetes
-   * `preStop` hook.
-   *
-   * Unregisters the runner, stops it from acquiring shards, then interrupts
-   * the entities on each shard before releasing its lock. Completes once no
-   * shards are held. Draining cannot be undone, and clients on this runner
-   * keep working.
+   * Unregisters this runner, stops shard acquisition, and interrupts its shard
+   * entities before releasing their locks. Completes once no shard locks are
+   * held. Draining is irreversible; clients on this runner remain usable.
+   * Suitable for a Kubernetes `preStop` hook. This effect has no timeout.
    */
   readonly drain: Effect.Effect<void>
 
@@ -1139,7 +1136,6 @@ const make = Effect.gen(function*() {
         continue
       }
 
-      // Retry unregistering a draining runner
       if (selfRunner && draining && MutableHashMap.has(allRunners, selfRunner)) {
         yield* Effect.ignore(withTimeout(runnerStorage.unregister(selfRunner.address)))
       }
