@@ -169,7 +169,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             ended: false
           }
           clients.set(clientId, client)
-        } else if (client.ended) {
+        } else if (client.ended && message._tag === "Request") {
           return Effect.interrupt
         }
 

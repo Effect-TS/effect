@@ -839,7 +839,12 @@ const make = Effect.gen(function*() {
       | (M extends Message.Incoming<any> ? never : PersistenceError)
     > {
       const address = message.envelope.address
-      if (!isEntityOnLocalShards(address)) {
+      const isEnvelope = message._tag === "IncomingEnvelope" || message._tag === "OutgoingEnvelope"
+      // envelopes are accepted while the shard drains, so in-flight requests
+      // can still be interrupted
+      if (
+        !isEntityOnLocalShards(address) && !(isEnvelope && MutableHashSet.has(releasingShards, address.shardId))
+      ) {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
       const state = entityManagers.get(address.entityType)
@@ -920,6 +925,11 @@ const make = Effect.gen(function*() {
       return runnersService.notifyLocal({ message, notify, discard, storageOnly: !isLocal }) as any
     })
 
+  const sendToRunner = (runner: RunnerAddress, message: Message.Outgoing<any>) =>
+    isLocalRunner(runner)
+      ? sendLocal(message)
+      : runnersService.send({ address: runner, message })
+
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
@@ -944,9 +954,11 @@ const make = Effect.gen(function*() {
         } else if (Option.isNone(maybeRunner)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
-        return runnerIsLocal
-          ? sendLocal(message)
-          : runnersService.send({ address: maybeRunner.value, message })
+        if (message._tag === "OutgoingRequest") {
+          const entry = clientRequests.get(message.envelope.requestId)
+          if (entry) entry.runner = maybeRunner.value
+        }
+        return sendToRunner(maybeRunner.value, message)
       }),
       (error) => error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable",
       (error) => {
@@ -1111,6 +1123,7 @@ const make = Effect.gen(function*() {
     readonly rpc: Rpc.AnyWithProps
     readonly services: Context.Context<never>
     lastChunkId?: Snowflake.Snowflake
+    runner?: RunnerAddress
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
@@ -1202,18 +1215,19 @@ const make = Effect.gen(function*() {
               if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
                 return Effect.void
               }
-              return Effect.ignore(sendOutgoing(
-                new Message.OutgoingEnvelope({
-                  envelope: new Envelope.Interrupt({
-                    id: snowflakeGen.unsafeNext(),
-                    address,
-                    requestId
-                  }),
-                  rpc: entry.rpc
+              const message = new Message.OutgoingEnvelope({
+                envelope: new Envelope.Interrupt({
+                  id: snowflakeGen.unsafeNext(),
+                  address,
+                  requestId
                 }),
-                false,
-                3
-              ))
+                rpc: entry.rpc
+              })
+              // volatile requests are interrupted on the runner processing
+              // them, which may differ from the current shard owner
+              return Effect.ignore(
+                entry.runner ? sendToRunner(entry.runner, message) : sendOutgoing(message, false, 3)
+              )
             }
           }
           return Effect.void
