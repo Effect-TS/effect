@@ -86,9 +86,10 @@ export interface RpcServer<A extends Rpc.Any> {
  *
  * If `onFromServer` fails with anything other than an interruption while
  * writing a stream `Chunk`, the stream stops and the request fails with that
- * cause. The server assumes `onFromServer` has already answered the client and
- * reported the failure, so it sends no other response for that request and does
- * not report the failure again.
+ * cause, even if RPC middleware rewrites or swallows it. The server assumes
+ * `onFromServer` has already answered the client and reported the failure, so
+ * it sends no other response for that request and does not report the failure
+ * again.
  *
  * @stability unstable
  * @category constructors
@@ -288,16 +289,23 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     // unwrap the fork data type
     const streamOrEffect = isWrapper ? result.value : result
     // set when a chunk could not be written; the writer has already responded
-    let writeFailed = false
+    let writeFailure: Cause.Cause<never> | undefined
     const handler = isStream
-      ? (streamEffect(client, request, streamOrEffect, () => {
-        writeFailed = true
+      ? (streamEffect(client, request, streamOrEffect, (cause) => {
+        writeFailure = cause
       }) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
       : (streamOrEffect as Effect.Effect<{} | Deferred.Deferred<any, any>>)
 
-    const withMiddleware = rpc.middlewares.size > 0
+    let withMiddleware = rpc.middlewares.size > 0
       ? applyMiddleware(services, handler, metadata)
       : handler
+    if (isStream && rpc.middlewares.size > 0) {
+      // middleware may rewrite or swallow a chunk write failure, so restore it
+      withMiddleware = Effect.flatMap(
+        Effect.exit(withMiddleware),
+        (exit) => writeFailure ? Effect.failCause(writeFailure) : exit
+      )
+    }
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
@@ -316,7 +324,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
             exit: exit as any
           })
         }
-      } else if (writeFailed) {
+      } else if (writeFailure) {
         // onFromServer has already answered the client and reported the failure
         return Scope.closeUnsafe(scope, exit) ?? Effect.void
       } else if (
@@ -425,13 +433,13 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     stream:
       | Stream.Stream<any, any>
       | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>,
-    onWriteFailure: () => void
+    onWriteFailure: (cause: Cause.Cause<never>) => void
   ) => {
     const writeChunk = (values: NonEmptyReadonlyArray<any>) =>
       Effect.onError(
         options.onFromServer({ _tag: "Chunk", clientId: client.id, requestId: request.id, values }),
         (cause) => {
-          if (!Cause.hasInterruptsOnly(cause)) onWriteFailure()
+          if (!Cause.hasInterruptsOnly(cause)) onWriteFailure(cause)
           return Effect.void
         }
       )
