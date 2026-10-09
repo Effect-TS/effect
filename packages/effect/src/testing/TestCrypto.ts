@@ -54,16 +54,21 @@ export const make: (
   function*(_seed: string | number) {
     const crypto = yield* Crypto.Crypto
     const seededRandom = yield* Random.Random
-    return Crypto.make({
+    const seeded = Crypto.make({
       randomBytes: (size) => {
         const bytes = new Uint8Array(size)
         for (let i = 0; i < size; i++) {
           bytes[i] = Math.floor(seededRandom.nextDoubleUnsafe() * 256)
         }
         return bytes
-      },
+      }
+    })
+    // Typed as every member except the type ID and random operations, so a new
+    // operation must be delegated here.
+    const delegated: Omit<Crypto.Crypto, `~${string}` | `next${string}` | `random${string}`> = {
       digest: crypto.digest,
       hmac: crypto.hmac,
+      hmacVerify: crypto.hmacVerify,
       pbkdf2: crypto.pbkdf2,
       hkdf: crypto.hkdf,
       argon2id: crypto.argon2id,
@@ -80,7 +85,8 @@ export const make: (
       sign: crypto.sign,
       verify: crypto.verify,
       deriveSharedSecret: crypto.deriveSharedSecret
-    })
+    }
+    return Crypto.Crypto.of({ ...seeded, ...delegated })
   },
   (effect, seed) => Random.withSeed(effect, seed)
 )

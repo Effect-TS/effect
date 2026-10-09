@@ -64,9 +64,10 @@ const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) => 
   const method = decrypt ? "xchacha20poly1305Decrypt" : "xchacha20poly1305Encrypt"
   nativeAvailable ??= NodeCrypto.getCiphers().includes("chacha20-poly1305")
   if (!nativeAvailable) {
-    return Effect.fail(PlatformError.badArgument({
+    return Effect.fail(PlatformError.systemError({
       module: "Crypto",
       method,
+      _tag: "Unsupported",
       description: `${method} is not supported by this Crypto service`
     }))
   }
