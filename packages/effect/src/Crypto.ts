@@ -756,6 +756,8 @@ export const randomShuffle = <A>(elements: Iterable<A>): Effect.Effect<Array<A>,
 /**
  * Generates a cryptographically secure UUIDv4 using the Crypto service.
  *
+ * **Details**
+ *
  * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
  * `"bytes"` format returns the 16 UUID bytes.
  *
@@ -780,6 +782,8 @@ export const randomUUIDv4: {
 /**
  * Generates a cryptographically secure UUIDv7 using the Crypto service and the
  * current Clock timestamp.
+ *
+ * **Details**
  *
  * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
  * `"bytes"` format returns the 16 UUID bytes.
