@@ -322,6 +322,47 @@ describe("Crypto", () => {
       )
     }))
 
+  it.effect("rejects invalid key, cipher, and signing arguments before calling a custom backend", () =>
+    Effect.gen(function*() {
+      const reached = () => {
+        throw new Error("Invalid arguments reached the primitive")
+      }
+      const crypto = Crypto.make({
+        ...primitives,
+        randomBytes: (size) => new Uint8Array(size),
+        digest: (_algorithm, data) => Effect.succeed(data),
+        rsaOaepEncrypt: reached,
+        generateSecretKey: reached,
+        generateKeyPair: reached,
+        importKey: reached,
+        importJwk: reached,
+        encrypt: reached,
+        decrypt: reached,
+        sign: reached,
+        verify: reached
+      })
+      const key = {} as Crypto.Key
+      const bytes = new Uint8Array(16)
+      const hmac = { name: "HMAC", hash: "SHA-256", length: 7 } as const
+      for (
+        const [method, operation] of [
+          ["rsaOaepEncrypt", crypto.rsaOaepEncrypt({ publicKey: bytes, data: bytes, hash: "MD5" as "SHA-1" })],
+          ["generateSecretKey", crypto.generateSecretKey(hmac)],
+          ["generateKeyPair", crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256", modulusLength: 1024 })],
+          ["importKey", crypto.importKey("raw", bytes, hmac)],
+          ["importJwk", crypto.importJwk({ kty: "oct", k: "AA" }, hmac)],
+          ["encrypt", crypto.encrypt({ name: "AES-GCM", iv: new Uint8Array(16) }, key, bytes)],
+          ["decrypt", crypto.decrypt({ name: "AES-CTR", counter: bytes, length: 0 }, key, bytes)],
+          ["sign", crypto.sign({ name: "RSA-PSS", saltLength: -1 }, key, bytes)],
+          ["verify", crypto.verify({ name: "RSA-PSS", saltLength: 1.5 }, key, bytes, bytes)]
+        ] as const
+      ) {
+        const error = yield* Effect.flip<unknown, PlatformError.PlatformError, never>(operation)
+        assert.strictEqual(error.reason._tag, "BadArgument")
+        assert.strictEqual(error.reason.method, method)
+      }
+    }))
+
   it.effect("rejects invalid PBKDF2 parameters before calling the primitive", () =>
     Effect.gen(function*() {
       const crypto = Crypto.make({

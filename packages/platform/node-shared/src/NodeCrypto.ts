@@ -110,9 +110,6 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
     Effect.try({
       try: () => {
         const hash = options.hash ?? "SHA-256"
-        if (!["SHA-1", "SHA-256", "SHA-384", "SHA-512"].includes(hash)) {
-          throw new TypeError("Unsupported RSA-OAEP hash")
-        }
         return Uint8Array.from(NodeCrypto.publicEncrypt({
           key: NodeCrypto.createPublicKey({ key: Buffer.from(options.publicKey), format: "der", type: "spki" }),
           padding: NodeCrypto.constants.RSA_PKCS1_OAEP_PADDING,
