@@ -1080,15 +1080,11 @@ export const makeProtocolSocket = (options?: {
 
     // Encode each ping with the current connection's parser.
     const pinger = yield* makePinger(Effect.suspend(() => writer.write(parser.encode(constPing)!)), options)
-    const onPingTimeout = options?.onPingTimeout ?
-      Effect.ignoreCause(options.onPingTimeout, {
-        log: true,
-        message: "RpcClient onPingTimeout hook failed"
-      }) :
-      Effect.void
+    const onPingTimeout = Effect.ignoreCause(options?.onPingTimeout ?? Effect.void, {
+      log: true,
+      message: "RpcClient onPingTimeout hook failed"
+    })
     let currentError: RpcClientError | undefined
-    let connected = false
-    let pingTimeoutError: Socket.SocketError | undefined
 
     const broadcast = (response: FromServerEncoded) =>
       Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
@@ -1141,7 +1137,7 @@ export const makeProtocolSocket = (options?: {
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
       pinger.reset()
-      connected = false
+      let connected = false
       return Effect.gen(function*() {
         const { pull } = yield* socket.reader
         currentError = undefined
@@ -1157,21 +1153,21 @@ export const makeProtocolSocket = (options?: {
         }
       }).pipe(
         Effect.scoped,
-        Effect.raceFirst(Effect.flatMap(
-          pinger.timeout,
-          () =>
-            Effect.fail(
-              pingTimeoutError = new Socket.SocketError({
-                reason: new Socket.SocketReadError({
-                  cause: new Error("ping timeout")
-                })
+        // The read loop never succeeds, so the race only succeeds on a ping
+        // timeout, after the socket has been cleaned up.
+        Effect.raceFirst(pinger.timeout),
+        Effect.andThen(() => connected ? onPingTimeout : Effect.void),
+        Effect.andThen(() =>
+          Effect.fail(
+            new Socket.SocketError({
+              reason: new Socket.SocketReadError({
+                cause: new Error("ping timeout")
               })
-            )
-        ))
+            })
+          )
+        )
       )
     }).pipe(
-      // Run the hook after socket cleanup so socket errors cannot interrupt it.
-      Effect.tapError((error) => connected && error === pingTimeoutError ? onPingTimeout : Effect.void),
       Option.isSome(hooks) ? Effect.ensuring(hooks.value.onDisconnect) : identity,
       Effect.tapCause((cause) => {
         const error = Cause.findError(cause)
