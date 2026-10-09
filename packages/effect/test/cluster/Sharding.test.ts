@@ -2939,10 +2939,10 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       yield* Effect.gen(function*() {
         const state = yield* TestEntityState
         const { request } = yield* startGracefulHandoff(storageState)
+        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
 
         yield* Fiber.interrupt(request).pipe(Effect.forkChild({ startImmediately: true }))
         yield* TestClock.adjust(100)
-        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
         assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
     }))
