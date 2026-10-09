@@ -3561,6 +3561,41 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
     }).pipe(Effect.scoped))
 
+  it.effect("waits for a closing singleton registration's teardown before releasing its shard", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const registrationScope = yield* makeOwnedScope
+      const { scope, sharding } = yield* buildSharding(storageState)
+      const gate = yield* makeGate
+      while (!ownsAllShards(sharding)) {
+        yield* TestClock.adjust(10)
+      }
+      const started = Latch.makeUnsafe()
+      const stopping = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        "ClosingSingleton",
+        Effect.andThen(started.open, Effect.addFinalizer(() => Effect.andThen(stopping.open, gate.await)))
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* started.await
+      const singletonShard = sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
+
+      // the registration closes first, and its teardown is still running when
+      // the Sharding scope closes
+      yield* Effect.forkChild(Scope.close(registrationScope, Exit.void))
+      yield* stopping.await
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* TestClock.adjust(100)
+      assert.isUndefined(closing.pollUnsafe())
+      assert.isFalse(storageState.releaseCalls.some((shardId) => shardId.id === singletonShard.id))
+      assert.deepStrictEqual(storageState.releaseAllCalls, [])
+
+      yield* gate.open
+      while (!closing.pollUnsafe()) {
+        yield* TestClock.adjust(10)
+      }
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [shardsPerGroup])
+    }).pipe(Effect.scoped))
+
   it.effect("stops acquiring shards once shutdown starts", () =>
     Effect.gen(function*() {
       const [heldShard, freedShard] = allShards
