@@ -11,6 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
+import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import { identity } from "effect/Function"
 import * as HashMap from "effect/HashMap"
@@ -65,18 +66,20 @@ export interface EntityManager {
   readonly activeEntityCount: Effect.Effect<number>
 }
 
-// Represents the entities managed by this entity manager
+/** @internal */
+export type ActiveRequest = {
+  readonly rpc: Rpc.AnyWithProps
+  readonly message: Message.IncomingRequestLocal<any>
+  sentReply: boolean
+  lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
+  sequence: number
+}
+
 /** @internal */
 export type EntityState = {
   readonly address: EntityAddress
   readonly scope: Scope.Scope
-  readonly activeRequests: Map<bigint, {
-    readonly rpc: Rpc.AnyWithProps
-    readonly message: Message.IncomingRequestLocal<any>
-    sentReply: boolean
-    lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
-    sequence: number
-  }>
+  readonly activeRequests: Map<bigint, ActiveRequest>
   lastActiveCheck: number
   write: RpcServer.RpcServer<any>["write"]
   readonly keepAliveLatch: Effect.Latch
@@ -238,32 +241,7 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(response.requestId)
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
-                return retryRespond(
-                  4,
-                  Effect.suspend(() =>
-                    request.message.respond(
-                      new Reply.WithExit({
-                        requestId: Snowflake.Snowflake(response.requestId),
-                        id: snowflakeGen.unsafeNext(),
-                        exit: response.exit
-                      })
-                    )
-                  )
-                ).pipe(
-                  Effect.flatMap(() => {
-                    processedRequestIds.add(request.message.envelope.requestId)
-                    activeRequests.delete(response.requestId)
-
-                    // ensure that the reaper does not remove the entity as we haven't
-                    // been "idle" yet
-                    if (activeRequests.size === 0) {
-                      state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
-                    }
-
-                    return Effect.void
-                  }),
-                  Effect.orDie
-                )
+                return respondExit(request, response.exit)
               }
               case "Chunk": {
                 const request = activeRequests.get(response.requestId)
@@ -329,6 +307,38 @@ export const make = Effect.fnUntraced(function*<
       })
     )
 
+    function respondExit(
+      request: ActiveRequest,
+      exit: Exit.Exit<any, any>
+    ): Effect.Effect<void> {
+      const requestId = request.message.envelope.requestId
+      return retryRespond(
+        4,
+        Effect.suspend(() =>
+          request.message.respond(
+            new Reply.WithExit({
+              requestId,
+              id: snowflakeGen.unsafeNext(),
+              exit
+            })
+          )
+        )
+      ).pipe(
+        Effect.flatMap(() => {
+          processedRequestIds.add(requestId)
+          activeRequests.delete(requestId)
+
+          // Start the idle period when the last request finishes.
+          if (activeRequests.size === 0) {
+            state.lastActiveCheck = clock.unsafeCurrentTimeMillis()
+          }
+
+          return Effect.void
+        }),
+        Effect.orDie
+      )
+    }
+
     function onDefect(cause: Cause.Cause<never>): Effect.Effect<void> {
       if (!activeServers.has(address.entityId)) {
         return endLatch.open
@@ -338,12 +348,26 @@ export const make = Effect.fnUntraced(function*<
       }
       // Interrupt non-persisted streams instead of replaying them.
       defectRequestIds = new Set()
+      const interrupted: Array<ActiveRequest> = []
       for (const [id, request] of activeRequests) {
-        if (!isVolatileStream(request.rpc)) defectRequestIds.add(id)
+        if (isVolatileStream(request.rpc)) {
+          activeRequests.delete(id)
+          interrupted.push(request)
+        } else {
+          defectRequestIds.add(id)
+        }
       }
       isRestartingDueToDefect = true
       const effect = writeRef.unsafeRebuild()
       return Effect.logError("Defect in entity, restarting", cause).pipe(
+        Effect.andThen(Effect.forkIn(
+          Effect.forEach(
+            interrupted,
+            (request) => Effect.ignore(Effect.sandbox(respondExit(request, Exit.interrupt(FiberId.none)))),
+            { concurrency: "unbounded", discard: true }
+          ),
+          managerScope
+        )),
         Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
         Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
         Effect.ensuring(Effect.sync(() => {
