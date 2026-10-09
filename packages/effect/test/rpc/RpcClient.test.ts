@@ -573,6 +573,38 @@ describe("RpcClient", () => {
       ])
     }))
 
+  it.effect("does not run onPingTimeout when the ping timeout fires before the socket opens", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const record = (event: string) => Effect.sync(() => events.push(event))
+      const write = () => Effect.void
+      const socket = Socket.make({
+        reader: Effect.never,
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryPolicy: Schedule.spaced("1 hour"),
+        onPingTimeout: record("ping timeout")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcClient.ConnectionHooks, {
+          onConnect: Effect.asVoid(record("connect")),
+          onDisconnect: Effect.asVoid(record("disconnect"))
+        }),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+
+      yield* TestClock.adjust("11 seconds")
+      const error = yield* Fiber.join(streamFiber)
+
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+      assert.deepStrictEqual(events, ["disconnect"])
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
