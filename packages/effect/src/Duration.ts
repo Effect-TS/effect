@@ -36,8 +36,7 @@ const bigint1e3 = BigInt(1_000)
 const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
 
-const roundTiesAwayFromZero = (input: number): bigint =>
-  BigInt(input < 0 ? Math.ceil(input - 0.5) : Math.floor(input + 0.5))
+const roundTiesAwayFromZero = (input: number): bigint => BigInt(Math.sign(input) * Math.round(Math.abs(input)))
 
 const roundMillisToNanos = (millis: number): bigint => roundTiesAwayFromZero(millis * 1_000_000)
 
@@ -53,9 +52,13 @@ const parseNanos = (input: string, scale: bigint): bigint => {
   const scaled = (
     BigInt(input.slice(isNegative ? 1 : 0, decimalIndex)) * fractionalScale + BigInt(fractional)
   ) * scale
-  const rounded = scaled / fractionalScale +
-    (scaled % fractionalScale * bigint2 >= fractionalScale ? bigint1 : bigint0)
-  return isNegative ? -rounded : rounded
+  return divideTiesAwayFromZero(isNegative ? -scaled : scaled, fractionalScale)
+}
+
+const divideTiesAwayFromZero = (numerator: bigint, denominator: bigint): bigint => {
+  const absolute = numerator < bigint0 ? -numerator : numerator
+  const rounded = absolute / denominator + (absolute % denominator * bigint2 >= denominator ? bigint1 : bigint0)
+  return numerator < bigint0 ? -rounded : rounded
 }
 
 const nanosToHrTime = (nanos: bigint): [seconds: number, nanos: number] => {
@@ -1461,13 +1464,13 @@ export const times: {
       onMillis: (millis) => make(millis * times),
       onNanos: (nanos) => {
         if (Number.isInteger(times)) return make(nanos * BigInt(times))
-        if (!Number.isFinite(times)) return make(Number(nanos) * times)
         const nanosNumber = Number(nanos)
-        if (Number.isSafeInteger(nanosNumber)) {
-          const scaled = nanosNumber * times
-          if (Math.abs(scaled) <= Number.MAX_SAFE_INTEGER) {
-            return Number.isInteger(scaled) ? make(BigInt(scaled)) : fromNanosNumber(scaled)
-          }
+        const scaled = nanosNumber * times
+        if (
+          !Number.isFinite(times) ||
+          (Number.isSafeInteger(nanosNumber) && Math.abs(scaled) <= Number.MAX_SAFE_INTEGER)
+        ) {
+          return fromNanosNumber(scaled)
         }
         let numerator = times
         let denominator = bigint1
@@ -1475,11 +1478,7 @@ export const times: {
           numerator *= 2
           denominator *= bigint2
         }
-        const scaled = nanos * BigInt(numerator)
-        const absolute = scaled < bigint0 ? -scaled : scaled
-        const rounded = absolute / denominator +
-          (absolute % denominator * bigint2 >= denominator ? bigint1 : bigint0)
-        return make(scaled < bigint0 ? -rounded : rounded)
+        return make(divideTiesAwayFromZero(nanos * BigInt(numerator), denominator))
       },
       onInfinity: () => times > 0 ? infinity : times < 0 ? negativeInfinity : zero,
       onNegativeInfinity: () => times > 0 ? negativeInfinity : times < 0 ? infinity : zero
