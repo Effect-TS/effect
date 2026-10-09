@@ -8,15 +8,18 @@ describe("Stdio", () => {
       const stdio = yield* Stdio.Stdio
       assert.isFalse(yield* stdio.stdinIsTerminal)
       assert.isFalse(yield* stdio.stdoutIsTerminal)
+      assert.isFalse(yield* stdio.stderrIsTerminal)
     }).pipe(Effect.provide(Stdio.layerTest({}))))
 
   it.effect("layerTest allows terminal state overrides", () =>
     Effect.gen(function*() {
       const stdio = yield* Stdio.Stdio
       assert.isTrue(yield* stdio.stdinIsTerminal)
-      assert.isTrue(yield* stdio.stdoutIsTerminal)
+      assert.isFalse(yield* stdio.stdoutIsTerminal)
+      assert.isTrue(yield* stdio.stderrIsTerminal)
     }).pipe(Effect.provide(Stdio.layerTest({
       stdinIsTerminal: Effect.succeed(true),
-      stdoutIsTerminal: Effect.succeed(true)
+      stdoutIsTerminal: Effect.succeed(false),
+      stderrIsTerminal: Effect.succeed(true)
     }))))
 })
