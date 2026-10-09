@@ -1957,9 +1957,9 @@ const make = Effect.gen(function*() {
     activeShardsLatch.openUnsafe()
   })
 
-  // Hand the shards off before the loops stop. The wait is bounded, so this is
-  // best effort: anything still held afterwards is dropped by the final
-  // `releaseAll`.
+  // Hand the shards off before the loops stop. This is best effort: the wait
+  // is bounded, and if it times out, the final `releaseAll` attempts to
+  // release the remaining locks.
   yield* Scope.addFinalizerExit(shardingScope, (exit) =>
     Effect.andThen(
       shutdown(exit),
