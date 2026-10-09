@@ -89,13 +89,20 @@ describe("SqlRunnerStorage", () => {
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).flatMap(([label, layer]) =>
     [
-      [label, StorageLive.pipe(Layer.provideMerge(layer), Layer.provide(ShardingConfig.layer()))],
+      [
+        label,
+        StorageLive.pipe(
+          Layer.provideMerge(layer),
+          Layer.provide(ShardingConfig.layer({ shardLockExpiration: 2000 }))
+        )
+      ],
       [
         label + " (no advisory)",
         StorageLive.pipe(
           Layer.provideMerge(layer),
           Layer.provide(ShardingConfig.layer({
-            shardLockDisableAdvisory: true
+            shardLockDisableAdvisory: true,
+            shardLockExpiration: 2000
           }))
         )
       ]
@@ -160,11 +167,32 @@ describe("SqlRunnerStorage", () => {
           const shards = [ShardId.make("default", 4)]
 
           yield* storage.register(runner1, true)
-          yield* storage.acquire(runnerAddress1, shards)
+          expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
           yield* storage.unregister(runnerAddress1)
+          const refreshed = yield* storage.refresh(runnerAddress1, shards)
 
-          expect(yield* storage.refresh(runnerAddress1, shards)).toEqual([])
-        }))
+          if (label.startsWith("sqlite") || label.endsWith(" (no advisory)")) {
+            const runnerAddress2 = RunnerAddress.make("localhost", 1235)
+            yield* storage.register(
+              Runner.make({
+                address: runnerAddress2,
+                groups: ["default"],
+                weight: 1
+              }),
+              true
+            )
+            expect(yield* storage.acquire(runnerAddress2, shards)).toEqual([])
+
+            for (let i = 0; i < 8; i++) {
+              yield* Effect.sleep(500)
+              yield* storage.refresh(runnerAddress1, shards)
+            }
+
+            expect(yield* storage.acquire(runnerAddress2, shards)).toEqual(shards)
+          }
+
+          expect(refreshed).toEqual([])
+        }).pipe(TestServices.provideLive))
     })
   })
 })
