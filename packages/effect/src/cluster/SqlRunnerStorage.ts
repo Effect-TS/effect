@@ -187,15 +187,6 @@ const makeStorage = Effect.fnUntraced(function*(options: {
     orElse: () => sql`datetime(${sqlNow}, '-${expiresSeconds} seconds')`
   })
 
-  // A runner that is no longer registered, such as one that is shutting down,
-  // cannot renew its leases. Its locks stay held until it releases them or
-  // they expire.
-  const lockHolderIsLive = sql`EXISTS (
-    SELECT 1 FROM ${runnersTableSql}
-    WHERE ${runnersTableSql}.address = ${locksTableSql}.address
-    AND ${runnersTableSql}.last_heartbeat > ${lockExpiresAt}
-  )`
-
   const encodeBoolean = sql.onDialectOrElse({
     mssql: () => (b: boolean) => (b ? 1 : 0),
     sqlite: () => (b: boolean) => (b ? 1 : 0),
@@ -473,7 +464,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         sql`
           WITH locked AS (
             SELECT shard_id FROM ${locksTableSql}
-            WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${lockHolderIsLive}
+            WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
             ${pgLockOrder} FOR UPDATE
           )
           UPDATE ${locksTableSql}
@@ -492,8 +483,8 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         return sql<Array<{ shard_id: string }>>`
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
-          WHERE address = ${address} AND shard_id IN ${shardIdsStr} AND ${lockHolderIsLive};
-          SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND shard_id IN ${shardIdsStr} AND ${lockHolderIsLive}
+          WHERE address = ${address} AND shard_id IN ${shardIdsStr};
+          SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND shard_id IN ${shardIdsStr}
         `.pipe(
           execWithLockConnUnprepared,
           Effect.map((rows) => rows[1].map((row) => row.shard_id))
@@ -505,16 +496,32 @@ const makeStorage = Effect.fnUntraced(function*(options: {
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
         OUTPUT inserted.shard_id
-        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${lockHolderIsLive}
+        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string))),
     orElse: () => (address: string, shardIds: ReadonlyArray<string>) =>
       sql`
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
-        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${lockHolderIsLive}
+        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
         RETURNING shard_id
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
+
+  // A runner that is no longer registered, such as one that is shutting down,
+  // cannot renew row-based leases. Its locks stay held until it releases them
+  // or they expire.
+  const usesRowLocks = sql.onDialectOrElse({
+    pg: () => disableAdvisoryLocks,
+    mysql: () => disableAdvisoryLocks,
+    orElse: () => true
+  })
+  const refreshLocks = usesRowLocks
+    ? (address: string, shardIds: ReadonlyArray<string>) =>
+      sql`SELECT 1 FROM ${runnersTableSql} WHERE address = ${address}`.pipe(
+        execWithLockConnValues,
+        Effect.flatMap((rows) => rows.length > 0 ? refreshShards(address, shardIds) : Effect.succeed([]))
+      )
+    : refreshShards
 
   // On failure, replace the connection ready at entry. If none was ready,
   // retry only a failed rebuild, leaving pending or newly ready connections alone.
@@ -636,7 +643,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
       return withLockOperationDeadline(
         heartbeat.pipe(
           execWithLockConn,
-          Effect.andThen(refreshShards(address, shardIds))
+          Effect.andThen(refreshLocks(address, shardIds))
         )
       ).pipe(
         PersistenceError.refail,
