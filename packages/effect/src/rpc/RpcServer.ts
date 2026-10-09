@@ -693,22 +693,19 @@ export const make: <Rpcs extends Rpc.Any>(
     const write = Exit.isExit(effect) && Exit.isSuccess(effect)
       ? send(client.id, responseEnvelope(requestId, tag, effect.value), collector && collector.clearUnsafe())
       : Effect.flatMap(
-        Effect.catchCause(
+        Effect.catch(
           Effect.provideContext(
             collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect,
             schemas.context
           ),
-          (cause) => {
-            if (Cause.hasInterruptsOnly(cause)) {
-              return Effect.failCause(cause)
-            }
-            return Effect.withFiber((fiber) => {
-              const error = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
-              const defect = Cause.die(`Failed to encode response for RPC "${schemas.tag}": ${error}`)
+          (error) =>
+            Effect.withFiber((fiber) => {
+              const defect = Cause.die(
+                `Failed to encode response for RPC "${schemas.tag}": ${SchemaIssue.defaultFormatter(error.issue)}`
+              )
               reportCauseUnsafe(fiber, defect)
               return Effect.failCause(defect)
             })
-          }
         ),
         (value) => send(client.id, responseEnvelope(requestId, tag, value), collector && collector.clearUnsafe())
       )

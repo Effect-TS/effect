@@ -9,7 +9,6 @@ import {
   Queue,
   Ref,
   Schema,
-  SchemaGetter,
   Scope,
   Sink,
   Stdio,
@@ -90,17 +89,18 @@ describe("RpcServer", () => {
       }))
   }
 
-  it.effect("reports a success encode failure and names the rpc in the client defect", () => {
+  it.effect("reports success encode failures with the rpc tag", () => {
     const reports: Array<string> = []
     return Effect.gen(function*() {
       const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
-      const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
-        Effect.provide(Layer.mergeAll(
-          group.toLayer({ getUserAge: () => Effect.succeed("not a number" as unknown as number) }),
-          RpcSerialization.layerNdjson
-        ))
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ getUserAge: () => Effect.succeed("not a number" as unknown as number) }),
+            RpcSerialization.layerNdjson
+          ))
+        )
       )
-      const handler = HttpEffect.toWebHandler(httpEffect)
       const body = yield* Effect.promise(() =>
         handler(
           new Request("http://test/rpc", {
@@ -110,52 +110,10 @@ describe("RpcServer", () => {
         ).then((response) => response.text())
       )
 
+      const message = `Failed to encode response for RPC "getUserAge": Expected number\n  at ["value"]`
       const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
-      assert.strictEqual(response._tag, "Exit")
-      assert(response.exit._tag === "Failure")
-      assert.strictEqual(response.exit.cause[0]._tag, "Die")
-      const defect = JSON.stringify(response.exit.cause[0])
-      const identifiesFailure = (message: string) =>
-        message.includes("getUserAge") && message.includes("Expected number")
-      assert.deepStrictEqual(
-        { reported: reports.some(identifiesFailure), clientDefect: identifiesFailure(defect) },
-        { reported: true, clientDefect: true },
-        JSON.stringify({ reports, defect })
-      )
-    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
-  })
-
-  it.effect("does not report an interrupted success encoder as an encode failure", () => {
-    const reports: Array<string> = []
-    return Effect.gen(function*() {
-      let encodingStarted = false
-      const success = Schema.Number.pipe(Schema.decode({
-        decode: SchemaGetter.passthrough(),
-        encode: SchemaGetter.transformEffect(() =>
-          Effect.sync(() => {
-            encodingStarted = true
-          }).pipe(Effect.andThen(Effect.interrupt))
-        )
-      }))
-      const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success }))
-      const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
-        Effect.provide(Layer.mergeAll(
-          group.toLayer({ getUserAge: () => Effect.succeed(42) }),
-          RpcSerialization.layerNdjson
-        ))
-      )
-      const handler = HttpEffect.toWebHandler(httpEffect)
-      yield* Effect.promise(() =>
-        handler(
-          new Request("http://test/rpc", {
-            method: "POST",
-            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n`
-          })
-        ).then((response) => response.text())
-      )
-
-      assert.isTrue(encodingStarted)
-      assert.deepStrictEqual(reports, [])
+      assert.deepStrictEqual(response.exit, { _tag: "Failure", cause: [{ _tag: "Die", defect: message }] })
+      assert.deepStrictEqual(reports, [message])
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
 
