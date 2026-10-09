@@ -9,6 +9,7 @@ import {
   Queue,
   Ref,
   Schema,
+  SchemaGetter,
   Scope,
   Sink,
   Stdio,
@@ -121,6 +122,40 @@ describe("RpcServer", () => {
         { reported: true, clientDefect: true },
         JSON.stringify({ reports, defect })
       )
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
+
+  it.effect("does not report an interrupted success encoder as an encode failure", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
+      let encodingStarted = false
+      const success = Schema.Number.pipe(Schema.decode({
+        decode: SchemaGetter.passthrough(),
+        encode: SchemaGetter.transformEffect(() =>
+          Effect.sync(() => {
+            encodingStarted = true
+          }).pipe(Effect.andThen(Effect.interrupt))
+        )
+      }))
+      const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success }))
+      const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+        Effect.provide(Layer.mergeAll(
+          group.toLayer({ getUserAge: () => Effect.succeed(42) }),
+          RpcSerialization.layerNdjson
+        ))
+      )
+      const handler = HttpEffect.toWebHandler(httpEffect)
+      yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      assert.isTrue(encodingStarted)
+      assert.deepStrictEqual(reports, [])
     }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
   })
 
