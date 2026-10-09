@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.9.4
+          deno-version: v2.9.7
       - run: pnpm check
         env:
           # Leave memory headroom for the runner by collecting the Go heap earlier.
@@ -130,7 +130,7 @@ jobs:
             bun: ""
             command: pnpm test --max-concurrency=10
           - runtime: Deno
-            deno: v2.9.4
+            deno: v2.9.7
             bun: ""
             command: deno task test --max-concurrency=10
           - runtime: Bun
