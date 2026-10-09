@@ -107,6 +107,27 @@ export const Uninterruptible = Context.Reference<boolean | "client" | "server">(
 )
 
 /**
+ * Annotation that interrupts a cluster request when entity termination starts,
+ * rather than waiting for the termination grace period to expire.
+ *
+ * **Details**
+ *
+ * The default value is `false`. Use for long-lived requests that cannot finish
+ * on their own. Persisted requests resume under the next owner without saving
+ * the interruption as a reply. Non-persisted requests receive an interrupt exit.
+ *
+ * Server-side `Uninterruptible` takes precedence over this annotation.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const InterruptOnTermination = Context.Reference<boolean>(
+  "effect/cluster/ClusterSchema/InterruptOnTermination",
+  { defaultValue: constFalse }
+)
+
+/**
  * Returns whether the `Uninterruptible` annotation applies to server-side
  * request handling for the provided context.
  *
