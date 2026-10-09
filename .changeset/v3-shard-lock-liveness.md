@@ -1,4 +1,5 @@
 ---
+"@effect/cluster": patch
 ---
 
-Add a regression test for shard locks refreshed by an unregistered runner.
+Stop refreshing shard locks for runners that are no longer registered.

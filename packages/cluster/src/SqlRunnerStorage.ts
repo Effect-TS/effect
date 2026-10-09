@@ -534,14 +534,21 @@ export const make = Effect.fnUntraced(function*(options: {
   const stringLiteral = (s: string) => sql.literal(wrapString(s))
   const stringLiteralArr = (arr: ReadonlyArray<string>) => sql.literal(`(${arr.map(wrapString).join(",")})`)
 
+  const runnerExists = (address: string) => sql`EXISTS (SELECT 1 FROM ${runnersTableSql} WHERE address = ${address})`
+  const refreshAdvisoryLocks = (address: string, shardIds: ReadonlyArray<string>) =>
+    sql`SELECT 1 FROM ${runnersTableSql} WHERE address = ${address}`.pipe(
+      execWithLockConnValues,
+      Effect.flatMap((rows) => rows.length > 0 ? acquireLock(address, shardIds) : Effect.succeed([]))
+    )
+
   const refreshShards = sql.onDialectOrElse({
     pg: () => {
-      if (!disableAdvisoryLocks) return acquireLock
+      if (!disableAdvisoryLocks) return refreshAdvisoryLocks
       return (address: string, shardIds: ReadonlyArray<string>) =>
         sql`
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
-          WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
+          WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${runnerExists(address)}
           RETURNING shard_id
         `.pipe(
           execWithLockConnValues,
@@ -549,14 +556,15 @@ export const make = Effect.fnUntraced(function*(options: {
         )
     },
     mysql: () => {
-      if (!disableAdvisoryLocks) return acquireLock
+      if (!disableAdvisoryLocks) return refreshAdvisoryLocks
       return (address: string, shardIds: ReadonlyArray<string>) => {
         const shardIdsStr = stringLiteralArr(shardIds)
         return sql<Array<{ shard_id: string }>>`
           UPDATE ${locksTableSql}
           SET acquired_at = ${sqlNow}
-          WHERE address = ${address} AND shard_id IN ${shardIdsStr};
-          SELECT shard_id FROM ${locksTableSql} WHERE address = ${address} AND shard_id IN ${shardIdsStr}
+          WHERE address = ${address} AND shard_id IN ${shardIdsStr} AND ${runnerExists(address)};
+          SELECT shard_id FROM ${locksTableSql}
+          WHERE address = ${address} AND shard_id IN ${shardIdsStr} AND ${runnerExists(address)}
         `.pipe(
           execWithLockConnUnprepared,
           Effect.map((rows) => rows[1].map((row) => row.shard_id))
@@ -568,13 +576,13 @@ export const make = Effect.fnUntraced(function*(options: {
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
         OUTPUT inserted.shard_id
-        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
+        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${runnerExists(address)}
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string))),
     orElse: () => (address: string, shardIds: ReadonlyArray<string>) =>
       sql`
         UPDATE ${locksTableSql}
         SET acquired_at = ${sqlNow}
-        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)}
+        WHERE address = ${address} AND shard_id IN ${stringLiteralArr(shardIds)} AND ${runnerExists(address)}
         RETURNING shard_id
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
