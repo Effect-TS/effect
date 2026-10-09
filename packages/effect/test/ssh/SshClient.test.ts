@@ -1,8 +1,10 @@
-import { assert, describe } from "@effect/vitest"
+import { assert, describe, layer } from "@effect/vitest"
+import * as Crypto from "effect/Crypto"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Socket from "effect/socket/Socket"
 import { Reader, Writer } from "effect/ssh/internal/wire"
@@ -11,15 +13,25 @@ import * as SshClient from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
-import { it, runWithCrypto } from "./utils/crypto.ts"
 import * as TestServer from "./utils/TestServer.ts"
+
+// A `Crypto` service backed by the runtime's WebCrypto implementation.
+const CryptoLive = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+  })
+)
 
 const decoder = new TextDecoder()
 const text = (stream: Stream.Stream<Uint8Array, SshError.SshError>) =>
   Effect.map(Stream.runCollect(stream), (chunks) => chunks.map((chunk) => decoder.decode(chunk)).join(""))
 
-const hostKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519")))
-const userKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "user" })))
+const hostKey = Effect.succeed(await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive)))
+const userKey = Effect.succeed(
+  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519", { comment: "user" }), CryptoLive))
+)
 
 /** Session handler implementing a few commands used by the tests. */
 const shell: NonNullable<TestServer.ServerOptions["onSession"]> = (channel, start) =>
@@ -94,7 +106,7 @@ const connect = Effect.fnUntraced(function*(
   return { client, server: yield* server }
 })
 
-describe("SshClient", () => {
+layer(CryptoLive, { excludeTestServices: true })("SshClient", (it) => {
   describe("transport", () => {
     for (const kex of SshClient.defaultAlgorithms.kex) {
       it.effect(`negotiates ${kex}`, () =>
@@ -208,7 +220,7 @@ describe("SshClient", () => {
         }
       }))
 
-    it.live("fails the handshake when it does not complete in time", () =>
+    it.effect("fails the handshake when it does not complete in time", () =>
       Effect.gen(function*() {
         const pipe = yield* TestServer.makePipe
         const error = yield* Effect.flip(SshClient.make(pipe.clientSocket, {
@@ -221,7 +233,7 @@ describe("SshClient", () => {
         assert.strictEqual(error.reason._tag, "SshTimeoutError")
       }))
 
-    it.live("fails the connection when keep-alives go unanswered", () =>
+    it.effect("fails the connection when keep-alives go unanswered", () =>
       Effect.gen(function*() {
         const { client, server } = yield* connect({ answerKeepAlive: false }, {
           keepAlive: { interval: Duration.millis(20), maxMissed: 2 }
@@ -231,7 +243,7 @@ describe("SshClient", () => {
         assert.isTrue(server.globalRequests.includes("keepalive@openssh.com"))
       }))
 
-    it.live("keeps the connection alive when keep-alives are answered", () =>
+    it.effect("keeps the connection alive when keep-alives are answered", () =>
       Effect.gen(function*() {
         const { client, server } = yield* connect({}, { keepAlive: { interval: Duration.millis(10) } })
         yield* Effect.sleep(Duration.millis(80))
@@ -508,7 +520,7 @@ describe("SshClient", () => {
         assert.strictEqual(decoder.decode(chunks[0]), "over a socket")
       }))
 
-    it.live("interrupts channel opens the server never answers", () =>
+    it.effect("interrupts channel opens the server never answers", () =>
       Effect.gen(function*() {
         const { client } = yield* connect({ onChannel: () => Effect.never })
         const result = yield* client.forwardOut({ host: "db.internal", port: 5432 }).pipe(

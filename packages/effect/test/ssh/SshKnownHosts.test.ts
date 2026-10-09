@@ -1,13 +1,23 @@
-import { assert, describe } from "@effect/vitest"
+import { assert, describe, layer } from "@effect/vitest"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
 import * as Result from "effect/Result"
 import type { HostKeyInfo } from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as SshKnownHosts from "effect/ssh/SshKnownHosts"
-import { it } from "./utils/crypto.ts"
+
+// A `Crypto` service backed by the runtime's WebCrypto implementation.
+const CryptoLive = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+  })
+)
 
 // Public keys of the fixtures in ./fixtures/keys
 const ed25519Text = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOpbD3y/yIaPewNbIgtE7MgXJjuZWGYI+O8Ewf2VmOb1"
@@ -96,7 +106,7 @@ const makeFileSystem = (files: Map<string, string>, options?: { readonly failWri
       })
   })
 
-describe("SshKnownHosts", () => {
+layer(CryptoLive, { excludeTestServices: true })("SshKnownHosts", (it) => {
   describe("parse", () => {
     it("skips comments, blank lines, and invalid lines and records line numbers", () => {
       const knownHosts = SshKnownHosts.parse([

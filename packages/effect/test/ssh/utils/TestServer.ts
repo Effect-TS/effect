@@ -6,6 +6,7 @@
  * produce on demand.
  */
 import type * as Cause from "effect/Cause"
+import * as EffectCrypto from "effect/Crypto"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Latch from "effect/Latch"
@@ -19,7 +20,6 @@ import type { Bytes } from "effect/ssh/internal/wire"
 import { concat, equals, fromUtf8, Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
-import { crypto, provideCrypto } from "./crypto.ts"
 
 // -----------------------------------------------------------------------------
 // In-memory socket pair
@@ -136,6 +136,7 @@ class ProtocolFailure extends Error {}
 
 export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptions) {
   const scope = yield* Effect.scope
+  const crypto = yield* EffectCrypto.Crypto
   const hostKey = options.hostKey
   const hostKeyAlgorithm = options.hostKeyAlgorithm ?? SshKey.signatureAlgorithms(hostKey.type)[0]
   const kexAlgorithms = options.kex ?? defaultKex
@@ -458,7 +459,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
             .string(sessionId!)
             .raw(payload.subarray(0, payload.length - signature.length - 4))
             .finish()
-          const valid = yield* Effect.orDie(provideCrypto(SshKey.verify(known, data, signature)))
+          const valid = yield* Effect.orDie(SshKey.verify(known, data, signature))
           return yield* authOutcome("publickey", valid)
         }
         case "keyboard-interactive": {

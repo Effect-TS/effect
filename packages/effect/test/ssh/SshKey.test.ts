@@ -1,12 +1,22 @@
-import { assert, describe } from "@effect/vitest"
+import { assert, describe, layer } from "@effect/vitest"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
+import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
 import { Reader, utf8, Writer } from "effect/ssh/internal/wire"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import { readFileSync } from "node:fs"
-import { it } from "./utils/crypto.ts"
+
+// A `Crypto` service backed by the runtime's WebCrypto implementation.
+const CryptoLive = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+  })
+)
 
 // Fixtures were generated with OpenSSH_10.5p1 `ssh-keygen`. The fingerprints
 // below are the output of `ssh-keygen -lf <name>.pub` for each fixture.
@@ -151,7 +161,7 @@ const signAndVerify = (key: SshKey.PrivateKey) =>
     }
   })
 
-describe("SshKey", () => {
+layer(CryptoLive, { excludeTestServices: true })("SshKey", (it) => {
   describe("parsePrivateKey", () => {
     for (const { comment, fingerprint, format, name, type } of privateKeyFixtures) {
       it.effect(`parses ${format} ${type} (${name})`, () =>

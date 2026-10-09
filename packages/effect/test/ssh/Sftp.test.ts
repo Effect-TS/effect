@@ -1,4 +1,5 @@
-import { assert, describe } from "@effect/vitest"
+import { assert, describe, layer } from "@effect/vitest"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -10,9 +11,17 @@ import * as SshClient from "effect/ssh/SshClient"
 import type * as SshError from "effect/ssh/SshError"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
-import { it, runWithCrypto } from "./utils/crypto.ts"
 import * as SftpServer from "./utils/SftpServer.ts"
 import * as TestServer from "./utils/TestServer.ts"
+
+// A `Crypto` service backed by the runtime's WebCrypto implementation.
+const CryptoLive = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+  })
+)
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
@@ -40,8 +49,10 @@ const concatAll = (chunks: ReadonlyArray<Uint8Array>) => {
   return out
 }
 
-const hostKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519")))
-const userKey = Effect.succeed(await runWithCrypto(SshKey.generate("ssh-ed25519", { comment: "user" })))
+const hostKey = Effect.succeed(await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive)))
+const userKey = Effect.succeed(
+  await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519", { comment: "user" }), CryptoLive))
+)
 
 const connectClient = Effect.fnUntraced(function*(server: SftpServer.SftpServer) {
   const key = yield* userKey
@@ -73,7 +84,7 @@ const reasonTag = (error: PlatformError.PlatformError) => error.reason._tag
 
 const count = (requests: ReadonlyArray<string>, name: string) => requests.filter((request) => request === name).length
 
-describe("Sftp", () => {
+layer(CryptoLive, { excludeTestServices: true })("Sftp", (it) => {
   describe("session", () => {
     it.effect("negotiates version 3 and the OpenSSH extensions", () =>
       Effect.gen(function*() {
@@ -648,7 +659,7 @@ describe("Sftp", () => {
   })
 })
 
-describe("Sftp.fileSystem", () => {
+layer(CryptoLive, { excludeTestServices: true })("Sftp.fileSystem", (it) => {
   it.effect("is provided by Sftp.layerFileSystem", () =>
     Effect.gen(function*() {
       const server = SftpServer.make()
@@ -713,7 +724,7 @@ describe("Sftp.fileSystem", () => {
       assert.strictEqual((yield* fs.stat("preserved/a.txt")).mtime.pipe(Option.getOrThrow).getTime(), 1_000_000_000)
     }))
 
-  it.live("copy refuses to copy a directory into itself", () =>
+  it.effect("copy refuses to copy a directory into itself", () =>
     Effect.gen(function*() {
       const { fs, tree } = yield* connect()
       tree.writeFile("src/sub/a.txt", "a")

@@ -1,4 +1,5 @@
-import { assert, describe } from "@effect/vitest"
+import { assert, describe, layer } from "@effect/vitest"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
@@ -10,10 +11,18 @@ import * as SshChildProcessSpawner from "effect/ssh/SshChildProcessSpawner"
 import * as SshClient from "effect/ssh/SshClient"
 import * as SshKey from "effect/ssh/SshKey"
 import * as Stream from "effect/Stream"
-import { CryptoLive, it, runWithCrypto } from "./utils/crypto.ts"
 import * as TestServer from "./utils/TestServer.ts"
 
-const hostKey = await runWithCrypto(SshKey.generate("ssh-ed25519"))
+// A `Crypto` service backed by the runtime's WebCrypto implementation.
+const CryptoLive = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    ...Crypto.makeSubtle(globalThis.crypto.subtle),
+    randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
+  })
+)
+
+const hostKey = await Effect.runPromise(Effect.provide(SshKey.generate("ssh-ed25519"), CryptoLive))
 
 /**
  * Interprets the command lines produced by the spawner. Each recognised
@@ -77,7 +86,7 @@ const SpawnerLive = Layer.effect(
   })
 ).pipe(Layer.provide(CryptoLive))
 
-describe("SshChildProcessSpawner", () => {
+layer(CryptoLive, { excludeTestServices: true })("SshChildProcessSpawner", (it) => {
   describe("commandLine", () => {
     it("quotes arguments for POSIX shells", () => {
       assert.strictEqual(
@@ -126,7 +135,7 @@ describe("SshChildProcessSpawner", () => {
   })
 
   describe("spawning", () => {
-    it.live("closes the channel when the signal is ignored", () =>
+    it.effect("closes the channel when the signal is ignored", () =>
       Effect.gen(function*() {
         const handle = yield* ChildProcess.make("ignore-signals")
         yield* handle.kill({ forceKillAfter: "20 millis" })
