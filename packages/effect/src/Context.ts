@@ -490,8 +490,8 @@ interface ContextImpl<in Services> extends Context<Services> {
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
   // `makeUnsafe`'s `maxDepth` option, inherited unchanged by every context
-  // derived from this one. `undefined` means "use `MaxDepth`."
-  maxDepthOverride: number | undefined
+  // derived from this one. Defaults to 8.
+  maxDepth: number
 }
 
 interface Overlay {
@@ -500,18 +500,12 @@ interface Overlay {
   readonly parent: Overlay | undefined
 }
 
-// A rebase costs O(base size); a lookup costs O(depth). The right threshold
-// depends on the base, which this module can't know, so it stays fixed and
-// a builder opts in via `makeUnsafe`'s `maxDepth` option instead.
-const MaxDepth = 8
-const effectiveMaxDepth = (impl: ContextImpl<any>): number => impl.maxDepthOverride ?? MaxDepth
-
 // `depth >= maxDepth` never trips for a NaN maxDepth, so an unvalidated
 // override could silently turn off rebasing forever. Fall back to the
 // default for anything that isn't a usable depth, rather than throwing out
 // of `makeUnsafe`.
-const normalizeMaxDepth = (maxDepth: number | undefined): number | undefined =>
-  maxDepth !== undefined && Number.isInteger(maxDepth) && maxDepth >= 0 ? maxDepth : undefined
+const normalizeMaxDepth = (maxDepth: number | undefined): number =>
+  maxDepth !== undefined && Number.isInteger(maxDepth) && maxDepth >= 0 ? maxDepth : 8
 
 // Keep small bases cheap to read; larger bases are worth copying only after
 // enough fall-throughs to amortize the copy.
@@ -522,7 +516,7 @@ const makeImpl = <Services>(
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number,
-  maxDepthOverride: number | undefined
+  maxDepth: number = 8
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
   self.cacheRoot = cacheRoot ?? self
@@ -531,7 +525,7 @@ const makeImpl = <Services>(
   self.depth = depth
   self._flat = undefined
   self.baseHits = 0
-  self.maxDepthOverride = maxDepthOverride
+  self.maxDepth = maxDepth
   return self
 }
 
@@ -552,7 +546,7 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
   const map = new Map(self.mapUnsafe)
   f(map)
-  return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepthOverride)
+  return makeImpl(undefined, map, undefined, 0, (self as ContextImpl<any>).maxDepth)
 }
 
 // A private symbol so user code cannot forge a value that reads as absent
@@ -629,7 +623,7 @@ export const makeUnsafe = <Services = never>(
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepthOverride"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits" | "maxDepth"
 > = {
   get mapUnsafe() {
     return flatten(this as any as ContextImpl<any>)
@@ -845,12 +839,12 @@ export const addUnsafe = <Services, I, S>(
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
   const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
-  if (impl.depth >= effectiveMaxDepth(impl)) {
+  if (impl.depth >= impl.maxDepth) {
     // Rebase the overlay chain into a flat map, keeping the cacheRoot so a
     // rebase on an ordinary key does not invalidate fiber caches
     const map = new Map(impl.mapUnsafe)
     map.set(key, service)
-    return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepthOverride)
+    return makeImpl(cacheRoot, map, undefined, 0, impl.maxDepth)
   }
 
   return makeImpl(
@@ -858,7 +852,7 @@ export const addUnsafe = <Services, I, S>(
     impl.base,
     { key, value: service, parent: impl.overlay },
     impl.depth + 1,
-    impl.maxDepthOverride
+    impl.maxDepth
   )
 }
 
