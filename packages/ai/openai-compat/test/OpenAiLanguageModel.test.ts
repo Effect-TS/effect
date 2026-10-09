@@ -1767,10 +1767,11 @@ describe("OpenAiLanguageModel", () => {
             HttpClient.HttpClient,
             makeHttpClient((request) =>
               Effect.succeed(sseResponse(request, [
-                chunk({ reasoning: "Let me think" }),
-                chunk({ reasoning: " about this." }),
+                chunk({ content: "", reasoning: "Let me think" }),
+                chunk({ content: "", reasoning: " about this." }),
                 chunk({ content: "Hello" }),
-                chunk({ content: " there" }, "stop"),
+                chunk({ content: " there" }),
+                chunk({ content: "" }, "stop"),
                 "[DONE]"
               ]))
             )

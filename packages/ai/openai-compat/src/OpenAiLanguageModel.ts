@@ -1303,7 +1303,7 @@ const makeStreamResponse = Effect.fnUntraced(
           parts.push({ type: "reasoning-delta", id: reasoningId, delta: reasoningDelta })
         }
 
-        if (choice.delta?.content !== undefined && Predicate.isNotNull(choice.delta.content)) {
+        if (Predicate.isNotNullish(choice.delta?.content) && choice.delta.content.length > 0) {
           if (reasoningStarted) {
             reasoningStarted = false
             parts.push({
