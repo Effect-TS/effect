@@ -2,10 +2,10 @@
  * Deno-backed implementation of Effect's Crypto service.
  *
  * This module uses Deno's global Web Crypto API for secure randomness, SHA
- * digests, HMAC, HKDF, PBKDF2, key management, encryption, and signing. Legacy MD5
- * protocol digests use `node:crypto`. Argon2id and XChaCha20-Poly1305 use the
- * Node-compatible backend and fail with `PlatformError` when Deno omits the
- * corresponding native algorithm.
+ * digests, HMAC, HKDF, PBKDF2, key management, encryption, signing, and key
+ * agreement. Legacy MD5 protocol digests use `node:crypto`. Argon2id and
+ * XChaCha20-Poly1305 use the Node-compatible backend and fail with
+ * `PlatformError` when Deno omits the corresponding native algorithm.
  *
  * @stability unstable
  * @since 4.0.0

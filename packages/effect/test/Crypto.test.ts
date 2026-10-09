@@ -333,6 +333,59 @@ describe("Crypto", () => {
       assert.strictEqual(error.reason.description, "SubtleCrypto is not available")
     }))
 
+  it.effect("validates key agreement inputs and rejects all-zero X25519 secrets", () =>
+    Effect.gen(function*() {
+      const key = (
+        type: Crypto.Key["type"],
+        algorithm: Crypto.KeyAlgorithm,
+        usages: ReadonlyArray<Crypto.KeyUsage> = type === "private" ? ["deriveBits"] : []
+      ): Crypto.Key => ({ "~effect/Crypto/Key": "~effect/Crypto/Key", type, algorithm, extractable: false, usages })
+      let secret = Uint8Array.of(1)
+      let calls = 0
+      const crypto = Crypto.make({
+        ...primitives,
+        randomBytes: (size) => new Uint8Array(size),
+        digest: (_algorithm, data) => Effect.succeed(data),
+        deriveSharedSecret: () => {
+          calls++
+          return Effect.succeed(secret)
+        }
+      })
+      const derive = (privateKey: Crypto.Key, publicKey: Crypto.Key) =>
+        Crypto.deriveSharedSecret(privateKey, publicKey).pipe(Effect.provideService(Crypto.Crypto, crypto))
+      const p256 = { name: "ECDH", namedCurve: "P-256" } as const
+      const x25519 = { name: "X25519" } as const
+
+      assert.strictEqual(yield* derive(key("private", p256), key("public", p256)), secret)
+      assert.strictEqual(yield* derive(key("private", x25519), key("public", x25519)), secret)
+      assert.strictEqual(calls, 2)
+
+      for (
+        const [privateKey, publicKey] of [
+          [key("private", p256), key("public", { name: "ECDH", namedCurve: "P-384" })],
+          [key("private", p256), key("public", x25519)],
+          [key("private", x25519), key("public", p256)],
+          [key("public", p256), key("public", p256)],
+          [key("private", p256), key("private", p256)],
+          [key("private", p256, []), key("public", p256)],
+          [key("private", { name: "Ed25519" }, ["sign"]), key("public", { name: "Ed25519" })],
+          [key("secret", { name: "AES-CTR", length: 128 }), key("secret", { name: "AES-CTR", length: 128 })]
+        ] as const
+      ) {
+        const error = yield* Effect.flip(derive(privateKey, publicKey))
+        assert.strictEqual(error.reason._tag, "BadArgument")
+        assert.strictEqual(error.reason.method, "deriveSharedSecret")
+      }
+      assert.strictEqual(calls, 2)
+
+      secret = new Uint8Array(32)
+      const error = yield* Effect.flip(derive(key("private", x25519), key("public", x25519)))
+      assert.strictEqual(error.reason._tag, "BadArgument")
+      assert.strictEqual(error.reason.method, "deriveSharedSecret")
+      // Only X25519 defines the all-zero check.
+      assert.strictEqual(yield* derive(key("private", p256), key("public", p256)), secret)
+    }))
+
   it("uses the module path for its type ID", () => {
     assert.strictEqual(
       (testCrypto as unknown as Record<string, unknown>)["~effect/Crypto"],

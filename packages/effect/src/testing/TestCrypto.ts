@@ -75,7 +75,8 @@ export const make: (
       encrypt: crypto.encrypt,
       decrypt: crypto.decrypt,
       sign: crypto.sign,
-      verify: crypto.verify
+      verify: crypto.verify,
+      deriveSharedSecret: crypto.deriveSharedSecret
     })
   },
   (effect, seed) => Random.withSeed(effect, seed)
