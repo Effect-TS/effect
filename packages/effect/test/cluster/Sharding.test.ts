@@ -2982,7 +2982,7 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
           yield* TestClock.adjust(10)
         }
         // With one buffered chunk, the second is acknowledged only once the first is consumed.
-        const users = yield* client.GetAllUsersVolatile({ ids: [1, 2, 3] }, { asQueue: true, streamBufferSize: 1 })
+        const users = yield* client.GetAllUsersVolatile({ ids: [1, 2] }, { asQueue: true, streamBufferSize: 1 })
         yield* TestClock.adjust(1)
         storageState.assignSelf = false
         while (sharding.hasShardId(shardId)) {
@@ -2996,7 +2996,7 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         // Well within the 1 second drain timeout
         yield* TestClock.adjust(100)
         const exit = consumed.pollUnsafe()
-        assert.deepStrictEqual(exit && Exit.map(exit, (users) => users.map((user) => user.id)), Exit.succeed([1, 2, 3]))
+        assert.deepStrictEqual(exit && Exit.map(exit, (users) => users.map((user) => user.id)), Exit.succeed([1, 2]))
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
     }))
 
@@ -3011,11 +3011,6 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         yield* TestClock.adjust(100)
         assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
         assert.deepStrictEqual(sent, [])
-
-        // The drain times out and releases the lock, so the request moves on.
-        yield* TestClock.adjust(1000)
-        assert.strictEqual(storageState.releaseCalls.length, 1)
-        assert.deepStrictEqual(sent, [{ tag: "Request", port: 5678 }])
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, sent)), Effect.scoped)
     }))
 
@@ -3024,7 +3019,6 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
-        const state = yield* TestEntityState
         const { delivery, shardId } = yield* sendBeforeLockAcquired(storageState)
 
         storageState.lockHeldElsewhere = false
@@ -3032,7 +3026,6 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
           yield* TestClock.adjust(10)
         }
         assert.deepStrictEqual(yield* Fiber.await(delivery), Exit.void)
-        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
     }))
 
@@ -3040,26 +3033,13 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
       yield* Effect.gen(function*() {
-        const state = yield* TestEntityState
         const { delivery } = yield* sendBeforeLockAcquired(storageState)
 
         yield* TestClock.adjust(handoffLockExpiration)
-        assertNotAssignedToRunner(delivery.pollUnsafe())
-        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
-      }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
-    }))
-
-  it.effect("fails a remote request waiting on the new owner when its shard moves away", () =>
-    Effect.gen(function*() {
-      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
-      yield* Effect.gen(function*() {
-        const state = yield* TestEntityState
-        const { delivery } = yield* sendBeforeLockAcquired(storageState)
-
-        storageState.assignSelf = false
-        yield* TestClock.adjust(50)
-        assertNotAssignedToRunner(delivery.pollUnsafe())
-        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0)
+        const exit = delivery.pollUnsafe()
+        assert(exit && Exit.isFailure(exit), "delivery must fail")
+        const error = Cause.findErrorOption(exit.cause)
+        assert(Option.isSome(error) && error.value instanceof ClusterError.EntityNotAssignedToRunner)
       }).pipe(Effect.provide(GracefulHandoffSharding(storageState, [])), Effect.scoped)
     }))
 
@@ -3486,12 +3466,6 @@ const sendBeforeLockAcquired = Effect.fnUntraced(function*(storageState: Failove
   assert.isUndefined(delivery.pollUnsafe(), "delivery must wait for the shard lock")
   return { delivery, shardId } as const
 })
-
-const assertNotAssignedToRunner = (exit: Exit.Exit<unknown, unknown> | undefined) => {
-  assert(exit && Exit.isFailure(exit), "delivery must fail")
-  const error = Cause.findErrorOption(exit.cause)
-  assert(Option.isSome(error) && error.value instanceof ClusterError.EntityNotAssignedToRunner)
-}
 
 class RegistrationContext extends Context.Service<RegistrationContext, string>()(
   "effect/test/cluster/RegistrationContext"

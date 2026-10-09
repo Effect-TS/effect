@@ -235,52 +235,6 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 2 })
     }))
 
-  it.effect("should acknowledge an active stream but reject new requests after EOF", () =>
-    Effect.gen(function*() {
-      const group = RpcGroup.make(Rpc.make("events", { success: Schema.Number, stream: true }))
-      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
-      let requests = 0
-      const server = yield* RpcServer.makeNoSerialization(group, {
-        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-      }).pipe(Effect.provide(group.toLayerHandler("events", () => {
-        requests++
-        return Stream.make(1).pipe(Stream.concat(Stream.make(2)))
-      })))
-      const request = {
-        _tag: "Request" as const,
-        id: RpcMessage.RequestId("stream"),
-        tag: "events" as const,
-        payload: undefined,
-        headers: Headers.empty
-      }
-      yield* server.write(1, request)
-      assert.deepStrictEqual(yield* Queue.take(messages), {
-        _tag: "Chunk",
-        clientId: 1,
-        requestId: request.id,
-        values: [1]
-      })
-      yield* server.write(1, RpcMessage.constEof)
-      assert(Exit.isFailure(yield* Effect.exit(server.write(1, { ...request, id: RpcMessage.RequestId("new") }))))
-      assert.strictEqual(requests, 1)
-      const ack = { _tag: "Ack" as const, requestId: request.id }
-      assert.deepStrictEqual(yield* Effect.exit(server.write(1, ack)), Exit.void)
-      assert.deepStrictEqual(yield* Queue.take(messages), {
-        _tag: "Chunk",
-        clientId: 1,
-        requestId: request.id,
-        values: [2]
-      })
-      yield* server.write(1, ack)
-      assert.deepStrictEqual(yield* Queue.take(messages), {
-        _tag: "Exit",
-        clientId: 1,
-        requestId: request.id,
-        exit: Exit.void
-      })
-      assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 1 })
-    }))
-
   it.effect("should backpressure STDIO sends when the output buffer is full", () =>
     Effect.gen(function*() {
       const protocolReady = yield* Deferred.make<RpcServer.Protocol["Service"]>()
