@@ -1458,8 +1458,21 @@ export const times: {
   (self: Duration, times: number): Duration =>
     match(self, {
       onMillis: (millis) => make(millis * times),
-      onNanos: (nanos) =>
-        Number.isInteger(times) ? make(nanos * BigInt(times)) : fromNanosNumber(Number(nanos) * times),
+      onNanos: (nanos) => {
+        if (Number.isInteger(times)) return make(nanos * BigInt(times))
+        if (!Number.isFinite(times)) return make(Number(nanos) * times)
+        let numerator = times
+        let denominator = bigint1
+        while (!Number.isInteger(numerator)) {
+          numerator *= 2
+          denominator *= bigint2
+        }
+        const scaled = nanos * BigInt(numerator)
+        const absolute = scaled < bigint0 ? -scaled : scaled
+        const rounded = absolute / denominator +
+          (absolute % denominator * bigint2 >= denominator ? bigint1 : bigint0)
+        return make(scaled < bigint0 ? -rounded : rounded)
+      },
       onInfinity: () => times > 0 ? infinity : times < 0 ? negativeInfinity : zero,
       onNegativeInfinity: () => times > 0 ? negativeInfinity : times < 0 ? infinity : zero
     })
