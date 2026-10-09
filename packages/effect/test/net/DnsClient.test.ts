@@ -892,16 +892,32 @@ describe("nameServerFromString", () => {
 })
 
 describe("nameServerFromInput", () => {
-  it("parses strings and uses port 53 for IP addresses", () => {
+  it("parses strings, converts address inputs, and uses port 53 for IP addresses", () => {
     const inet = NetAddress.inetAddressFromStringUnsafe("192.0.2.53:5353")
     const format = (input: NetAddress.IpAddressInput | NetAddress.InetAddressInput) =>
       Result.map(DnsClient.nameServerFromInput(input), NetAddress.formatInet)
     assert.deepStrictEqual(
-      ["2001:db8::53", NetAddress.ipFromStringUnsafe("192.0.2.53"), inet].map(format),
-      [Result.succeed("[2001:db8::53]:53"), Result.succeed("192.0.2.53:53"), Result.succeed("192.0.2.53:5353")]
+      [
+        "2001:db8::53",
+        NetAddress.ipFromStringUnsafe("192.0.2.53"),
+        [192, 0, 2, 53] as const,
+        inet,
+        { address: "2001:db8::53", port: 5353 }
+      ].map(format),
+      [
+        Result.succeed("[2001:db8::53]:53"),
+        Result.succeed("192.0.2.53:53"),
+        Result.succeed("192.0.2.53:53"),
+        Result.succeed("192.0.2.53:5353"),
+        Result.succeed("[2001:db8::53]:5353")
+      ]
     )
     assert.strictEqual(Result.getOrThrow(DnsClient.nameServerFromInput(inet)), inet)
-    assert.isTrue(Result.isFailure(DnsClient.nameServerFromInput("ns.example")))
+    for (
+      const input of ["ns.example", [192, 0, 2] as unknown as NetAddress.IpAddressInput, { address: "ns", port: 53 }]
+    ) {
+      assert.isTrue(Result.isFailure(DnsClient.nameServerFromInput(input)), JSON.stringify(input))
+    }
   })
 })
 

@@ -310,9 +310,10 @@ export const nameServerFromString = (
   )
 
 /**
- * Converts a name server given as an IP address, an internet address, or a
- * string to the internet address to query, parsing strings like
- * `nameServerFromString` and using port 53 for IP addresses.
+ * Converts a name server to the internet address to query. Strings are parsed
+ * like `nameServerFromString`, internet addresses and address parts with a
+ * port are converted like `NetAddress.inetAddressFromInput`, and other IP
+ * address inputs are converted like `NetAddress.ipFromInput` and use port 53.
  *
  * @stability experimental
  * @category constructors
@@ -323,7 +324,9 @@ export const nameServerFromInput = (
 ): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
   typeof input === "string"
     ? nameServerFromString(input)
-    : Result.succeed(NetAddress.isIpAddress(input) ? NetAddress.inetAddressUnsafe(input, 53) : input)
+    : "port" in input
+    ? NetAddress.inetAddressFromInput(input)
+    : Result.map(NetAddress.ipFromInput(input), (address) => NetAddress.inetAddressUnsafe(address, 53))
 
 const nameServerAddresses = (
   nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
