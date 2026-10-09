@@ -363,10 +363,13 @@ export const make = Effect.fnUntraced(function*<
       isRestartingDueToDefect = true
       const effect = writeRef.unsafeRebuild()
       return Effect.logError("Defect in entity, restarting", cause).pipe(
-        Effect.andThen(Effect.forEach(
-          interrupted,
-          (request) => respondExit(request, Exit.interrupt(FiberId.none)),
-          { discard: true }
+        Effect.andThen(Effect.forkIn(
+          Effect.forEach(
+            interrupted,
+            (request) => Effect.ignore(Effect.sandbox(respondExit(request, Exit.interrupt(FiberId.none)))),
+            { concurrency: "unbounded", discard: true }
+          ),
+          managerScope
         )),
         Effect.andThen(Effect.ignore(retryDriver.next(void 0))),
         Effect.flatMap(() => activeServers.has(address.entityId) ? effect : endLatch.open),
