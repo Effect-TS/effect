@@ -20,7 +20,7 @@ describe("NodeCrypto", () => {
         const [method, operation] of [
           ["digest", crypto.digest("unsupported" as Crypto.DigestAlgorithm, bytes)],
           ["hmac", Crypto.hmac("unsupported" as Crypto.HmacAlgorithm, bytes, bytes)],
-          ["pbkdf2", Crypto.pbkdf2("SHA-256", bytes, bytes, 2 ** 31, 32)]
+          ["pbkdf2", Crypto.pbkdf2("unsupported" as Crypto.HmacAlgorithm, bytes, bytes, 1, 32)]
         ] as const
       ) {
         const error = yield* Effect.flip(operation)

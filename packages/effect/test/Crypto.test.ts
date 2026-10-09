@@ -16,7 +16,9 @@ const primitives: Omit<Parameters<typeof Crypto.make>[0], "randomBytes"> = {
 const testCrypto = Crypto.make({
   ...primitives,
   randomBytes: (size) =>
-    size === 7 ? Uint8Array.of(0x18, 0, 0, 0, 0, 0, 0) : Uint8Array.from({ length: size }, (_, i) => i),
+    size % 7 === 0
+      ? Uint8Array.from({ length: size }, (_, i) => i % 7 === 0 ? 0x18 : 0)
+      : Uint8Array.from({ length: size }, (_, i) => i),
   digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length))
 })
 
@@ -41,17 +43,18 @@ const makeSequence = (values: ReadonlyArray<bigint>) => {
   return Crypto.make({
     ...primitives,
     randomBytes: (size) => {
-      assert.strictEqual(size, 7)
-      assert.isBelow(index, values.length, "Consumed more random draws than expected")
-      const value = values[index++]
-      return Uint8Array.of(
-        Number((value >> 48n) & 0x3fn),
-        Number((value >> 40n) & 0xffn),
-        Number((value >> 32n) & 0xffn),
-        Number((value >> 24n) & 0xffn),
-        Number((value >> 16n) & 0xffn),
-        Number((value >> 8n) & 0xffn),
-        Number(value & 0xffn)
+      assert.strictEqual(size % 7, 0)
+      assert.isAtMost(index + size / 7, values.length, "Consumed more random draws than expected")
+      return Uint8Array.from(
+        values.slice(index, index += size / 7).flatMap((value) => [
+          Number((value >> 48n) & 0x3fn),
+          Number((value >> 40n) & 0xffn),
+          Number((value >> 32n) & 0xffn),
+          Number((value >> 24n) & 0xffn),
+          Number((value >> 16n) & 0xffn),
+          Number((value >> 8n) & 0xffn),
+          Number(value & 0xffn)
+        ])
       )
     },
     digest: (_algorithm, data) => Effect.succeed(data)
@@ -189,6 +192,7 @@ describe("Crypto", () => {
     Effect.gen(function*() {
       assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(1.2, 3.9), 2)
       assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(1.2, 3.9, { halfOpen: true }), 2)
+      assert.ok(Object.is(yield* makeCrypto(0n).randomIntBetween(-0.5, 0), 0))
       for (
         const [min, max, halfOpen] of [
           [2, 1, false],
@@ -214,6 +218,25 @@ describe("Crypto", () => {
       const crypto = makeSequence([(1n << 53n) - 1n, 0n, 0n])
       assert.deepStrictEqual(yield* crypto.randomShuffle(input), [2, 3, 1])
       assert.deepStrictEqual(input, [1, 2, 3])
+    }))
+
+  it.effect("batches shuffle draws without fetching more than the shuffle needs", () =>
+    Effect.gen(function*() {
+      const sizes: Array<number> = []
+      const crypto = Crypto.make({
+        ...primitives,
+        randomBytes: (size) => {
+          sizes.push(size)
+          return new Uint8Array(size)
+        },
+        digest: (_algorithm, data) => Effect.succeed(data)
+      })
+      const shuffled = yield* crypto.randomShuffle(Array.from({ length: 1000 }, (_, i) => i))
+      assert.strictEqual(shuffled.length, 1000)
+      assert.deepStrictEqual(sizes, [7 * 585, 7 * 414])
+      sizes.length = 0
+      assert.deepStrictEqual(yield* crypto.randomShuffle([1]), [1])
+      assert.deepStrictEqual(sizes, [])
     }))
 
   it.effect("handles finite floating-point bounds whose difference overflows", () =>
@@ -311,7 +334,7 @@ describe("Crypto", () => {
       })
       const bytes = new Uint8Array()
       for (const invalid of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
-        for (const [iterations, length] of [[invalid, 32], [1, invalid], [2 ** 32, 32], [1, 2 ** 29]]) {
+        for (const [iterations, length] of [[invalid, 32], [1, invalid], [2 ** 31, 32], [1, 2 ** 29]]) {
           const error = yield* Effect.flip(
             Crypto.pbkdf2("SHA-256", bytes, bytes, iterations, length).pipe(
               Effect.provideService(Crypto.Crypto, crypto)
