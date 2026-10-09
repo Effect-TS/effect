@@ -426,9 +426,9 @@ export interface Crypto {
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Derives a password key with PBKDF2 using a positive 32-bit iteration count
-   * and an output length measured in bytes, below 2^29 so the bit length fits
-   * in 32 bits. Invalid iterations or lengths fail with
+   * Derives a password key with PBKDF2 using an iteration count between 1 and
+   * 2^31 - 1 and an output length measured in bytes, below 2^29 so the bit
+   * length fits in 32 bits. Invalid iterations or lengths fail with
    * `PlatformError.BadArgument` before invoking the platform primitive when
    * constructed with `make`.
    */
@@ -1362,7 +1362,30 @@ export const make = (
     }
   }
 
-  const nextIntBetweenUnsafe = (min: number, max: number, halfOpen = false): number => {
+  // Serves 7-byte draws for one operation from a local buffer, so a batch of
+  // draws costs one native fill. Refills never request more draws than the
+  // operation still expects, which keeps the consumed byte stream identical to
+  // drawing one value at a time, and no random bytes outlive the operation.
+  const makeDrawSource = (expected: number): () => Uint8Array => {
+    let bytes: Uint8Array = new Uint8Array(0)
+    let offset = 0
+    return () => {
+      if (offset === bytes.length) {
+        bytes = randomBytesUnsafe(7 * Math.max(1, Math.min(expected, 585)))
+        offset = 0
+      }
+      expected--
+      offset += 7
+      return bytes.subarray(offset - 7, offset)
+    }
+  }
+
+  const nextIntBetweenUnsafe = (
+    min: number,
+    max: number,
+    halfOpen = false,
+    draw: () => Uint8Array = () => randomBytesUnsafe(7)
+  ): number => {
     const minInt = Math.ceil(min)
     const maxInt = Math.floor(max)
     if (!Number.isSafeInteger(minInt) || !Number.isSafeInteger(maxInt)) {
@@ -1375,12 +1398,13 @@ export const make = (
       if (count <= 0) {
         throw new RangeError("range must contain at least one integer")
       }
-      if (count === 1) return minInt
+      // `+ 0` turns `Math.ceil` of a value in (-1, 0) into 0 instead of -0.
+      if (count === 1) return minInt + 0
       const bucketSize = (2 ** 53 - (2 ** 53 % count)) / count
       const limit = bucketSize * count
       while (true) {
-        const draw = readUint53(randomBytesUnsafe(7))
-        if (draw < limit) return minInt + (draw - (draw % bucketSize)) / bucketSize
+        const value = readUint53(draw())
+        if (value < limit) return minInt + (value - (value % bucketSize)) / bucketSize
       }
     }
     // Use 54 bits only for ranges wider than a 53-bit draw. BigInt keeps
@@ -1391,10 +1415,10 @@ export const make = (
     const bucketSize = (wide ? BigInt("1") << BigInt("54") : BigInt("1") << BigInt("53")) / count
     const limit = bucketSize * count
     while (true) {
-      const bytes = randomBytesUnsafe(7)
-      const draw = BigInt(readUint53(bytes)) +
+      const bytes = draw()
+      const value = BigInt(readUint53(bytes)) +
         (wide && (bytes[0] & 0x20) !== 0 ? BigInt("1") << BigInt("53") : BigInt("0"))
-      if (draw < limit) return Number(lower + draw / bucketSize)
+      if (value < limit) return Number(lower + value / bucketSize)
     }
   }
 
@@ -1475,15 +1499,16 @@ export const make = (
     },
     pbkdf2: (algorithm, password, salt, iterations, length) => {
       // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
-      // larger values instead of rejecting them.
+      // larger values instead of rejecting them. Node.js accepts only signed
+      // 32-bit iteration counts, so that is the portable limit.
       if (
-        !Number.isSafeInteger(iterations) || iterations <= 0 || iterations > 0xffff_ffff ||
+        !Number.isSafeInteger(iterations) || iterations <= 0 || iterations > 0x7fff_ffff ||
         !Number.isSafeInteger(length) || length <= 0 || length > 0x1fff_ffff
       ) {
         return Effect.fail(PlatformError.badArgument({
           module: "Crypto",
           method: "pbkdf2",
-          description: "iterations must be a positive 32-bit integer and length a positive integer below 2^29"
+          description: "iterations must be between 1 and 2^31 - 1 and length a positive integer below 2^29"
         }))
       }
       return impl.pbkdf2(algorithm, password, salt, iterations, length)
@@ -1502,8 +1527,9 @@ export const make = (
     randomShuffle: (elements) =>
       Effect.sync(() => {
         const buffer = Array.from(elements)
+        const draw = makeDrawSource(buffer.length - 1)
         for (let i = buffer.length - 1; i >= 1; i = i - 1) {
-          const index = nextIntBetweenUnsafe(0, i)
+          const index = nextIntBetweenUnsafe(0, i, false, draw)
           const value = buffer[i]!
           buffer[i] = buffer[index]!
           buffer[index] = value

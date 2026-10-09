@@ -2,10 +2,9 @@
  * Node-compatible implementation of Effect's `Crypto` service.
  *
  * This module builds the service from `node:crypto`. Random data comes from
- * `randomFillSync`, with small requests served from a 4 KiB buffer that is
- * discarded before a V8 startup snapshot is serialized. `createHash` and
- * `createHmac` provide digests and authentication, asynchronous `pbkdf2`
- * derives password keys, and `publicEncrypt` performs RSA-OAEP encryption.
+ * `randomFillSync`, `createHash` and `createHmac` provide digests and
+ * authentication, asynchronous `pbkdf2` derives password keys, and
+ * `publicEncrypt` performs RSA-OAEP encryption.
  * Node's native `webcrypto.subtle` provides managed keys, AES-GCM, AES-CTR,
  * RSA-OAEP decryption, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA, Ed25519, and ECDH
  * and X25519 key agreement. Native Argon2id is used when available.
@@ -21,7 +20,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
 import * as NodeCrypto from "node:crypto"
-import * as RandomPool from "./internal/randomPool.ts"
 import * as XChaCha from "./internal/xchacha.ts"
 
 const toHashAlgorithm = (algorithm: EffectCrypto.DigestAlgorithm): string => {
@@ -61,7 +59,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  */
 export const make: EffectCrypto.Crypto = EffectCrypto.make({
   ...EffectCrypto.makeSubtle(NodeCrypto.webcrypto.subtle as unknown as SubtleCrypto),
-  randomBytes: RandomPool.make((bytes) => NodeCrypto.randomFillSync(bytes)),
+  randomBytes: (size) => NodeCrypto.randomFillSync(new Uint8Array(size)),
   digest,
   xchacha20poly1305Encrypt: XChaCha.encrypt,
   xchacha20poly1305Decrypt: XChaCha.decrypt,

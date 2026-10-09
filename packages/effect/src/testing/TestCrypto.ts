@@ -4,7 +4,8 @@
  *
  * Random bytes, numbers, shuffles, UUIDs, and ULIDs are derived from a seeded
  * pseudo-random generator. Digest, key, encryption, and signing operations are
- * delegated to an underlying platform `Crypto` service.
+ * delegated to an underlying platform `Crypto` service, so key generation and
+ * randomized encryption and signatures are not reproducible.
  *
  * @stability unstable
  * @since 4.0.0
@@ -26,9 +27,10 @@ import * as Random from "../Random.ts"
  *
  * **Details**
  *
- * The effect requires an existing `Crypto` service and delegates all
- * non-random operations to it. Each evaluation starts a new random sequence from `seed`;
- * every other random operation is derived from that sequence.
+ * The effect requires an existing `Crypto` service and delegates digest, key,
+ * encryption, and signing operations to it. Each evaluation starts a new
+ * random sequence from `seed`; random bytes, numbers, shuffles, UUIDs, and
+ * ULIDs are derived from that sequence.
  *
  * **Gotchas**
  *
@@ -36,7 +38,9 @@ import * as Random from "../Random.ts"
  * security-sensitive purposes. The sequence depends on the order in which
  * random operations are evaluated. UUIDv7 and ULID values also include the
  * current `Clock` time, which must be controlled separately when their complete
- * output needs to be reproducible.
+ * output needs to be reproducible. Delegated operations use the platform's
+ * secure randomness, so `generateSecretKey`, `generateKeyPair`,
+ * `rsaOaepEncrypt`, and RSA-PSS or ECDSA signatures differ between runs.
  *
  * @see {@link layer} for providing the service as a layer
  *
@@ -100,7 +104,9 @@ export const make: (
  * **Gotchas**
  *
  * UUIDv7 and ULID values also depend on the current `Clock`. Provide a test
- * clock when their complete output needs to be reproducible.
+ * clock when their complete output needs to be reproducible. Key generation,
+ * RSA-OAEP encryption, and RSA-PSS or ECDSA signatures are delegated to the
+ * platform service and are not reproducible.
  *
  * @see {@link make} for constructing the service directly
  *
