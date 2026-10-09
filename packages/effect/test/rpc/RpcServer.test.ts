@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
+import { Deferred, Effect, Exit, Fiber, Layer, Logger, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
 import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
@@ -74,6 +74,33 @@ describe("RpcServer", () => {
         assert.strictEqual(body, "")
       }))
   }
+
+  it.effect("logs an error naming the rpc when a success value fails to encode", () => {
+    const logs: Array<string> = []
+    return Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
+      const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+        Effect.provide(Layer.mergeAll(
+          group.toLayer({ getUserAge: () => Effect.succeed("not a number" as unknown as number) }),
+          RpcSerialization.layerNdjson
+        ))
+      )
+      const handler = HttpEffect.toWebHandler(httpEffect)
+      yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      assert.isTrue(
+        logs.some((log) => log.includes("level=ERROR") && log.includes("getUserAge")),
+        JSON.stringify(logs)
+      )
+    }).pipe(Effect.provide(Logger.layer([Logger.map(Logger.formatLogFmt, (log) => logs.push(log))])))
+  })
 
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
