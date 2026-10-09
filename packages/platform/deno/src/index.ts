@@ -6,6 +6,12 @@
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as DenoAddressResolver from "./DenoAddressResolver.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
@@ -34,6 +40,12 @@ export * as DenoCrypto from "./DenoCrypto.ts"
  * @since 4.0.0
  */
 export * as DenoDatagramSocket from "./DenoDatagramSocket.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as DenoDns from "./DenoDns.ts"
 
 /**
  * @stability unstable

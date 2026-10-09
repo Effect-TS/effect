@@ -1,0 +1,67 @@
+import { assert, describe, it } from "@effect/vitest"
+import { assertTrue } from "@effect/vitest/utils"
+import { Equal, Hash, Result, Schema } from "effect"
+import * as Host from "effect/net/Host"
+import * as NetAddress from "effect/net/NetAddress"
+
+const success = <A>(result: Result.Result<A, unknown>): A => {
+  assertTrue(Result.isSuccess(result), "expected Success")
+  return result.success
+}
+
+const failure = <E>(result: Result.Result<unknown, E>): E => {
+  assertTrue(Result.isFailure(result), "expected Failure")
+  return result.failure
+}
+
+describe("Host", () => {
+  it("normalizes domain names", () => {
+    assert.strictEqual(success(Host.domainNameFromString("Example.COM.")), "example.com.")
+    assert.strictEqual(success(Host.domainNameFromString("_pg._tcp.DB.internal")), "_pg._tcp.db.internal")
+    assert.strictEqual(success(Host.domainNameFromString("Bücher.Example")), "xn--bcher-kva.example")
+  })
+
+  it("rejects malformed domain names", () => {
+    for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`]) {
+      failure(Host.domainNameFromString(input))
+    }
+  })
+
+  it("parses hosts", () => {
+    assert.isTrue(NetAddress.isIpv4Address(success(Host.hostFromString("10.0.0.5"))))
+    assert.strictEqual<unknown>(success(Host.hostFromString("FE80:0::1%eth0")), "fe80::1%eth0")
+    assert.strictEqual<unknown>(success(Host.hostFromString("DB.internal")), "db.internal")
+    failure(Host.hostFromString("10.0.0.1%eth0"))
+  })
+
+  it("parses and formats endpoints", () => {
+    for (
+      const [input, expected] of [
+        ["DB.internal:5432", "db.internal:5432"],
+        ["[2001:DB8::1]:443", "[2001:db8::1]:443"],
+        ["[fe80::1%eth0]:80", "[fe80::1%eth0]:80"]
+      ] as const
+    ) {
+      assert.strictEqual(Host.formatHostPort(success(Host.hostPortFromString(input))), expected)
+    }
+    for (const input of ["example.com", "example.com:65536", "::1:80", "[example.com]:80"]) {
+      failure(Host.hostPortFromString(input))
+    }
+  })
+
+  it("implements equality and hashing for endpoints", () => {
+    const a = success(Host.hostPortFromString("example.com:80"))
+    const b = success(Host.hostPortFromString("EXAMPLE.com:80"))
+    assert.isTrue(Equal.equals(a, b))
+    assert.strictEqual(Hash.hash(a), Hash.hash(b))
+    assert.isFalse(Equal.equals(a, success(Host.hostPortFromString("example.com:81"))))
+  })
+
+  it("decodes and encodes schemas", () => {
+    const host = Schema.decodeUnknownSync(Schema.HostFromString)("2001:DB8::1")
+    assert.strictEqual(Schema.encodeSync(Schema.HostFromString)(host), "2001:db8::1")
+    const endpoint = Schema.decodeUnknownSync(Schema.HostPortFromString)("DB.internal:5432")
+    assert.strictEqual(Schema.encodeSync(Schema.HostPortFromString)(endpoint), "db.internal:5432")
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Host)("DB.internal"))
+  })
+})

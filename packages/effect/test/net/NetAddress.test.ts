@@ -16,6 +16,14 @@ const failure = <E>(result: Result.Result<unknown, E>): E => {
 }
 
 describe("NetAddress", () => {
+  it("returns and checks address families", () => {
+    const ipv4 = success(NetAddress.ipv4FromString("1.2.3.4"))
+    const ipv6 = success(NetAddress.ipv6FromString("2001:db8::1"))
+    assert.strictEqual(NetAddress.familyOf(ipv4), "IPv4")
+    assert.strictEqual(NetAddress.familyOf(success(NetAddress.inetAddressFromString("[::1]:80"))), "IPv6")
+    assert.deepStrictEqual([ipv4, ipv6].filter(NetAddress.isFamily("IPv6")), [ipv6])
+  })
+
   it("returns IP address widths", () => {
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv4FromString("1.2.3.4"))), 32)
     assert.strictEqual(NetAddress.width(success(NetAddress.ipv6FromString("2001:db8::1"))), 128)
@@ -685,8 +693,8 @@ describe("NetAddress", () => {
     })
 
     it("snapshots the first positive IPv6 scope ID from each interface", () => {
-      const linkLocal = { family: "IPv6", scopeid: 7 }
-      const interfaces = {
+      const linkLocal: { family: "IPv6"; scopeid: number } = { family: "IPv6", scopeid: 7 }
+      const interfaces: Record<string, ReadonlyArray<NetAddress.NetworkInterfaceAddress> | undefined> = {
         en0: [
           { family: "IPv4", scopeid: 99 },
           { family: "IPv6" },
@@ -696,13 +704,15 @@ describe("NetAddress", () => {
           { family: "IPv6", scopeid: 9 }
         ],
         en1: undefined,
-        en2: [{ family: "IPv4" }, { family: "IPv6", scopeid: 0 }],
+        en2: [{ family: "IPv4" }, { family: "IPv6", scopeid: 0 }, { family: "IPv6", scopeid: null }],
         en3: [{ family: "IPv6", scopeid: 11 }]
       }
       const scopeIds = NetAddress.scopeIdsFromInterfaces(Object.entries(interfaces))
       linkLocal.scopeid = 12
       assert.deepStrictEqual(scopeIds, new Map([["en0", 7], ["en3", 11]]))
       assert.deepStrictEqual(NetAddress.scopeIdsFromInterfaces([]), new Map())
+      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en0), Option.some(12))
+      assert.deepStrictEqual(NetAddress.scopeIdFromInterface(interfaces.en2), Option.none())
     })
 
     it("provides throwing counterparts for trusted construction", () => {
@@ -781,6 +791,18 @@ describe("NetAddress", () => {
     })
   })
 
+  it("normalizes scoped IPv6 literals", () => {
+    assert.strictEqual(success(NetAddress.scopedIpv6LiteralFromString("FE80::1%01")), "fe80::1%1")
+    failure(NetAddress.scopedIpv6LiteralFromString("fe80::1%4294967296"))
+    assert.isFalse(NetAddress.isScopedIpv6Literal("FE80::1%eth0"))
+  })
+
+  it("validates ports", () => {
+    assert.strictEqual(Schema.decodeUnknownSync(Schema.Port)(65535), 65535)
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(65536))
+    assert.throws(() => Schema.decodeUnknownSync(Schema.Port)(1.5))
+  })
+
   it("decodes and canonically encodes schemas", () => {
     assert.strictEqual(Schema.resolveAnnotations(Schema.IpAddress)?.identifier, "IpAddress")
     assert.strictEqual(Schema.resolveAnnotations(Schema.IpAddressFromString)?.identifier, "IpAddressFromString")
@@ -796,6 +818,8 @@ describe("NetAddress", () => {
     assert.strictEqual(Schema.encodeSync(Schema.UnixPathAddressFromString)(unix), "../opaque.sock")
     assert.throws(() => Schema.decodeUnknownSync(Schema.MacAddressFromString)("00-11-22-33-44-55"))
     assert.throws(() => Schema.decodeUnknownSync(Schema.Ipv4AddressFromString)("999.0.0.1"))
+    const ip = Schema.decodeUnknownSync(Schema.IpAddressFromString)("2001:DB8::1")
+    assert.strictEqual(Schema.encodeSync(Schema.IpAddressFromString)(ip), "2001:db8::1")
   })
 
   it("validates branded address schemas on decode and encode", () => {
