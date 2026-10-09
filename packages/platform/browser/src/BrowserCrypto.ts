@@ -71,9 +71,6 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       return bytes
     }
 
-    return EffectCrypto.make({
-      ...EffectCrypto.makeSubtle(crypto.subtle),
-      randomBytes
-    })
+    return EffectCrypto.make({ subtle: crypto.subtle, randomBytes })
   })
 )

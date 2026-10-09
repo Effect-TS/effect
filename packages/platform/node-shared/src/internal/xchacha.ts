@@ -60,13 +60,18 @@ const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
   return output
 }
 
-const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) =>
-  Effect.try({
+const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) => {
+  const method = decrypt ? "xchacha20poly1305Decrypt" : "xchacha20poly1305Encrypt"
+  nativeAvailable ??= NodeCrypto.getCiphers().includes("chacha20-poly1305")
+  if (!nativeAvailable) {
+    return Effect.fail(PlatformError.badArgument({
+      module: "Crypto",
+      method,
+      description: `${method} is not supported by this Crypto service`
+    }))
+  }
+  return Effect.try({
     try: () => {
-      nativeAvailable ??= NodeCrypto.getCiphers().includes("chacha20-poly1305")
-      if (!nativeAvailable) {
-        throw new Error("Native ChaCha20-Poly1305 is unavailable")
-      }
       const key = hchacha20(options.key, options.nonce.subarray(0, 16))
       const iv = new Uint8Array(12)
       iv.set(options.nonce.subarray(16), 4)
@@ -94,12 +99,14 @@ const perform = (decrypt: boolean, options: Crypto.XChaCha20Poly1305Options) =>
     catch: (cause) =>
       PlatformError.systemError({
         module: "Crypto",
-        method: decrypt ? "xchacha20poly1305Decrypt" : "xchacha20poly1305Encrypt",
-        _tag: "Unknown",
-        description: "Could not perform XChaCha20-Poly1305 operation",
+        method,
+        // Decryption fails only when the ciphertext or its tag is invalid.
+        _tag: decrypt ? "InvalidData" : "Unknown",
+        description: decrypt ? "Could not authenticate or decrypt data" : "Could not encrypt data",
         cause
       })
   })
+}
 
 export const encrypt: Crypto.Crypto["xchacha20poly1305Encrypt"] = (options) => perform(false, options)
 export const decrypt: Crypto.Crypto["xchacha20poly1305Decrypt"] = (options) => perform(true, options)

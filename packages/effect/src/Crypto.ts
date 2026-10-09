@@ -44,32 +44,57 @@ const TypeId = "~effect/Crypto"
 export type DigestAlgorithm = "MD5" | "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
 
 /**
- * Hash algorithms supported for message authentication and password derivation.
+ * SHA hash algorithms used by HMAC, key derivation, RSA, and ECDSA.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type HmacAlgorithm = Exclude<DigestAlgorithm, "MD5">
+export type HashAlgorithm = Exclude<DigestAlgorithm, "MD5">
 
 /**
- * Inputs for RSA-OAEP public-key encryption using a DER-encoded SPKI key.
+ * Parameters for PBKDF2 password derivation.
  *
  * **Details**
  *
- * The hash defaults to SHA-256 and is also used for OAEP's mask generation.
- * SHA-1 is available for compatibility with legacy protocols.
- * The optional label must match the label used when decrypting the ciphertext.
+ * Iterations must be between 1 and 2^31 - 1. The output length is measured in
+ * bytes and must be below 2^29.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface RsaOaepOptions {
-  readonly publicKey: Uint8Array
-  readonly data: Uint8Array
-  readonly hash?: HmacAlgorithm | undefined
-  readonly label?: Uint8Array | undefined
+export interface Pbkdf2Options {
+  readonly hash: HashAlgorithm
+  readonly password: Uint8Array
+  readonly salt: Uint8Array
+  readonly iterations: number
+  readonly length: number
+}
+
+/**
+ * Parameters for HKDF key derivation.
+ *
+ * **Details**
+ *
+ * The output length is measured in bytes and must be between 1 and 255 times
+ * the hash output size. Salt and info default to empty.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface HkdfOptions {
+  readonly hash: HashAlgorithm
+  readonly key: Uint8Array
+  readonly salt?: Uint8Array | undefined
+  readonly info?: Uint8Array | undefined
+  readonly length: number
 }
 
 /**
@@ -182,7 +207,7 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
 export type SecretKeyAlgorithm =
   | { readonly name: "AES-GCM"; readonly length: 128 | 192 | 256 }
   | { readonly name: "AES-CTR"; readonly length: 128 | 192 | 256 }
-  | { readonly name: "HMAC"; readonly hash: HmacAlgorithm; readonly length?: number | undefined }
+  | { readonly name: "HMAC"; readonly hash: HashAlgorithm; readonly length?: number | undefined }
 
 /**
  * Algorithms for RSA, ECDSA, Ed25519, ECDH, and X25519 key pairs.
@@ -200,7 +225,7 @@ export type SecretKeyAlgorithm =
 export type KeyPairAlgorithm =
   | {
     readonly name: "RSA-OAEP" | "RSA-PSS" | "RSASSA-PKCS1-v1_5"
-    readonly hash: HmacAlgorithm
+    readonly hash: HashAlgorithm
     readonly modulusLength?: number | undefined
     readonly publicExponent?: Uint8Array | undefined
   }
@@ -349,7 +374,7 @@ export type CipherOptions =
  */
 export type SigningOptions =
   | { readonly name: "HMAC" | "Ed25519" | "RSASSA-PKCS1-v1_5" }
-  | { readonly name: "ECDSA"; readonly hash: HmacAlgorithm }
+  | { readonly name: "ECDSA"; readonly hash: HashAlgorithm }
   | { readonly name: "RSA-PSS"; readonly saltLength?: number | undefined }
 
 /**
@@ -369,7 +394,7 @@ export type SigningOptions =
  * const TestCrypto = Layer.succeed(
  *   Crypto.Crypto,
  *   Crypto.make({
- *     ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *     subtle: globalThis.crypto.subtle,
  *     randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
  *   })
  * )
@@ -420,41 +445,20 @@ export interface Crypto {
    * Computes an HMAC for the supplied key and data using a SHA hash.
    */
   hmac(
-    algorithm: HmacAlgorithm,
+    algorithm: HashAlgorithm,
     key: Uint8Array,
     data: Uint8Array
   ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Derives a password key with PBKDF2 using an iteration count between 1 and
-   * 2^31 - 1 and an output length measured in bytes, below 2^29 so the bit
-   * length fits in 32 bits. Invalid iterations or lengths fail with
-   * `PlatformError.BadArgument` before invoking the platform primitive when
-   * constructed with `make`.
+   * Derives a password key with PBKDF2.
    */
-  pbkdf2(
-    algorithm: HmacAlgorithm,
-    password: Uint8Array,
-    salt: Uint8Array,
-    iterations: number,
-    length: number
-  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+  pbkdf2(options: Pbkdf2Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
-   * Encrypts data with an RSA public key using OAEP padding.
+   * Derives a key with HKDF.
    */
-  rsaOaepEncrypt(options: RsaOaepOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError>
-
-  /**
-   * Derives a key using HKDF with a selected SHA hash and length in bytes.
-   */
-  hkdf(
-    algorithm: HmacAlgorithm,
-    key: Uint8Array,
-    salt: Uint8Array,
-    info: Uint8Array,
-    length: number
-  ): Effect.Effect<Uint8Array, PlatformError.PlatformError>
+  hkdf(options: HkdfOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
    * Derives a password key using Argon2id version 19.
@@ -852,90 +856,58 @@ export const randomULID: Effect.Effect<string, PlatformError.PlatformError, Cryp
 )
 
 /**
- * Computes an HMAC using the Crypto service's message authentication capability.
+ * Computes an HMAC using the Crypto service.
  *
  * **Gotchas**
  *
- * Fails with `PlatformError` if the platform rejects the key or algorithm.
- * SHA-1 is available for legacy protocol compatibility.
+ * Comparing a computed MAC with `===` or a byte loop can leak timing. To check
+ * a received MAC, import the key with `importKey` and use `verify`, which
+ * compares in constant time. SHA-1 is available for legacy protocols.
  *
  * @stability unstable
  * @category hashing
  * @since 4.0.0
  */
 export const hmac = (
-  algorithm: HmacAlgorithm,
+  algorithm: HashAlgorithm,
   key: Uint8Array,
   data: Uint8Array
 ): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.hmac(algorithm, key, data))
 
 /**
- * Derives a password key using the Crypto service's PBKDF2 capability.
+ * Derives a password key with PBKDF2 using the Crypto service.
  *
  * **Details**
  *
- * The output length is measured in bytes. `make` validates that iterations and
- * length are positive safe integers before calling the platform primitive.
+ * Iterations outside 1 to 2^31 - 1 and output lengths outside 1 to 2^29 - 1
+ * bytes fail with `PlatformError.BadArgument`.
  *
  * **Gotchas**
  *
- * Fails with `PlatformError` if the platform rejects the request. Platform
- * limits may be lower than JavaScript's safe integer limit.
  * Interruption stops waiting for the result; native key derivation may continue.
  *
  * @stability unstable
  * @category hashing
  * @since 4.0.0
  */
-export const pbkdf2 = (
-  algorithm: HmacAlgorithm,
-  password: Uint8Array,
-  salt: Uint8Array,
-  iterations: number,
-  length: number
-): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
-  Effect.flatMap(Crypto, (crypto) => crypto.pbkdf2(algorithm, password, salt, iterations, length))
+export const pbkdf2 = (options: Pbkdf2Options): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.pbkdf2(options))
 
 /**
- * Encrypts data with the Crypto service's RSA-OAEP public-key capability.
- *
- * **Gotchas**
- *
- * Encryption fails with `PlatformError` if the public key is invalid or the
- * plaintext exceeds the key's OAEP payload limit. Ciphertext is randomized; use
- * the matching private key and hash to decrypt it. Public keys must come from a
- * trusted source.
- *
- * @stability unstable
- * @category encryption
- * @since 4.0.0
- */
-export const rsaOaepEncrypt = (
-  options: RsaOaepOptions
-): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
-  Effect.flatMap(Crypto, (crypto) => crypto.rsaOaepEncrypt(options))
-
-/**
- * Derives key bytes using HKDF with a selected SHA hash.
+ * Derives key bytes with HKDF using the Crypto service.
  *
  * **Details**
  *
- * The length is measured in bytes and must be between one and 255 times the hash
- * output size. Salt and info may be empty.
+ * The length is measured in bytes and must be between 1 and 255 times the hash
+ * output size. Salt and info default to empty.
  *
  * @stability unstable
  * @category hashing
  * @since 4.0.0
  */
-export const hkdf = (
-  algorithm: HmacAlgorithm,
-  key: Uint8Array,
-  salt: Uint8Array,
-  info: Uint8Array,
-  length: number
-): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
-  Effect.flatMap(Crypto, (crypto) => crypto.hkdf(algorithm, key, salt, info, length))
+export const hkdf = (options: HkdfOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
+  Effect.flatMap(Crypto, (crypto) => crypto.hkdf(options))
 
 /**
  * Derives a password key using Argon2id version 19.
@@ -960,7 +932,8 @@ export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, Pl
  * **Details**
  *
  * Requires a 32-byte key and a unique 24-byte nonce. The output includes a
- * 16-byte authentication tag. Unsupported backends fail with `PlatformError`.
+ * 16-byte authentication tag. Backends without native ChaCha20-Poly1305 fail
+ * with `PlatformError.BadArgument`.
  *
  * @stability unstable
  * @category encryption
@@ -977,7 +950,7 @@ export const xchacha20poly1305Encrypt = (
  * **Details**
  *
  * The nonce and additional data must match encryption. Authentication failures
- * return `PlatformError` without returning plaintext.
+ * fail with a `SystemError` tagged `InvalidData` without returning plaintext.
  *
  * @stability unstable
  * @category encryption
@@ -1003,7 +976,7 @@ export const xchacha20poly1305Decrypt = (
  * import { Crypto, Effect } from "effect"
  *
  * const service = Crypto.make({
- *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *   subtle: globalThis.crypto.subtle,
  *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
  * })
  * const program = Effect.gen(function*() {
@@ -1136,6 +1109,11 @@ export const exportKey = (
  * Encrypts data with an AES-GCM or AES-CTR secret key or an RSA-OAEP public
  * key using the Crypto service.
  *
+ * **Details**
+ *
+ * To encrypt with a DER-encoded RSA public key, import it with
+ * `importKey("spki", ...)` and an RSA-OAEP algorithm that selects the hash.
+ *
  * **Gotchas**
  *
  * AES-GCM requires a fresh 12-byte IV for each encryption with the same key.
@@ -1159,8 +1137,9 @@ export const encrypt = (
  *
  * **Gotchas**
  *
- * AES-GCM authentication failures fail with `PlatformError` without returning
- * plaintext. The key must permit decryption and match the selected algorithm.
+ * AES-GCM and RSA-OAEP decryption failures fail with a `SystemError` tagged
+ * `InvalidData` without returning plaintext. The key must permit decryption
+ * and match the selected algorithm.
  *
  * @stability unstable
  * @category encryption
@@ -1234,7 +1213,7 @@ export const verify = (
  * import { Crypto, Effect } from "effect"
  *
  * const service = Crypto.make({
- *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *   subtle: globalThis.crypto.subtle,
  *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
  * })
  * const program = Effect.gen(function*() {
@@ -1260,29 +1239,40 @@ export const deriveSharedSecret = (
   Effect.flatMap(Crypto, (crypto) => crypto.deriveSharedSecret(privateKey, publicKey))
 
 /**
- * Creates a `Crypto` service from the primitive implementation, deriving the
- * random generator helpers and UUID generation from those primitives.
+ * Creates a `Crypto` service from secure random bytes and optional
+ * cryptographic backends.
  *
  * **When to use**
  *
  * Use to build a Crypto service for a platform integration, test layer, or
- * custom runtime from secure randomness and native cryptographic operations.
+ * custom runtime.
  *
  * **Details**
  *
- * The constructor derives random numbers, booleans, integer ranges, shuffling,
- * and UUID generation from `impl.randomBytes`. Cryptographic operations and
- * key management delegate to the supplied platform functions after validating
- * arguments that do not depend on the backend, such as derivation lengths and
+ * Random numbers, booleans, integer ranges, shuffling, UUIDs, and ULIDs are
+ * derived from `impl.randomBytes`. When `impl.subtle` is supplied, every other
+ * operation defaults to that Web Crypto backend; operations passed directly
+ * take precedence. Operations with neither fail with
+ * `PlatformError.BadArgument`.
+ *
+ * Arguments that do not depend on the backend, such as derivation lengths,
  * iteration counts, IV and counter lengths, HMAC key lengths, RSA modulus
- * lengths, RSA-PSS salt lengths, and RSA-OAEP hashes. Invalid arguments fail
- * with `PlatformError.BadArgument` without calling the platform function.
+ * lengths, and RSA-PSS salt lengths, are validated before any operation runs.
+ * Invalid arguments fail with `PlatformError.BadArgument`.
+ *
+ * The Web Crypto backend copies input bytes before its first asynchronous
+ * step, so callers may reuse their buffers once an operation has started.
+ * Failed authenticated decryption and malformed key data fail with a
+ * `SystemError` tagged `InvalidData`, and algorithms the backend does not
+ * support fail with `BadArgument`.
  *
  * **Gotchas**
  *
  * `impl.randomBytes` must return cryptographically secure bytes of the
  * requested length. UUID formatting mutates the byte array returned for UUID
  * generation, so the implementation should return a fresh array for each call.
+ * Keys belong to the backend that created them; services sharing the same
+ * `subtle` object share keys.
  *
  * **Example** (Creating a Crypto service)
  *
@@ -1290,7 +1280,7 @@ export const deriveSharedSecret = (
  * import { Crypto, Effect } from "effect"
  *
  * const testCrypto = Crypto.make({
- *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
+ *   subtle: globalThis.crypto.subtle,
  *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
  * })
  *
@@ -1305,30 +1295,33 @@ export const deriveSharedSecret = (
 export const make = (
   impl: {
     readonly randomBytes: (size: number) => Uint8Array
-    readonly digest: (
-      algorithm: DigestAlgorithm,
-      data: Uint8Array
-    ) => Effect.Effect<Uint8Array, PlatformError.PlatformError>
-    readonly hkdf: Crypto["hkdf"]
-    readonly argon2id: Crypto["argon2id"]
-    readonly xchacha20poly1305Encrypt: Crypto["xchacha20poly1305Encrypt"]
-    readonly xchacha20poly1305Decrypt: Crypto["xchacha20poly1305Decrypt"]
-    readonly importJwk: Crypto["importJwk"]
-    readonly exportJwk: Crypto["exportJwk"]
-    readonly hmac: Crypto["hmac"]
-    readonly pbkdf2: Crypto["pbkdf2"]
-    readonly rsaOaepEncrypt: Crypto["rsaOaepEncrypt"]
-    readonly generateSecretKey: Crypto["generateSecretKey"]
-    readonly generateKeyPair: Crypto["generateKeyPair"]
-    readonly importKey: Crypto["importKey"]
-    readonly exportKey: Crypto["exportKey"]
-    readonly encrypt: Crypto["encrypt"]
-    readonly decrypt: Crypto["decrypt"]
-    readonly sign: Crypto["sign"]
-    readonly verify: Crypto["verify"]
-    readonly deriveSharedSecret: Crypto["deriveSharedSecret"]
+    readonly subtle?: SubtleCrypto | undefined
+    readonly digest?: Crypto["digest"] | undefined
+    readonly hmac?: Crypto["hmac"] | undefined
+    readonly pbkdf2?: Crypto["pbkdf2"] | undefined
+    readonly hkdf?: Crypto["hkdf"] | undefined
+    readonly argon2id?: Crypto["argon2id"] | undefined
+    readonly xchacha20poly1305Encrypt?: Crypto["xchacha20poly1305Encrypt"] | undefined
+    readonly xchacha20poly1305Decrypt?: Crypto["xchacha20poly1305Decrypt"] | undefined
+    readonly importJwk?: Crypto["importJwk"] | undefined
+    readonly exportJwk?: Crypto["exportJwk"] | undefined
+    readonly generateSecretKey?: Crypto["generateSecretKey"] | undefined
+    readonly generateKeyPair?: Crypto["generateKeyPair"] | undefined
+    readonly importKey?: Crypto["importKey"] | undefined
+    readonly exportKey?: Crypto["exportKey"] | undefined
+    readonly encrypt?: Crypto["encrypt"] | undefined
+    readonly decrypt?: Crypto["decrypt"] | undefined
+    readonly sign?: Crypto["sign"] | undefined
+    readonly verify?: Crypto["verify"] | undefined
+    readonly deriveSharedSecret?: Crypto["deriveSharedSecret"] | undefined
   }
 ): Crypto => {
+  // `"subtle" in impl` keeps an unavailable `subtle` (as in insecure browser
+  // contexts) distinct from no Web Crypto backend at all.
+  const subtle = "subtle" in impl ? makeSubtle(impl.subtle) : undefined
+  const backend = Object.fromEntries(
+    operations.map((name) => [name, impl[name] ?? subtle?.[name] ?? unsupported(name)])
+  ) as Backend
   const randomBytesUnsafe = impl.randomBytes
 
   const tryRandom = <A>(method: string, f: () => A): Effect.Effect<A, PlatformError.PlatformError> =>
@@ -1431,81 +1424,67 @@ export const make = (
     randomBytes,
     nextDoubleUnsafe,
     nextIntUnsafe,
-    digest: impl.digest,
-    hmac: impl.hmac,
-    importJwk: (jwk, algorithm, options) =>
-      Effect.flatMap(
-        validateKeyAlgorithm("importJwk", algorithm, false),
-        () => impl.importJwk(jwk, algorithm, options)
-      ),
-    exportJwk: impl.exportJwk,
-    hkdf: (algorithm, key, salt, info, length) => {
-      if (!Number.isSafeInteger(length) || length <= 0 || length > 255 * hashLengths[algorithm]) {
-        return Effect.fail(
-          PlatformError.badArgument({
-            module: "Crypto",
-            method: "hkdf",
-            description: "length must be between 1 and 255 times the hash output size"
-          })
-        )
-      }
-      return impl.hkdf(algorithm, key, salt, info, length)
-    },
+    digest: backend.digest,
+    hmac: backend.hmac,
+    pbkdf2: (options) =>
+      // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
+      // larger values instead of rejecting them. Node.js accepts only signed
+      // 32-bit iteration counts, so that is the portable limit.
+      isIntegerIn(options.iterations, 1, 0x7fff_ffff) && isIntegerIn(options.length, 1, 0x1fff_ffff)
+        ? backend.pbkdf2(options)
+        : failArgument("pbkdf2", "iterations must be between 1 and 2^31 - 1 and length between 1 and 2^29 - 1"),
+    hkdf: (options) =>
+      isIntegerIn(options.length, 1, 255 * (hashLengths[options.hash] ?? 0))
+        ? backend.hkdf(options)
+        : failArgument("hkdf", "length must be between 1 and 255 times the hash output size"),
     argon2id: (options) => {
-      const uint32 = (n: number) => Number.isSafeInteger(n) && n > 0 && n <= 0xffff_ffff
-      if (
-        !uint32(options.memoryKiB) || !uint32(options.passes) || !uint32(options.parallelism) ||
-        options.parallelism > 0xff_ffff || options.memoryKiB < 8 * options.parallelism || !uint32(options.length) ||
-        options.length < 4 || options.salt.length < 8
-      ) {
-        return Effect.fail(
-          PlatformError.badArgument({
-            module: "Crypto",
-            method: "argon2id",
-            description: "invalid Argon2id memory, passes, parallelism, output length, or salt"
-          })
-        )
-      }
-      return impl.argon2id(options)
+      const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
+      return uint32(options.memoryKiB) && uint32(options.passes) && isIntegerIn(options.parallelism, 1, 0xff_ffff) &&
+          options.memoryKiB >= 8 * options.parallelism && isIntegerIn(options.length, 4, 0xffff_ffff) &&
+          options.salt.length >= 8
+        ? backend.argon2id(options)
+        : failArgument("argon2id", "invalid Argon2id memory, passes, parallelism, output length, or salt")
     },
     xchacha20poly1305Encrypt: (options) =>
       Effect.flatMap(
         validateXChaCha("xchacha20poly1305Encrypt", options),
-        () => impl.xchacha20poly1305Encrypt(options)
+        () => backend.xchacha20poly1305Encrypt(options)
       ),
     xchacha20poly1305Decrypt: (options) =>
       Effect.flatMap(
         validateXChaCha("xchacha20poly1305Decrypt", options),
-        () => impl.xchacha20poly1305Decrypt(options)
+        () => backend.xchacha20poly1305Decrypt(options)
       ),
-    rsaOaepEncrypt: (options) =>
-      // A runtime value outside the type must not fall back to a default hash.
-      options.hash === undefined || ["SHA-1", "SHA-256", "SHA-384", "SHA-512"].includes(options.hash)
-        ? impl.rsaOaepEncrypt(options)
-        : failArgument("rsaOaepEncrypt", "RSA-OAEP hash must be SHA-1, SHA-256, SHA-384, or SHA-512"),
+    importJwk: (jwk, algorithm, options) =>
+      Effect.flatMap(
+        validateKeyAlgorithm("importJwk", algorithm, false),
+        () => backend.importJwk(jwk, algorithm, options)
+      ),
+    exportJwk: backend.exportJwk,
     generateSecretKey: (algorithm, options) =>
       Effect.flatMap(
         validateKeyAlgorithm("generateSecretKey", algorithm, true),
-        () => impl.generateSecretKey(algorithm, options)
+        () => backend.generateSecretKey(algorithm, options)
       ),
     generateKeyPair: (algorithm, options) =>
       Effect.flatMap(
         validateKeyAlgorithm("generateKeyPair", algorithm, true),
-        () => impl.generateKeyPair(algorithm, options)
+        () => backend.generateKeyPair(algorithm, options)
       ),
     importKey: (format, data, algorithm, options) =>
       Effect.flatMap(
         validateKeyAlgorithm("importKey", algorithm, false),
-        () => impl.importKey(format, data, algorithm, options)
+        () => backend.importKey(format, data, algorithm, options)
       ),
-    exportKey: impl.exportKey,
+    exportKey: backend.exportKey,
     encrypt: (options, key, data) =>
-      Effect.flatMap(validateCipher("encrypt", options), () => impl.encrypt(options, key, data)),
+      Effect.flatMap(validateCipher("encrypt", options), () => backend.encrypt(options, key, data)),
     decrypt: (options, key, data) =>
-      Effect.flatMap(validateCipher("decrypt", options), () => impl.decrypt(options, key, data)),
-    sign: (options, key, data) => Effect.flatMap(validateSigning("sign", options), () => impl.sign(options, key, data)),
+      Effect.flatMap(validateCipher("decrypt", options), () => backend.decrypt(options, key, data)),
+    sign: (options, key, data) =>
+      Effect.flatMap(validateSigning("sign", options), () => backend.sign(options, key, data)),
     verify: (options, key, signature, data) =>
-      Effect.flatMap(validateSigning("verify", options), () => impl.verify(options, key, signature, data)),
+      Effect.flatMap(validateSigning("verify", options), () => backend.verify(options, key, signature, data)),
     deriveSharedSecret: (privateKey, publicKey) => {
       const algorithm = privateKey.algorithm
       if (
@@ -1513,32 +1492,14 @@ export const make = (
         (algorithm.name !== "ECDH" && algorithm.name !== "X25519") || publicKey.algorithm.name !== algorithm.name ||
         (algorithm.name === "ECDH" && (publicKey.algorithm as typeof algorithm).namedCurve !== algorithm.namedCurve)
       ) {
-        return Effect.fail(PlatformError.badArgument({
-          module: "Crypto",
-          method: "deriveSharedSecret",
-          description:
-            "requires an ECDH or X25519 private key with deriveBits usage and a public key of the same algorithm and curve"
-        }))
+        return failArgument(
+          "deriveSharedSecret",
+          "requires an ECDH or X25519 private key with deriveBits usage and a public key of the same algorithm and curve"
+        )
       }
       return algorithm.name === "X25519"
-        ? Effect.flatMap(impl.deriveSharedSecret(privateKey, publicKey), rejectAllZeroSecret)
-        : impl.deriveSharedSecret(privateKey, publicKey)
-    },
-    pbkdf2: (algorithm, password, salt, iterations, length) => {
-      // Web Crypto takes 32-bit iterations and a 32-bit bit length, and wraps
-      // larger values instead of rejecting them. Node.js accepts only signed
-      // 32-bit iteration counts, so that is the portable limit.
-      if (
-        !Number.isSafeInteger(iterations) || iterations <= 0 || iterations > 0x7fff_ffff ||
-        !Number.isSafeInteger(length) || length <= 0 || length > 0x1fff_ffff
-      ) {
-        return Effect.fail(PlatformError.badArgument({
-          module: "Crypto",
-          method: "pbkdf2",
-          description: "iterations must be between 1 and 2^31 - 1 and length a positive integer below 2^29"
-        }))
-      }
-      return impl.pbkdf2(algorithm, password, salt, iterations, length)
+        ? Effect.flatMap(backend.deriveSharedSecret(privateKey, publicKey), rejectAllZeroSecret)
+        : backend.deriveSharedSecret(privateKey, publicKey)
     },
     random: Effect.sync(() => nextDoubleUnsafe()),
     randomBoolean: Effect.sync(() => nextDoubleUnsafe() >= 0.5),
@@ -1608,6 +1569,37 @@ const validateXChaCha = (
 const failArgument = (method: string, description: string): Effect.Effect<never, PlatformError.PlatformError> =>
   Effect.fail(PlatformError.badArgument({ module: "Crypto", method, description }))
 
+const isIntegerIn = (n: number, min: number, max: number): boolean =>
+  Number.isSafeInteger(n) && n >= min && n <= max
+
+const operations = [
+  "digest",
+  "hmac",
+  "pbkdf2",
+  "hkdf",
+  "argon2id",
+  "xchacha20poly1305Encrypt",
+  "xchacha20poly1305Decrypt",
+  "importJwk",
+  "exportJwk",
+  "generateSecretKey",
+  "generateKeyPair",
+  "importKey",
+  "exportKey",
+  "encrypt",
+  "decrypt",
+  "sign",
+  "verify",
+  "deriveSharedSecret"
+] as const
+
+type Operation = typeof operations[number]
+
+type Backend = { readonly [K in Operation]: Crypto[K] }
+
+const unsupported = (method: Operation): any => () =>
+  failArgument(method, `${method} is not supported by this Crypto service`)
+
 const validateCipher = (method: string, options: CipherOptions): Effect.Effect<void, PlatformError.PlatformError> => {
   if (options.name === "AES-GCM" && options.iv.length !== 12) {
     return failArgument(method, "AES-GCM IV must contain exactly 12 bytes")
@@ -1676,7 +1668,7 @@ const rejectAllZeroSecret = (secret: Uint8Array): Effect.Effect<Uint8Array, Plat
 }
 
 const nativeKeys = new WeakMap<SubtleCrypto, WeakMap<Key, CryptoKey>>()
-const hashLengths: Record<HmacAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32, "SHA-384": 48, "SHA-512": 64 }
+const hashLengths: Record<HashAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32, "SHA-384": 48, "SHA-512": 64 }
 const keyUsageOrder: ReadonlyArray<KeyUsage> = ["encrypt", "decrypt", "sign", "verify", "deriveBits"]
 const sharedSecretBits: Record<NamedCurve, number> = { "P-256": 256, "P-384": 384, "P-521": 528 }
 const isSecretAlgorithm = (algorithm: KeyAlgorithm): algorithm is SecretKeyAlgorithm =>
@@ -1684,85 +1676,57 @@ const isSecretAlgorithm = (algorithm: KeyAlgorithm): algorithm is SecretKeyAlgor
 const hasRawPublicKey = (name: string): boolean =>
   name === "ECDSA" || name === "ECDH" || name === "Ed25519" || name === "X25519"
 
-/**
- * Creates cryptographic operation implementations from an explicitly supplied
- * native SubtleCrypto backend for use with `make`.
- *
- * **When to use**
- *
- * Use to implement a platform Crypto service with native hashing, key
- * management, authenticated encryption, and signing operations.
- *
- * **Details**
- *
- * This constructor does not read a global cryptography API. Supply secure
- * `randomBytes` separately to `make`. Runtime adapters can override individual
- * operations, including MD5 digests. Argon2id and XChaCha20-Poly1305 require
- * platform overrides; their default implementations fail with PlatformError.
- * Argument validation that does not depend on the backend happens in `make`,
- * so these operations assume they are called through a service built by it.
- *
- * **Gotchas**
- *
- * Algorithm availability depends on the supplied backend. Unsupported
- * operations fail with `PlatformError`. Keys can be reused by service instances
- * sharing the same backend, and their native handles remain private.
- *
- * **Example** (Encrypting authenticated data)
- *
- * ```ts import.meta.vitest
- * import { Crypto, Effect } from "effect"
- *
- * const service = Crypto.make({
- *   ...Crypto.makeSubtle(globalThis.crypto.subtle),
- *   randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size))
- * })
- * const program = Effect.gen(function*() {
- *   const key = yield* Crypto.generateSecretKey({ name: "AES-GCM", length: 256 })
- *   const iv = yield* Crypto.randomBytes(12)
- *   const options: Crypto.CipherOptions = {
- *     name: "AES-GCM", iv, additionalData: new TextEncoder().encode("record:42")
- *   }
- *   const ciphertext = yield* Crypto.encrypt(options, key, new TextEncoder().encode("secret"))
- *   const plaintext = yield* Crypto.decrypt(options, key, ciphertext)
- *   return new TextDecoder().decode(plaintext)
- * })
- *
- * await Effect.runPromise(program.pipe(Effect.provideService(Crypto.Crypto, service))) // => "secret"
- * ```
- *
- * @see {@link make}
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0], "randomBytes"> => {
+// Web Crypto backend for `make`. Arguments that do not depend on the backend
+// are validated by `make` before these operations run.
+const makeSubtle = (subtle: SubtleCrypto | undefined): Partial<Backend> => {
+  if (!subtle) {
+    // Browsers omit SubtleCrypto outside secure contexts.
+    return Object.fromEntries(operations.map((method) => [
+      method,
+      () =>
+        Effect.fail(PlatformError.systemError({
+          module: "Crypto",
+          method,
+          _tag: "Unknown",
+          description: "SubtleCrypto is not available"
+        }))
+    ]))
+  }
   const handles = nativeKeys.get(subtle) ?? new WeakMap<Key, CryptoKey>()
-  if (subtle) nativeKeys.set(subtle, handles)
+  nativeKeys.set(subtle, handles)
 
   const run = <A>(method: string, f: () => Promise<A>): Effect.Effect<A, PlatformError.PlatformError> =>
     Effect.tryPromise({
-      try: () => {
-        if (!subtle) {
-          // Browsers omit SubtleCrypto outside secure contexts.
-          throw PlatformError.systemError({
+      try: f,
+      catch: (cause) => {
+        if (PlatformError.isPlatformError(cause)) return cause
+        const name = (cause as { readonly name?: unknown } | undefined)?.name
+        // Failed authenticated decryption, or malformed key data.
+        if ((name === "OperationError" && method === "decrypt") || name === "DataError") {
+          return PlatformError.systemError({
             module: "Crypto",
             method,
-            _tag: "Unknown",
-            description: "SubtleCrypto is not available"
+            _tag: "InvalidData",
+            description: method === "decrypt" ? "Could not authenticate or decrypt data" : "Invalid key data",
+            cause
           })
         }
-        return f()
-      },
-      catch: (cause) =>
-        PlatformError.isPlatformError(cause) ? cause : PlatformError.systemError({
+        if (name === "NotSupportedError" || name === "InvalidAccessError" || name === "SyntaxError") {
+          return PlatformError.badArgument({
+            module: "Crypto",
+            method,
+            description: `${method} does not support the requested algorithm, key, or usages`,
+            cause
+          })
+        }
+        return PlatformError.systemError({
           module: "Crypto",
           method,
           _tag: "Unknown",
           description: `Could not perform ${method}`,
           cause
         })
+      }
     })
 
   const badArgument = (method: string, description: string): never => {
@@ -1778,14 +1742,14 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         algorithm = { name: native.name, length: native.length as 128 | 192 | 256 }
         break
       case "HMAC":
-        algorithm = { name: "HMAC", hash: native.hash.name as HmacAlgorithm, length: native.length }
+        algorithm = { name: "HMAC", hash: native.hash.name as HashAlgorithm, length: native.length }
         break
       case "RSA-OAEP":
       case "RSA-PSS":
       case "RSASSA-PKCS1-v1_5":
         algorithm = {
           name: native.name,
-          hash: native.hash.name as HmacAlgorithm,
+          hash: native.hash.name as HashAlgorithm,
           modulusLength: native.modulusLength,
           publicExponent: new Uint8Array(native.publicExponent)
         }
@@ -1881,7 +1845,7 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
   const signingParams = (options: SigningOptions, key: CryptoKey): AlgorithmIdentifier => {
     if (options.name === "ECDSA") return { name: options.name, hash: options.hash } as EcdsaParams
     if (options.name === "RSA-PSS") {
-      const hash = (key.algorithm as RsaHashedKeyAlgorithm).hash?.name as HmacAlgorithm
+      const hash = (key.algorithm as RsaHashedKeyAlgorithm).hash?.name as HashAlgorithm
       return { name: options.name, saltLength: options.saltLength ?? hashLengths[hash] } as RsaPssParams
     }
     return { name: options.name }
@@ -1898,47 +1862,16 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
   }
 
   return {
-    hkdf: (algorithm, key, salt, info, length) =>
+    hkdf: (options) =>
       run("hkdf", async () => {
-        const ownedKey = new Uint8Array(key)
-        const ownedSalt = new Uint8Array(salt)
-        const ownedInfo = new Uint8Array(info)
-        const handle = await subtle.importKey("raw", ownedKey, "HKDF", false, ["deriveBits"])
+        const key = new Uint8Array(options.key)
+        const salt = new Uint8Array(options.salt ?? [])
+        const info = new Uint8Array(options.info ?? [])
+        const handle = await subtle.importKey("raw", key, "HKDF", false, ["deriveBits"])
         return new Uint8Array(
-          await subtle.deriveBits(
-            { name: "HKDF", hash: algorithm, salt: ownedSalt, info: ownedInfo },
-            handle,
-            length * 8
-          )
+          await subtle.deriveBits({ name: "HKDF", hash: options.hash, salt, info }, handle, options.length * 8)
         )
       }),
-    argon2id: () =>
-      Effect.fail(
-        PlatformError.systemError({
-          module: "Crypto",
-          method: "argon2id",
-          _tag: "Unknown",
-          description: "Argon2id is unavailable in this backend"
-        })
-      ),
-    xchacha20poly1305Encrypt: () =>
-      Effect.fail(
-        PlatformError.systemError({
-          module: "Crypto",
-          method: "xchacha20poly1305Encrypt",
-          _tag: "Unknown",
-          description: "XChaCha20-Poly1305 is unavailable in this backend"
-        })
-      ),
-    xchacha20poly1305Decrypt: () =>
-      Effect.fail(
-        PlatformError.systemError({
-          module: "Crypto",
-          method: "xchacha20poly1305Decrypt",
-          _tag: "Unknown",
-          description: "XChaCha20-Poly1305 is unavailable in this backend"
-        })
-      ),
     importJwk: (jwk, algorithm, options) =>
       run("importJwk", async () => {
         for (const component of [jwk.k, jwk.n, jwk.e, jwk.d, jwk.p, jwk.q, jwk.dp, jwk.dq, jwk.qi, jwk.x, jwk.y]) {
@@ -1974,32 +1907,16 @@ export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0
         const handle = await subtle.importKey("raw", ownedKey, { name: "HMAC", hash: algorithm }, false, ["sign"])
         return new Uint8Array(await subtle.sign("HMAC", handle, ownedData))
       }),
-    pbkdf2: (algorithm, password, salt, iterations, length) =>
+    pbkdf2: (options) =>
       run("pbkdf2", async () => {
-        const ownedPassword = new Uint8Array(password)
-        const ownedSalt = new Uint8Array(salt)
-        const handle = await subtle.importKey("raw", ownedPassword, "PBKDF2", false, ["deriveBits"])
+        const password = new Uint8Array(options.password)
+        const salt = new Uint8Array(options.salt)
+        const handle = await subtle.importKey("raw", password, "PBKDF2", false, ["deriveBits"])
         return new Uint8Array(
-          await subtle.deriveBits({ name: "PBKDF2", hash: algorithm, salt: ownedSalt, iterations }, handle, length * 8)
-        )
-      }),
-    rsaOaepEncrypt: (options) =>
-      run("rsaOaepEncrypt", async () => {
-        const ownedKey = new Uint8Array(options.publicKey)
-        const ownedData = new Uint8Array(options.data)
-        const ownedLabel = options.label === undefined ? undefined : new Uint8Array(options.label)
-        const handle = await subtle.importKey(
-          "spki",
-          ownedKey,
-          { name: "RSA-OAEP", hash: options.hash ?? "SHA-256" },
-          false,
-          ["encrypt"]
-        )
-        return new Uint8Array(
-          await subtle.encrypt(
-            { name: "RSA-OAEP", ...(ownedLabel === undefined ? {} : { label: ownedLabel }) },
+          await subtle.deriveBits(
+            { name: "PBKDF2", hash: options.hash, salt, iterations: options.iterations },
             handle,
-            ownedData
+            options.length * 8
           )
         )
       }),
