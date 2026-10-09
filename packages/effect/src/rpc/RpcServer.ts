@@ -84,12 +84,9 @@ export interface RpcServer<A extends Rpc.Any> {
  *
  * **Details**
  *
- * If `onFromServer` fails with anything other than an interruption while
- * writing a stream `Chunk`, the stream stops and the request fails with that
- * cause, even if RPC middleware rewrites or swallows it. The server assumes
- * `onFromServer` has already answered the client and reported the failure, so
- * it sends no other response for that request and does not report the failure
- * again.
+ * If writing a stream `Chunk` fails with anything other than an interruption,
+ * the request fails with that cause. `onFromServer` is assumed to have already
+ * answered the client and reported it, so nothing else is sent or reported.
  *
  * @stability unstable
  * @category constructors
@@ -296,16 +293,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       }) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
       : (streamOrEffect as Effect.Effect<{} | Deferred.Deferred<any, any>>)
 
-    let withMiddleware = rpc.middlewares.size > 0
-      ? applyMiddleware(services, handler, metadata)
-      : handler
-    if (isStream && rpc.middlewares.size > 0) {
+    const withMiddleware = rpc.middlewares.size === 0
+      ? handler
+      : isStream
       // middleware may rewrite or swallow a chunk write failure, so restore it
-      withMiddleware = Effect.flatMap(
-        Effect.exit(withMiddleware),
+      ? Effect.flatMap(
+        Effect.exit(applyMiddleware(services, handler, metadata)),
         (exit) => writeFailure ? Effect.failCause(writeFailure) : exit
       )
-    }
+      : applyMiddleware(services, handler, metadata)
     let responded = false
     const scope = Scope.makeUnsafe()
     let deferred: Deferred.Deferred<unknown, unknown> | undefined = undefined
@@ -735,12 +731,14 @@ export const make: <Rpcs extends Rpc.Any>(
       )
     return Effect.catchCause(write, (cause) => {
       client.schemas.delete(requestId)
-      const respond = sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause))
       // An encode failure ends the request with the defect, so the request
       // span records it. Other failures stop the request as a cancellation.
-      return encodeFailed
-        ? Effect.andThen(respond, Effect.failCause(cause))
-        : Effect.andThen(respond, server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] }))
+      return Effect.andThen(
+        sendRequestDefect(client, requestId, schemas.encodeExit, Cause.squash(cause)),
+        encodeFailed
+          ? Effect.failCause(cause)
+          : server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
+      )
     })
   }
 
