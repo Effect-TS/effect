@@ -130,6 +130,51 @@ describe("Context", () => {
     assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
+  it("honors an explicit maxDepth override, inherited across add and rebase", () => {
+    const base = Context.makeUnsafe(new Map(), { maxDepth: 2 })
+    const keys = Array.from({ length: 4 }, (_, i) => Context.Service<number>(`ContextTest/Override${i}`))
+
+    let context: Context.Context<never> = base
+    context = Context.add(context, keys[0], 0)
+    context = Context.add(context, keys[1], 1)
+    // Still within the override: no rebase yet, even though the base is tiny
+    strictEqual((context as any).overlay !== undefined, true)
+    strictEqual((context as any).depth, 2)
+    strictEqual((context as any).maxDepthOverride, 2)
+
+    context = Context.add(context, keys[2], 2)
+    // One push past the override -> rebase, well below the default floor of 8
+    strictEqual((context as any).overlay, undefined)
+    strictEqual((context as any).depth, 0)
+    strictEqual((context as any).maxDepthOverride, 2)
+
+    // The override survives the rebase and keeps applying afterwards
+    context = Context.add(context, keys[3], 3)
+    strictEqual((context as any).overlay !== undefined, true)
+    strictEqual((context as any).depth, 1)
+    strictEqual((context as any).maxDepthOverride, 2)
+
+    strictEqual(context.mapUnsafe.size, keys.length)
+    for (let i = 0; i < keys.length; i++) {
+      strictEqual(Context.getUnsafe(context, keys[i]), i)
+    }
+  })
+
+  it("keeps the default depth of 8 when no maxDepth override is given", () => {
+    const keys = Array.from({ length: 8 }, (_, i) => Context.Service<number>(`ContextTest/Default${i}`))
+    let context = Context.empty()
+    for (let i = 0; i < keys.length; i++) {
+      context = Context.add(context, keys[i], i)
+    }
+    strictEqual((context as any).overlay !== undefined, true)
+    strictEqual((context as any).depth, 8)
+    strictEqual((context as any).maxDepthOverride, undefined)
+
+    context = Context.add(context, Context.Service<number>("ContextTest/DefaultPush"), -1)
+    strictEqual((context as any).overlay, undefined)
+    strictEqual((context as any).depth, 0)
+  })
+
   it("flattens after repeated base fall-throughs", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const impl = context as any
