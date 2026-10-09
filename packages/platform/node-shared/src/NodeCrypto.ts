@@ -68,14 +68,19 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
         password?.fill(0)
         secret?.fill(0)
       }
-      const fail = (cause: unknown) =>
-        Effect.fail(PlatformError.systemError({
+      const fail = (cause: unknown) => {
+        const unsupported = typeof cause === "object" && cause !== null &&
+          "code" in cause && cause.code === "ERR_CRYPTO_ARGON2_NOT_SUPPORTED"
+        return Effect.fail(PlatformError.systemError({
           module: "Crypto",
           method: "argon2id",
-          _tag: "Unknown",
-          description: "Could not derive an Argon2id key",
+          _tag: unsupported ? "Unsupported" : "Unknown",
+          description: unsupported
+            ? "argon2id is not supported by this Crypto service"
+            : "Could not derive an Argon2id key",
           cause
         }))
+      }
       if (typeof NodeCrypto.argon2 !== "function") {
         return resume(Effect.fail(PlatformError.systemError({
           module: "Crypto",
