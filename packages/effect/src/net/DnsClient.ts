@@ -309,20 +309,29 @@ export const nameServerFromString = (
     input.startsWith("[") || /^[^:]*:\d+$/.test(input) ? input : input.includes(":") ? `[${input}]:53` : `${input}:53`
   )
 
-// Parses name servers given as strings and uses port 53 for those given as IP
-// addresses.
+/**
+ * Converts a name server given as an IP address, an internet address, or a
+ * string to the internet address to query, parsing strings like
+ * `nameServerFromString` and using port 53 for IP addresses.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const nameServerFromInput = (
+  input: NetAddress.IpAddressInput | NetAddress.InetAddressInput
+): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
+  typeof input === "string"
+    ? nameServerFromString(input)
+    : Result.succeed(NetAddress.isIpAddress(input) ? NetAddress.inetAddressUnsafe(input, 53) : input)
+
 const nameServerAddresses = (
   nameServers: Arr.NonEmptyReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
 ): Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> => {
   if (nameServers.length === 0) {
     throw new RangeError("DnsClient needs at least one name server")
   }
-  return Arr.map(nameServers, (server) =>
-    typeof server === "string"
-      ? Result.getOrThrow(nameServerFromString(server))
-      : NetAddress.isIpAddress(server)
-      ? NetAddress.inetAddressUnsafe(server, 53)
-      : server)
+  return Arr.map(nameServers, (server) => Result.getOrThrow(nameServerFromInput(server)))
 }
 
 /**

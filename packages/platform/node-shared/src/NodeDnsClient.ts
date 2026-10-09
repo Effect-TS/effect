@@ -70,8 +70,8 @@ const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolea
  *
  * **Details**
  *
- * Strings are parsed like `DnsClient.nameServerFromString`. The transports of
- * other runtimes reuse this check.
+ * Name servers are converted like `DnsClient.nameServerFromInput`. The
+ * transports of other runtimes reuse this check.
  *
  * @stability experimental
  * @category validation
@@ -81,7 +81,7 @@ export const checkNameServers = Effect.fnUntraced(function*(
   nameServers: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
 ) {
   for (const input of nameServers) {
-    const server = typeof input === "string" ? yield* Effect.fromResult(DnsClient.nameServerFromString(input)) : input
+    const server = yield* Effect.fromResult(DnsClient.nameServerFromInput(input))
     if (isScoped(server)) {
       return yield* new NetAddress.NetAddressError({
         input,

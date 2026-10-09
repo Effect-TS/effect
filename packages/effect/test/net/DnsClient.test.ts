@@ -891,6 +891,20 @@ describe("nameServerFromString", () => {
   })
 })
 
+describe("nameServerFromInput", () => {
+  it("parses strings and uses port 53 for IP addresses", () => {
+    const inet = NetAddress.inetAddressFromStringUnsafe("192.0.2.53:5353")
+    const format = (input: NetAddress.IpAddressInput | NetAddress.InetAddressInput) =>
+      Result.map(DnsClient.nameServerFromInput(input), NetAddress.formatInet)
+    assert.deepStrictEqual(
+      ["2001:db8::53", NetAddress.ipFromStringUnsafe("192.0.2.53"), inet].map(format),
+      [Result.succeed("[2001:db8::53]:53"), Result.succeed("192.0.2.53:53"), Result.succeed("192.0.2.53:5353")]
+    )
+    assert.strictEqual(Result.getOrThrow(DnsClient.nameServerFromInput(inet)), inet)
+    assert.isTrue(Result.isFailure(DnsClient.nameServerFromInput("ns.example")))
+  })
+})
+
 describe("parseResolvConf", () => {
   it("reads name servers, search domains, and options", () => {
     const config = DnsClient.parseResolvConf([
