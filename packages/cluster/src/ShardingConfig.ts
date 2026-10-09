@@ -102,6 +102,9 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
   /**
    * The maximum duration of time to wait for an entity to terminate.
    *
+   * On shutdown, shard locks are kept for at most this duration, plus up to
+   * one shard lock refresh interval, before they are released.
+   *
    * By default this is set to 15 seconds to stay within kubernetes defaults.
    */
   readonly entityTerminationTimeout: DurationInput

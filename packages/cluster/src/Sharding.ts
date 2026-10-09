@@ -224,6 +224,7 @@ const make = Effect.gen(function*() {
   const selfShards = MutableHashSet.empty<ShardId>()
   const shardLocksHealthyLatch = Effect.unsafeMakeLatch(true)
   let shardLocksHealthy = true
+  let shutdownStartedAt: number | undefined
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
@@ -368,7 +369,7 @@ const make = Effect.gen(function*() {
           yield* releaseShards
         }
 
-        if (!shardLocksHealthy || forcedShardReleasePending()) {
+        if (!shardLocksHealthy || forcedShardReleasePending() || isShutdown.current) {
           continue
         }
 
@@ -515,7 +516,43 @@ const make = Effect.gen(function*() {
       Effect.catchAllCause(() => Effect.void)
     )
 
-    yield* Effect.suspend(() => shardLocksHealthy ? refreshShardLocks : probeShardLocks).pipe(
+    // Once the drain window has passed, release the shard locks without waiting
+    // for entities to stop, so a stuck shutdown cannot hold them indefinitely.
+    const drainWindow = Duration.toMillis(config.entityTerminationTimeout)
+    let shardsReleasedAfterDrain = false
+    const releaseShardsAfterDrain = Effect.suspend(() => {
+      const affectedShards = [...acquiredShards, ...releasingShards]
+      MutableHashSet.clear(selfShards)
+      MutableHashSet.clear(acquiredShards)
+      MutableHashSet.clear(releasingShards)
+      MutableHashSet.clear(forceReleasingShards)
+      ClusterMetrics.shards.unsafeUpdate(BigInt(0), [])
+
+      return Effect.gen(function*() {
+        for (const shardId of affectedShards) {
+          for (const state of entityManagers.values()) {
+            if (state.status === "closed") continue
+            yield* Effect.forkIn(state.manager.interruptShard(shardId, { force: true }), shardingScope)
+          }
+        }
+        yield* runnerStorage.releaseAll(selfAddress).pipe(Effect.timeout(shardLockInterval))
+        shardsReleasedAfterDrain = true
+      }).pipe(
+        Effect.catchAllCause((cause) => Effect.logWarning("Could not release shards after shutdown", cause))
+      )
+    })
+    const isDrainWindowExpired = () =>
+      shutdownStartedAt !== undefined &&
+      !shardsReleasedAfterDrain &&
+      clock.unsafeCurrentTimeMillis() >= shutdownStartedAt + drainWindow
+
+    yield* Effect.suspend(() =>
+      isDrainWindowExpired()
+        ? releaseShardsAfterDrain
+        : shardLocksHealthy
+        ? refreshShardLocks
+        : probeShardLocks
+    ).pipe(
       Effect.repeat(Schedule.fixed(shardLockInterval)),
       Effect.forever,
       Effect.forkIn(shardingScope),
@@ -1511,6 +1548,7 @@ const make = Effect.gen(function*() {
     if (isShutdown.current) return
 
     MutableRef.set(isShutdown, true)
+    shutdownStartedAt = clock.unsafeCurrentTimeMillis()
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }

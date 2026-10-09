@@ -2,4 +2,4 @@
 "@effect/cluster": patch
 ---
 
-Stop refreshing shard locks for runners that are no longer registered.
+Release shard locks once a shutdown drain exceeds `entityTerminationTimeout`, so a stuck shutdown no longer holds its shards indefinitely.
