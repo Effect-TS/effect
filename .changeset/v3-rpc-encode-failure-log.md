@@ -1,4 +1,5 @@
 ---
+"@effect/rpc": patch
 ---
 
-Add failing tests: Failing test: RPC success encode failures are not logged with the RPC tag (v3)
+Log response encoding failures at Error level with the RPC tag and cause.
