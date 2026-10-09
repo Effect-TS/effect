@@ -7,7 +7,7 @@ import { TestCrypto } from "effect/testing"
 describe("TestCrypto", () => {
   it.effect("provides deterministic random operations and delegates digests", () => {
     const baseCrypto = Crypto.make({
-      ...Crypto.makeSubtle(globalThis.crypto.subtle),
+      subtle: globalThis.crypto.subtle,
       randomBytes: () => {
         throw new Error("base randomBytes should not be called")
       },

@@ -5,11 +5,12 @@ declare const crypto: Crypto.Crypto
 declare const format: "hex" | "bytes"
 
 describe("Crypto", () => {
-  it("make requires every operation, which makeSubtle provides", () => {
+  it("make accepts the original primitives or a Web Crypto backend", () => {
     const randomBytes = (size: number) => new Uint8Array(size)
     const digest = (_algorithm: Crypto.DigestAlgorithm, data: Uint8Array) => Effect.succeed(data)
-    expect(Crypto.make).type.toBeCallableWith({ ...Crypto.makeSubtle({} as SubtleCrypto), randomBytes })
-    expect(Crypto.make).type.not.toBeCallableWith({ randomBytes, digest })
+    expect(Crypto.make).type.toBeCallableWith({ randomBytes, digest })
+    expect(Crypto.make).type.toBeCallableWith({ randomBytes, subtle: {} as SubtleCrypto })
+    expect(Crypto.make).type.not.toBeCallableWith({ digest })
   })
 
   it("rejects options that do not match the selected algorithm", () => {
