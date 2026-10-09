@@ -348,15 +348,20 @@ describe("DnsMessage", () => {
         decodeData(33, "0001 0002 1538 03646231 00"),
         Dns.makeRecordUnsafe("SRV", { target: name("db1."), port: 5432, priority: 1, weight: 2 })
       )
+      assert.deepStrictEqual(
+        decodeData(52, "03 01 01 0a0b0c"),
+        Dns.makeRecordUnsafe("TLSA", { certUsage: 3, selector: 1, matchingType: 1, data: hex("0a0b0c") })
+      )
     })
 
     it("keeps unknown and unrepresentable records as raw data", () => {
       const message = hex(`
-        0000 8000 0000 0006 0000 0000
+        0000 8000 0000 0007 0000 0000
         01 61 00 ff00 0001 00000001 0003 010203  // private use type 65280
         01 61 00 0101 0001 00000001 0005 00 02 612d 62  // CAA with a tag that is not alphanumeric
         01 61 00 0101 0001 00000001 0005 00 02 6180 62  // CAA with a tag that is not ASCII
         01 61 00 0010 0001 00000001 0000  // TXT without character strings
+        01 61 00 0034 0001 00000001 0003 030101  // TLSA without data
         01 61 00 0005 0001 00000001 0007 05 636166c3a9 00  // CNAME to UTF-8 "café", not an IDNA name
         01 61 00 000f 0001 00000001 000a 000a 06 6d61696c 2031 00  // MX to "mail 1"
       `)
@@ -365,6 +370,7 @@ describe("DnsMessage", () => {
         { _tag: "Raw", type: 257, data: hex("0002612d62") },
         { _tag: "Raw", type: 257, data: hex("0002618062") },
         { _tag: "Raw", type: 16, data: new Uint8Array(0) },
+        { _tag: "Raw", type: 52, data: hex("030101") },
         { _tag: "Raw", type: 5, data: hex("05636166c3a900") },
         { _tag: "Raw", type: 15, data: hex("000a066d61696c203100") }
       ])
@@ -472,6 +478,10 @@ describe("DnsMessage", () => {
       assert.strictEqual(
         decodeError(hex(`0000 8000 0000 0001 0000 0000 01 61 00 0101 0001 00000001 0003 00 05 61`)),
         "truncated CAA tag"
+      )
+      assert.strictEqual(
+        decodeError(hex(`0000 8000 0000 0001 0000 0000 01 61 00 0034 0001 00000001 0002 03 01 01`)),
+        "TLSA fields exceed the record data"
       )
     })
 
