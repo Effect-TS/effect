@@ -5,6 +5,17 @@ import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
 
+// The fields below have no public accessor; tests that pin them cast
+// through this explicit shape instead of bare `any`, so a typo'd field
+// name is a type error rather than a silent `undefined`.
+interface ContextInternals {
+  readonly depth: number
+  readonly overlay: unknown
+  readonly maxDepthOverride: number | undefined
+  readonly _flat: unknown
+  readonly baseHits: number
+}
+
 describe("Context", () => {
   const A = Context.Service<number>("ContextTest/A")
   const B = Context.Service<number>("ContextTest/B")
@@ -138,21 +149,21 @@ describe("Context", () => {
     context = Context.add(context, keys[0], 0)
     context = Context.add(context, keys[1], 1)
     // Still within the override: no rebase yet, even though the base is tiny
-    let impl = context as any
+    let impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 2)
     strictEqual(impl.maxDepthOverride, 2)
 
     context = Context.add(context, keys[2], 2)
     // One push past the override -> rebase, well below the default floor of 8
-    impl = context as any
+    impl = context as any as ContextInternals
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
     strictEqual(impl.maxDepthOverride, 2)
 
     // The override survives the rebase and keeps applying afterwards
     context = Context.add(context, keys[3], 3)
-    impl = context as any
+    impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 1)
     strictEqual(impl.maxDepthOverride, 2)
@@ -165,7 +176,7 @@ describe("Context", () => {
 
   it("falls back to the default depth for an invalid maxDepth", () => {
     for (const invalid of [Number.NaN, -1, 1.5, -Infinity]) {
-      const impl = Context.makeUnsafe(new Map(), { maxDepth: invalid }) as any
+      const impl = Context.makeUnsafe(new Map(), { maxDepth: invalid }) as any as ContextInternals
       strictEqual(impl.maxDepthOverride, undefined)
     }
 
@@ -176,7 +187,7 @@ describe("Context", () => {
     for (let i = 0; i < 20; i++) {
       context = Context.add(context, Context.Service<number>(`ContextTest/Invalid${i}`), i)
     }
-    strictEqual((context as any).depth <= 8, true)
+    strictEqual((context as any as ContextInternals).depth <= 8, true)
   })
 
   it("preserves the maxDepth override through merge, omit, and pick", () => {
@@ -184,10 +195,10 @@ describe("Context", () => {
     const B = Context.Service<number>("ContextTest/OverrideMergeB")
     const base = Context.add(Context.makeUnsafe(new Map(), { maxDepth: 2 }), A, 1)
 
-    strictEqual((Context.omit(A)(base) as any).maxDepthOverride, 2)
-    strictEqual((Context.merge(base, Context.make(B, 2)) as any).maxDepthOverride, 2)
-    strictEqual((Context.pick(A)(base) as any).maxDepthOverride, 2)
-    strictEqual((Context.addOrOmit(A, Option.none())(base) as any).maxDepthOverride, 2)
+    strictEqual((Context.omit(A)(base) as any as ContextInternals).maxDepthOverride, 2)
+    strictEqual((Context.merge(base, Context.make(B, 2)) as any as ContextInternals).maxDepthOverride, 2)
+    strictEqual((Context.pick(A)(base) as any as ContextInternals).maxDepthOverride, 2)
+    strictEqual((Context.addOrOmit(A, Option.none())(base) as any as ContextInternals).maxDepthOverride, 2)
   })
 
   it("keeps the default depth of 8 when no maxDepth override is given", () => {
@@ -196,13 +207,13 @@ describe("Context", () => {
     for (let i = 0; i < keys.length; i++) {
       context = Context.add(context, keys[i], i)
     }
-    let impl = context as any
+    let impl = context as any as ContextInternals
     strictEqual(impl.overlay !== undefined, true)
     strictEqual(impl.depth, 8)
     strictEqual(impl.maxDepthOverride, undefined)
 
     context = Context.add(context, Context.Service<number>("ContextTest/DefaultPush"), -1)
-    impl = context as any
+    impl = context as any as ContextInternals
     strictEqual(impl.overlay, undefined)
     strictEqual(impl.depth, 0)
   })
