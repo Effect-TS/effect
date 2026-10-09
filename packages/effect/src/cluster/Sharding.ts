@@ -301,18 +301,19 @@ const make = Effect.gen(function*() {
       !MutableHashSet.has(acquiredShards, shardId)
   }
 
-  // Requests wait out a shard handoff, for at most `shardLockExpiration`,
-  // instead of retrying against a runner that cannot serve them yet.
-  const shardsChanged = Latch.makeUnsafe(false)
-  // Wakes the current waiters while the latch stays closed, so unmet waits park again
-  const notifyShardWaiters = shardsChanged.release
-  const awaitShards = (done: () => boolean): Effect.Effect<void> =>
+  // Requests for a shard assigned to this runner wait for its lock, for at most
+  // `shardLockExpiration`, instead of bouncing while the previous owner drains.
+  // `release` wakes waiters without opening the latch, so unmet waits park again.
+  const shardLocksChanged = Latch.makeUnsafe(false)
+  const awaitShardLock = (shardId: ShardId): Effect.Effect<void> =>
     Effect.suspend(() =>
-      done() ? Effect.void : shardsChanged.await.pipe(
-        Effect.repeat({ until: done }),
-        Effect.timeoutOption(config.shardLockExpiration),
-        Effect.asVoid
-      )
+      isAwaitingShardLock(shardId)
+        ? shardLocksChanged.await.pipe(
+          Effect.repeat({ while: () => isAwaitingShardLock(shardId) }),
+          Effect.timeoutOption(config.shardLockExpiration),
+          Effect.asVoid
+        )
+        : Effect.void
     )
 
   yield* Scope.addFinalizer(
@@ -371,7 +372,6 @@ const make = Effect.gen(function*() {
           interrupt: MutableRef.get(isShutdown)
         })
       }
-      yield* notifyShardWaiters
     })
     const retryShardRelease =
       (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
@@ -504,8 +504,8 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
-        yield* notifyShardWaiters
         if (acquired.length > 0) {
+          yield* shardLocksChanged.release
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
 
@@ -541,7 +541,7 @@ const make = Effect.gen(function*() {
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
-          yield* notifyShardWaiters
+          yield* shardLocksChanged.release
           yield* Effect.logError("Shard lock storage is unhealthy", cause)
           yield* Effect.forkIn(syncSingletons, shardingScope, { startImmediately: true })
 
@@ -1092,7 +1092,7 @@ const make = Effect.gen(function*() {
           simulateRemoteSerialization: config.simulateRemoteSerialization
         }) as any
     })
-    return isRequest ? Effect.andThen(awaitShards(() => !isAwaitingShardLock(address.shardId)), send) : send
+    return isRequest ? Effect.andThen(awaitShardLock(address.shardId), send) : send
   }
 
   type PendingNotification = {
@@ -1196,45 +1196,35 @@ const make = Effect.gen(function*() {
         )
       )
     }
-    const send = Effect.suspend(() => {
-      const address = message.envelope.address
-      if (isPersisted && !storageEnabled) {
-        return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
-      }
-      if (shouldFail && MutableRef.get(isShutdown)) {
-        return Effect.fail(new EntityNotAssignedToRunner({ address }))
-      }
-      const maybeRunner = runner !== undefined && !isPersisted
-        ? Option.some(runner)
-        : MutableHashMap.get(shardAssignments, address.shardId)
-      const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
-      if (message._tag === "OutgoingRequest" && !isPersisted && Option.isSome(maybeRunner)) {
-        const entry = clientRequests.get(message.envelope.requestId)
-        if (entry) entry.runner = maybeRunner.value
-      }
-      if (isPersisted) {
-        return runnerIsLocal
-          ? notifyLocal(message, discard)
-          : runnersService.notify({ address: maybeRunner, message, discard })
-      } else if (Option.isNone(maybeRunner)) {
-        return Effect.fail(new EntityNotAssignedToRunner({ address }))
-      }
-      return runnerIsLocal
-        ? sendLocal(message)
-        : discard
-        ? runnersService.notify({ address: maybeRunner, message, discard })
-        : runnersService.send({ address: maybeRunner.value, message })
-    })
-    const shardId = message.envelope.address.shardId
     return Effect.catchFilter(
-      !isPersisted && message._tag === "OutgoingRequest"
-        // This runner holds the shard lock until its entities drain, so the
-        // new owner cannot serve the request before the release.
-        ? Effect.andThen(
-          awaitShards(() => MutableRef.get(isShutdown) || !MutableHashSet.has(releasingShards, shardId)),
-          send
-        )
-        : send,
+      Effect.suspend(() => {
+        const address = message.envelope.address
+        if (isPersisted && !storageEnabled) {
+          return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
+        }
+        if (shouldFail && MutableRef.get(isShutdown)) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        }
+        const maybeRunner = runner !== undefined
+          ? Option.some(runner)
+          : MutableHashMap.get(shardAssignments, address.shardId)
+        const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+        if (isPersisted) {
+          return runnerIsLocal
+            ? notifyLocal(message, discard)
+            : runnersService.notify({ address: maybeRunner, message, discard })
+        } else if (Option.isNone(maybeRunner)) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        } else if (message._tag === "OutgoingRequest") {
+          const entry = clientRequests.get(message.envelope.requestId)
+          if (entry) entry.runner = maybeRunner.value
+        }
+        return runnerIsLocal
+          ? sendLocal(message)
+          : discard
+          ? runnersService.notify({ address: maybeRunner, message, discard })
+          : runnersService.send({ address: maybeRunner.value, message })
+      }),
       (error) =>
         error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable"
           ? Result.succeed(error)
@@ -1372,7 +1362,7 @@ const make = Effect.gen(function*() {
         })
         yield* Effect.logDebug("New shard assignments", selfShards)
         activeShardsLatch.openUnsafe()
-        yield* notifyShardWaiters
+        yield* shardLocksChanged.release
 
         // update metrics
         if (selfRunner) {
@@ -1831,7 +1821,7 @@ const make = Effect.gen(function*() {
 
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
-    yield* notifyShardWaiters
+    yield* shardLocksChanged.release
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }
