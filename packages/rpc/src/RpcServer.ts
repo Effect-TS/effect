@@ -510,6 +510,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.tag,
             schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeChunk(response.values), schemas.context),
@@ -523,6 +524,7 @@ export const make: <Rpcs extends Rpc.Any>(
           return handleEncode(
             client,
             response.requestId,
+            schemas.tag,
             schemas.encodeDefect,
             schemas.collector,
             Effect.provide(schemas.encodeExit(response.exit), schemas.context),
@@ -551,6 +553,7 @@ export const make: <Rpcs extends Rpc.Any>(
   })))
 
   type Schemas = {
+    readonly tag: string
     readonly decode: (u: unknown) => Effect.Effect<Rpc.Payload<Rpcs>, ParseError>
     readonly encodeChunk: (u: ReadonlyArray<unknown>) => Effect.Effect<NonEmptyReadonlyArray<unknown>, ParseError>
     readonly encodeExit: (u: unknown) => Effect.Effect<Schema.ExitEncoded<unknown, unknown, unknown>, ParseError>
@@ -566,6 +569,7 @@ export const make: <Rpcs extends Rpc.Any>(
       const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs["_tag"]>
       const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema.ast)
       schemas = {
+        tag: rpc._tag,
         decode: Schema.decodeUnknown(rpc.payloadSchema as any),
         encodeChunk: Schema.encodeUnknown(
           Schema.Array(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
@@ -588,12 +592,16 @@ export const make: <Rpcs extends Rpc.Any>(
   const handleEncode = <A, R>(
     client: Client,
     requestId: RequestId,
+    tag: string,
     encodeDefect: (u: unknown) => Effect.Effect<unknown, ParseError>,
     collector: Transferable.CollectorService | undefined,
     effect: Effect.Effect<A, ParseError, R>,
     onSuccess: (a: A) => FromServerEncoded
   ) =>
     (collector ? Effect.provideService(effect, Transferable.Collector, collector) : effect).pipe(
+      Effect.tapErrorCause((cause) =>
+        Effect.annotateLogs(Effect.logError("Failed to encode RPC response", cause), { rpc: tag })
+      ),
       Effect.flatMap((a) => send(client.id, onSuccess(a), collector && collector.unsafeClear())),
       Effect.catchAllCause((cause) => {
         client.schemas.delete(requestId)
