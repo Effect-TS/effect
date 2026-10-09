@@ -12,7 +12,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Arr from "../Array.ts"
 import { Clock } from "../Clock.ts"
 import * as Config from "../Config.ts"
 import * as Duration from "../Duration.ts"
@@ -228,21 +227,19 @@ export const make: (options: {
           break
         }
         case "Histogram": {
-          const size = state.state.buckets.length
           const currentBuckets = {
-            boundaries: Arr.allocate(size - 1) as Array<number>,
-            counts: Arr.allocate(size) as Array<number>
+            boundaries: [] as Array<number>,
+            counts: [] as Array<number>
           }
-          let idx = 0
           let prev = 0
           for (const [boundary, value] of state.state.buckets) {
-            if (idx < size - 1) {
-              currentBuckets.boundaries[idx] = boundary
-            }
-            currentBuckets.counts[idx] = value - prev
+            if (boundary === Number.POSITIVE_INFINITY) break
+            currentBuckets.boundaries.push(boundary)
+            currentBuckets.counts.push(value - prev)
             prev = value
-            idx++
           }
+          // Values above the last finite boundary
+          currentBuckets.counts.push(state.state.count - prev)
 
           let reportCount = state.state.count
           let reportSum = state.state.sum
