@@ -1,5 +1,6 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
+  ClusterError,
   EntityId,
   MachineId,
   MessageStorage,
@@ -163,6 +164,64 @@ describe.concurrent("Sharding", () => {
       )
 
       assert.isTrue(interrupted)
+    }))
+
+  it.scoped("retries client interrupts to the runner processing the request", () =>
+    Effect.gen(function*() {
+      const requestedOn: Array<RunnerAddress.RunnerAddress> = []
+      const interruptedOn: Array<RunnerAddress.RunnerAddress> = []
+      const runners = Layer.scoped(
+        Runners.Runners,
+        Effect.map(Runners.makeNoop, (runners) => {
+          let failInterrupt = true
+          return {
+            ...runners,
+            send: ({ address, message }) =>
+              Effect.suspend(() => {
+                if (message._tag === "OutgoingRequest") {
+                  requestedOn.push(address)
+                  return Effect.never
+                }
+                if (failInterrupt) {
+                  failInterrupt = false
+                  return Effect.fail(new ClusterError.RunnerUnavailable({ address }))
+                }
+                interruptedOn.push(address)
+                return Effect.void
+              })
+          }
+        })
+      )
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.tap(
+          RunnerStorage.makeMemory,
+          (storage) =>
+            storage.register(RunnerModule.make({ address: otherRunner.address, groups: ["default"], weight: 1 }), true)
+        )
+      )
+
+      yield* Effect.gen(function*() {
+        const client = (yield* TestEntity.client)("1")
+        const fiber = yield* client.NeverVolatile().pipe(Effect.fork)
+        while (requestedOn.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        yield* Effect.fork(Fiber.interrupt(fiber))
+        yield* TestClock.adjust(1000)
+        assert.deepStrictEqual(interruptedOn, [otherRunner.address])
+      }).pipe(
+        Effect.provide(TestEntityNoState.pipe(
+          Layer.provideMerge(Sharding.layer),
+          Layer.provide([runnerStorage, runners, RunnerHealth.layerNoop, TestEntityState.Default]),
+          Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+          Layer.provide(ShardingConfig.layer({
+            runnerAddress: Option.none(),
+            refreshAssignmentsInterval: 10,
+            sendRetryInterval: 100
+          }))
+        ))
+      )
     }))
 
   it.scoped("malformed message in storage", () =>
@@ -760,10 +819,15 @@ describe("Sharding shard lock failover", () => {
           yield* TestClock.adjust(10)
         }
         assert.isFalse(sharding.hasShardId(shardId))
+        for (let i = 0; i < 200 && (yield* sharding.activeEntityCount) > 0; i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.strictEqual(yield* sharding.activeEntityCount, 0)
+        assert.isNull(entityFiber.unsafePoll())
+        assert.strictEqual(storageState.releaseCalls.length, 0)
 
         yield* Effect.fork(Fiber.interrupt(entityFiber))
         yield* TestClock.adjust(100)
-        assert.strictEqual(storageState.releaseCalls.length, 0)
         assert.deepStrictEqual(entityState.interrupts.unsafeSize(), Option.some(1))
       }).pipe(
         Effect.ensuring(TestClock.adjust(2000)),
