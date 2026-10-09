@@ -659,6 +659,24 @@ declare module "effect/ai/Response" {
       requestId?: string | null
     } | null
   }
+
+  /**
+   * Anthropic metadata attached to response metadata parts.
+   *
+   * **Details**
+   *
+   * Fallback blocks are stored in `anthropic.fallback`; the part's `modelId`
+   * identifies the fallback model.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.3
+   */
+  export interface ResponseMetadataPartMetadata extends ProviderMetadata {
+    readonly anthropic?: {
+      readonly fallback?: typeof Generated.BetaResponseFallbackBlock.Encoded
+    } | null
+  }
 }
 
 // =============================================================================
@@ -1044,7 +1062,7 @@ const prepareMessages = Effect.fnUntraced(
             pendingSystem = []
           }
 
-          const content: Array<typeof Generated.BetaContentBlock.Encoded> = []
+          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
           const mcpToolIds = new Set<string>()
 
           for (let j = 0; j < group.messages.length; j++) {
@@ -1651,6 +1669,15 @@ const makeResponse = Effect.fnUntraced(
 
     for (const part of rawResponse.content) {
       switch (part.type) {
+        case "fallback": {
+          parts.push({
+            type: "response-metadata",
+            modelId: part.to.model,
+            timestamp: DateTime.formatIso(yield* DateTime.now),
+            metadata: { anthropic: { fallback: part } }
+          })
+          break
+        }
         case "text": {
           // The response tool supplies the JSON payload. Accompanying prose
           // must not be concatenated with it during structured output decoding.
@@ -2599,6 +2626,17 @@ const makeStreamResponse = Effect.fnUntraced(
                     }
                   })
                 }
+
+                break
+              }
+
+              case "fallback": {
+                parts.push({
+                  type: "response-metadata",
+                  modelId: event.content_block.to.model,
+                  timestamp: DateTime.formatIso(yield* DateTime.now),
+                  metadata: { anthropic: { fallback: event.content_block } }
+                })
 
                 break
               }

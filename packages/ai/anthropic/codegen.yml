@@ -9,6 +9,8 @@ patches:
   - '[{"op":"replace","path":"/components/schemas/BetaInputMessage/properties/role/enum","value":["user","assistant","system"]},{"op":"replace","path":"/components/schemas/InputMessage/properties/role/enum","value":["user","assistant","system"]}]'
   # Make iterations and speed optional in BetaUsage, iterations optional in BetaMessageDeltaUsage (API may omit these fields)
   - '[{"op":"remove","path":"/components/schemas/BetaUsage/required/9"},{"op":"remove","path":"/components/schemas/BetaUsage/required/5"},{"op":"remove","path":"/components/schemas/BetaMessageDeltaUsage/required/3"}]'
+  # Make model optional in BetaMessageIterationUsage (gateways and older responses may omit it)
+  - '[{"op":"replace","path":"/components/schemas/BetaMessageIterationUsage/required","value":["cache_creation","cache_creation_input_tokens","cache_read_input_tokens","input_tokens","output_tokens","type"]}]'
 header: |
   /**
    * @stability unstable

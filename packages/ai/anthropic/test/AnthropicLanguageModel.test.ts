@@ -660,6 +660,72 @@ describe("AnthropicLanguageModel", () => {
 
         assert.strictEqual(text.delta, "Hello")
       }))
+
+    it.effect("emits response metadata for a fallback block", () =>
+      Effect.gen(function*() {
+        const fallback = {
+          type: "fallback",
+          from: { model: "claude-opus-5-5" },
+          to: { model: "claude-opus-4-8" },
+          trigger: { type: "refusal", category: "cyber" }
+        } as const
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-opus-4-8",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                { type: "content_block_start", index: 0, content_block: fallback },
+                { type: "content_block_stop", index: 0 },
+                {
+                  type: "message_delta",
+                  delta: { stop_reason: "end_turn", stop_sequence: null },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 5
+                  }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+
+        const parts = yield* LanguageModel.streamText({ prompt: "Hello" }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-opus-5-5")),
+          Effect.provide(layer)
+        )
+        const metadata = globalThis.Array.from(parts).find((part) =>
+          part.type === "response-metadata" && part.metadata.anthropic?.fallback !== undefined
+        )
+        assert.strictEqual(metadata?.type === "response-metadata" ? metadata.modelId : undefined, "claude-opus-4-8")
+        assert.deepStrictEqual(
+          metadata?.type === "response-metadata" ? metadata.metadata.anthropic?.fallback : undefined,
+          fallback
+        )
+      }))
   })
 
   describe("generateText", () => {
@@ -705,6 +771,79 @@ describe("AnthropicLanguageModel", () => {
           assert.isTrue(response.content.some((part) => part.type === "text" && part.text === "Hello"))
         }))
     }
+
+    it.effect("emits response metadata for a fallback block and keeps fallback usage iterations", () =>
+      Effect.gen(function*() {
+        const fallback = {
+          type: "fallback",
+          from: { model: "claude-opus-5-5" },
+          to: { model: "claude-opus-4-8" },
+          trigger: { type: "refusal", category: "cyber" }
+        } as const
+        const iterations = [
+          {
+            type: "message",
+            model: "claude-opus-5-5",
+            cache_creation: null,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            input_tokens: 10,
+            output_tokens: 0
+          },
+          {
+            type: "fallback_message",
+            model: "claude-opus-4-8",
+            cache_creation: null,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            input_tokens: 10,
+            output_tokens: 5
+          }
+        ] as const
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(request, {
+                id: "msg_test_1",
+                type: "message",
+                role: "assistant",
+                model: "claude-opus-4-8",
+                content: [fallback, { type: "text", text: "Hello" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null,
+                  iterations
+                }
+              }))
+            )
+          ))
+        )
+
+        const response = yield* LanguageModel.generateText({ prompt: "Hello" }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-opus-5-5")),
+          Effect.provide(layer)
+        )
+        const metadata = response.content.find((part) =>
+          part.type === "response-metadata" && part.metadata.anthropic?.fallback !== undefined
+        )
+        assert.strictEqual(metadata?.type === "response-metadata" ? metadata.modelId : undefined, "claude-opus-4-8")
+        assert.deepStrictEqual(
+          metadata?.type === "response-metadata" ? metadata.metadata.anthropic?.fallback : undefined,
+          fallback
+        )
+        const finish = response.content.find((part) => part.type === "finish")
+        assert.deepStrictEqual(
+          finish?.type === "finish" ? finish.metadata.anthropic?.usage?.iterations : undefined,
+          iterations
+        )
+      }))
 
     it.effect("reports total input tokens and cache usage on the span", () =>
       Effect.gen(function*() {
