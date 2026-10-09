@@ -1,3 +1,4 @@
+import * as BunCrypto from "@effect/platform-bun/BunCrypto"
 import * as BunDatagramSocket from "@effect/platform-bun/BunDatagramSocket"
 import * as BunDnsClient from "@effect/platform-bun/BunDnsClient"
 import * as BunSocket from "@effect/platform-bun/BunSocket"
@@ -21,7 +22,7 @@ describeDnsClient(
           udp: (server) => BunDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
           // The container maps its TCP listener to a different port.
           tcp: () => BunSocket.makeNet({ host: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
-        })
+        }).pipe(Effect.provide(BunCrypto.layer))
       )
     )
 )

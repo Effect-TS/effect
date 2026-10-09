@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Equal, Exit, Fiber, Layer, Queue, Result } from "effect"
+import { Crypto, Duration, Effect, Equal, Exit, Fiber, Layer, Queue, Result } from "effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Hex from "effect/encoding/Hex"
 import * as HttpClient from "effect/http/HttpClient"
@@ -12,7 +12,7 @@ import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as DatagramSocket from "effect/socket/DatagramSocket"
 import * as Socket from "effect/socket/Socket"
-import { TestClock } from "effect/testing"
+import { TestClock, TestCrypto } from "effect/testing"
 
 const name = Host.domainNameFromStringUnsafe
 const inet = NetAddress.inetAddressFromStringUnsafe
@@ -154,13 +154,25 @@ const fakeNetwork = (handle: (request: Request) => ReadonlyArray<Reply>) => {
   return { udp, tcp, requests, state }
 }
 
+// Secure random bytes for query IDs; digests are not used.
+const crypto = Crypto.make({
+  randomBytes: (size) => globalThis.crypto.getRandomValues(new Uint8Array(size)),
+  digest: () => Effect.die("unused")
+})
+
 const udpTransport = (
   network: Pick<ReturnType<typeof fakeNetwork>, "udp" | "tcp">,
   options?: Partial<DnsClient.TransportUdpOptions>
-) => DnsClient.makeTransportUdp({ nameServers: [primary, secondary], udp: network.udp, tcp: network.tcp, ...options })
+) =>
+  DnsClient.makeTransportUdp({ nameServers: [primary, secondary], udp: network.udp, tcp: network.tcp, ...options })
+    .pipe(
+      Effect.provideService(Crypto.Crypto, crypto)
+    )
 
 const tcpTransport = (network: ReturnType<typeof fakeNetwork>, options?: Partial<DnsClient.TransportTcpOptions>) =>
-  DnsClient.makeTransportTcp({ nameServers: [primary, secondary], tcp: network.tcp, ...options })
+  DnsClient.makeTransportTcp({ nameServers: [primary, secondary], tcp: network.tcp, ...options }).pipe(
+    Effect.provideService(Crypto.Crypto, crypto)
+  )
 
 const answer = (
   request: Pick<Request, "header">,
@@ -214,6 +226,27 @@ describe("DnsClient", () => {
       assert.strictEqual(network.state.opened, 6)
       assert.strictEqual(network.state.open, 0)
       assert.isAbove(new Set(network.requests.map((request) => request.header.id)).size, 1)
+    }))
+
+  it.effect("takes query IDs from the Crypto service", () =>
+    Effect.gen(function*() {
+      const ids = (seed: string) =>
+        Effect.gen(function*() {
+          const network = fakeNetwork((request) =>
+            request.transport === "udp" ? [answer(request, { truncated: true })] : [answer(request)]
+          )
+          const transport = DnsClient.makeTransportUdp({ nameServers: [primary], udp: network.udp, tcp: network.tcp })
+          yield* run(
+            transport.pipe(
+              Effect.provide(TestCrypto.layer(seed).pipe(Layer.provide(Layer.succeed(Crypto.Crypto, crypto))))
+            )
+          )
+          return network.requests.map((request) => request.header.id)
+        })
+      const first = yield* ids("dns")
+      assert.strictEqual(first.length, 2)
+      assert.deepStrictEqual(yield* ids("dns"), first)
+      assert.notDeepEqual(yield* ids("other"), first)
     }))
 
   it.effect("ignores responses that do not match the query", () =>

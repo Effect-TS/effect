@@ -14,6 +14,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as DnsClient from "effect/net/DnsClient"
 import * as NetAddress from "effect/net/NetAddress"
+import * as BunCrypto from "./BunCrypto.ts"
 import * as BunDatagramSocket from "./BunDatagramSocket.ts"
 
 export type {
@@ -63,7 +64,10 @@ const tcp = (server: NetAddress.InetAddress) =>
 export const makeTransportUdp = (
   options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
-  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportUdp({ ...options, udp, tcp }))
+  Effect.andThen(
+    rejectScoped(options.nameServers),
+    DnsClient.makeTransportUdp({ ...options, udp, tcp }).pipe(Effect.provide(BunCrypto.layer))
+  )
 
 /**
  * Layer that provides a `DnsClient.Transport` sending queries over UDP, with
@@ -95,7 +99,10 @@ export const layerTransportUdp = (
 export const makeTransportTcp = (
   options: Omit<DnsClient.TransportTcpOptions, "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
-  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportTcp({ ...options, tcp }))
+  Effect.andThen(
+    rejectScoped(options.nameServers),
+    DnsClient.makeTransportTcp({ ...options, tcp }).pipe(Effect.provide(BunCrypto.layer))
+  )
 
 /**
  * Layer that provides a `DnsClient.Transport` sending every query over TCP.

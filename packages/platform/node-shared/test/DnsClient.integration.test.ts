@@ -1,3 +1,4 @@
+import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
 import * as NodeDatagramSocket from "@effect/platform-node-shared/NodeDatagramSocket"
 import * as NodeDnsClient from "@effect/platform-node-shared/NodeDnsClient"
 import * as NodeSocket from "@effect/platform-node-shared/NodeSocket"
@@ -21,7 +22,7 @@ describeDnsClient(
           udp: (server) => NodeDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
           // The container maps its TCP listener to a different port.
           tcp: () => NodeSocket.makeNet({ host: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
-        })
+        }).pipe(Effect.provide(NodeCrypto.layer))
       )
     )
 )

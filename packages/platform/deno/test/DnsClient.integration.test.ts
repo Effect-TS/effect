@@ -1,3 +1,4 @@
+import * as DenoCrypto from "@effect/platform-deno/DenoCrypto"
 import * as DenoDatagramSocket from "@effect/platform-deno/DenoDatagramSocket"
 import * as DenoDnsClient from "@effect/platform-deno/DenoDnsClient"
 import * as DenoSocket from "@effect/platform-deno/DenoSocket"
@@ -22,7 +23,7 @@ describeDnsClient(
           // The container maps its TCP listener to a different port.
           tcp: () =>
             DenoSocket.makeTcp({ hostname: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
-        })
+        }).pipe(Effect.provide(DenoCrypto.layer))
       )
     )
 )

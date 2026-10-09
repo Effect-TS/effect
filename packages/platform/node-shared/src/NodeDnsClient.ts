@@ -22,6 +22,7 @@ import * as DnsClient from "effect/net/DnsClient"
 import type * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Fs from "node:fs/promises"
+import * as NodeCrypto from "./NodeCrypto.ts"
 import * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
 import * as NodeSocket from "./NodeSocket.ts"
 
@@ -149,7 +150,10 @@ const tcp = (server: NetAddress.InetAddress) =>
 export const makeTransportUdp = (
   options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
-  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportUdp({ ...options, udp, tcp }))
+  Effect.andThen(
+    rejectScoped(options.nameServers),
+    DnsClient.makeTransportUdp({ ...options, udp, tcp }).pipe(Effect.provide(NodeCrypto.layer))
+  )
 
 /**
  * Layer that provides a `DnsClient.Transport` sending queries over UDP, with
@@ -181,7 +185,10 @@ export const layerTransportUdp = (
 export const makeTransportTcp = (
   options: Omit<DnsClient.TransportTcpOptions, "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
-  Effect.andThen(rejectScoped(options.nameServers), DnsClient.makeTransportTcp({ ...options, tcp }))
+  Effect.andThen(
+    rejectScoped(options.nameServers),
+    DnsClient.makeTransportTcp({ ...options, tcp }).pipe(Effect.provide(NodeCrypto.layer))
+  )
 
 /**
  * Layer that provides a `DnsClient.Transport` sending every query over TCP.

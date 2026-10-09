@@ -18,6 +18,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Context from "../Context.ts"
+import * as Crypto from "../Crypto.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
@@ -186,7 +187,8 @@ const rcodeReasons: Record<number, Dns.DnsErrorReason> = {
   5: "Refused"
 }
 
-const randomId = (): number => globalThis.crypto.getRandomValues(new Uint16Array(1))[0]
+// Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
+const randomId = (crypto: Crypto.Crypto): Effect.Effect<number> => crypto.randomIntBetween(0, 0xffff)
 
 const absolute = (name: Host.DomainName): string => name.endsWith(".") ? name : `${name}.`
 
@@ -291,11 +293,12 @@ const nameServerAddresses = (
 // Sends a query with a new random ID over a new TCP connection and returns the
 // response, which must match the query.
 const sendTcp = Effect.fnUntraced(function*(
+  crypto: Crypto.Crypto,
   open: Effect.Effect<Socket.Socket>,
   udpPayloadSize: number,
   { encode, fail, limit, matches }: Exchange
 ) {
-  const id = randomId()
+  const id = yield* randomId(crypto)
   const payload = yield* limit(Effect.gen(function*() {
     const socket = yield* open
     const pull = yield* Socket.readerBytes(socket)
@@ -350,8 +353,9 @@ export interface TransportUdpOptions {
  *
  * **Details**
  *
- * - Each attempt opens a new socket and uses a new random query ID; the socket
- *   is closed when the attempt ends or is interrupted.
+ * - Each attempt opens a new socket and uses a new random query ID from the
+ *   `Crypto` service; the socket is closed when the attempt ends or is
+ *   interrupted.
  * - A response is accepted only if it comes from the name server and matches
  *   the query; other packets are ignored. A truncated response is retried over
  *   TCP with a new query ID.
@@ -366,8 +370,10 @@ export interface TransportUdpOptions {
  * @category constructors
  * @since 4.0.0
  */
-export const makeTransportUdp = (options: TransportUdpOptions): Effect.Effect<Transport["Service"]> =>
-  Effect.sync(() => {
+export const makeTransportUdp = (
+  options: TransportUdpOptions
+): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
+  Effect.map(Effect.service(Crypto.Crypto), (crypto) => {
     const udpPayloadSize = options.udpPayloadSize ?? 1232
     if (!Number.isInteger(udpPayloadSize) || udpPayloadSize < 512 || udpPayloadSize > 0xffff) {
       throw new RangeError(`DnsClient udpPayloadSize must be an integer from 512 to 65535, received ${udpPayloadSize}`)
@@ -375,7 +381,7 @@ export const makeTransportUdp = (options: TransportUdpOptions): Effect.Effect<Tr
     return Transport.of({
       servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
         send: Effect.fnUntraced(function*(exchange) {
-          const id = randomId()
+          const id = yield* randomId(crypto)
           const received = yield* exchange.limit(Effect.gen(function*() {
             const socket = yield* options.udp(server)
             const reader = yield* socket.reader
@@ -391,7 +397,7 @@ export const makeTransportUdp = (options: TransportUdpOptions): Effect.Effect<Tr
           }))
           // The TC bit of a matching response, which has a complete header.
           return (received[2] & 0x02) !== 0
-            ? yield* sendTcp(options.tcp(server), udpPayloadSize, exchange)
+            ? yield* sendTcp(crypto, options.tcp(server), udpPayloadSize, exchange)
             : received
         })
       }))
@@ -426,8 +432,9 @@ export interface TransportTcpOptions {
  *
  * **Details**
  *
- * Each attempt opens a new connection and uses a new random query ID. A
- * response must match the query, or the attempt fails with `InvalidResponse`.
+ * Each attempt opens a new connection and uses a new random query ID from the
+ * `Crypto` service. A response must match the query, or the attempt fails
+ * with `InvalidResponse`.
  *
  * **Gotchas**
  *
@@ -438,15 +445,16 @@ export interface TransportTcpOptions {
  * @category constructors
  * @since 4.0.0
  */
-export const makeTransportTcp = (options: TransportTcpOptions): Effect.Effect<Transport["Service"]> =>
-  Effect.sync(() =>
+export const makeTransportTcp = (
+  options: TransportTcpOptions
+): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
+  Effect.map(Effect.service(Crypto.Crypto), (crypto) =>
     Transport.of({
       servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
         // Advertises EDNS(0) support; the UDP payload size does not apply over TCP.
-        send: (exchange) => sendTcp(options.tcp(server), 1232, exchange)
+        send: (exchange) => sendTcp(crypto, options.tcp(server), 1232, exchange)
       }))
-    })
-  )
+    }))
 
 /**
  * Options for `makeTransportHttps`.
