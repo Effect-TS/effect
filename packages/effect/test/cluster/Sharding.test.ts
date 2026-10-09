@@ -3508,10 +3508,11 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
     }).pipe(Effect.scoped))
 
-  it.effect("waits for a closing singleton registration's teardown before handing off its shard", () =>
+  it.effect("waits for singleton teardown before handing off their shards", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
       const registrationScope = yield* makeOwnedScope
+      const runningRegistrationScope = yield* makeOwnedScope
       const { scope, sharding } = yield* buildSharding(storageState)
       const gate = yield* makeGate
       yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
@@ -3522,14 +3523,25 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
         Effect.andThen(started.open, Effect.addFinalizer(() => Effect.andThen(stopping.open, gate.await)))
       ).pipe(Effect.provideService(Scope.Scope, registrationScope))
       yield* started.await
+      // a singleton on the other shard that is still running at shutdown
+      const closingShard = sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
+      let runningName = 0
+      while (Equal.equals(sharding.getShardId(EntityId.make(`Running${runningName}`), "default"), closingShard)) {
+        runningName++
+      }
+      const runningStarted = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        `Running${runningName}`,
+        Effect.andThen(runningStarted.open, Effect.addFinalizer(() => gate.await))
+      ).pipe(Effect.provideService(Scope.Scope, runningRegistrationScope))
+      yield* runningStarted.await
       yield* Effect.forkChild(Scope.close(registrationScope, Exit.void))
       yield* stopping.await
 
       const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
       yield* TestClock.adjust(100)
-      const shardId = sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
       assert.isUndefined(closing.pollUnsafe())
-      assert.isFalse(storageState.releaseCalls.some((released) => Equal.equals(released, shardId)))
+      assert.deepStrictEqual(storageState.releaseCalls, [])
       assert.deepStrictEqual(storageState.releaseAllCalls, [])
 
       yield* gate.open
