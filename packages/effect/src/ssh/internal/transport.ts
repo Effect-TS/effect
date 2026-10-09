@@ -487,7 +487,7 @@ export const make = Effect.fnUntraced(function*(
     }
 
     const method = Crypto.kexMethods[algorithms.kex]
-    const pair = yield* method.generate
+    const pair = yield* Crypto.generateKeyAgreement(crypto, method)
     yield* writeKex(new Writer().byte(Constants.MSG_KEX_ECDH_INIT).string(pair.publicKey).finish())
 
     const reply = yield* readKexMessage(Constants.MSG_KEX_ECDH_REPLY)

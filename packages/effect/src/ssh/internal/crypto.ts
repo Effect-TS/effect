@@ -8,7 +8,6 @@ import type * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
 import * as Base64Url from "../../encoding/Base64Url.ts"
 import { SshError, SshProtocolError } from "../SshError.ts"
-import * as WebCrypto from "./webcrypto.ts"
 import type { Bytes } from "./wire.ts"
 import { concat, copy, padStart, Reader, stripLeadingZeros, utf8, WireError, Writer } from "./wire.ts"
 
@@ -42,21 +41,62 @@ export const digest = (crypto: Crypto.Crypto, hash: HashName, data: Uint8Array):
 // -----------------------------------------------------------------------------
 
 /** @internal */
+export interface KeyAgreement {
+  readonly publicKey: Uint8Array
+  /**
+   * Computes the shared secret as an unsigned big-endian magnitude.
+   */
+  readonly agree: (peerPublicKey: Uint8Array) => Effect.Effect<Uint8Array, SshError>
+}
+
+/** @internal */
 export interface KexMethod {
   readonly name: string
   readonly hash: HashName
-  readonly generate: Effect.Effect<WebCrypto.KeyAgreement, SshError>
+  readonly algorithm: { readonly name: "X25519" } | { readonly name: "ECDH"; readonly namedCurve: Crypto.NamedCurve }
 }
 
-const curve25519 = (name: string): KexMethod => ({ name, hash: "SHA-256", generate: WebCrypto.x25519 })
+/**
+ * Generates an ephemeral key pair for a key exchange method. The public key
+ * and the peer's public key travel as raw bytes (RFC 8731, RFC 5656).
+ *
+ * @internal
+ */
+export const generateKeyAgreement = Effect.fnUntraced(function*(crypto: Crypto.Crypto, method: KexMethod) {
+  const { algorithm } = method
+  const pair = yield* Effect.mapError(
+    crypto.generateKeyPair(algorithm),
+    cryptoError(`${method.name} key generation failed`)
+  )
+  const publicKey = yield* Effect.mapError(
+    crypto.exportKey("raw", pair.publicKey),
+    cryptoError(`${method.name} key generation failed`)
+  )
+  return {
+    publicKey,
+    agree: (peer) =>
+      crypto.importKey("raw", peer, algorithm).pipe(
+        Effect.flatMap((peerKey) => crypto.deriveSharedSecret(pair.privateKey, peerKey)),
+        Effect.mapError(cryptoError(`${method.name} key agreement failed`))
+      )
+  } satisfies KeyAgreement
+})
+
+const curve25519 = (name: string): KexMethod => ({ name, hash: "SHA-256", algorithm: { name: "X25519" } })
+
+const ecdh = (name: string, namedCurve: Crypto.NamedCurve, hash: HashName): KexMethod => ({
+  name,
+  hash,
+  algorithm: { name: "ECDH", namedCurve }
+})
 
 /** @internal */
 export const kexMethods: Record<string, KexMethod> = {
   "curve25519-sha256": curve25519("curve25519-sha256"),
   "curve25519-sha256@libssh.org": curve25519("curve25519-sha256@libssh.org"),
-  "ecdh-sha2-nistp256": { name: "ecdh-sha2-nistp256", hash: "SHA-256", generate: WebCrypto.ecdh("P-256") },
-  "ecdh-sha2-nistp384": { name: "ecdh-sha2-nistp384", hash: "SHA-384", generate: WebCrypto.ecdh("P-384") },
-  "ecdh-sha2-nistp521": { name: "ecdh-sha2-nistp521", hash: "SHA-512", generate: WebCrypto.ecdh("P-521") }
+  "ecdh-sha2-nistp256": ecdh("ecdh-sha2-nistp256", "P-256", "SHA-256"),
+  "ecdh-sha2-nistp384": ecdh("ecdh-sha2-nistp384", "P-384", "SHA-384"),
+  "ecdh-sha2-nistp521": ecdh("ecdh-sha2-nistp521", "P-521", "SHA-512")
 }
 
 /**
@@ -413,6 +453,38 @@ export interface DirectionKeys {
   readonly macKey: Bytes | undefined
 }
 
+const addCounter = (counter: Bytes, blocks: number): void => {
+  let carry = blocks
+  for (let i = counter.length - 1; i >= 0 && carry > 0; i--) {
+    const sum = counter[i] + (carry & 0xff)
+    counter[i] = sum & 0xff
+    carry = Math.floor(carry / 256) + (sum >> 8)
+  }
+}
+
+/**
+ * Creates a stateful AES-CTR keystream: each call continues the 128-bit
+ * counter where the previous one stopped.
+ */
+const aesCtr = Effect.fnUntraced(function*(crypto: Crypto.Crypto, keyBytes: Bytes, iv: Bytes) {
+  const key = yield* Effect.mapError(
+    crypto.importKey("raw", keyBytes, { name: "AES-CTR", length: keyBytes.length * 8 as 128 | 256 }, {
+      usages: ["encrypt"]
+    }),
+    cryptoError("could not import AES-CTR key")
+  )
+  const counter = copy(iv)
+  return (data: Uint8Array): Effect.Effect<Uint8Array, SshError> => {
+    if (data.length === 0) return Effect.succeed(data)
+    const current = copy(counter)
+    addCounter(counter, Math.ceil(data.length / 16))
+    return Effect.mapError(
+      crypto.encrypt({ name: "AES-CTR", counter: current, length: 128 }, key, data),
+      cryptoError("AES-CTR encryption failed")
+    )
+  }
+})
+
 const importGcm = (crypto: Crypto.Crypto, key: Bytes, usage: Crypto.KeyUsage) =>
   Effect.mapError(
     crypto.importKey("raw", key, { name: "AES-GCM", length: key.length * 8 as 128 | 256 }, { usages: [usage] }),
@@ -446,7 +518,7 @@ export const makeSealer = Effect.fnUntraced(function*(crypto: Crypto.Crypto, key
     } satisfies Sealer
   }
   const mac = keys.mac!
-  const ctr = yield* WebCrypto.aesCtr(keys.key, keys.iv)
+  const ctr = yield* aesCtr(crypto, keys.key, keys.iv)
   const macKey = yield* importMac(crypto, mac, keys.macKey!)
   const sign = (data: Uint8Array) =>
     Effect.mapError(crypto.sign({ name: "HMAC" }, macKey, data), cryptoError("MAC computation failed"))
@@ -494,7 +566,7 @@ export const makeOpener = Effect.fnUntraced(function*(crypto: Crypto.Crypto, key
   }
   const mac = keys.mac!
   const macLength = mac.keyLength
-  const ctr = yield* WebCrypto.aesCtr(keys.key, keys.iv)
+  const ctr = yield* aesCtr(crypto, keys.key, keys.iv)
   const macKey = yield* importMac(crypto, mac, keys.macKey!)
   const verify = (tag: Uint8Array, data: Uint8Array) =>
     crypto.verify({ name: "HMAC" }, macKey, tag, data).pipe(
@@ -515,7 +587,7 @@ export const makeOpener = Effect.fnUntraced(function*(crypto: Crypto.Crypto, key
       })
     } satisfies Opener
   }
-  let firstBlock: Bytes | undefined
+  let firstBlock: Uint8Array | undefined
   return {
     headerLength: blockSize,
     begin: Effect.fnUntraced(function*(header: Bytes) {

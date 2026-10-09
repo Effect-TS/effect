@@ -17,10 +17,9 @@
  *   `aes256-ctr`, `aes128-ctr`.
  * - MACs: `hmac-sha2-256(-etm@openssh.com)`, `hmac-sha2-512(-etm@openssh.com)`.
  *
- * Hashing, signatures, AES-GCM, and HMAC use the `Crypto` service from the
- * context (provided by the platform packages, for example
- * `NodeServices.layer`). Key agreement and AES-CTR currently use
- * `globalThis.crypto.subtle` directly.
+ * All cryptography (key agreement, signatures, ciphers, MACs, and hashing)
+ * uses the `Crypto` service from the context, provided by the platform
+ * packages (for example `NodeServices.layer`).
  *
  * **Example** (Running a remote command on Node)
  *

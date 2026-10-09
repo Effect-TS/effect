@@ -292,7 +292,7 @@ export const make = Effect.fnUntraced(function*(pipe: Pipe, options: ServerOptio
       const init = yield* readExpect(Constants.MSG_KEX_ECDH_INIT)
       const clientPublic = new Reader(init, 1).string()
       const method = Crypto.kexMethods[kexName]
-      const pair = yield* Effect.orDie(method.generate)
+      const pair = yield* Effect.orDie(Crypto.generateKeyAgreement(crypto, method))
       const secret = yield* Effect.orDie(pair.agree(clientPublic))
       const exchangeHash = yield* Effect.orDie(
         Crypto.digest(
