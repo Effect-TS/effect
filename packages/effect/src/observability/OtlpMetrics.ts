@@ -247,8 +247,7 @@ export const make: (options: {
           let reportCount = state.state.count
           let reportSum = state.state.sum
           let reportBucketCounts = currentBuckets.counts
-          const reportMin = state.state.min
-          const reportMax = state.state.max
+          let reportExtrema = true
 
           if (isDelta) {
             const previousState = previousHistogramState.get(metricKey)
@@ -258,17 +257,13 @@ export const make: (options: {
               reportBucketCounts = currentBuckets.counts.map((c, i) =>
                 Math.max(0, c - (previousState.bucketCounts[i] ?? 0))
               )
-              // For delta, min/max represent the interval's min/max
-              // We can't compute these from cumulative state, so we use current values
-              // Note: This is a limitation - true delta min/max would require tracking
-              // observations within each interval
+              // Interval extrema cannot be derived from cumulative min / max
+              reportExtrema = false
             }
             nextHistogramState.set(metricKey, {
               count: state.state.count,
               sum: state.state.sum,
-              bucketCounts: currentBuckets.counts.slice(),
-              min: state.state.min,
-              max: state.state.max
+              bucketCounts: currentBuckets.counts.slice()
             })
           }
 
@@ -277,8 +272,7 @@ export const make: (options: {
             startTimeUnixNano: intervalStartTime,
             timeUnixNano: nowTime,
             count: reportCount,
-            min: reportMin,
-            max: reportMax,
+            ...(reportExtrema ? { min: state.state.min, max: state.state.max } : undefined),
             sum: reportSum,
             bucketCounts: reportBucketCounts,
             explicitBounds: currentBuckets.boundaries
@@ -519,8 +513,6 @@ interface PreviousHistogramState {
   readonly count: number
   readonly sum: number
   readonly bucketCounts: Array<number>
-  readonly min: number
-  readonly max: number
 }
 
 /** Properties of an InstrumentationScope. */

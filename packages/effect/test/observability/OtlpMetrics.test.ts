@@ -294,6 +294,31 @@ describe("OtlpMetrics", () => {
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].sum, 30)
       }).pipe(Effect.provide(TestLayerDelta)))
 
+    it.effect("omits cumulative min and max from later histogram deltas", () =>
+      Effect.gen(function*() {
+        const metricName = "delta_histogram_extrema_test"
+        const histogram = Metric.histogram(metricName, { boundaries: [10, 50, 100] })
+
+        yield* Metric.update(histogram, 1)
+        yield* Metric.update(histogram, 100)
+        yield* triggerExport
+
+        yield* Metric.update(histogram, 50)
+        yield* Metric.update(histogram, 60)
+        yield* triggerExport
+
+        const requests = yield* MockHttpClient.requests
+        const first = findMetric(requests[0], metricName)?.histogram?.dataPoints[0]
+        assert.strictEqual(first?.min, 1)
+        assert.strictEqual(first?.max, 100)
+
+        const second = findMetric(requests[1], metricName)?.histogram?.dataPoints[0]
+        assert.strictEqual(second?.count, 2)
+        assert.strictEqual(second?.sum, 110)
+        assert.isUndefined(second?.min)
+        assert.isUndefined(second?.max)
+      }).pipe(Effect.provide(TestLayerDelta)))
+
     it.effect("reports frequency count deltas across export intervals", () =>
       Effect.gen(function*() {
         const metricName = "delta_frequency_test"
