@@ -8,7 +8,6 @@ import * as Context from "effect/Context"
 import * as Duration from "effect/Duration"
 import type { DurationInput } from "effect/Duration"
 import * as Effect from "effect/Effect"
-import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
@@ -59,7 +58,7 @@ export interface EntityManager {
   }) => boolean
   readonly clearProcessed: () => void
 
-  readonly interruptShard: (shardId: ShardId, options?: {
+  readonly interruptShards: (shardIds: Iterable<ShardId>, options?: {
     readonly force?: boolean
   }) => Effect.Effect<void>
 
@@ -126,6 +125,7 @@ export const make = Effect.fnUntraced(function*<
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Effect.Latch
     readonly force: Effect.Latch
+    closing: boolean
   }>()
   const processedRequestIds = new Set<Snowflake.Snowflake>()
 
@@ -143,7 +143,8 @@ export const make = Effect.fnUntraced(function*<
     const keepAliveLatch = Effect.unsafeMakeLatch(false)
     const closeLatches = {
       closed: Effect.unsafeMakeLatch(),
-      force: Effect.unsafeMakeLatch()
+      force: Effect.unsafeMakeLatch(),
+      closing: false
     }
 
     // on shutdown, reset the storage for the entity
@@ -416,6 +417,7 @@ export const make = Effect.fnUntraced(function*<
       scope,
       Effect.withFiberRuntime((fiber) => {
         activeServers.delete(address.entityId)
+        closeLatches.closing = true
         drainingServers.set(address.entityId, state)
         internalInterruptors.add(fiber.id())
         return Effect.raceFirst(
@@ -580,28 +582,32 @@ export const make = Effect.fnUntraced(function*<
   )
 
   return identity<EntityManager>({
-    interruptShard: (shardId: ShardId, options) =>
-      Effect.suspend(function loop(): Effect.Effect<void> {
-        const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
-        if (options?.force === true) {
+    interruptShards: (shardIds, options) =>
+      Effect.suspend(() => {
+        const ids = new Set<string>()
+        for (const shardId of shardIds) ids.add(shardId.toString())
+        return Effect.suspend(function loop(): Effect.Effect<void> {
+          const fibers = Arr.empty<Fiber.RuntimeFiber<void>>()
+          if (options?.force === true) {
+            serverCloseLatches.forEach((latches, address) => {
+              if (ids.has(address.shardId.toString())) {
+                latches.force.unsafeOpen()
+              }
+            })
+          }
+          // Look entities up by address: `activeServers` is keyed by entity id,
+          // so an entity with the same id on another shard can hide this one.
           serverCloseLatches.forEach((latches, address) => {
-            if (shardId[Equal.symbol](address.shardId)) {
-              latches.force.unsafeOpen()
+            if (ids.has(address.shardId.toString())) {
+              if (!latches.closing) {
+                fibers.push(runFork(entities.removeIgnore(address)))
+              }
+              fibers.push(runFork(latches.closed.await))
             }
           })
-        }
-        activeServers.forEach((state) => {
-          if (shardId[Equal.symbol](state.address.shardId)) {
-            fibers.push(runFork(entities.removeIgnore(state.address)))
-          }
+          if (fibers.length === 0) return Effect.void
+          return Effect.flatMap(joinAllDiscard(fibers), loop)
         })
-        serverCloseLatches.forEach((latches, address) => {
-          if (shardId[Equal.symbol](address.shardId)) {
-            fibers.push(runFork(latches.closed.await))
-          }
-        })
-        if (fibers.length === 0) return Effect.void
-        return Effect.flatMap(joinAllDiscard(fibers), loop)
       }),
     isProcessingFor(message, options) {
       if (options?.excludeReplies !== true && processedRequestIds.has(message.envelope.requestId)) {
