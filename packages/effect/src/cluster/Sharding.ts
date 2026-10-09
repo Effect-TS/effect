@@ -303,18 +303,24 @@ const make = Effect.gen(function*() {
 
   // Requests for a shard assigned to this runner wait for its lock, for at most
   // `shardLockExpiration`, instead of bouncing while the previous owner drains.
-  // `release` wakes waiters without opening the latch, so unmet waits park again.
-  const shardLocksChanged = Latch.makeUnsafe(false)
-  const awaitShardLock = (shardId: ShardId): Effect.Effect<void> =>
-    Effect.suspend(() =>
+  // Each notification opens the current latch and replaces it, so a waiter that
+  // checked its shard before a notification cannot miss it.
+  let shardLocksChanged = Latch.makeUnsafe(false)
+  const notifyShardLockWaiters = Effect.suspend(() => {
+    const latch = shardLocksChanged
+    shardLocksChanged = Latch.makeUnsafe(false)
+    return latch.open
+  })
+  const awaitShardLock = (shardId: ShardId): Effect.Effect<void> => {
+    const loop: Effect.Effect<void> = Effect.suspend(() =>
+      isAwaitingShardLock(shardId) ? Effect.andThen(shardLocksChanged.await, loop) : Effect.void
+    )
+    return Effect.suspend(() =>
       isAwaitingShardLock(shardId)
-        ? shardLocksChanged.await.pipe(
-          Effect.repeat({ while: () => isAwaitingShardLock(shardId) }),
-          Effect.timeoutOption(config.shardLockExpiration),
-          Effect.asVoid
-        )
+        ? Effect.asVoid(Effect.timeoutOption(loop, config.shardLockExpiration))
         : Effect.void
     )
+  }
 
   yield* Scope.addFinalizer(
     shardingScope,
@@ -505,7 +511,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
-          yield* shardLocksChanged.release
+          yield* notifyShardLockWaiters
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
 
@@ -541,7 +547,7 @@ const make = Effect.gen(function*() {
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
-          yield* shardLocksChanged.release
+          yield* notifyShardLockWaiters
           yield* Effect.logError("Shard lock storage is unhealthy", cause)
           yield* Effect.forkIn(syncSingletons, shardingScope, { startImmediately: true })
 
@@ -1362,7 +1368,7 @@ const make = Effect.gen(function*() {
         })
         yield* Effect.logDebug("New shard assignments", selfShards)
         activeShardsLatch.openUnsafe()
-        yield* shardLocksChanged.release
+        yield* notifyShardLockWaiters
 
         // update metrics
         if (selfRunner) {
@@ -1821,7 +1827,7 @@ const make = Effect.gen(function*() {
 
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
-    yield* shardLocksChanged.release
+    yield* notifyShardLockWaiters
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }
