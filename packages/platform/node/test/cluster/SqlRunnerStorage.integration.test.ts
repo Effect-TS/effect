@@ -568,6 +568,22 @@ describe("SqlRunnerStorage", () => {
           yield* storage.release(runnerAddress1, ShardId.make("default", 2))
         }))
 
+      if (label.endsWith("(no advisory)")) {
+        it.effect("acquires a shard whose lock holder is no longer a registered runner", () =>
+          Effect.gen(function*() {
+            const storage = yield* RunnerStorage.RunnerStorage
+            const shard = ShardId.make("default", 5)
+
+            yield* storage.register(Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 }), true)
+            yield* storage.acquire(runnerAddress1, [shard])
+            yield* storage.unregister(runnerAddress1)
+            yield* storage.refresh(runnerAddress1, [shard])
+
+            yield* storage.register(Runner.make({ address: runnerAddress2, groups: ["default"], weight: 1 }), true)
+            expect(yield* storage.acquire(runnerAddress2, [shard])).toEqual([shard])
+          }))
+      }
+
       if (label === "pg") {
         it.effect("runner migrations adopt existing tables without migration records", () =>
           Effect.gen(function*() {
