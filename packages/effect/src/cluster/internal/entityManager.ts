@@ -157,6 +157,9 @@ export const make = Effect.fnUntraced(function*<
   entityRpcs.set(KeepAliveRpc._tag, KeepAliveRpc as any)
 
   const activeServers = new Map<EntityId, EntityState>()
+  // Entities finishing their in-flight requests after removal, which still
+  // accept interrupts and acks
+  const drainingServers = new Map<EntityId, EntityState>()
   const serverCloseLatches = new Map<EntityAddress, {
     readonly closed: Latch.Latch
     readonly force: Latch.Latch
@@ -465,6 +468,7 @@ export const make = Effect.fnUntraced(function*<
         activeServers.delete(address.entityId)
         retired.openUnsafe()
         acquireEntity(address)
+        drainingServers.set(address.entityId, state)
         return Effect.raceFirst(
           state.write(0, { _tag: "Eof" }).pipe(
             Effect.andThen(endLatch.await),
@@ -472,7 +476,11 @@ export const make = Effect.fnUntraced(function*<
             Effect.interruptible
           ),
           Effect.interruptible(closeLatches.force.await)
-        )
+        ).pipe(Effect.ensuring(Effect.sync(() => {
+          if (drainingServers.get(address.entityId) === state) {
+            drainingServers.delete(address.entityId)
+          }
+        })))
       })
     )
     if (!options.sharding.hasShardId(address.shardId)) {
@@ -507,9 +515,38 @@ export const make = Effect.fnUntraced(function*<
     Effect.forkIn(managerScope)
   )
 
+  function sendEnvelope(server: EntityState, message: Message.IncomingEnvelope): Effect.Effect<void> {
+    const entry = server.activeRequests.get(message.envelope.requestId)
+    if (!entry) {
+      return Effect.void
+    } else if (
+      message.envelope._tag === "AckChunk" &&
+      Option.isSome(entry.lastSentChunk) &&
+      message.envelope.replyId !== entry.lastSentChunk.value.id
+    ) {
+      return Effect.void
+    }
+    return server.write(
+      0,
+      message.envelope._tag === "AckChunk"
+        ? { _tag: "Ack", requestId: message.envelope.requestId as any }
+        : {
+          _tag: "Interrupt",
+          requestId: message.envelope.requestId as any,
+          interruptors: []
+        }
+    )
+  }
+
   function sendLocal<R extends Rpc.Any>(
     message: Message.IncomingLocal<R>
   ): Effect.Effect<void, EntityNotAssignedToRunner | MailboxFull | AlreadyProcessingMessage> {
+    if (message._tag === "IncomingEnvelope") {
+      const draining = drainingServers.get(message.envelope.address.entityId)
+      if (draining?.activeRequests.has(message.envelope.requestId)) {
+        return sendEnvelope(draining, message)
+      }
+    }
     return Effect.provideService(
       Effect.flatMap(
         entities.get(message.envelope.address),
@@ -606,26 +643,7 @@ export const make = Effect.fnUntraced(function*<
               return server.write(0, requestEnvelope(entry), requestWriteOptions(entry))
             }
             case "IncomingEnvelope": {
-              const entry = server.activeRequests.get(message.envelope.requestId)
-              if (!entry) {
-                return Effect.void
-              } else if (
-                message.envelope._tag === "AckChunk" &&
-                Option.isSome(entry.lastSentChunk) &&
-                message.envelope.replyId !== entry.lastSentChunk.value.id
-              ) {
-                return Effect.void
-              }
-              return server.write(
-                0,
-                message.envelope._tag === "AckChunk"
-                  ? { _tag: "Ack", requestId: message.envelope.requestId as any }
-                  : {
-                    _tag: "Interrupt",
-                    requestId: message.envelope.requestId as any,
-                    interruptors: []
-                  }
-              )
+              return sendEnvelope(server, message)
             }
           }
         }

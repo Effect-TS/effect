@@ -213,7 +213,7 @@ describe("RpcServer", () => {
       }])
     }))
 
-  it.effect("should accept only cancellation of an active request when client input has ended", () =>
+  it.effect("should accept cancellation of an active request and reject new requests when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
       const interrupted = yield* Deferred.make<void>()
@@ -247,7 +247,7 @@ describe("RpcServer", () => {
       for (
         const message of [
           { ...request, id: RpcMessage.RequestId("new") },
-          { _tag: "Ack" as const, requestId: request.id },
+          { _tag: "Ack" as const, requestId: RpcMessage.RequestId("unknown") },
           RpcMessage.constEof,
           { _tag: "Interrupt" as const, requestId: RpcMessage.RequestId("unknown"), interruptors: [] }
         ]

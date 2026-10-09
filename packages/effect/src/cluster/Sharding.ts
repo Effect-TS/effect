@@ -295,6 +295,33 @@ const make = Effect.gen(function*() {
     return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
+  function isAwaitingShardLock(shardId: ShardId): boolean {
+    return !MutableRef.get(isShutdown) &&
+      MutableHashSet.has(selfShards, shardId) &&
+      !MutableHashSet.has(acquiredShards, shardId)
+  }
+
+  // Requests for a shard assigned to this runner wait for its lock, for at most
+  // `shardLockExpiration`, instead of bouncing while the previous owner drains.
+  // Each notification opens the current latch and replaces it, so a waiter that
+  // checked its shard before a notification cannot miss it.
+  let shardLocksChanged = Latch.makeUnsafe(false)
+  const notifyShardLockWaiters = Effect.suspend(() => {
+    const latch = shardLocksChanged
+    shardLocksChanged = Latch.makeUnsafe(false)
+    return latch.open
+  })
+  const awaitShardLock = (shardId: ShardId): Effect.Effect<void> => {
+    const loop: Effect.Effect<void> = Effect.suspend(() =>
+      isAwaitingShardLock(shardId) ? Effect.andThen(shardLocksChanged.await, loop) : Effect.void
+    )
+    return Effect.suspend(() =>
+      isAwaitingShardLock(shardId)
+        ? Effect.asVoid(Effect.timeoutOption(loop, config.shardLockExpiration))
+        : Effect.void
+    )
+  }
+
   yield* Scope.addFinalizer(
     shardingScope,
     Effect.logDebug("Shutdown complete").pipe(Effect.annotateLogs({
@@ -484,6 +511,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
+          yield* notifyShardLockWaiters
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
 
@@ -519,6 +547,7 @@ const make = Effect.gen(function*() {
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
+          yield* notifyShardLockWaiters
           yield* Effect.logError("Shard lock storage is unhealthy", cause)
           yield* Effect.forkIn(syncSingletons, shardingScope, { startImmediately: true })
 
@@ -1036,16 +1065,21 @@ const make = Effect.gen(function*() {
 
   // --- Sending messages ---
 
-  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) =>
-    Effect.suspend(function loop(): Effect.Effect<
+  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) => {
+    const address = message.envelope.address
+    const isRequest = message._tag === "IncomingRequest" || message._tag === "OutgoingRequest"
+    const send = Effect.suspend(function loop(): Effect.Effect<
       void,
       | EntityNotAssignedToRunner
       | MailboxFull
       | AlreadyProcessingMessage
       | (M extends Message.Incoming<any> ? never : PersistenceError)
     > {
-      const address = message.envelope.address
-      if (!isEntityOnLocalShards(address)) {
+      if (
+        !isEntityOnLocalShards(address) &&
+        // Entities draining from a released shard still accept interrupts and acks
+        (isRequest || !MutableHashSet.has(releasingShards, address.shardId))
+      ) {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
       const state = entityManagers.get(address.entityType)
@@ -1064,6 +1098,8 @@ const make = Effect.gen(function*() {
           simulateRemoteSerialization: config.simulateRemoteSerialization
         }) as any
     })
+    return isRequest ? Effect.andThen(awaitShardLock(address.shardId), send) : send
+  }
 
   type PendingNotification = {
     resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
@@ -1129,7 +1165,10 @@ const make = Effect.gen(function*() {
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
-    retries?: number
+    retries?: number,
+    // The runner serving the request, for its interrupts and acks. Later
+    // attempts fall back to the current shard assignment.
+    runner?: RunnerAddress
   ): Effect.Effect<
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
@@ -1172,7 +1211,9 @@ const make = Effect.gen(function*() {
         if (shouldFail && MutableRef.get(isShutdown)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
-        const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
+        const maybeRunner = runner !== undefined
+          ? Option.some(runner)
+          : MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
         if (isPersisted) {
           return runnerIsLocal
@@ -1180,6 +1221,9 @@ const make = Effect.gen(function*() {
             : runnersService.notify({ address: maybeRunner, message, discard })
         } else if (Option.isNone(maybeRunner)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        } else if (message._tag === "OutgoingRequest") {
+          const entry = clientRequests.get(message.envelope.requestId)
+          if (entry) entry.runner = maybeRunner.value
         }
         return runnerIsLocal
           ? sendLocal(message)
@@ -1324,6 +1368,7 @@ const make = Effect.gen(function*() {
         })
         yield* Effect.logDebug("New shard assignments", selfShards)
         activeShardsLatch.openUnsafe()
+        yield* notifyShardLockWaiters
 
         // update metrics
         if (selfRunner) {
@@ -1361,6 +1406,8 @@ const make = Effect.gen(function*() {
     readonly context: Context.Context<never>
     readonly message: Message.OutgoingRequest<any>
     lastChunkId?: Snowflake.Snowflake
+    // the runner a volatile request was last sent to
+    runner?: RunnerAddress
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
@@ -1445,7 +1492,9 @@ const make = Effect.gen(function*() {
                   }),
                   rpc: entry.rpc
                 }),
-                false
+                false,
+                undefined,
+                entry.runner
               )
             }
             case "Interrupt": {
@@ -1476,7 +1525,8 @@ const make = Effect.gen(function*() {
                   rpc: entry.rpc
                 }),
                 false,
-                3
+                3,
+                entry.runner
               ))
             }
           }
@@ -1777,6 +1827,7 @@ const make = Effect.gen(function*() {
 
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
+    yield* notifyShardLockWaiters
     if (selfRunner) {
       yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
     }

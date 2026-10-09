@@ -43,6 +43,11 @@ export const TestEntity = Entity.make("TestEntity", [
     payload: { ids: Schema.Array(Schema.Number) },
     stream: true
   }),
+  Rpc.make("GetAllUsersVolatile", {
+    success: User,
+    payload: { ids: Schema.Array(Schema.Number) },
+    stream: true
+  }).annotate(ClusterSchema.Persisted, false),
   Rpc.make("WithTransaction", {
     success: Schema.Boolean,
     payload: { id: Schema.Number }
@@ -138,6 +143,10 @@ export const TestEntityNoState = TestEntity.toLayer(
           Stream.rechunk(1)
         )
       },
+      GetAllUsersVolatile: (envelope) =>
+        Stream.fromIterable(envelope.payload.ids.map((id) => new User({ id, name: `User ${id}` }))).pipe(
+          Stream.rechunk(1)
+        ),
       WithTransaction: (envelope) =>
         Effect.suspend(() => {
           Queue.offerUnsafe(state.envelopes, envelope)
