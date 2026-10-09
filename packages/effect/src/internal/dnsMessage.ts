@@ -30,6 +30,7 @@ export const typeCodes: { readonly [K in Dns.RecordType]: number } = {
 }
 
 const OPT = 41
+const PADDING = 12
 const CLASS_IN = 1
 const MAX_NAME_LENGTH = 255
 
@@ -41,6 +42,10 @@ const MAX_NAME_LENGTH = 255
  * Encodes a query with one question of the internet class. Domain names are
  * validated ASCII of at most 253 characters, so encoding cannot fail.
  *
+ * With a `udpPayloadSize`, the query has an EDNS(0) OPT record, and with a
+ * `padding` block size as well, the OPT record holds a Padding option (RFC
+ * 7830) that makes the query a multiple of `padding` bytes long (RFC 8467).
+ *
  * @internal
  */
 export const encodeQuery = (options: {
@@ -49,12 +54,18 @@ export const encodeQuery = (options: {
   readonly type: number
   readonly recursionDesired: boolean
   readonly udpPayloadSize: number | undefined
+  readonly padding?: number | undefined
 }): Uint8Array => {
   const name = options.name.endsWith(".") ? options.name.slice(0, -1) : options.name
   const labels = name === "" ? [] : name.split(".")
   const nameLength = labels.reduce((length, label) => length + label.length + 1, 1)
   const udpPayloadSize = options.udpPayloadSize
-  const bytes = new Uint8Array(12 + nameLength + 4 + (udpPayloadSize === undefined ? 0 : 11))
+  const length = 12 + nameLength + 4 + (udpPayloadSize === undefined ? 0 : 11)
+  // The Padding option adds a 4-byte option header and zero bytes up to the block size.
+  const padding = udpPayloadSize === undefined || options.padding === undefined
+    ? undefined
+    : (options.padding - (length + 4) % options.padding) % options.padding
+  const bytes = new Uint8Array(length + (padding === undefined ? 0 : 4 + padding))
   const view = new DataView(bytes.buffer)
   view.setUint16(0, options.id)
   view.setUint16(2, options.recursionDesired ? 0x0100 : 0)
@@ -69,9 +80,15 @@ export const encodeQuery = (options: {
   view.setUint16(offset, options.type)
   view.setUint16(offset + 2, CLASS_IN)
   if (udpPayloadSize !== undefined) {
-    // OPT record: root owner, type, UDP payload size as class, zero TTL and RDATA.
+    // OPT record: root owner, type, UDP payload size as class, zero TTL, and
+    // RDATA holding the Padding option, if any.
     view.setUint16(offset + 5, OPT)
     view.setUint16(offset + 7, udpPayloadSize)
+    if (padding !== undefined) {
+      view.setUint16(offset + 13, 4 + padding)
+      view.setUint16(offset + 15, PADDING)
+      view.setUint16(offset + 17, padding)
+    }
   }
   return bytes
 }

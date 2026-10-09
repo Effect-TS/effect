@@ -80,14 +80,16 @@ const assertRecords = (actual: ReadonlyArray<Dns.DnsRecord>, records: ReadonlyAr
   }
 }
 
+// Each zone is also served over DNS over HTTPS on port 8443, which CoreDNS
+// serves as plain HTTP without a `tls` block.
 const corefile = `
-example.test {
+example.test https://example.test:8443 {
   file /etc/coredns/example.test.db
 }
-2.0.192.in-addr.arpa {
+2.0.192.in-addr.arpa https://2.0.192.in-addr.arpa:8443 {
   file /etc/coredns/2.0.192.in-addr.arpa.db
 }
-edge.test {
+edge.test https://edge.test:8443 {
   file /etc/coredns/edge.test.db
 }
 `
@@ -142,11 +144,13 @@ _dot._tcp   IN PTR   printer\\..
 
 /**
  * Starts a CoreDNS container serving the fixture zones and returns the
- * addresses of its UDP and TCP listeners, which are mapped to different ports.
+ * addresses of its UDP and TCP listeners, which are mapped to different ports,
+ * and the URL of its DNS over HTTPS endpoint, which uses plain HTTP.
  */
 export const startDnsServer = async (): Promise<{
   readonly nameServer: NetAddress.InetAddressV4
   readonly tcpNameServer: NetAddress.InetAddressV4
+  readonly dohUrl: string
   readonly stop: () => Promise<void>
 }> => {
   // The fixtures are bind-mounted rather than copied: under Bun, the archive
@@ -175,14 +179,19 @@ export const startDnsServer = async (): Promise<{
     container = await new GenericContainer("coredns/coredns:1.14.7")
       .withBindMounts([{ source: directory, target: "/etc/coredns", mode: "ro" }])
       .withCommand(["-conf", "/etc/coredns/Corefile"])
-      .withExposedPorts("53/udp", "53/tcp")
+      .withExposedPorts("53/udp", "53/tcp", "8443/tcp")
       .withWaitStrategy(Wait.forLogMessage(/CoreDNS-/))
       .start()
     // The resolver APIs accept only IP addresses for name servers.
     const { address } = await NodeDnsApi.promises.lookup(container.getHost(), { family: 4 })
     const mapped = (port: "53/udp" | "53/tcp") =>
       NetAddress.inetAddressFromStringUnsafe(`${address}:${container!.getMappedPort(port)}`) as NetAddress.InetAddressV4
-    return { nameServer: mapped("53/udp"), tcpNameServer: mapped("53/tcp"), stop }
+    return {
+      nameServer: mapped("53/udp"),
+      tcpNameServer: mapped("53/tcp"),
+      dohUrl: `http://${address}:${container.getMappedPort("8443/tcp")}/dns-query`,
+      stop
+    }
   } catch (error) {
     await stop()
     throw error
@@ -197,7 +206,8 @@ export const startDnsServer = async (): Promise<{
 export const describeDnsServer = (
   label: string,
   make: (
-    nameServer: NetAddress.InetAddress
+    nameServer: NetAddress.InetAddress,
+    server: { readonly dohUrl: string }
   ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>,
   options?: {
     // The runtime returns each character string of a TXT record as a separate record.
@@ -217,7 +227,7 @@ export const describeDnsServer = (
       await server?.stop()
     })
 
-    const dns = () => make(server.nameServer)
+    const dns = () => make(server.nameServer, server)
 
     it.effect("looks up localhost from the hosts file", () =>
       Effect.gen(function*() {
@@ -316,15 +326,21 @@ export const describeDnsServer = (
 /**
  * Runs end-to-end tests of a `DnsClient` against a CoreDNS container. The
  * client's TCP connections must go to `tcpNameServer`, since the container
- * maps its UDP and TCP listeners to different ports.
+ * maps its UDP and TCP listeners to different ports, and its DNS over HTTPS
+ * requests to `dohUrl`.
  */
 export const describeDnsClient = (
   label: string,
   make: (options: {
     readonly nameServer: NetAddress.InetAddress
     readonly tcpNameServer: NetAddress.InetAddress
+    readonly dohUrl: string
     readonly udpPayloadSize?: number | undefined
-  }) => Effect.Effect<DnsClient.DnsClient["Service"]>
+  }) => Effect.Effect<DnsClient.DnsClient["Service"]>,
+  options?: {
+    // The client sends queries over HTTPS, where responses are never truncated.
+    readonly https?: boolean | undefined
+  }
 ) =>
   describe(label, () => {
     let server: Awaited<ReturnType<typeof startDnsServer>>
@@ -415,10 +431,15 @@ export const describeDnsClient = (
         assert.strictEqual(error.recordType, "A")
       }))
 
-    it.effect("retries truncated responses over TCP", () =>
+    it.effect("returns large responses", () =>
       Effect.gen(function*() {
-        const udp = yield* (yield* client()).query(name("big.example.test."), "TXT")
-        assert.strictEqual(udp.answer.length, 16)
+        const response = yield* (yield* client()).query(name("big.example.test."), "TXT")
+        assert.isFalse(response.flags.truncated)
+        assert.strictEqual(response.answer.length, 16)
+      }))
+
+    it.effect.skipIf(options?.https === true)("retries truncated responses over TCP", () =>
+      Effect.gen(function*() {
         const tcp = yield* (yield* client(512)).query(name("big.example.test."), "TXT")
         assert.isFalse(tcp.flags.truncated)
         assert.strictEqual(tcp.answer.length, 16)

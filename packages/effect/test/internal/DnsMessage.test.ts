@@ -140,6 +140,49 @@ describe("DnsMessage", () => {
       )
     })
 
+    it("pads queries to a multiple of the block size", () => {
+      assert.deepStrictEqual(
+        DnsMessage.encodeQuery({
+          id: 0,
+          name: name("example.com"),
+          type: DnsMessage.typeCodes.A,
+          recursionDesired: true,
+          udpPayloadSize: 1232,
+          padding: 128
+        }),
+        hex(`
+          0000 0100 0001 0000 0000 0001
+          076578616d706c6503636f6d00 0001 0001
+          00 0029 04d0 00000000 0058 000c 0054 ${"00".repeat(84)}
+        `)
+      )
+      // A query that fills the block with an empty Padding option is not padded further.
+      const lengths = [30, 31, 32].map((length) =>
+        DnsMessage.encodeQuery({
+          id: 0,
+          name: name(`${"a".repeat(63)}.${"b".repeat(length)}`),
+          type: DnsMessage.typeCodes.A,
+          recursionDesired: true,
+          udpPayloadSize: 1232,
+          padding: 128
+        })
+      )
+      assert.deepStrictEqual(lengths.map((query) => query.length), [128, 128, 256])
+      assert.deepStrictEqual([...lengths[1].subarray(-8)], [0, 0, 0, 4, 0, 12, 0, 0])
+      // Padding needs the OPT record.
+      assert.strictEqual(
+        DnsMessage.encodeQuery({
+          id: 0,
+          name: name("example.com"),
+          type: DnsMessage.typeCodes.A,
+          recursionDesired: true,
+          udpPayloadSize: undefined,
+          padding: 128
+        }).length,
+        29
+      )
+    })
+
     it("encodes queries that decode back to their question", () => {
       const header = Result.getOrThrow(DnsMessage.decodeHeader(DnsMessage.encodeQuery({
         id: 0xbeef,

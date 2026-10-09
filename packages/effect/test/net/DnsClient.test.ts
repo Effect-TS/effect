@@ -1,5 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Exit, Fiber, Layer, Queue, Result } from "effect"
+import * as Base64Url from "effect/encoding/Base64Url"
+import * as Hex from "effect/encoding/Hex"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as DnsMessage from "effect/internal/dnsMessage"
 import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
@@ -149,7 +154,10 @@ const fakeNetwork = (handle: (request: Request) => ReadonlyArray<Reply>) => {
   return { udp, tcp, requests, state }
 }
 
-const answer = (request: Request, options?: Omit<Parameters<typeof response>[0], "id" | "question">): Reply => ({
+const answer = (
+  request: Pick<Request, "header">,
+  options?: Omit<Parameters<typeof response>[0], "id" | "question">
+): Reply => ({
   payload: response({
     id: request.header.id,
     question: [request.header.questions[0].name, request.header.questions[0].type],
@@ -425,6 +433,294 @@ describe("DnsClient", () => {
       ) {
         const exit = yield* Effect.exit(
           DnsClient.make({ nameServers: [primary], udp: network.udp, tcp: network.tcp, ...options })
+        )
+        assert.isTrue(Exit.hasDies(exit), JSON.stringify(options))
+      }
+    }))
+})
+
+describe("makeHttps", () => {
+  const first = "https://dns.example/dns-query"
+  const second = "https://backup.example/resolve?key=1"
+
+  interface HttpRequest {
+    readonly method: string
+    readonly url: URL
+    readonly headers: Readonly<Record<string, string>>
+    readonly query: Uint8Array
+    readonly header: DnsMessage.Header
+    readonly signal: AbortSignal
+  }
+
+  interface HttpReply {
+    readonly status?: number | undefined
+    readonly contentType?: string | undefined
+    readonly payload?: Uint8Array | undefined
+  }
+
+  /**
+   * An in-memory `HttpClient` whose servers answer with `handle`. Requests
+   * answered with `"hang"` never complete; `"error"` fails with a transport
+   * error.
+   */
+  const fakeHttp = (handle: (request: HttpRequest) => HttpReply | "hang" | "error") => {
+    const requests: Array<HttpRequest> = []
+    const layer = Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make((request, url, signal) =>
+        Effect.suspend(() => {
+          const query = request.method === "GET"
+            ? Result.getOrThrow(Base64Url.decode(url.searchParams.get("dns") ?? ""))
+            : request.body._tag === "Uint8Array"
+            ? request.body.body
+            : new Uint8Array(0)
+          const received = {
+            method: request.method,
+            url,
+            headers: {
+              ...request.headers,
+              ...(request.body._tag === "Uint8Array" ? { "content-type": request.body.contentType } : {})
+            },
+            query,
+            header: Result.getOrThrow(DnsMessage.decodeHeader(query)),
+            signal
+          }
+          requests.push(received)
+          const reply = handle(received)
+          if (reply === "hang") return Effect.never
+          if (reply === "error") {
+            return Effect.fail(
+              new HttpClientError.HttpClientError({
+                reason: new HttpClientError.TransportError({ request, cause: new Error("connection refused") })
+              })
+            )
+          }
+          return Effect.succeed(HttpClientResponse.fromWeb(
+            request,
+            new Response(reply.payload as Uint8Array<ArrayBuffer> | undefined ?? null, {
+              status: reply.status ?? 200,
+              headers: { "content-type": reply.contentType ?? "application/dns-message" }
+            })
+          ))
+        })
+      )
+    )
+    return { layer, requests }
+  }
+
+  const runHttps = (
+    http: ReturnType<typeof fakeHttp>,
+    options?: Partial<DnsClient.MakeHttpsOptions>
+  ) =>
+    Effect.gen(function*() {
+      const client = yield* DnsClient.makeHttps({ urls: [first, second], ...options })
+      const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
+      yield* TestClock.adjust("1 minute")
+      return yield* Fiber.await(fiber)
+    }).pipe(Effect.provide(http.layer))
+
+  // The padded query for example.test. A with ID 0 and recursion desired.
+  const paddedQuery = Result.getOrThrow(Hex.decode(
+    `
+      0000 0100 0001 0000 0000 0001
+      076578616d706c65047465737400 0001 0001
+      00 0029 04d0 00000000 0057 000c 0053 ${"00".repeat(83)}
+    `.replace(/\s+/g, "")
+  ))
+
+  it.effect("sends GET requests with the query in the dns parameter", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request, { answers: 2 }))
+      const exit = yield* runHttps(http)
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.answer.length : 0, 2)
+      assert.strictEqual(http.requests.length, 1)
+      const [request] = http.requests
+      assert.strictEqual(request.method, "GET")
+      assert.strictEqual(paddedQuery.length, 128)
+      assert.strictEqual(
+        request.url.toString(),
+        `https://dns.example/dns-query?dns=${Base64Url.encode(paddedQuery)}`
+      )
+      // base64url without padding: 128 bytes take 171 characters.
+      assert.match(request.url.searchParams.get("dns")!, /^AAABAAABAAAAAAABB2V4YW1wbGU[\w-]{144}$/)
+      assert.strictEqual(request.headers.accept, "application/dns-message")
+    }))
+
+  it.effect("keeps the parameters of the URL", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request))
+      yield* runHttps(http, { urls: [second] })
+      const [request] = http.requests
+      assert.strictEqual(request.url.origin + request.url.pathname, "https://backup.example/resolve")
+      assert.deepStrictEqual([...request.url.searchParams.keys()], ["key", "dns"])
+      assert.deepStrictEqual(request.query, paddedQuery)
+    }))
+
+  it.effect("sends POST requests with the query as the body", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request))
+      const exit = yield* runHttps(http, { method: "POST" })
+      assert.isTrue(Exit.isSuccess(exit))
+      const [request] = http.requests
+      assert.strictEqual(request.method, "POST")
+      assert.strictEqual(request.url.toString(), first)
+      assert.strictEqual(request.headers.accept, "application/dns-message")
+      assert.strictEqual(request.headers["content-type"], "application/dns-message")
+      assert.deepStrictEqual(request.query, paddedQuery)
+    }))
+
+  it.effect("sends queries with ID 0 padded to 128 bytes", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request))
+      const client = yield* DnsClient.makeHttps({ urls: [first] }).pipe(Effect.provide(http.layer))
+      for (const host of ["a.test", `${"a".repeat(63)}.${"b".repeat(32)}.test`]) {
+        yield* client.query(name(host), "AAAA", { recursionDesired: false })
+      }
+      assert.deepStrictEqual(http.requests.map((request) => request.header.id), [0, 0])
+      assert.deepStrictEqual(http.requests.map((request) => request.query.length), [128, 256])
+      assert.isFalse(http.requests[0].header.flags.recursionDesired)
+    }))
+
+  it.effect("checks the status and content type", () =>
+    Effect.gen(function*() {
+      for (
+        const [reply, reason] of [
+          [{ status: 500 }, "ServerFailure"],
+          [{ status: 503, contentType: "text/plain" }, "ServerFailure"],
+          [{ status: 404 }, "InvalidResponse"],
+          [{ status: 302 }, "InvalidResponse"],
+          [{ contentType: "text/html" }, "InvalidResponse"],
+          [{ contentType: "application/json" }, "InvalidResponse"]
+        ] as const
+      ) {
+        const http = fakeHttp((request) => ({ ...answer(request), ...reply }))
+        const exit = yield* runHttps(http, { attempts: 1 })
+        assert.strictEqual(reasonOf(exit), reason, JSON.stringify(reply))
+        assert.deepStrictEqual(http.requests.map((request) => request.url.origin), [
+          "https://dns.example",
+          "https://backup.example"
+        ])
+        // Requests whose body is not read are aborted when the attempt ends.
+        assert.isTrue(http.requests.every((request) => request.signal.aborted))
+      }
+      // Media type parameters and letter case are accepted.
+      const http = fakeHttp((request) => ({
+        ...answer(request),
+        status: 203,
+        contentType: "Application/DNS-Message; charset=binary"
+      }))
+      assert.isTrue(Exit.isSuccess(yield* runHttps(http)))
+    }))
+
+  it.effect("rejects responses that do not match the query", () =>
+    Effect.gen(function*() {
+      const question = ["example.test.", 1] as const
+      for (
+        const payload of [
+          response({ id: 1, question, answers: 1 }),
+          response({ id: 0, question: ["other.test.", 1], answers: 1 }),
+          response({ id: 0, question: ["example.test.", 28], answers: 1 }),
+          response({ id: 0, question, isResponse: false, answers: 1 }),
+          response({ id: 0, answers: 1 }),
+          Uint8Array.of(0, 0, 0x80)
+        ]
+      ) {
+        const http = fakeHttp(() => ({ payload }))
+        assert.strictEqual(reasonOf(yield* runHttps(http, { attempts: 1 })), "InvalidResponse")
+        assert.strictEqual(http.requests.length, 2)
+      }
+      const http = fakeHttp(() => ({ payload: response({ id: 0, question: ["Example.TEST.", 1], answers: 1 }) }))
+      assert.isTrue(Exit.isSuccess(yield* runHttps(http)))
+    }))
+
+  it.effect("ignores the truncation flag", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request, { truncated: true }))
+      const exit = yield* runHttps(http)
+      assert.isTrue(Exit.isSuccess(exit) && exit.value.flags.truncated)
+      assert.strictEqual(http.requests.length, 1)
+    }))
+
+  it.effect("maps response codes and tries the next URL", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) =>
+        answer(request, request.url.origin === "https://dns.example" ? { rcode: 5, answers: 0 } : {})
+      )
+      assert.isTrue(Exit.isSuccess(yield* runHttps(http)))
+      const refused = fakeHttp((request) => answer(request, { rcode: 5, answers: 0 }))
+      assert.strictEqual(reasonOf(yield* runHttps(refused)), "Refused")
+      assert.strictEqual(refused.requests.length, 4)
+      const nxdomain = fakeHttp((request) => answer(request, { rcode: 3, answers: 0 }))
+      const exit = yield* runHttps(nxdomain)
+      assert.strictEqual(Exit.isSuccess(exit) ? exit.value.rcode : undefined, 3)
+    }))
+
+  it.effect("reports HTTP client errors as Refused", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp(() => "error")
+      assert.strictEqual(reasonOf(yield* runHttps(http)), "Refused")
+      assert.strictEqual(http.requests.length, 4)
+    }))
+
+  it.effect("times out and aborts each request", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp(() => "hang")
+      const client = yield* DnsClient.makeHttps({ urls: [first, second], timeout: "2 seconds", attempts: 2 }).pipe(
+        Effect.provide(http.layer)
+      )
+      const fiber = yield* Effect.forkChild(client.query(name("example.test"), "A"))
+      yield* TestClock.adjust("1999 millis")
+      assert.strictEqual(http.requests.length, 1)
+      assert.isFalse(http.requests[0].signal.aborted)
+      yield* TestClock.adjust("1 millis")
+      assert.strictEqual(http.requests.length, 2)
+      assert.isTrue(http.requests[0].signal.aborted)
+      yield* TestClock.adjust("6 seconds")
+      assert.strictEqual(reasonOf(yield* Fiber.await(fiber)), "Timeout")
+      assert.deepStrictEqual(http.requests.map((request) => request.url.origin), [
+        "https://dns.example",
+        "https://backup.example",
+        "https://dns.example",
+        "https://backup.example"
+      ])
+    }))
+
+  it.effect("tries the next URL after a timeout", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => request.url.origin === "https://dns.example" ? "hang" : answer(request))
+      assert.isTrue(Exit.isSuccess(yield* runHttps(http)))
+      assert.strictEqual(http.requests.length, 2)
+    }))
+
+  it.effect("rotates the first URL when rotate is set", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp((request) => answer(request))
+      const client = yield* DnsClient.makeHttps({ urls: [first, new URL(second)], rotate: true }).pipe(
+        Effect.provide(http.layer)
+      )
+      for (let i = 0; i < 3; i++) yield* client.query(name("example.test"), "A")
+      assert.deepStrictEqual(http.requests.map((request) => request.url.origin), [
+        "https://dns.example",
+        "https://backup.example",
+        "https://dns.example"
+      ])
+    }))
+
+  it.effect("rejects invalid options when the service is created", () =>
+    Effect.gen(function*() {
+      const http = fakeHttp(() => "hang")
+      for (
+        const options of [
+          { urls: [] as any },
+          { urls: ["dns.example"] as const },
+          { urls: ["ftp://dns.example/"] as const },
+          { attempts: 0 },
+          { timeout: Duration.zero },
+          { ndots: -1 }
+        ]
+      ) {
+        const exit = yield* Effect.exit(
+          DnsClient.makeHttps({ urls: [first], ...options }).pipe(Effect.provide(http.layer))
         )
         assert.isTrue(Exit.hasDies(exit), JSON.stringify(options))
       }

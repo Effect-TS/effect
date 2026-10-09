@@ -2,6 +2,7 @@ import * as BunDatagramSocket from "@effect/platform-bun/BunDatagramSocket"
 import * as BunDnsClient from "@effect/platform-bun/BunDnsClient"
 import * as BunSocket from "@effect/platform-bun/BunSocket"
 import * as Effect from "effect/Effect"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
@@ -26,6 +27,32 @@ describeDnsServer(
           Layer.provide(
             Layer.effect(DnsClient.DnsClient, BunDnsClient.make({ nameServers: [nameServer], timeout: "2 seconds" }))
           )
+        )
+      )
+    )
+)
+
+describeDnsClient(
+  "DnsClient.makeHttps (Bun)",
+  ({ dohUrl }) =>
+    DnsClient.makeHttps({ urls: [dohUrl], timeout: "2 seconds" }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { https: true }
+)
+
+describeDnsServer(
+  "DnsClient.layerHttps (Bun)",
+  (_, { dohUrl }) =>
+    Effect.service(Dns.Dns).pipe(
+      Effect.provide(
+        DnsClient.layerDns.pipe(
+          Layer.provide(
+            DnsClient.layerHttps({
+              urls: [dohUrl],
+              timeout: "2 seconds",
+              hosts: Effect.succeed(DnsClient.parseHosts("127.0.0.1 localhost"))
+            })
+          ),
+          Layer.provide(FetchHttpClient.layer)
         )
       )
     )
