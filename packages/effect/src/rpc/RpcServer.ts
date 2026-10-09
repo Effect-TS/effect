@@ -188,7 +188,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           clients.set(clientId, client)
         } else if (
           client.ended &&
-          (message._tag !== "Interrupt" || !client.fibers.has(message.requestId))
+          ((message._tag !== "Interrupt" && message._tag !== "Ack") || !client.fibers.has(message.requestId))
         ) {
           return Effect.interrupt
         }
@@ -199,7 +199,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           }
           case "Ack": {
             const latch = client.latches?.get(message.requestId)
-            return latch ? latch.open : Effect.void
+            return latch ? Effect.asVoid(latch.open) : Effect.void
           }
           case "Interrupt": {
             const fiber = client.fibers.get(message.requestId)
