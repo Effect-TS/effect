@@ -525,8 +525,7 @@ const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): voi
 }
 
 // forEach avoids the per-entry [key, value] tuple a for...of loop or
-// `new Map(otherMap)` would allocate, and measures ~27% faster than the
-// constructor on Node 22.
+// `new Map(otherMap)` would allocate, and measures faster on Node 22.
 const copyMap = <K, V>(source: ReadonlyMap<K, V>): Map<K, V> => {
   const map = new Map<K, V>()
   source.forEach((value, key) => map.set(key, value))
