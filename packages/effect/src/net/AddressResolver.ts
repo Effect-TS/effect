@@ -135,14 +135,14 @@ const inFamily = (
  *
  * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
- * import { AddressResolver, Dns, Host, NetAddress } from "effect/net"
+ * import { AddressResolver, Dns, NetAddress } from "effect/net"
  *
  * const dns = Result.getOrThrow(Dns.makeStatic({
- *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
+ *   hosts: { "db.internal": ["10.0.0.5"] }
  * }))
  * const resolver = AddressResolver.make(dns)
  *
- * const program = resolver.resolve(Host.hostPortFromStringUnsafe("db.internal:5432")).pipe(
+ * const program = resolver.resolve("db.internal:5432").pipe(
  *   Effect.map((addresses) => addresses.map(NetAddress.formatInet))
  * )
  *

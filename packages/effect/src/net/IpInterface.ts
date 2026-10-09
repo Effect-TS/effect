@@ -51,43 +51,44 @@ export type Ipv4Interface = IpInterface<NetAddress.Ipv4Address>
 export type Ipv6Interface = IpInterface<NetAddress.Ipv6Address>
 
 /**
- * An interface address, or a string or an address and prefix length to
- * convert to one.
+ * An address and prefix length, generic over the accepted address input.
  *
+ * @see {@link make} for the checked constructor
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type IpInterfaceInput =
-  | IpInterface
-  | string
-  | { readonly address: NetAddress.IpAddressInput; readonly prefixLength: number }
+export interface IpInterfaceParts<A extends NetAddress.IpAddressInput = NetAddress.IpAddressInput> {
+  readonly address: A
+  readonly prefixLength: number
+}
 
 /**
- * An IPv4 interface address, or a string or an IPv4 address and prefix length
- * to convert to one.
+ * An interface address, or a string or parts to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv4InterfaceInput =
-  | Ipv4Interface
-  | string
-  | { readonly address: NetAddress.Ipv4AddressInput; readonly prefixLength: number }
+export type IpInterfaceInput = IpInterface | string | IpInterfaceParts
 
 /**
- * An IPv6 interface address, or a string or an IPv6 address and prefix length
- * to convert to one.
+ * An IPv4 interface address, or a string or parts to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv6InterfaceInput =
-  | Ipv6Interface
-  | string
-  | { readonly address: NetAddress.Ipv6AddressInput; readonly prefixLength: number }
+export type Ipv4InterfaceInput = Ipv4Interface | string | IpInterfaceParts<NetAddress.Ipv4AddressInput>
+
+/**
+ * An IPv6 interface address, or a string or parts to convert to one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6InterfaceInput = Ipv6Interface | string | IpInterfaceParts<NetAddress.Ipv6AddressInput>
 
 /**
  * Companion types for parsing IP interface addresses.
@@ -270,8 +271,8 @@ export const fromString = (
         make(address, parts.prefixLength ?? NetAddress.width(address)))
   )
 
-const fromParts = <I, A extends NetAddress.IpAddress>(
-  input: { readonly address: I; readonly prefixLength: number },
+const fromParts = <I extends NetAddress.IpAddressInput, A extends NetAddress.IpAddress>(
+  input: IpInterfaceParts<I>,
   toAddress: (input: I) => Result.Result<A, NetAddress.NetAddressError>
 ): Result.Result<IpInterface<A>, NetAddress.NetAddressError> =>
   hasProperty(input, "address") && hasProperty(input, "prefixLength")

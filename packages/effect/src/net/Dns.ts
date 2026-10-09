@@ -851,14 +851,15 @@ export const make = (impl: {
  * `hosts` works like a hosts file: its entries are used by `lookup` and
  * `reverse`, but not by `resolve`. `records` holds DNS records by owner name and
  * is used by all three operations. Names are normalized like
- * `Host.domainNameFromString`, and a trailing dot is ignored.
+ * `Host.domainNameFromString`, and a trailing dot is ignored. Addresses are
+ * converted like `NetAddress.ipFromInput`.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface StaticZone {
-  readonly hosts?: ReadonlyRecord<string, ReadonlyArray<NetAddress.IpAddress>> | undefined
+  readonly hosts?: ReadonlyRecord<string, ReadonlyArray<NetAddress.IpAddressInput>> | undefined
   readonly records?: ReadonlyRecord<string, ReadonlyArray<DnsRecord>> | undefined
 }
 
@@ -881,13 +882,13 @@ const zoneKey = (name: string): string => name.length > 1 && name.endsWith(".") 
  *
  * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
- * import { Dns, Host, NetAddress } from "effect/net"
+ * import { Dns, NetAddress } from "effect/net"
  *
  * const dns = Result.getOrThrow(Dns.makeStatic({
- *   hosts: { "db.internal": [NetAddress.ipFromStringUnsafe("10.0.0.5")] }
+ *   hosts: { "db.internal": ["10.0.0.5"] }
  * }))
  *
- * const program = dns.lookup(Host.domainNameFromStringUnsafe("db.internal")).pipe(
+ * const program = dns.lookup("db.internal").pipe(
  *   Effect.map((addresses) => addresses.map(NetAddress.formatIp))
  * )
  *
@@ -918,11 +919,10 @@ export const makeStatic = (zone: StaticZone): Result.Result<Dns["Service"], NetA
   for (const [name, addresses] of Object.entries(zone.hosts ?? {})) {
     const result = entry(name)
     if (Result.isFailure(result)) return Result.fail(result.failure)
-    for (const address of addresses) {
-      if (!NetAddress.isIpAddress(address)) {
-        return Result.fail(new NetAddress.NetAddressError({ input: address, message: "expected an IP address" }))
-      }
-      result.success.addresses.push(address)
+    for (const input of addresses) {
+      const address = NetAddress.ipFromInput(input)
+      if (Result.isFailure(address)) return Result.fail(address.failure)
+      result.success.addresses.push(address.success)
     }
   }
 

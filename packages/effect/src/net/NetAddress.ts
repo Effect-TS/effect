@@ -11,8 +11,9 @@ import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import { NodeInspectSymbol } from "../Inspectable.ts"
 import * as Option from "../Option.ts"
-import { hasProperty } from "../Predicate.ts"
+import { hasProperty, isTupleOf } from "../Predicate.ts"
 import * as Result from "../Result.ts"
+import type { TupleOf } from "../Types.ts"
 
 const TypeId = "~effect/net/NetAddress" as const
 
@@ -54,6 +55,33 @@ export interface Ipv6Address extends Equal.Equal, Hash.Hash {
 export type IpAddress = Ipv4Address | Ipv6Address
 
 /**
+ * The four octets of an IPv4 address in network order.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv4Octets = Readonly<TupleOf<4, number>>
+
+/**
+ * The eight 16-bit segments of an IPv6 address in network order.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6Segments = Readonly<TupleOf<8, number>>
+
+/**
+ * The six octets of a MAC address in transmission order.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type MacAddressOctets = Readonly<TupleOf<6, number>>
+
+/**
  * An IPv4 address, or a string, four octets, or four network-order bytes to
  * convert to one.
  *
@@ -61,7 +89,7 @@ export type IpAddress = Ipv4Address | Ipv6Address
  * @category models
  * @since 4.0.0
  */
-export type Ipv4AddressInput = Ipv4Address | string | readonly [number, number, number, number] | Uint8Array
+export type Ipv4AddressInput = Ipv4Address | string | Ipv4Octets | Uint8Array
 
 /**
  * An IPv6 address, or a string, eight 16-bit segments, or sixteen
@@ -71,11 +99,7 @@ export type Ipv4AddressInput = Ipv4Address | string | readonly [number, number, 
  * @category models
  * @since 4.0.0
  */
-export type Ipv6AddressInput =
-  | Ipv6Address
-  | string
-  | readonly [number, number, number, number, number, number, number, number]
-  | Uint8Array
+export type Ipv6AddressInput = Ipv6Address | string | Ipv6Segments | Uint8Array
 
 /**
  * An IP address, or any `Ipv4AddressInput` or `Ipv6AddressInput` to convert to
@@ -134,7 +158,7 @@ export interface MacAddress extends Equal.Equal, Hash.Hash {
  * @category models
  * @since 4.0.0
  */
-export type MacAddressInput = MacAddress | string | readonly [number, number, number, number, number, number]
+export type MacAddressInput = MacAddress | string | MacAddressOctets
 
 const MulticastTypeId = "~effect/net/NetAddress/MulticastAddress" as const
 const UnicastTypeId = "~effect/net/NetAddress/UnicastAddress" as const
@@ -333,7 +357,7 @@ export interface InetAddressV6 extends Equal.Equal, Hash.Hash {
 export type InetAddress = InetAddressV4 | InetAddressV6
 
 /**
- * An internet address and port, or a string or the parts to convert to one.
+ * The address, port, and optional IPv6 scope identifier of an internet address.
  *
  * **Details**
  *
@@ -343,14 +367,20 @@ export type InetAddress = InetAddressV4 | InetAddressV6
  * @category models
  * @since 4.0.0
  */
-export type InetAddressInput =
-  | InetAddress
-  | string
-  | {
-    readonly address: IpAddressInput
-    readonly port: number
-    readonly scopeId?: number | undefined
-  }
+export interface InetAddressParts<A extends IpAddressInput = IpAddressInput> {
+  readonly address: A
+  readonly port: number
+  readonly scopeId?: number | undefined
+}
+
+/**
+ * An internet address and port, or a string or parts to convert to one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type InetAddressInput = InetAddress | string | InetAddressParts
 
 /**
  * An opaque Unix-domain filesystem socket path.
@@ -377,6 +407,17 @@ export interface UnixPathAddress extends Equal.Equal, Hash.Hash {
 export type SocketAddress = InetAddress | UnixPathAddress
 
 /**
+ * The path of a Unix-domain socket address.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface UnixPathAddressParts {
+  readonly path: string
+}
+
+/**
  * Companion types for constructing socket addresses.
  *
  * @stability unstable
@@ -396,7 +437,7 @@ export declare namespace SocketAddress {
    * @category models
    * @since 4.0.0
    */
-  export type Input = SocketAddress | InetAddressInput | { readonly path: string }
+  export type Input = SocketAddress | InetAddressInput | UnixPathAddressParts
 }
 
 /**
@@ -748,7 +789,7 @@ const packOctets = (a: number, b: number, c: number, d: number): number => ((a <
 const packBytes = (bytes: Uint8Array, offset: number): number =>
   packOctets(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3])
 
-const wordToOctets = (word: number): readonly [number, number, number, number] => [
+const wordToOctets = (word: number): Ipv4Octets => [
   word >>> 24,
   (word >>> 16) & 0xff,
   (word >>> 8) & 0xff,
@@ -827,9 +868,6 @@ export const ipv4Broadcast: Ipv4Address = makeIpv4(0xffffffff)
 const addressError = (input: unknown, message: string): Result.Result<never, NetAddressError> =>
   Result.fail(new NetAddressError({ input, message }))
 
-const isArrayOfLength = <N extends number>(input: unknown, length: N): input is { readonly length: N } =>
-  Array.isArray(input) && input.length === length
-
 /**
  * Creates an IPv4 address from four checked octets.
  *
@@ -838,7 +876,7 @@ const isArrayOfLength = <N extends number>(input: unknown, length: N): input is 
  * @since 4.0.0
  */
 export const ipv4FromOctets = (
-  octets: readonly [number, number, number, number]
+  octets: Ipv4Octets
 ): Result.Result<Ipv4Address, NetAddressError> => {
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError(octets, "octets must be integers from 0 through 255")
@@ -854,7 +892,7 @@ export const ipv4FromOctets = (
  * @since 4.0.0
  */
 export const ipv6FromSegments = (
-  segments: readonly [number, number, number, number, number, number, number, number]
+  segments: Ipv6Segments
 ): Result.Result<Ipv6Address, NetAddressError> => {
   if (!segments.every((n) => Number.isInteger(n) && n >= 0 && n <= 0xffff)) {
     return addressError(segments, "segments must be integers from 0 through 65535")
@@ -875,7 +913,7 @@ export const ipv6FromSegments = (
  * @since 4.0.0
  */
 export const macAddressFromOctets = (
-  octets: readonly [number, number, number, number, number, number]
+  octets: MacAddressOctets
 ): Result.Result<MacAddress, NetAddressError> => {
   if (!octets.every((n) => Number.isInteger(n) && n >= 0 && n <= 255)) {
     return addressError(octets, "octets must be integers from 0 through 255")
@@ -918,7 +956,7 @@ export const macAddressFromStringUnsafe = (input: string): MacAddress => Result.
 export const macAddressFromInput = (input: MacAddressInput): Result.Result<MacAddress, NetAddressError> => {
   if (isMacAddress(input)) return Result.succeed(input)
   if (typeof input === "string") return macAddressFromString(input)
-  if (isArrayOfLength(input, 6)) return macAddressFromOctets(input)
+  if (Array.isArray(input) && isTupleOf(input, 6)) return macAddressFromOctets(input)
   return addressError(input, "expected a MAC address, string, or 6 octets")
 }
 
@@ -1086,8 +1124,8 @@ export const ipFromInput = (input: IpAddressInput): Result.Result<IpAddress, Net
   if (typeof input === "string") return ipFromString(input)
   if (input instanceof Uint8Array && input.length === 4) return Result.succeed(ipv4FromBytesUnsafe(input))
   if (input instanceof Uint8Array && input.length === 16) return Result.succeed(ipv6FromBytesUnsafe(input))
-  if (isArrayOfLength(input, 4)) return ipv4FromOctets(input)
-  if (isArrayOfLength(input, 8)) return ipv6FromSegments(input)
+  if (Array.isArray(input) && isTupleOf(input, 4)) return ipv4FromOctets(input)
+  if (Array.isArray(input) && isTupleOf(input, 8)) return ipv6FromSegments(input)
   return addressError(input, "expected an IP address, string, 4 octets, 8 segments, or 4 or 16 bytes")
 }
 
@@ -1113,7 +1151,7 @@ export const ipv4FromInput = (input: Ipv4AddressInput): Result.Result<Ipv4Addres
   if (isIpv4Address(input)) return Result.succeed(input)
   if (typeof input === "string") return ipv4FromString(input)
   if (input instanceof Uint8Array && input.length === 4) return Result.succeed(ipv4FromBytesUnsafe(input))
-  if (isArrayOfLength(input, 4)) return ipv4FromOctets(input)
+  if (Array.isArray(input) && isTupleOf(input, 4)) return ipv4FromOctets(input)
   return addressError(input, "expected an IPv4 address, string, 4 octets, or 4 bytes")
 }
 
@@ -1130,7 +1168,7 @@ export const ipv6FromInput = (input: Ipv6AddressInput): Result.Result<Ipv6Addres
   if (isIpv6Address(input)) return Result.succeed(input)
   if (typeof input === "string") return ipv6FromString(input)
   if (input instanceof Uint8Array && input.length === 16) return Result.succeed(ipv6FromBytesUnsafe(input))
-  if (isArrayOfLength(input, 8)) return ipv6FromSegments(input)
+  if (Array.isArray(input) && isTupleOf(input, 8)) return ipv6FromSegments(input)
   return addressError(input, "expected an IPv6 address, string, 8 segments, or 16 bytes")
 }
 
@@ -1197,8 +1235,7 @@ export const scopedIpv6LiteralFromInput = (
  * @category getters
  * @since 4.0.0
  */
-export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, number, number] =>
-  wordToOctets(ipv4Value(self))
+export const ipv4ToOctets = (self: Ipv4Address): Ipv4Octets => wordToOctets(ipv4Value(self))
 
 /**
  * Returns the eight numeric segments of an IPv6 address in a fresh tuple.
@@ -1207,9 +1244,7 @@ export const ipv4ToOctets = (self: Ipv4Address): readonly [number, number, numbe
  * @category getters
  * @since 4.0.0
  */
-export const ipv6ToSegments = (
-  self: Ipv6Address
-): readonly [number, number, number, number, number, number, number, number] => {
+export const ipv6ToSegments = (self: Ipv6Address): Ipv6Segments => {
   const { w0, w1, w2, w3 } = ipv6Words(self)
   return [w0 >>> 16, w0 & 0xffff, w1 >>> 16, w1 & 0xffff, w2 >>> 16, w2 & 0xffff, w3 >>> 16, w3 & 0xffff]
 }
@@ -1235,9 +1270,7 @@ export const ipv6ToOctets = (
  * @category getters
  * @since 4.0.0
  */
-export const macAddressToOctets = (
-  self: MacAddress
-): readonly [number, number, number, number, number, number] => {
+export const macAddressToOctets = (self: MacAddress): MacAddressOctets => {
   const bytes = getMacBytes(self)
   return [bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]]
 }

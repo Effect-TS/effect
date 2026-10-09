@@ -53,43 +53,43 @@ export type Ipv4Network = IpNetwork<NetAddress.Ipv4Address>
 export type Ipv6Network = IpNetwork<NetAddress.Ipv6Address>
 
 /**
- * An IP network prefix, or a CIDR string or an address and prefix length to
- * convert to one.
+ * A network address and prefix length, generic over the accepted address
+ * input. The address must have no host bits set.
  *
+ * @see {@link make} for the checked constructor
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type IpNetworkInput =
-  | IpNetwork
-  | string
-  | { readonly address: NetAddress.IpAddressInput; readonly prefixLength: number }
+export type IpNetworkParts<A extends NetAddress.IpAddressInput = NetAddress.IpAddressInput> =
+  IpInterface.IpInterfaceParts<A>
 
 /**
- * An IPv4 network prefix, or a CIDR string or an IPv4 address and prefix
- * length to convert to one.
+ * An IP network prefix, or a CIDR string or parts to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv4NetworkInput =
-  | Ipv4Network
-  | string
-  | { readonly address: NetAddress.Ipv4AddressInput; readonly prefixLength: number }
+export type IpNetworkInput = IpNetwork | string | IpNetworkParts
 
 /**
- * An IPv6 network prefix, or a CIDR string or an IPv6 address and prefix
- * length to convert to one.
+ * An IPv4 network prefix, or a CIDR string or parts to convert to one.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Ipv6NetworkInput =
-  | Ipv6Network
-  | string
-  | { readonly address: NetAddress.Ipv6AddressInput; readonly prefixLength: number }
+export type Ipv4NetworkInput = Ipv4Network | string | IpNetworkParts<NetAddress.Ipv4AddressInput>
+
+/**
+ * An IPv6 network prefix, or a CIDR string or parts to convert to one.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type Ipv6NetworkInput = Ipv6Network | string | IpNetworkParts<NetAddress.Ipv6AddressInput>
 
 /**
  * Returns `true` when a value is an IPv4 network prefix.
@@ -273,8 +273,8 @@ export const fromString = (input: string): Result.Result<IpNetwork, NetAddress.N
   )
 }
 
-const fromParts = <I, A extends NetAddress.IpAddress>(
-  input: { readonly address: I; readonly prefixLength: number },
+const fromParts = <I extends NetAddress.IpAddressInput, A extends NetAddress.IpAddress>(
+  input: IpNetworkParts<I>,
   toAddress: (input: I) => Result.Result<A, NetAddress.NetAddressError>
 ): Result.Result<IpNetwork<A>, NetAddress.NetAddressError> =>
   hasProperty(input, "address") && hasProperty(input, "prefixLength")

@@ -86,13 +86,26 @@ export interface HostPort extends Equal.Equal, Hash.Hash, Inspectable.Inspectabl
 }
 
 /**
- * An endpoint, or a `host:port` string or a host and port to convert to one.
+ * The host and port of an endpoint.
+ *
+ * @see {@link hostPort} for the checked constructor
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPortParts {
+  readonly host: HostInput
+  readonly port: number
+}
+
+/**
+ * An endpoint, or a `host:port` string or parts to convert to one.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export type HostPortInput = HostPort | string | { readonly host: HostInput; readonly port: number }
+export type HostPortInput = HostPort | string | HostPortParts
 
 const hostError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
   Result.fail(new NetAddress.NetAddressError({ input, message }))

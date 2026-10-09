@@ -470,9 +470,7 @@ describe("NetAddress", () => {
   })
 
   it("retains identity and scope for internet addresses that need no canonicalization", () => {
-    const scoped = success(
-      NetAddress.inetAddressV6(success(NetAddress.ipv6FromString("fe80::1")), 1234, { scopeId: 3 })
-    )
+    const scoped = success(NetAddress.inetAddressFromInput({ address: "fe80::1", port: 1234, scopeId: 3 }))
     for (const address of [success(NetAddress.inetAddressV4(NetAddress.ipv4Loopback, 1234)), scoped]) {
       assert.strictEqual(NetAddress.toCanonical(address), address)
     }
