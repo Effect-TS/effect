@@ -3,8 +3,8 @@
  * tests.
  *
  * Random bytes, numbers, shuffles, UUIDs, and ULIDs are derived from a seeded
- * pseudo-random generator. Digest operations are delegated to an underlying
- * platform `Crypto` service.
+ * pseudo-random generator. Digest, key, encryption, and signing operations are
+ * delegated to an underlying platform `Crypto` service.
  *
  * @stability unstable
  * @since 4.0.0
@@ -21,13 +21,13 @@ import * as Random from "../Random.ts"
  * **When to use**
  *
  * Use to construct a `Crypto` service whose random operations are reproducible
- * in tests while preserving the digest implementation of a platform `Crypto`
- * service.
+ * in tests while preserving the digest, key, encryption, and signing
+ * implementations of a platform `Crypto` service.
  *
  * **Details**
  *
- * The effect requires an existing `Crypto` service and delegates digest
- * operations to it. Each evaluation starts a new random sequence from `seed`;
+ * The effect requires an existing `Crypto` service and delegates all
+ * non-random operations to it. Each evaluation starts a new random sequence from `seed`;
  * every other random operation is derived from that sequence.
  *
  * **Gotchas**
@@ -58,7 +58,24 @@ export const make: (
         }
         return bytes
       },
-      digest: crypto.digest
+      digest: crypto.digest,
+      hmac: crypto.hmac,
+      pbkdf2: crypto.pbkdf2,
+      hkdf: crypto.hkdf,
+      argon2id: crypto.argon2id,
+      rsaOaepEncrypt: crypto.rsaOaepEncrypt,
+      xchacha20poly1305Encrypt: crypto.xchacha20poly1305Encrypt,
+      xchacha20poly1305Decrypt: crypto.xchacha20poly1305Decrypt,
+      generateSecretKey: crypto.generateSecretKey,
+      generateKeyPair: crypto.generateKeyPair,
+      importKey: crypto.importKey,
+      exportKey: crypto.exportKey,
+      importJwk: crypto.importJwk,
+      exportJwk: crypto.exportJwk,
+      encrypt: crypto.encrypt,
+      decrypt: crypto.decrypt,
+      sign: crypto.sign,
+      verify: crypto.verify
     })
   },
   (effect, seed) => Random.withSeed(effect, seed)
@@ -75,8 +92,8 @@ export const make: (
  *
  * **Details**
  *
- * The layer requires an existing platform `Crypto` service whose digest
- * implementation is retained. Each layer build starts the random sequence from
+ * The layer requires an existing platform `Crypto` service whose non-random
+ * operations are retained. Each layer build starts the random sequence from
  * `seed`.
  *
  * **Gotchas**

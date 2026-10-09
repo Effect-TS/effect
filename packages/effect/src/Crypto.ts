@@ -46,8 +46,9 @@ export type DigestAlgorithm = "MD5" | "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512
 /**
  * Hash algorithms supported for message authentication and password derivation.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type HmacAlgorithm = Exclude<DigestAlgorithm, "MD5">
 
@@ -60,8 +61,9 @@ export type HmacAlgorithm = Exclude<DigestAlgorithm, "MD5">
  * SHA-1 is available for compatibility with legacy protocols.
  * The optional label must match the label used when decrypting the ciphertext.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface RsaOaepOptions {
   readonly publicKey: Uint8Array
@@ -80,8 +82,9 @@ export interface RsaOaepOptions {
  * Secret and associated data are optional inputs to the derivation.
  * Callers choose password-strength policy and bound concurrent derivations.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface Argon2idOptions {
   readonly password: Uint8Array
@@ -106,8 +109,9 @@ export interface Argon2idOptions {
  *
  * Never reuse a nonce with the same key. Backend support is runtime-dependent.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface XChaCha20Poly1305Options {
   readonly key: Uint8Array
@@ -129,8 +133,9 @@ export interface XChaCha20Poly1305Options {
  *
  * `d`, RSA private components, and `k` contain unencrypted secret material.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface Jwk {
   readonly kty: string
@@ -156,8 +161,9 @@ export interface Jwk {
 /**
  * Elliptic curves supported for ECDSA keys.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type NamedCurve = "P-256" | "P-384" | "P-521"
 
@@ -169,8 +175,9 @@ export type NamedCurve = "P-256" | "P-384" | "P-521"
  * HMAC lengths are measured in bits and default to the hash's block size.
  * AES-GCM keys contain 128, 192, or 256 bits.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type SecretKeyAlgorithm =
   | { readonly name: "AES-GCM"; readonly length: 128 | 192 | 256 }
@@ -184,8 +191,9 @@ export type SecretKeyAlgorithm =
  * RSA generation defaults to a 2048-bit modulus and exponent 65537. RSA
  * keys bind the selected hash to subsequent encryption or signature operations.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type KeyPairAlgorithm =
   | {
@@ -200,16 +208,18 @@ export type KeyPairAlgorithm =
 /**
  * Algorithms supported by managed cryptographic keys.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type KeyAlgorithm = SecretKeyAlgorithm | KeyPairAlgorithm
 
 /**
  * Operations permitted for a managed cryptographic key.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type KeyUsage = "encrypt" | "decrypt" | "sign" | "verify"
 
@@ -223,8 +233,9 @@ export type KeyUsage = "encrypt" | "decrypt" | "sign" | "verify"
  * Usages default to the operations supported by the algorithm
  * and key type, and generated pairs divide usages between their two keys.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface KeyOptions {
   readonly extractable?: boolean | undefined
@@ -244,8 +255,9 @@ export interface KeyOptions {
  * @see {@link exportKey}
  * @see {@link exportJwk}
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface Key {
   readonly "~effect/Crypto/Key": "~effect/Crypto/Key"
@@ -258,8 +270,9 @@ export interface Key {
 /**
  * Public and private keys generated together for an asymmetric algorithm.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export interface KeyPair {
   readonly publicKey: Key
@@ -274,8 +287,9 @@ export interface KeyPair {
  * `raw` represents secret keys, `spki` represents DER public keys, and `pkcs8`
  * represents DER private keys. PKCS8 exports are unencrypted key material.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type KeyFormat = "raw" | "spki" | "pkcs8"
 
@@ -293,8 +307,9 @@ export type KeyFormat = "raw" | "spki" | "pkcs8"
  * Never reuse an AES-GCM IV with the same key. Decryption must use the same
  * IV, additional data, or OAEP label as encryption.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type CipherOptions =
   | {
@@ -313,8 +328,9 @@ export type CipherOptions =
  * output size. ECDSA signatures use the fixed-width IEEE P1363 `r || s` format.
  * HMAC and RSA signatures use the hash bound to their key. Ed25519 uses no external hash.
  *
+ * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.0
  */
 export type SigningOptions =
   | { readonly name: "HMAC" | "Ed25519" | "RSASSA-PKCS1-v1_5" }
@@ -634,8 +650,9 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  * The size must be a non-negative safe integer. Invalid sizes and platform
  * failures are reported as `PlatformError`.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomBytes = (size: number): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.randomBytes(size))
@@ -648,8 +665,9 @@ export const randomBytes = (size: number): Effect.Effect<Uint8Array, PlatformErr
  * MD5 is unavailable in the browser implementation. MD5 and SHA-1 are
  * intended for interoperability with existing protocols.
  *
+ * @stability unstable
  * @category hashing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const digest = (
   algorithm: DigestAlgorithm,
@@ -661,8 +679,9 @@ export const digest = (
  * Generates a cryptographically secure number between zero, inclusive, and one,
  * exclusive, using the Crypto service.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const random: Effect.Effect<number, never, Crypto> = Effect.flatMap(Crypto, (crypto) => crypto.random)
 
@@ -670,8 +689,9 @@ export const random: Effect.Effect<number, never, Crypto> = Effect.flatMap(Crypt
  * Generates a cryptographically secure boolean with equal probability for both
  * values using the Crypto service.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomBoolean: Effect.Effect<boolean, never, Crypto> = Effect.flatMap(
   Crypto,
@@ -682,8 +702,9 @@ export const randomBoolean: Effect.Effect<boolean, never, Crypto> = Effect.flatM
  * Generates a cryptographically secure integer across the full safe-integer
  * range using the Crypto service.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomInt: Effect.Effect<number, never, Crypto> = Effect.flatMap(Crypto, (crypto) => crypto.randomInt)
 
@@ -691,8 +712,9 @@ export const randomInt: Effect.Effect<number, never, Crypto> = Effect.flatMap(Cr
  * Generates a cryptographically secure number between `min`, inclusive, and
  * `max`, exclusive, using the Crypto service.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomBetween = (min: number, max: number): Effect.Effect<number, never, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.randomBetween(min, max))
@@ -711,8 +733,9 @@ export const randomBetween = (min: number, max: number): Effect.Effect<number, n
  * Empty ranges and bounds that do not round to safe integers die with
  * `RangeError` when the service is constructed with `make`.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomIntBetween = (min: number, max: number, options?: {
   readonly halfOpen?: boolean | undefined
@@ -723,8 +746,9 @@ export const randomIntBetween = (min: number, max: number, options?: {
  * Shuffles an iterable using cryptographically secure random choices from the
  * Crypto service.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomShuffle = <A>(elements: Iterable<A>): Effect.Effect<Array<A>, never, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.randomShuffle(elements))
@@ -732,25 +756,51 @@ export const randomShuffle = <A>(elements: Iterable<A>): Effect.Effect<Array<A>,
 /**
  * Generates a cryptographically secure UUIDv4 using the Crypto service.
  *
+ * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
+ * `"bytes"` format returns the 16 UUID bytes.
+ *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
-export const randomUUIDv4: Effect.Effect<string, PlatformError.PlatformError, Crypto> = Effect.flatMap(
-  Crypto,
-  (crypto) => crypto.randomUUIDv4
-)
+export const randomUUIDv4: {
+  (options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError, Crypto>
+  <Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError, Crypto>
+  (options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError, Crypto>
+} =
+  ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+    Effect.flatMap(Crypto, (crypto) => crypto.randomUUIDv4(options))) as any
 
 /**
  * Generates a cryptographically secure UUIDv7 using the Crypto service and the
  * current Clock timestamp.
  *
+ * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
+ * `"bytes"` format returns the 16 UUID bytes.
+ *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
-export const randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError, Crypto> = Effect.flatMap(
-  Crypto,
-  (crypto) => crypto.randomUUIDv7
-)
+export const randomUUIDv7: {
+  (options?: {
+    readonly format?: "hex" | undefined
+  }): Effect.Effect<string, PlatformError.PlatformError, Crypto>
+  <Format extends "hex" | "bytes">(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, PlatformError.PlatformError, Crypto>
+  (options?: {
+    readonly format?: "hex" | "bytes" | undefined
+  }): Effect.Effect<string | Uint8Array, PlatformError.PlatformError, Crypto>
+} =
+  ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+    Effect.flatMap(Crypto, (crypto) => crypto.randomUUIDv7(options))) as any
 
 /**
  * Generates a cryptographically secure ULID using the Crypto service and the
@@ -761,8 +811,9 @@ export const randomUUIDv7: Effect.Effect<string, PlatformError.PlatformError, Cr
  * The result contains 26 uppercase Crockford base32 characters. ULIDs sort by
  * timestamp, with no ordering guarantee within the same millisecond.
  *
+ * @stability unstable
  * @category generators
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const randomULID: Effect.Effect<string, PlatformError.PlatformError, Crypto> = Effect.flatMap(
   Crypto,
@@ -777,8 +828,9 @@ export const randomULID: Effect.Effect<string, PlatformError.PlatformError, Cryp
  * Fails with `PlatformError` if the platform rejects the key or algorithm.
  * SHA-1 is available for legacy protocol compatibility.
  *
+ * @stability unstable
  * @category hashing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const hmac = (
   algorithm: HmacAlgorithm,
@@ -801,8 +853,9 @@ export const hmac = (
  * limits may be lower than JavaScript's safe integer limit.
  * Interruption stops waiting for the result; native key derivation may continue.
  *
+ * @stability unstable
  * @category hashing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const pbkdf2 = (
   algorithm: HmacAlgorithm,
@@ -823,8 +876,9 @@ export const pbkdf2 = (
  * the matching private key and hash to decrypt it. Public keys must come from a
  * trusted source.
  *
+ * @stability unstable
  * @category encryption
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const rsaOaepEncrypt = (
   options: RsaOaepOptions
@@ -839,8 +893,9 @@ export const rsaOaepEncrypt = (
  * The length is measured in bytes and must be between one and 255 times the hash
  * output size. Salt and info may be empty.
  *
+ * @stability unstable
  * @category hashing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const hkdf = (
   algorithm: HmacAlgorithm,
@@ -861,8 +916,9 @@ export const hkdf = (
  * until the native job finishes. Callers must bound memory, work factors, and
  * concurrent derivations.
  *
+ * @stability unstable
  * @category hashing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.argon2id(options))
@@ -875,8 +931,9 @@ export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, Pl
  * Requires a 32-byte key and a unique 24-byte nonce. The output includes a
  * 16-byte authentication tag. Unsupported backends fail with `PlatformError`.
  *
+ * @stability unstable
  * @category encryption
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const xchacha20poly1305Encrypt = (
   options: XChaCha20Poly1305Options
@@ -891,8 +948,9 @@ export const xchacha20poly1305Encrypt = (
  * The nonce and additional data must match encryption. Authentication failures
  * return `PlatformError` without returning plaintext.
  *
+ * @stability unstable
  * @category encryption
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const xchacha20poly1305Decrypt = (
   options: XChaCha20Poly1305Options
@@ -928,8 +986,9 @@ export const xchacha20poly1305Decrypt = (
  * await Effect.runPromise(program.pipe(Effect.provideService(Crypto.Crypto, service))) // => 44
  * ```
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const importJwk = (
   jwk: Jwk,
@@ -947,8 +1006,9 @@ export const importJwk = (
  * material and cryptographic restrictions; application metadata such as `kid`
  * is not preserved.
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const exportJwk = (key: Key): Effect.Effect<Jwk, PlatformError.PlatformError, Crypto> =>
   Effect.flatMap(Crypto, (crypto) => crypto.exportJwk(key))
@@ -960,8 +1020,9 @@ export const exportJwk = (key: Key): Effect.Effect<Jwk, PlatformError.PlatformEr
  *
  * Keys default to non-extractable with all usages supported by their algorithm.
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const generateSecretKey = (
   algorithm: SecretKeyAlgorithm,
@@ -977,8 +1038,9 @@ export const generateSecretKey = (
  * Private keys default to non-extractable. Public keys remain extractable.
  * RSA generation requires a modulus of at least 2048 bits.
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const generateKeyPair = (
   algorithm: KeyPairAlgorithm,
@@ -996,8 +1058,9 @@ export const generateKeyPair = (
  * private keys default to non-extractable. Public keys default to extractable,
  * and the native backend enforces usages.
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const importKey = (
   format: KeyFormat,
@@ -1016,8 +1079,9 @@ export const importKey = (
  * Exported secret and private key bytes are unencrypted sensitive material.
  * Non-extractable keys fail with `PlatformError`.
  *
+ * @stability unstable
  * @category key management
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const exportKey = (
   format: KeyFormat,
@@ -1035,8 +1099,9 @@ export const exportKey = (
  * Its ciphertext includes the 16-byte authentication tag. The key must permit
  * encryption and match the selected algorithm.
  *
+ * @stability unstable
  * @category encryption
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const encrypt = (
   options: CipherOptions,
@@ -1053,8 +1118,9 @@ export const encrypt = (
  * AES-GCM authentication failures fail with `PlatformError` without returning
  * plaintext. The key must permit decryption and match the selected algorithm.
  *
+ * @stability unstable
  * @category encryption
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const decrypt = (
   options: CipherOptions,
@@ -1072,8 +1138,9 @@ export const decrypt = (
  * ECDSA signatures use IEEE P1363 encoding. RSA-PSS salt lengths default to
  * the key hash's output size. The key must permit signing.
  *
+ * @stability unstable
  * @category signing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const sign = (
   options: SigningOptions,
@@ -1090,8 +1157,9 @@ export const sign = (
  * Signature mismatches return `false`. Invalid keys, disallowed usages, and
  * rejected parameters fail with `PlatformError`.
  *
+ * @stability unstable
  * @category signing
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const verify = (
   options: SigningOptions,
@@ -1331,7 +1399,8 @@ export const make = (
         })
       )) as Crypto["randomUUIDv7"],
     randomULID: Effect.clockWith((clock) =>
-      tryRandom("randomULID", () => Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
+      tryRandom("randomULID", () =>
+        Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
     )
   })
 }
@@ -1409,8 +1478,9 @@ const hashLengths: Record<HmacAlgorithm, number> = { "SHA-1": 20, "SHA-256": 32,
  *
  * @see {@link make}
  *
+ * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.0
  */
 export const makeSubtle = (subtle: SubtleCrypto): Omit<Parameters<typeof make>[0], "randomBytes"> => {
   const handles = nativeKeys.get(subtle) ?? new WeakMap<Key, CryptoKey>()
