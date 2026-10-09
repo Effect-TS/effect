@@ -584,6 +584,63 @@ export const reverseName = (address: NetAddress.IpAddress): Host.DomainName => {
 }
 
 // =============================================================================
+// Name servers
+// =============================================================================
+
+/**
+ * Parses the address of a name server: an IP address, which uses port 53, or
+ * an IP address and port.
+ *
+ * **Details**
+ *
+ * IPv6 addresses with a port are written in brackets, and IPv6 addresses
+ * without one are not.
+ *
+ * **Example** (Parsing name server addresses)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { Dns, NetAddress } from "effect/net"
+ *
+ * const format = (input: string) => Result.map(Dns.nameServerFromString(input), NetAddress.formatInet)
+ *
+ * format("192.0.2.53") // => Result.succeed("192.0.2.53:53")
+ * format("2001:db8::53") // => Result.succeed("[2001:db8::53]:53")
+ * format("[2001:db8::53]:5353") // => Result.succeed("[2001:db8::53]:5353")
+ * Result.isFailure(format("ns.example")) // => true
+ * ```
+ *
+ * @stability experimental
+ * @category decoding
+ * @since 4.0.0
+ */
+export const nameServerFromString = (
+  input: string
+): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
+  NetAddress.inetAddressFromString(
+    input.startsWith("[") || /^[^:]*:\d+$/.test(input) ? input : input.includes(":") ? `[${input}]:53` : `${input}:53`
+  )
+
+/**
+ * Converts a name server to the internet address to query. Strings are parsed
+ * like `nameServerFromString`, internet addresses and address parts with a
+ * port are converted like `NetAddress.inetAddressFromInput`, and other IP
+ * address inputs are converted like `NetAddress.ipFromInput` and use port 53.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const nameServerFromInput = (
+  input: NetAddress.IpAddressInput | NetAddress.InetAddressInput
+): Result.Result<NetAddress.InetAddress, NetAddress.NetAddressError> =>
+  typeof input === "string"
+    ? nameServerFromString(input)
+    : "port" in input
+    ? NetAddress.inetAddressFromInput(input)
+    : Result.map(NetAddress.ipFromInput(input), (address) => NetAddress.inetAddressUnsafe(address, 53))
+
+// =============================================================================
 // Errors
 // =============================================================================
 
@@ -722,16 +779,20 @@ export class Dns extends Context.Service<Dns, {
    *
    * **Details**
    *
-   * Names that are not valid host names are skipped, including names with
-   * non-ASCII labels, which are not converted to their ASCII (`xn--`) form
-   * because that form is a different DNS name. When every returned name is
-   * skipped, the lookup fails with `InvalidResponse`.
+   * Addresses given as strings are parsed; invalid addresses fail with
+   * `BadName`. Names that are not valid host names are skipped, including
+   * names with non-ASCII labels, which are not converted to their ASCII
+   * (`xn--`) form because that form is a different DNS name. When every
+   * returned name is skipped, the lookup fails with `InvalidResponse`.
    */
-  reverse(address: NetAddress.IpAddress): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
+  reverse(address: NetAddress.IpAddressInput): Effect.Effect<Arr.NonEmptyReadonlyArray<Host.DomainName>, DnsError>
 }>()("effect/net/Dns") {}
 
 const notFound = (method: DnsError["method"], hostname: string, recordType?: RecordType) =>
   Effect.fail(new DnsError({ reason: "NotFound", method, hostname, recordType }))
+
+const badName = (method: DnsError["method"], hostname: string, cause: unknown, recordType?: RecordType) =>
+  Effect.fail(new DnsError({ reason: "BadName", method, hostname, recordType, cause }))
 
 const asciiName = /^[\w.-]+$/
 
@@ -740,8 +801,9 @@ const asciiName = /^[\w.-]+$/
  *
  * **Details**
  *
- * Lookup and query names are parsed and normalized before platform callbacks
- * receive them. Invalid names fail with `BadName`.
+ * Lookup and query names are parsed and normalized, and reverse lookup
+ * addresses are parsed, before platform callbacks receive them. Invalid names
+ * and addresses fail with `BadName`.
  *
  * The constructor filters lookups by the requested address family, keeps only
  * records of the requested type, removes duplicates, and turns empty results
@@ -792,50 +854,55 @@ export const make = (impl: {
         )
       ))
 
-  const parseName = (input: Host.DomainNameInput, method: "lookup" | "resolve", recordType?: RecordType) =>
-    Effect.fromResult(Host.domainNameFromString(input)).pipe(
-      Effect.mapError((cause) => new DnsError({ reason: "BadName", method, hostname: input, recordType, cause }))
-    )
-
   const lookup = (input: Host.DomainNameInput, options?: LookupOptions) =>
-    Effect.flatMap(parseName(input, "lookup"), (host) =>
-      impl.lookup(host, options?.family).pipe(
-        Effect.flatMap((addresses) =>
-          Arr.match(Arr.dedupe(addresses.filter(inFamily(options?.family))), {
-            onEmpty: () => notFound("lookup", host),
-            onNonEmpty: Effect.succeed
-          })
+    Result.match(Host.domainNameFromInput(input), {
+      onFailure: (cause) => badName("lookup", input, cause),
+      onSuccess: (host) =>
+        impl.lookup(host, options?.family).pipe(
+          Effect.flatMap((addresses) =>
+            Arr.match(Arr.dedupe(addresses.filter(inFamily(options?.family))), {
+              onEmpty: () => notFound("lookup", host),
+              onNonEmpty: Effect.succeed
+            })
+          )
         )
-      ))
+    })
 
   return Dns.of({
     lookup,
     resolve: <T extends RecordType>(input: Host.DomainNameInput, type: T) =>
-      Effect.flatMap(parseName(input, "resolve", type), (name) =>
-        resolveRecords(name, type).pipe(
-          Effect.flatMap((records) =>
-            Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
-              onEmpty: () => notFound("resolve", name, type),
-              onNonEmpty: Effect.succeed
+      Result.match(Host.domainNameFromInput(input), {
+        onFailure: (cause) => badName("resolve", input, cause, type),
+        onSuccess: (name) =>
+          resolveRecords(name, type).pipe(
+            Effect.flatMap((records) =>
+              Arr.match(Arr.dedupe(records.filter((record): record is RecordFor<T> => record._tag === type)), {
+                onEmpty: () => notFound("resolve", name, type),
+                onNonEmpty: Effect.succeed
+              })
+            )
+          )
+      }),
+    reverse: (input) =>
+      Result.match(NetAddress.ipFromInput(input), {
+        onFailure: (cause) => badName("reverse", String(input), cause),
+        onSuccess: (address) =>
+          reverseNames(address).pipe(
+            Effect.flatMap((names) => {
+              const hostname = NetAddress.formatIp(address)
+              // Only ASCII names: `domainNameFromString` would convert UTF-8 labels
+              // to a different, `xn--` name.
+              const hosts = Arr.dedupe(
+                Arr.filterMap(names.filter((name) => asciiName.test(name)), Host.domainNameFromString)
+              )
+              return Arr.isReadonlyArrayNonEmpty(hosts)
+                ? Effect.succeed(hosts)
+                : names.length > 0
+                ? Effect.fail(new DnsError({ reason: "InvalidResponse", method: "reverse", hostname }))
+                : notFound("reverse", hostname)
             })
           )
-        )),
-    reverse: (address) =>
-      reverseNames(address).pipe(
-        Effect.flatMap((names) => {
-          const hostname = NetAddress.formatIp(address)
-          // Only ASCII names: `domainNameFromString` would convert UTF-8 labels
-          // to a different, `xn--` name.
-          const hosts = Arr.dedupe(
-            Arr.filterMap(names.filter((name) => asciiName.test(name)), Host.domainNameFromString)
-          )
-          return Arr.isReadonlyArrayNonEmpty(hosts)
-            ? Effect.succeed(hosts)
-            : names.length > 0
-            ? Effect.fail(new DnsError({ reason: "InvalidResponse", method: "reverse", hostname }))
-            : notFound("reverse", hostname)
-        })
-      )
+      })
   })
 }
 
