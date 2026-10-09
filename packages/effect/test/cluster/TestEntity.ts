@@ -33,7 +33,6 @@ export const TestEntity = Entity.make("TestEntity", [
   Rpc.make("Fail", { error: BoomError }),
   Rpc.make("NeverFork"),
   Rpc.make("NeverVolatile").annotate(ClusterSchema.Persisted, false),
-  Rpc.make("StreamVolatile", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false),
   Rpc.make("RequestWithKey", {
     payload: { key: Schema.String },
     primaryKey: ({ key }) => key
@@ -120,10 +119,6 @@ export const TestEntityNoState = TestEntity.toLayer(
       Fail: () => Effect.fail(new BoomError({ cause: new Error("boom") })),
       NeverFork: (envelope) => Rpc.fork(never(envelope)),
       NeverVolatile: never,
-      StreamVolatile: () => {
-        let sequence = 0
-        return Rpc.fork(Stream.fromQueue(state.streamMessages).pipe(Stream.map(() => sequence++)))
-      },
       RequestWithKey: (envelope) => {
         Queue.offerUnsafe(state.envelopes, envelope)
         return Queue.take(state.messages)

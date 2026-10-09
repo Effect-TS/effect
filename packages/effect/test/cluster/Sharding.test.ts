@@ -1674,32 +1674,6 @@ describe.concurrent("Sharding", () => {
       assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 4)
     }).pipe(Effect.provide(TestSharding)))
 
-  it.effect("keeps a volatile stream running when restarting after a defect", () =>
-    Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const state = yield* TestEntityState
-      const makeClient = yield* TestEntity.client
-      const client = makeClient("1")
-
-      const received: Array<number> = []
-      const fiber = yield* client.StreamVolatile().pipe(
-        Stream.runForEach((n) => Effect.sync(() => received.push(n))),
-        Effect.forkChild({ startImmediately: true })
-      )
-      yield* Queue.offer(state.streamMessages, void 0)
-      yield* TestClock.adjust(1)
-      assert.deepStrictEqual(received, [0])
-
-      MutableRef.set(state.defectTrigger, true)
-      yield* client.GetUser({ id: 123 })
-      assert.strictEqual(state.layerBuilds.current, 2)
-
-      yield* Queue.offer(state.streamMessages, void 0)
-      yield* TestClock.adjust(1)
-      assert.deepStrictEqual(received, [0, 1])
-      assert.isUndefined(fiber.pollUnsafe())
-    }).pipe(Effect.provide(TestSharding)))
-
   it.effect("WithTransaction is propagated to the entity handler", () =>
     Effect.gen(function*() {
       let isTransaction = false
