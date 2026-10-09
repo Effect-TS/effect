@@ -342,6 +342,7 @@ export const describeCrypto = (
         const smallOrder = yield* Crypto.importKey("raw", new Uint8Array(32), x25519)
         const error = yield* Effect.flip(Crypto.deriveSharedSecret(alice, smallOrder))
         assert.strictEqual(error.reason.method, "deriveSharedSecret")
+        assert.strictEqual(error.reason._tag, "InvalidData")
 
         for (const [namedCurve, length] of [["P-256", 32], ["P-384", 48], ["P-521", 66]] as const) {
           const algorithm: Crypto.KeyPairAlgorithm = { name: "ECDH", namedCurve }
