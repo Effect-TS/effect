@@ -2861,8 +2861,9 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
   it.effect("interrupts an opted-in non-persisted stream before the reassignment grace period", () =>
     Effect.gen(function*() {
       assert.isDefined(ClusterSchema.InterruptOnTermination)
-      const entity = Entity.make(TestEntity.type, [terminationRpc("StreamWithKey")])
-        .annotateRpcs(ClusterSchema.Persisted, false)
+      const entity = Entity.make(TestEntity.type, [
+        terminationRpc("StreamWithKey").annotate(ClusterSchema.Persisted, false)
+      ])
         .annotateRpcs(ClusterSchema.InterruptOnTermination, true)
       const storageState = makeFailoverStorageState()
       const started = yield* Deferred.make<void>()
@@ -2874,6 +2875,8 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const sharding = yield* Sharding.Sharding
         const shardId = ShardId.make("default", 1)
         yield* waitForTerminationOwnership(sharding, true)
+        // Let the initial acquisition backoff finish before testing reassignment.
+        yield* TestClock.adjust(1000)
         const client = (yield* entity.client)("termination-stream")
         const running = yield* client.StreamWithKey({ key: "run" }).pipe(
           Stream.runDrain,
@@ -2908,6 +2911,8 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const sharding = yield* Sharding.Sharding
         const driver = yield* MessageStorage.MemoryDriver
         yield* waitForTerminationOwnership(sharding, true)
+        // Let the initial acquisition backoff finish before testing reassignment.
+        yield* TestClock.adjust(1000)
         const client = (yield* entity.client)("termination-persisted")
         const running = yield* client.RequestWithKey({ key: "run" }).pipe(
           Effect.forkChild({ startImmediately: true })
@@ -2943,8 +2948,9 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       () =>
         Effect.gen(function*() {
           assert.isDefined(ClusterSchema.InterruptOnTermination)
-          const entity = Entity.make(TestEntity.type, [terminationRpc("RequestWithKey")])
-            .annotateRpcs(ClusterSchema.Persisted, false)
+          const entity = Entity.make(TestEntity.type, [
+            terminationRpc("RequestWithKey").annotate(ClusterSchema.Persisted, false)
+          ])
             .annotateRpcs(ClusterSchema.InterruptOnTermination, true)
             .annotateRpcs(ClusterSchema.Uninterruptible, uninterruptible)
           const storageState = makeFailoverStorageState()
@@ -2957,6 +2963,8 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
           yield* Effect.gen(function*() {
             const sharding = yield* Sharding.Sharding
             yield* waitForTerminationOwnership(sharding, true)
+            // Exercise precedence during termination, not the initial acquisition backoff.
+            yield* TestClock.adjust(1000)
             const client = (yield* entity.client)("termination-uninterruptible")
             const running = yield* client.RequestWithKey({ key: "run" }).pipe(
               Effect.forkChild({ startImmediately: true })
