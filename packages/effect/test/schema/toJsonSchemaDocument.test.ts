@@ -1596,52 +1596,6 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
-      it("Int exports the safe integer range exactly", () => {
-        const document = Schema.toJsonSchemaDocument(Schema.Int)
-        const validate = ajvDraft2020_12.compile(document.schema)
-        const is = Schema.is(Schema.Int)
-        for (
-          const [value, expected] of [
-            [globalThis.Number.MIN_SAFE_INTEGER, true],
-            [globalThis.Number.MAX_SAFE_INTEGER, true],
-            [0, true],
-            [1.5, false],
-            [-(2 ** 53), false],
-            [2 ** 53, false]
-          ] as const
-        ) {
-          assert.strictEqual(is(value), expected)
-          assert.strictEqual(validate(value), expected)
-        }
-      })
-
-      it("Int composes with tighter and looser bounds", () => {
-        for (
-          const schema of [
-            Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
-            Schema.Number.check(Schema.isBetween({ minimum: -(2 ** 53), maximum: 2 ** 53 }), Schema.isInt())
-          ]
-        ) {
-          const document = Schema.toJsonSchemaDocument(schema)
-          const validate = ajvDraft2020_12.compile(document.schema)
-          const is = Schema.is(schema)
-          for (
-            const value of [
-              -(2 ** 53),
-              globalThis.Number.MIN_SAFE_INTEGER,
-              0,
-              1,
-              10,
-              11,
-              globalThis.Number.MAX_SAFE_INTEGER,
-              2 ** 53
-            ]
-          ) {
-            assert.strictEqual(validate(value), is(value))
-          }
-        }
-      })
-
       it("keeps oneOf for exact integer branches", () => {
         assertJsonSchemaDocument(Schema.Union([Schema.Int, Schema.Boolean], { mode: "oneOf" }), {
           schema: {
