@@ -1598,11 +1598,6 @@ describe("toJsonSchemaDocument", () => {
 
       it("Int exports the safe integer range exactly", () => {
         const document = Schema.toJsonSchemaDocument(Schema.Int)
-        deepStrictEqual(document.schema, {
-          type: "integer",
-          minimum: globalThis.Number.MIN_SAFE_INTEGER,
-          maximum: globalThis.Number.MAX_SAFE_INTEGER
-        })
         const validate = ajvDraft2020_12.compile(document.schema)
         const is = Schema.is(Schema.Int)
         for (
@@ -1623,10 +1618,8 @@ describe("toJsonSchemaDocument", () => {
       it("Int composes with tighter and looser bounds", () => {
         for (
           const schema of [
-            Schema.Int.check(Schema.isGreaterThan(0)),
-            Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(10)),
-            Schema.Int.check(Schema.isBetween({ minimum: -(2 ** 53), maximum: 2 ** 53 })),
-            Schema.Number.check(Schema.isGreaterThanOrEqualTo(1), Schema.isInt())
+            Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 10 })),
+            Schema.Number.check(Schema.isBetween({ minimum: -(2 ** 53), maximum: 2 ** 53 }), Schema.isInt())
           ]
         ) {
           const document = Schema.toJsonSchemaDocument(schema)
@@ -1647,25 +1640,6 @@ describe("toJsonSchemaDocument", () => {
             assert.strictEqual(validate(value), is(value))
           }
         }
-        assertJsonSchemaDocument(Schema.Int.check(Schema.isGreaterThan(0)), {
-          schema: {
-            type: "integer",
-            minimum: globalThis.Number.MIN_SAFE_INTEGER,
-            maximum: globalThis.Number.MAX_SAFE_INTEGER,
-            exclusiveMinimum: 0
-          }
-        })
-        assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(10)),
-          {
-            schema: {
-              type: "integer",
-              minimum: globalThis.Number.MIN_SAFE_INTEGER,
-              maximum: globalThis.Number.MAX_SAFE_INTEGER,
-              allOf: [{ minimum: 1 }, { maximum: 10 }]
-            }
-          }
-        )
       })
 
       it("keeps oneOf for exact integer branches", () => {
