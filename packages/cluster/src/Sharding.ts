@@ -517,10 +517,6 @@ const make = Effect.gen(function*() {
       Effect.catchAllCause(() => Effect.void)
     )
 
-    // Once the drain window has passed, stop renewing shard locks and release
-    // them on every tick without waiting for entities to stop, so a stuck
-    // shutdown cannot hold them indefinitely. Releasing on every tick also
-    // covers failed releases and acquisitions that complete late.
     const drainWindow = Duration.toMillis(config.entityTerminationTimeout)
     let drainWindowExpired = false
     const releaseShardsAfterDrain = Effect.suspend(() => {
@@ -543,6 +539,7 @@ const make = Effect.gen(function*() {
             yield* Effect.forkIn(state.manager.interruptShard(shardId, { force: true }), shardingScope)
           }
         }
+        // Repeat releases to cover failed attempts and late acquisitions.
         yield* runnerStorage.releaseAll(selfAddress).pipe(Effect.timeout(shardLockInterval))
       }).pipe(
         Effect.catchAllCause((cause) => Effect.logWarning("Could not release shards after shutdown", cause))
@@ -1417,8 +1414,7 @@ const make = Effect.gen(function*() {
           internalInterruptors.add(fiberId)
           const fiber = FiberMap.unsafeGet(singletonFibers, address)
           if (Option.isSome(fiber)) {
-            // don't wait for the singleton to stop, so a stuck singleton cannot
-            // delay the others. Sync again once it has stopped.
+            // Interrupt without blocking other singletons; resync after exit to allow restart.
             yield* Fiber.interruptAsFork(fiber.value, fiberId)
             yield* Effect.forkIn(Effect.andThen(Fiber.await(fiber.value), syncSingletons), shardingScope)
           }

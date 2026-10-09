@@ -102,12 +102,11 @@ export class ShardingConfig extends Context.Tag("@effect/cluster/ShardingConfig"
   /**
    * The maximum duration of time to wait for an entity to terminate.
    *
-   * On shutdown, shard locks are renewed while entities drain for at most
-   * this duration. Within one shard lock refresh interval after that, renewal
-   * stops and entities are forcibly interrupted. The locks are released on
-   * every refresh interval until shutdown completes, so releasing them depends
-   * on lock storage being available. Work that does not stop when interrupted
-   * may overlap with the next owner of the shard.
+   * On shutdown, shard locks are renewed for at most this duration. Within one
+   * `shardLockRefreshInterval` after the drain window expires, renewal stops and
+   * forced interruption is requested. Lock release is attempted every refresh
+   * interval until shutdown completes and depends on lock storage availability.
+   * Work that ignores interruption may overlap with the shard's next owner.
    *
    * By default this is set to 15 seconds to stay within kubernetes defaults.
    */
