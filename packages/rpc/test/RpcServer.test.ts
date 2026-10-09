@@ -1,17 +1,27 @@
 import { HttpApp } from "@effect/platform"
 import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, HashMap, Logger, LogLevel, Schema } from "effect"
+import { Cause, Deferred, Effect, Exit, Schema, Tracer } from "effect"
 
 describe("RpcServer", () => {
-  it.scoped("logs an error identifying the rpc tag when a handler's success value fails to encode", () => {
-    const errorLogs: Array<string> = []
-    const logger = Logger.make(({ annotations, logLevel, message }) => {
-      if (logLevel === LogLevel.Error) {
-        errorLogs.push(JSON.stringify({ message, annotations: Object.fromEntries(HashMap.toEntries(annotations)) }))
-      }
-    })
-    return Effect.gen(function*() {
+  it.scoped("fails the rpc span when a handler's success value fails to encode", () =>
+    Effect.gen(function*() {
+      const spanExit = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+      const tracer = yield* Tracer.tracerWith(Effect.succeed)
+      const testTracer = Tracer.make({
+        ...tracer,
+        span(...args) {
+          const span = tracer.span(...args)
+          if (span.name === "RpcServer.getUserAge") {
+            const end = span.end.bind(span)
+            span.end = (time, exit) => {
+              end(time, exit)
+              Deferred.unsafeDone(spanExit, Exit.succeed(exit))
+            }
+          }
+          return span
+        }
+      })
       const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
       const httpApp = yield* RpcServer.toHttpApp(group).pipe(
         Effect.provide([
@@ -19,7 +29,8 @@ describe("RpcServer", () => {
           RpcSerialization.layerNdjson
         ])
       )
-      const handler = HttpApp.toWebHandlerRuntime(yield* Effect.runtime<never>())(httpApp)
+      const runtime = yield* Effect.runtime<never>().pipe(Effect.withTracer(testTracer))
+      const handler = HttpApp.toWebHandlerRuntime(runtime)(httpApp)
       const body = yield* Effect.promise(() =>
         handler(
           new Request("http://test/rpc", {
@@ -29,8 +40,17 @@ describe("RpcServer", () => {
         ).then((response) => response.text())
       )
 
-      assert.include(body, "Expected number", body)
-      assert.include(errorLogs.join("\n"), "getUserAge")
-    }).pipe(Effect.provide(Logger.replace(Logger.defaultLogger, logger)))
-  })
+      const responses = body.trim().split("\n").map((line) => JSON.parse(line))
+      const defect = responses[0].exit.cause.defect
+      assert.include(defect, "Expected number")
+      assert.deepStrictEqual(responses, [{
+        _tag: "Exit",
+        requestId: "1",
+        exit: { _tag: "Failure", cause: { _tag: "Die", defect } }
+      }])
+      const exit = yield* Deferred.await(spanExit)
+      assert(Exit.isFailure(exit))
+      assert(Cause.isDie(exit.cause))
+      assert.include(Cause.pretty(exit.cause), "Expected number")
+    }))
 })
