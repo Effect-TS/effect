@@ -1,12 +1,6 @@
 /**
- * Errors raised by the experimental `effect/graphql` client.
- *
- * **Details**
- *
- * Every failure a client method can produce is one `GraphQLClientError` that
- * names the operation and carries a `reason`. The reasons are
- * `Schema.TaggedError` classes, so a `GraphQLClientError` encodes and decodes
- * through its Schema and can cross process boundaries.
+ * Serializable GraphQL client errors with an operation name and a
+ * `Schema.TaggedError` reason.
  *
  * @stability experimental
  * @since 4.0.0
@@ -67,19 +61,13 @@ export type GraphQLError = typeof GraphQLError.Type
  *
  * **Details**
  *
- * Any non-empty `errors` fails a query or mutation by default, even when
- * `data` is present. The reason is ambiguity: a field error nulls the nearest
- * nullable position, so a `null` caused by an error looks exactly like a
- * genuine `null`. On GitHub, a `NOT_FOUND` on one alias would otherwise read
- * as "no such repository". Callers who want the decoded partial `data` pass
- * `{ partial: true }` to the method and receive `{ data, errors }`.
+ * Queries and mutations fail even when partial `data` is present, since a
+ * field error's `null` cannot be distinguished from a genuine `null`. Use
+ * `{ partial: true }` to receive decoded `{ data, errors }` instead.
  *
- * `data` is kept raw (not decoded) on the error. To find out which field an
- * error belongs to, look at `GraphQLError.path[0]`, which is the response key
- * (the alias when one was used).
- *
- * A 4xx HTTP response that carries a GraphQL body is also reported as a
- * `ResponseError`, never as a `TransportError`.
+ * On this error, `data` is raw. `GraphQLError.path[0]` identifies the response
+ * key (or alias). HTTP 4xx responses with a GraphQL body also use this reason
+ * rather than `TransportError`.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -122,11 +110,8 @@ export class ResponseError
 }
 
 /**
- * The graphql-ws close codes after which reconnecting cannot help: a
- * WebSocket protocol error (`1002`, which is how a server that does not speak
- * `graphql-transport-ws` refuses it), a bad request, a failed authentication
- * or authorization, an unsupported subprotocol, a duplicate subscriber or
- * connection, or too many requests.
+ * WebSocket close codes that are not retryable: protocol, request,
+ * authentication, authorization, subprotocol and duplicate-operation errors.
  *
  * @stability experimental
  * @category constants

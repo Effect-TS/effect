@@ -1,12 +1,7 @@
 /**
- * Emits the per-file `.graphql.ts` modules and the shared module from a
- * validated set of executable documents.
- *
- * The emitter is pure: paths and import specifiers are worked out by the
- * caller and passed in. Output uses one fixed style with no formatter.
- *
- * Recursive input objects are reported as located errors and nothing is
- * emitted.
+ * Emits per-document and shared modules from validated documents. Paths and
+ * import specifiers are supplied by the caller; output needs no formatter.
+ * Recursive input objects produce diagnostics instead of output.
  *
  * @internal
  */
@@ -79,7 +74,6 @@ const header = (sourceName: string | undefined): string =>
 /** Escapes `*\/` so text can't end the JSDoc comment it is written into. */
 const escapeComment = (text: string): string => text.replace(/\*\//g, "*\\/")
 
-/** A deprecation reason on one line. */
 const deprecation = (reason: string): string => escapeComment(reason.replace(/\s*\r?\n\s*/g, " "))
 
 const descriptionLines = (description: string | undefined): Array<string> => {
@@ -90,7 +84,6 @@ const descriptionLines = (description: string | undefined): Array<string> => {
   return lines
 }
 
-/** Body lines followed by tag lines, separated by a blank line when both are present. */
 const docLines = (body: ReadonlyArray<string>, tags: ReadonlyArray<string>): Array<string> =>
   body.length > 0 && tags.length > 0 ? [...body, "", ...tags] : [...body, ...tags]
 

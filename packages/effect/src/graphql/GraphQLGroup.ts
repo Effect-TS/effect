@@ -1,11 +1,7 @@
 /**
- * Groups of GraphQL operations.
- *
- * **Details**
- *
- * `@effect/graphql-generator` emits one group per `.graphql` file. Groups are
- * merged to build one client, and middleware attached to a group runs outside
- * the middleware of every operation in it.
+ * Groups of GraphQL operations, merged to build a client. Group middleware
+ * runs outside operation middleware. `@effect/graphql-generator` emits one
+ * group per document file.
  *
  * @stability experimental
  * @since 4.0.0

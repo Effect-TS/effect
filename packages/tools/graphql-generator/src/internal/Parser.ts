@@ -708,7 +708,6 @@ class Parser {
   // Core parsing utilities
   // ---------------------------------------------------------------------------
 
-  /** A location spanning from `startToken` to the most recently consumed token. */
   loc(startToken: Token): Ast.Loc {
     return { start: startToken.start, end: this.lexer.lastToken.end }
   }
@@ -717,14 +716,12 @@ class Parser {
     return this.lexer.token.kind === kind
   }
 
-  /** Consumes the current token if it is of the given kind, otherwise fails. */
   expectToken(kind: TokenKind): Token {
     const token = this.lexer.token
     if (this.expectOptionalToken(kind)) return token
     throw this.fail(token.start, `Expected ${describeKind(kind)}, found ${describeToken(token)}.`)
   }
 
-  /** Consumes the current token if it is of the given kind. */
   expectOptionalToken(kind: TokenKind): boolean {
     if (this.lexer.token.kind === kind) {
       this.lexer.advance()
@@ -733,14 +730,12 @@ class Parser {
     return false
   }
 
-  /** Consumes the current token if it is the given keyword, otherwise fails. */
   expectKeyword(value: string): void {
     if (!this.expectOptionalKeyword(value)) {
       throw this.fail(this.lexer.token.start, `Expected "${value}", found ${describeToken(this.lexer.token)}.`)
     }
   }
 
-  /** Consumes the current token if it is the given keyword. */
   expectOptionalKeyword(value: string): boolean {
     const token = this.lexer.token
     if (token.kind === "Name" && token.value === value) {

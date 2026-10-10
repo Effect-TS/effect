@@ -1,28 +1,12 @@
 /**
- * A typed GraphQL client built from a `GraphQLGroup`.
+ * A typed client with one method per operation in a `GraphQLGroup`. Queries
+ * and mutations return an `Effect`; subscriptions return a `Stream`. The
+ * client encodes variables, runs middleware, calls the `GraphQLProtocol` in
+ * context and decodes results.
  *
- * **Details**
- *
- * `make(group)` returns an object with one method per operation. Queries and
- * mutations return an `Effect`, subscriptions return a `Stream`. The client
- * encodes variables, runs the middleware chain, sends the request through the
- * `GraphQLProtocol` in context, and decodes `data` with the result Schema.
- *
- * `pages` and `items` page through cursor connections with a client method.
- *
- * The transport is the `GraphQLProtocol` layer provided to `make`:
- *
- * - `GraphQLProtocol.layerHttp({ url })` for `POST` queries and mutations,
- *   and graphql-sse subscriptions on the same URL.
- * - `GraphQLProtocol.layerWebSocket({ url })` for every operation over one
- *   graphql-ws socket.
- * - `GraphQLProtocol.layerHttp({ url, subscriptions: { webSocket: { url } } })`
- *   for graphql-ws subscriptions and `POST` for the rest.
- *
- * Per-call `headers` reach the HTTP transport only; over graphql-ws,
- * authenticate with `connectionParams`. A subscription that the transport
- * fails with a retryable `TransportError` is resubscribed on the
- * `subscriptionRetry` schedule, through the whole middleware chain.
+ * Retryable subscription transport failures restart the middleware chain on
+ * the `subscriptionRetry` schedule. {@link pages} and {@link items} provide
+ * cursor pagination. See `GraphQLProtocol` for transport options.
  *
  * @stability experimental
  * @since 4.0.0
@@ -275,10 +259,7 @@ export const make = <Ops extends GraphQL.Any>(
     for (const operation of group.operations) {
       client[operation.name] = makeMethod(operation, middlewareChain(context, group, operation), protocol, retryPolicy)
     }
-    // Type boundary: `GraphQLClient<Ops>` is a mapped type keyed by operation
-    // name, with `Method<Op>` picking the method type from `Op["kind"]`. A loop
-    // over `group.operations` cannot show the compiler that every name is
-    // present or that each kind check selects the matching method type.
+    // The loop cannot prove the mapped type's name/kind relationship.
     return client as GraphQLClient<Ops>
   })
 
@@ -293,10 +274,7 @@ type MiddlewareChain<Op extends GraphQL.Any> = ReadonlyArray<
   >
 >
 
-// Type boundary: the tags stored on the group and the operation are the
-// runtime counterpart of `GraphQL.Middleware<Op>`, but are kept as
-// `GraphQLMiddleware.AnyService`, whose implementation type is erased.
-// `make` requires every tag's identifier, so each lookup succeeds.
+// Runtime tags erase middleware types; `make` requires all their identifiers.
 const middlewareChain = <Op extends GraphQL.Any>(
   context: Context.Context<never>,
   group: GraphQLGroup<Op>,
@@ -356,10 +334,8 @@ const makeMethod = <Op extends GraphQL.Any>(
       }))
     )
 
-  // `next` is typed as failing with `GraphQLClientError` only and requiring
-  // nothing, so a middleware is written without knowing what runs inside it.
-  // The errors and requirements of the inner middleware still flow through
-  // it, and are on the method's type. `RpcMiddleware` makes the same choice.
+  // Like RpcMiddleware, `next` hides inner middleware errors and requirements;
+  // they still appear on the client method's type.
   const execute = (
     index: number,
     request: GraphQLRequest
@@ -419,7 +395,6 @@ const makeMethod = <Op extends GraphQL.Any>(
   const decodePartial = (result: ExecutionResult) => {
     const errors = result.errors ?? []
     if (result.data === null || result.data === undefined) {
-      // With errors and no data there is nothing to return.
       return isReadonlyArrayNonEmpty(errors) ? responseError(result, errors) : missingData
     }
     return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => ({ data, errors }))
@@ -556,17 +531,13 @@ export type PagingVariables<Variables> = "after" extends keyof Variables
  *
  * **Details**
  *
- * The cursor variable is always `$after`: the operation's variables must
- * have an optional `after` that accepts a `string`. That is
- * `after?: string | null` for a nullable `$after: String`, or
- * `after?: string` for a `$after: String!` with a default value (see
- * {@link PagingVariables}). The first page is fetched without `after`; every
- * later page sends the previous page's `endCursor`. Pages are fetched one at a
- * time and only when pulled, so `Stream.take` stops further requests. Each
- * page is a normal method call, so middleware runs on every page.
- * `connection` picks the connection out of each page's result, and
- * `options` is forwarded to every page. It cannot carry `partial`: a page
- * with errors fails the stream.
+ * Requires an optional string `$after` variable (see {@link PagingVariables}).
+ * The first request omits `after`; subsequent requests use the previous
+ * `endCursor`. Pages are fetched only when pulled, so `Stream.take` stops
+ * further requests. Middleware runs on each page.
+ *
+ * `connection` extracts the connection from each result. `options` is
+ * forwarded to every call but cannot include `partial`: errors fail the stream.
  *
  * The stream ends after a page whose `hasNextPage` is `false`. A `null`
  * connection on the first page gives an empty stream; on a later page it

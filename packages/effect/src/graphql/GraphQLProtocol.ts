@@ -1,20 +1,12 @@
 /**
- * The raw transport under `GraphQLClient`.
+ * Raw transports for `GraphQLClient`, accepting encoded requests and returning
+ * `ExecutionResult` values without schema decoding or middleware.
  *
- * **Details**
+ * - {@link layerHttp} uses HTTP POST and graphql-sse subscriptions, with an
+ *   optional graphql-ws subscription transport.
+ * - {@link layerWebSocket} multiplexes all operations over graphql-ws.
  *
- * A `GraphQLProtocol` takes an already-encoded request and returns the raw
- * `ExecutionResult`. It knows nothing about operations, Schemas or middleware;
- * those live in `GraphQLClient`.
- *
- * - `layerHttp({ url })` sends queries and mutations as `POST`, and
- *   subscriptions as graphql-sse distinct mode on the same URL.
- * - `layerWebSocket({ url })` sends every operation over one multiplexed
- *   graphql-ws socket.
- * - `layerHttp({ url, subscriptions: { webSocket: { url } } })` sends
- *   subscriptions over graphql-ws and everything else as `POST`.
- *
- * `makeHttp` and `makeWebSocket` build the same transports as effects.
+ * {@link makeHttp} and {@link makeWebSocket} construct the same transports as effects.
  *
  * @stability experimental
  * @since 4.0.0
@@ -129,7 +121,6 @@ const graphqlResponseContentType = "application/graphql-response+json"
 const jsonContentType = "application/json"
 const eventStreamContentType = "text/event-stream"
 
-// An object is neither `null` nor an array, as in graphql-ws's `validateMessage`.
 const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
 const isGraphQLBody = (body: unknown): boolean => isObject(body) && ("data" in body || "errors" in body)
@@ -158,7 +149,6 @@ const fromHttpClientError =
         HttpClientError.isHttpClientError(error) ? TransportError.fromHttpClientError(error, { now }) : error
       ))
 
-// Reads a single GraphQL response body, or fails when the response is not one.
 const readResponse = (
   response: HttpClientResponse.HttpClientResponse
 ): Effect.Effect<unknown, TransportError | HttpClientError.HttpClientError> => {
@@ -560,7 +550,6 @@ export const makeWebSocket: {
         Effect.mapError((cause) => connectionError(Cause.fail(cause)))
       )
 
-    // Marks `conn` as lost and fails every operation still attached to it.
     const lose = (conn: Connection, error: TransportError) => {
       if (conn.error !== undefined) return
       conn.error = error
@@ -658,7 +647,6 @@ export const makeWebSocket: {
     const run = Effect.fnUntraced(
       function*(conn: Connection) {
         const { pull } = yield* socket.reader
-        // JSON.stringify drops an undefined `payload`.
         const init = Effect.flatMap(connectionParams, (payload) => send({ type: "connection_init", payload }))
         const read = Effect.forever(
           Effect.flatMap(pull, (frames) => Effect.forEach(frames, (frame) => handle(conn, frame), { discard: true }))
@@ -711,8 +699,6 @@ export const makeWebSocket: {
       return Effect.map(acquireConnection, (conn) => [String(++nextId), conn] as const)
     })
 
-    // Closes the connection `idleTimeout` after the last operation ends, unless
-    // another operation registers first.
     const closeIfIdle = Effect.suspend(() => {
       if (--active > 0 || connection === undefined) return Effect.void
       const conn = connection
@@ -765,42 +751,27 @@ export const makeWebSocket: {
  *
  * **Details**
  *
- * - The socket connects on the first operation, and operations are
- *   multiplexed over it by id. It closes `idleTimeout` after the last
- *   operation ends, and with code `1000` when the layer's scope closes.
- * - `subscribe` frames wait for `connection_ack`. A missing ack is a
- *   `TransportError`.
- * - `headers` are sent on the opening handshake together with the
- *   `graphql-transport-ws` subprotocol. Browsers cannot set them; use them
- *   with a Node or Bun `Socket.WebSocketConstructor`.
- * - `connectionParams` is the `connection_init` payload. It runs again on
- *   every connect, so a token can be refreshed. A failure is a
- *   `TransportError`, and so is the socket closing while it runs.
- * - `connectionAckTimeout` (default 10 seconds) bounds the wait for
- *   `connection_ack`, starting once `connection_init` is sent.
- * - `keepAlive` (default 10 seconds) is how often the client sends `ping`.
- *   No frame from the server for a whole interval after a `ping` drops the
- *   connection with a retryable `TransportError`. `false` turns it off.
- *   Server `ping` is answered with `pong`.
- * - `idleTimeout` (default 0) is how long the socket stays open after the
- *   last operation ends.
- * - A lost connection fails every active operation, queries included, with a
- *   `TransportError` carrying the `closeCode`. The fatal close codes
- *   (`1002`, `4400`, `4401`, `4403`, `4406`, `4409`, `4429`) are not retryable;
- *   others, `1006` and `4500` among them, are. The transport never replays
- *   an operation: the client resubscribes on its `subscriptionRetry`
- *   schedule, and the socket reconnects on the next operation.
- * - Server messages are validated as graphql-ws does: a known `type`, a
- *   non-empty `id` on `next`, `error` and `complete`, an object payload on
- *   `next`, a non-empty list of errors with a `message` on `error`, and an
- *   object or no payload on `connection_ack`, `ping` and `pong`. An invalid
- *   message closes the socket with `4400` and fails every operation on it.
- *   Valid messages for unknown ids are dropped.
- * - A server `error` message fails the operation with a `ResponseError`.
- *   Interrupting a subscription sends `complete`.
- * - Per-call `request.headers` are ignored, because graphql-ws has no
- *   per-operation headers. Authenticate with `connectionParams` or handshake
- *   `headers`.
+ * The socket connects lazily and multiplexes operations by id. It closes after
+ * `idleTimeout` (default 0) with no active operations, or with code `1000`
+ * when the layer's scope closes.
+ *
+ * - Operations wait for `connection_ack`. `connectionAckTimeout` (default
+ *   10 seconds) starts after sending `connection_init`.
+ * - `connectionParams` runs on every connection, allowing token refresh.
+ *   Failure or a socket close during evaluation is a `TransportError`.
+ * - Handshake `headers` require a Node or Bun WebSocket constructor; browsers
+ *   cannot set them. Per-operation headers are ignored.
+ * - `keepAlive` (default 10 seconds, or `false` to disable) sends `ping`.
+ *   No server frame in the following interval causes a retryable failure.
+ *   Server `ping` receives `pong`.
+ * - Lost connections fail every active operation with a `TransportError`
+ *   carrying the close code. See `GraphQLClientError.fatalCloseCodes` for
+ *   non-retryable codes. The transport never replays operations; the client
+ *   retries subscriptions and the next operation reconnects.
+ * - Messages follow graphql-ws validation. Invalid messages close the socket
+ *   with fatal code `4400`; valid messages for unknown ids are ignored.
+ * - Server `error` messages become `ResponseError` values. Interrupting a
+ *   subscription sends `complete`.
  *
  * **Example** (A client over graphql-ws)
  *

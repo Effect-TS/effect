@@ -1,10 +1,6 @@
 /**
- * The programmatic core of `@effect/graphql-generator`.
- *
- * {@link generate} reads the schema and the document files a {@link Config}
- * names and returns every generated file with its contents, plus located
- * diagnostics. It never writes to disk or stdout; the CLI, and later other
- * integrations, decide what to do with the result.
+ * Generates typed GraphQL modules and diagnostics without writing to disk.
+ * The CLI uses {@link generate} to write, check or watch the output.
  *
  * @since 4.0.0
  */

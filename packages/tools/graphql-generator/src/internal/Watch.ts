@@ -25,45 +25,22 @@ import * as Glob from "./Glob.ts"
 const debounce = "50 millis"
 
 /**
- * Runs a cycle at startup, then again about 50 ms after the last relevant
- * event in a burst.
+ * Generates at startup and 50 ms after the last relevant event. Watches the
+ * config, schema and document glob roots; generated files are ignored.
+ * Successful cycles write changed files, delete stale outputs and log counts.
+ * Errors print diagnostics without writing. Unmapped-scalar warnings are
+ * printed only when their set changes. Invalid config edits keep the previous
+ * config; only a startup config failure ends the loop.
  *
- * - Relevant events touch the config file, the schema file, or a path that a
- *   `documents` glob matches. Generated files never match.
- * - A successful cycle writes only the files whose bytes changed, deletes
- *   stale outputs and logs one line to stdout:
- *   `regenerated <n> file(s), deleted <m>`, counting the files written and
- *   deleted (`regenerated 1 file, deleted 0`, `regenerated 3 files, deleted 1`).
- * - An error cycle prints its diagnostics to stderr, writes nothing and logs
- *   no `regenerated` line.
- * - The unmapped-scalars warning is printed only when its set of scalars
- *   changes.
- * - A config edit re-imports the config with `?t=<mtime>`. A config that
- *   fails to load or decode is reported on stderr and the previous one is
- *   kept.
+ * `configPath` is absolute. `watch(path, kind)` uses `FileSystem.watch`
+ * semantics: event paths are relative to the watched directory or a watched
+ * file's parent. Missing roots are watched through their first missing
+ * directory. Ended or failed watchers are replaced on the next cycle.
  *
- * `options.configPath` is the config file, as an absolute path.
- *
- * `options.watch(path, kind)` watches a file through its parent directory, or
- * a directory and everything under it, according to the supplied kind,
- * with `FileSystem.watch` semantics: each event's `path` is relative to the
- * watched directory, or to a watched file's directory. The loop subscribes to
- * the config file, the schema file and the static prefix of each `documents`
- * glob before it runs a cycle, and again whenever those paths change. A
- * missing glob root is watched through its first missing directory, so
- * creating it, or deleting and recreating it, is seen.
- * The watch functions are called before generation, but their streams may
- * install watchers lazily; this is not a watcher-readiness guarantee. After
- * every cycle the loop checks the targets again and queues another cycle if
- * they changed. A root created after that check but before watcher installation
- * can still be missed until the next relevant cycle.
- *
- * A watch stream that ends means its directory was deleted: the loop runs a
- * cycle, which subscribes again. A watch stream that fails is reported on
- * stderr, and the next cycle subscribes again.
- *
- * Fails with `ConfigLoadError` only when the config can't be loaded at
- * startup; otherwise it runs until interrupted.
+ * Watch functions run before generation, but their streams may install
+ * watchers lazily. Targets are reconciled after each cycle without polling;
+ * a root created between reconciliation and watcher installation can be
+ * missed until another relevant event.
  */
 export const run: (options: {
   readonly configPath: string

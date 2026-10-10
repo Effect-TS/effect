@@ -21,7 +21,6 @@ const wildcard = /[*?{]/
 
 const escapeRegExp = (char: string): string => /[.+^$()|[\]\\]/.test(char) ? `\\${char}` : char
 
-/** Strips a leading `./`; patterns are always relative to the config file. */
 const normalize = (pattern: string): string => pattern.replace(/^(?:\.\/)+/, "")
 
 const toRegExpSource = (pattern: string): string => {
