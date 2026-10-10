@@ -13,7 +13,7 @@ import { GraphQLClientError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import { type Room, RoomEvents, RoomsGroup } from "./generated/subscriptions/rooms.graphql.ts"
+import { type Room, RoomEvents, RoomsGraphQLGroup } from "./generated/subscriptions/rooms.graphql.ts"
 import { importGitHub, type UntypedClient } from "./utils/generator.ts"
 
 interface Sent {
@@ -55,7 +55,7 @@ const at = "2026-10-08T10:00:00Z"
 describe("Generated GitHub timeline client", () => {
   it.effect("IssueTimeline decodes the selected members, the other buckets and a fragment on an interface", () =>
     Effect.gen(function*() {
-      const { IssueTimeline, TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
+      const { IssueTimeline, TimelineGraphQLGroup } = yield* importGitHub("timeline.graphql.ts")
       const { layer, sent } = mock({
         data: {
           node: {
@@ -100,7 +100,7 @@ describe("Generated GitHub timeline client", () => {
           }
         }
       })
-      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGraphQLGroup).pipe(Effect.provide(layer))
       const result = yield* client.IssueTimeline({ id: "I_kwDOAbc" })
 
       assert.deepStrictEqual(sent, [{
@@ -144,10 +144,10 @@ describe("Generated GitHub timeline client", () => {
 
   it.effect("node types the query didn't select, including ones added later, land in the other bucket", () =>
     Effect.gen(function*() {
-      const { TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
+      const { TimelineGraphQLGroup } = yield* importGitHub("timeline.graphql.ts")
       for (const __typename of ["Repository", "AddedLaterNode"]) {
         const { layer } = mock({ data: { node: { __typename } } })
-        const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
+        const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGraphQLGroup).pipe(Effect.provide(layer))
         const result = yield* client.IssueTimeline({ id: "X" })
         assert.deepStrictEqual<unknown>(result, { node: { __typename } })
       }
@@ -155,7 +155,7 @@ describe("Generated GitHub timeline client", () => {
 
   it.effect("a malformed selected member fails with a DecodeError instead of falling into the other bucket", () =>
     Effect.gen(function*() {
-      const { TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
+      const { TimelineGraphQLGroup } = yield* importGitHub("timeline.graphql.ts")
       const { layer } = mock({
         data: {
           node: {
@@ -165,7 +165,7 @@ describe("Generated GitHub timeline client", () => {
           }
         }
       })
-      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGraphQLGroup).pipe(Effect.provide(layer))
       const error = yield* client.IssueTimeline({ id: "X" }).pipe(Effect.flip)
       assert.strictEqual(reasonTag(error), "DecodeError")
     }))
@@ -175,7 +175,7 @@ describe("Generated subscriptions client", () => {
   it.effect("a @oneOf input with two keys fails with an EncodeError and nothing is sent", () =>
     Effect.gen(function*() {
       const { layer, sent } = mock({ data: { room: null } })
-      const client = yield* GraphQLClient.make(RoomsGroup).pipe(Effect.provide(layer))
+      const client = yield* GraphQLClient.make(RoomsGraphQLGroup).pipe(Effect.provide(layer))
       const both = { id: "R_1", slug: "general" } as unknown as Room.Variables["by"]
       const error = yield* client.Room({ by: both }).pipe(Effect.flip)
       assert.strictEqual(reasonTag(error), "EncodeError")
@@ -193,7 +193,7 @@ describe("Generated subscriptions client", () => {
           { events: { __typename: "RoomArchived", id: "E_4", at } }
         ]
       })
-      const client = yield* GraphQLClient.make(RoomsGroup).pipe(Effect.provide(layer))
+      const client = yield* GraphQLClient.make(RoomsGraphQLGroup).pipe(Effect.provide(layer))
       const events = yield* Stream.runCollect(client.RoomEvents({ room: { id: "R_1" } }))
 
       assert.deepStrictEqual(sent, [{

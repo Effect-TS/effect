@@ -46,29 +46,56 @@ describe("Generator module graph", () => {
 })
 
 describe("Generator group bindings", () => {
+  it.effect("digit-leading filenames export a loadable underscore-prefixed GraphQL group", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": "type Query { x: Int! }",
+        "src/123-ops.graphql": "query Q { x }"
+      }, config)
+      assertNoErrors(generated)
+      const ops = yield* importGenerated(generated, "src/123-ops.graphql.ts")
+      assert.isDefined(ops._123OpsGraphQLGroup)
+      assert.isUndefined(ops._123OpsGroup)
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("an empty PascalCase filename reports the GraphQLGroup import collision without emitting files", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": "type Query { x: Int! }",
+        "src/---.graphql": "query Q { x }"
+      }, config)
+      assert.strictEqual(generated.result.diagnostics.length, 1)
+      const diagnostic = generated.result.diagnostics[0]!
+      assert.strictEqual(diagnostic.severity, "error")
+      assert.strictEqual(diagnostic.path, "src/---.graphql")
+      assert.include(diagnostic.message, "GraphQLGroup")
+      assert.deepStrictEqual(generated.result.files, [])
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("a local fragment named like the file's group is a located error", () =>
     Effect.gen(function*() {
       const generated = yield* generateIn({
         "schema.graphql": "type Query { x: Int! }",
-        "src/ops.graphql": "fragment OpsGroup on Query { x }\nquery Q { ...OpsGroup }"
+        "src/ops.graphql": "fragment OpsGraphQLGroup on Query { x }\nquery Q { ...OpsGraphQLGroup }"
       }, config)
       assert.deepStrictEqual(located(generated), [{ severity: "error", path: "src/ops.graphql", line: 1, column: 10 }])
-      assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
+      assert.include(generated.result.diagnostics[0]!.message, `"OpsGraphQLGroup"`)
       assert.match(generated.result.diagnostics[0]!.message, /group/)
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("a fragment named like the file's group, imported only because a spread was inlined, is a located error", () =>
     Effect.gen(function*() {
-      // `y` overlaps `Outer`, so `Outer` is written out inline and its `...OpsGroup`
-      // becomes an import of `OpsGroup` into ops.graphql.ts.
+      // `y` overlaps `Outer`, so `Outer` is written out inline and its `...OpsGraphQLGroup`
+      // becomes an import of `OpsGraphQLGroup` into ops.graphql.ts.
       const generated = yield* generateIn({
         "schema.graphql": "type Query { x: Int! y: Int! }",
-        "src/frags.graphql": "fragment OpsGroup on Query { x }\nfragment Outer on Query { ...OpsGroup y }",
+        "src/frags.graphql":
+          "fragment OpsGraphQLGroup on Query { x }\nfragment Outer on Query { ...OpsGraphQLGroup y }",
         "src/ops.graphql": "query Q { y ...Outer }"
       }, config)
       assert.deepStrictEqual(located(generated), [{ severity: "error", path: "src/ops.graphql", line: 1, column: 13 }])
-      assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
+      assert.include(generated.result.diagnostics[0]!.message, `"OpsGraphQLGroup"`)
       assert.match(generated.result.diagnostics[0]!.message, /group/)
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
