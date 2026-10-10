@@ -168,11 +168,15 @@ describe("OtlpMetrics", () => {
         const firstMetric = findMetric(requests[0], metricName)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].count, 2)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].sum, 100)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].max, 75)
 
         const secondMetric = findMetric(requests[1], metricName)
         assert.isDefined(secondMetric)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].count, 3)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].sum, 130)
+        assert.strictEqual(secondMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(secondMetric?.histogram?.dataPoints[0].max, 75)
       }).pipe(Effect.provide(TestLayerCumulative)))
 
     it.effect("reports histogram buckets above the last boundary", () =>
@@ -311,10 +315,14 @@ describe("OtlpMetrics", () => {
         const firstMetric = findMetric(requests[0], metricName)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].count, 2)
         assert.strictEqual(firstMetric!.histogram!.dataPoints[0].sum, 100)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].max, 75)
 
         const secondMetric = findMetric(requests[1], metricName)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].count, 1)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].sum, 30)
+        assert.notProperty(secondMetric!.histogram!.dataPoints[0], "min")
+        assert.notProperty(secondMetric!.histogram!.dataPoints[0], "max")
       }).pipe(Effect.provide(TestLayerDelta)))
 
     it.effect("reports frequency count deltas across export intervals", () =>
