@@ -9,8 +9,13 @@
 export interface Glob {
   /** The leading directory segments without wildcards, e.g. `src/app` for `src/app/**\/*.graphql`. */
   readonly root: string
+  /** The root runs through a skipped directory, so the generator reads nothing under it. */
+  readonly skipped: boolean
   readonly matches: (path: string) => boolean
 }
+
+/** Dot-files, dot-directories and `node_modules`, which the generator never reads or watches. */
+export const isSkipped = (name: string): boolean => name.startsWith(".") || name === "node_modules"
 
 const wildcard = /[*?{]/
 
@@ -67,6 +72,8 @@ export const make = (pattern: string): Glob => {
   const regExp = new RegExp(`^${toRegExpSource(normalized)}$`)
   return {
     root: rootSegments.join("/"),
+    // `.` and `..` only navigate, so they don't make a root skipped.
+    skipped: rootSegments.some((segment) => segment !== "." && segment !== ".." && isSkipped(segment)),
     matches: (path) => regExp.test(path)
   }
 }

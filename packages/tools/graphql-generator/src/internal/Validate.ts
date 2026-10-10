@@ -50,7 +50,6 @@ export const validate = (
     reports.push({ fileIndex, offset, diagnostic: make(files[fileIndex]!.source, offset, message) })
   }
   new Validator(schema, files, report).validate()
-  checkUniqueNames(files, report)
   // `sort` is stable, so diagnostics at the same position keep the order they were found in.
   return reports
     .sort((a, b) => a.fileIndex - b.fileIndex || a.offset - b.offset)
@@ -169,6 +168,7 @@ class Validator {
     }
     this.checkUnusedFragments()
     this.checkFragmentCycles()
+    this.checkUniqueNames()
   }
 
   // Operations and variables
@@ -238,29 +238,32 @@ class Validator {
    */
   recursiveVariableUsages(file: number, operation: Ast.OperationDefinition): ReadonlyArray<Located<Ast.Variable>> {
     const usages: Array<Located<Ast.Variable>> = []
-    const collect = (
-      at: number,
-      directives: ReadonlyArray<Ast.Directive>,
-      selectionSet: Ast.SelectionSet
-    ): void => {
+    const collect = (at: number, definition: Ast.OperationDefinition | Ast.FragmentDefinition): void => {
       const found: Array<Ast.Variable> = []
-      variablesInDirectives(directives, found)
-      variablesInSelectionSet(selectionSet, found)
+      variablesInDirectives(definition.directives, found)
+      variablesInSelectionSet(definition.selectionSet, found)
       for (const variable of found) usages.push({ node: variable, file: at })
     }
-    collect(file, operation.directives, operation.selectionSet)
+    collect(file, operation)
+    for (const fragment of this.reachableFragments([operation.selectionSet])) collect(fragment.file, fragment.node)
+    return usages
+  }
+
+  /** The defined fragments spread from `selectionSets`, transitively and across files, each once. */
+  reachableFragments(selectionSets: ReadonlyArray<Ast.SelectionSet>): Array<Located<Ast.FragmentDefinition>> {
+    const reached: Array<Located<Ast.FragmentDefinition>> = []
     const seen = new Set<string>()
-    const pending = [...fragmentSpreads(operation.selectionSet)]
+    const pending = selectionSets.flatMap((selectionSet) => fragmentSpreads(selectionSet))
     while (pending.length > 0) {
-      const spread = pending.pop()!
-      if (seen.has(spread.name.value)) continue
-      seen.add(spread.name.value)
-      const fragment = this.fragments.get(spread.name.value)
+      const name = pending.pop()!.name.value
+      if (seen.has(name)) continue
+      seen.add(name)
+      const fragment = this.fragments.get(name)
       if (fragment === undefined) continue
-      collect(fragment.file, fragment.node.directives, fragment.node.selectionSet)
+      reached.push(fragment)
       pending.push(...fragmentSpreads(fragment.node.selectionSet))
     }
-    return usages
+    return reached
   }
 
   // Selections
@@ -415,15 +418,10 @@ class Validator {
   // Fragments
 
   checkUnusedFragments(): void {
-    const used = new Set<string>()
-    const pending = this.operations.flatMap((operation) => fragmentSpreads(operation.node.selectionSet))
-    while (pending.length > 0) {
-      const spread = pending.pop()!
-      if (used.has(spread.name.value)) continue
-      used.add(spread.name.value)
-      const fragment = this.fragments.get(spread.name.value)
-      if (fragment !== undefined) pending.push(...fragmentSpreads(fragment.node.selectionSet))
-    }
+    const used = new Set(
+      this.reachableFragments(this.operations.map((operation) => operation.node.selectionSet))
+        .map((fragment) => fragment.node.name.value)
+    )
     for (const { file, node: fragment } of this.fragmentList) {
       if (!used.has(fragment.name.value)) {
         this.report(file, fragment.loc.start, `Fragment "${fragment.name.value}" is never used.`)
@@ -469,6 +467,28 @@ class Validator {
     }
     for (const fragment of this.fragmentList) visit(fragment)
   }
+
+  /** Operations and fragments share one namespace across every file: both become generated exports. */
+  checkUniqueNames(): void {
+    const byName = new Map<string, Array<{ readonly kind: string; readonly file: number; readonly name: Ast.Name }>>()
+    const add = (kind: string, file: number, name: Ast.Name | undefined): void => {
+      if (name === undefined) return
+      const entries = byName.get(name.value)
+      if (entries === undefined) byName.set(name.value, [{ kind, file, name }])
+      else entries.push({ kind, file, name })
+    }
+    for (const { file, node } of this.operations) add("operation", file, node.name)
+    for (const { file, node } of this.fragmentList) add("fragment", file, node.name)
+    for (const [name, entries] of byName) {
+      if (entries.length < 2) continue
+      const kind = entries.every((entry) => entry.kind === entries[0]!.kind)
+        ? entries[0]!.kind
+        : "operation or fragment"
+      for (const entry of entries) {
+        this.report(entry.file, entry.name.loc.start, `There can be only one ${kind} named "${name}".`)
+      }
+    }
+  }
 }
 
 /** Every fragment spread in a selection set, at any depth, without following spreads. */
@@ -499,52 +519,21 @@ const variablesInValue = (value: Ast.Value, out: Array<Ast.Variable>): void => {
   }
 }
 
+const variablesInArguments = (args: ReadonlyArray<Ast.Argument>, out: Array<Ast.Variable>): void => {
+  for (const argument of args) variablesInValue(argument.value, out)
+}
+
 const variablesInDirectives = (directives: ReadonlyArray<Ast.Directive>, out: Array<Ast.Variable>): void => {
-  for (const directive of directives) {
-    for (const argument of directive.arguments) variablesInValue(argument.value, out)
-  }
+  for (const directive of directives) variablesInArguments(directive.arguments, out)
 }
 
 /** Variables in arguments and directives at any depth, without following fragment spreads. */
 const variablesInSelectionSet = (selectionSet: Ast.SelectionSet, out: Array<Ast.Variable>): void => {
   for (const selection of selectionSet.selections) {
     variablesInDirectives(selection.directives, out)
-    if (selection._tag === "Field") {
-      for (const argument of selection.arguments) variablesInValue(argument.value, out)
-    }
+    if (selection._tag === "Field") variablesInArguments(selection.arguments, out)
     if (selection._tag !== "FragmentSpread" && selection.selectionSet !== undefined) {
       variablesInSelectionSet(selection.selectionSet, out)
-    }
-  }
-}
-
-/**
- * Operations and fragments share one namespace across every file:
- * both become generated exports.
- */
-const checkUniqueNames = (files: ReadonlyArray<File>, report: Reporter): void => {
-  const definitions = new Map<
-    string,
-    Array<{ readonly kind: string; readonly file: number; readonly name: Ast.Name }>
-  >()
-  files.forEach((file, index) => {
-    for (const definition of file.document.definitions) {
-      let kind: string
-      if (definition._tag === "OperationDefinition") kind = "operation"
-      else if (definition._tag === "FragmentDefinition") kind = "fragment"
-      else continue
-      if (definition.name === undefined) continue
-      const entry = { kind, file: index, name: definition.name }
-      const entries = definitions.get(definition.name.value)
-      if (entries === undefined) definitions.set(definition.name.value, [entry])
-      else entries.push(entry)
-    }
-  })
-  for (const [name, entries] of definitions) {
-    if (entries.length < 2) continue
-    const kind = entries.every((entry) => entry.kind === entries[0]!.kind) ? entries[0]!.kind : "operation or fragment"
-    for (const entry of entries) {
-      report(entry.file, entry.name.loc.start, `There can be only one ${kind} named "${name}".`)
     }
   }
 }

@@ -126,11 +126,8 @@ export const run: Effect.Effect<
       ? Object.assign(error, { [Runtime.errorExitCode]: 2 })
       : error
   ),
-  Effect.tapError((error) =>
-    error._tag === "ConfigLoadError" || error._tag === "GenerateError" || error._tag === "CheckError"
-      ? Console.error(error.message)
-      : Effect.void
-  )
+  // Command.run has already printed CLI errors.
+  Effect.tapError((error) => CliError.isCliError(error) ? Effect.void : Console.error(error.message))
 )
 
 // -----------------------------------------------------------------------------

@@ -5,7 +5,7 @@
  * @internal
  */
 import * as Result from "effect/Result"
-import { Diagnostic, make, type Source } from "./Diagnostic.ts"
+import { catchDiagnostic, type Diagnostic, make, type Source } from "./Diagnostic.ts"
 import { parseConstValue } from "./Parser.ts"
 import * as SchemaModel from "./SchemaModel.ts"
 
@@ -20,14 +20,8 @@ import * as SchemaModel from "./SchemaModel.ts"
  * Fails with a diagnostic for `source.path` when the body is not JSON, has
  * neither shape, or a `defaultValue` does not parse.
  */
-export const read = (source: Source): Result.Result<SchemaModel.Schema, Diagnostic> => {
-  try {
-    return Result.succeed(new Reader(source).read())
-  } catch (error) {
-    if (error instanceof Diagnostic) return Result.fail(error)
-    throw error
-  }
-}
+export const read = (source: Source): Result.Result<SchemaModel.Schema, Diagnostic> =>
+  catchDiagnostic(() => new Reader(source).read())
 
 type JsonObject = { readonly [key: string]: unknown }
 
@@ -66,9 +60,7 @@ class Reader {
       : this.fail("Expected an introspection result shaped as { __schema } or { data: { __schema } }.")
 
     const types = new Map<string, SchemaModel.NamedType>()
-    this.array(schema, "types", "__schema").forEach((value, i) => {
-      const path = `__schema.types[${i}]`
-      const type = this.object(value, path)
+    this.objects(schema, "types", "__schema", (type, path) => {
       const name = this.string(type, "name", path)
       if (name.startsWith("__")) return
       types.set(
@@ -83,9 +75,7 @@ class Reader {
     }
 
     const directives = new Map<string, SchemaModel.DirectiveDefinition>()
-    this.array(schema, "directives", "__schema").forEach((value, i) => {
-      const path = `__schema.directives[${i}]`
-      const directive = this.object(value, path)
+    this.objects(schema, "directives", "__schema", (directive, path) => {
       const name = this.string(directive, "name", path)
       if (SchemaModel.builtInDirectiveNames.has(name)) return
       directives.set(name, {
@@ -138,15 +128,11 @@ class Reader {
           _tag: "EnumType",
           name,
           description,
-          values: this.array(type, "enumValues", path).map((value, i) => {
-            const valuePath = `${path}.enumValues[${i}]`
-            const enumValue = this.object(value, valuePath)
-            return {
-              name: this.string(enumValue, "name", valuePath),
-              description: this.optionalString(enumValue, "description", valuePath),
-              deprecationReason: this.deprecationReason(enumValue, valuePath)
-            }
-          })
+          values: this.objects(type, "enumValues", path, (value, valuePath) => ({
+            name: this.string(value, "name", valuePath),
+            description: this.optionalString(value, "description", valuePath),
+            deprecationReason: this.deprecationReason(value, valuePath)
+          }))
         }
       case "INPUT_OBJECT":
         return {
@@ -162,23 +148,17 @@ class Reader {
   }
 
   fields(type: JsonObject, path: string): ReadonlyArray<SchemaModel.Field> {
-    return this.array(type, "fields", path).map((value, i) => {
-      const fieldPath = `${path}.fields[${i}]`
-      const field = this.object(value, fieldPath)
-      return {
-        name: this.string(field, "name", fieldPath),
-        description: this.optionalString(field, "description", fieldPath),
-        arguments: this.inputValues(field, "args", fieldPath),
-        type: this.typeRef(field.type, `${fieldPath}.type`),
-        deprecationReason: this.deprecationReason(field, fieldPath)
-      }
-    })
+    return this.objects(type, "fields", path, (field, fieldPath) => ({
+      name: this.string(field, "name", fieldPath),
+      description: this.optionalString(field, "description", fieldPath),
+      arguments: this.inputValues(field, "args", fieldPath),
+      type: this.typeRef(field.type, `${fieldPath}.type`),
+      deprecationReason: this.deprecationReason(field, fieldPath)
+    }))
   }
 
   inputValues(owner: JsonObject, key: string, path: string): ReadonlyArray<SchemaModel.InputValue> {
-    return this.array(owner, key, path).map((value, i) => {
-      const valuePath = `${path}.${key}[${i}]`
-      const inputValue = this.object(value, valuePath)
+    return this.objects(owner, key, path, (inputValue, valuePath) => {
       const defaultValue = this.optionalString(inputValue, "defaultValue", valuePath)
       return {
         name: this.string(inputValue, "name", valuePath),
@@ -217,9 +197,7 @@ class Reader {
   }
 
   typeNames(owner: JsonObject, key: string, path: string): ReadonlyArray<string> {
-    return this.array(owner, key, path).map((value, i) =>
-      this.string(this.object(value, `${path}.${key}[${i}]`), "name", `${path}.${key}[${i}]`)
-    )
+    return this.objects(owner, key, path, (type, typePath) => this.string(type, "name", typePath))
   }
 
   rootName(schema: JsonObject, key: string): string | undefined {
@@ -241,6 +219,14 @@ class Reader {
   array(owner: JsonObject, key: string, path: string): ReadonlyArray<unknown> {
     const value = owner[key]
     return Array.isArray(value) ? value : this.expected(`${path}.${key}`, "an array")
+  }
+
+  /** Maps the array at `owner[key]`, whose elements must be objects, passing each element's path. */
+  objects<A>(owner: JsonObject, key: string, path: string, f: (value: JsonObject, path: string) => A): Array<A> {
+    return this.array(owner, key, path).map((value, i) => {
+      const itemPath = `${path}.${key}[${i}]`
+      return f(this.object(value, itemPath), itemPath)
+    })
   }
 
   string(owner: JsonObject, key: string, path: string): string {

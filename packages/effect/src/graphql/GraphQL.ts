@@ -211,19 +211,7 @@ const makeOperation = <const K extends Kind>(kind: K) =>
  * @category constructors
  * @since 4.0.0
  */
-export const query: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<"query", Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =
-  makeOperation("query")
+export const query = makeOperation("query")
 
 /**
  * Defines a mutation. Same shape as {@link query}.
@@ -247,23 +235,7 @@ export const query: <
  * @category constructors
  * @since 4.0.0
  */
-export const mutation: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<
-  "mutation",
-  Name,
-  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
-  Result
-> = makeOperation("mutation")
+export const mutation = makeOperation("mutation")
 
 /**
  * Defines a subscription. The client method for a subscription returns a
@@ -288,23 +260,7 @@ export const mutation: <
  * @category constructors
  * @since 4.0.0
  */
-export const subscription: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<
-  "subscription",
-  Name,
-  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
-  Result
-> = makeOperation("subscription")
+export const subscription = makeOperation("subscription")
 
 /**
  * Attaches a middleware to one operation. Operation middleware runs inside
@@ -340,14 +296,7 @@ export const middleware: {
 } = dual(
   2,
   <Op extends Any, M extends GraphQLMiddleware.AnyService>(self: Op, middleware: M): AddMiddleware<Op, M> =>
-    makeProto({
-      kind: self.kind,
-      name: self.name,
-      document: self.document,
-      variables: self.variables,
-      result: self.result,
-      middlewares: [...self.middlewares, middleware]
-    }) as AddMiddleware<Op, M>
+    makeProto({ ...self, middlewares: [...self.middlewares, middleware] }) as AddMiddleware<Op, M>
 )
 
 /**
