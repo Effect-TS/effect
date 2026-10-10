@@ -4471,6 +4471,25 @@ describe("Effect", () => {
         assert.deepStrictEqual(yield* Fiber.awaitAll(fibers), [Exit.succeed(1), Exit.succeed(1), Exit.succeed(1)])
       }))
 
+    it.effect("shares the in-flight run when the body synchronously wakes a re-entrant caller", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<void>()
+        const cached = yield* Effect.cached(
+          Effect.gen(function*() {
+            yield* Deferred.succeed(gate, void 0)
+            return 42
+          })
+        )
+
+        const waiter = yield* Deferred.await(gate).pipe(
+          Effect.andThen(cached),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        assert.strictEqual(yield* cached, 42)
+        assert.strictEqual(yield* Fiber.join(waiter), 42)
+      }))
+
     it.effect("replays failures", () =>
       Effect.gen(function*() {
         let count = 0
