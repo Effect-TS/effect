@@ -527,6 +527,73 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("layerMemory wakes a shared wait after a race releases its losing await of the same deferred", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/SharedWait/Gate", { success: Schema.String })
+      const Probe = Workflow.make("WorkflowEngine/SharedWait", {
+        payload: { id: Schema.String },
+        success: Schema.Tuple([Schema.String, Schema.String]),
+        idempotencyKey: ({ id }) => id
+      })
+      let tailStarts = 0
+      let gateSeen = 0
+      const layer = Probe.toLayer(() =>
+        Effect.all([
+          DurableDeferred.raceAll({
+            name: "race",
+            success: Schema.String,
+            error: Schema.Never,
+            effects: [
+              DurableDeferred.await(gate),
+              Activity.make({
+                name: "fast",
+                success: Schema.String,
+                execute: Effect.sleep("100 millis").pipe(Effect.as("activity"))
+              })
+            ]
+          }).pipe(Effect.andThen(Activity.make({
+            name: "tail",
+            success: Schema.String,
+            execute: Effect.suspend(() => {
+              tailStarts++
+              return Effect.sleep("10 seconds").pipe(Effect.as("tail"))
+            })
+          }))),
+          // Awaits the race loser's deferred, so it must still be woken after the race settles.
+          DurableDeferred.await(gate).pipe(Effect.andThen((value) =>
+            Activity.make({
+              name: "seen",
+              success: Schema.String,
+              execute: Effect.sync(() => {
+                gateSeen++
+                return value
+              })
+            })
+          ))
+        ], { concurrency: "unbounded" })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Probe.execute({ id: "probe" }, { discard: true })
+        // The workflow fiber increments tailStarts.
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (tailStarts === 0) yield* TestClock.adjust("50 millis")
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Probe, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: "signal" })
+        // The wake must not wait for the 10 second tail activity.
+        for (let i = 0; i < 20; i++) yield* TestClock.adjust("100 millis")
+        assert.strictEqual(gateSeen, 1)
+
+        yield* TestClock.adjust("20 seconds")
+        let polled = yield* Probe.poll(executionId)
+        while (Option.isNone(polled) || polled.value._tag !== "Complete") {
+          yield* TestClock.adjust("1 second")
+          polled = yield* Probe.poll(executionId)
+        }
+        assert.deepStrictEqual(polled.value.exit, Exit.succeed(["tail", "signal"]))
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("layerMemory propagates interruption when the engine is shut down", () =>
     Effect.gen(function*() {
       const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {
