@@ -1,0 +1,13 @@
+type Query {
+  search(
+    term: String
+    query: String @deprecated(reason: "Use `term`.")
+    limit: Int = 10 @deprecated
+    filter: SearchFilter
+  ): [String!]!
+}
+
+input SearchFilter {
+  kind: String
+  legacyKind: String @deprecated(reason: "Use `kind`.")
+}

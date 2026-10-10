@@ -1,0 +1,12 @@
+type Query {
+  ping: Boolean
+}
+
+type Subscription {
+  "Emits each new message in a room."
+  messageAdded(room: ID!): Message!
+}
+
+type Message {
+  body: String!
+}
