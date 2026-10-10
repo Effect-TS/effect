@@ -1,5 +1,5 @@
 /**
- * Per-file output (EFF-1831 points 1, 2, 3, 5, 7 and 9): exports, groups,
+ * Per-file output (EFF-1831 points 1 to 5, 7 and 9): exports, groups,
  * fragment reuse, cross-file imports and the compact document string. The
  * byte-for-byte snapshots of the GitHub set are a separate test.
  */
@@ -17,6 +17,7 @@ import {
   generateTasks,
   member,
   members,
+  typenames,
   warnings
 } from "./utils/generator.ts"
 
@@ -190,7 +191,7 @@ describe("Generator per-file output", () => {
 })
 
 describe("Generator GitHub documents", () => {
-  it.effect("generates the fragments, issues and shared files with no diagnostics", () =>
+  it.effect("generates the fragments, issues, shared and timeline files with no diagnostics", () =>
     Effect.gen(function*() {
       const generated = yield* generateGitHub
       assertNoErrors(generated)
@@ -198,7 +199,8 @@ describe("Generator GitHub documents", () => {
       assert.deepStrictEqual(generated.paths, [
         "documents/fragments.graphql.ts",
         "documents/issues.graphql.ts",
-        "documents/shared.graphql.ts"
+        "documents/shared.graphql.ts",
+        "documents/timeline.graphql.ts"
       ])
     }).pipe(Effect.provide(NodeServices.layer)))
 
@@ -241,8 +243,69 @@ describe("Generator GitHub documents", () => {
       assert.match(shared, /^import \* as \w+ from "\.\/scalars\.ts"$/m)
       assert.match(declaration(shared, "DateTime"), /^export const DateTime = \w+\.DateTime$/)
       assert.match(declaration(shared, "URI"), /^export const URI = \w+\.URI$/)
+      assert.match(declaration(shared, "GitObjectID"), /^export const GitObjectID = \w+\.GitObjectID$/)
       for (const name of ["IssueState", "IssueStateReason", "IssueOrder", "IssueFilters", "AddCommentInput"]) {
         assert.isTrue(declares(shared, name), `expected ${name} in the shared module`)
       }
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("timeline.graphql exports IssueTimeline and TimelineGroup and imports ActorFields", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateGitHub
+      const timeline = generated.file("documents/timeline.graphql.ts")
+      const lines = fileLines(timeline)
+      assert.include(lines, `export const IssueTimeline = GraphQL.query("IssueTimeline", {`)
+      assert.include(lines, "export const TimelineGroup = GraphQLGroup.make(IssueTimeline)")
+      assert.match(timeline, /^import \{ ActorFields \} from "\.\/fragments\.graphql\.ts"$/m)
+      assert.include(timeline, `GraphQL.otherTypename<Shared.Typename.Node>()(["Issue"])`)
+      assert.include(
+        timeline,
+        `GraphQL.otherTypename<Shared.Typename.IssueTimelineItems>()(["IssueComment", "LabeledEvent", "ClosedEvent"])`
+      )
+      assert.include(timeline, `GraphQL.otherTypename<Shared.Typename.Closer>()(["PullRequest", "Commit"])`)
+      const document = documentOf(timeline, "IssueTimeline")
+      assert.isTrue(
+        document.startsWith("query IssueTimeline($id:ID!$first:Int=50){node(id:$id){__typename...on Issue{number "),
+        document
+      )
+      assert.include(document, "nodes{__typename...on IssueComment{")
+      assert.include(document, "closer{__typename...on PullRequest{number title}...on Commit{oid pushedDate}}")
+      assert.isTrue(
+        document.endsWith("fragment ActorFields on Actor{__typename login avatarUrl(size:64)...on User{name}}"),
+        document
+      )
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("fragments.graphql exports ActorFields, a fragment on an interface, as a type alias", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateGitHub
+      const fragmentsFile = generated.file("documents/fragments.graphql.ts")
+      assert.match(declaration(fragmentsFile, "ActorFields"), /^export const ActorFields = Schema\.Union\(\[/)
+      assert.include(fileLines(fragmentsFile), "export type ActorFields = typeof ActorFields.Type")
+      assert.include(fragmentsFile, `GraphQL.otherTypename<Shared.Typename.Actor>()(["User"])`)
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("the shared module lists each reached abstract type's possible types once, in its Typename namespace", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateGitHub
+      const shared = generated.file("documents/shared.graphql.ts")
+      assert.strictEqual(fileLines(shared).filter((line) => line === "export declare namespace Typename {").length, 1)
+      assert.sameMembers([...typenames(shared, "Closer")], ["Commit", "ProjectV2", "PullRequest"])
+      assert.sameMembers([...typenames(shared, "Actor")], [
+        "Bot",
+        "EnterpriseUserAccount",
+        "Mannequin",
+        "Organization",
+        "User"
+      ])
+      const items = typenames(shared, "IssueTimelineItems")
+      for (const name of ["IssueComment", "LabeledEvent", "ClosedEvent", "MentionedEvent"]) {
+        assert.include(items, name)
+      }
+      const nodes = typenames(shared, "Node")
+      assert.include(nodes, "Issue")
+      assert.include(nodes, "Repository")
+      assert.strictEqual(new Set(nodes).size, nodes.length)
+      assert.isAbove(nodes.length, 200)
     }).pipe(Effect.provide(NodeServices.layer)))
 })
