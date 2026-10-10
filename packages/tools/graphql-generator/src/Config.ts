@@ -1,5 +1,5 @@
 /**
- * The generator configuration (EFF-1834 points 1 and 5 to 7).
+ * The generator configuration.
  *
  * A project describes its generator setup in a `graphql.config.ts` whose
  * default export is wrapped in {@link defineConfig}. The top-level `schema`

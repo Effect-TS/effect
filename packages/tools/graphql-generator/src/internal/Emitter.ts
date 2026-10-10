@@ -1,6 +1,6 @@
 /**
  * Emits the per-file `.graphql.ts` modules and the shared module from a
- * validated set of executable documents (EFF-1831, EFF-1832).
+ * validated set of executable documents.
  *
  * The emitter is pure: paths and import specifiers are worked out by the
  * caller and passed in. Output uses one fixed style with no formatter.
@@ -257,7 +257,7 @@ const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Se
   selections.map((selection) => ({ selection, via: undefined, conditional: false }))
 
 /**
- * How `@skip` / `@include` decide a selection (EFF-1832 point 11): a literal
+ * How `@skip` / `@include` decide a selection: a literal
  * condition is folded, so the selection is dropped or the directive ignored,
  * and a variable condition makes it conditional.
  */
@@ -651,7 +651,7 @@ class Emitter {
 
   /**
    * Groups a selection set for `target`, writing out inline every spread
-   * whose keys overlap a sibling's or one of `reserved` (EFF-1831 point 3).
+   * whose keys overlap a sibling's or one of `reserved`.
    * The remaining spreads become `...Frag.fields`.
    */
   resolveItems(
@@ -792,7 +792,7 @@ class Emitter {
   }
 
   /**
-   * A selection on an interface or union (EFF-1831 point 4): one struct per
+   * A selection on an interface or union: one struct per
    * selected object type with `__typename: Schema.Literal("T")`, and one for
    * every other possible type with `GraphQL.otherTypename`.
    */
@@ -946,7 +946,7 @@ class Emitter {
   // ---------------------------------------------------------------------------
 
   /**
-   * The Schema for a variable or input field (EFF-1832 points 2 to 4):
+   * The Schema for a variable or input field:
    * nullable is `optional(NullOr(T))`, non-null with a default is
    * `optional(T)`.
    */
@@ -1070,7 +1070,7 @@ class Emitter {
 
   /**
    * A fragment on an object type is an Opaque class; one on an interface or
-   * union is a `Schema.Union` and a type alias (EFF-1831 point 5).
+   * union is a `Schema.Union` and a type alias.
    */
   emitFragment(ctx: FileContext, definition: Ast.FragmentDefinition): string {
     const name = definition.name.value
@@ -1123,7 +1123,7 @@ class Emitter {
 
   /**
    * The operation printed compactly, followed by every fragment it uses in
-   * order of first use (EFF-1831 point 7), with `__typename` added to every
+   * order of first use, with `__typename` added to every
    * selection on an interface or union that doesn't already select it.
    */
   document(operation: Ast.OperationDefinition): string {
@@ -1384,7 +1384,7 @@ class Emitter {
 }
 
 /**
- * A `@oneOf` input object (EFF-1832 point 12): a `Schema.Union` with one
+ * A `@oneOf` input object: a `Schema.Union` with one
  * struct per field, each with that field required and non-null and every
  * other field `optionalKey(Never)`, so an input with two keys or none fails to
  * encode. A class can't extend `Opaque` over a union, so it is an Opaque const
