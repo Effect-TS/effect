@@ -476,6 +476,14 @@ interface Operation {
 
 const textDecoder = new TextDecoder()
 
+// The message checks follow graphql-ws's own `validateMessage`: an object is
+// neither `null` nor an array, and `error` carries at least one entry with a
+// `message`.
+const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
+
+const isFormattedErrors = (u: unknown): boolean =>
+  Array.isArray(u) && u.length > 0 && u.every((error) => isObject(error) && "message" in error)
+
 const connectionError = (cause: Cause.Cause<unknown>): TransportError => {
   const found = Cause.findError(cause)
   if (Result.isFailure(found)) {
@@ -583,44 +591,44 @@ export const makeWebSocket: {
       } catch (cause) {
         return invalid(errorMessage(cause), cause)
       }
-      if (typeof message !== "object" || message === null) {
+      if (!isObject(message)) {
         return invalid("expected an object")
       }
       switch (message.type) {
-        case "connection_ack": {
-          conn.receivedFrame = true
-          Deferred.doneUnsafe(conn.ack, Effect.void)
-          return Effect.void
-        }
-        case "ping": {
-          conn.receivedFrame = true
-          return send({ type: "pong" })
-        }
+        case "connection_ack":
+        case "ping":
         case "pong": {
+          if (message.payload != null && !isObject(message.payload)) {
+            return invalid(`${message.type} with a payload that is not an object`)
+          }
           conn.receivedFrame = true
-          return Effect.void
+          if (message.type === "connection_ack") {
+            Deferred.doneUnsafe(conn.ack, Effect.void)
+          }
+          return message.type === "ping" ? send({ type: "pong" }) : Effect.void
         }
         case "next":
         case "error":
         case "complete": {
-          if (typeof message.id !== "string") {
+          const id = message.id
+          if (typeof id !== "string" || id === "") {
             return invalid(`${message.type} without an id`)
           }
-          if (message.type === "next" && (typeof message.payload !== "object" || message.payload === null)) {
-            return invalid("next without a payload")
+          if (message.type === "next" && !isObject(message.payload)) {
+            return invalid("next with a payload that is not an object")
           }
-          if (message.type === "error" && !Array.isArray(message.payload)) {
-            return invalid("error without a list of errors")
+          if (message.type === "error" && !isFormattedErrors(message.payload)) {
+            return invalid("error with a payload that is not a list of GraphQL errors")
           }
           conn.receivedFrame = true
-          const operation = operations.get(message.id)
+          const operation = operations.get(id)
           // Unknown ids, including operations this client already completed, are dropped.
           if (operation === undefined || operation.connection !== conn) return Effect.void
           if (message.type === "next") {
             Queue.offerUnsafe(operation.queue, message.payload)
             return Effect.void
           }
-          operations.delete(message.id)
+          operations.delete(id)
           if (message.type === "error") {
             // The server rejected the operation; the client fails it with a ResponseError.
             Queue.offerUnsafe(operation.queue, { errors: message.payload })
@@ -787,9 +795,12 @@ export const makeWebSocket: {
  *   others, `1006` and `4500` among them, are. The transport never replays
  *   an operation: the client resubscribes on its `subscriptionRetry`
  *   schedule, and the socket reconnects on the next operation.
- * - An invalid server message, such as an unknown `type` or a `next`
- *   without an `id`, closes the socket with `4400` and fails every
- *   operation on it. Well-formed messages for unknown ids are dropped.
+ * - Server messages are validated as graphql-ws does: a known `type`, a
+ *   non-empty `id` on `next`, `error` and `complete`, an object payload on
+ *   `next`, a non-empty list of errors with a `message` on `error`, and an
+ *   object or no payload on `connection_ack`, `ping` and `pong`. An invalid
+ *   message closes the socket with `4400` and fails every operation on it.
+ *   Valid messages for unknown ids are dropped.
  * - A server `error` message fails the operation with a `ResponseError`.
  *   Interrupting a subscription sends `complete`.
  * - Per-call `request.headers` are ignored, because graphql-ws has no
