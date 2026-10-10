@@ -271,8 +271,11 @@ export class WorkflowInstance extends Context.Service<
      */
     cause: Cause.Cause<never> | undefined
 
-    /** Deferred names this run parked on; their completions preempt the run. */
-    readonly awaitedDeferreds: Set<string>
+    /**
+     * Deferred names this run waits on, counted per live wait; their
+     * completions preempt the run.
+     */
+    readonly awaitedDeferreds: Map<string, number>
 
     /** Deferred names this run completed itself; their completions need not wake it. */
     readonly completedDeferreds: Set<string>
@@ -296,7 +299,7 @@ export class WorkflowInstance extends Context.Service<
       interrupted: false,
       abandoned: false,
       cause: undefined,
-      awaitedDeferreds: new Set(),
+      awaitedDeferreds: new Map(),
       completedDeferreds: new Set(),
       activityState: {
         count: 0,
