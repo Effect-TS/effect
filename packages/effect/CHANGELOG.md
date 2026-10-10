@@ -1,5 +1,17 @@
 # effect
 
+## 4.0.4
+
+### Patch Changes
+
+- [#8990](https://github.com/Effect-TS/effect/pull/8990) [`37e088f`](https://github.com/Effect-TS/effect/commit/37e088f2af8dc03271bb9e2ca2874b750487b0f5) Thanks @bastiankistner! - Use decoded response aliases in generated HTTP clients. Render bare numbers with a standard leading finite check as `Schema.Finite`, preserving annotations and other checks.
+
+- [#8991](https://github.com/Effect-TS/effect/pull/8991) [`fde67a1`](https://github.com/Effect-TS/effect/commit/fde67a10e9245aa3974ecdca00239de8dfd2cc9f) Thanks @fubhy! - Add `NetAddress.loopbackAddresses`.
+
+- [#8992](https://github.com/Effect-TS/effect/pull/8992) [`118deef`](https://github.com/Effect-TS/effect/commit/118deefe7c02089b1bc5d202ce3225f05a98cd04) Thanks @fubhy! - Add `Host.toFullyQualified`, `Host.toRelative`, and `Host.parseHostsFile`.
+
+- [#8997](https://github.com/Effect-TS/effect/pull/8997) [`f837966`](https://github.com/Effect-TS/effect/commit/f8379667c914cc5bbc5acfd41eee0090ee247925) Thanks @effect-bot! - Release the durable waits of losing `DurableDeferred.raceAll` branches once the race settles, so a late completion such as a losing `DurableClock.sleep` no longer preempts and replays the continuing workflow
+
 ## 4.0.3
 
 ### Patch Changes
