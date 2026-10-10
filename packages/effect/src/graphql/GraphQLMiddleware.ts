@@ -1,14 +1,7 @@
 /**
- * GraphQL-level client middleware.
- *
- * **Details**
- *
- * A middleware is a `Context.Service` tag whose value is the implementation,
- * so it is provided with `Layer.succeed` or `Layer.effect` and mocked in tests
- * like any other service. It wraps every operation it is attached to at the
- * GraphQL level: it can rewrite the request (headers, extensions, variables)
- * before it reaches the transport and inspect the raw `ExecutionResult` that
- * comes back.
+ * GraphQL-level middleware provided as `Context.Service` implementations.
+ * Middleware can rewrite requests and inspect raw results, including response
+ * extensions. Provide implementations with `Layer.succeed` or `Layer.effect`.
  *
  * @stability experimental
  * @since 4.0.0

@@ -1,7 +1,6 @@
 /**
- * The one error type every stage of the generator's language front end
- * reports through. Lexing and parsing stop at the first
- * diagnostic in a file; later validation collects several.
+ * Located diagnostics for the generator. Lexing and parsing stop at the first
+ * error; validation collects multiple errors.
  *
  * @internal
  */
@@ -17,20 +16,9 @@ export interface Source {
 /**
  * A located error in one GraphQL source file.
  *
- * - `line` and `column` are 1-based. `column` counts UTF-16 code units from
- *   the start of the line, so an astral character earlier on the line counts
- *   as two. An error at end of input points one past the last character.
- * - `message` is the bare message, e.g. `Expected Name, found "}".`, without
- *   the location.
- * - `codeFrame` is the offending line with its neighbours, a `|` gutter with
- *   right-aligned line numbers, and a caret under the column:
- *
- *   ```
- *   1 | query Q {
- *   2 |   a(b: )
- *     |        ^
- *   3 | }
- *   ```
+ * Locations are 1-based UTF-16 columns; EOF points past the last character.
+ * `message` excludes the location. `codeFrame` shows the line and its
+ * neighbours with a caret under the offending column.
  */
 export class Diagnostic extends Data.TaggedError("Diagnostic")<{
   readonly path: string
@@ -60,7 +48,6 @@ const locationOf = (body: string, offset: number): Location => {
   return { line, column: offset - lineStart + 1 }
 }
 
-/** Renders the code frame described on {@link Diagnostic}. */
 const codeFrame = (body: string, location: Location): string => {
   const lines = body.split(lineTerminator)
   const first = Math.max(1, location.line - 1)
