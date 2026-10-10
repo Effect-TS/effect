@@ -183,10 +183,10 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  *   document: "query Viewer{viewer{login}}",
  *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
  * })
- * const ViewerGroup = GraphQLGroup.make(Viewer)
+ * const ViewerGraphQLGroup = GraphQLGroup.make(Viewer)
  *
  * class GitHub extends Context.Service<GitHub>()("app/GitHub", {
- *   make: GraphQLClient.make(ViewerGroup)
+ *   make: GraphQLClient.make(ViewerGraphQLGroup)
  * }) {}
  *
  * // A scripted transport; use GraphQLProtocol.layerHttp({ url }) for a real server
