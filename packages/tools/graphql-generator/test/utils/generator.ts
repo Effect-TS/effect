@@ -70,11 +70,28 @@ export const githubConfig: Config.Config = {
   shared: "./documents/shared.graphql.ts",
   scalars: {
     DateTime: "./documents/scalars.ts#DateTime",
-    URI: "./documents/scalars.ts#URI"
+    URI: "./documents/scalars.ts#URI",
+    GitObjectID: "./documents/scalars.ts#GitObjectID"
   }
 }
 
 export const generateGitHub = collect(githubFixtureDir, githubConfig)
+
+/** The directory holding `sdl/subscriptions.graphql` and its documents under `subscriptions/`. */
+export const fixturesDir = fileURLToPath(new URL("../fixtures", import.meta.url))
+
+/**
+ * The config the subscriptions snapshot set is generated with: the
+ * hand-written `sdl/subscriptions.graphql` schema, its documents under
+ * `subscriptions/`, and the shared module beside them.
+ */
+export const subscriptionsConfig: Config.Config = {
+  schema: "./sdl/subscriptions.graphql",
+  documents: ["subscriptions/*.graphql"],
+  shared: "./subscriptions/shared.graphql.ts"
+}
+
+export const generateSubscriptions = collect(fixturesDir, subscriptionsConfig)
 
 export const errors = (generated: Generated) =>
   generated.result.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
@@ -168,6 +185,27 @@ export const documentOf = (text: string, name: string): string => {
   const match = /document:\s*("(?:[^"\\]|\\.)*")/.exec(text.slice(start))
   assert(match !== null, `expected a document string for ${name}`)
   return JSON.parse(match[1]!)
+}
+
+/**
+ * The possible `__typename` values the shared module lists for the abstract
+ * type `name` in its `Typename` namespace, in emitted order, whatever the line
+ * layout.
+ */
+export const typenames = (shared: string, name: string): ReadonlyArray<string> => {
+  const all = lines(shared)
+  const namespace = all.indexOf("export declare namespace Typename {")
+  assert(namespace >= 0, "expected a Typename namespace in the shared module")
+  const pattern = new RegExp(`^export type ${escapeRegExp(name)} =`)
+  const start = all.findIndex((line, i) => i > namespace && pattern.test(line))
+  assert(start >= 0, `expected Typename.${name}`)
+  const names: Array<string> = []
+  for (let i = start; i < all.length; i++) {
+    const line = i === start ? all[i]!.replace(pattern, "") : all[i]!
+    if (i > start && (line.startsWith("export ") || line.startsWith("/**") || line.startsWith("}"))) break
+    for (const match of line.matchAll(/"([^"]+)"/g)) names.push(match[1]!)
+  }
+  return names
 }
 
 /** The trimmed lines of the file, for whole-line assertions. */
