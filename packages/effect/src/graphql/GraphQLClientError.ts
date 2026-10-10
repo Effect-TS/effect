@@ -122,15 +122,17 @@ export class ResponseError
 }
 
 /**
- * The graphql-ws close codes after which reconnecting cannot help: a bad
- * request, a failed authentication or authorization, an unsupported
- * subprotocol, a duplicate subscriber or connection, or too many requests.
+ * The graphql-ws close codes after which reconnecting cannot help: a
+ * WebSocket protocol error (`1002`, which is how a server that does not speak
+ * `graphql-transport-ws` refuses it), a bad request, a failed authentication
+ * or authorization, an unsupported subprotocol, a duplicate subscriber or
+ * connection, or too many requests.
  *
  * @stability experimental
  * @category constants
  * @since 4.0.0
  */
-export const fatalCloseCodes: ReadonlySet<number> = new Set([4400, 4401, 4403, 4406, 4409, 4429])
+export const fatalCloseCodes: ReadonlySet<number> = new Set([1002, 4400, 4401, 4403, 4406, 4409, 4429])
 
 /**
  * Parses a `Retry-After` header value, either a number of seconds or an HTTP
