@@ -821,6 +821,15 @@ export const ipv4Loopback: Ipv4Address = makeIpv4(0x7f000001)
 export const ipv6Loopback: Ipv6Address = makeIpv6(0, 0, 0, 1)
 
 /**
+ * The loopback addresses `127.0.0.1` and `::1`.
+ *
+ * @stability unstable
+ * @category constants
+ * @since 4.0.0
+ */
+export const loopbackAddresses: readonly [Ipv4Address, Ipv6Address] = [ipv4Loopback, ipv6Loopback]
+
+/**
  * The unspecified IPv4 address `0.0.0.0`.
  *
  * @stability unstable

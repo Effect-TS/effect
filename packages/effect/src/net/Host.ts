@@ -9,6 +9,7 @@
  * @stability experimental
  * @since 4.0.0
  */
+import type * as Arr from "../Array.ts"
 import type * as Brand from "../Brand.ts"
 import * as Equal from "../Equal.ts"
 import * as Hash from "../Hash.ts"
@@ -321,6 +322,28 @@ export const formatHost = (self: Host): string => typeof self === "string" ? sel
  */
 export const isFullyQualified = (self: DomainName): boolean => self.endsWith(".")
 
+/**
+ * Appends the trailing dot to a domain name, unless it is already fully
+ * qualified.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const toFullyQualified = (self: DomainName): DomainName =>
+  isFullyQualified(self) ? self : `${self}.` as DomainName
+
+/**
+ * Removes the trailing dot of a fully qualified domain name, except from the
+ * root name `.`.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const toRelative = (self: DomainName): DomainName =>
+  self.length > 1 && isFullyQualified(self) ? self.slice(0, -1) as DomainName : self
+
 const HostPortProto = {
   ...Inspectable.BaseProto,
   _tag: "HostPort",
@@ -469,4 +492,53 @@ export const hostPortFromInputUnsafe = (input: HostPortInput): HostPort => Resul
 export const formatHostPort = (self: HostPort): string => {
   const host = formatHost(self.host)
   return host.includes(":") ? `[${host}]:${self.port}` : `${host}:${self.port}`
+}
+
+/**
+ * The addresses of host names, as read from a hosts file.
+ *
+ * @see {@link parseHostsFile} for reading a hosts file
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type HostsTable = ReadonlyMap<DomainName, Arr.NonEmptyReadonlyArray<NetAddress.IpAddress>>
+
+/**
+ * Parses a hosts file into the addresses of each host name. Invalid entries
+ * are skipped.
+ *
+ * **Example** (Parsing a hosts file)
+ *
+ * ```ts import.meta.vitest
+ * import { Host, NetAddress } from "effect/net"
+ *
+ * const hosts = Host.parseHostsFile(`
+ * 127.0.0.1 localhost
+ * ::1       localhost ip6-localhost # loopback
+ * `)
+ * hosts.get(Host.domainNameFromStringUnsafe("localhost"))?.map(NetAddress.formatIp) // => ["127.0.0.1", "::1"]
+ * ```
+ *
+ * @stability experimental
+ * @category decoding
+ * @since 4.0.0
+ */
+export const parseHostsFile = (text: string): HostsTable => {
+  const hosts = new Map<DomainName, Array<NetAddress.IpAddress>>()
+  for (const line of text.split(/\r?\n/)) {
+    const comment = line.indexOf("#")
+    const [first, ...names] = (comment === -1 ? line : line.slice(0, comment)).trim().split(/\s+/)
+    const address = NetAddress.ipFromString(first)
+    if (Result.isFailure(address)) continue
+    for (const name of names) {
+      const domain = domainNameFromString(name)
+      if (Result.isFailure(domain)) continue
+      const key = toRelative(domain.success)
+      const addresses = hosts.get(key)
+      if (addresses === undefined) hosts.set(key, [address.success])
+      else if (!addresses.some((existing) => Equal.equals(existing, address.success))) addresses.push(address.success)
+    }
+  }
+  return hosts as unknown as HostsTable
 }
