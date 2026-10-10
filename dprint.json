@@ -22,6 +22,7 @@
     "**/CHANGELOG.md",
     "packages/effect/src/StandardSchema.ts",
     "packages/tools/graphql-generator/test/fixtures/github/schema.json",
+    "packages/tools/graphql-generator/test/generated/**/*.graphql.ts",
     "!scratchpad/**/*",
     "**/.*",
     "!.agents",
