@@ -11549,7 +11549,7 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
  * const readableStream = Stream.toReadableStreamWith(stream, Context.empty())
- * const values = await Array.fromAsync(readableStream)
+ * const values = await globalThis.Array.fromAsync(readableStream)
  * values // => [ 1, 2, 3, 4, 5 ]
  * ```
  *
@@ -11627,7 +11627,7 @@ export const toReadableStreamWith: {
  * import { Stream } from "effect"
  *
  * const readableStream = Stream.toReadableStream(Stream.make(1, 2, 3))
- * const values = await Array.fromAsync(readableStream)
+ * const values = await globalThis.Array.fromAsync(readableStream)
  * values // => [ 1, 2, 3 ]
  * ```
  *
@@ -11722,7 +11722,7 @@ export const toReadableStreamEffect: {
  * const stream = Stream.make(1, 2, 3)
  * const iterable = Stream.toAsyncIterableWith(stream, Context.empty())
  *
- * await Array.fromAsync(iterable) // => [1, 2, 3]
+ * await globalThis.Array.fromAsync(iterable) // => [1, 2, 3]
  * ```
  *
  * @stability stable
@@ -11829,7 +11829,7 @@ export const toAsyncIterableWith: {
  *
  * const program = Effect.gen(function*() {
  *   const iterable = yield* Stream.toAsyncIterableEffect(stream)
- *   return yield* Effect.promise(() => Array.fromAsync(iterable))
+ *   return yield* Effect.promise(() => globalThis.Array.fromAsync(iterable))
  * })
  *
  * await Effect.runPromise(program) // => [1, 2, 3]
@@ -11855,7 +11855,7 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
  *
  * const stream = Stream.make(1, 2, 3)
  *
- * await Array.fromAsync(Stream.toAsyncIterable(stream)) // => [1, 2, 3]
+ * await globalThis.Array.fromAsync(Stream.toAsyncIterable(stream)) // => [1, 2, 3]
  * ```
  *
  * @stability stable
