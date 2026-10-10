@@ -1,6 +1,30 @@
+/*
+ * Adapted from graphql-js v16.14.2 (https://github.com/graphql/graphql-js,
+ * `src/language/parser.ts`), distributed under the MIT License:
+ *
+ * Copyright (c) GraphQL Contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 /**
  * GraphQL parser: `Source` to {@link Ast.Document}, covering the full grammar
- * of the current spec edition (October 2021) for executable and type-system
+ * of the current spec edition (September 2025) for executable and type-system
  * documents. Recursive descent over {@link Lexer}; stops at the first error.
  *
  * Structure and messages follow graphql-js so disputes can be settled against
@@ -89,8 +113,18 @@ class Parser {
   }
 
   parseDefinition(): Ast.Definition {
+    if (this.peek("{")) {
+      return this.parseOperationDefinition()
+    }
+    // Many definitions begin with a description and need a lookahead.
     const hasDescription = this.peekDescription()
     const keywordToken = hasDescription ? this.lexer.lookahead() : this.lexer.token
+    if (hasDescription && keywordToken.kind === "{") {
+      throw this.fail(
+        this.lexer.token.start,
+        "Unexpected description, descriptions are not supported on shorthand queries."
+      )
+    }
     if (keywordToken.kind === "Name") {
       switch (keywordToken.value) {
         case "schema":
@@ -109,16 +143,6 @@ class Parser {
           return this.parseInputObjectTypeDefinition()
         case "directive":
           return this.parseDirectiveDefinition()
-      }
-      if (hasDescription) {
-        throw this.fail(
-          this.lexer.token.start,
-          "Unexpected description, descriptions are supported only on type definitions."
-        )
-      }
-      switch (keywordToken.value) {
-        case "extend":
-          return this.parseTypeSystemExtension()
         case "query":
         case "mutation":
         case "subscription":
@@ -126,13 +150,15 @@ class Parser {
         case "fragment":
           return this.parseFragmentDefinition()
       }
-    } else if (hasDescription) {
-      throw this.fail(
-        this.lexer.token.start,
-        "Unexpected description, descriptions are supported only on type definitions."
-      )
-    } else if (keywordToken.kind === "{") {
-      return this.parseOperationDefinition()
+      if (hasDescription) {
+        throw this.fail(
+          this.lexer.token.start,
+          "Unexpected description, only GraphQL definitions support descriptions."
+        )
+      }
+      if (keywordToken.value === "extend") {
+        return this.parseTypeSystemExtension()
+      }
     }
     throw this.unexpected(keywordToken)
   }
@@ -146,6 +172,7 @@ class Parser {
     if (this.peek("{")) {
       return {
         _tag: "OperationDefinition",
+        description: undefined,
         operation: "query",
         name: undefined,
         variableDefinitions: [],
@@ -154,6 +181,7 @@ class Parser {
         loc: this.loc(start)
       }
     }
+    const description = this.parseDescription()
     const operation = this.parseOperationType()
     const name = this.peek("Name") ? this.parseName() : undefined
     const variableDefinitions = this.optionalMany("(", () => this.parseVariableDefinition(), ")")
@@ -161,6 +189,7 @@ class Parser {
     const selectionSet = this.parseSelectionSet()
     return {
       _tag: "OperationDefinition",
+      description,
       operation,
       name,
       variableDefinitions,
@@ -183,12 +212,13 @@ class Parser {
 
   parseVariableDefinition(): Ast.VariableDefinition {
     const start = this.lexer.token
+    const description = this.parseDescription()
     const variable = this.parseVariable()
     this.expectToken(":")
     const type = this.parseTypeReference()
     const defaultValue = this.expectOptionalToken("=") ? this.parseConstValueLiteral() : undefined
     const directives = this.parseConstDirectives()
-    return { _tag: "VariableDefinition", variable, type, defaultValue, directives, loc: this.loc(start) }
+    return { _tag: "VariableDefinition", description, variable, type, defaultValue, directives, loc: this.loc(start) }
   }
 
   parseVariable(): Ast.Variable {
@@ -261,13 +291,22 @@ class Parser {
 
   parseFragmentDefinition(): Ast.FragmentDefinition {
     const start = this.lexer.token
+    const description = this.parseDescription()
     this.expectKeyword("fragment")
     const name = this.parseFragmentName()
     this.expectKeyword("on")
     const typeCondition = this.parseNamedType()
     const directives = this.parseDirectives()
     const selectionSet = this.parseSelectionSet()
-    return { _tag: "FragmentDefinition", name, typeCondition, directives, selectionSet, loc: this.loc(start) }
+    return {
+      _tag: "FragmentDefinition",
+      description,
+      name,
+      typeCondition,
+      directives,
+      selectionSet,
+      loc: this.loc(start)
+    }
   }
 
   parseFragmentName(): Ast.Name {

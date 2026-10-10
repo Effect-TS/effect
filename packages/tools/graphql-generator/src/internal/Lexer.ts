@@ -1,10 +1,36 @@
+/*
+ * Adapted from graphql-js v16.14.2 (https://github.com/graphql/graphql-js,
+ * `src/language/lexer.ts`), distributed under the MIT License:
+ *
+ * Copyright (c) GraphQL Contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 /**
- * GraphQL lexer for the current spec edition (October 2021).
+ * GraphQL lexer for the current spec edition (September 2025).
  *
  * Produces one token at a time over a {@link Source}. Ignored tokens (BOM,
  * whitespace, line terminators, commas and comments) are skipped. String and
  * block string tokens carry their decoded value; numbers carry their source
- * text. Errors are thrown as {@link Diagnostic} and caught by the parser.
+ * text. Every character, comments included, must be a Unicode scalar value;
+ * an unpaired surrogate is an error. Errors are thrown as {@link Diagnostic}
+ * and caught by the parser.
  *
  * The structure and messages follow graphql-js so disputes can be settled
  * against the reference implementation.
@@ -195,7 +221,14 @@ const readComment = (body: string, start: number): number => {
   while (position < body.length) {
     const code = body.charCodeAt(position)
     if (code === 0x000a || code === 0x000d) break
-    position++
+    if (isUnicodeScalarValue(code)) {
+      position++
+    } else if (isSupplementaryCodePoint(body, position)) {
+      position += 2
+    } else {
+      // Not a SourceCharacter; stop here so the main loop reports it.
+      break
+    }
   }
   return position
 }

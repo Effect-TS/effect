@@ -4,13 +4,15 @@
  *
  * Output rules, pinned by `test/Printer.test.ts` and the conformance cases:
  * - Definitions are printed in the order given, with no trailing newline.
- * - Insignificant whitespace and commas are dropped. Arguments, list values
- *   and object fields are separated by a single space. Everywhere else a
- *   space is emitted only between two adjacent tokens that are both
- *   non-punctuators (names, keywords, numbers, strings); the punctuators are
- *   `! $ & ( ) ... : = @ [ ] { | }`.
+ * - The output is token-minimal: no ignored tokens at all, except a single
+ *   space where two adjacent non-punctuator tokens (names, keywords, numbers,
+ *   strings) would otherwise merge. The punctuators are
+ *   `! $ & ( ) ... : = @ [ ] { | }`, so `f(a:[]b:{})`, `[1 -2]` and `a...F`.
+ * - Descriptions on operations, fragments and variable definitions are not
+ *   printed; they carry no execution meaning and servers on the 2021 grammar
+ *   reject them.
  * - A `query` operation with no name, variables or directives prints in the
- *   `{ ... }` shorthand.
+ *   `{ ... }` shorthand, whether or not it had a description.
  * - Every string prints as a regular (non-block) string. `"` and `\` are
  *   escaped, control characters U+0000 to U+001F use `\b \f \n \r \t` or
  *   `\u00XX` with upper-case hex, U+007F prints as `\u007F`, and everything
@@ -131,7 +133,7 @@ const printSelection = (selection: Ast.Selection): string => {
 const printArguments = (args: ReadonlyArray<Ast.Argument>): string =>
   args.length === 0
     ? ""
-    : `(${args.map((argument) => `${argument.name.value}:${printValue(argument.value)}`).join(" ")})`
+    : `(${concatAll(args.map((argument) => `${argument.name.value}:${printValue(argument.value)}`))})`
 
 const printDirectives = (directives: ReadonlyArray<Ast.Directive>): string =>
   concatAll(directives.map((directive) => `@${directive.name.value}${printArguments(directive.arguments)}`))
@@ -151,9 +153,9 @@ const printValue = (value: Ast.Value): string => {
     case "NullValue":
       return "null"
     case "ListValue":
-      return `[${value.values.map(printValue).join(" ")}]`
+      return `[${concatAll(value.values.map(printValue))}]`
     case "ObjectValue":
-      return `{${value.fields.map((field) => `${field.name.value}:${printValue(field.value)}`).join(" ")}}`
+      return `{${concatAll(value.fields.map((field) => `${field.name.value}:${printValue(field.value)}`))}}`
   }
 }
 

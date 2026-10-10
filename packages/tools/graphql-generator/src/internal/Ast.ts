@@ -1,7 +1,7 @@
 /**
  * GraphQL document AST for `@effect/graphql-generator`.
  *
- * Covers the full grammar of the current spec edition (October 2021) for both
+ * Covers the full grammar of the current spec edition (September 2025) for both
  * executable and type-system documents. Node names follow the spec and
  * graphql-js so either can be read alongside this file; the discriminant is
  * `_tag`.
@@ -13,7 +13,9 @@
  *   `interfaces`, `fields`, ...) are always present and empty when absent.
  * - Optional single children (`alias`, `description`, `defaultValue`,
  *   `selectionSet`, `typeCondition`, an anonymous operation's `name`) are
- *   `undefined` when absent, never omitted.
+ *   `undefined` when absent, never omitted. Descriptions appear on type-system
+ *   definitions and, since the September 2025 edition, on operations,
+ *   fragments and variable definitions; the `{ ... }` shorthand has none.
  * - `IntValue` and `FloatValue` keep their source text; `StringValue.value`
  *   is the decoded value (escape sequences processed, block strings run
  *   through the spec's `BlockStringValue` algorithm). Whether a string was
@@ -51,6 +53,7 @@ export type OperationType = "query" | "mutation" | "subscription"
 
 export interface OperationDefinition {
   readonly _tag: "OperationDefinition"
+  readonly description: StringValue | undefined
   readonly operation: OperationType
   readonly name: Name | undefined
   readonly variableDefinitions: ReadonlyArray<VariableDefinition>
@@ -61,6 +64,7 @@ export interface OperationDefinition {
 
 export interface VariableDefinition {
   readonly _tag: "VariableDefinition"
+  readonly description: StringValue | undefined
   readonly variable: Variable
   readonly type: Type
   readonly defaultValue: ConstValue | undefined
@@ -117,6 +121,7 @@ export interface InlineFragment {
 
 export interface FragmentDefinition {
   readonly _tag: "FragmentDefinition"
+  readonly description: StringValue | undefined
   readonly name: Name
   readonly typeCondition: NamedType
   readonly directives: ReadonlyArray<Directive>
