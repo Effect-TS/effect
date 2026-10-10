@@ -176,9 +176,6 @@ importers:
       '@effect/atom-vue':
         specifier: workspace:*
         version: link:../packages/atom/vue
-      '@effect/graphql-generator':
-        specifier: workspace:*
-        version: link:../packages/tools/graphql-generator
       '@effect/opentelemetry':
         specifier: workspace:*
         version: link:../packages/opentelemetry

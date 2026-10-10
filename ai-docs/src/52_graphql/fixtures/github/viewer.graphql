@@ -1,8 +1,0 @@
-# The signed-in user. A document with no variables gives a method that is
-# called as `client.Viewer()`.
-query Viewer {
-  viewer {
-    login
-    name
-  }
-}
