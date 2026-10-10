@@ -1,0 +1,8 @@
+fragment IssueSummary on Issue {
+  number
+  title
+  state
+  stateReason
+  createdAt
+  url
+}

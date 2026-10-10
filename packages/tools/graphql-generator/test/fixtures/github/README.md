@@ -76,3 +76,7 @@ Both files are excluded from `dprint` so the vendored bytes stay verifiable agai
 ## Operations
 
 `operations/*.graphql` are not vendored. They are hand-written executable documents against the pinned SDL, used by the printer round-trip tests and later by the generator snapshots.
+
+## Documents
+
+`documents/*.graphql` and `documents/scalars.ts` are the input to the generator snapshot set. They are hand-written against `schema.docs.graphql`, and `scalars.ts` holds the codecs the test config maps `DateTime` and `URI` to (see `githubConfig` in `test/utils/generator.ts`).
