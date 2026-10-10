@@ -14,6 +14,7 @@ import type {
   OpenAPISecurityRequirement,
   OpenAPISpecExternalDocs,
   OpenAPISpecLicense,
+  OpenAPISpecParameter,
   OpenAPISpecServer
 } from "effect/http-api/OpenApi"
 import type { HttpMethod } from "effect/http/HttpMethod"
@@ -100,7 +101,23 @@ export interface ParsedOperationParameter {
   readonly required: boolean
   readonly description: string | undefined
   readonly schema: {}
+  /**
+   * Effective OpenAPI serialization style, with specification defaults applied for query parameters.
+   */
+  readonly style: OpenApiParameterStyle | undefined
+  /**
+   * Effective OpenAPI explode flag, with specification defaults applied for query parameters.
+   */
+  readonly explode: boolean | undefined
 }
+
+/**
+ * Standard OpenAPI serialization styles recordable on a parsed parameter.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type OpenApiParameterStyle = NonNullable<OpenAPISpecParameter["style"]>
 
 /**
  * Summary of the request body declaration before per-media schemas are rendered.
@@ -219,6 +236,12 @@ export interface ParsedOperation {
   readonly params?: string
   readonly paramsOptional: boolean
   readonly urlParams: ReadonlyArray<string>
+  /**
+   * Query parameter names whose array values are serialized as one comma-separated value.
+   *
+   * A name is recorded here when the parameter declares `style: "form"` with `explode: false`.
+   */
+  readonly urlParamsCsv: ReadonlyArray<string>
   readonly headers: ReadonlyArray<string>
   readonly cookies: ReadonlyArray<string>
   readonly payload?: string
@@ -269,6 +292,7 @@ export const makeDeepMutable = (options: {
   defaultResponse: undefined,
   effectiveSecurity: [],
   urlParams: [],
+  urlParamsCsv: [],
   headers: [],
   cookies: [],
   payloadFormData: false,
