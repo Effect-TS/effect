@@ -69,9 +69,29 @@ const EdgesOnly = GraphQL.query("EdgesOnly", {
   result: EdgesOnlyResult
 })
 
+// Cursor variables the helpers must reject: the helper omits `after` on the
+// first page and sends the previous `endCursor` (a string) afterwards.
+const RequiredAfter = GraphQL.query("RequiredAfter", {
+  document: "",
+  variables: { after: Schema.String },
+  result: RepoIssuesResult
+})
+const NumberAfter = GraphQL.query("NumberAfter", {
+  document: "",
+  variables: { after: Schema.optional(Schema.NullOr(Schema.Number)) },
+  result: RepoIssuesResult
+})
+// A non-null `$after: String!` with a default becomes `after?: string`, which
+// the helper can drive, so it is accepted.
+const StringOnlyAfter = GraphQL.query("StringOnlyAfter", {
+  document: "",
+  variables: { after: Schema.optional(Schema.String) },
+  result: RepoIssuesResult
+})
+
 const group = GraphQLGroup.merge(
   GraphQLGroup.make(GraphQL.middleware(RepoIssues, Auth), IssueUpdated),
-  GraphQLGroup.make(Viewer, NoPageInfo, NoAfter, EdgesOnly)
+  GraphQLGroup.make(Viewer, NoPageInfo, NoAfter, EdgesOnly, RequiredAfter, NumberAfter, StringOnlyAfter)
 ).middleware(Log)
 
 const make = GraphQLClient.make(group)
@@ -187,6 +207,18 @@ describe("GraphQLClient.pages / items", () => {
       variables: { owner: "Effect-TS", name: "effect", after: "c1" },
       connection
     })
+  })
+
+  it("rejects a required or non-string after variable", () => {
+    expect(GraphQLClient.pages).type.not.toBeCallableWith(client.RequiredAfter, { variables: {}, connection })
+    expect(GraphQLClient.items).type.not.toBeCallableWith(client.RequiredAfter, { variables: {}, connection })
+    expect(GraphQLClient.pages).type.not.toBeCallableWith(client.NumberAfter, { variables: {}, connection })
+    expect(GraphQLClient.items).type.not.toBeCallableWith(client.NumberAfter, { variables: {}, connection })
+  })
+
+  it("accepts an optional string-only after variable", () => {
+    expect(GraphQLClient.pages).type.toBeCallableWith(client.StringOnlyAfter, { variables: {}, connection })
+    expect(GraphQLClient.items).type.toBeCallableWith(client.StringOnlyAfter, { variables: {}, connection })
   })
 
   it("rejects a getter whose connection has no pageInfo", () => {
