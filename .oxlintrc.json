@@ -11,6 +11,7 @@
     "packages/effect/typeperf/**/*",
     "packages/effect/src/StandardSchema.ts",
     "packages/tools/graphql-generator/test/generated/**/*.graphql.ts",
+    "ai-docs/src/52_graphql/fixtures/**/*.graphql.ts",
     "!scratchpad/**/*",
     "**/.*",
     "!.agents",
