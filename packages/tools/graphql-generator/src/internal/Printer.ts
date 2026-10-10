@@ -18,14 +18,9 @@ import type * as Ast from "./Ast.ts"
  */
 export const print = (document: Ast.Document): string => concatAll(document.definitions.map(printDefinition))
 
-/** A character that ends or starts a non-punctuator token. */
-const isWordCharacter = (char: string): boolean => /[A-Za-z0-9_"-]/.test(char)
-
 /** Joins two printed fragments, adding a space only where two non-punctuators would otherwise touch. */
-const concat = (left: string, right: string): string => {
-  if (left.length === 0 || right.length === 0) return left + right
-  return isWordCharacter(left[left.length - 1]!) && isWordCharacter(right[0]!) ? `${left} ${right}` : left + right
-}
+const concat = (left: string, right: string): string =>
+  /[\w"-]$/.test(left) && /^[\w"-]/.test(right) ? `${left} ${right}` : left + right
 
 const concatAll = (parts: ReadonlyArray<string>): string => parts.reduce(concat, "")
 

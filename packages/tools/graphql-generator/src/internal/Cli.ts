@@ -8,6 +8,7 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
+import type { PlatformError } from "effect/PlatformError"
 import * as Runtime from "effect/Runtime"
 import * as Schema from "effect/Schema"
 import * as Config from "../Config.ts"
@@ -26,6 +27,9 @@ export class GenerateError extends Data.TaggedError("GenerateError")<{
   override readonly [Runtime.errorExitCode] = 1
   override readonly [Runtime.errorReported] = false
 }
+
+export const toGenerateError = (error: PlatformError): GenerateError =>
+  new GenerateError({ message: `error: ${error.message}` })
 
 // -----------------------------------------------------------------------------
 // Config loading
@@ -149,7 +153,7 @@ export const planChanges = Effect.fnUntraced(function*(result: Generator.Generat
     }
   }
   return { creates, updates, deletes: result.deletes } satisfies Changes
-}, Effect.mapError((error) => new GenerateError({ message: `error: ${error.message}` })))
+}, Effect.mapError(toGenerateError))
 
 /** Writes the created and updated files, then deletes the stale ones. */
 export const writeChanges = Effect.fnUntraced(function*(changes: Changes) {
@@ -162,4 +166,4 @@ export const writeChanges = Effect.fnUntraced(function*(changes: Changes) {
   for (const file of changes.deletes) {
     yield* fs.remove(file)
   }
-}, Effect.mapError((error) => new GenerateError({ message: `error: ${error.message}` })))
+}, Effect.mapError(toGenerateError))

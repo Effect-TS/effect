@@ -5,11 +5,13 @@
  *
  * @internal
  */
+import * as Arr from "effect/Array"
+import type { GeneratedFile } from "../Generator.ts"
 import type * as Ast from "./Ast.ts"
 import { type Diagnostic, make } from "./Diagnostic.ts"
 import { print } from "./Printer.ts"
 import * as SchemaModel from "./SchemaModel.ts"
-import type { File } from "./Validate.ts"
+import { type File, fragmentSpreads } from "./Validate.ts"
 
 /** One parsed document file holding only executable definitions. */
 export interface DocumentFile extends File {
@@ -36,13 +38,8 @@ export interface Options {
   readonly importSpecifier: (from: string, to: string) => string
 }
 
-export interface OutputFile {
-  readonly path: string
-  readonly contents: string
-}
-
 export interface Output {
-  readonly files: ReadonlyArray<OutputFile>
+  readonly files: ReadonlyArray<GeneratedFile>
   readonly errors: ReadonlyArray<Diagnostic>
   /** Custom scalars the operations reach that have no mapping, sorted by name. */
   readonly unmappedScalars: ReadonlyArray<string>
@@ -200,16 +197,6 @@ const builtInScalarCodec = (name: string, schema: string): string => {
   }
 }
 
-/** Every fragment spread in a selection set, through fields and inline fragments, in source order. */
-const spreadsIn = (selectionSet: Ast.SelectionSet): Array<Ast.FragmentSpread> =>
-  selectionSet.selections.flatMap((selection) =>
-    selection._tag === "FragmentSpread"
-      ? [selection]
-      : selection.selectionSet === undefined
-      ? []
-      : spreadsIn(selection.selectionSet)
-  )
-
 // -----------------------------------------------------------------------------
 // Emitter
 // -----------------------------------------------------------------------------
@@ -298,16 +285,13 @@ interface FileContext {
   usesSchema: boolean
   usesGraphQL: boolean
   usesShared: boolean
-  /** Fragments imported from other files, by output path. */
-  readonly imports: Map<string, Set<string>>
-  /** For each imported fragment, the first spread in this file that led to the import. */
-  readonly importedVia: Map<string, Ast.FragmentSpread>
+  /** Fragments imported from other files, each with the first spread in this file that led to the import. */
+  readonly imports: Map<string, Ast.FragmentSpread>
   /** Fragments of this file referenced by the code being rendered. */
   localRefs: Set<string>
 }
 
 class Emitter {
-  readonly schema: SchemaModel.Schema
   readonly fragments = new Map<string, FragmentEntry>()
   /** Named types the per-file modules reference through `Shared`. */
   readonly reached = new Set<string>()
@@ -319,7 +303,6 @@ class Emitter {
 
   constructor(options: Options) {
     this.options = options
-    this.schema = options.schema
     for (const file of options.files) {
       for (const definition of file.document.definitions) {
         if (definition._tag === "FragmentDefinition") {
@@ -330,7 +313,7 @@ class Emitter {
   }
 
   type(name: string): SchemaModel.NamedType {
-    const type = this.schema.types.get(name)
+    const type = this.options.schema.types.get(name)
     if (type === undefined) throw new Error(`@effect/graphql-generator: unknown type ${name} after validation`)
     return type
   }
@@ -353,11 +336,11 @@ class Emitter {
   rootType(operation: Ast.OperationDefinition): string {
     switch (operation.operation) {
       case "query":
-        return this.schema.queryType
+        return this.options.schema.queryType
       case "mutation":
-        return this.schema.mutationType!
+        return this.options.schema.mutationType!
       case "subscription":
-        return this.schema.subscriptionType!
+        return this.options.schema.subscriptionType!
     }
   }
 
@@ -411,7 +394,7 @@ class Emitter {
     files.forEach((file, from) => {
       for (const definition of file.document.definitions) {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
-        for (const spread of spreadsIn(definition.selectionSet)) {
+        for (const spread of fragmentSpreads(definition.selectionSet)) {
           const entry = this.fragments.get(spread.name.value)
           if (entry === undefined || entry.file === file) continue
           const to = indexOf.get(entry.file)!
@@ -489,7 +472,7 @@ class Emitter {
     const visiting = new Set<string>()
     const done = new Set<string>()
     const visit = (name: string): string | undefined => {
-      const type = this.schema.types.get(name)
+      const type = this.options.schema.types.get(name)
       if (type === undefined || type._tag !== "InputObjectType") return undefined
       if (visiting.has(name)) {
         return `Variable "$${variable.variable.name.value}" uses the recursive input object "${name}"; recursive input objects are not supported yet.`
@@ -556,7 +539,7 @@ class Emitter {
           }
           break
         case "FragmentSpread": {
-          const fragment = this.fragments.get(selection.name.value)!
+          const fragment = this.fragment(selection.name.value)
           const condition = fragment.definition.typeCondition.name.value
           if (condition === target && this.type(target)._tag === "ObjectType" && !conditional) {
             out.push({ selection, via, conditional })
@@ -608,17 +591,17 @@ class Emitter {
     return items
   }
 
-  fragmentDefinition(name: string): Ast.FragmentDefinition {
+  fragment(name: string): FragmentEntry {
     const entry = this.fragments.get(name)
     if (entry === undefined) throw new Error(`@effect/graphql-generator: unknown fragment ${name} after validation`)
-    return entry.definition
+    return entry
   }
 
   /** Every response key a fragment on an object type contributes, through nested spreads. */
   fragmentKeys(name: string): ReadonlyArray<string> {
     const cached = this.fragmentKeyCache.get(name)
     if (cached !== undefined) return cached
-    const entry = this.fragments.get(name)!
+    const entry = this.fragment(name)
     const keys = new Set<string>()
     const flat = this.narrow(
       entry.file,
@@ -659,7 +642,7 @@ class Emitter {
         return this.fragmentKeys(item.name).some((key) => others.has(key))
       })
       if (overlapping === undefined || overlapping._tag !== "Spread") return items
-      const fragment = this.fragments.get(overlapping.name)!
+      const fragment = this.fragment(overlapping.name)
       flat = flat.flatMap((entry) => {
         const selection = entry.selection
         if (selection._tag !== "FragmentSpread" || selection.name.value !== overlapping.name) return [entry]
@@ -670,18 +653,8 @@ class Emitter {
 
   fragmentRef(ctx: FileContext, item: SpreadItem): string {
     const name = item.name
-    const entry = this.fragments.get(name)!
-    if (entry.file === ctx.file) {
-      ctx.localRefs.add(name)
-    } else {
-      if (!ctx.importedVia.has(name)) ctx.importedVia.set(name, item.via ?? item.spread)
-      let names = ctx.imports.get(entry.file.outputPath)
-      if (names === undefined) {
-        names = new Set()
-        ctx.imports.set(entry.file.outputPath, names)
-      }
-      names.add(name)
-    }
+    if (this.fragment(name).file === ctx.file) ctx.localRefs.add(name)
+    else if (!ctx.imports.has(name)) ctx.imports.set(name, item.via ?? item.spread)
     return name
   }
 
@@ -730,7 +703,7 @@ class Emitter {
     if (kept.length !== 1 || only!.selection._tag !== "FragmentSpread") return undefined
     const spread = only!.selection
     if (only!.conditional || inclusion(spread.directives) !== "include") return undefined
-    if (this.fragmentDefinition(spread.name.value).typeCondition.name.value !== parentName) return undefined
+    if (this.fragment(spread.name.value).definition.typeCondition.name.value !== parentName) return undefined
     return { _tag: "Spread", name: spread.name.value, spread, via: only!.via }
   }
 
@@ -750,7 +723,7 @@ class Emitter {
       for (const selection of selections) {
         if (selection._tag === "Field" || inclusion(selection.directives) === "exclude") continue
         const definition = selection._tag === "FragmentSpread"
-          ? this.fragmentDefinition(selection.name.value)
+          ? this.fragment(selection.name.value).definition
           : selection
         const condition = definition.typeCondition?.name.value
         let next = scope
@@ -882,14 +855,13 @@ class Emitter {
    * found from the code actually emitted, so a spread written out inline
    * counts only for the fragments it really brings in.
    */
-  emitFile(file: DocumentFile): { readonly file: OutputFile; readonly errors: ReadonlyArray<Diagnostic> } {
+  emitFile(file: DocumentFile): { readonly file: GeneratedFile; readonly errors: ReadonlyArray<Diagnostic> } {
     const ctx: FileContext = {
       file,
       usesSchema: false,
       usesGraphQL: false,
       usesShared: false,
       imports: new Map(),
-      importedVia: new Map(),
       localRefs: new Set()
     }
 
@@ -926,13 +898,13 @@ class Emitter {
           operationNames.join(", ")
         })`
       )
-      const via = ctx.importedVia.get(group)
+      const via = ctx.imports.get(group)
       if (via !== undefined) {
         errors.push(make(
           file.source,
           via.loc.start,
           `Fragment "${group}" from ${
-            this.fragments.get(group)!.file.source.path
+            this.fragment(group).file.source.path
           } can't be imported here: the name is taken by the group this file exports.`
         ))
       }
@@ -942,12 +914,12 @@ class Emitter {
     const graphql = [...(ctx.usesGraphQL ? ["GraphQL"] : []), ...(operationNames.length > 0 ? ["GraphQLGroup"] : [])]
     if (graphql.length > 0) imports.push(`import { ${graphql.join(", ")} } from "effect/graphql"`)
     if (ctx.usesSchema) imports.push(`import * as Schema from "effect/Schema"`)
-    const fragmentImports = Array.from(ctx.imports, ([path, names]) => ({
-      specifier: this.options.importSpecifier(file.outputPath, path),
-      names: Array.from(names).sort()
-    })).sort((a, b) => a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0)
-    for (const { names, specifier } of fragmentImports) {
-      imports.push(`import { ${names.join(", ")} } from ${JSON.stringify(specifier)}`)
+    const bySpecifier = Arr.groupBy(
+      Array.from(ctx.imports.keys()).sort(),
+      (name) => this.options.importSpecifier(file.outputPath, this.fragment(name).file.outputPath)
+    )
+    for (const specifier of Object.keys(bySpecifier).sort()) {
+      imports.push(`import { ${bySpecifier[specifier].join(", ")} } from ${JSON.stringify(specifier)}`)
     }
     if (ctx.usesShared) {
       imports.push(
@@ -1025,22 +997,11 @@ class Emitter {
    * selection on an interface or union that doesn't already select it.
    */
   document(operation: Ast.OperationDefinition): string {
-    const used: Array<Ast.FragmentDefinition> = []
-    const seen = new Set<string>()
-    const collect = (selectionSet: Ast.SelectionSet): void => {
-      for (const selection of selectionSet.selections) {
-        if (selection._tag === "FragmentSpread") {
-          if (!seen.has(selection.name.value)) {
-            seen.add(selection.name.value)
-            used.push(this.fragmentDefinition(selection.name.value))
-          }
-        } else if (selection.selectionSet !== undefined) {
-          collect(selection.selectionSet)
-        }
-      }
+    const names = new Set(fragmentSpreads(operation.selectionSet).map((spread) => spread.name.value))
+    for (const name of names) {
+      for (const spread of fragmentSpreads(this.fragment(name).definition.selectionSet)) names.add(spread.name.value)
     }
-    collect(operation.selectionSet)
-    for (let i = 0; i < used.length; i++) collect(used[i]!.selectionSet)
+    const used = Array.from(names, (name) => this.fragment(name).definition)
     return print({
       _tag: "Document",
       definitions: [
@@ -1107,7 +1068,7 @@ class Emitter {
   // ---------------------------------------------------------------------------
 
   /** The shared module, and the custom scalars it holds without a mapping. */
-  emitShared(): { readonly file: OutputFile; readonly unmapped: ReadonlyArray<string> } {
+  emitShared(): { readonly file: GeneratedFile; readonly unmapped: ReadonlyArray<string> } {
     // Close over input objects: each one reaches the types of all its fields.
     const inputs: Array<SchemaModel.InputObjectType> = []
     const all = new Set<string>()
@@ -1154,7 +1115,7 @@ class Emitter {
     const local = (name: string): string => locals.get(name) ?? name
     const schema = allocate("Schema")
 
-    let usesSchema = false
+    let usesSchema = enums.length > 0 || inputs.length > 0
     const modules = new Map<string, string>()
     const moduleName = (specifier: string): string => {
       if (specifier === "effect/Schema") {
@@ -1198,7 +1159,6 @@ class Emitter {
       blocks.push(declare(name, descriptionLines(this.type(name).description), (b, e) => `${e}const ${b} = ${codec}`))
     }
     for (const type of enums) {
-      usesSchema = true
       const values = type.values.map((value) => {
         const description = descriptionLines(value.description).join(" ")
         const deprecated = value.deprecationReason === undefined
@@ -1214,7 +1174,6 @@ class Emitter {
       ))
     }
     for (const type of inputs) {
-      usesSchema = true
       const doc = descriptionLines(type.description)
       if (type.oneOf) {
         blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, local)))

@@ -53,7 +53,7 @@ export const parseConstValue = (source: Source): Result.Result<Ast.ConstValue, D
   catchDiagnostic(() => {
     const parser = new Parser(source)
     parser.expectToken("<SOF>")
-    const value = parser.parseConstValueLiteral()
+    const value = parser.parseValueLiteral(true)
     parser.expectToken("<EOF>")
     return value
   })
@@ -86,11 +86,9 @@ const describeToken = (token: Token): string =>
   token.value === undefined ? describeKind(token.kind) : `${describeKind(token.kind)} "${token.value}"`
 
 class Parser {
-  readonly source: Source
   readonly lexer: Lexer
 
   constructor(source: Source) {
-    this.source = source
     this.lexer = new Lexer(source)
   }
 
@@ -208,7 +206,7 @@ class Parser {
     const variable = this.parseVariable()
     this.expectToken(":")
     const type = this.parseTypeReference()
-    const defaultValue = this.expectOptionalToken("=") ? this.parseConstValueLiteral() : undefined
+    const defaultValue = this.expectOptionalToken("=") ? this.parseValueLiteral(true) : undefined
     const directives = this.parseDirectives(true)
     return { _tag: "VariableDefinition", description, variable, type, defaultValue, directives, loc: this.loc(start) }
   }
@@ -294,10 +292,6 @@ class Parser {
   // ---------------------------------------------------------------------------
   // Values
   // ---------------------------------------------------------------------------
-
-  parseConstValueLiteral(): Ast.ConstValue {
-    return this.parseValueLiteral(true)
-  }
 
   parseValueLiteral(isConst: true): Ast.ConstValue
   parseValueLiteral(isConst: boolean): Ast.Value
@@ -496,7 +490,7 @@ class Parser {
     const name = this.parseName()
     this.expectToken(":")
     const type = this.parseTypeReference()
-    const defaultValue = this.expectOptionalToken("=") ? this.parseConstValueLiteral() : undefined
+    const defaultValue = this.expectOptionalToken("=") ? this.parseValueLiteral(true) : undefined
     const directives = this.parseDirectives(true)
     return { _tag: "InputValueDefinition", description, name, type, defaultValue, directives, loc: this.loc(start) }
   }
@@ -757,7 +751,7 @@ class Parser {
   }
 
   fail(offset: number, message: string): Diagnostic {
-    return make(this.source, offset, message)
+    return make(this.lexer.source, offset, message)
   }
 
   /** `open item* close`: zero or more items between the delimiters. */
