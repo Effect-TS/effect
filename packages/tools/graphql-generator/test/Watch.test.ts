@@ -16,6 +16,7 @@ import * as PubSub from "effect/PubSub"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import { TestClock, TestConsole } from "effect/testing"
+import { existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 const schemaSdl = `type User {
@@ -130,11 +131,12 @@ const waitFor = Effect.fnUntraced(function*(
 })
 
 /** Starts `Watch.run` over a fake `FileSystem.watch` and returns a handle to drive it. */
-const start = Effect.fnUntraced(function*(configPath: string) {
+const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched: string) => void) {
   const path = yield* Path.Path
   const events = yield* PubSub.unbounded<{ readonly file: string; readonly tag: "Create" | "Update" }>()
-  const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> =>
-    Stream.fromPubSub(events).pipe(
+  const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> => {
+    onWatch?.(watched)
+    return Stream.fromPubSub(events).pipe(
       Stream.map(({ file, tag }): FileSystem.WatchEvent | undefined => {
         if (file === watched) return { _tag: tag, path: path.basename(watched) }
         const relative = path.relative(watched, file)
@@ -142,6 +144,7 @@ const start = Effect.fnUntraced(function*(configPath: string) {
       }),
       Stream.filter((event): event is FileSystem.WatchEvent => event !== undefined)
     )
+  }
   const fiber = yield* Watch.run({ configPath, watch }).pipe(Effect.forkScoped)
   return {
     emit: (file: string, tag: "Create" | "Update" = "Update") => PubSub.publish(events, { file, tag }),
@@ -160,6 +163,30 @@ const start = Effect.fnUntraced(function*(configPath: string) {
 })
 
 describe("graphqlgen --watch", () => {
+  it.effect("a document root created during watch installation stays watched", () =>
+    Effect.gen(function*() {
+      const p = yield* project({})
+      let created = false
+      const loop = yield* start(p.configPath, (watched) => {
+        if (watched !== p.file("src") || created) return
+        created = true
+        // Appear after target selection, before installation, without emitting an event.
+        mkdirSync(p.file("src"))
+        writeFileSync(p.file("src/a.graphql"), query("A", "id"))
+      })
+      const initial = yield* loop.waitFor(
+        "the initial document output",
+        (out) => cycles(out).length > 0 && existsSync(p.file("src/a.graphql.ts"))
+      )
+
+      yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
+      yield* loop.emit(p.file("src/a.graphql"))
+      yield* loop.waitFor("the document edit", (out) => cycles(out).length > cycles(initial).length)
+      const expected = yield* Generator.generate(config, { cwd: p.dir })
+      const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
+      assert.strictEqual(yield* read(output.path), output.contents)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
   it.effect("a document root created after startup is watched", () =>
     Effect.gen(function*() {
       const p = yield* project({})
