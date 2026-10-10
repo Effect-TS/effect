@@ -72,6 +72,35 @@ export declare namespace HttpMiddleware {
 /**
  * Defines an `HttpMiddleware` while preserving its precise type.
  *
+ * **Gotchas**
+ *
+ * When passing `Effect.fn` or `Effect.fnUntraced` to `make`, explicitly declare
+ * the generator's error and service type parameters and annotate its app
+ * parameter. TypeScript does not infer the generic app parameter through this
+ * nested call, so an unannotated parameter can become `any`. Keeping `E` and `R`
+ * generic preserves the errors and services of each app passed to the middleware.
+ *
+ * **Example** (Preserving app types with Effect.fn)
+ *
+ * ```ts import.meta.vitest
+ * import { strictEqual } from "node:assert"
+ * import { Effect } from "effect"
+ * import { HttpMiddleware, HttpServerResponse } from "effect/http"
+ *
+ * const withHeader = HttpMiddleware.make(
+ *   Effect.fn("withHeader")(function*<E, R>(
+ *     app: Effect.Effect<HttpServerResponse.HttpServerResponse, E, R>
+ *   ) {
+ *     const response = yield* app
+ *     return HttpServerResponse.setHeader(response, "x-service", "example")
+ *   })
+ * )
+ *
+ * const app = withHeader(Effect.succeed(HttpServerResponse.text("Hello")))
+ * const response = await Effect.runPromise(app)
+ * strictEqual(response.headers["x-service"], "example")
+ * ```
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
