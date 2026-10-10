@@ -1,8 +1,9 @@
 /**
  * Validation of executable documents against the schema model: only the rules
- * that decide whether generated types are correct (EFF-1829 point 5), plus
- * operation and fragment name uniqueness across all input files (EFF-1830
- * point 10).
+ * that decide whether generated types are correct (EFF-1829 point 5). All
+ * input files are validated together: fragments resolve across files and
+ * operations and fragments share one namespace (EFF-1830 point 10, EFF-1831
+ * point 3).
  *
  * @internal
  */
@@ -18,19 +19,21 @@ export interface File {
 
 /**
  * Collects every diagnostic across `files`, ordered by file (input order) and
- * then by position. Messages follow graphql-js where it has a matching rule,
+ * then by position. Each diagnostic is reported in the file holding the node
+ * it points at. Messages follow graphql-js where it has a matching rule,
  * without its "Did you mean" suggestion lists.
  *
  * - Fields exist on their parent type (`__typename` exists on every composite
  *   type).
  * - Arguments exist; required arguments (non-null, no default) are provided.
- * - Variables are defined, used (directly or through spread fragments) and of
- *   known input types.
- * - Fragments are defined, used, acyclic, and spread onto a possible type;
- *   type conditions name known types.
- * - Operations are named. Operation names and fragment names are each unique
- *   across all files; every definition sharing a name gets one diagnostic at
- *   its name.
+ * - Variables are defined, used (directly or through spread fragments, from
+ *   any file) and of known input types.
+ * - Fragments are defined in some input file, used by some operation, acyclic,
+ *   and spread onto a possible type (a composite type always overlaps
+ *   itself); type conditions name known types.
+ * - Operations are named. Operations and fragments share one namespace across
+ *   all files; every definition sharing a name gets one diagnostic at its
+ *   name, worded for its kind or as "operation or fragment" when kinds mix.
  * - Leaf fields have no selection set; composite fields have one.
  * - Within one selection set, fields sharing a response key select the same
  *   field with the same arguments; the later field is reported.
@@ -44,13 +47,11 @@ export const validate = (
   files: ReadonlyArray<File>
 ): ReadonlyArray<Diagnostic> => {
   const reports: Array<Report> = []
-  files.forEach((file, fileIndex) => {
-    const report = (offset: number, message: string) => {
-      reports.push({ fileIndex, offset, diagnostic: make(file.source, offset, message) })
-    }
-    new DocumentValidator(schema, file.document, report).validate()
-  })
-  checkUniqueNames(files, reports)
+  const report = (fileIndex: number, offset: number, message: string) => {
+    reports.push({ fileIndex, offset, diagnostic: make(files[fileIndex]!.source, offset, message) })
+  }
+  new Validator(schema, files, report).validate()
+  checkUniqueNames(files, report)
   // `sort` is stable, so diagnostics at the same position keep the order they were found in.
   return reports
     .sort((a, b) => a.fileIndex - b.fileIndex || a.offset - b.offset)
@@ -61,6 +62,15 @@ interface Report {
   readonly fileIndex: number
   readonly offset: number
   readonly diagnostic: Diagnostic
+}
+
+/** Reports `message` at a code-unit offset into input file `fileIndex`. */
+type Reporter = (fileIndex: number, offset: number, message: string) => void
+
+/** A definition together with the index of the input file it came from. */
+interface Located<A> {
+  readonly node: A
+  readonly file: number
 }
 
 type Composite = SchemaModel.ObjectType | SchemaModel.InterfaceType | SchemaModel.UnionType
@@ -123,40 +133,40 @@ const sameArguments = (a: ReadonlyArray<Ast.Argument>, b: ReadonlyArray<Ast.Argu
     return other !== undefined && valueEquals(argument.value, other.value)
   })
 
-class DocumentValidator {
+class Validator {
   readonly schema: SchemaModel.Schema
-  readonly report: (offset: number, message: string) => void
-  readonly operations: ReadonlyArray<Ast.OperationDefinition>
-  readonly fragmentList: ReadonlyArray<Ast.FragmentDefinition>
-  /** The first fragment with each name; duplicates are reported by `checkUniqueNames`. */
-  readonly fragments = new Map<string, Ast.FragmentDefinition>()
+  readonly report: Reporter
+  /** Every operation and fragment, in file order and then document order. */
+  readonly operations: Array<Located<Ast.OperationDefinition>> = []
+  readonly fragmentList: Array<Located<Ast.FragmentDefinition>> = []
+  /** The first fragment with each name in any file; duplicates are reported by `checkUniqueNames`. */
+  readonly fragments = new Map<string, Located<Ast.FragmentDefinition>>()
 
-  constructor(
-    schema: SchemaModel.Schema,
-    document: Ast.Document,
-    report: (offset: number, message: string) => void
-  ) {
+  constructor(schema: SchemaModel.Schema, files: ReadonlyArray<File>, report: Reporter) {
     this.schema = schema
     this.report = report
-    this.operations = document.definitions.filter((definition): definition is Ast.OperationDefinition =>
-      definition._tag === "OperationDefinition"
-    )
-    this.fragmentList = document.definitions.filter((definition): definition is Ast.FragmentDefinition =>
-      definition._tag === "FragmentDefinition"
-    )
-    for (const fragment of this.fragmentList) {
-      if (!this.fragments.has(fragment.name.value)) this.fragments.set(fragment.name.value, fragment)
-    }
+    files.forEach((file, index) => {
+      for (const definition of file.document.definitions) {
+        if (definition._tag === "OperationDefinition") {
+          this.operations.push({ node: definition, file: index })
+        } else if (definition._tag === "FragmentDefinition") {
+          const fragment = { node: definition, file: index }
+          this.fragmentList.push(fragment)
+          if (!this.fragments.has(definition.name.value)) this.fragments.set(definition.name.value, fragment)
+        }
+      }
+    })
   }
 
   validate(): void {
     for (const operation of this.operations) this.validateOperation(operation)
-    for (const fragment of this.fragmentList) {
+    for (const { file, node: fragment } of this.fragmentList) {
       const type = this.typeCondition(
+        file,
         fragment.typeCondition,
         (name) => `Fragment "${fragment.name.value}" cannot condition on non composite type "${name}".`
       )
-      if (type !== undefined) this.validateSelectionSet(fragment.selectionSet, type)
+      if (type !== undefined) this.validateSelectionSet(file, fragment.selectionSet, type)
     }
     this.checkUnusedFragments()
     this.checkFragmentCycles()
@@ -164,10 +174,10 @@ class DocumentValidator {
 
   // Operations and variables
 
-  validateOperation(operation: Ast.OperationDefinition): void {
+  validateOperation({ file, node: operation }: Located<Ast.OperationDefinition>): void {
     const name = operation.name?.value
     if (name === undefined) {
-      this.report(operation.loc.start, "Anonymous operations are not supported, name this operation.")
+      this.report(file, operation.loc.start, "Anonymous operations are not supported, name this operation.")
     }
 
     const defined = new Set<string>()
@@ -176,20 +186,22 @@ class DocumentValidator {
       const named = namedAstType(definition.type)
       const type = this.schema.types.get(named.name.value)
       if (type === undefined) {
-        this.report(named.loc.start, `Unknown type "${named.name.value}".`)
+        this.report(file, named.loc.start, `Unknown type "${named.name.value}".`)
       } else if (!isInput(type)) {
         this.report(
+          file,
           definition.type.loc.start,
           `Variable "$${definition.variable.name.value}" cannot be non-input type "${printAstType(definition.type)}".`
         )
       }
     }
 
-    const usages = this.recursiveVariableUsages(operation)
-    const used = new Set(usages.map((usage) => usage.name.value))
-    for (const usage of usages) {
+    const usages = this.recursiveVariableUsages(file, operation)
+    const used = new Set(usages.map((usage) => usage.node.name.value))
+    for (const { file: usageFile, node: usage } of usages) {
       if (defined.has(usage.name.value)) continue
       this.report(
+        usageFile,
         usage.loc.start,
         name === undefined
           ? `Variable "$${usage.name.value}" is not defined.`
@@ -200,6 +212,7 @@ class DocumentValidator {
       const variable = definition.variable.name.value
       if (used.has(variable)) continue
       this.report(
+        file,
         definition.variable.loc.start,
         name === undefined
           ? `Variable "$${variable}" is never used.`
@@ -214,17 +227,29 @@ class DocumentValidator {
       : this.schema.subscriptionType
     const root = rootName === undefined ? undefined : this.schema.types.get(rootName)
     if (root === undefined || !isComposite(root)) {
-      this.report(operation.loc.start, `Schema is not configured to execute ${operation.operation} operation.`)
+      this.report(file, operation.loc.start, `Schema is not configured to execute ${operation.operation} operation.`)
       return
     }
-    this.validateSelectionSet(operation.selectionSet, root)
+    this.validateSelectionSet(file, operation.selectionSet, root)
   }
 
-  /** Variables used by an operation, including through every fragment it spreads, transitively. */
-  recursiveVariableUsages(operation: Ast.OperationDefinition): ReadonlyArray<Ast.Variable> {
-    const usages: Array<Ast.Variable> = []
-    variablesInDirectives(operation.directives, usages)
-    variablesInSelectionSet(operation.selectionSet, usages)
+  /**
+   * Variables used by an operation, including through every fragment it
+   * spreads, transitively and across files. Each usage keeps the file it is in.
+   */
+  recursiveVariableUsages(file: number, operation: Ast.OperationDefinition): ReadonlyArray<Located<Ast.Variable>> {
+    const usages: Array<Located<Ast.Variable>> = []
+    const collect = (
+      at: number,
+      directives: ReadonlyArray<Ast.Directive>,
+      selectionSet: Ast.SelectionSet
+    ): void => {
+      const found: Array<Ast.Variable> = []
+      variablesInDirectives(directives, found)
+      variablesInSelectionSet(selectionSet, found)
+      for (const variable of found) usages.push({ node: variable, file: at })
+    }
+    collect(file, operation.directives, operation.selectionSet)
     const seen = new Set<string>()
     const pending = [...fragmentSpreads(operation.selectionSet)]
     while (pending.length > 0) {
@@ -233,32 +258,33 @@ class DocumentValidator {
       seen.add(spread.name.value)
       const fragment = this.fragments.get(spread.name.value)
       if (fragment === undefined) continue
-      variablesInDirectives(fragment.directives, usages)
-      variablesInSelectionSet(fragment.selectionSet, usages)
-      pending.push(...fragmentSpreads(fragment.selectionSet))
+      collect(fragment.file, fragment.node.directives, fragment.node.selectionSet)
+      pending.push(...fragmentSpreads(fragment.node.selectionSet))
     }
     return usages
   }
 
   // Selections
 
-  validateSelectionSet(selectionSet: Ast.SelectionSet, parent: Composite): void {
+  validateSelectionSet(file: number, selectionSet: Ast.SelectionSet, parent: Composite): void {
     const byResponseKey = new Map<string, Ast.Field>()
     for (const selection of selectionSet.selections) {
       switch (selection._tag) {
         case "Field": {
-          this.validateField(selection, parent)
+          this.validateField(file, selection, parent)
           const key = (selection.alias ?? selection.name).value
           const first = byResponseKey.get(key)
           if (first === undefined) {
             byResponseKey.set(key, selection)
           } else if (first.name.value !== selection.name.value) {
             this.report(
+              file,
               selection.loc.start,
               `Fields "${key}" conflict because "${first.name.value}" and "${selection.name.value}" are different fields. Use different aliases on the fields to fetch both if this was intentional.`
             )
           } else if (!sameArguments(first.arguments, selection.arguments)) {
             this.report(
+              file,
               selection.loc.start,
               `Fields "${key}" conflict because they have differing arguments. Use different aliases on the fields to fetch both if this was intentional.`
             )
@@ -267,33 +293,36 @@ class DocumentValidator {
         }
         case "InlineFragment": {
           if (selection.typeCondition === undefined) {
-            this.validateSelectionSet(selection.selectionSet, parent)
+            this.validateSelectionSet(file, selection.selectionSet, parent)
             break
           }
           const type = this.typeCondition(
+            file,
             selection.typeCondition,
             (name) => `Fragment cannot condition on non composite type "${name}".`
           )
           if (type === undefined) break
           if (!this.overlaps(parent, type)) {
             this.report(
+              file,
               selection.loc.start,
               `Fragment cannot be spread here as objects of type "${parent.name}" can never be of type "${type.name}".`
             )
           }
-          this.validateSelectionSet(selection.selectionSet, type)
+          this.validateSelectionSet(file, selection.selectionSet, type)
           break
         }
         case "FragmentSpread": {
-          const fragment = this.fragments.get(selection.name.value)
+          const fragment = this.fragments.get(selection.name.value)?.node
           if (fragment === undefined) {
-            this.report(selection.name.loc.start, `Unknown fragment "${selection.name.value}".`)
+            this.report(file, selection.name.loc.start, `Unknown fragment "${selection.name.value}".`)
             break
           }
           const type = this.schema.types.get(fragment.typeCondition.name.value)
           // Unknown and non-composite type conditions are reported on the fragment definition.
           if (type !== undefined && isComposite(type) && !this.overlaps(parent, type)) {
             this.report(
+              file,
               selection.loc.start,
               `Fragment "${fragment.name.value}" cannot be spread here as objects of type "${parent.name}" can never be of type "${type.name}".`
             )
@@ -304,17 +333,21 @@ class DocumentValidator {
     }
   }
 
-  validateField(field: Ast.Field, parent: Composite): void {
+  validateField(file: number, field: Ast.Field, parent: Composite): void {
     const name = field.name.value
     const definition = fieldOf(parent, name)
     if (definition === undefined) {
-      this.report(field.loc.start, `Cannot query field "${name}" on type "${parent.name}".`)
+      this.report(file, field.loc.start, `Cannot query field "${name}" on type "${parent.name}".`)
       return
     }
 
     for (const argument of field.arguments) {
       if (!definition.arguments.some((candidate) => candidate.name === argument.name.value)) {
-        this.report(argument.loc.start, `Unknown argument "${argument.name.value}" on field "${parent.name}.${name}".`)
+        this.report(
+          file,
+          argument.loc.start,
+          `Unknown argument "${argument.name.value}" on field "${parent.name}.${name}".`
+        )
       }
     }
     for (const argument of definition.arguments) {
@@ -324,6 +357,7 @@ class DocumentValidator {
         !field.arguments.some((candidate) => candidate.name.value === argument.name)
       ) {
         this.report(
+          file,
           field.loc.start,
           `Field "${name}" argument "${argument.name}" of type "${
             SchemaModel.printTypeRef(argument.type)
@@ -338,35 +372,43 @@ class DocumentValidator {
     if (!isComposite(type)) {
       if (field.selectionSet !== undefined) {
         this.report(
+          file,
           field.selectionSet.loc.start,
           `Field "${name}" must not have a selection since type "${printed}" has no subfields.`
         )
       }
     } else if (field.selectionSet === undefined) {
       this.report(
+        file,
         field.loc.start,
         `Field "${name}" of type "${printed}" must have a selection of subfields. Did you mean "${name} { ... }"?`
       )
     } else {
-      this.validateSelectionSet(field.selectionSet, type)
+      this.validateSelectionSet(file, field.selectionSet, type)
     }
   }
 
   /** Resolves a type condition, reporting unknown and non-composite types. */
-  typeCondition(condition: Ast.NamedType, nonComposite: (name: string) => string): Composite | undefined {
+  typeCondition(
+    file: number,
+    condition: Ast.NamedType,
+    nonComposite: (name: string) => string
+  ): Composite | undefined {
     const type = this.schema.types.get(condition.name.value)
     if (type === undefined) {
-      this.report(condition.loc.start, `Unknown type "${condition.name.value}".`)
+      this.report(file, condition.loc.start, `Unknown type "${condition.name.value}".`)
       return undefined
     }
     if (!isComposite(type)) {
-      this.report(condition.loc.start, nonComposite(condition.name.value))
+      this.report(file, condition.loc.start, nonComposite(condition.name.value))
       return undefined
     }
     return type
   }
 
+  /** Whether some object type can be both `a` and `b`; a type always overlaps itself, as in graphql-js. */
   overlaps(a: Composite, b: Composite): boolean {
+    if (a.name === b.name) return true
     const names = new Set(possibleTypes(a))
     return possibleTypes(b).some((name) => names.has(name))
   }
@@ -375,31 +417,31 @@ class DocumentValidator {
 
   checkUnusedFragments(): void {
     const used = new Set<string>()
-    const pending = this.operations.flatMap((operation) => fragmentSpreads(operation.selectionSet))
+    const pending = this.operations.flatMap((operation) => fragmentSpreads(operation.node.selectionSet))
     while (pending.length > 0) {
       const spread = pending.pop()!
       if (used.has(spread.name.value)) continue
       used.add(spread.name.value)
       const fragment = this.fragments.get(spread.name.value)
-      if (fragment !== undefined) pending.push(...fragmentSpreads(fragment.selectionSet))
+      if (fragment !== undefined) pending.push(...fragmentSpreads(fragment.node.selectionSet))
     }
-    for (const fragment of this.fragmentList) {
+    for (const { file, node: fragment } of this.fragmentList) {
       if (!used.has(fragment.name.value)) {
-        this.report(fragment.loc.start, `Fragment "${fragment.name.value}" is never used.`)
+        this.report(file, fragment.loc.start, `Fragment "${fragment.name.value}" is never used.`)
       }
     }
   }
 
   /**
-   * Depth-first search from each fragment in document order, reporting each
-   * cycle once at the first spread on its path (as graphql-js's
-   * NoFragmentCycles rule does).
+   * Depth-first search from each fragment in file and document order,
+   * reporting each cycle once at the first spread on its path (as graphql-js's
+   * NoFragmentCycles rule does), in the file holding that spread.
    */
   checkFragmentCycles(): void {
     const visited = new Set<string>()
-    const path: Array<Ast.FragmentSpread> = []
+    const path: Array<Located<Ast.FragmentSpread>> = []
     const indexOnPath = new Map<string, number>()
-    const visit = (fragment: Ast.FragmentDefinition): void => {
+    const visit = ({ file, node: fragment }: Located<Ast.FragmentDefinition>): void => {
       const name = fragment.name.value
       if (visited.has(name)) return
       visited.add(name)
@@ -409,15 +451,16 @@ class DocumentValidator {
       for (const spread of spreads) {
         const target = spread.name.value
         const cycleStart = indexOnPath.get(target)
-        path.push(spread)
+        path.push({ node: spread, file })
         if (cycleStart === undefined) {
           const next = this.fragments.get(target)
           if (next !== undefined) visit(next)
         } else {
           const cycle = path.slice(cycleStart)
-          const via = cycle.slice(0, -1).map((step) => `"${step.name.value}"`).join(", ")
+          const via = cycle.slice(0, -1).map((step) => `"${step.node.name.value}"`).join(", ")
           this.report(
-            cycle[0]!.loc.start,
+            cycle[0]!.file,
+            cycle[0]!.node.loc.start,
             `Cannot spread fragment "${target}" within itself${via === "" ? "." : ` via ${via}.`}`
           )
         }
@@ -476,40 +519,33 @@ const variablesInSelectionSet = (selectionSet: Ast.SelectionSet, out: Array<Ast.
   }
 }
 
-/** Operation and fragment names are unique across every file (EFF-1830 point 10). */
-const checkUniqueNames = (files: ReadonlyArray<File>, reports: Array<Report>): void => {
-  const operations = new Map<string, Array<readonly [number, File, Ast.Name]>>()
-  const fragments = new Map<string, Array<readonly [number, File, Ast.Name]>>()
-  files.forEach((file, fileIndex) => {
+/**
+ * Operations and fragments share one namespace across every file (EFF-1830
+ * point 10, EFF-1831 point 3): both become generated exports.
+ */
+const checkUniqueNames = (files: ReadonlyArray<File>, report: Reporter): void => {
+  const definitions = new Map<
+    string,
+    Array<{ readonly kind: string; readonly file: number; readonly name: Ast.Name }>
+  >()
+  files.forEach((file, index) => {
     for (const definition of file.document.definitions) {
-      let table: Map<string, Array<readonly [number, File, Ast.Name]>>
-      let name: Ast.Name | undefined
-      if (definition._tag === "OperationDefinition") {
-        table = operations
-        name = definition.name
-      } else if (definition._tag === "FragmentDefinition") {
-        table = fragments
-        name = definition.name
-      } else {
-        continue
-      }
-      if (name === undefined) continue
-      const entries = table.get(name.value)
-      const entry = [fileIndex, file, name] as const
-      if (entries === undefined) table.set(name.value, [entry])
+      let kind: string
+      if (definition._tag === "OperationDefinition") kind = "operation"
+      else if (definition._tag === "FragmentDefinition") kind = "fragment"
+      else continue
+      if (definition.name === undefined) continue
+      const entry = { kind, file: index, name: definition.name }
+      const entries = definitions.get(definition.name.value)
+      if (entries === undefined) definitions.set(definition.name.value, [entry])
       else entries.push(entry)
     }
   })
-  for (const [table, kind] of [[operations, "operation"], [fragments, "fragment"]] as const) {
-    for (const [name, entries] of table) {
-      if (entries.length < 2) continue
-      for (const [fileIndex, file, node] of entries) {
-        reports.push({
-          fileIndex,
-          offset: node.loc.start,
-          diagnostic: make(file.source, node.loc.start, `There can be only one ${kind} named "${name}".`)
-        })
-      }
+  for (const [name, entries] of definitions) {
+    if (entries.length < 2) continue
+    const kind = entries.every((entry) => entry.kind === entries[0]!.kind) ? entries[0]!.kind : "operation or fragment"
+    for (const entry of entries) {
+      report(entry.file, entry.name.loc.start, `There can be only one ${kind} named "${name}".`)
     }
   }
 }
