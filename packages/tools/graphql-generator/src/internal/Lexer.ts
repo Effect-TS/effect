@@ -37,9 +37,9 @@
  *
  * @internal
  */
-import { type Diagnostic, make, type Source } from "./Diagnostic.ts"
+import { make, type Source } from "./Diagnostic.ts"
 
-export type PunctuatorKind = "!" | "$" | "&" | "(" | ")" | "..." | ":" | "=" | "@" | "[" | "]" | "{" | "|" | "}"
+type PunctuatorKind = "!" | "$" | "&" | "(" | ")" | "..." | ":" | "=" | "@" | "[" | "]" | "{" | "|" | "}"
 
 export type TokenKind = "<SOF>" | "<EOF>" | PunctuatorKind | "Name" | "Int" | "Float" | "String" | "BlockString"
 
@@ -105,8 +105,6 @@ export class Lexer {
 
 const token = (kind: TokenKind, start: number, end: number, value?: string): Token => ({ kind, start, end, value })
 
-const fail = (source: Source, offset: number, message: string): Diagnostic => make(source, offset, message)
-
 const isDigit = (code: number): boolean => code >= 0x30 && code <= 0x39
 
 const isNameStart = (code: number): boolean =>
@@ -121,8 +119,16 @@ const isLeadingSurrogate = (code: number): boolean => code >= 0xd800 && code <= 
 
 const isTrailingSurrogate = (code: number): boolean => code >= 0xdc00 && code <= 0xdfff
 
-const isSupplementaryCodePoint = (body: string, location: number): boolean =>
-  isLeadingSurrogate(body.charCodeAt(location)) && isTrailingSurrogate(body.charCodeAt(location + 1))
+/**
+ * The code-unit length of the `SourceCharacter` at `position`: 1, 2 for a
+ * surrogate pair, or 0 when it is an unpaired surrogate.
+ */
+const sourceCharacterSize = (body: string, position: number): number =>
+  isUnicodeScalarValue(body.charCodeAt(position))
+    ? 1
+    : isLeadingSurrogate(body.charCodeAt(position)) && isTrailingSurrogate(body.charCodeAt(position + 1))
+    ? 2
+    : 0
 
 /** Describes the code point at `location` for messages: `"?"`, `U+00E9`, or `<EOF>`. */
 const printCodePointAt = (body: string, location: number): string => {
@@ -141,14 +147,11 @@ const readToken = (source: Source, start: number): Token => {
   while (position < bodyLength) {
     const code = body.charCodeAt(position)
     switch (code) {
-      // Ignored: BOM, tab, space, comma
+      // Ignored: BOM, tab, space, comma, line feed
       case 0xfeff:
       case 0x0009:
       case 0x0020:
       case 0x002c:
-        position++
-        continue
-      // Line feed
       case 0x000a:
         position++
         continue
@@ -160,42 +163,20 @@ const readToken = (source: Source, start: number): Token => {
       case 0x0023:
         position = readComment(body, position)
         continue
-      case 0x0021:
-        return token("!", position, position + 1)
-      case 0x0024:
-        return token("$", position, position + 1)
-      case 0x0026:
-        return token("&", position, position + 1)
-      case 0x0028:
-        return token("(", position, position + 1)
-      case 0x0029:
-        return token(")", position, position + 1)
       case 0x002e:
         if (body.charCodeAt(position + 1) === 0x002e && body.charCodeAt(position + 2) === 0x002e) {
           return token("...", position, position + 3)
         }
         break
-      case 0x003a:
-        return token(":", position, position + 1)
-      case 0x003d:
-        return token("=", position, position + 1)
-      case 0x0040:
-        return token("@", position, position + 1)
-      case 0x005b:
-        return token("[", position, position + 1)
-      case 0x005d:
-        return token("]", position, position + 1)
-      case 0x007b:
-        return token("{", position, position + 1)
-      case 0x007c:
-        return token("|", position, position + 1)
-      case 0x007d:
-        return token("}", position, position + 1)
       case 0x0022:
         if (body.charCodeAt(position + 1) === 0x0022 && body.charCodeAt(position + 2) === 0x0022) {
           return readBlockString(source, position)
         }
         return readString(source, position)
+    }
+    const char = body[position]!
+    if (punctuators.has(char)) {
+      return token(char as PunctuatorKind, position, position + 1)
     }
     if (isDigit(code) || code === 0x002d) {
       return readNumber(source, position, code)
@@ -203,12 +184,12 @@ const readToken = (source: Source, start: number): Token => {
     if (isNameStart(code)) {
       return readName(body, position)
     }
-    throw fail(
+    throw make(
       source,
       position,
       code === 0x0027
         ? "Unexpected single quote character ('), did you mean to use a double quote (\")?"
-        : isUnicodeScalarValue(code) || isSupplementaryCodePoint(body, position)
+        : sourceCharacterSize(body, position) > 0
         ? `Unexpected character: ${printCodePointAt(body, position)}.`
         : `Invalid character: ${printCodePointAt(body, position)}.`
     )
@@ -221,14 +202,10 @@ const readComment = (body: string, start: number): number => {
   while (position < body.length) {
     const code = body.charCodeAt(position)
     if (code === 0x000a || code === 0x000d) break
-    if (isUnicodeScalarValue(code)) {
-      position++
-    } else if (isSupplementaryCodePoint(body, position)) {
-      position += 2
-    } else {
-      // Not a SourceCharacter; stop here so the main loop reports it.
-      break
-    }
+    // Not a SourceCharacter; stop here so the main loop reports it.
+    const size = sourceCharacterSize(body, position)
+    if (size === 0) break
+    position += size
   }
   return position
 }
@@ -252,7 +229,7 @@ const readNumber = (source: Source, start: number, firstCode: number): Token => 
   if (code === 0x0030) {
     code = body.charCodeAt(++position)
     if (isDigit(code)) {
-      throw fail(source, position, `Invalid number, unexpected digit after 0: ${printCodePointAt(body, position)}.`)
+      throw make(source, position, `Invalid number, unexpected digit after 0: ${printCodePointAt(body, position)}.`)
     }
   } else {
     position = readDigits(source, position, code)
@@ -274,14 +251,14 @@ const readNumber = (source: Source, start: number, firstCode: number): Token => 
     code = body.charCodeAt(position)
   }
   if (code === 0x002e || isNameStart(code)) {
-    throw fail(source, position, `Invalid number, expected digit but got: ${printCodePointAt(body, position)}.`)
+    throw make(source, position, `Invalid number, expected digit but got: ${printCodePointAt(body, position)}.`)
   }
   return token(isFloat ? "Float" : "Int", start, position, body.slice(start, position))
 }
 
 const readDigits = (source: Source, start: number, firstCode: number): number => {
   if (!isDigit(firstCode)) {
-    throw fail(source, start, `Invalid number, expected digit but got: ${printCodePointAt(source.body, start)}.`)
+    throw make(source, start, `Invalid number, expected digit but got: ${printCodePointAt(source.body, start)}.`)
   }
   const body = source.body
   let position = start + 1
@@ -316,15 +293,13 @@ const readString = (source: Source, start: number): Token => {
       continue
     }
     if (code === 0x000a || code === 0x000d) break
-    if (isUnicodeScalarValue(code)) {
-      position++
-    } else if (isSupplementaryCodePoint(body, position)) {
-      position += 2
-    } else {
-      throw fail(source, position, `Invalid character within String: ${printCodePointAt(body, position)}.`)
+    const size = sourceCharacterSize(body, position)
+    if (size === 0) {
+      throw make(source, position, `Invalid character within String: ${printCodePointAt(body, position)}.`)
     }
+    position += size
   }
-  throw fail(source, position, "Unterminated string.")
+  throw make(source, position, "Unterminated string.")
 }
 
 interface EscapeSequence {
@@ -347,7 +322,7 @@ const readEscapedUnicodeVariableWidth = (source: Source, position: number): Esca
     point = (point << 4) | readHexDigit(code)
     if (point < 0) break
   }
-  throw fail(source, position, `Invalid Unicode escape sequence: "${body.slice(position, position + size)}".`)
+  throw make(source, position, `Invalid Unicode escape sequence: "${body.slice(position, position + size)}".`)
 }
 
 const readEscapedUnicodeFixedWidth = (source: Source, position: number): EscapeSequence => {
@@ -365,7 +340,7 @@ const readEscapedUnicodeFixedWidth = (source: Source, position: number): EscapeS
       }
     }
   }
-  throw fail(source, position, `Invalid Unicode escape sequence: "${body.slice(position, position + 6)}".`)
+  throw make(source, position, `Invalid Unicode escape sequence: "${body.slice(position, position + 6)}".`)
 }
 
 const read16BitHexCode = (body: string, position: number): number =>
@@ -384,27 +359,22 @@ const readHexDigit = (code: number): number =>
     ? code - 0x0057
     : -1
 
+const escapedCharacters: ReadonlyMap<string | undefined, string> = new Map([
+  ["\"", "\""],
+  ["\\", "\\"],
+  ["/", "/"],
+  ["b", "\b"],
+  ["f", "\f"],
+  ["n", "\n"],
+  ["r", "\r"],
+  ["t", "\t"]
+])
+
 const readEscapedCharacter = (source: Source, position: number): EscapeSequence => {
   const body = source.body
-  switch (body.charCodeAt(position + 1)) {
-    case 0x0022:
-      return { value: "\"", size: 2 }
-    case 0x005c:
-      return { value: "\\", size: 2 }
-    case 0x002f:
-      return { value: "/", size: 2 }
-    case 0x0062:
-      return { value: "\b", size: 2 }
-    case 0x0066:
-      return { value: "\f", size: 2 }
-    case 0x006e:
-      return { value: "\n", size: 2 }
-    case 0x0072:
-      return { value: "\r", size: 2 }
-    case 0x0074:
-      return { value: "\t", size: 2 }
-  }
-  throw fail(source, position, `Invalid character escape sequence: "${body.slice(position, position + 2)}".`)
+  const value = escapedCharacters.get(body[position + 1])
+  if (value !== undefined) return { value, size: 2 }
+  throw make(source, position, `Invalid character escape sequence: "${body.slice(position, position + 2)}".`)
 }
 
 const readBlockString = (source: Source, start: number): Token => {
@@ -440,19 +410,17 @@ const readBlockString = (source: Source, start: number): Token => {
       chunkStart = position
       continue
     }
-    if (isUnicodeScalarValue(code)) {
-      position++
-    } else if (isSupplementaryCodePoint(body, position)) {
-      position += 2
-    } else {
-      throw fail(source, position, `Invalid character within String: ${printCodePointAt(body, position)}.`)
+    const size = sourceCharacterSize(body, position)
+    if (size === 0) {
+      throw make(source, position, `Invalid character within String: ${printCodePointAt(body, position)}.`)
     }
+    position += size
   }
-  throw fail(source, position, "Unterminated string.")
+  throw make(source, position, "Unterminated string.")
 }
 
 /** The spec's `BlockStringValue` algorithm over already split lines. */
-export const dedentBlockStringLines = (lines: ReadonlyArray<string>): ReadonlyArray<string> => {
+const dedentBlockStringLines = (lines: ReadonlyArray<string>): ReadonlyArray<string> => {
   let commonIndent = Number.MAX_SAFE_INTEGER
   let firstNonEmptyLine: number | undefined = undefined
   let lastNonEmptyLine = -1

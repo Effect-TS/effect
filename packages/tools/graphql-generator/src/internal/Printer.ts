@@ -26,13 +26,7 @@ import type * as Ast from "./Ast.ts"
  * Prints an executable document compactly. Throws on type-system definitions
  * and extensions, which are outside the contract.
  */
-export const print = (document: Ast.Document): string => {
-  let out = ""
-  for (const definition of document.definitions) {
-    out = concat(out, printDefinition(definition))
-  }
-  return out
-}
+export const print = (document: Ast.Document): string => concatAll(document.definitions.map(printDefinition))
 
 /** A character that ends or starts a non-punctuator token. */
 const isWordCharacter = (char: string): boolean => /[A-Za-z0-9_"-]/.test(char)
@@ -158,38 +152,24 @@ const printValue = (value: Ast.Value): string => {
   }
 }
 
+const escapes: ReadonlyMap<string, string> = new Map([
+  ["\"", "\\\""],
+  ["\\", "\\\\"],
+  ["\b", "\\b"],
+  ["\f", "\\f"],
+  ["\n", "\\n"],
+  ["\r", "\\r"],
+  ["\t", "\\t"]
+])
+
 /** Prints a string value as a regular GraphQL string literal. */
-export const printString = (value: string): string => {
+const printString = (value: string): string => {
   let out = "\""
   for (let i = 0; i < value.length; i++) {
+    const char = value[i]!
     const code = value.charCodeAt(i)
-    switch (code) {
-      case 0x0022:
-        out += "\\\""
-        break
-      case 0x005c:
-        out += "\\\\"
-        break
-      case 0x0008:
-        out += "\\b"
-        break
-      case 0x000c:
-        out += "\\f"
-        break
-      case 0x000a:
-        out += "\\n"
-        break
-      case 0x000d:
-        out += "\\r"
-        break
-      case 0x0009:
-        out += "\\t"
-        break
-      default:
-        out += code < 0x0020 || code === 0x007f
-          ? `\\u${code.toString(16).toUpperCase().padStart(4, "0")}`
-          : value[i]
-    }
+    out += escapes.get(char) ??
+      (code < 0x0020 || code === 0x007f ? `\\u${code.toString(16).toUpperCase().padStart(4, "0")}` : char)
   }
   return out + "\""
 }

@@ -32,9 +32,9 @@
  *
  * @internal
  */
-import * as Result from "effect/Result"
+import type * as Result from "effect/Result"
 import type * as Ast from "./Ast.ts"
-import { Diagnostic, make, type Source } from "./Diagnostic.ts"
+import { catchDiagnostic, type Diagnostic, make, type Source } from "./Diagnostic.ts"
 import { isPunctuatorKind, Lexer, type Token, type TokenKind } from "./Lexer.ts"
 
 /**
@@ -42,7 +42,7 @@ import { isPunctuatorKind, Lexer, type Token, type TokenKind } from "./Lexer.ts"
  * lexical or syntactic error; there is no recovery.
  */
 export const parse = (source: Source): Result.Result<Ast.Document, Diagnostic> =>
-  run(source, (parser) => parser.parseDocument())
+  catchDiagnostic(() => new Parser(source).parseDocument())
 
 /**
  * Parses a single `Value[Const]` that spans the whole source, as found in
@@ -50,21 +50,13 @@ export const parse = (source: Source): Result.Result<Ast.Document, Diagnostic> =
  * errors.
  */
 export const parseConstValue = (source: Source): Result.Result<Ast.ConstValue, Diagnostic> =>
-  run(source, (parser) => {
+  catchDiagnostic(() => {
+    const parser = new Parser(source)
     parser.expectToken("<SOF>")
     const value = parser.parseConstValueLiteral()
     parser.expectToken("<EOF>")
     return value
   })
-
-const run = <A>(source: Source, body: (parser: Parser) => A): Result.Result<A, Diagnostic> => {
-  try {
-    return Result.succeed(body(new Parser(source)))
-  } catch (error) {
-    if (error instanceof Diagnostic) return Result.fail(error)
-    throw error
-  }
-}
 
 const directiveLocations: ReadonlySet<string> = new Set([
   "QUERY",
@@ -185,7 +177,7 @@ class Parser {
     const operation = this.parseOperationType()
     const name = this.peek("Name") ? this.parseName() : undefined
     const variableDefinitions = this.optionalMany("(", () => this.parseVariableDefinition(), ")")
-    const directives = this.parseDirectives()
+    const directives = this.parseDirectives(false)
     const selectionSet = this.parseSelectionSet()
     return {
       _tag: "OperationDefinition",
@@ -217,7 +209,7 @@ class Parser {
     this.expectToken(":")
     const type = this.parseTypeReference()
     const defaultValue = this.expectOptionalToken("=") ? this.parseConstValueLiteral() : undefined
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     return { _tag: "VariableDefinition", description, variable, type, defaultValue, directives, loc: this.loc(start) }
   }
 
@@ -230,42 +222,25 @@ class Parser {
 
   parseSelectionSet(): Ast.SelectionSet {
     const start = this.lexer.token
-    const selections = this.many("{", () => this.parseSelection(), "}")
+    const selections = this.many("{", () => this.peek("...") ? this.parseFragment() : this.parseField(), "}")
     return { _tag: "SelectionSet", selections, loc: this.loc(start) }
-  }
-
-  parseSelection(): Ast.Selection {
-    return this.peek("...") ? this.parseFragment() : this.parseField()
   }
 
   parseField(): Ast.Field {
     const start = this.lexer.token
     const nameOrAlias = this.parseName()
-    let alias: Ast.Name | undefined
-    let name: Ast.Name
-    if (this.expectOptionalToken(":")) {
-      alias = nameOrAlias
-      name = this.parseName()
-    } else {
-      alias = undefined
-      name = nameOrAlias
-    }
-    const args = this.parseArguments()
-    const directives = this.parseDirectives()
+    const alias = this.expectOptionalToken(":") ? nameOrAlias : undefined
+    const name = alias === undefined ? nameOrAlias : this.parseName()
+    const args = this.parseArguments(false)
+    const directives = this.parseDirectives(false)
     const selectionSet = this.peek("{") ? this.parseSelectionSet() : undefined
     return { _tag: "Field", alias, name, arguments: args, directives, selectionSet, loc: this.loc(start) }
   }
 
-  parseArguments(): Array<Ast.Argument> {
-    return this.optionalMany("(", () => this.parseArgument(false), ")")
+  parseArguments(isConst: boolean): Array<Ast.Argument> {
+    return this.optionalMany("(", () => this.parseArgument(isConst), ")")
   }
 
-  parseConstArguments(): Array<Ast.ConstArgument> {
-    return this.optionalMany("(", () => this.parseArgument(true), ")")
-  }
-
-  parseArgument(isConst: true): Ast.ConstArgument
-  parseArgument(isConst: boolean): Ast.Argument
   parseArgument(isConst: boolean): Ast.Argument {
     const start = this.lexer.token
     const name = this.parseName()
@@ -280,11 +255,11 @@ class Parser {
     const hasTypeCondition = this.expectOptionalKeyword("on")
     if (!hasTypeCondition && this.peek("Name")) {
       const name = this.parseFragmentName()
-      const directives = this.parseDirectives()
+      const directives = this.parseDirectives(false)
       return { _tag: "FragmentSpread", name, directives, loc: this.loc(start) }
     }
     const typeCondition = hasTypeCondition ? this.parseNamedType() : undefined
-    const directives = this.parseDirectives()
+    const directives = this.parseDirectives(false)
     const selectionSet = this.parseSelectionSet()
     return { _tag: "InlineFragment", typeCondition, directives, selectionSet, loc: this.loc(start) }
   }
@@ -296,7 +271,7 @@ class Parser {
     const name = this.parseFragmentName()
     this.expectKeyword("on")
     const typeCondition = this.parseNamedType()
-    const directives = this.parseDirectives()
+    const directives = this.parseDirectives(false)
     const selectionSet = this.parseSelectionSet()
     return {
       _tag: "FragmentDefinition",
@@ -398,29 +373,21 @@ class Parser {
   // Directives and types
   // ---------------------------------------------------------------------------
 
-  parseDirectives(): Array<Ast.Directive> {
+  parseDirectives(isConst: true): Array<Ast.ConstDirective>
+  parseDirectives(isConst: boolean): Array<Ast.Directive>
+  parseDirectives(isConst: boolean): Array<Ast.Directive> {
     const directives: Array<Ast.Directive> = []
     while (this.peek("@")) {
-      directives.push(this.parseDirective(false))
+      directives.push(this.parseDirective(isConst))
     }
     return directives
   }
 
-  parseConstDirectives(): Array<Ast.ConstDirective> {
-    const directives: Array<Ast.ConstDirective> = []
-    while (this.peek("@")) {
-      directives.push(this.parseDirective(true))
-    }
-    return directives
-  }
-
-  parseDirective(isConst: true): Ast.ConstDirective
-  parseDirective(isConst: boolean): Ast.Directive
   parseDirective(isConst: boolean): Ast.Directive {
     const start = this.lexer.token
     this.expectToken("@")
     const name = this.parseName()
-    const args = isConst ? this.parseConstArguments() : this.parseArguments()
+    const args = this.parseArguments(isConst)
     return { _tag: "Directive", name, arguments: args, loc: this.loc(start) }
   }
 
@@ -467,7 +434,7 @@ class Parser {
     const start = this.lexer.token
     const description = this.parseDescription()
     this.expectKeyword("schema")
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const operationTypes = this.many("{", () => this.parseOperationTypeDefinition(), "}")
     return { _tag: "SchemaDefinition", description, directives, operationTypes, loc: this.loc(start) }
   }
@@ -485,7 +452,7 @@ class Parser {
     const description = this.parseDescription()
     this.expectKeyword("scalar")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     return { _tag: "ScalarTypeDefinition", description, name, directives, loc: this.loc(start) }
   }
 
@@ -495,7 +462,7 @@ class Parser {
     this.expectKeyword("type")
     const name = this.parseName()
     const interfaces = this.parseImplementsInterfaces()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseFieldsDefinition()
     return { _tag: "ObjectTypeDefinition", description, name, interfaces, directives, fields, loc: this.loc(start) }
   }
@@ -515,7 +482,7 @@ class Parser {
     const args = this.parseArgumentDefs()
     this.expectToken(":")
     const type = this.parseTypeReference()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     return { _tag: "FieldDefinition", description, name, arguments: args, type, directives, loc: this.loc(start) }
   }
 
@@ -530,7 +497,7 @@ class Parser {
     this.expectToken(":")
     const type = this.parseTypeReference()
     const defaultValue = this.expectOptionalToken("=") ? this.parseConstValueLiteral() : undefined
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     return { _tag: "InputValueDefinition", description, name, type, defaultValue, directives, loc: this.loc(start) }
   }
 
@@ -540,7 +507,7 @@ class Parser {
     this.expectKeyword("interface")
     const name = this.parseName()
     const interfaces = this.parseImplementsInterfaces()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseFieldsDefinition()
     return { _tag: "InterfaceTypeDefinition", description, name, interfaces, directives, fields, loc: this.loc(start) }
   }
@@ -550,7 +517,7 @@ class Parser {
     const description = this.parseDescription()
     this.expectKeyword("union")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const types = this.parseUnionMemberTypes()
     return { _tag: "UnionTypeDefinition", description, name, directives, types, loc: this.loc(start) }
   }
@@ -564,7 +531,7 @@ class Parser {
     const description = this.parseDescription()
     this.expectKeyword("enum")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const values = this.parseEnumValuesDefinition()
     return { _tag: "EnumTypeDefinition", description, name, directives, values, loc: this.loc(start) }
   }
@@ -577,7 +544,7 @@ class Parser {
     const start = this.lexer.token
     const description = this.parseDescription()
     const name = this.parseEnumValueName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     return { _tag: "EnumValueDefinition", description, name, directives, loc: this.loc(start) }
   }
 
@@ -594,7 +561,7 @@ class Parser {
     const description = this.parseDescription()
     this.expectKeyword("input")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseInputFieldsDefinition()
     return { _tag: "InputObjectTypeDefinition", description, name, directives, fields, loc: this.loc(start) }
   }
@@ -664,11 +631,9 @@ class Parser {
     const start = this.lexer.token
     this.expectKeyword("extend")
     this.expectKeyword("schema")
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const operationTypes = this.optionalMany("{", () => this.parseOperationTypeDefinition(), "}")
-    if (directives.length === 0 && operationTypes.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(directives, operationTypes)
     return { _tag: "SchemaExtension", directives, operationTypes, loc: this.loc(start) }
   }
 
@@ -677,10 +642,8 @@ class Parser {
     this.expectKeyword("extend")
     this.expectKeyword("scalar")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
-    if (directives.length === 0) {
-      throw this.unexpected()
-    }
+    const directives = this.parseDirectives(true)
+    this.expectNonEmpty(directives)
     return { _tag: "ScalarTypeExtension", name, directives, loc: this.loc(start) }
   }
 
@@ -690,11 +653,9 @@ class Parser {
     this.expectKeyword("type")
     const name = this.parseName()
     const interfaces = this.parseImplementsInterfaces()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseFieldsDefinition()
-    if (interfaces.length === 0 && directives.length === 0 && fields.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(interfaces, directives, fields)
     return { _tag: "ObjectTypeExtension", name, interfaces, directives, fields, loc: this.loc(start) }
   }
 
@@ -704,11 +665,9 @@ class Parser {
     this.expectKeyword("interface")
     const name = this.parseName()
     const interfaces = this.parseImplementsInterfaces()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseFieldsDefinition()
-    if (interfaces.length === 0 && directives.length === 0 && fields.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(interfaces, directives, fields)
     return { _tag: "InterfaceTypeExtension", name, interfaces, directives, fields, loc: this.loc(start) }
   }
 
@@ -717,11 +676,9 @@ class Parser {
     this.expectKeyword("extend")
     this.expectKeyword("union")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const types = this.parseUnionMemberTypes()
-    if (directives.length === 0 && types.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(directives, types)
     return { _tag: "UnionTypeExtension", name, directives, types, loc: this.loc(start) }
   }
 
@@ -730,11 +687,9 @@ class Parser {
     this.expectKeyword("extend")
     this.expectKeyword("enum")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const values = this.parseEnumValuesDefinition()
-    if (directives.length === 0 && values.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(directives, values)
     return { _tag: "EnumTypeExtension", name, directives, values, loc: this.loc(start) }
   }
 
@@ -743,11 +698,9 @@ class Parser {
     this.expectKeyword("extend")
     this.expectKeyword("input")
     const name = this.parseName()
-    const directives = this.parseConstDirectives()
+    const directives = this.parseDirectives(true)
     const fields = this.parseInputFieldsDefinition()
-    if (directives.length === 0 && fields.length === 0) {
-      throw this.unexpected()
-    }
+    this.expectNonEmpty(directives, fields)
     return { _tag: "InputObjectTypeExtension", name, directives, fields, loc: this.loc(start) }
   }
 
@@ -767,10 +720,7 @@ class Parser {
   /** Consumes the current token if it is of the given kind, otherwise fails. */
   expectToken(kind: TokenKind): Token {
     const token = this.lexer.token
-    if (token.kind === kind) {
-      this.lexer.advance()
-      return token
-    }
+    if (this.expectOptionalToken(kind)) return token
     throw this.fail(token.start, `Expected ${describeKind(kind)}, found ${describeToken(token)}.`)
   }
 
@@ -785,12 +735,9 @@ class Parser {
 
   /** Consumes the current token if it is the given keyword, otherwise fails. */
   expectKeyword(value: string): void {
-    const token = this.lexer.token
-    if (token.kind === "Name" && token.value === value) {
-      this.lexer.advance()
-      return
+    if (!this.expectOptionalKeyword(value)) {
+      throw this.fail(this.lexer.token.start, `Expected "${value}", found ${describeToken(this.lexer.token)}.`)
     }
-    throw this.fail(token.start, `Expected "${value}", found ${describeToken(token)}.`)
   }
 
   /** Consumes the current token if it is the given keyword. */
@@ -801,6 +748,13 @@ class Parser {
       return true
     }
     return false
+  }
+
+  /** An extension must add something; fails at the current token otherwise. */
+  expectNonEmpty(...lists: ReadonlyArray<ReadonlyArray<unknown>>): void {
+    if (lists.every((list) => list.length === 0)) {
+      throw this.unexpected()
+    }
   }
 
   unexpected(atToken: Token = this.lexer.token): Diagnostic {
@@ -823,14 +777,7 @@ class Parser {
 
   /** `(open item+ close)?`: one or more items when the opener is present, otherwise nothing. */
   optionalMany<A>(open: TokenKind, parseItem: () => A, close: TokenKind): Array<A> {
-    if (this.expectOptionalToken(open)) {
-      const nodes: Array<A> = []
-      do {
-        nodes.push(parseItem())
-      } while (!this.expectOptionalToken(close))
-      return nodes
-    }
-    return []
+    return this.peek(open) ? this.many(open, parseItem, close) : []
   }
 
   /** `open item+ close`: one or more items between the delimiters. */
