@@ -26,6 +26,7 @@
  *
  * @internal
  */
+import type * as Ast from "./Ast.ts"
 
 export interface Schema {
   readonly queryType: string
@@ -152,4 +153,79 @@ export type ConstValue =
 export interface ConstObjectField {
   readonly name: string
   readonly value: ConstValue
+}
+
+// -----------------------------------------------------------------------------
+// Helpers shared by the readers and validation
+// -----------------------------------------------------------------------------
+
+/** The scalars every schema has, whether or not it declares them. */
+export const builtInScalarNames: ReadonlyArray<string> = ["String", "Int", "Float", "Boolean", "ID"]
+
+/** Directives the spec defines; they are consumed or ignored, never kept in `Schema.directives`. */
+export const builtInDirectiveNames: ReadonlySet<string> = new Set([
+  "skip",
+  "include",
+  "deprecated",
+  "specifiedBy",
+  "oneOf"
+])
+
+/** The reason `@deprecated` implies when it has none. */
+export const defaultDeprecationReason = "No longer supported"
+
+export const builtInScalar = (name: string): ScalarType => ({
+  _tag: "ScalarType",
+  name,
+  description: undefined,
+  specifiedBy: undefined
+})
+
+/** Drops locations from a parsed const value. */
+export const fromAstConstValue = (value: Ast.ConstValue): ConstValue => {
+  switch (value._tag) {
+    case "IntValue":
+    case "FloatValue":
+    case "StringValue":
+    case "EnumValue":
+      return { _tag: value._tag, value: value.value }
+    case "BooleanValue":
+      return { _tag: "BooleanValue", value: value.value }
+    case "NullValue":
+      return { _tag: "NullValue" }
+    case "ListValue":
+      return { _tag: "ListValue", values: value.values.map(fromAstConstValue) }
+    case "ObjectValue":
+      return {
+        _tag: "ObjectValue",
+        fields: value.fields.map((field) => ({ name: field.name.value, value: fromAstConstValue(field.value) }))
+      }
+  }
+}
+
+export const fromAstType = (type: Ast.Type): TypeRef => {
+  switch (type._tag) {
+    case "NamedType":
+      return { _tag: "NamedTypeRef", name: type.name.value }
+    case "ListType":
+      return { _tag: "ListTypeRef", ofType: fromAstType(type.type) }
+    case "NonNullType":
+      return { _tag: "NonNullTypeRef", ofType: fromAstType(type.type) as NamedTypeRef | ListTypeRef }
+  }
+}
+
+/** The name at the bottom of a type reference. */
+export const namedTypeOf = (type: TypeRef): string =>
+  type._tag === "NamedTypeRef" ? type.name : namedTypeOf(type.ofType)
+
+/** Prints a type reference in SDL form, e.g. `[Pet!]!`. */
+export const printTypeRef = (type: TypeRef): string => {
+  switch (type._tag) {
+    case "NamedTypeRef":
+      return type.name
+    case "ListTypeRef":
+      return `[${printTypeRef(type.ofType)}]`
+    case "NonNullTypeRef":
+      return `${printTypeRef(type.ofType)}!`
+  }
 }
