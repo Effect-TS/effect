@@ -4,8 +4,8 @@
  *
  * Each test seeds a scratch project under `test/.tmp` (inside the package, so
  * a config file can import `@effect/graphql-generator/Config`) and runs the
- * command in process with `--config`. One test spawns `bin.ts` with no flags
- * so the config's `import()` runs under the real Node version.
+ * command in process with `--config`. Child-process tests spawn `bin.ts`
+ * so config loading and type-stripping failures run under the real Node version.
  */
 import * as Generator from "@effect/graphql-generator/Generator"
 import * as NodeServices from "@effect/platform-node/NodeServices"
@@ -53,6 +53,15 @@ const header = (sourceName: string): string =>
 
 const tmpRoot = fileURLToPath(new URL("./.tmp", import.meta.url))
 const binPath = fileURLToPath(new URL("../src/bin.ts", import.meta.url))
+
+const runBin = Effect.fnUntraced(function*(cwd: string, args: ReadonlyArray<string> = []) {
+  const handle = yield* ChildProcess.make("node", [binPath, ...args], { cwd })
+  return yield* Effect.all({
+    exitCode: handle.exitCode,
+    stdout: Stream.mkString(Stream.decodeText(handle.stdout)),
+    stderr: Stream.mkString(Stream.decodeText(handle.stderr))
+  }, { concurrency: "unbounded" })
+})
 
 /** Writes `files` (relative path to contents) to a fresh scratch directory, removed with the scope. */
 const project = Effect.fnUntraced(function*(files: Readonly<Record<string, string>>) {
@@ -132,6 +141,65 @@ const mtime = Effect.fnUntraced(function*(file: string) {
 })
 
 describe("graphqlgen CLI", () => {
+  it.effect("a missing schema is a generator filesystem failure and exits 1", () =>
+    Effect.gen(function*() {
+      const p = yield* baseProject(
+        { "src/a.graphql": "query A { viewer { id } }" },
+        { ...config, schema: "./missing.graphql" }
+      )
+
+      const result = yield* runCli(["--config", p.configPath])
+      assert.strictEqual(result.exitCode, 1, result.output)
+      assert.include(result.stderr, "missing.graphql")
+      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+      assert.isFalse(yield* exists(p.file("missing.graphql.ts")))
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
+  it.effect("a scalar mapping for a type absent from the schema exits 2 naming the key", () =>
+    Effect.gen(function*() {
+      const p = yield* baseProject(
+        { "src/a.graphql": "query A { viewer { id } }" },
+        { ...config, scalars: { Missing: "./scalars.ts#Missing" } }
+      )
+
+      const result = yield* runCli(["--config", p.configPath])
+      assert.strictEqual(result.exitCode, 2, result.output)
+      assert.include(result.stderr, "scalars.Missing")
+      assert.include(result.stderr, "the schema has no type named \"Missing\"")
+      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+      assert.isFalse(yield* exists(p.file("schema.graphql.ts")))
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
+  it.effect("a config without a default export exits 2 with export guidance", () =>
+    Effect.gen(function*() {
+      const p = yield* baseProject({
+        "src/a.graphql": "query A { viewer { id } }",
+        "graphql.config.ts": "export const config = {}"
+      })
+
+      const result = yield* runCli(["--config", p.configPath])
+      assert.strictEqual(result.exitCode, 2, result.output)
+      assert.include(result.stderr, "no default export")
+      assert.include(result.stderr, "export default defineConfig")
+      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+      assert.isFalse(yield* exists(p.file("schema.graphql.ts")))
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
+  it.effect("bin.ts explains why a TypeScript config under node_modules cannot load and exits 2", () =>
+    Effect.gen(function*() {
+      const p = yield* baseProject({
+        "src/a.graphql": "query A { viewer { id } }",
+        "node_modules/settings/graphql.config.ts": configSource(config)
+      })
+
+      const result = yield* runBin(p.dir, ["--config", p.file("node_modules/settings/graphql.config.ts")])
+      assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(2), result.stderr)
+      assert.include(result.stderr, "ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING")
+      assert.include(result.stderr, "Move the config out of node_modules")
+      assert.include(result.stderr, "Bun or Deno")
+      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
   it.effect("a clean run writes the generated files and exits 0; a second run writes nothing", () =>
     Effect.gen(function*() {
       const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n    name\n  }\n}\n" })
@@ -289,14 +357,26 @@ describe("graphqlgen CLI", () => {
     Effect.gen(function*() {
       const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n" })
 
-      const handle = yield* ChildProcess.make("node", [binPath], { cwd: p.dir })
-      const result = yield* Effect.all({
-        exitCode: handle.exitCode,
-        stdout: Stream.mkString(Stream.decodeText(handle.stdout)),
-        stderr: Stream.mkString(Stream.decodeText(handle.stderr))
-      }, { concurrency: "unbounded" })
+      const result = yield* runBin(p.dir)
 
       assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(0), result.stderr)
       assert.include(yield* read(p.file("src/a.graphql.ts")), header("a.graphql"))
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
+  it.effect("bin.ts explains non-erasable TypeScript config syntax and exits 2", () =>
+    Effect.gen(function*() {
+      const p = yield* baseProject({
+        "src/a.graphql": "query A { viewer { id } }",
+        "graphql.config.ts": `enum Mode { Default }
+export default ${JSON.stringify(config)}
+`
+      })
+
+      const result = yield* runBin(p.dir)
+      assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(2), result.stderr)
+      assert.include(result.stderr, "graphql.config.ts")
+      assert.include(result.stderr, "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX")
+      assert.include(result.stderr, "enums, namespaces or parameter properties")
+      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 })
