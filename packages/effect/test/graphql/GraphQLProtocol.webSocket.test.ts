@@ -73,6 +73,49 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       assert.instanceOf(yield* Fiber.join(fiber), TransportError)
     }))
 
+  it.effect("a close while connectionParams is pending fails the waiting operation", () =>
+    Effect.gen(function*() {
+      const server = yield* wsServer
+      const protocol = yield* makeProtocol(server, { connectionParams: Effect.never })
+      const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+      const connection = yield* Queue.take(server.connections)
+      yield* connection.close(1006)
+      yield* TestClock.adjust("1 minute")
+      assert.isDefined(fiber.pollUnsafe())
+      assert.strictEqual((yield* Fiber.join(fiber)).closeCode, 1006)
+    }))
+
+  for (const invalid of [{ type: "not-a-graphql-message" }, { type: "next", payload: event("a") }]) {
+    it.effect(`an invalid message ${JSON.stringify(invalid)} closes the connection with 4400`, () =>
+      Effect.gen(function*() {
+        const server = yield* wsServer
+        const protocol = yield* makeProtocol(server)
+        const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+        const { connection } = yield* server.accept
+        yield* Queue.take(connection.received)
+        yield* connection.send(invalid)
+        yield* TestClock.adjust("1 second")
+        assert.isDefined(fiber.pollUnsafe())
+        const error = yield* Fiber.join(fiber)
+        assert.strictEqual(error.closeCode, 4400)
+        assert.isFalse(error.isRetryable)
+        assert.strictEqual(yield* Deferred.await(connection.closed), 4400)
+      }))
+  }
+
+  it.effect("a server pong is a valid message", () =>
+    Effect.gen(function*() {
+      const server = yield* wsServer
+      const protocol = yield* makeProtocol(server)
+      const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runCollect, Effect.forkChild)
+      const { connection } = yield* server.accept
+      const subscribe = yield* Queue.take(connection.received)
+      yield* connection.send({ type: "pong" })
+      yield* connection.send({ id: subscribe.id, type: "next", payload: event("a") })
+      yield* connection.send({ id: subscribe.id, type: "complete" })
+      assert.deepStrictEqual(yield* Fiber.join(fiber), [event("a")])
+    }))
+
   it.effect("answers ping with pong, pings every keepAlive and treats a missed frame as a retryable close", () =>
     Effect.gen(function*() {
       const server = yield* wsServer
@@ -92,7 +135,8 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       assert.isTrue(error.isRetryable)
     }))
 
-  for (const [code, retryable] of [[4401, false], [4406, false], [1006, true], [4500, true]] as const) {
+  // 1002 is how a server that does not speak graphql-transport-ws refuses it.
+  for (const [code, retryable] of [[1002, false], [4401, false], [4406, false], [1006, true], [4500, true]] as const) {
     it.effect(`close code ${code} is a ${retryable ? "retryable" : "fatal"} TransportError`, () =>
       Effect.gen(function*() {
         const server = yield* wsServer
