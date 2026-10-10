@@ -7,7 +7,7 @@
  * codec (`DateTime`) that applies to inputs and results alike.
  */
 import { assert } from "@effect/vitest"
-import { Effect, Layer, Ref, Schema, Stream } from "effect"
+import { Deferred, Effect, Layer, Queue, Ref, Schema, Stream } from "effect"
 import { GraphQL, GraphQLGroup } from "effect/graphql"
 import { GraphQLClientError } from "effect/graphql/GraphQLClientError"
 import type { TransportError } from "effect/graphql/GraphQLClientError"
@@ -16,6 +16,7 @@ import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as Socket from "effect/socket/Socket"
 
 // -----------------------------------------------------------------------------
 // Stand-in for generated output
@@ -140,6 +141,99 @@ export const graphqlResponse = (body: unknown, init?: { status?: number; content
 export const layerHttp = (
   handler: (request: HttpClientRequest.HttpClientRequest, bodyText: string | undefined) => Response
 ) => GraphQLProtocol.layerHttp({ url: "http://localhost/graphql" }).pipe(Layer.provide(httpClientLayer(handler)))
+
+/**
+ * A graphql-ws message as it goes over the wire.
+ */
+export interface WsMessage {
+  readonly type: string
+  readonly id?: string | undefined
+  readonly payload?: unknown
+}
+
+/**
+ * The server end of one in-memory WebSocket opened by the transport.
+ */
+export interface WsConnection {
+  readonly url: string
+  readonly options: Socket.WebSocketConstructorOptions | undefined
+  /** Every frame the client sent, parsed. */
+  readonly received: Queue.Queue<WsMessage>
+  /** The code the client closed with, once it does. */
+  readonly closed: Deferred.Deferred<number>
+  readonly send: (message: WsMessage) => Effect.Effect<void>
+  readonly close: (code: number, reason?: string) => Effect.Effect<void>
+}
+
+/**
+ * A `Socket.WebSocketConstructor` whose sockets are in-memory queue pairs.
+ * Each socket the transport opens shows up on `connections`, already open,
+ * for the test to script the server side.
+ */
+export const wsServer = Effect.gen(function*() {
+  const connections = yield* Queue.unbounded<WsConnection>()
+  const layer = Layer.succeed(
+    Socket.WebSocketConstructor,
+    (url, options) => {
+      const inbox = Effect.runSync(Queue.unbounded<WsMessage>())
+      const closedWith = Effect.runSync(Deferred.make<number>())
+      let listeners: Array<{
+        readonly type: string
+        readonly listener: (event: Socket.WebSocketEvent) => void
+        readonly once: boolean
+      }> = []
+      const dispatch = (type: string, event: Socket.WebSocketEvent) => {
+        for (const entry of listeners.filter((entry) => entry.type === type)) {
+          if (entry.once) listeners = listeners.filter((other) => other !== entry)
+          entry.listener(event)
+        }
+      }
+      const ws = {
+        readyState: 1,
+        addEventListener(type, listener, options) {
+          listeners.push({ type, listener, once: options?.once === true })
+        },
+        removeEventListener(type, listener) {
+          listeners = listeners.filter((entry) => entry.type !== type || entry.listener !== listener)
+        },
+        send(data) {
+          Queue.offerUnsafe(inbox, JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data)))
+        },
+        close(code = 1005, reason) {
+          if (ws.readyState >= 2) return
+          ws.readyState = 3
+          Deferred.doneUnsafe(closedWith, Effect.succeed(code))
+          dispatch("close", { code, reason: reason ?? "" })
+        }
+      } satisfies Socket.WebSocketLike & { readyState: number }
+      Queue.offerUnsafe(connections, {
+        url,
+        options,
+        received: inbox,
+        closed: closedWith,
+        send: (message) => Effect.sync(() => dispatch("message", { data: JSON.stringify(message) })),
+        close: (code, reason) =>
+          Effect.sync(() => {
+            if (ws.readyState >= 2) return
+            ws.readyState = 3
+            dispatch("close", { code, reason: reason ?? "" })
+          })
+      })
+      return ws
+    }
+  )
+  /**
+   * Takes the next connection, reads its `connection_init` and acknowledges it.
+   */
+  const accept = Effect.gen(function*() {
+    const connection = yield* Queue.take(connections)
+    const init = yield* Queue.take(connection.received)
+    assert.strictEqual(init.type, "connection_init")
+    yield* connection.send({ type: "connection_ack" })
+    return { connection, init }
+  })
+  return { layer, connections, accept }
+})
 
 // -----------------------------------------------------------------------------
 // Assertions
