@@ -1917,6 +1917,7 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
             fileIdPrefixes: ["file-"],
             strictJsonSchema: false,
+            reasoningModel: true,
             temperature: 0.5
           })),
           Effect.provide(layer)
@@ -1928,10 +1929,90 @@ describe("OpenAiLanguageModel", () => {
         const requestBody = yield* getRequestBody(capturedRequest)
         assert.strictEqual(requestBody.fileIdPrefixes, undefined)
         assert.strictEqual(requestBody.strictJsonSchema, undefined)
+        assert.strictEqual(requestBody.reasoningModel, undefined)
         assert.strictEqual(requestBody.temperature, 0.5)
       }))
   })
+
+  describe("reasoning capabilities", () => {
+    for (const { name, model, config, role } of reasoningCapabilityCases) {
+      it.effect(name, () =>
+        Effect.gen(function*() {
+          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) => {
+                capturedRequest = request
+                return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+              })
+            ))
+          )
+
+          yield* LanguageModel.generateText({
+            prompt: Prompt.make([
+              { role: "system", content: "You are a helpful assistant" },
+              { role: "user", content: "Hello" }
+            ])
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model(model, config)),
+            Effect.provide(layer)
+          )
+
+          assert.isDefined(capturedRequest)
+          if (capturedRequest === undefined) return
+
+          const requestBody = yield* getRequestBody(capturedRequest)
+          assert.strictEqual(requestBody.messages[0].role, role)
+        }))
+    }
+  })
 })
+
+const reasoningCapabilityCases: ReadonlyArray<{
+  readonly name: string
+  readonly model: string
+  readonly config: Parameters<typeof OpenAiLanguageModel.model>[1]
+  readonly role: "system" | "developer"
+}> = [
+  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini"].map((model) => ({
+    name: `treats ${model} as a reasoning model`,
+    model,
+    config: { store: false },
+    role: "developer" as const
+  })),
+  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id", "custom-model"].map((model) => ({
+    name: `treats ${model} as a non-reasoning model`,
+    model,
+    config: { store: false },
+    role: "system" as const
+  })),
+  {
+    name: "infers a reasoning model from reasoning config",
+    model: "custom-model",
+    config: { store: false, reasoning: { effort: "low" } },
+    role: "developer"
+  },
+  {
+    name: "treats an unrecognized model as reasoning when reasoningModel is true",
+    model: "custom-model",
+    config: { store: false, reasoningModel: true },
+    role: "developer"
+  },
+  {
+    name: "treats a recognized model as non-reasoning when reasoningModel is false",
+    model: "gpt-5.4",
+    config: { store: false, reasoningModel: false },
+    role: "system"
+  },
+  {
+    name: "prefers reasoningModel false over reasoning config",
+    model: "gpt-5.4",
+    config: { store: false, reasoningModel: false, reasoning: { effort: "low" } },
+    role: "system"
+  }
+]
 
 const TestTool = Tool.make("TestTool", {
   description: "A test tool",
