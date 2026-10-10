@@ -5,9 +5,7 @@
  * The emitter is pure: paths and import specifiers are worked out by the
  * caller and passed in. Output uses one fixed style with no formatter.
  *
- * Stage 4 covers selections on object types only. Selections on interfaces
- * and unions, `@skip` / `@include`, `@oneOf` input objects, recursive input
- * objects and subscriptions are reported as located errors and nothing is
+ * Recursive input objects are reported as located errors and nothing is
  * emitted.
  *
  * @internal
@@ -231,11 +229,13 @@ interface FragmentEntry {
  * A selection together with where it came from. `via` is undefined when the
  * selection is written in the file being emitted; otherwise it is the spread
  * in that file through which a fragment from another file was written out
- * inline.
+ * inline. `conditional` is set when the selection, or a fragment it came
+ * through, has a `@skip` / `@include` with a variable condition.
  */
 interface Sourced<S extends Ast.Selection> {
   readonly selection: S
   readonly via: Ast.FragmentSpread | undefined
+  readonly conditional: boolean
 }
 
 /** A selection after inline fragments are flattened into their parent. */
@@ -251,7 +251,53 @@ type Item =
   }
 
 const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Selection>> =>
-  selections.map((selection) => ({ selection, via: undefined }))
+  selections.map((selection) => ({ selection, via: undefined, conditional: false }))
+
+/**
+ * How `@skip` / `@include` decide a selection (EFF-1832 point 11): a literal
+ * condition is folded, so the selection is dropped or the directive ignored,
+ * and a variable condition makes it conditional.
+ */
+const inclusion = (directives: ReadonlyArray<Ast.Directive>): "exclude" | "include" | "conditional" => {
+  let result: "include" | "conditional" = "include"
+  for (const directive of directives) {
+    const name = directive.name.value
+    if (name !== "skip" && name !== "include") continue
+    const value = directive.arguments.find((argument) => argument.name.value === "if")?.value
+    if (value?._tag === "BooleanValue") {
+      if (value.value === (name === "skip")) return "exclude"
+    } else {
+      result = "conditional"
+    }
+  }
+  return result
+}
+
+const isAbstract = (type: SchemaModel.NamedType): type is SchemaModel.InterfaceType | SchemaModel.UnionType =>
+  type._tag === "InterfaceType" || type._tag === "UnionType"
+
+/** The name a type takes in the shared module's `Typename` namespace. */
+const typenameMember = (name: string): string => unbindable(name) ? `${name}_` : name
+
+/** `prefix` followed by `"A" | "B"`, wrapped onto `|` lines when it doesn't fit in 120 columns. */
+const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: string): string => {
+  const literals = names.map((name) => JSON.stringify(name))
+  const single = `${prefix}${literals.join(" | ")}`
+  if (single.length <= 120) return single
+  const lines: Array<string> = []
+  let line = ""
+  for (const literal of literals) {
+    const next = line === "" ? `${indent}  | ${literal}` : `${line} | ${literal}`
+    if (next.length > 120 && line !== "") {
+      lines.push(line)
+      line = `${indent}  | ${literal}`
+    } else {
+      line = next
+    }
+  }
+  lines.push(line)
+  return `${prefix.trimEnd()}\n${lines.join("\n")}`
+}
 
 interface FileContext {
   readonly file: DocumentFile
@@ -272,6 +318,8 @@ class Emitter {
   readonly fragments = new Map<string, FragmentEntry>()
   /** Named types the per-file modules reference through `Shared`. */
   readonly reached = new Set<string>()
+  /** Interfaces and unions the per-file modules reference through `Shared.Typename`. */
+  readonly reachedAbstract = new Set<string>()
   readonly fragmentKeyCache = new Map<string, ReadonlyArray<string>>()
   sharedNames: ReadonlyArray<string> = []
 
@@ -295,18 +343,19 @@ class Emitter {
     return type
   }
 
-  objectType(name: string): SchemaModel.ObjectType {
-    const type = this.type(name)
-    if (type._tag !== "ObjectType") throw new Error(`@effect/graphql-generator: ${name} is not an object type`)
-    return type
-  }
-
-  fieldDefinition(parent: SchemaModel.ObjectType, name: string): SchemaModel.Field {
-    const field = parent.fields.find((field) => field.name === name)
+  fieldDefinition(parent: SchemaModel.NamedType, name: string): SchemaModel.Field {
+    const fields = parent._tag === "ObjectType" || parent._tag === "InterfaceType" ? parent.fields : []
+    const field = fields.find((field) => field.name === name)
     if (field === undefined) {
       throw new Error(`@effect/graphql-generator: unknown field ${parent.name}.${name} after validation`)
     }
     return field
+  }
+
+  /** The object types a type stands for: itself, or an abstract type's possible types. */
+  possibleTypes(name: string): ReadonlyArray<string> {
+    const type = this.type(name)
+    return isAbstract(type) ? type.possibleTypes : [name]
   }
 
   rootType(operation: Ast.OperationDefinition): string {
@@ -342,26 +391,9 @@ class Emitter {
           }
         }
         if (definition._tag === "OperationDefinition") {
-          if (definition.operation === "subscription") {
-            report(definition.loc.start, `Subscription "${name?.value}" is not supported yet.`)
-            continue
-          }
           for (const variable of definition.variableDefinitions) {
             this.checkVariable(variable, report)
           }
-          this.checkSelections(this.objectType(this.rootType(definition)), definition.selectionSet, report)
-        } else {
-          const condition = this.type(definition.typeCondition.name.value)
-          if (condition._tag !== "ObjectType") {
-            report(
-              definition.typeCondition.loc.start,
-              `Fragment "${definition.name.value}" is on ${
-                kindName(condition)
-              } "${condition.name}"; interfaces and unions are not supported yet.`
-            )
-            continue
-          }
-          this.checkSelections(condition, definition.selectionSet, report)
         }
       }
     })
@@ -471,9 +503,6 @@ class Emitter {
     const visit = (name: string): string | undefined => {
       const type = this.schema.types.get(name)
       if (type === undefined || type._tag !== "InputObjectType") return undefined
-      if (type.oneOf) {
-        return `Variable "$${variable.variable.name.value}" uses the @oneOf input object "${name}"; @oneOf input objects are not supported yet.`
-      }
       if (visiting.has(name)) {
         return `Variable "$${variable.variable.name.value}" uses the recursive input object "${name}"; recursive input objects are not supported yet.`
       }
@@ -491,66 +520,76 @@ class Emitter {
     if (problem !== undefined) report(variable.loc.start, problem)
   }
 
-  checkSelections(
-    parent: SchemaModel.ObjectType,
-    selectionSet: Ast.SelectionSet,
-    report: (offset: number, message: string) => void
-  ): void {
-    for (const selection of selectionSet.selections) {
-      for (const directive of selection.directives) {
-        if (directive.name.value === "skip" || directive.name.value === "include") {
-          report(directive.loc.start, `The @${directive.name.value} directive is not supported yet.`)
-        }
-      }
-      switch (selection._tag) {
-        case "Field": {
-          if (selection.name.value === "__typename" || selection.selectionSet === undefined) break
-          const field = this.fieldDefinition(parent, selection.name.value)
-          const type = this.type(SchemaModel.namedTypeOf(field.type))
-          if (type._tag === "ObjectType") {
-            this.checkSelections(type, selection.selectionSet, report)
-          } else {
-            report(
-              selection.loc.start,
-              `Field "${selection.name.value}" selects from ${
-                kindName(type)
-              } "${type.name}"; interfaces and unions are not supported yet.`
-            )
-          }
-          break
-        }
-        case "InlineFragment": {
-          const condition = selection.typeCondition?.name.value
-          if (condition !== undefined && condition !== parent.name) {
-            report(
-              selection.loc.start,
-              `Inline fragments on "${condition}" inside "${parent.name}" are not supported yet.`
-            )
-            break
-          }
-          this.checkSelections(parent, selection.selectionSet, report)
-          break
-        }
-        case "FragmentSpread":
-          break
-      }
-    }
-  }
-
   // ---------------------------------------------------------------------------
   // Result selections
   // ---------------------------------------------------------------------------
 
-  flatten(selections: ReadonlyArray<Sourced<Ast.Selection>>): Array<FlatSelection> {
+  /**
+   * Whether a fragment on `condition` applies to `target`. A target that is an
+   * object type is one concrete type. A target that is an interface or union
+   * stands for the possible types no fragment names, so only a fragment
+   * covering every one of its possible types applies.
+   */
+  applies(condition: string | undefined, target: string): boolean {
+    if (condition === undefined || condition === target) return true
+    const type = this.type(condition)
+    if (!isAbstract(type)) return false
+    const covered = new Set(type.possibleTypes)
+    return this.possibleTypes(target).every((name) => covered.has(name))
+  }
+
+  /**
+   * Flattens a selection set for `target`: inline fragments and spreads that
+   * apply to it are written into their parent and the rest are dropped,
+   * excluded selections are dropped, and variable conditions are carried down.
+   * A spread of a fragment on exactly the object type `target` is kept, unless
+   * it is conditional, since `...Frag.fields` can't make its keys optional.
+   */
+  narrow(file: DocumentFile, selections: ReadonlyArray<Sourced<Ast.Selection>>, target: string): Array<FlatSelection> {
     const out: Array<FlatSelection> = []
-    for (const { selection, via } of selections) {
-      if (selection._tag === "InlineFragment") {
-        out.push(...this.flatten(selection.selectionSet.selections.map((selection) => ({ selection, via }))))
-      } else {
-        out.push({ selection, via })
+    for (const { conditional: outer, selection, via } of selections) {
+      const included = inclusion(selection.directives)
+      if (included === "exclude") continue
+      const conditional = outer || included === "conditional"
+      switch (selection._tag) {
+        case "Field":
+          out.push({ selection, via, conditional })
+          break
+        case "InlineFragment":
+          if (this.applies(selection.typeCondition?.name.value, target)) {
+            out.push(...this.narrow(
+              file,
+              selection.selectionSet.selections.map((selection) => ({ selection, via, conditional })),
+              target
+            ))
+          }
+          break
+        case "FragmentSpread": {
+          const fragment = this.fragments.get(selection.name.value)!
+          const condition = fragment.definition.typeCondition.name.value
+          if (condition === target && this.type(target)._tag === "ObjectType" && !conditional) {
+            out.push({ selection, via, conditional })
+          } else if (this.applies(condition, target)) {
+            out.push(...this.narrow(file, this.expand(file, fragment, selection, via, conditional), target))
+          }
+          break
+        }
       }
     }
     return out
+  }
+
+  /** A fragment's selections, written out inline through `spread`. */
+  expand(
+    file: DocumentFile,
+    fragment: FragmentEntry,
+    spread: Ast.FragmentSpread,
+    via: Ast.FragmentSpread | undefined,
+    conditional: boolean
+  ): Array<Sourced<Ast.Selection>> {
+    // A local fragment's selections are written in this file; another file's come in through this spread.
+    const through = fragment.file === file ? undefined : via ?? spread
+    return fragment.definition.selectionSet.selections.map((selection) => ({ selection, via: through, conditional }))
   }
 
   group(flat: ReadonlyArray<FlatSelection>): Array<Item> {
@@ -562,7 +601,7 @@ class Emitter {
       if (selection._tag === "Field") {
         const key = (selection.alias ?? selection.name).value
         const existing = fields.get(key)
-        const sourced = { selection, via: entry.via }
+        const sourced = { selection, via: entry.via, conditional: entry.conditional }
         if (existing === undefined) {
           const merged = [sourced]
           fields.set(key, merged)
@@ -584,12 +623,18 @@ class Emitter {
     return entry.definition
   }
 
-  /** Every response key a fragment contributes, through nested spreads. */
+  /** Every response key a fragment on an object type contributes, through nested spreads. */
   fragmentKeys(name: string): ReadonlyArray<string> {
     const cached = this.fragmentKeyCache.get(name)
     if (cached !== undefined) return cached
+    const entry = this.fragments.get(name)!
     const keys = new Set<string>()
-    for (const item of this.group(this.flatten(written(this.fragmentDefinition(name).selectionSet.selections)))) {
+    const flat = this.narrow(
+      entry.file,
+      written(entry.definition.selectionSet.selections),
+      entry.definition.typeCondition.name.value
+    )
+    for (const item of this.group(flat)) {
       if (item._tag === "Field") keys.add(item.key)
       else for (const key of this.fragmentKeys(item.name)) keys.add(key)
     }
@@ -599,17 +644,22 @@ class Emitter {
   }
 
   /**
-   * Groups a selection set, writing out inline every spread whose keys
-   * overlap a sibling's (EFF-1831 point 3). The remaining spreads become
-   * `...Frag.fields`.
+   * Groups a selection set for `target`, writing out inline every spread
+   * whose keys overlap a sibling's or one of `reserved` (EFF-1831 point 3).
+   * The remaining spreads become `...Frag.fields`.
    */
-  resolveItems(file: DocumentFile, selections: ReadonlyArray<Sourced<Ast.Selection>>): Array<Item> {
-    let flat = this.flatten(selections)
+  resolveItems(
+    file: DocumentFile,
+    selections: ReadonlyArray<Sourced<Ast.Selection>>,
+    target: string,
+    reserved: ReadonlyArray<string> = []
+  ): Array<Item> {
+    let flat = this.narrow(file, selections, target)
     for (;;) {
       const items = this.group(flat)
       const overlapping = items.find((item) => {
         if (item._tag !== "Spread") return false
-        const others = new Set<string>()
+        const others = new Set<string>(reserved)
         for (const other of items) {
           if (other === item) continue
           if (other._tag === "Field") others.add(other.key)
@@ -622,14 +672,15 @@ class Emitter {
       flat = flat.flatMap((entry) => {
         const selection = entry.selection
         if (selection._tag !== "FragmentSpread" || selection.name.value !== overlapping.name) return [entry]
-        // A local fragment's selections are written in this file; another file's come in through this spread.
-        const via = fragment.file === file ? undefined : entry.via ?? selection
-        return this.flatten(fragment.definition.selectionSet.selections.map((selection) => ({ selection, via })))
+        return this.narrow(file, this.expand(file, fragment, selection, entry.via, entry.conditional), target)
       })
     }
   }
 
-  fragmentRef(ctx: FileContext, item: Extract<Item, { readonly _tag: "Spread" }>): string {
+  fragmentRef(
+    ctx: FileContext,
+    item: { readonly name: string; readonly spread: Ast.FragmentSpread; readonly via: Ast.FragmentSpread | undefined }
+  ): string {
     const name = item.name
     const entry = this.fragments.get(name)!
     if (entry.file === ctx.file) {
@@ -652,59 +703,203 @@ class Emitter {
     return `Shared.${name}`
   }
 
+  typename(ctx: FileContext, name: string): string {
+    ctx.usesShared = true
+    this.reachedAbstract.add(name)
+    return `Shared.Typename.${typenameMember(name)}`
+  }
+
   /**
-   * The Schema for a selection set on an object type, starting on a line
-   * indented by `indent`. A selection that is only one spread references the
-   * fragment unless `alwaysStruct` is set.
+   * The Schema for a selection set on `parentName`, starting on a line
+   * indented by `indent`. A selection that is only one spread of a fragment
+   * on exactly that type references the fragment unless `alwaysStruct` is
+   * set.
    */
   selection(
     ctx: FileContext,
-    parent: SchemaModel.ObjectType,
+    parentName: string,
     selections: ReadonlyArray<Sourced<Ast.Selection>>,
     indent: string,
     alwaysStruct = false
   ): string {
-    const items = this.resolveItems(ctx.file, selections)
+    const parent = this.type(parentName)
+    if (isAbstract(parent)) {
+      const only = alwaysStruct ? undefined : this.onlySpread(selections, parentName)
+      return only !== undefined ? this.fragmentRef(ctx, only) : this.abstractSelection(ctx, parent, selections, indent)
+    }
+    const items = this.resolveItems(ctx.file, selections, parentName)
     const only = items[0]
     if (!alwaysStruct && items.length === 1 && only!._tag === "Spread") {
       return this.fragmentRef(ctx, only!)
     }
     ctx.usesSchema = true
+    return this.structOf(ctx, parent, items, indent, `Schema.Literal(${JSON.stringify(parent.name)})`, false)
+  }
+
+  /** The one spread a selection set consists of, when it is an unconditional spread of a fragment on `parentName`. */
+  onlySpread(
+    selections: ReadonlyArray<Sourced<Ast.Selection>>,
+    parentName: string
+  ):
+    | { readonly name: string; readonly spread: Ast.FragmentSpread; readonly via: Ast.FragmentSpread | undefined }
+    | undefined
+  {
+    const kept = selections.filter(({ selection }) => inclusion(selection.directives) !== "exclude")
+    const only = kept[0]
+    if (kept.length !== 1 || only!.selection._tag !== "FragmentSpread") return undefined
+    const spread = only!.selection
+    if (only!.conditional || inclusion(spread.directives) !== "include") return undefined
+    if (this.fragmentDefinition(spread.name.value).typeCondition.name.value !== parentName) return undefined
+    return { name: spread.name.value, spread, via: only!.via }
+  }
+
+  /**
+   * The object types a selection on an abstract type names through fragments
+   * that don't cover all of its possible types, in order of first mention.
+   * Each gets its own member of the union.
+   */
+  selectedTypes(
+    parent: SchemaModel.InterfaceType | SchemaModel.UnionType,
+    selections: ReadonlyArray<Sourced<Ast.Selection>>
+  ): Array<string> {
+    const all = parent.possibleTypes
+    const selected: Array<string> = []
+    const walk = (selections: ReadonlyArray<Ast.Selection>, scope: ReadonlyArray<string>): void => {
+      for (const selection of selections) {
+        if (selection._tag === "Field" || inclusion(selection.directives) === "exclude") continue
+        const definition = selection._tag === "FragmentSpread"
+          ? this.fragmentDefinition(selection.name.value)
+          : selection
+        const condition = definition.typeCondition?.name.value
+        let next = scope
+        if (condition !== undefined) {
+          const inScope = new Set(scope)
+          next = this.possibleTypes(condition).filter((name) => inScope.has(name))
+          if (next.length < all.length) {
+            for (const name of next) if (!selected.includes(name)) selected.push(name)
+          }
+        }
+        walk(definition.selectionSet.selections, next)
+      }
+    }
+    walk(selections.map(({ selection }) => selection), all)
+    return selected
+  }
+
+  /**
+   * A selection on an interface or union (EFF-1831 point 4): one struct per
+   * selected object type with `__typename: Schema.Literal("T")`, and one for
+   * every other possible type with `GraphQL.otherTypename`.
+   */
+  abstractSelection(
+    ctx: FileContext,
+    parent: SchemaModel.InterfaceType | SchemaModel.UnionType,
+    selections: ReadonlyArray<Sourced<Ast.Selection>>,
+    indent: string
+  ): string {
+    ctx.usesSchema = true
+    ctx.usesGraphQL = true
+    const selected = this.selectedTypes(parent, selections)
+    const others = `GraphQL.otherTypename<${this.typename(ctx, parent.name)}>()([${
+      selected.map((name) => JSON.stringify(name)).join(", ")
+    }])`
+    const reserved = ["__typename"]
+    if (selected.length === 0) {
+      return this.structOf(
+        ctx,
+        parent,
+        this.resolveItems(ctx.file, selections, parent.name, reserved),
+        indent,
+        others,
+        true
+      )
+    }
     const memberIndent = `${indent}  `
-    const members = items.map((item) =>
-      item._tag === "Spread"
-        ? `${memberIndent}...${this.fragmentRef(ctx, item)}.fields`
-        : this.resultMember(ctx, parent, item.key, item.fields, memberIndent)
+    const members = selected.map((name) =>
+      `${memberIndent}${
+        this.structOf(
+          ctx,
+          this.type(name),
+          this.resolveItems(ctx.file, selections, name, reserved),
+          memberIndent,
+          `Schema.Literal(${JSON.stringify(name)})`,
+          true
+        )
+      }`
     )
+    members.push(
+      `${memberIndent}${
+        this.structOf(
+          ctx,
+          parent,
+          this.resolveItems(ctx.file, selections, parent.name, reserved),
+          memberIndent,
+          others,
+          true
+        )
+      }`
+    )
+    return `Schema.Union([\n${members.join(",\n")}\n${indent}])`
+  }
+
+  /**
+   * A struct for `items` on `parent`. `typename` is the Schema for a
+   * selected `__typename`; with `discriminated` set, `__typename` comes first
+   * whether or not it was selected.
+   */
+  structOf(
+    ctx: FileContext,
+    parent: SchemaModel.NamedType,
+    items: ReadonlyArray<Item>,
+    indent: string,
+    typename: string,
+    discriminated: boolean
+  ): string {
+    ctx.usesSchema = true
+    const memberIndent = `${indent}  `
+    const members: Array<string> = discriminated ? [`${memberIndent}__typename: ${typename}`] : []
+    for (const item of items) {
+      if (item._tag === "Spread") {
+        members.push(`${memberIndent}...${this.fragmentRef(ctx, item)}.fields`)
+      } else if (!(discriminated && item.key === "__typename")) {
+        members.push(this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename))
+      }
+    }
     return struct(members, indent)
   }
 
   resultMember(
     ctx: FileContext,
-    parent: SchemaModel.ObjectType,
+    parent: SchemaModel.NamedType,
     key: string,
     fields: ReadonlyArray<Sourced<Ast.Field>>,
-    indent: string
+    indent: string,
+    typename: string
   ): string {
     const name = fields[0]!.selection.name.value
+    const optional = (expression: string): string =>
+      fields.every((field) => field.conditional) ? `Schema.optionalKey(${expression})` : expression
     if (name === "__typename") {
       ctx.usesSchema = true
-      return `${indent}${propertyKey(key)}: Schema.Literal(${JSON.stringify(parent.name)})`
+      return `${indent}${propertyKey(key)}: ${optional(typename)}`
     }
     const definition = this.fieldDefinition(parent, name)
-    const type = this.type(SchemaModel.namedTypeOf(definition.type))
-    const inner = type._tag === "ObjectType"
+    const typeName = SchemaModel.namedTypeOf(definition.type)
+    const type = this.type(typeName)
+    const inner = type._tag === "ObjectType" || isAbstract(type)
       ? this.selection(
         ctx,
-        type,
+        typeName,
         fields.flatMap(({ selection: field, via }) =>
-          (field.selectionSet?.selections ?? []).map((selection) => ({ selection, via }))
+          (field.selectionSet?.selections ?? []).map((selection) => ({ selection, via, conditional: false }))
         ),
         indent
       )
       : this.resultLeaf(ctx, type)
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${this.wrapResult(ctx, definition.type, inner)}`
+    const expression = optional(this.wrapResult(ctx, definition.type, inner))
+    if (expression.startsWith("Schema.optionalKey(")) ctx.usesSchema = true
+    return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`
   }
 
   resultLeaf(ctx: FileContext, type: SchemaModel.NamedType): string {
@@ -861,19 +1056,28 @@ class Emitter {
     }
   }
 
+  /**
+   * A fragment on an object type is an Opaque class; one on an interface or
+   * union is a `Schema.Union` and a type alias (EFF-1831 point 5).
+   */
   emitFragment(ctx: FileContext, definition: Ast.FragmentDefinition): string {
     const name = definition.name.value
-    const type = this.objectType(definition.typeCondition.name.value)
+    const type = this.type(definition.typeCondition.name.value)
     ctx.usesSchema = true
     const description = definition.description?.value ?? type.description
     const doc = docLines([`\`fragment ${name} on ${type.name}\``], descriptionLines(description))
-    const body = this.selection(ctx, type, written(definition.selectionSet.selections), "", true)
+    const selections = written(definition.selectionSet.selections)
+    if (isAbstract(type)) {
+      const body = this.abstractSelection(ctx, type, selections, "")
+      return `${jsdoc(doc, "")}export const ${name} = ${body}\nexport type ${name} = typeof ${name}.Type`
+    }
+    const body = this.selection(ctx, type.name, selections, "", true)
     return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
   }
 
   emitOperation(ctx: FileContext, definition: Ast.OperationDefinition): string {
     const name = definition.name!.value
-    const root = this.objectType(this.rootType(definition))
+    const root = this.rootType(definition)
     ctx.usesGraphQL = true
     const doc = docLines(
       [`\`${definition.operation} ${name}\``],
@@ -907,7 +1111,8 @@ class Emitter {
 
   /**
    * The operation printed compactly, followed by every fragment it uses in
-   * order of first use (EFF-1831 point 7).
+   * order of first use (EFF-1831 point 7), with `__typename` added to every
+   * selection on an interface or union that doesn't already select it.
    */
   document(operation: Ast.OperationDefinition): string {
     const used: Array<Ast.FragmentDefinition> = []
@@ -926,7 +1131,65 @@ class Emitter {
     }
     collect(operation.selectionSet)
     for (let i = 0; i < used.length; i++) collect(used[i]!.selectionSet)
-    return print({ _tag: "Document", definitions: [operation, ...used], loc: operation.loc })
+    return print({
+      _tag: "Document",
+      definitions: [
+        { ...operation, selectionSet: this.withTypename(operation.selectionSet, this.rootType(operation)) },
+        ...used.map((fragment) => ({
+          ...fragment,
+          selectionSet: this.withTypename(fragment.selectionSet, fragment.typeCondition.name.value)
+        }))
+      ],
+      loc: operation.loc
+    })
+  }
+
+  /**
+   * Adds `__typename` to a selection set on an interface or union. Inline
+   * fragments share their parent's response object, so the one added there
+   * covers them (`inline`).
+   */
+  withTypename(selectionSet: Ast.SelectionSet, parentName: string, inline = false): Ast.SelectionSet {
+    const parent = this.type(parentName)
+    const selections = selectionSet.selections.map((selection): Ast.Selection => {
+      switch (selection._tag) {
+        case "Field": {
+          if (selection.selectionSet === undefined) return selection
+          const definition = this.fieldDefinition(parent, selection.name.value)
+          return {
+            ...selection,
+            selectionSet: this.withTypename(selection.selectionSet, SchemaModel.namedTypeOf(definition.type))
+          }
+        }
+        case "InlineFragment":
+          return {
+            ...selection,
+            selectionSet: this.withTypename(
+              selection.selectionSet,
+              selection.typeCondition?.name.value ?? parentName,
+              true
+            )
+          }
+        case "FragmentSpread":
+          return selection
+      }
+    })
+    const selectsTypename = selections.some((selection) =>
+      selection._tag === "Field" && selection.alias === undefined && selection.name.value === "__typename" &&
+      selection.directives.length === 0
+    )
+    if (inline || !isAbstract(parent) || selectsTypename) return { ...selectionSet, selections }
+    const loc = selectionSet.loc
+    const typename: Ast.Field = {
+      _tag: "Field",
+      alias: undefined,
+      name: { _tag: "Name", value: "__typename", loc },
+      arguments: [],
+      directives: [],
+      selectionSet: undefined,
+      loc
+    }
+    return { ...selectionSet, selections: [typename, ...selections] }
   }
 
   // ---------------------------------------------------------------------------
@@ -1048,6 +1311,23 @@ class Emitter {
     }
     for (const type of inputs) {
       usesSchema = true
+      if (type.oneOf) {
+        const binding = local(type.name)
+        const declaration = oneOfDeclaration(
+          type,
+          binding,
+          binding === type.name ? "export " : "",
+          schema,
+          (ref) => this.input(ref, false, local, schema),
+          (ref) => inputTypeText(ref, local)
+        )
+        blocks.push(
+          `${jsdoc(descriptionLines(type.description), "")}${declaration}${
+            binding === type.name ? "" : `\nexport { ${binding} as ${type.name} }`
+          }`
+        )
+        continue
+      }
       const members = type.fields.map((field) => {
         const doc = docLines(
           descriptionLines(field.description),
@@ -1065,6 +1345,19 @@ class Emitter {
       )
     }
 
+    if (this.reachedAbstract.size > 0) {
+      const members = Array.from(this.reachedAbstract).sort().map((name) => {
+        const type = this.type(name)
+        const doc = `  /** Every possible \`__typename\` of ${kindName(type)} \`${name}\`. */\n`
+        return `${doc}${literalUnion(`  export type ${typenameMember(name)} = `, this.possibleTypes(name), "  ")}`
+      })
+      blocks.push(
+        `/** The possible \`__typename\` values of each interface and union the operations select from. */\n${`export declare namespace Typename {\n${
+          members.join("\n")
+        }\n}`}`
+      )
+    }
+
     const imports: Array<string> = []
     if (usesSchema) imports.push(`import * as ${schema} from "effect/Schema"`)
     for (const [specifier, name] of modules) {
@@ -1076,6 +1369,62 @@ class Emitter {
       contents: `${[header(undefined), ...imports].join("\n")}\n\n${body}\n`
     }
   }
+}
+
+/**
+ * A `@oneOf` input object (EFF-1832 point 12): a `Schema.Union` with one
+ * struct per field, each with that field required and non-null and every
+ * other field `optionalKey(Never)`, so an input with two keys or none fails to
+ * encode. A class can't extend `Opaque` over a union, so it is an Opaque const
+ * with the type written out beside it.
+ */
+const oneOfDeclaration = (
+  type: SchemaModel.InputObjectType,
+  binding: string,
+  exported: string,
+  schema: string,
+  expression: (type: SchemaModel.TypeRef) => string,
+  typeText: (type: SchemaModel.TypeRef) => string
+): string => {
+  const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
+    field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
+  const structs = type.fields.map((selected) => {
+    const members = type.fields.map((field) => {
+      if (field !== selected) return `    ${propertyKey(field.name)}: ${schema}.optionalKey(${schema}.Never)`
+      const doc = docLines(descriptionLines(field.description), deprecatedTag(field.deprecationReason))
+      return `${jsdoc(doc, "    ")}    ${propertyKey(field.name)}: ${expression(required(field))}`
+    })
+    return `  ${struct(members, "  ", schema)}`
+  })
+  const alternatives = type.fields.map((selected) =>
+    `  | { ${
+      type.fields.map((field) =>
+        field === selected
+          ? `readonly ${propertyKey(field.name)}: ${typeText(required(field))}`
+          : `readonly ${propertyKey(field.name)}?: never`
+      ).join("; ")
+    } }`
+  )
+  return `${exported}const ${binding} = ${schema}.Opaque<${binding}>()(${schema}.Union([\n${
+    structs.join(",\n")
+  }\n]))\n` +
+    `${exported}type ${binding} =\n${alternatives.join("\n")}`
+}
+
+/** The decoded TypeScript type of an input, as written in the shared module. */
+const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string): string => {
+  const named = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string => {
+    if (type._tag === "ListTypeRef") return `ReadonlyArray<${inputTypeText(type.ofType, ref)}>`
+    switch (type.name) {
+      case "String":
+        return "string"
+      case "Boolean":
+        return "boolean"
+      default:
+        return `typeof ${ref(type.name)}.Type`
+    }
+  }
+  return type._tag === "NonNullTypeRef" ? named(type.ofType) : `${named(type)} | null`
 }
 
 const kindName = (type: SchemaModel.NamedType): string => {

@@ -109,12 +109,17 @@ export class ConfigError extends Data.TaggedError("ConfigError")<{
  *
  * - `foo.graphql` generates `foo.graphql.ts` next to it.
  * - The shared module goes to `config.shared`, or next to the schema as
- *   `<schema name>.graphql.ts`, and holds only the scalars, enums and input
- *   objects the operations reach.
+ *   `<schema name>.graphql.ts`, and holds only the scalars, enums, input
+ *   objects and possible `__typename` unions the operations reach.
  * - Unmapped custom scalars decode as `Schema.Json`, and one warning lists
  *   every one the operations reach.
- * - Selections on interfaces and unions, `@skip` / `@include`, `@oneOf`
- *   input objects and subscriptions are not supported yet and are reported as
+ * - A selection on an interface or union decodes as a `Schema.Union`
+ *   discriminated by `__typename`, which is added to the document. Types the
+ *   selection doesn't name, including ones the server adds later, fall into
+ *   a last member built with `GraphQL.otherTypename`.
+ * - `@skip` / `@include` with a variable condition make the fields they cover
+ *   optional keys; literal conditions are folded.
+ * - Recursive input objects are not supported yet and are reported as
  *   errors.
  *
  * @stability experimental

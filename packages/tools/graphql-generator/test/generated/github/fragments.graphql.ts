@@ -22,3 +22,28 @@ export class IssueSummary extends Schema.Opaque<IssueSummary>()(Schema.Struct({
   /** The HTTP URL for this issue */
   url: Shared.URI
 })) {}
+
+/**
+ * `fragment ActorFields on Actor`
+ *
+ * Represents an object which can take actions on GitHub. Typically a User or Bot.
+ */
+export const ActorFields = Schema.Union([
+  Schema.Struct({
+    __typename: Schema.Literal("User"),
+    /** The username used to login. */
+    login: Schema.String,
+    /** A URL pointing to the user's public avatar. */
+    avatarUrl: Shared.URI,
+    /** The user's public profile name. */
+    name: Schema.NullOr(Schema.String)
+  }),
+  Schema.Struct({
+    __typename: GraphQL.otherTypename<Shared.Typename.Actor>()(["User"]),
+    /** The username of the actor. */
+    login: Schema.String,
+    /** A URL pointing to the actor's public avatar. */
+    avatarUrl: Shared.URI
+  })
+])
+export type ActorFields = typeof ActorFields.Type
