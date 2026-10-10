@@ -156,8 +156,67 @@ jobs:
         with:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
+      # Cores contain process memory, including possible credentials. Never upload
+      # plaintext. Configure this public RSA certificate before enabling capture;
+      # keep its private key outside GitHub Actions and decrypt artifacts offline.
+      - name: Prepare encrypted Deno core capture
+        id: deno-cores
+        if: matrix.runtime == 'Deno'
+        env:
+          DENO_CORE_CERTIFICATE: ${{ vars.DENO_CORE_CERTIFICATE }}
+        run: |
+          if [ -z "$DENO_CORE_CERTIFICATE" ]; then
+            echo "::warning::Deno core capture disabled: configure DENO_CORE_CERTIFICATE (public RSA X.509 certificate)."
+            exit 0
+          fi
+          umask 077
+          capture="$RUNNER_TEMP/deno-cores"
+          mkdir -p "$capture"
+          printf '%s\n' "$DENO_CORE_CERTIFICATE" > "$capture/recipient.pem"
+          # Fail before enabling dumps if the certificate cannot encrypt a bundle.
+          printf 'capture preflight\n' | openssl cms -encrypt -binary -aes-256-cbc \
+            -outform DER -out "$capture/preflight.cms" "$capture/recipient.pem"
+          rm "$capture/preflight.cms"
+          cp "$(command -v deno)" "$capture/deno"
+          deno --version > "$capture/version.txt"
+          (cd "$capture" && sha256sum deno > sha256.txt)
+          sudo sysctl -w "kernel.core_pattern=$capture/core.%e.%p.%t"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
       - name: Test
-        run: ${{ matrix.command }}
+        id: test
+        run: |
+          if [ "${{ steps.deno-cores.outputs.enabled }}" = "true" ]; then
+            ulimit -c unlimited
+          fi
+          ${{ matrix.command }}
+      - name: Encrypt Deno crash bundle
+        id: deno-crash
+        if: failure() && matrix.runtime == 'Deno' && steps.test.outcome == 'failure' && steps.deno-cores.outputs.enabled == 'true'
+        run: |
+          umask 077
+          capture="$RUNNER_TEMP/deno-cores"
+          trap 'rm -rf "$capture"' EXIT
+          shopt -s nullglob
+          cores=("$capture"/core.deno.*)
+          if [ "${#cores[@]}" -eq 0 ]; then
+            exit 0
+          fi
+          # Only encrypted bytes reach upload-artifact. No raw cores or tar files.
+          tar -czf - -C "$capture" deno version.txt sha256.txt "${cores[@]##*/}" | \
+            openssl cms -encrypt -binary -stream -aes-256-cbc -outform DER \
+              -out "$RUNNER_TEMP/deno-crash.tar.gz.cms" "$capture/recipient.pem"
+          echo "captured=true" >> "$GITHUB_OUTPUT"
+      - name: Upload encrypted Deno crash bundle
+        if: failure() && matrix.runtime == 'Deno' && steps.deno-crash.outputs.captured == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: deno-crash-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/deno-crash.tar.gz.cms
+          if-no-files-found: error
+          retention-days: 1
+      - name: Remove local Deno crash data
+        if: always() && matrix.runtime == 'Deno'
+        run: rm -rf "$RUNNER_TEMP/deno-cores" "$RUNNER_TEMP/deno-crash.tar.gz.cms"
 
   doctest:
     name: Test (Documentation)
