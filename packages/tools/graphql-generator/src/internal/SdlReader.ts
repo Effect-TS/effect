@@ -245,13 +245,11 @@ const buildInputValue = (value: Ast.InputValueDefinition): SchemaModel.InputValu
   deprecationReason: deprecationReason(value.directives)
 })
 
-/** The first applied directive named `name`. */
 const findDirective = (
   directives: ReadonlyArray<Ast.ConstDirective>,
   name: string
 ): Ast.ConstDirective | undefined => directives.find((directive) => directive.name.value === name)
 
-/** The value of argument `name` on `directive` when it is a string. */
 const stringArgument = (directive: Ast.ConstDirective | undefined, name: string): string | undefined => {
   const value = directive?.arguments.find((argument) => argument.name.value === name)?.value
   return value?._tag === "StringValue" ? value.value : undefined

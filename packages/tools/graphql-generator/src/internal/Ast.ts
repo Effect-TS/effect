@@ -1,25 +1,11 @@
 /**
- * GraphQL document AST for `@effect/graphql-generator`.
+ * GraphQL AST for the September 2025 executable and type-system grammar.
+ * Node names follow graphql-js, with `_tag` discriminants.
  *
- * Covers the full grammar of the current spec edition (September 2025) for both
- * executable and type-system documents. Node names follow the spec and
- * graphql-js so either can be read alongside this file; the discriminant is
- * `_tag`.
- *
- * Conventions shared by every node:
- * - `loc` holds UTF-16 code-unit offsets into the source body, `end`
- *   exclusive. Diagnostics turn an offset into `line:column` on demand.
- * - Lists that the grammar makes optional (`arguments`, `directives`,
- *   `interfaces`, `fields`, ...) are always present and empty when absent.
- * - Optional single children (`alias`, `description`, `defaultValue`,
- *   `selectionSet`, `typeCondition`, an anonymous operation's `name`) are
- *   `undefined` when absent, never omitted. Descriptions appear on type-system
- *   definitions and, since the September 2025 edition, on operations,
- *   fragments and variable definitions; the `{ ... }` shorthand has none.
- * - `IntValue` and `FloatValue` keep their source text; `StringValue.value`
- *   is the decoded value (escape sequences processed, block strings run
- *   through the spec's `BlockStringValue` algorithm). Whether a string was
- *   written as a block string is not recorded.
+ * - Locations are UTF-16 offsets with exclusive ends.
+ * - Absent lists are empty; absent children are `undefined`.
+ * - Numbers retain source text; strings contain decoded values. Block-string
+ *   syntax is not retained.
  *
  * @internal
  */
