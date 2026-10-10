@@ -806,15 +806,24 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
 
     return Dns.make({
       lookup: Effect.fnUntraced(function*(host, family) {
-        const isFamily = (address: NetAddress.IpAddress) => family === undefined || NetAddress.isFamily(address, family)
         const key = relative(host) as Host.DomainName
-        const fromHosts = ((yield* client.hosts).get(key) ?? []).filter(isFamily)
-        if (fromHosts.length > 0) return fromHosts
-        if (key === "localhost" || key.endsWith(".localhost")) return NetAddress.loopbackAddresses.filter(isFamily)
-        const types = Arr.filter(
-          ["A", "AAAA"] as const,
-          (type) => type === "A" ? family !== "IPv6" : family !== "IPv4" && !client.noAaaa
+        const fromHosts = ((yield* client.hosts).get(key) ?? []).filter((address) =>
+          family === undefined || NetAddress.isFamily(address, family)
         )
+        if (fromHosts.length > 0) return fromHosts
+        if (key === "localhost" || key.endsWith(".localhost")) {
+          return family === "IPv4"
+            ? [NetAddress.ipv4Loopback]
+            : family === "IPv6"
+            ? [NetAddress.ipv6Loopback]
+            : NetAddress.loopbackAddresses
+        }
+        if (family === "IPv6" && client.noAaaa) return []
+        const types = family === "IPv4" || client.noAaaa
+          ? ["A" as const]
+          : family === "IPv6"
+          ? ["AAAA" as const]
+          : ["A", "AAAA"] as const
         let error: Dns.DnsError | undefined
         for (const name of candidates(host)) {
           const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(name, type)), {
