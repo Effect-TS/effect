@@ -4496,8 +4496,7 @@ describe("Effect", () => {
     it.effect("interrupting a re-entrant waiter during synchronous startup keeps the owner running", () =>
       Effect.gen(function*() {
         let runs = 0
-        let cached: Effect.Effect<number>
-        cached = yield* Effect.cached(
+        const cached: Effect.Effect<number> = yield* Effect.cached(
           Effect.gen(function*() {
             runs++
             const waiter = yield* Effect.forkChild(cached, { startImmediately: true })
@@ -4514,8 +4513,7 @@ describe("Effect", () => {
     it.effect("same-fiber re-entrant call suspends until interrupted, then starts fresh", () =>
       Effect.gen(function*() {
         let runs = 0
-        let cached: Effect.Effect<number>
-        cached = yield* Effect.cached(
+        const cached: Effect.Effect<number> = yield* Effect.cached(
           Effect.suspend(() => ++runs === 1 ? cached : Effect.succeed(42))
         )
 

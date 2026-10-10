@@ -4467,6 +4467,7 @@ const makeCachedUnsafe = <A, E, R>(
   let current: CachedRun<A, E> | undefined
 
   const join = (fiber: Fiber.Fiber<unknown, unknown>, run: CachedRun<A, E>): Effect.Effect<A, E> => {
+    run.awaiters++
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
       if (--run.awaiters > 0 || current !== run) return
@@ -4480,10 +4481,8 @@ const makeCachedUnsafe = <A, E, R>(
   return [
     withFiber((fiber) => {
       if (current !== undefined) {
-        // Self-joins must not prevent abandonment by external callers.
-        if (fiber === current.fiber) return fiberJoin(current.fiber)
-        current.awaiters++
-        return join(fiber, current)
+        // A run joining itself is not an awaiter, so external callers can still abandon it.
+        return fiber === current.fiber ? fiberJoin(current.fiber) : join(fiber, current)
       }
       if (
         exit !== undefined &&
@@ -4493,12 +4492,10 @@ const makeCachedUnsafe = <A, E, R>(
       }
       exit = undefined
       const clock = fiber.getRef(ClockRef)
-      const run: CachedRun<A, E> = {
-        fiber: new FiberImpl(fiber.context),
-        // Count the initiating caller before synchronous evaluation can re-enter.
-        awaiters: 1
-      }
+      const run: CachedRun<A, E> = { fiber: new FiberImpl(fiber.context), awaiters: 0 }
       current = run
+      // Join before evaluating, which may synchronously re-enter and interrupt other awaiters.
+      const joined = join(fiber, run)
       run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
           // An abandoned run must not overwrite or clear a replacement run.
@@ -4511,7 +4508,7 @@ const makeCachedUnsafe = <A, E, R>(
           exit = exit_
         }) as any
       )
-      return run.fiber._exit ?? join(fiber, run)
+      return run.fiber._exit ?? joined
     }),
     sync(() => {
       exit = undefined
