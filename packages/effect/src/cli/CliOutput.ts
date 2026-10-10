@@ -381,7 +381,7 @@ const stripAnsi = (text: string): string => {
 }
 
 /**
- * Segments text into grapheme clusters for display width measurement.
+ * Segments text into grapheme clusters.
  * @internal
  */
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
@@ -418,16 +418,14 @@ const graphemeWidth = (grapheme: string): number => {
 /**
  * Measures the number of terminal cells a string occupies.
  *
- * ANSI styling is stripped first, so styled and unstyled text measure the
- * same. Widths are computed per grapheme: combining marks and other zero-width
- * code points count as `0`, emoji presentation sequences and East Asian Wide /
- * Fullwidth characters count as `2`, everything else counts as `1`.
+ * **Details**
  *
- * This is the same measure the built-in help and table rendering use, so
- * custom formatters can line up their output with it without reimplementing
- * the Unicode logic.
+ * Uses the same measurement as built-in help and table rendering. ANSI styling
+ * is stripped before measuring graphemes: zero-width graphemes count as `0`,
+ * emoji presentation sequences and fullwidth characters as `2`, and other
+ * graphemes as `1`.
  *
- * **Example**
+ * **Example** (Measuring terminal-cell widths)
  *
  * ```ts import.meta.vitest
  * import { CliOutput } from "effect/cli"
