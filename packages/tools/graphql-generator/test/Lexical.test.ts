@@ -6,7 +6,7 @@
  * in, so a literal starts at column 8.
  */
 import { assert, describe, it } from "@effect/vitest"
-import { argumentValue, assertDiagnostic, stringValue } from "./utils/ast.ts"
+import { argumentValue, assertDiagnostic, parseOrThrow, stringValue } from "./utils/ast.ts"
 
 const inArgument = (literal: string) => `{ f(s: ${literal}) }`
 
@@ -153,6 +153,35 @@ describe("Lexical", () => {
         message: "Invalid number, expected digit but got: \")\"."
       })
       assertDiagnostic(inArgument(".5"), { line: 1, column: 8, message: "Unexpected character: \".\"." })
+    })
+  })
+
+  describe("comments", () => {
+    it("accept every source character, including astral and control characters", () => {
+      assert.strictEqual(parseOrThrow("{ a } # 😀 ok\n{ b }").definitions.length, 2)
+      assert.strictEqual(parseOrThrow("{ a } # \u0007\n{ b }").definitions.length, 2)
+      assert.strictEqual(parseOrThrow("{ a } # no newline at end").definitions.length, 1)
+    })
+
+    it("reject unpaired surrogates, which are not source characters", () => {
+      assertDiagnostic("{ a } # \uD800", { line: 1, column: 9, message: "Invalid character: U+D800." })
+      assertDiagnostic("{ a } # x\uDC00\n{ b }", { line: 1, column: 10, message: "Invalid character: U+DC00." })
+    })
+  })
+
+  describe("unpaired surrogates elsewhere", () => {
+    it("are rejected outside and inside strings", () => {
+      assertDiagnostic("{ a \uD800 }", { line: 1, column: 5, message: "Invalid character: U+D800." })
+      assertDiagnostic(inArgument("\"x\uD800\""), {
+        line: 1,
+        column: 10,
+        message: "Invalid character within String: U+D800."
+      })
+      assertDiagnostic(inArgument("\"\"\"x\uDC00\"\"\""), {
+        line: 1,
+        column: 12,
+        message: "Invalid character within String: U+DC00."
+      })
     })
   })
 

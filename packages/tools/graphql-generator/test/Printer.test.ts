@@ -2,7 +2,7 @@ import type * as Ast from "@effect/graphql-generator/internal/Ast"
 import { print } from "@effect/graphql-generator/internal/Printer"
 import { assert, describe, it } from "@effect/vitest"
 import { readdirSync, readFileSync } from "node:fs"
-import { parseOrThrow, stripLoc } from "./utils/ast.ts"
+import { parseOrThrow, stripLocAndDescriptions } from "./utils/ast.ts"
 import { executableCases } from "./utils/cases.ts"
 
 const operationsDirectory = new URL("./fixtures/github/operations/", import.meta.url)
@@ -27,7 +27,7 @@ describe("Printer", () => {
         const document = parseOrThrow(testCase.source)
         const printed = print(document)
         const reparsed = parseOrThrow(printed)
-        assert.deepStrictEqual(stripLoc(reparsed), stripLoc(document))
+        assert.deepStrictEqual(stripLocAndDescriptions(reparsed), stripLocAndDescriptions(document))
         assert.strictEqual(print(reparsed), printed)
       })
     }
@@ -37,7 +37,7 @@ describe("Printer", () => {
         const document = parseOrThrow(body, file)
         const printed = print(document)
         const reparsed = parseOrThrow(printed, `${file} (printed)`)
-        assert.deepStrictEqual(stripLoc(reparsed), stripLoc(document))
+        assert.deepStrictEqual(stripLocAndDescriptions(reparsed), stripLocAndDescriptions(document))
         assert.strictEqual(print(reparsed), printed)
       })
     }
@@ -64,6 +64,20 @@ describe("Printer", () => {
       const [query, a, b] = parsed.definitions as ReadonlyArray<Ast.ExecutableDefinition>
       const document: Ast.Document = { _tag: "Document", definitions: [query!, b!, a!], loc: { start: 0, end: 0 } }
       assert.strictEqual(print(document), "query Q{...B...A}fragment B on T{b}fragment A on T{a}")
+    })
+
+    it("descriptions on operations, variables and fragments are not printed", () => {
+      assert.strictEqual(
+        print(parseOrThrow("\"docs\" query Q(\"x\" $x: Int) @d { a } \"f\" fragment F on T { a }")),
+        "query Q($x:Int)@d{a}fragment F on T{a}"
+      )
+    })
+
+    it("token-minimal: no separator where punctuation already separates tokens", () => {
+      assert.strictEqual(
+        print(parseOrThrow("query Q($a: Int, $b: [Int]) { f(x: [1, -2], y: {}) ...F }")),
+        "query Q($a:Int$b:[Int]){f(x:[1 -2]y:{})...F}"
+      )
     })
 
     it("prints no trailing newline", () => {
