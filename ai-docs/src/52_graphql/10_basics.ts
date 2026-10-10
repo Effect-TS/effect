@@ -57,11 +57,11 @@ export class GitHubAuth extends GraphQLMiddleware.Service<GitHubAuth>()("app/Git
 
 // A group is the set of operations a client exposes; the generator emits one
 // per file. Attaching the middleware makes `GraphQLClient.make` require it.
-const GitHubOperations = GraphQLGroup.make(RepoIssues).middleware(GitHubAuth)
+const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues).middleware(GitHubAuth)
 
 // The client has one method per operation, named after it.
 export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
-  make: GraphQLClient.make(GitHubOperations)
+  make: GraphQLClient.make(GitHubGraphQLGroup)
 }) {
   static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
     Layer.provide(GitHubAuth.layer),

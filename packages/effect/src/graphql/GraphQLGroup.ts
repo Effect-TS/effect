@@ -103,9 +103,9 @@ const makeProto = (
  *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
  * })
  *
- * const ViewerGroup = GraphQLGroup.make(Viewer)
+ * const ViewerGraphQLGroup = GraphQLGroup.make(Viewer)
  *
- * ViewerGroup.operations.map((op) => op.name) // => ["Viewer"]
+ * ViewerGraphQLGroup.operations.map((op) => op.name) // => ["Viewer"]
  * ```
  *
  * @stability experimental

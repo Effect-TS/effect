@@ -166,10 +166,10 @@ const propertyKey = (key: string): string => key === "__proto__" ? `["__proto__"
 const pascalCase = (text: string): string =>
   text.split(/[^A-Za-z0-9]+/).map((word) => word.slice(0, 1).toUpperCase() + word.slice(1)).join("")
 
-/** `issue-timeline.graphql` → `IssueTimelineGroup`. */
+/** `issue-timeline.graphql` → `IssueTimelineGraphQLGroup`. */
 const groupName = (sourceName: string): string => {
   const name = pascalCase(sourceName.replace(/\.graphql$/, ""))
-  return `${/^[0-9]/.test(name) ? `_${name}` : name}Group`
+  return `${/^[0-9]/.test(name) ? `_${name}` : name}GraphQLGroup`
 }
 
 const reservedWords: ReadonlySet<string> = new Set([
@@ -355,6 +355,9 @@ class Emitter {
       const report = (offset: number, message: string) => errors.push({ file: fileIndex, offset, message })
       const group = groupName(file.sourceName)
       const exportsGroup = file.document.definitions.some((definition) => definition._tag === "OperationDefinition")
+      if (exportsGroup && importedNames.has(group)) {
+        report(0, `The group name "${group}" is reserved in generated code; rename this file.`)
+      }
       for (const definition of file.document.definitions) {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
         const name = definition.name
