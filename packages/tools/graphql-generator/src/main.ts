@@ -1,5 +1,5 @@
 /**
- * The `graphqlgen` command (EFF-1834 points 1 to 13).
+ * The `graphqlgen` command (EFF-1834 points 1 to 17).
  *
  * `graphqlgen [--config <path>] [--watch | --check]` loads `graphql.config.ts`
  * from the current directory, or the file `--config` names, generates every
@@ -7,8 +7,12 @@
  * the files whose bytes changed. Generated files whose `.graphql` source is
  * gone are deleted. Any error diagnostic means nothing is written.
  *
+ * With `--watch` it keeps running and regenerates whenever the config, the
+ * schema or a document changes. A failing cycle keeps the last good output.
+ *
  * Exit codes: `0` on success, `1` when generation reports an error or
- * `--check` finds out-of-date files, `2` when the config can't be loaded.
+ * `--check` finds out-of-date files, `2` when the config can't be loaded
+ * (with `--watch`, only at startup).
  *
  * @since 4.0.0
  */
@@ -22,39 +26,31 @@ import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Runtime from "effect/Runtime"
-import * as Schema from "effect/Schema"
-import * as Config from "./Config.ts"
+import type * as Config from "./Config.ts"
 import * as Generator from "./Generator.ts"
+import {
+  type Changes,
+  ConfigLoadError,
+  displayPath,
+  errorSummary,
+  formatDiagnostic,
+  GenerateError,
+  loadConfig,
+  planChanges,
+  writeChanges
+} from "./internal/Cli.ts"
+import * as Watch from "./internal/Watch.ts"
 
 /**
  * The config file could not be found, imported or decoded, or the generator
- * rejected it. Exits with code `2`.
+ * rejected it, exiting with code `2`. Generation reported at least one error
+ * diagnostic, or a file could not be read or written, exiting with code `1`.
  *
  * @stability experimental
  * @category errors
  * @since 4.0.0
  */
-export class ConfigLoadError extends Data.TaggedError("ConfigLoadError")<{
-  readonly message: string
-}> {
-  override readonly [Runtime.errorExitCode] = 2
-  override readonly [Runtime.errorReported] = false
-}
-
-/**
- * Generation reported at least one error diagnostic, or a file could not be
- * read or written. Exits with code `1`.
- *
- * @stability experimental
- * @category errors
- * @since 4.0.0
- */
-export class GenerateError extends Data.TaggedError("GenerateError")<{
-  readonly message: string
-}> {
-  override readonly [Runtime.errorExitCode] = 1
-  override readonly [Runtime.errorReported] = false
-}
+export { ConfigLoadError, GenerateError } from "./internal/Cli.ts"
 
 /**
  * `--check` found generated files that would be created, changed or deleted.
@@ -93,11 +89,12 @@ const root = Command.make("graphqlgen", { config, watch, check }).pipe(
     if (flags.watch && flags.check) {
       return yield* new CliError.UserError({ cause: "--watch and --check cannot be used together." })
     }
-    if (flags.watch) {
-      return yield* new CliError.UserError({ cause: "--watch is not supported yet." })
-    }
+    const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const configPath = path.resolve(Option.getOrElse(flags.config, () => "graphql.config.ts"))
+    if (flags.watch) {
+      return yield* Watch.run({ configPath, watch: Watch.fileSystemWatch(fs, path) })
+    }
     const loaded = yield* loadConfig(configPath)
     const result = yield* generateFiles(loaded, path.dirname(configPath))
     const changes = yield* planChanges(result)
@@ -132,78 +129,7 @@ export const run: Effect.Effect<
 )
 
 // -----------------------------------------------------------------------------
-// Config loading
-// -----------------------------------------------------------------------------
-
-const loadConfig = Effect.fnUntraced(function*(configPath: string) {
-  const fs = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-  const display = displayPath(path, configPath)
-  const exists = yield* fs.exists(configPath).pipe(Effect.orElseSucceed(() => false))
-  if (!exists) {
-    return yield* new ConfigLoadError({ message: `error: config file not found: ${display}` })
-  }
-  const url = yield* path.toFileUrl(configPath).pipe(
-    Effect.mapError((error) => new ConfigLoadError({ message: `error: ${display}: ${error.message}` }))
-  )
-  const module = yield* Effect.tryPromise({
-    try: () => import(/* @vite-ignore */ url.href) as Promise<{ readonly default?: unknown }>,
-    catch: (cause) => new ConfigLoadError({ message: importFailure(display, cause) })
-  })
-  if (module.default === undefined) {
-    return yield* new ConfigLoadError({
-      message:
-        `error: ${display}: the config file has no default export. Export the config with \`export default defineConfig({ ... })\`.`
-    })
-  }
-  return yield* Schema.decodeUnknownEffect(Config.Config)(module.default).pipe(
-    Effect.mapError((error) =>
-      new ConfigLoadError({
-        message: `error: ${display}: the default export is not a valid config:\n${error.message}`
-      })
-    )
-  )
-})
-
-/** Errors Node raises when it can't import a `.ts` file through type stripping. */
-const typeStrippingCodes = new Set(["ERR_UNKNOWN_FILE_EXTENSION", "ERR_NO_TYPESCRIPT"])
-
-/** Errors Node raises for TypeScript syntax that type stripping can't erase. */
-const strippableSyntaxCodes = new Set([
-  "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX",
-  "ERR_INVALID_TYPESCRIPT_SYNTAX"
-])
-
-const importFailure = (display: string, cause: unknown): string => {
-  const code = typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined
-  const detail = cause instanceof Error ? cause.message : String(cause)
-  if (code !== undefined && typeStrippingCodes.has(code) && display.endsWith(".ts")) {
-    return [
-      `error: ${display}: this runtime cannot import a TypeScript config file (${code}).`,
-      `graphqlgen loads the config with import(), which needs Node.js >= 22.18 (where type stripping is on by default), Bun or Deno.`,
-      `Upgrade Node.js, or run graphqlgen with Bun or Deno.`,
-      `  ${detail}`
-    ].join("\n")
-  }
-  if (code === "ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING") {
-    return [
-      `error: ${display}: Node.js does not strip types from files under node_modules (${code}).`,
-      `Move the config out of node_modules, or run graphqlgen with Bun or Deno.`,
-      `  ${detail}`
-    ].join("\n")
-  }
-  if (code !== undefined && strippableSyntaxCodes.has(code)) {
-    return [
-      `error: ${display}: Node.js type stripping cannot load this config (${code}).`,
-      `Type stripping only erases type annotations, so the config can't use enums, namespaces or parameter properties.`,
-      `  ${detail}`
-    ].join("\n")
-  }
-  return `error: ${display}: could not import the config: ${detail}`
-}
-
-// -----------------------------------------------------------------------------
-// Generation
+// Single run
 // -----------------------------------------------------------------------------
 
 const generateFiles = Effect.fnUntraced(function*(config: Config.Config, cwd: string) {
@@ -219,67 +145,16 @@ const generateFiles = Effect.fnUntraced(function*(config: Config.Config, cwd: st
   }
   const errors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length
   if (errors > 0) {
-    return yield* new GenerateError({
-      message: `${errors} ${errors === 1 ? "error" : "errors"}; no files were written.`
-    })
+    return yield* new GenerateError({ message: errorSummary(errors) })
   }
   return result
 })
 
-const formatDiagnostic = (path: Path.Path, cwd: string, diagnostic: Generator.Diagnostic): string => {
-  const location = [
-    displayPath(path, path.resolve(cwd, diagnostic.path)),
-    ...(diagnostic.line === undefined ? [] : [diagnostic.line]),
-    ...(diagnostic.line === undefined || diagnostic.column === undefined ? [] : [diagnostic.column])
-  ].join(":")
-  const message = `${location}: ${diagnostic.severity}: ${diagnostic.message}`
-  return diagnostic.codeFrame === undefined ? message : `${message}\n${diagnostic.codeFrame}`
-}
-
-/** A path relative to the current directory, with `/` separators. */
-const displayPath = (path: Path.Path, absolute: string): string => {
-  const relative = path.relative(path.resolve("."), absolute)
-  return (relative === "" || path.isAbsolute(relative) ? absolute : relative).split(path.sep).join("/")
-}
-
-// -----------------------------------------------------------------------------
-// Writing
-// -----------------------------------------------------------------------------
-
-interface Changes {
-  readonly creates: ReadonlyArray<Generator.GeneratedFile>
-  readonly updates: ReadonlyArray<Generator.GeneratedFile>
-  readonly deletes: ReadonlyArray<string>
-}
-
-/** Compares the generated files with what is on disk; unchanged files are left out. */
-const planChanges = Effect.fnUntraced(function*(result: Generator.GenerateResult) {
-  const fs = yield* FileSystem.FileSystem
-  const creates: Array<Generator.GeneratedFile> = []
-  const updates: Array<Generator.GeneratedFile> = []
-  for (const file of result.files) {
-    if (!(yield* fs.exists(file.path))) {
-      creates.push(file)
-    } else if ((yield* fs.readFileString(file.path)) !== file.contents) {
-      updates.push(file)
-    }
-  }
-  const changes: Changes = { creates, updates, deletes: result.deletes }
-  return changes
-}, Effect.mapError((error) => new GenerateError({ message: `error: ${error.message}` })))
-
 const applyChanges = Effect.fnUntraced(function*(changes: Changes) {
-  const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
-  for (const file of [...changes.creates, ...changes.updates]) {
-    yield* fs.makeDirectory(path.dirname(file.path), { recursive: true })
-    yield* fs.writeFileString(file.path, file.contents)
-  }
-  for (const file of changes.deletes) {
-    yield* fs.remove(file)
-  }
+  yield* writeChanges(changes)
   yield* listChanges(path, changes, { create: "created", update: "updated", delete: "deleted" })
-}, Effect.mapError((error) => new GenerateError({ message: `error: ${error.message}` })))
+})
 
 const reportCheck = Effect.fnUntraced(function*(changes: Changes) {
   const path = yield* Path.Path
