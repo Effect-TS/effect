@@ -120,6 +120,104 @@ export const RequestId: Schema.Union<[
 export type RequestId = typeof RequestId.Type
 
 /**
+ * A JSON-RPC request.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonRpcRequest = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  id: RequestId,
+  method: Schema.String,
+  params: Schema.optional(Schema.JsonObject)
+})
+
+/**
+ * A JSON-RPC request.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type JsonRpcRequest = typeof JsonRpcRequest.Type
+
+/**
+ * A JSON-RPC notification without a request identifier.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonRpcNotification = Schema.Struct({
+  jsonrpc: Schema.Literal("2.0"),
+  method: Schema.String,
+  params: Schema.optional(Schema.JsonObject)
+})
+
+/**
+ * A JSON-RPC notification without a request identifier.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type JsonRpcNotification = typeof JsonRpcNotification.Type & { readonly id?: never }
+
+/**
+ * A JSON-RPC response carrying a result or remote error.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonRpcResponse = Schema.Union([
+  Schema.Struct({
+    jsonrpc: Schema.Literal("2.0"),
+    id: RequestId,
+    result: Schema.Json
+  }),
+  Schema.Struct({
+    jsonrpc: Schema.Literal("2.0"),
+    id: Schema.Union([RequestId, Schema.Null]),
+    error: Schema.Struct({
+      code: Schema.Int,
+      message: Schema.String,
+      data: Schema.optional(Schema.Json)
+    })
+  })
+])
+
+/**
+ * A JSON-RPC response carrying exactly one result or remote error.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type JsonRpcResponse =
+  | (typeof JsonRpcResponse.members[0]["Type"] & { readonly error?: never })
+  | (typeof JsonRpcResponse.members[1]["Type"] & { readonly result?: never })
+
+/**
+ * Schema for JSON-RPC messages exchanged by MCP peers.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const JsonRpcMessage = Schema.Union([JsonRpcRequest, JsonRpcNotification, JsonRpcResponse])
+
+/**
+ * JSON-RPC messages exchanged by MCP peers.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type JsonRpcMessage = JsonRpcRequest | JsonRpcNotification | JsonRpcResponse
+
+/**
  * Schema for MCP progress tokens that associate progress notifications with the
  * original request.
  *
@@ -1629,8 +1727,9 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  *
  * **Details**
  *
- * Property definitions and additional root keywords are constrained to JSON
- * values. The open root supports generated keywords such as `$defs`.
+ * Property schemas may be objects or booleans. Additional root keywords are
+ * constrained to JSON values. The open root supports generated keywords such
+ * as `$defs`.
  *
  * @stability unstable
  * @category tools
@@ -1638,7 +1737,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
  */
 export type ToolJson = Schema.JsonObject & {
   readonly type: "object"
-  readonly properties?: Readonly<Record<string, Schema.JsonObject>> | undefined
+  readonly properties?: Readonly<Record<string, Schema.JsonObject | boolean>> | undefined
   readonly required?: ReadonlyArray<string> | undefined
 }
 
@@ -1652,7 +1751,7 @@ export type ToolJson = Schema.JsonObject & {
 export const ToolJson: Schema.Codec<ToolJson> = Schema.StructWithRest(
   Schema.Struct({
     type: Schema.Literal("object"),
-    properties: optional(Schema.Record(Schema.String, Schema.JsonObject)),
+    properties: optional(Schema.Record(Schema.String, Schema.Union([Schema.JsonObject, Schema.Boolean]))),
     required: optional(Schema.Array(Schema.String))
   }),
   [Schema.JsonObject]
@@ -3386,4 +3485,30 @@ export class EnabledWhen extends Context.Service<
   }>
 >()(
   "effect/ai/McpSchema/EnabledWhen"
+) {}
+
+/**
+ * Filters for notifications delivered by a subscription.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.0
+ */
+export const SubscriptionFilter = Schema.Struct({
+  toolsListChanged: optional(Schema.Boolean),
+  promptsListChanged: optional(Schema.Boolean),
+  resourcesListChanged: optional(Schema.Boolean),
+  resourceSubscriptions: optional(Schema.Array(Schema.String))
+})
+
+/**
+ * Acknowledges the notification types accepted by a subscription.
+ *
+ * @stability unstable
+ * @category rpcs
+ * @since 4.0.0
+ */
+export class SubscriptionsAcknowledgedNotification extends Rpc.make(
+  "notifications/subscriptions/acknowledged",
+  { payload: { ...NotificationMeta.fields, notifications: SubscriptionFilter } }
 ) {}
