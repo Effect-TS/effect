@@ -14,13 +14,7 @@
     "./packages/**/typetest/**/*.ts",
     "./packages/**/benchmark/**/*.ts"
   ],
-  "exclude": [
-    "**/node_modules/**",
-    "**/dist/**",
-    "./packages/platform/deno/**",
-    // Vendored GitHub schema fixtures, read with fs at test time; keep the multi-MB JSON out of the program.
-    "./packages/tools/graphql-generator/test/fixtures/**/*.json"
-  ],
+  "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
