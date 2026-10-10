@@ -231,3 +231,61 @@ describe("Generator subscriptions", () => {
       assert.deepStrictEqual(Schema.decodeUnknownSync(ops.Changed.result)(event), event)
     }).pipe(Effect.provide(NodeServices.layer)))
 })
+
+describe("Generator abstract-type review regressions", () => {
+  const generateWith = (schemaSdl: string, document: string) =>
+    generateIn({ "schema.graphql": schemaSdl, "src/ops.graphql": document }, config).pipe(
+      Effect.map((generated) => {
+        assertNoErrors(generated)
+        return generated
+      })
+    )
+
+  for (
+    const { kind, schemaSdl } of [
+      {
+        kind: "an interface",
+        schemaSdl: "interface Only { id: ID! }\ntype User implements Only { id: ID! name: String! }"
+      },
+      { kind: "a union", schemaSdl: "union Only = User\ntype User { id: ID! name: String! }" }
+    ]
+  ) {
+    it.effect(`a fragment on the only possible type of ${kind} keeps its own member`, () =>
+      Effect.gen(function*() {
+        const generated = yield* generateWith(
+          `${schemaSdl}\ntype Query { only: Only }`,
+          "query Q { only { ... on User { name } } }"
+        )
+        const ops = yield* importGenerated(generated, "src/ops.graphql.ts")
+        const decode = Schema.decodeUnknownSync(ops.Q.result)
+        const user = { only: { __typename: "User", name: "Ann" } }
+        assert.deepStrictEqual(decode(user), user)
+        assert.throws(() => decode({ only: { __typename: "User" } }))
+      }).pipe(Effect.provide(NodeServices.layer)))
+  }
+
+  for (
+    const { kind, parent } of [
+      { kind: "a union", parent: "union Result = User | Bot" },
+      { kind: "an interface without the field", parent: "interface Result { id: ID! }" }
+    ]
+  ) {
+    it.effect(`an interface fragment covering every possible type of ${kind} generates and decodes`, () =>
+      Effect.gen(function*() {
+        const implementsResult = parent.startsWith("interface") ? " & Result" : ""
+        const generated = yield* generateWith(
+          `interface Named { name: String! }
+${parent}
+type User implements Named${implementsResult} { id: ID! name: String! }
+type Bot implements Named${implementsResult} { id: ID! name: String! }
+type Query { results: [Result!]! }`,
+          "query Q { results { ... on Named { name } } }"
+        )
+        const ops = yield* importGenerated(generated, "src/ops.graphql.ts")
+        const decode = Schema.decodeUnknownSync(ops.Q.result)
+        const results = { results: [{ __typename: "User", name: "Ann" }, { __typename: "Bot", name: "ci" }] }
+        assert.deepStrictEqual(decode(results), results)
+        assert.throws(() => decode({ results: [{ __typename: "Bot" }] }))
+      }).pipe(Effect.provide(NodeServices.layer)))
+  }
+})
