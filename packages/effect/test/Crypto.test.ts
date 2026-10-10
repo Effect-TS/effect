@@ -1,28 +1,47 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Cause from "effect/Cause"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import type * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 
+const backend = { subtle: globalThis.crypto.subtle }
+
 const testCrypto = Crypto.make({
+  ...backend,
   randomBytes: (size) =>
-    size === 7 ? Uint8Array.of(0x18, 0, 0, 0, 0, 0, 0) : Uint8Array.from({ length: size }, (_, i) => i),
+    size % 7 === 0
+      ? Uint8Array.from({ length: size }, (_, i) => i % 7 === 0 ? 0x18 : 0)
+      : Uint8Array.from({ length: size }, (_, i) => i),
   digest: (algorithm, data) => Effect.succeed(Uint8Array.of(data.length, algorithm.length))
 })
 
-const makeCrypto = (value: bigint) =>
-  Crypto.make({
-    randomBytes: () =>
-      Uint8Array.of(
-        Number((value >> 48n) & 0x3fn),
-        Number((value >> 40n) & 0xffn),
-        Number((value >> 32n) & 0xffn),
-        Number((value >> 24n) & 0xffn),
-        Number((value >> 16n) & 0xffn),
-        Number((value >> 8n) & 0xffn),
-        Number(value & 0xffn)
-      ),
+// Serves one 53-bit draw per 7 random bytes, repeating the last value.
+const makeCrypto = (...values: ReadonlyArray<bigint>) => {
+  let index = 0
+  return Crypto.make({
+    ...backend,
+    randomBytes: (size) => {
+      const bytes = new Uint8Array(size)
+      for (let offset = 0; offset < size; offset += 7) {
+        const value = values[Math.min(index++, values.length - 1)]
+        for (let i = 0; i < 7 && offset + i < size; i++) {
+          bytes[offset + i] = Number((value >> BigInt(48 - 8 * i)) & (i === 0 ? 0x3fn : 0xffn))
+        }
+      }
+      return bytes
+    },
     digest: (_algorithm, data) => Effect.succeed(data)
   })
+}
+
+const assertRangeError = <A>(exit: Exit.Exit<A>) => {
+  assert.ok(Exit.isFailure(exit))
+  const reason = exit.cause.reasons[0]
+  assert.ok(Cause.isDieReason(reason))
+  assert.instanceOf(reason.defect, RangeError)
+}
 
 describe("Crypto", () => {
   it("uses the module path for its type ID", () => {
@@ -85,13 +104,7 @@ describe("Crypto", () => {
       const crypto = yield* Crypto.Crypto
       const value = yield* crypto.randomIntBetween(1, 6, { halfOpen: true })
       assert.strictEqual(value, 5)
-    }).pipe(Effect.provideService(
-      Crypto.Crypto,
-      Crypto.make({
-        randomBytes: (size) => new Uint8Array(size).fill(0xff),
-        digest: (_algorithm, data) => Effect.succeed(data)
-      })
-    )))
+    }).pipe(Effect.provideService(Crypto.Crypto, makeCrypto((1n << 53n) - 3n))))
 
   it.effect("randomUUIDv4 formats UUID bytes from randomBytes", () =>
     Effect.gen(function*() {
@@ -161,4 +174,129 @@ describe("Crypto", () => {
       const bytes = yield* crypto.randomBytes(1)
       assert.deepStrictEqual(bytes, Uint8Array.of(0))
     }).pipe(Effect.provideService(Crypto.Crypto, testCrypto)))
+
+  it.effect("splits randomBoolean outcomes at the midpoint", () =>
+    Effect.gen(function*() {
+      assert.isFalse(yield* makeCrypto((1n << 52n) - 1n).randomBoolean)
+      assert.isTrue(yield* makeCrypto(1n << 52n).randomBoolean)
+    }))
+
+  it.effect("randomBetween handles finite bounds whose difference overflows", () =>
+    Effect.gen(function*() {
+      const crypto = makeCrypto(1n << 52n)
+      assert.strictEqual(yield* crypto.randomBetween(-Number.MAX_VALUE, Number.MAX_VALUE), 0)
+    }))
+
+  it.effect("randomIntBetween uses equal buckets and rejects draws from the incomplete last bucket", () =>
+    Effect.gen(function*() {
+      const bucket = (1n << 53n) / 3n
+      assert.strictEqual(yield* makeCrypto(bucket - 1n).randomIntBetween(1, 3), 1)
+      assert.strictEqual(yield* makeCrypto(bucket).randomIntBetween(1, 3), 2)
+      assert.strictEqual(yield* makeCrypto(3n * bucket, 0n).randomIntBetween(1, 3), 1)
+    }))
+
+  it.effect("randomIntBetween keeps adjacent integers distinct in ranges wider than 53 bits", () =>
+    Effect.gen(function*() {
+      const min = Number.MIN_SAFE_INTEGER
+      const max = Number.MAX_SAFE_INTEGER
+      assert.strictEqual(yield* makeCrypto(0n).randomIntBetween(min, max), min)
+      assert.strictEqual(yield* makeCrypto(1n).randomIntBetween(min, max), min + 1)
+      assert.strictEqual(yield* makeCrypto((1n << 54n) - 2n).randomIntBetween(min, max), max)
+    }))
+
+  it.effect("randomIntBetween dies with RangeError for empty or unsafe ranges", () =>
+    Effect.gen(function*() {
+      const crypto = makeCrypto(0n)
+      assert.strictEqual(yield* crypto.randomIntBetween(1.2, 3.9), 2)
+      assertRangeError(yield* Effect.exit(crypto.randomIntBetween(1.1, 1.9)))
+      assertRangeError(yield* Effect.exit(crypto.randomIntBetween(2, 2, { halfOpen: true })))
+      assertRangeError(yield* Effect.exit(crypto.randomIntBetween(0, Infinity)))
+    }))
+
+  it.effect("randomShuffle uses rejection sampling and leaves the input unchanged", () =>
+    Effect.gen(function*() {
+      const input = [1, 2, 3]
+      const crypto = makeCrypto((1n << 53n) - 1n, 0n)
+      assert.deepStrictEqual(yield* crypto.randomShuffle(input), [2, 3, 1])
+      assert.deepStrictEqual(input, [1, 2, 3])
+    }))
+
+  it.effect("reports random source failures as PlatformError", () =>
+    Effect.gen(function*() {
+      const cause = new Error("CSPRNG unavailable")
+      const crypto = Crypto.make({
+        ...backend,
+        randomBytes: () => {
+          throw cause
+        }
+      })
+      for (
+        const [method, operation] of [
+          ["randomBytes", crypto.randomBytes(1)],
+          ["randomUUIDv4", crypto.randomUUIDv4()],
+          ["randomUUIDv7", crypto.randomUUIDv7()],
+          ["randomULID", crypto.randomULID]
+        ] as const
+      ) {
+        const error = yield* Effect.flip<unknown, PlatformError.PlatformError, never>(operation)
+        assert.strictEqual(error.reason.method, method)
+        assert.strictEqual(error.reason.cause, cause)
+      }
+    }))
+
+  it.effect("rejects invalid arguments before calling the backend", () =>
+    Effect.gen(function*() {
+      const unreachable = () => {
+        throw new Error("invalid arguments reached the backend")
+      }
+      const crypto = Crypto.make({
+        subtle: new Proxy({} as SubtleCrypto, { get: unreachable }),
+        randomBytes: unreachable
+      })
+      const bytes = new Uint8Array(16)
+      const key = yield* Crypto.generateSecretKey({ name: "AES-GCM", length: 128 }).pipe(
+        Effect.provideService(Crypto.Crypto, testCrypto)
+      )
+      const argon2id = { password: bytes, salt: bytes, memoryKiB: 64, passes: 1, parallelism: 1, length: 32 }
+      for (
+        const [method, operation] of [
+          ["randomBytes", crypto.randomBytes(-1)],
+          ["pbkdf2", crypto.pbkdf2({ hash: "SHA-256", password: bytes, salt: bytes, iterations: 0, length: 32 })],
+          ["pbkdf2", crypto.pbkdf2({ hash: "SHA-256", password: bytes, salt: bytes, iterations: 2 ** 31, length: 32 })],
+          ["hkdf", crypto.hkdf({ hash: "SHA-256", key: bytes, length: 255 * 32 + 1 })],
+          ["argon2id", crypto.argon2id({ ...argon2id, salt: new Uint8Array(7) })],
+          ["argon2id", crypto.argon2id({ ...argon2id, memoryKiB: 7 })],
+          ["xchacha20poly1305Encrypt", crypto.xchacha20poly1305Encrypt({ key: bytes, nonce: bytes, data: bytes })],
+          ["generateKeyPair", crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256", modulusLength: 1024 })],
+          ["encrypt", crypto.encrypt({ name: "AES-GCM", iv: bytes }, key, bytes)],
+          ["decrypt", crypto.decrypt({ name: "AES-CTR", counter: bytes, length: 0 }, key, bytes)],
+          ["sign", crypto.sign({ name: "RSA-PSS", saltLength: -1 }, key, bytes)],
+          ["deriveSharedSecret", crypto.deriveSharedSecret(key, key)]
+        ] as const
+      ) {
+        const error = yield* Effect.flip<unknown, PlatformError.PlatformError, never>(operation)
+        assert.strictEqual(error.reason._tag, "BadArgument")
+        assert.strictEqual(error.reason.method, method)
+      }
+    }))
+
+  it.effect("reports operations without a backend as unsupported", () =>
+    Effect.gen(function*() {
+      const crypto = Crypto.make({ randomBytes: (size) => new Uint8Array(size) })
+      const error = yield* Effect.flip(crypto.digest("SHA-256", new Uint8Array()))
+      assert.strictEqual(error.reason._tag, "Unsupported")
+    }))
+
+  it.effect("rejects keys created by a different backend", () =>
+    Effect.gen(function*() {
+      const key = yield* testCrypto.generateSecretKey({ name: "AES-GCM", length: 128 })
+      const other = Crypto.make({
+        subtle: Object.create(globalThis.crypto.subtle),
+        randomBytes: (size) => new Uint8Array(size)
+      })
+      const error = yield* Effect.flip(
+        other.encrypt({ name: "AES-GCM", iv: new Uint8Array(12) }, key, new Uint8Array())
+      )
+      assert.strictEqual(error.reason._tag, "BadArgument")
+    }))
 })

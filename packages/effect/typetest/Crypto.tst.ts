@@ -1,10 +1,30 @@
-import type { Crypto, Effect, PlatformError } from "effect"
+import { Crypto, Effect, type PlatformError } from "effect"
 import { describe, expect, it } from "tstyche"
 
 declare const crypto: Crypto.Crypto
 declare const format: "hex" | "bytes"
 
 describe("Crypto", () => {
+  it("make accepts the original primitives or a Web Crypto backend", () => {
+    const randomBytes = (size: number) => new Uint8Array(size)
+    const digest = (_algorithm: Crypto.DigestAlgorithm, data: Uint8Array) => Effect.succeed(data)
+    expect(Crypto.make).type.toBeCallableWith({ randomBytes, digest })
+    expect(Crypto.make).type.toBeCallableWith({ randomBytes, subtle: {} as SubtleCrypto })
+    expect(Crypto.make).type.not.toBeCallableWith({ digest })
+    expect(Crypto.make).type.not.toBeCallableWith({ randomBytes, encrypt: crypto.encrypt })
+  })
+
+  it("rejects options that do not match the selected algorithm", () => {
+    const key = {} as Crypto.Key
+    const data = new Uint8Array()
+    expect(Crypto.generateSecretKey).type.not.toBeCallableWith({ name: "AES-GCM", length: 64 })
+    expect(Crypto.generateSecretKey).type.not.toBeCallableWith({ name: "Ed25519" })
+    expect(Crypto.generateKeyPair).type.not.toBeCallableWith({ name: "ECDH" })
+    expect(Crypto.encrypt).type.not.toBeCallableWith({ name: "AES-GCM" }, key, data)
+    expect(Crypto.encrypt).type.not.toBeCallableWith({ name: "AES-CTR", counter: data }, key, data)
+    expect(Crypto.sign).type.not.toBeCallableWith({ name: "ECDSA" }, key, data)
+  })
+
   it("randomUUIDv4 infers the output from the format, defaulting to string", () => {
     expect(crypto.randomUUIDv4()).type.toBe<Effect.Effect<string, PlatformError.PlatformError>>()
     expect(crypto.randomUUIDv4({})).type.toBe<Effect.Effect<string, PlatformError.PlatformError>>()

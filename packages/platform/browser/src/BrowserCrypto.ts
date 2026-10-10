@@ -13,7 +13,6 @@ import * as Context from "effect/Context"
 import * as EffectCrypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as PlatformError from "effect/PlatformError"
 
 /**
  * Provides Browser Web Crypto APIs used by the Crypto service implementation.
@@ -36,13 +35,16 @@ export const WebCrypto = Context.Reference<Crypto>("@effect/platform-browser/Cry
  *
  * **When to use**
  *
- * Use to provide cryptographic randomness, UUID generation, and digest
- * operations in browser runtimes backed by `globalThis.crypto`.
+ * Use to provide cryptographic randomness, digests, key management, encryption,
+ * and signing in browser runtimes backed by `globalThis.crypto`.
  *
  * **Details**
  *
- * Random bytes are produced with `crypto.getRandomValues`. Digests are computed
- * with `crypto.subtle.digest` and returned as `Uint8Array` values.
+ * Random bytes are produced with `crypto.getRandomValues`. SHA digests, HMAC,
+ * HKDF, PBKDF2, AES-GCM, AES-CTR, RSA-OAEP, RSA-PSS, RSASSA-PKCS1-v1_5, ECDSA,
+ * Ed25519, ECDH and X25519 key agreement, and key management use
+ * `crypto.subtle`. MD5, Argon2id, and XChaCha20-Poly1305
+ * are unsupported and fail with `PlatformError`.
  *
  * **Gotchas**
  *
@@ -69,34 +71,6 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       return bytes
     }
 
-    const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) => {
-      if (typeof crypto.subtle?.digest !== "function") {
-        return Effect.fail(PlatformError.systemError({
-          module: "Crypto",
-          method: "digest",
-          _tag: "Unknown",
-          description: "crypto.subtle.digest is not available"
-        }))
-      }
-      return Effect.map(
-        Effect.tryPromise({
-          try: () => crypto.subtle.digest(algorithm, new Uint8Array(data)),
-          catch: (cause) =>
-            PlatformError.systemError({
-              module: "Crypto",
-              method: "digest",
-              _tag: "Unknown",
-              description: "Could not compute digest",
-              cause
-            })
-        }),
-        (buffer) => new Uint8Array(buffer)
-      )
-    }
-
-    return EffectCrypto.make({
-      randomBytes,
-      digest
-    })
+    return EffectCrypto.make({ subtle: crypto.subtle, randomBytes })
   })
 )

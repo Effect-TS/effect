@@ -3,8 +3,9 @@
  * tests.
  *
  * Random bytes, numbers, shuffles, UUIDs, and ULIDs are derived from a seeded
- * pseudo-random generator. Digest operations are delegated to an underlying
- * platform `Crypto` service.
+ * pseudo-random generator. Digest, key, encryption, and signing operations are
+ * delegated to an underlying platform `Crypto` service, so key generation and
+ * randomized encryption and signatures are not reproducible.
  *
  * @stability unstable
  * @since 4.0.0
@@ -21,14 +22,15 @@ import * as Random from "../Random.ts"
  * **When to use**
  *
  * Use to construct a `Crypto` service whose random operations are reproducible
- * in tests while preserving the digest implementation of a platform `Crypto`
- * service.
+ * in tests while preserving the digest, key, encryption, and signing
+ * implementations of a platform `Crypto` service.
  *
  * **Details**
  *
- * The effect requires an existing `Crypto` service and delegates digest
- * operations to it. Each evaluation starts a new random sequence from `seed`;
- * every other random operation is derived from that sequence.
+ * The effect requires an existing `Crypto` service and delegates digest, key,
+ * encryption, and signing operations to it. Each evaluation starts a new
+ * random sequence from `seed`; random bytes, numbers, shuffles, UUIDs, and
+ * ULIDs are derived from that sequence.
  *
  * **Gotchas**
  *
@@ -36,7 +38,9 @@ import * as Random from "../Random.ts"
  * security-sensitive purposes. The sequence depends on the order in which
  * random operations are evaluated. UUIDv7 and ULID values also include the
  * current `Clock` time, which must be controlled separately when their complete
- * output needs to be reproducible.
+ * output needs to be reproducible. Delegated operations use the platform's
+ * secure randomness, so `generateSecretKey`, `generateKeyPair`, RSA-OAEP
+ * encryption, and RSA-PSS or ECDSA signatures differ between runs.
  *
  * @see {@link layer} for providing the service as a layer
  *
@@ -50,16 +54,38 @@ export const make: (
   function*(_seed: string | number) {
     const crypto = yield* Crypto.Crypto
     const seededRandom = yield* Random.Random
-    return Crypto.make({
+    const seeded = Crypto.make({
       randomBytes: (size) => {
         const bytes = new Uint8Array(size)
         for (let i = 0; i < size; i++) {
           bytes[i] = Math.floor(seededRandom.nextDoubleUnsafe() * 256)
         }
         return bytes
-      },
-      digest: crypto.digest
+      }
     })
+    // Require delegation of every non-random operation, including future additions.
+    const delegated: Omit<Crypto.Crypto, `~${string}` | `next${string}` | `random${string}`> = {
+      digest: crypto.digest,
+      hmac: crypto.hmac,
+      hmacVerify: crypto.hmacVerify,
+      pbkdf2: crypto.pbkdf2,
+      hkdf: crypto.hkdf,
+      argon2id: crypto.argon2id,
+      xchacha20poly1305Encrypt: crypto.xchacha20poly1305Encrypt,
+      xchacha20poly1305Decrypt: crypto.xchacha20poly1305Decrypt,
+      generateSecretKey: crypto.generateSecretKey,
+      generateKeyPair: crypto.generateKeyPair,
+      importKey: crypto.importKey,
+      exportKey: crypto.exportKey,
+      importJwk: crypto.importJwk,
+      exportJwk: crypto.exportJwk,
+      encrypt: crypto.encrypt,
+      decrypt: crypto.decrypt,
+      sign: crypto.sign,
+      verify: crypto.verify,
+      deriveSharedSecret: crypto.deriveSharedSecret
+    }
+    return Crypto.Crypto.of({ ...seeded, ...delegated })
   },
   (effect, seed) => Random.withSeed(effect, seed)
 )
@@ -75,14 +101,16 @@ export const make: (
  *
  * **Details**
  *
- * The layer requires an existing platform `Crypto` service whose digest
- * implementation is retained. Each layer build starts the random sequence from
+ * The layer requires an existing platform `Crypto` service whose non-random
+ * operations are retained. Each layer build starts the random sequence from
  * `seed`.
  *
  * **Gotchas**
  *
  * UUIDv7 and ULID values also depend on the current `Clock`. Provide a test
- * clock when their complete output needs to be reproducible.
+ * clock when their complete output needs to be reproducible. Key generation,
+ * RSA-OAEP encryption, and RSA-PSS or ECDSA signatures are delegated to the
+ * platform service and are not reproducible.
  *
  * @see {@link make} for constructing the service directly
  *

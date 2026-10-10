@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as TestClock from "effect/testing/TestClock"
+import { describeCrypto } from "../../node-shared/test/Crypto.test-utils.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -57,3 +58,5 @@ describe("NodeCrypto", () => {
       assert.strictEqual(hex(digest), "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
     }).pipe(Effect.provide(NodeCrypto.layer)))
 })
+
+describeCrypto("NodeCrypto primitives", NodeCrypto.layer, { md5: true, native: true })
