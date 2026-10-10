@@ -316,6 +316,13 @@ const globRoots = Effect.fnUntraced(function*(
   const roots: Array<{ readonly glob: Glob.Glob; readonly directory: string }> = []
   for (const pattern of patterns) {
     const glob = Glob.make(pattern)
+    // Check before path.join normalizes away segments. Both walks must skip
+    // protected roots, but navigation through `.` and `..` remains valid.
+    if (
+      glob.root.split("/").some((segment) =>
+        segment === "node_modules" || (segment.startsWith(".") && segment !== "." && segment !== "..")
+      )
+    ) continue
     const directory = path.join(cwd, glob.root)
     if (yield* fs.exists(directory)) roots.push({ glob, directory })
   }
