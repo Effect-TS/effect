@@ -12,10 +12,10 @@ import * as SchemaModel from "./SchemaModel.ts"
 /**
  * Reads introspection JSON from `source.body`, accepting both `{ __schema }`
  * and `{ data: { __schema } }`. `defaultValue` strings go through
- * `Parser.parseConstValue`. The newer keys `isRepeatable`, `specifiedByURL`,
- * `isOneOf` and input value `isDeprecated` / `deprecationReason` are optional
- * and read as `false` / absent when missing. `isDeprecated: true` with a
- * `null` reason reads as `"No longer supported"`.
+ * `Parser.parseConstValue`. The newer keys `isOneOf` and input value
+ * `isDeprecated` / `deprecationReason` are optional and read as `false` /
+ * absent when missing. `isDeprecated: true` with a `null` reason reads as
+ * `"No longer supported"`.
  *
  * Fails with a diagnostic for `source.path` when the body is not JSON, has
  * neither shape, or a `defaultValue` does not parse.
@@ -74,27 +74,11 @@ class Reader {
       if (!types.has(name)) types.set(name, SchemaModel.builtInScalar(name))
     }
 
-    const directives = new Map<string, SchemaModel.DirectiveDefinition>()
-    this.objects(schema, "directives", "__schema", (directive, path) => {
-      const name = this.string(directive, "name", path)
-      if (SchemaModel.builtInDirectiveNames.has(name)) return
-      directives.set(name, {
-        name,
-        description: this.optionalString(directive, "description", path),
-        arguments: this.inputValues(directive, "args", path),
-        repeatable: this.optionalBoolean(directive, "isRepeatable", path) ?? false,
-        locations: this.array(directive, "locations", path).map((location, j) =>
-          typeof location === "string" ? location : this.expected(`${path}.locations[${j}]`, "a string")
-        )
-      })
-    })
-
     return {
       queryType: this.rootName(schema, "queryType") ?? this.expected("__schema.queryType", "an object"),
       mutationType: this.rootName(schema, "mutationType"),
       subscriptionType: this.rootName(schema, "subscriptionType"),
-      types,
-      directives
+      types
     }
   }
 
@@ -103,7 +87,8 @@ class Reader {
     const kind = this.string(type, "kind", path)
     switch (kind) {
       case "SCALAR":
-        return { _tag: "ScalarType", name, description, specifiedBy: this.optionalString(type, "specifiedByURL", path) }
+        return { _tag: "ScalarType", name, description }
+
       case "OBJECT":
         return {
           _tag: "ObjectType",
@@ -119,7 +104,7 @@ class Reader {
           description,
           interfaces: type.interfaces == null ? [] : this.typeNames(type, "interfaces", path),
           fields: this.fields(type, path),
-          possibleTypes: [...this.typeNames(type, "possibleTypes", path)].sort()
+          possibleTypes: this.typeNames(type, "possibleTypes", path).sort()
         }
       case "UNION":
         return { _tag: "UnionType", name, description, possibleTypes: this.typeNames(type, "possibleTypes", path) }
@@ -196,7 +181,7 @@ class Reader {
     }
   }
 
-  typeNames(owner: JsonObject, key: string, path: string): ReadonlyArray<string> {
+  typeNames(owner: JsonObject, key: string, path: string): Array<string> {
     return this.objects(owner, key, path, (type, typePath) => this.string(type, "name", typePath))
   }
 

@@ -39,7 +39,9 @@
  */
 import { make, type Source } from "./Diagnostic.ts"
 
-type PunctuatorKind = "!" | "$" | "&" | "(" | ")" | "..." | ":" | "=" | "@" | "[" | "]" | "{" | "|" | "}"
+const punctuatorKinds = ["!", "$", "&", "(", ")", "...", ":", "=", "@", "[", "]", "{", "|", "}"] as const
+
+type PunctuatorKind = (typeof punctuatorKinds)[number]
 
 export type TokenKind = "<SOF>" | "<EOF>" | PunctuatorKind | "Name" | "Int" | "Float" | "String" | "BlockString"
 
@@ -53,22 +55,7 @@ export interface Token {
   readonly value: string | undefined
 }
 
-const punctuators: ReadonlySet<string> = new Set<PunctuatorKind>([
-  "!",
-  "$",
-  "&",
-  "(",
-  ")",
-  "...",
-  ":",
-  "=",
-  "@",
-  "[",
-  "]",
-  "{",
-  "|",
-  "}"
-])
+const punctuators: ReadonlySet<string> = new Set(punctuatorKinds)
 
 export const isPunctuatorKind = (kind: TokenKind): kind is PunctuatorKind => punctuators.has(kind)
 

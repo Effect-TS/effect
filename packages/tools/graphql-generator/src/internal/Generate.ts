@@ -29,7 +29,6 @@ import * as Validate from "./Validate.ts"
  */
 export interface Cache {
   schema: {
-    readonly path: string
     readonly source: Source
     readonly result: Result.Result<SchemaModel.Schema, InternalDiagnostic>
   } | undefined
@@ -43,6 +42,8 @@ interface ParsedDocument {
 }
 
 export const makeCache = (): Cache => ({ schema: undefined, documents: new Map() })
+
+const sameSource = (a: Source, b: Source): boolean => a.path === b.path && a.body === b.body
 
 export class ConfigError extends Data.TaggedError("ConfigError")<{
   readonly message: string
@@ -64,15 +65,8 @@ export const generate: (
     // Schema
     const schemaPath = path.resolve(cwd, config.schema)
     const schemaSource: Source = { path: display(schemaPath), body: yield* fs.readFileString(schemaPath) }
-    if (
-      cache.schema === undefined || cache.schema.path !== schemaPath ||
-      cache.schema.source.path !== schemaSource.path || cache.schema.source.body !== schemaSource.body
-    ) {
-      cache.schema = {
-        path: schemaPath,
-        source: schemaSource,
-        result: readSchema(schemaSource, schemaPath.endsWith(".json"))
-      }
+    if (cache.schema === undefined || !sameSource(cache.schema.source, schemaSource)) {
+      cache.schema = { source: schemaSource, result: readSchema(schemaSource) }
     }
     const schemaResult = cache.schema.result
     if (Result.isFailure(schemaResult)) return failed([toPublic(schemaResult.failure)])
@@ -82,27 +76,23 @@ export const generate: (
     const sharedPath = config.shared === undefined
       ? schemaPath.replace(/\.(?:graphql|gql|json)$/, "") + ".graphql.ts"
       : path.resolve(cwd, config.shared)
-    const withExtension = (specifier: string): string => specifier.replace(/\.[jt]s$/, "") + importExtension
-    const relativeSpecifier = (from: string, to: string): string => {
+    const importSpecifier = (from: string, to: string): string => {
       const relative = path.relative(path.dirname(from), to).split(path.sep).join("/")
-      return relative.startsWith(".") ? relative : `./${relative}`
+      return (relative.startsWith(".") ? relative : `./${relative}`).replace(/\.[jt]s$/, "") + importExtension
     }
     const scalars = yield* resolveScalars(
       config,
       schema,
       (module) =>
         module.startsWith("./") || module.startsWith("../") || path.isAbsolute(module)
-          ? withExtension(relativeSpecifier(sharedPath, path.resolve(cwd, module)))
+          ? importSpecifier(sharedPath, path.resolve(cwd, module))
           : module
     )
 
     // Documents
-    const documentPaths = yield* collectFiles(
-      fs,
-      path,
-      cwd,
-      config.documents,
-      (absolute, relative, glob) => Effect.succeed(glob.matches(relative) && absolute !== schemaPath)
+    const entries = yield* listFiles(fs, path, cwd, config.documents)
+    const documentPaths = uniqueSorted(
+      entries.filter((entry) => entry.glob.matches(entry.relative) && entry.absolute !== schemaPath)
     )
     const files: Array<Emitter.DocumentFile> = []
     const diagnostics: Array<InternalDiagnostic> = []
@@ -110,7 +100,7 @@ export const generate: (
     for (const documentPath of documentPaths) {
       const source: Source = { path: display(documentPath), body: yield* fs.readFileString(documentPath) }
       const cached = cache.documents.get(documentPath)
-      const parsed = cached !== undefined && cached.source.path === source.path && cached.source.body === source.body
+      const parsed = cached !== undefined && sameSource(cached.source, source)
         ? cached
         : parseDocument(path, documentPath, source)
       documents.set(documentPath, parsed)
@@ -128,18 +118,14 @@ export const generate: (
       files,
       sharedPath,
       scalars,
-      importSpecifier: (from, to) => withExtension(relativeSpecifier(from, to))
+      importSpecifier
     })
     if (output.errors.length > 0) return failed(output.errors.map(toPublic))
     // Stale outputs: generated files, recognized by their header, whose source is gone.
     const outputs = new Set(output.files.map((file) => file.path))
-    const deletes = yield* collectFiles(
-      fs,
-      path,
-      cwd,
-      config.documents,
+    const deletes = yield* Effect.filter(
+      uniqueSorted(entries.filter((entry) => entry.absolute.endsWith(".graphql.ts") && !outputs.has(entry.absolute))),
       Effect.fnUntraced(function*(absolute) {
-        if (!absolute.endsWith(".graphql.ts") || outputs.has(absolute)) return false
         if (yield* fs.exists(absolute.slice(0, -".ts".length))) return false
         return (yield* fs.readFileString(absolute)).startsWith(Emitter.headerPrefix)
       })
@@ -196,8 +182,8 @@ const toPublic = (diagnostic: InternalDiagnostic): Diagnostic => ({
   codeFrame: diagnostic.codeFrame
 })
 
-const readSchema = (source: Source, json: boolean): Result.Result<SchemaModel.Schema, InternalDiagnostic> => {
-  if (json) return IntrospectionReader.read(source)
+const readSchema = (source: Source): Result.Result<SchemaModel.Schema, InternalDiagnostic> => {
+  if (source.path.endsWith(".json")) return IntrospectionReader.read(source)
   const document = parse(source)
   return Result.isFailure(document) ? Result.fail(document.failure) : SdlReader.read(source, document.success)
 }
@@ -228,58 +214,42 @@ const resolveScalars = (
   return Effect.succeed(scalars)
 }
 
-/**
- * Visits every file under `directory`, skipping `node_modules` and
- * dot-directories. `relative` is the directory's `/`-separated path from the
- * config file.
- */
-const walkFiles: (
-  fs: FileSystem.FileSystem,
-  path: Path.Path,
-  directory: string,
-  relative: string,
-  visit: (absolute: string, relative: string) => Effect.Effect<void, PlatformError>
-) => Effect.Effect<void, PlatformError> = Effect.fnUntraced(function*(fs, path, directory, relative, visit) {
-  const entries = yield* fs.readDirectory(directory)
-  for (const entry of entries.sort()) {
-    if (Glob.isSkipped(entry)) continue
-    const absolute = path.join(directory, entry)
-    const entryRelative = relative === "" ? entry : `${relative}/${entry}`
-    const info = yield* fs.stat(absolute)
-    if (info.type === "Directory") {
-      yield* walkFiles(fs, path, absolute, entryRelative, visit)
-    } else if (info.type === "File") {
-      yield* visit(absolute, entryRelative)
-    }
-  }
-})
+interface FileEntry {
+  readonly absolute: string
+  /** The `/`-separated path from the config file. */
+  readonly relative: string
+  readonly glob: Glob.Glob
+}
 
 /**
- * The absolute paths, sorted, of the files under the `documents` glob roots
- * that `keep` accepts. `relative` is a file's `/`-separated path from the
- * config file.
+ * Every file under the `documents` glob roots, once per glob whose root holds
+ * it, skipping `node_modules` and dot-directories.
  */
-const collectFiles = Effect.fnUntraced(function*(
+const listFiles = Effect.fnUntraced(function*(
   fs: FileSystem.FileSystem,
   path: Path.Path,
   cwd: string,
-  patterns: ReadonlyArray<string>,
-  keep: (absolute: string, relative: string, glob: Glob.Glob) => Effect.Effect<boolean, PlatformError>
+  patterns: ReadonlyArray<string>
 ) {
-  const found = new Set<string>()
+  const entries: Array<FileEntry> = []
+  const walk = (glob: Glob.Glob, directory: string, relative: string): Effect.Effect<void, PlatformError> =>
+    Effect.gen(function*() {
+      for (const entry of (yield* fs.readDirectory(directory)).sort()) {
+        if (Glob.isSkipped(entry)) continue
+        const absolute = path.join(directory, entry)
+        const entryRelative = relative === "" ? entry : `${relative}/${entry}`
+        const info = yield* fs.stat(absolute)
+        if (info.type === "Directory") yield* walk(glob, absolute, entryRelative)
+        else if (info.type === "File") entries.push({ absolute, relative: entryRelative, glob })
+      }
+    })
   for (const pattern of patterns) {
     const glob = Glob.make(pattern)
     const directory = path.join(cwd, glob.root)
-    if (glob.skipped || !(yield* fs.exists(directory))) continue
-    yield* walkFiles(
-      fs,
-      path,
-      directory,
-      glob.root,
-      Effect.fnUntraced(function*(absolute, relative) {
-        if (!found.has(absolute) && (yield* keep(absolute, relative, glob))) found.add(absolute)
-      })
-    )
+    if (!glob.skipped && (yield* fs.exists(directory))) yield* walk(glob, directory, glob.root)
   }
-  return Array.from(found).sort()
+  return entries
 })
+
+const uniqueSorted = (entries: ReadonlyArray<FileEntry>): Array<string> =>
+  Array.from(new Set(entries.map((entry) => entry.absolute))).sort()

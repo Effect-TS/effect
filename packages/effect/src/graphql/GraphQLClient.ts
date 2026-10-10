@@ -424,16 +424,9 @@ const makeMethod = <Op extends GraphQL.Any>(
     GraphQL.Error<Op>,
     Exclude<GraphQL.Services<Op>, R2>
   > {
-    const decode = (
-      result: ExecutionResult
-    ): Effect.Effect<
-      GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
-      GraphQLClientError,
-      Op["result"]["DecodingServices"]
-    > => options?.partial === true ? decodePartial(result) : decodeStrict(result)
     return buildRequest(variables, options?.headers).pipe(
       Effect.flatMap((request) => execute(0, request)),
-      Effect.flatMap(decode),
+      Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
       Effect.provideContext(callContext(options))
     )
   }

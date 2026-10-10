@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Layer, Queue, Ref, Stream } from "effect"
+import { Deferred, type Duration, Effect, Fiber, Layer, Queue, Ref, Stream } from "effect"
+
 import { GraphQLClient, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
 import { TestClock } from "effect/testing"
@@ -16,16 +17,18 @@ const subscription = (id: string): GraphQLProtocol.GraphQLRequest => ({
   headers: {}
 })
 
-const makeProtocol = (
-  server: Effect.Success<typeof wsServer>,
-  options?: Omit<Parameters<typeof GraphQLProtocol.makeWebSocket>[0], "url">
-) => GraphQLProtocol.makeWebSocket({ url, ...options }).pipe(Effect.provide(server.layer))
+interface Options {
+  readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown>
+  readonly connectionAckTimeout?: Duration.Input
+  readonly keepAlive?: Duration.Input | false
+  readonly idleTimeout?: Duration.Input
+}
+
+const makeProtocol = (server: Effect.Success<typeof wsServer>, options?: Options) =>
+  GraphQLProtocol.makeWebSocket({ url, ...options }).pipe(Effect.provide(server.layer))
 
 /** Starts a subscription and accepts its connection, returning the failure fiber. */
-const acceptedSubscription = (
-  server: Effect.Success<typeof wsServer>,
-  options?: Omit<Parameters<typeof GraphQLProtocol.makeWebSocket>[0], "url">
-) =>
+const acceptedSubscription = (server: Effect.Success<typeof wsServer>, options?: Options) =>
   Effect.gen(function*() {
     const protocol = yield* makeProtocol(server, options)
     const fiber = yield* protocol.subscribe(subscription("A")).pipe(Stream.runDrain, Effect.flip, Effect.forkChild)

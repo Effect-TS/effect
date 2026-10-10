@@ -6,10 +6,9 @@
  * - Lists preserve declaration order, including extensions. Interface
  *   `possibleTypes` are sorted by name.
  * - The five built-in scalars are always present without descriptions.
- *   Introspection meta types and built-in directives are omitted.
- * - Applied directives are discarded after extracting `deprecationReason`,
- *   `specifiedBy` and `oneOf`. A missing deprecation reason becomes
- *   `"No longer supported"`.
+ *   Introspection meta types and directive definitions are omitted.
+ * - Applied directives are discarded after extracting `deprecationReason` and
+ *   `oneOf`. A missing deprecation reason becomes `"No longer supported"`.
  * - Default values are parsed const values without locations.
  *
  * @internal
@@ -21,7 +20,6 @@ export interface Schema {
   readonly mutationType: string | undefined
   readonly subscriptionType: string | undefined
   readonly types: ReadonlyMap<string, NamedType>
-  readonly directives: ReadonlyMap<string, DirectiveDefinition>
 }
 
 export type NamedType = ScalarType | ObjectType | InterfaceType | UnionType | EnumType | InputObjectType
@@ -30,8 +28,6 @@ export interface ScalarType {
   readonly _tag: "ScalarType"
   readonly name: string
   readonly description: string | undefined
-  /** The `@specifiedBy` URL, or introspection `specifiedByURL`. */
-  readonly specifiedBy: string | undefined
 }
 
 export interface ObjectType {
@@ -98,15 +94,6 @@ export interface EnumValueDefinition {
   readonly deprecationReason: string | undefined
 }
 
-export interface DirectiveDefinition {
-  readonly name: string
-  readonly description: string | undefined
-  readonly arguments: ReadonlyArray<InputValue>
-  readonly repeatable: boolean
-  /** Spec `DirectiveLocation` names in declaration order. */
-  readonly locations: ReadonlyArray<string>
-}
-
 export type TypeRef = NamedTypeRef | ListTypeRef | NonNullTypeRef
 
 export interface NamedTypeRef {
@@ -150,24 +137,10 @@ export interface ConstObjectField {
 /** The scalars every schema has, whether or not it declares them. */
 export const builtInScalarNames: ReadonlyArray<string> = ["String", "Int", "Float", "Boolean", "ID"]
 
-/** Directives the spec defines; they are consumed or ignored, never kept in `Schema.directives`. */
-export const builtInDirectiveNames: ReadonlySet<string> = new Set([
-  "skip",
-  "include",
-  "deprecated",
-  "specifiedBy",
-  "oneOf"
-])
-
 /** The reason `@deprecated` implies when it has none. */
 export const defaultDeprecationReason = "No longer supported"
 
-export const builtInScalar = (name: string): ScalarType => ({
-  _tag: "ScalarType",
-  name,
-  description: undefined,
-  specifiedBy: undefined
-})
+export const builtInScalar = (name: string): ScalarType => ({ _tag: "ScalarType", name, description: undefined })
 
 /** Drops locations from a parsed const value. */
 export const fromAstConstValue = (value: Ast.ConstValue): ConstValue => {
