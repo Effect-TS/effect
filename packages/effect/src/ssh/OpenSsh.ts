@@ -43,6 +43,7 @@ import * as ChildProcess from "../process/ChildProcess.ts"
 import { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
 import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
+import * as Schedule from "../Schedule.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
@@ -247,18 +248,22 @@ export const make = Effect.fnUntraced(function*(
         stderr: "ignore"
       })
     )
-    const ready: Effect.Effect<void, SshError> = Effect.gen(function*() {
-      while (true) {
-        if (!(yield* Effect.orElseSucceed(master.isRunning, () => false))) {
-          // The master's stderr ends with the process; collect all of it.
-          yield* Fiber.await(collector)
-          return yield* connectionError(new Error(diagnostics.trim() || "ssh exited before connecting"))
-        }
-        if ((yield* Effect.orElseSucceed(check, () => -1)) === 0) return
-        yield* Effect.sleep(Duration.millis(25))
-      }
-    })
-    yield* ready.pipe(
+    // The master is ready once `ssh -O check` succeeds, and has failed if it
+    // exits first.
+    const accepting = check.pipe(
+      Effect.orElseSucceed(() => -1),
+      Effect.repeat({ until: (code) => code === 0, schedule: Schedule.spaced(Duration.millis(25)) }),
+      Effect.asVoid
+    )
+    const exited = master.exitCode.pipe(
+      Effect.ignore,
+      // The master's stderr ends with the process; collect all of it.
+      Effect.andThen(Fiber.await(collector)),
+      Effect.andThen(() =>
+        Effect.fail(connectionError(new Error(diagnostics.trim() || "ssh exited before connecting")))
+      )
+    )
+    yield* Effect.raceFirst(accepting, exited).pipe(
       Effect.timeoutOrElse({
         duration: timeout,
         orElse: () =>
