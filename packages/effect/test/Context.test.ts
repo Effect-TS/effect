@@ -115,6 +115,9 @@ describe("Context", () => {
     strictEqual(Context.getUnsafe(context, Undefined), undefined)
     strictEqual(Context.getOrElse(context, Undefined, () => 1), undefined)
     deepStrictEqual(Context.getOption(context, Ref), Option.some(undefined))
+    deepStrictEqual([...Context.pick(Undefined)(context).mapUnsafe], [[Undefined.key, undefined]])
+    deepStrictEqual([...Context.pick(Ref)(context).mapUnsafe], [[Ref.key, undefined]])
+    deepStrictEqual([...Context.pick(Missing)(context).mapUnsafe], [])
     strictEqual(Context.get(context, Ref), undefined)
   })
 
@@ -262,11 +265,20 @@ describe("Context", () => {
     deepStrictEqual([...merged.mapUnsafe], [[A.key, 3], [B.key, 2], [C.key, 4]])
   })
 
-  it("pick and omit retain source ordering", () => {
+  it("pick and omit preserve services and source ordering", () => {
     const source = Context.make(A, 1).pipe(Context.add(B, 2), Context.add(C, 3))
 
     deepStrictEqual([...Context.pick(C, A)(source).mapUnsafe], [[A.key, 1], [C.key, 3]])
     deepStrictEqual([...Context.omit(B)(source).mapUnsafe], [[A.key, 1], [C.key, 3]])
+
+    const picked = Context.pick(C)(source)
+    const empty = Context.pick()(source)
+    deepStrictEqual([...Context.pick(A)(source).mapUnsafe], [[A.key, 1]])
+    deepStrictEqual([...picked.mapUnsafe], [[C.key, 3]])
+    deepStrictEqual([...empty.mapUnsafe], [])
+    assertFalse(Context.hasSameCache(source, picked))
+    assertFalse(Context.hasSameCache(source, empty))
+    deepStrictEqual([...source.mapUnsafe], [[A.key, 1], [B.key, 2], [C.key, 3]])
   })
 
   it("resolves reference defaults lazily and caches them", () => {
@@ -278,6 +290,8 @@ describe("Context", () => {
       }
     })
     const context = Context.empty()
+    const picked = Context.pick(Ref)(context)
+    deepStrictEqual([...picked.mapUnsafe], [])
 
     strictEqual(calls, 0)
     const first = Context.get(context, Ref)
