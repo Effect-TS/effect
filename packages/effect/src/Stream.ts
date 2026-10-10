@@ -11542,9 +11542,6 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
- * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
- * `Array` module, and requires a runtime that supports `Array.fromAsync`.
- *
  * **Example** (Converting to a ReadableStream with services)
  *
  * ```ts import.meta.vitest
@@ -11623,9 +11620,6 @@ export const toReadableStreamWith: {
  * **Details**
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
- *
- * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
- * `Array` module, and requires a runtime that supports `Array.fromAsync`.
  *
  * **Example** (Converting a stream to a ReadableStream)
  *
