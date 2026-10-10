@@ -156,7 +156,7 @@ describe("GraphQLProtocol.makeWebSocket", () => {
   it.effect("connects on the first operation, ignores per-call headers and closes idleTimeout after the last one", () =>
     Effect.gen(function*() {
       const server = yield* wsServer
-      const protocol = yield* makeProtocol(server, { idleTimeout: "30 seconds" })
+      const protocol = yield* makeProtocol(server, { idleTimeout: "30 seconds", keepAlive: false })
       yield* TestClock.adjust("1 minute")
       assert.strictEqual(yield* Queue.size(server.connections), 0)
 
