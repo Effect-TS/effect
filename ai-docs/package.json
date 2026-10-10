@@ -11,6 +11,7 @@
     "@effect/atom-react": "workspace:*",
     "@effect/atom-solid": "workspace:*",
     "@effect/atom-vue": "workspace:*",
+    "@effect/graphql-generator": "workspace:*",
     "@effect/opentelemetry": "workspace:*",
     "@effect/platform-bun": "workspace:*",
     "@effect/platform-node": "workspace:*",
