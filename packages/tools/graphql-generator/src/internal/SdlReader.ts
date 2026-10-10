@@ -3,9 +3,9 @@
  *
  * @internal
  */
-import * as Result from "effect/Result"
+import type * as Result from "effect/Result"
 import type * as Ast from "./Ast.ts"
-import { Diagnostic, make, type Source } from "./Diagnostic.ts"
+import { catchDiagnostic, type Diagnostic, make, type Source } from "./Diagnostic.ts"
 import * as SchemaModel from "./SchemaModel.ts"
 
 /**
@@ -19,14 +19,8 @@ import * as SchemaModel from "./SchemaModel.ts"
  * schema, e.g. it has no query root type or extends a type it never defines.
  * The server schema is not otherwise validated.
  */
-export const read = (source: Source, document: Ast.Document): Result.Result<SchemaModel.Schema, Diagnostic> => {
-  try {
-    return Result.succeed(build(source, document))
-  } catch (error) {
-    if (error instanceof Diagnostic) return Result.fail(error)
-    throw error
-  }
-}
+export const read = (source: Source, document: Ast.Document): Result.Result<SchemaModel.Schema, Diagnostic> =>
+  catchDiagnostic(() => build(source, document))
 
 /** The definition each extension kind extends, and the word graphql-js uses for it. */
 const extensionTargets: Record<Ast.TypeExtension["_tag"], readonly [Ast.TypeDefinition["_tag"], string]> = {
@@ -136,14 +130,13 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
     })
   }
 
-  const roots: Record<Ast.OperationType, string | undefined> = schemaDefinition === undefined
-    ? {
-      query: types.has("Query") ? "Query" : undefined,
-      mutation: types.has("Mutation") ? "Mutation" : undefined,
-      subscription: types.has("Subscription") ? "Subscription" : undefined
-    }
-    : { query: undefined, mutation: undefined, subscription: undefined }
-  for (const part of [...(schemaDefinition === undefined ? [] : [schemaDefinition]), ...schemaExtensions]) {
+  const defaultRoot = (name: string) => schemaDefinition === undefined && types.has(name) ? name : undefined
+  const roots: Record<Ast.OperationType, string | undefined> = {
+    query: defaultRoot("Query"),
+    mutation: defaultRoot("Mutation"),
+    subscription: defaultRoot("Subscription")
+  }
+  for (const part of schemaDefinition === undefined ? schemaExtensions : [schemaDefinition, ...schemaExtensions]) {
     for (const operationType of part.operationTypes) {
       roots[operationType.operation] = operationType.type.name.value
     }
@@ -228,7 +221,7 @@ const buildType = (
         _tag: "InputObjectType",
         name,
         description,
-        oneOf: directives.some((directive) => directive.name.value === "oneOf"),
+        oneOf: findDirective(directives, "oneOf") !== undefined,
         fields: (parts as ReadonlyArray<Ast.InputObjectTypeDefinition | Ast.InputObjectTypeExtension>).flatMap((
           part
         ) => part.fields.map(buildInputValue))
@@ -252,22 +245,24 @@ const buildInputValue = (value: Ast.InputValueDefinition): SchemaModel.InputValu
   deprecationReason: deprecationReason(value.directives)
 })
 
-/** The string value of argument `argument` on the first applied directive named `name`. */
-const directiveArgument = (
+/** The first applied directive named `name`. */
+const findDirective = (
   directives: ReadonlyArray<Ast.ConstDirective>,
-  name: string,
-  argument: string
-): { readonly applied: boolean; readonly value: string | undefined } => {
-  const directive = directives.find((directive) => directive.name.value === name)
-  if (directive === undefined) return { applied: false, value: undefined }
-  const value = directive.arguments.find((arg) => arg.name.value === argument)?.value
-  return { applied: true, value: value?._tag === "StringValue" ? value.value : undefined }
+  name: string
+): Ast.ConstDirective | undefined => directives.find((directive) => directive.name.value === name)
+
+/** The value of argument `name` on `directive` when it is a string. */
+const stringArgument = (directive: Ast.ConstDirective | undefined, name: string): string | undefined => {
+  const value = directive?.arguments.find((argument) => argument.name.value === name)?.value
+  return value?._tag === "StringValue" ? value.value : undefined
 }
 
 const deprecationReason = (directives: ReadonlyArray<Ast.ConstDirective>): string | undefined => {
-  const { applied, value } = directiveArgument(directives, "deprecated", "reason")
-  return applied ? value ?? SchemaModel.defaultDeprecationReason : undefined
+  const directive = findDirective(directives, "deprecated")
+  return directive === undefined
+    ? undefined
+    : stringArgument(directive, "reason") ?? SchemaModel.defaultDeprecationReason
 }
 
 const specifiedBy = (directives: ReadonlyArray<Ast.ConstDirective>): string | undefined =>
-  directiveArgument(directives, "specifiedBy", "url").value
+  stringArgument(findDirective(directives, "specifiedBy"), "url")
