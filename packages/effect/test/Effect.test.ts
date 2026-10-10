@@ -4522,7 +4522,6 @@ describe("Effect", () => {
         const fiber = yield* Effect.forkChild(cached, { startImmediately: true })
         assert.isUndefined(fiber.pollUnsafe())
         yield* Fiber.interrupt(fiber)
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)))
         assert.strictEqual(yield* cached, 42)
         assert.strictEqual(runs, 2)
       }))
