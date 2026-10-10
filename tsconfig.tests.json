@@ -19,7 +19,7 @@
     "**/dist/**",
     "./packages/platform/deno/**",
     // Vendored GitHub schema fixtures, read with fs at test time; keep the multi-MB JSON out of the program.
-    "./packages/tools/graphql-generator/test/fixtures/**"
+    "./packages/tools/graphql-generator/test/fixtures/**/*.json"
   ],
   "compilerOptions": {
     "rootDir": ".",
