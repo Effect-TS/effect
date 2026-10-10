@@ -11,8 +11,8 @@
  * schema or a document changes. A failing cycle keeps the last good output.
  *
  * Exit codes: `0` on success, `1` when generation reports an error or
- * `--check` finds out-of-date files, `2` when the config can't be loaded
- * (with `--watch`, only at startup).
+ * `--check` finds out-of-date files, `2` for invalid CLI usage or when the
+ * config can't be loaded (with `--watch`, only at startup).
  *
  * @since 4.0.0
  */
@@ -121,6 +121,11 @@ export const run: Effect.Effect<
   CliError.CliError | ConfigLoadError | GenerateError | CheckError,
   Command.Environment
 > = Command.run(root, { version: "0.0.0" }).pipe(
+  Effect.mapError((error) =>
+    CliError.isCliError(error) && (error._tag !== "ShowHelp" || error.errors.length > 0)
+      ? Object.assign(error, { [Runtime.errorExitCode]: 2 })
+      : error
+  ),
   Effect.tapError((error) =>
     error._tag === "ConfigLoadError" || error._tag === "GenerateError" || error._tag === "CheckError"
       ? Console.error(error.message)

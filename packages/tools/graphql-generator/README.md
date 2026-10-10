@@ -124,11 +124,11 @@ Diagnostics go to stderr as `file:line:col: error|warning: message`, followed
 by an excerpt of the source. If there is any error, nothing is written. Written
 and deleted files are listed on stdout.
 
-| Exit code | Meaning                                                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `0`       | Success, including runs with warnings only.                                                                                     |
-| `1`       | Generation reported an error, a file couldn't be read or written, `--check` found out-of-date files, or the flags were invalid. |
-| `2`       | The config couldn't be found, imported or decoded, or doesn't fit the schema, such as a `scalars` key that isn't a scalar.      |
+| Exit code | Meaning                                                                                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0`       | Success, including runs with warnings only.                                                                                                                                                     |
+| `1`       | Generation reported an error, a file couldn't be read or written, or `--check` found out-of-date files.                                                                                         |
+| `2`       | Invalid CLI usage (including unknown flags or `--watch --check`), or the config couldn't be found, imported or decoded, or doesn't fit the schema, such as a `scalars` key that isn't a scalar. |
 
 In CI, run `graphqlgen --check` to fail the build when the generated files are
 stale.
