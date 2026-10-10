@@ -72,7 +72,7 @@ warning listing every unmapped scalar the operations reach.
   Schemas, plus a type namespace such as `RepoIssues.Variables` and
   `RepoIssues.Result`
 - a Schema per fragment
-- `FooGroup`, a `GraphQLGroup` with every operation in the file
+- `FooGraphQLGroup`, a `GraphQLGroup` with every operation in the file
 
 The shared module holds only the scalars, enums, input objects and
 `__typename` unions the operations reach. Commit the generated files, and
@@ -125,11 +125,11 @@ operation:
 import { Context, Layer } from "effect"
 import { GraphQLClient, GraphQLGroup, GraphQLProtocol } from "effect/graphql"
 import { FetchHttpClient } from "effect/http"
-import { IssuesGroup } from "./src/issues.graphql.ts"
-import { ViewerGroup } from "./src/viewer.graphql.ts"
+import { IssuesGraphQLGroup } from "./src/issues.graphql.ts"
+import { ViewerGraphQLGroup } from "./src/viewer.graphql.ts"
 
 export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
-  make: GraphQLClient.make(GraphQLGroup.merge(IssuesGroup, ViewerGroup))
+  make: GraphQLClient.make(GraphQLGroup.merge(IssuesGraphQLGroup, ViewerGraphQLGroup))
 }) {
   static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
     Layer.provide(GraphQLProtocol.layerHttp({ url: "https://api.github.com/graphql" })),
