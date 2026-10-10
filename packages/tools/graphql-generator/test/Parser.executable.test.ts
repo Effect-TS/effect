@@ -7,6 +7,7 @@ import {
   name,
   namedType,
   parseOrThrow,
+  str,
   stripLoc
 } from "./utils/ast.ts"
 import { executableDiagnostics, executableSections } from "./utils/cases.ts"
@@ -157,6 +158,61 @@ describe("Parser: executable documents", () => {
       const a = stripLoc(parseOrThrow("query Q { a(b: 1) }"))
       const b = stripLoc(parseOrThrow("# comment\n\nquery   Q   {\n  a(b: 1),\n}\n"))
       assert.deepStrictEqual(a, b)
+    })
+  })
+
+  describe("descriptions (September 2025 edition)", () => {
+    // Expectations are untyped until `Ast.ts` gains `description` on these three nodes.
+    const definitionsOf = (body: string): unknown => stripLoc(parseOrThrow(body)).definitions
+
+    it("operations and variable definitions carry descriptions", () => {
+      assert.deepStrictEqual(definitionsOf("\"op doc\" query Q(\"x doc\" $x: Int, $y: Int \"late\" $z: Int) { a }"), [{
+        _tag: "OperationDefinition",
+        description: str("op doc"),
+        operation: "query",
+        name: name("Q"),
+        variableDefinitions: [
+          {
+            _tag: "VariableDefinition",
+            description: str("x doc"),
+            variable: { _tag: "Variable", name: name("x") },
+            type: namedType("Int"),
+            directives: []
+          },
+          {
+            _tag: "VariableDefinition",
+            variable: { _tag: "Variable", name: name("y") },
+            type: namedType("Int"),
+            directives: []
+          },
+          {
+            _tag: "VariableDefinition",
+            description: str("late"),
+            variable: { _tag: "Variable", name: name("z") },
+            type: namedType("Int"),
+            directives: []
+          }
+        ],
+        directives: [],
+        selectionSet: {
+          _tag: "SelectionSet",
+          selections: [{ _tag: "Field", name: name("a"), arguments: [], directives: [] }]
+        }
+      }])
+    })
+
+    it("fragments carry descriptions", () => {
+      assert.deepStrictEqual(definitionsOf("\"\"\"\n  frag doc\n\"\"\" fragment F on T { a }"), [{
+        _tag: "FragmentDefinition",
+        description: str("frag doc"),
+        name: name("F"),
+        typeCondition: namedType("T"),
+        directives: [],
+        selectionSet: {
+          _tag: "SelectionSet",
+          selections: [{ _tag: "Field", name: name("a"), arguments: [], directives: [] }]
+        }
+      }])
     })
   })
 
