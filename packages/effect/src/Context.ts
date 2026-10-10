@@ -489,6 +489,14 @@ interface ContextImpl<in Services> extends Context<Services> {
   overlay: Overlay | undefined
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
+  // Owned by the fiber runtime and only meaningful on a cacheRoot
+  _fiberCache: unknown
+  // Set by `addUnsafe` on a root created by adding the cached key
+  // `_fiberCacheKey` on top of a root whose fiber cache was already computed:
+  // the parent root's cache, from which the fiber runtime derives this root's
+  // cache by refreshing that key alone
+  _fiberCacheParent: unknown
+  _fiberCacheKey: string | undefined
 }
 
 interface Overlay {
@@ -502,21 +510,38 @@ const MaxDepth = 8
 // enough fall-throughs to amortize the copy.
 const FlattenAfterBaseHits = 8
 
+// A constructor whose prototype is `Proto` gives every Context a single hidden
+// class with all of its fields stored in-object, including the fiber cache
+// slot that would otherwise be added later to cache roots only
+const ContextConstructor = function(
+  this: ContextImpl<any>,
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number
+) {
+  this.cacheRoot = cacheRoot ?? this
+  this.base = base
+  this.overlay = overlay
+  this.depth = depth
+  this._flat = undefined
+  this.baseHits = 0
+  this._fiberCache = undefined
+  this._fiberCacheParent = undefined
+  this._fiberCacheKey = undefined
+} as any as new<Services>(
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number
+) => ContextImpl<Services>
+
 const makeImpl = <Services>(
   cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number
-): ContextImpl<Services> => {
-  const self: ContextImpl<Services> = Object.create(Proto)
-  self.cacheRoot = cacheRoot ?? self
-  self.base = base
-  self.overlay = overlay
-  self.depth = depth
-  self._flat = undefined
-  self.baseHits = 0
-  return self
-}
+): ContextImpl<Services> => new ContextConstructor<Services>(cacheRoot, base, overlay, depth)
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
   if (!overlay) return
@@ -596,7 +621,15 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits"
+  | "cacheRoot"
+  | "base"
+  | "overlay"
+  | "depth"
+  | "_flat"
+  | "baseHits"
+  | "_fiberCache"
+  | "_fiberCacheParent"
+  | "_fiberCacheKey"
 > = {
   get mapUnsafe() {
     return flatten(this as any as ContextImpl<any>)
@@ -624,7 +657,9 @@ const Proto: Omit<
   [Hash.symbol]<A>(this: Context<A>): number {
     return Hash.number(this.mapUnsafe.size)
   }
-}
+} // Proto has no own `constructor`, so contexts keep reporting `Object` exactly
+ // as when they were created with `Object.create(Proto)`
+;(ContextConstructor as any).prototype = Proto
 
 /** @internal */
 export const hasSameCache = <Services, Services2>(
@@ -811,7 +846,24 @@ export const addUnsafe = <Services, I, S>(
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
+  if (!cacheKeys.has(key)) return addOverlay(impl, impl.cacheRoot, key, service)
+  const next = addOverlay<Services | I>(impl, undefined, key, service)
+  // The new root resolves every cached key like the parent root except `key`
+  // (the Redactable fallback context has no cacheRoot)
+  const parentCache = impl.cacheRoot?._fiberCache
+  if (parentCache !== undefined) {
+    next._fiberCacheParent = parentCache
+    next._fiberCacheKey = key
+  }
+  return next
+}
+
+const addOverlay = <Services>(
+  impl: ContextImpl<any>,
+  cacheRoot: ContextImpl<any> | undefined,
+  key: string,
+  service: unknown
+): ContextImpl<Services> => {
   if (impl.depth >= MaxDepth) {
     // Avoid mapUnsafe: it would flatten the parent before copying.
     const map = new Map(impl._flat ?? impl.base)
@@ -1165,10 +1217,45 @@ export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
+  if (extendsContext(that as ContextImpl<R1>, self as ContextImpl<Services>)) return that as any
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
-  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
+  return mergeFlat(self as ContextImpl<Services>, that as ContextImpl<R1>)
 })
+
+// Kept out of `merge` so that its fast paths stay small enough to inline
+const mergeFlat = <Services, R1>(self: ContextImpl<Services>, that: ContextImpl<R1>): Context<Services | R1> => {
+  const map = new Map(self.mapUnsafe)
+  let cached = false
+  that.mapUnsafe.forEach((value, key) => {
+    map.set(key, value)
+    if (!cached && cacheKeys.has(key)) cached = true
+  })
+  const merged = makeImpl<Services | R1>(undefined, map, undefined, 0)
+  // Without a cached key from `that`, the result resolves every cached key
+  // exactly like `self`, so it can reuse `self`'s computed fiber cache. It
+  // stays its own cache root so that it does not keep `self` alive.
+  if (!cached) merged._fiberCache = self.cacheRoot?._fiberCache
+  return merged
+}
+
+// Whether `that` is `self` with zero or more overlays added on top: both share
+// the immutable base and `self`'s overlay node is in `that`'s chain, so the
+// chain below it is exactly `self`'s. Merging `that` into `self` then yields
+// `that`'s entries in `that`'s iteration order: `self`'s keys first, then the
+// keys first added by `that`'s extra overlays, every value taken from `that`.
+const extendsContext = (that: ContextImpl<any>, self: ContextImpl<any>): boolean => {
+  if (that.base !== self.base || self.base === undefined) return false
+  const target = self.overlay
+  if (target === undefined) return true
+  // Chains are at most MaxDepth long, but bound the walk regardless
+  let overlay = that.overlay
+  for (let i = 0; overlay !== undefined && i <= MaxDepth; i++) {
+    if (overlay === target) return true
+    overlay = overlay.parent
+  }
+  return false
+}
 
 /**
  * Merges any number of `Context`s into one.

@@ -5,14 +5,12 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
-import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -46,7 +44,7 @@ import type {
   unassigned
 } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
-import type { Primitive } from "./core.ts"
+import type { Primitive, PrimitiveClass } from "./core.ts"
 import {
   args,
   causeAnnotate,
@@ -54,7 +52,6 @@ import {
   causeEmpty,
   causeFromReasons,
   CauseImpl,
-  constEmptyAnnotations,
   contA,
   contAll,
   contE,
@@ -65,6 +62,7 @@ import {
   exitSucceed,
   ExitTypeId,
   Fail,
+  Interrupt,
   InterruptorStackTrace,
   isCause,
   isDieReason,
@@ -75,7 +73,6 @@ import {
   makePrimitive,
   makePrimitiveProto,
   NoSuchElementError,
-  ReasonBase,
   StackTraceKey as CauseStackTrace,
   TaggedError,
   withFiber,
@@ -102,39 +99,6 @@ import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
 // ----------------------------------------------------------------------------
 // Cause
 // ----------------------------------------------------------------------------
-
-/** @internal */
-export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
-  declare readonly fiberId: number | undefined
-  constructor(
-    fiberId: number | undefined,
-    annotations = constEmptyAnnotations
-  ) {
-    super("Interrupt", annotations, "Interrupted")
-    this.fiberId = fiberId
-  }
-  override toString() {
-    return `Interrupt(${this.fiberId})`
-  }
-  toJSON(): unknown {
-    return {
-      _tag: "Interrupt",
-      fiberId: this.fiberId
-    }
-  }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isInterruptReason(that) &&
-      this.fiberId === that.fiberId &&
-      this.annotations === that.annotations
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
-  }
-}
 
 /** @internal */
 export const makeInterruptReason = (fiberId?: number | undefined): Cause.Interrupt => new Interrupt(fiberId)
@@ -482,6 +446,12 @@ const captureAsyncContext = (): AsyncContext | undefined =>
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
+// Shared by completed fibers, which never push again; frozen so a push throws
+const completedStack: Array<any> = Object.freeze([]) as any
+
+// JavaScriptCore is the engine whose errors carry a `line` property
+const isJavaScriptCore = typeof (new Error() as any).line === "number"
+
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
@@ -512,7 +482,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   declare readonly id: number
   declare interruptible: boolean
   declare currentOpCount: number
-  declare readonly _stack: Array<Primitive>
+  // An `undefined` bottom slot is an empty stack (see `popFrame`)
+  declare _stack: Array<Primitive | undefined>
   declare _observers: Array<(exit: Exit.Exit<A, E>) => void> | undefined
   declare _exit: Exit.Exit<A, E> | undefined
   declare _children: Set<FiberImpl<any, any>> | undefined
@@ -617,7 +588,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    this._stack.length = 0
+    // Release the stack's backing store. V8's length setter is a runtime call,
+    // so the stack is swapped for the shared empty one there, and
+    // JavaScriptCore truncates in place faster.
+    if (isJavaScriptCore) {
+      this._stack.length = 0
+    } else {
+      this._stack = completedStack
+    }
     this._children = undefined
     this.context = Context.empty()
   }
@@ -647,6 +625,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
             yielding = true
             const prev = current
             current = flatMap(yieldNow, () => prev as any) as any
+          }
+          // map / flatMap / as / tap / andThen frames are the most common
+          // primitive. Evaluating them inline (push the frame, continue with
+          // the wrapped effect) keeps the generic dispatch below for the rest.
+          if (cache.tracerContext === undefined && (current as any) instanceof ContImpl) {
+            this._stack.push(current as Primitive)
+            current = (current as any)[args]
+            continue
           }
           current = cache.tracerContext
             ? cache.tracerContext(current as any, this)
@@ -685,11 +671,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       return deferredInterruptCont
     }
     while (true) {
-      const op = this._stack.pop()
-      if (!op) return undefined
+      const op = popFrame(this._stack)
+      if (op === undefined) return undefined
+      // ContImpl and generator frames only have a success continuation
+      if ((op as any) instanceof ContImpl || (op as any) instanceof IteratorImpl) {
+        if (symbol === contA) return op as any
+        continue
+      }
       const all = op[contAll]
       if (all !== undefined) {
-        const cont = all.call(op, this)
+        const cont = all.call(op, this, symbol)
         if (cont) {
           ;(cont as any)[symbol] = cont
           return cont as any
@@ -706,8 +697,24 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     if ((++this.currentOpCount & (maxInlineSteps - 1)) === 0) {
       return exitSucceed(value) as any
     }
+    return this.continueWith(value, undefined)
+  }
+  // Passes a success value to the next continuation, or completes the run
+  // loop with `exit` (or a new success Exit) when the stack is empty.
+  // ContImpl and generator continuations are called from their own sites,
+  // which only see one frame type, instead of the generic site shared by
+  // every frame type.
+  continueWith(value: unknown, exit: Exit.Exit<any, any> | undefined): Primitive | Yield {
     const cont = this.getCont(contA)
-    return cont ? cont[contA](value, this) : this.yieldWith(exitSucceed(value))
+    if (cont === undefined) {
+      return this.yieldWith(exit ?? exitSucceed(value))
+    } else if ((cont as any) instanceof ContImpl) {
+      return cont[contA](value, this, exit)
+    } else if ((cont as any) instanceof IteratorImpl) {
+      return cont[contA](value, this)
+    }
+    // User handlers can be stored as continuations, so keep their arity
+    return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
   }
   yieldWith(value: Exit.Exit<any, any> | (() => void)): Yield {
     this._yielded = value
@@ -729,7 +736,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     // the derived cache object is computed once per root and shared by all
     // fibers running with that root (forked fibers reuse the parent's).
     const root: any = (context as any).cacheRoot
-    const cache: Fiber.Fiber.Cache = root._fiberCache ??= makeFiberContextCache(context)
+    let cache: Fiber.Fiber.Cache | undefined = root._fiberCache
+    if (cache === undefined) {
+      // A root made by adding one cached key to a root with a computed cache
+      // keeps that cache (see Context.addUnsafe), which is current for every
+      // cached key but the added one
+      const parent: Fiber.Fiber.Cache | undefined = root._fiberCacheParent
+      if (parent === undefined) {
+        cache = root._fiberCache = makeFiberContextCache(context)
+      } else {
+        cache = root._fiberCache = deriveFiberContextCache(parent, context, root._fiberCacheKey)
+        root._fiberCacheParent = undefined
+      }
+    }
     if (this.cache?.scheduler !== cache.scheduler) {
       this._dispatcher = undefined
     }
@@ -741,24 +760,237 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
 }
 
-const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
+// Unoptimized `pop` releases the backing store of an array it empties, so the
+// next push reallocates it. The last frame is cleared in place instead, and an
+// `undefined` bottom slot is an empty stack.
+const popFrame = (stack: Array<Primitive | undefined>): Primitive | undefined => {
+  if (stack.length !== 1) return stack.pop()
+  const op = stack[0]
+  stack[0] = undefined
+  return op
+}
+
+// JavaScriptCore caches `instanceof` per receiver shape, so a check that sees
+// many frame types falls back to a runtime call, which costs more than the
+// frame fast paths in `runLoop`, `getCont` and `continueWith` save. There
+// `getCont` and `continueWith` take the generic paths, and `runLoop`
+// recognizes inlinable frames by the `evaluate` method it loads anyway: every
+// primitive whose `evaluate` is `evaluateCont` is evaluated inline. Keep this
+// `runLoop` in sync with the class method. Checking a flag in the methods
+// instead costs V8 a few percent on interpreter-bound code.
+if (isJavaScriptCore) {
+  FiberImpl.prototype.runLoop = function(this: FiberImpl, effect: Primitive): Exit.Exit<any, any> | Yield {
+    const prevFiber = (globalThis as any)[currentFiberTypeId]
+    ;(globalThis as any)[currentFiberTypeId] = this
+    const prevRunning = this._running
+    this._running = true
+    let yielding = false
+    let current: Primitive | Yield = effect
+    this.currentOpCount = 0
+    try {
+      while (true) {
+        try {
+          if (this._deferredInterrupt) {
+            this._deferredInterrupt = false
+            current = failCause(this._interruptedCause!) as any
+          }
+          this.currentOpCount++
+          const cache = this.cache
+          if (
+            !yielding &&
+            !cache.preventYield &&
+            cache.scheduler.shouldYield(this as any)
+          ) {
+            yielding = true
+            const prev = current
+            current = flatMap(yieldNow, () => prev as any) as any
+          }
+          if (cache.tracerContext) {
+            current = cache.tracerContext(current as any, this)
+          } else {
+            const evaluateCurrent = (current as any)[evaluate]
+            if (evaluateCurrent === evaluateCont) {
+              this._stack.push(current as Primitive)
+              current = (current as any)[args]
+              continue
+            }
+            current = evaluateCurrent.call(current, this)
+          }
+          if (current === Yield) {
+            const yielded = this._yielded!
+            if (ExitTypeId in yielded) {
+              this._deferredInterrupt = false
+              this._yielded = undefined
+              return yielded
+            } else if (this._deferredInterrupt) {
+              this._yielded = undefined
+              yielded()
+              continue
+            }
+            return Yield
+          }
+        } catch (error) {
+          if (!hasProperty(current, evaluate)) {
+            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
+          }
+          current = exitDie(error) as any
+        }
+      }
+    } finally {
+      this._running = prevRunning
+      ;(globalThis as any)[currentFiberTypeId] = prevFiber
+    }
+  }
+  FiberImpl.prototype.getCont = function(this: FiberImpl, symbol: contA | contE) {
+    if (this._deferredInterrupt) {
+      this._deferredInterrupt = false
+      return deferredInterruptCont
+    }
+    while (true) {
+      const op = popFrame(this._stack)
+      if (op === undefined) return undefined
+      const all = op[contAll]
+      if (all !== undefined) {
+        const cont = all.call(op, this, symbol)
+        if (cont) {
+          ;(cont as any)[symbol] = cont
+          return cont as any
+        }
+      }
+      if (op[symbol]) return op as any
+    }
+  } as FiberImpl["getCont"]
+  FiberImpl.prototype.continueWith = function(
+    this: FiberImpl,
+    value: unknown,
+    exit: Exit.Exit<any, any> | undefined
+  ): Primitive | Yield {
+    const cont = this.getCont(contA)
+    if (cont === undefined) {
+      return this.yieldWith(exit ?? exitSucceed(value))
+    }
+    return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
+  }
+}
+
+/** @internal */
+export const makeFiberContextCache = (context: Context.Context<never>): Fiber.Fiber.Cache => {
   // The string-keyed lookups keep the Tracer key values (and the native
   // tracer behind Tracer.Tracer's default) out of every bundle
   const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
-  return {
-    scheduler: Context.get(context, Scheduler.Scheduler),
-    tracer: currentTracer,
-    tracerContext: currentTracer ? currentTracer["context"] : undefined,
-    tracerEnabled: Context.get(context, TracerEnabled),
-    span: Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
-    logLevel: Context.get(context, CurrentLogLevel),
-    minimumLogLevel: Context.get(context, MinimumLogLevel),
-    stackFrame: Context.get(context, CurrentStackFrame),
-    runtimeMetrics: Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
-    maxOpsBeforeYield: Context.get(context, Scheduler.MaxOpsBeforeYield),
-    preventYield: Context.get(context, Scheduler.PreventSchedulerYield)
-  }
+  return fiberContextCache(
+    Context.get(context, Scheduler.Scheduler),
+    currentTracer,
+    Context.get(context, TracerEnabled),
+    Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey),
+    Context.get(context, CurrentLogLevel),
+    Context.get(context, MinimumLogLevel),
+    Context.get(context, CurrentStackFrame),
+    Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey),
+    Context.get(context, Scheduler.MaxOpsBeforeYield),
+    Context.get(context, Scheduler.PreventSchedulerYield)
+  )
 }
+
+/**
+ * Derives the cache of `context` from `parent`, the cache of a context that
+ * resolves every cached key identically except `key`. Each field is read
+ * exactly as `makeFiberContextCache` reads it, so the result matches a full
+ * rebuild field for field.
+ *
+ * @internal
+ */
+export const deriveFiberContextCache = (
+  parent: Fiber.Fiber.Cache,
+  context: Context.Context<never>,
+  key: string
+): Fiber.Fiber.Cache => {
+  let {
+    logLevel,
+    maxOpsBeforeYield,
+    minimumLogLevel,
+    preventYield,
+    runtimeMetrics,
+    scheduler,
+    span,
+    stackFrame,
+    tracer,
+    tracerEnabled
+  } = parent
+  switch (key) {
+    case CurrentStackFrame.key:
+      stackFrame = Context.get(context, CurrentStackFrame)
+      break
+    case Tracer.ParentSpanKey:
+      span = Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey)
+      break
+    case CurrentLogLevel.key:
+      logLevel = Context.get(context, CurrentLogLevel)
+      break
+    case MinimumLogLevel.key:
+      minimumLogLevel = Context.get(context, MinimumLogLevel)
+      break
+    case TracerEnabled.key:
+      tracerEnabled = Context.get(context, TracerEnabled)
+      break
+    case Tracer.TracerKey:
+      tracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
+      break
+    case Scheduler.Scheduler.key:
+      scheduler = Context.get(context, Scheduler.Scheduler)
+      break
+    case Scheduler.MaxOpsBeforeYield.key:
+      maxOpsBeforeYield = Context.get(context, Scheduler.MaxOpsBeforeYield)
+      break
+    case Scheduler.PreventSchedulerYield.key:
+      preventYield = Context.get(context, Scheduler.PreventSchedulerYield)
+      break
+    case InternalMetric.FiberRuntimeMetricsKey:
+      runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
+      break
+    default:
+      // A cached key the fiber cache does not read
+      return parent
+  }
+  return fiberContextCache(
+    scheduler,
+    tracer,
+    tracerEnabled,
+    span,
+    logLevel,
+    minimumLogLevel,
+    stackFrame,
+    runtimeMetrics,
+    maxOpsBeforeYield,
+    preventYield
+  )
+}
+
+// The single allocation site keeps every fiber cache on one hidden class
+const fiberContextCache = (
+  scheduler: Fiber.Fiber.Cache["scheduler"],
+  tracer: Fiber.Fiber.Cache["tracer"],
+  tracerEnabled: Fiber.Fiber.Cache["tracerEnabled"],
+  span: Fiber.Fiber.Cache["span"],
+  logLevel: Fiber.Fiber.Cache["logLevel"],
+  minimumLogLevel: Fiber.Fiber.Cache["minimumLogLevel"],
+  stackFrame: Fiber.Fiber.Cache["stackFrame"],
+  runtimeMetrics: Fiber.Fiber.Cache["runtimeMetrics"],
+  maxOpsBeforeYield: Fiber.Fiber.Cache["maxOpsBeforeYield"],
+  preventYield: Fiber.Fiber.Cache["preventYield"]
+): Fiber.Fiber.Cache => ({
+  scheduler,
+  tracer,
+  tracerContext: tracer ? tracer["context"] : undefined,
+  tracerEnabled,
+  span,
+  logLevel,
+  minimumLogLevel,
+  stackFrame,
+  runtimeMetrics,
+  maxOpsBeforeYield,
+  preventYield
+})
 
 const deferredInterruptCont: any = {
   [contA](_value: unknown, fiber: FiberImpl) {
@@ -965,10 +1197,16 @@ export const fail: <E>(error: E) => Effect.Effect<never, E> = exitFail
 export const sync: <A>(thunk: LazyArg<A>) => Effect.Effect<A> = makePrimitive({
   op: "Sync",
   [evaluate](fiber): Primitive | Yield {
-    const value = this[args]()
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return fiber.continueWith(this[args](), undefined)
   }
+}, (Proto) => {
+  const Sync = function(this: any, thunk: unknown) {
+    this[args] = thunk
+  } as unknown as PrimitiveClass
+  Sync.prototype = Proto
+  return function(thunk: any) {
+    return new Sync(thunk)
+  } as any
 })
 
 /** @internal */
@@ -979,6 +1217,14 @@ export const suspend: <A, E, R>(
   [evaluate](_fiber) {
     return this[args]()
   }
+}, (Proto) => {
+  const Suspend = function(this: any, evaluate: unknown) {
+    this[args] = evaluate
+  } as unknown as PrimitiveClass
+  Suspend.prototype = Proto
+  return function(evaluate: any) {
+    return new Suspend(evaluate)
+  } as any
 })
 
 /** @internal */
@@ -1192,11 +1438,20 @@ const asyncFinalizer: (
   onInterrupt: () => Effect.Effect<void, any, any>
 ) => Primitive = makePrimitive({
   op: "AsyncFinalizer",
-  [contAll](fiber) {
-    if (fiber.interruptible) {
-      fiber.interruptible = false
-      fiber._stack.push(setInterruptibleTrue)
+  [contAll](fiber, symbol) {
+    if (!fiber.interruptible) return
+    if (symbol === contA) {
+      // This frame has no success continuation, so masking here would only
+      // push `setInterruptibleTrue` for `getCont` to pop straight away.
+      // Apply that frame's effect directly: interruptible stays true and a
+      // pending interruption replaces the success.
+      if (fiber._interruptedCause) {
+        return () => failCause(fiber._interruptedCause!)
+      }
+      return
     }
+    fiber.interruptible = false
+    fiber._stack.push(setInterruptibleTrue)
   },
   [contE](cause, _fiber) {
     return hasInterrupts(cause)
@@ -1409,39 +1664,35 @@ const fromIteratorEagerUnsafe = (
   }
 }
 
-const fromIteratorUnsafe: (
+const IteratorImpl = function(this: any, iterator: any, initial: any) {
+  this.iterator = iterator
+  this.initial = initial
+} as unknown as PrimitiveCtor<[iterator: any, initial: any]>
+IteratorImpl.prototype = makePrimitiveProto({
+  op: "Iterator",
+  [contA](this: any, value, fiber) {
+    const iter = this.iterator
+    while (true) {
+      const state = iter.next(value)
+      if (state.done) return succeed(state.value)
+      if (!effectIsExit(state.value)) {
+        fiber._stack.push(this)
+        return state.value
+      } else if (state.value._tag === "Failure") {
+        return state.value
+      }
+      value = state.value.value
+    }
+  },
+  [evaluate](this: any, fiber: FiberImpl) {
+    return this[contA](this.initial, fiber)
+  }
+})
+
+const fromIteratorUnsafe = (
   iterator: Iterator<Effect.Effect<any, any, any>>,
   initial?: undefined
-) => Effect.Effect<any, any, any> = (function() {
-  const Proto = makePrimitiveProto({
-    op: "Iterator",
-    [contA](this: any, value, fiber) {
-      const iter = this.iterator
-      while (true) {
-        const state = iter.next(value)
-        if (state.done) return succeed(state.value)
-        if (!effectIsExit(state.value)) {
-          fiber._stack.push(this)
-          return state.value
-        } else if (state.value._tag === "Failure") {
-          return state.value
-        }
-        value = state.value.value
-      }
-    },
-    [evaluate](this: any, fiber: FiberImpl) {
-      return this[contA](this.initial, fiber)
-    }
-  })
-  const IteratorImpl = function(this: any, iterator: any, initial: any) {
-    this.iterator = iterator
-    this.initial = initial
-  } as unknown as PrimitiveCtor<[iterator: any, initial: any]>
-  IteratorImpl.prototype = Proto
-  return function(iterator: any, initial?: undefined) {
-    return new IteratorImpl(iterator, initial)
-  } as any
-})()
+): Effect.Effect<any, any, any> => new IteratorImpl(iterator, initial)
 
 // ----------------------------------------------------------------------------
 // mapping & sequencing

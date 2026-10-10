@@ -533,6 +533,64 @@ describe("Cause", () => {
       assert.strictEqual(Cause.combine(combined, Cause.fromReasons([duplicate])), combined)
     })
 
+    it("deduplicates interrupt reasons by fiber id and annotation identity", () => {
+      const Key = Context.Service<"Key", number>("Key")
+      const interrupt = (id?: number) => Cause.makeInterruptReason(id)
+      const a = interrupt(1)
+      const a2 = interrupt(1)
+      const b = interrupt(2)
+      const u = interrupt()
+      const u2 = interrupt()
+
+      let combined = Cause.combine(Cause.fromReasons([a, b]), Cause.fromReasons([a2, u2, u, b]))
+      assert.deepStrictEqual(combined.reasons, [a, b, u2])
+
+      const annotated = a.annotate(Context.make(Key, 1))
+      const annotatedCopy = a.annotate(Context.make(Key, 1))
+      combined = Cause.combine(Cause.fromReasons([a, annotated]), Cause.fromReasons([annotatedCopy, annotated]))
+      assert.strictEqual(combined.reasons.length, 3)
+      assert.strictEqual(combined.reasons[1], annotated)
+      assert.strictEqual(combined.reasons[2], annotatedCopy)
+
+      const self = Cause.fromReasons([a, b])
+      assert.strictEqual(Cause.combine(self, Cause.fromReasons([a2, interrupt(2)])), self)
+
+      combined = Cause.combine(Cause.fromReasons([a, a2]), Cause.fromReasons([a]))
+      assert.deepStrictEqual(combined.reasons, [a])
+
+      const byReference = Equal.byReference(interrupt(1))
+      combined = Cause.combine(Cause.fromReasons([a]), Cause.fromReasons([byReference, byReference]))
+      assert.strictEqual(combined.reasons.length, 2)
+      assert.strictEqual(combined.reasons[1], byReference)
+
+      const selfByReference = Equal.byReference(Cause.fromReasons([a]))
+      combined = Cause.combine(selfByReference, Cause.fromReasons([a2]))
+      assert.notStrictEqual(combined, selfByReference)
+      assert.deepStrictEqual(combined.reasons, [a])
+
+      for (const n of [8, 9, 16, 17]) {
+        const xs = Array.from({ length: n }, (_, i) => interrupt(i % 5))
+        const ys = Array.from({ length: n }, (_, i) => interrupt(i % 7))
+        const all = [...xs, ...ys]
+        const expected = all.filter((r, i) => all.findIndex((p) => p.fiberId === r.fiberId) === i)
+        combined = Cause.combine(Cause.fromReasons(xs), Cause.fromReasons(ys))
+        assert.deepStrictEqual(combined.reasons, expected)
+      }
+
+      const fail = Cause.makeFailReason({ a: 1 })
+      combined = Cause.combine(Cause.fromReasons([a, fail]), Cause.fromReasons([Cause.makeFailReason({ a: 1 }), a2]))
+      assert.strictEqual(combined.reasons.length, 2)
+      assert.strictEqual(combined.reasons[0], a)
+      assert.strictEqual(combined.reasons[1], fail)
+    })
+
+    it("normalizes causes that are not built by Cause constructors", () => {
+      const forged = { [Cause.TypeId]: Cause.TypeId, reasons: [Cause.makeInterruptReason(1)] } as any
+      const combined = Cause.combine(forged, Cause.interrupt(1))
+      assert.notStrictEqual(combined, forged)
+      assert.strictEqual(typeof combined.pipe, "function")
+    })
+
     it("merges two causes (data-first)", () => {
       const combined = Cause.combine(Cause.fail("a"), Cause.fail("b"))
       assert.strictEqual(combined.reasons.length, 2)

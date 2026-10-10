@@ -8,9 +8,11 @@ import {
   Duration,
   Effect,
   Effectable,
+  Equal,
   Exit,
   Fiber,
   type Filter,
+  Hash,
   Latch,
   Layer,
   Logger,
@@ -55,6 +57,105 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
 }
 
 describe("Effect", () => {
+  describe("interpreter dispatch", () => {
+    it("preserves the shape of primitives and exits", () => {
+      const exit = Exit.succeed(1)
+      const effect = Effect.succeed(2)
+      assert.strictEqual(Object.getPrototypeOf(exit), Object.getPrototypeOf(effect))
+      assert.strictEqual(Reflect.ownKeys(exit).length, 1)
+      assert.notStrictEqual(Object.getPrototypeOf(Exit.succeed(1)), Object.getPrototypeOf(Exit.fail(1)))
+      assert.isTrue(Equal.equals(Exit.fail("a"), Exit.fail("a")))
+      assert.strictEqual(Hash.hash(Exit.succeed(1)), Hash.hash(Exit.succeed(1)))
+      assert.deepStrictEqual(Exit.succeed(1).toJSON(), { _id: "Exit", _tag: "Success", value: 1 })
+      assert.isTrue(Exit.isExit(new (Exit.succeed as any)(1)))
+    })
+
+    it.effect("skips generator frames when failures unwind through finalizers", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const result = yield* Effect.gen(function*() {
+          // @effect-diagnostics-next-line missingReturnYieldStar:off
+          yield* Effect.gen(function*() {
+            return yield* Effect.fail("e")
+          }).pipe(Effect.ensuring(Effect.sync(() => log.push("finalizer"))))
+          log.push("unreached")
+        }).pipe(Effect.catch((e) => Effect.succeed(e)))
+        assert.strictEqual(result, "e")
+        assert.deepStrictEqual(log, ["finalizer"])
+      }))
+
+    it.effect("resumes generators with Exit values past the inline step limit", () =>
+      Effect.gen(function*() {
+        let sum = 0
+        for (let i = 0; i < 20_000; i++) {
+          sum += yield* (i % 2 ? Exit.succeed(i) : Effect.succeed(i))
+        }
+        assert.strictEqual(sum, 199_990_000)
+      }))
+
+    it.live("resumes fnUntracedEager after an async step", () =>
+      Effect.gen(function*() {
+        const f = Effect.fnUntracedEager(function*(n: number) {
+          const a = yield* Effect.succeed(n)
+          yield* Effect.sleep(1)
+          return a + (yield* Exit.succeed(2))
+        })
+        assert.strictEqual(yield* f(1), 3)
+      }))
+
+    it("dies on invalid effects wrapped by map or returned by flatMap", () => {
+      for (
+        const effect of [
+          Effect.map(42 as any, (x) => x),
+          Effect.as(undefined as any, 1),
+          Effect.flatMap(Effect.sync(() => 1), () => 42 as any)
+        ] as Array<Effect.Effect<unknown, unknown>>
+      ) {
+        const exit = Effect.runSyncExit(effect)
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.include(Cause.pretty(exit.cause), "Fiber.runLoop: Not a valid effect")
+        }
+      }
+    })
+
+    it.effect("auto-yields map / flatMap chains every MaxOpsBeforeYield operations", () =>
+      Effect.gen(function*() {
+        const trace: Array<string> = []
+        const chain = (name: string) => {
+          let effect: Effect.Effect<unknown> = Effect.void
+          for (let i = 0; i < 300; i++) {
+            effect = Effect.flatMap(Effect.map(effect, () => trace.push(name)), () => Effect.void)
+          }
+          return effect
+        }
+        const a = yield* Effect.forkChild(chain("a"))
+        const b = yield* Effect.forkChild(chain("b"))
+        yield* Fiber.join(a)
+        yield* Fiber.join(b)
+        assert.strictEqual(trace.slice(0, 48).join(""), "a".repeat(12) + "b".repeat(12) + "a".repeat(24))
+      }).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, 50)))
+
+    it.effect("a deferred self-interrupt inside sync skips the following map frames", () =>
+      Effect.gen(function*() {
+        let ran = false
+        const fiber = yield* Effect.forkChild(Effect.withFiber((fiber) =>
+          Effect.map(
+            Effect.sync(() => {
+              fiber.interruptUnsafe()
+              return 1
+            }),
+            () => {
+              ran = true
+            }
+          )
+        ))
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isFalse(ran)
+      }))
+  })
+
   describe("interruption before cleanup registration", () => {
     const interruptAfterContextChange = (changed: (context: Context.Context<never>) => boolean) => {
       let yielded = false
@@ -2404,6 +2505,58 @@ describe("Effect", () => {
         ).pipe(Effect.forkChild({ startImmediately: true }))
         yield* Fiber.interrupt(fiber)
         assert.isTrue(cleanedUp)
+      }))
+
+    it.effect("callback with cleanup leaves the fiber interruptible after resuming", () =>
+      Effect.gen(function*() {
+        let resume!: (effect: Effect.Effect<void>) => void
+        let cleanups = 0
+        const fiber = yield* Effect.callback<void>((resume_) => {
+          resume = resume_
+          return Effect.sync(() => {
+            cleanups++
+          })
+        }).pipe(
+          Effect.andThen(Effect.never),
+          Effect.forkChild({ startImmediately: true })
+        )
+        resume(Effect.void)
+        assert.isUndefined(fiber.pollUnsafe())
+        fiber.interruptUnsafe()
+        const exit = fiber.pollUnsafe()
+        assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
+        assert.strictEqual(cleanups, 0)
+      }))
+
+    it.effect("callback with cleanup keeps an uninterruptible region masked after resuming", () =>
+      Effect.gen(function*() {
+        let resume!: (effect: Effect.Effect<void>) => void
+        let resumeNext!: (effect: Effect.Effect<void>) => void
+        let cleanups = 0
+        let reached = false
+        const fiber = yield* Effect.callback<void>((resume_) => {
+          resume = resume_
+          return Effect.sync(() => {
+            cleanups++
+          })
+        }).pipe(
+          Effect.andThen(Effect.callback<void>((resume_) => {
+            resumeNext = resume_
+          })),
+          Effect.andThen(Effect.sync(() => {
+            reached = true
+          })),
+          Effect.uninterruptible,
+          Effect.forkChild({ startImmediately: true })
+        )
+        resume(Effect.void)
+        fiber.interruptUnsafe()
+        assert.isUndefined(fiber.pollUnsafe())
+        resumeNext(Effect.void)
+        const exit = fiber.pollUnsafe()
+        assert.isTrue(reached)
+        assert.strictEqual(cleanups, 0)
+        assert.isTrue(exit !== undefined && Exit.hasInterrupts(exit))
       }))
 
     describe("uninterruptibleMask", () => {

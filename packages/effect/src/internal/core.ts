@@ -13,6 +13,7 @@ import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
+import { byReferenceInstances } from "./equal.ts"
 import * as InternalRecord from "./record.ts"
 
 /** @internal */
@@ -28,32 +29,32 @@ const effectVariance = {
 }
 
 /** @internal */
-export const identifier = `${EffectTypeId}/identifier` as const
+export const identifier = "~effect/Effect/identifier" as const
 /** @internal */
 export type identifier = typeof identifier
 
 /** @internal */
-export const args = `${EffectTypeId}/args` as const
+export const args = "~effect/Effect/args" as const
 /** @internal */
 export type args = typeof args
 
 /** @internal */
-export const evaluate = `${EffectTypeId}/evaluate` as const
+export const evaluate = "~effect/Effect/evaluate" as const
 /** @internal */
 export type evaluate = typeof evaluate
 
 /** @internal */
-export const contA = `${EffectTypeId}/successCont` as const
+export const contA = "~effect/Effect/successCont" as const
 /** @internal */
 export type contA = typeof contA
 
 /** @internal */
-export const contE = `${EffectTypeId}/failureCont` as const
+export const contE = "~effect/Effect/failureCont" as const
 /** @internal */
 export type contE = typeof contE
 
 /** @internal */
-export const contAll = `${EffectTypeId}/ensureCont` as const
+export const contAll = "~effect/Effect/ensureCont" as const
 /** @internal */
 export type contAll = typeof contAll
 
@@ -279,10 +280,48 @@ export const causeFromReasons = <E>(
   reasons: ReadonlyArray<Cause.Reason<E>>
 ): Cause.Cause<E> => new CauseImpl(reasons)
 
+// Built-in interrupt reasons are equal exactly when their fiber ids and
+// annotation maps are identical, which also makes their hashes equal. Small
+// interrupt-only causes, the common result of fiber interruption, can then be
+// deduplicated without hashing or populating the global Hash / Equal caches.
+const maxPairwiseInterrupts = 16
+
+const isPlainInterrupt = (reason: Cause.Reason<unknown>): boolean =>
+  Object.getPrototypeOf(reason) === Interrupt.prototype && !byReferenceInstances.has(reason)
+
+const dedupeInterrupts = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): Array<Cause.Reason<E>> | undefined => {
+  if (self.length + that.length > maxPairwiseInterrupts) return undefined
+  for (let i = 0; i < self.length; i++) {
+    if (!isPlainInterrupt(self[i])) return undefined
+  }
+  for (let i = 0; i < that.length; i++) {
+    if (!isPlainInterrupt(that[i])) return undefined
+  }
+  const out: Array<Cause.Reason<E>> = []
+  const all = self.concat(that) as Array<Interrupt>
+  outer: for (let i = 0; i < all.length; i++) {
+    const reason = all[i]
+    for (let j = 0; j < out.length; j++) {
+      const previous = out[j] as Interrupt
+      if (
+        previous === reason ||
+        (previous.fiberId === reason.fiberId && previous.annotations === reason.annotations)
+      ) continue outer
+    }
+    out.push(reason)
+  }
+  return out
+}
+
 const dedupeReasons = <E>(
   self: ReadonlyArray<Cause.Reason<E>>,
   that: ReadonlyArray<Cause.Reason<E>>
 ): Array<Cause.Reason<E>> => {
+  const interrupts = dedupeInterrupts(self, that)
+  if (interrupts !== undefined) return interrupts
   // Avoid importing Array.ts into the core bundle.
   // Snapshot both arrays before invoking user-defined hash or equality methods.
   const buckets = new Map<number, Array<Cause.Reason<E>>>()
@@ -302,6 +341,16 @@ const dedupeReasons = <E>(
   return out
 }
 
+const isSameReasons = <E>(
+  self: ReadonlyArray<Cause.Reason<E>>,
+  that: ReadonlyArray<Cause.Reason<E>>
+): boolean => {
+  for (let i = 0; i < self.length; i++) {
+    if (self[i] !== that[i]) return false
+  }
+  return true
+}
+
 /** @internal */
 export const causeCombine: {
   <E2>(that: Cause.Cause<E2>): <E>(self: Cause.Cause<E>) => Cause.Cause<E | E2>
@@ -314,9 +363,18 @@ export const causeCombine: {
     } else if (that.reasons.length === 0) {
       return self as Cause.Cause<E | E2>
     }
-    const newCause = new CauseImpl<E | E2>(
-      dedupeReasons<E | E2>(self.reasons, that.reasons)
-    )
+    const reasons = dedupeReasons<E | E2>(self.reasons, that.reasons)
+    // Causes with different reason counts are never equal
+    if (reasons.length !== self.reasons.length) {
+      return new CauseImpl<E | E2>(reasons)
+    }
+    if (
+      Object.getPrototypeOf(self) === CauseImpl.prototype && !byReferenceInstances.has(self) &&
+      isSameReasons(self.reasons, reasons)
+    ) {
+      return self as Cause.Cause<E | E2>
+    }
+    const newCause = new CauseImpl<E | E2>(reasons)
     return Equal.equals(self, newCause) ? self : newCause
   }
 )
@@ -356,6 +414,39 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
   [Hash.symbol](): number {
     return Hash.combine(Hash.string(this._tag))(
       Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
+    )
+  }
+}
+
+/** @internal */
+export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrupt {
+  declare readonly fiberId: number | undefined
+  constructor(
+    fiberId: number | undefined,
+    annotations = constEmptyAnnotations
+  ) {
+    super("Interrupt", annotations, "Interrupted")
+    this.fiberId = fiberId
+  }
+  override toString() {
+    return `Interrupt(${this.fiberId})`
+  }
+  toJSON(): unknown {
+    return {
+      _tag: "Interrupt",
+      fiberId: this.fiberId
+    }
+  }
+  [Equal.symbol](that: any): boolean {
+    return (
+      isInterruptReason(that) &&
+      this.fiberId === that.fiberId &&
+      this.annotations === that.annotations
+    )
+  }
+  [Hash.symbol](): number {
+    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
+      Hash.random(this.annotations)
     )
   }
 }
@@ -414,7 +505,8 @@ export interface Primitive {
     | undefined
   readonly [contAll]:
     | ((
-      fiber: FiberImpl
+      fiber: FiberImpl,
+      symbol: contA | contE
     ) =>
       | ((value: unknown, fiber: FiberImpl) => Primitive | Yield)
       | undefined)
@@ -422,7 +514,8 @@ export interface Primitive {
   [evaluate](fiber: FiberImpl): Primitive | Yield
 }
 
-interface PrimitiveClass {
+/** @internal */
+export interface PrimitiveClass {
   new(value: any): Primitive
   prototype: any
 }
@@ -451,7 +544,8 @@ export const makePrimitiveProto = <Op extends string>(options: {
   ) => Primitive | Effect.Effect<any, any, any> | Yield
   readonly [contAll]?: (
     this: Primitive,
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
 }): Primitive =>
   ({
@@ -463,6 +557,10 @@ export const makePrimitiveProto = <Op extends string>(options: {
     [contAll]: options[contAll]
   }) as any
 
+// V8 shares type feedback between closures created from the same function
+// literal, so the constructor and factory below see every primitive kind and
+// become megamorphic. Frequently allocated kinds pass `construct` to supply
+// their own constructor and factory literals instead.
 /** @internal */
 export const makePrimitive = <
   Fn extends (...args: Array<any>) => any
@@ -494,10 +592,12 @@ export const makePrimitive = <
     this: Primitive & {
       readonly [args]: Parameters<Fn>[0]
     },
-    fiber: FiberImpl
+    fiber: FiberImpl,
+    symbol: contA | contE
   ) => void | ((value: any, fiber: FiberImpl) => void)
-}): Fn => {
+}, construct?: (Proto: Primitive) => Fn): Fn => {
   const Proto = makePrimitiveProto(options as any)
+  if (construct !== undefined) return construct(Proto)
   const PrimitiveImpl = function(this: any, value: any) {
     this[args] = value
   } as unknown as PrimitiveClass
@@ -518,7 +618,7 @@ export const makeExit = <
     this: Exit.Exit<unknown, unknown> & { [args]: Parameters<Fn>[0] },
     fiber: FiberImpl<unknown, unknown>
   ) => Primitive | Yield
-}): Fn => {
+}, construct?: (Proto: object) => Fn): Fn => {
   const Proto = {
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
@@ -547,6 +647,7 @@ export const makeExit = <
       return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
+  if (construct !== undefined) return construct(Proto)
   const ExitPrimitive = function(this: any, value: unknown) {
     this[args] = value
   } as unknown as PrimitiveClass
@@ -561,9 +662,16 @@ export const exitSucceed: <A>(a: A) => Exit.Exit<A> = makeExit({
   op: "Success",
   prop: "value",
   [evaluate](fiber) {
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](this[args], fiber, this) : fiber.yieldWith(this)
+    return fiber.continueWith(this[args], this)
   }
+}, (Proto) => {
+  const Success = function(this: any, value: unknown) {
+    this[args] = value
+  } as unknown as PrimitiveClass
+  Success.prototype = Proto
+  return function(value: unknown) {
+    return new Success(value)
+  } as any
 })
 
 /** @internal */
@@ -607,6 +715,14 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
       ? cont[contE](cause, fiber, annotated ? undefined : this)
       : fiber.yieldWith(annotated ? exitFailCause(cause) : this)
   }
+}, (Proto) => {
+  const Failure = function(this: any, cause: unknown) {
+    this[args] = cause
+  } as unknown as PrimitiveClass
+  Failure.prototype = Proto
+  return function(cause: unknown) {
+    return new Failure(cause)
+  } as any
 })
 
 /** @internal */
@@ -623,6 +739,14 @@ export const withFiber: <A, E = never, R = never>(
   [evaluate](fiber) {
     return this[args](fiber)
   }
+}, (Proto) => {
+  const WithFiber = function(this: any, f: unknown) {
+    this[args] = f
+  } as unknown as PrimitiveClass
+  WithFiber.prototype = Proto
+  return function(f: any) {
+    return new WithFiber(f)
+  } as any
 })
 
 /**
@@ -636,10 +760,16 @@ export const withFiberSucceed: <A, R = never>(
 ) => Effect.Effect<A, never, R> = makePrimitive({
   op: "WithFiberSucceed",
   [evaluate](fiber) {
-    const value = this[args](fiber)
-    const cont = fiber.getCont(contA)
-    return cont ? cont[contA](value, fiber) : fiber.yieldWith(exitSucceed(value))
+    return fiber.continueWith(this[args](fiber), undefined)
   }
+}, (Proto) => {
+  const WithFiberSucceed = function(this: any, f: unknown) {
+    this[args] = f
+  } as unknown as PrimitiveClass
+  WithFiberSucceed.prototype = Proto
+  return function(f: any) {
+    return new WithFiberSucceed(f)
+  } as any
 })
 
 /** @internal */
