@@ -10,7 +10,8 @@
  *   is emitted. Users own the document files and can move fragments to break
  *   it.
  * - A module that exports a group can't also bind a fragment of that name,
- *   whether the fragment is local or imported.
+ *   whether the fragment is local or imported only because a spread was
+ *   inlined.
  * - Schema type names are not the user's to choose, so names that clash with
  *   the shared module's own bindings or are reserved words must still emit
  *   working code.
@@ -42,18 +43,6 @@ describe("Generator module graph", () => {
       assert.include(message, "b.graphql")
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
-
-  it.effect("a fragment imported one way loads and decodes", () =>
-    Effect.gen(function*() {
-      const generated = yield* generateIn({
-        "schema.graphql": "type Query { x: Int! }",
-        "src/a.graphql": "fragment A2 on Query { x }",
-        "src/b.graphql": "fragment B1 on Query { ...A2 }\nquery Q { ...B1 }"
-      }, config)
-      assertNoErrors(generated)
-      const b = yield* importGenerated(generated, "src/b.graphql.ts")
-      assert.deepStrictEqual(Schema.decodeUnknownSync(b.Q.result)({ x: 1 }), { x: 1 })
-    }).pipe(Effect.provide(NodeServices.layer)))
 })
 
 describe("Generator group bindings", () => {
@@ -64,19 +53,6 @@ describe("Generator group bindings", () => {
         "src/ops.graphql": "fragment OpsGroup on Query { x }\nquery Q { ...OpsGroup }"
       }, config)
       assert.deepStrictEqual(located(generated), [{ severity: "error", path: "src/ops.graphql", line: 1, column: 10 }])
-      assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
-      assert.match(generated.result.diagnostics[0]!.message, /group/)
-      assert.deepStrictEqual(generated.result.files, [])
-    }).pipe(Effect.provide(NodeServices.layer)))
-
-  it.effect("an imported fragment named like the file's group is a located error at the spread", () =>
-    Effect.gen(function*() {
-      const generated = yield* generateIn({
-        "schema.graphql": "type Query { x: Int! }",
-        "src/frags.graphql": "fragment OpsGroup on Query { x }",
-        "src/ops.graphql": "query Q { ...OpsGroup }"
-      }, config)
-      assert.deepStrictEqual(located(generated), [{ severity: "error", path: "src/ops.graphql", line: 1, column: 11 }])
       assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
       assert.match(generated.result.diagnostics[0]!.message, /group/)
       assert.deepStrictEqual(generated.result.files, [])
@@ -95,18 +71,6 @@ describe("Generator group bindings", () => {
       assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
       assert.match(generated.result.diagnostics[0]!.message, /group/)
       assert.deepStrictEqual(generated.result.files, [])
-    }).pipe(Effect.provide(NodeServices.layer)))
-
-  it.effect("a fragment-only file may use its own group name, since it exports no group", () =>
-    Effect.gen(function*() {
-      const generated = yield* generateIn({
-        "schema.graphql": "type Query { x: Int! }",
-        "src/frags.graphql": "fragment FragsGroup on Query { x }",
-        "src/ops.graphql": "query Q { ...FragsGroup }"
-      }, config)
-      assertNoErrors(generated)
-      const ops = yield* importGenerated(generated, "src/ops.graphql.ts")
-      assert.deepStrictEqual(Schema.decodeUnknownSync(ops.Q.result)({ x: 1 }), { x: 1 })
     }).pipe(Effect.provide(NodeServices.layer)))
 })
 

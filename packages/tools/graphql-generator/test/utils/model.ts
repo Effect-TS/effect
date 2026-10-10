@@ -115,7 +115,7 @@ export const scalarType = (
   specifiedBy: options.specifiedBy
 })
 
-export const builtInScalars: ReadonlyArray<Model.ScalarType> = ["String", "Int", "Float", "Boolean", "ID"].map((
+const builtInScalars: ReadonlyArray<Model.ScalarType> = ["String", "Int", "Float", "Boolean", "ID"].map((
   name
 ) => scalarType(name))
 
