@@ -10,6 +10,20 @@
  *
  * `pages` and `items` page through cursor connections with a client method.
  *
+ * The transport is the `GraphQLProtocol` layer provided to `make`:
+ *
+ * - `GraphQLProtocol.layerHttp({ url })` for `POST` queries and mutations,
+ *   and graphql-sse subscriptions on the same URL.
+ * - `GraphQLProtocol.layerWebSocket({ url })` for every operation over one
+ *   graphql-ws socket.
+ * - `GraphQLProtocol.layerHttp({ url, subscriptions: { webSocket: { url } } })`
+ *   for graphql-ws subscriptions and `POST` for the rest.
+ *
+ * Per-call `headers` reach the HTTP transport only; over graphql-ws,
+ * authenticate with `connectionParams`. A subscription that the transport
+ * fails with a retryable `TransportError` is resubscribed on the
+ * `subscriptionRetry` schedule, through the whole middleware chain.
+ *
  * @stability experimental
  * @since 4.0.0
  */
@@ -52,8 +66,9 @@ export interface PartialResult<A> {
 
 /**
  * Per-call options shared by every method. `headers` are sent by the HTTP
- * transport and visible to middleware. `context` provides services for this
- * call only, and removes them from the method's requirements.
+ * transport, ignored over graphql-ws, and visible to middleware either way.
+ * `context` provides services for this call only, and removes them from the
+ * method's requirements.
  *
  * @stability experimental
  * @category models
