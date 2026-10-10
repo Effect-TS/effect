@@ -412,7 +412,7 @@ describe("Parser: type-system documents", () => {
         source: "\"desc\" extend type T { f: Int }",
         line: 1,
         column: 1,
-        message: "Unexpected description, descriptions are supported only on type definitions."
+        message: "Unexpected description, only GraphQL definitions support descriptions."
       }
     ]
     for (const testCase of cases) {

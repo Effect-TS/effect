@@ -1,9 +1,10 @@
 /**
  * Executable-document conformance cases, one table per grammar section.
  *
- * `printed` is the compact form the printer must produce (see the rules in
- * `src/internal/Printer.ts`); the round-trip tests re-parse it and expect the
- * same AST. Diagnostics give the 1-based `line:column` of the offending token
+ * `printed` is the compact form the printer must produce: token-minimal, with
+ * a single space only where two adjacent non-punctuator tokens would otherwise
+ * merge, and with executable-definition descriptions dropped. The round-trip
+ * tests re-parse it and expect the same AST apart from those descriptions. Diagnostics give the 1-based `line:column` of the offending token
  * and the message, worded as graphql-js words it so the reference
  * implementation can arbitrate disagreements.
  */
@@ -96,7 +97,7 @@ export const executableSections: ReadonlyArray<ExecutableSection> = [
         name: "every value kind",
         source:
           "{ f(i: 1, neg: -2, fl: 1.5, exp: 1e10, s: \"x\", b: true, n: null, e: ENUM, l: [1, 2], o: {a: 1, b: {c: [true]}}) }",
-        printed: "{f(i:1 neg:-2 fl:1.5 exp:1e10 s:\"x\" b:true n:null e:ENUM l:[1 2] o:{a:1 b:{c:[true]}})}"
+        printed: "{f(i:1 neg:-2 fl:1.5 exp:1e10 s:\"x\" b:true n:null e:ENUM l:[1 2]o:{a:1 b:{c:[true]}})}"
       },
       {
         name: "numbers keep their source text",
@@ -111,9 +112,9 @@ export const executableSections: ReadonlyArray<ExecutableSection> = [
       {
         name: "variables inside lists and objects",
         source: "{ f(a: [$x, 1], b: {k: $y}) }",
-        printed: "{f(a:[$x 1] b:{k:$y})}"
+        printed: "{f(a:[$x 1]b:{k:$y})}"
       },
-      { name: "empty list and object", source: "{ f(a: [], b: {}) }", printed: "{f(a:[] b:{})}" },
+      { name: "empty list and object", source: "{ f(a: [], b: {}) }", printed: "{f(a:[]b:{})}" },
       {
         name: "block string argument prints as a regular string",
         source: "{ f(s: \"\"\"\n    multi\n      line\n    \"\"\") }",
@@ -128,6 +129,32 @@ export const executableSections: ReadonlyArray<ExecutableSection> = [
         name: "control characters",
         source: "{ f(s: \"\\u0001\\u007f\\b\") }",
         printed: "{f(s:\"\\u0001\\u007F\\b\")}"
+      }
+    ]
+  },
+  {
+    section: "descriptions (September 2025 edition)",
+    cases: [
+      {
+        name: "operation description is parsed and not printed",
+        source: "\"docs\" query Q { a }",
+        printed: "query Q{a}"
+      },
+      {
+        name: "block string description on a mutation",
+        source: "\"\"\"\n  Block\n  docs\n\"\"\" mutation M { do }",
+        printed: "mutation M{do}"
+      },
+      {
+        name: "variable definition descriptions",
+        source: "query Q(\"x doc\" $x: Int = 1, \"\"\"y doc\"\"\" $y: String) { a }",
+        printed: "query Q($x:Int=1$y:String){a}"
+      },
+      { name: "fragment description", source: "\"docs\" fragment F on T { a }", printed: "fragment F on T{a}" },
+      {
+        name: "described anonymous query still collapses to the shorthand",
+        source: "\"docs\" query { a }",
+        printed: "{a}"
       }
     ]
   },
@@ -150,6 +177,27 @@ export interface DiagnosticCase extends ExpectedDiagnostic {
 }
 
 export const executableDiagnostics: ReadonlyArray<DiagnosticCase> = [
+  {
+    name: "description on the query shorthand",
+    source: "\"docs\" { a }",
+    line: 1,
+    column: 1,
+    message: "Unexpected description, descriptions are not supported on shorthand queries."
+  },
+  {
+    name: "description on a field",
+    source: "{ \"docs\" a }",
+    line: 1,
+    column: 3,
+    message: "Expected Name, found String \"docs\"."
+  },
+  {
+    name: "description at end of input",
+    source: "query Q { a } \"trailing\"",
+    line: 1,
+    column: 25,
+    message: "Unexpected <EOF>."
+  },
   { name: "empty document", source: "", line: 1, column: 1, message: "Unexpected <EOF>." },
   { name: "comment-only document", source: "# only a comment", line: 1, column: 17, message: "Unexpected <EOF>." },
   { name: "unterminated selection set", source: "{", line: 1, column: 2, message: "Expected Name, found <EOF>." },
