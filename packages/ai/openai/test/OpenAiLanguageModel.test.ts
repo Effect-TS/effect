@@ -2512,14 +2512,14 @@ const reasoningCapabilityCases: ReadonlyArray<{
   readonly include: ReadonlyArray<OpenAiSchema.IncludeEnum> | undefined
   readonly role: "system" | "developer"
 }> = [
-  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model"].map((model) => ({
+  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model", "ft:o4-mini-2025-04-16:org::id"].map((model) => ({
     name: `treats ${model} as a reasoning model`,
     model,
     config: { store: false },
     include: ["reasoning.encrypted_content"] as const,
     role: "developer" as const
   })),
-  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id"].map((model) => ({
+  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id", "chat-latest", "chatgpt-4o-latest"].map((model) => ({
     name: `treats ${model} as a non-reasoning model`,
     model,
     config: { store: false },
