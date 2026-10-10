@@ -14,7 +14,13 @@
     "./packages/**/typetest/**/*.ts",
     "./packages/**/benchmark/**/*.ts"
   ],
-  "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "./packages/platform/deno/**",
+    // Vendored GitHub schema fixtures, read with fs at test time; keep the multi-MB JSON out of the program.
+    "./packages/tools/graphql-generator/test/fixtures/**"
+  ],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
@@ -92,6 +98,7 @@
       "@effect/docgen/*": ["./packages/tools/docgen/src/*.ts"],
       "@effect/openapi-generator": ["./packages/tools/openapi-generator/src/index.ts"],
       "@effect/openapi-generator/*": ["./packages/tools/openapi-generator/src/*.ts"],
+      "@effect/graphql-generator/*": ["./packages/tools/graphql-generator/src/*.ts"],
       "@effect/oxc": ["./packages/tools/oxc/src/index.ts"],
       "@effect/oxc/*": ["./packages/tools/oxc/src/*.ts"],
       "@effect/tools-utils": ["./packages/tools/utils/src/index.ts"],
