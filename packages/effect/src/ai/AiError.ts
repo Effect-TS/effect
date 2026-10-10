@@ -45,7 +45,7 @@ import * as Schema from "../Schema.ts"
  * @since 4.0.0
  */
 export const HttpRequestDetails = Schema.Struct({
-  method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE", "QUERY"]),
+  method: Schema.String,
   url: Schema.String,
   urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
   hash: Schema.optional(Schema.String),
