@@ -91,6 +91,53 @@ export interface GenerateResult {
  */
 export interface GenerateOptions {
   readonly cwd: string
+  /**
+   * Parsed inputs kept from earlier calls. The schema and each document are
+   * parsed again only when their path or contents change.
+   */
+  readonly cache?: Cache | undefined
+}
+
+const CacheTypeId = "~@effect/graphql-generator/Generator/Cache"
+
+/**
+ * Parsed inputs that {@link generate} can reuse across calls, e.g. in watch
+ * mode. Files are still read on every call; only parsing is skipped.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Cache {
+  readonly [CacheTypeId]: typeof CacheTypeId
+}
+
+interface CacheState extends Cache {
+  schema: {
+    readonly path: string
+    readonly source: Source
+    readonly result: Result.Result<SchemaModel.Schema, InternalDiagnostic>
+  } | undefined
+  documents: Map<string, ParsedDocument>
+}
+
+interface ParsedDocument {
+  readonly display: string
+  readonly body: string
+  readonly file: Emitter.DocumentFile | undefined
+  readonly diagnostics: ReadonlyArray<InternalDiagnostic>
+}
+
+/**
+ * Creates an empty {@link Cache}.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeCache = (): Cache => {
+  const cache: CacheState = { [CacheTypeId]: CacheTypeId, schema: undefined, documents: new Map() }
+  return cache
 }
 
 /**
@@ -141,11 +188,22 @@ export const generate: (
     const display = (absolute: string): string => path.relative(cwd, absolute).split(path.sep).join("/")
     const importExtension = config.importExtension ?? ".ts"
     const failed = (diagnostics: ReadonlyArray<Diagnostic>): GenerateResult => ({ files: [], deletes: [], diagnostics })
+    const cache = (options.cache ?? makeCache()) as CacheState
 
     // Schema
     const schemaPath = path.resolve(cwd, config.schema)
     const schemaSource: Source = { path: display(schemaPath), body: yield* fs.readFileString(schemaPath) }
-    const schemaResult = readSchema(schemaSource, schemaPath.endsWith(".json"))
+    if (
+      cache.schema === undefined || cache.schema.path !== schemaPath ||
+      cache.schema.source.path !== schemaSource.path || cache.schema.source.body !== schemaSource.body
+    ) {
+      cache.schema = {
+        path: schemaPath,
+        source: schemaSource,
+        result: readSchema(schemaSource, schemaPath.endsWith(".json"))
+      }
+    }
+    const schemaResult = cache.schema.result
     if (Result.isFailure(schemaResult)) return failed([toPublic(schemaResult.failure)])
     const schema = schemaResult.success
 
@@ -171,29 +229,18 @@ export const generate: (
     const documentPaths = yield* findDocuments(fs, path, cwd, config.documents, schemaPath)
     const files: Array<Emitter.DocumentFile> = []
     const diagnostics: Array<InternalDiagnostic> = []
+    const documents = new Map<string, ParsedDocument>()
     for (const documentPath of documentPaths) {
       const source: Source = { path: display(documentPath), body: yield* fs.readFileString(documentPath) }
-      const parsed = parse(source)
-      if (Result.isFailure(parsed)) {
-        diagnostics.push(parsed.failure)
-        continue
-      }
-      const executable: Array<Ast.Definition> = []
-      for (const definition of parsed.success.definitions) {
-        if (definition._tag === "OperationDefinition" || definition._tag === "FragmentDefinition") {
-          executable.push(definition)
-        } else {
-          const name = "name" in definition ? `"${definition.name.value}"` : "schema"
-          diagnostics.push(make(source, definition.loc.start, `The ${name} definition is not executable.`))
-        }
-      }
-      files.push({
-        source,
-        document: { ...parsed.success, definitions: executable },
-        outputPath: `${documentPath}.ts`,
-        sourceName: path.basename(documentPath)
-      })
+      const cached = cache.documents.get(documentPath)
+      const parsed = cached !== undefined && cached.display === source.path && cached.body === source.body
+        ? cached
+        : parseDocument(path, documentPath, source)
+      documents.set(documentPath, parsed)
+      diagnostics.push(...parsed.diagnostics)
+      if (parsed.file !== undefined) files.push(parsed.file)
     }
+    cache.documents = documents
     if (diagnostics.length > 0) return failed(diagnostics.map(toPublic))
     const validation = Validate.validate(schema, files)
     if (validation.length > 0) return failed(validation.map(toPublic))
@@ -224,6 +271,35 @@ export const generate: (
     }
   }
 )
+
+/** Parses one document and keeps only its executable definitions. */
+const parseDocument = (path: Path.Path, documentPath: string, source: Source): ParsedDocument => {
+  const parsed = parse(source)
+  if (Result.isFailure(parsed)) {
+    return { display: source.path, body: source.body, file: undefined, diagnostics: [parsed.failure] }
+  }
+  const executable: Array<Ast.Definition> = []
+  const diagnostics: Array<InternalDiagnostic> = []
+  for (const definition of parsed.success.definitions) {
+    if (definition._tag === "OperationDefinition" || definition._tag === "FragmentDefinition") {
+      executable.push(definition)
+    } else {
+      const name = "name" in definition ? `"${definition.name.value}"` : "schema"
+      diagnostics.push(make(source, definition.loc.start, `The ${name} definition is not executable.`))
+    }
+  }
+  return {
+    display: source.path,
+    body: source.body,
+    file: {
+      source,
+      document: { ...parsed.success, definitions: executable },
+      outputPath: `${documentPath}.ts`,
+      sourceName: path.basename(documentPath)
+    },
+    diagnostics
+  }
+}
 
 const toPublic = (diagnostic: InternalDiagnostic): Diagnostic => ({
   severity: "error",
