@@ -906,7 +906,9 @@ describe("parseResolvConf", () => {
       ndots: undefined,
       timeout: undefined,
       attempts: undefined,
-      rotate: undefined
+      rotate: undefined,
+      useTcp: undefined,
+      noAaaa: undefined
     })
   })
 
@@ -929,6 +931,13 @@ describe("parseResolvConf", () => {
     assert.strictEqual(config.ndots, 15)
     assert.deepStrictEqual(config.timeout, Duration.seconds(1))
     assert.strictEqual(config.attempts, 5)
+  })
+
+  it("reads the TCP and AAAA options", () => {
+    for (const option of ["use-vc", "usevc", "tcp"]) {
+      assert.isTrue(DnsClient.parseResolvConf(`options ${option}`).useTcp, option)
+    }
+    assert.isTrue(DnsClient.parseResolvConf("options no-aaaa").noAaaa)
   })
 })
 
@@ -975,6 +984,7 @@ describe("layerDns", () => {
     readonly records: Record<string, ReadonlyArray<Dns.DnsRecord | DnsClient.RawRecord>>
     readonly search?: ReadonlyArray<string>
     readonly ndots?: number
+    readonly noAaaa?: boolean
     readonly hosts?: string
     readonly chains?: boolean
     readonly failures?: Record<string, Dns.DnsErrorReason>
@@ -1019,6 +1029,7 @@ describe("layerDns", () => {
         }),
       search: (options.search ?? []).map(name),
       ndots: options.ndots ?? 1,
+      noAaaa: options.noAaaa ?? false,
       hosts: Effect.succeed(DnsClient.parseHosts(options.hosts ?? ""))
     })
     const dns = Effect.service(Dns.Dns).pipe(
@@ -1041,6 +1052,31 @@ describe("layerDns", () => {
         "2001:db8::1"
       ])
       assert.deepStrictEqual(queries, [])
+    }))
+
+  it.effect("resolves localhost names to loopback addresses", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({ hosts: "127.0.0.2 localhost", records: {} })
+      const service = yield* dns
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("localhost."))), ["127.0.0.2"])
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("localhost"), { family: "IPv6" })), ["::1"])
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("App.Localhost"))), ["127.0.0.1", "::1"])
+      assert.deepStrictEqual(queries, [])
+    }))
+
+  it.effect("skips AAAA queries with noAaaa", () =>
+    Effect.gen(function*() {
+      const { dns, queries } = staticClient({
+        noAaaa: true,
+        hosts: "2001:db8::1 db.internal",
+        records: { "app.example.": [a("192.0.2.1"), aaaa("2001:db8::6")] }
+      })
+      const service = yield* dns
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("app.example"))), ["192.0.2.1"])
+      const error = yield* Effect.flip(service.lookup(name("app.example"), { family: "IPv6" }))
+      assert.strictEqual(error.reason, "NotFound")
+      assert.deepStrictEqual(formatIps(yield* service.lookup(name("db.internal"))), ["2001:db8::1"])
+      assert.deepStrictEqual(queries, ["app.example. A"])
     }))
 
   it.effect("queries DNS when the hosts table has no address of the family", () =>

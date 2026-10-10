@@ -35,6 +35,8 @@ export interface Options {
   readonly timeout?: Duration.Input | undefined
   readonly attempts?: number | undefined
   readonly rotate?: boolean | undefined
+  readonly useTcp?: boolean | undefined
+  readonly noAaaa?: boolean | undefined
   readonly udpPayloadSize?: number | undefined
 }
 
@@ -91,7 +93,9 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
   const system = config.nameServers.filter((server) => !isScoped(server))
   const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), DnsClient.parseHosts), "5 seconds")
-  const combined: DnsClient.MakeOptions & Omit<DnsClient.TransportUdpOptions, "udp" | "tcp"> = {
+  const combined: DnsClient.MakeOptions & Omit<DnsClient.TransportUdpOptions, "udp" | "tcp"> & {
+    readonly useTcp: boolean
+  } = {
     nameServers: Arr.isReadonlyArrayNonEmpty(nameServers)
       ? nameServers
       : Arr.isReadonlyArrayNonEmpty(system)
@@ -102,6 +106,8 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
     timeout: options?.timeout ?? config.timeout,
     attempts: options?.attempts ?? config.attempts,
     rotate: options?.rotate ?? config.rotate,
+    useTcp: options?.useTcp ?? config.useTcp ?? false,
+    noAaaa: options?.noAaaa ?? config.noAaaa,
     udpPayloadSize: options?.udpPayloadSize,
     hosts
   }
@@ -178,7 +184,8 @@ export const layerTransportTcp = (
 
 /**
  * Creates a Node.js `DnsClient` service from the system configuration and
- * options, sending queries with `makeTransportUdp`.
+ * options, sending queries with `makeTransportUdp`, or `makeTransportTcp`
+ * with `useTcp`.
  *
  * @stability experimental
  * @category constructors
@@ -186,7 +193,12 @@ export const layerTransportTcp = (
  */
 export const make = Effect.fnUntraced(function*(options?: Options) {
   const config = yield* systemOptions(options).pipe(Effect.provide(NodeFileSystem.layer))
-  return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
+  return yield* DnsClient.make(config).pipe(
+    Effect.provideServiceEffect(
+      DnsClient.Transport,
+      config.useTcp ? makeTransportTcp(config) : makeTransportUdp(config)
+    )
+  )
 })
 
 /**

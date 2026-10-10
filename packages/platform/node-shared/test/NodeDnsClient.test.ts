@@ -53,7 +53,7 @@ describe("NodeDnsClient", () => {
       const config = yield* NodeDnsClient.systemOptions({ attempts: 3 }).pipe(
         Effect.provide(files({
           "/etc/resolv.conf":
-            "nameserver 192.0.2.1\nnameserver fe80::1%2\nsearch corp.example\noptions ndots:2 attempts:4 timeout:3\n",
+            "nameserver 192.0.2.1\nnameserver fe80::1%2\nsearch corp.example\noptions ndots:2 attempts:4 timeout:3 use-vc\n",
           "/etc/hosts": "192.0.2.9 db\n"
         }))
       )
@@ -67,6 +67,7 @@ describe("NodeDnsClient", () => {
       assert.strictEqual(config.ndots, 2)
       assert.strictEqual(config.attempts, 3)
       assert.deepStrictEqual(config.timeout, Duration.seconds(3))
+      assert.isTrue(config.useTcp)
       const hosts = yield* config.hosts!
       assert.deepStrictEqual(hosts.get("db" as never)?.map(NetAddress.formatIp), ["192.0.2.9"])
     }))
@@ -82,5 +83,6 @@ describe("NodeDnsClient", () => {
         ]
       )
       assert.strictEqual((yield* config.hosts!).size, 0)
+      assert.isFalse(config.useTcp)
     }))
 })

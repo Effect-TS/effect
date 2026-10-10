@@ -98,7 +98,8 @@ export const layerTransportTcp = (
 
 /**
  * Creates a Bun `DnsClient` service from the system configuration and
- * options, sending queries with `makeTransportUdp`.
+ * options, sending queries with `makeTransportUdp`, or `makeTransportTcp`
+ * with `useTcp`.
  *
  * @stability experimental
  * @category constructors
@@ -106,7 +107,12 @@ export const layerTransportTcp = (
  */
 export const make = Effect.fnUntraced(function*(options?: NodeDnsClient.Options) {
   const config = yield* NodeDnsClient.systemOptions(options).pipe(Effect.provide(BunFileSystem.layer))
-  return yield* DnsClient.make(config).pipe(Effect.provideServiceEffect(DnsClient.Transport, makeTransportUdp(config)))
+  return yield* DnsClient.make(config).pipe(
+    Effect.provideServiceEffect(
+      DnsClient.Transport,
+      config.useTcp ? makeTransportTcp(config) : makeTransportUdp(config)
+    )
+  )
 })
 
 /**

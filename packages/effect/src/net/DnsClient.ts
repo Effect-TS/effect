@@ -17,6 +17,7 @@ import * as Equal from "../Equal.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as DnsMessage from "../internal/dnsMessage.ts"
+import * as ResolverConfig from "../internal/resolverConfig.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
 import type * as Scope from "../Scope.ts"
@@ -127,6 +128,11 @@ export class DnsClient extends Context.Service<DnsClient, {
    * the search domains.
    */
   readonly ndots: number
+
+  /**
+   * Whether address lookups skip AAAA queries.
+   */
+  readonly noAaaa: boolean
 
   /**
    * Reads the hosts table consulted by address lookups before DNS.
@@ -455,6 +461,7 @@ export interface MakeOptions {
   readonly rotate?: boolean | undefined
   readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
   readonly ndots?: number | undefined
+  readonly noAaaa?: boolean | undefined
   readonly hosts?: Effect.Effect<Hosts> | undefined
 }
 
@@ -549,6 +556,7 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
       query,
       search,
       ndots,
+      noAaaa: options.noAaaa ?? false,
       hosts: options.hosts ?? Effect.succeed(new Map())
     })
   })
@@ -569,9 +577,23 @@ export const layer = (options?: MakeOptions): Layer.Layer<DnsClient, never, Tran
 // System configuration
 // =============================================================================
 
-const clamp = (value: string, min: number, max: number): number | undefined => {
-  const n = Number(value)
-  return /^\d+$/.test(value) ? Math.min(Math.max(n, min), max) : undefined
+/**
+ * The resolver configuration of a `resolv.conf` file.
+ *
+ * @see {@link parseResolvConf} for reading a `resolv.conf` file
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ResolvConf {
+  readonly nameServers: ReadonlyArray<NetAddress.InetAddress>
+  readonly search: ReadonlyArray<Host.DomainName> | undefined
+  readonly ndots: number | undefined
+  readonly timeout: Duration.Duration | undefined
+  readonly attempts: number | undefined
+  readonly rotate: boolean | undefined
+  readonly useTcp: boolean | undefined
+  readonly noAaaa: boolean | undefined
 }
 
 /**
@@ -598,65 +620,7 @@ const clamp = (value: string, min: number, max: number): number | undefined => {
  * @category decoding
  * @since 4.0.0
  */
-export const parseResolvConf = (text: string): {
-  readonly nameServers: ReadonlyArray<NetAddress.InetAddress>
-  readonly search: ReadonlyArray<Host.DomainName> | undefined
-  readonly ndots: number | undefined
-  readonly timeout: Duration.Duration | undefined
-  readonly attempts: number | undefined
-  readonly rotate: boolean | undefined
-} => {
-  const nameServers: Array<NetAddress.InetAddress> = []
-  let search: ReadonlyArray<Host.DomainName> | undefined
-  let ndots: number | undefined
-  let timeout: Duration.Duration | undefined
-  let attempts: number | undefined
-  let rotate: boolean | undefined
-  for (const line of text.split(/\r?\n/)) {
-    const [keyword, ...values] = line.trim().split(/\s+/)
-    if (keyword === undefined || keyword.startsWith("#") || keyword.startsWith(";")) continue
-    switch (keyword) {
-      case "nameserver": {
-        const value = values[0]
-        if (value === undefined || nameServers.length === 3) break
-        const address = NetAddress.inetAddressFromString(value.includes(":") ? `[${value}]:53` : `${value}:53`)
-        if (Result.isSuccess(address)) nameServers.push(address.success)
-        break
-      }
-      case "domain":
-      case "search":
-        search = Arr.filterMap(
-          keyword === "domain" ? values.slice(0, 1) : values,
-          (value) => Host.domainNameFromString(value)
-        )
-        break
-      case "options":
-        for (const option of values) {
-          const [name, value = ""] = option.split(":", 2)
-          switch (name) {
-            case "ndots":
-              ndots = clamp(value, 0, 15) ?? ndots
-              break
-            case "timeout": {
-              const seconds = clamp(value, 1, 30)
-              if (seconds !== undefined) timeout = Duration.seconds(seconds)
-              break
-            }
-            case "attempts":
-              attempts = clamp(value, 1, 5) ?? attempts
-              break
-            case "rotate":
-              rotate = true
-              break
-          }
-        }
-        break
-    }
-  }
-  return { nameServers, search, ndots, timeout, attempts, rotate }
-}
-
-const relative = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
+export const parseResolvConf: (text: string) => ResolvConf = ResolverConfig.parseResolvConf
 
 /**
  * Parses a hosts file into the addresses of each host name. Invalid entries
@@ -678,24 +642,7 @@ const relative = (name: string): string => name.length > 1 && name.endsWith(".")
  * @category decoding
  * @since 4.0.0
  */
-export const parseHosts = (text: string): Hosts => {
-  const hosts = new Map<Host.DomainName, Array<NetAddress.IpAddress>>()
-  for (const line of text.split(/\r?\n/)) {
-    const comment = line.indexOf("#")
-    const [first, ...names] = (comment === -1 ? line : line.slice(0, comment)).trim().split(/\s+/)
-    const address = NetAddress.ipFromString(first)
-    if (Result.isFailure(address)) continue
-    for (const name of names) {
-      const domain = Host.domainNameFromString(name)
-      if (Result.isFailure(domain)) continue
-      const key = relative(domain.success) as Host.DomainName
-      const addresses = hosts.get(key)
-      if (addresses === undefined) hosts.set(key, [address.success])
-      else if (!addresses.some((existing) => Equal.equals(existing, address.success))) addresses.push(address.success)
-    }
-  }
-  return hosts as unknown as Hosts
-}
+export const parseHosts: (text: string) => Hosts = ResolverConfig.parseHosts
 
 // =============================================================================
 // Dns
@@ -703,6 +650,8 @@ export const parseHosts = (text: string): Hosts => {
 
 // CNAME records followed per lookup, including those of follow-up queries.
 const maxAliases = 8
+
+const loopback = [NetAddress.ipv4Loopback, NetAddress.ipv6Loopback]
 
 const withMethod = (method: "lookup" | "reverse", hostname: string) => (error: Dns.DnsError) =>
   new Dns.DnsError({ reason: error.reason, method, hostname, cause: error.cause })
@@ -713,9 +662,10 @@ const withMethod = (method: "lookup" | "reverse", hostname: string) => (error: D
  *
  * **Details**
  *
- * `lookup` checks the `hosts` table first, then queries A and AAAA records
- * with the `search` domains and `ndots`, like a stub resolver. Queries follow
- * up to 8 CNAME records.
+ * `lookup` checks the `hosts` table first and resolves `localhost` names to
+ * loopback addresses. Other names are queried as A and AAAA records with the
+ * `search` domains and `ndots`, like a stub resolver. Queries follow up to 8
+ * CNAME records.
  *
  * @stability experimental
  * @category layers
@@ -730,7 +680,7 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
       if (Host.isFullyQualified(host)) return [host]
       const searched = Arr.filterMap(
         client.search.filter((domain) => domain !== "."),
-        (domain) => Host.domainNameFromString(`${host}.${relative(domain)}.`)
+        (domain) => Host.domainNameFromString(`${host}.${ResolverConfig.relative(domain)}.`)
       )
       const absoluteHost = `${host}.` as Host.DomainName
       return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
@@ -778,14 +728,15 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
 
     return Dns.make({
       lookup: Effect.fnUntraced(function*(host, family) {
-        const listed = (yield* client.hosts).get(relative(host) as Host.DomainName) ?? []
-        const fromHosts = listed.filter((address) => family === undefined || NetAddress.isFamily(address, family))
+        const isFamily = (address: NetAddress.IpAddress) => family === undefined || NetAddress.isFamily(address, family)
+        const key = ResolverConfig.relative(host) as Host.DomainName
+        const fromHosts = ((yield* client.hosts).get(key) ?? []).filter(isFamily)
         if (fromHosts.length > 0) return fromHosts
-        const types = family === "IPv4"
-          ? ["A" as const]
-          : family === "IPv6"
-          ? ["AAAA" as const]
-          : ["A", "AAAA"] as const
+        if (key === "localhost" || key.endsWith(".localhost")) return loopback.filter(isFamily)
+        const types = Arr.filter(
+          ["A", "AAAA"] as const,
+          (type) => type === "A" ? family !== "IPv6" : family !== "IPv4" && !client.noAaaa
+        )
         let error: Dns.DnsError | undefined
         for (const name of candidates(host)) {
           const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(name, type)), {
