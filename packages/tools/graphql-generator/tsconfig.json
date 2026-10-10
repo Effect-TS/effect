@@ -3,6 +3,7 @@
   "extends": "../../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../../effect" }
+    { "path": "../../effect" },
+    { "path": "../../platform/node" }
   ]
 }

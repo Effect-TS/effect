@@ -23,10 +23,15 @@
     "graphql",
     "codegen"
   ],
+  "bin": {
+    "graphqlgen": "./src/bin.ts"
+  },
   "sideEffects": [],
   "exports": {
     "./package.json": "./package.json",
     "./*": "./src/*.ts",
+    "./bin": null,
+    "./main": null,
     "./internal/*": null
   },
   "files": [
@@ -42,9 +47,14 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
+    "bin": {
+      "graphqlgen": "./dist/bin.js"
+    },
     "exports": {
       "./package.json": "./package.json",
       "./*": "./dist/*.js",
+      "./bin": null,
+      "./main": null,
       "./internal/*": null
     }
   },
@@ -54,6 +64,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
+    "@effect/platform-node": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {

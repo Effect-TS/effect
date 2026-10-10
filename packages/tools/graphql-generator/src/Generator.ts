@@ -62,9 +62,13 @@ export interface Diagnostic {
 }
 
 /**
- * The result of {@link generate}. `files` is empty when `diagnostics` holds
- * an error. `deletes` lists stale generated files to remove; it is always
- * empty for now.
+ * The result of {@link generate}. `files` and `deletes` are empty when
+ * `diagnostics` holds an error.
+ *
+ * `deletes` lists the absolute paths of stale generated files: every
+ * `*.graphql.ts` under a `documents` glob root that starts with the generator's
+ * header, has no `.graphql` source next to it and isn't among `files`. Files
+ * without the header are never listed.
  *
  * @stability experimental
  * @category models
@@ -203,9 +207,10 @@ export const generate: (
       importSpecifier: (from, to) => withExtension(relativeSpecifier(from, to))
     })
     if (output.errors.length > 0) return failed(output.errors.map(toPublic))
+    const deletes = yield* findStale(fs, path, cwd, config.documents, new Set(output.files.map((file) => file.path)))
     return {
       files: output.files,
-      deletes: [],
+      deletes,
       diagnostics: output.unmappedScalars.length === 0 ? [] : [{
         severity: "warning",
         path: schemaSource.path,
@@ -275,6 +280,49 @@ const resolveScalars = (
 }
 
 /**
+ * Visits every file under `directory`, skipping `node_modules` and
+ * dot-directories. `relative` is the directory's `/`-separated path from the
+ * config file.
+ */
+const walkFiles = (
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  directory: string,
+  relative: string,
+  visit: (absolute: string, relative: string) => Effect.Effect<void, PlatformError>
+): Effect.Effect<void, PlatformError> =>
+  Effect.gen(function*() {
+    const entries = yield* fs.readDirectory(directory)
+    for (const entry of entries.sort()) {
+      if (entry.startsWith(".") || entry === "node_modules") continue
+      const absolute = path.join(directory, entry)
+      const entryRelative = relative === "" ? entry : `${relative}/${entry}`
+      const info = yield* fs.stat(absolute)
+      if (info.type === "Directory") {
+        yield* walkFiles(fs, path, absolute, entryRelative, visit)
+      } else if (info.type === "File") {
+        yield* visit(absolute, entryRelative)
+      }
+    }
+  })
+
+/** Each `documents` glob with the absolute directory to walk, when it exists. */
+const globRoots = Effect.fnUntraced(function*(
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  cwd: string,
+  patterns: ReadonlyArray<string>
+) {
+  const roots: Array<{ readonly glob: Glob.Glob; readonly directory: string }> = []
+  for (const pattern of patterns) {
+    const glob = Glob.make(pattern)
+    const directory = path.join(cwd, glob.root)
+    if (yield* fs.exists(directory)) roots.push({ glob, directory })
+  }
+  return roots
+})
+
+/**
  * The absolute paths of every file matching a `documents` glob, sorted.
  * `node_modules`, dot-directories and the schema file are skipped.
  */
@@ -286,26 +334,36 @@ const findDocuments = Effect.fnUntraced(function*(
   schemaPath: string
 ) {
   const found = new Set<string>()
-  const walk = (directory: string, relative: string, glob: Glob.Glob): Effect.Effect<void, PlatformError> =>
-    Effect.gen(function*() {
-      const entries = yield* fs.readDirectory(directory)
-      for (const entry of entries.sort()) {
-        if (entry.startsWith(".") || entry === "node_modules") continue
-        const absolute = path.join(directory, entry)
-        const entryRelative = relative === "" ? entry : `${relative}/${entry}`
-        const info = yield* fs.stat(absolute)
-        if (info.type === "Directory") {
-          yield* walk(absolute, entryRelative, glob)
-        } else if (info.type === "File" && glob.matches(entryRelative) && absolute !== schemaPath) {
-          found.add(absolute)
-        }
-      }
-    })
-  for (const pattern of patterns) {
-    const glob = Glob.make(pattern)
-    const root = path.join(cwd, glob.root)
-    if (!(yield* fs.exists(root))) continue
-    yield* walk(root, glob.root, glob)
+  for (const { directory, glob } of yield* globRoots(fs, path, cwd, patterns)) {
+    yield* walkFiles(fs, path, directory, glob.root, (absolute, relative) =>
+      Effect.sync(() => {
+        if (glob.matches(relative) && absolute !== schemaPath) found.add(absolute)
+      }))
+  }
+  return Array.from(found).sort()
+})
+
+/**
+ * The absolute paths of generated files under the `documents` glob roots that
+ * no longer have a source, sorted. Only files starting with the generator's
+ * header count, and files about to be written never do.
+ */
+const findStale = Effect.fnUntraced(function*(
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  cwd: string,
+  patterns: ReadonlyArray<string>,
+  outputs: ReadonlySet<string>
+) {
+  const found = new Set<string>()
+  for (const { directory, glob } of yield* globRoots(fs, path, cwd, patterns)) {
+    yield* walkFiles(fs, path, directory, glob.root, (absolute) =>
+      Effect.gen(function*() {
+        if (!absolute.endsWith(".graphql.ts") || outputs.has(absolute) || found.has(absolute)) return
+        if (yield* fs.exists(absolute.slice(0, -".ts".length))) return
+        const contents = yield* fs.readFileString(absolute)
+        if (contents.startsWith(Emitter.headerPrefix)) found.add(absolute)
+      }))
   }
   return Array.from(found).sort()
 })
