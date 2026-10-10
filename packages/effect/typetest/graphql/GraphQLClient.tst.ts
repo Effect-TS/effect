@@ -56,7 +56,7 @@ const StringOnlyAfter = GraphQL.query("StringOnlyAfter", {
 })
 
 const group = GraphQLGroup.merge(
-  GraphQLGroup.make(GraphQL.middleware(RepoIssues, Auth), IssueUpdated),
+  GraphQLGroup.make(RepoIssues.middleware(Auth), IssueUpdated),
   GraphQLGroup.make(Viewer, RequiredAfter, NumberAfter, StringOnlyAfter)
 ).middleware(Log)
 

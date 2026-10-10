@@ -50,7 +50,7 @@ describe("GraphQLClient", () => {
         const record = (name: string) =>
           GraphQLMiddleware.mapRequest((request) => Effect.as(Ref.update(log, (all) => [...all, name]), request))
 
-        const group = GraphQLGroup.make(GraphQL.middleware(GraphQL.middleware(Viewer, OpA), OpB))
+        const group = GraphQLGroup.make(Viewer.middleware(OpA).middleware(OpB))
           .middleware(GroupA)
           .middleware(GroupB)
         const { layer } = yield* executeLayer(viewerData)
