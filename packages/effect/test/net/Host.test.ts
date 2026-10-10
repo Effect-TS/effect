@@ -21,6 +21,20 @@ describe("Host", () => {
     assert.strictEqual(success(Host.domainNameFromString("Bücher.Example")), "xn--bcher-kva.example")
   })
 
+  it("makes domain names fully qualified", () => {
+    for (const input of ["example.com", "example.com.", "."]) {
+      const name = Host.toFullyQualified(Host.domainNameFromStringUnsafe(input))
+      assert.strictEqual(name, input.endsWith(".") ? input : `${input}.`)
+      assertTrue(Host.isFullyQualified(name))
+    }
+  })
+
+  it("makes domain names relative", () => {
+    for (const [input, expected] of [["example.com.", "example.com"], ["example.com", "example.com"], [".", "."]]) {
+      assert.strictEqual(Host.toRelative(Host.domainNameFromStringUnsafe(input)), expected)
+    }
+  })
+
   it("rejects malformed domain names", () => {
     for (const input of ["", "a..b", "-bad.com", "a b.com", "1.2.3.4", `${"a".repeat(64)}.com`]) {
       failure(Host.domainNameFromString(input))
@@ -110,5 +124,31 @@ describe("fromInput", () => {
     assert.throws(() => Host.domainNameFromInputUnsafe("bad name"))
     assert.throws(() => Host.hostFromInputUnsafe("bad name"))
     assert.throws(() => Host.hostPortFromInputUnsafe("example.com"))
+  })
+})
+
+describe("parseHostsFile", () => {
+  it("reads addresses and aliases", () => {
+    const hosts = Host.parseHostsFile([
+      "127.0.0.1   localhost",
+      "::1         localhost ip6-localhost # loopback",
+      "# 192.0.2.9 commented.example",
+      "192.0.2.1   DB.Example.  db",
+      "192.0.2.1   db",
+      "fe80::1%eth0 router",
+      "not-an-ip   ignored.example",
+      "192.0.2.2   bad..name good.example",
+      "192.0.2.3"
+    ].join("\n"))
+    assert.deepStrictEqual(
+      Object.fromEntries([...hosts].map(([name, addresses]) => [name, addresses.map(NetAddress.formatIp)])),
+      {
+        localhost: ["127.0.0.1", "::1"],
+        "ip6-localhost": ["::1"],
+        "db.example": ["192.0.2.1"],
+        db: ["192.0.2.1"],
+        "good.example": ["192.0.2.2"]
+      }
+    )
   })
 })
