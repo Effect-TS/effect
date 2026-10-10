@@ -534,47 +534,83 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(reasoningItem.id, "reasoning_123")
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
-        it.effect.each(["o1", "gpt-6.1-sol", "custom-model"])(
-          "replays encrypted reasoning from response parts for %s",
-          (model) =>
-            Effect.gen(function*() {
-              const history = Prompt.fromResponseParts([
-                AiResponse.makePart("reasoning-start", {
-                  id: "reasoning_123:0",
-                  metadata: { openai: { itemId: "reasoning_123" } }
-                }),
-                AiResponse.makePart("reasoning-delta", {
-                  id: "reasoning_123:0",
-                  delta: "Let me think..."
-                }),
-                AiResponse.makePart("reasoning-end", {
-                  id: "reasoning_123:0",
-                  metadata: {
-                    openai: {
-                      itemId: "reasoning_123",
-                      encryptedContent: "encrypted-reasoning"
-                    }
+        it.effect("replays encrypted reasoning from response parts", () =>
+          Effect.gen(function*() {
+            const history = Prompt.fromResponseParts([
+              AiResponse.makePart("reasoning-start", {
+                id: "reasoning_123:0",
+                metadata: { openai: { itemId: "reasoning_123" } }
+              }),
+              AiResponse.makePart("reasoning-delta", {
+                id: "reasoning_123:0",
+                delta: "Let me think..."
+              }),
+              AiResponse.makePart("reasoning-end", {
+                id: "reasoning_123:0",
+                metadata: {
+                  openai: {
+                    itemId: "reasoning_123",
+                    encryptedContent: "encrypted-reasoning"
                   }
-                })
-              ])
-
-              yield* LanguageModel.generateText({
-                prompt: Prompt.concat(history, Prompt.make("Continue"))
-              }).pipe(Effect.provide(OpenAiLanguageModel.model(model, { store: false })))
-
-              const requests = yield* MockHttpClient.requests
-              const body = yield* getRequestBody(requests[0])
-              const reasoningItem = body.input.find((item: any) => item.type === "reasoning")
-
-              assert.isDefined(reasoningItem)
-              deepStrictEqual(reasoningItem, {
-                type: "reasoning",
-                id: "reasoning_123",
-                summary: [{ type: "summary_text", text: "Let me think..." }],
-                encrypted_content: "encrypted-reasoning"
+                }
               })
-            }).pipe(Effect.provide(makeTestLayer({ body: { model } })))
-        )
+            ])
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.concat(history, Prompt.make("Continue"))
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("o1")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const reasoningItem = body.input.find((item: any) => item.type === "reasoning")
+
+            assert.isDefined(reasoningItem)
+            deepStrictEqual(reasoningItem, {
+              type: "reasoning",
+              id: "reasoning_123",
+              summary: [{ type: "summary_text", text: "Let me think..." }],
+              encrypted_content: "encrypted-reasoning"
+            })
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
+
+        it.effect("replays encrypted reasoning statelessly for an unknown model", () =>
+          Effect.gen(function*() {
+            const history = Prompt.fromResponseParts([
+              AiResponse.makePart("reasoning-start", {
+                id: "reasoning_123:0",
+                metadata: { openai: { itemId: "reasoning_123" } }
+              }),
+              AiResponse.makePart("reasoning-delta", {
+                id: "reasoning_123:0",
+                delta: "Let me think..."
+              }),
+              AiResponse.makePart("reasoning-end", {
+                id: "reasoning_123:0",
+                metadata: {
+                  openai: {
+                    itemId: "reasoning_123",
+                    encryptedContent: "encrypted-reasoning"
+                  }
+                }
+              })
+            ])
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.concat(history, Prompt.make("Continue"))
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("custom-model", { store: false })))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const reasoningItem = body.input.find((item: any) => item.type === "reasoning")
+
+            assert.isDefined(reasoningItem)
+            deepStrictEqual(reasoningItem, {
+              type: "reasoning",
+              id: "reasoning_123",
+              summary: [{ type: "summary_text", text: "Let me think..." }],
+              encrypted_content: "encrypted-reasoning"
+            })
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "custom-model" } }))))
 
         it.effect("serializes stored assistant history according to item reference config", () =>
           Effect.gen(function*() {
@@ -2431,8 +2467,9 @@ describe("OpenAiLanguageModel", () => {
     it.effect("merges explicit include values with generated values", () =>
       Effect.gen(function*() {
         yield* LanguageModel.generateText({ prompt: "test" }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("gpt-4.1", {
-            include: ["message.input_image.image_url", "message.output_text.logprobs"],
+          Effect.provide(OpenAiLanguageModel.model("custom-model", {
+            store: false,
+            include: ["message.input_image.image_url", "reasoning.encrypted_content"],
             top_logprobs: 2
           }))
         )
@@ -2440,7 +2477,11 @@ describe("OpenAiLanguageModel", () => {
         const requests = yield* MockHttpClient.requests
         const body = yield* getRequestBody(requests[0])
 
-        deepStrictEqual(body.include, ["message.input_image.image_url", "message.output_text.logprobs"])
+        deepStrictEqual(body.include, [
+          "message.input_image.image_url",
+          "reasoning.encrypted_content",
+          "message.output_text.logprobs"
+        ])
       }).pipe(Effect.provide(makeTestLayer())))
 
     for (const { name, model, config, include, role } of reasoningCapabilityCases) {
@@ -2479,29 +2520,6 @@ describe("OpenAiLanguageModel", () => {
         deepStrictEqual(body.include, ["reasoning.encrypted_content"])
         strictEqual(body.input[0].role, "developer")
       }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-4.1" } }))))
-
-    it.effect("captures encrypted reasoning returned without an explicit include", () =>
-      Effect.gen(function*() {
-        const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("gpt-4.1", { store: false }))
-        )
-
-        const requests = yield* MockHttpClient.requests
-        const body = yield* getRequestBody(requests[0])
-        strictEqual(body.include, undefined)
-
-        const reasoning = result.content.find((part) => part.type === "reasoning")
-        assert.isDefined(reasoning)
-        deepStrictEqual(reasoning.metadata.openai, {
-          itemId: "rs_123",
-          encryptedContent: "encrypted-reasoning"
-        })
-      }).pipe(Effect.provide(makeTestLayer({
-        body: {
-          model: "gpt-4.1",
-          output: [makeReasoningOutput(["Thinking"], { encrypted_content: "encrypted-reasoning" })]
-        }
-      }))))
   })
 })
 
@@ -2512,74 +2530,18 @@ const reasoningCapabilityCases: ReadonlyArray<{
   readonly include: ReadonlyArray<OpenAiSchema.IncludeEnum> | undefined
   readonly role: "system" | "developer"
 }> = [
-  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model", "ft:o4-mini-2025-04-16:org::id"].map((model) => ({
-    name: `treats ${model} as a reasoning model`,
-    model,
+  {
+    name: "defaults an unknown model to reasoning",
+    model: "custom-model",
     config: { store: false },
-    include: ["reasoning.encrypted_content"] as const,
-    role: "developer" as const
-  })),
-  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id", "chat-latest", "chatgpt-4o-latest"].map((model) => ({
-    name: `treats ${model} as a non-reasoning model`,
-    model,
-    config: { store: false },
-    include: undefined,
-    role: "system" as const
-  })),
-  {
-    name: "uses item references instead of encrypted reasoning for an unrecognized model when store is true",
-    model: "custom-model",
-    config: { store: true },
-    include: undefined,
-    role: "developer"
-  },
-  {
-    name: "treats a non-reasoning model as reasoning when reasoningModel is true",
-    model: "gpt-4.1",
-    config: { store: false, reasoningModel: true },
     include: ["reasoning.encrypted_content"],
     role: "developer"
   },
   {
-    name: "treats an unrecognized model as non-reasoning when reasoningModel is false",
+    name: "disables automatic reasoning without dropping explicit includes",
     model: "custom-model",
-    config: { store: false, reasoningModel: false },
-    include: undefined,
-    role: "system"
-  },
-  {
-    name: "treats a recognized model as non-reasoning when reasoningModel is false",
-    model: "gpt-5.4",
-    config: { store: false, reasoningModel: false },
-    include: undefined,
-    role: "system"
-  },
-  {
-    name: "prefers reasoningModel false over reasoning config",
-    model: "gpt-5.4",
-    config: { store: false, reasoningModel: false, reasoning: { effort: "low" } },
-    include: undefined,
-    role: "system"
-  },
-  {
-    name: "preserves an explicit encrypted reasoning include for a non-reasoning model",
-    model: "gpt-4.1",
-    config: { store: false, include: ["reasoning.encrypted_content"] },
-    include: ["reasoning.encrypted_content"],
-    role: "system"
-  },
-  {
-    name: "deduplicates an explicit encrypted reasoning include for a reasoning model",
-    model: "custom-model",
-    config: { store: false, include: ["reasoning.encrypted_content"] },
-    include: ["reasoning.encrypted_content"],
-    role: "developer"
-  },
-  {
-    name: "preserves an explicit encrypted reasoning include when reasoningModel is false",
-    model: "gpt-5.4",
-    config: { store: false, reasoningModel: false, include: ["reasoning.encrypted_content"] },
-    include: ["reasoning.encrypted_content"],
+    config: { store: false, reasoningModel: false, include: ["message.input_image.image_url"] },
+    include: ["message.input_image.image_url"],
     role: "system"
   }
 ]

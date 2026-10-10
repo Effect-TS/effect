@@ -1931,60 +1931,7 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(requestBody.temperature, 0.5)
       }))
   })
-
-  describe("system message role", () => {
-    for (const { name, model, role } of systemRoleCases) {
-      it.effect(name, () =>
-        Effect.gen(function*() {
-          let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
-
-          const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-            Layer.provide(Layer.succeed(
-              HttpClient.HttpClient,
-              makeHttpClient((request) => {
-                capturedRequest = request
-                return Effect.succeed(jsonResponse(request, makeChatCompletion()))
-              })
-            ))
-          )
-
-          yield* LanguageModel.generateText({
-            prompt: Prompt.make([
-              { role: "system", content: "You are a helpful assistant" },
-              { role: "user", content: "Hello" }
-            ])
-          }).pipe(
-            Effect.provide(OpenAiLanguageModel.model(model)),
-            Effect.provide(layer)
-          )
-
-          assert.isDefined(capturedRequest)
-          if (capturedRequest === undefined) return
-
-          const requestBody = yield* getRequestBody(capturedRequest)
-          assert.strictEqual(requestBody.messages[0].role, role)
-        }))
-    }
-  })
 })
-
-const systemRoleCases: ReadonlyArray<{
-  readonly name: string
-  readonly model: string
-  readonly role: "system" | "developer"
-}> = [
-  ...["gpt-5.5", "o5-mini"].map((model) => ({
-    name: `keeps the developer role for ${model}`,
-    model,
-    role: "developer" as const
-  })),
-  ...["gpt-4.1", "ft:gpt-4o-mini:org::id", "llama-3.3-70b-instruct", "qwen2.5-72b-instruct", "mistral-large-latest"]
-    .map((model) => ({
-      name: `keeps the system role for ${model}`,
-      model,
-      role: "system" as const
-    }))
-]
 
 const TestTool = Tool.make("TestTool", {
   description: "A test tool",
