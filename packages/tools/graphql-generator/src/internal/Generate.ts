@@ -232,27 +232,26 @@ const resolveScalars = (
  * dot-directories. `relative` is the directory's `/`-separated path from the
  * config file.
  */
-const walkFiles = (
+const walkFiles: (
   fs: FileSystem.FileSystem,
   path: Path.Path,
   directory: string,
   relative: string,
   visit: (absolute: string, relative: string) => Effect.Effect<void, PlatformError>
-): Effect.Effect<void, PlatformError> =>
-  Effect.gen(function*() {
-    const entries = yield* fs.readDirectory(directory)
-    for (const entry of entries.sort()) {
-      if (entry.startsWith(".") || entry === "node_modules") continue
-      const absolute = path.join(directory, entry)
-      const entryRelative = relative === "" ? entry : `${relative}/${entry}`
-      const info = yield* fs.stat(absolute)
-      if (info.type === "Directory") {
-        yield* walkFiles(fs, path, absolute, entryRelative, visit)
-      } else if (info.type === "File") {
-        yield* visit(absolute, entryRelative)
-      }
+) => Effect.Effect<void, PlatformError> = Effect.fnUntraced(function*(fs, path, directory, relative, visit) {
+  const entries = yield* fs.readDirectory(directory)
+  for (const entry of entries.sort()) {
+    if (entry.startsWith(".") || entry === "node_modules") continue
+    const absolute = path.join(directory, entry)
+    const entryRelative = relative === "" ? entry : `${relative}/${entry}`
+    const info = yield* fs.stat(absolute)
+    if (info.type === "Directory") {
+      yield* walkFiles(fs, path, absolute, entryRelative, visit)
+    } else if (info.type === "File") {
+      yield* visit(absolute, entryRelative)
     }
-  })
+  }
+})
 
 /** Each `documents` glob with the absolute directory to walk, when it exists. */
 const globRoots = Effect.fnUntraced(function*(
@@ -312,13 +311,18 @@ const findStale = Effect.fnUntraced(function*(
 ) {
   const found = new Set<string>()
   for (const { directory, glob } of yield* globRoots(fs, path, cwd, patterns)) {
-    yield* walkFiles(fs, path, directory, glob.root, (absolute) =>
-      Effect.gen(function*() {
+    yield* walkFiles(
+      fs,
+      path,
+      directory,
+      glob.root,
+      Effect.fnUntraced(function*(absolute) {
         if (!absolute.endsWith(".graphql.ts") || outputs.has(absolute) || found.has(absolute)) return
         if (yield* fs.exists(absolute.slice(0, -".ts".length))) return
         const contents = yield* fs.readFileString(absolute)
         if (contents.startsWith(Emitter.headerPrefix)) found.add(absolute)
-      }))
+      })
+    )
   }
   return Array.from(found).sort()
 })

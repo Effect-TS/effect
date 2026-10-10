@@ -652,23 +652,23 @@ export const makeWebSocket: {
       }
     }
 
-    const pinger = (conn: Connection): Effect.Effect<void, TransportError> =>
-      keepAlive === false ? Effect.never : Effect.gen(function*() {
-        conn.receivedFrame = true
-        while (true) {
-          yield* Effect.sleep(keepAlive)
-          if (!conn.receivedFrame) {
-            return yield* Effect.fail(
-              new TransportError({ description: "The graphql-ws server did not answer the keep-alive ping" })
-            )
-          }
-          conn.receivedFrame = false
-          yield* send({ type: "ping" })
+    const pinger = Effect.fnUntraced(function*(conn: Connection) {
+      if (keepAlive === false) return yield* Effect.never
+      conn.receivedFrame = true
+      while (true) {
+        yield* Effect.sleep(keepAlive)
+        if (!conn.receivedFrame) {
+          return yield* Effect.fail(
+            new TransportError({ description: "The graphql-ws server did not answer the keep-alive ping" })
+          )
         }
-      })
+        conn.receivedFrame = false
+        yield* send({ type: "ping" })
+      }
+    })
 
-    const run = (conn: Connection): Effect.Effect<void> =>
-      Effect.gen(function*() {
+    const run = Effect.fnUntraced(
+      function*(conn: Connection) {
         const { pull } = yield* socket.reader
         const init = Effect.flatMap(
           connectionParams,
@@ -691,12 +691,11 @@ export const makeWebSocket: {
           concurrency: 2,
           discard: true
         })
-      }).pipe(
-        // Runs before the socket closes, so no write waits on a dead socket.
-        Effect.onError((cause) => Effect.sync(() => lose(conn, connectionError(cause)))),
-        Effect.scoped,
-        Effect.ignore
-      )
+      },
+      // Runs before the socket closes, so no write waits on a dead socket.
+      (effect, conn) => Effect.onError(effect, (cause) => Effect.sync(() => lose(conn, connectionError(cause)))),
+      (effect) => Effect.ignore(Effect.scoped(effect))
+    )
 
     const close = (conn: Connection) => {
       lose(conn, new TransportError({ description: "The graphql-ws connection was closed" }))
