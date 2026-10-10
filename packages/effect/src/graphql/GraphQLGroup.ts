@@ -74,6 +74,9 @@ const Proto = {
   }
 }
 
+// The operation and middleware types of a group are phantom: at runtime a
+// group holds erased `GraphQL.Any` operations and `AnyService` tags, so the
+// typed constructors below state their group type with one assertion each.
 const makeProto = (
   operations: ReadonlyArray<GraphQL.Any>,
   middlewares: ReadonlyArray<GraphQLMiddleware.AnyService>
@@ -114,7 +117,7 @@ const makeProto = (
  * @since 4.0.0
  */
 export const make = <const Ops extends ReadonlyArray<GraphQL.Any>>(...operations: Ops): GraphQLGroup<Ops[number]> =>
-  makeProto(operations, []) as any
+  makeProto(operations, []) as GraphQLGroup<Ops[number]>
 
 /**
  * Merges groups into one. Middleware attached to a source group stays
@@ -161,7 +164,7 @@ export const merge = <const Groups extends ReadonlyArray<Any>>(
         : group.operations.map((operation) => withMiddlewares(operation, group.middlewares))
     ),
     []
-  ) as any
+  ) as GraphQLGroup<Operations<Groups[number]>>
 
 const withMiddlewares = (
   operation: GraphQL.Any,

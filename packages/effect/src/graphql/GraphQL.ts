@@ -148,6 +148,9 @@ const Proto = {
   }
 }
 
+// The middleware type of an operation is phantom and its Schemas are erased to
+// `Schema.Top` here, so the typed constructors below state their operation
+// type with one assertion each.
 const makeProto = (fields: Omit<Any, typeof TypeId | "pipe">): Any => Object.assign(Object.create(Proto), fields)
 
 /**
@@ -185,7 +188,7 @@ const makeOperation = <const K extends Kind>(kind: K) =>
       : Schema.Struct(options.variables as Schema.Struct.Fields),
     result: options.result,
     middlewares: []
-  }) as any
+  }) as Operation<K, Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result>
 
 /**
  * Defines a query. Variables are passed to the client as their decoded type
@@ -342,7 +345,7 @@ export const middleware: {
       variables: self.variables,
       result: self.result,
       middlewares: [...self.middlewares, middleware]
-    }) as any
+    }) as AddMiddleware<Op, M>
 )
 
 /**
@@ -386,6 +389,9 @@ export const otherTypename = <All extends string>() =>
   selected: Selected
 ): Schema.Codec<Exclude<All, Selected[number]>, string> => {
   const rejected = new Set<string>(selected)
+  // Type boundary: decoding is lenient by design. Any string other than the
+  // selected names decodes, including names the server adds later, but the
+  // type only lists the names known when the code was generated.
   return Schema.String.check(
     Schema.makeFilter(
       (name) =>
@@ -394,7 +400,7 @@ export const otherTypename = <All extends string>() =>
           : undefined,
       { title: "otherTypename" }
     )
-  ) as any
+  ) as Schema.Codec<Exclude<All, Selected[number]>, string>
 }
 
 /**
@@ -426,7 +432,10 @@ export const otherTypename = <All extends string>() =>
 export const enumLiterals = <const Literals extends ReadonlyArray<string>>(
   literals: Literals
 ): Schema.Codec<Literals[number], string> =>
+  // Type boundary: decoding is lenient by design. Any string decodes,
+  // including values the server adds later, but the type only lists the
+  // values known when the code was generated.
   Schema.String.annotate({
     title: `enum(${literals.join(" | ")})`,
     description: `One of ${literals.map((l) => `"${l}"`).join(", ")}, or any string the server adds later`
-  }) as any
+  }) as Schema.Codec<Literals[number], string>
