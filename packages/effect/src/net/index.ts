@@ -21,6 +21,12 @@ export * as Dns from "./Dns.ts"
  * @stability experimental
  * @since 4.0.0
  */
+export * as DnsClient from "./DnsClient.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.0
+ */
 export * as Host from "./Host.ts"
 
 /**
