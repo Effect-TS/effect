@@ -62,7 +62,7 @@ SOFTWARE.
 
 ## Refreshing
 
-Pick a new commit for each upstream file, download it at that exact commit, record the new commit and digest in the table above, and update the counts pinned in `test/GitHubFixture.test.ts`. Never download from a branch name.
+Pick a new commit for each upstream file, download it at that exact commit, and record the new commit and digest in the table above. Never download from a branch name.
 
 ```sh
 cd packages/tools/graphql-generator/test/fixtures/github

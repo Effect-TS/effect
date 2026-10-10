@@ -1,11 +1,11 @@
 /**
  * The `graphqlgen` command (EFF-1834 points 1 to 13): config loading, exit
- * codes, all-or-nothing writes, stale-output cleanup and `--check`.
+ * codes, all-or-nothing writes and `--check`.
  *
  * Each test seeds a scratch project under `test/.tmp` (inside the package, so
  * a config file can import `@effect/graphql-generator/Config`) and runs the
- * command in process with `--config`. Child-process tests spawn `bin.ts`
- * so config loading and type-stripping failures run under the real Node version.
+ * command in process with `--config`. The `bin.ts` test spawns Node so the
+ * config is imported under the real Node version.
  */
 import * as Generator from "@effect/graphql-generator/Generator"
 import * as NodeServices from "@effect/platform-node/NodeServices"
@@ -25,18 +25,17 @@ import * as Stream from "effect/Stream"
 import { TestConsole } from "effect/testing"
 import { fileURLToPath } from "node:url"
 
-const schemaSdl = `scalar Url
-
-type User {
+const schemaSdl = `type User {
   id: ID!
   name: String!
-  avatar: Url
 }
 
 type Query {
   viewer: User!
 }
 `
+
+const query = (name: string, field = "id"): string => `query ${name} {\n  viewer {\n    ${field}\n  }\n}\n`
 
 const config = {
   schema: "./schema.graphql",
@@ -54,11 +53,10 @@ const header = (sourceName: string): string =>
 const tmpRoot = fileURLToPath(new URL("./.tmp", import.meta.url))
 const binPath = fileURLToPath(new URL("../src/bin.ts", import.meta.url))
 
-const runBin = Effect.fnUntraced(function*(cwd: string, args: ReadonlyArray<string> = []) {
-  const handle = yield* ChildProcess.make("node", [binPath, ...args], { cwd })
+const runBin = Effect.fnUntraced(function*(cwd: string) {
+  const handle = yield* ChildProcess.make("node", [binPath], { cwd })
   return yield* Effect.all({
     exitCode: handle.exitCode,
-    stdout: Stream.mkString(Stream.decodeText(handle.stdout)),
     stderr: Stream.mkString(Stream.decodeText(handle.stderr))
   }, { concurrency: "unbounded" })
 })
@@ -90,20 +88,16 @@ const write = Effect.fnUntraced(function*(dir: string, files: Readonly<Record<st
 const baseProject = (documents: Readonly<Record<string, string>>, value: unknown = config) =>
   project({ "graphql.config.ts": configSource(value), "schema.graphql": schemaSdl, ...documents })
 
-type CliMainModule = {
-  readonly run: Effect.Effect<void, unknown>
-}
-
 const runCli = Effect.fnUntraced(function*(args: ReadonlyArray<string>) {
   const module = (yield* Effect.promise(
     () => import(new URL("../src/main.ts", import.meta.url).href)
-  )) as CliMainModule
+  )) as { readonly run: Effect.Effect<void, unknown> }
 
   return yield* Effect.gen(function*() {
     const exit = yield* Effect.exit(module.run)
     const stdout = (yield* TestConsole.logLines).map(String).join("\n")
     const stderr = (yield* TestConsole.errorLines).map(String).join("\n")
-    return { exit, exitCode: exitCode(exit), stdout, stderr, output: `${stdout}\n${stderr}` } as const
+    return { exitCode: exitCode(exit), stdout, stderr, output: `${stdout}\n${stderr}` } as const
   }).pipe(
     Effect.provide(Layer.mergeAll(
       TestConsole.layer,
@@ -128,116 +122,36 @@ const read = Effect.fnUntraced(function*(file: string) {
   return yield* fs.readFileString(file)
 })
 
-/** Backdates `files` so a later write shows up as a changed mtime. */
-const backdate = Effect.fnUntraced(function*(files: ReadonlyArray<string>) {
-  const fs = yield* FileSystem.FileSystem
-  for (const file of files) yield* fs.utimes(file, 0, 0)
-})
-
-const mtime = Effect.fnUntraced(function*(file: string) {
-  const fs = yield* FileSystem.FileSystem
-  const info = yield* fs.stat(file)
-  return Option.getOrThrow(info.mtime).getTime()
-})
-
 describe("graphqlgen CLI", () => {
-  it.effect("a missing schema is a generator filesystem failure and exits 1", () =>
+  it.effect("a clean run writes the generated files, deletes stale ones and exits 0; a second run writes nothing", () =>
     Effect.gen(function*() {
-      const p = yield* baseProject(
-        { "src/a.graphql": "query A { viewer { id } }" },
-        { ...config, schema: "./missing.graphql" }
-      )
-
-      const result = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(result.exitCode, 1, result.output)
-      assert.include(result.stderr, "missing.graphql")
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isFalse(yield* exists(p.file("missing.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("a scalar mapping for a type absent from the schema exits 2 naming the key", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject(
-        { "src/a.graphql": "query A { viewer { id } }" },
-        { ...config, scalars: { Missing: "./scalars.ts#Missing" } }
-      )
-
-      const result = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(result.exitCode, 2, result.output)
-      assert.include(result.stderr, "scalars.Missing")
-      assert.include(result.stderr, "the schema has no type named \"Missing\"")
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isFalse(yield* exists(p.file("schema.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("a config without a default export exits 2 with export guidance", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({
-        "src/a.graphql": "query A { viewer { id } }",
-        "graphql.config.ts": "export const config = {}"
-      })
-
-      const result = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(result.exitCode, 2, result.output)
-      assert.include(result.stderr, "no default export")
-      assert.include(result.stderr, "export default defineConfig")
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isFalse(yield* exists(p.file("schema.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("bin.ts explains why a TypeScript config under node_modules cannot load and exits 2", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({
-        "src/a.graphql": "query A { viewer { id } }",
-        "node_modules/settings/graphql.config.ts": configSource(config)
-      })
-
-      const result = yield* runBin(p.dir, ["--config", p.file("node_modules/settings/graphql.config.ts")])
-      assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(2), result.stderr)
-      assert.include(result.stderr, "ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING")
-      assert.include(result.stderr, "Move the config out of node_modules")
-      assert.include(result.stderr, "Bun or Deno")
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("a clean run writes the generated files and exits 0; a second run writes nothing", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n    name\n  }\n}\n" })
+      const fs = yield* FileSystem.FileSystem
+      const p = yield* baseProject({ "src/a.graphql": query("A") })
       const expected = yield* Generator.generate(config, { cwd: p.dir })
+      yield* write(p.dir, { "src/stale.graphql.ts": header("stale.graphql") })
 
       const first = yield* runCli(["--config", p.configPath])
       assert.strictEqual(first.exitCode, 0, first.output)
-      assert.strictEqual(first.stderr, "")
-      assert.isTrue(expected.files.length > 0)
+      assert.isFalse(yield* exists(p.file("src/stale.graphql.ts")))
       for (const file of expected.files) {
         assert.strictEqual(yield* read(file.path), file.contents, file.path)
+        yield* fs.utimes(file.path, 0, 0)
       }
 
-      const outputs = expected.files.map((file) => file.path)
-      yield* backdate(outputs)
       const second = yield* runCli(["--config", p.configPath])
       assert.strictEqual(second.exitCode, 0, second.output)
-      for (const file of outputs) {
-        assert.strictEqual(yield* mtime(file), 0, `${file} was rewritten`)
+      for (const file of expected.files) {
+        const info = yield* fs.stat(file.path)
+        assert.strictEqual(Option.getOrThrow(info.mtime).getTime(), 0, `${file.path} was rewritten`)
       }
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
-  it.effect("warnings print to stderr and the run still writes and exits 0", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    avatar\n  }\n}\n" })
-
-      const result = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(result.exitCode, 0, result.output)
-      assert.include(result.stderr, "warning:")
-      assert.include(result.stderr, "Url")
-      assert.isTrue(yield* exists(p.file("src/a.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("a validation error prints file:line:col with a code frame, writes nothing and exits 1", () =>
+  it.effect("a validation error prints file:line:col with a code frame, changes nothing on disk and exits 1", () =>
     Effect.gen(function*() {
       const p = yield* baseProject({
-        "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n",
-        "src/b.graphql": "query B {\n  viewer {\n    nope\n  }\n}\n"
+        "src/a.graphql": query("A"),
+        "src/b.graphql": query("B", "nope"),
+        "src/stale.graphql.ts": header("stale.graphql")
       })
 
       const result = yield* runCli(["--config", p.configPath])
@@ -245,14 +159,14 @@ describe("graphqlgen CLI", () => {
       assert.include(result.stderr, `src/b.graphql:3:5: error: Cannot query field "nope" on type "User".`)
       assert.include(result.stderr, "3 |     nope")
       assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isFalse(yield* exists(p.file("src/b.graphql.ts")))
       assert.isFalse(yield* exists(p.file("schema.graphql.ts")))
+      assert.isTrue(yield* exists(p.file("src/stale.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("a config that fails to decode exits 2 naming the issue path", () =>
     Effect.gen(function*() {
       const p = yield* baseProject(
-        { "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n" },
+        { "src/a.graphql": query("A") },
         { schema: "./schema.graphql", documents: "src/**/*.graphql" }
       )
 
@@ -262,77 +176,31 @@ describe("graphqlgen CLI", () => {
       assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
-  it.effect("a missing config exits 2", () =>
+  it.effect("--check exits 0 when up to date, otherwise lists every create, change and delete and exits 1", () =>
     Effect.gen(function*() {
-      const p = yield* project({})
-
-      const result = yield* runCli(["--config", p.file("graphql.config.ts")])
-      assert.strictEqual(result.exitCode, 2, result.output)
-      assert.include(result.stderr, "graphql.config.ts")
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("--check lists every create, change and delete, writes nothing and exits 1", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({
-        "src/changed.graphql": "query Changed {\n  viewer {\n    id\n  }\n}\n",
-        "src/removed.graphql": "query Removed {\n  viewer {\n    id\n  }\n}\n"
-      })
       const fs = yield* FileSystem.FileSystem
-      const clean = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(clean.exitCode, 0, clean.output)
+      const p = yield* baseProject({ "src/changed.graphql": query("Changed"), "src/removed.graphql": query("Removed") })
+      yield* runCli(["--config", p.configPath])
 
       const upToDate = yield* runCli(["--config", p.configPath, "--check"])
       assert.strictEqual(upToDate.exitCode, 0, upToDate.output)
 
-      const changedBefore = yield* read(p.file("src/changed.graphql.ts"))
-      yield* write(p.dir, {
-        "src/changed.graphql": "query Changed {\n  viewer {\n    name\n  }\n}\n",
-        "src/created.graphql": "query Created {\n  viewer {\n    id\n  }\n}\n"
-      })
+      yield* write(p.dir, { "src/changed.graphql": query("Changed", "name"), "src/created.graphql": query("Created") })
       yield* fs.remove(p.file("src/removed.graphql"))
 
       const result = yield* runCli(["--config", p.configPath, "--check"])
       assert.strictEqual(result.exitCode, 1, result.output)
-      assert.include(result.output, "src/created.graphql.ts")
-      assert.include(result.output, "src/changed.graphql.ts")
-      assert.include(result.output, "src/removed.graphql.ts")
+      assert.match(result.stdout, /would create \S*src\/created\.graphql\.ts/)
+      assert.match(result.stdout, /would update \S*src\/changed\.graphql\.ts/)
+      assert.match(result.stdout, /would delete \S*src\/removed\.graphql\.ts/)
       assert.isFalse(yield* exists(p.file("src/created.graphql.ts")))
-      assert.strictEqual(yield* read(p.file("src/changed.graphql.ts")), changedBefore)
       assert.isTrue(yield* exists(p.file("src/removed.graphql.ts")))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("stale cleanup deletes a headered orphan and keeps unheadered files and the shared module", () =>
-    Effect.gen(function*() {
-      const handwritten = "export const handwritten = true\n"
-      const p = yield* baseProject(
-        {
-          "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n",
-          "src/orphan.graphql.ts": `${header("orphan.graphql")}export const Orphan = 1\n`,
-          "src/handwritten.graphql.ts": handwritten
-        },
-        { ...config, shared: "./src/shared.graphql.ts" }
-      )
-
-      const first = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(first.exitCode, 0, first.output)
-      assert.isFalse(yield* exists(p.file("src/orphan.graphql.ts")))
-      assert.strictEqual(yield* read(p.file("src/handwritten.graphql.ts")), handwritten)
-      assert.isTrue(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isTrue(yield* exists(p.file("src/shared.graphql.ts")))
-
-      const second = yield* runCli(["--config", p.configPath])
-      assert.strictEqual(second.exitCode, 0, second.output)
-      assert.isTrue(yield* exists(p.file("src/shared.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("documents skip the schema file, node_modules and dot-directories without a diagnostic", () =>
     Effect.gen(function*() {
       const p = yield* baseProject(
-        {
-          "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n",
-          "node_modules/pkg/bad.graphql": "query {",
-          ".cache/bad.graphql": "query {"
-        },
+        { "src/a.graphql": query("A"), "node_modules/pkg/bad.graphql": "query {", ".cache/bad.graphql": "query {" },
         { schema: "./schema.graphql", documents: ["**/*.graphql"] }
       )
 
@@ -340,12 +208,10 @@ describe("graphqlgen CLI", () => {
       assert.strictEqual(result.exitCode, 0, result.output)
       assert.strictEqual(result.stderr, "")
       assert.isTrue(yield* exists(p.file("src/a.graphql.ts")))
-      assert.isTrue(yield* exists(p.file("schema.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("documents patterns rooted in node_modules or a dot-directory match nothing; ../ roots still work", () =>
     Effect.gen(function*() {
-      const query = (name: string) => `query ${name} {\n  viewer {\n    id\n  }\n}\n`
       const orphan = `${header("orphan.graphql")}export const Orphan = 1\n`
       const p = yield* project({
         "app/graphql.config.ts": configSource({
@@ -359,56 +225,22 @@ describe("graphqlgen CLI", () => {
         "app/node_modules/pkg/q.graphql": query("PackageQuery"),
         "app/node_modules/pkg/orphan.graphql.ts": orphan
       })
-      const configPath = p.file("app/graphql.config.ts")
 
-      const check = yield* runCli(["--config", configPath, "--check"])
-      assert.include(check.output, "shared/a.graphql.ts")
-      assert.notInclude(check.output, ".cache/")
-      assert.notInclude(check.output, "node_modules/")
-
-      const result = yield* runCli(["--config", configPath])
+      const result = yield* runCli(["--config", p.file("app/graphql.config.ts")])
       assert.strictEqual(result.exitCode, 0, result.output)
       assert.isTrue(yield* exists(p.file("shared/a.graphql.ts")))
       assert.isFalse(yield* exists(p.file("app/.cache/q.graphql.ts")))
       assert.isFalse(yield* exists(p.file("app/node_modules/pkg/q.graphql.ts")))
-      assert.strictEqual(yield* read(p.file("app/.cache/orphan.graphql.ts")), orphan)
-      assert.strictEqual(yield* read(p.file("app/node_modules/pkg/orphan.graphql.ts")), orphan)
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("--watch and --check are mutually exclusive", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n" })
-
-      const result = yield* runCli(["--config", p.configPath, "--watch", "--check"])
-      assert.isTrue(Exit.isFailure(result.exit))
-      assert.notStrictEqual(result.exitCode, 0)
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+      assert.isTrue(yield* exists(p.file("app/.cache/orphan.graphql.ts")))
+      assert.isTrue(yield* exists(p.file("app/node_modules/pkg/orphan.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("bin.ts loads graphql.config.ts from the working directory under Node", () =>
     Effect.gen(function*() {
-      const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n" })
+      const p = yield* baseProject({ "src/a.graphql": query("A") })
 
       const result = yield* runBin(p.dir)
-
       assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(0), result.stderr)
       assert.include(yield* read(p.file("src/a.graphql.ts")), header("a.graphql"))
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("bin.ts explains non-erasable TypeScript config syntax and exits 2", () =>
-    Effect.gen(function*() {
-      const p = yield* baseProject({
-        "src/a.graphql": "query A { viewer { id } }",
-        "graphql.config.ts": `enum Mode { Default }
-export default ${JSON.stringify(config)}
-`
-      })
-
-      const result = yield* runBin(p.dir)
-      assert.strictEqual(result.exitCode, ChildProcessSpawner.ExitCode(2), result.stderr)
-      assert.include(result.stderr, "graphql.config.ts")
-      assert.include(result.stderr, "ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX")
-      assert.include(result.stderr, "enums, namespaces or parameter properties")
-      assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 })

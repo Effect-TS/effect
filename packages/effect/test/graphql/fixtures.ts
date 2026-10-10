@@ -2,9 +2,7 @@
  * Shared fixtures for the `effect/graphql` runtime tests.
  *
  * The operations below stand in for what `@effect/graphql-generator` emits for a
- * GitHub-style schema (EFF-1831, EFF-1832): one value per operation, variables
- * as struct fields, nullable result fields as `NullOr`, and a custom scalar
- * codec (`DateTime`) that applies to inputs and results alike.
+ * GitHub-style schema, including a custom scalar codec (`DateTime`).
  */
 import { assert } from "@effect/vitest"
 import { Deferred, Effect, Layer, Queue, Ref, Schema, Stream } from "effect"
@@ -22,17 +20,10 @@ import * as Socket from "effect/socket/Socket"
 // Stand-in for generated output
 // -----------------------------------------------------------------------------
 
-export const DateTimeScalar = Schema.DateTimeUtcFromString
-
-export const Issue = Schema.Struct({
+const Issue = Schema.Struct({
   number: Schema.Int,
   title: Schema.String,
-  createdAt: DateTimeScalar
-})
-
-export const PageInfo = Schema.Struct({
-  hasNextPage: Schema.Boolean,
-  endCursor: Schema.NullOr(Schema.String)
+  createdAt: Schema.DateTimeUtcFromString
 })
 
 export const RepoIssues = GraphQL.query("RepoIssues", {
@@ -42,12 +33,12 @@ export const RepoIssues = GraphQL.query("RepoIssues", {
     owner: Schema.String,
     name: Schema.String,
     after: Schema.optional(Schema.NullOr(Schema.String)),
-    since: Schema.optional(Schema.NullOr(DateTimeScalar))
+    since: Schema.optional(Schema.NullOr(Schema.DateTimeUtcFromString))
   },
   result: Schema.Struct({
     repository: Schema.NullOr(Schema.Struct({
       issues: Schema.NullOr(Schema.Struct({
-        pageInfo: PageInfo,
+        pageInfo: Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) }),
         nodes: Schema.NullOr(Schema.Array(Schema.NullOr(Issue)))
       }))
     }))
@@ -59,28 +50,14 @@ export const Viewer = GraphQL.query("Viewer", {
   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
 })
 
-export const AddComment = GraphQL.mutation("AddComment", {
-  document:
-    "mutation AddComment($subjectId:ID!,$body:String!){addComment(input:{subjectId:$subjectId,body:$body}){commentEdge{node{id}}}}",
-  variables: { subjectId: Schema.String, body: Schema.String },
-  result: Schema.Struct({
-    addComment: Schema.NullOr(Schema.Struct({
-      commentEdge: Schema.NullOr(Schema.Struct({
-        node: Schema.NullOr(Schema.Struct({ id: Schema.String }))
-      }))
-    }))
-  })
-})
-
 export const IssueUpdated = GraphQL.subscription("IssueUpdated", {
   document: "subscription IssueUpdated($id:ID!){issueUpdated(id:$id){title}}",
   variables: { id: Schema.String },
   result: Schema.Struct({ issueUpdated: Schema.Struct({ title: Schema.String }) })
 })
 
-export const IssuesGroup = GraphQLGroup.make(RepoIssues, AddComment, IssueUpdated)
+export const IssuesGroup = GraphQLGroup.make(RepoIssues, IssueUpdated)
 export const ViewerGroup = GraphQLGroup.make(Viewer)
-export const AllGroup = GraphQLGroup.merge(IssuesGroup, ViewerGroup)
 
 // -----------------------------------------------------------------------------
 // Transport doubles
@@ -154,7 +131,7 @@ export interface WsMessage {
 /**
  * The server end of one in-memory WebSocket opened by the transport.
  */
-export interface WsConnection {
+interface WsConnection {
   readonly url: string
   readonly options: Socket.WebSocketConstructorOptions | undefined
   /** Every frame the client sent, parsed. */

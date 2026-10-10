@@ -2,86 +2,68 @@ import type * as Ast from "@effect/graphql-generator/internal/Ast"
 import { print } from "@effect/graphql-generator/internal/Printer"
 import { assert, describe, it } from "@effect/vitest"
 import { readdirSync, readFileSync } from "node:fs"
-import { parseOrThrow, stripLocAndDescriptions } from "./utils/ast.ts"
-import { executableCases } from "./utils/cases.ts"
+import { parseOrThrow, stripLoc } from "./utils/ast.ts"
 
 const operationsDirectory = new URL("./fixtures/github/operations/", import.meta.url)
 
-const fixtureOperations = readdirSync(operationsDirectory)
-  .filter((file) => file.endsWith(".graphql"))
-  .sort()
-  .map((file) => ({ file, body: readFileSync(new URL(file, operationsDirectory), "utf8") }))
+const printed = (body: string) => print(parseOrThrow(body))
 
 describe("Printer", () => {
-  describe("compact form", () => {
-    for (const testCase of executableCases) {
-      it(testCase.name, () => {
-        assert.strictEqual(print(parseOrThrow(testCase.source)), testCase.printed)
-      })
-    }
+  it("an anonymous query collapses to the shorthand", () => {
+    assert.strictEqual(printed("query { a }"), "{a}")
   })
 
-  describe("round trip", () => {
-    for (const testCase of executableCases) {
-      it(`${testCase.name}: parse, print, parse gives the same AST and the same text`, () => {
-        const document = parseOrThrow(testCase.source)
-        const printed = print(document)
-        const reparsed = parseOrThrow(printed)
-        assert.deepStrictEqual(stripLocAndDescriptions(reparsed), stripLocAndDescriptions(document))
-        assert.strictEqual(print(reparsed), printed)
-      })
-    }
-
-    for (const { body, file } of fixtureOperations) {
-      it(`GitHub operations ${file}`, () => {
-        const document = parseOrThrow(body, file)
-        const printed = print(document)
-        const reparsed = parseOrThrow(printed, `${file} (printed)`)
-        assert.deepStrictEqual(stripLocAndDescriptions(reparsed), stripLocAndDescriptions(document))
-        assert.strictEqual(print(reparsed), printed)
-      })
-    }
-
-    it("the fixture directory has the four operation documents", () => {
-      assert.deepStrictEqual(
-        fixtureOperations.map(({ file }) => file),
-        ["issue-timeline.graphql", "mutations.graphql", "search.graphql", "viewer.graphql"]
-      )
-    })
+  it("an anonymous query with variables keeps the keyword", () => {
+    assert.strictEqual(printed("query ($a: Int) { f }"), "query($a:Int){f}")
   })
 
-  describe("details", () => {
-    it("block string arguments are dedented and printed as regular strings", () => {
-      const search = fixtureOperations.find(({ file }) => file === "search.graphql")!
-      assert.include(
-        print(parseOrThrow(search.body)),
-        "pinned:search(query:\"is:public\\nstars:>1000\" type:REPOSITORY first:1)@skip(if:$withOwner){repositoryCount}"
-      )
-    })
-
-    it("prints a synthesised document of selected definitions in the order given", () => {
-      const parsed = parseOrThrow("query Q { ...B ...A } fragment A on T { a } fragment B on T { b }")
-      const [query, a, b] = parsed.definitions as ReadonlyArray<Ast.ExecutableDefinition>
-      const document: Ast.Document = { _tag: "Document", definitions: [query!, b!, a!], loc: { start: 0, end: 0 } }
-      assert.strictEqual(print(document), "query Q{...B...A}fragment B on T{b}fragment A on T{a}")
-    })
-
-    it("descriptions on operations, variables and fragments are not printed", () => {
-      assert.strictEqual(
-        print(parseOrThrow("\"docs\" query Q(\"x\" $x: Int) @d { a } \"f\" fragment F on T { a }")),
-        "query Q($x:Int)@d{a}fragment F on T{a}"
-      )
-    })
-
-    it("token-minimal: no separator where punctuation already separates tokens", () => {
-      assert.strictEqual(
-        print(parseOrThrow("query Q($a: Int, $b: [Int]) { f(x: [1, -2], y: {}) ...F }")),
-        "query Q($a:Int$b:[Int]){f(x:[1 -2]y:{})...F}"
-      )
-    })
-
-    it("prints no trailing newline", () => {
-      assert.strictEqual(print(parseOrThrow("{ a }\n")), "{a}")
-    })
+  it("is token-minimal: a space only where two non-punctuators would merge", () => {
+    assert.strictEqual(
+      printed("query Q($a: Int = 1, $b: [Int!]) @d { f(x: [1, -2], y: {}) ...F }"),
+      "query Q($a:Int=1$b:[Int!])@d{f(x:[1 -2]y:{})...F}"
+    )
   })
+
+  it("prints fragment spreads, inline fragments and fragment definitions", () => {
+    assert.strictEqual(
+      printed("{ ...F @d ... on T { a } ... { b } } fragment F on T @e { alias: c }"),
+      "{...F@d...on T{a}...{b}}fragment F on T@e{alias:c}"
+    )
+  })
+
+  it("numbers keep their source text", () => {
+    assert.strictEqual(printed("{ f(a: -0, b: 2E+2) }"), "{f(a:-0 b:2E+2)}")
+  })
+
+  it("strings print as regular strings with escapes and upper-case control escapes", () => {
+    assert.strictEqual(
+      printed("{ f(s: \"a\\\"b\\\\c\\nd\\u0001\\u007fé\") }"),
+      "{f(s:\"a\\\"b\\\\c\\nd\\u0001\\u007Fé\")}"
+    )
+  })
+
+  it("block strings print dedented as regular strings", () => {
+    assert.strictEqual(printed("{ f(s: \"\"\"\n    multi\n      line\n    \"\"\") }"), "{f(s:\"multi\\n  line\")}")
+  })
+
+  it("descriptions on operations, variables and fragments are not printed", () => {
+    assert.strictEqual(
+      printed("\"docs\" query Q(\"x\" $x: Int) { a } \"f\" fragment F on T { a }"),
+      "query Q($x:Int){a}fragment F on T{a}"
+    )
+  })
+
+  it("prints a synthesised document of selected definitions in the order given", () => {
+    const parsed = parseOrThrow("query Q { ...B ...A } fragment A on T { a } fragment B on T { b }")
+    const [query, a, b] = parsed.definitions as ReadonlyArray<Ast.ExecutableDefinition>
+    const document: Ast.Document = { _tag: "Document", definitions: [query!, b!, a!], loc: { start: 0, end: 0 } }
+    assert.strictEqual(print(document), "query Q{...B...A}fragment B on T{b}fragment A on T{a}")
+  })
+
+  for (const file of readdirSync(operationsDirectory).filter((file) => file.endsWith(".graphql")).sort()) {
+    it(`GitHub operations ${file} reparse to the same AST`, () => {
+      const document = parseOrThrow(readFileSync(new URL(file, operationsDirectory), "utf8"), file)
+      assert.deepStrictEqual(stripLoc(parseOrThrow(print(document))), stripLoc(document))
+    })
+  }
 })

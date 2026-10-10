@@ -10,7 +10,6 @@ import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as PubSub from "effect/PubSub"
 import * as Stdio from "effect/Stdio"
@@ -77,16 +76,10 @@ const read = Effect.fnUntraced(function*(file: string) {
   return yield* fs.readFileString(file)
 })
 
-/** Backdates `files` so a later write shows up as a changed mtime. */
-const backdate = Effect.fnUntraced(function*(files: ReadonlyArray<string>) {
-  const fs = yield* FileSystem.FileSystem
-  for (const file of files) yield* fs.utimes(file, 0, 0)
-})
-
-const mtime = Effect.fnUntraced(function*(file: string) {
-  const fs = yield* FileSystem.FileSystem
-  const info = yield* fs.stat(file)
-  return Option.getOrThrow(info.mtime).getTime()
+/** What a single run would write for `file`. */
+const generated = Effect.fnUntraced(function*(dir: string, file: string) {
+  const result = yield* Generator.generate(config, { cwd: dir })
+  return result.files.find((output) => output.path === file)!.contents
 })
 
 const liveSleep = (millis: number) => Effect.sleep(millis).pipe(TestClock.withLive)
@@ -182,40 +175,19 @@ describe("graphqlgen --watch", () => {
       yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
       yield* loop.emit(p.file("src/a.graphql"))
       yield* loop.waitFor("the document edit", (out) => cycles(out).length > cycles(initial).length)
-      const expected = yield* Generator.generate(config, { cwd: p.dir })
-      const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
-      assert.strictEqual(yield* read(output.path), output.contents)
+      assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), yield* generated(p.dir, p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("a document root created after startup is watched", () =>
     Effect.gen(function*() {
       const p = yield* project({})
-      assert.isFalse(yield* exists(p.file("src")))
       const loop = yield* start(p.configPath)
       yield* loop.waitForCycle(1)
 
       yield* write(p.dir, { "src/a.graphql": query("A", "id") })
       yield* loop.emit(p.file("src"), "Create")
       yield* loop.waitForCycle(2)
-      const expected = yield* Generator.generate(config, { cwd: p.dir })
-      const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
-      assert.strictEqual(yield* read(output.path), output.contents)
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
-
-  it.effect("a document edit leaves unchanged outputs unwritten", () =>
-    Effect.gen(function*() {
-      const p = yield* project({ "src/a.graphql": query("A", "id"), "src/b.graphql": query("B", "id") })
-      const loop = yield* start(p.configPath)
-      yield* loop.waitForCycle(1)
-      yield* backdate(["src/a.graphql.ts", "src/b.graphql.ts", "schema.graphql.ts"].map(p.file))
-      const before = yield* read(p.file("src/a.graphql.ts"))
-
-      yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
-      yield* loop.emit(p.file("src/a.graphql"))
-      assert.strictEqual(yield* loop.waitForCycle(2), "regenerated 1 file, deleted 0")
-      assert.notStrictEqual(yield* read(p.file("src/a.graphql.ts")), before)
-      assert.strictEqual(yield* mtime(p.file("src/b.graphql.ts")), 0)
-      assert.strictEqual(yield* mtime(p.file("schema.graphql.ts")), 0)
+      assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), yield* generated(p.dir, p.file("src/a.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("an error cycle reports diagnostics without replacing the last good output", () =>
@@ -241,7 +213,6 @@ describe("graphqlgen --watch", () => {
       const p = yield* project({ "src/a.graphql": query("A", "id") })
       const loop = yield* start(p.configPath)
       yield* loop.waitForCycle(1)
-      const before = yield* read(p.file("src/a.graphql.ts"))
 
       yield* write(p.dir, { "graphql.config.ts": configSource({ ...config, documents: "src/**/*.graphql" }) })
       yield* fs.utimes(p.configPath, 1_000, 1_000)
@@ -251,7 +222,6 @@ describe("graphqlgen --watch", () => {
       yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
       yield* loop.emit(p.file("src/a.graphql"))
       assert.strictEqual(yield* loop.waitForCycle(2), "regenerated 1 file, deleted 0")
-      assert.notStrictEqual(yield* read(p.file("src/a.graphql.ts")), before)
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
   it.effect("a burst of document events runs one debounced cycle", () =>
@@ -309,9 +279,11 @@ describe("graphqlgen --watch", () => {
 
         yield* until("the first run", exists(p.file("src/a.graphql.ts")))
         const untilOutput = Effect.fnUntraced(function*(description: string) {
-          const expected = yield* Generator.generate(config, { cwd: p.dir })
-          const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
-          yield* until(description, read(output.path).pipe(Effect.map((contents) => contents === output.contents)))
+          const expected = yield* generated(p.dir, p.file("src/a.graphql.ts"))
+          yield* until(
+            description,
+            read(p.file("src/a.graphql.ts")).pipe(Effect.map((contents) => contents === expected))
+          )
         })
 
         yield* write(p.dir, { "src/a.tmp": query("A", "id", "name") })

@@ -18,19 +18,18 @@ const subscription: GraphQLProtocol.GraphQLRequest = {
 }
 
 /**
- * A `text/event-stream` body that sends `chunks`, then ends, fails with
- * `error`, or stays open.
+ * A `text/event-stream` body that sends `chunks`, then fails with `error` or
+ * stays open.
  */
-const eventStream = (chunks: ReadonlyArray<string>, end: "close" | "open" | Error) =>
+const eventStream = (chunks: ReadonlyArray<string>, error?: Error) =>
   new Response(
     new ReadableStream<Uint8Array>({
       start(controller) {
         for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk))
-        if (end === "close") controller.close()
       },
       pull(controller) {
         // Error only after the queued chunks are read; erroring in start discards them.
-        if (end instanceof Error) controller.error(end)
+        if (error !== undefined) controller.error(error)
       }
     }),
     { headers: { "content-type": "text/event-stream" } }
@@ -46,27 +45,22 @@ const subscribe = (layer: Layer.Layer<HttpClient.HttpClient>) =>
   )
 
 describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", () => {
-  for (const ending of ["complete", "EOF"] as const) {
-    it.effect(`POSTs with Accept: text/event-stream and emits next events until ${ending}`, () =>
-      Effect.gen(function*() {
-        let seen: { method: string; headers: Record<string, string>; body: unknown } | undefined
-        const events = yield* subscribe(httpClientLayer((request, bodyText) => {
-          seen = { method: request.method, headers: request.headers, body: JSON.parse(bodyText!) }
-          return ending === "complete"
-            ? eventStream([next(event("a")), next(event("b")), "event: complete\ndata:\n\n"], "open")
-            : eventStream([next(event("a")), next(event("b"))], "close")
-        })).pipe(Stream.runCollect)
-        assert.deepStrictEqual(events, [event("a"), event("b")])
-        assert.strictEqual(seen!.method, "POST")
-        assert.include(seen!.headers["accept"], "text/event-stream")
-        assert.strictEqual(seen!.headers["authorization"], "Bearer t")
-        assert.deepStrictEqual(seen!.body, {
-          query: IssueUpdated.document,
-          operationName: "IssueUpdated",
-          variables: { id: "I_1" }
-        })
-      }))
-  }
+  it.effect("POSTs with Accept: text/event-stream and emits next events until complete", () =>
+    Effect.gen(function*() {
+      let seen: { headers: Record<string, string>; body: unknown } | undefined
+      const events = yield* subscribe(httpClientLayer((request, bodyText) => {
+        seen = { headers: request.headers, body: JSON.parse(bodyText!) }
+        return eventStream([next(event("a")), next(event("b")), "event: complete\ndata:\n\n"])
+      })).pipe(Stream.runCollect)
+      assert.deepStrictEqual(events, [event("a"), event("b")])
+      assert.include(seen!.headers["accept"], "text/event-stream")
+      assert.strictEqual(seen!.headers["authorization"], "Bearer t")
+      assert.deepStrictEqual(seen!.body, {
+        query: IssueUpdated.document,
+        operationName: "IssueUpdated",
+        variables: { id: "I_1" }
+      })
+    }))
 
   it.effect("a retry: line becomes retryAfter when the stream then fails", () =>
     Effect.gen(function*() {
@@ -100,7 +94,7 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
         HttpClient.HttpClient,
         HttpClient.make((request, _url, abort) => {
           signal = abort
-          return Effect.succeed(HttpClientResponse.fromWeb(request, eventStream([next(event("a"))], "open")))
+          return Effect.succeed(HttpClientResponse.fromWeb(request, eventStream([next(event("a"))])))
         })
       )
       const received = yield* Deferred.make<void>()

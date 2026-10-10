@@ -7,7 +7,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import { assertNoErrors, generateGitHub, generateSubscriptions } from "./utils/generator.ts"
+import { generateGitHub, generateSubscriptions } from "./utils/generator.ts"
 
 const sets = [
   {
@@ -24,18 +24,18 @@ const sets = [
   }
 ]
 
-for (const set of sets) {
-  describe(`Generator ${set.name} snapshots`, () => {
-    for (const name of set.files) {
-      it.effect(name, (ctx) =>
-        Effect.gen(function*() {
-          const generated = yield* set.generate
-          assertNoErrors(generated)
-          assert.include(generated.paths, `${set.from}/${name}`)
+describe("Generator snapshots", () => {
+  for (const set of sets) {
+    it.effect(set.name, (ctx) =>
+      Effect.gen(function*() {
+        const generated = yield* set.generate
+        assert.deepStrictEqual(generated.result.diagnostics, [])
+        assert.deepStrictEqual(generated.paths, set.files.map((name) => `${set.from}/${name}`))
+        for (const name of set.files) {
           yield* Effect.promise(() =>
             ctx.expect(generated.file(`${set.from}/${name}`)).toMatchFileSnapshot(`./generated/${set.name}/${name}`)
           )
-        }).pipe(Effect.provide(NodeServices.layer)))
-    }
-  })
-}
+        }
+      }).pipe(Effect.provide(NodeServices.layer)))
+  }
+})

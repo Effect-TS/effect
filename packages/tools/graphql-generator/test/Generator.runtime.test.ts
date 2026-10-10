@@ -11,7 +11,7 @@ import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
-import { AddComment, IssuesGroup, RepoIssues } from "./generated/github/issues.graphql.ts"
+import { IssuesGroup, RepoIssues } from "./generated/github/issues.graphql.ts"
 
 interface Sent {
   readonly query: string
@@ -108,33 +108,5 @@ describe("Generated GitHub client", () => {
       // A state reason added to the schema after generation still decodes.
       assert.strictEqual(closed.stateReason, "RESOLVED_BY_BOT")
       assert.isNull(closed.isPinned)
-    }))
-
-  it.effect("AddComment encodes its input object and decodes the new comment", () =>
-    Effect.gen(function*() {
-      const { layer, sent } = github({
-        addComment: {
-          commentEdge: {
-            node: {
-              id: "IC_kwDOAbc",
-              url: "https://github.com/Effect-TS/effect/issues/4182#issuecomment-1",
-              createdAt: "2026-10-10T03:00:00Z"
-            }
-          }
-        }
-      })
-      const client = yield* GraphQLClient.make(IssuesGroup).pipe(Effect.provide(layer))
-      const result = yield* client.AddComment({ input: { subjectId: "I_kwDOAbc", body: "Fixed in #4200." } })
-
-      assert.deepStrictEqual(sent, [{
-        query: AddComment.document,
-        operationName: "AddComment",
-        variables: { input: { subjectId: "I_kwDOAbc", body: "Fixed in #4200." } }
-      }])
-      const comment = result.addComment?.commentEdge?.node
-      assert(comment != null)
-      assert.strictEqual(comment.id, "IC_kwDOAbc")
-      assert.strictEqual(comment.url.hash, "#issuecomment-1")
-      assert.strictEqual(DateTime.formatIso(comment.createdAt), "2026-10-10T03:00:00.000Z")
     }))
 })

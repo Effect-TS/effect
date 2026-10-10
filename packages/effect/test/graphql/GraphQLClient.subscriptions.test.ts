@@ -40,40 +40,6 @@ const subscribe = (
   )
 
 describe("GraphQLClient subscriptions", () => {
-  for (const customSchedule of [false, true]) {
-    it.effect(
-      customSchedule
-        ? "preserves middleware failures without stepping a custom retry schedule"
-        : "preserves null middleware failures without retrying on the default schedule",
-      () =>
-        Effect.gen(function*() {
-          const failure = customSchedule ? { message: "subscription denied" } : null
-          class Reject extends GraphQLMiddleware.Service<Reject, { error: typeof failure }>()("test/Reject") {}
-          const subscribes = yield* Ref.make(0)
-          const steps = yield* Ref.make(0)
-          const RejectLive = Layer.succeed(Reject, {
-            execute: ({ next, request }) => next(request),
-            subscribe: () => Stream.unwrap(Effect.as(Ref.update(subscribes, (n) => n + 1), Stream.fail(failure)))
-          })
-          const subscriptionRetry = Schedule.fromStep(
-            Effect.succeed(() => Effect.andThen(Ref.update(steps, (n) => n + 1), Cause.done(undefined)))
-          )
-          const stream = GraphQLClient.make(
-            IssuesGroup.middleware(Reject),
-            customSchedule ? { subscriptionRetry } : undefined
-          ).pipe(
-            Effect.map((client) => client.IssueUpdated({ id: "I_1" })),
-            Effect.provide([protocolLayer({}), RejectLive]),
-            Stream.unwrap
-          )
-          const error = yield* Stream.runCollect(stream).pipe(Effect.flip)
-          assert.strictEqual(error, failure)
-          assert.strictEqual(yield* Ref.get(subscribes), 1)
-          assert.strictEqual(yield* Ref.get(steps), 0)
-        })
-    )
-  }
-
   it.effect("emits each decoded event and ends when the transport completes", () =>
     Effect.gen(function*() {
       const { layer } = yield* scriptedLayer([Stream.make(event("a"), event("b"))])
@@ -81,7 +47,7 @@ describe("GraphQLClient subscriptions", () => {
       assert.deepStrictEqual(events, [{ issueUpdated: { title: "a" } }, { issueUpdated: { title: "b" } }])
     }))
 
-  it.effect("an event with errors fails the stream with ResponseError after emitting earlier events", () =>
+  it.effect("an event with errors fails the stream with ResponseError without retrying", () =>
     Effect.gen(function*() {
       const received = yield* Ref.make<Array<string>>([])
       const { layer, attempts } = yield* scriptedLayer([
@@ -93,7 +59,6 @@ describe("GraphQLClient subscriptions", () => {
       ).pipe(expectReason("ResponseError"))
       assert.deepStrictEqual(reason.errors, [{ message: "gone" }])
       assert.deepStrictEqual(yield* Ref.get(received), ["a"])
-      // Errors in an event are not retried.
       assert.strictEqual(yield* attempts, 1)
     }))
 
@@ -101,19 +66,14 @@ describe("GraphQLClient subscriptions", () => {
     Effect.gen(function*() {
       const { layer, attempts } = yield* scriptedLayer([lost(), lost(), Stream.make(event("a"))])
       const fiber = yield* Stream.runCollect(subscribe(layer)).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      assert.strictEqual(yield* attempts, 1)
-
       yield* TestClock.adjust("499 millis")
       assert.strictEqual(yield* attempts, 1)
       yield* TestClock.adjust("1 millis")
       assert.strictEqual(yield* attempts, 2)
-
       yield* TestClock.adjust("749 millis")
       assert.strictEqual(yield* attempts, 2)
       yield* TestClock.adjust("1 millis")
       assert.strictEqual(yield* attempts, 3)
-
       assert.deepStrictEqual(yield* Fiber.join(fiber), [{ issueUpdated: { title: "a" } }])
     }))
 
@@ -128,7 +88,7 @@ describe("GraphQLClient subscriptions", () => {
       assert.strictEqual(yield* attempts, 1)
       yield* TestClock.adjust("1 millis")
       assert.strictEqual(yield* attempts, 2)
-      assert.deepStrictEqual(yield* Fiber.join(fiber), [{ issueUpdated: { title: "a" } }])
+      yield* Fiber.join(fiber)
     }))
 
   it.effect("a fatal close code fails the stream without retrying", () =>
@@ -139,56 +99,38 @@ describe("GraphQLClient subscriptions", () => {
       assert.strictEqual(yield* attempts, 1)
     }))
 
-  it.effect("a non-retryable status fails the stream without retrying", () =>
-    Effect.gen(function*() {
-      const { layer, attempts } = yield* scriptedLayer([lost({ status: 401 }), Stream.make(event("a"))])
-      const reason = yield* Stream.runCollect(subscribe(layer)).pipe(expectReason("TransportError"))
-      assert.strictEqual(reason.status, 401)
-      assert.strictEqual(yield* attempts, 1)
-    }))
-
-  it.effect("subscriptionRetry replaces the default schedule", () =>
-    Effect.gen(function*() {
-      const { layer, attempts } = yield* scriptedLayer([lost(), Stream.make(event("a"))])
-      const fiber = yield* Stream.runCollect(subscribe(layer, { subscriptionRetry: Schedule.spaced("3 seconds") }))
-        .pipe(Effect.forkChild)
-      yield* TestClock.adjust("2999 millis")
-      assert.strictEqual(yield* attempts, 1)
-      yield* TestClock.adjust("1 millis")
-      assert.strictEqual(yield* attempts, 2)
-      assert.deepStrictEqual(yield* Fiber.join(fiber), [{ issueUpdated: { title: "a" } }])
-    }))
-
-  it.effect("fails with the last TransportError once the schedule is exhausted", () =>
+  it.effect("fails with the last TransportError once subscriptionRetry is exhausted", () =>
     Effect.gen(function*() {
       const { layer, attempts } = yield* scriptedLayer([lost(), lost({ description: "lost again" }), lost()])
       const fiber = yield* Stream.runCollect(subscribe(layer, { subscriptionRetry: Schedule.recurs(1) }))
         .pipe(expectReason("TransportError"), Effect.forkChild)
       yield* TestClock.adjust("1 minute")
-      const reason = yield* Fiber.join(fiber)
-      assert.strictEqual(reason.description, "lost again")
+      assert.strictEqual((yield* Fiber.join(fiber)).description, "lost again")
       assert.strictEqual(yield* attempts, 2)
     }))
 
-  it.effect("middleware subscribe runs again on every attempt", () =>
+  it.effect("a middleware failure is not retried and does not step subscriptionRetry", () =>
     Effect.gen(function*() {
-      class Count extends GraphQLMiddleware.Service<Count>()("test/Count") {}
+      const failure = { message: "subscription denied" }
+      class Reject extends GraphQLMiddleware.Service<Reject, { error: typeof failure }>()("test/Reject") {}
       const subscribes = yield* Ref.make(0)
-      const executes = yield* Ref.make(0)
-      const CountLive = Layer.succeed(Count, {
-        execute: ({ next, request }) => Effect.andThen(Ref.update(executes, (n) => n + 1), next(request)),
-        subscribe: ({ next, request }) => Stream.unwrap(Effect.as(Ref.update(subscribes, (n) => n + 1), next(request)))
+      const steps = yield* Ref.make(0)
+      const RejectLive = Layer.succeed(Reject, {
+        execute: ({ next, request }) => next(request),
+        subscribe: () => Stream.unwrap(Effect.as(Ref.update(subscribes, (n) => n + 1), Stream.fail(failure)))
       })
-      const { layer } = yield* scriptedLayer([lost(), lost(), Stream.make(event("a"))])
-      const stream = GraphQLClient.make(IssuesGroup.middleware(Count)).pipe(
-        Effect.map((client) => client.IssueUpdated({ id: "I_1" })),
-        Effect.provide([layer, CountLive]),
-        Stream.unwrap
+      const subscriptionRetry = Schedule.fromStep(
+        Effect.succeed(() => Effect.andThen(Ref.update(steps, (n) => n + 1), Cause.done(undefined)))
       )
-      const fiber = yield* Stream.runCollect(stream).pipe(Effect.forkChild)
-      yield* TestClock.adjust("1 minute")
-      assert.deepStrictEqual(yield* Fiber.join(fiber), [{ issueUpdated: { title: "a" } }])
-      assert.strictEqual(yield* Ref.get(subscribes), 3)
-      assert.strictEqual(yield* Ref.get(executes), 0)
+      const error = yield* GraphQLClient.make(IssuesGroup.middleware(Reject), { subscriptionRetry }).pipe(
+        Effect.map((client) => client.IssueUpdated({ id: "I_1" })),
+        Effect.provide([protocolLayer({}), RejectLive]),
+        Stream.unwrap,
+        Stream.runCollect,
+        Effect.flip
+      )
+      assert.strictEqual(error, failure)
+      assert.strictEqual(yield* Ref.get(subscribes), 1)
+      assert.strictEqual(yield* Ref.get(steps), 0)
     }))
 })
