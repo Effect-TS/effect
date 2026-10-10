@@ -344,7 +344,7 @@ export function toCodeDocument(
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
       const compiledCheck = compileCheck(check, [...path, "checks", index])
-      // A bare `Schema.Number` has no rendered node annotations or earlier checks
+      // Only collapse a bare number's leading canonical check.
       runtime = runtime === "Schema.Number" && compiledCheck === canonicalFiniteCheck
         ? "Schema.Finite"
         : `${runtime}.check(${compiledCheck})`
