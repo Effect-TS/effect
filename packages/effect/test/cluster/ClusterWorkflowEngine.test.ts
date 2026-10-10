@@ -934,7 +934,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
   )
 
   it.effect(
-    "DurableDeferred.raceAll replays the run when a losing deferred completes late",
+    "DurableDeferred.raceAll does not replay the run when a losing deferred completes late",
     () =>
       Effect.gen(function*() {
         const flags = yield* Flags
@@ -961,8 +961,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         }
 
         expect(yield* Fiber.join(fiber)).toEqual("activity:tail")
-        // The late completion preempts the tail; the replay re-executes it.
-        expect(flags.get("losing-deferred-tail-runs")).toEqual(2)
+        // The race already settled, so the late completion must not preempt the tail.
+        expect(flags.get("losing-deferred-tail-runs")).toEqual(1)
       }).pipe(Effect.provide(TestWorkflowLayer)),
     20_000
   )

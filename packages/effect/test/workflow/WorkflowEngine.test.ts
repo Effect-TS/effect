@@ -474,6 +474,59 @@ describe("WorkflowEngine", () => {
       ))
     ))
 
+  it.effect("layerMemory does not replay when a losing durable clock fires after the race", () =>
+    Effect.gen(function*() {
+      const Probe = Workflow.make("WorkflowEngine/LosingClock", {
+        payload: { id: Schema.String },
+        success: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      let runs = 0
+      let tailStarts = 0
+      const layer = Probe.toLayer(Effect.fnUntraced(function*() {
+        runs++
+        const winner = yield* DurableDeferred.raceAll({
+          name: "race",
+          success: Schema.String,
+          error: Schema.Never,
+          effects: [
+            DurableClock.sleep({ name: "deadline", duration: "2 seconds", inMemoryThreshold: 0 }).pipe(
+              Effect.as("clock")
+            ),
+            Activity.make({
+              name: "fast",
+              success: Schema.String,
+              execute: Effect.sleep("100 millis").pipe(Effect.as("activity"))
+            })
+          ]
+        })
+        const tail = yield* Activity.make({
+          name: "tail",
+          success: Schema.String,
+          execute: Effect.suspend(() => {
+            tailStarts++
+            return Effect.sleep("10 seconds").pipe(Effect.as("tail"))
+          })
+        })
+        return `${winner}:${tail}`
+      })).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const fiber = yield* Probe.execute({ id: "probe" }).pipe(Effect.forkChild({ startImmediately: true }))
+        // The workflow fiber increments tailStarts.
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (tailStarts === 0) yield* TestClock.adjust("50 millis")
+        // The losing clock fires while the tail activity is running.
+        yield* TestClock.adjust("2 seconds")
+        for (let i = 0; i < 4; i++) {
+          yield* TestClock.adjust("10 seconds")
+        }
+
+        assert.strictEqual(yield* Fiber.join(fiber), "activity:tail")
+        assert.deepStrictEqual({ runs, tailStarts }, { runs: 1, tailStarts: 1 })
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("layerMemory propagates interruption when the engine is shut down", () =>
     Effect.gen(function*() {
       const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {
