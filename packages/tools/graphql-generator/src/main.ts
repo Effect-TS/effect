@@ -37,6 +37,7 @@ import {
   GenerateError,
   loadConfig,
   planChanges,
+  toGenerateError,
   writeChanges
 } from "./internal/Cli.ts"
 import * as Watch from "./internal/Watch.ts"
@@ -98,7 +99,9 @@ const root = Command.make("graphqlgen", { config, watch, check }).pipe(
     const loaded = yield* loadConfig(configPath)
     const result = yield* generateFiles(loaded, path.dirname(configPath))
     const changes = yield* planChanges(result)
-    yield* flags.check ? reportCheck(changes) : applyChanges(changes)
+    if (flags.check) return yield* reportCheck(changes)
+    yield* writeChanges(changes)
+    yield* listChanges(path, changes, { create: "created", update: "updated", delete: "deleted" })
   }))
 )
 
@@ -122,7 +125,7 @@ export const run: Effect.Effect<
   Command.Environment
 > = Command.run(root, { version: "0.0.0" }).pipe(
   Effect.mapError((error) =>
-    CliError.isCliError(error) && (error._tag !== "ShowHelp" || error.errors.length > 0)
+    CliError.isCliError(error) && Runtime.getErrorExitCode(error) !== 0
       ? Object.assign(error, { [Runtime.errorExitCode]: 2 })
       : error
   ),
@@ -139,7 +142,7 @@ const generateFiles = Effect.fnUntraced(function*(config: Config.Config, cwd: st
   const result = yield* Generator.generate(config, { cwd }).pipe(
     Effect.catchTags({
       ConfigError: (error) => Effect.fail(new ConfigLoadError({ message: `error: ${error.message}` })),
-      PlatformError: (error) => Effect.fail(new GenerateError({ message: `error: ${error.message}` }))
+      PlatformError: (error) => Effect.fail(toGenerateError(error))
     })
   )
   for (const diagnostic of result.diagnostics) {
@@ -150,12 +153,6 @@ const generateFiles = Effect.fnUntraced(function*(config: Config.Config, cwd: st
     return yield* new GenerateError({ message: errorSummary(errors) })
   }
   return result
-})
-
-const applyChanges = Effect.fnUntraced(function*(changes: Changes) {
-  const path = yield* Path.Path
-  yield* writeChanges(changes)
-  yield* listChanges(path, changes, { create: "created", update: "updated", delete: "deleted" })
 })
 
 const reportCheck = Effect.fnUntraced(function*(changes: Changes) {

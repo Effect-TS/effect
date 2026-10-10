@@ -229,46 +229,6 @@ interface HttpOptions<R = never> {
   } | undefined
 }
 
-/**
- * Builds the HTTP transport as an effect, for composing transports by hand.
- * Most code uses {@link layerHttp}.
- *
- * **Details**
- *
- * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
- * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead, and
- * the effect also builds the graphql-ws transport, so it needs a
- * `Socket.WebSocketConstructor` and a `Scope`.
- *
- * @stability experimental
- * @category constructors
- * @since 4.0.0
- */
-export const makeHttp: {
-  <R = never>(options: {
-    readonly url: string
-    readonly subscriptions: {
-      readonly webSocket: {
-        readonly url: string
-        readonly headers?: Readonly<Record<string, string>> | undefined
-        readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
-        readonly connectionAckTimeout?: Duration.Input | undefined
-        readonly keepAlive?: Duration.Input | false | undefined
-        readonly idleTimeout?: Duration.Input | undefined
-      }
-    }
-  }): Effect.Effect<
-    GraphQLProtocol["Service"],
-    never,
-    HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
-  >
-  (options: { readonly url: string; readonly subscriptions?: undefined }): Effect.Effect<
-    GraphQLProtocol["Service"],
-    never,
-    HttpClient.HttpClient
-  >
-} = (options: HttpOptions<any>) => makeHttpWith(options)
-
 const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   GraphQLProtocol["Service"],
   never,
@@ -314,6 +274,46 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
       (http, ws) => GraphQLProtocol.of({ execute: http.execute, subscribe: ws.subscribe })
     )
 }
+
+/**
+ * Builds the HTTP transport as an effect, for composing transports by hand.
+ * Most code uses {@link layerHttp}.
+ *
+ * **Details**
+ *
+ * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
+ * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead, and
+ * the effect also builds the graphql-ws transport, so it needs a
+ * `Socket.WebSocketConstructor` and a `Scope`.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeHttp: {
+  <R = never>(options: {
+    readonly url: string
+    readonly subscriptions: {
+      readonly webSocket: {
+        readonly url: string
+        readonly headers?: Readonly<Record<string, string>> | undefined
+        readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
+        readonly connectionAckTimeout?: Duration.Input | undefined
+        readonly keepAlive?: Duration.Input | false | undefined
+        readonly idleTimeout?: Duration.Input | undefined
+      }
+    }
+  }): Effect.Effect<
+    GraphQLProtocol["Service"],
+    never,
+    HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
+  >
+  (options: { readonly url: string; readonly subscriptions?: undefined }): Effect.Effect<
+    GraphQLProtocol["Service"],
+    never,
+    HttpClient.HttpClient
+  >
+} = makeHttpWith
 
 /**
  * The HTTP transport: queries and mutations are sent as `POST` with a JSON
@@ -487,38 +487,16 @@ const connectionError = (cause: Cause.Cause<unknown>): TransportError => {
  * @category constructors
  * @since 4.0.0
  */
-export const makeWebSocket: {
-  <R = never>(options: {
+export const makeWebSocket = <R = never>(
+  options: {
     readonly url: string
     readonly headers?: Readonly<Record<string, string>> | undefined
     readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
     readonly connectionAckTimeout?: Duration.Input | undefined
     readonly keepAlive?: Duration.Input | false | undefined
     readonly idleTimeout?: Duration.Input | undefined
-  }): Effect.Effect<
-    GraphQLProtocol["Service"],
-    never,
-    Socket.WebSocketConstructor | Scope.Scope | R
-  >
-  // Last, so `Parameters<typeof makeWebSocket>` reads these options with `R`
-  // as `never` rather than the generic signature with `R` widened to `unknown`.
-  (options: {
-    readonly url: string
-    readonly headers?: Readonly<Record<string, string>> | undefined
-    readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, never> | undefined
-    readonly connectionAckTimeout?: Duration.Input | undefined
-    readonly keepAlive?: Duration.Input | false | undefined
-    readonly idleTimeout?: Duration.Input | undefined
-  }): Effect.Effect<
-    GraphQLProtocol["Service"],
-    never,
-    Socket.WebSocketConstructor | Scope.Scope
-  >
-} = <R>(options: WebSocketOptions<R>): Effect.Effect<
-  GraphQLProtocol["Service"],
-  never,
-  Socket.WebSocketConstructor | Scope.Scope | R
-> =>
+  }
+): Effect.Effect<GraphQLProtocol["Service"], never, Socket.WebSocketConstructor | Scope.Scope | R> =>
   Effect.gen(function*() {
     const socket = yield* Socket.makeWebSocket(options.url, {
       protocols: "graphql-transport-ws",

@@ -491,18 +491,15 @@ class Validator {
   }
 }
 
-/** Every fragment spread in a selection set, at any depth, without following spreads. */
-const fragmentSpreads = (selectionSet: Ast.SelectionSet): Array<Ast.FragmentSpread> => {
-  const spreads: Array<Ast.FragmentSpread> = []
-  const walk = (set: Ast.SelectionSet): void => {
-    for (const selection of set.selections) {
-      if (selection._tag === "FragmentSpread") spreads.push(selection)
-      else if (selection.selectionSet !== undefined) walk(selection.selectionSet)
-    }
-  }
-  walk(selectionSet)
-  return spreads
-}
+/** Every fragment spread in a selection set, at any depth and in source order, without following spreads. */
+export const fragmentSpreads = (selectionSet: Ast.SelectionSet): Array<Ast.FragmentSpread> =>
+  selectionSet.selections.flatMap((selection) =>
+    selection._tag === "FragmentSpread"
+      ? [selection]
+      : selection.selectionSet === undefined
+      ? []
+      : fragmentSpreads(selection.selectionSet)
+  )
 
 /** Appends every variable referenced in `value`, in document order. */
 const variablesInValue = (value: Ast.Value, out: Array<Ast.Variable>): void => {

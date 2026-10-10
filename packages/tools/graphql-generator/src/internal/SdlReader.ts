@@ -39,7 +39,6 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
 
   const definitions = new Map<string, Ast.TypeDefinition>()
   const extensions = new Map<string, Array<Ast.TypeExtension>>()
-  const directiveDefinitions = new Map<string, Ast.DirectiveDefinition>()
   let schemaDefinition: Ast.SchemaDefinition | undefined
   const schemaExtensions: Array<Ast.SchemaExtension> = []
 
@@ -47,7 +46,9 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
     switch (definition._tag) {
       case "OperationDefinition":
       case "FragmentDefinition":
+      case "DirectiveDefinition":
         break
+
       case "SchemaDefinition":
         if (schemaDefinition !== undefined) fail(definition.loc.start, "Must provide only one schema definition.")
         schemaDefinition = definition
@@ -55,14 +56,7 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
       case "SchemaExtension":
         schemaExtensions.push(definition)
         break
-      case "DirectiveDefinition": {
-        const name = definition.name.value
-        if (directiveDefinitions.has(name)) {
-          fail(definition.name.loc.start, `There can be only one directive named "@${name}".`)
-        }
-        directiveDefinitions.set(name, definition)
-        break
-      }
+
       case "ScalarTypeExtension":
       case "ObjectTypeExtension":
       case "InterfaceTypeExtension":
@@ -118,18 +112,6 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
     types.set(name, buildType(definition, extensions, implementations))
   }
 
-  const directives = new Map<string, SchemaModel.DirectiveDefinition>()
-  for (const [name, definition] of directiveDefinitions) {
-    if (SchemaModel.builtInDirectiveNames.has(name)) continue
-    directives.set(name, {
-      name,
-      description: definition.description?.value,
-      arguments: definition.arguments.map(buildInputValue),
-      repeatable: definition.repeatable,
-      locations: definition.locations.map((location) => location.value)
-    })
-  }
-
   const defaultRoot = (name: string) => schemaDefinition === undefined && types.has(name) ? name : undefined
   const roots: Record<Ast.OperationType, string | undefined> = {
     query: defaultRoot("Query"),
@@ -149,8 +131,7 @@ const build = (source: Source, document: Ast.Document): SchemaModel.Schema => {
     queryType: roots.query,
     mutationType: roots.mutation,
     subscriptionType: roots.subscription,
-    types,
-    directives
+    types
   }
 }
 
@@ -169,31 +150,28 @@ const buildType = (
   const description = definition.description?.value
   // Each extension has already been checked to match its definition's kind.
   const parts = withExtensions(definition, extensions)
-  const directives = parts.flatMap((part) => part.directives)
   switch (definition._tag) {
     case "ScalarTypeDefinition":
-      return { _tag: "ScalarType", name, description, specifiedBy: specifiedBy(directives) }
-    case "ObjectTypeDefinition": {
-      const objectParts = parts as ReadonlyArray<Ast.ObjectTypeDefinition | Ast.ObjectTypeExtension>
-      return {
-        _tag: "ObjectType",
-        name,
-        description,
-        interfaces: objectParts.flatMap((part) => part.interfaces.map((iface) => iface.name.value)),
-        fields: objectParts.flatMap((part) => part.fields.map(buildField))
-      }
-    }
+      return { _tag: "ScalarType", name, description }
+    case "ObjectTypeDefinition":
     case "InterfaceTypeDefinition": {
-      const interfaceParts = parts as ReadonlyArray<Ast.InterfaceTypeDefinition | Ast.InterfaceTypeExtension>
-      return {
-        _tag: "InterfaceType",
-        name,
-        description,
-        interfaces: interfaceParts.flatMap((part) => part.interfaces.map((iface) => iface.name.value)),
-        fields: interfaceParts.flatMap((part) => part.fields.map(buildField)),
-        possibleTypes: [...(implementations.get(name) ?? [])].sort()
-      }
+      const objectParts = parts as ReadonlyArray<
+        Ast.ObjectTypeDefinition | Ast.ObjectTypeExtension | Ast.InterfaceTypeDefinition | Ast.InterfaceTypeExtension
+      >
+      const interfaces = objectParts.flatMap((part) => part.interfaces.map((iface) => iface.name.value))
+      const fields = objectParts.flatMap((part) => part.fields.map(buildField))
+      return definition._tag === "ObjectTypeDefinition"
+        ? { _tag: "ObjectType", name, description, interfaces, fields }
+        : {
+          _tag: "InterfaceType",
+          name,
+          description,
+          interfaces,
+          fields,
+          possibleTypes: [...(implementations.get(name) ?? [])].sort()
+        }
     }
+
     case "UnionTypeDefinition":
       return {
         _tag: "UnionType",
@@ -221,7 +199,8 @@ const buildType = (
         _tag: "InputObjectType",
         name,
         description,
-        oneOf: findDirective(directives, "oneOf") !== undefined,
+        oneOf: parts.some((part) => findDirective(part.directives, "oneOf") !== undefined),
+
         fields: (parts as ReadonlyArray<Ast.InputObjectTypeDefinition | Ast.InputObjectTypeExtension>).flatMap((
           part
         ) => part.fields.map(buildInputValue))
@@ -250,17 +229,9 @@ const findDirective = (
   name: string
 ): Ast.ConstDirective | undefined => directives.find((directive) => directive.name.value === name)
 
-const stringArgument = (directive: Ast.ConstDirective | undefined, name: string): string | undefined => {
-  const value = directive?.arguments.find((argument) => argument.name.value === name)?.value
-  return value?._tag === "StringValue" ? value.value : undefined
-}
-
 const deprecationReason = (directives: ReadonlyArray<Ast.ConstDirective>): string | undefined => {
   const directive = findDirective(directives, "deprecated")
-  return directive === undefined
-    ? undefined
-    : stringArgument(directive, "reason") ?? SchemaModel.defaultDeprecationReason
+  if (directive === undefined) return undefined
+  const reason = directive.arguments.find((argument) => argument.name.value === "reason")?.value
+  return reason?._tag === "StringValue" ? reason.value : SchemaModel.defaultDeprecationReason
 }
-
-const specifiedBy = (directives: ReadonlyArray<Ast.ConstDirective>): string | undefined =>
-  stringArgument(findDirective(directives, "specifiedBy"), "url")

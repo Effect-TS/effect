@@ -9,7 +9,6 @@ import { source } from "./utils/ast.ts"
 import {
   assertModelsEqual,
   assertType,
-  directiveDefinition,
   enumType,
   enumValue,
   field,
@@ -39,13 +38,6 @@ describe("SdlReader", () => {
     )
   })
 
-  it("@specifiedBy records the scalar's URL", () => {
-    assertType(
-      readSdl("type Query { now: DateTime } scalar DateTime @specifiedBy(url: \"https://example.com\")"),
-      scalarType("DateTime", { specifiedBy: "https://example.com" })
-    )
-  })
-
   it("input values carry deprecation reasons, defaulting when none is given", () => {
     assertType(
       readSdl("type Query { a: Int } input I { old: Int @deprecated, legacy: Int @deprecated(reason: \"Use `a`.\") }"),
@@ -56,19 +48,10 @@ describe("SdlReader", () => {
     )
   })
 
-  it("directive definitions are kept and applied directives are dropped", () => {
+  it("directive definitions and applied directives are dropped", () => {
     assertModelsEqual(
       readSdl("directive @tag(name: String!) repeatable on OBJECT type Query @tag(name: \"a\") @undeclared { a: Int }"),
-      schema({
-        queryType: "Query",
-        types: [objectType("Query", [field("a", named("Int"))])],
-        directives: [
-          directiveDefinition("tag", ["OBJECT"], {
-            arguments: [inputValue("name", nonNull(named("String")))],
-            repeatable: true
-          })
-        ]
-      })
+      schema({ queryType: "Query", types: [objectType("Query", [field("a", named("Int"))])] })
     )
   })
 
@@ -100,7 +83,8 @@ describe("SdlReader", () => {
           unionType("Item", ["Book", "Film"]),
           enumType("Genre", [enumValue("DRAMA"), enumValue("COMEDY")]),
           inputObjectType("Filter", [inputValue("genre", named("Genre")), inputValue("title", named("String"))]),
-          scalarType("Url", { specifiedBy: "https://url.spec.whatwg.org/" }),
+          scalarType("Url"),
+
           objectType("Changes", [
             field("rename", named("Film"), { arguments: [inputValue("title", nonNull(named("String")))] })
           ])
@@ -111,7 +95,7 @@ describe("SdlReader", () => {
 })
 
 describe("IntrospectionReader", () => {
-  it("isOneOf, specifiedByURL, isRepeatable and input value deprecation match the SDL they came from", () => {
+  it("isOneOf and input value deprecation match the SDL they came from", () => {
     // modern.json is graphql-js introspection of modern.graphql with every optional key enabled.
     assertModelsEqual(
       readIntrospection(fixture("introspection/modern.json")),

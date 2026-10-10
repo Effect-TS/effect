@@ -51,10 +51,11 @@ const sortedKeys = (a: ReadonlyMap<string, unknown>, b: ReadonlyMap<string, unkn
   Array.from(new Set([...a.keys(), ...b.keys()])).sort()
 
 /**
- * Compares two models structurally. Types and directives are compared one at
- * a time in name order, so a failure names the first differing type (or
- * directive) instead of dumping both schemas.
+ * Compares two models structurally. Types are compared one at a time in name
+ * order, so a failure names the first differing type instead of dumping both
+ * schemas.
  */
+
 export const assertModelsEqual = (actual: Model.Schema, expected: Model.Schema): void => {
   assert.deepStrictEqual(
     normalize({
@@ -74,13 +75,6 @@ export const assertModelsEqual = (actual: Model.Schema, expected: Model.Schema):
       normalize(actual.types.get(name)),
       normalize(expected.types.get(name)),
       `models differ at type "${name}"`
-    )
-  }
-  for (const name of sortedKeys(actual.directives, expected.directives)) {
-    assert.deepStrictEqual(
-      normalize(actual.directives.get(name)),
-      normalize(expected.directives.get(name)),
-      `models differ at directive "@${name}"`
     )
   }
 }
@@ -105,14 +99,10 @@ export const nonNull = (ofType: Model.NamedTypeRef | Model.ListTypeRef): Model.N
   ofType
 })
 
-export const scalarType = (
-  name: string,
-  options: { readonly description?: string; readonly specifiedBy?: string } = {}
-): Model.ScalarType => ({
+export const scalarType = (name: string, options: { readonly description?: string } = {}): Model.ScalarType => ({
   _tag: "ScalarType",
   name,
-  description: options.description,
-  specifiedBy: options.specifiedBy
+  description: options.description
 })
 
 const builtInScalars: ReadonlyArray<Model.ScalarType> = ["String", "Int", "Float", "Boolean", "ID"].map((
@@ -213,33 +203,15 @@ export const inputValue = (
   deprecationReason: options.deprecationReason
 })
 
-export const directiveDefinition = (
-  name: string,
-  locations: ReadonlyArray<string>,
-  options: {
-    readonly description?: string
-    readonly arguments?: ReadonlyArray<Model.InputValue>
-    readonly repeatable?: boolean
-  } = {}
-): Model.DirectiveDefinition => ({
-  name,
-  description: options.description,
-  arguments: options.arguments ?? [],
-  repeatable: options.repeatable ?? false,
-  locations
-})
-
 /** A complete expected schema; the built-in scalars are added for you. */
 export const schema = (options: {
   readonly queryType: string
   readonly mutationType?: string
   readonly subscriptionType?: string
   readonly types: ReadonlyArray<Model.NamedType>
-  readonly directives?: ReadonlyArray<Model.DirectiveDefinition>
 }): Model.Schema => ({
   queryType: options.queryType,
   mutationType: options.mutationType,
   subscriptionType: options.subscriptionType,
-  types: new Map([...builtInScalars, ...options.types].map((type) => [type.name, type])),
-  directives: new Map((options.directives ?? []).map((directive) => [directive.name, directive]))
+  types: new Map([...builtInScalars, ...options.types].map((type) => [type.name, type]))
 })
