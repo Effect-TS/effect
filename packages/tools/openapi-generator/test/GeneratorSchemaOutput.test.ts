@@ -71,26 +71,33 @@ describe("generator schema output", () => {
       assert.include(source, "typeof CreateValueRequestJson.Encoded")
       assert.include(source, "WithOptionalResponse<CreateValue200,")
       assert.include(source, "OutputClientError<\"CreateValue400\", CreateValue400>")
-      assert.include(source, "Stream.Stream<")
+      assert.include(
+        source,
+        `readonly "readEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: ReadEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ReadEvents200Sse.DecodingServices>`
+      )
     }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
 
   it("emits finite numbers while retaining constraints and example objects", () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("Amount", { type: "number", minimum: 0, description: "Schema.Number is text" })
+    generator.addSchema("BareAmount", { type: "number", minimum: 0 })
     generator.addSchema("Example", { type: "object", examples: [{ _tag: "Number", checks: [] }] })
     const source = generator.generate("openapi-3.1", {}, false)
-    assert.include(source, "Schema.Finite")
+    assert.include(source, "export const BareAmount = Schema.Finite")
+    assert.include(source, `export const Amount = Schema.Number.annotate({ "description": "Schema.Number is text" })`)
     assert.include(source, "\"description\": \"Schema.Number is text\"")
     assert.include(source, "\"_tag\": \"Number\"")
     assert.include(source, "Schema.isGreaterThanOrEqualTo(0)")
     const compiled = transformSync("schemas.ts", source, { lang: "ts" })
     assert.deepStrictEqual(compiled.errors, [])
-    const schema = new Function("Schema", `${compiled.code.replaceAll("export ", "")}; return Amount;`)(
+    const schemas = new Function("Schema", `${compiled.code.replaceAll("export ", "")}; return [Amount, BareAmount];`)(
       Schema
-    ) as Schema.Codec<number>
-    const isAmount = Schema.is(schema)
-    assert.isTrue(isAmount(0))
-    assert.isTrue(isAmount(Number.MAX_VALUE))
-    for (const value of [NaN, Infinity, -Infinity, -1]) assert.isFalse(isAmount(value))
+    ) as ReadonlyArray<Schema.Codec<number>>
+    for (const schema of schemas) {
+      const isAmount = Schema.is(schema)
+      assert.isTrue(isAmount(0))
+      assert.isTrue(isAmount(Number.MAX_VALUE))
+      for (const value of [NaN, Infinity, -Infinity, -1]) assert.isFalse(isAmount(value))
+    }
   })
 })

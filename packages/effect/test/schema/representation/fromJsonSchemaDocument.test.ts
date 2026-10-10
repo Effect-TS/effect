@@ -2186,7 +2186,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Finite.annotate({ "description": "b" })`,
+              `Schema.Number.annotate({ "description": "b" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
               `number`
             )
           }

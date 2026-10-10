@@ -449,6 +449,27 @@ describe("toCodeDocument", () => {
   })
 
   describe("Number", () => {
+    it("preserves node annotations when rendering a finite number", async () => {
+      const schema = Schema.Number.annotate({
+        identifier: "Amount",
+        message: "custom msg",
+        expected: "an amount",
+        description: "amount"
+      }).check(Schema.isFinite())
+      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
+      assert.deepStrictEqual(generated.ast.annotations, schema.ast.annotations)
+      for (const key of ["identifier", "message", "expected", "description"] as const) {
+        assert.deepStrictEqual(
+          generated.ast.checks?.map((check) => check.annotations?.[key]),
+          schema.ast.checks?.map((check) => check.annotations?.[key])
+        )
+      }
+      assert.deepStrictEqual(Schema.toJsonSchemaDocument(generated), Schema.toJsonSchemaDocument(schema))
+      await new TestSchema.Asserts(schema).decoding().fail(Infinity, "Expected a finite number")
+      await new TestSchema.Asserts(generated).decoding().fail(Infinity, "Expected a finite number")
+    })
+
     it("preserves a finite check after another check", () => {
       assertSchema({
         schema: Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite())
@@ -462,9 +483,9 @@ describe("toCodeDocument", () => {
 
     it("emits the canonical finite schema without duplicating its first check", () => {
       assertSchema({
-        schema: Schema.Number.annotate({ description: "amount" }).check(Schema.isFinite(), Schema.isGreaterThan(0))
+        schema: Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0))
       }, {
-        codes: makeCode(`Schema.Finite.annotate({ "description": "amount" }).check(Schema.isGreaterThan(0))`, "number")
+        codes: makeCode(`Schema.Finite.check(Schema.isGreaterThan(0))`, "number")
       })
     })
 

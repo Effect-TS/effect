@@ -343,10 +343,10 @@ export function toCodeDocument(
       const check = representation.checks[index]
       const compiledCheck = compileCheck(check, [...path, "checks", index])
       if (
-        index === 0 && base.runtime === "Schema.Number" &&
+        index === 0 && base.runtime === "Schema.Number" && representation.annotations === undefined &&
         compiledCheck === `Schema.isFinite().annotate({ "expected": "a finite number" })`
       ) {
-        runtime = "Schema.Finite" + runtimeAnnotate(representation.annotations)
+        runtime = "Schema.Finite"
       } else {
         runtime += `.check(${compiledCheck})`
       }
