@@ -45,13 +45,19 @@ const debounce = "50 millis"
  *
  * `options.configPath` is the config file, as an absolute path.
  *
- * `options.watch` watches a file, or a directory and everything under it,
+ * `options.watch(path, kind)` watches a file through its parent directory, or
+ * a directory and everything under it, according to the supplied kind,
  * with `FileSystem.watch` semantics: each event's `path` is relative to the
  * watched directory, or to a watched file's directory. The loop subscribes to
  * the config file, the schema file and the static prefix of each `documents`
  * glob before it runs a cycle, and again whenever those paths change. A
  * missing glob root is watched through its first missing directory, so
  * creating it, or deleting and recreating it, is seen.
+ * The watch functions are called before generation, but their streams may
+ * install watchers lazily; this is not a watcher-readiness guarantee. After
+ * every cycle the loop checks the targets again and queues another cycle if
+ * they changed. A root created after that check but before watcher installation
+ * can still be missed until the next relevant cycle.
  *
  * A watch stream that ends means its directory was deleted: the loop runs a
  * cycle, which subscribes again. A watch stream that fails is reported on
@@ -63,7 +69,10 @@ const debounce = "50 millis"
 export const run = (
   options: {
     readonly configPath: string
-    readonly watch: (path: string) => Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError>
+    readonly watch: (
+      path: string,
+      kind: "file" | "directory"
+    ) => Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError>
   }
 ): Effect.Effect<never, Cli.ConfigLoadError, FileSystem.FileSystem | Path.Path> =>
   Effect.gen(function*() {
@@ -169,7 +178,7 @@ export const run = (
     let stale = false
 
     const watchTarget = (target: Target) =>
-      options.watch(target.path).pipe(
+      options.watch(target.path, target.kind === "tree" ? "directory" : "file").pipe(
         Stream.runForEach((event) => {
           const absolute = path.resolve(target.base, event.path)
           return isRelevant(absolute) ? Queue.offer(events, absolute) : Effect.void
@@ -185,18 +194,27 @@ export const run = (
       )
 
     let watching: { readonly key: string; readonly fiber: Fiber.Fiber<void> } | undefined
+    const targetKey = (current: ReadonlyArray<Target>) =>
+      current.map((target) => `${target.kind}:${target.path}`).join("\0")
     /** Watches the current targets, replacing the previous watchers when they changed or one stopped. */
     const subscribe = Effect.gen(function*() {
       const current = yield* targets
-      const key = current.map((target) => `${target.kind}:${target.path}`).join("\0")
+      const key = targetKey(current)
       if (!stale && watching?.key === key) return
       if (watching !== undefined) yield* Fiber.interrupt(watching.fiber)
       stale = false
       state.pending = new Set(current.filter((target) => target.kind === "pending").map((target) => target.path))
-      const fiber = yield* Effect.forEach(current, watchTarget, { concurrency: "unbounded", discard: true }).pipe(
+      // Call watch on the loop fiber; only consumption of its streams is forked.
+      const streams = current.map(watchTarget)
+      const fiber = yield* Effect.all(streams, { concurrency: "unbounded", discard: true }).pipe(
         Effect.forkChild
       )
       watching = { key, fiber }
+    })
+
+    /** Reconcile roots that appeared or disappeared during this cycle, without polling. */
+    const reconcile = Effect.gen(function*() {
+      if (targetKey(yield* targets) !== watching?.key) yield* Queue.offer(events, state.schemaPath)
     })
 
     // -------------------------------------------------------------------------
@@ -239,8 +257,8 @@ export const run = (
 
     /**
      * Reloads the config when its mtime changed, subscribes, then
-     * regenerates. Subscribing first means a file created while the cycle
-     * reads the documents is still seen. A config that fails to load is
+     * regenerates and reconciles the targets. Watch streams may still be
+     * installing while generation runs. A config that fails to load is
      * reported and the previous one kept; the cycle still regenerates when
      * something besides the config changed.
      */
@@ -258,10 +276,12 @@ export const run = (
       }
       yield* subscribe
       yield* generate
+      yield* reconcile
     })
 
     yield* subscribe
     yield* generate
+    yield* reconcile
 
     const pending = new Set<string>()
     yield* Stream.fromQueue(events).pipe(
@@ -304,19 +324,12 @@ const isSkipped = (name: string): boolean => name.startsWith(".") || name === "n
  */
 export const fileSystemWatch = (fs: FileSystem.FileSystem, path: Path.Path) =>
 (
-  target: string
+  target: string,
+  kind: "file" | "directory"
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> =>
-  Stream.unwrap(Effect.gen(function*() {
-    const isDirectory = yield* fs.stat(target).pipe(
-      Effect.map((info) => info.type === "Directory"),
-      Effect.orElseSucceed(() => false)
-    )
-    if (!isDirectory) {
-      const name = path.basename(target)
-      return watchDirectory(fs, path.dirname(target)).pipe(Stream.filter((event) => event.path === name))
-    }
-    return watchTree(fs, path, target)
-  }))
+  kind === "file"
+    ? watchDirectory(fs, path.dirname(target)).pipe(Stream.filter((event) => event.path === path.basename(target)))
+    : watchTree(fs, path, target)
 
 /**
  * `FileSystem.watch` on one directory, ending when the directory is deleted.
