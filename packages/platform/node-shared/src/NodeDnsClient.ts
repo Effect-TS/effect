@@ -69,10 +69,7 @@ const hostsPath = typeof process !== "undefined" && process.platform === "win32"
   ? `${process.env.SystemRoot ?? "C:\\Windows"}\\System32\\drivers\\etc\\hosts`
   : "/etc/hosts"
 
-const localNameServers: Arr.NonEmptyReadonlyArray<NetAddress.InetAddress> = [
-  NetAddress.inetAddressUnsafe(NetAddress.ipv4Loopback, 53),
-  NetAddress.inetAddressUnsafe(NetAddress.ipv6Loopback, 53)
-]
+const localNameServers = Arr.map(NetAddress.loopbackAddresses, (address) => NetAddress.inetAddressUnsafe(address, 53))
 
 /**
  * Reads the system resolver configuration and hosts file with the
