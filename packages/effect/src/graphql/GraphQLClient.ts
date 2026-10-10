@@ -64,43 +64,6 @@ export interface PartialResult<A> {
   readonly errors: ReadonlyArray<GraphQLError>
 }
 
-/**
- * Per-call options shared by every method. `headers` are sent by the HTTP
- * transport, ignored over graphql-ws, and visible to middleware either way.
- * `context` provides services for this call only, and removes them from the
- * method's requirements.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface CallOptions<R = never> {
-  readonly headers?: Readonly<Record<string, string>> | undefined
-  readonly context?: Context.Context<R> | undefined
-}
-
-/**
- * The options of a query or mutation call that returns a {@link PartialResult}.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface PartialCallOptions<R = never> extends CallOptions<R> {
-  readonly partial: true
-}
-
-/**
- * The options of a query or mutation call that fails on any `errors`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface StrictCallOptions<R = never> extends CallOptions<R> {
-  readonly partial?: false | undefined
-}
-
 type Args<Variables, Options> = {} extends Variables ? [variables?: Variables, options?: Options]
   : [variables: Variables, options?: Options]
 
@@ -121,6 +84,10 @@ type ArgsWithOptions<Variables, Options> = {} extends Variables ? [variables: Va
  * An operation without variables is called as `client.Viewer()` or, with
  * options, `client.Viewer(undefined, { headers })`.
  *
+ * `headers` are sent by the HTTP transport, ignored over graphql-ws, and
+ * visible to middleware either way. `context` provides services for this
+ * call only, and removes them from the method's requirements.
+ *
  * @stability experimental
  * @category models
  * @since 4.0.0
@@ -129,16 +96,25 @@ export interface OperationMethod<Op extends GraphQL.Any> {
   /** The operation this method runs. */
   readonly operation: Op
   <R2 = never>(
-    ...args: ArgsWithOptions<GraphQL.Variables<Op>, PartialCallOptions<R2>>
+    ...args: ArgsWithOptions<GraphQL.Variables<Op>, {
+      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly context?: Context.Context<R2> | undefined
+      readonly partial: true
+    }>
   ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
   <R2 = never>(
-    ...args: Args<GraphQL.Variables<Op>, StrictCallOptions<R2>>
+    ...args: Args<GraphQL.Variables<Op>, {
+      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly context?: Context.Context<R2> | undefined
+      readonly partial?: false | undefined
+    }>
   ): Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
 }
 
 /**
  * The client method for a subscription. It returns a `Stream` of decoded
  * events; an event with `errors` fails the stream with a `ResponseError`.
+ * `headers` and `context` work as for {@link OperationMethod}.
  *
  * @stability experimental
  * @category models
@@ -148,7 +124,10 @@ export interface SubscriptionMethod<Op extends GraphQL.Any> {
   /** The operation this method runs. */
   readonly operation: Op
   <R2 = never>(
-    ...args: Args<GraphQL.Variables<Op>, CallOptions<R2>>
+    ...args: Args<GraphQL.Variables<Op>, {
+      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly context?: Context.Context<R2> | undefined
+    }>
   ): Stream.Stream<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
 }
 
@@ -171,22 +150,6 @@ export type Method<Op extends GraphQL.Any> = Op["kind"] extends "subscription" ?
  */
 export type GraphQLClient<Ops extends GraphQL.Any> = {
   readonly [Op in Ops as Op["name"]]: Method<Op>
-}
-
-/**
- * Options for {@link make}.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Options {
-  /**
-   * How a subscription is retried after the transport fails it with a
-   * retryable `TransportError`. Defaults to {@link defaultSubscriptionRetry}.
-   * Fatal errors are never retried, whatever the schedule.
-   */
-  readonly subscriptionRetry?: Schedule.Schedule<unknown, GraphQLClientError> | undefined
 }
 
 /**
@@ -221,6 +184,11 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  *
  * Group middleware runs outside operation middleware. Within each level,
  * middleware run in the order attached.
+ *
+ * `subscriptionRetry` decides how a subscription is retried after the
+ * transport fails it with a retryable `TransportError`. It defaults to
+ * {@link defaultSubscriptionRetry}. Fatal errors are never retried, whatever
+ * the schedule.
  *
  * **Example** (A client as a service)
  *
@@ -293,7 +261,9 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  */
 export const make = <Ops extends GraphQL.Any>(
   group: GraphQLGroup<Ops>,
-  options?: Options | undefined
+  options?: {
+    readonly subscriptionRetry?: Schedule.Schedule<unknown, GraphQLClientError> | undefined
+  } | undefined
 ): Effect.Effect<
   GraphQLClient<Ops>,
   never,
@@ -481,6 +451,12 @@ const makeRuntime = <Op extends GraphQL.Any>(
   }
 }
 
+interface CallOptions<R2 = never> {
+  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly context?: Context.Context<R2> | undefined
+  readonly partial?: boolean | undefined
+}
+
 // Type boundary: a call without `context` has `R2 = never` unless the caller
 // names `R2` explicitly, so an empty context stands in for `Context<R2>`.
 const callContext = <R2>(options: CallOptions<R2> | undefined): Context.Context<R2> =>
@@ -488,14 +464,14 @@ const callContext = <R2>(options: CallOptions<R2> | undefined): Context.Context<
 
 const makeOperationMethod = <Op extends GraphQL.Any>(runtime: Runtime<Op>): OperationMethod<Op> => {
   function method<R2 = never>(
-    ...args: ArgsWithOptions<GraphQL.Variables<Op>, PartialCallOptions<R2>>
+    ...args: ArgsWithOptions<GraphQL.Variables<Op>, CallOptions<R2> & { readonly partial: true }>
   ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
   function method<R2 = never>(
-    ...args: Args<GraphQL.Variables<Op>, StrictCallOptions<R2>>
+    ...args: Args<GraphQL.Variables<Op>, CallOptions<R2> & { readonly partial?: false | undefined }>
   ): Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
   function method<R2>(
     variables?: GraphQL.Variables<Op>,
-    options?: StrictCallOptions<R2> | PartialCallOptions<R2>
+    options?: CallOptions<R2>
   ): Effect.Effect<
     GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
     GraphQL.Error<Op>,
@@ -617,20 +593,6 @@ export type PagingVariables<Variables> = "after" extends keyof Variables
   : InvalidAfterVariable
   : MissingAfterVariable
 
-/**
- * Options for {@link pages} and {@link items}. `options` is forwarded to every
- * page and cannot carry `partial`: a page with errors fails the stream.
- *
- * @stability experimental
- * @category paging
- * @since 4.0.0
- */
-export interface PagingOptions<Op extends GraphQL.Any, C, R2> {
-  readonly variables: PagingVariables<GraphQL.Variables<Op>>
-  readonly connection: (result: GraphQL.Result<Op>) => C | null | undefined
-  readonly options?: CallOptions<R2> | undefined
-}
-
 interface PagingState {
   readonly after: string | undefined
   readonly done: boolean
@@ -650,6 +612,9 @@ interface PagingState {
  * later page sends the previous page's `endCursor`. Pages are fetched one at a
  * time and only when pulled, so `Stream.take` stops further requests. Each
  * page is a normal method call, so middleware runs on every page.
+ * `connection` picks the connection out of each page's result, and
+ * `options` is forwarded to every page. It cannot carry `partial`: a page
+ * with errors fails the stream.
  *
  * The stream ends after a page whose `hasNextPage` is `false`. A `null`
  * connection on the first page gives an empty stream; on a later page it
@@ -708,7 +673,14 @@ interface PagingState {
  */
 export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
   method: OperationMethod<Op>,
-  options: PagingOptions<Op, C, R2>
+  options: {
+    readonly variables: PagingVariables<GraphQL.Variables<Op>>
+    readonly connection: (result: GraphQL.Result<Op>) => C | null | undefined
+    readonly options?: {
+      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly context?: Context.Context<R2> | undefined
+    } | undefined
+  }
 ): Stream.Stream<C, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>> => {
   // Type boundary: `method`'s strict overload, with `variables` widened.
   // `PagingVariables` has already checked that `options.variables` plus an
@@ -808,6 +780,13 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
  */
 export const items = <Op extends GraphQL.Any, Node, R2 = never>(
   method: OperationMethod<Op>,
-  options: PagingOptions<Op, NodesConnection<Node>, R2>
+  options: {
+    readonly variables: PagingVariables<GraphQL.Variables<Op>>
+    readonly connection: (result: GraphQL.Result<Op>) => NodesConnection<Node> | null | undefined
+    readonly options?: {
+      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly context?: Context.Context<R2> | undefined
+    } | undefined
+  }
 ): Stream.Stream<Node, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>> =>
   Stream.flatMap(pages(method, options), (connection) => Stream.fromArray(connection.nodes ?? []))

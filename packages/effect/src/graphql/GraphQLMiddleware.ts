@@ -15,7 +15,6 @@
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Stream from "../Stream.ts"
 import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
@@ -23,35 +22,6 @@ import type { GraphQLClientError } from "./GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
 
 const TypeId = "~effect/graphql/GraphQLMiddleware"
-
-/**
- * What a middleware's `execute` member receives: the operation being run, the
- * request so far, and `next`, which runs the rest of the chain and returns
- * the raw `ExecutionResult`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface ExecuteOptions {
-  readonly operation: GraphQL.Any
-  readonly request: GraphQLRequest
-  readonly next: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQLClientError>
-}
-
-/**
- * What a middleware's `subscribe` member receives. `next` subscribes with the
- * given request and returns the stream of raw `ExecutionResult` events.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface SubscribeOptions {
-  readonly operation: GraphQL.Any
-  readonly request: GraphQLRequest
-  readonly next: (request: GraphQLRequest) => Stream.Stream<ExecutionResult, GraphQLClientError>
-}
 
 /**
  * A middleware implementation. Both members are required, so a middleware can
@@ -63,6 +33,10 @@ export interface SubscribeOptions {
  * subscription attempt (the client re-runs the whole chain when it retries a
  * subscription) and can map or tap the event stream.
  *
+ * Both receive the operation being run, the request so far, and `next`, which
+ * runs the rest of the chain with the given request and returns the raw
+ * `ExecutionResult` (or, for `subscribe`, the stream of them).
+ *
  * Use {@link mapRequest} when the middleware only needs to transform the
  * request.
  *
@@ -71,8 +45,16 @@ export interface SubscribeOptions {
  * @since 4.0.0
  */
 export interface Implementation<E = never, R = never> {
-  readonly execute: (options: ExecuteOptions) => Effect.Effect<ExecutionResult, GraphQLClientError | E, R>
-  readonly subscribe: (options: SubscribeOptions) => Stream.Stream<ExecutionResult, GraphQLClientError | E, R>
+  readonly execute: (options: {
+    readonly operation: GraphQL.Any
+    readonly request: GraphQLRequest
+    readonly next: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQLClientError>
+  }) => Effect.Effect<ExecutionResult, GraphQLClientError | E, R>
+  readonly subscribe: (options: {
+    readonly operation: GraphQL.Any
+    readonly request: GraphQLRequest
+    readonly next: (request: GraphQLRequest) => Stream.Stream<ExecutionResult, GraphQLClientError>
+  }) => Stream.Stream<ExecutionResult, GraphQLClientError | E, R>
 }
 
 /**
@@ -195,23 +177,10 @@ export const Service = <
   Config extends { readonly requires: infer R } ? R : never
 > =>
 (key: string) => {
-  const limit = getStackTraceLimit()
-  let creationError: globalThis.Error | undefined
-  if (limit !== 0) {
-    setStackTraceLimit(2)
-    creationError = new globalThis.Error()
-    setStackTraceLimit(limit)
-  }
-
   function ServiceClass() {}
   const ServiceClass_ = ServiceClass as any as Types.Mutable<AnyService>
   Object.setPrototypeOf(ServiceClass, Object.getPrototypeOf(Context.Service<Self, any>(key)))
   ServiceClass.key = key
-  Object.defineProperty(ServiceClass, "stack", {
-    get() {
-      return creationError?.stack
-    }
-  })
   ServiceClass_[TypeId] = TypeId as any
   return ServiceClass as any
 }
