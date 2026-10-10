@@ -381,7 +381,7 @@ const stripAnsi = (text: string): string => {
 }
 
 /**
- * Gets the terminal display width of a string (excluding ANSI codes).
+ * Segments text into grapheme clusters.
  * @internal
  */
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
@@ -415,7 +415,33 @@ const graphemeWidth = (grapheme: string): number => {
   return isFullWidthCodePoint(visible.codePointAt(0)!) ? 2 : 1
 }
 
-const visualLength = (text: string): number => {
+/**
+ * Measures the number of terminal cells a string occupies.
+ *
+ * **Details**
+ *
+ * Uses the same measurement as built-in help and table rendering. ANSI styling
+ * is stripped before measuring graphemes: zero-width graphemes count as `0`,
+ * emoji presentation sequences and fullwidth characters as `2`, and other
+ * graphemes as `1`.
+ *
+ * **Example** (Measuring terminal-cell widths)
+ *
+ * ```ts import.meta.vitest
+ * import { CliOutput } from "effect/cli"
+ *
+ * CliOutput.displayWidth("file") // => 4
+ * CliOutput.displayWidth("ファイル") // => 8
+ * CliOutput.displayWidth("é") // => 1
+ * CliOutput.displayWidth("1️⃣") // => 2
+ * CliOutput.displayWidth("\u001B[1mbold\u001B[0m") // => 4
+ * ```
+ *
+ * @stability unstable
+ * @category measuring
+ * @since 4.0.3
+ */
+export const displayWidth = (text: string): number => {
   let length = 0
   for (const { segment } of graphemeSegmenter.segment(stripAnsi(text))) {
     length += graphemeWidth(segment)
@@ -428,7 +454,7 @@ const visualLength = (text: string): number => {
  * @internal
  */
 const pad = (s: string, width: number) => {
-  const actualLength = visualLength(s)
+  const actualLength = displayWidth(s)
   const padding = Math.max(0, width - actualLength)
   return s + " ".repeat(padding)
 }
@@ -447,9 +473,9 @@ interface Row {
  * @internal
  */
 const renderTable = (rows: ReadonlyArray<Row>, widthCap?: number) => {
-  const maxColumn = Math.max(...rows.map((r) => visualLength(r.left))) + 4
+  const maxColumn = Math.max(...rows.map((r) => displayWidth(r.left))) + 4
   const col = widthCap === undefined ? maxColumn : Math.min(maxColumn, widthCap)
-  return rows.map(({ left, right }) => `  ${pad(left, Math.max(col, visualLength(left) + 1))}${right}`).join("\n")
+  return rows.map(({ left, right }) => `  ${pad(left, Math.max(col, displayWidth(left) + 1))}${right}`).join("\n")
 }
 
 const formatSubcommandName = (name: string, alias: string | undefined): string => alias ? `${name}, ${alias}` : name
