@@ -76,6 +76,8 @@ type PromptCacheBreakpoint = { readonly mode: "explicit" }
  * Config values are merged with the config object passed to `model`, `make`, or
  * `layer`, with scoped context values taking precedence.
  *
+ * Explicit `include` values are merged with automatic entries without duplicates.
+ *
  * @see {@link withConfigOverride} for scoping language model request overrides
  *
  * @stability unstable
@@ -130,6 +132,19 @@ export class Config extends Context.Service<
        * Defaults to `true` when `store` is `true`.
        */
       readonly useItemReferences?: boolean | undefined
+      /**
+       * Override reasoning model detection. Reasoning models use the `developer`
+       * role for system prompts and request `reasoning.encrypted_content` when
+       * item references are disabled or a WebSocket connection is used.
+       *
+       * Defaults to `true` except for `gpt-3*`, `gpt-4*`, `chatgpt-*`,
+       * `chat-latest`, and `gpt-<version>-chat*`. Fine-tuned `ft:` models follow
+       * their base model.
+       *
+       * Set to `false` for deployments that do not support these defaults.
+       * Explicit `include` values are still preserved.
+       */
+      readonly reasoningModel?: boolean | undefined
     }
   >
 >()("@effect/ai-openai/OpenAiLanguageModel/Config") {}
@@ -197,9 +212,8 @@ declare module "effect/ai/Prompt" {
        */
       readonly itemId?: string | null
       /**
-       * The encrypted content of the reasoning item - populated when a response
-       * is generated with `reasoning.encrypted_content` in the `include`
-       * parameter.
+       * Encrypted reasoning returned by OpenAI for `store: false` or when
+       * `include` contains `reasoning.encrypted_content`.
        */
       readonly encryptedContent?: string | null
     } | null
@@ -662,12 +676,11 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<typeof OpenAiSchema.CreateResponse.Encoded, AiError.AiError> {
-      const include = new Set<typeof OpenAiSchema.IncludeEnum.Encoded>()
-      const capabilities = getModelCapabilities(config.model as string)
+      const include = new Set<typeof OpenAiSchema.IncludeEnum.Encoded>(config.include)
       const messages = yield* prepareMessages({
         config,
         options,
-        capabilities,
+        isReasoningModel: resolveReasoningModel(config),
         include,
         toolNameMapper
       })
@@ -684,6 +697,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         fileIdPrefixes: _fip,
         strictJsonSchema: _sjs,
         useItemReferences: _uir,
+        reasoningModel: _rm,
         ...apiConfig
       } = config
       const request: Mutable<typeof OpenAiSchema.CreateResponse.Encoded> = {
@@ -821,26 +835,18 @@ export const withConfigOverride: {
 // Prompt Conversion
 // =============================================================================
 
-const getSystemMessageMode = (model: string): "system" | "developer" =>
-  model.startsWith("o") ||
-    model.startsWith("gpt-5") ||
-    model.startsWith("codex-") ||
-    model.startsWith("computer-use")
-    ? "developer"
-    : "system"
-
 const prepareMessages = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
     config,
     options,
-    capabilities,
+    isReasoningModel,
     include,
     toolNameMapper
   }: {
     readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
     readonly include: Set<typeof OpenAiSchema.IncludeEnum.Encoded>
-    readonly capabilities: ModelCapabilities
+    readonly isReasoningModel: boolean
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<ReadonlyArray<typeof OpenAiSchema.InputItem.Encoded>, AiError.AiError> {
     const processedApprovalIds = new Set<string>()
@@ -875,7 +881,7 @@ const prepareMessages = Effect.fnUntraced(
     if (Predicate.isNotUndefined(config.top_logprobs)) {
       include.add("message.output_text.logprobs")
     }
-    if ((websocketMode || !useItemReferences) && capabilities.isReasoningModel) {
+    if ((websocketMode || !useItemReferences) && isReasoningModel) {
       include.add("reasoning.encrypted_content")
     }
     if (codeInterpreterTool) {
@@ -892,7 +898,7 @@ const prepareMessages = Effect.fnUntraced(
       switch (message.role) {
         case "system": {
           messages.push({
-            role: getSystemMessageMode(config.model as string),
+            role: isReasoningModel ? "developer" : "system",
             content: [{
               type: "input_text",
               text: message.content,
@@ -3184,52 +3190,16 @@ const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
   return { type: "text" }
 })
 
-interface ModelCapabilities {
-  readonly isReasoningModel: boolean
-  readonly systemMessageMode: "remove" | "system" | "developer"
-  readonly supportsFlexProcessing: boolean
-  readonly supportsPriorityProcessing: boolean
-  /**
-   * Allow temperature, topP, logProbs when reasoningEffort is none.
-   */
-  readonly supportsNonReasoningParameters: boolean
-}
+// Default new model names to reasoning without extending an allowlist.
+const nonReasoningModelPattern = /^(?:gpt-[34]|chatgpt-|chat-latest|gpt-\d+(?:\.\d+)?-chat)/
 
-const getModelCapabilities = (modelId: string): ModelCapabilities => {
-  const supportsFlexProcessing = modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini") ||
-    (modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat"))
-
-  const supportsPriorityProcessing = modelId.startsWith("gpt-4") ||
-    modelId.startsWith("gpt-5-mini") ||
-    (modelId.startsWith("gpt-5") &&
-      !modelId.startsWith("gpt-5-nano") &&
-      !modelId.startsWith("gpt-5-chat")) ||
-    modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini")
-
-  // Use allowlist approach: only known reasoning models should use 'developer' role
-  // This prevents issues with fine-tuned models, third-party models, and custom models
-  const isReasoningModel = modelId.startsWith("o1") ||
-    modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini") ||
-    modelId.startsWith("codex-mini") ||
-    modelId.startsWith("computer-use-preview") ||
-    (modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat"))
-
-  // https://platform.openai.com/docs/guides/latest-model#gpt-5-1-parameter-compatibility
-  // GPT-5.1 and GPT-5.2 support temperature, topP, logProbs when reasoningEffort is none
-  const supportsNonReasoningParameters = modelId.startsWith("gpt-5.1") || modelId.startsWith("gpt-5.2")
-
-  const systemMessageMode = isReasoningModel ? "developer" : "system"
-
-  return {
-    supportsFlexProcessing,
-    supportsPriorityProcessing,
-    isReasoningModel,
-    systemMessageMode,
-    supportsNonReasoningParameters
+const resolveReasoningModel = (config: typeof Config.Service): boolean => {
+  if (Predicate.isNotUndefined(config.reasoningModel)) {
+    return config.reasoningModel
   }
+  const model = config.model ?? ""
+  const baseModel = model.startsWith("ft:") ? model.slice(3) : model
+  return !nonReasoningModelPattern.test(baseModel)
 }
 
 const getApprovalRequestIdMapping = (prompt: Prompt.Prompt): ReadonlyMap<string, string> => {
