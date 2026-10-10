@@ -1,5 +1,5 @@
 /**
- * The `graphqlgen --watch` loop (EFF-1834 points 14 to 17).
+ * The `graphqlgen --watch` loop.
  *
  * The loop runs over the event streams `options.watch` returns, so tests can
  * inject events and the CLI plugs in `FileSystem.watch`.

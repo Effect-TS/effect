@@ -1,5 +1,5 @@
 /**
- * The programmatic core of `@effect/graphql-generator` (EFF-1834 point 9).
+ * The programmatic core of `@effect/graphql-generator`.
  *
  * {@link generate} reads the schema and the document files a {@link Config}
  * names and returns every generated file with its contents, plus located
