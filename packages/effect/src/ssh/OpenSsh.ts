@@ -47,7 +47,6 @@ import * as Schedule from "../Schedule.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import { utf8 } from "./internal/bytes.ts"
 import * as Ssh from "./Ssh.ts"
 import { SshChannelError, SshConnectionError, SshError, SshTimeoutError } from "./SshError.ts"
 
@@ -89,6 +88,8 @@ export interface Options {
   readonly multiplex?: boolean | undefined
   readonly connectTimeout?: Duration.Input | undefined
 }
+
+const encoder = new TextEncoder()
 
 const connectionError = (cause: unknown) => new SshError({ reason: new SshConnectionError({ cause }) })
 
@@ -180,7 +181,7 @@ export const make = Effect.fnUntraced(function*(
     const lift = (error: PlatformError.PlatformError) => connectionError(error)
     const write = (data: Uint8Array | string) =>
       Effect.flatMap(
-        Queue.offer(input, typeof data === "string" ? utf8(data) : data),
+        Queue.offer(input, typeof data === "string" ? encoder.encode(data) : data),
         (accepted) => accepted ? Effect.void : Effect.fail(closedError())
       )
     const eof = Effect.asVoid(Queue.end(input))

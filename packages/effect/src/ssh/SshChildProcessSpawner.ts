@@ -27,7 +27,6 @@ import * as Pull from "../Pull.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import { concat, equals, fromUtf8, utf8 } from "./internal/bytes.ts"
 import type * as Ssh from "./Ssh.ts"
 import type { SshError } from "./SshError.ts"
 
@@ -134,6 +133,7 @@ const resolveOutput = (
 }
 
 const PID_MARKER = "\x1eEFFECT_SSH_PID "
+const pidMarker = new TextEncoder().encode(PID_MARKER)
 
 const signalNumbers: Record<string, number> = {
   HUP: 1,
@@ -178,7 +178,6 @@ const pidReportingCommandLine = (command: ChildProcess.StandardCommand): string 
  */
 const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Array, SshError>) {
   const pull = yield* Stream.toPull(stderr)
-  const marker = utf8(PID_MARKER)
   let head: Uint8Array = new Uint8Array(0)
   let ended = false
   while (true) {
@@ -188,12 +187,17 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
         return Effect.succeed([] as ReadonlyArray<Uint8Array>)
       })
     )
-    head = concat([head, ...chunks])
-    const prefix = head.subarray(0, marker.length)
-    if (ended || !equals(prefix, marker.subarray(0, prefix.length))) break
+    for (const chunk of chunks) {
+      const next = new Uint8Array(head.length + chunk.length)
+      next.set(head)
+      next.set(chunk, head.length)
+      head = next
+    }
+    const prefix = head.subarray(0, pidMarker.length)
+    if (ended || !prefix.every((byte, i) => byte === pidMarker[i])) break
     const newline = head.indexOf(10)
     if (newline === -1) continue
-    const pid = Number(fromUtf8(head.subarray(marker.length, newline)))
+    const pid = Number(new TextDecoder().decode(head.subarray(pidMarker.length, newline)))
     const rest = head.subarray(newline + 1)
     return {
       pid: Number.isInteger(pid) && pid > 0 ? pid : undefined,
