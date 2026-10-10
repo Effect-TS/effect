@@ -1,0 +1,49 @@
+# One page of a repository's issues. The nullable `$after: String` variable is
+# the cursor that `GraphQLClient.pages` and `GraphQLClient.items` drive.
+query RepoIssues($owner: String!, $name: String!, $states: [IssueState!], $after: String) {
+  repository(owner: $owner, name: $name) {
+    issues(first: 50, after: $after, states: $states) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        ...IssueSummary
+      }
+    }
+  }
+}
+
+# The same connection selected through `edges` only, which is paged with
+# `GraphQLClient.pages` plus `Stream.flatMap`.
+query RepoIssueEdges($owner: String!, $name: String!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    issues(first: 50, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          ...IssueSummary
+        }
+      }
+    }
+  }
+}
+
+mutation AddComment($subjectId: ID!, $body: String!) {
+  addComment(input: { subjectId: $subjectId, body: $body }) {
+    clientMutationId
+  }
+}
+
+fragment IssueSummary on Issue {
+  id
+  number
+  title
+  state
+  url
+  createdAt
+}

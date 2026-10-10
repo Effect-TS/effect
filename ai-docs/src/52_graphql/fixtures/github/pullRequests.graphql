@@ -1,0 +1,42 @@
+# The node IDs of a repository's open pull requests, a page at a time.
+query OpenPullRequestIds($owner: String!, $name: String!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(first: 100, after: $after, states: [OPEN]) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+      }
+    }
+  }
+}
+
+# Up to 100 pull requests by node ID in one request. GitHub returns `null`
+# with an error at `["nodes", i]` for an ID it can't resolve.
+query PullRequestsById($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on PullRequest {
+      id
+      number
+      title
+      merged
+    }
+  }
+}
+
+# Two repositories in one document through static aliases. An error on one of
+# them has the alias as `path[0]`.
+query EffectRepositories {
+  effect: repository(owner: "Effect-TS", name: "effect") {
+    nameWithOwner
+  }
+  website: repository(owner: "Effect-TS", name: "website") {
+    nameWithOwner
+  }
+  rateLimit {
+    cost
+    remaining
+  }
+}
