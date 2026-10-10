@@ -122,4 +122,38 @@ describe("Url", () => {
     const updatedUrl = Url.setUrlParams(url, newParams)
     expectUrl(updatedUrl, "https://example.com/?foo=bar2&baz=qux")
   })
+
+  describe("query serialization", () => {
+    it("writes a space as %20 and a literal + as %2B", () => {
+      strictEqual(
+        Url.setUrlParams(new URL("https://example.com/"), UrlParams.fromInput([["q", "a b+c"]])).toString(),
+        "https://example.com/?q=a%20b%2Bc"
+      )
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?q=x"), UrlParams.set("q", "a b+c")).toString(),
+        "https://example.com/?q=a%20b%2Bc"
+      )
+    })
+
+    it("normalizes an untouched parameter, including a bare +", () => {
+      // the parameters are read back through URLSearchParams, so the query is
+      // re-encoded rather than copied through byte-for-byte: a + read back as a
+      // space is written as %20, and , / are percent-encoded
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?a=b+c"), (params) => params).href,
+        "https://example.com/?a=b%20c"
+      )
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?a=b%20c,e"), (params) => params).href,
+        "https://example.com/?a=b%20c%2Ce"
+      )
+    })
+
+    it("Url.make agrees with the setters", () => {
+      assertSuccess(
+        Url.make("https://example.com/test?existing=true", UrlParams.fromInput([["q", "a b+c"]]), undefined),
+        Url.setUrlParams(new URL("https://example.com/test?existing=true"), UrlParams.fromInput([["q", "a b+c"]]))
+      )
+    })
+  })
 })
