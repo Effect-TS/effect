@@ -1,6 +1,6 @@
 /**
  * The one error type every stage of the generator's language front end
- * reports through (EFF-1829 point 6). Lexing and parsing stop at the first
+ * reports through. Lexing and parsing stop at the first
  * diagnostic in a file; later validation collects several.
  *
  * @internal

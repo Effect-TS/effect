@@ -1,6 +1,5 @@
 /**
- * Builds a {@link SchemaModel.Schema} from a parsed type-system document
- * (EFF-1829 points 3 and 4).
+ * Builds a {@link SchemaModel.Schema} from a parsed type-system document.
  *
  * @internal
  */

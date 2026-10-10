@@ -1,6 +1,6 @@
 /**
- * Builds a {@link SchemaModel.Schema} directly from introspection JSON
- * (EFF-1829 point 3), without printing SDL and re-parsing it.
+ * Builds a {@link SchemaModel.Schema} directly from introspection JSON,
+ * without printing SDL and re-parsing it.
  *
  * @internal
  */

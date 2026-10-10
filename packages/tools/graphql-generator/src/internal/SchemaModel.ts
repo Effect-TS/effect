@@ -1,5 +1,5 @@
 /**
- * The generator's schema model (EFF-1829 points 3 and 4). `SdlReader` and
+ * The generator's schema model. `SdlReader` and
  * `IntrospectionReader` both produce it, and the same schema read either way
  * gives equal models.
  *

@@ -1,5 +1,5 @@
 /**
- * The small glob matcher the `documents` patterns use (EFF-1834 point 3):
+ * The small glob matcher the `documents` patterns use:
  * `*`, `**`, `?` and `{a,b}`, matched against `/`-separated paths relative
  * to the config file.
  *

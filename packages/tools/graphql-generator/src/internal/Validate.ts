@@ -1,9 +1,8 @@
 /**
  * Validation of executable documents against the schema model: only the rules
- * that decide whether generated types are correct (EFF-1829 point 5). All
+ * that decide whether generated types are correct. All
  * input files are validated together: fragments resolve across files and
- * operations and fragments share one namespace (EFF-1830 point 10, EFF-1831
- * point 3).
+ * operations and fragments share one namespace.
  *
  * @internal
  */
@@ -520,8 +519,8 @@ const variablesInSelectionSet = (selectionSet: Ast.SelectionSet, out: Array<Ast.
 }
 
 /**
- * Operations and fragments share one namespace across every file (EFF-1830
- * point 10, EFF-1831 point 3): both become generated exports.
+ * Operations and fragments share one namespace across every file:
+ * both become generated exports.
  */
 const checkUniqueNames = (files: ReadonlyArray<File>, report: Reporter): void => {
   const definitions = new Map<

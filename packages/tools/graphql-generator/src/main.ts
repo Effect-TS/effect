@@ -1,5 +1,5 @@
 /**
- * The `graphqlgen` command (EFF-1834 points 1 to 17).
+ * The `graphqlgen` command.
  *
  * `graphqlgen [--config <path>] [--watch | --check]` loads `graphql.config.ts`
  * from the current directory, or the file `--config` names, generates every

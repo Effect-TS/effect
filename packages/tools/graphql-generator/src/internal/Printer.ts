@@ -1,6 +1,5 @@
 /**
- * Compact printer for executable documents (EFF-1829 point 7, EFF-1831
- * point 7). There is no SDL printer.
+ * Compact printer for executable documents. There is no SDL printer.
  *
  * Output rules, pinned by `test/Printer.test.ts` and the conformance cases:
  * - Definitions are printed in the order given, with no trailing newline.
