@@ -1,7 +1,7 @@
 /**
  * Helpers for the `generate` contract tests: running the generator over files
- * written to a temporary directory or over the GitHub fixture, and reading the
- * emitted text.
+ * written to a temporary directory or over the GitHub fixture, importing the
+ * generated GitHub modules, and reading the emitted text.
  *
  * The text helpers read the output line by line with indentation and a
  * trailing comma stripped, so a test pins the emitted expression for a key
@@ -9,6 +9,7 @@
  */
 import type * as Config from "@effect/graphql-generator/Config"
 import * as Generator from "@effect/graphql-generator/Generator"
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -57,7 +58,7 @@ export const generateIn = (inputs: Readonly<Record<string, string>>, config: Con
     return yield* collect(cwd, config)
   })
 
-/** The directory holding the GitHub schema fixtures and `documents/`. */
+/** The directory holding the GitHub schema subset and `documents/`. */
 export const githubFixtureDir = fileURLToPath(new URL("../fixtures/github", import.meta.url))
 
 /**
@@ -65,7 +66,7 @@ export const githubFixtureDir = fileURLToPath(new URL("../fixtures/github", impo
  * beside the documents so every emitted file imports its siblings with `./`.
  */
 export const githubConfig: Config.Config = {
-  schema: "./schema.docs.graphql",
+  schema: "./schema.graphql",
   documents: ["documents/*.graphql"],
   shared: "./documents/shared.graphql.ts",
   scalars: {
@@ -76,6 +77,43 @@ export const githubConfig: Config.Config = {
 }
 
 export const generateGitHub = collect(githubFixtureDir, githubConfig)
+
+const tmpRoot = fileURLToPath(new URL("../.tmp", import.meta.url))
+
+/**
+ * Writes the generated GitHub set to a fresh directory under `test/.tmp`,
+ * beside a copy of the scalar codecs it imports, and returns the directory.
+ * The directory is removed when the scope closes.
+ */
+export const writeGitHub = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const generated = yield* generateGitHub
+  assertNoErrors(generated)
+  yield* fs.makeDirectory(tmpRoot, { recursive: true })
+  const dir = yield* fs.makeTempDirectoryScoped({ directory: tmpRoot, prefix: "github-" })
+  yield* fs.copyFile(path.join(githubFixtureDir, "documents", "scalars.ts"), path.join(dir, "scalars.ts"))
+  for (const relative of generated.paths) {
+    yield* fs.writeFileString(path.join(dir, path.basename(relative)), generated.file(relative))
+  }
+  return dir
+})
+
+/** A client built from an imported GitHub module: its methods and results are untyped. */
+export type UntypedClient = Readonly<Record<string, (...args: ReadonlyArray<any>) => Effect.Effect<any, unknown>>>
+
+/**
+ * Generates the GitHub set and imports `file` from it. The generated code is not
+ * on disk when the tests are typechecked, so the module is untyped, and clients
+ * built from it with `GraphQLClient.make<never>` are typed as
+ * {@link UntypedClient}. The snapshot test typechecks the generated code itself.
+ */
+export const importGitHub = (file: string) =>
+  writeGitHub.pipe(
+    Effect.flatMap((dir) => Effect.promise((): Promise<any> => import(pathToFileURL(`${dir}/${file}`).href))),
+    Effect.scoped,
+    Effect.provide(NodeServices.layer)
+  )
 
 /** The directory holding `sdl/subscriptions.graphql` and its documents under `subscriptions/`. */
 export const fixturesDir = fileURLToPath(new URL("../fixtures", import.meta.url))

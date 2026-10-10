@@ -1,5 +1,5 @@
 /**
- * End-to-end checks for the abstract-type snapshots, run through a
+ * End-to-end checks for generated abstract types, run through a
  * `GraphQLClient` over a mock `GraphQLProtocol`: the GitHub timeline (`node`
  * on an interface, the `timelineItems` union and a fragment on the `Actor`
  * interface from another file), and the subscriptions set (a `Subscription`
@@ -13,8 +13,8 @@ import { GraphQLClientError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
-import { IssueTimeline, TimelineGroup } from "./generated/github/timeline.graphql.ts"
 import { type Room, RoomEvents, RoomsGroup } from "./generated/subscriptions/rooms.graphql.ts"
+import { importGitHub, type UntypedClient } from "./utils/generator.ts"
 
 interface Sent {
   readonly query: string
@@ -55,6 +55,7 @@ const at = "2026-10-08T10:00:00Z"
 describe("Generated GitHub timeline client", () => {
   it.effect("IssueTimeline decodes the selected members, the other buckets and a fragment on an interface", () =>
     Effect.gen(function*() {
+      const { IssueTimeline, TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
       const { layer, sent } = mock({
         data: {
           node: {
@@ -99,7 +100,7 @@ describe("Generated GitHub timeline client", () => {
           }
         }
       })
-      const client = yield* GraphQLClient.make(TimelineGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
       const result = yield* client.IssueTimeline({ id: "I_kwDOAbc" })
 
       assert.deepStrictEqual(sent, [{
@@ -143,9 +144,10 @@ describe("Generated GitHub timeline client", () => {
 
   it.effect("node types the query didn't select, including ones added later, land in the other bucket", () =>
     Effect.gen(function*() {
+      const { TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
       for (const __typename of ["Repository", "AddedLaterNode"]) {
         const { layer } = mock({ data: { node: { __typename } } })
-        const client = yield* GraphQLClient.make(TimelineGroup).pipe(Effect.provide(layer))
+        const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
         const result = yield* client.IssueTimeline({ id: "X" })
         assert.deepStrictEqual<unknown>(result, { node: { __typename } })
       }
@@ -153,6 +155,7 @@ describe("Generated GitHub timeline client", () => {
 
   it.effect("a malformed selected member fails with a DecodeError instead of falling into the other bucket", () =>
     Effect.gen(function*() {
+      const { TimelineGroup } = yield* importGitHub("timeline.graphql.ts")
       const { layer } = mock({
         data: {
           node: {
@@ -162,7 +165,7 @@ describe("Generated GitHub timeline client", () => {
           }
         }
       })
-      const client = yield* GraphQLClient.make(TimelineGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(TimelineGroup).pipe(Effect.provide(layer))
       const error = yield* client.IssueTimeline({ id: "X" }).pipe(Effect.flip)
       assert.strictEqual(reasonTag(error), "DecodeError")
     }))
