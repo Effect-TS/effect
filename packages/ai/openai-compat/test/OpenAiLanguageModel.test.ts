@@ -1976,40 +1976,35 @@ const reasoningCapabilityCases: ReadonlyArray<{
   readonly config: Parameters<typeof OpenAiLanguageModel.model>[1]
   readonly role: "system" | "developer"
 }> = [
-  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model"].map((model) => ({
-    name: `treats ${model} as a reasoning model`,
+  ...["gpt-5.5", "o5-mini"].map((model) => ({
+    name: `keeps the developer role for ${model}`,
     model,
-    config: { store: false },
+    config: {},
     role: "developer" as const
   })),
-  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id"].map((model) => ({
-    name: `treats ${model} as a non-reasoning model`,
-    model,
-    config: { store: false },
-    role: "system" as const
-  })),
+  ...["gpt-4.1", "ft:gpt-4o-mini:org::id", "llama-3.3-70b-instruct", "qwen2.5-72b-instruct", "mistral-large-latest"]
+    .map((model) => ({
+      name: `keeps the system role for ${model}`,
+      model,
+      config: {},
+      role: "system" as const
+    })),
   {
-    name: "treats a non-reasoning model as reasoning when reasoningModel is true",
-    model: "gpt-4.1",
-    config: { store: false, reasoningModel: true },
+    name: "uses the developer role when reasoningModel is true",
+    model: "llama-3.3-70b-instruct",
+    config: { reasoningModel: true },
     role: "developer"
   },
   {
-    name: "treats an unrecognized model as non-reasoning when reasoningModel is false",
-    model: "custom-model",
-    config: { store: false, reasoningModel: false },
-    role: "system"
-  },
-  {
-    name: "treats a recognized model as non-reasoning when reasoningModel is false",
+    name: "uses the system role when reasoningModel is false",
     model: "gpt-5.4",
-    config: { store: false, reasoningModel: false },
+    config: { reasoningModel: false },
     role: "system"
   },
   {
     name: "prefers reasoningModel false over reasoning config",
     model: "gpt-5.4",
-    config: { store: false, reasoningModel: false, reasoning: { effort: "low" } },
+    config: { reasoningModel: false, reasoning: { effort: "low" } },
     role: "system"
   }
 ]
