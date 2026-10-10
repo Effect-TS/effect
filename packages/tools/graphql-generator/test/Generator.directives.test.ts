@@ -184,3 +184,64 @@ query One($show: Boolean!, $taskId: ID!) {
       assert.throws(() => decode({ task: { estimate: 2 } }))
     }).pipe(Effect.provide(NodeServices.layer)))
 })
+
+describe("Generator @skip and @include on merged fields", () => {
+  const decodeOne = (generated: Parameters<typeof importGenerated>[0]) =>
+    Effect.map(
+      importGenerated(generated, "src/ops.graphql.ts"),
+      (module) => Schema.decodeUnknownSync(module.One.result)
+    )
+
+  it.effect("a conditional occurrence of a merged field keeps its condition on the children it adds", () =>
+    Effect.gen(function*() {
+      const { generated, ops } = yield* generate(`
+query One($show: Boolean!, $taskId: ID!) {
+  task(id: $taskId) {
+    id
+  }
+  task(id: $taskId) @include(if: $show) {
+    title
+  }
+}
+`)
+      assert.strictEqual(member(ops, "task"), "Schema.NullOr(Schema.Struct({")
+      assert.strictEqual(member(ops, "id"), "Shared.ID")
+      assert.strictEqual(member(ops, "title"), "Schema.optionalKey(Schema.String)")
+      const decode = yield* decodeOne(generated)
+      assert.deepStrictEqual(decode({ task: { id: "1" } }), { task: { id: "1" } })
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("a conditional spread adding a second occurrence of a field keeps its condition on the children it adds", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateTasks({
+        "src/fragments.graphql": "fragment TaskTitle on Query {\n  task(id: $taskId) {\n    title\n  }\n}\n",
+        "src/ops.graphql": `
+query One($show: Boolean!, $taskId: ID!) {
+  task(id: $taskId) {
+    id
+  }
+  ...TaskTitle @include(if: $show)
+}
+`
+      })
+      assertNoErrors(generated)
+      const ops = generated.file("src/ops.graphql.ts")
+      assert.strictEqual(member(ops, "id"), "Shared.ID")
+      assert.strictEqual(member(ops, "title"), "Schema.optionalKey(Schema.String)")
+      const decode = yield* decodeOne(generated)
+      assert.deepStrictEqual(decode({ task: { id: "1" } }), { task: { id: "1" } })
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("the children of a field whose only occurrence is conditional stay required", () =>
+    Effect.gen(function*() {
+      const { ops } = yield* generate(`
+query One($show: Boolean!, $taskId: ID!) {
+  task(id: $taskId) @include(if: $show) {
+    title
+  }
+}
+`)
+      assert.strictEqual(member(ops, "task"), "Schema.optionalKey(Schema.NullOr(Schema.Struct({")
+      assert.strictEqual(member(ops, "title"), "Schema.String")
+    }).pipe(Effect.provide(NodeServices.layer)))
+})
