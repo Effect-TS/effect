@@ -278,6 +278,17 @@ describe("GraphQLClient", () => {
         yield* expectReason("DecodeError")(strict)
       }))
 
+    it.effect("data: null with no errors is a DecodeError even when the result codec accepts null", () =>
+      Effect.gen(function*() {
+        // GraphQL forbids a null `data` without `errors`; the client rejects it
+        // before the result codec gets a say.
+        const Raw = GraphQL.query("Raw", { document: "query Raw{__typename}", result: Schema.Json })
+        const { layer } = yield* executeLayer({ data: null })
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(Raw)).pipe(Effect.provide(layer))
+        yield* expectReason("DecodeError")(client.Raw())
+        yield* expectReason("DecodeError")(client.Raw(undefined, { partial: true }))
+      }))
+
     it.effect("a codec failure plus errors is a DecodeError, not a ResponseError", () =>
       Effect.gen(function*() {
         const { partial } = yield* callRepoIssues({
