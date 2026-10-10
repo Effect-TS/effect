@@ -370,6 +370,17 @@ Build http clients with the `HttpClient` module.
   Test handlers through an in-memory typed client with `HttpApiTest`, without
   starting an HTTP server or touching a real database.
 
+## Typed GraphQL clients with `effect/graphql`
+
+Use the `effect/graphql` modules to call GraphQL APIs with typed
+operations. Run `graphqlgen` from `@effect/graphql-generator` to generate
+operations from `.graphql` documents, then build a client with
+`GraphQLClient.make` and provide a transport from `GraphQLProtocol`.
+
+- **[Getting started with GraphQL clients](./ai-docs/src/52_graphql/10_basics.ts)**:
+  Define a query, build a typed client service over HTTP with an auth
+  middleware, and page through a cursor connection.
+
 ## Working with child processes
 
 Use the `effect/process` modules to define child processes and run them with `ChildProcessSpawner`.

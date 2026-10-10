@@ -26,6 +26,7 @@
       // that would otherwise be considered cyclic dependencies (e.g. loading `@effect/sql-sqlite-node` in the test
       // suite of `@effect/platform-node` which itself depends on `@effect/platform-node`).
       "effect": ["./packages/effect/src/index.ts"],
+      "effect/graphql": ["./packages/effect/src/graphql/index.ts"],
       "effect/schema": ["./packages/effect/src/schema/index.ts"],
       "effect/*": ["./packages/effect/src/*.ts"],
       "@effect/ai-anthropic": ["./packages/ai/anthropic/src/index.ts"],
@@ -91,6 +92,7 @@
       "@effect/docgen/*": ["./packages/tools/docgen/src/*.ts"],
       "@effect/openapi-generator": ["./packages/tools/openapi-generator/src/index.ts"],
       "@effect/openapi-generator/*": ["./packages/tools/openapi-generator/src/*.ts"],
+      "@effect/graphql-generator/*": ["./packages/tools/graphql-generator/src/*.ts"],
       "@effect/oxc": ["./packages/tools/oxc/src/index.ts"],
       "@effect/oxc/*": ["./packages/tools/oxc/src/*.ts"],
       "@effect/tools-utils": ["./packages/tools/utils/src/index.ts"],

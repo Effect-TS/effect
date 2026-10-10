@@ -10,6 +10,7 @@
     "**/CHANGELOG.md",
     "packages/effect/typeperf/**/*",
     "packages/effect/src/StandardSchema.ts",
+    "packages/tools/graphql-generator/test/generated/**/*.graphql.ts",
     "!scratchpad/**/*",
     "**/.*",
     "!.agents",
