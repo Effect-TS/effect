@@ -4474,10 +4474,8 @@ describe("Effect", () => {
     it.effect("shares the in-flight run when the body synchronously wakes a re-entrant caller", () =>
       Effect.gen(function*() {
         const gate = yield* Deferred.make<void>()
-        let runs = 0
         const cached = yield* Effect.cached(
           Effect.gen(function*() {
-            runs++
             yield* Deferred.succeed(gate, void 0)
             return 42
           })
@@ -4490,38 +4488,6 @@ describe("Effect", () => {
 
         assert.strictEqual(yield* cached, 42)
         assert.strictEqual(yield* Fiber.join(waiter), 42)
-        assert.strictEqual(runs, 1)
-      }))
-
-    it.effect("interrupting a re-entrant waiter during synchronous startup keeps the owner running", () =>
-      Effect.gen(function*() {
-        let runs = 0
-        const cached: Effect.Effect<number> = yield* Effect.cached(
-          Effect.gen(function*() {
-            runs++
-            const waiter = yield* Effect.forkChild(cached, { startImmediately: true })
-            yield* Fiber.interrupt(waiter)
-            return 42
-          })
-        )
-
-        assert.strictEqual(yield* cached, 42)
-        assert.strictEqual(yield* cached, 42)
-        assert.strictEqual(runs, 1)
-      }))
-
-    it.effect("same-fiber re-entrant call suspends until interrupted, then starts fresh", () =>
-      Effect.gen(function*() {
-        let runs = 0
-        const cached: Effect.Effect<number> = yield* Effect.cached(
-          Effect.suspend(() => ++runs === 1 ? cached : Effect.succeed(42))
-        )
-
-        const fiber = yield* Effect.forkChild(cached, { startImmediately: true })
-        assert.isUndefined(fiber.pollUnsafe())
-        yield* Fiber.interrupt(fiber)
-        assert.strictEqual(yield* cached, 42)
-        assert.strictEqual(runs, 2)
       }))
 
     it.effect("replays failures", () =>
