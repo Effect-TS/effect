@@ -229,6 +229,8 @@ describe("OpenSsh", () => {
       yield* ssh.run("echo tty", { pty: { term: "vt100" }, forwardAgent: true })
       assert.isTrue(lastArgs(fake).includes("-tt"))
       assert.isTrue(lastArgs(fake).includes("-A"))
+      // Multiplexed terminals would take their modes from a pipe.
+      assert.isFalse(lastArgs(fake).some((arg) => arg.startsWith("ControlPath=")))
       assert.deepStrictEqual(fake.invocations[fake.invocations.length - 1].env, { TERM: "vt100" })
 
       yield* ssh.run("echo env", { env: { A: "1", B: `say "hi" \\ there` } })
@@ -300,6 +302,6 @@ describe("OpenSsh", () => {
       assert.isTrue(yield* handle.isRunning)
       // No grace period applies when signals cannot be delivered.
       yield* handle.kill()
-      assert.strictEqual(yield* handle.exitCode, 143)
+      assert.include((yield* Effect.flip(handle.exitCode)).message, "closing its SSH session")
     }).pipe(Effect.scoped))
 })

@@ -11,6 +11,7 @@ import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
+import * as Schedule from "effect/Schedule"
 import * as Socket from "effect/socket/Socket"
 import * as OpenSsh from "effect/ssh/OpenSsh"
 import * as Ssh from "effect/ssh/Ssh"
@@ -250,9 +251,35 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
           yield* handle.kill()
           // OpenSSH cannot deliver signals, so there is no grace period.
           assert.isBelow(Date.now() - started, 1_000)
-          yield* Effect.exit(handle.exitCode)
-          assert.isFalse(yield* handle.isRunning)
+          assert.include((yield* Effect.flip(handle.exitCode)).message, "closing its SSH session")
         }).pipe(Effect.scoped, Effect.provide(remoteSpawner.pipe(Layer.provide(layer)))))
+
+      it.live("interrupts and hangs up commands with a pty", () =>
+        Effect.gen(function*() {
+          const ssh = yield* connection
+          // Unique durations identify the remote processes.
+          const [interruptedFor, hungUpFor] = [600, 700].map((base) => base + NodeCrypto.randomInt(100))
+          const start = (seconds: number) =>
+            Effect.tap(
+              ssh.exec(sh(`echo ready; exec sleep ${seconds}`), { pty: true }),
+              (process) => Effect.flatMap(Stream.toPull(process.stdout), (pull) => pull)
+            )
+          const gone = (seconds: number) =>
+            ssh.run(sh(`ps -o args | grep -c '^sleep ${seconds}$' || true`)).pipe(
+              Effect.map((result) => result.stdout.trim() === "0"),
+              Effect.repeat({ until: (done) => done, times: 40, schedule: Schedule.spaced("50 millis") })
+            )
+
+          // Writing ^C interrupts the command like Ctrl-C.
+          const interrupted = yield* start(interruptedFor)
+          yield* interrupted.write("\x03")
+          yield* interrupted.exit
+          assert.isTrue(yield* gone(interruptedFor))
+
+          // Closing the session hangs up the command.
+          yield* Effect.scoped(start(hungUpFor))
+          assert.isTrue(yield* gone(hungUpFor))
+        }).pipe(Effect.scoped, Effect.provide(layer)))
 
       it.live("forwards TCP connections and Unix sockets", () =>
         Effect.gen(function*() {
