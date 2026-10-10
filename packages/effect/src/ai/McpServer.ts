@@ -1472,6 +1472,10 @@ const layerWithRuntime = (options: {
  * `McpRequestContext` and legacy `McpServerClient` services to handlers, and
  * requires `Stdio`.
  *
+ * Each call builds its own `RpcServer.Protocol`, so several stdio servers can
+ * live in one layer graph as long as each is provided its own `Stdio`. They
+ * still share the memoized `McpServer` registry.
+ *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport
  *
@@ -1491,7 +1495,11 @@ export const layerStdio = (options: {
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
   layerWithRuntime(options, "stdio").pipe(
     Layer.provide(McpRuntime.layer(options.protocols)),
-    Layer.provide(RpcServer.layerProtocolStdio),
+    // Build a fresh protocol layer per call. `RpcServer.layerProtocolStdio` is
+    // a module-level constant, and layers are memoized by reference, so two
+    // `layerStdio` servers in one layer graph would otherwise share a single
+    // protocol bound to whichever `Stdio` was built first.
+    Layer.provide(Layer.effect(RpcServer.Protocol, RpcServer.makeProtocolStdio)),
     Layer.provide(Layer.succeed(
       RpcSerialization.RpcSerialization,
       mcpStdioSerialization(options.protocols)
