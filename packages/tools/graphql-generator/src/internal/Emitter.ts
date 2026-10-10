@@ -121,8 +121,14 @@ const printConstValue = (value: SchemaModel.ConstValue): string => {
   }
 }
 
-const struct = (members: ReadonlyArray<string>, indent: string): string =>
-  members.length === 0 ? "Schema.Struct({})" : `Schema.Struct({\n${members.join(",\n")}\n${indent}})`
+const struct = (members: ReadonlyArray<string>, indent: string, schema = "Schema"): string =>
+  members.length === 0 ? `${schema}.Struct({})` : `${schema}.Struct({\n${members.join(",\n")}\n${indent}})`
+
+/**
+ * A struct key. `__proto__` is written as a computed key, because in an
+ * object literal the plain form sets the prototype instead of a field.
+ */
+const propertyKey = (key: string): string => key === "__proto__" ? `["__proto__"]` : key
 
 /** `issue-timeline.graphql` → `IssueTimeline`. */
 const pascalCase = (fileName: string): string => {
@@ -180,21 +186,34 @@ const reservedWords: ReadonlySet<string> = new Set([
   "yield"
 ])
 
+/** Names a strict-mode module can't bind, though they are valid GraphQL names. */
+const unbindable = (name: string): boolean => reservedWords.has(name) || name === "arguments" || name === "eval"
+
 /** Names every per-file module imports, which operations and fragments can't take. */
 const importedNames: ReadonlySet<string> = new Set(["Schema", "Shared", "GraphQL", "GraphQLGroup"])
 
 const builtInSharedScalars: ReadonlyArray<string> = ["Int", "Float", "ID"]
 
-const builtInScalarCodec = (name: string): string => {
+const builtInScalarCodec = (name: string, schema: string): string => {
   switch (name) {
     case "Int":
-      return "Schema.Number.check(Schema.isInt32())"
+      return `${schema}.Number.check(${schema}.isInt32())`
     case "Float":
-      return "Schema.Finite"
+      return `${schema}.Finite`
     default:
-      return "Schema.String"
+      return `${schema}.String`
   }
 }
+
+/** Every fragment spread in a selection set, through fields and inline fragments, in source order. */
+const spreadsIn = (selectionSet: Ast.SelectionSet): Array<Ast.FragmentSpread> =>
+  selectionSet.selections.flatMap((selection) =>
+    selection._tag === "FragmentSpread"
+      ? [selection]
+      : selection.selectionSet === undefined
+      ? []
+      : spreadsIn(selection.selectionSet)
+  )
 
 // -----------------------------------------------------------------------------
 // Emitter
@@ -287,14 +306,30 @@ class Emitter {
       const report = (offset: number, message: string) =>
         errors.push({ file: fileIndex, offset, diagnostic: make(file.source, offset, message) })
       const groupName = `${pascalCase(file.sourceName)}Group`
+      const exportsGroup = file.document.definitions.some((definition) => definition._tag === "OperationDefinition")
+      let importReported = false
       for (const definition of file.document.definitions) {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
         const name = definition.name
         if (name !== undefined) {
           if (importedNames.has(name.value) || reservedWords.has(name.value)) {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
-          } else if (name.value === groupName && definition._tag === "OperationDefinition") {
+          } else if (name.value === groupName && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
+          }
+        }
+        // An imported fragment would bind the group's name too.
+        if (exportsGroup && !importReported) {
+          for (const spread of spreadsIn(definition.selectionSet)) {
+            const entry = this.fragments.get(spread.name.value)
+            if (entry !== undefined && entry.file !== file && spread.name.value === groupName) {
+              report(
+                spread.loc.start,
+                `Fragment "${spread.name.value}" from ${entry.file.source.path} can't be imported here: the name is taken by the group this file exports.`
+              )
+              importReported = true
+              break
+            }
           }
         }
         if (definition._tag === "OperationDefinition") {
@@ -321,7 +356,104 @@ class Emitter {
         }
       }
     })
+    for (const cycle of this.importCycles()) {
+      errors.push({
+        file: cycle.file,
+        offset: cycle.offset,
+        diagnostic: make(this.options.files[cycle.file]!.source, cycle.offset, cycle.message)
+      })
+    }
     return errors.sort((a, b) => a.file - b.file || a.offset - b.offset).map((entry) => entry.diagnostic)
+  }
+
+  /**
+   * Cycles in the imports between generated files. Every fragment reference
+   * is read while its module initializes, so any cycle throws for some entry
+   * point. Each cycle is reported once, at its first cross-file spread by file
+   * order and then position. Every cross-file spread counts, including ones
+   * the emitter would write out inline, so the rule doesn't depend on how a
+   * selection set is merged.
+   */
+  importCycles(): Array<{ readonly file: number; readonly offset: number; readonly message: string }> {
+    const files = this.options.files
+    const indexOf = new Map(files.map((file, i) => [file, i] as const))
+    const edges: Array<{ readonly from: number; readonly to: number; readonly spread: Ast.FragmentSpread }> = []
+    const adjacent = files.map(() => new Set<number>())
+    files.forEach((file, from) => {
+      for (const definition of file.document.definitions) {
+        if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
+        for (const spread of spreadsIn(definition.selectionSet)) {
+          const entry = this.fragments.get(spread.name.value)
+          if (entry === undefined || entry.file === file) continue
+          const to = indexOf.get(entry.file)!
+          edges.push({ from, to, spread })
+          adjacent[from]!.add(to)
+        }
+      }
+    })
+
+    // Tarjan's strongly connected components.
+    const index: Array<number | undefined> = files.map(() => undefined)
+    const low: Array<number> = files.map(() => 0)
+    const onStack = files.map(() => false)
+    const stack: Array<number> = []
+    const components: Array<ReadonlySet<number>> = []
+    let next = 0
+    const connect = (v: number): void => {
+      index[v] = low[v] = next++
+      stack.push(v)
+      onStack[v] = true
+      for (const w of adjacent[v]!) {
+        if (index[w] === undefined) {
+          connect(w)
+          low[v] = Math.min(low[v]!, low[w]!)
+        } else if (onStack[w]) {
+          low[v] = Math.min(low[v]!, index[w]!)
+        }
+      }
+      if (low[v] === index[v]) {
+        const component = new Set<number>()
+        let w: number
+        do {
+          w = stack.pop()!
+          onStack[w] = false
+          component.add(w)
+        } while (w !== v)
+        if (component.size > 1) components.push(component)
+      }
+    }
+    files.forEach((_, v) => {
+      if (index[v] === undefined) connect(v)
+    })
+
+    return components.map((component) => {
+      const first = edges
+        .filter((edge) => component.has(edge.from) && component.has(edge.to))
+        .sort((a, b) => a.from - b.from || a.spread.loc.start - b.spread.loc.start)[0]!
+      // The shortest way back from the spread's target to the spreading file.
+      const previous = new Map<number, number>([[first.to, -1]])
+      const queue = [first.to]
+      while (!previous.has(first.from)) {
+        const v = queue.shift()!
+        for (const w of adjacent[v]!) {
+          if (component.has(w) && !previous.has(w)) {
+            previous.set(w, v)
+            queue.push(w)
+          }
+        }
+      }
+      const path: Array<number> = []
+      for (let v = first.from; v !== -1; v = previous.get(v)!) path.unshift(v)
+      const names = [first.from, ...path].map((i) => files[i]!.source.path)
+      return {
+        file: first.from,
+        offset: first.spread.loc.start,
+        message:
+          `Fragment spread "...${first.spread.name.value}" makes the generated modules import each other in a cycle: ${
+            names.join(" -> ")
+          }. Move fragments between files so the imports don't form a cycle.`
+      }
+    })
   }
 
   checkVariable(variable: Ast.VariableDefinition, report: (offset: number, message: string) => void): void {
@@ -537,7 +669,7 @@ class Emitter {
     const name = fields[0]!.name.value
     if (name === "__typename") {
       ctx.usesSchema = true
-      return `${indent}${key}: Schema.Literal(${JSON.stringify(parent.name)})`
+      return `${indent}${propertyKey(key)}: Schema.Literal(${JSON.stringify(parent.name)})`
     }
     const definition = this.fieldDefinition(parent, name)
     const type = this.type(SchemaModel.namedTypeOf(definition.type))
@@ -550,7 +682,7 @@ class Emitter {
       )
       : this.resultLeaf(ctx, type)
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    return `${jsdoc(doc, indent)}${indent}${key}: ${this.wrapResult(ctx, definition.type, inner)}`
+    return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${this.wrapResult(ctx, definition.type, inner)}`
   }
 
   resultLeaf(ctx: FileContext, type: SchemaModel.NamedType): string {
@@ -589,24 +721,24 @@ class Emitter {
    * nullable is `optional(NullOr(T))`, non-null with a default is
    * `optional(T)`.
    */
-  input(type: SchemaModel.TypeRef, hasDefault: boolean, ref: (name: string) => string): string {
+  input(type: SchemaModel.TypeRef, hasDefault: boolean, ref: (name: string) => string, schema = "Schema"): string {
     const named = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string => {
-      if (type._tag === "ListTypeRef") return `Schema.Array(${element(type.ofType)})`
+      if (type._tag === "ListTypeRef") return `${schema}.Array(${element(type.ofType)})`
       switch (type.name) {
         case "String":
-          return "Schema.String"
+          return `${schema}.String`
         case "Boolean":
-          return "Schema.Boolean"
+          return `${schema}.Boolean`
         default:
           return ref(type.name)
       }
     }
     const element = (type: SchemaModel.TypeRef): string =>
-      type._tag === "NonNullTypeRef" ? named(type.ofType) : `Schema.NullOr(${named(type)})`
+      type._tag === "NonNullTypeRef" ? named(type.ofType) : `${schema}.NullOr(${named(type)})`
     if (type._tag === "NonNullTypeRef") {
-      return hasDefault ? `Schema.optional(${named(type.ofType)})` : named(type.ofType)
+      return hasDefault ? `${schema}.optional(${named(type.ofType)})` : named(type.ofType)
     }
-    return `Schema.optional(Schema.NullOr(${named(type)}))`
+    return `${schema}.optional(${schema}.NullOr(${named(type)}))`
   }
 
   // ---------------------------------------------------------------------------
@@ -713,7 +845,7 @@ class Emitter {
         const expression = this.input(type, defaultValue !== undefined, (name) => this.shared(ctx, name))
         ctx.usesSchema ||= expression.includes("Schema.")
         const variableDoc = docLines(descriptionLines(variable.description?.value), defaultTag(defaultValue))
-        return `${jsdoc(variableDoc, "    ")}    ${variable.variable.name.value}: ${expression}`
+        return `${jsdoc(variableDoc, "    ")}    ${propertyKey(variable.variable.name.value)}: ${expression}`
       })
       lines.push(`  variables: {\n${members.join(",\n")}\n  },`)
     }
@@ -792,13 +924,33 @@ class Emitter {
     })
     this.sharedNames = byName
 
+    // Each type is exported under its GraphQL name, which per-file modules read
+    // as `Shared.<name>`. A name the module can't bind gets a local alias,
+    // and the module's own imports take names no type uses.
+    const taken = new Set<string>([...byName, "Typename"])
+    const allocate = (candidate: string): string => {
+      let name = candidate
+      for (let i = 2; taken.has(name) || unbindable(name); i++) name = `${candidate}${i}`
+      taken.add(name)
+      return name
+    }
+    const locals = new Map<string, string>()
+    for (const name of byName) {
+      if (!unbindable(name)) continue
+      let local = `${name}_`
+      while (taken.has(local)) local = `${local}_`
+      taken.add(local)
+      locals.set(name, local)
+    }
+    const local = (name: string): string => locals.get(name) ?? name
+    const schema = allocate("Schema")
+
     let usesSchema = false
     const modules = new Map<string, string>()
-    const taken = new Set<string>([...byName, "Schema", "Typename"])
     const moduleName = (specifier: string): string => {
       if (specifier === "effect/Schema") {
         usesSchema = true
-        return "Schema"
+        return schema
       }
       const existing = modules.get(specifier)
       if (existing !== undefined) return existing
@@ -806,9 +958,7 @@ class Emitter {
       const words = base.split(/[^A-Za-z0-9]+/).filter((word) => word.length > 0)
       let candidate = words.map((word) => word[0]!.toUpperCase() + word.slice(1)).join("")
       if (candidate === "" || /^[0-9]/.test(candidate)) candidate = "Scalars"
-      let name = candidate
-      for (let i = 2; taken.has(name); i++) name = `${candidate}${i}`
-      taken.add(name)
+      const name = allocate(candidate)
       modules.set(specifier, name)
       return name
     }
@@ -820,12 +970,22 @@ class Emitter {
       }
       return `${moduleName(mapping.specifier)}.${mapping.exportName}`
     }
+    /** `export const X = ...`, or a local alias exported under the GraphQL name. */
+    const declare = (name: string, declaration: (binding: string) => string, typeAlias: boolean): string => {
+      const binding = local(name)
+      const alias = typeAlias ? `\n${binding === name ? "export " : ""}type ${binding} = typeof ${binding}.Type` : ""
+      return binding === name
+        ? `export ${declaration(name)}${alias}`
+        : `${declaration(binding)}${alias}\nexport { ${binding} as ${name} }`
+    }
 
     const blocks: Array<string> = []
     for (const name of [...builtIns, ...scalars]) {
       const type = this.type(name)
-      const codec = scalarCodec(name, builtIns.includes(name) ? builtInScalarCodec(name) : "Schema.Json")
-      blocks.push(`${jsdoc(descriptionLines(type.description), "")}export const ${name} = ${codec}`)
+      const codec = scalarCodec(name, builtIns.includes(name) ? builtInScalarCodec(name, schema) : `${schema}.Json`)
+      blocks.push(
+        `${jsdoc(descriptionLines(type.description), "")}${declare(name, (b) => `const ${b} = ${codec}`, false)}`
+      )
     }
     for (const type of enums) {
       usesSchema = true
@@ -839,9 +999,7 @@ class Emitter {
       const doc = docLines(descriptionLines(type.description), values)
       const literals = type.values.map((value) => JSON.stringify(value.name)).join(", ")
       blocks.push(
-        `${
-          jsdoc(doc, "")
-        }export const ${type.name} = Schema.Literals([${literals}])\nexport type ${type.name} = typeof ${type.name}.Type`
+        `${jsdoc(doc, "")}${declare(type.name, (b) => `const ${b} = ${schema}.Literals([${literals}])`, true)}`
       )
     }
     for (const type of inputs) {
@@ -851,19 +1009,20 @@ class Emitter {
           descriptionLines(field.description),
           [...deprecatedTag(field.deprecationReason), ...defaultTag(field.defaultValue)]
         )
-        return `${jsdoc(doc, "  ")}  ${field.name}: ${
-          this.input(field.type, field.defaultValue !== undefined, (name) => name)
+        return `${jsdoc(doc, "  ")}  ${propertyKey(field.name)}: ${
+          this.input(field.type, field.defaultValue !== undefined, local, schema)
         }`
       })
+      const body = struct(members, "", schema)
       blocks.push(
-        `${
-          jsdoc(descriptionLines(type.description), "")
-        }export class ${type.name} extends Schema.Opaque<${type.name}>()(${struct(members, "")}) {}`
+        `${jsdoc(descriptionLines(type.description), "")}${
+          declare(type.name, (b) => `class ${b} extends ${schema}.Opaque<${b}>()(${body}) {}`, false)
+        }`
       )
     }
 
     const imports: Array<string> = []
-    if (usesSchema) imports.push(`import * as Schema from "effect/Schema"`)
+    if (usesSchema) imports.push(`import * as ${schema} from "effect/Schema"`)
     for (const [specifier, name] of modules) {
       imports.push(`import * as ${name} from ${JSON.stringify(specifier)}`)
     }
