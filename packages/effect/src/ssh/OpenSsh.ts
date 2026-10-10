@@ -55,11 +55,10 @@ import { SshChannelError, SshConnectionError, SshError, SshTimeoutError } from "
  *
  * **Details**
  *
- * - A `Destination`'s `host` is validated like `Host.hostFromInput` and
- *   passed to `ssh`, so it may be a `Host` alias from the user's
- *   configuration that is a valid host name. Its `port` and `username`
- *   override `port` and `user`. Validation also keeps the host from being
- *   read as an `ssh` option.
+ * - A `Destination`'s host is validated and passed to `ssh`, so it may be a
+ *   `Host` alias from the user's configuration that is a valid host name.
+ *   Its port and `username` override `port` and `user`. Validation also
+ *   keeps the host from being read as an `ssh` option.
  * - `options` become `-o Name=value` arguments (booleans are written as
  *   `yes` / `no`) and take precedence over the defaults below.
  * - `args` are appended to every `ssh` invocation, for example
@@ -93,10 +92,11 @@ const encoder = new TextEncoder()
 
 const connectionError = (cause: unknown) => new SshError({ reason: new SshConnectionError({ cause }) })
 
-const closedError = () => new SshError({ reason: new SshChannelError({ description: "the ssh process has exited" }) })
+const channelError = (description: string) => new SshError({ reason: new SshChannelError({ description }) })
 
-const invalidTarget = (error: NetAddress.NetAddressError) =>
-  new SshError({ reason: new SshChannelError({ description: `invalid forward target: ${error.message}` }) })
+const closedError = () => channelError("the ssh process has exited")
+
+const invalidTarget = (error: NetAddress.NetAddressError) => channelError(`invalid forward target: ${error.message}`)
 
 const targetFromInput = (
   target: Ssh.ForwardTarget
@@ -104,6 +104,18 @@ const targetFromInput = (
   typeof target === "object" && "path" in target
     ? Result.succeed(NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(target.path))
     : Result.mapError(Host.hostPortFromInput(target), invalidTarget)
+
+const destinationFromInput = (
+  input: Ssh.Destination["host"]
+): Result.Result<{ readonly host: Host.Host; readonly port?: number | undefined }, NetAddress.NetAddressError> => {
+  if (Host.isHostPort(input)) return Result.succeed(input)
+  if (typeof input === "object" && "port" in input) return Host.hostPortFromInput(input)
+  if (typeof input === "string") {
+    const hostPort = Host.hostPortFromString(input)
+    if (Result.isSuccess(hostPort)) return hostPort
+  }
+  return Result.map(Host.hostFromInput(input), (host) => ({ host }))
+}
 
 const quoteConfigValue = (value: string) => `"${value.replace(/[\\"]/g, (char) => `\\${char}`)}"`
 
@@ -138,16 +150,16 @@ const baseArguments = (options: Options): Array<string> => {
  * - `exec` runs `ssh -T` (or `-tt` with `pty`). Environment variables are
  *   sent with `SetEnv`, so the server must accept them through `AcceptEnv`.
  *   Because multiplexed sessions cannot carry environment variables, such
- *   sessions open their own connection. `pty.term` sets `TERM`, while the
- *   terminal size cannot be set.
+ *   sessions open their own connection. `pty.term` sets `TERM`.
  * - `subsystem` runs `ssh -s`, and `forwardOut` runs `ssh -W`; the origin of
  *   TCP targets is ignored.
  *
  * **Gotchas**
  *
- * - Signals cannot be delivered (`capabilities.signals` is `false`); the
- *   remote `ChildProcessSpawner` works around this by signalling the remote
- *   process id instead.
+ * - `ssh` cannot deliver signals, so `signal` fails with an
+ *   `SshChannelError`. Closing a command without a pty stops the local `ssh`
+ *   process, but the remote command keeps running until it notices that its
+ *   input or output is gone.
  * - Commands killed by a signal report exit status `128 + n`, and `ssh`
  *   itself exits with 255 when the connection fails.
  * - Diagnostics from `ssh` appear on the standard error of remote commands.
@@ -164,13 +176,14 @@ export const make = Effect.fnUntraced(function*(
   const defaults = options ?? {}
 
   /**
-   * Starts an `ssh` process and exposes it as an `SshProcess`.
+   * Starts an `ssh` process and exposes it as an `SshStream` with its exit
+   * code.
    */
   const spawnProcess = Effect.fnUntraced(function*(
     executable: string,
     args: ReadonlyArray<string>,
     env?: Record<string, string> | undefined
-  ): Effect.fn.Return<Ssh.SshProcess, SshError, Scope.Scope> {
+  ): Effect.fn.Return<Ssh.SshStream & { readonly exitCode: Effect.Effect<number, SshError> }, SshError, Scope.Scope> {
     const input = yield* Queue.bounded<Uint8Array, Cause.Done>(16)
     const handle = yield* spawner.spawn(
       ChildProcess.make(executable, args, {
@@ -192,16 +205,7 @@ export const make = Effect.fnUntraced(function*(
       write,
       eof,
       close: Effect.andThen(Queue.end(input), Effect.ignore(handle.kill())),
-      exit: handle.exitCode.pipe(
-        Effect.map((code) => ({ _tag: "ExitStatus", code }) as const),
-        Effect.mapError(lift)
-      ),
-      signal: () =>
-        Effect.fail(
-          new SshError({
-            reason: new SshChannelError({ description: "the OpenSSH backend cannot deliver signals" })
-          })
-        )
+      exitCode: Effect.mapError(handle.exitCode, lift)
     }
   })
 
@@ -281,19 +285,18 @@ export const make = Effect.fnUntraced(function*(
   const connect = Effect.fnUntraced(function*(
     destination: Ssh.Destination
   ): Effect.fn.Return<Ssh.SshConnection, SshError, Scope.Scope> {
-    const options: Options = {
-      ...defaults,
-      port: destination.port ?? defaults.port,
-      user: destination.username ?? defaults.user
-    }
     // Host names cannot start with `-`, which `ssh` would read as an option
     // even in the destination position.
-    const host = Host.formatHost(
-      yield* Effect.mapError(
-        Effect.fromResult(Host.hostFromInput(destination.host)),
-        (error) => connectionError(new Error(`invalid destination host: ${error.message}`, { cause: error }))
-      )
+    const address = yield* Effect.mapError(
+      Effect.fromResult(destinationFromInput(destination.host)),
+      (error) => connectionError(new Error(`invalid destination host: ${error.message}`, { cause: error }))
     )
+    const host = Host.formatHost(address.host)
+    const options: Options = {
+      ...defaults,
+      port: address.port ?? defaults.port,
+      user: destination.username ?? defaults.user
+    }
     const executable = options.executable ?? "ssh"
     const base = baseArguments(options)
     const shared = options.multiplex === false
@@ -320,12 +323,18 @@ export const make = Effect.fnUntraced(function*(
       const term = typeof sessionOptions?.pty === "object" ? sessionOptions.pty.term : undefined
       // Multiplexed sessions do not forward environment variables, so sessions
       // with an environment use their own connection.
-      return invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 })
+      return Effect.map(
+        invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 }),
+        ({ exitCode, ...stream }): Ssh.SshProcess => ({
+          ...stream,
+          exit: Effect.map(exitCode, (code) => ({ _tag: "ExitStatus", code })),
+          signal: () => Effect.fail(channelError("the OpenSSH backend cannot deliver signals"))
+        })
+      )
     }
 
     return Ssh.makeConnection({
       backend: "openssh",
-      capabilities: { signals: false, exitSignals: false },
       exec,
       // `ssh` parses options again after the destination, so `--` keeps the
       // subsystem name from being read as one.

@@ -172,7 +172,6 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
         Effect.gen(function*() {
           const ssh = yield* connection
           assert.strictEqual(ssh.backend, "openssh")
-          assert.isFalse(ssh.capabilities.signals)
           assert.deepStrictEqual(yield* ssh.run(sh("echo out; echo err >&2; exit 3")), {
             stdout: "out\n",
             stderr: "err\n",
@@ -243,21 +242,16 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
           assert.strictEqual(yield* spawner.exitCode(ChildProcess.make("sh", ["-c", "exit 9"])), 9)
         }).pipe(Effect.provide(remoteSpawner.pipe(Layer.provide(layer)))))
 
-      it.live("kills remote commands by process id", () =>
+      it.live("kills remote commands by closing the session", () =>
         Effect.gen(function*() {
-          const handle = yield* ChildProcess.make("sleep", ["30"])
-          assert.isAbove(handle.pid, 1)
-          yield* handle.kill()
-          const terminated = yield* Effect.flip(handle.exitCode)
-          assert.include(terminated.message, "SIGTERM")
-
-          const stubborn = yield* ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
-          yield* Effect.flatMap(Stream.toPull(stubborn.stdout), (pull) => pull)
+          const handle = yield* ChildProcess.make("sh", ["-c", "trap '' TERM; echo ready; sleep 30"])
+          yield* Effect.flatMap(Stream.toPull(handle.stdout), (pull) => pull)
           const started = Date.now()
-          yield* stubborn.kill({ forceKillAfter: "200 millis" })
-          assert.isBelow(Date.now() - started, 5_000)
-          const killed = yield* Effect.flip(stubborn.exitCode)
-          assert.include(killed.message, "SIGKILL")
+          yield* handle.kill()
+          // OpenSSH cannot deliver signals, so there is no grace period.
+          assert.isBelow(Date.now() - started, 1_000)
+          yield* Effect.exit(handle.exitCode)
+          assert.isFalse(yield* handle.isRunning)
         }).pipe(Effect.scoped, Effect.provide(remoteSpawner.pipe(Layer.provide(layer)))))
 
       it.live("forwards TCP connections and Unix sockets", () =>

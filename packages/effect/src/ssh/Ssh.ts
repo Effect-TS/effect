@@ -2,8 +2,8 @@
  * Backend-independent SSH connections.
  *
  * The `Ssh` service is a connection factory: `connect` opens a scoped
- * `SshConnection` to a destination, which runs commands, starts subsystems
- * such as SFTP, and opens tunnels. Connections are values owned by the code
+ * `SshConnection` to a destination, which runs commands, starts subsystems,
+ * and opens tunnels. Connections are values owned by the code
  * that opens them and close with their scope, so programs decide when, where,
  * and how often to connect.
  *
@@ -64,35 +64,18 @@ export type SessionExit =
   }
 
 /**
- * Terminal dimensions in characters, with optional pixel dimensions.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface TerminalSize {
-  readonly columns: number
-  readonly rows: number
-  readonly width?: number | undefined
-  readonly height?: number | undefined
-}
-
-/**
  * Pseudo-terminal settings for a command.
  *
  * **Details**
  *
- * `term` defaults to `xterm-256color` and the size to 80x24. `modes` maps
- * RFC 4254 terminal mode opcodes to values. Backends that cannot set the
- * size or modes ignore them.
+ * `term` sets the terminal type (`TERM`).
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export interface PtyOptions extends Partial<TerminalSize> {
+export interface PtyOptions {
   readonly term?: string | undefined
-  readonly modes?: Readonly<Record<number, number>> | undefined
 }
 
 /**
@@ -176,9 +159,9 @@ export interface SshStream {
  *
  * **Details**
  *
- * `exit` waits for the command to finish. `signal` delivers a signal when the
- * backend supports it (see `Capabilities.signals`) and fails with an
- * `SshChannelError` otherwise.
+ * `exit` waits for the command to finish. `signal` delivers a signal such as
+ * `SIGTERM`, and fails with an `SshChannelError` when the backend cannot
+ * deliver signals.
  *
  * @stability experimental
  * @category models
@@ -187,24 +170,6 @@ export interface SshStream {
 export interface SshProcess extends SshStream {
   readonly exit: Effect.Effect<SessionExit, SshError>
   readonly signal: (signal: string) => Effect.Effect<void, SshError>
-}
-
-/**
- * Features that differ between backends.
- *
- * **Details**
- *
- * - `signals`: `SshProcess.signal` delivers signals to remote commands.
- * - `exitSignals`: commands killed by a signal report an `ExitSignal`
- *   rather than an exit status.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Capabilities {
-  readonly signals: boolean
-  readonly exitSignals: boolean
 }
 
 /**
@@ -228,7 +193,6 @@ export interface SshConnection {
    * A name identifying the backend, such as `openssh`.
    */
   readonly backend: string
-  readonly capabilities: Capabilities
   readonly exec: (command: string, options?: SessionOptions) => Effect.Effect<SshProcess, SshError, Scope.Scope>
   readonly run: (
     command: string,
@@ -250,17 +214,18 @@ export interface SshConnection {
  *
  * **Details**
  *
- * `host` is validated and normalized like `Host.hostFromInput`. `port` and
- * `username` fall back to the backend's defaults (for OpenSSH, the user's
- * configuration).
+ * `host` is the server, with or without a port. A `Host.HostPort`,
+ * `{ host, port }` parts, or a `host:port` string is converted like
+ * `Host.hostPortFromInput`; any other value is a host alone, converted like
+ * `Host.hostFromInput`. A missing port or `username` falls back to the
+ * backend's defaults (for OpenSSH, the user's configuration).
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Destination {
-  readonly host: Host.HostInput
-  readonly port?: number | undefined
+  readonly host: Host.HostInput | Host.HostPortInput
   readonly username?: string | undefined
 }
 
@@ -296,13 +261,11 @@ export class Ssh extends Context.Service<Ssh, {
  */
 export const makeConnection = (impl: {
   readonly backend: string
-  readonly capabilities: Capabilities
   readonly exec: SshConnection["exec"]
   readonly subsystem: SshConnection["subsystem"]
   readonly forwardOut: SshConnection["forwardOut"]
 }): SshConnection => ({
   backend: impl.backend,
-  capabilities: impl.capabilities,
   exec: impl.exec,
   run: Streams.run(impl.exec),
   subsystem: impl.subsystem,
