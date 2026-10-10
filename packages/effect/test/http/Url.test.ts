@@ -122,4 +122,62 @@ describe("Url", () => {
     const updatedUrl = Url.setUrlParams(url, newParams)
     expectUrl(updatedUrl, "https://example.com/?foo=bar2&baz=qux")
   })
+
+  it("setUrlParams percent-encodes spaces", () => {
+    const url = new URL("https://example.com/")
+    const updatedUrl = Url.setUrlParams(url, UrlParams.fromInput([["foo", "bar baz"]]))
+    strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz")
+  })
+
+  it("setUrlParams encodes a literal plus sign as %2B", () => {
+    const url = new URL("https://example.com/")
+    const updatedUrl = Url.setUrlParams(url, UrlParams.fromInput([["foo", "a+b"]]))
+    strictEqual(updatedUrl.toString(), "https://example.com/?foo=a%2Bb")
+  })
+
+  describe("modifyUrlParams preserves percent encoding", () => {
+    const identity = (params: UrlParams.UrlParams) => params
+
+    it("keeps %20 in an untouched parameter", () => {
+      const url = new URL("https://example.com?foo=bar%20baz")
+      const updatedUrl = Url.modifyUrlParams(url, identity)
+      strictEqual(updatedUrl.href, url.href)
+    })
+
+    it("keeps %20 when another parameter is added", () => {
+      const url = new URL("https://example.com?foo=bar%20baz")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "value"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz&key=value")
+    })
+
+    it("keeps %20 when another parameter is removed", () => {
+      const url = new URL("https://example.com?foo=bar%20baz&drop=me")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.remove("drop"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz")
+    })
+
+    it("encodes a space in a newly added value", () => {
+      const url = new URL("https://example.com?foo=bar")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "a b"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&key=a%20b")
+    })
+
+    it("encodes a literal plus sign as %2B rather than a space", () => {
+      const url = new URL("https://example.com?foo=bar")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "a+b"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&key=a%2Bb")
+    })
+
+    it("keeps a percent-encoded plus sign from the original url", () => {
+      const url = new URL("https://example.com?foo=a%2Bb")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "value"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=a%2Bb&key=value")
+    })
+
+    it("encodes a space in a parameter key", () => {
+      const url = new URL("https://example.com?foo=bar")
+      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("a key", "v"))
+      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&a%20key=v")
+    })
+  })
 })

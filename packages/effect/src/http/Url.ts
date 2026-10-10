@@ -154,6 +154,25 @@ export const mutate: {
 })
 
 /**
+ * Writes `params` into `url.search`, preserving percent-encoded spaces.
+ *
+ * `UrlParams.toString` serializes with `URLSearchParams`, which uses the
+ * `application/x-www-form-urlencoded` rules and writes a space as `+`. Those
+ * rules are correct for a form body, but a URL query is read back with
+ * `URLSearchParams` only after it has been decoded, so writing `+` into
+ * `url.search` changes the URL the caller can observe: `?foo=bar%20baz` comes
+ * back as `?foo=bar+baz` even when the transformation left `foo` untouched.
+ *
+ * `URLSearchParams` escapes a literal `+` in a key or value as `%2B`, so every
+ * remaining `+` in its output is a space and can be restored to `%20`.
+ *
+ * @internal
+ */
+const setSearchParams = (url: URL, params: UrlParams.Input): void => {
+  url.search = UrlParams.toString(UrlParams.fromInput(params)).replace(/\+/g, "%20")
+}
+
+/**
  * @internal
  */
 const immutableURLSetter = <P extends keyof URL, A = never>(property: P): {
@@ -324,7 +343,7 @@ export const setUrlParams: {
   (url: URL, urlParams: UrlParams.Input): URL
 } = dual(2, (url: URL, urlParams: UrlParams.Input) =>
   mutate(url, (url) => {
-    url.search = UrlParams.toString(UrlParams.fromInput(urlParams))
+    setSearchParams(url, urlParams)
   }))
 
 /**
@@ -377,6 +396,10 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * changedUrl.toString() // => "https://example.com/?foo=bar&key=value"
  * ```
  *
+ * Parameters keep the percent encoding they arrived with, so an untouched
+ * `?foo=bar%20baz` is still `?foo=bar%20baz` afterwards rather than
+ * `?foo=bar+baz`.
+ *
  * @stability unstable
  * @category transforming
  * @since 4.0.0
@@ -387,5 +410,5 @@ export const modifyUrlParams: {
 } = dual(2, (url: URL, f: (urlParams: UrlParams.UrlParams) => UrlParams.Input) =>
   mutate(url, (url) => {
     const params = f(UrlParams.fromInput(url.searchParams))
-    url.search = UrlParams.toString(params)
+    setSearchParams(url, params)
   }))
