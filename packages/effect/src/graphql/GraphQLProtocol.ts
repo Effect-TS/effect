@@ -237,20 +237,7 @@ const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stre
     )
   })
 
-/**
- * Options for {@link makeHttp} and {@link layerHttp}.
- *
- * **Details**
- *
- * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
- * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead,
- * and queries and mutations stay on `POST`.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface HttpOptions<R = never> {
+interface HttpOptions<R = never> {
   readonly url: string
   readonly subscriptions?: {
     readonly webSocket: WebSocketOptions<R>
@@ -263,17 +250,29 @@ export interface HttpOptions<R = never> {
  *
  * **Details**
  *
- * With `subscriptions.webSocket` the effect also builds the graphql-ws
- * transport, so it needs a `Socket.WebSocketConstructor` and a `Scope`.
+ * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
+ * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead, and
+ * the effect also builds the graphql-ws transport, so it needs a
+ * `Socket.WebSocketConstructor` and a `Scope`.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
 export const makeHttp: {
-  <R = never>(
-    options: HttpOptions<R> & { readonly subscriptions: NonNullable<HttpOptions<R>["subscriptions"]> }
-  ): Effect.Effect<
+  <R = never>(options: {
+    readonly url: string
+    readonly subscriptions: {
+      readonly webSocket: {
+        readonly url: string
+        readonly headers?: Readonly<Record<string, string>> | undefined
+        readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
+        readonly connectionAckTimeout?: Duration.Input | undefined
+        readonly keepAlive?: Duration.Input | false | undefined
+        readonly idleTimeout?: Duration.Input | undefined
+      }
+    }
+  }): Effect.Effect<
     GraphQLProtocol["Service"],
     never,
     HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
@@ -289,37 +288,47 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   GraphQLProtocol["Service"],
   never,
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
-> =>
-  Effect.gen(function*() {
-    const client = yield* HttpClient.HttpClient
-    const execute = Effect.fnUntraced(function*(request: GraphQLRequest) {
-      const now = yield* Clock.currentTimeMillis
-      return yield* client.execute(
-        postRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
-      )
-        .pipe(
-          Effect.flatMap(readResponse),
-          fromHttpClientError(now)
-        )
+> => {
+  const http = Clock.clockWith((clock) =>
+    HttpClient.HttpClient.useSync((client) => {
+      const execute = (request: GraphQLRequest) =>
+        Effect.suspend(() => {
+          const now = clock.currentTimeMillisUnsafe()
+          return client.execute(
+            postRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
+          ).pipe(
+            Effect.flatMap(readResponse),
+            fromHttpClientError(now)
+          )
+        })
+      const subscribe = (request: GraphQLRequest): Stream.Stream<unknown, TransportError> =>
+        Stream.unwrap(Effect.suspend(() => {
+          const now = clock.currentTimeMillisUnsafe()
+          return client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
+            fromHttpClientError(now),
+            Effect.map((response) => {
+              const contentType = response.headers["content-type"] ?? ""
+              if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
+                return sseEvents(response)
+              }
+              // A server that rejects the subscription answers with a single
+              // GraphQL response, which the client reads like a query's.
+              return Stream.fromEffect(fromHttpClientError(now)(readResponse(response)))
+            })
+          )
+        }))
+      return GraphQLProtocol.of({ execute, subscribe })
     })
-    const subscribeSse = (request: GraphQLRequest): Stream.Stream<unknown, TransportError> =>
-      Stream.unwrap(Effect.gen(function*() {
-        const now = yield* Clock.currentTimeMillis
-        const response = yield* client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
-          fromHttpClientError(now)
-        )
-        const contentType = response.headers["content-type"] ?? ""
-        if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
-          return sseEvents(response)
-        }
-        // A server that rejects the subscription answers with a single
-        // GraphQL response, which the client reads like a query's.
-        return Stream.fromEffect(fromHttpClientError(now)(readResponse(response)))
-      }))
-    const webSocket = options.subscriptions?.webSocket
-    const subscribe = webSocket === undefined ? subscribeSse : (yield* makeWebSocket(webSocket)).subscribe
-    return GraphQLProtocol.of({ execute, subscribe })
-  })
+  )
+  const webSocket = options.subscriptions?.webSocket
+  return webSocket === undefined
+    ? http
+    : Effect.zipWith(
+      http,
+      makeWebSocket(webSocket),
+      (http, ws) => GraphQLProtocol.of({ execute: http.execute, subscribe: ws.subscribe })
+    )
+}
 
 /**
  * The HTTP transport: queries and mutations are sent as `POST` with a JSON
@@ -407,9 +416,19 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
  * @since 4.0.0
  */
 export const layerHttp: {
-  <R = never>(
-    options: HttpOptions<R> & { readonly subscriptions: NonNullable<HttpOptions<R>["subscriptions"]> }
-  ): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
+  <R = never>(options: {
+    readonly url: string
+    readonly subscriptions: {
+      readonly webSocket: {
+        readonly url: string
+        readonly headers?: Readonly<Record<string, string>> | undefined
+        readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
+        readonly connectionAckTimeout?: Duration.Input | undefined
+        readonly keepAlive?: Duration.Input | false | undefined
+        readonly idleTimeout?: Duration.Input | undefined
+      }
+    }
+  }): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
   (options: { readonly url: string; readonly subscriptions?: undefined }): Layer.Layer<
     GraphQLProtocol,
     never,
@@ -420,30 +439,7 @@ export const layerHttp: {
 ): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R> =>
   Layer.effect(GraphQLProtocol, makeHttpWith(options))
 
-/**
- * Options for {@link makeWebSocket} and {@link layerWebSocket}.
- *
- * **Details**
- *
- * - `headers` are sent on the opening handshake together with the
- *   `graphql-transport-ws` subprotocol. Browsers cannot set them; use them
- *   with a Node or Bun `Socket.WebSocketConstructor`.
- * - `connectionParams` is the `connection_init` payload. It runs again on
- *   every connect, so a token can be refreshed. A failure is a
- *   `TransportError`, and so is the socket closing while it runs.
- * - `connectionAckTimeout` (default 10 seconds) bounds the wait for
- *   `connection_ack`, starting once `connection_init` is sent.
- * - `keepAlive` (default 10 seconds) is how often the client sends `ping`.
- *   No frame from the server for a whole interval after a `ping` drops the
- *   connection with a retryable `TransportError`. `false` turns it off.
- * - `idleTimeout` (default 0) is how long the socket stays open after the
- *   last operation ends.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface WebSocketOptions<R = never> {
+interface WebSocketOptions<R = never> {
   readonly url: string
   readonly headers?: Readonly<Record<string, string>> | undefined
   readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
@@ -505,21 +501,35 @@ const connectionError = (cause: Cause.Cause<unknown>): TransportError => {
 
 /**
  * Builds the graphql-ws transport as an effect, for composing transports by
- * hand. Most code uses {@link layerWebSocket}.
+ * hand. Most code uses {@link layerWebSocket}, which describes the options.
  *
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
 export const makeWebSocket: {
-  <R = never>(options: WebSocketOptions<R>): Effect.Effect<
+  <R = never>(options: {
+    readonly url: string
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
+    readonly connectionAckTimeout?: Duration.Input | undefined
+    readonly keepAlive?: Duration.Input | false | undefined
+    readonly idleTimeout?: Duration.Input | undefined
+  }): Effect.Effect<
     GraphQLProtocol["Service"],
     never,
     Socket.WebSocketConstructor | Scope.Scope | R
   >
-  // Last, so `Parameters<typeof makeWebSocket>` reads `WebSocketOptions<never>`
-  // rather than the generic signature with `R` widened to `unknown`.
-  (options: WebSocketOptions): Effect.Effect<
+  // Last, so `Parameters<typeof makeWebSocket>` reads these options with `R`
+  // as `never` rather than the generic signature with `R` widened to `unknown`.
+  (options: {
+    readonly url: string
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, never> | undefined
+    readonly connectionAckTimeout?: Duration.Input | undefined
+    readonly keepAlive?: Duration.Input | false | undefined
+    readonly idleTimeout?: Duration.Input | undefined
+  }): Effect.Effect<
     GraphQLProtocol["Service"],
     never,
     Socket.WebSocketConstructor | Scope.Scope
@@ -787,8 +797,20 @@ export const makeWebSocket: {
  *   operation ends, and with code `1000` when the layer's scope closes.
  * - `subscribe` frames wait for `connection_ack`. A missing ack is a
  *   `TransportError`.
- * - Server `ping` is answered with `pong`. See {@link WebSocketOptions} for
- *   the client keep-alive.
+ * - `headers` are sent on the opening handshake together with the
+ *   `graphql-transport-ws` subprotocol. Browsers cannot set them; use them
+ *   with a Node or Bun `Socket.WebSocketConstructor`.
+ * - `connectionParams` is the `connection_init` payload. It runs again on
+ *   every connect, so a token can be refreshed. A failure is a
+ *   `TransportError`, and so is the socket closing while it runs.
+ * - `connectionAckTimeout` (default 10 seconds) bounds the wait for
+ *   `connection_ack`, starting once `connection_init` is sent.
+ * - `keepAlive` (default 10 seconds) is how often the client sends `ping`.
+ *   No frame from the server for a whole interval after a `ping` drops the
+ *   connection with a retryable `TransportError`. `false` turns it off.
+ *   Server `ping` is answered with `pong`.
+ * - `idleTimeout` (default 0) is how long the socket stays open after the
+ *   last operation ends.
  * - A lost connection fails every active operation, queries included, with a
  *   `TransportError` carrying the `closeCode`. The fatal close codes
  *   (`1002`, `4400`, `4401`, `4403`, `4406`, `4409`, `4429`) are not retryable;
@@ -829,6 +851,13 @@ export const makeWebSocket: {
  * @since 4.0.0
  */
 export const layerWebSocket = <R = never>(
-  options: WebSocketOptions<R>
+  options: {
+    readonly url: string
+    readonly headers?: Readonly<Record<string, string>> | undefined
+    readonly connectionParams?: Effect.Effect<Record<string, unknown> | undefined, unknown, R> | undefined
+    readonly connectionAckTimeout?: Duration.Input | undefined
+    readonly keepAlive?: Duration.Input | false | undefined
+    readonly idleTimeout?: Duration.Input | undefined
+  }
 ): Layer.Layer<GraphQLProtocol, never, Socket.WebSocketConstructor | R> =>
   Layer.effect(GraphQLProtocol, makeWebSocket(options))

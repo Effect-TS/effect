@@ -153,21 +153,6 @@ const Proto = {
 // type with one assertion each.
 const makeProto = (fields: Omit<Any, typeof TypeId | "pipe">): Any => Object.assign(Object.create(Proto), fields)
 
-/**
- * The options accepted by {@link query}, {@link mutation} and
- * {@link subscription}. `variables` takes struct fields or any Schema; leaving
- * it out means the operation has no variables.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export interface Options<Variables extends Schema.Top | Schema.Struct.Fields, Result extends Schema.Top> {
-  readonly document: string
-  readonly variables?: Variables | undefined
-  readonly result: Result
-}
-
 const makeOperation = <const K extends Kind>(kind: K) =>
 <
   const Name extends string,
@@ -175,7 +160,11 @@ const makeOperation = <const K extends Kind>(kind: K) =>
   Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
 >(
   name: Name,
-  options: Options<Variables, Result>
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
 ): Operation<K, Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =>
   makeProto({
     kind,
@@ -193,7 +182,8 @@ const makeOperation = <const K extends Kind>(kind: K) =>
 /**
  * Defines a query. Variables are passed to the client as their decoded type
  * and encoded through the Schema, so custom scalar codecs apply to inputs as
- * well as results.
+ * well as results. `variables` takes struct fields or any Schema; leaving it
+ * out means the operation has no variables.
  *
  * **Example** (A query with variables)
  *
@@ -227,7 +217,11 @@ export const query: <
   Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
 >(
   name: Name,
-  options: Options<Variables, Result>
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
 ) => Operation<"query", Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =
   makeOperation("query")
 
@@ -259,7 +253,11 @@ export const mutation: <
   Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
 >(
   name: Name,
-  options: Options<Variables, Result>
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
 ) => Operation<
   "mutation",
   Name,
@@ -296,7 +294,11 @@ export const subscription: <
   Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
 >(
   name: Name,
-  options: Options<Variables, Result>
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
 ) => Operation<
   "subscription",
   Name,
