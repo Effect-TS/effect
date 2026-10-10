@@ -179,9 +179,10 @@ export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
 // const { repository } = yield* github.RepoIssues({ owner: "Effect-TS", name: "effect" })
 ```
 
-Auth, subscriptions over graphql-ws or graphql-sse, and error handling are
-covered in the `effect/graphql` API reference and in the examples under
-`ai-docs/src/52_graphql` in the Effect repository.
+The getting-started example under `ai-docs/src/52_graphql` in the Effect
+repository shows an HTTP client with auth middleware and cursor paging. See
+the `effect/graphql` API reference for subscriptions over graphql-ws or
+graphql-sse and error handling.
 
 ### Paging and `$after`
 
