@@ -42,10 +42,10 @@ import type * as PlatformError from "../PlatformError.ts"
 import * as ChildProcess from "../process/ChildProcess.ts"
 import { ChildProcessSpawner } from "../process/ChildProcessSpawner.ts"
 import * as Queue from "../Queue.ts"
+import * as Result from "../Result.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import * as Address from "./internal/address.ts"
 import { utf8 } from "./internal/wire.ts"
 import * as Ssh from "./Ssh.ts"
 import { SshChannelError, SshConnectionError, SshError, SshTimeoutError } from "./SshError.ts"
@@ -92,6 +92,16 @@ export interface Options {
 const connectionError = (cause: unknown) => new SshError({ reason: new SshConnectionError({ cause }) })
 
 const closedError = () => new SshError({ reason: new SshChannelError({ description: "the ssh process has exited" }) })
+
+const invalidTarget = (error: NetAddress.NetAddressError) =>
+  new SshError({ reason: new SshChannelError({ description: `invalid forward target: ${error.message}` }) })
+
+const targetFromInput = (
+  target: Ssh.ForwardTarget
+): Result.Result<Host.HostPort | NetAddress.UnixPathAddress, SshError> =>
+  typeof target === "object" && "path" in target
+    ? Result.succeed(NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(target.path))
+    : Result.mapError(Host.hostPortFromInput(target), invalidTarget)
 
 const quoteConfigValue = (value: string) => `"${value.replace(/[\\"]/g, (char) => `\\${char}`)}"`
 
@@ -316,7 +326,7 @@ export const make = Effect.fnUntraced(function*(
       subsystem: (name) => invoke(["-T", "-s", host, "--", name]),
       forwardOut: (target: Ssh.ForwardTarget) =>
         Effect.flatMap(
-          Effect.fromResult(Address.targetFromInput(target)),
+          Effect.fromResult(targetFromInput(target)),
           (address) =>
             invoke([
               "-T",
