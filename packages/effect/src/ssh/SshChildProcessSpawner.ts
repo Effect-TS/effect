@@ -147,8 +147,10 @@ const resolveOutput = (
  * - `kill` sends the kill signal (default `SIGTERM`), then `SIGKILL` if the
  *   command has not exited after `forceKillAfter` (default one second), and
  *   finally closes the session. When the backend cannot deliver signals
- *   (such as `OpenSsh`), `kill` closes the session at once.
- * - A command killed by a signal fails `exitCode`, like local processes.
+ *   (such as `OpenSsh`), `kill` closes the session at once; see the backend
+ *   for what happens to the remote command.
+ * - A command killed by a signal, or whose session `kill` closed, fails
+ *   `exitCode`, like local processes.
  * - `pid` is a local counter rather than the remote process id.
  * - Output configured as `"ignore"` or `"inherit"` is drained and discarded;
  *   `"inherit"` cannot reach the local terminal.
@@ -220,16 +222,19 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
     const stdout = yield* output(session.stdout, resolveOutput(command.options.stdout), "stdout")
     const stderr = yield* output(session.stderr, resolveOutput(command.options.stderr), "stderr")
 
+    let closed = false
     const exitCode = Effect.flatMap(
       lift("exitCode")(Deferred.await(exited)),
       (exit) =>
-        exit._tag === "ExitStatus"
+        exit._tag === "ExitStatus" && !closed
           ? Effect.succeed(ExitCode(exit.code))
           : Effect.fail(PlatformError.systemError({
             _tag: "Unknown",
             module: "ChildProcess",
             method: "exitCode",
-            description: `Process interrupted due to receipt of signal: '${exit.signal}'`,
+            description: exit._tag === "ExitSignal"
+              ? `Process interrupted due to receipt of signal: '${exit.signal}'`
+              : "Process terminated by closing its SSH session",
             pathOrDescriptor: describe(command)
           }))
     )
@@ -250,6 +255,9 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
         // signals close the session at once.
         if (yield* signalled(options?.killSignal ?? command.options.killSignal ?? "SIGTERM", grace)) return
         if (yield* signalled("SIGKILL", Duration.seconds(1))) return
+        // The exit status of a closed session describes the transport, not
+        // the command.
+        closed = true
         yield* Effect.timeoutOption(session.close, Duration.seconds(1))
       })
 

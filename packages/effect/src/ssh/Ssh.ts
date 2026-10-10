@@ -85,7 +85,9 @@ export interface PtyOptions {
  *
  * - `env` sets environment variables; servers usually accept only names
  *   listed in their `AcceptEnv` configuration and silently ignore others.
- * - `pty` allocates a pseudo-terminal.
+ * - `pty` allocates a pseudo-terminal, which merges standard error into
+ *   standard output. Writing `"\x03"` then interrupts the command like
+ *   Ctrl-C, and servers hang up the command when the session closes.
  * - `forwardAgent` forwards the local SSH agent to the command.
  *
  * @stability experimental

@@ -149,17 +149,22 @@ const baseArguments = (options: Options): Array<string> => {
  *
  * - `exec` runs `ssh -T` (or `-tt` with `pty`). Environment variables are
  *   sent with `SetEnv`, so the server must accept them through `AcceptEnv`.
- *   Because multiplexed sessions cannot carry environment variables, such
- *   sessions open their own connection. `pty.term` sets `TERM`.
+ *   `pty.term` sets `TERM`. Multiplexed sessions cannot carry environment
+ *   variables and take their terminal modes from the local standard input,
+ *   which is not a terminal, so sessions with an environment or a pty open
+ *   their own connection.
  * - `subsystem` runs `ssh -s`, and `forwardOut` runs `ssh -W`; the origin of
  *   TCP targets is ignored.
  *
  * **Gotchas**
  *
- * - `ssh` cannot deliver signals, so `signal` fails with an
- *   `SshChannelError`. Closing a command without a pty stops the local `ssh`
- *   process, but the remote command keeps running until it notices that its
- *   input or output is gone.
+ * - Commands behave like `ssh host command`. `ssh` cannot deliver signals,
+ *   so `signal` fails with an `SshChannelError`, and closing a command stops
+ *   the local `ssh` process. Without a pty, the remote command then keeps
+ *   running until it reads its closed input or writes to its closed output;
+ *   a command that does neither, such as one writing only to a file, runs to
+ *   completion. Use `pty` for the behavior of `ssh -t`: writing `"\x03"`
+ *   interrupts the command and closing hangs it up.
  * - Commands killed by a signal report exit status `128 + n`, and `ssh`
  *   itself exits with 255 when the connection fails.
  * - Diagnostics from `ssh` appear on the standard error of remote commands.
@@ -313,7 +318,8 @@ export const make = Effect.fnUntraced(function*(
       )
 
     const exec = (command: string, sessionOptions?: Ssh.SessionOptions) => {
-      const args: Array<string> = [sessionOptions?.pty === undefined || sessionOptions.pty === false ? "-T" : "-tt"]
+      const pty = sessionOptions?.pty !== undefined && sessionOptions.pty !== false
+      const args: Array<string> = [pty ? "-tt" : "-T"]
       if (sessionOptions?.forwardAgent === true) args.push("-A")
       const env = Object.entries(sessionOptions?.env ?? {})
       if (env.length > 0) {
@@ -321,10 +327,10 @@ export const make = Effect.fnUntraced(function*(
       }
       args.push(host, "--", command)
       const term = typeof sessionOptions?.pty === "object" ? sessionOptions.pty.term : undefined
-      // Multiplexed sessions do not forward environment variables, so sessions
-      // with an environment use their own connection.
+      // Multiplexed sessions do not forward environment variables, and their
+      // terminals copy the modes of the local standard input, a pipe.
       return Effect.map(
-        invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 }),
+        invoke(args, { env: term === undefined ? undefined : { TERM: term }, multiplex: env.length === 0 && !pty }),
         ({ exitCode, ...stream }): Ssh.SshProcess => ({
           ...stream,
           exit: Effect.map(exitCode, (code) => ({ _tag: "ExitStatus", code })),
