@@ -82,6 +82,21 @@ describe("Generator group bindings", () => {
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("a fragment named like the file's group, imported only because a spread was inlined, is a located error", () =>
+    Effect.gen(function*() {
+      // `y` overlaps `Outer`, so `Outer` is written out inline and its `...OpsGroup`
+      // becomes an import of `OpsGroup` into ops.graphql.ts.
+      const generated = yield* generateIn({
+        "schema.graphql": "type Query { x: Int! y: Int! }",
+        "src/frags.graphql": "fragment OpsGroup on Query { x }\nfragment Outer on Query { ...OpsGroup y }",
+        "src/ops.graphql": "query Q { y ...Outer }"
+      }, config)
+      assert.deepStrictEqual(located(generated), [{ severity: "error", path: "src/ops.graphql", line: 1, column: 13 }])
+      assert.include(generated.result.diagnostics[0]!.message, `"OpsGroup"`)
+      assert.match(generated.result.diagnostics[0]!.message, /group/)
+      assert.deepStrictEqual(generated.result.files, [])
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("a fragment-only file may use its own group name, since it exports no group", () =>
     Effect.gen(function*() {
       const generated = yield* generateIn({
