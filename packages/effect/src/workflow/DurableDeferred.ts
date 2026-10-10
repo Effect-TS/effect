@@ -134,11 +134,7 @@ const CurrentAttempt = Context.Reference<number>(
   { defaultValue: () => 1 }
 )
 
-/**
- * Awaits registered under the instance copy of a `recordHeld` body. Once the
- * body produces a result its waits are over and their registrations are
- * released; otherwise they move to the enclosing owner, if any.
- */
+/** Awaits registered under the instance copy of a `recordHeld` body. */
 const awaitOwners = new WeakMap<WorkflowInstance["Service"], Array<string>>()
 
 const registerAwait = (instance: WorkflowInstance["Service"], name: string) => {
@@ -155,10 +151,6 @@ const releaseAwaits = (instance: WorkflowInstance["Service"], names: Array<strin
       instance.awaitedDeferreds.set(name, count)
     }
   }
-}
-
-const keepAwaits = (instance: WorkflowInstance["Service"], names: Array<string>) => {
-  awaitOwners.get(instance)?.push(...names)
 }
 
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
@@ -339,16 +331,25 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
         Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
         Effect.forkChild({ startImmediately: true })
       )
-      const exit = yield* Effect.onInterrupt(
-        Fiber.await(fiber),
-        () => Effect.andThen(Fiber.interrupt(fiber), Effect.sync(() => keepAwaits(instance, owned)))
+      return yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber)).pipe(
+        Effect.map((exit) =>
+          local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+            ? Option.none()
+            : Option.some(exit)
+        ),
+        // The waits are over once the body has a result. Otherwise every branch
+        // parked, or an enclosing race interrupted the body, and the waits move
+        // to the enclosing owner, if any, to be released when that race settles.
+        Effect.onExit((result) =>
+          Effect.sync(() => {
+            if (Exit.isSuccess(result) && Option.isSome(result.value)) {
+              releaseAwaits(instance, owned)
+            } else {
+              awaitOwners.get(instance)?.push(...owned)
+            }
+          })
+        )
       )
-      if (local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
-        keepAwaits(instance, owned)
-        return Option.none()
-      }
-      releaseAwaits(instance, owned)
-      return Option.some(exit)
     }),
     // Every branch of `effect` parked: release the hold and let the enclosing
     // activities finish before suspending. External preemption does not wait.
