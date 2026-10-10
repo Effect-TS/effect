@@ -123,61 +123,37 @@ describe("Url", () => {
     expectUrl(updatedUrl, "https://example.com/?foo=bar2&baz=qux")
   })
 
-  it("setUrlParams percent-encodes spaces", () => {
-    const url = new URL("https://example.com/")
-    const updatedUrl = Url.setUrlParams(url, UrlParams.fromInput([["foo", "bar baz"]]))
-    strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz")
-  })
-
-  it("setUrlParams encodes a literal plus sign as %2B", () => {
-    const url = new URL("https://example.com/")
-    const updatedUrl = Url.setUrlParams(url, UrlParams.fromInput([["foo", "a+b"]]))
-    strictEqual(updatedUrl.toString(), "https://example.com/?foo=a%2Bb")
-  })
-
-  describe("modifyUrlParams preserves percent encoding", () => {
-    const identity = (params: UrlParams.UrlParams) => params
-
-    it("keeps %20 in an untouched parameter", () => {
-      const url = new URL("https://example.com?foo=bar%20baz")
-      const updatedUrl = Url.modifyUrlParams(url, identity)
-      strictEqual(updatedUrl.href, url.href)
+  describe("query serialization", () => {
+    it("writes a space as %20 and a literal + as %2B", () => {
+      strictEqual(
+        Url.setUrlParams(new URL("https://example.com/"), UrlParams.fromInput([["q", "a b+c"]])).toString(),
+        "https://example.com/?q=a%20b%2Bc"
+      )
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?q=x"), UrlParams.set("q", "a b+c")).toString(),
+        "https://example.com/?q=a%20b%2Bc"
+      )
     })
 
-    it("keeps %20 when another parameter is added", () => {
-      const url = new URL("https://example.com?foo=bar%20baz")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "value"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz&key=value")
+    it("normalizes an untouched parameter, including a bare +", () => {
+      // the parameters are read back through URLSearchParams, so the query is
+      // re-encoded rather than copied through byte-for-byte: a + read back as a
+      // space is written as %20, and , / are percent-encoded
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?a=b+c"), (params) => params).href,
+        "https://example.com/?a=b%20c"
+      )
+      strictEqual(
+        Url.modifyUrlParams(new URL("https://example.com/?a=b%20c,e"), (params) => params).href,
+        "https://example.com/?a=b%20c%2Ce"
+      )
     })
 
-    it("keeps %20 when another parameter is removed", () => {
-      const url = new URL("https://example.com?foo=bar%20baz&drop=me")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.remove("drop"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar%20baz")
-    })
-
-    it("encodes a space in a newly added value", () => {
-      const url = new URL("https://example.com?foo=bar")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "a b"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&key=a%20b")
-    })
-
-    it("encodes a literal plus sign as %2B rather than a space", () => {
-      const url = new URL("https://example.com?foo=bar")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "a+b"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&key=a%2Bb")
-    })
-
-    it("keeps a percent-encoded plus sign from the original url", () => {
-      const url = new URL("https://example.com?foo=a%2Bb")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("key", "value"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=a%2Bb&key=value")
-    })
-
-    it("encodes a space in a parameter key", () => {
-      const url = new URL("https://example.com?foo=bar")
-      const updatedUrl = Url.modifyUrlParams(url, UrlParams.append("a key", "v"))
-      strictEqual(updatedUrl.toString(), "https://example.com/?foo=bar&a%20key=v")
+    it("Url.make agrees with the setters", () => {
+      assertSuccess(
+        Url.make("https://example.com/test?existing=true", UrlParams.fromInput([["q", "a b+c"]]), undefined),
+        Url.setUrlParams(new URL("https://example.com/test?existing=true"), UrlParams.fromInput([["q", "a b+c"]]))
+      )
     })
   })
 })

@@ -28,11 +28,39 @@ export class UrlError extends Data.TaggedError("UrlError")<{
 }> {}
 
 /**
+ * Writes `params` into `url.search`, normalizing the query so a space is always
+ * percent-encoded.
+ *
+ * `UrlParams.toString` serializes with `URLSearchParams`, which uses the
+ * `application/x-www-form-urlencoded` rules and writes a space as `+`. Those
+ * rules are correct for a form body, but a URL query is read back with
+ * `URLSearchParams` only after it has been decoded, so writing `+` into
+ * `url.search` changes the URL the caller can observe: `?foo=bar%20baz` comes
+ * back as `?foo=bar+baz` even when the transformation left `foo` untouched.
+ *
+ * `URLSearchParams` escapes a literal `+` in a key or value as `%2B`, so every
+ * remaining `+` in its output is a space and can be restored to `%20`.
+ *
+ * Every writer of `url.search` in this module goes through this function, so
+ * `make`, `setUrlParams` and `modifyUrlParams` all agree on the encoding.
+ *
+ * @internal
+ */
+const setSearchParams = (url: URL, params: UrlParams.Input): void => {
+  url.search = UrlParams.toString(UrlParams.fromInput(params)).replace(/\+/g, "%20")
+}
+
+/**
  * Creates a `URL` safely by appending `UrlParams` and an optional hash to a URL string.
  *
  * **Details**
  *
  * Returns a `Result` that fails with `UrlError` if the URL cannot be constructed.
+ *
+ * Query parameters already present in `url` are kept and the supplied `params`
+ * are appended to them. The combined query is written through the same encoder
+ * that `setUrlParams` and `modifyUrlParams` use, so a space is written as
+ * `%20` rather than `+`.
  *
  * @stability unstable
  * @category constructors
@@ -46,12 +74,7 @@ export const make = (
   Result.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      for (let i = 0; i < params.params.length; i++) {
-        const [key, value] = params.params[i]
-        if (value !== undefined) {
-          urlInstance.searchParams.append(key, value)
-        }
-      }
+      setSearchParams(urlInstance, UrlParams.appendAll(UrlParams.fromInput(urlInstance.searchParams), params))
       if (hash !== undefined) {
         urlInstance.hash = hash
       }
@@ -152,25 +175,6 @@ export const mutate: {
   f(copy)
   return copy
 })
-
-/**
- * Writes `params` into `url.search`, preserving percent-encoded spaces.
- *
- * `UrlParams.toString` serializes with `URLSearchParams`, which uses the
- * `application/x-www-form-urlencoded` rules and writes a space as `+`. Those
- * rules are correct for a form body, but a URL query is read back with
- * `URLSearchParams` only after it has been decoded, so writing `+` into
- * `url.search` changes the URL the caller can observe: `?foo=bar%20baz` comes
- * back as `?foo=bar+baz` even when the transformation left `foo` untouched.
- *
- * `URLSearchParams` escapes a literal `+` in a key or value as `%2B`, so every
- * remaining `+` in its output is a space and can be restored to `%20`.
- *
- * @internal
- */
-const setSearchParams = (url: URL, params: UrlParams.Input): void => {
-  url.search = UrlParams.toString(UrlParams.fromInput(params)).replace(/\+/g, "%20")
-}
 
 /**
  * @internal
@@ -396,9 +400,14 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * changedUrl.toString() // => "https://example.com/?foo=bar&key=value"
  * ```
  *
- * Parameters keep the percent encoding they arrived with, so an untouched
- * `?foo=bar%20baz` is still `?foo=bar%20baz` afterwards rather than
- * `?foo=bar+baz`.
+ * The result is normalized rather than preserved byte-for-byte: every
+ * parameter, including ones `f` left untouched, is re-encoded with the same
+ * rules that `setUrlParams` uses. The visible change is that a space is always
+ * written as `%20`, so an untouched `?foo=bar%20baz` stays
+ * `?foo=bar%20baz` instead of becoming `?foo=bar+baz`, and a literal `+` in a
+ * decoded value becomes `%2B`. Because the parameters are read back through
+ * `URLSearchParams`, other forms are normalized too — `?a=b,c` is written
+ * `?a=b%2Cc`, `?a=x/y` as `?a=x%2Fy`, and a bare `?a` as `?a=`.
  *
  * @stability unstable
  * @category transforming
