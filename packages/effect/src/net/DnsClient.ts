@@ -683,8 +683,6 @@ export const parseResolvConf = (text: string): ResolvConf => {
   return { nameServers, search, ndots, timeout, attempts, rotate, useTcp, noAaaa }
 }
 
-const relative = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
-
 /**
  * Parses a hosts file into the addresses of each host name. Invalid entries
  * are skipped.
@@ -715,7 +713,7 @@ export const parseHosts = (text: string): Hosts => {
     for (const name of names) {
       const domain = Host.domainNameFromString(name)
       if (Result.isFailure(domain)) continue
-      const key = relative(domain.success) as Host.DomainName
+      const key = Host.toRelative(domain.success)
       const addresses = hosts.get(key)
       if (addresses === undefined) hosts.set(key, [address.success])
       else if (!addresses.some((existing) => Equal.equals(existing, address.success))) addresses.push(address.success)
@@ -758,7 +756,7 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
       if (Host.isFullyQualified(host)) return [host]
       const searched = Arr.filterMap(
         client.search.filter((domain) => domain !== "."),
-        (domain) => Host.domainNameFromString(`${host}.${relative(domain)}.`)
+        (domain) => Host.domainNameFromString(`${host}.${Host.toRelative(domain)}.`)
       )
       const absoluteHost = Host.toFullyQualified(host)
       return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
@@ -806,7 +804,7 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
 
     return Dns.make({
       lookup: Effect.fnUntraced(function*(host, family) {
-        const key = relative(host) as Host.DomainName
+        const key = Host.toRelative(host)
         const fromHosts = ((yield* client.hosts).get(key) ?? []).filter((address) =>
           family === undefined || NetAddress.isFamily(address, family)
         )
