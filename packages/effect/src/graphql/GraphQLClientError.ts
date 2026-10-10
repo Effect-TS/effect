@@ -57,8 +57,7 @@ export const GraphQLError = Schema.Struct({
 export type GraphQLError = typeof GraphQLError.Type
 
 /**
- * The server answered with a non-empty `errors` array. Never retryable: the
- * server executed the operation and reported errors for it.
+ * The server answered with a non-empty `errors` array.
  *
  * **Details**
  *
@@ -80,6 +79,7 @@ export type GraphQLError = typeof GraphQLError.Type
  *   data: { repository: null }
  * })
  *
+ * reason.isRetryable // => false
  * reason.errors.map((error) => error.path?.[0]) // => ["repository"]
  * ```
  *
@@ -94,6 +94,16 @@ export class ResponseError
     extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json))
   })
 {
+  /**
+   * A `ResponseError` is never retryable: the server executed the operation
+   * and reported errors for it.
+   *
+   * @since 4.0.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
   override get message(): string {
     return this.errors.map((error) => error.message).join("; ")
   }
@@ -218,6 +228,15 @@ export class EncodeError
     description: Schema.String
   })
 {
+  /**
+   * An `EncodeError` is never retryable.
+   *
+   * @since 4.0.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
   override get message(): string {
     return this.description
   }
@@ -242,6 +261,15 @@ export class DecodeError
     description: Schema.String
   })
 {
+  /**
+   * A `DecodeError` is never retryable.
+   *
+   * @since 4.0.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
   override get message(): string {
     return this.description
   }
@@ -267,6 +295,15 @@ export class PaginationError
     cursor: Schema.NullOr(Schema.String)
   })
 {
+  /**
+   * A `PaginationError` is never retryable.
+   *
+   * @since 4.0.0
+   */
+  get isRetryable(): boolean {
+    return false
+  }
+
   override get message(): string {
     return this.description
   }
@@ -332,13 +369,12 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
   override readonly cause = this.reason
 
   /**
-   * `true` only for a retryable `TransportError` reason; every other reason
-   * means the operation was executed or never sent.
+   * Delegates to the reason's `isRetryable`.
    *
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    return this.reason._tag === "TransportError" && this.reason.isRetryable
+    return this.reason.isRetryable
   }
 
   /**
