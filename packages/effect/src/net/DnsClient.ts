@@ -494,10 +494,17 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
       type: Dns.RecordType,
       queryOptions?: { readonly recursionDesired?: boolean | undefined }
     ) {
-      const name = yield* Effect.mapError(
-        Effect.fromResult(Host.domainNameFromString(input)),
-        (cause) => new Dns.DnsError({ reason: "BadName", method: "resolve", hostname: input, recordType: type, cause })
-      )
+      const parsed = Host.domainNameFromInput(input)
+      if (Result.isFailure(parsed)) {
+        return yield* new Dns.DnsError({
+          reason: "BadName",
+          method: "resolve",
+          hostname: input,
+          recordType: type,
+          cause: parsed.failure
+        })
+      }
+      const name = parsed.success
       const fail = (reason: Dns.DnsErrorReason, cause?: unknown) =>
         new Dns.DnsError({ reason, method: "resolve", hostname: name, recordType: type, cause })
       const question = { name: Host.toFullyQualified(name), type: DnsMessage.typeCodes[type] }
@@ -526,10 +533,11 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
 
       const attempt = Effect.fnUntraced(function*(server: Transport["Service"]["servers"][number]) {
         const payload = yield* server.send(exchange)
-        const response = yield* Effect.mapError(
-          Effect.fromResult(DnsMessage.decodeResponse(payload)),
-          (cause) => fail("InvalidResponse", cause)
-        )
+        const decoded = DnsMessage.decodeResponse(payload)
+        if (Result.isFailure(decoded)) {
+          return yield* fail("InvalidResponse", decoded.failure)
+        }
+        const response = decoded.success
         if (response.rcode !== 0 && response.rcode !== 3) {
           return yield* fail(rcodeReasons[response.rcode] ?? "Unknown", response)
         }
