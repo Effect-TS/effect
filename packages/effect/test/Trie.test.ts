@@ -8,6 +8,14 @@ import * as Result from "effect/Result"
 import * as Trie from "effect/Trie"
 
 describe("Trie", () => {
+  it("isTrie recognizes a Trie", () => {
+    strictEqual(Trie.isTrie(Trie.make(["a", 1], ["b", 2])), true)
+    strictEqual(Trie.isTrie(Trie.empty()), true)
+    strictEqual(Trie.isTrie({ a: 1 }), false)
+    strictEqual(Trie.isTrie(new Map([["a", 1]])), false)
+    strictEqual(Trie.isTrie(null), false)
+  })
+
   it("equality rejects tries with different numbers of entries after a hash collision", () => {
     // Makes the "a" entry collide with the empty trie.
     const value = {
