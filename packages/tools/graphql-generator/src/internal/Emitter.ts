@@ -532,10 +532,13 @@ class Emitter {
    */
   applies(condition: string | undefined, target: string): boolean {
     if (condition === undefined || condition === target) return true
-    const type = this.type(condition)
-    if (!isAbstract(type)) return false
-    const covered = new Set(type.possibleTypes)
-    return this.possibleTypes(target).every((name) => covered.has(name))
+    const type = this.type(target)
+    if (type._tag === "ObjectType") {
+      const fragmentType = this.type(condition)
+      return isAbstract(fragmentType) && fragmentType.possibleTypes.includes(target)
+    }
+    // Only an interface the target declares contributes fields the target has.
+    return type._tag === "InterfaceType" && type.interfaces.includes(condition)
   }
 
   /**
@@ -755,8 +758,9 @@ class Emitter {
 
   /**
    * The object types a selection on an abstract type names through fragments
-   * that don't cover all of its possible types, in order of first mention.
-   * Each gets its own member of the union.
+   * that don't apply to the type itself (see `applies`), in order of first
+   * mention. Each gets its own member of the union, even when it is the only
+   * possible type.
    */
   selectedTypes(
     parent: SchemaModel.InterfaceType | SchemaModel.UnionType,
@@ -772,12 +776,10 @@ class Emitter {
           : selection
         const condition = definition.typeCondition?.name.value
         let next = scope
-        if (condition !== undefined) {
+        if (!this.applies(condition, parent.name)) {
           const inScope = new Set(scope)
-          next = this.possibleTypes(condition).filter((name) => inScope.has(name))
-          if (next.length < all.length) {
-            for (const name of next) if (!selected.includes(name)) selected.push(name)
-          }
+          next = this.possibleTypes(condition!).filter((name) => inScope.has(name))
+          for (const name of next) if (!selected.includes(name)) selected.push(name)
         }
         walk(definition.selectionSet.selections, next)
       }
@@ -890,8 +892,15 @@ class Emitter {
       ? this.selection(
         ctx,
         typeName,
-        fields.flatMap(({ selection: field, via }) =>
-          (field.selectionSet?.selections ?? []).map((selection) => ({ selection, via, conditional: false }))
+        // The parent's key covers its only occurrence's condition. With several
+        // occurrences, the parent can be present because of another one, so
+        // each occurrence's condition carries over to the children it adds.
+        fields.flatMap(({ conditional, selection: field, via }) =>
+          (field.selectionSet?.selections ?? []).map((selection) => ({
+            selection,
+            via,
+            conditional: conditional && fields.length > 1
+          }))
         ),
         indent
       )
