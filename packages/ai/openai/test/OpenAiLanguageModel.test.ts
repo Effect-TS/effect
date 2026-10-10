@@ -573,45 +573,6 @@ describe("OpenAiLanguageModel", () => {
             })
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
-        it.effect("replays encrypted reasoning statelessly for an unknown model", () =>
-          Effect.gen(function*() {
-            const history = Prompt.fromResponseParts([
-              AiResponse.makePart("reasoning-start", {
-                id: "reasoning_123:0",
-                metadata: { openai: { itemId: "reasoning_123" } }
-              }),
-              AiResponse.makePart("reasoning-delta", {
-                id: "reasoning_123:0",
-                delta: "Let me think..."
-              }),
-              AiResponse.makePart("reasoning-end", {
-                id: "reasoning_123:0",
-                metadata: {
-                  openai: {
-                    itemId: "reasoning_123",
-                    encryptedContent: "encrypted-reasoning"
-                  }
-                }
-              })
-            ])
-
-            yield* LanguageModel.generateText({
-              prompt: Prompt.concat(history, Prompt.make("Continue"))
-            }).pipe(Effect.provide(OpenAiLanguageModel.model("custom-model", { store: false })))
-
-            const requests = yield* MockHttpClient.requests
-            const body = yield* getRequestBody(requests[0])
-            const reasoningItem = body.input.find((item: any) => item.type === "reasoning")
-
-            assert.isDefined(reasoningItem)
-            deepStrictEqual(reasoningItem, {
-              type: "reasoning",
-              id: "reasoning_123",
-              summary: [{ type: "summary_text", text: "Let me think..." }],
-              encrypted_content: "encrypted-reasoning"
-            })
-          }).pipe(Effect.provide(makeTestLayer({ body: { model: "custom-model" } }))))
-
         it.effect("serializes stored assistant history according to item reference config", () =>
           Effect.gen(function*() {
             yield* LanguageModel.generateText({
@@ -2447,7 +2408,6 @@ describe("OpenAiLanguageModel", () => {
             fileIdPrefixes: ["file-"],
             strictJsonSchema: false,
             useItemReferences: false,
-            reasoningModel: true,
             temperature: 0.5
           }))
         )
@@ -2458,93 +2418,10 @@ describe("OpenAiLanguageModel", () => {
         strictEqual(body.fileIdPrefixes, undefined)
         strictEqual(body.strictJsonSchema, undefined)
         strictEqual(body.useItemReferences, undefined)
-        strictEqual(body.reasoningModel, undefined)
         strictEqual(body.temperature, 0.5)
       }).pipe(Effect.provide(makeTestLayer())))
   })
-
-  describe("reasoning capabilities", () => {
-    it.effect("merges explicit include values with generated values", () =>
-      Effect.gen(function*() {
-        yield* LanguageModel.generateText({ prompt: "test" }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("custom-model", {
-            store: false,
-            include: ["message.input_image.image_url", "reasoning.encrypted_content"],
-            top_logprobs: 2
-          }))
-        )
-
-        const requests = yield* MockHttpClient.requests
-        const body = yield* getRequestBody(requests[0])
-
-        deepStrictEqual(body.include, [
-          "message.input_image.image_url",
-          "reasoning.encrypted_content",
-          "message.output_text.logprobs"
-        ])
-      }).pipe(Effect.provide(makeTestLayer())))
-
-    for (const { name, model, config, include, role } of reasoningCapabilityCases) {
-      it.effect(name, () =>
-        Effect.gen(function*() {
-          yield* LanguageModel.generateText({
-            prompt: Prompt.make([
-              { role: "system", content: "You are a helpful assistant" },
-              { role: "user", content: "Hello" }
-            ])
-          }).pipe(Effect.provide(OpenAiLanguageModel.model(model, config)))
-
-          const requests = yield* MockHttpClient.requests
-          const body = yield* getRequestBody(requests[0])
-
-          deepStrictEqual(body.include, include)
-          strictEqual(body.input[0].role, role)
-        }).pipe(Effect.provide(makeTestLayer({ body: { model } }))))
-    }
-
-    it.effect("prefers the reasoningModel override from withConfigOverride", () =>
-      Effect.gen(function*() {
-        yield* LanguageModel.generateText({
-          prompt: Prompt.make([
-            { role: "system", content: "You are a helpful assistant" },
-            { role: "user", content: "Hello" }
-          ])
-        }).pipe(
-          OpenAiLanguageModel.withConfigOverride({ reasoningModel: true }),
-          Effect.provide(OpenAiLanguageModel.model("gpt-4.1", { store: false, reasoningModel: false }))
-        )
-
-        const requests = yield* MockHttpClient.requests
-        const body = yield* getRequestBody(requests[0])
-
-        deepStrictEqual(body.include, ["reasoning.encrypted_content"])
-        strictEqual(body.input[0].role, "developer")
-      }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-4.1" } }))))
-  })
 })
-
-const reasoningCapabilityCases: ReadonlyArray<{
-  readonly name: string
-  readonly model: string
-  readonly config: Omit<typeof OpenAiLanguageModel.Config.Service, "model">
-  readonly include: ReadonlyArray<OpenAiSchema.IncludeEnum> | undefined
-  readonly role: "system" | "developer"
-}> = [
-  {
-    name: "defaults an unknown model to reasoning",
-    model: "custom-model",
-    config: { store: false },
-    include: ["reasoning.encrypted_content"],
-    role: "developer"
-  },
-  {
-    name: "disables automatic reasoning without dropping explicit includes",
-    model: "custom-model",
-    config: { store: false, reasoningModel: false, include: ["message.input_image.image_url"] },
-    include: ["message.input_image.image_url"],
-    role: "system"
-  }
-]
 
 // =============================================================================
 // Test Infrastructure
