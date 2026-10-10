@@ -157,14 +157,16 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       # Cores contain process memory, including possible credentials. Never upload
-      # plaintext. Configure this public RSA certificate before enabling capture;
-      # keep its private key outside GitHub Actions and decrypt artifacts offline.
+      # plaintext. Keep capture disabled until runner-compatible placement is
+      # validated: Namespace currently rejects core_pattern writes. Keep the
+      # certificate private key outside Actions and decrypt artifacts offline.
       - name: Prepare encrypted Deno core capture
         id: deno-cores
         if: matrix.runtime == 'Deno'
         env:
           DENO_CORE_CERTIFICATE: ${{ vars.DENO_CORE_CERTIFICATE }}
         run: |
+          set -o pipefail
           if [ -z "$DENO_CORE_CERTIFICATE" ]; then
             echo "::warning::Deno core capture disabled: configure DENO_CORE_CERTIFICATE (public RSA X.509 certificate)."
             exit 0
@@ -180,7 +182,13 @@ jobs:
           cp "$(command -v deno)" "$capture/deno"
           deno --version > "$capture/version.txt"
           (cd "$capture" && sha256sum deno > sha256.txt)
-          sudo sysctl -w "kernel.core_pattern=$capture/core.%e.%p.%t"
+          pattern="$capture/core.%e.%p.%t"
+          sudo sysctl -w "kernel.core_pattern=$pattern"
+          # Namespace can report success despite a read-only sysctl mount.
+          if [ "$(sysctl -n kernel.core_pattern)" != "$pattern" ]; then
+            echo "::error::Deno core capture disabled: kernel.core_pattern did not retain the requested path."
+            exit 1
+          fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
       - name: Test
         id: test
@@ -193,6 +201,7 @@ jobs:
         id: deno-crash
         if: failure() && matrix.runtime == 'Deno' && steps.test.outcome == 'failure' && steps.deno-cores.outputs.enabled == 'true'
         run: |
+          set -o pipefail
           umask 077
           capture="$RUNNER_TEMP/deno-cores"
           trap 'rm -rf "$capture"' EXIT
