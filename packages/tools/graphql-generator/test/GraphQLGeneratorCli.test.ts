@@ -123,6 +123,18 @@ const read = Effect.fnUntraced(function*(file: string) {
 })
 
 describe("graphqlgen CLI", () => {
+  it.effect("unknown flags exit 2", () =>
+    Effect.gen(function*() {
+      const result = yield* runCli(["--unknown"])
+      assert.strictEqual(result.exitCode, 2, result.output)
+    }))
+
+  it.effect("--watch --check exits 2", () =>
+    Effect.gen(function*() {
+      const result = yield* runCli(["--watch", "--check"])
+      assert.strictEqual(result.exitCode, 2, result.output)
+    }))
+
   it.effect("a clean run writes the generated files, deletes stale ones and exits 0; a second run writes nothing", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
