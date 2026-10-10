@@ -7,8 +7,9 @@
  * Messages are graphql-js's wording for the same rule, without its "Did you
  * mean" suggestion lists, so the reference implementation can arbitrate.
  * Where graphql-js reports several locations, the case uses the one named in
- * the group's `location` note. Rejecting anonymous operations and cross-file
- * uniqueness have no graphql-js counterpart. graphql-js's full rule set also
+ * the group's `location` note. Rejecting anonymous operations, cross-file
+ * fragment resolution and name uniqueness, and the shared operation/fragment
+ * namespace (EFF-1831 point 3) have no graphql-js counterpart. graphql-js's full rule set also
  * flags `$viewer` in the variables group for its position, a rule we leave to
  * the runtime.
  */
@@ -52,6 +53,11 @@ union Pet = Dog | Cat
 
 union SearchResult = User | Repo
 
+"""An interface nothing implements yet."""
+interface Orphan {
+  id: ID!
+}
+
 enum Role {
   ADMIN
   MEMBER
@@ -67,6 +73,7 @@ type Query {
   user(id: ID!): User
   users(filter: UserFilter, roles: [Role!]): [User!]!
   search(term: String!): [SearchResult!]!
+  orphan: Orphan
 }
 
 type Mutation {
@@ -580,6 +587,196 @@ fragment UserFields on User {
           column: 5,
           message:
             "Fields \"avatar\" conflict because they have differing arguments. Use different aliases on the fields to fetch both if this was intentional."
+        }
+      ]
+    }
+  },
+  {
+    rule: "fragments resolve across files",
+    location: "a diagnostic is reported in the file holding the offending node",
+    valid: [[
+      file(
+        `query Viewer($id: ID!) {
+  ...ViewerUser
+}
+`,
+        "viewer.graphql"
+      ),
+      file(
+        `fragment ViewerUser on Query {
+  user(id: $id) {
+    ...UserName
+  }
+}
+
+fragment UserName on User {
+  name
+}
+`,
+        "fragments.graphql"
+      )
+    ]],
+    invalid: {
+      files: [
+        file(
+          `query Viewer {
+  users {
+    ...A
+  }
+  ...ViewerUser
+}
+
+fragment B on User {
+  ...A
+}
+`,
+          "viewer.graphql"
+        ),
+        file(
+          `fragment ViewerUser on Query {
+  user(id: $id) {
+    id
+  }
+}
+
+fragment A on User {
+  ...B
+}
+`,
+          "fragments.graphql"
+        )
+      ],
+      diagnostics: [
+        {
+          path: "viewer.graphql",
+          line: 9,
+          column: 3,
+          message: "Cannot spread fragment \"B\" within itself via \"A\"."
+        },
+        {
+          path: "fragments.graphql",
+          line: 2,
+          column: 12,
+          message: "Variable \"$id\" is not defined by operation \"Viewer\"."
+        }
+      ]
+    }
+  },
+  {
+    rule: "operations and fragments share one name namespace",
+    location: "every definition sharing a name is reported at its name, in its own file",
+    valid: [[
+      file(
+        `query Viewer {
+  user(id: "1") {
+    ...ViewerFields
+  }
+}
+
+fragment ViewerFields on User {
+  id
+}
+`,
+        "viewer.graphql"
+      ),
+      file(
+        `query Friends {
+  user(id: "1") {
+    name
+  }
+}
+`,
+        "friends.graphql"
+      )
+    ]],
+    invalid: {
+      files: [
+        file(
+          `query UserFields {
+  user(id: "1") {
+    ...UserFields
+    ...Friends
+  }
+}
+
+fragment UserFields on User {
+  id
+}
+
+fragment Friends on User {
+  name
+}
+`,
+          "a.graphql"
+        ),
+        file(
+          `query Friends {
+  user(id: "2") {
+    id
+  }
+}
+`,
+          "b.graphql"
+        )
+      ],
+      diagnostics: [
+        {
+          path: "a.graphql",
+          line: 1,
+          column: 7,
+          message: "There can be only one operation or fragment named \"UserFields\"."
+        },
+        {
+          path: "a.graphql",
+          line: 8,
+          column: 10,
+          message: "There can be only one operation or fragment named \"UserFields\"."
+        },
+        {
+          path: "a.graphql",
+          line: 12,
+          column: 10,
+          message: "There can be only one operation or fragment named \"Friends\"."
+        },
+        {
+          path: "b.graphql",
+          line: 1,
+          column: 7,
+          message: "There can be only one operation or fragment named \"Friends\"."
+        }
+      ]
+    }
+  },
+  {
+    rule: "a composite type overlaps itself, even with no possible types",
+    valid: [[file(`query Orphan {
+  orphan {
+    ... on Orphan {
+      id
+    }
+    ...OrphanId
+  }
+}
+
+fragment OrphanId on Orphan {
+  id
+}
+`)]],
+    invalid: {
+      files: [file(`query Viewer {
+  user(id: "1") {
+    ... on Orphan {
+      id
+    }
+  }
+}
+`)],
+      diagnostics: [
+        {
+          path: "query.graphql",
+          line: 3,
+          column: 5,
+          message: "Fragment cannot be spread here as objects of type \"User\" can never be of type \"Orphan\"."
         }
       ]
     }
