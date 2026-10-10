@@ -1,0 +1,16 @@
+Port 22
+HostKey /etc/ssh/ssh_host_ed25519_key
+AuthorizedKeysFile /etc/ssh/authorized_keys
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+StrictModes no
+Subsystem sftp internal-sftp
+AllowTcpForwarding yes
+AllowStreamLocalForwarding yes
+AllowAgentForwarding yes
+AcceptEnv EFFECT_*
+MaxStartups 200
+MaxSessions 200
+PerSourcePenalties no
+LogLevel ERROR
