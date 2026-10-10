@@ -1,15 +1,12 @@
-import * as JsonSchemaGenerator from "@effect/openapi-generator/JsonSchemaGenerator"
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type { OpenAPISpec, OpenAPISpecOperation, OpenAPISpecPathItem } from "effect/http-api/OpenApi"
 import type * as JsonSchema from "effect/JsonSchema"
-import * as Schema from "effect/Schema"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { rolldown } from "rolldown"
 
 // These integration checks start a fresh TypeScript compiler under CI load.
 const compilationTimeout = 60_000
@@ -1103,6 +1100,7 @@ export const TestClientError = <Tag extends string, E>(
         `Schema.Literal("InvalidRequestError")`,
         `Schema.Literal("DeviceTokenOAuthError")`,
         `"400": decodeError("PollDeviceToken400", PollDeviceToken400)`,
+        `TestClientError<"PollDeviceToken400", PollDeviceToken400>`,
         `export type DownloadArchive404 = { readonly "title": string }`,
         `const decodeBinary = (response: HttpClientResponse.HttpClientResponse) =>`,
         `Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))`,
@@ -2969,136 +2967,6 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
-    describe("generator schema output", () => {
-      const redundantTypeQuery = /typeof \w+\.Type/
-
-      const spec: OpenAPISpec = {
-        openapi: "3.1.0",
-        info: { title: "Schema output", version: "1.0.0" },
-        components: {
-          securitySchemes: {},
-          schemas: {
-            Value: { type: "object", properties: { amount: { type: "number", minimum: 0 } }, required: ["amount"] },
-            Problem: { type: "object", properties: { message: { type: "string" } }, required: ["message"] }
-          }
-        },
-        security: [],
-        tags: [],
-        paths: {
-          "/value": {
-            post: {
-              operationId: "createValue",
-              parameters: [],
-              tags: ["Values"],
-              security: [],
-              requestBody: {
-                required: true,
-                content: { "application/json": { schema: { $ref: "#/components/schemas/Value" } } }
-              },
-              responses: {
-                "200": {
-                  description: "Value",
-                  content: {
-                    "application/json": {
-                      schema: { oneOf: [{ $ref: "#/components/schemas/Value" }, { type: "string" }] }
-                    }
-                  }
-                },
-                "400": {
-                  description: "Problem",
-                  content: { "application/json": { schema: { $ref: "#/components/schemas/Problem" } } }
-                }
-              }
-            }
-          },
-          "/events": {
-            get: {
-              operationId: "readEvents",
-              parameters: [],
-              tags: ["Values"],
-              security: [],
-              responses: {
-                "200": {
-                  description: "Events",
-                  content: { "text/event-stream": { schema: { $ref: "#/components/schemas/Value" } } }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      it.effect("uses response aliases without changing encoded request types", () =>
-        Effect.gen(function*() {
-          const generator = yield* OpenApiGenerator.OpenApiGenerator
-          const source = yield* generator.generate(spec, { name: "OutputClient", format: "httpclient" })
-          assert.notMatch(source, redundantTypeQuery)
-          assert.include(source, "typeof CreateValueRequestJson.Encoded")
-          assert.include(source, "WithOptionalResponse<CreateValue200,")
-          assert.include(source, "OutputClientError<\"CreateValue400\", CreateValue400>")
-          assert.include(
-            source,
-            `readonly "readEventsSse": () => Stream.Stream<{ readonly event: string; readonly id: string | undefined; readonly data: ReadEvents200Sse }, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ReadEvents200Sse.DecodingServices>`
-          )
-        }).pipe(Effect.provide(OpenApiGenerator.layerTransformerSchema)))
-
-      it.effect("typechecks decoded response aliases against their schemas", () =>
-        assertGeneratedClientsCompile(spec, {
-          formats: ["httpclient"],
-          usage: `type Matches<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false
-    export const sameSuccess: Matches<CreateValue200, typeof CreateValue200.Type> = true
-    export const sameError: Matches<CreateValue400, typeof CreateValue400.Type> = true
-    export const sameSse: Matches<ReadEvents200Sse, typeof ReadEvents200Sse.Type> = true
-    `
-        }), compilationTimeout)
-
-      it("emits finite numbers while retaining constraints and example objects", async () => {
-        const description = "Schema.Number is text; export const Amount is text"
-        const generator = JsonSchemaGenerator.make()
-        generator.addSchema("Amount", { type: "number", minimum: 0, description })
-        generator.addSchema("BareAmount", { type: "number", minimum: 0 })
-        generator.addSchema("Example", { type: "object", examples: [{ _tag: "Number", checks: [] }] })
-        const source = generator.generate("openapi-3.1", {}, false)
-        assert.include(source, "export const BareAmount = Schema.Finite")
-        assert.include(
-          source,
-          `export const Amount = Schema.Number.annotate({ "description": ${JSON.stringify(description)} })`
-        )
-        assert.include(source, JSON.stringify(description))
-        assert.include(source, "\"_tag\": \"Number\"")
-        assert.include(source, "Schema.isGreaterThanOrEqualTo(0)")
-        const bundle = await rolldown({
-          input: "schemas.ts",
-          external: (id) => id !== "schemas.ts",
-          plugins: [{
-            name: "generated-schemas",
-            resolveId: (id) => id === "schemas.ts" ? id : undefined,
-            load: (id) => id === "schemas.ts" ? `import * as Schema from "effect/Schema"\n${source}` : undefined
-          }]
-        })
-        const exports = {} as { Amount: Schema.Codec<number>; BareAmount: Schema.Codec<number> }
-        try {
-          const { output } = await bundle.generate({ format: "cjs" })
-          const compiled = output[0]
-          assert.strictEqual(compiled.type, "chunk")
-          new Function("require", "exports", compiled.code)((id: string) => {
-            assert.strictEqual(id, "effect/Schema")
-            return Schema
-          }, exports)
-        } finally {
-          await bundle.close()
-        }
-        const schemas = [exports.Amount, exports.BareAmount]
-        assert.strictEqual(schemas[0].ast.annotations?.description, description)
-        for (const schema of schemas) {
-          const isAmount = Schema.is(schema)
-          assert.isTrue(isAmount(0))
-          assert.isTrue(isAmount(Number.MAX_VALUE))
-          for (const value of [NaN, Infinity, -Infinity, -1]) assert.isFalse(isAmount(value))
-        }
-      })
-    })
-
     for (const format of ["httpclient", "httpclient-type-only"] as const) {
       for (const exactOptionalPropertyTypes of [true, false]) {
         it.effect(

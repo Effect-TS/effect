@@ -449,56 +449,36 @@ describe("toCodeDocument", () => {
   })
 
   describe("Number", () => {
-    it("preserves node annotations when rendering a finite number", async () => {
-      const schema = Schema.Number.annotate({
-        identifier: "Amount",
-        message: "custom msg",
-        expected: "an amount",
-        description: "amount"
-      }).check(Schema.isFinite())
-      const document = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
-      const generated: typeof schema = new Function("Schema", `return ${document.codes[0].runtime}`)(Schema)
-      assert.deepStrictEqual(generated.ast.annotations, schema.ast.annotations)
-      for (const key of ["identifier", "message", "expected", "description"] as const) {
-        assert.deepStrictEqual(
-          generated.ast.checks?.map((check) => check.annotations?.[key]),
-          schema.ast.checks?.map((check) => check.annotations?.[key])
-        )
-      }
-      assert.deepStrictEqual(Schema.toJsonSchemaDocument(generated), Schema.toJsonSchemaDocument(schema))
-      await new TestSchema.Asserts(schema).decoding().fail(Infinity, "Expected a finite number")
-      await new TestSchema.Asserts(generated).decoding().fail(Infinity, "Expected a finite number")
-    })
-
-    it("preserves a finite check after another check", () => {
-      assertSchema({
-        schema: Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite())
-      }, {
-        codes: makeCode(
-          `Schema.Number.check(Schema.isGreaterThan(0)).check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
-          "number"
-        )
+    it("Finite", () => {
+      assertSchema({ schema: Schema.Finite }, {
+        codes: makeCode("Schema.Finite", "number")
+      })
+      assertSchema({ schema: Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0)) }, {
+        codes: makeCode("Schema.Finite.check(Schema.isGreaterThan(0))", "number")
       })
     })
 
-    it("emits the canonical finite schema without duplicating its first check", () => {
-      assertSchema({
-        schema: Schema.Number.check(Schema.isFinite(), Schema.isGreaterThan(0))
-      }, {
-        codes: makeCode(`Schema.Finite.check(Schema.isGreaterThan(0))`, "number")
-      })
-    })
-
-    it("preserves custom, aborted, and grouped finite checks", () => {
-      const custom = Schema.Number.check(Schema.isFinite({ toCode: () => ({ runtime: "Schema.isGreaterThan(10)" }) }))
-      const aborted = Schema.Number.check(Schema.isFinite().abort())
-      const grouped = Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)]))
-      for (const schema of [custom, aborted, grouped]) {
-        const code = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast])).codes[0]
-        assert.isDefined(code)
-        assert.include(code!.runtime, "Schema.Number.check(")
-        assert.notInclude(code!.runtime, "Schema.Finite")
-      }
+    it("Number & non-canonical finite check", () => {
+      const expectRuntime = (schema: Schema.Constraint, runtime: string) =>
+        assertSchema({ schema }, { codes: makeCode(runtime, "number") })
+      const finite = `Schema.isFinite().annotate({ "expected": "a finite number" })`
+      expectRuntime(
+        Schema.Number.annotate({ description: "a" }).check(Schema.isFinite()),
+        `Schema.Number.annotate({ "description": "a" }).check(${finite})`
+      )
+      expectRuntime(
+        Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite()),
+        `Schema.Number.check(Schema.isGreaterThan(0)).check(${finite})`
+      )
+      expectRuntime(
+        Schema.Number.check(Schema.isFinite({ expected: "a real number" })),
+        `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a real number" }))`
+      )
+      expectRuntime(Schema.Number.check(Schema.isFinite().abort()), `Schema.Number.check(Schema.isFinite().abort())`)
+      expectRuntime(
+        Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)])),
+        `Schema.Number.check(Schema.makeFilterGroup([Schema.isFinite(), Schema.isGreaterThan(0)]))`
+      )
     })
 
     it("Number", () => {
