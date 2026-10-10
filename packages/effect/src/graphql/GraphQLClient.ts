@@ -13,9 +13,12 @@
  * @stability experimental
  * @since 4.0.0
  */
+import { isReadonlyArrayNonEmpty, type NonEmptyReadonlyArray } from "../Array.ts"
+import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import type * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
@@ -284,53 +287,114 @@ export const make = <Ops extends GraphQL.Any>(
   Effect.gen(function*() {
     const protocol = yield* GraphQLProtocol
     const context = yield* Effect.context<never>()
-    const retryPolicy = Schedule.while(
-      (options?.subscriptionRetry ?? defaultSubscriptionRetry) as Schedule.Schedule<unknown, unknown>,
-      ({ input }) => isGraphQLClientError(input) && input.isRetryable
-    )
-    const client: Record<string, unknown> = {}
+    const retryPolicy = retryableOnly(options?.subscriptionRetry ?? defaultSubscriptionRetry)
+    const client: Record<string, OperationMethod<Ops> | SubscriptionMethod<Ops>> = {}
     for (const operation of group.operations) {
-      const chain = [...group.middlewares, ...operation.middlewares].map((tag) =>
-        Context.getUnsafe(context, tag) as GraphQLMiddleware.Implementation<any, any>
-      )
-      client[operation.name] = makeMethod(operation, chain, protocol, retryPolicy)
+      const runtime = makeRuntime(operation, middlewareChain(context, group, operation), protocol)
+      client[operation.name] = operation.kind === "subscription"
+        ? makeSubscriptionMethod(runtime, retryPolicy)
+        : makeOperationMethod(runtime)
     }
+    // Type boundary: `GraphQLClient<Ops>` is a mapped type keyed by operation
+    // name, with `Method<Op>` picking the method type from `Op["kind"]`. A loop
+    // over `group.operations` cannot show the compiler that every name is
+    // present or that each kind check selects the matching method type.
     return client as GraphQLClient<Ops>
   })
 
+/**
+ * The middleware implementations an operation runs through, outermost first,
+ * typed with the errors and requirements its middleware declared.
+ */
+type MiddlewareChain<Op extends GraphQL.Any> = ReadonlyArray<
+  GraphQLMiddleware.Implementation<
+    GraphQLMiddleware.Error<GraphQL.Middleware<Op>>,
+    GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>
+  >
+>
+
+// Type boundary: the tags stored on the group and the operation are the
+// runtime counterpart of `GraphQL.Middleware<Op>`, but are kept as
+// `GraphQLMiddleware.AnyService`, whose implementation type is erased.
+// `make` requires every tag's identifier, so each lookup succeeds.
+const middlewareChain = <Op extends GraphQL.Any>(
+  context: Context.Context<never>,
+  group: GraphQLGroup<Op>,
+  operation: Op
+): MiddlewareChain<Op> => [...group.middlewares, ...operation.middlewares].map((tag) => Context.getUnsafe(context, tag))
+
+// Steps `schedule` only for retryable `GraphQLClientError`s. Middleware
+// errors and fatal errors end the retries before reaching it, so a custom
+// schedule can rely on its input being a `GraphQLClientError`.
+const retryableOnly = <Output, Error, Env>(
+  schedule: Schedule.Schedule<Output, GraphQLClientError, Error, Env>
+): Schedule.Schedule<Output | undefined, unknown, Error, Env> =>
+  Schedule.fromStep(Effect.map(
+    Schedule.toStep(schedule),
+    (step) =>
+    (now: number, input: unknown): Pull.Pull<[Output | undefined, Duration.Duration], Error, Output | undefined, Env> =>
+      isGraphQLClientError(input) && input.isRetryable ? step(now, input) : Cause.done(undefined)
+  ))
+
 const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult)
 
-const makeMethod = (
-  operation: GraphQL.Any,
-  chain: ReadonlyArray<GraphQLMiddleware.Implementation<any, any>>,
-  protocol: GraphQLProtocol["Service"],
-  retryPolicy: Schedule.Schedule<unknown, unknown>
-) => {
+/**
+ * The pieces a client method is assembled from, typed by the operation.
+ */
+interface Runtime<Op extends GraphQL.Any> {
+  readonly operation: Op
+  readonly buildRequest: (
+    variables: GraphQL.Variables<Op> | undefined,
+    headers: CallOptions["headers"]
+  ) => Effect.Effect<GraphQLRequest, GraphQLClientError, Op["variables"]["EncodingServices"]>
+  readonly execute: (
+    request: GraphQLRequest
+  ) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
+  readonly subscribe: (
+    request: GraphQLRequest
+  ) => Stream.Stream<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
+  readonly decodeStrict: (
+    result: ExecutionResult
+  ) => Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]>
+  readonly decodePartial: (
+    result: ExecutionResult
+  ) => Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQLClientError, Op["result"]["DecodingServices"]>
+}
+
+const makeRuntime = <Op extends GraphQL.Any>(
+  operation: Op,
+  chain: MiddlewareChain<Op>,
+  protocol: GraphQLProtocol["Service"]
+): Runtime<Op> => {
   const fail = (reason: Reason) => new GraphQLClientError({ operation: operation.name, reason })
   const schemaFail = (make: (description: string) => Reason) => (error: Schema.SchemaError) =>
     Effect.fail(fail(make(error.message)))
-  const encodeVariables = Schema.encodeUnknownEffect(operation.variables)
+  const encodeVariables = Schema.encodeEffect(operation.variables)
   const decodeResult = Schema.decodeUnknownEffect(operation.result)
 
   const notGraphQL = schemaFail((description) =>
     new DecodeError({ description: `Not a GraphQL response: ${description}` })
   )
 
-  const buildRequest = (
-    variables: unknown,
-    options: CallOptions<any> | undefined
-  ): Effect.Effect<GraphQLRequest, GraphQLClientError, any> =>
+  const buildRequest = (variables: GraphQL.Variables<Op> | undefined, headers: CallOptions["headers"]) =>
     encodeVariables(variables ?? {}).pipe(
       Effect.catch(schemaFail((description) => new EncodeError({ description }))),
-      Effect.map((encoded) => ({
+      Effect.map((encoded): GraphQLRequest => ({
         query: operation.document,
         operationName: operation.name,
         variables: encoded,
-        headers: options?.headers ?? {}
+        headers: headers ?? {}
       }))
     )
 
-  const execute = (index: number, request: GraphQLRequest): Effect.Effect<ExecutionResult, any, any> =>
+  // `next` is typed as failing with `GraphQLClientError` only and requiring
+  // nothing, so a middleware is written without knowing what runs inside it.
+  // The errors and requirements of the inner middleware still flow through
+  // it, and are on the method's type. `RpcMiddleware` makes the same choice.
+  const execute = (
+    index: number,
+    request: GraphQLRequest
+  ): Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>> =>
     index === chain.length
       ? protocol.execute(request).pipe(
         Effect.mapError(fail),
@@ -342,7 +406,10 @@ const makeMethod = (
         next: (request) => execute(index + 1, request) as Effect.Effect<ExecutionResult, GraphQLClientError>
       })
 
-  const subscribe = (index: number, request: GraphQLRequest): Stream.Stream<ExecutionResult, any, any> =>
+  const subscribe = (
+    index: number,
+    request: GraphQLRequest
+  ): Stream.Stream<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>> =>
     index === chain.length
       ? protocol.subscribe(request).pipe(
         Stream.mapError(fail),
@@ -354,56 +421,100 @@ const makeMethod = (
         next: (request) => subscribe(index + 1, request) as Stream.Stream<ExecutionResult, GraphQLClientError>
       })
 
-  const decodeData = (result: ExecutionResult) =>
-    Effect.catch(decodeResult(result.data), schemaFail((description) => new DecodeError({ description })))
+  const decodeData = (data: unknown) =>
+    Effect.catch(decodeResult(data), schemaFail((description) => new DecodeError({ description })))
 
-  const responseError = (result: ExecutionResult, errors: ReadonlyArray<GraphQLError>) =>
+  const responseError = (result: ExecutionResult, errors: NonEmptyReadonlyArray<GraphQLError>) =>
     Effect.fail(fail(
       new ResponseError({
-        errors: errors as unknown as ConstructorParameters<typeof ResponseError>[0]["errors"],
+        errors,
+        // `data` is whatever the protocol returned; the HTTP transport parses
+        // it from JSON, which is what `ResponseError` declares.
         ...(result.data === undefined ? {} : { data: result.data as Schema.Json }),
         ...(result.extensions === undefined ? {} : { extensions: result.extensions })
       })
     ))
 
-  const finish = (result: ExecutionResult, partial: boolean): Effect.Effect<unknown, any, any> => {
+  // GraphQL only allows a `null` or missing `data` when there are `errors`,
+  // so the result codec is not consulted for it: `Schema.Json` would accept
+  // `null` and turn an invalid response into a success.
+  const missingData = Effect.fail(fail(new DecodeError({ description: "data is null or missing without errors" })))
+
+  const decodeStrict = (result: ExecutionResult) => {
     const errors = result.errors ?? []
-    if (errors.length > 0) {
-      // Without partial results any error fails the call. With them, errors
-      // and a missing data still mean there is nothing to return.
-      if (!partial || result.data === null || result.data === undefined) {
-        return responseError(result, errors)
-      }
-      return Effect.map(decodeData(result), (data) => ({ data, errors }))
-    }
-    return partial ? Effect.map(decodeData(result), (data) => ({ data, errors })) : decodeData(result)
+    if (isReadonlyArrayNonEmpty(errors)) return responseError(result, errors)
+    if (result.data === null || result.data === undefined) return missingData
+    return decodeData(result.data)
   }
 
-  if (operation.kind === "subscription") {
-    const method = (variables?: unknown, options?: CallOptions<any>) => {
-      const stream = Stream.unwrap(
-        Effect.map(buildRequest(variables, options), (request) => subscribe(0, request))
-      ).pipe(
-        Stream.mapEffect((event) => finish(event, false)),
-        Stream.retry(retryPolicy)
-      )
-      return options?.context === undefined
-        ? stream
-        : Stream.updateContext(stream, (outer) => Context.merge(outer, options.context!))
+  const decodePartial = (result: ExecutionResult) => {
+    const errors = result.errors ?? []
+    if (result.data === null || result.data === undefined) {
+      // With errors and no data there is nothing to return.
+      return isReadonlyArrayNonEmpty(errors) ? responseError(result, errors) : missingData
     }
-    return Object.assign(method, { operation })
+    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => ({ data, errors }))
   }
 
-  const method = (variables?: unknown, options?: StrictCallOptions<any> | PartialCallOptions<any>) => {
-    const effect = buildRequest(variables, options).pipe(
-      Effect.flatMap((request) => execute(0, request)),
-      Effect.flatMap((result) => finish(result, options?.partial === true))
+  return {
+    operation,
+    buildRequest,
+    execute: (request) => execute(0, request),
+    subscribe: (request) => subscribe(0, request),
+    decodeStrict,
+    decodePartial
+  }
+}
+
+// Type boundary: a call without `context` has `R2 = never` unless the caller
+// names `R2` explicitly, so an empty context stands in for `Context<R2>`.
+const callContext = <R2>(options: CallOptions<R2> | undefined): Context.Context<R2> =>
+  options?.context ?? (Context.empty() as Context.Context<R2>)
+
+const makeOperationMethod = <Op extends GraphQL.Any>(runtime: Runtime<Op>): OperationMethod<Op> => {
+  function method<R2 = never>(
+    ...args: ArgsWithOptions<GraphQL.Variables<Op>, PartialCallOptions<R2>>
+  ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
+  function method<R2 = never>(
+    ...args: Args<GraphQL.Variables<Op>, StrictCallOptions<R2>>
+  ): Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
+  function method<R2>(
+    variables?: GraphQL.Variables<Op>,
+    options?: StrictCallOptions<R2> | PartialCallOptions<R2>
+  ): Effect.Effect<
+    GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
+    GraphQL.Error<Op>,
+    Exclude<GraphQL.Services<Op>, R2>
+  > {
+    const decode = (
+      result: ExecutionResult
+    ): Effect.Effect<
+      GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
+      GraphQLClientError,
+      Op["result"]["DecodingServices"]
+    > => options?.partial === true ? runtime.decodePartial(result) : runtime.decodeStrict(result)
+    return runtime.buildRequest(variables, options?.headers).pipe(
+      Effect.flatMap(runtime.execute),
+      Effect.flatMap(decode),
+      Effect.provideContext(callContext(options))
     )
-    return options?.context === undefined
-      ? effect
-      : Effect.updateContext(effect, (outer) => Context.merge(outer, options.context!))
   }
-  return Object.assign(method, { operation })
+  return Object.assign(method, { operation: runtime.operation })
+}
+
+const makeSubscriptionMethod = <Op extends GraphQL.Any>(
+  runtime: Runtime<Op>,
+  retryPolicy: Schedule.Schedule<unknown, unknown>
+): SubscriptionMethod<Op> => {
+  const method = <R2 = never>(
+    ...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>
+  ) =>
+    Stream.unwrap(Effect.map(runtime.buildRequest(variables, options?.headers), runtime.subscribe)).pipe(
+      Stream.mapEffect(runtime.decodeStrict),
+      Stream.retry(retryPolicy),
+      Stream.provideContext(callContext(options))
+    )
+  return Object.assign(method, { operation: runtime.operation })
 }
 
 /**
@@ -455,14 +566,40 @@ export interface MissingAfterVariable {
 }
 
 /**
- * The `variables` accepted by {@link pages} and {@link items}: the method's
- * variables without `after`, which the helper supplies.
+ * The type `variables` is given when the operation's `after` variable is
+ * required or does not accept a `string`. The helper leaves `after` out on the
+ * first page and sends the previous `endCursor` afterwards, so it can only
+ * drive an optional variable that takes a string.
  *
  * @stability experimental
  * @category paging
  * @since 4.0.0
  */
-export type PagingVariables<Variables> = "after" extends keyof Variables ? Omit<Variables, "after">
+export interface InvalidAfterVariable {
+  readonly "effect/graphql": "GraphQLClient.pages requires the `after` variable to be optional and to accept a string"
+}
+
+/**
+ * The `variables` accepted by {@link pages} and {@link items}: the method's
+ * variables without `after`, which the helper supplies.
+ *
+ * **Details**
+ *
+ * The operation's `after` variable must be optional and accept a `string`.
+ * `after?: string | null`, from a nullable `$after: String`, and
+ * `after?: string`, from a `$after: String!` with a default value, are both
+ * accepted. A required `after` gives {@link InvalidAfterVariable}, as does one
+ * that does not accept a `string`; no `after` at all gives
+ * {@link MissingAfterVariable}.
+ *
+ * @stability experimental
+ * @category paging
+ * @since 4.0.0
+ */
+export type PagingVariables<Variables> = "after" extends keyof Variables
+  ? {} extends Pick<Variables, "after"> ? string extends Variables["after"] ? Omit<Variables, "after">
+    : InvalidAfterVariable
+  : InvalidAfterVariable
   : MissingAfterVariable
 
 /**
@@ -491,11 +628,13 @@ interface PagingState {
  * **Details**
  *
  * The cursor variable is always `$after`: the operation's variables must
- * accept `after?: string | null`, which is what a nullable `$after: String`
- * becomes. The first page is fetched without `after`; every later page sends
- * the previous page's `endCursor`. Pages are fetched one at a time and only
- * when pulled, so `Stream.take` stops further requests. Each page is a normal
- * method call, so middleware runs on every page.
+ * have an optional `after` that accepts a `string`. That is
+ * `after?: string | null` for a nullable `$after: String`, or
+ * `after?: string` for a `$after: String!` with a default value (see
+ * {@link PagingVariables}). The first page is fetched without `after`; every
+ * later page sends the previous page's `endCursor`. Pages are fetched one at a
+ * time and only when pulled, so `Stream.take` stops further requests. Each
+ * page is a normal method call, so middleware runs on every page.
  *
  * The stream ends after a page whose `hasNextPage` is `false`. A `null`
  * connection on the first page gives an empty stream; on a later page it
@@ -556,7 +695,14 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
   method: OperationMethod<Op>,
   options: PagingOptions<Op, C, R2>
 ): Stream.Stream<C, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>> => {
-  const call = method as unknown as (variables: unknown, options?: CallOptions<any>) => Effect.Effect<any, any, any>
+  // Type boundary: `method`'s strict overload, with `variables` widened.
+  // `PagingVariables` has already checked that `options.variables` plus an
+  // optional string `after` are the operation's variables, but the overloads'
+  // conditional parameter types over a generic `Op` cannot carry that here.
+  const call = method as unknown as (
+    variables: unknown,
+    options: CallOptions<R2> | undefined
+  ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
   const paginationError = (description: string, cursor: string | null) =>
     Effect.fail(
       new GraphQLClientError({
@@ -565,7 +711,8 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
       })
     )
   const next = (connection: C, state: PagingState): readonly [C, PagingState] => [connection, state]
-  return Stream.unfold<PagingState, C, GraphQL.Error<Op>, any>({ after: undefined, done: false }, (state) => {
+  const initial: PagingState = { after: undefined, done: false }
+  return Stream.unfold(initial, (state) => {
     if (state.done) return Effect.succeed(undefined)
     const variables = state.after === undefined ? options.variables : { ...options.variables, after: state.after }
     return Effect.flatMap(call(variables, options.options), (result) => {
