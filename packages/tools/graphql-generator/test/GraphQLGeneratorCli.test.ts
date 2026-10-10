@@ -343,6 +343,38 @@ describe("graphqlgen CLI", () => {
       assert.isTrue(yield* exists(p.file("schema.graphql.ts")))
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
+  it.effect("documents patterns rooted in node_modules or a dot-directory match nothing; ../ roots still work", () =>
+    Effect.gen(function*() {
+      const query = (name: string) => `query ${name} {\n  viewer {\n    id\n  }\n}\n`
+      const orphan = `${header("orphan.graphql")}export const Orphan = 1\n`
+      const p = yield* project({
+        "app/graphql.config.ts": configSource({
+          schema: "./schema.graphql",
+          documents: ["../shared/**/*.graphql", ".cache/**/*.graphql", "node_modules/pkg/**/*.graphql"]
+        }),
+        "app/schema.graphql": schemaSdl,
+        "shared/a.graphql": query("A"),
+        "app/.cache/q.graphql": query("CacheQuery"),
+        "app/.cache/orphan.graphql.ts": orphan,
+        "app/node_modules/pkg/q.graphql": query("PackageQuery"),
+        "app/node_modules/pkg/orphan.graphql.ts": orphan
+      })
+      const configPath = p.file("app/graphql.config.ts")
+
+      const check = yield* runCli(["--config", configPath, "--check"])
+      assert.include(check.output, "shared/a.graphql.ts")
+      assert.notInclude(check.output, ".cache/")
+      assert.notInclude(check.output, "node_modules/")
+
+      const result = yield* runCli(["--config", configPath])
+      assert.strictEqual(result.exitCode, 0, result.output)
+      assert.isTrue(yield* exists(p.file("shared/a.graphql.ts")))
+      assert.isFalse(yield* exists(p.file("app/.cache/q.graphql.ts")))
+      assert.isFalse(yield* exists(p.file("app/node_modules/pkg/q.graphql.ts")))
+      assert.strictEqual(yield* read(p.file("app/.cache/orphan.graphql.ts")), orphan)
+      assert.strictEqual(yield* read(p.file("app/node_modules/pkg/orphan.graphql.ts")), orphan)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
   it.effect("--watch and --check are mutually exclusive", () =>
     Effect.gen(function*() {
       const p = yield* baseProject({ "src/a.graphql": "query A {\n  viewer {\n    id\n  }\n}\n" })
