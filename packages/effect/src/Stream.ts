@@ -11542,6 +11542,9 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
+ * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
+ * `Array` module, and requires a runtime that supports `Array.fromAsync`.
+ *
  * **Example** (Converting to a ReadableStream with services)
  *
  * ```ts import.meta.vitest
@@ -11549,7 +11552,7 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
  * const readableStream = Stream.toReadableStreamWith(stream, Context.empty())
- * const values = await Array.fromAsync(readableStream)
+ * const values = await globalThis.Array.fromAsync(readableStream)
  * values // => [ 1, 2, 3, 4, 5 ]
  * ```
  *
@@ -11621,13 +11624,16 @@ export const toReadableStreamWith: {
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
+ * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
+ * `Array` module, and requires a runtime that supports `Array.fromAsync`.
+ *
  * **Example** (Converting a stream to a ReadableStream)
  *
  * ```ts import.meta.vitest
  * import { Stream } from "effect"
  *
  * const readableStream = Stream.toReadableStream(Stream.make(1, 2, 3))
- * const values = await Array.fromAsync(readableStream)
+ * const values = await globalThis.Array.fromAsync(readableStream)
  * values // => [ 1, 2, 3 ]
  * ```
  *
@@ -11714,6 +11720,11 @@ export const toReadableStreamEffect: {
  * Use when converting outside an Effect and you already have the `Context`
  * needed to run the stream.
  *
+ * **Details**
+ *
+ * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
+ * `Array` module, and requires a runtime that supports `Array.fromAsync`.
+ *
  * **Example** (Converting to an AsyncIterable with services)
  *
  * ```ts import.meta.vitest
@@ -11722,7 +11733,7 @@ export const toReadableStreamEffect: {
  * const stream = Stream.make(1, 2, 3)
  * const iterable = Stream.toAsyncIterableWith(stream, Context.empty())
  *
- * await Array.fromAsync(iterable) // => [1, 2, 3]
+ * await globalThis.Array.fromAsync(iterable) // => [1, 2, 3]
  * ```
  *
  * @stability stable
@@ -11820,6 +11831,11 @@ export const toAsyncIterableWith: {
  * Use when the `AsyncIterable` should be created inside Effect with the current
  * context supplying the stream's services.
  *
+ * **Details**
+ *
+ * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
+ * `Array` module, and requires a runtime that supports `Array.fromAsync`.
+ *
  * **Example** (Creating an AsyncIterable effect)
  *
  * ```ts import.meta.vitest
@@ -11829,7 +11845,7 @@ export const toAsyncIterableWith: {
  *
  * const program = Effect.gen(function*() {
  *   const iterable = yield* Stream.toAsyncIterableEffect(stream)
- *   return yield* Effect.promise(() => Array.fromAsync(iterable))
+ *   return yield* Effect.promise(() => globalThis.Array.fromAsync(iterable))
  * })
  *
  * await Effect.runPromise(program) // => [1, 2, 3]
@@ -11848,6 +11864,11 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
 /**
  * Converts a stream to an `AsyncIterable` for `for await...of` consumption.
  *
+ * **Details**
+ *
+ * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
+ * `Array` module, and requires a runtime that supports `Array.fromAsync`.
+ *
  * **Example** (Converting to an async iterable)
  *
  * ```ts import.meta.vitest
@@ -11855,7 +11876,7 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
  *
  * const stream = Stream.make(1, 2, 3)
  *
- * await Array.fromAsync(Stream.toAsyncIterable(stream)) // => [1, 2, 3]
+ * await globalThis.Array.fromAsync(Stream.toAsyncIterable(stream)) // => [1, 2, 3]
  * ```
  *
  * @stability stable
