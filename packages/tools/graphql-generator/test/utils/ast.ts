@@ -20,20 +20,31 @@ export type Plain<T> = T extends ReadonlyArray<infer U> ? ReadonlyArray<Plain<U>
 
 export const source = (body: string, path = "test.graphql"): Source => ({ path, body })
 
-const strip = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(strip)
+const strip = (value: unknown, dropped: ReadonlySet<string>): unknown => {
+  if (Array.isArray(value)) return value.map((item) => strip(item, dropped))
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {}
     for (const [key, child] of Object.entries(value)) {
-      if (key === "loc" || child === undefined) continue
-      out[key] = strip(child)
+      if (dropped.has(key) || child === undefined) continue
+      out[key] = strip(child, dropped)
     }
     return out
   }
   return value
 }
 
-export const stripLoc = <T>(node: T): Plain<T> => strip(node) as Plain<T>
+const locOnly: ReadonlySet<string> = new Set(["loc"])
+const locAndDescription: ReadonlySet<string> = new Set(["loc", "description"])
+
+export const stripLoc = <T>(node: T): Plain<T> => strip(node, locOnly) as Plain<T>
+
+/**
+ * `stripLoc` that also drops `description` children. The compact printer does
+ * not print the descriptions the September 2025 edition allows on operations,
+ * fragments and variable definitions, so a print/parse round trip is compared
+ * without them.
+ */
+export const stripLocAndDescriptions = <T>(node: T): Plain<T> => strip(node, locAndDescription) as Plain<T>
 
 export const formatDiagnostic = (diagnostic: Diagnostic): string =>
   `${diagnostic.path}:${diagnostic.line}:${diagnostic.column} ${diagnostic.message}\n${diagnostic.codeFrame}`
