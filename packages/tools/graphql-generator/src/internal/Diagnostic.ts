@@ -37,15 +37,8 @@ const lineTerminator = /\r\n|\r|\n/g
 
 /** The 1-based line and UTF-16 column of a code-unit offset into `body`. */
 const locationOf = (body: string, offset: number): Location => {
-  let line = 1
-  let lineStart = 0
-  lineTerminator.lastIndex = 0
-  let match: RegExpExecArray | null
-  while ((match = lineTerminator.exec(body)) !== null && match.index + match[0].length <= offset) {
-    line++
-    lineStart = match.index + match[0].length
-  }
-  return { line, column: offset - lineStart + 1 }
+  const lines = body.slice(0, offset).split(lineTerminator)
+  return { line: lines.length, column: lines[lines.length - 1]!.length + 1 }
 }
 
 const codeFrame = (body: string, location: Location): string => {

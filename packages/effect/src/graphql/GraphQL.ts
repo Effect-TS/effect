@@ -154,24 +154,34 @@ const Proto = {
 }
 
 // The middleware type of an operation is phantom and its Schemas are erased to
-// `Schema.Top` here, so the typed constructors below state their operation
-// type with one assertion each.
+// `Schema.Top` here, so `makeOperation` asserts the operation type it returns.
 const makeProto = (fields: Omit<Any, typeof TypeId | "pipe" | "middleware">): Any =>
   Object.assign(Object.create(Proto), fields)
 
-const makeOperation = <const K extends Kind>(kind: K) =>
-<
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-): Operation<K, Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =>
+/**
+ * The signature shared by {@link query}, {@link mutation} and
+ * {@link subscription}: an operation name plus its document and Schemas.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export interface Constructor<K extends Kind> {
+  <
+    const Name extends string,
+    Result extends Schema.Top,
+    Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
+  >(
+    name: Name,
+    options: {
+      readonly document: string
+      readonly variables?: Variables | undefined
+      readonly result: Result
+    }
+  ): Operation<K, Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result>
+}
+
+const makeOperation = <K extends Kind>(kind: K): Constructor<K> => (name, options) =>
   makeProto({
     kind,
     name,
@@ -183,7 +193,7 @@ const makeOperation = <const K extends Kind>(kind: K) =>
       : Schema.Struct(options.variables as Schema.Struct.Fields),
     result: options.result,
     middlewares: []
-  }) as Operation<K, Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result>
+  }) as any
 
 /**
  * Defines a query. Variables are passed to the client as their decoded type
@@ -217,19 +227,7 @@ const makeOperation = <const K extends Kind>(kind: K) =>
  * @category constructors
  * @since 4.0.0
  */
-export const query: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<"query", Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =
-  makeOperation("query")
+export const query: Constructor<"query"> = makeOperation("query")
 
 /**
  * Defines a mutation. Same shape as {@link query}.
@@ -253,23 +251,7 @@ export const query: <
  * @category constructors
  * @since 4.0.0
  */
-export const mutation: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<
-  "mutation",
-  Name,
-  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
-  Result
-> = makeOperation("mutation")
+export const mutation: Constructor<"mutation"> = makeOperation("mutation")
 
 /**
  * Defines a subscription. The client method for a subscription returns a
@@ -294,23 +276,7 @@ export const mutation: <
  * @category constructors
  * @since 4.0.0
  */
-export const subscription: <
-  const Name extends string,
-  Result extends Schema.Top,
-  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
->(
-  name: Name,
-  options: {
-    readonly document: string
-    readonly variables?: Variables | undefined
-    readonly result: Result
-  }
-) => Operation<
-  "subscription",
-  Name,
-  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
-  Result
-> = makeOperation("subscription")
+export const subscription: Constructor<"subscription"> = makeOperation("subscription")
 
 /**
  * The `__typename` Schema for the "every other type" member of a generated
