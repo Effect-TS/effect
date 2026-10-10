@@ -65,227 +65,229 @@ const debounce = "50 millis"
  * Fails with `ConfigLoadError` only when the config can't be loaded at
  * startup; otherwise it runs until interrupted.
  */
-export const run = Effect.fnUntraced(function*(options: {
+export const run: (options: {
   readonly configPath: string
   readonly watch: (
     path: string,
     kind: "file" | "directory"
   ) => Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError>
-}) {
-  const fs = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-  const configPath = path.resolve(options.configPath)
-  const cwd = path.dirname(configPath)
-  const cache = Generate.makeCache()
+}) => Effect.Effect<never, Cli.ConfigLoadError, FileSystem.FileSystem | Path.Path> = Effect.fnUntraced(
+  function*(options) {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const configPath = path.resolve(options.configPath)
+    const cwd = path.dirname(configPath)
+    const cache = Generate.makeCache()
 
-  /** The config file's mtime, used to spot edits and to bust the import cache. */
-  const configVersion = fs.stat(configPath).pipe(
-    Effect.map((info) => Option.getOrElse(Option.map(info.mtime, (date) => date.getTime()), () => 0)),
-    Effect.orElseSucceed(() => undefined)
-  )
-
-  const initialVersion = yield* configVersion
-  const initialConfig = yield* Cli.loadConfig(configPath, initialVersion)
-  const state = {
-    config: initialConfig,
-    configVersion: initialVersion,
-    schemaPath: path.resolve(cwd, initialConfig.schema),
-    globs: initialConfig.documents.map(Glob.make),
-    /** Files the last successful cycle generated or deleted; events for them are ignored. */
-    outputs: new Set<string>(),
-    /** The first missing directory of each missing glob root; its creation is relevant. */
-    pending: new Set<string>(),
-    /** The formatted warnings the last successful cycle printed or kept quiet about. */
-    warnings: new Set<string>()
-  }
-
-  // -------------------------------------------------------------------------
-  // Events
-  // -------------------------------------------------------------------------
-
-  const isRelevant = (absolute: string): boolean => {
-    if (absolute === configPath || absolute === state.schemaPath || state.pending.has(absolute)) return true
-    if (state.outputs.has(absolute)) return false
-    const relative = path.relative(cwd, absolute).split(path.sep).join("/")
-    const segments = relative.split("/")
-    const inside = segments.slice(segments.findIndex((segment) => segment !== ".."))
-    // The generator never reads documents under node_modules or dot-directories.
-    if (inside.some(Glob.isSkipped)) return false
-    return state.globs.some((glob) => glob.matches(relative))
-  }
-
-  const events = yield* Queue.unbounded<string>()
-
-  interface Target {
-    /** `pending` is the first missing directory on the way to a glob root. */
-    readonly kind: "file" | "tree" | "pending"
-    readonly path: string
-    /** Event paths are relative to this directory. */
-    readonly base: string
-  }
-
-  const exists = (file: string) => fs.exists(file).pipe(Effect.orElseSucceed(() => false))
-
-  /** `file` itself when its directory exists, otherwise the first missing directory above it. */
-  const firstMissing = Effect.fnUntraced(function*(file: string) {
-    let missing = file
-    while (true) {
-      const parent = path.dirname(missing)
-      if (parent === missing || (yield* exists(parent))) return missing
-      missing = parent
-    }
-  })
-
-  /**
-   * The config file, the schema file and each `documents` glob root. Every
-   * target's `base` directory exists, so a watch only ends when something
-   * was deleted.
-   */
-  const targets = Effect.gen(function*() {
-    const found = new Map<string, Target>()
-    for (const file of [configPath, state.schemaPath]) {
-      const watched = yield* firstMissing(file)
-      found.set(watched, { kind: watched === file ? "file" : "pending", path: watched, base: path.dirname(watched) })
-    }
-    for (const glob of state.globs) {
-      const directory = path.join(cwd, glob.root)
-      if (glob.skipped || found.get(directory)?.kind === "tree") continue
-      if (yield* exists(directory)) {
-        found.set(directory, { kind: "tree", path: directory, base: directory })
-      } else {
-        const missing = yield* firstMissing(directory)
-        if (!found.has(missing)) found.set(missing, { kind: "pending", path: missing, base: path.dirname(missing) })
-      }
-    }
-    return Array.from(found.values())
-  })
-
-  /** Set when a watch stream ended or failed, so the next `subscribe` starts over. */
-  let stale = false
-
-  const watchTarget = (target: Target) =>
-    options.watch(target.path, target.kind === "tree" ? "directory" : "file").pipe(
-      Stream.runForEach((event) => {
-        const absolute = path.resolve(target.base, event.path)
-        return isRelevant(absolute) ? Queue.offer(events, absolute) : Effect.void
-      }),
-      Effect.matchEffect({
-        onFailure: (error) =>
-          Effect.andThen(
-            Effect.sync(() => (stale = true)),
-            Console.error(`error: could not watch ${Cli.displayPath(path, target.path)}: ${error.message}`)
-          ),
-        onSuccess: () => Effect.andThen(Effect.sync(() => (stale = true)), Queue.offer(events, target.path))
-      })
+    /** The config file's mtime, used to spot edits and to bust the import cache. */
+    const configVersion = fs.stat(configPath).pipe(
+      Effect.map((info) => Option.getOrElse(Option.map(info.mtime, (date) => date.getTime()), () => 0)),
+      Effect.orElseSucceed(() => undefined)
     )
 
-  let watching: { readonly key: string; readonly fiber: Fiber.Fiber<void> } | undefined
-  const targetKey = (current: ReadonlyArray<Target>) =>
-    current.map((target) => `${target.kind}:${target.path}`).join("\0")
-  /** Watches the current targets, replacing the previous watchers when they changed or one stopped. */
-  const subscribe = Effect.gen(function*() {
-    const current = yield* targets
-    const key = targetKey(current)
-    if (!stale && watching?.key === key) return
-    if (watching !== undefined) yield* Fiber.interrupt(watching.fiber)
-    stale = false
-    state.pending = new Set(current.filter((target) => target.kind === "pending").map((target) => target.path))
-    // Call watch on the loop fiber; only consumption of its streams is forked.
-    const streams = current.map(watchTarget)
-    const fiber = yield* Effect.all(streams, { concurrency: "unbounded", discard: true }).pipe(
-      Effect.forkChild
-    )
-    watching = { key, fiber }
-  })
-
-  /** Reconcile roots that appeared or disappeared during this cycle, without polling. */
-  const reconcile = Effect.gen(function*() {
-    if (targetKey(yield* targets) !== watching?.key) yield* Queue.offer(events, state.schemaPath)
-  })
-
-  // -------------------------------------------------------------------------
-  // Cycles
-  // -------------------------------------------------------------------------
-
-  const generate = Effect.gen(function*() {
-    const generated = yield* Effect.result(Generate.generate(state.config, { cwd, cache }))
-    if (Result.isFailure(generated)) {
-      return yield* Console.error(`error: ${generated.failure.message}`)
+    const initialVersion = yield* configVersion
+    const initialConfig = yield* Cli.loadConfig(configPath, initialVersion)
+    const state = {
+      config: initialConfig,
+      configVersion: initialVersion,
+      schemaPath: path.resolve(cwd, initialConfig.schema),
+      globs: initialConfig.documents.map(Glob.make),
+      /** Files the last successful cycle generated or deleted; events for them are ignored. */
+      outputs: new Set<string>(),
+      /** The first missing directory of each missing glob root; its creation is relevant. */
+      pending: new Set<string>(),
+      /** The formatted warnings the last successful cycle printed or kept quiet about. */
+      warnings: new Set<string>()
     }
-    const result = generated.success
-    const warnings = new Set<string>()
-    let errors = 0
-    for (const diagnostic of result.diagnostics) {
-      const formatted = Cli.formatDiagnostic(path, cwd, diagnostic)
-      if (diagnostic.severity === "error") {
-        errors++
-        yield* Console.error(formatted)
-      } else {
-        warnings.add(formatted)
-        if (!state.warnings.has(formatted)) yield* Console.error(formatted)
+
+    // -------------------------------------------------------------------------
+    // Events
+    // -------------------------------------------------------------------------
+
+    const isRelevant = (absolute: string): boolean => {
+      if (absolute === configPath || absolute === state.schemaPath || state.pending.has(absolute)) return true
+      if (state.outputs.has(absolute)) return false
+      const relative = path.relative(cwd, absolute).split(path.sep).join("/")
+      const segments = relative.split("/")
+      const inside = segments.slice(segments.findIndex((segment) => segment !== ".."))
+      // The generator never reads documents under node_modules or dot-directories.
+      if (inside.some(Glob.isSkipped)) return false
+      return state.globs.some((glob) => glob.matches(relative))
+    }
+
+    const events = yield* Queue.unbounded<string>()
+
+    interface Target {
+      /** `pending` is the first missing directory on the way to a glob root. */
+      readonly kind: "file" | "tree" | "pending"
+      readonly path: string
+      /** Event paths are relative to this directory. */
+      readonly base: string
+    }
+
+    const exists = (file: string) => fs.exists(file).pipe(Effect.orElseSucceed(() => false))
+
+    /** `file` itself when its directory exists, otherwise the first missing directory above it. */
+    const firstMissing = Effect.fnUntraced(function*(file: string) {
+      let missing = file
+      while (true) {
+        const parent = path.dirname(missing)
+        if (parent === missing || (yield* exists(parent))) return missing
+        missing = parent
       }
-    }
-    if (errors > 0) {
-      return yield* Console.error(Cli.errorSummary(errors))
-    }
-    state.warnings = warnings
-    const written = yield* Effect.result(
-      Cli.planChanges(result).pipe(Effect.tap(Cli.writeChanges))
-    )
-    if (Result.isFailure(written)) {
-      return yield* Console.error(written.failure.message)
-    }
-    const changes = written.success
-    state.outputs = new Set([...result.files.map((file) => file.path), ...result.deletes])
-    const count = changes.creates.length + changes.updates.length
-    yield* Console.log(`regenerated ${count} ${count === 1 ? "file" : "files"}, deleted ${changes.deletes.length}`)
-  })
+    })
 
-  /** Subscribes, then regenerates and reconciles the targets. Watch streams may still be installing meanwhile. */
-  const refresh = Effect.gen(function*() {
-    yield* subscribe
-    yield* generate
-    yield* reconcile
-  })
-
-  /**
-   * Reloads the config when its mtime changed, then refreshes. A config that
-   * fails to load is reported and the previous one kept; the cycle still
-   * regenerates when something besides the config changed.
-   */
-  const cycle = Effect.fnUntraced(function*(changed: ReadonlySet<string>) {
-    const version = yield* configVersion
-    if (version !== state.configVersion) {
-      state.configVersion = version
-      const loaded = yield* Effect.result(Cli.loadConfig(configPath, version))
-      if (Result.isFailure(loaded)) {
-        yield* Console.error(loaded.failure.message)
-        if (!Array.from(changed).some((file) => file !== configPath)) return
-      } else {
-        state.config = loaded.success
-        state.schemaPath = path.resolve(cwd, loaded.success.schema)
-        state.globs = loaded.success.documents.map(Glob.make)
+    /**
+     * The config file, the schema file and each `documents` glob root. Every
+     * target's `base` directory exists, so a watch only ends when something
+     * was deleted.
+     */
+    const targets = Effect.gen(function*() {
+      const found = new Map<string, Target>()
+      for (const file of [configPath, state.schemaPath]) {
+        const watched = yield* firstMissing(file)
+        found.set(watched, { kind: watched === file ? "file" : "pending", path: watched, base: path.dirname(watched) })
       }
-    }
+      for (const glob of state.globs) {
+        const directory = path.join(cwd, glob.root)
+        if (glob.skipped || found.get(directory)?.kind === "tree") continue
+        if (yield* exists(directory)) {
+          found.set(directory, { kind: "tree", path: directory, base: directory })
+        } else {
+          const missing = yield* firstMissing(directory)
+          if (!found.has(missing)) found.set(missing, { kind: "pending", path: missing, base: path.dirname(missing) })
+        }
+      }
+      return Array.from(found.values())
+    })
+
+    /** Set when a watch stream ended or failed, so the next `subscribe` starts over. */
+    let stale = false
+
+    const watchTarget = (target: Target) =>
+      options.watch(target.path, target.kind === "tree" ? "directory" : "file").pipe(
+        Stream.runForEach((event) => {
+          const absolute = path.resolve(target.base, event.path)
+          return isRelevant(absolute) ? Queue.offer(events, absolute) : Effect.void
+        }),
+        Effect.matchEffect({
+          onFailure: (error) =>
+            Effect.andThen(
+              Effect.sync(() => (stale = true)),
+              Console.error(`error: could not watch ${Cli.displayPath(path, target.path)}: ${error.message}`)
+            ),
+          onSuccess: () => Effect.andThen(Effect.sync(() => (stale = true)), Queue.offer(events, target.path))
+        })
+      )
+
+    let watching: { readonly key: string; readonly fiber: Fiber.Fiber<void> } | undefined
+    const targetKey = (current: ReadonlyArray<Target>) =>
+      current.map((target) => `${target.kind}:${target.path}`).join("\0")
+    /** Watches the current targets, replacing the previous watchers when they changed or one stopped. */
+    const subscribe = Effect.gen(function*() {
+      const current = yield* targets
+      const key = targetKey(current)
+      if (!stale && watching?.key === key) return
+      if (watching !== undefined) yield* Fiber.interrupt(watching.fiber)
+      stale = false
+      state.pending = new Set(current.filter((target) => target.kind === "pending").map((target) => target.path))
+      // Call watch on the loop fiber; only consumption of its streams is forked.
+      const streams = current.map(watchTarget)
+      const fiber = yield* Effect.all(streams, { concurrency: "unbounded", discard: true }).pipe(
+        Effect.forkChild
+      )
+      watching = { key, fiber }
+    })
+
+    /** Reconcile roots that appeared or disappeared during this cycle, without polling. */
+    const reconcile = Effect.gen(function*() {
+      if (targetKey(yield* targets) !== watching?.key) yield* Queue.offer(events, state.schemaPath)
+    })
+
+    // -------------------------------------------------------------------------
+    // Cycles
+    // -------------------------------------------------------------------------
+
+    const generate = Effect.gen(function*() {
+      const generated = yield* Effect.result(Generate.generate(state.config, { cwd, cache }))
+      if (Result.isFailure(generated)) {
+        return yield* Console.error(`error: ${generated.failure.message}`)
+      }
+      const result = generated.success
+      const warnings = new Set<string>()
+      let errors = 0
+      for (const diagnostic of result.diagnostics) {
+        const formatted = Cli.formatDiagnostic(path, cwd, diagnostic)
+        if (diagnostic.severity === "error") {
+          errors++
+          yield* Console.error(formatted)
+        } else {
+          warnings.add(formatted)
+          if (!state.warnings.has(formatted)) yield* Console.error(formatted)
+        }
+      }
+      if (errors > 0) {
+        return yield* Console.error(Cli.errorSummary(errors))
+      }
+      state.warnings = warnings
+      const written = yield* Effect.result(
+        Cli.planChanges(result).pipe(Effect.tap(Cli.writeChanges))
+      )
+      if (Result.isFailure(written)) {
+        return yield* Console.error(written.failure.message)
+      }
+      const changes = written.success
+      state.outputs = new Set([...result.files.map((file) => file.path), ...result.deletes])
+      const count = changes.creates.length + changes.updates.length
+      yield* Console.log(`regenerated ${count} ${count === 1 ? "file" : "files"}, deleted ${changes.deletes.length}`)
+    })
+
+    /** Subscribes, then regenerates and reconciles the targets. Watch streams may still be installing meanwhile. */
+    const refresh = Effect.gen(function*() {
+      yield* subscribe
+      yield* generate
+      yield* reconcile
+    })
+
+    /**
+     * Reloads the config when its mtime changed, then refreshes. A config that
+     * fails to load is reported and the previous one kept; the cycle still
+     * regenerates when something besides the config changed.
+     */
+    const cycle = Effect.fnUntraced(function*(changed: ReadonlySet<string>) {
+      const version = yield* configVersion
+      if (version !== state.configVersion) {
+        state.configVersion = version
+        const loaded = yield* Effect.result(Cli.loadConfig(configPath, version))
+        if (Result.isFailure(loaded)) {
+          yield* Console.error(loaded.failure.message)
+          if (!Array.from(changed).some((file) => file !== configPath)) return
+        } else {
+          state.config = loaded.success
+          state.schemaPath = path.resolve(cwd, loaded.success.schema)
+          state.globs = loaded.success.documents.map(Glob.make)
+        }
+      }
+      yield* refresh
+    })
+
     yield* refresh
-  })
 
-  yield* refresh
-
-  const pending = new Set<string>()
-  yield* Stream.fromQueue(events).pipe(
-    Stream.tap((file) => Effect.sync(() => pending.add(file))),
-    Stream.debounce(debounce),
-    Stream.runForEach(() =>
-      Effect.suspend(() => {
-        const changed = new Set(pending)
-        pending.clear()
-        return cycle(changed)
-      })
+    const pending = new Set<string>()
+    yield* Stream.fromQueue(events).pipe(
+      Stream.tap((file) => Effect.sync(() => pending.add(file))),
+      Stream.debounce(debounce),
+      Stream.runForEach(() =>
+        Effect.suspend(() => {
+          const changed = new Set(pending)
+          pending.clear()
+          return cycle(changed)
+        })
+      )
     )
-  )
-  return yield* Effect.never
-})
+    return yield* Effect.never
+  }
+)
 
 // -----------------------------------------------------------------------------
 // FileSystem.watch

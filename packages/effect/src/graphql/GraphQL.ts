@@ -14,7 +14,6 @@
  * @stability experimental
  * @since 4.0.0
  */
-import { dual } from "../Function.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
@@ -58,6 +57,14 @@ export interface Operation<
   /** Middleware attached to this operation, outermost first. */
   readonly middlewares: ReadonlyArray<GraphQLMiddleware.AnyService>
   readonly "~middleware"?: Middleware
+  /**
+   * Returns a copy of this operation with `middleware` attached. Operation
+   * middleware runs inside any group middleware; within the operation,
+   * middleware run in the order they were attached.
+   */
+  middleware<M extends GraphQLMiddleware.AnyService>(
+    middleware: M
+  ): Operation<K, Name, Variables, Result, Middleware | M>
 }
 
 /**
@@ -145,13 +152,17 @@ const Proto = {
   [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
+  },
+  middleware(this: Any, middleware: GraphQLMiddleware.AnyService) {
+    return makeProto({ ...this, middlewares: [...this.middlewares, middleware] })
   }
 }
 
 // The middleware type of an operation is phantom and its Schemas are erased to
 // `Schema.Top` here, so the typed constructors below state their operation
 // type with one assertion each.
-const makeProto = (fields: Omit<Any, typeof TypeId | "pipe">): Any => Object.assign(Object.create(Proto), fields)
+const makeProto = (fields: Omit<Any, typeof TypeId | "pipe" | "middleware">): Any =>
+  Object.assign(Object.create(Proto), fields)
 
 const makeOperation = <const K extends Kind>(kind: K) =>
 <
@@ -211,7 +222,19 @@ const makeOperation = <const K extends Kind>(kind: K) =>
  * @category constructors
  * @since 4.0.0
  */
-export const query = makeOperation("query")
+export const query: <
+  const Name extends string,
+  Result extends Schema.Top,
+  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
+>(
+  name: Name,
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
+) => Operation<"query", Name, Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables, Result> =
+  makeOperation("query")
 
 /**
  * Defines a mutation. Same shape as {@link query}.
@@ -235,7 +258,23 @@ export const query = makeOperation("query")
  * @category constructors
  * @since 4.0.0
  */
-export const mutation = makeOperation("mutation")
+export const mutation: <
+  const Name extends string,
+  Result extends Schema.Top,
+  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
+>(
+  name: Name,
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
+) => Operation<
+  "mutation",
+  Name,
+  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
+  Result
+> = makeOperation("mutation")
 
 /**
  * Defines a subscription. The client method for a subscription returns a
@@ -260,44 +299,23 @@ export const mutation = makeOperation("mutation")
  * @category constructors
  * @since 4.0.0
  */
-export const subscription = makeOperation("subscription")
-
-/**
- * Attaches a middleware to one operation. Operation middleware runs inside
- * any group middleware; within the operation, middleware run in the order
- * they were attached.
- *
- * **Example** (Auth on a single operation)
- *
- * ```ts import.meta.vitest
- * import { Schema } from "effect"
- * import { GraphQL, GraphQLMiddleware } from "effect/graphql"
- *
- * class Auth extends GraphQLMiddleware.Service<Auth>()("app/Auth") {}
- *
- * const Viewer = GraphQL.query("Viewer", {
- *   document: "query Viewer{viewer{login}}",
- *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
- * })
- *
- * const AuthedViewer = GraphQL.middleware(Viewer, Auth)
- *
- * AuthedViewer.middlewares.length // => 1
- * Viewer.middlewares.length // => 0
- * ```
- *
- * @stability experimental
- * @category combinators
- * @since 4.0.0
- */
-export const middleware: {
-  <M extends GraphQLMiddleware.AnyService>(middleware: M): <Op extends Any>(self: Op) => AddMiddleware<Op, M>
-  <Op extends Any, M extends GraphQLMiddleware.AnyService>(self: Op, middleware: M): AddMiddleware<Op, M>
-} = dual(
-  2,
-  <Op extends Any, M extends GraphQLMiddleware.AnyService>(self: Op, middleware: M): AddMiddleware<Op, M> =>
-    makeProto({ ...self, middlewares: [...self.middlewares, middleware] }) as AddMiddleware<Op, M>
-)
+export const subscription: <
+  const Name extends string,
+  Result extends Schema.Top,
+  Variables extends Schema.Top | Schema.Struct.Fields = Schema.Struct<{}>
+>(
+  name: Name,
+  options: {
+    readonly document: string
+    readonly variables?: Variables | undefined
+    readonly result: Result
+  }
+) => Operation<
+  "subscription",
+  Name,
+  Variables extends Schema.Struct.Fields ? Schema.Struct<Variables> : Variables,
+  Result
+> = makeOperation("subscription")
 
 /**
  * The `__typename` Schema for the "every other type" member of a generated
@@ -338,20 +356,18 @@ export const middleware: {
 export const otherTypename = <All extends string>() =>
 <const Selected extends ReadonlyArray<All>>(
   selected: Selected
-): Schema.Codec<Exclude<All, Selected[number]>, string> => {
+): Schema.refine<Exclude<All, Selected[number]>, Schema.String> => {
   const rejected = new Set<string>(selected)
-  // Type boundary: decoding is lenient by design. Any string other than the
-  // selected names decodes, including names the server adds later, but the
-  // type only lists the names known when the code was generated.
-  return Schema.String.check(
-    Schema.makeFilter(
-      (name) =>
-        rejected.has(name)
-          ? `Expected a __typename other than ${selected.map((s) => `"${s}"`).join(", ")}`
-          : undefined,
-      { title: "otherTypename" }
-    )
-  ) as Schema.Codec<Exclude<All, Selected[number]>, string>
+  // Type boundary: decoding is lenient by design. The guard passes any string
+  // other than the selected names, including names the server adds later, but
+  // the type only lists the names known when the code was generated.
+  return Schema.refine<Schema.String, Exclude<All, Selected[number]>>(
+    (name): name is Exclude<All, Selected[number]> => !rejected.has(name),
+    {
+      title: "otherTypename",
+      message: `Expected a __typename other than ${selected.map((s) => `"${s}"`).join(", ")}`
+    }
+  )(Schema.String)
 }
 
 /**
@@ -382,11 +398,11 @@ export const otherTypename = <All extends string>() =>
  */
 export const enumLiterals = <const Literals extends ReadonlyArray<string>>(
   literals: Literals
-): Schema.Codec<Literals[number], string> =>
-  // Type boundary: decoding is lenient by design. Any string decodes,
-  // including values the server adds later, but the type only lists the
-  // values known when the code was generated.
-  Schema.String.annotate({
+): Schema.refine<Literals[number], Schema.String> =>
+  // Type boundary: decoding is lenient by design. The guard passes any string,
+  // including values the server adds later, but the type only lists the values
+  // known when the code was generated.
+  Schema.refine<Schema.String, Literals[number]>((_): _ is Literals[number] => true)(Schema.String).annotate({
     title: `enum(${literals.join(" | ")})`,
     description: `One of ${literals.map((l) => `"${l}"`).join(", ")}, or any string the server adds later`
-  }) as Schema.Codec<Literals[number], string>
+  })
