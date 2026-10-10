@@ -79,4 +79,4 @@ Both files are excluded from `dprint` so the vendored bytes stay verifiable agai
 
 ## Documents
 
-`documents/*.graphql` and `documents/scalars.ts` are the input to the generator snapshot set. They are hand-written against `schema.docs.graphql`, and `scalars.ts` holds the codecs the test config maps `DateTime` and `URI` to (see `githubConfig` in `test/utils/generator.ts`).
+`documents/*.graphql` and `documents/scalars.ts` are the input to the generator snapshot set. They are hand-written against `schema.docs.graphql`, and `scalars.ts` holds the codecs the test config maps `DateTime`, `URI` and `GitObjectID` to (see `githubConfig` in `test/utils/generator.ts`).

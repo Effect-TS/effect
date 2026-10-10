@@ -6,3 +6,11 @@ fragment IssueSummary on Issue {
   createdAt
   url
 }
+
+fragment ActorFields on Actor {
+  login
+  avatarUrl(size: 64)
+  ... on User {
+    name
+  }
+}

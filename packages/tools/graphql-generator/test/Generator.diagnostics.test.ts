@@ -1,8 +1,9 @@
 /**
  * Diagnostics `generate` reports (EFF-1832 point 7, EFF-1834 points 4, 7 and
  * 11): the single unmapped-scalars warning, config errors for scalar keys,
- * located errors in document files, the features deferred to stage 5 and
- * names generated code can't use. Also covers reading an introspection JSON
+ * located errors in document files, recursive input objects (not supported
+ * yet), the stage-5 features that no longer report anything, and names
+ * generated code can't use. Also covers reading an introspection JSON
  * schema.
  */
 import * as NodeServices from "@effect/platform-node/NodeServices"
@@ -94,8 +95,6 @@ type Query { node(id: ID!): Node user: User thing: Thing pick(p: Pick): Int tree
 type Subscription { userChanged: User }
 `
 
-const unsupported = "interfaces and unions are not supported yet."
-
 const deferredCases: ReadonlyArray<{
   readonly name: string
   readonly document: string
@@ -104,65 +103,15 @@ const deferredCases: ReadonlyArray<{
   readonly message: string
 }> = [
   {
-    name: "a field selecting from an interface",
-    document: `query A { node(id: "1") { id } }`,
-    line: 1,
-    column: 11,
-    message: `Field "node" selects from interface "Node"; ${unsupported}`
-  },
-  {
-    name: "a field selecting from a union",
-    document: "query A { thing { ... on User { id } } }",
-    line: 1,
-    column: 11,
-    message: `Field "thing" selects from union "Thing"; ${unsupported}`
-  },
-  {
-    name: "a fragment on an interface",
-    document: "fragment NodeBits on Node { id }\nquery A { user { ...NodeBits } }",
-    line: 1,
-    column: 22,
-    message: `Fragment "NodeBits" is on interface "Node"; ${unsupported}`
-  },
-  {
-    name: "@include",
-    document: "query B($show: Boolean!) { user { id name @include(if: $show) } }",
-    line: 1,
-    column: 43,
-    message: "The @include directive is not supported yet."
-  },
-  {
-    name: "@skip on a fragment spread",
-    document:
-      "query S($show: Boolean!) { user { id ...UserBits @skip(if: $show) } }\nfragment UserBits on User { name }",
-    line: 1,
-    column: 50,
-    message: "The @skip directive is not supported yet."
-  },
-  {
-    name: "a variable reaching a @oneOf input object",
-    document: "query D($p: Pick) { pick(p: $p) }",
-    line: 1,
-    column: 9,
-    message: `Variable "$p" uses the @oneOf input object "Pick"; @oneOf input objects are not supported yet.`
-  },
-  {
     name: "a variable reaching a recursive input object",
     document: "query E($t: Tree) { tree(t: $t) }",
     line: 1,
     column: 9,
     message: `Variable "$t" uses the recursive input object "Tree"; recursive input objects are not supported yet.`
-  },
-  {
-    name: "a subscription",
-    document: "subscription C { userChanged { id } }",
-    line: 1,
-    column: 1,
-    message: `Subscription "C" is not supported yet.`
   }
 ]
 
-describe("Generator features deferred to stage 5", () => {
+describe("Generator features not supported yet", () => {
   for (const { column, document, line, message, name } of deferredCases) {
     it.effect(`${name} is a located error and emits nothing`, () =>
       Effect.gen(function*() {
@@ -172,6 +121,38 @@ describe("Generator features deferred to stage 5", () => {
         )
         assert.deepStrictEqual(locatedErrors(generated), [{ severity: "error", line, column, message }])
         assert.deepStrictEqual(generated.result.files, [])
+      }).pipe(Effect.provide(NodeServices.layer)))
+  }
+})
+
+// Each of these was a located error until stage 5.
+const supportedCases: ReadonlyArray<{ readonly name: string; readonly document: string }> = [
+  { name: "a field selecting from an interface", document: `query A { node(id: "1") { id } }` },
+  { name: "a field selecting from a union", document: "query A { thing { ... on User { id } } }" },
+  {
+    name: "a fragment on an interface",
+    document: "fragment NodeBits on Node { id }\nquery A { user { ...NodeBits } }"
+  },
+  { name: "@include", document: "query B($show: Boolean!) { user { id name @include(if: $show) } }" },
+  {
+    name: "@skip on a fragment spread",
+    document:
+      "query S($show: Boolean!) { user { id ...UserBits @skip(if: $show) } }\nfragment UserBits on User { name }"
+  },
+  { name: "a variable reaching a @oneOf input object", document: "query D($p: Pick) { pick(p: $p) }" },
+  { name: "a subscription", document: "subscription C { userChanged { id } }" }
+]
+
+describe("Generator features added in stage 5", () => {
+  for (const { document, name } of supportedCases) {
+    it.effect(`${name} generates without diagnostics`, () =>
+      Effect.gen(function*() {
+        const generated = yield* generateIn(
+          { "schema.graphql": deferredSchema, "src/ops.graphql": document },
+          { schema: "./schema.graphql", documents: ["src/*.graphql"] }
+        )
+        assert.deepStrictEqual(generated.result.diagnostics, [])
+        assert.include(generated.paths, "src/ops.graphql.ts")
       }).pipe(Effect.provide(NodeServices.layer)))
   }
 })
