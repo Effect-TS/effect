@@ -527,6 +527,75 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  for (const inner of ["active", "parked"] as const) {
+    it.effect(`layerMemory does not replay when a losing ${inner} inner race has its durable clock fire`, () =>
+      Effect.gen(function*() {
+        const Probe = Workflow.make(`WorkflowEngine/LosingNestedRace/${inner}`, {
+          payload: { id: Schema.String },
+          success: Schema.String,
+          idempotencyKey: ({ id }) => id
+        })
+        const clock = (name: string) =>
+          DurableClock.sleep({ name, duration: "2 seconds", inMemoryThreshold: 0 }).pipe(Effect.as(name))
+        let runs = 0
+        let tailStarts = 0
+        const layer = Probe.toLayer(Effect.fnUntraced(function*() {
+          runs++
+          const winner = yield* DurableDeferred.raceAll({
+            name: "outer",
+            success: Schema.String,
+            error: Schema.Never,
+            effects: [
+              DurableDeferred.raceAll({
+                name: "inner",
+                success: Schema.String,
+                error: Schema.Never,
+                effects: [
+                  clock("a"),
+                  // Active: the outer race interrupts the running inner race. Parked: both inner branches park first.
+                  inner === "active" ?
+                    Activity.make({
+                      name: "slow",
+                      success: Schema.String,
+                      execute: Effect.sleep("1 second").pipe(Effect.as("slow"))
+                    }) :
+                    clock("b")
+                ]
+              }),
+              Activity.make({
+                name: "fast",
+                success: Schema.String,
+                execute: Effect.sleep("100 millis").pipe(Effect.as("activity"))
+              })
+            ]
+          })
+          yield* Activity.make({
+            name: "tail",
+            execute: Effect.suspend(() => {
+              tailStarts++
+              return Effect.sleep("10 seconds")
+            })
+          })
+          return winner
+        })).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+        yield* Effect.gen(function*() {
+          const fiber = yield* Probe.execute({ id: "probe" }).pipe(Effect.forkChild({ startImmediately: true }))
+          // The workflow fiber increments tailStarts.
+          // eslint-disable-next-line no-unmodified-loop-condition
+          while (tailStarts === 0) yield* TestClock.adjust("50 millis")
+          // The inner race's losing clocks fire while the tail activity is running.
+          yield* TestClock.adjust("2 seconds")
+          for (let i = 0; i < 4; i++) {
+            yield* TestClock.adjust("10 seconds")
+          }
+
+          assert.strictEqual(yield* Fiber.join(fiber), "activity")
+          assert.deepStrictEqual({ runs, tailStarts }, { runs: 1, tailStarts: 1 })
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+
   it.effect("layerMemory wakes a shared wait after a race releases its losing await of the same deferred", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/SharedWait/Gate", { success: Schema.String })
