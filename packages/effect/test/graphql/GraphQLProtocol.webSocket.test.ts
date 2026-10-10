@@ -3,7 +3,7 @@ import { Deferred, Effect, Fiber, Layer, Queue, Ref, Stream } from "effect"
 import { GraphQLClient, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
 import { TestClock } from "effect/testing"
-import { expectReason, IssuesGroup, IssueUpdated, Viewer, wsServer } from "./fixtures.ts"
+import { expectReason, IssuesGroup, IssueUpdated, Viewer, type WsMessage, wsServer } from "./fixtures.ts"
 
 const url = "ws://localhost/graphql"
 
@@ -85,7 +85,20 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       assert.strictEqual((yield* Fiber.join(fiber)).closeCode, 1006)
     }))
 
-  for (const invalid of [{ type: "not-a-graphql-message" }, { type: "next", payload: event("a") }]) {
+  // The message shapes graphql-ws's own validateMessage rejects. Shape is
+  // checked before the id lookup, so an unknown id does not excuse it.
+  const invalidMessages: ReadonlyArray<WsMessage> = [
+    { type: "not-a-graphql-message" },
+    { type: "next", payload: event("a") },
+    { type: "next", id: "", payload: event("a") },
+    { type: "next", id: "unknown", payload: [] },
+    { type: "error", id: "unknown", payload: [] },
+    { type: "error", id: "unknown", payload: [{ reason: "no message" }] },
+    { type: "connection_ack", payload: 42 },
+    { type: "ping", payload: "x" },
+    { type: "pong", payload: 42 }
+  ]
+  for (const invalid of invalidMessages) {
     it.effect(`an invalid message ${JSON.stringify(invalid)} closes the connection with 4400`, () =>
       Effect.gen(function*() {
         const server = yield* wsServer
