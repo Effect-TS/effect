@@ -132,19 +132,19 @@ const waitFor = Effect.fnUntraced(function*(
 /** Starts `Watch.run` over a fake `FileSystem.watch` and returns a handle to drive it. */
 const start = Effect.fnUntraced(function*(configPath: string) {
   const path = yield* Path.Path
-  const events = yield* PubSub.unbounded<string>()
+  const events = yield* PubSub.unbounded<{ readonly file: string; readonly tag: "Create" | "Update" }>()
   const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> =>
     Stream.fromPubSub(events).pipe(
-      Stream.map((event): FileSystem.WatchEvent | undefined => {
-        if (event === watched) return { _tag: "Update", path: path.basename(watched) }
-        const relative = path.relative(watched, event)
-        return relative.startsWith("..") || path.isAbsolute(relative) ? undefined : { _tag: "Update", path: relative }
+      Stream.map(({ file, tag }): FileSystem.WatchEvent | undefined => {
+        if (file === watched) return { _tag: tag, path: path.basename(watched) }
+        const relative = path.relative(watched, file)
+        return relative.startsWith("..") || path.isAbsolute(relative) ? undefined : { _tag: tag, path: relative }
       }),
       Stream.filter((event): event is FileSystem.WatchEvent => event !== undefined)
     )
   const fiber = yield* Watch.run({ configPath, watch }).pipe(Effect.forkScoped)
   return {
-    emit: (file: string) => PubSub.publish(events, file),
+    emit: (file: string, tag: "Create" | "Update" = "Update") => PubSub.publish(events, { file, tag }),
     waitFor: (
       description: string,
       done: (out: Output) => boolean
@@ -160,6 +160,21 @@ const start = Effect.fnUntraced(function*(configPath: string) {
 })
 
 describe("graphqlgen --watch", () => {
+  it.effect("a document root created after startup is watched", () =>
+    Effect.gen(function*() {
+      const p = yield* project({})
+      assert.isFalse(yield* exists(p.file("src")))
+      const loop = yield* start(p.configPath)
+      yield* loop.waitForCycle(1)
+
+      yield* write(p.dir, { "src/a.graphql": query("A", "id") })
+      yield* loop.emit(p.file("src"), "Create")
+      yield* loop.waitForCycle(2)
+      const expected = yield* Generator.generate(config, { cwd: p.dir })
+      const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
+      assert.strictEqual(yield* read(output.path), output.contents)
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+
   it.effect("a document edit leaves unchanged outputs unwritten", () =>
     Effect.gen(function*() {
       const p = yield* project({ "src/a.graphql": query("A", "id"), "src/b.graphql": query("B", "id") })
@@ -233,42 +248,52 @@ describe("graphqlgen --watch", () => {
       assert.deepStrictEqual(cycles(yield* output), ["regenerated 2 files, deleted 0", "regenerated 1 file, deleted 0"])
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
 
-  it.live("graphqlgen --watch regenerates after a real .graphql edit", () =>
-    Effect.gen(function*() {
-      const p = yield* project({ "src/a.graphql": query("A", "id") })
-      const main = (yield* Effect.promise(
-        () => import(new URL("../src/main.ts", import.meta.url).href)
-      )) as { readonly run: Effect.Effect<void, unknown, never> }
-      const fiber = yield* main.run.pipe(
-        Effect.provide(Layer.mergeAll(
-          TestConsole.layer,
-          CliOutput.layer(CliOutput.defaultFormatter({ colors: false })),
-          Stdio.layerTest({ args: Effect.succeed(["--config", p.configPath, "--watch"]) })
-        )),
-        Effect.forkScoped
-      )
-      const until = Effect.fnUntraced(
-        function*(description: string, done: Effect.Effect<boolean, unknown, FileSystem.FileSystem>) {
-          for (let attempt = 0; attempt < 300; attempt++) {
-            const exit = fiber.pollUnsafe()
-            if (exit !== undefined) {
-              const reason = Exit.isFailure(exit) ? Cause.pretty(exit.cause) : "it completed"
-              return assert.fail(`graphqlgen --watch exited while waiting for ${description}: ${reason}`)
+  it.live(
+    "real watchers survive rename-over and in-place saves",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const p = yield* project({ "src/a.graphql": query("A", "id") })
+        const main = (yield* Effect.promise(
+          () => import(new URL("../src/main.ts", import.meta.url).href)
+        )) as { readonly run: Effect.Effect<void, unknown, never> }
+        const fiber = yield* main.run.pipe(
+          Effect.provide(Layer.mergeAll(
+            TestConsole.layer,
+            CliOutput.layer(CliOutput.defaultFormatter({ colors: false })),
+            Stdio.layerTest({ args: Effect.succeed(["--config", p.configPath, "--watch"]) })
+          )),
+          Effect.forkScoped
+        )
+        const until = Effect.fnUntraced(
+          function*(description: string, done: Effect.Effect<boolean, unknown, FileSystem.FileSystem>) {
+            for (let attempt = 0; attempt < 300; attempt++) {
+              const exit = fiber.pollUnsafe()
+              if (exit !== undefined) {
+                const reason = Exit.isFailure(exit) ? Cause.pretty(exit.cause) : "it completed"
+                return assert.fail(`graphqlgen --watch exited while waiting for ${description}: ${reason}`)
+              }
+              if (yield* done) return
+              yield* Effect.sleep("50 millis")
             }
-            if (yield* done) return
-            yield* Effect.sleep("50 millis")
+            return assert.fail(`timed out waiting for ${description}`)
           }
-          return assert.fail(`timed out waiting for ${description}`)
-        }
-      )
+        )
 
-      yield* until("the first run", exists(p.file("src/a.graphql.ts")))
-      yield* write(p.dir, { "src/a.graphql": query("A", "id", "name") })
-      const expected = yield* Generator.generate(config, { cwd: p.dir })
-      const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
-      yield* until(
-        "the edited output",
-        read(output.path).pipe(Effect.map((contents) => contents === output.contents))
-      )
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)), 30_000)
+        yield* until("the first run", exists(p.file("src/a.graphql.ts")))
+        const untilOutput = Effect.fnUntraced(function*(description: string) {
+          const expected = yield* Generator.generate(config, { cwd: p.dir })
+          const output = expected.files.find((file) => file.path === p.file("src/a.graphql.ts"))!
+          yield* until(description, read(output.path).pipe(Effect.map((contents) => contents === output.contents)))
+        })
+
+        yield* write(p.dir, { "src/a.tmp": query("A", "id", "name") })
+        yield* fs.rename(p.file("src/a.tmp"), p.file("src/a.graphql"))
+        yield* untilOutput("the rename-over output")
+
+        yield* write(p.dir, { "src/a.graphql": query("A", "id") })
+        yield* untilOutput("the in-place edited output")
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    30_000
+  )
 })
