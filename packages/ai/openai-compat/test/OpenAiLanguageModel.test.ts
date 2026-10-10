@@ -1976,7 +1976,7 @@ const reasoningCapabilityCases: ReadonlyArray<{
   readonly config: Parameters<typeof OpenAiLanguageModel.model>[1]
   readonly role: "system" | "developer"
 }> = [
-  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini"].map((model) => ({
+  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model"].map((model) => ({
     name: `treats ${model} as a reasoning model`,
     model,
     config: { store: false },
