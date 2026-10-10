@@ -20,7 +20,6 @@ describeDnsClient(
           nameServers: [nameServer],
           udpPayloadSize,
           udp: (server) => NodeDatagramSocket.make({ connect: { address: server.address, port: server.port } }),
-          // The container maps its TCP listener to a different port.
           tcp: () => NodeSocket.makeNet({ host: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
         }).pipe(Effect.provide(NodeCrypto.layer))
       )

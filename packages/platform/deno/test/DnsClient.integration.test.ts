@@ -20,7 +20,6 @@ describeDnsClient(
           nameServers: [nameServer],
           udpPayloadSize,
           udp: (server) => DenoDatagramSocket.make({ peer: { address: server.address, port: server.port } }),
-          // The container maps its TCP listener to a different port.
           tcp: () =>
             DenoSocket.makeTcp({ hostname: NetAddress.formatIp(tcpNameServer.address), port: tcpNameServer.port })
         }).pipe(Effect.provide(DenoCrypto.layer))

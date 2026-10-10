@@ -1,17 +1,8 @@
 /**
- * A DNS client that speaks the DNS protocol itself, returning full responses
- * with their sections, TTLs, and header flags.
+ * A DNS client that queries name servers and returns the full responses.
  *
- * `make` creates a client that sends queries with a `Transport`, trying name
- * servers in order with a timeout per attempt until one answers. Transports
- * are provided by layers, so they can be replaced: UDP with retries over TCP
- * and TCP from the platform packages, such as `NodeDnsClient`, and DNS over
- * HTTPS with any `HttpClient` from `layerTransportHttps`, which also works in
- * browsers.
- *
- * Record data reuses the `Dns` record values. Records that `Dns` cannot
- * represent, such as unknown record types or names that are not valid
- * `Host.DomainName` values, are kept as `RawRecord` values.
+ * Queries are sent with a `Transport`: UDP and TCP from the platform packages,
+ * such as `NodeDnsClient`, or DNS over HTTPS with `layerTransportHttps`.
  *
  * @stability experimental
  * @since 4.0.0
@@ -36,14 +27,8 @@ import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
 
 /**
- * The undecoded data of a record that is not a `Dns.DnsRecord`.
- *
- * **Details**
- *
- * Records of types that `Dns` does not support are kept as raw data, and so
- * are records of supported types whose data cannot be represented, such as an
- * MX record whose exchange is not a valid `Host.DomainName`. `type` is the
- * numeric record type and `data` holds the record's RDATA bytes.
+ * A record that cannot be represented as a `Dns.DnsRecord`, with its numeric
+ * type and undecoded data.
  *
  * @stability experimental
  * @category models
@@ -58,14 +43,6 @@ export interface RawRecord {
 /**
  * A resource record of a DNS response section.
  *
- * **Details**
- *
- * `owner` is the fully qualified owner name with the letter case sent by the
- * server, written like `Dns.Ptr` host names: labels are UTF-8 text, with dots
- * and backslashes inside a label escaped as `\.` and `\\`.
- * `ttl` is the time to live, where values of 2^31 seconds or more count as zero
- * (RFC 2181). `class` is the numeric record class, `1` for the internet class.
- *
  * @stability experimental
  * @category models
  * @since 4.0.0
@@ -78,14 +55,8 @@ export interface ResourceRecord<D extends Dns.DnsRecord | RawRecord = Dns.DnsRec
 }
 
 /**
- * A DNS response: its header flags, response code, and record sections.
- *
- * **Details**
- *
- * - `rcode` is the numeric response code, including the extended bits of an
- *   EDNS(0) response: `0` for no error and `3` for a name that does not exist.
- * - `edns` holds the EDNS(0) parameters of the server's OPT record, which is not
- *   included in `additional`; it is `undefined` when the server sent none.
+ * A DNS response: its header flags, response code, record sections, and
+ * EDNS(0) parameters.
  *
  * @stability experimental
  * @category models
@@ -114,11 +85,6 @@ export interface Response {
 /**
  * The addresses of host names, as read from a hosts file.
  *
- * **Details**
- *
- * Names are normalized domain names without a trailing dot, and addresses are
- * kept in the order they were listed.
- *
  * @see {@link parseHosts} for reading a hosts file
  * @stability experimental
  * @category models
@@ -131,13 +97,8 @@ export type Hosts = ReadonlyMap<Host.DomainName, Arr.NonEmptyReadonlyArray<NetAd
 // =============================================================================
 
 /**
- * Service that sends DNS queries and returns the full responses.
- *
- * **Details**
- *
- * Besides `query`, the service carries the stub resolver configuration that
- * `layerDns` applies to address lookups: the `search` domains, the `ndots`
- * threshold, and the `hosts` table.
+ * Service that sends DNS queries and returns the full responses, along with
+ * the resolver configuration used by `layerDns`.
  *
  * @see {@link make} for the default implementation
  * @stability experimental
@@ -146,17 +107,9 @@ export type Hosts = ReadonlyMap<Host.DomainName, Arr.NonEmptyReadonlyArray<NetAd
  */
 export class DnsClient extends Context.Service<DnsClient, {
   /**
-   * Queries the records of one type for a name and returns the response.
-   *
-   * **Details**
-   *
-   * Responses with no error and responses for names that do not exist
-   * (NXDOMAIN) both succeed; read `rcode` to tell them apart. Other response
-   * codes, timeouts, and transport errors fail with a `Dns.DnsError` once
-   * every name server has been tried. Names are parsed and normalized, and
-   * invalid names fail with `BadName`; they are queried as given, without
-   * search domains. Recursion is requested unless `recursionDesired` is
-   * `false`.
+   * Queries the records of one type for a name, without search domains.
+   * NXDOMAIN responses succeed; other errors fail once every name server has
+   * been tried.
    */
   query(
     name: Host.DomainNameInput,
@@ -190,7 +143,6 @@ const rcodeReasons: Record<number, Dns.DnsErrorReason> = {
 
 const absolute = (name: Host.DomainName): string => name.endsWith(".") ? name : `${name}.`
 
-// Names compare case-insensitively in ASCII only (RFC 4343).
 const asciiLowerCase = (name: string): string => name.replace(/[A-Z]/g, (letter) => letter.toLowerCase())
 
 const tcpFrame = (payload: Uint8Array): Uint8Array => {
@@ -221,14 +173,9 @@ const concat = (head: Uint8Array, chunks: ReadonlyArray<Uint8Array>): Uint8Array
  *
  * **Details**
  *
- * - `encode` encodes the query with an ID and the EDNS(0) options of the
- *   transport: the advertised UDP payload size and, optionally, the padding
- *   block size.
- * - `matches` returns whether a message answers the query: it must be a
- *   response with the ID and a question with the query's name (in any letter
- *   case), type, and class. A format error without a question also matches.
- * - `limit` runs one exchange in its own scope and limits it to the client's
- *   timeout. Failures become `Refused` errors and timeouts `Timeout` errors.
+ * - `encode` encodes the query with an ID and EDNS(0) options.
+ * - `matches` returns whether a message is a response to the query.
+ * - `limit` scopes one exchange and applies the client's timeout.
  * - `fail` creates the `Dns.DnsError` of the query.
  *
  * @stability experimental
@@ -247,20 +194,8 @@ export interface Exchange {
 }
 
 /**
- * Service that sends the queries of a `DnsClient` to name servers.
- *
- * **When to use**
- *
- * Use to choose how `make` reaches its name servers: over UDP or TCP with
- * the platform transport layers, such as `NodeDnsClient.layerTransportUdp`,
- * or as DNS over HTTPS with `layerTransportHttps`.
- *
- * **Details**
- *
- * `servers` holds one entry per name server, in the order they are tried.
- * `send` exchanges a query with the server and returns the response message
- * that matches it; the client decodes the response and maps its response
- * code.
+ * Service that sends the queries of a `DnsClient` to name servers, in the
+ * order of `servers`.
  *
  * @see {@link makeTransportUdp} for UDP with retries over TCP
  * @see {@link makeTransportTcp} for TCP
@@ -287,11 +222,6 @@ const nameServerAddresses = (
 /**
  * Options for `makeTransportTcp`.
  *
- * **Details**
- *
- * Name servers are converted like `Dns.nameServerFromInput`. `tcp(server)`
- * opens the connection for one attempt.
- *
  * @stability experimental
  * @category models
  * @since 4.0.0
@@ -302,24 +232,8 @@ export interface TransportTcpOptions {
 }
 
 /**
- * Creates a `Transport` that sends every query over TCP.
- *
- * **When to use**
- *
- * Use when UDP is blocked or unreliable on the path to the name servers, like
- * the `use-vc` option of `resolv.conf`. The platform packages provide it with
- * their sockets, for example with `NodeDnsClient.layerTransportTcp`.
- *
- * **Details**
- *
- * Each attempt opens a new connection and uses a new random query ID from the
- * `Crypto` service. A response must match the query, or the attempt fails
- * with `InvalidResponse`.
- *
- * **Gotchas**
- *
- * Invalid options cause a defect: `nameServers` must be a non-empty list of
- * valid name server addresses.
+ * Creates a `Transport` that sends every query over TCP, with a new connection
+ * per attempt.
  *
  * @see {@link TransportTcpOptions} for the options
  * @stability experimental
@@ -334,13 +248,11 @@ export const makeTransportTcp = (
     return Transport.of({
       servers: Arr.map(nameServerAddresses(options.nameServers), (server) => ({
         send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
-          // Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
           const id = yield* crypto.randomIntBetween(0, 0xffff)
           const payload = yield* limit(Effect.gen(function*() {
             const socket = yield* options.tcp(server)
             const pull = yield* Socket.readerBytes(socket)
             const writer = yield* socket.writer
-            // Advertises EDNS(0) support; the UDP payload size does not apply over TCP.
             yield* writer.write(tcpFrame(encode({ id, udpPayloadSize: 1232 })))
             let buffer: Uint8Array = new Uint8Array(0)
             while (buffer.length < 2 || buffer.length < 2 + ((buffer[0] << 8) | buffer[1])) {
@@ -362,14 +274,8 @@ export const makeTransportTcp = (
  *
  * **Details**
  *
- * - Name servers are converted like `Dns.nameServerFromInput`.
- * - `udp(server)` opens a socket for one UDP attempt. The socket must send to
- *   `server` by default, as a `peer` or connected socket, and should bind an
- *   ephemeral port so the operating system picks a random source port.
- * - `tcp(server)` opens a connection for a query whose UDP response was
- *   truncated.
- * - Queries advertise a UDP payload size of `udpPayloadSize` bytes (default
- *   1232) with EDNS(0).
+ * `udp(server)` must return a socket that sends to `server` by default.
+ * `udpPayloadSize` defaults to 1232 bytes.
  *
  * @stability experimental
  * @category models
@@ -385,27 +291,6 @@ export interface TransportUdpOptions {
 /**
  * Creates a `Transport` that sends queries over UDP and retries truncated
  * responses over TCP.
- *
- * **When to use**
- *
- * Use to build a transport from your own socket constructors; the platform
- * packages provide it with their sockets, for example with
- * `NodeDnsClient.layerTransportUdp`.
- *
- * **Details**
- *
- * - Each attempt opens a new socket and uses a new random query ID from the
- *   `Crypto` service; the socket is closed when the attempt ends or is
- *   interrupted.
- * - A response is accepted only if it comes from the name server and matches
- *   the query; other packets are ignored. A truncated response is retried over
- *   TCP with a new query ID.
- *
- * **Gotchas**
- *
- * Invalid options cause a defect: `nameServers` must be a non-empty list of
- * valid name server addresses, and `udpPayloadSize` an integer from 512 to
- * 65535.
  *
  * @see {@link TransportUdpOptions} for the options and their defaults
  * @stability experimental
@@ -425,7 +310,6 @@ export const makeTransportUdp = (
     return Transport.of({
       servers: Arr.map(nameServerAddresses(options.nameServers), (server, index) => ({
         send: Effect.fnUntraced(function*(exchange) {
-          // Query IDs must be unpredictable to resist spoofed responses (RFC 5452).
           const id = yield* crypto.randomIntBetween(0, 0xffff)
           const received = yield* exchange.limit(Effect.gen(function*() {
             const socket = yield* options.udp(server)
@@ -440,7 +324,7 @@ export const makeTransportUdp = (
               }
             }
           }))
-          // The TC bit of a matching response, which has a complete header.
+          // TC bit
           return (received[2] & 0x02) !== 0 ? yield* tcp.servers[index].send(exchange) : received
         })
       }))
@@ -448,14 +332,7 @@ export const makeTransportUdp = (
   })
 
 /**
- * Options for `makeTransportHttps`.
- *
- * **Details**
- *
- * - `urls` are the DNS over HTTPS endpoints, such as
- *   `"https://cloudflare-dns.com/dns-query"`, in the order they are tried.
- * - `method` (default `"GET"`) sends the query in the `dns` URL parameter
- *   with `"GET"` or as the request body with `"POST"`.
+ * Options for `makeTransportHttps`. `method` defaults to `"GET"`.
  *
  * @stability experimental
  * @category models
@@ -469,29 +346,8 @@ export interface TransportHttpsOptions {
 const dnsMessage = "application/dns-message"
 
 /**
- * Creates a `Transport` that sends queries over HTTP with the `HttpClient`
- * service, as DNS over HTTPS (RFC 8484).
- *
- * **When to use**
- *
- * Use when UDP and TCP sockets are not available, such as in browsers, or
- * when queries should reach a public resolver over an encrypted connection.
- *
- * **Details**
- *
- * - Queries use ID 0, so that HTTP caches can store responses, and are padded
- *   to a multiple of 128 bytes with the EDNS(0) Padding option (RFC 8467).
- * - With `"GET"`, the query is sent base64url-encoded in the `dns` URL
- *   parameter, which keeps browser requests free of CORS preflights.
- * - A response must have a 2xx status, the `application/dns-message` content
- *   type, and the query's name (in any letter case), type, and class, or the
- *   attempt fails with `InvalidResponse`; 5xx statuses fail with
- *   `ServerFailure`. HTTP client errors fail with `Refused`.
- *
- * **Gotchas**
- *
- * Invalid options cause a defect: `urls` must be a non-empty list of HTTP or
- * HTTPS URLs.
+ * Creates a `Transport` that sends queries with the `HttpClient` service, as
+ * DNS over HTTPS (RFC 8484).
  *
  * @see {@link TransportHttpsOptions} for the options and their defaults
  * @see {@link layerTransportHttps} for a layer
@@ -519,8 +375,6 @@ export const makeTransportHttps = (
     return Transport.of({
       servers: Arr.map(urls, (url) => ({
         send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
-          // The padding needs an OPT record, whose UDP payload size does not
-          // apply over HTTP.
           const query = encode({ id: 0, udpPayloadSize: 1232, padding: 128 })
           const request = HttpClientRequest.setHeader(
             post
@@ -589,11 +443,7 @@ export const layerTransportHttps = (
  *
  * **Details**
  *
- * - The name servers of the `Transport` are tried in order, starting with the
- *   next one for each query when `rotate` is set, for `attempts` rounds
- *   (default 2). Each exchange is limited to `timeout` (default 5 seconds).
- * - `search` (default none), `ndots` (default 1), and `hosts` (default empty)
- *   configure the address lookups of `layerDns`.
+ * `attempts` defaults to 2, `timeout` to 5 seconds, and `ndots` to 1.
  *
  * @stability experimental
  * @category models
@@ -609,22 +459,8 @@ export interface MakeOptions {
 }
 
 /**
- * Creates a `DnsClient` that sends queries with the `Transport` service.
- *
- * **Details**
- *
- * - Responses with no error and responses for names that do not exist
- *   (NXDOMAIN) are returned. Server failures, refusals, malformed responses,
- *   timeouts, and transport errors move on to the next name server.
- * - Response codes map to `Dns.DnsError` reasons: format errors to
- *   `InvalidResponse`, server failures to `ServerFailure`, unimplemented
- *   queries to `Unsupported`, refusals to `Refused`, and others to `Unknown`.
- *
- * **Gotchas**
- *
- * Invalid options cause a defect when the service is created: `attempts` must
- * be a positive integer, `timeout` a positive finite duration, `ndots` a
- * non-negative integer, and `search` a list of valid domain names.
+ * Creates a `DnsClient` that sends queries with the `Transport` service,
+ * moving on to the next name server when one fails.
  *
  * @see {@link MakeOptions} for the options and their defaults
  * @see {@link layer} for a layer
@@ -721,12 +557,6 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
  * Layer that provides a `DnsClient` sending queries with the `Transport`
  * service.
  *
- * **Details**
- *
- * The platform packages provide a client configured from the system, such as
- * `NodeDnsClient.layer`, and transport layers such as
- * `NodeDnsClient.layerTransportUdp`.
- *
  * @see {@link make} for the behavior and options
  * @stability experimental
  * @category layers
@@ -745,19 +575,8 @@ const clamp = (value: string, min: number, max: number): number | undefined => {
 }
 
 /**
- * Parses the stub resolver configuration of a `resolv.conf` file.
- *
- * **Details**
- *
- * - `nameserver` lines give up to three name servers on port 53. Numeric IPv6
- *   zones such as `fe80::1%2` are kept; named zones are skipped.
- * - `search` sets the search domains and `domain` sets a single search
- *   domain; the last of these lines wins. Invalid domain names are skipped.
- * - `options` reads `ndots:n` (at most 15), `timeout:n` in seconds (1 to
- *   30), `attempts:n` (1 to 5), and `rotate`, like glibc.
- *
- * Lines starting with `#` or `;`, unknown keywords, and unknown options are
- * ignored, and values that are not given are `undefined`.
+ * Parses the resolver configuration of a `resolv.conf` file, like glibc.
+ * Invalid and unknown entries are skipped.
  *
  * **Example** (Parsing a resolv.conf file)
  *
@@ -840,15 +659,8 @@ export const parseResolvConf = (text: string): {
 const relative = (name: string): string => name.length > 1 && name.endsWith(".") ? name.slice(0, -1) : name
 
 /**
- * Parses a hosts file into the addresses of each host name.
- *
- * **Details**
- *
- * Each line holds an IP address followed by a canonical name and aliases;
- * text after `#` is a comment. Lines with an invalid address, including IPv6
- * addresses with a zone, and names that are not valid domain names are
- * skipped. Names are normalized like `Host.domainNameFromString`, without a
- * trailing dot.
+ * Parses a hosts file into the addresses of each host name. Invalid entries
+ * are skipped.
  *
  * **Example** (Parsing a hosts file)
  *
@@ -901,22 +713,9 @@ const withMethod = (method: "lookup" | "reverse", hostname: string) => (error: D
  *
  * **Details**
  *
- * - `lookup` returns the addresses of the host from the client's `hosts`
- *   table when it lists any of the requested family. Otherwise it queries A
- *   and AAAA records, with IPv4 addresses first, of each name built from the
- *   host and the `search` domains until one has addresses. Relative names
- *   with at least `ndots` dots are tried as given before the search domains,
- *   others after them; fully qualified names are tried only as given. A
- *   failed query moves on to the next name, and is reported if no name has
- *   addresses.
- * - `resolve` queries the name as given and `reverse` queries the PTR records
- *   of `Dns.reverseName(address)`.
- * - Queries follow CNAME records, up to 8 per operation, querying the target
- *   of an alias when the response does not include its records.
- * - Records that `Dns` cannot represent are skipped. When a name has records
- *   of the type but none can be represented, the query fails with
- *   `InvalidResponse`; names that do not exist or have no records fail with
- *   `NotFound`.
+ * `lookup` checks the `hosts` table first, then queries A and AAAA records
+ * with the `search` domains and `ndots`, like a stub resolver. Queries follow
+ * up to 8 CNAME records.
  *
  * @stability experimental
  * @category layers
@@ -927,9 +726,6 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
   Effect.gen(function*() {
     const client = yield* DnsClient
 
-    // Returns the names to query for a host: fully qualified names as given,
-    // names with at least `ndots` dots first as given and then with each search
-    // domain, and other names with the search domains first.
     const candidates = (host: Host.DomainName): ReadonlyArray<Host.DomainName> => {
       if (Host.isFullyQualified(host)) return [host]
       const searched = Arr.filterMap(
@@ -940,10 +736,6 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
       return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
     }
 
-    // Queries the records of a type, following CNAME records in the answer and
-    // querying the target of an alias whose records the answer does not
-    // include. Fails with `InvalidResponse` when the name has records of the
-    // type but none can be represented.
     const resolveChain = <T extends Dns.RecordType>(
       name: Host.DomainName,
       type: T,

@@ -1,15 +1,7 @@
 /**
- * The `DenoDnsClient` module provides Deno's `DnsClient` service and its UDP
- * and TCP transports, which speak the DNS protocol over `Deno.listenDatagram`
- * sockets and Deno TCP connections. The system configuration is read with
- * `NodeDnsClient.systemOptions`.
- *
- * **Gotchas**
- *
- * Deno cannot connect UDP sockets, so packets from other addresses reach the
- * socket and are discarded by the client. Datagram sockets need the
- * `--unstable-net` flag, and queries need the `--allow-net` permission.
- * Reading the system configuration needs `--allow-read`.
+ * Deno implementation of the `DnsClient` service and its UDP and TCP
+ * transports. Requires `--unstable-net` and `--allow-net`, and `--allow-read`
+ * for the system configuration.
  *
  * @stability experimental
  * @since 4.0.0
@@ -48,10 +40,6 @@ const tcp = (server: NetAddress.InetAddress) =>
  * `Deno.listenDatagram` sockets, and retries truncated responses over
  * Deno TCP connections.
  *
- * **Gotchas**
- *
- * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
- *
  * @see {@link layerTransportUdp} for a layer
  * @stability experimental
  * @category constructors
@@ -82,10 +70,6 @@ export const layerTransportUdp = (
 /**
  * Creates a `DnsClient.Transport` that sends every query over
  * Deno TCP connections.
- *
- * **Gotchas**
- *
- * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
  *
  * @see {@link layerTransportTcp} for a layer
  * @stability experimental

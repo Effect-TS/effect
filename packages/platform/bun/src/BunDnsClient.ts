@@ -1,8 +1,6 @@
 /**
- * The `BunDnsClient` module provides Bun's `DnsClient` service and its UDP and
- * TCP transports, which speak the DNS protocol over Bun UDP sockets connected
- * to the name server and `node:net` connections. The system configuration is
- * read with `NodeDnsClient.systemOptions`.
+ * Bun implementation of the `DnsClient` service and its UDP and TCP
+ * transports.
  *
  * @stability experimental
  * @since 4.0.0
@@ -41,10 +39,6 @@ const tcp = (server: NetAddress.InetAddress) =>
  * Bun UDP sockets connected to the name server, and retries truncated responses over
  * `node:net` connections.
  *
- * **Gotchas**
- *
- * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
- *
  * @see {@link layerTransportUdp} for a layer
  * @stability experimental
  * @category constructors
@@ -75,10 +69,6 @@ export const layerTransportUdp = (
 /**
  * Creates a `DnsClient.Transport` that sends every query over
  * `node:net` connections.
- *
- * **Gotchas**
- *
- * IPv6 name servers with a scope ID fail with a `NetAddress.NetAddressError`.
  *
  * @see {@link layerTransportTcp} for a layer
  * @stability experimental

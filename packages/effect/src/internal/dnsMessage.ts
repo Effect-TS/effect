@@ -38,16 +38,7 @@ const MAX_NAME_LENGTH = 255
 // Encoding
 // =============================================================================
 
-/**
- * Encodes a query with one question of the internet class. Domain names are
- * validated ASCII of at most 253 characters, so encoding cannot fail.
- *
- * With a `udpPayloadSize`, the query has an EDNS(0) OPT record, and with a
- * `padding` block size as well, the OPT record holds a Padding option (RFC
- * 7830) that makes the query a multiple of `padding` bytes long (RFC 8467).
- *
- * @internal
- */
+/** @internal */
 export const encodeQuery = (options: {
   readonly id: number
   readonly name: Host.DomainName
@@ -61,7 +52,6 @@ export const encodeQuery = (options: {
   const nameLength = labels.reduce((length, label) => length + label.length + 1, 1)
   const udpPayloadSize = options.udpPayloadSize
   const length = 12 + nameLength + 4 + (udpPayloadSize === undefined ? 0 : 11)
-  // The Padding option adds a 4-byte option header and zero bytes up to the block size.
   const padding = udpPayloadSize === undefined || options.padding === undefined
     ? undefined
     : (options.padding - (length + 4) % options.padding) % options.padding
@@ -80,8 +70,7 @@ export const encodeQuery = (options: {
   view.setUint16(offset, options.type)
   view.setUint16(offset + 2, CLASS_IN)
   if (udpPayloadSize !== undefined) {
-    // OPT record: root owner, type, UDP payload size as class, zero TTL, and
-    // RDATA holding the Padding option, if any.
+    // OPT record
     view.setUint16(offset + 5, OPT)
     view.setUint16(offset + 7, udpPayloadSize)
     if (padding !== undefined) {
@@ -116,8 +105,6 @@ export interface Header {
 
 const utf8 = new TextDecoder("utf-8", { ignoreBOM: true })
 
-// Decodes ASCII bytes, returning `undefined` when there are other bytes. The
-// "latin1" `TextDecoder` is windows-1252, which does not map bytes one to one.
 const ascii = (bytes: Uint8Array): string | undefined => {
   let out = ""
   for (const byte of bytes) {
@@ -134,8 +121,6 @@ const textName = (labels: ReadonlyArray<Uint8Array>): string =>
 
 const hostLabel = /^[a-z0-9_-]+$/i
 
-// Converts a name to a domain name when its labels hold only letters, digits,
-// hyphens, and underscores; other bytes must not go through IDNA conversion.
 const domainName = (labels: ReadonlyArray<Uint8Array>): Host.DomainName | undefined => {
   if (labels.length === 0) return "." as Host.DomainName
   const text = labels.map(ascii)
@@ -144,7 +129,6 @@ const domainName = (labels: ReadonlyArray<Uint8Array>): Host.DomainName | undefi
     : undefined
 }
 
-// Malformed input throws a `DnsMessageError`, which `decode` returns as a failure.
 class MessageReader {
   readonly bytes: Uint8Array
   readonly view: DataView
@@ -191,9 +175,7 @@ class MessageReader {
     return utf8.decode(this.take(this.u8(what), what))
   }
 
-  // Reads the labels of a possibly compressed name. Every pointer must
-  // point before the labels read since the previous jump, so pointers strictly
-  // decrease and cannot loop.
+  // Compression pointers must point backward, so they cannot loop.
   name(what: string): ReadonlyArray<Uint8Array> {
     const bytes = this.bytes
     const labels: Array<Uint8Array> = []
@@ -234,8 +216,6 @@ class MessageReader {
   }
 }
 
-// Fields may hold `undefined` for names that are not valid domain names, which
-// `makeRecord` rejects.
 const record = <T extends Dns.RecordType>(
   type: T,
   fields: { readonly [K in keyof Dns.RecordFields<T>]: Dns.RecordFields<T>[K] | undefined }
@@ -245,8 +225,7 @@ const exactLength = (reader: MessageReader, end: number, length: number, type: s
   if (end - reader.offset !== length) reader.fail(`${type} record data must be ${length} bytes`)
 }
 
-// Reads record data up to `end`, returning `undefined` for well-formed data that
-// `Dns` cannot represent and failing for data that is malformed.
+// Returns `undefined` for well-formed data that `Dns` cannot represent.
 const readData = (reader: MessageReader, type: number, end: number): Dns.DnsRecord | undefined => {
   switch (type) {
     case typeCodes.A:
@@ -260,7 +239,6 @@ const readData = (reader: MessageReader, type: number, end: number): Dns.DnsReco
       const tag = ascii(reader.take(reader.u8("CAA tag"), "CAA tag"))
       if (reader.offset > end) reader.fail("CAA tag exceeds the record data")
       const value = utf8.decode(reader.take(end - reader.offset, "CAA value"))
-      // Only the issuer critical flag (bit 7) is defined; other flag bits are reserved.
       return record("CAA", { critical: (flags & 0x80) !== 0, tag, value })
     }
     case typeCodes.CNAME:
@@ -353,20 +331,11 @@ const decode = <A>(bytes: Uint8Array, f: (reader: MessageReader) => A): Result.R
       cause instanceof DnsMessageError ? cause : new DnsMessageError({ message: String(cause), offset: -1 })
   })
 
-/**
- * Decodes the header and question section of a message, which is enough to
- * match a response to its query even when the rest is truncated.
- *
- * @internal
- */
+/** @internal */
 export const decodeHeader = (bytes: Uint8Array): Result.Result<Header, DnsMessageError> =>
   decode(bytes, (reader) => readHeader(reader).header)
 
-/**
- * Decodes a complete response.
- *
- * @internal
- */
+/** @internal */
 export const decodeResponse = (bytes: Uint8Array): Result.Result<DnsClient.Response, DnsMessageError> =>
   decode(bytes, (reader) => {
     const { counts, header } = readHeader(reader)
@@ -395,7 +364,6 @@ export const decodeResponse = (bytes: Uint8Array): Result.Result<DnsClient.Respo
         const data = readData(reader, type, end) ?? {
           _tag: "Raw" as const,
           type,
-          // Copies the data: `slice` on a Node.js `Buffer` returns a view.
           data: new Uint8Array(reader.bytes.subarray(end - length, end))
         }
         if (reader.offset !== end) reader.fail("record data does not match its length", start)

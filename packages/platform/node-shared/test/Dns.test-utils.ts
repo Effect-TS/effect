@@ -80,8 +80,7 @@ const assertRecords = (actual: ReadonlyArray<Dns.DnsRecord>, records: ReadonlyAr
   }
 }
 
-// Each zone is also served over DNS over HTTPS on port 8443, which CoreDNS
-// serves as plain HTTP without a `tls` block.
+// Without a `tls` block, CoreDNS serves DNS over HTTPS as plain HTTP.
 const corefile = `
 example.test https://example.test:8443 {
   file /etc/coredns/example.test.db
@@ -97,8 +96,8 @@ edge.test https://edge.test:8443 {
 // TXT records that do not fit in a 512-byte UDP response.
 const bigTxt = Array.from({ length: 16 }, (_, i) => `big         IN TXT   "record ${i} ${"x".repeat(24)}"`).join("\n")
 
-// Mirrors `expected`, plus records that cannot be represented and a large
-// record set. Names outside the zones are refused.
+// Mirrors `expected`, plus records that cannot be represented. Names outside
+// the zones are refused.
 const exampleZone = `
 $ORIGIN example.test.
 $TTL 300
@@ -143,9 +142,7 @@ _dot._tcp   IN PTR   printer\\..
 `
 
 /**
- * Starts a CoreDNS container serving the fixture zones and returns the
- * addresses of its UDP and TCP listeners, which are mapped to different ports,
- * and the URL of its DNS over HTTPS endpoint, which uses plain HTTP.
+ * Starts a CoreDNS container serving the fixture zones.
  */
 export const startDnsServer = async (): Promise<{
   readonly nameServer: NetAddress.InetAddressV4
@@ -200,8 +197,7 @@ export const startDnsServer = async (): Promise<{
 
 /**
  * Runs end-to-end tests of a `Dns` service against a CoreDNS container. The
- * options only describe documented runtime bugs and limitations that an
- * implementation cannot work around.
+ * options skip runtime limitations.
  */
 export const describeDnsServer = (
   label: string,
@@ -210,11 +206,8 @@ export const describeDnsServer = (
     server: { readonly dohUrl: string }
   ) => Effect.Effect<Dns.Dns["Service"], NetAddress.NetAddressError, Scope.Scope>,
   options?: {
-    // The runtime returns each character string of a TXT record as a separate record.
     readonly splitsTxtRecords?: boolean | undefined
-    // The runtime reports refused queries as missing names.
     readonly refusedAsNotFound?: boolean | undefined
-    // The runtime cannot query TLSA records, so the implementation fails with `Unsupported`.
     readonly lacksTlsa?: boolean | undefined
   }
 ) =>
@@ -324,10 +317,7 @@ export const describeDnsServer = (
   })
 
 /**
- * Runs end-to-end tests of a `DnsClient` against a CoreDNS container. The
- * client's TCP connections must go to `tcpNameServer`, since the container
- * maps its UDP and TCP listeners to different ports, and its DNS over HTTPS
- * requests to `dohUrl`.
+ * Runs end-to-end tests of a `DnsClient` against a CoreDNS container.
  */
 export const describeDnsClient = (
   label: string,
@@ -338,7 +328,7 @@ export const describeDnsClient = (
     readonly udpPayloadSize?: number | undefined
   }) => Effect.Effect<DnsClient.DnsClient["Service"]>,
   options?: {
-    // The client sends queries over TCP or HTTPS, where responses are not truncated.
+    // Responses are never truncated over TCP or HTTPS.
     readonly stream?: boolean | undefined
   }
 ) =>
