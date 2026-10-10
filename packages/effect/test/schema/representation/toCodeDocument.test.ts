@@ -449,6 +449,17 @@ describe("toCodeDocument", () => {
   })
 
   describe("Number", () => {
+    it("preserves a finite check after another check", () => {
+      assertSchema({
+        schema: Schema.Number.check(Schema.isGreaterThan(0), Schema.isFinite())
+      }, {
+        codes: makeCode(
+          `Schema.Number.check(Schema.isGreaterThan(0)).check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
+          "number"
+        )
+      })
+    })
+
     it("emits the canonical finite schema without duplicating its first check", () => {
       assertSchema({
         schema: Schema.Number.annotate({ description: "amount" }).check(Schema.isFinite(), Schema.isGreaterThan(0))
