@@ -430,9 +430,9 @@ export const layerHttp: {
  *   with a Node or Bun `Socket.WebSocketConstructor`.
  * - `connectionParams` is the `connection_init` payload. It runs again on
  *   every connect, so a token can be refreshed. A failure is a
- *   `TransportError`.
+ *   `TransportError`, and so is the socket closing while it runs.
  * - `connectionAckTimeout` (default 10 seconds) bounds the wait for
- *   `connection_ack`.
+ *   `connection_ack`, starting once `connection_init` is sent.
  * - `keepAlive` (default 10 seconds) is how often the client sends `ping`.
  *   No frame from the server for a whole interval after a `ping` drops the
  *   connection with a retryable `TransportError`. `false` turns it off.
@@ -566,35 +566,61 @@ export const makeWebSocket: {
       }
     }
 
+    // An invalid server message closes the connection with 4400, which is
+    // fatal for every operation on it.
+    const invalid = (reason: string, cause?: unknown) =>
+      Effect.andThen(
+        Effect.ignore(writer.write(new Socket.CloseEvent(4400, "Invalid message"))),
+        Effect.fail(
+          new TransportError({ description: `Invalid graphql-ws message: ${reason}`, closeCode: 4400, cause })
+        )
+      )
+
     const handle = (conn: Connection, frame: string | Uint8Array): Effect.Effect<void, TransportError> => {
-      conn.receivedFrame = true
       let message: WsMessage
       try {
         message = JSON.parse(typeof frame === "string" ? frame : textDecoder.decode(frame))
       } catch (cause) {
-        return Effect.fail(
-          new TransportError({ description: `Invalid graphql-ws message: ${errorMessage(cause)}`, cause })
-        )
+        return invalid(errorMessage(cause), cause)
+      }
+      if (typeof message !== "object" || message === null) {
+        return invalid("expected an object")
       }
       switch (message.type) {
         case "connection_ack": {
+          conn.receivedFrame = true
           Deferred.doneUnsafe(conn.ack, Effect.void)
           return Effect.void
         }
         case "ping": {
+          conn.receivedFrame = true
           return send({ type: "pong" })
+        }
+        case "pong": {
+          conn.receivedFrame = true
+          return Effect.void
         }
         case "next":
         case "error":
         case "complete": {
-          const operation = message.id === undefined ? undefined : operations.get(message.id)
+          if (typeof message.id !== "string") {
+            return invalid(`${message.type} without an id`)
+          }
+          if (message.type === "next" && (typeof message.payload !== "object" || message.payload === null)) {
+            return invalid("next without a payload")
+          }
+          if (message.type === "error" && !Array.isArray(message.payload)) {
+            return invalid("error without a list of errors")
+          }
+          conn.receivedFrame = true
+          const operation = operations.get(message.id)
           // Unknown ids, including operations this client already completed, are dropped.
           if (operation === undefined || operation.connection !== conn) return Effect.void
           if (message.type === "next") {
             Queue.offerUnsafe(operation.queue, message.payload)
             return Effect.void
           }
-          operations.delete(message.id!)
+          operations.delete(message.id)
           if (message.type === "error") {
             // The server rejected the operation; the client fails it with a ResponseError.
             Queue.offerUnsafe(operation.queue, { errors: message.payload })
@@ -603,7 +629,7 @@ export const makeWebSocket: {
           return Effect.void
         }
         default: {
-          return Effect.void
+          return invalid(`unknown type ${JSON.stringify(message.type)}`)
         }
       }
     }
@@ -626,8 +652,10 @@ export const makeWebSocket: {
     const run = (conn: Connection): Effect.Effect<void> =>
       Effect.gen(function*() {
         const { pull } = yield* socket.reader
-        const payload = yield* connectionParams
-        yield* send(payload === undefined ? { type: "connection_init" } : { type: "connection_init", payload })
+        const init = Effect.flatMap(
+          connectionParams,
+          (payload) => send(payload === undefined ? { type: "connection_init" } : { type: "connection_init", payload })
+        )
         const read = Effect.forever(
           Effect.flatMap(pull, (frames) => Effect.forEach(frames, (frame) => handle(conn, frame), { discard: true }))
         )
@@ -638,7 +666,13 @@ export const makeWebSocket: {
               Effect.fail(new TransportError({ description: "The graphql-ws server did not send connection_ack" }))
           })
         )
-        yield* Effect.all([read, Effect.andThen(acknowledged, pinger(conn))], { concurrency: 2, discard: true })
+        // Reading starts with `connectionParams`, so a close while it runs still
+        // fails the waiting operations. The ack timeout starts once
+        // `connection_init` is sent.
+        yield* Effect.all([read, init.pipe(Effect.andThen(acknowledged), Effect.andThen(pinger(conn)))], {
+          concurrency: 2,
+          discard: true
+        })
       }).pipe(
         // Runs before the socket closes, so no write waits on a dead socket.
         Effect.onError((cause) => Effect.sync(() => lose(conn, connectionError(cause)))),
@@ -749,10 +783,13 @@ export const makeWebSocket: {
  *   the client keep-alive.
  * - A lost connection fails every active operation, queries included, with a
  *   `TransportError` carrying the `closeCode`. The fatal close codes
- *   (`4400`, `4401`, `4403`, `4406`, `4409`, `4429`) are not retryable;
+ *   (`1002`, `4400`, `4401`, `4403`, `4406`, `4409`, `4429`) are not retryable;
  *   others, `1006` and `4500` among them, are. The transport never replays
  *   an operation: the client resubscribes on its `subscriptionRetry`
  *   schedule, and the socket reconnects on the next operation.
+ * - An invalid server message, such as an unknown `type` or a `next`
+ *   without an `id`, closes the socket with `4400` and fails every
+ *   operation on it. Well-formed messages for unknown ids are dropped.
  * - A server `error` message fails the operation with a `ResponseError`.
  *   Interrupting a subscription sends `complete`.
  * - Per-call `request.headers` are ignored, because graphql-ws has no
