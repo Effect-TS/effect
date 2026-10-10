@@ -2470,7 +2470,7 @@ describe("OpenAiLanguageModel", () => {
           ])
         }).pipe(
           OpenAiLanguageModel.withConfigOverride({ reasoningModel: true }),
-          Effect.provide(OpenAiLanguageModel.model("custom-model", { store: false, reasoningModel: false }))
+          Effect.provide(OpenAiLanguageModel.model("gpt-4.1", { store: false, reasoningModel: false }))
         )
 
         const requests = yield* MockHttpClient.requests
@@ -2478,7 +2478,7 @@ describe("OpenAiLanguageModel", () => {
 
         deepStrictEqual(body.include, ["reasoning.encrypted_content"])
         strictEqual(body.input[0].role, "developer")
-      }).pipe(Effect.provide(makeTestLayer({ body: { model: "custom-model" } }))))
+      }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-4.1" } }))))
 
     it.effect("captures encrypted reasoning returned without an explicit include", () =>
       Effect.gen(function*() {
@@ -2512,14 +2512,14 @@ const reasoningCapabilityCases: ReadonlyArray<{
   readonly include: ReadonlyArray<OpenAiSchema.IncludeEnum> | undefined
   readonly role: "system" | "developer"
 }> = [
-  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini"].map((model) => ({
+  ...["gpt-6.1-sol", "gpt-5.5", "o5-mini", "custom-model"].map((model) => ({
     name: `treats ${model} as a reasoning model`,
     model,
     config: { store: false },
     include: ["reasoning.encrypted_content"] as const,
     role: "developer" as const
   })),
-  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id", "custom-model"].map((model) => ({
+  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id"].map((model) => ({
     name: `treats ${model} as a non-reasoning model`,
     model,
     config: { store: false },
@@ -2527,25 +2527,25 @@ const reasoningCapabilityCases: ReadonlyArray<{
     role: "system" as const
   })),
   {
-    name: "infers a reasoning model from reasoning config",
+    name: "uses item references instead of encrypted reasoning for an unrecognized model when store is true",
     model: "custom-model",
-    config: { store: false, reasoning: { effort: "low" } },
-    include: ["reasoning.encrypted_content"],
+    config: { store: true },
+    include: undefined,
     role: "developer"
   },
   {
-    name: "treats an unrecognized model as reasoning when reasoningModel is true",
-    model: "custom-model",
+    name: "treats a non-reasoning model as reasoning when reasoningModel is true",
+    model: "gpt-4.1",
     config: { store: false, reasoningModel: true },
     include: ["reasoning.encrypted_content"],
     role: "developer"
   },
   {
-    name: "uses item references instead of encrypted reasoning when reasoningModel is true and store is true",
+    name: "treats an unrecognized model as non-reasoning when reasoningModel is false",
     model: "custom-model",
-    config: { store: true, reasoningModel: true },
+    config: { store: false, reasoningModel: false },
     include: undefined,
-    role: "developer"
+    role: "system"
   },
   {
     name: "treats a recognized model as non-reasoning when reasoningModel is false",
@@ -2562,11 +2562,18 @@ const reasoningCapabilityCases: ReadonlyArray<{
     role: "system"
   },
   {
-    name: "preserves an explicit encrypted reasoning include for an unrecognized model",
-    model: "custom-model",
+    name: "preserves an explicit encrypted reasoning include for a non-reasoning model",
+    model: "gpt-4.1",
     config: { store: false, include: ["reasoning.encrypted_content"] },
     include: ["reasoning.encrypted_content"],
     role: "system"
+  },
+  {
+    name: "deduplicates an explicit encrypted reasoning include for a reasoning model",
+    model: "custom-model",
+    config: { store: false, include: ["reasoning.encrypted_content"] },
+    include: ["reasoning.encrypted_content"],
+    role: "developer"
   },
   {
     name: "preserves an explicit encrypted reasoning include when reasoningModel is false",

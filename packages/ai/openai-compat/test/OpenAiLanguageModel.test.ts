@@ -1982,23 +1982,23 @@ const reasoningCapabilityCases: ReadonlyArray<{
     config: { store: false },
     role: "developer" as const
   })),
-  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id", "custom-model"].map((model) => ({
+  ...["gpt-4.1", "gpt-5-chat-latest", "ft:gpt-4o-mini:org::id"].map((model) => ({
     name: `treats ${model} as a non-reasoning model`,
     model,
     config: { store: false },
     role: "system" as const
   })),
   {
-    name: "infers a reasoning model from reasoning config",
-    model: "custom-model",
-    config: { store: false, reasoning: { effort: "low" } },
+    name: "treats a non-reasoning model as reasoning when reasoningModel is true",
+    model: "gpt-4.1",
+    config: { store: false, reasoningModel: true },
     role: "developer"
   },
   {
-    name: "treats an unrecognized model as reasoning when reasoningModel is true",
+    name: "treats an unrecognized model as non-reasoning when reasoningModel is false",
     model: "custom-model",
-    config: { store: false, reasoningModel: true },
-    role: "developer"
+    config: { store: false, reasoningModel: false },
+    role: "system"
   },
   {
     name: "treats a recognized model as non-reasoning when reasoningModel is false",
