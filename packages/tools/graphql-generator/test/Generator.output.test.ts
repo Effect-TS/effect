@@ -215,7 +215,7 @@ describe("Generator GitHub documents", () => {
       assert.include(lines.map((line) => line.replace(/,$/, "")), "...IssueSummary.fields")
       assert.strictEqual(
         documentOf(issues, "RepoIssues"),
-        "query RepoIssues($owner:String!,$name:String!,$states:[IssueState!],$first:Int=20,$orderBy:IssueOrder,$filterBy:IssueFilters){repository(owner:$owner,name:$name){id nameWithOwner issues(first:$first,states:$states,orderBy:$orderBy,filterBy:$filterBy){totalCount pageInfo{hasNextPage endCursor}nodes{...IssueSummary isPinned}}}}fragment IssueSummary on Issue{number title state stateReason createdAt url}"
+        "query RepoIssues($owner:String!$name:String!$states:[IssueState!]$first:Int=20$orderBy:IssueOrder$filterBy:IssueFilters){repository(owner:$owner name:$name){id nameWithOwner issues(first:$first states:$states orderBy:$orderBy filterBy:$filterBy){totalCount pageInfo{hasNextPage endCursor}nodes{...IssueSummary isPinned}}}}fragment IssueSummary on Issue{number title state stateReason createdAt url}"
       )
       assert.strictEqual(
         documentOf(issues, "AddComment"),
