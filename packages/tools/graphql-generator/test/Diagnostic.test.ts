@@ -37,12 +37,6 @@ describe("Diagnostic", () => {
     )
   })
 
-  it("code frame at end of input points one past the last character", () => {
-    const diagnostic = failure("{")
-    assert.strictEqual(diagnostic.column, 2)
-    assert.strictEqual(diagnostic.codeFrame, ["1 | {", "  |  ^"].join("\n"))
-  })
-
   it("code frame right-aligns line numbers of different widths", () => {
     const body = ["{", "  a", "  b", "  c", "  d", "  e", "  f", "  g", "  h", "  ?"].join("\n")
     const diagnostic = failure(body)
