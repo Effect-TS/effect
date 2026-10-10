@@ -155,7 +155,7 @@ ${clientErrorSource(name)}`
     }
     const hasOptions = (operation.params && !operation.paramsOptional) || operation.payload
 
-    const successTypes = new Set(Array.from(responses.successSchemas.values(), (schema) => schema))
+    const successTypes = new Set(responses.successSchemas.values())
     if (responses.binarySuccessStatuses.size > 0) {
       successTypes.add("Uint8Array")
     }

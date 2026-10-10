@@ -48,6 +48,8 @@ function renderEmittableAnnotation(input: unknown): string | undefined {
   return entries.length === 0 ? "{}" : `{ ${entries.join(", ")} }`
 }
 
+const canonicalFiniteCheck = `Schema.isFinite().annotate({ "expected": "a finite number" })`
+
 function renderAnnotations(
   annotations: Schema.Annotations.Annotations | undefined
 ): string | undefined {
@@ -342,14 +344,10 @@ export function toCodeDocument(
     for (let index = 0; index < representation.checks.length; index++) {
       const check = representation.checks[index]
       const compiledCheck = compileCheck(check, [...path, "checks", index])
-      if (
-        index === 0 && base.runtime === "Schema.Number" && representation.annotations === undefined &&
-        compiledCheck === `Schema.isFinite().annotate({ "expected": "a finite number" })`
-      ) {
-        runtime = "Schema.Finite"
-      } else {
-        runtime += `.check(${compiledCheck})`
-      }
+      // A bare `Schema.Number` has no rendered node annotations or earlier checks
+      runtime = runtime === "Schema.Number" && compiledCheck === canonicalFiniteCheck
+        ? "Schema.Finite"
+        : `${runtime}.check(${compiledCheck})`
     }
     return makeCode(runtime, base.Type)
   }
