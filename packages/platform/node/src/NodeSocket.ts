@@ -22,12 +22,18 @@ import * as Socket from "effect/socket/Socket"
  */
 export * from "@effect/platform-node-shared/NodeSocket"
 
-const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) =>
-  new WS.WebSocket(url, options as WS.ClientOptions)
+const makeWebSocketWS: Socket.WebSocketConstructor["Service"] = (url, options) => {
+  if (options === undefined || typeof options === "string" || Array.isArray(options)) {
+    return new WS.WebSocket(url, options)
+  }
+  return new WS.WebSocket(url, options.protocols, { headers: options.headers })
+}
 
 /**
  * Provides a `Socket.WebSocketConstructor`, using `globalThis.WebSocket` when
  * available and falling back to the `ws` package otherwise.
+ * Client options objects use `ws` so handshake headers and subprotocols can
+ * be supplied together.
  *
  * @stability unstable
  * @category layers
@@ -50,6 +56,7 @@ export const layerWebSocketConstructor: Layer.Layer<
 /**
  * Provides a `Socket.WebSocketConstructor` backed explicitly by the `ws`
  * package.
+ * Supports handshake headers alongside subprotocols in client options objects.
  *
  * @stability unstable
  * @category layers
@@ -61,8 +68,8 @@ export const layerWebSocketConstructorWS: Layer.Layer<
 
 /**
  * Creates a `Socket.Socket` layer for a WebSocket URL using the Node WebSocket
- * constructor layer, honoring protocol, open-timeout, and high-water-mark
- * options.
+ * constructor layer, honoring protocol, handshake-header, open-timeout, and
+ * high-water-mark options.
  *
  * @stability unstable
  * @category layers
@@ -73,6 +80,7 @@ export const layerWebSocket: (
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     readonly protocols?: string | Array<string> | undefined
+    readonly headers?: Readonly<Record<string, string>> | undefined
     readonly highWaterMark?: number | undefined
   } | undefined
 ) => Layer.Layer<Socket.Socket, never, never> = flow(
