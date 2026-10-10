@@ -82,7 +82,11 @@ const makeFakeSsh = (options: FakeOptions = {}) => {
           ? process({ running: true })
           : process({ stderr: options.masterFails, exit: 255 })
       }
-      if (args.includes("-O")) return process({ exit: options.neverReady === true ? 255 : 0 })
+      if (args.includes("-O")) {
+        // `ssh -O check` fails while no master is accepting sessions.
+        const accepting = options.neverReady !== true && options.masterFails === undefined
+        return process({ exit: accepting ? 0 : 255 })
+      }
       const remote = args[args.length - 1]
       if (remote.startsWith("exec sh -c ")) {
         // A command wrapped by the remote spawner to report its process id.
