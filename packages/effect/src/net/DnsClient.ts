@@ -14,9 +14,9 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64Url from "../encoding/Base64Url.ts"
 import * as Equal from "../Equal.ts"
+import * as MediaType from "../http-api/internal/mediaType.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
-import * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as DnsMessage from "../internal/dnsMessage.ts"
 import * as Layer from "../Layer.ts"
 import * as Result from "../Result.ts"
@@ -387,19 +387,19 @@ export const makeTransportHttps = (
             "accept",
             dnsMessage
           )
-          const payload = yield* limit(Effect.flatMap(
-            client.execute(request),
-            HttpClientResponse.matchStatus({
-              "2xx": (response) =>
-                response.headers["content-type"]?.split(";")[0].trim().toLowerCase() === dnsMessage
-                  ? Effect.map(response.arrayBuffer, (buffer) => new Uint8Array(buffer))
-                  : Effect.fail(fail("InvalidResponse", new Error("the response is not a DNS message"))),
-              "5xx": (response) =>
-                Effect.fail(fail("ServerFailure", new Error(`the server responded with status ${response.status}`))),
-              orElse: (response) =>
-                Effect.fail(fail("InvalidResponse", new Error(`the server responded with status ${response.status}`)))
-            })
-          ))
+          const payload = yield* limit(Effect.gen(function*() {
+            const response = yield* client.execute(request)
+            if (response.status < 200 || response.status >= 300) {
+              return yield* fail(
+                response.status >= 500 ? "ServerFailure" : "InvalidResponse",
+                new Error(`the server responded with status ${response.status}`)
+              )
+            }
+            if (MediaType.normalize(response.headers["content-type"] ?? "") !== dnsMessage) {
+              return yield* fail("InvalidResponse", new Error("the response is not a DNS message"))
+            }
+            return new Uint8Array(yield* response.arrayBuffer)
+          }))
           if (!matches(payload, 0)) {
             return yield* fail("InvalidResponse", new Error("the response does not match the query"))
           }
