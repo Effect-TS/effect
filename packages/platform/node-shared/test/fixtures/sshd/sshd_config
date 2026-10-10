@@ -5,7 +5,7 @@ PermitRootLogin no
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 StrictModes no
-Subsystem sftp internal-sftp
+Subsystem echo /bin/cat
 AllowTcpForwarding yes
 AllowStreamLocalForwarding yes
 AllowAgentForwarding yes

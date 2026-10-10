@@ -1,6 +1,5 @@
 /**
- * End-to-end tests of the `OpenSsh` backend, `Sftp`, and
- * `SshChildProcessSpawner` against an OpenSSH server running in a container
+ * End-to-end tests of the `OpenSsh` backend and `SshChildProcessSpawner` against an OpenSSH server running in a container
  * (see `fixtures/sshd`), driven by the host's `ssh` executable.
  */
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
@@ -8,14 +7,12 @@ import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
 import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Socket from "effect/socket/Socket"
 import * as OpenSsh from "effect/ssh/OpenSsh"
-import * as Sftp from "effect/ssh/Sftp"
 import * as Ssh from "effect/ssh/Ssh"
 import * as SshChildProcessSpawner from "effect/ssh/SshChildProcessSpawner"
 import type * as SshError from "effect/ssh/SshError"
@@ -115,8 +112,6 @@ const sh = (script: string) => `exec sh -c ${SshChildProcessSpawner.quote(script
 /** A fresh path under `/tmp` inside the container. */
 const remotePath = (name: string) => `/tmp/${name}-${NodeCrypto.randomBytes(4).toString("hex")}`
 
-const sha256 = (data: Uint8Array) => NodeCrypto.createHash("sha256").update(data).digest("hex")
-
 const NodeLayer = NodeChildProcessSpawner.layer.pipe(
   Layer.provideMerge(Layer.mergeAll(NodeFileSystem.layer, NodePath.layer))
 )
@@ -144,11 +139,6 @@ const OpenSshLayer = (overrides: Partial<OpenSsh.Options> = {}) =>
 
 /** Opens a connection to the fixture sshd through the `Ssh` factory. */
 const connection = Effect.flatMap(Ssh.Ssh, (ssh) => ssh.connect({ host: getFixture().host }))
-
-const remoteFileSystem = Layer.effect(
-  FileSystem.FileSystem,
-  Effect.flatMap(connection, (c) => Effect.map(Sftp.make(c), Sftp.fileSystem))
-)
 
 const remoteSpawner = Layer.effect(ChildProcessSpawner, Effect.map(connection, SshChildProcessSpawner.make))
 
@@ -213,24 +203,15 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
           assert.deepStrictEqual(results, Array.from({ length: 12 }, (_, i) => String(i)))
         }).pipe(Effect.scoped, Effect.provide(layer)))
 
-      it.live("serves SFTP and the FileSystem adapter", () =>
+      it.live("starts subsystems", () =>
         Effect.gen(function*() {
-          const fs = yield* FileSystem.FileSystem
-          const dir = remotePath("sftp")
-          yield* fs.makeDirectory(`${dir}/a/b`, { recursive: true })
-          const data = NodeCrypto.randomBytes(3 * 1024 * 1024)
-          yield* fs.writeFile(`${dir}/a/b/data.bin`, data)
-          assert.strictEqual(sha256(yield* fs.readFile(`${dir}/a/b/data.bin`)), sha256(data))
-          yield* fs.writeFileString(`${dir}/a/note.txt`, "note")
-          assert.deepStrictEqual((yield* fs.glob("**/*.{bin,txt}", { root: dir })).sort(), [
-            "a/b/data.bin",
-            "a/note.txt"
-          ])
-          yield* fs.rename(`${dir}/a/note.txt`, `${dir}/a/renamed.txt`)
-          assert.strictEqual(yield* fs.readFileString(`${dir}/a/renamed.txt`), "note")
-          yield* fs.remove(dir, { recursive: true })
-          assert.isFalse(yield* fs.exists(dir))
-        }).pipe(Effect.provide(remoteFileSystem.pipe(Layer.provide(layer)))))
+          const ssh = yield* connection
+          const echo = yield* ssh.subsystem("echo")
+          yield* echo.write("through a subsystem")
+          yield* echo.eof
+          const output = yield* Stream.mkString(Stream.decodeText(echo.stdout))
+          assert.strictEqual(output, "through a subsystem")
+        }).pipe(Effect.scoped, Effect.provide(layer)))
 
       it.live("runs ChildProcess commands remotely", () =>
         Effect.gen(function*() {

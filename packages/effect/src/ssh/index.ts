@@ -15,12 +15,6 @@ export * as OpenSsh from "./OpenSsh.ts"
  * @stability experimental
  * @since 4.0.0
  */
-export * as Sftp from "./Sftp.ts"
-
-/**
- * @stability experimental
- * @since 4.0.0
- */
 export * as Ssh from "./Ssh.ts"
 
 /**
