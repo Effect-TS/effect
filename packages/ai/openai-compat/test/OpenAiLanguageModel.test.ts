@@ -1917,7 +1917,6 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini", {
             fileIdPrefixes: ["file-"],
             strictJsonSchema: false,
-            reasoningModel: true,
             temperature: 0.5
           })),
           Effect.provide(layer)
@@ -1929,13 +1928,12 @@ describe("OpenAiLanguageModel", () => {
         const requestBody = yield* getRequestBody(capturedRequest)
         assert.strictEqual(requestBody.fileIdPrefixes, undefined)
         assert.strictEqual(requestBody.strictJsonSchema, undefined)
-        assert.strictEqual(requestBody.reasoningModel, undefined)
         assert.strictEqual(requestBody.temperature, 0.5)
       }))
   })
 
-  describe("reasoning capabilities", () => {
-    for (const { name, model, config, role } of reasoningCapabilityCases) {
+  describe("system message role", () => {
+    for (const { name, model, role } of systemRoleCases) {
       it.effect(name, () =>
         Effect.gen(function*() {
           let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
@@ -1956,7 +1954,7 @@ describe("OpenAiLanguageModel", () => {
               { role: "user", content: "Hello" }
             ])
           }).pipe(
-            Effect.provide(OpenAiLanguageModel.model(model, config)),
+            Effect.provide(OpenAiLanguageModel.model(model)),
             Effect.provide(layer)
           )
 
@@ -1970,43 +1968,22 @@ describe("OpenAiLanguageModel", () => {
   })
 })
 
-const reasoningCapabilityCases: ReadonlyArray<{
+const systemRoleCases: ReadonlyArray<{
   readonly name: string
   readonly model: string
-  readonly config: Parameters<typeof OpenAiLanguageModel.model>[1]
   readonly role: "system" | "developer"
 }> = [
   ...["gpt-5.5", "o5-mini"].map((model) => ({
     name: `keeps the developer role for ${model}`,
     model,
-    config: {},
     role: "developer" as const
   })),
   ...["gpt-4.1", "ft:gpt-4o-mini:org::id", "llama-3.3-70b-instruct", "qwen2.5-72b-instruct", "mistral-large-latest"]
     .map((model) => ({
       name: `keeps the system role for ${model}`,
       model,
-      config: {},
       role: "system" as const
-    })),
-  {
-    name: "uses the developer role when reasoningModel is true",
-    model: "llama-3.3-70b-instruct",
-    config: { reasoningModel: true },
-    role: "developer"
-  },
-  {
-    name: "uses the system role when reasoningModel is false",
-    model: "gpt-5.4",
-    config: { reasoningModel: false },
-    role: "system"
-  },
-  {
-    name: "prefers reasoningModel false over reasoning config",
-    model: "gpt-5.4",
-    config: { reasoningModel: false, reasoning: { effort: "low" } },
-    role: "system"
-  }
+    }))
 ]
 
 const TestTool = Tool.make("TestTool", {
