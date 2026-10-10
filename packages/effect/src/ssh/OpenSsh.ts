@@ -47,7 +47,7 @@ import * as Schedule from "../Schedule.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import { utf8 } from "./internal/wire.ts"
+import { utf8 } from "./internal/bytes.ts"
 import * as Ssh from "./Ssh.ts"
 import { SshChannelError, SshConnectionError, SshError, SshTimeoutError } from "./SshError.ts"
 

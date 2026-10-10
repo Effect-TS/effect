@@ -1,5 +1,5 @@
 /**
- * Errors raised by SSH connections, backends, and SFTP.
+ * Errors raised by SSH connections and backends.
  *
  * Every failure is an `SshError` wrapping a specific `reason`, so callers can
  * catch all SSH failures with one tag and branch on `error.reason._tag` for
@@ -105,26 +105,6 @@ export class SshTimeoutError extends Schema.Error<SshTimeoutError>("effect/ssh/S
 }
 
 /**
- * Error reason for an SFTP request that the server answered with a failure
- * status.
- *
- * @stability experimental
- * @category errors
- * @since 4.0.0
- */
-export class SshSftpError extends Schema.Error<SshSftpError>("effect/ssh/SshError/SshSftpError")({
-  _tag: Schema.tag("SshSftpError"),
-  code: Schema.Int,
-  description: Schema.String,
-  method: Schema.String,
-  path: Schema.optional(Schema.String)
-}) {
-  override get message() {
-    return `SFTP ${this.method} failed${this.path !== undefined ? ` (${this.path})` : ""}: ${this.description}`
-  }
-}
-
-/**
  * Schema for every SSH error reason.
  *
  * @stability experimental
@@ -135,8 +115,7 @@ export const SshErrorReason = Schema.Union([
   SshConnectionError,
   SshProtocolError,
   SshChannelError,
-  SshTimeoutError,
-  SshSftpError
+  SshTimeoutError
 ])
 
 /**
@@ -151,7 +130,6 @@ export type SshErrorReason =
   | SshProtocolError
   | SshChannelError
   | SshTimeoutError
-  | SshSftpError
 
 /**
  * Tagged error wrapping every SSH failure while preserving the specific

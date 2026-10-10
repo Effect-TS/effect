@@ -13,7 +13,7 @@ import * as Socket from "../../socket/Socket.ts"
 import * as Stream from "../../Stream.ts"
 import type { RunResult, SessionOptions, SshProcess, SshStream } from "../Ssh.ts"
 import type { SshError } from "../SshError.ts"
-import { concat, fromUtf8 } from "./wire.ts"
+import { concat, fromUtf8 } from "./bytes.ts"
 
 const collect = (stream: Stream.Stream<Uint8Array, SshError>) =>
   Effect.map(Stream.runCollect(stream), (chunks) => fromUtf8(concat(chunks)))

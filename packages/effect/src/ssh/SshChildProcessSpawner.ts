@@ -27,7 +27,7 @@ import * as Pull from "../Pull.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import { concat, equals, fromUtf8, utf8 } from "./internal/wire.ts"
+import { concat, equals, fromUtf8, utf8 } from "./internal/bytes.ts"
 import type * as Ssh from "./Ssh.ts"
 import type { SshError } from "./SshError.ts"
 
