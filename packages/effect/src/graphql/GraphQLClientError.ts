@@ -195,13 +195,8 @@ export class TransportError
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    if (this.closeCode !== undefined && fatalCloseCodes.has(this.closeCode)) {
-      return false
-    }
-    if (this.status === undefined) {
-      return true
-    }
-    return this.status === 429 || this.status >= 500
+    if (this.closeCode !== undefined && fatalCloseCodes.has(this.closeCode)) return false
+    return this.status === undefined || this.status === 429 || this.status >= 500
   }
 
   override get message(): string {

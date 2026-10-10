@@ -161,15 +161,11 @@ export const merge = <const Groups extends ReadonlyArray<Any>>(
     groups.flatMap((group) =>
       group.middlewares.length === 0
         ? group.operations
-        : group.operations.map((operation) => withMiddlewares(operation, group.middlewares))
+        : group.operations.map((operation): GraphQL.Any =>
+          Object.assign(Object.create(Object.getPrototypeOf(operation)), operation, {
+            middlewares: [...group.middlewares, ...operation.middlewares]
+          })
+        )
     ),
     []
   ) as GraphQLGroup<Operations<Groups[number]>>
-
-const withMiddlewares = (
-  operation: GraphQL.Any,
-  outer: ReadonlyArray<GraphQLMiddleware.AnyService>
-): GraphQL.Any =>
-  Object.assign(Object.create(Object.getPrototypeOf(operation)), operation, {
-    middlewares: [...outer, ...operation.middlewares]
-  })

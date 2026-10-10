@@ -17,7 +17,6 @@ import * as PlatformError from "effect/PlatformError"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 import * as Stream from "effect/Stream"
-import type * as Config from "../Config.ts"
 import * as Cli from "./Cli.ts"
 import * as Generate from "./Generate.ts"
 import * as Glob from "./Glob.ts"
@@ -100,12 +99,6 @@ export const run = Effect.fnUntraced(function*(options: {
     warnings: new Set<string>()
   }
 
-  const useConfig = (config: Config.Config) => {
-    state.config = config
-    state.schemaPath = path.resolve(cwd, config.schema)
-    state.globs = config.documents.map(Glob.make)
-  }
-
   // -------------------------------------------------------------------------
   // Events
   // -------------------------------------------------------------------------
@@ -117,7 +110,7 @@ export const run = Effect.fnUntraced(function*(options: {
     const segments = relative.split("/")
     const inside = segments.slice(segments.findIndex((segment) => segment !== ".."))
     // The generator never reads documents under node_modules or dot-directories.
-    if (inside.some((segment) => segment === "node_modules" || segment.startsWith("."))) return false
+    if (inside.some(Glob.isSkipped)) return false
     return state.globs.some((glob) => glob.matches(relative))
   }
 
@@ -155,12 +148,8 @@ export const run = Effect.fnUntraced(function*(options: {
       found.set(watched, { kind: watched === file ? "file" : "pending", path: watched, base: path.dirname(watched) })
     }
     for (const glob of state.globs) {
-      const protectedRoot = glob.root.split("/").some((segment) =>
-        segment === "node_modules" || (segment.startsWith(".") && segment !== "." && segment !== "..")
-      )
-      if (protectedRoot) continue
       const directory = path.join(cwd, glob.root)
-      if (found.get(directory)?.kind === "tree") continue
+      if (glob.skipped || found.get(directory)?.kind === "tree") continue
       if (yield* exists(directory)) {
         found.set(directory, { kind: "tree", path: directory, base: directory })
       } else {
@@ -252,12 +241,17 @@ export const run = Effect.fnUntraced(function*(options: {
     yield* Console.log(`regenerated ${count} ${count === 1 ? "file" : "files"}, deleted ${changes.deletes.length}`)
   })
 
+  /** Subscribes, then regenerates and reconciles the targets. Watch streams may still be installing meanwhile. */
+  const refresh = Effect.gen(function*() {
+    yield* subscribe
+    yield* generate
+    yield* reconcile
+  })
+
   /**
-   * Reloads the config when its mtime changed, subscribes, then
-   * regenerates and reconciles the targets. Watch streams may still be
-   * installing while generation runs. A config that fails to load is
-   * reported and the previous one kept; the cycle still regenerates when
-   * something besides the config changed.
+   * Reloads the config when its mtime changed, then refreshes. A config that
+   * fails to load is reported and the previous one kept; the cycle still
+   * regenerates when something besides the config changed.
    */
   const cycle = Effect.fnUntraced(function*(changed: ReadonlySet<string>) {
     const version = yield* configVersion
@@ -268,17 +262,15 @@ export const run = Effect.fnUntraced(function*(options: {
         yield* Console.error(loaded.failure.message)
         if (!Array.from(changed).some((file) => file !== configPath)) return
       } else {
-        useConfig(loaded.success)
+        state.config = loaded.success
+        state.schemaPath = path.resolve(cwd, loaded.success.schema)
+        state.globs = loaded.success.documents.map(Glob.make)
       }
     }
-    yield* subscribe
-    yield* generate
-    yield* reconcile
+    yield* refresh
   })
 
-  yield* subscribe
-  yield* generate
-  yield* reconcile
+  yield* refresh
 
   const pending = new Set<string>()
   yield* Stream.fromQueue(events).pipe(
@@ -298,9 +290,6 @@ export const run = Effect.fnUntraced(function*(options: {
 // -----------------------------------------------------------------------------
 // FileSystem.watch
 // -----------------------------------------------------------------------------
-
-/** Directories the generator never reads documents from, so they aren't watched either. */
-const isSkipped = (name: string): boolean => name.startsWith(".") || name === "node_modules"
 
 /**
  * The `watch` option of {@link run} backed by `FileSystem.watch`, for the
@@ -382,7 +371,7 @@ const watchTree = (
         const info = yield* fs.stat(absolute).pipe(Effect.option)
         if (Option.isNone(info)) continue
         if (info.value.type === "Directory") {
-          if (!isSkipped(entry)) directories.push(absolute)
+          if (!Glob.isSkipped(entry)) directories.push(absolute)
         } else {
           files.push(absolute)
         }
@@ -430,7 +419,7 @@ const watchTree = (
         const absolute = path.join(directory, event.path)
         yield* offer({ _tag: event._tag, path: absolute })
         if (event._tag === "Remove") return yield* remove(absolute)
-        if (event._tag !== "Create" || isSkipped(path.basename(absolute))) return
+        if (event._tag !== "Create" || Glob.isSkipped(path.basename(absolute))) return
         const info = yield* fs.stat(absolute).pipe(Effect.option)
         if (Option.isNone(info) || info.value.type !== "Directory") return
         // A directory deleted and created again may still have its old watcher.

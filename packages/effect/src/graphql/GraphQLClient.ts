@@ -32,6 +32,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Option from "../Option.ts"
 import type * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
@@ -167,11 +168,8 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
 ).pipe(
   Schedule.setInputType<GraphQLClientError>(),
   Schedule.modifyDelay(({ duration, input }) => {
-    const capped = Duration.toMillis(duration) > 5_000 ? Duration.seconds(5) : duration
-    const retryAfter = input.retryAfter
-    return Effect.succeed(
-      retryAfter !== undefined && Duration.toMillis(retryAfter) > Duration.toMillis(capped) ? retryAfter : capped
-    )
+    const capped = Duration.min(duration, Duration.seconds(5))
+    return Effect.succeed(input.retryAfter === undefined ? capped : Duration.max(capped, input.retryAfter))
   })
 )
 
@@ -275,10 +273,7 @@ export const make = <Ops extends GraphQL.Any>(
     const retryPolicy = retryableOnly(options?.subscriptionRetry ?? defaultSubscriptionRetry)
     const client: Record<string, OperationMethod<Ops> | SubscriptionMethod<Ops>> = {}
     for (const operation of group.operations) {
-      const runtime = makeRuntime(operation, middlewareChain(context, group, operation), protocol)
-      client[operation.name] = operation.kind === "subscription"
-        ? makeSubscriptionMethod(runtime, retryPolicy)
-        : makeOperationMethod(runtime)
+      client[operation.name] = makeMethod(operation, middlewareChain(context, group, operation), protocol, retryPolicy)
     }
     // Type boundary: `GraphQLClient<Ops>` is a mapped type keyed by operation
     // name, with `Method<Op>` picking the method type from `Op["kind"]`. A loop
@@ -323,34 +318,23 @@ const retryableOnly = <Output, Error, Env>(
 
 const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult)
 
-/**
- * The pieces a client method is assembled from, typed by the operation.
- */
-interface Runtime<Op extends GraphQL.Any> {
-  readonly operation: Op
-  readonly buildRequest: (
-    variables: GraphQL.Variables<Op> | undefined,
-    headers: CallOptions["headers"]
-  ) => Effect.Effect<GraphQLRequest, GraphQLClientError, Op["variables"]["EncodingServices"]>
-  readonly execute: (
-    request: GraphQLRequest
-  ) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
-  readonly subscribe: (
-    request: GraphQLRequest
-  ) => Stream.Stream<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
-  readonly decodeStrict: (
-    result: ExecutionResult
-  ) => Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]>
-  readonly decodePartial: (
-    result: ExecutionResult
-  ) => Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQLClientError, Op["result"]["DecodingServices"]>
+interface CallOptions<R2 = never> {
+  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly context?: Context.Context<R2> | undefined
+  readonly partial?: boolean | undefined
 }
 
-const makeRuntime = <Op extends GraphQL.Any>(
+// Type boundary: a call without `context` has `R2 = never` unless the caller
+// names `R2` explicitly, so an empty context stands in for `Context<R2>`.
+const callContext = <R2>(options: CallOptions<R2> | undefined): Context.Context<R2> =>
+  options?.context ?? (Context.empty() as Context.Context<R2>)
+
+const makeMethod = <Op extends GraphQL.Any>(
   operation: Op,
   chain: MiddlewareChain<Op>,
-  protocol: GraphQLProtocol["Service"]
-): Runtime<Op> => {
+  protocol: GraphQLProtocol["Service"],
+  retryPolicy: Schedule.Schedule<unknown, unknown>
+): OperationMethod<Op> | SubscriptionMethod<Op> => {
   const fail = (reason: Reason) => new GraphQLClientError({ operation: operation.name, reason })
   const schemaFail = (make: (description: string) => Reason) => (error: Schema.SchemaError) =>
     Effect.fail(fail(make(error.message)))
@@ -441,28 +425,16 @@ const makeRuntime = <Op extends GraphQL.Any>(
     return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => ({ data, errors }))
   }
 
-  return {
-    operation,
-    buildRequest,
-    execute: (request) => execute(0, request),
-    subscribe: (request) => subscribe(0, request),
-    decodeStrict,
-    decodePartial
+  if (operation.kind === "subscription") {
+    const subscriptionMethod = <R2 = never>(...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>) =>
+      Stream.unwrap(Effect.map(buildRequest(variables, options?.headers), (request) => subscribe(0, request))).pipe(
+        Stream.mapEffect(decodeStrict),
+        Stream.retry(retryPolicy),
+        Stream.provideContext(callContext(options))
+      )
+    return Object.assign(subscriptionMethod, { operation })
   }
-}
 
-interface CallOptions<R2 = never> {
-  readonly headers?: Readonly<Record<string, string>> | undefined
-  readonly context?: Context.Context<R2> | undefined
-  readonly partial?: boolean | undefined
-}
-
-// Type boundary: a call without `context` has `R2 = never` unless the caller
-// names `R2` explicitly, so an empty context stands in for `Context<R2>`.
-const callContext = <R2>(options: CallOptions<R2> | undefined): Context.Context<R2> =>
-  options?.context ?? (Context.empty() as Context.Context<R2>)
-
-const makeOperationMethod = <Op extends GraphQL.Any>(runtime: Runtime<Op>): OperationMethod<Op> => {
   function method<R2 = never>(
     ...args: ArgsWithOptions<GraphQL.Variables<Op>, CallOptions<R2> & { readonly partial: true }>
   ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
@@ -483,29 +455,14 @@ const makeOperationMethod = <Op extends GraphQL.Any>(runtime: Runtime<Op>): Oper
       GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
       GraphQLClientError,
       Op["result"]["DecodingServices"]
-    > => options?.partial === true ? runtime.decodePartial(result) : runtime.decodeStrict(result)
-    return runtime.buildRequest(variables, options?.headers).pipe(
-      Effect.flatMap(runtime.execute),
+    > => options?.partial === true ? decodePartial(result) : decodeStrict(result)
+    return buildRequest(variables, options?.headers).pipe(
+      Effect.flatMap((request) => execute(0, request)),
       Effect.flatMap(decode),
       Effect.provideContext(callContext(options))
     )
   }
-  return Object.assign(method, { operation: runtime.operation })
-}
-
-const makeSubscriptionMethod = <Op extends GraphQL.Any>(
-  runtime: Runtime<Op>,
-  retryPolicy: Schedule.Schedule<unknown, unknown>
-): SubscriptionMethod<Op> => {
-  const method = <R2 = never>(
-    ...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>
-  ) =>
-    Stream.unwrap(Effect.map(runtime.buildRequest(variables, options?.headers), runtime.subscribe)).pipe(
-      Stream.mapEffect(runtime.decodeStrict),
-      Stream.retry(retryPolicy),
-      Stream.provideContext(callContext(options))
-    )
-  return Object.assign(method, { operation: runtime.operation })
+  return Object.assign(method, { operation })
 }
 
 /**
@@ -592,11 +549,6 @@ export type PagingVariables<Variables> = "after" extends keyof Variables
     : InvalidAfterVariable
   : InvalidAfterVariable
   : MissingAfterVariable
-
-interface PagingState {
-  readonly after: string | undefined
-  readonly done: boolean
-}
 
 /**
  * Pages forward through a cursor connection, emitting one connection per
@@ -690,39 +642,31 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
     variables: unknown,
     options: CallOptions<R2> | undefined
   ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
-  const paginationError = (description: string, cursor: string | null) =>
-    Effect.fail(
-      new GraphQLClientError({
-        operation: method.operation.name,
-        reason: new PaginationError({ description, cursor })
-      })
-    )
-  const next = (connection: C, state: PagingState): readonly [C, PagingState] => [connection, state]
-  const initial: PagingState = { after: undefined, done: false }
-  return Stream.unfold(initial, (state) => {
-    if (state.done) return Effect.succeed(undefined)
-    const variables = state.after === undefined ? options.variables : { ...options.variables, after: state.after }
-    return Effect.flatMap(call(variables, options.options), (result) => {
-      const connection = options.connection(result)
-      const cursor = state.after ?? null
-      if (connection === null || connection === undefined) {
-        return state.after === undefined
-          ? Effect.succeed(undefined)
-          : paginationError("The connection was null on a page after the first", cursor)
+  // The state is the cursor to send; the first page is fetched without one.
+  return Stream.paginate(undefined as string | undefined, (after) =>
+    Effect.flatMap(
+      call(after === undefined ? options.variables : { ...options.variables, after }, options.options),
+      (result): Effect.Effect<readonly [ReadonlyArray<C>, Option.Option<string>], GraphQLClientError> => {
+        const paginationError = (description: string) =>
+          Effect.fail(
+            new GraphQLClientError({
+              operation: method.operation.name,
+              reason: new PaginationError({ description, cursor: after ?? null })
+            })
+          )
+        const connection = options.connection(result)
+        if (connection === null || connection === undefined) {
+          return after === undefined
+            ? Effect.succeed([[], Option.none()])
+            : paginationError("The connection was null on a page after the first")
+        }
+        const { endCursor, hasNextPage } = connection.pageInfo
+        if (!hasNextPage) return Effect.succeed([[connection], Option.none()])
+        if (endCursor === null) return paginationError("hasNextPage is true but endCursor is null")
+        if (endCursor === after) return paginationError(`endCursor "${endCursor}" did not advance`)
+        return Effect.succeed([[connection], Option.some(endCursor)])
       }
-      const { endCursor, hasNextPage } = connection.pageInfo
-      if (!hasNextPage) {
-        return Effect.succeed(next(connection, { after: state.after, done: true }))
-      }
-      if (endCursor === null) {
-        return paginationError("hasNextPage is true but endCursor is null", cursor)
-      }
-      if (endCursor === state.after) {
-        return paginationError(`endCursor "${endCursor}" did not advance`, cursor)
-      }
-      return Effect.succeed(next(connection, { after: endCursor, done: false }))
-    })
-  })
+    ))
 }
 
 /**

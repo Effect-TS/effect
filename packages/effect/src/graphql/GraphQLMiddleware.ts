@@ -16,7 +16,6 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Stream from "../Stream.ts"
-import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { GraphQLClientError } from "./GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
@@ -178,11 +177,8 @@ export const Service = <
 > =>
 (key: string) => {
   function ServiceClass() {}
-  const ServiceClass_ = ServiceClass as any as Types.Mutable<AnyService>
   Object.setPrototypeOf(ServiceClass, Object.getPrototypeOf(Context.Service<Self, any>(key)))
-  ServiceClass.key = key
-  ServiceClass_[TypeId] = TypeId as any
-  return ServiceClass as any
+  return Object.assign(ServiceClass, { key, [TypeId]: TypeId }) as any
 }
 
 /**

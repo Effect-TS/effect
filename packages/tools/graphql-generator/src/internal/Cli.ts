@@ -109,11 +109,10 @@ const importFailure = (display: string, cause: unknown): string => {
 // -----------------------------------------------------------------------------
 
 export const formatDiagnostic = (path: Path.Path, cwd: string, diagnostic: Generator.Diagnostic): string => {
-  const location = [
-    displayPath(path, path.resolve(cwd, diagnostic.path)),
-    ...(diagnostic.line === undefined ? [] : [diagnostic.line]),
-    ...(diagnostic.line === undefined || diagnostic.column === undefined ? [] : [diagnostic.column])
-  ].join(":")
+  let location = displayPath(path, path.resolve(cwd, diagnostic.path))
+  if (diagnostic.line !== undefined) {
+    location += diagnostic.column === undefined ? `:${diagnostic.line}` : `:${diagnostic.line}:${diagnostic.column}`
+  }
   const message = `${location}: ${diagnostic.severity}: ${diagnostic.message}`
   return diagnostic.codeFrame === undefined ? message : `${message}\n${diagnostic.codeFrame}`
 }
@@ -149,8 +148,7 @@ export const planChanges = Effect.fnUntraced(function*(result: Generator.Generat
       updates.push(file)
     }
   }
-  const changes: Changes = { creates, updates, deletes: result.deletes }
-  return changes
+  return { creates, updates, deletes: result.deletes } satisfies Changes
 }, Effect.mapError((error) => new GenerateError({ message: `error: ${error.message}` })))
 
 /** Writes the created and updated files, then deletes the stale ones. */

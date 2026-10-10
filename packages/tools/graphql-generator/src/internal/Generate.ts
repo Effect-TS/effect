@@ -37,8 +37,7 @@ export interface Cache {
 }
 
 interface ParsedDocument {
-  readonly display: string
-  readonly body: string
+  readonly source: Source
   readonly file: Emitter.DocumentFile | undefined
   readonly diagnostics: ReadonlyArray<InternalDiagnostic>
 }
@@ -53,7 +52,7 @@ export const generate: (
   config: Config,
   options: { readonly cwd: string; readonly cache?: Cache | undefined }
 ) => Effect.Effect<GenerateResult, ConfigError | PlatformError, FileSystem.FileSystem | Path.Path> = Effect.fnUntraced(
-  function*(config: Config, options: { readonly cwd: string; readonly cache?: Cache | undefined }) {
+  function*(config, options) {
     const fs = yield* FileSystem.FileSystem
     const path = yield* Path.Path
     const cwd = path.resolve(options.cwd)
@@ -98,14 +97,20 @@ export const generate: (
     )
 
     // Documents
-    const documentPaths = yield* findDocuments(fs, path, cwd, config.documents, schemaPath)
+    const documentPaths = yield* collectFiles(
+      fs,
+      path,
+      cwd,
+      config.documents,
+      (absolute, relative, glob) => Effect.succeed(glob.matches(relative) && absolute !== schemaPath)
+    )
     const files: Array<Emitter.DocumentFile> = []
     const diagnostics: Array<InternalDiagnostic> = []
     const documents = new Map<string, ParsedDocument>()
     for (const documentPath of documentPaths) {
       const source: Source = { path: display(documentPath), body: yield* fs.readFileString(documentPath) }
       const cached = cache.documents.get(documentPath)
-      const parsed = cached !== undefined && cached.display === source.path && cached.body === source.body
+      const parsed = cached !== undefined && cached.source.path === source.path && cached.source.body === source.body
         ? cached
         : parseDocument(path, documentPath, source)
       documents.set(documentPath, parsed)
@@ -126,7 +131,19 @@ export const generate: (
       importSpecifier: (from, to) => withExtension(relativeSpecifier(from, to))
     })
     if (output.errors.length > 0) return failed(output.errors.map(toPublic))
-    const deletes = yield* findStale(fs, path, cwd, config.documents, new Set(output.files.map((file) => file.path)))
+    // Stale outputs: generated files, recognized by their header, whose source is gone.
+    const outputs = new Set(output.files.map((file) => file.path))
+    const deletes = yield* collectFiles(
+      fs,
+      path,
+      cwd,
+      config.documents,
+      Effect.fnUntraced(function*(absolute) {
+        if (!absolute.endsWith(".graphql.ts") || outputs.has(absolute)) return false
+        if (yield* fs.exists(absolute.slice(0, -".ts".length))) return false
+        return (yield* fs.readFileString(absolute)).startsWith(Emitter.headerPrefix)
+      })
+    )
     return {
       files: output.files,
       deletes,
@@ -147,9 +164,7 @@ export const generate: (
 /** Parses one document and keeps only its executable definitions. */
 const parseDocument = (path: Path.Path, documentPath: string, source: Source): ParsedDocument => {
   const parsed = parse(source)
-  if (Result.isFailure(parsed)) {
-    return { display: source.path, body: source.body, file: undefined, diagnostics: [parsed.failure] }
-  }
+  if (Result.isFailure(parsed)) return { source, file: undefined, diagnostics: [parsed.failure] }
   const executable: Array<Ast.Definition> = []
   const diagnostics: Array<InternalDiagnostic> = []
   for (const definition of parsed.success.definitions) {
@@ -161,8 +176,7 @@ const parseDocument = (path: Path.Path, documentPath: string, source: Source): P
     }
   }
   return {
-    display: source.path,
-    body: source.body,
+    source,
     file: {
       source,
       document: { ...parsed.success, definitions: executable },
@@ -198,29 +212,16 @@ const resolveScalars = (
 ): Effect.Effect<ReadonlyMap<string, Emitter.ScalarMapping>, ConfigError> => {
   const scalars = new Map<string, Emitter.ScalarMapping>()
   for (const [name, specifier] of Object.entries(config.scalars ?? {})) {
+    const fail = (problem: string) => Effect.fail(new ConfigError({ message: `scalars.${name}: ${problem}` }))
     const type = schema.types.get(name)
-    if (type === undefined) {
-      return Effect.fail(new ConfigError({ message: `scalars.${name}: the schema has no type named "${name}".` }))
-    }
-    if (type._tag !== "ScalarType") {
-      return Effect.fail(
-        new ConfigError({ message: `scalars.${name}: "${name}" is not a scalar, so it can't be mapped to a codec.` })
-      )
-    }
-    if (name === "String" || name === "Boolean") {
-      return Effect.fail(
-        new ConfigError({ message: `scalars.${name}: the built-in ${name} can't be overridden.` })
-      )
-    }
+    if (type === undefined) return fail(`the schema has no type named "${name}".`)
+    if (type._tag !== "ScalarType") return fail(`"${name}" is not a scalar, so it can't be mapped to a codec.`)
+    if (name === "String" || name === "Boolean") return fail(`the built-in ${name} can't be overridden.`)
     const hash = specifier.lastIndexOf("#")
     const module = specifier.slice(0, hash)
     const exportName = specifier.slice(hash + 1)
     if (module === "" || !identifier.test(exportName)) {
-      return Effect.fail(
-        new ConfigError({
-          message: `scalars.${name}: expected "<module>#<export>" with an identifier after the #, got "${specifier}".`
-        })
-      )
+      return fail(`expected "<module>#<export>" with an identifier after the #, got "${specifier}".`)
     }
     scalars.set(name, { specifier: specifierFor(module), exportName })
   }
@@ -241,7 +242,7 @@ const walkFiles: (
 ) => Effect.Effect<void, PlatformError> = Effect.fnUntraced(function*(fs, path, directory, relative, visit) {
   const entries = yield* fs.readDirectory(directory)
   for (const entry of entries.sort()) {
-    if (entry.startsWith(".") || entry === "node_modules") continue
+    if (Glob.isSkipped(entry)) continue
     const absolute = path.join(directory, entry)
     const entryRelative = relative === "" ? entry : `${relative}/${entry}`
     const info = yield* fs.stat(absolute)
@@ -253,74 +254,30 @@ const walkFiles: (
   }
 })
 
-/** Each `documents` glob with the absolute directory to walk, when it exists. */
-const globRoots = Effect.fnUntraced(function*(
+/**
+ * The absolute paths, sorted, of the files under the `documents` glob roots
+ * that `keep` accepts. `relative` is a file's `/`-separated path from the
+ * config file.
+ */
+const collectFiles = Effect.fnUntraced(function*(
   fs: FileSystem.FileSystem,
   path: Path.Path,
   cwd: string,
-  patterns: ReadonlyArray<string>
+  patterns: ReadonlyArray<string>,
+  keep: (absolute: string, relative: string, glob: Glob.Glob) => Effect.Effect<boolean, PlatformError>
 ) {
-  const roots: Array<{ readonly glob: Glob.Glob; readonly directory: string }> = []
+  const found = new Set<string>()
   for (const pattern of patterns) {
     const glob = Glob.make(pattern)
-    // Check before path.join normalizes away segments. Both walks must skip
-    // protected roots, but navigation through `.` and `..` remains valid.
-    if (
-      glob.root.split("/").some((segment) =>
-        segment === "node_modules" || (segment.startsWith(".") && segment !== "." && segment !== "..")
-      )
-    ) continue
     const directory = path.join(cwd, glob.root)
-    if (yield* fs.exists(directory)) roots.push({ glob, directory })
-  }
-  return roots
-})
-
-/**
- * The absolute paths of every file matching a `documents` glob, sorted.
- * `node_modules`, dot-directories and the schema file are skipped.
- */
-const findDocuments = Effect.fnUntraced(function*(
-  fs: FileSystem.FileSystem,
-  path: Path.Path,
-  cwd: string,
-  patterns: ReadonlyArray<string>,
-  schemaPath: string
-) {
-  const found = new Set<string>()
-  for (const { directory, glob } of yield* globRoots(fs, path, cwd, patterns)) {
-    yield* walkFiles(fs, path, directory, glob.root, (absolute, relative) =>
-      Effect.sync(() => {
-        if (glob.matches(relative) && absolute !== schemaPath) found.add(absolute)
-      }))
-  }
-  return Array.from(found).sort()
-})
-
-/**
- * The absolute paths of generated files under the `documents` glob roots that
- * no longer have a source, sorted. Only files starting with the generator's
- * header count, and files about to be written never do.
- */
-const findStale = Effect.fnUntraced(function*(
-  fs: FileSystem.FileSystem,
-  path: Path.Path,
-  cwd: string,
-  patterns: ReadonlyArray<string>,
-  outputs: ReadonlySet<string>
-) {
-  const found = new Set<string>()
-  for (const { directory, glob } of yield* globRoots(fs, path, cwd, patterns)) {
+    if (glob.skipped || !(yield* fs.exists(directory))) continue
     yield* walkFiles(
       fs,
       path,
       directory,
       glob.root,
-      Effect.fnUntraced(function*(absolute) {
-        if (!absolute.endsWith(".graphql.ts") || outputs.has(absolute) || found.has(absolute)) return
-        if (yield* fs.exists(absolute.slice(0, -".ts".length))) return
-        const contents = yield* fs.readFileString(absolute)
-        if (contents.startsWith(Emitter.headerPrefix)) found.add(absolute)
+      Effect.fnUntraced(function*(absolute, relative) {
+        if (!found.has(absolute) && (yield* keep(absolute, relative, glob))) found.add(absolute)
       })
     )
   }

@@ -6,6 +6,7 @@
  * @internal
  */
 import * as Data from "effect/Data"
+import * as Result from "effect/Result"
 
 /** A GraphQL document together with the path diagnostics report it under. */
 export interface Source {
@@ -39,34 +40,29 @@ export class Diagnostic extends Data.TaggedError("Diagnostic")<{
   readonly codeFrame: string
 }> {}
 
-export interface Location {
+interface Location {
   readonly line: number
   readonly column: number
 }
 
 const lineTerminator = /\r\n|\r|\n/g
 
-/** Splits a body into lines on `\r\n`, `\r` and `\n`. */
-export const splitLines = (body: string): ReadonlyArray<string> => body.split(lineTerminator)
-
 /** The 1-based line and UTF-16 column of a code-unit offset into `body`. */
-export const locationOf = (body: string, offset: number): Location => {
+const locationOf = (body: string, offset: number): Location => {
   let line = 1
   let lineStart = 0
   lineTerminator.lastIndex = 0
   let match: RegExpExecArray | null
-  while ((match = lineTerminator.exec(body)) !== null && match.index < offset) {
-    const terminatorEnd = match.index + match[0].length
-    if (terminatorEnd > offset) break
+  while ((match = lineTerminator.exec(body)) !== null && match.index + match[0].length <= offset) {
     line++
-    lineStart = terminatorEnd
+    lineStart = match.index + match[0].length
   }
   return { line, column: offset - lineStart + 1 }
 }
 
 /** Renders the code frame described on {@link Diagnostic}. */
-export const codeFrame = (body: string, location: Location): string => {
-  const lines = splitLines(body)
+const codeFrame = (body: string, location: Location): string => {
+  const lines = body.split(lineTerminator)
   const first = Math.max(1, location.line - 1)
   const last = Math.min(lines.length, location.line + 1)
   const width = String(last).length
@@ -90,4 +86,14 @@ export const make = (source: Source, offset: number, message: string): Diagnosti
     message,
     codeFrame: codeFrame(source.body, location)
   })
+}
+
+/** Runs `body`, turning a thrown {@link Diagnostic} into a failure. Other errors propagate. */
+export const catchDiagnostic = <A>(body: () => A): Result.Result<A, Diagnostic> => {
+  try {
+    return Result.succeed(body())
+  } catch (error) {
+    if (error instanceof Diagnostic) return Result.fail(error)
+    throw error
+  }
 }

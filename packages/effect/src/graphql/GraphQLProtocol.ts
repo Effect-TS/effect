@@ -129,8 +129,10 @@ const graphqlResponseContentType = "application/graphql-response+json"
 const jsonContentType = "application/json"
 const eventStreamContentType = "text/event-stream"
 
-const isGraphQLBody = (body: unknown): boolean =>
-  typeof body === "object" && body !== null && !Array.isArray(body) && ("data" in body || "errors" in body)
+// An object is neither `null` nor an array, as in graphql-ws's `validateMessage`.
+const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
+
+const isGraphQLBody = (body: unknown): boolean => isObject(body) && ("data" in body || "errors" in body)
 
 // The JSON body of a POST and the payload of a graphql-ws `subscribe`.
 // `extensions` is dropped from the JSON when unset.
@@ -195,23 +197,12 @@ const errorMessage = (cause: unknown): string => cause instanceof Error ? cause.
 const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stream<unknown, TransportError> =>
   Stream.suspend(() => {
     let retryAfter: Duration.Duration | undefined
-    let complete = false
-    let invalid: TransportError | undefined
-    let events: Array<unknown> = []
+    let events: Array<Sse.Event> = []
     const parser = Sse.makeParser((event) => {
       if (event._tag === "Retry") {
         retryAfter = event.duration
-        return
-      }
-      if (complete || invalid !== undefined) return
-      if (event.event === "complete") {
-        complete = true
-      } else if (event.event === "next") {
-        try {
-          events.push(JSON.parse(event.data))
-        } catch (cause) {
-          invalid = new TransportError({ description: `Invalid graphql-sse next event: ${errorMessage(cause)}`, cause })
-        }
+      } else {
+        events.push(event)
       }
     })
     return response.stream.pipe(
@@ -224,16 +215,20 @@ const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stre
         if (error !== undefined) {
           return Effect.fail(new TransportError({ description: error.message, cause: error }))
         }
-        if (invalid !== undefined) {
-          return Effect.fail(invalid)
-        }
-        const batch = { events, complete }
+        const batch = events
         events = []
         return Effect.succeed(batch)
       }),
-      Stream.takeUntil((batch) => batch.complete),
-      Stream.map((batch) => batch.events),
-      Stream.flattenIterable
+      Stream.flattenIterable,
+      Stream.takeWhile((event) => event.event !== "complete"),
+      Stream.filter((event) => event.event === "next"),
+      Stream.mapEffect((event) =>
+        Effect.try({
+          try: (): unknown => JSON.parse(event.data),
+          catch: (cause) =>
+            new TransportError({ description: `Invalid graphql-sse next event: ${errorMessage(cause)}`, cause })
+        })
+      )
     )
   })
 
@@ -305,16 +300,16 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
         Stream.unwrap(Effect.suspend(() => {
           const now = clock.currentTimeMillisUnsafe()
           return client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
-            fromHttpClientError(now),
-            Effect.map((response) => {
+            Effect.flatMap((response) => {
               const contentType = response.headers["content-type"] ?? ""
               if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
-                return sseEvents(response)
+                return Effect.succeed(sseEvents(response))
               }
               // A server that rejects the subscription answers with a single
               // GraphQL response, which the client reads like a query's.
-              return Stream.fromEffect(fromHttpClientError(now)(readResponse(response)))
-            })
+              return Effect.map(readResponse(response), Stream.succeed)
+            }),
+            fromHttpClientError(now)
           )
         }))
       return GraphQLProtocol.of({ execute, subscribe })
@@ -454,11 +449,10 @@ interface WsMessage {
   readonly payload?: unknown
 }
 
-// One WebSocket connection. Operations attached to it fail with `error` when
-// it is lost.
+// One WebSocket connection. `error` is set once it is lost, and the operations
+// attached to it fail with it.
 interface Connection {
   readonly ack: Deferred.Deferred<void, TransportError>
-  alive: boolean
   error: TransportError | undefined
   receivedFrame: boolean
   fiber: Fiber.Fiber<void> | undefined
@@ -467,16 +461,12 @@ interface Connection {
 interface Operation {
   readonly queue: Queue.Queue<unknown, TransportError | Cause.Done>
   readonly connection: Connection
-  sent: boolean
 }
 
 const textDecoder = new TextDecoder()
 
-// The message checks follow graphql-ws's own `validateMessage`: an object is
-// neither `null` nor an array, and `error` carries at least one entry with a
-// `message`.
-const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
-
+// As in graphql-ws's `validateMessage`, `error` carries at least one entry with
+// a `message`.
 const isFormattedErrors = (u: unknown): boolean =>
   Array.isArray(u) && u.length > 0 && u.every((error) => isObject(error) && "message" in error)
 
@@ -572,8 +562,7 @@ export const makeWebSocket: {
 
     // Marks `conn` as lost and fails every operation still attached to it.
     const lose = (conn: Connection, error: TransportError) => {
-      if (!conn.alive) return
-      conn.alive = false
+      if (conn.error !== undefined) return
       conn.error = error
       if (connection === conn) connection = undefined
       Deferred.doneUnsafe(conn.ack, Effect.fail(error))
@@ -595,6 +584,8 @@ export const makeWebSocket: {
       )
 
     const handle = (conn: Connection, frame: string | Uint8Array): Effect.Effect<void, TransportError> => {
+      // Any frame answers a keep-alive ping; an invalid one drops the connection anyway.
+      conn.receivedFrame = true
       let message: WsMessage
       try {
         message = JSON.parse(typeof frame === "string" ? frame : textDecoder.decode(frame))
@@ -611,7 +602,6 @@ export const makeWebSocket: {
           if (message.payload != null && !isObject(message.payload)) {
             return invalid(`${message.type} with a payload that is not an object`)
           }
-          conn.receivedFrame = true
           if (message.type === "connection_ack") {
             Deferred.doneUnsafe(conn.ack, Effect.void)
           }
@@ -630,7 +620,6 @@ export const makeWebSocket: {
           if (message.type === "error" && !isFormattedErrors(message.payload)) {
             return invalid("error with a payload that is not a list of GraphQL errors")
           }
-          conn.receivedFrame = true
           const operation = operations.get(id)
           // Unknown ids, including operations this client already completed, are dropped.
           if (operation === undefined || operation.connection !== conn) return Effect.void
@@ -654,7 +643,6 @@ export const makeWebSocket: {
 
     const pinger = Effect.fnUntraced(function*(conn: Connection) {
       if (keepAlive === false) return yield* Effect.never
-      conn.receivedFrame = true
       while (true) {
         yield* Effect.sleep(keepAlive)
         if (!conn.receivedFrame) {
@@ -670,10 +658,8 @@ export const makeWebSocket: {
     const run = Effect.fnUntraced(
       function*(conn: Connection) {
         const { pull } = yield* socket.reader
-        const init = Effect.flatMap(
-          connectionParams,
-          (payload) => send(payload === undefined ? { type: "connection_init" } : { type: "connection_init", payload })
-        )
+        // JSON.stringify drops an undefined `payload`.
+        const init = Effect.flatMap(connectionParams, (payload) => send({ type: "connection_init", payload }))
         const read = Effect.forever(
           Effect.flatMap(pull, (frames) => Effect.forEach(frames, (frame) => handle(conn, frame), { discard: true }))
         )
@@ -706,7 +692,6 @@ export const makeWebSocket: {
       if (connection !== undefined) return Effect.succeed(connection)
       const conn: Connection = {
         ack: Deferred.makeUnsafe(),
-        alive: true,
         error: undefined,
         receivedFrame: true,
         fiber: undefined
@@ -720,58 +705,47 @@ export const makeWebSocket: {
       )
     })
 
-    const register = (queue: Operation["queue"]) =>
-      Effect.suspend(() => {
-        active++
-        idleGeneration++
-        return Effect.map(acquireConnection, (conn) => {
-          const id = String(++nextId)
-          const operation: Operation = { queue, connection: conn, sent: false }
-          operations.set(id, operation)
-          return [id, operation] as const
-        })
-      })
+    const register = Effect.suspend(() => {
+      active++
+      idleGeneration++
+      return Effect.map(acquireConnection, (conn) => [String(++nextId), conn] as const)
+    })
 
-    const release = (id: string, operation: Operation) =>
-      Effect.suspend(() => {
-        const open = operations.delete(id)
-        const complete = open && operation.sent && operation.connection.alive
-          ? Effect.ignore(send({ id, type: "complete" }))
-          : Effect.void
-        return Effect.andThen(
-          complete,
-          Effect.suspend(() => {
-            if (--active > 0 || connection === undefined) return Effect.void
-            const conn = connection
-            if (Duration.isZero(idleTimeout)) return close(conn)
-            const generation = ++idleGeneration
-            return Effect.asVoid(Effect.forkIn(
-              Effect.suspend(() =>
-                generation === idleGeneration && active === 0 && connection === conn ? close(conn) : Effect.void
-              ).pipe(Effect.delay(idleTimeout)),
-              scope
-            ))
-          })
+    // Closes the connection `idleTimeout` after the last operation ends, unless
+    // another operation registers first.
+    const closeIfIdle = Effect.suspend(() => {
+      if (--active > 0 || connection === undefined) return Effect.void
+      const conn = connection
+      if (Duration.isZero(idleTimeout)) return close(conn)
+      const generation = ++idleGeneration
+      const closeIfStillIdle = Effect.suspend(() =>
+        generation === idleGeneration && connection === conn ? close(conn) : Effect.void
+      )
+      return Effect.asVoid(Effect.forkIn(Effect.delay(closeIfStillIdle, idleTimeout), scope))
+    })
+
+    const release = (id: string, conn: Connection) =>
+      Effect.suspend(() =>
+        Effect.andThen(
+          // Only a subscribed operation the server has not completed is still in `operations`.
+          operations.delete(id) && conn.error === undefined
+            ? Effect.ignore(send({ id, type: "complete" }))
+            : Effect.void,
+          closeIfIdle
         )
-      })
+      )
 
     const operation = (request: GraphQLRequest): Stream.Stream<unknown, TransportError> =>
       Stream.unwrap(Effect.gen(function*() {
-        const queue = yield* Queue.unbounded<unknown, TransportError | Cause.Done>()
-        const [id, operation] = yield* Effect.acquireRelease(
-          register(queue),
-          ([id, operation]) => release(id, operation)
-        )
-        const conn = operation.connection
+        const [id, conn] = yield* Effect.acquireRelease(register, ([id, conn]) => release(id, conn))
         yield* Deferred.await(conn.ack)
-        if (!conn.alive) {
-          return yield* Effect.fail(conn.error!)
+        if (conn.error !== undefined) {
+          return yield* Effect.fail(conn.error)
         }
-        if (operations.has(id)) {
-          operation.sent = true
-          // Per-call `request.headers` are ignored: graphql-ws has no per-operation headers.
-          yield* send({ id, type: "subscribe", payload: requestBody(request) })
-        }
+        const queue = yield* Queue.unbounded<unknown, TransportError | Cause.Done>()
+        operations.set(id, { queue, connection: conn })
+        // Per-call `request.headers` are ignored: graphql-ws has no per-operation headers.
+        yield* send({ id, type: "subscribe", payload: requestBody(request) })
         return Stream.fromQueue(queue)
       }))
 

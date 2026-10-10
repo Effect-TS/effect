@@ -60,9 +60,8 @@ export const emit = (options: Options): Output => {
   const emitted = options.files.map((file) => emitter.emitFile(file))
   const importErrors = emitted.flatMap((result) => result.errors)
   if (importErrors.length > 0) return { files: [], errors: importErrors, unmappedScalars: [] }
-  const files = emitted.map((result) => result.file)
   const shared = emitter.emitShared()
-  return { files: [shared, ...files], errors: [], unmappedScalars: emitter.unmappedScalars() }
+  return { files: [shared.file, ...emitted.map((result) => result.file)], errors: [], unmappedScalars: shared.unmapped }
 }
 
 // -----------------------------------------------------------------------------
@@ -77,9 +76,15 @@ const header = (sourceName: string | undefined): string =>
     ? `${headerPrefix}. Do not edit.`
     : `${headerPrefix} from ${sourceName}. Do not edit.`
 
+/** Escapes `*\/` so text can't end the JSDoc comment it is written into. */
+const escapeComment = (text: string): string => text.replace(/\*\//g, "*\\/")
+
+/** A deprecation reason on one line. */
+const deprecation = (reason: string): string => escapeComment(reason.replace(/\s*\r?\n\s*/g, " "))
+
 const descriptionLines = (description: string | undefined): Array<string> => {
   if (description === undefined) return []
-  const lines = description.split(/\r\n|\r|\n/).map((line) => line.trimEnd().replace(/\*\//g, "*\\/"))
+  const lines = description.split(/\r\n|\r|\n/).map((line) => escapeComment(line.trimEnd()))
   while (lines.length > 0 && lines[0] === "") lines.shift()
   while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop()
   return lines
@@ -98,10 +103,10 @@ const jsdoc = (lines: ReadonlyArray<string>, indent: string): string => {
 }
 
 const deprecatedTag = (reason: string | undefined): Array<string> =>
-  reason === undefined ? [] : [`@deprecated ${reason.replace(/\s*\r?\n\s*/g, " ").replace(/\*\//g, "*\\/")}`]
+  reason === undefined ? [] : [`@deprecated ${deprecation(reason)}`]
 
 const defaultTag = (value: SchemaModel.ConstValue | undefined): Array<string> =>
-  value === undefined ? [] : [`@default ${printConstValue(value).replace(/\*\//g, "*\\/")}`]
+  value === undefined ? [] : [`@default ${escapeComment(printConstValue(value))}`]
 
 /** A const value in GraphQL syntax, for `@default` tags. */
 const printConstValue = (value: SchemaModel.ConstValue): string => {
@@ -128,67 +133,60 @@ const printConstValue = (value: SchemaModel.ConstValue): string => {
 const struct = (members: ReadonlyArray<string>, indent: string, schema = "Schema"): string =>
   members.length === 0 ? `${schema}.Struct({})` : `${schema}.Struct({\n${members.join(",\n")}\n${indent}})`
 
+/** Writes out a type reference: `leaf` for its named type, `list` around list types, `nullable` around types without `!`. */
+const typeRef = (
+  type: SchemaModel.TypeRef,
+  leaf: (name: string) => string,
+  list: (element: string) => string,
+  nullable: (inner: string) => string
+): string => {
+  const nonNull = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string =>
+    type._tag === "ListTypeRef" ? list(typeRef(type.ofType, leaf, list, nullable)) : leaf(type.name)
+  return type._tag === "NonNullTypeRef" ? nonNull(type.ofType) : nullable(nonNull(type))
+}
+
+const typeSchema = (type: SchemaModel.TypeRef, leaf: (name: string) => string, schema = "Schema"): string =>
+  typeRef(type, leaf, (element) => `${schema}.Array(${element})`, (inner) => `${schema}.NullOr(${inner})`)
+
+/**
+ * The Schema for a variable or input field: a nullable one, or a non-null one
+ * with a default, is `optional`.
+ */
+const inputSchema = (
+  type: SchemaModel.TypeRef,
+  hasDefault: boolean,
+  ref: (name: string) => string,
+  schema = "Schema"
+): string => {
+  const expression = typeSchema(
+    type,
+    (name) => name === "String" || name === "Boolean" ? `${schema}.${name}` : ref(name),
+    schema
+  )
+  return hasDefault || type._tag !== "NonNullTypeRef" ? `${schema}.optional(${expression})` : expression
+}
+
 /**
  * A struct key. `__proto__` is written as a computed key, because in an
  * object literal the plain form sets the prototype instead of a field.
  */
 const propertyKey = (key: string): string => key === "__proto__" ? `["__proto__"]` : key
 
-/** `issue-timeline.graphql` → `IssueTimeline`. */
-const pascalCase = (fileName: string): string => {
-  const words = fileName.replace(/\.graphql$/, "").split(/[^A-Za-z0-9]+/).filter((word) => word.length > 0)
-  const name = words.map((word) => word[0]!.toUpperCase() + word.slice(1)).join("")
-  return /^[0-9]/.test(name) ? `_${name}` : name
+/** `issue-timeline` → `IssueTimeline`. */
+const pascalCase = (text: string): string =>
+  text.split(/[^A-Za-z0-9]+/).map((word) => word.slice(0, 1).toUpperCase() + word.slice(1)).join("")
+
+/** `issue-timeline.graphql` → `IssueTimelineGroup`. */
+const groupName = (sourceName: string): string => {
+  const name = pascalCase(sourceName.replace(/\.graphql$/, ""))
+  return `${/^[0-9]/.test(name) ? `_${name}` : name}Group`
 }
 
 const reservedWords: ReadonlySet<string> = new Set([
-  "await",
-  "break",
-  "case",
-  "catch",
-  "class",
-  "const",
-  "continue",
-  "debugger",
-  "default",
-  "delete",
-  "do",
-  "else",
-  "enum",
-  "export",
-  "extends",
-  "false",
-  "finally",
-  "for",
-  "function",
-  "if",
-  "implements",
-  "import",
-  "in",
-  "instanceof",
-  "interface",
-  "let",
-  "new",
-  "null",
-  "package",
-  "private",
-  "protected",
-  "public",
-  "return",
-  "static",
-  "super",
-  "switch",
-  "this",
-  "throw",
-  "true",
-  "try",
-  "typeof",
-  "var",
-  "void",
-  "while",
-  "with",
-  "yield"
-])
+  "await break case catch class const continue debugger default delete do else enum export extends",
+  "false finally for function if implements import in instanceof interface let new null package private",
+  "protected public return static super switch this throw true try typeof var void while with yield"
+].flatMap((line) => line.split(" ")))
 
 /** Names a strict-mode module can't bind, though they are valid GraphQL names. */
 const unbindable = (name: string): boolean => reservedWords.has(name) || name === "arguments" || name === "eval"
@@ -244,14 +242,14 @@ interface Sourced<S extends Ast.Selection> {
 /** A selection after inline fragments are flattened into their parent. */
 type FlatSelection = Sourced<Ast.Field | Ast.FragmentSpread>
 
-type Item =
-  | { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Sourced<Ast.Field>> }
-  | {
-    readonly _tag: "Spread"
-    readonly name: string
-    readonly spread: Ast.FragmentSpread
-    readonly via: Ast.FragmentSpread | undefined
-  }
+interface SpreadItem {
+  readonly _tag: "Spread"
+  readonly name: string
+  readonly spread: Ast.FragmentSpread
+  readonly via: Ast.FragmentSpread | undefined
+}
+
+type Item = { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Sourced<Ast.Field>> } | SpreadItem
 
 const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Selection>> =>
   selections.map((selection) => ({ selection, via: undefined, conditional: false }))
@@ -306,7 +304,6 @@ interface FileContext {
   readonly file: DocumentFile
   usesSchema: boolean
   usesGraphQL: boolean
-  usesGroup: boolean
   usesShared: boolean
   /** Fragments imported from other files, by output path. */
   readonly imports: Map<string, Set<string>>
@@ -324,7 +321,6 @@ class Emitter {
   /** Interfaces and unions the per-file modules reference through `Shared.Typename`. */
   readonly reachedAbstract = new Set<string>()
   readonly fragmentKeyCache = new Map<string, ReadonlyArray<string>>()
-  sharedNames: ReadonlyArray<string> = []
 
   readonly options: Options
 
@@ -373,15 +369,15 @@ class Emitter {
   }
 
   // ---------------------------------------------------------------------------
-  // Stage-5 features and naming
+  // Checks
   // ---------------------------------------------------------------------------
 
+  /** Names generated code can't use, recursive input objects and import cycles, sorted by file and position. */
   check(): ReadonlyArray<Diagnostic> {
-    const errors: Array<{ file: number; offset: number; diagnostic: Diagnostic }> = []
+    const errors: Array<{ readonly file: number; readonly offset: number; readonly message: string }> = []
     this.options.files.forEach((file, fileIndex) => {
-      const report = (offset: number, message: string) =>
-        errors.push({ file: fileIndex, offset, diagnostic: make(file.source, offset, message) })
-      const groupName = `${pascalCase(file.sourceName)}Group`
+      const report = (offset: number, message: string) => errors.push({ file: fileIndex, offset, message })
+      const group = groupName(file.sourceName)
       const exportsGroup = file.document.definitions.some((definition) => definition._tag === "OperationDefinition")
       for (const definition of file.document.definitions) {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
@@ -389,7 +385,7 @@ class Emitter {
         if (name !== undefined) {
           if (importedNames.has(name.value) || reservedWords.has(name.value)) {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
-          } else if (name.value === groupName && exportsGroup) {
+          } else if (name.value === group && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
           }
         }
@@ -400,14 +396,10 @@ class Emitter {
         }
       }
     })
-    for (const cycle of this.importCycles()) {
-      errors.push({
-        file: cycle.file,
-        offset: cycle.offset,
-        diagnostic: make(this.options.files[cycle.file]!.source, cycle.offset, cycle.message)
-      })
-    }
-    return errors.sort((a, b) => a.file - b.file || a.offset - b.offset).map((entry) => entry.diagnostic)
+    errors.push(...this.importCycles())
+    return errors
+      .sort((a, b) => a.file - b.file || a.offset - b.offset)
+      .map((error) => make(this.options.files[error.file]!.source, error.offset, error.message))
   }
 
   /**
@@ -683,10 +675,7 @@ class Emitter {
     }
   }
 
-  fragmentRef(
-    ctx: FileContext,
-    item: { readonly name: string; readonly spread: Ast.FragmentSpread; readonly via: Ast.FragmentSpread | undefined }
-  ): string {
+  fragmentRef(ctx: FileContext, item: SpreadItem): string {
     const name = item.name
     const entry = this.fragments.get(name)!
     if (entry.file === ctx.file) {
@@ -738,25 +727,18 @@ class Emitter {
     if (!alwaysStruct && items.length === 1 && only!._tag === "Spread") {
       return this.fragmentRef(ctx, only!)
     }
-    ctx.usesSchema = true
     return this.structOf(ctx, parent, items, indent, `Schema.Literal(${JSON.stringify(parent.name)})`, false)
   }
 
   /** The one spread a selection set consists of, when it is an unconditional spread of a fragment on `parentName`. */
-  onlySpread(
-    selections: ReadonlyArray<Sourced<Ast.Selection>>,
-    parentName: string
-  ):
-    | { readonly name: string; readonly spread: Ast.FragmentSpread; readonly via: Ast.FragmentSpread | undefined }
-    | undefined
-  {
+  onlySpread(selections: ReadonlyArray<Sourced<Ast.Selection>>, parentName: string): SpreadItem | undefined {
     const kept = selections.filter(({ selection }) => inclusion(selection.directives) !== "exclude")
     const only = kept[0]
     if (kept.length !== 1 || only!.selection._tag !== "FragmentSpread") return undefined
     const spread = only!.selection
     if (only!.conditional || inclusion(spread.directives) !== "include") return undefined
     if (this.fragmentDefinition(spread.name.value).typeCondition.name.value !== parentName) return undefined
-    return { name: spread.name.value, spread, via: only!.via }
+    return { _tag: "Spread", name: spread.name.value, spread, via: only!.via }
   }
 
   /**
@@ -802,49 +784,27 @@ class Emitter {
     selections: ReadonlyArray<Sourced<Ast.Selection>>,
     indent: string
   ): string {
-    ctx.usesSchema = true
     ctx.usesGraphQL = true
     const selected = this.selectedTypes(parent, selections)
     const others = `GraphQL.otherTypename<${this.typename(ctx, parent.name)}>()([${
       selected.map((name) => JSON.stringify(name)).join(", ")
     }])`
-    const reserved = ["__typename"]
-    if (selected.length === 0) {
-      return this.structOf(
+    const member = (type: SchemaModel.NamedType, typename: string, indent: string) =>
+      this.structOf(
         ctx,
-        parent,
-        this.resolveItems(ctx.file, selections, parent.name, reserved),
+        type,
+        this.resolveItems(ctx.file, selections, type.name, ["__typename"]),
         indent,
-        others,
+        typename,
         true
       )
-    }
+    if (selected.length === 0) return member(parent, others, indent)
     const memberIndent = `${indent}  `
-    const members = selected.map((name) =>
-      `${memberIndent}${
-        this.structOf(
-          ctx,
-          this.type(name),
-          this.resolveItems(ctx.file, selections, name, reserved),
-          memberIndent,
-          `Schema.Literal(${JSON.stringify(name)})`,
-          true
-        )
-      }`
-    )
-    members.push(
-      `${memberIndent}${
-        this.structOf(
-          ctx,
-          parent,
-          this.resolveItems(ctx.file, selections, parent.name, reserved),
-          memberIndent,
-          others,
-          true
-        )
-      }`
-    )
-    return `Schema.Union([\n${members.join(",\n")}\n${indent}])`
+    const members = [
+      ...selected.map((name) => member(this.type(name), `Schema.Literal(${JSON.stringify(name)})`, memberIndent)),
+      member(parent, others, memberIndent)
+    ]
+    return `Schema.Union([\n${members.map((member) => `${memberIndent}${member}`).join(",\n")}\n${indent}])`
   }
 
   /**
@@ -884,10 +844,7 @@ class Emitter {
     const name = fields[0]!.selection.name.value
     const optional = (expression: string): string =>
       fields.every((field) => field.conditional) ? `Schema.optionalKey(${expression})` : expression
-    if (name === "__typename") {
-      ctx.usesSchema = true
-      return `${indent}${propertyKey(key)}: ${optional(typename)}`
-    }
+    if (name === "__typename") return `${indent}${propertyKey(key)}: ${optional(typename)}`
     const definition = this.fieldDefinition(parent, name)
     const typeName = SchemaModel.namedTypeOf(definition.type)
     const type = this.type(typeName)
@@ -909,65 +866,17 @@ class Emitter {
       )
       : this.resultLeaf(ctx, type)
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    const expression = optional(this.wrapResult(ctx, definition.type, inner))
-    if (expression.startsWith("Schema.optionalKey(")) ctx.usesSchema = true
+    const expression = optional(typeSchema(definition.type, () => inner))
     return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`
   }
 
   resultLeaf(ctx: FileContext, type: SchemaModel.NamedType): string {
-    switch (type.name) {
-      case "String":
-        ctx.usesSchema = true
-        return "Schema.String"
-      case "Boolean":
-        ctx.usesSchema = true
-        return "Schema.Boolean"
-    }
+    if (type.name === "String" || type.name === "Boolean") return `Schema.${type.name}`
     if (type._tag === "EnumType") {
       ctx.usesGraphQL = true
       return `GraphQL.enumLiterals(${this.shared(ctx, type.name)}.literals)`
     }
     return this.shared(ctx, type.name)
-  }
-
-  wrapResult(ctx: FileContext, type: SchemaModel.TypeRef, inner: string): string {
-    const nonNull = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string =>
-      type._tag === "ListTypeRef" ? `Schema.Array(${this.wrapResult(ctx, type.ofType, inner)})` : inner
-    if (type._tag === "NonNullTypeRef") {
-      if (type.ofType._tag === "ListTypeRef") ctx.usesSchema = true
-      return nonNull(type.ofType)
-    }
-    ctx.usesSchema = true
-    return `Schema.NullOr(${nonNull(type)})`
-  }
-
-  // ---------------------------------------------------------------------------
-  // Inputs
-  // ---------------------------------------------------------------------------
-
-  /**
-   * The Schema for a variable or input field:
-   * nullable is `optional(NullOr(T))`, non-null with a default is
-   * `optional(T)`.
-   */
-  input(type: SchemaModel.TypeRef, hasDefault: boolean, ref: (name: string) => string, schema = "Schema"): string {
-    const named = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string => {
-      if (type._tag === "ListTypeRef") return `${schema}.Array(${element(type.ofType)})`
-      switch (type.name) {
-        case "String":
-          return `${schema}.String`
-        case "Boolean":
-          return `${schema}.Boolean`
-        default:
-          return ref(type.name)
-      }
-    }
-    const element = (type: SchemaModel.TypeRef): string =>
-      type._tag === "NonNullTypeRef" ? named(type.ofType) : `${schema}.NullOr(${named(type)})`
-    if (type._tag === "NonNullTypeRef") {
-      return hasDefault ? `${schema}.optional(${named(type.ofType)})` : named(type.ofType)
-    }
-    return `${schema}.optional(${schema}.NullOr(${named(type)}))`
   }
 
   // ---------------------------------------------------------------------------
@@ -985,7 +894,6 @@ class Emitter {
       file,
       usesSchema: false,
       usesGraphQL: false,
-      usesGroup: false,
       usesShared: false,
       imports: new Map(),
       importedVia: new Map(),
@@ -996,12 +904,10 @@ class Emitter {
     const operations: Array<string> = []
     const operationNames: Array<string> = []
     for (const definition of file.document.definitions) {
+      ctx.localRefs = new Set()
       if (definition._tag === "FragmentDefinition") {
-        ctx.localRefs = new Set()
-        const code = this.emitFragment(ctx, definition)
-        fragments.set(definition.name.value, { code, refs: ctx.localRefs })
+        fragments.set(definition.name.value, { code: this.emitFragment(ctx, definition), refs: ctx.localRefs })
       } else if (definition._tag === "OperationDefinition") {
-        ctx.localRefs = new Set()
         operations.push(this.emitOperation(ctx, definition))
         operationNames.push(definition.name!.value)
       }
@@ -1019,29 +925,28 @@ class Emitter {
     for (const name of fragments.keys()) place(name)
 
     const blocks = [...ordered, ...operations]
-    const groupName = `${pascalCase(file.sourceName)}Group`
+    const group = groupName(file.sourceName)
     const errors: Array<Diagnostic> = []
     if (operationNames.length > 0) {
-      ctx.usesGroup = true
       blocks.push(
-        `/** Every operation in ${file.sourceName}. */\nexport const ${groupName} = GraphQLGroup.make(${
+        `/** Every operation in ${file.sourceName}. */\nexport const ${group} = GraphQLGroup.make(${
           operationNames.join(", ")
         })`
       )
-      const via = ctx.importedVia.get(groupName)
+      const via = ctx.importedVia.get(group)
       if (via !== undefined) {
         errors.push(make(
           file.source,
           via.loc.start,
-          `Fragment "${groupName}" from ${
-            this.fragments.get(groupName)!.file.source.path
+          `Fragment "${group}" from ${
+            this.fragments.get(group)!.file.source.path
           } can't be imported here: the name is taken by the group this file exports.`
         ))
       }
     }
 
     const imports: Array<string> = []
-    const graphql = [...(ctx.usesGraphQL ? ["GraphQL"] : []), ...(ctx.usesGroup ? ["GraphQLGroup"] : [])]
+    const graphql = [...(ctx.usesGraphQL ? ["GraphQL"] : []), ...(operationNames.length > 0 ? ["GraphQLGroup"] : [])]
     if (graphql.length > 0) imports.push(`import { ${graphql.join(", ")} } from "effect/graphql"`)
     if (ctx.usesSchema) imports.push(`import * as Schema from "effect/Schema"`)
     const fragmentImports = Array.from(ctx.imports, ([path, names]) => ({
@@ -1102,7 +1007,7 @@ class Emitter {
           ? undefined
           : SchemaModel.fromAstConstValue(variable.defaultValue)
         const type = SchemaModel.fromAstType(variable.type)
-        const expression = this.input(type, defaultValue !== undefined, (name) => this.shared(ctx, name))
+        const expression = inputSchema(type, defaultValue !== undefined, (name) => this.shared(ctx, name))
         ctx.usesSchema ||= expression.includes("Schema.")
         const variableDoc = docLines(descriptionLines(variable.description?.value), defaultTag(defaultValue))
         return `${jsdoc(variableDoc, "    ")}    ${propertyKey(variable.variable.name.value)}: ${expression}`
@@ -1208,15 +1113,8 @@ class Emitter {
   // Shared module
   // ---------------------------------------------------------------------------
 
-  unmappedScalars(): ReadonlyArray<string> {
-    return this.sharedNames.filter((name) => {
-      const type = this.type(name)
-      return type._tag === "ScalarType" && !SchemaModel.builtInScalarNames.includes(name) &&
-        !this.options.scalars.has(name)
-    })
-  }
-
-  emitShared(): OutputFile {
+  /** The shared module, and the custom scalars it holds without a mapping. */
+  emitShared(): { readonly file: OutputFile; readonly unmapped: ReadonlyArray<string> } {
     // Close over input objects: each one reaches the types of all its fields.
     const inputs: Array<SchemaModel.InputObjectType> = []
     const all = new Set<string>()
@@ -1241,7 +1139,6 @@ class Emitter {
       const type = this.type(name)
       return type._tag === "EnumType" ? [type] : []
     })
-    this.sharedNames = byName
 
     // Each type is exported under its GraphQL name, which per-file modules read
     // as `Shared.<name>`. A name the module can't bind gets a local alias,
@@ -1273,11 +1170,8 @@ class Emitter {
       }
       const existing = modules.get(specifier)
       if (existing !== undefined) return existing
-      const base = specifier.split("/").pop()!.replace(/\.[^.]*$/, "")
-      const words = base.split(/[^A-Za-z0-9]+/).filter((word) => word.length > 0)
-      let candidate = words.map((word) => word[0]!.toUpperCase() + word.slice(1)).join("")
-      if (candidate === "" || /^[0-9]/.test(candidate)) candidate = "Scalars"
-      const name = allocate(candidate)
+      const candidate = pascalCase(specifier.split("/").pop()!.replace(/\.[^.]*$/, ""))
+      const name = allocate(candidate === "" || /^[0-9]/.test(candidate) ? "Scalars" : candidate)
       modules.set(specifier, name)
       return name
     }
@@ -1289,22 +1183,26 @@ class Emitter {
       }
       return `${moduleName(mapping.specifier)}.${mapping.exportName}`
     }
-    /** `export const X = ...`, or a local alias exported under the GraphQL name. */
-    const declare = (name: string, declaration: (binding: string) => string, typeAlias: boolean): string => {
+    /**
+     * A documented declaration, exported under the GraphQL name: directly, or
+     * through `export { alias as Name }` when the name can't be bound.
+     * `declaration` puts `exported` before each statement it writes.
+     */
+    const declare = (
+      name: string,
+      doc: ReadonlyArray<string>,
+      declaration: (binding: string, exported: string) => string
+    ): string => {
       const binding = local(name)
-      const alias = typeAlias ? `\n${binding === name ? "export " : ""}type ${binding} = typeof ${binding}.Type` : ""
       return binding === name
-        ? `export ${declaration(name)}${alias}`
-        : `${declaration(binding)}${alias}\nexport { ${binding} as ${name} }`
+        ? `${jsdoc(doc, "")}${declaration(name, "export ")}`
+        : `${jsdoc(doc, "")}${declaration(binding, "")}\nexport { ${binding} as ${name} }`
     }
 
     const blocks: Array<string> = []
     for (const name of [...builtIns, ...scalars]) {
-      const type = this.type(name)
       const codec = scalarCodec(name, builtIns.includes(name) ? builtInScalarCodec(name, schema) : `${schema}.Json`)
-      blocks.push(
-        `${jsdoc(descriptionLines(type.description), "")}${declare(name, (b) => `const ${b} = ${codec}`, false)}`
-      )
+      blocks.push(declare(name, descriptionLines(this.type(name).description), (b, e) => `${e}const ${b} = ${codec}`))
     }
     for (const type of enums) {
       usesSchema = true
@@ -1312,61 +1210,45 @@ class Emitter {
         const description = descriptionLines(value.description).join(" ")
         const deprecated = value.deprecationReason === undefined
           ? ""
-          : ` Deprecated: ${value.deprecationReason.replace(/\s*\r?\n\s*/g, " ").replace(/\*\//g, "*\\/")}`
+          : ` Deprecated: ${deprecation(value.deprecationReason)}`
         return `- \`${value.name}\`${description === "" ? "" : `: ${description}`}${deprecated}`
       })
-      const doc = docLines(descriptionLines(type.description), values)
       const literals = type.values.map((value) => JSON.stringify(value.name)).join(", ")
-      blocks.push(
-        `${jsdoc(doc, "")}${declare(type.name, (b) => `const ${b} = ${schema}.Literals([${literals}])`, true)}`
-      )
+      blocks.push(declare(
+        type.name,
+        docLines(descriptionLines(type.description), values),
+        (b, e) => `${e}const ${b} = ${schema}.Literals([${literals}])\n${e}type ${b} = typeof ${b}.Type`
+      ))
     }
     for (const type of inputs) {
       usesSchema = true
+      const doc = descriptionLines(type.description)
       if (type.oneOf) {
-        const binding = local(type.name)
-        const declaration = oneOfDeclaration(
-          type,
-          binding,
-          binding === type.name ? "export " : "",
-          schema,
-          (ref) => this.input(ref, false, local, schema),
-          (ref) => inputTypeText(ref, local)
-        )
-        blocks.push(
-          `${jsdoc(descriptionLines(type.description), "")}${declaration}${
-            binding === type.name ? "" : `\nexport { ${binding} as ${type.name} }`
-          }`
-        )
+        blocks.push(declare(type.name, doc, (b, e) => oneOfDeclaration(type, b, e, schema, local)))
         continue
       }
       const members = type.fields.map((field) => {
-        const doc = docLines(
+        const fieldDoc = docLines(
           descriptionLines(field.description),
           [...deprecatedTag(field.deprecationReason), ...defaultTag(field.defaultValue)]
         )
-        return `${jsdoc(doc, "  ")}  ${propertyKey(field.name)}: ${
-          this.input(field.type, field.defaultValue !== undefined, local, schema)
+        return `${jsdoc(fieldDoc, "  ")}  ${propertyKey(field.name)}: ${
+          inputSchema(field.type, field.defaultValue !== undefined, local, schema)
         }`
       })
       const body = struct(members, "", schema)
-      blocks.push(
-        `${jsdoc(descriptionLines(type.description), "")}${
-          declare(type.name, (b) => `class ${b} extends ${schema}.Opaque<${b}>()(${body}) {}`, false)
-        }`
-      )
+      blocks.push(declare(type.name, doc, (b, e) => `${e}class ${b} extends ${schema}.Opaque<${b}>()(${body}) {}`))
     }
 
     if (this.reachedAbstract.size > 0) {
       const members = Array.from(this.reachedAbstract).sort().map((name) => {
-        const type = this.type(name)
-        const doc = `  /** Every possible \`__typename\` of ${kindName(type)} \`${name}\`. */\n`
+        const kind = this.type(name)._tag === "InterfaceType" ? "interface" : "union"
+        const doc = `  /** Every possible \`__typename\` of ${kind} \`${name}\`. */\n`
         return `${doc}${literalUnion(`  export type ${typenameMember(name)} = `, this.possibleTypes(name), "  ")}`
       })
       blocks.push(
-        `/** The possible \`__typename\` values of each interface and union the operations select from. */\n${`export declare namespace Typename {\n${
-          members.join("\n")
-        }\n}`}`
+        `/** The possible \`__typename\` values of each interface and union the operations select from. */\n` +
+          `export declare namespace Typename {\n${members.join("\n")}\n}`
       )
     }
 
@@ -1377,8 +1259,8 @@ class Emitter {
     }
     const body = blocks.length === 0 ? "export {}" : blocks.join("\n\n")
     return {
-      path: this.options.sharedPath,
-      contents: `${[header(undefined), ...imports].join("\n")}\n\n${body}\n`
+      file: { path: this.options.sharedPath, contents: `${[header(undefined), ...imports].join("\n")}\n\n${body}\n` },
+      unmapped: scalars.filter((name) => !this.options.scalars.has(name))
     }
   }
 }
@@ -1395,8 +1277,7 @@ const oneOfDeclaration = (
   binding: string,
   exported: string,
   schema: string,
-  expression: (type: SchemaModel.TypeRef) => string,
-  typeText: (type: SchemaModel.TypeRef) => string
+  ref: (name: string) => string
 ): string => {
   const required = (field: SchemaModel.InputValue): SchemaModel.TypeRef =>
     field.type._tag === "NonNullTypeRef" ? field.type : { _tag: "NonNullTypeRef", ofType: field.type }
@@ -1404,7 +1285,7 @@ const oneOfDeclaration = (
     const members = type.fields.map((field) => {
       if (field !== selected) return `    ${propertyKey(field.name)}: ${schema}.optionalKey(${schema}.Never)`
       const doc = docLines(descriptionLines(field.description), deprecatedTag(field.deprecationReason))
-      return `${jsdoc(doc, "    ")}    ${propertyKey(field.name)}: ${expression(required(field))}`
+      return `${jsdoc(doc, "    ")}    ${propertyKey(field.name)}: ${inputSchema(required(field), false, ref, schema)}`
     })
     return `  ${struct(members, "  ", schema)}`
   })
@@ -1412,7 +1293,7 @@ const oneOfDeclaration = (
     `  | { ${
       type.fields.map((field) =>
         field === selected
-          ? `readonly ${propertyKey(field.name)}: ${typeText(required(field))}`
+          ? `readonly ${propertyKey(field.name)}: ${inputTypeText(required(field), ref)}`
           : `readonly ${propertyKey(field.name)}?: never`
       ).join("; ")
     } }`
@@ -1424,34 +1305,10 @@ const oneOfDeclaration = (
 }
 
 /** The decoded TypeScript type of an input, as written in the shared module. */
-const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string): string => {
-  const named = (type: SchemaModel.NamedTypeRef | SchemaModel.ListTypeRef): string => {
-    if (type._tag === "ListTypeRef") return `ReadonlyArray<${inputTypeText(type.ofType, ref)}>`
-    switch (type.name) {
-      case "String":
-        return "string"
-      case "Boolean":
-        return "boolean"
-      default:
-        return `typeof ${ref(type.name)}.Type`
-    }
-  }
-  return type._tag === "NonNullTypeRef" ? named(type.ofType) : `${named(type)} | null`
-}
-
-const kindName = (type: SchemaModel.NamedType): string => {
-  switch (type._tag) {
-    case "InterfaceType":
-      return "interface"
-    case "UnionType":
-      return "union"
-    case "ObjectType":
-      return "object type"
-    case "InputObjectType":
-      return "input object"
-    case "EnumType":
-      return "enum"
-    case "ScalarType":
-      return "scalar"
-  }
-}
+const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string): string =>
+  typeRef(
+    type,
+    (name) => name === "String" || name === "Boolean" ? name.toLowerCase() : `typeof ${ref(name)}.Type`,
+    (element) => `ReadonlyArray<${element}>`,
+    (inner) => `${inner} | null`
+  )
