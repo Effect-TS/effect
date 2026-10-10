@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.EFFECT_BOT_GH }}
-      # This checks out untrusted fork code with the privileged bot PAT persisted in .git/config.
+      # This checks out untrusted fork code with privileged bot credentials available to subsequent steps.
       # No step may execute code from the working tree (including installs, builds, or repo scripts).
       # The pinned release action only reads changeset files on the fork PR path.
       - run: gh pr checkout ${{ github.event.pull_request.number }}
