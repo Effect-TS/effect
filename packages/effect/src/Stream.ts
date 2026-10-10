@@ -11720,11 +11720,6 @@ export const toReadableStreamEffect: {
  * Use when converting outside an Effect and you already have the `Context`
  * needed to run the stream.
  *
- * **Details**
- *
- * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
- * `Array` module, and requires a runtime that supports `Array.fromAsync`.
- *
  * **Example** (Converting to an AsyncIterable with services)
  *
  * ```ts import.meta.vitest
@@ -11831,11 +11826,6 @@ export const toAsyncIterableWith: {
  * Use when the `AsyncIterable` should be created inside Effect with the current
  * context supplying the stream's services.
  *
- * **Details**
- *
- * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
- * `Array` module, and requires a runtime that supports `Array.fromAsync`.
- *
  * **Example** (Creating an AsyncIterable effect)
  *
  * ```ts import.meta.vitest
@@ -11863,11 +11853,6 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
 
 /**
  * Converts a stream to an `AsyncIterable` for `for await...of` consumption.
- *
- * **Details**
- *
- * The example uses JavaScript's native `globalThis.Array.fromAsync`, not Effect's
- * `Array` module, and requires a runtime that supports `Array.fromAsync`.
  *
  * **Example** (Converting to an async iterable)
  *
