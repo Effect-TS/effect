@@ -185,7 +185,7 @@ export class MetricProducerImpl implements MetricProducer {
             currentBuckets.counts.push(value - prev)
             prev = value
           }
-          // Values above the last finite boundary
+          // Derive overflow from the total count, whether or not boundaries include Infinity.
           currentBuckets.counts.push(state.state.count - prev)
 
           let reportCount = state.state.count
