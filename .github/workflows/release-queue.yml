@@ -38,7 +38,6 @@ jobs:
       - uses: Effect-TS/next-release-action@0901387026995718742a42e0f6bf7743d0d83c2f
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
-          packages: effect,@effect/platform
           base_branch: v3
           eligible_branches: v3/next-minor
           git_user: effect-bot
