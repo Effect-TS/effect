@@ -27,7 +27,10 @@ const eventStream = (chunks: ReadonlyArray<string>, end: "close" | "open" | Erro
       start(controller) {
         for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk))
         if (end === "close") controller.close()
-        else if (end instanceof Error) controller.error(end)
+      },
+      pull(controller) {
+        // Error only after the queued chunks are read; erroring in start discards them.
+        if (end instanceof Error) controller.error(end)
       }
     }),
     { headers: { "content-type": "text/event-stream" } }
