@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Fiber, Layer, Ref, Schedule, Stream } from "effect"
+import { Cause, Duration, Effect, Fiber, Layer, Ref, Schedule, Stream } from "effect"
 import { GraphQLClient, GraphQLMiddleware } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
 import { TestClock } from "effect/testing"
@@ -40,6 +40,40 @@ const subscribe = (
   )
 
 describe("GraphQLClient subscriptions", () => {
+  for (const customSchedule of [false, true]) {
+    it.effect(
+      customSchedule
+        ? "preserves middleware failures without stepping a custom retry schedule"
+        : "preserves null middleware failures without retrying on the default schedule",
+      () =>
+        Effect.gen(function*() {
+          const failure = customSchedule ? { message: "subscription denied" } : null
+          class Reject extends GraphQLMiddleware.Service<Reject, { error: typeof failure }>()("test/Reject") {}
+          const subscribes = yield* Ref.make(0)
+          const steps = yield* Ref.make(0)
+          const RejectLive = Layer.succeed(Reject, {
+            execute: ({ next, request }) => next(request),
+            subscribe: () => Stream.unwrap(Effect.as(Ref.update(subscribes, (n) => n + 1), Stream.fail(failure)))
+          })
+          const subscriptionRetry = Schedule.fromStep(
+            Effect.succeed(() => Effect.andThen(Ref.update(steps, (n) => n + 1), Cause.done(undefined)))
+          )
+          const stream = GraphQLClient.make(
+            IssuesGroup.middleware(Reject),
+            customSchedule ? { subscriptionRetry } : undefined
+          ).pipe(
+            Effect.map((client) => client.IssueUpdated({ id: "I_1" })),
+            Effect.provide([protocolLayer({}), RejectLive]),
+            Stream.unwrap
+          )
+          const error = yield* Stream.runCollect(stream).pipe(Effect.flip)
+          assert.strictEqual(error, failure)
+          assert.strictEqual(yield* Ref.get(subscribes), 1)
+          assert.strictEqual(yield* Ref.get(steps), 0)
+        })
+    )
+  }
+
   it.effect("emits each decoded event and ends when the transport completes", () =>
     Effect.gen(function*() {
       const { layer } = yield* scriptedLayer([Stream.make(event("a"), event("b"))])
