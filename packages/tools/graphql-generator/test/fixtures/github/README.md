@@ -9,6 +9,28 @@ Vendored copies of GitHub's public GraphQL schema, used as the acceptance fixtur
 
 The two files describe different schema snapshots (the SDL is synced from GitHub almost daily, the octokit introspection JSON was last regenerated on 2025-02-27). Tests pin them separately and never assert that they agree.
 
+## Derived SDL
+
+`schema.graphql` is not vendored. It is `schema.json` printed as SDL by graphql-js 16.14.2 (`printSchema(buildClientSchema(json))`), so it describes the same snapshot as `schema.json`. The schema reader acceptance test (`test/SchemaReaders.github.test.ts`) asserts that the two produce equal models. Octokit's own `schema.graphql` at the pinned commit can't stand in, because it comes from a separate IDL endpoint and does not match `schema.json`.
+
+| File             | Derived from  | SHA-256                                                            | Bytes     |
+| ---------------- | ------------- | ------------------------------------------------------------------ | --------- |
+| `schema.graphql` | `schema.json` | `a127beca6b422973883fe55ba9ee77b606d1403161311deab77ddddffb88a7db` | 1,110,582 |
+
+Regenerate it whenever `schema.json` is refreshed:
+
+```sh
+cd packages/tools/graphql-generator/test/fixtures/github
+work=$(mktemp -d)
+npm install --silent --no-save --prefix "$work" graphql@16.14.2
+NODE_PATH="$work/node_modules" node -e '
+const { readFileSync, writeFileSync } = require("node:fs")
+const { buildClientSchema, printSchema } = require("graphql")
+writeFileSync("schema.graphql", printSchema(buildClientSchema(JSON.parse(readFileSync("schema.json", "utf8")))) + "\n")
+'
+sha256sum schema.graphql
+```
+
 ## Licenses
 
 - `schema.docs.graphql` is distributed by GitHub under the MIT License (`LICENSE-CODE` in github/docs, "Copyright 2026 GitHub"). The file lives under `src/`, which that license covers; the repository's CC-BY-4.0 license applies only to its `assets`, `content` and `data` folders.

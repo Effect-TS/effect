@@ -1,0 +1,13 @@
+"Tags a definition for documentation tooling."
+directive @tag(name: String!) repeatable on OBJECT | FIELD_DEFINITION
+
+directive @auth(role: Role = ADMIN, scopes: [String!] = ["read"]) on FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  USER
+}
+
+type Query @tag(name: "root") @tag(name: "public") @undeclared(x: 1) {
+  secret: String @auth @tag(name: "private")
+}
