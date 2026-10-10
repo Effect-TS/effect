@@ -294,7 +294,7 @@ describe("fromJsonSchemaDocument", () => {
       },
       {
         codes: makeCode(
-          `Schema.Union([Schema.StructWithRest(Schema.Struct({ "a": Schema.String, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.StructWithRest(Schema.Struct({ "b": Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })), "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])])`,
+          `Schema.Union([Schema.StructWithRest(Schema.Struct({ "a": Schema.String, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.StructWithRest(Schema.Struct({ "b": Schema.Finite, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])])`,
           `{ readonly "a": string, readonly "id": string } & { readonly [x: string]: Schema.Json } | { readonly "b": number, readonly "id": string } & { readonly [x: string]: Schema.Json }`
         )
       }
@@ -328,7 +328,7 @@ describe("fromJsonSchemaDocument", () => {
       },
       {
         codes: makeCode(
-          `Schema.Union([Schema.StructWithRest(Schema.Struct({ "a": Schema.String, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.StructWithRest(Schema.Struct({ "b": Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })), "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])], { mode: "oneOf" })`,
+          `Schema.Union([Schema.StructWithRest(Schema.Struct({ "a": Schema.String, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]), Schema.StructWithRest(Schema.Struct({ "b": Schema.Finite, "id": Schema.String }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])], { mode: "oneOf" })`,
           `{ readonly "a": string, readonly "id": string } & { readonly [x: string]: Schema.Json } | { readonly "b": number, readonly "id": string } & { readonly [x: string]: Schema.Json }`
         )
       }
@@ -392,7 +392,7 @@ describe("fromJsonSchemaDocument", () => {
       it("pattern only constrains strings", () => {
         assertFromJsonSchema({ schema: { pattern: "^a+$" } }, {
           codes: makeCode(
-            `Schema.Union([Schema.Null, Schema.String.check(Schema.isPattern(new RegExp("^a+$", "u")).annotate({ "expected": "a string matching the RegExp ^a+$" })), Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })), Schema.Boolean, Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))])`,
+            `Schema.Union([Schema.Null, Schema.String.check(Schema.isPattern(new RegExp("^a+$", "u")).annotate({ "expected": "a string matching the RegExp ^a+$" })), Schema.Finite, Schema.Boolean, Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })), Schema.Array(Schema.Json.annotate({ "expected": "JSON value" }))])`,
             `null | string | number | boolean | { readonly [x: string]: Schema.Json } | ReadonlyArray<Schema.Json>`
           )
         })
@@ -406,7 +406,7 @@ describe("fromJsonSchemaDocument", () => {
         { schema: { type: "number" } },
         {
           codes: makeCode(
-            `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
+            `Schema.Finite`,
             `number`
           )
         }
@@ -419,7 +419,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "number", minimum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }))`,
+              `Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }))`,
               `number`
             )
           }
@@ -431,7 +431,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "number", maximum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isLessThanOrEqualTo(1).annotate({ "expected": "a value less than or equal to 1" }))`,
+              `Schema.Finite.check(Schema.isLessThanOrEqualTo(1).annotate({ "expected": "a value less than or equal to 1" }))`,
               `number`
             )
           }
@@ -443,7 +443,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "number", exclusiveMinimum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isGreaterThan(1).annotate({ "expected": "a value greater than 1" }))`,
+              `Schema.Finite.check(Schema.isGreaterThan(1).annotate({ "expected": "a value greater than 1" }))`,
               `number`
             )
           }
@@ -455,7 +455,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "number", exclusiveMaximum: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isLessThan(1).annotate({ "expected": "a value less than 1" }))`,
+              `Schema.Finite.check(Schema.isLessThan(1).annotate({ "expected": "a value less than 1" }))`,
               `number`
             )
           }
@@ -467,7 +467,7 @@ describe("fromJsonSchemaDocument", () => {
           { schema: { type: "number", multipleOf: 1 } },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isMultipleOf(1).annotate({ "expected": "a value that is a multiple of 1" }))`,
+              `Schema.Finite.check(Schema.isMultipleOf(1).annotate({ "expected": "a value that is a multiple of 1" }))`,
               `number`
             )
           }
@@ -592,7 +592,7 @@ describe("fromJsonSchemaDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String), Schema.optionalKey(Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })))]), [Schema.Json.annotate({ "expected": "JSON value" })]).check(Schema.isMaxLength(1).annotate({ "expected": "a value with a length of at most 1" }))`,
+            `Schema.TupleWithRest(Schema.Tuple([Schema.optionalKey(Schema.String), Schema.optionalKey(Schema.Finite)]), [Schema.Json.annotate({ "expected": "JSON value" })]).check(Schema.isMaxLength(1).annotate({ "expected": "a value with a length of at most 1" }))`,
             `readonly [(string)?, (number)?, ...Array<Schema.Json>]`
           )
         }
@@ -670,7 +670,7 @@ describe("fromJsonSchemaDocument", () => {
         },
         {
           codes: makeCode(
-            `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))])`,
+            `Schema.TupleWithRest(Schema.Tuple([Schema.String]), [Schema.Finite])`,
             `readonly [string, ...Array<number>]`
           )
         }
@@ -1209,7 +1209,7 @@ describe("fromJsonSchemaDocument", () => {
         }
       }, {
         codes: makeCode(
-          `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))), "value": Schema.optionalKey(X) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
+          `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(Schema.Finite), "value": Schema.optionalKey(X) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
           `{ readonly "child"?: number, readonly "value"?: X } & { readonly [x: string]: Schema.Json }`
         ),
         references: {
@@ -1591,7 +1591,7 @@ describe("fromJsonSchemaDocument", () => {
           ]
         }
       }, {
-        codes: makeCode(`Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))`, `number`)
+        codes: makeCode(`Schema.Finite`, `number`)
       })
     })
 
@@ -2186,7 +2186,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.annotate({ "description": "b" }).check(Schema.isFinite().annotate({ "expected": "a finite number" }))`,
+              `Schema.Finite.annotate({ "description": "b" })`,
               `number`
             )
           }
@@ -2205,7 +2205,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isInt().annotate({ "expected": "an integer" }))`,
+              `Schema.Finite.check(Schema.isInt().annotate({ "expected": "an integer" }))`,
               `number`
             )
           }
@@ -2225,7 +2225,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThanOrEqualTo(2).annotate({ "expected": "a value greater than or equal to 2" })).check(Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2" }))`,
+              `Schema.Finite.check(Schema.isInt().annotate({ "expected": "an integer" })).check(Schema.isGreaterThanOrEqualTo(2).annotate({ "expected": "a value greater than or equal to 2" })).check(Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2" }))`,
               `number`
             )
           }
@@ -2263,7 +2263,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.makeFilterGroup([Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }), Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2", "description": "c" })]).annotate({ "description": "b" }))`,
+              `Schema.Finite.check(Schema.makeFilterGroup([Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }), Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2", "description": "c" })]).annotate({ "description": "b" }))`,
               `number`
             )
           }
@@ -2283,7 +2283,7 @@ describe("fromJsonSchemaDocument", () => {
           },
           {
             codes: makeCode(
-              `Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" })).check(Schema.makeFilterGroup([Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }), Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2" })]).annotate({ "description": "range" })).check(Schema.isInt().annotate({ "expected": "an integer" }))`,
+              `Schema.Finite.check(Schema.makeFilterGroup([Schema.isGreaterThanOrEqualTo(1).annotate({ "expected": "a value greater than or equal to 1" }), Schema.isLessThanOrEqualTo(2).annotate({ "expected": "a value less than or equal to 2" })]).annotate({ "description": "range" })).check(Schema.isInt().annotate({ "expected": "an integer" }))`,
               `number`
             )
           }
@@ -2970,7 +2970,7 @@ describe("fromJsonSchemaDocument", () => {
         }
       }, {
         codes: makeCode(
-          `Schema.Struct({ "a": Schema.optionalKey(Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))), "b": Schema.optionalKey(Schema.Never) })`,
+          `Schema.Struct({ "a": Schema.optionalKey(Schema.Finite), "b": Schema.optionalKey(Schema.Never) })`,
           `{ readonly "a"?: number, readonly "b"?: never }`
         )
       })

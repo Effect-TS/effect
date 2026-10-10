@@ -4,7 +4,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type { OpenAPISpec } from "effect/http-api/OpenApi"
 import * as Schema from "effect/Schema"
-import { stripTypeScriptTypes } from "node:module"
+import { transformSync } from "rolldown/utils"
 
 const redundantTypeQuery = /typeof \w+\.Type/
 
@@ -83,7 +83,9 @@ describe("generator schema output", () => {
     assert.include(source, "\"description\": \"Schema.Number is text\"")
     assert.include(source, "\"_tag\": \"Number\"")
     assert.include(source, "Schema.isGreaterThanOrEqualTo(0)")
-    const schema = new Function("Schema", `${stripTypeScriptTypes(source).replaceAll("export ", "")}; return Amount;`)(
+    const compiled = transformSync("schemas.ts", source, { lang: "ts" })
+    assert.deepStrictEqual(compiled.errors, [])
+    const schema = new Function("Schema", `${compiled.code.replaceAll("export ", "")}; return Amount;`)(
       Schema
     ) as Schema.Codec<number>
     const isAmount = Schema.is(schema)
