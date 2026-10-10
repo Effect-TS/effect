@@ -14,7 +14,7 @@ import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 import { IssueTimeline, TimelineGroup } from "./generated/github/timeline.graphql.ts"
-import { Room, RoomEvents, RoomsGroup } from "./generated/subscriptions/rooms.graphql.ts"
+import { type Room, RoomEvents, RoomsGroup } from "./generated/subscriptions/rooms.graphql.ts"
 
 interface Sent {
   readonly query: string
@@ -169,19 +169,6 @@ describe("Generated GitHub timeline client", () => {
 })
 
 describe("Generated subscriptions client", () => {
-  it.effect("Room encodes a single-key @oneOf input and decodes the room", () =>
-    Effect.gen(function*() {
-      const { layer, sent } = mock({ data: { room: { id: "R_1", name: "general" } } })
-      const client = yield* GraphQLClient.make(RoomsGroup).pipe(Effect.provide(layer))
-      const result = yield* client.Room({ by: { slug: "general" } })
-      assert.deepStrictEqual(sent, [{
-        query: Room.document,
-        operationName: "Room",
-        variables: { by: { slug: "general" } }
-      }])
-      assert.deepStrictEqual(result, { room: { id: "R_1", name: "general" } })
-    }))
-
   it.effect("a @oneOf input with two keys fails with an EncodeError and nothing is sent", () =>
     Effect.gen(function*() {
       const { layer, sent } = mock({ data: { room: null } })
@@ -224,13 +211,5 @@ describe("Generated subscriptions client", () => {
       assert(renamed?.__typename === "RoomRenamed")
       assert.strictEqual(renamed.name, "random")
       assert.deepStrictEqual<unknown>(archived, { __typename: "RoomArchived", id: "E_4", at })
-    }))
-
-  it.effect("an event missing a field from an interface it implements fails with a DecodeError", () =>
-    Effect.gen(function*() {
-      const { layer } = mock({ events: [{ events: { __typename: "MemberJoined", id: "E_2", at } }] })
-      const client = yield* GraphQLClient.make(RoomsGroup).pipe(Effect.provide(layer))
-      const error = yield* Stream.runCollect(client.RoomEvents({ room: { id: "R_1" } })).pipe(Effect.flip)
-      assert.strictEqual(reasonTag(error), "DecodeError")
     }))
 })

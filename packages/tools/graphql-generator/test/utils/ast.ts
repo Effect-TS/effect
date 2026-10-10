@@ -20,31 +20,20 @@ export type Plain<T> = T extends ReadonlyArray<infer U> ? ReadonlyArray<Plain<U>
 
 export const source = (body: string, path = "test.graphql"): Source => ({ path, body })
 
-const strip = (value: unknown, dropped: ReadonlySet<string>): unknown => {
-  if (Array.isArray(value)) return value.map((item) => strip(item, dropped))
+const strip = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(strip)
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {}
     for (const [key, child] of Object.entries(value)) {
-      if (dropped.has(key) || child === undefined) continue
-      out[key] = strip(child, dropped)
+      if (key === "loc" || child === undefined) continue
+      out[key] = strip(child)
     }
     return out
   }
   return value
 }
 
-const locOnly: ReadonlySet<string> = new Set(["loc"])
-const locAndDescription: ReadonlySet<string> = new Set(["loc", "description"])
-
-export const stripLoc = <T>(node: T): Plain<T> => strip(node, locOnly) as Plain<T>
-
-/**
- * `stripLoc` that also drops `description` children. The compact printer does
- * not print the descriptions the September 2025 edition allows on operations,
- * fragments and variable definitions, so a print/parse round trip is compared
- * without them.
- */
-export const stripLocAndDescriptions = <T>(node: T): Plain<T> => strip(node, locAndDescription) as Plain<T>
+export const stripLoc = <T>(node: T): Plain<T> => strip(node) as Plain<T>
 
 export const formatDiagnostic = (diagnostic: Diagnostic): string =>
   `${diagnostic.path}:${diagnostic.line}:${diagnostic.column} ${diagnostic.message}\n${diagnostic.codeFrame}`
@@ -61,7 +50,7 @@ export const assertDefinitions = (body: string, expected: ReadonlyArray<Plain<As
   assert.deepStrictEqual(stripLoc(parseOrThrow(body)).definitions, expected)
 }
 
-export interface ExpectedDiagnostic {
+interface ExpectedDiagnostic {
   readonly line: number
   readonly column: number
   readonly message: string
@@ -160,8 +149,3 @@ export const fieldDefinition = (
   type,
   directives: options.directives ?? []
 })
-
-export const operationType = (
-  operation: Ast.OperationType,
-  type: string
-): Plain<Ast.OperationTypeDefinition> => ({ _tag: "OperationTypeDefinition", operation, type: namedType(type) })
