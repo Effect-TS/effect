@@ -44,7 +44,7 @@ const github = (data: unknown) => {
 describe("Generated GitHub client", () => {
   it.effect("RepoIssues encodes its variables and decodes issues, custom scalars and new enum values", () =>
     Effect.gen(function*() {
-      const { IssuesGroup, RepoIssues } = yield* importGitHub("issues.graphql.ts")
+      const { IssuesGraphQLGroup, RepoIssues } = yield* importGitHub("issues.graphql.ts")
       const { layer, sent } = github({
         repository: {
           id: "R_kgDOAbc",
@@ -75,7 +75,7 @@ describe("Generated GitHub client", () => {
           }
         }
       })
-      const client: UntypedClient = yield* GraphQLClient.make<never>(IssuesGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(IssuesGraphQLGroup).pipe(Effect.provide(layer))
       const result = yield* client.RepoIssues({
         owner: "Effect-TS",
         name: "effect",
