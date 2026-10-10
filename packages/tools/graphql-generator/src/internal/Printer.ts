@@ -2,14 +2,12 @@
  * Compact printer for executable documents (EFF-1829 point 7, EFF-1831
  * point 7). There is no SDL printer.
  *
- * The signature below is the contract exercised by `test/Printer.test.ts`.
- * The body is a placeholder until the implementation run for EFF-1914 lands.
- *
- * Output rules the tests pin down:
+ * Output rules, pinned by `test/Printer.test.ts` and the conformance cases:
  * - Definitions are printed in the order given, with no trailing newline.
- * - Insignificant whitespace and commas are dropped. A single space is
- *   emitted only between two adjacent tokens that are both non-punctuators
- *   (names, keywords, numbers, strings); the punctuators are
+ * - Insignificant whitespace and commas are dropped. Arguments, list values
+ *   and object fields are separated by a single space. Everywhere else a
+ *   space is emitted only between two adjacent tokens that are both
+ *   non-punctuators (names, keywords, numbers, strings); the punctuators are
  *   `! $ & ( ) ... : = @ [ ] { | }`.
  * - A `query` operation with no name, variables or directives prints in the
  *   `{ ... }` shorthand.
@@ -24,9 +22,173 @@
 import type * as Ast from "./Ast.ts"
 
 /**
- * Prints an executable document compactly. Documents containing type-system
- * definitions or extensions are outside the contract.
+ * Prints an executable document compactly. Throws on type-system definitions
+ * and extensions, which are outside the contract.
  */
-export const print = (_document: Ast.Document): string => {
-  throw new Error("@effect/graphql-generator: Printer.print is not implemented yet (EFF-1914)")
+export const print = (document: Ast.Document): string => {
+  let out = ""
+  for (const definition of document.definitions) {
+    out = concat(out, printDefinition(definition))
+  }
+  return out
+}
+
+/** A character that ends or starts a non-punctuator token. */
+const isWordCharacter = (char: string): boolean => /[A-Za-z0-9_"-]/.test(char)
+
+/** Joins two printed fragments, adding a space only where two non-punctuators would otherwise touch. */
+const concat = (left: string, right: string): string => {
+  if (left.length === 0 || right.length === 0) return left + right
+  return isWordCharacter(left[left.length - 1]!) && isWordCharacter(right[0]!) ? `${left} ${right}` : left + right
+}
+
+const concatAll = (parts: ReadonlyArray<string>): string => parts.reduce(concat, "")
+
+const printDefinition = (definition: Ast.Definition): string => {
+  switch (definition._tag) {
+    case "OperationDefinition":
+      return printOperation(definition)
+    case "FragmentDefinition":
+      return concatAll([
+        "fragment",
+        definition.name.value,
+        "on",
+        definition.typeCondition.name.value,
+        printDirectives(definition.directives),
+        printSelectionSet(definition.selectionSet)
+      ])
+    default:
+      throw new Error(
+        `@effect/graphql-generator: cannot print a ${definition._tag}; only executable documents are printed`
+      )
+  }
+}
+
+const printOperation = (operation: Ast.OperationDefinition): string => {
+  const selectionSet = printSelectionSet(operation.selectionSet)
+  if (
+    operation.operation === "query" &&
+    operation.name === undefined &&
+    operation.variableDefinitions.length === 0 &&
+    operation.directives.length === 0
+  ) {
+    return selectionSet
+  }
+  return concatAll([
+    operation.operation,
+    operation.name === undefined ? "" : operation.name.value,
+    operation.variableDefinitions.length === 0
+      ? ""
+      : `(${concatAll(operation.variableDefinitions.map(printVariableDefinition))})`,
+    printDirectives(operation.directives),
+    selectionSet
+  ])
+}
+
+const printVariableDefinition = (definition: Ast.VariableDefinition): string =>
+  concatAll([
+    `$${definition.variable.name.value}:`,
+    printType(definition.type),
+    definition.defaultValue === undefined ? "" : `=${printValue(definition.defaultValue)}`,
+    printDirectives(definition.directives)
+  ])
+
+const printType = (type: Ast.Type): string => {
+  switch (type._tag) {
+    case "NamedType":
+      return type.name.value
+    case "ListType":
+      return `[${printType(type.type)}]`
+    case "NonNullType":
+      return `${printType(type.type)}!`
+  }
+}
+
+const printSelectionSet = (selectionSet: Ast.SelectionSet): string =>
+  `{${concatAll(selectionSet.selections.map(printSelection))}}`
+
+const printSelection = (selection: Ast.Selection): string => {
+  switch (selection._tag) {
+    case "Field":
+      return concatAll([
+        selection.alias === undefined ? selection.name.value : `${selection.alias.value}:${selection.name.value}`,
+        printArguments(selection.arguments),
+        printDirectives(selection.directives),
+        selection.selectionSet === undefined ? "" : printSelectionSet(selection.selectionSet)
+      ])
+    case "FragmentSpread":
+      return concatAll([`...${selection.name.value}`, printDirectives(selection.directives)])
+    case "InlineFragment":
+      return concatAll([
+        "...",
+        selection.typeCondition === undefined ? "" : `on ${selection.typeCondition.name.value}`,
+        printDirectives(selection.directives),
+        printSelectionSet(selection.selectionSet)
+      ])
+  }
+}
+
+const printArguments = (args: ReadonlyArray<Ast.Argument>): string =>
+  args.length === 0
+    ? ""
+    : `(${args.map((argument) => `${argument.name.value}:${printValue(argument.value)}`).join(" ")})`
+
+const printDirectives = (directives: ReadonlyArray<Ast.Directive>): string =>
+  concatAll(directives.map((directive) => `@${directive.name.value}${printArguments(directive.arguments)}`))
+
+const printValue = (value: Ast.Value): string => {
+  switch (value._tag) {
+    case "Variable":
+      return `$${value.name.value}`
+    case "IntValue":
+    case "FloatValue":
+    case "EnumValue":
+      return value.value
+    case "StringValue":
+      return printString(value.value)
+    case "BooleanValue":
+      return value.value ? "true" : "false"
+    case "NullValue":
+      return "null"
+    case "ListValue":
+      return `[${value.values.map(printValue).join(" ")}]`
+    case "ObjectValue":
+      return `{${value.fields.map((field) => `${field.name.value}:${printValue(field.value)}`).join(" ")}}`
+  }
+}
+
+/** Prints a string value as a regular GraphQL string literal. */
+export const printString = (value: string): string => {
+  let out = "\""
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    switch (code) {
+      case 0x0022:
+        out += "\\\""
+        break
+      case 0x005c:
+        out += "\\\\"
+        break
+      case 0x0008:
+        out += "\\b"
+        break
+      case 0x000c:
+        out += "\\f"
+        break
+      case 0x000a:
+        out += "\\n"
+        break
+      case 0x000d:
+        out += "\\r"
+        break
+      case 0x0009:
+        out += "\\t"
+        break
+      default:
+        out += code < 0x0020 || code === 0x007f
+          ? `\\u${code.toString(16).toUpperCase().padStart(4, "0")}`
+          : value[i]
+    }
+  }
+  return out + "\""
 }
