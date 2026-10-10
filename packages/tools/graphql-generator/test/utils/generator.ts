@@ -13,7 +13,7 @@ import { assert } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 export interface Generated {
   readonly result: Generator.GenerateResult
@@ -275,3 +275,24 @@ export const generateTasks = (
   documents: Readonly<Record<string, string>>,
   config: Config.Config = taskConfig
 ) => generateIn({ "schema/app.graphql": taskSchemaSdl, ...documents }, config)
+
+/**
+ * Writes the generated files, in their `cwd`-relative layout, to a scratch
+ * directory inside the package (so `effect` resolves) and imports the module
+ * at `relative`. The directory is removed when the scope closes.
+ */
+export const importGenerated = (generated: Generated, relative: string) =>
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const root = fileURLToPath(new URL("../.tmp", import.meta.url))
+    yield* fs.makeDirectory(root, { recursive: true })
+    const dir = yield* fs.makeTempDirectoryScoped({ directory: root, prefix: "import-" })
+    for (const file of generated.paths) {
+      const target = path.join(dir, file)
+      yield* fs.makeDirectory(path.dirname(target), { recursive: true })
+      yield* fs.writeFileString(target, generated.file(file))
+    }
+    const url = pathToFileURL(path.join(dir, relative)).href
+    return yield* Effect.promise(() => import(/* @vite-ignore */ url) as Promise<Record<string, any>>)
+  })
