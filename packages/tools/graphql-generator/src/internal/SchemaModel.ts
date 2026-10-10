@@ -1,27 +1,15 @@
 /**
- * The generator's schema model. `SdlReader` and
- * `IntrospectionReader` both produce it, and the same schema read either way
- * gives equal models.
+ * Schema model shared by the SDL and introspection readers.
  *
- * Conventions:
- * - Names are plain strings; type references are `TypeRef` chains ending in a
- *   name. Nothing carries a source location.
- * - Optional values (`description`, `deprecationReason`, `defaultValue`,
- *   `specifiedBy`, a missing root type) are `undefined` when absent.
- * - Lists keep declaration order, with fields, values, members and interfaces
- *   added by `extend` appended in document order. The exception is
- *   `InterfaceType.possibleTypes`, which is sorted by name.
- * - `types` holds every schema type plus the five built-in scalars (`String`,
- *   `Int`, `Float`, `Boolean`, `ID`), which are always present and never carry
- *   a description. Introspection meta types (`__Schema`, `__Type`, ...) are
- *   left out.
- * - `directives` holds the schema's own directive definitions. The built-in
- *   `skip`, `include`, `deprecated`, `specifiedBy` and `oneOf` are left out.
- * - Applied directives are consumed, not kept: `@deprecated` becomes
- *   `deprecationReason` (`"No longer supported"` when it has no `reason`),
- *   `@specifiedBy` becomes `ScalarType.specifiedBy` and `@oneOf` becomes
- *   `InputObjectType.oneOf`. Every other applied directive is dropped, whether
- *   or not the schema defines it.
+ * - Names are strings; type references are chains ending in a name. No locations
+ *   are retained. Absent optional values are `undefined`.
+ * - Lists preserve declaration order, including extensions. Interface
+ *   `possibleTypes` are sorted by name.
+ * - The five built-in scalars are always present without descriptions.
+ *   Introspection meta types and built-in directives are omitted.
+ * - Applied directives are discarded after extracting `deprecationReason`,
+ *   `specifiedBy` and `oneOf`. A missing deprecation reason becomes
+ *   `"No longer supported"`.
  * - Default values are parsed const values without locations.
  *
  * @internal

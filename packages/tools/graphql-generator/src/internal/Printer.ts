@@ -1,22 +1,12 @@
 /**
- * Compact printer for executable documents. There is no SDL printer.
+ * Token-minimal printer for executable documents; SDL is not supported.
  *
- * Output rules, pinned by `test/Printer.test.ts` and the conformance cases:
- * - Definitions are printed in the order given, with no trailing newline.
- * - The output is token-minimal: no ignored tokens at all, except a single
- *   space where two adjacent non-punctuator tokens (names, keywords, numbers,
- *   strings) would otherwise merge. The punctuators are
- *   `! $ & ( ) ... : = @ [ ] { | }`, so `f(a:[]b:{})`, `[1 -2]` and `a...F`.
- * - Descriptions on operations, fragments and variable definitions are not
- *   printed; they carry no execution meaning and servers on the 2021 grammar
- *   reject them.
- * - A `query` operation with no name, variables or directives prints in the
- *   `{ ... }` shorthand, whether or not it had a description.
- * - Every string prints as a regular (non-block) string. `"` and `\` are
- *   escaped, control characters U+0000 to U+001F use `\b \f \n \r \t` or
- *   `\u00XX` with upper-case hex, U+007F prints as `\u007F`, and everything
- *   else is written as-is.
- * - `IntValue` and `FloatValue` print their source text unchanged.
+ * Preserves definition order and number text. Strings use regular quoted
+ * syntax. Spaces separate adjacent non-punctuator tokens; there is no trailing
+ * newline. Anonymous queries without variables or directives use shorthand.
+ *
+ * Descriptions are omitted because they have no execution meaning and are
+ * rejected by servers using the 2021 grammar.
  *
  * @internal
  */
