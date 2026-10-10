@@ -257,7 +257,7 @@ export const make: (options: {
               reportBucketCounts = currentBuckets.counts.map((c, i) =>
                 Math.max(0, c - (previousState.bucketCounts[i] ?? 0))
               )
-              // Interval extrema cannot be derived from cumulative min / max
+              // Cumulative extrema cannot describe a later delta interval.
               reportExtrema = false
             }
             nextHistogramState.set(metricKey, {
