@@ -2,8 +2,8 @@
 "@effect/ai-openai": minor
 ---
 
-Keep encrypted reasoning working for new OpenAI models and preserve explicit `include` values.
+Preserve explicit `include` values and default unknown OpenAI models to reasoning.
 
-- Explicit `include` values are now sent alongside the values added automatically, instead of being replaced by them.
-- Models are now treated as reasoning models unless they are a known non-reasoning model (`gpt-3*`, `gpt-4*`, `chatgpt-*`, `chat-latest`, `gpt-<version>-chat*`). Fine-tuned `ft:` models follow their base model. Reasoning models use the `developer` role for system prompts and request `reasoning.encrypted_content` when responses are not stored, so models such as `gpt-6.1-sol` and `o5-mini` keep reasoning across stateless tool-call turns.
-- Add the `reasoningModel` config option to override detection. Set `reasoningModel: false` for custom deployments or third-party models that do not support reasoning, which previously used the `system` role and no encrypted reasoning include.
+- Merge explicit and automatic includes without duplicates.
+- Treat models as reasoning except for `gpt-3*`, `gpt-4*`, `chatgpt-*`, `chat-latest`, and `gpt-<version>-chat*`. Fine-tunes follow their base model. Reasoning models use the `developer` role and request encrypted reasoning when item references are disabled or WebSockets are used. OpenAI returns encrypted reasoning by default with `store: false`; the include is retained for compatibility.
+- Add `reasoningModel` to override detection. Use `reasoningModel: false` for incompatible custom deployments to select the `system` role and disable the automatic encrypted reasoning include. Explicit includes are still preserved.

@@ -76,9 +76,7 @@ type PromptCacheBreakpoint = { readonly mode: "explicit" }
  * Config values are merged with the config object passed to `model`, `make`, or
  * `layer`, with scoped context values taking precedence.
  *
- * Explicit `include` values are always sent. Values added automatically for
- * logprobs, encrypted reasoning, and provider tools are appended without
- * duplicates.
+ * Explicit `include` values are merged with automatic entries without duplicates.
  *
  * @see {@link withConfigOverride} for scoping language model request overrides
  *
@@ -135,20 +133,16 @@ export class Config extends Context.Service<
        */
       readonly useItemReferences?: boolean | undefined
       /**
-       * Whether the model is a reasoning model.
+       * Override reasoning model detection. Reasoning models use the `developer`
+       * role for system prompts and request `reasoning.encrypted_content` when
+       * item references are disabled or a WebSocket connection is used.
        *
-       * Reasoning models receive system prompts with the `developer` role. When
-       * responses are not stored, or a WebSocket connection is used, they also
-       * request `reasoning.encrypted_content` so reasoning can be replayed on
-       * later turns.
+       * Defaults to `true` except for `gpt-3*`, `gpt-4*`, `chatgpt-*`,
+       * `chat-latest`, and `gpt-<version>-chat*`. Fine-tuned `ft:` models follow
+       * their base model.
        *
-       * When unset, models are treated as reasoning models unless they are a
-       * known non-reasoning model: `gpt-3*`, `gpt-4*`, `chatgpt-*`,
-       * `chat-latest`, and `gpt-<version>-chat*`. Fine-tuned `ft:` models are
-       * classified by their base model.
-       *
-       * Set to `false` for a custom or third-party model that does not support
-       * reasoning, or to `true` for a reasoning model with a non-reasoning name.
+       * Set to `false` for deployments that do not support these defaults.
+       * Explicit `include` values are still preserved.
        */
       readonly reasoningModel?: boolean | undefined
     }
@@ -218,9 +212,8 @@ declare module "effect/ai/Prompt" {
        */
       readonly itemId?: string | null
       /**
-       * The encrypted content of the reasoning item - populated when a response
-       * is generated without storage (`store: false`) or with
-       * `reasoning.encrypted_content` in the `include` parameter.
+       * Encrypted reasoning returned by OpenAI for `store: false` or when
+       * `include` contains `reasoning.encrypted_content`.
        */
       readonly encryptedContent?: string | null
     } | null
@@ -3197,9 +3190,7 @@ const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
   return { type: "text" }
 })
 
-// Known non-reasoning models: GPT-3 and GPT-4 generations, ChatGPT aliases,
-// and the `gpt-<version>-chat*` variants. Any other model is assumed to be a
-// reasoning model so that new model generations work without changes here.
+// Default new model names to reasoning without extending an allowlist.
 const nonReasoningModelPattern = /^(?:gpt-[34]|chatgpt-|chat-latest|gpt-\d+(?:\.\d+)?-chat)/
 
 const resolveReasoningModel = (config: typeof Config.Service): boolean => {
