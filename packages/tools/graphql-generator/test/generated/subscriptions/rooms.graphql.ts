@@ -73,4 +73,4 @@ export declare namespace RoomEvents {
 }
 
 /** Every operation in rooms.graphql. */
-export const RoomsGroup = GraphQLGroup.make(Room, RoomEvents)
+export const RoomsGraphQLGroup = GraphQLGroup.make(Room, RoomEvents)
