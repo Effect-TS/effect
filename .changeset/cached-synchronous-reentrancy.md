@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix synchronous re-entrancy in `Effect.cached`, `Effect.cachedWithTTL`, and `Effect.cachedInvalidateWithTTL`.
+Prevent crashes and premature interruption when `Effect.cached`, `Effect.cachedWithTTL`, and `Effect.cachedInvalidateWithTTL` are synchronously re-entered.

@@ -4470,8 +4470,7 @@ const makeCachedUnsafe = <A, E, R>(
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
       if (--run.awaiters > 0 || current !== run) return
-      // Detach it first so new callers start a fresh run instead of joining
-      // one that is being interrupted.
+      // Detach before interruption so new callers start a fresh run.
       current = undefined
       return fiberInterrupt(run.fiber)
     })
@@ -4481,6 +4480,7 @@ const makeCachedUnsafe = <A, E, R>(
   return [
     withFiber((fiber) => {
       if (current !== undefined) {
+        // Self-joins must not prevent abandonment by external callers.
         if (fiber === current.fiber) return fiberJoin(current.fiber)
         current.awaiters++
         return join(fiber, current)
@@ -4495,6 +4495,7 @@ const makeCachedUnsafe = <A, E, R>(
       const clock = fiber.getRef(ClockRef)
       const run: CachedRun<A, E> = {
         fiber: new FiberImpl(fiber.context),
+        // Count the initiating caller before synchronous evaluation can re-enter.
         awaiters: 1
       }
       current = run
