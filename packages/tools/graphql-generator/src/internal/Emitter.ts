@@ -59,7 +59,10 @@ export const emit = (options: Options): Output => {
   const emitter = new Emitter(options)
   const errors = emitter.check()
   if (errors.length > 0) return { files: [], errors, unmappedScalars: [] }
-  const files = options.files.map((file) => emitter.emitFile(file))
+  const emitted = options.files.map((file) => emitter.emitFile(file))
+  const importErrors = emitted.flatMap((result) => result.errors)
+  if (importErrors.length > 0) return { files: [], errors: importErrors, unmappedScalars: [] }
+  const files = emitted.map((result) => result.file)
   const shared = emitter.emitShared()
   return { files: [shared, ...files], errors: [], unmappedScalars: emitter.unmappedScalars() }
 }
@@ -224,12 +227,31 @@ interface FragmentEntry {
   readonly file: DocumentFile
 }
 
+/**
+ * A selection together with where it came from. `via` is undefined when the
+ * selection is written in the file being emitted; otherwise it is the spread
+ * in that file through which a fragment from another file was written out
+ * inline.
+ */
+interface Sourced<S extends Ast.Selection> {
+  readonly selection: S
+  readonly via: Ast.FragmentSpread | undefined
+}
+
 /** A selection after inline fragments are flattened into their parent. */
-type FlatSelection = Ast.Field | Ast.FragmentSpread
+type FlatSelection = Sourced<Ast.Field | Ast.FragmentSpread>
 
 type Item =
-  | { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Ast.Field> }
-  | { readonly _tag: "Spread"; readonly name: string }
+  | { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Sourced<Ast.Field>> }
+  | {
+    readonly _tag: "Spread"
+    readonly name: string
+    readonly spread: Ast.FragmentSpread
+    readonly via: Ast.FragmentSpread | undefined
+  }
+
+const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Selection>> =>
+  selections.map((selection) => ({ selection, via: undefined }))
 
 interface FileContext {
   readonly file: DocumentFile
@@ -239,6 +261,8 @@ interface FileContext {
   usesShared: boolean
   /** Fragments imported from other files, by output path. */
   readonly imports: Map<string, Set<string>>
+  /** For each imported fragment, the first spread in this file that led to the import. */
+  readonly importedVia: Map<string, Ast.FragmentSpread>
   /** Fragments of this file referenced by the code being rendered. */
   localRefs: Set<string>
 }
@@ -307,7 +331,6 @@ class Emitter {
         errors.push({ file: fileIndex, offset, diagnostic: make(file.source, offset, message) })
       const groupName = `${pascalCase(file.sourceName)}Group`
       const exportsGroup = file.document.definitions.some((definition) => definition._tag === "OperationDefinition")
-      let importReported = false
       for (const definition of file.document.definitions) {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
         const name = definition.name
@@ -316,20 +339,6 @@ class Emitter {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
           } else if (name.value === groupName && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
-          }
-        }
-        // An imported fragment would bind the group's name too.
-        if (exportsGroup && !importReported) {
-          for (const spread of spreadsIn(definition.selectionSet)) {
-            const entry = this.fragments.get(spread.name.value)
-            if (entry !== undefined && entry.file !== file && spread.name.value === groupName) {
-              report(
-                spread.loc.start,
-                `Fragment "${spread.name.value}" from ${entry.file.source.path} can't be imported here: the name is taken by the group this file exports.`
-              )
-              importReported = true
-              break
-            }
           }
         }
         if (definition._tag === "OperationDefinition") {
@@ -532,33 +541,38 @@ class Emitter {
   // Result selections
   // ---------------------------------------------------------------------------
 
-  flatten(selections: ReadonlyArray<Ast.Selection>): Array<FlatSelection> {
+  flatten(selections: ReadonlyArray<Sourced<Ast.Selection>>): Array<FlatSelection> {
     const out: Array<FlatSelection> = []
-    for (const selection of selections) {
-      if (selection._tag === "InlineFragment") out.push(...this.flatten(selection.selectionSet.selections))
-      else out.push(selection)
+    for (const { selection, via } of selections) {
+      if (selection._tag === "InlineFragment") {
+        out.push(...this.flatten(selection.selectionSet.selections.map((selection) => ({ selection, via }))))
+      } else {
+        out.push({ selection, via })
+      }
     }
     return out
   }
 
   group(flat: ReadonlyArray<FlatSelection>): Array<Item> {
     const items: Array<Item> = []
-    const fields = new Map<string, Array<Ast.Field>>()
+    const fields = new Map<string, Array<Sourced<Ast.Field>>>()
     const spreads = new Set<string>()
-    for (const selection of flat) {
+    for (const entry of flat) {
+      const selection = entry.selection
       if (selection._tag === "Field") {
         const key = (selection.alias ?? selection.name).value
         const existing = fields.get(key)
+        const sourced = { selection, via: entry.via }
         if (existing === undefined) {
-          const merged = [selection]
+          const merged = [sourced]
           fields.set(key, merged)
           items.push({ _tag: "Field", key, fields: merged })
         } else {
-          existing.push(selection)
+          existing.push(sourced)
         }
       } else if (!spreads.has(selection.name.value)) {
         spreads.add(selection.name.value)
-        items.push({ _tag: "Spread", name: selection.name.value })
+        items.push({ _tag: "Spread", name: selection.name.value, spread: selection, via: entry.via })
       }
     }
     return items
@@ -575,7 +589,7 @@ class Emitter {
     const cached = this.fragmentKeyCache.get(name)
     if (cached !== undefined) return cached
     const keys = new Set<string>()
-    for (const item of this.group(this.flatten(this.fragmentDefinition(name).selectionSet.selections))) {
+    for (const item of this.group(this.flatten(written(this.fragmentDefinition(name).selectionSet.selections)))) {
       if (item._tag === "Field") keys.add(item.key)
       else for (const key of this.fragmentKeys(item.name)) keys.add(key)
     }
@@ -589,7 +603,7 @@ class Emitter {
    * overlap a sibling's (EFF-1831 point 3). The remaining spreads become
    * `...Frag.fields`.
    */
-  resolveItems(selections: ReadonlyArray<Ast.Selection>): Array<Item> {
+  resolveItems(file: DocumentFile, selections: ReadonlyArray<Sourced<Ast.Selection>>): Array<Item> {
     let flat = this.flatten(selections)
     for (;;) {
       const items = this.group(flat)
@@ -604,18 +618,24 @@ class Emitter {
         return this.fragmentKeys(item.name).some((key) => others.has(key))
       })
       if (overlapping === undefined || overlapping._tag !== "Spread") return items
-      const replacement = this.flatten(this.fragmentDefinition(overlapping.name).selectionSet.selections)
-      flat = flat.flatMap((selection) =>
-        selection._tag === "FragmentSpread" && selection.name.value === overlapping.name ? replacement : [selection]
-      )
+      const fragment = this.fragments.get(overlapping.name)!
+      flat = flat.flatMap((entry) => {
+        const selection = entry.selection
+        if (selection._tag !== "FragmentSpread" || selection.name.value !== overlapping.name) return [entry]
+        // A local fragment's selections are written in this file; another file's come in through this spread.
+        const via = fragment.file === file ? undefined : entry.via ?? selection
+        return this.flatten(fragment.definition.selectionSet.selections.map((selection) => ({ selection, via })))
+      })
     }
   }
 
-  fragmentRef(ctx: FileContext, name: string): string {
+  fragmentRef(ctx: FileContext, item: Extract<Item, { readonly _tag: "Spread" }>): string {
+    const name = item.name
     const entry = this.fragments.get(name)!
     if (entry.file === ctx.file) {
       ctx.localRefs.add(name)
     } else {
+      if (!ctx.importedVia.has(name)) ctx.importedVia.set(name, item.via ?? item.spread)
       let names = ctx.imports.get(entry.file.outputPath)
       if (names === undefined) {
         names = new Set()
@@ -640,20 +660,20 @@ class Emitter {
   selection(
     ctx: FileContext,
     parent: SchemaModel.ObjectType,
-    selections: ReadonlyArray<Ast.Selection>,
+    selections: ReadonlyArray<Sourced<Ast.Selection>>,
     indent: string,
     alwaysStruct = false
   ): string {
-    const items = this.resolveItems(selections)
+    const items = this.resolveItems(ctx.file, selections)
     const only = items[0]
     if (!alwaysStruct && items.length === 1 && only!._tag === "Spread") {
-      return this.fragmentRef(ctx, only!.name)
+      return this.fragmentRef(ctx, only!)
     }
     ctx.usesSchema = true
     const memberIndent = `${indent}  `
     const members = items.map((item) =>
       item._tag === "Spread"
-        ? `${memberIndent}...${this.fragmentRef(ctx, item.name)}.fields`
+        ? `${memberIndent}...${this.fragmentRef(ctx, item)}.fields`
         : this.resultMember(ctx, parent, item.key, item.fields, memberIndent)
     )
     return struct(members, indent)
@@ -663,10 +683,10 @@ class Emitter {
     ctx: FileContext,
     parent: SchemaModel.ObjectType,
     key: string,
-    fields: ReadonlyArray<Ast.Field>,
+    fields: ReadonlyArray<Sourced<Ast.Field>>,
     indent: string
   ): string {
-    const name = fields[0]!.name.value
+    const name = fields[0]!.selection.name.value
     if (name === "__typename") {
       ctx.usesSchema = true
       return `${indent}${propertyKey(key)}: Schema.Literal(${JSON.stringify(parent.name)})`
@@ -677,7 +697,9 @@ class Emitter {
       ? this.selection(
         ctx,
         type,
-        fields.flatMap((field) => field.selectionSet?.selections ?? []),
+        fields.flatMap(({ selection: field, via }) =>
+          (field.selectionSet?.selections ?? []).map((selection) => ({ selection, via }))
+        ),
         indent
       )
       : this.resultLeaf(ctx, type)
@@ -745,7 +767,13 @@ class Emitter {
   // Per-file modules
   // ---------------------------------------------------------------------------
 
-  emitFile(file: DocumentFile): OutputFile {
+  /**
+   * Emits one per-file module. Fails with a located error when the module
+   * would import a fragment named like the group it exports; the import is
+   * found from the code actually emitted, so a spread written out inline
+   * counts only for the fragments it really brings in.
+   */
+  emitFile(file: DocumentFile): { readonly file: OutputFile; readonly errors: ReadonlyArray<Diagnostic> } {
     const ctx: FileContext = {
       file,
       usesSchema: false,
@@ -753,6 +781,7 @@ class Emitter {
       usesGroup: false,
       usesShared: false,
       imports: new Map(),
+      importedVia: new Map(),
       localRefs: new Set()
     }
 
@@ -783,13 +812,25 @@ class Emitter {
     for (const name of fragments.keys()) place(name)
 
     const blocks = [...ordered, ...operations]
+    const groupName = `${pascalCase(file.sourceName)}Group`
+    const errors: Array<Diagnostic> = []
     if (operationNames.length > 0) {
       ctx.usesGroup = true
       blocks.push(
-        `/** Every operation in ${file.sourceName}. */\nexport const ${
-          pascalCase(file.sourceName)
-        }Group = GraphQLGroup.make(${operationNames.join(", ")})`
+        `/** Every operation in ${file.sourceName}. */\nexport const ${groupName} = GraphQLGroup.make(${
+          operationNames.join(", ")
+        })`
       )
+      const via = ctx.importedVia.get(groupName)
+      if (via !== undefined) {
+        errors.push(make(
+          file.source,
+          via.loc.start,
+          `Fragment "${groupName}" from ${
+            this.fragments.get(groupName)!.file.source.path
+          } can't be imported here: the name is taken by the group this file exports.`
+        ))
+      }
     }
 
     const imports: Array<string> = []
@@ -812,8 +853,11 @@ class Emitter {
     }
 
     return {
-      path: file.outputPath,
-      contents: `${[header(file.sourceName), ...imports].join("\n")}\n\n${blocks.join("\n\n")}\n`
+      file: {
+        path: file.outputPath,
+        contents: `${[header(file.sourceName), ...imports].join("\n")}\n\n${blocks.join("\n\n")}\n`
+      },
+      errors
     }
   }
 
@@ -823,7 +867,7 @@ class Emitter {
     ctx.usesSchema = true
     const description = definition.description?.value ?? type.description
     const doc = docLines([`\`fragment ${name} on ${type.name}\``], descriptionLines(description))
-    const body = this.selection(ctx, type, definition.selectionSet.selections, "", true)
+    const body = this.selection(ctx, type, written(definition.selectionSet.selections), "", true)
     return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
   }
 
@@ -849,7 +893,7 @@ class Emitter {
       })
       lines.push(`  variables: {\n${members.join(",\n")}\n  },`)
     }
-    lines.push(`  result: ${this.selection(ctx, root, definition.selectionSet.selections, "  ")}`)
+    lines.push(`  result: ${this.selection(ctx, root, written(definition.selectionSet.selections), "  ")}`)
     return [
       `${jsdoc(doc, "")}export const ${name} = GraphQL.${definition.operation}(${JSON.stringify(name)}, {`,
       ...lines,
