@@ -171,7 +171,13 @@ export const executableDiagnostics: ReadonlyArray<DiagnosticCase> = [
     column: 14,
     message: "Expected Name, found \"}\"."
   },
-  { name: "variable in selection position", source: "{ $v }", line: 1, column: 3, message: "Unexpected \"$\"." },
+  {
+    name: "variable in selection position",
+    source: "{ $v }",
+    line: 1,
+    column: 3,
+    message: "Expected Name, found \"$\"."
+  },
   { name: "unterminated list value", source: "{ a(b: [1, 2) }", line: 1, column: 13, message: "Unexpected \")\"." },
   {
     name: "object field without a colon",
