@@ -7,6 +7,7 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as Layer from "effect/Layer"
 import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
+import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import { describeDnsClient, describeDnsServer } from "./Dns.test-utils.ts"
 
@@ -71,7 +72,7 @@ describeDnsServer(
           Layer.provide(
             DnsClient.layer({
               timeout: "2 seconds",
-              hosts: Effect.succeed(DnsClient.parseHosts("127.0.0.1 localhost"))
+              hosts: Effect.succeed(Host.parseHostsFile("127.0.0.1 localhost"))
             })
           ),
           Layer.provide(DnsClient.layerTransportHttps({ urls: [dohUrl] })),

@@ -83,16 +83,6 @@ export interface Response {
   } | undefined
 }
 
-/**
- * The addresses of host names, as read from a hosts file.
- *
- * @see {@link parseHosts} for reading a hosts file
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export type Hosts = ReadonlyMap<Host.DomainName, Arr.NonEmptyReadonlyArray<NetAddress.IpAddress>>
-
 // =============================================================================
 // Service
 // =============================================================================
@@ -137,7 +127,7 @@ export class DnsClient extends Context.Service<DnsClient, {
   /**
    * Reads the hosts table consulted by address lookups before DNS.
    */
-  readonly hosts: Effect.Effect<Hosts>
+  readonly hosts: Effect.Effect<Host.HostsTable>
 }>()("effect/net/DnsClient") {}
 
 const rcodeReasons: Record<number, Dns.DnsErrorReason> = {
@@ -458,7 +448,7 @@ export interface MakeOptions {
   readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
   readonly ndots?: number | undefined
   readonly noAaaa?: boolean | undefined
-  readonly hosts?: Effect.Effect<Hosts> | undefined
+  readonly hosts?: Effect.Effect<Host.HostsTable> | undefined
 }
 
 /**
@@ -688,45 +678,6 @@ export const parseResolvConf = (text: string): ResolvConf => {
     }
   }
   return { nameServers, search, ndots, timeout, attempts, rotate, useTcp, noAaaa }
-}
-
-/**
- * Parses a hosts file into the addresses of each host name. Invalid entries
- * are skipped.
- *
- * **Example** (Parsing a hosts file)
- *
- * ```ts import.meta.vitest
- * import { DnsClient, Host, NetAddress } from "effect/net"
- *
- * const hosts = DnsClient.parseHosts(`
- * 127.0.0.1 localhost
- * ::1       localhost ip6-localhost # loopback
- * `)
- * hosts.get(Host.domainNameFromStringUnsafe("localhost"))?.map(NetAddress.formatIp) // => ["127.0.0.1", "::1"]
- * ```
- *
- * @stability experimental
- * @category decoding
- * @since 4.0.0
- */
-export const parseHosts = (text: string): Hosts => {
-  const hosts = new Map<Host.DomainName, Array<NetAddress.IpAddress>>()
-  for (const line of text.split(/\r?\n/)) {
-    const comment = line.indexOf("#")
-    const [first, ...names] = (comment === -1 ? line : line.slice(0, comment)).trim().split(/\s+/)
-    const address = NetAddress.ipFromString(first)
-    if (Result.isFailure(address)) continue
-    for (const name of names) {
-      const domain = Host.domainNameFromString(name)
-      if (Result.isFailure(domain)) continue
-      const key = Host.toRelative(domain.success)
-      const addresses = hosts.get(key)
-      if (addresses === undefined) hosts.set(key, [address.success])
-      else if (!addresses.some((existing) => Equal.equals(existing, address.success))) addresses.push(address.success)
-    }
-  }
-  return hosts as unknown as Hosts
 }
 
 // =============================================================================

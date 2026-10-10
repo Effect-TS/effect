@@ -89,7 +89,7 @@ export const systemOptions = Effect.fnUntraced(function*(options?: Options) {
     : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
   const config = DnsClient.parseResolvConf(yield* readFile("/etc/resolv.conf"))
   const system = config.nameServers.filter((server) => !isScoped(server))
-  const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), DnsClient.parseHosts), "5 seconds")
+  const hosts = yield* Effect.cachedWithTTL(Effect.map(readFile(hostsPath), Host.parseHostsFile), "5 seconds")
   const combined: DnsClient.MakeOptions & Omit<DnsClient.TransportUdpOptions, "udp" | "tcp"> & {
     readonly useTcp: boolean
   } = {

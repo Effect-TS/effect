@@ -941,32 +941,6 @@ describe("parseResolvConf", () => {
   })
 })
 
-describe("parseHosts", () => {
-  it("reads addresses and aliases", () => {
-    const hosts = DnsClient.parseHosts([
-      "127.0.0.1   localhost",
-      "::1         localhost ip6-localhost # loopback",
-      "# 192.0.2.9 commented.example",
-      "192.0.2.1   DB.Example.  db",
-      "192.0.2.1   db",
-      "fe80::1%eth0 router",
-      "not-an-ip   ignored.example",
-      "192.0.2.2   bad..name good.example",
-      "192.0.2.3"
-    ].join("\n"))
-    assert.deepStrictEqual(
-      Object.fromEntries([...hosts].map(([name, addresses]) => [name, addresses.map(NetAddress.formatIp)])),
-      {
-        localhost: ["127.0.0.1", "::1"],
-        "ip6-localhost": ["::1"],
-        "db.example": ["192.0.2.1"],
-        db: ["192.0.2.1"],
-        "good.example": ["192.0.2.2"]
-      }
-    )
-  })
-})
-
 describe("layerDns", () => {
   const a = (address: string) =>
     Dns.makeRecordUnsafe("A", { address: NetAddress.ipFromStringUnsafe(address) as NetAddress.Ipv4Address })
@@ -1030,7 +1004,7 @@ describe("layerDns", () => {
       search: (options.search ?? []).map(name),
       ndots: options.ndots ?? 1,
       noAaaa: options.noAaaa ?? false,
-      hosts: Effect.succeed(DnsClient.parseHosts(options.hosts ?? ""))
+      hosts: Effect.succeed(Host.parseHostsFile(options.hosts ?? ""))
     })
     const dns = Effect.service(Dns.Dns).pipe(
       Effect.provide(DnsClient.layerDns.pipe(Layer.provide(Layer.succeed(DnsClient.DnsClient, client))))
