@@ -1,7 +1,7 @@
 /**
- * End-to-end acceptance check: the committed GitHub snapshots, imported as
- * code, drive a `GraphQLClient` over `GraphQLProtocol.layerHttp` against a
- * mock `HttpClient` with canned GitHub-shaped responses.
+ * End-to-end acceptance check: the generated GitHub modules, imported as code,
+ * drive a `GraphQLClient` over `GraphQLProtocol.layerHttp` against a mock
+ * `HttpClient` with canned GitHub-shaped responses.
  */
 import { assert, describe, it } from "@effect/vitest"
 import * as DateTime from "effect/DateTime"
@@ -11,7 +11,7 @@ import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
-import { IssuesGroup, RepoIssues } from "./generated/github/issues.graphql.ts"
+import { importGitHub, type UntypedClient } from "./utils/generator.ts"
 
 interface Sent {
   readonly query: string
@@ -44,6 +44,7 @@ const github = (data: unknown) => {
 describe("Generated GitHub client", () => {
   it.effect("RepoIssues encodes its variables and decodes issues, custom scalars and new enum values", () =>
     Effect.gen(function*() {
+      const { IssuesGroup, RepoIssues } = yield* importGitHub("issues.graphql.ts")
       const { layer, sent } = github({
         repository: {
           id: "R_kgDOAbc",
@@ -74,7 +75,7 @@ describe("Generated GitHub client", () => {
           }
         }
       })
-      const client = yield* GraphQLClient.make(IssuesGroup).pipe(Effect.provide(layer))
+      const client: UntypedClient = yield* GraphQLClient.make<never>(IssuesGroup).pipe(Effect.provide(layer))
       const result = yield* client.RepoIssues({
         owner: "Effect-TS",
         name: "effect",

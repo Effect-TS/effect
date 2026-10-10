@@ -1,42 +1,20 @@
-# GitHub GraphQL schema fixtures
+# GitHub GraphQL schema subset
 
-Vendored copies of GitHub's public GraphQL schema, used as the acceptance fixture for the generator (EFF-1828). Both files are pinned to a commit and must be byte-identical to upstream; the digests below are what the tests and the refresh procedure check against.
+`schema.graphql` is a subset of GitHub's public GraphQL schema, cut from `schema.docs.graphql` in [github/docs](https://github.com/github/docs) (`src/graphql/data/fpt/schema.docs.graphql`) at commit `b93d24a586415cb392f05738d2092cf4887510c5`. It keeps the types, fields and arguments that `documents/*.graphql` select, every enum and input object the generated code emits, one unselected member of each union and interface the documents reach, and the upstream descriptions. When a document starts selecting something new, copy the definition from upstream at the same commit.
 
-| File                  | Upstream                                                                                 | Pinned commit                              | SHA-256                                                            | Bytes     |
-| --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------ | --------- |
-| `schema.docs.graphql` | [github/docs](https://github.com/github/docs) `src/graphql/data/fpt/schema.docs.graphql` | `b93d24a586415cb392f05738d2092cf4887510c5` | `4b11889444f390414dbce052da9f09771e0eb155c1981e2d22c012d73cdfe768` | 1,562,049 |
-| `schema.json`         | [octokit/graphql-schema](https://github.com/octokit/graphql-schema) `schema.json`        | `597478f99cfd3d425e9fcac757d97e851ed48720` | `bbdb03f4006f4e34964d67d55385f1c8c47c4cacd507ccdc38af2544247ecddd` | 4,970,156 |
+The tests generate the GitHub set from this subset at run time instead of committing the output. `Generator.runtime*.test.ts` import the generated modules, and `Generator.snapshots.test.ts` typechecks them with `tsc`.
 
-The two files describe different schema snapshots (the SDL is synced from GitHub almost daily, the octokit introspection JSON was last regenerated on 2025-02-27). Tests pin them separately and never assert that they agree.
+## Documents
 
-## Derived SDL
+`documents/*.graphql` are the generator's input. `documents/scalars.ts` holds the codecs the test config maps `DateTime`, `URI` and `GitObjectID` to (see `githubConfig` in `test/utils/generator.ts`).
 
-`schema.graphql` is not vendored. It is `schema.json` printed as SDL by graphql-js 16.14.2 (`printSchema(buildClientSchema(json))`), so it describes the same snapshot as `schema.json`. The schema reader acceptance test (`test/SchemaReaders.github.test.ts`) asserts that the two produce equal models. Octokit's own `schema.graphql` at the pinned commit can't stand in, because it comes from a separate IDL endpoint and does not match `schema.json`.
+## Operations
 
-| File             | Derived from  | SHA-256                                                            | Bytes     |
-| ---------------- | ------------- | ------------------------------------------------------------------ | --------- |
-| `schema.graphql` | `schema.json` | `a127beca6b422973883fe55ba9ee77b606d1403161311deab77ddddffb88a7db` | 1,110,582 |
+`operations/*.graphql` are hand-written executable documents used by the printer round-trip tests.
 
-Regenerate it whenever `schema.json` is refreshed:
+## License
 
-```sh
-cd packages/tools/graphql-generator/test/fixtures/github
-work=$(mktemp -d)
-npm install --silent --no-save --prefix "$work" graphql@16.14.2
-NODE_PATH="$work/node_modules" node -e '
-const { readFileSync, writeFileSync } = require("node:fs")
-const { buildClientSchema, printSchema } = require("graphql")
-writeFileSync("schema.graphql", printSchema(buildClientSchema(JSON.parse(readFileSync("schema.json", "utf8")))) + "\n")
-'
-sha256sum schema.graphql
-```
-
-## Licenses
-
-- `schema.docs.graphql` is distributed by GitHub under the MIT License (`LICENSE-CODE` in github/docs, "Copyright 2026 GitHub"). The file lives under `src/`, which that license covers; the repository's CC-BY-4.0 license applies only to its `assets`, `content` and `data` folders.
-- `schema.json` is distributed under the MIT License (`LICENSE.md` in octokit/graphql-schema, "Copyright (c) 2017 Gregor Martynus").
-
-Both notices are reproduced here in full:
+`schema.docs.graphql` is distributed by GitHub under the MIT License (`LICENSE-CODE` in github/docs, "Copyright 2026 GitHub"):
 
 ```text
 MIT License
@@ -59,24 +37,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## Refreshing
-
-Pick a new commit for each upstream file, download it at that exact commit, and record the new commit and digest in the table above. Never download from a branch name.
-
-```sh
-cd packages/tools/graphql-generator/test/fixtures/github
-curl -sSL -o schema.docs.graphql "https://raw.githubusercontent.com/github/docs/<commit>/src/graphql/data/fpt/schema.docs.graphql"
-curl -sSL -o schema.json "https://raw.githubusercontent.com/octokit/graphql-schema/<commit>/schema.json"
-sha256sum schema.docs.graphql schema.json
-```
-
-Both files are excluded from `dprint` so the vendored bytes stay verifiable against upstream.
-
-## Operations
-
-`operations/*.graphql` are not vendored. They are hand-written executable documents against the pinned SDL, used by the printer round-trip tests and later by the generator snapshots.
-
-## Documents
-
-`documents/*.graphql` and `documents/scalars.ts` are the input to the generator snapshot set. They are hand-written against `schema.docs.graphql`, and `scalars.ts` holds the codecs the test config maps `DateTime`, `URI` and `GitObjectID` to (see `githubConfig` in `test/utils/generator.ts`).
