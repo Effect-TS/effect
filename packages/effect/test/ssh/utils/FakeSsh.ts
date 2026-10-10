@@ -94,13 +94,9 @@ const open = Effect.fnUntraced(function*(
  * Creates a connection that serves every command and subsystem with
  * `handler`. Forwarding is not supported.
  */
-export const make = (
-  handler: Handler,
-  options?: { readonly capabilities?: Ssh.Capabilities | undefined }
-): Ssh.SshConnection =>
+export const make = (handler: Handler): Ssh.SshConnection =>
   Ssh.makeConnection({
     backend: "fake",
-    capabilities: options?.capabilities ?? { signals: true, exitSignals: true },
     exec: (command) => open(handler, { type: "exec", value: command }),
     subsystem: (name) => open(handler, { type: "subsystem", value: name }),
     forwardOut: () => Effect.fail(channelError("forwarding is not supported"))

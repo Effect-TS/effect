@@ -23,7 +23,6 @@ import {
   makeHandle,
   ProcessId
 } from "../process/ChildProcessSpawner.ts"
-import * as Pull from "../Pull.ts"
 import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
@@ -33,12 +32,19 @@ import type { SshError } from "./SshError.ts"
 /**
  * Quotes a string for POSIX shells.
  *
+ * **Details**
+ *
+ * Quotes and backslashes are escaped outside the single quotes, so fish
+ * reads the result the same way.
+ *
  * @stability experimental
  * @category utility
  * @since 4.0.0
  */
 export const quote = (value: string): string =>
-  value.length > 0 && /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`
+  value.length > 0 && /^[A-Za-z0-9_@%+=:,./-]+$/.test(value)
+    ? value
+    : `'${value.replace(/['\\]/g, (char) => `'\\${char}'`)}'`
 
 /**
  * Builds the command line sent to the server for a standard command.
@@ -132,87 +138,6 @@ const resolveOutput = (
   return option.stream ?? "pipe"
 }
 
-const PID_MARKER = "\x1eEFFECT_SSH_PID "
-const pidMarker = new TextEncoder().encode(PID_MARKER)
-
-const signalNumbers: Record<string, number> = {
-  HUP: 1,
-  INT: 2,
-  QUIT: 3,
-  ABRT: 6,
-  KILL: 9,
-  USR1: 10,
-  USR2: 12,
-  PIPE: 13,
-  ALRM: 14,
-  TERM: 15
-}
-
-const signalName = (signal: string) => signal.startsWith("SIG") ? signal.slice(3) : signal
-
-/**
- * Builds a command line that reports the remote process id on standard error
- * and then runs the command in place of `sh`. The `sh` script contains no
- * quotes or backslashes and every argument is quoted once, so the line is
- * interpreted the same way by POSIX shells and by fish.
- */
-const pidReportingCommandLine = (command: ChildProcess.StandardCommand): string => {
-  const { options } = command
-  const useShell = options.shell !== undefined && options.shell !== false
-  const program = useShell
-    ? [typeof options.shell === "string" ? options.shell : "sh", "-c", [command.command, ...command.args].join(" ")]
-    : [command.command, ...command.args]
-  const env = Object.entries(options.env ?? {}).filter((entry): entry is [string, string] => entry[1] !== undefined)
-  const argv = options.env !== undefined && options.extendEnv !== true
-    ? ["env", "-i", ...env.map(([name, value]) => `${name}=${value}`), ...program]
-    : env.length > 0
-    ? ["env", ...env.map(([name, value]) => `${name}=${value}`), ...program]
-    : program
-  const cwd = options.cwd
-  const script = `echo "${PID_MARKER}$$" >&2; ${cwd === undefined ? "" : `cd "$1" || exit 127; shift; `}exec "$@"`
-  return `exec sh -c ${quote(script)} sh ${[...(cwd === undefined ? [] : [cwd]), ...argv].map(quote).join(" ")}`
-}
-
-/**
- * Splits the process id report from the head of standard error.
- */
-const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Array, SshError>) {
-  const pull = yield* Stream.toPull(stderr)
-  let head: Uint8Array = new Uint8Array(0)
-  let ended = false
-  while (true) {
-    const chunks = yield* pull.pipe(
-      Pull.catchDone(() => {
-        ended = true
-        return Effect.succeed([] as ReadonlyArray<Uint8Array>)
-      })
-    )
-    for (const chunk of chunks) {
-      const next = new Uint8Array(head.length + chunk.length)
-      next.set(head)
-      next.set(chunk, head.length)
-      head = next
-    }
-    const prefix = head.subarray(0, pidMarker.length)
-    if (ended || !prefix.every((byte, i) => byte === pidMarker[i])) break
-    const newline = head.indexOf(10)
-    if (newline === -1) continue
-    const pid = Number(new TextDecoder().decode(head.subarray(pidMarker.length, newline)))
-    const rest = head.subarray(newline + 1)
-    return {
-      pid: Number.isInteger(pid) && pid > 0 ? pid : undefined,
-      stderr: Stream.concat(rest.length > 0 ? Stream.make(rest) : Stream.empty, Stream.fromPull(Effect.succeed(pull)))
-    }
-  }
-  return {
-    pid: undefined,
-    stderr: Stream.concat(
-      head.length > 0 ? Stream.make(head) : Stream.empty,
-      ended ? Stream.empty : Stream.fromPull(Effect.succeed(pull))
-    )
-  }
-})
-
 /**
  * Creates a `ChildProcessSpawner` that runs commands over an
  * `SshConnection`.
@@ -221,14 +146,10 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
  *
  * - `kill` sends the kill signal (default `SIGTERM`), then `SIGKILL` if the
  *   command has not exited after `forceKillAfter` (default one second), and
- *   finally closes the session.
- * - With backends that cannot deliver signals (such as `OpenSsh`), each
- *   command runs through `sh -c` so that it reports its remote process id,
- *   and `kill` signals the remote process group with a separate `kill`
- *   command. `pid` is then the remote process id; otherwise it is a local
- *   counter. In this mode `shell: true` commands are interpreted by `sh`
- *   rather than the remote login shell.
+ *   finally closes the session. When the backend cannot deliver signals
+ *   (such as `OpenSsh`), `kill` closes the session at once.
  * - A command killed by a signal fails `exitCode`, like local processes.
+ * - `pid` is a local counter rather than the remote process id.
  * - Output configured as `"ignore"` or `"inherit"` is drained and discarded;
  *   `"inherit"` cannot reach the local terminal.
  * - `unref` has no effect.
@@ -240,9 +161,6 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
  *   makes the command exit with a non-zero status.
  * - The remote login shell interprets the command line, so it must accept
  *   POSIX quoting.
- * - Without `Capabilities.exitSignals`, a command that exits with status
- *   `128 + n` (or 255) after this spawner sent it signal `n` is reported as
- *   killed by that signal.
  *
  * @stability experimental
  * @category constructors
@@ -250,7 +168,6 @@ const readPidReport = Effect.fnUntraced(function*(stderr: Stream.Stream<Uint8Arr
  */
 export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Service"] => {
   let nextPid = 1
-  const reportsPid = !connection.capabilities.signals
 
   const spawnStandard = Effect.fnUntraced(function*(
     command: ChildProcess.StandardCommand
@@ -262,7 +179,7 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
         description: "additional file descriptors are not supported over SSH"
       })
     }
-    const session = yield* connection.exec(reportsPid ? pidReportingCommandLine(command) : commandLine(command)).pipe(
+    const session = yield* connection.exec(commandLine(command)).pipe(
       Effect.mapError(toPlatformError("spawn", command))
     )
     const exited = Deferred.makeUnsafe<Ssh.SessionExit, SshError>()
@@ -271,14 +188,6 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
 
     const lift = (method: string) => <A, R>(effect: Effect.Effect<A, SshError, R>) =>
       Effect.mapError(effect, toPlatformError(method, command))
-
-    let remotePid: number | undefined
-    let sessionStderr = session.stderr
-    if (reportsPid) {
-      const report = yield* lift("spawn")(readPidReport(session.stderr))
-      remotePid = report.pid
-      sessionStderr = report.stderr
-    }
 
     // Standard input
     const stdinConfig = resolveStdin(command.options)
@@ -309,64 +218,45 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
         return lifted
       })
     const stdout = yield* output(session.stdout, resolveOutput(command.options.stdout), "stdout")
-    const stderr = yield* output(sessionStderr, resolveOutput(command.options.stderr), "stderr")
-
-    // Signals
-    let lastSignal: string | undefined
-    const sendSignal = (signal: string): Effect.Effect<void> => {
-      lastSignal = signalName(signal)
-      if (!reportsPid) return Effect.ignore(session.signal(signal))
-      if (remotePid === undefined) return Effect.void
-      const name = signalName(signal)
-      return Effect.ignore(connection.run(`kill -${name} -- -${remotePid} 2>/dev/null || kill -${name} ${remotePid}`))
-    }
-
-    const signalled = (exit: Ssh.SessionExit): string | undefined => {
-      if (exit._tag === "ExitSignal") return exit.signal
-      if (connection.capabilities.exitSignals || lastSignal === undefined) return undefined
-      // Without exit signals, a signal death shows up as status 128 + n, or as
-      // 255 when OpenSSH relays it through a multiplexed connection.
-      const number = signalNumbers[lastSignal]
-      return exit.code === 255 || (number !== undefined && exit.code === 128 + number)
-        ? `SIG${lastSignal}`
-        : undefined
-    }
+    const stderr = yield* output(session.stderr, resolveOutput(command.options.stderr), "stderr")
 
     const exitCode = Effect.flatMap(
       lift("exitCode")(Deferred.await(exited)),
-      (exit) => {
-        const signal = signalled(exit)
-        return signal === undefined && exit._tag === "ExitStatus"
+      (exit) =>
+        exit._tag === "ExitStatus"
           ? Effect.succeed(ExitCode(exit.code))
           : Effect.fail(PlatformError.systemError({
             _tag: "Unknown",
             module: "ChildProcess",
             method: "exitCode",
-            description: `Process interrupted due to receipt of signal: '${signal}'`,
+            description: `Process interrupted due to receipt of signal: '${exit.signal}'`,
             pathOrDescriptor: describe(command)
           }))
-      }
     )
 
     const awaitExit = (duration: Duration.Input) =>
       Effect.map(Effect.timeoutOption(Deferred.await(exited), duration), () => Deferred.isDoneUnsafe(exited))
+    const signalled = (signal: string, duration: Duration.Input) =>
+      session.signal(signal).pipe(
+        Effect.andThen(awaitExit(duration)),
+        Effect.orElseSucceed(() => false)
+      )
     const kill = (options?: ChildProcess.KillOptions | undefined) =>
       Effect.gen(function*() {
         if (Deferred.isDoneUnsafe(exited)) return
-        yield* sendSignal(options?.killSignal ?? command.options.killSignal ?? "SIGTERM")
         const grace = options?.forceKillAfter ?? command.options.forceKillAfter ?? Duration.seconds(1)
-        if (yield* awaitExit(grace).pipe(Effect.orElseSucceed(() => false))) return
-        // OpenSSH keeps a session without a pty open until its process exits,
-        // so escalate to SIGKILL before giving up on the session.
-        yield* sendSignal("SIGKILL")
-        if (yield* awaitExit(Duration.seconds(1)).pipe(Effect.orElseSucceed(() => false))) return
+        // A session can stay open until its process exits, so escalate to
+        // SIGKILL before giving up on it. Backends that cannot deliver
+        // signals close the session at once.
+        if (yield* signalled(options?.killSignal ?? command.options.killSignal ?? "SIGTERM", grace)) return
+        if (yield* signalled("SIGKILL", Duration.seconds(1))) return
         yield* Effect.timeoutOption(session.close, Duration.seconds(1))
       })
 
     yield* Effect.addFinalizer(() => kill(command.options))
 
     return makeHandle({
-      pid: ProcessId(remotePid ?? nextPid++),
+      pid: ProcessId(nextPid++),
       exitCode,
       isRunning,
       kill,
