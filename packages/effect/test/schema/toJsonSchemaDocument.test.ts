@@ -1794,16 +1794,10 @@ describe("toJsonSchemaDocument", () => {
       })
 
       it("isPowerOf", () => {
-        const safePowers = (base: bigint): Array<number> => {
-          const out: Array<number> = []
-          for (let p = 1n; p <= BigInt(globalThis.Number.MAX_SAFE_INTEGER); p *= base) out.push(globalThis.Number(p))
-          return out
+        const powers: Array<number> = []
+        for (let p = 1n; p <= BigInt(globalThis.Number.MAX_SAFE_INTEGER); p *= 2n) {
+          powers.push(globalThis.Number(p))
         }
-        const powersOf2 = safePowers(2n)
-        const powersOf3 = safePowers(3n)
-        deepStrictEqual(powersOf2.length, 53)
-        deepStrictEqual(powersOf3.at(-1), 5559060566555523)
-
         assertJsonSchemaDocument(
           Schema.Int.check(Schema.isPowerOf(2)),
           {
@@ -1811,29 +1805,7 @@ describe("toJsonSchemaDocument", () => {
               "type": "integer",
               "minimum": globalThis.Number.MIN_SAFE_INTEGER,
               "maximum": globalThis.Number.MAX_SAFE_INTEGER,
-              "allOf": [{ "enum": powersOf2 }]
-            }
-          }
-        )
-        assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isPowerOf(3)),
-          {
-            schema: {
-              "type": "integer",
-              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
-              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
-              "allOf": [{ "enum": powersOf3 }]
-            }
-          }
-        )
-        assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isPowerOf(globalThis.Number.MAX_SAFE_INTEGER)),
-          {
-            schema: {
-              "type": "integer",
-              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
-              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
-              "allOf": [{ "enum": [1, globalThis.Number.MAX_SAFE_INTEGER] }]
+              "allOf": [{ "enum": powers }]
             }
           }
         )

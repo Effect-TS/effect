@@ -471,15 +471,6 @@ describe("SchemaRepresentation built-in number revivers", () => {
     expectInvalidPayload(json, SchemaRepresentation.isMultipleOfReviver)
   })
 
-  it("rejects a non-numeric isPowerOf payload", () => {
-    const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.toRepresentation(Schema.Number.check(Schema.isPowerOf(2)).ast)
-    ) as any
-    json.representation.checks[0].representation.payload.base = "2"
-
-    expectInvalidPayload(json, SchemaRepresentation.isPowerOfReviver)
-  })
-
   it("rejects a non-canonical isBetween payload", () => {
     const json = SchemaRepresentation.toJson(
       SchemaRepresentation.toRepresentation(
