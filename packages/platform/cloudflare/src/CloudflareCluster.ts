@@ -594,7 +594,21 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  */
 export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClient, SqlClient.SqlClient>()(
   "@effect/platform-cloudflare/CloudflareCluster/DurableObjectSqlClient"
-) {}
+) {
+  /**
+   * Gets the current entity's SQL client, or dies if no client is provided.
+   *
+   * @stability unstable
+   * @since 4.0.0
+   */
+  static readonly orDie: Effect.Effect<SqlClient.SqlClient> = Effect.flatMap(
+    Effect.serviceOption(DurableObjectSqlClient),
+    Option.match({
+      onNone: () => Effect.die(new Error("DurableObjectSqlClient is not available outside an entity Durable Object")),
+      onSome: Effect.succeed
+    })
+  )
+}
 
 /**
  * Handler build options accepted by {@link toLayer}, the same as
