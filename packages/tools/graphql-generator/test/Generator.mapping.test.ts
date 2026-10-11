@@ -7,9 +7,62 @@
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import { assertNoErrors, declaration, docOf, generateTasks, member, taskConfig } from "./utils/generator.ts"
+import {
+  assertNoErrors,
+  declaration,
+  docOf,
+  generateIn,
+  generateTasks,
+  member,
+  taskConfig,
+  warnings
+} from "./utils/generator.ts"
 
 describe("Generator mapping", () => {
+  it.effect("DateTime and URI have overridable defaults while other custom scalars stay Json", () =>
+    Effect.gen(function*() {
+      const inputs = {
+        "schema.graphql": `
+          scalar DateTime
+          scalar URI
+          scalar datetime
+          scalar uri
+          scalar GitObjectID
+          type Query { timestamp: DateTime! url: URI! lowerDate: datetime! lowerUri: uri! oid: GitObjectID! }
+        `,
+        "src/ops.graphql": "query Scalars { timestamp url lowerDate lowerUri oid }"
+      }
+      const config = { schema: "./schema.graphql", documents: ["src/*.graphql"] }
+      const defaults = yield* generateIn(inputs, config)
+      const overridden = yield* generateIn(inputs, {
+        ...config,
+        scalars: { DateTime: "./scalars.ts#Timestamp", URI: "./scalars.ts#Url" }
+      })
+      for (const generated of [defaults, overridden]) {
+        assertNoErrors(generated)
+        const shared = generated.file("schema.graphql.ts")
+        for (const name of ["GitObjectID", "datetime", "uri"]) {
+          assert.strictEqual(declaration(shared, name), `export const ${name} = Schema.Json`)
+        }
+      }
+      const overrideShared = overridden.file("schema.graphql.ts")
+      assert.match(declaration(overrideShared, "DateTime"), /^export const DateTime = \w+\.Timestamp$/)
+      assert.match(declaration(overrideShared, "URI"), /^export const URI = \w+\.Url$/)
+      const shared = defaults.file("schema.graphql.ts")
+      assert.deepStrictEqual({
+        DateTime: declaration(shared, "DateTime"),
+        URI: declaration(shared, "URI"),
+        warnings: [defaults, overridden].map((generated) => warnings(generated).map(({ message }) => message))
+      }, {
+        DateTime: "export const DateTime = Schema.DateTimeUtcFromString",
+        URI: "export const URI = Schema.String",
+        warnings: [
+          ["Custom scalars without a mapping decode as Schema.Json: GitObjectID, datetime, uri. Map each one to a codec with `scalars` in the config."],
+          ["Custom scalars without a mapping decode as Schema.Json: GitObjectID, datetime, uri. Map each one to a codec with `scalars` in the config."]
+        ]
+      })
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("a non-null variable with a default is optional(T) and keeps the default as @default", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks({
