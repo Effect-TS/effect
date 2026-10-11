@@ -634,7 +634,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             params: { _meta: httpMetadata(protocol) }
           }, { "MCP-Protocol-Version": protocol.protocolVersion, "Mcp-Method": "tools/list" })
           assert.match(tools.headers.get("content-type") ?? "", /^application\/json/)
-          const listed = yield* Effect.promise(() => tools.json())
+          const listed = (yield* Effect.promise(() => tools.json())) as {
+            readonly id: string
+            readonly result: { readonly tools: ReadonlyArray<unknown> }
+          }
           assert.strictEqual(listed.id, "tools-during-subscription")
           assert.deepStrictEqual(listed.result.tools, [
             { name: "http-subscription-baseline", inputSchema: { type: "object", properties: {} } }
