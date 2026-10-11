@@ -1258,6 +1258,15 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
   ...services: S
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
+  if (services.length <= 1) {
+    const map = new Map<string, unknown>()
+    if (services.length === 1) {
+      const key = services[0].key
+      const value = lookup(self, key)
+      if (value !== notFound) map.set(key, value)
+    }
+    return makeUnsafe(map)
+  }
   const keep = new Set(services.map((key) => key.key))
   return withFlat(self, (map) =>
     map.forEach((_, key) => {
