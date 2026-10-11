@@ -687,6 +687,25 @@ describe("Struct", () => {
 })
 
 describe("StructWithRest", () => {
+  it("composes JSON-string encoding outside the rest records", () => {
+    const base = Schema.Record(Schema.Literals(["bash", "sh"]), Schema.NonEmptyString)
+    const records = [Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)] as const
+    const jsonBase = Schema.fromJsonString(base, { space: 2 })
+
+    expect(Schema.StructWithRest).type.not.toBeCallableWith(jsonBase, records)
+    expect(Schema.StructWithRest).type.not.toBeCallableWith(jsonBase, [])
+
+    const schema = Schema.fromJsonString(Schema.StructWithRest(base, records), { space: 2 })
+    expect(Schema.revealCodec(schema)).type.toBe<
+      Schema.Codec<
+        { readonly bash: string; readonly sh: string; readonly [x: string]: string },
+        string,
+        never,
+        never
+      >
+    >()
+  })
+
   it("Record(String, Number)", async () => {
     const schema = Schema.StructWithRest(
       Schema.Struct({ a: Schema.Number }),

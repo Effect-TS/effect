@@ -3994,6 +3994,29 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Record", () => {
+    it("composes JSON-string encoding outside the rest records", async () => {
+      const base = Schema.Record(Schema.Literals(["bash", "sh"]), Schema.NonEmptyString)
+      const records = [Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)] as const
+      const jsonBase = Schema.fromJsonString(base, { space: 2 })
+      for (const rest of [[], records] as const) {
+        throws(
+          () => Schema.StructWithRest(jsonBase, rest),
+          new Error("StructWithRest does not support encodings")
+        )
+      }
+
+      const schema = Schema.fromJsonString(Schema.StructWithRest(base, records), { space: 2 })
+      const asserts = new TestSchema.Asserts(schema)
+      const value = { bash: "/bin/bash", sh: "/bin/sh", zsh: "/bin/zsh" }
+      const json = `{
+  "bash": "/bin/bash",
+  "sh": "/bin/sh",
+  "zsh": "/bin/zsh"
+}`
+      await asserts.decoding().succeed(json, value)
+      await asserts.encoding().succeed(value, json)
+    })
+
     it("Record(String, Number)", async () => {
       const schema = Schema.Record(Schema.String, Schema.Number)
       const asserts = new TestSchema.Asserts(schema)
