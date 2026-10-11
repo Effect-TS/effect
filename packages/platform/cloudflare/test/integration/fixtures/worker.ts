@@ -378,10 +378,9 @@ const Journal = Entity.make("Journal", [
   Rpc.make("List", { success: Schema.Array(Schema.String) })
 ])
 
-const JournalLayer = CloudflareCluster.toLayer(
-  Journal,
+const JournalLayer = Journal.toLayer(
   Effect.gen(function*() {
-    const sql = yield* CloudflareCluster.DurableObjectSqlClient
+    const sql = yield* CloudflareCluster.DurableObjectSqlClient.orDie
     yield* sql`CREATE TABLE IF NOT EXISTS journal (seq INTEGER PRIMARY KEY AUTOINCREMENT, entry TEXT NOT NULL)`
     return Journal.of({
       Append: ({ payload }) =>
@@ -424,10 +423,9 @@ const Coordinated = Entity.make("Coordinated", [
   Rpc.make("ReleaseThenFail", { error: Schema.String, success: Schema.String })
 ])
 
-const CoordinatedLayer = CloudflareCluster.toLayer(
-  Coordinated,
+const CoordinatedLayer = Coordinated.toLayer(
   Effect.gen(function*() {
-    const sql = yield* CloudflareCluster.DurableObjectSqlClient
+    const sql = yield* CloudflareCluster.DurableObjectSqlClient.orDie
     yield* sql`CREATE TABLE IF NOT EXISTS coordinated (entry TEXT NOT NULL)`
     return Coordinated.of({
       Wait: (request) =>
