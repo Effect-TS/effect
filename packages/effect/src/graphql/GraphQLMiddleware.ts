@@ -27,7 +27,9 @@ const TypeId = "~effect/graphql/GraphQLMiddleware"
  *
  * Both receive the operation being run, the request so far, and `next`, which
  * runs the rest of the chain with the given request and returns the raw
- * `ExecutionResult` (or, for `subscribe`, the stream of them).
+ * `ExecutionResult` (or, for `subscribe`, the stream of them). Its `status` is
+ * the HTTP status the transport reported, if any; a middleware may rewrite it,
+ * and a failed call's `ResponseError.status` is the final value.
  *
  * Use {@link mapRequest} when the middleware only needs to transform the
  * request.
@@ -139,7 +141,7 @@ export type Requires<M> = M extends { readonly [TypeId]: { readonly requires: in
  * })
  *
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
- *   execute: (request) => Effect.succeed({ data: { viewer: { login: request.headers.authorization } } }),
+ *   execute: (request) => Effect.succeed({ body: { data: { viewer: { login: request.headers.authorization } } } }),
  *   subscribe: () => Stream.empty
  * })
  *
@@ -200,7 +202,8 @@ export const Service = <
  * })
  *
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
- *   execute: (request) => Effect.succeed({ data: { viewer: { login: request.headers["x-request-id"] } } }),
+ *   execute: (request) =>
+ *     Effect.succeed({ body: { data: { viewer: { login: request.headers["x-request-id"] } } } }),
  *   subscribe: () => Stream.empty
  * })
  *
