@@ -4000,6 +4000,7 @@ Expected a value between -2147483648 and 2147483647`
       const jsonBase = Schema.fromJsonString(base, { space: 2 })
       for (const rest of [[], records] as const) {
         throws(
+          // @ts-expect-error Intentionally invalid JSON-string base to verify the runtime encoding guard.
           () => Schema.StructWithRest(jsonBase, rest),
           new Error("StructWithRest does not support encodings")
         )
