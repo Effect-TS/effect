@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, type Layer, Ref, Stream } from "effect"
 import { GraphQLClient } from "effect/graphql"
 import type * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
+import * as UrlParams from "effect/http/UrlParams"
 import { expectReason, IssuesGroup, protocolLayer } from "./fixtures.ts"
 
 const issue = (number: number) => ({ number, title: `#${number}`, createdAt: "2026-01-01T00:00:00Z" })
@@ -20,7 +21,7 @@ const pagedLayer = (pages: Record<string, unknown>) =>
       execute: (request) =>
         Effect.as(
           Ref.update(requests, (all) => [...all, request]),
-          pages[(request.variables as { after?: string | null }).after ?? "start"]
+          { body: pages[(request.variables as { after?: string | null }).after ?? "start"] }
         )
     })
     return { layer, requests }
@@ -67,9 +68,11 @@ describe("GraphQLClient.pages / items", () => {
       yield* Stream.runDrain(GraphQLClient.pages(client.RepoIssues, {
         variables,
         connection: (r) => r.repository?.issues,
-        options: { headers: { "x-page-run": "1" } }
+        options: { headers: { "x-page-run": "1" }, urlParams: { preview: "t" } }
       }))
-      assert.deepStrictEqual((yield* Ref.get(requests)).map((r) => r.headers["x-page-run"]), ["1", "1"])
+      const sent = yield* Ref.get(requests)
+      assert.deepStrictEqual(sent.map((r) => r.headers["x-page-run"]), ["1", "1"])
+      assert.deepStrictEqual(sent.map((r) => UrlParams.getAll(r.urlParams, "preview")), [["t"], ["t"]])
     }))
 
   it.effect("a null connection on the first page is an empty stream", () =>

@@ -8,7 +8,6 @@ import { assert } from "@effect/vitest"
 import { Deferred, Effect, Layer, Queue, Ref, Schema, Stream } from "effect"
 import { GraphQL, GraphQLGroup } from "effect/graphql"
 import { GraphQLClientError } from "effect/graphql/GraphQLClientError"
-import type { TransportError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as HttpBody from "effect/http/HttpBody"
 import * as HttpClient from "effect/http/HttpClient"
@@ -69,8 +68,8 @@ export const ViewerGroup = GraphQLGroup.make(Viewer)
  * of HTTP so they stay about the client.
  */
 export const protocolLayer = (service: {
-  readonly execute?: (request: GraphQLProtocol.GraphQLRequest) => Effect.Effect<unknown, TransportError>
-  readonly subscribe?: (request: GraphQLProtocol.GraphQLRequest) => Stream.Stream<unknown, TransportError>
+  readonly execute?: GraphQLProtocol.GraphQLProtocol["Service"]["execute"]
+  readonly subscribe?: GraphQLProtocol.GraphQLProtocol["Service"]["subscribe"]
 }) =>
   Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
     execute: service.execute ?? (() => Effect.die("execute not scripted")),
@@ -78,32 +77,37 @@ export const protocolLayer = (service: {
   })
 
 /**
- * A protocol whose `execute` always answers with the same raw `ExecutionResult`
- * and records every request it received.
+ * A protocol whose `execute` always answers with the same raw body, and HTTP
+ * `status` when given, and records every request it received.
  */
-export const executeLayer = (result: unknown) =>
+export const executeLayer = (body: unknown, status?: number) =>
   Effect.gen(function*() {
     const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
     const layer = protocolLayer({
-      execute: (request) => Effect.as(Ref.update(requests, (all) => [...all, request]), result)
+      execute: (request) =>
+        Effect.as(
+          Ref.update(requests, (all) => [...all, request]),
+          status === undefined ? { body } : { body, status }
+        )
     })
     return { layer, requests }
   })
 
 /**
  * An `HttpClient` that answers every request from `handler`, with the request
- * body text exposed so tests can assert on what went over the wire.
+ * body text and the final URL exposed so tests can assert on what went over
+ * the wire.
  */
 export const httpClientLayer = (
-  handler: (request: HttpClientRequest.HttpClientRequest, bodyText: string | undefined) => Response
+  handler: (request: HttpClientRequest.HttpClientRequest, bodyText: string | undefined, url: URL) => Response
 ) =>
   Layer.succeed(
     HttpClient.HttpClient,
-    HttpClient.make((request) =>
+    HttpClient.make((request, url) =>
       Effect.sync(() =>
         HttpClientResponse.fromWeb(
           request,
-          handler(request, request.body instanceof HttpBody.Uint8Array ? request.body.text : undefined)
+          handler(request, request.body instanceof HttpBody.Uint8Array ? request.body.text : undefined, url)
         )
       )
     )
@@ -116,7 +120,7 @@ export const graphqlResponse = (body: unknown, init?: { status?: number; content
   })
 
 export const layerHttp = (
-  handler: (request: HttpClientRequest.HttpClientRequest, bodyText: string | undefined) => Response
+  handler: (request: HttpClientRequest.HttpClientRequest, bodyText: string | undefined, url: URL) => Response
 ) => GraphQLProtocol.layerHttp({ url: "http://localhost/graphql" }).pipe(Layer.provide(httpClientLayer(handler)))
 
 /**

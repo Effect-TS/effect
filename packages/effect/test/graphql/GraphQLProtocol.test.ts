@@ -1,11 +1,28 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer } from "effect"
-import { GraphQLClient, GraphQLProtocol } from "effect/graphql"
+import { Duration, Effect, Layer, Schema } from "effect"
+import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol } from "effect/graphql"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
-import { expectReason, graphqlResponse, layerHttp, Viewer, ViewerGroup } from "./fixtures.ts"
+import {
+  expectReason,
+  graphqlResponse,
+  httpClientLayer,
+  layerHttp,
+  RepoIssues,
+  Viewer,
+  ViewerGroup
+} from "./fixtures.ts"
 
 const viewerData = { data: { viewer: { login: "tim" } } }
+
+const AddStar = GraphQL.mutation("AddStar", {
+  document: "mutation AddStar{addStar{ok}}",
+  result: Schema.Struct({ addStar: Schema.Struct({ ok: Schema.Boolean }) })
+})
+
+/** Every value of every URL param, so a duplicated or missing param shows. */
+const urlParams = (url: URL) =>
+  Object.fromEntries([...new Set(url.searchParams.keys())].map((key) => [key, url.searchParams.getAll(key)]))
 
 const callViewer = (handler: Parameters<typeof layerHttp>[0]) =>
   GraphQLClient.make(ViewerGroup).pipe(
@@ -17,21 +34,55 @@ const unavailable = (retryAfter: string) =>
   new Response("down", { status: 503, headers: { "retry-after": retryAfter, "content-type": "text/plain" } })
 
 describe("GraphQLProtocol.layerHttp", () => {
-  it.effect("POSTs the document, operation name and variables as JSON with per-call headers", () =>
+  it.effect("POSTs the document, operation name and variables as JSON with per-call headers and URL params", () =>
     Effect.gen(function*() {
-      let seen: { method: string; headers: Record<string, string>; body: unknown } | undefined
+      let seen: { method: string; headers: Record<string, string>; body: unknown; url: URL } | undefined
       const result = yield* GraphQLClient.make(ViewerGroup).pipe(
-        Effect.flatMap((client) => client.Viewer(undefined, { headers: { "x-request-id": "abc" } })),
-        Effect.provide(layerHttp((request, bodyText) => {
-          seen = { method: request.method, headers: request.headers, body: JSON.parse(bodyText!) }
+        Effect.flatMap((client) =>
+          client.Viewer(undefined, { headers: { "x-request-id": "abc" }, urlParams: { preview: "t" } })
+        ),
+        Effect.provide(layerHttp((request, bodyText, url) => {
+          seen = { method: request.method, headers: request.headers, body: JSON.parse(bodyText!), url }
           return graphqlResponse(viewerData)
         }))
       )
       assert.deepStrictEqual(result, { viewer: { login: "tim" } })
       assert.strictEqual(seen!.method, "POST")
+      assert.deepStrictEqual(urlParams(seen!.url), { preview: ["t"] })
       assert.strictEqual(seen!.headers["x-request-id"], "abc")
       assert.include(seen!.headers["accept"], "application/graphql-response+json")
       assert.deepStrictEqual(seen!.body, { query: Viewer.document, operationName: "Viewer", variables: {} })
+    }))
+
+  it.effect("queryMethod GET sends a query as URL params after the caller's; a mutation is still POSTed", () =>
+    Effect.gen(function*() {
+      const seen: Array<{ method: string; accept: string | undefined; bodyText: string | undefined; url: URL }> = []
+      const layer = GraphQLProtocol.layerHttp({ url: "http://localhost/graphql?tenant=a", queryMethod: "GET" }).pipe(
+        Layer.provide(httpClientLayer((request, bodyText, url) => {
+          seen.push({ method: request.method, accept: request.headers["accept"], bodyText, url })
+          return graphqlResponse(
+            request.method === "GET" ? { data: { repository: null } } : { data: { addStar: { ok: true } } }
+          )
+        }))
+      )
+      const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoIssues, AddStar)).pipe(Effect.provide(layer))
+      const variables = { owner: "Effect-TS", name: "effect" }
+      yield* client.RepoIssues(variables, { urlParams: { preview: "t", query: "ignored" } })
+      yield* client.AddStar()
+
+      const [query, mutation] = seen
+      assert.strictEqual(query.method, "GET")
+      assert.isUndefined(query.bodyText)
+      assert.include(query.accept, "application/graphql-response+json")
+      assert.deepStrictEqual(urlParams(query.url), {
+        tenant: ["a"],
+        preview: ["t"],
+        query: [RepoIssues.document],
+        operationName: ["RepoIssues"],
+        variables: [JSON.stringify(variables)]
+      })
+      assert.strictEqual(mutation.method, "POST")
+      assert.strictEqual(JSON.parse(mutation.bodyText!).operationName, "AddStar")
     }))
 
   it.effect("accepts an application/json body with GraphQL keys", () =>
@@ -47,12 +98,14 @@ describe("GraphQLProtocol.layerHttp", () => {
       )
     }))
 
-  it.effect("a 4xx with a GraphQL body is a ResponseError", () =>
+  it.effect("a non-2xx with a GraphQL body is a ResponseError carrying the status, never retryable", () =>
     Effect.gen(function*() {
       const reason = yield* callViewer(() =>
-        graphqlResponse({ errors: [{ message: "Bad credentials" }] }, { status: 401 })
+        graphqlResponse({ errors: [{ message: "Service unavailable" }] }, { status: 503 })
       ).pipe(expectReason("ResponseError"))
-      assert.deepStrictEqual(reason.errors, [{ message: "Bad credentials" }])
+      assert.deepStrictEqual(reason.errors, [{ message: "Service unavailable" }])
+      assert.strictEqual(reason.status, 503)
+      assert.isFalse(reason.isRetryable)
     }))
 
   it.effect("a non-GraphQL 503 is a TransportError carrying a numeric Retry-After", () =>

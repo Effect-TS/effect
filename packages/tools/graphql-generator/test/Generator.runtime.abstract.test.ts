@@ -34,12 +34,12 @@ const mock = (options: { readonly data?: unknown; readonly events?: ReadonlyArra
     execute: (request) =>
       Effect.sync(() => {
         record(request)
-        return { data: options.data }
+        return { body: { data: options.data } }
       }),
     subscribe: (request) =>
       Stream.unwrap(Effect.sync(() => {
         record(request)
-        return Stream.fromIterable((options.events ?? []).map((data) => ({ data })))
+        return Stream.fromIterable((options.events ?? []).map((data) => ({ body: { data } })))
       }))
   })
   return { sent, layer }
