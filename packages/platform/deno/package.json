@@ -80,6 +80,6 @@
     "@testcontainers/redis": "^12.2.0",
     "@types/deno": "^2.7.0",
     "effect": "workspace:^",
-    "tinybench": "^6.2.0"
+    "tinybench": "^6.2.1"
   }
 }

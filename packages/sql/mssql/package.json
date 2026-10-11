@@ -68,6 +68,6 @@
     "effect": "workspace:^"
   },
   "dependencies": {
-    "tedious": "^20.3.3"
+    "tedious": "^20.3.5"
   }
 }
