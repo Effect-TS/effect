@@ -1234,6 +1234,88 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("replays streamed assistant text and tool calls with store enabled", () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(
+                requests.length > 1
+                  ? jsonResponse(request, makeChatCompletion())
+                  : sseResponse(request, [
+                    {
+                      id: "chatcmpl_store_1",
+                      object: "chat.completion.chunk",
+                      model: "gpt-4o-mini",
+                      created: 1,
+                      choices: [{
+                        index: 0,
+                        delta: {
+                          content: "Let me read it.",
+                          tool_calls: [{
+                            index: 0,
+                            id: "call_1",
+                            type: "function",
+                            function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+                          }]
+                        },
+                        finish_reason: "tool_calls"
+                      }]
+                    },
+                    "[DONE]"
+                  ])
+              )
+            })
+          ))
+        )
+
+        const model = OpenAiLanguageModel.model("gpt-4o-mini", { store: true })
+        const prompt = Prompt.make("What is in a.txt?")
+        const parts = yield* LanguageModel.streamText({
+          prompt,
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(model),
+          Effect.provide(layer)
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.concat(
+            Prompt.concat(prompt, Prompt.fromResponseParts(parts)),
+            Prompt.make([{
+              role: "tool",
+              content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+            }])
+          ),
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(model),
+          Effect.provide(layer)
+        )
+
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
+
     it.effect("handles chat completion stream chunks", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
