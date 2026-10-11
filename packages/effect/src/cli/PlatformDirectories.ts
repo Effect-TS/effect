@@ -11,6 +11,7 @@
  *
  * The directory composes with `KeyValueStore.layerFileSystem`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -28,6 +29,7 @@ import * as Option from "../Option.ts"
  * `config` is the directory for configuration files. Cache and state are not
  * resolved yet. They belong on this same service, next to `config`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -40,10 +42,12 @@ export interface Service {
  *
  * **When to use**
  *
- * Install {@link layer} at the edge of a CLI, then pass `config` to
+ * Use when a CLI should resolve its config directory from the host.
+ * Install {@link layer} at the edge, then pass `config` to
  * `KeyValueStore.layerFileSystem`. Tests can `Layer.succeed` a fixed directory
  * instead.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -55,6 +59,7 @@ export class PlatformDirectories extends Context.Service<PlatformDirectories, Se
  * Raised when a config directory needs a home directory and neither `HOME`
  * nor `USERPROFILE` is set.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -126,6 +131,7 @@ const join = (platform: string, ...parts: ReadonlyArray<string>): string => {
  * config // => "/custom/config/myapp"
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -201,6 +207,7 @@ const hostPlatform = (): string => {
  * await Effect.runPromise(program) // => "/home/ada/.config/myapp"
  * ```
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
