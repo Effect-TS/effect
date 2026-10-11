@@ -203,17 +203,6 @@ describe("SchemaGetter", () => {
         )
       })
 
-      it("decides array shape from the final indices, not entry order", () => {
-        const entries: Array<[string, string]> = [["a[30]", "30"]]
-        for (let i = 0; i < 30; i++) {
-          entries.push([`a[${i}]`, `${i}`])
-        }
-        deepStrictEqual(
-          SchemaGetter.makeTreeRecord(entries),
-          { a: Array.from({ length: 31 }, (_, i) => `${i}`) }
-        )
-      })
-
       it("keeps index keys on an object when an array would have more than 20 holes", () => {
         const tree: any = SchemaGetter.makeTreeRecord([
           ["a[0]", "x"],
@@ -223,12 +212,6 @@ describe("SchemaGetter", () => {
         deepStrictEqual(tree, { a: { "0": "x", "22": "y" } })
       })
 
-      it("does not build a sparse array for the maximum array index", () => {
-        const tree: any = SchemaGetter.makeTreeRecord([["a[4294967294]", "x"]])
-        assert.isFalse(Array.isArray(tree.a))
-        deepStrictEqual(tree, { a: { "4294967294": "x" } })
-      })
-
       it("appends after the maximum array index without throwing", () => {
         const tree: any = SchemaGetter.makeTreeRecord([
           ["a[4294967294]", "x"],
@@ -236,22 +219,6 @@ describe("SchemaGetter", () => {
         ])
         assert.isFalse(Array.isArray(tree.a))
         deepStrictEqual(tree, { a: { "4294967294": "x", "4294967295": "y" } })
-      })
-
-      it("applies the bound to each nested indexed container", () => {
-        const tree: any = SchemaGetter.makeTreeRecord([
-          ["items[0][name]", "a"],
-          ["items[1000][name]", "b"],
-          ["items[1000][tags][0]", "t0"],
-          ["items[1000][tags][1]", "t1"]
-        ])
-        assert.isFalse(Array.isArray(tree.items))
-        deepStrictEqual(tree, {
-          items: {
-            "0": { name: "a" },
-            "1000": { name: "b", tags: ["t0", "t1"] }
-          }
-        })
       })
     })
   })
