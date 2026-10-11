@@ -1601,22 +1601,8 @@ const mcpStdioSerialization = (
  *
  * **Gotchas**
  *
- * This layer starts a scoped server fiber. On Cloudflare Workers, prefer
- * hosting shared MCP servers in a Durable Object using its supported
- * lifecycle APIs, rather than driving a long-lived fiber from independent
- * `fetch` requests. Durable Objects do not guarantee indefinite background
- * execution.
- *
- * If sharing this layer across requests in a Worker, construct the web handler
- * at module scope, not lazily inside `fetch`, and provide
- * `new Scheduler.MixedScheduler("sync")` through the `Scheduler.Scheduler`
- * service to the whole application, including request fibers. See
- * `HttpRouter.toWebHandler` for the recipe and limitations. Sync scheduling
- * avoids lost scheduler turns but does not fix request-bound async contexts
- * or request-owned timers. It also prevents event-loop fairness for
- * CPU-heavy work. Layers built at module scope must not require request-time
- * I/O during construction. Bound waits for shared work with request-local
- * timeouts.
+ * This layer starts a scoped server fiber. For sharing it across Cloudflare
+ * Workers requests, see `HttpRouter.toWebHandler` for setup and limitations.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
