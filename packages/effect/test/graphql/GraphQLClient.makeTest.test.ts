@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Schema, Stream } from "effect"
+import { Context, DateTime, Effect, Schema, Stream } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup } from "effect/graphql"
 import { IssuesGroup } from "./fixtures.ts"
 
@@ -101,5 +101,18 @@ describe("GraphQLClient.makeTest", () => {
       )
       assert.deepStrictEqual(pages.map((p) => p.nodes?.map((i) => i?.number)), [[1], [2]])
       assert.deepStrictEqual(cursors, [undefined, "c1"])
+    }))
+
+  it.effect("layerTest provides the mock client through the service tag", () =>
+    Effect.gen(function*() {
+      class Issues extends Context.Service<Issues>()("test/Issues", { make: GraphQLClient.make(IssuesGroup) }) {
+        static readonly layerTest = GraphQLClient.layerTest(Issues, IssuesGroup)
+      }
+
+      const result = page([issue(1)], { hasNextPage: false, endCursor: null })
+      const actual = yield* Issues.use((client) => client.RepoIssues(variables)).pipe(
+        Effect.provide(Issues.layerTest({ RepoIssues: () => Effect.succeed(result) }))
+      )
+      assert.strictEqual(actual, result)
     }))
 })
