@@ -86,7 +86,8 @@ const makeServer = Effect.gen(function*() {
   return server
 })
 
-describe("Socket", () => {
+// Tests that mock native connection APIs must not overlap real connections.
+describe("Socket", { concurrent: false }, () => {
   it.live("preserves a native IPv6 listener address", () =>
     Effect.gen(function*() {
       const server = yield* NodeSocketServer.make({ host: "::1", port: 0 })
@@ -498,6 +499,37 @@ describe("Socket", () => {
 
         assert.strictEqual(received, "HelloWorld")
       }))
+
+    for (const servername of ["mail.example.test", undefined]) {
+      it.live(
+        servername === undefined
+          ? "preserves omitted client TLS upgrade servername"
+          : "forwards explicit client TLS upgrade servername",
+        () =>
+          Effect.gen(function*() {
+            const raw = yield* makePassThrough
+            const socket = yield* NodeSocket.fromDuplex(Effect.succeed(raw))
+            const { upgrade } = yield* socket.reader
+            const cause = new Error("stop before TLS handshake")
+            let received: Tls.ConnectionOptions | undefined
+            vi.mocked(Tls.connect).mockImplementationOnce((options) => {
+              received = options as Tls.ConnectionOptions
+              throw cause
+            })
+            // Use a variable so this runtime regression can run before the public option is added.
+            const options = servername === undefined
+              ? { rejectUnauthorized: true }
+              : { rejectUnauthorized: true, servername }
+            const error = yield* upgrade(options).pipe(Effect.flip)
+
+            assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+            if (error.reason._tag === "SocketUpgradeError") assert.strictEqual(error.reason.cause, cause)
+            assert.strictEqual(received?.socket, raw)
+            assert.strictEqual(received?.rejectUnauthorized, true)
+            assert.strictEqual(received?.servername, servername)
+          })
+      )
+    }
 
     it.live("requires both key and cert for server TLS upgrades", () =>
       Effect.gen(function*() {

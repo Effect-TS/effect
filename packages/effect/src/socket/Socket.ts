@@ -161,6 +161,12 @@ export interface Writer {
  * @since 4.0.0
  */
 export interface TlsUpgradeOptions {
+  /**
+   * DNS hostname used for Server Name Indication (SNI) and certificate identity
+   * verification during client upgrades. Server upgrades ignore this option.
+   * When omitted, the adapter retains its existing hostname behavior.
+   */
+  readonly servername?: string | undefined
   readonly key?:
     | Redacted.Redacted<string | Uint8Array>
     | ReadonlyArray<Redacted.Redacted<string | Uint8Array>>
