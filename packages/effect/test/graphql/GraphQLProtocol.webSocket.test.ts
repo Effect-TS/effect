@@ -3,6 +3,7 @@ import { Deferred, type Duration, Effect, Fiber, Layer, Queue, Ref, Stream } fro
 
 import { GraphQLClient, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
+import * as UrlParams from "effect/http/UrlParams"
 import { TestClock } from "effect/testing"
 import { expectReason, IssuesGroup, IssueUpdated, Viewer, type WsMessage, wsServer } from "./fixtures.ts"
 
@@ -11,10 +12,12 @@ const url = "ws://localhost/graphql"
 const event = (title: string) => ({ data: { issueUpdated: { title } } })
 
 const subscription = (id: string): GraphQLProtocol.GraphQLRequest => ({
+  kind: "subscription",
   query: IssueUpdated.document,
   operationName: "IssueUpdated",
   variables: { id },
-  headers: {}
+  headers: {},
+  urlParams: UrlParams.empty
 })
 
 interface Options {
@@ -65,8 +68,8 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       yield* connection.send({ id: ids.A, type: "next", payload: event("a") })
       yield* connection.send({ id: ids.A, type: "complete" })
       yield* connection.send({ id: ids.B, type: "complete" })
-      assert.deepStrictEqual(yield* Fiber.join(a), [event("a")])
-      assert.deepStrictEqual(yield* Fiber.join(b), [event("b")])
+      assert.deepStrictEqual(yield* Fiber.join(a), [{ body: event("a") }])
+      assert.deepStrictEqual(yield* Fiber.join(b), [{ body: event("b") }])
     }))
 
   it.effect("a missing connection_ack is a TransportError", () =>
@@ -148,10 +151,12 @@ describe("GraphQLProtocol.makeWebSocket", () => {
         connectionParams: Effect.map(Ref.updateAndGet(tokens, (n) => n + 1), (n) => ({ token: n }))
       })
       const query: GraphQLProtocol.GraphQLRequest = {
+        kind: "query",
         query: Viewer.document,
         operationName: "Viewer",
         variables: {},
-        headers: {}
+        headers: {},
+        urlParams: UrlParams.empty
       }
 
       const inFlight = yield* protocol.execute(query).pipe(Effect.flip, Effect.forkChild)
@@ -167,7 +172,7 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       const subscribe = yield* Queue.take(second.connection.received)
       yield* second.connection.send({ id: subscribe.id, type: "next", payload: { data: { viewer: { login: "tim" } } } })
       yield* second.connection.send({ id: subscribe.id, type: "complete" })
-      assert.deepStrictEqual(yield* Fiber.join(retried), { data: { viewer: { login: "tim" } } })
+      assert.deepStrictEqual(yield* Fiber.join(retried), { body: { data: { viewer: { login: "tim" } } } })
     }))
 
   it.effect("connects on the first operation and closes idleTimeout after the last one", () =>

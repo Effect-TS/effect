@@ -22,7 +22,7 @@ const scriptedLayer = (attempts: ReadonlyArray<Stream.Stream<unknown, TransportE
         Stream.unwrap(
           Effect.map(
             Ref.updateAndGet(count, (n) => n + 1),
-            (n) => attempts[n - 1] ?? Stream.die(`attempt ${n} not scripted`)
+            (n) => Stream.map(attempts[n - 1] ?? Stream.die(`attempt ${n} not scripted`), (body) => ({ body }))
           )
         )
     })
