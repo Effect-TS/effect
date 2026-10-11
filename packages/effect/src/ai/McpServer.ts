@@ -104,7 +104,7 @@ interface QueuedServerNotification {
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
-  readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestScoped: boolean }
+  readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestEndpoints: number }
 }>()
 
 // Request-scoped HTTP servers deliver a request's own notifications through
@@ -113,6 +113,10 @@ const RequestNotificationQueue = Context.Reference<Queue.Queue<QueuedServerNotif
   "effect/ai/McpServer/RequestNotificationQueue",
   { defaultValue: () => undefined }
 )
+// With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
+const isWithoutSharedConsumer = (delivery: { readonly consumers: number; readonly requestEndpoints: number }) =>
+  delivery.consumers === 0 && delivery.requestEndpoints > 0
+
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
   R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
@@ -329,7 +333,7 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestScoped: false }
+    const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestEndpoints: 0 }
     const pendingListChanges = new Map<string, QueuedServerNotification>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
@@ -360,17 +364,17 @@ export class McpServer extends Context.Service<McpServer, {
                 exit: Exit.void
               })
             )
-            if (notificationDelivery.requestScoped) {
-              // No shared consumer exists, so only notifications for the current request are delivered.
-              const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
-              if (
-                requestQueue === undefined || queued.requestContext === undefined ||
-                (notification._tag !== "Progress" && notification._tag !== "LoggingMessage")
-              ) {
-                return acknowledge
-              }
+            // A request-scoped endpoint delivers its request's own progress and logs on that request's response.
+            const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
+            if (
+              requestQueue !== undefined && queued.requestContext !== undefined &&
+              (notification._tag === "Progress" || notification._tag === "LoggingMessage")
+            ) {
               Queue.offerUnsafe(requestQueue, queued)
               return Effect.andThen(Deferred.await(delivered), acknowledge)
+            }
+            if (isWithoutSharedConsumer(notificationDelivery)) {
+              return acknowledge
             }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
@@ -402,8 +406,7 @@ export class McpServer extends Context.Service<McpServer, {
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
-        // URL elicitation completion targets a legacy session, which request-scoped servers do not have.
-        notificationDelivery.requestScoped ? Effect.void : Deferred.make<void>().pipe(
+        isWithoutSharedConsumer(notificationDelivery) ? Effect.void : Deferred.make<void>().pipe(
           Effect.flatMap((delivered) =>
             Queue.offer(notificationsQueue, {
               notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
@@ -1625,7 +1628,9 @@ const mcpStdioSerialization = (
  * such as `v2026_07_28`, so tools, resources, prompts, completions, multi
  * round-trip input requests, and the request's own progress and log
  * notifications work, while `subscriptions/listen` returns Method not found and
- * broadcast notifications such as list changes are dropped. Configuring a
+ * request-mode clients receive no broadcast notifications such as list
+ * changes. Those still reach clients of a default-mode endpoint that shares the
+ * same `McpServer`, and are dropped when no such endpoint exists. Configuring a
  * sessionful protocol, `allowSubscriptions: true`, or
  * `allowSessionTermination: true` with request mode fails layer construction
  * with `IllegalArgumentError`; use the default mode on a long-lived host for
@@ -1724,7 +1729,16 @@ const layerRequestHttp = (options: {
       )
     }
     const server = yield* McpServer
-    internalState.get(server)!.notificationDelivery.requestScoped = true
+    const { notificationDelivery } = internalState.get(server)!
+    yield* Effect.acquireRelease(
+      Effect.sync(() => {
+        notificationDelivery.requestEndpoints++
+      }),
+      () =>
+        Effect.sync(() => {
+          notificationDelivery.requestEndpoints--
+        })
+    )
     const serverOptions = { ...options, allowSubscriptions: false }
     // Each POST runs its own RPC server in the request scope, so no fiber,
     // timer, or queue consumer outlives the request that created it.
