@@ -314,23 +314,18 @@ export interface GenerateTextOptions<Tools extends Record<string, Tool.Any>> {
   readonly disableToolCallResolution?: boolean | undefined
 
   /**
-   * Controls validation of model-generated tool calls when
-   * `disableToolCallResolution` is `true`. Defaults to `"strict"`.
+   * Controls tool call validation when `disableToolCallResolution` is `true`.
+   * Defaults to `"strict"`, which validates tool names and encoded parameters.
    *
    * **Details**
    *
-   * `"strict"` decodes tool call parameters against each tool's encoded
-   * parameter schema and fails on calls to tools that are not in the toolkit.
-   * `"deferred"` returns every tool call with its parameters as `unknown`,
-   * including calls to tools that are not in the toolkit and calls made when
-   * no toolkit is provided, so the caller can validate them and report errors
-   * back to the model. Provider-executed tool calls and the rest of the
-   * response are still validated.
+   * `"deferred"` returns model-generated calls with `unknown` parameters for
+   * the caller to validate, including undeclared names and calls without a
+   * toolkit. Provider-executed calls and other response parts remain validated.
+   * Providers must support this option to return undeclared tool calls.
    *
-   * Providers must support this option to return calls to undeclared tools.
-   *
-   * This option has no effect when tool call resolution is enabled: `Toolkit`
-   * validates parameters according to each tool's `failureMode`.
+   * Has no effect when resolution is enabled; `Toolkit` validates parameters
+   * according to each tool's `failureMode`.
    */
   readonly toolCallValidation?: "strict" | "deferred" | undefined
 }
@@ -618,12 +613,10 @@ export type ExtractTools<Options> = Options extends {
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractToolParametersMode<Options> =
-  // Non-literal option types may still defer validation at runtime.
-  "deferred" extends Options["toolCallValidation" & keyof Options] ?
-    true extends Options["disableToolCallResolution" & keyof Options] ? "deferred" : "opaque"
-    : Options extends { readonly disableToolCallResolution: true } ? "encoded"
-    : "opaque"
+export type ExtractToolParametersMode<Options> = "deferred" extends Options["toolCallValidation" & keyof Options] ?
+  true extends Options["disableToolCallResolution" & keyof Options] ? "deferred" : "opaque"
+  : Options extends { readonly disableToolCallResolution: true } ? "encoded"
+  : "opaque"
 
 /**
  * Resolves the tool parameters mode for requests without a toolkit:
@@ -824,10 +817,8 @@ export interface ProviderOptions {
   readonly incrementalFallback?: boolean | undefined
 
   /**
-   * How tool calls in the response are validated. With `"deferred"`,
-   * providers return calls to tools that are not in `tools` with their
-   * parameters as the model wrote them instead of failing with
-   * `ToolNotFoundError`. Defaults to `"strict"`.
+   * Defaults to `"strict"`. With `"deferred"`, return calls to tools absent
+   * from `tools` with unchanged parameters instead of `ToolNotFoundError`.
    */
   readonly toolCallValidation?: "strict" | "deferred" | undefined
 }
@@ -2516,8 +2507,6 @@ const makeToolkitWithOpaqueParameters = <Tools extends Record<string, Tool.Any>>
 const isToolCallValidationDeferred = (options: GenerateTextOptions<any>): boolean =>
   options.disableToolCallResolution === true && options.toolCallValidation === "deferred"
 
-// With deferred validation, a call to a tool the toolkit lacks decodes as a
-// call to that name with opaque parameters.
 const UndeclaredToolCallPart = Response.ToolCallPart("", Schema.Unknown).mapFields((fields) => ({
   ...fields,
   name: Schema.String

@@ -446,9 +446,8 @@ export type ToolCallParts<
   : ToolCallPartForName<Tools, ParametersMode, keyof Tools>
 
 /**
- * Controls whether tool parameters are decoded, encoded, or opaque. With
- * `"deferred"`, parameters are opaque and tool calls may name tools that are
- * not in the toolkit, leaving validation to the caller.
+ * Controls tool parameter decoding. `"deferred"` allows undeclared tool names
+ * with opaque parameters, leaving validation to the caller.
  *
  * @stability unstable
  * @category utility types

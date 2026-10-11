@@ -1481,7 +1481,6 @@ const transformToolCallParams = Effect.fnUntraced(function*(
   const tool = options.tools.find((tool) => tool.name === toolName)
 
   if (Predicate.isUndefined(tool)) {
-    // The caller validates calls to undeclared tools itself.
     if (options.toolCallValidation === "deferred") {
       return toolParams
     }
