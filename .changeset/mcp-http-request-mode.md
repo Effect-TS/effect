@@ -2,6 +2,6 @@
 "effect": patch
 ---
 
-Add `McpServer.layerHttp({ mode: "request" })` for serverless hosts such as Cloudflare Workers. Each POST is served by an MCP server owned by that request, so no fiber or timer outlives the request. Request mode supports sessionless protocols such as `v2026_07_28` and rejects subscriptions and session termination.
+Add `McpServer.layerHttpRequestScoped` for serverless hosts such as Cloudflare Workers. Each POST is served by an MCP server owned by that request, so no fiber or timer outlives the request. The new layer accepts only sessionless protocol adapters such as `v2026_07_28`, with no subscription or session termination options. `McpServer.layerHttp` retains its long-lived server behavior.
 
 `HttpEffect.toWebHandler` now ends a streamed response body when the request is aborted after its headers were sent, which releases the request scope.

@@ -1620,21 +1620,9 @@ const mcpStdioSerialization = (
  * Method not found. Request-scoped progress and logs, legacy protocols, and
  * default subscription behavior are unchanged.
  *
- * By default the layer runs one long-lived MCP server that every POST shares.
- * Set `mode: "request"` for serverless hosts such as Cloudflare Workers, where
- * nothing should outlive a request: each POST then runs its own server in the
- * request scope, with no background fiber, timer, or queue consumer left after
- * the response body completes. Request mode only serves sessionless protocols
- * such as `v2026_07_28`, so tools, resources, prompts, completions, multi
- * round-trip input requests, and the request's own progress and log
- * notifications work, while `subscriptions/listen` returns Method not found and
- * request-mode clients receive no broadcast notifications such as list
- * changes. Those still reach clients of a default-mode endpoint that shares the
- * same `McpServer`, and are dropped when no such endpoint exists. Configuring a
- * sessionful protocol, `allowSubscriptions: true`, or
- * `allowSessionTermination: true` with request mode fails layer construction
- * with `IllegalArgumentError`; use the default mode on a long-lived host for
- * those features.
+ * The layer runs one long-lived MCP server that every POST shares. For
+ * serverless hosts where execution must belong to each request, use
+ * `layerHttpRequestScoped` instead.
  *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
@@ -1666,18 +1654,64 @@ export const layerHttp = (options: {
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
-  readonly mode?: "server" | "request" | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
   const runtime = McpRuntime.layer(options.protocols)
-  if (options.mode === "request") {
-    return layerRequestHttp(options).pipe(Layer.provide(runtime))
-  }
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
     Layer.provide(RpcSerialization.layerJsonRpc())
   )
 }
+
+/**
+ * Registers a request-scoped Streamable HTTP MCP endpoint at `options.path`.
+ *
+ * **When to use**
+ *
+ * Use when serving on serverless hosts such as Cloudflare Workers, where execution must
+ * belong to the HTTP request rather than a shared long-lived server.
+ *
+ * **Details**
+ *
+ * Each POST runs its own server in the request scope, with no background
+ * fiber, timer, or queue consumer left after the response body completes.
+ * Only sessionless protocols such as `v2026_07_28` are accepted. Tools,
+ * resources, prompts, completions, multi round-trip input requests, and the
+ * request's own progress and log notifications are supported. Legacy reverse
+ * requests through `McpServer.elicit` are not available.
+ *
+ * Discovery advertises `listChanged: false`, `subscriptions/listen` returns
+ * Method not found, and DELETE returns `405`. Request-scoped clients receive
+ * no broadcast notifications such as list changes. Those still reach clients
+ * of a `layerHttp` endpoint sharing the same `McpServer`, and are dropped when
+ * no such endpoint exists. Use `layerHttp` on a long-lived host for sessions,
+ * subscriptions, or legacy reverse requests.
+ *
+ * HTTP admission, origin checks, and JSON-RPC errors follow `layerHttp`.
+ * Configuring a sessionful protocol through an untyped caller fails layer
+ * construction with `IllegalArgumentError`.
+ *
+ * @see {@link layerHttp} for the long-lived HTTP transport and HTTP admission policy
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerHttpRequestScoped = (options: {
+  readonly name: string
+  readonly version: string
+  readonly instructions?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly path: HttpRouter.PathInput
+  readonly protocols: Arr.NonEmptyReadonlyArray<
+    McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
+  >
+  readonly extensions?: ServerExtensions | undefined
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> =>
+  layerRequestHttp(options).pipe(Layer.provide(McpRuntime.layer(options.protocols)))
 
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
@@ -1706,8 +1740,6 @@ const layerRequestHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
-  readonly allowSessionTermination?: boolean | undefined
-  readonly allowSubscriptions?: boolean | undefined
 }): Layer.Layer<
   McpServer | McpServerClient,
   Cause.IllegalArgumentError,
@@ -1718,14 +1750,7 @@ const layerRequestHttp = (options: {
     const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
     if (stateful !== undefined) {
       return yield* new Cause.IllegalArgumentError(
-        `McpServer.layerHttp mode "request" does not support the sessionful MCP protocol ${stateful.protocolVersion}`
-      )
-    }
-    if (options.allowSubscriptions === true || options.allowSessionTermination === true) {
-      return yield* new Cause.IllegalArgumentError(
-        `McpServer.layerHttp mode "request" does not support ${
-          options.allowSubscriptions === true ? "allowSubscriptions" : "allowSessionTermination"
-        }`
+        `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
       )
     }
     const server = yield* McpServer
