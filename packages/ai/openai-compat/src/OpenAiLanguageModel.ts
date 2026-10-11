@@ -6,6 +6,11 @@
  * or streaming chat completion results back into Effect AI response content and
  * metadata.
  *
+ * Assistant reasoning is replayed as `reasoning_content` alongside the text
+ * and tool calls from the same prompt message, as required by providers such
+ * as DeepSeek, Moonshot Kimi and Zhipu GLM during tool loops. Reasoning-only
+ * assistant turns are omitted.
+ *
  * @stability unstable
  * @since 4.0.0
  */
@@ -98,16 +103,6 @@ type ConfigOptions = Simplify<
      * Defaults to `true`.
      */
     readonly strictJsonSchema?: boolean | undefined
-    /**
-     * Replays assistant reasoning parts on the chat message that carries the
-     * text and tool calls of the same assistant prompt message. Providers such
-     * as DeepSeek, Moonshot Kimi and Zhipu GLM require this in tool loops.
-     *
-     * `true` sends the reasoning as `reasoning_content`.
-     *
-     * Defaults to `false`.
-     */
-    readonly replayReasoning?: boolean | undefined
   }
 >
 type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknown }
@@ -642,7 +637,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         config,
         options
       })
-      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, replayReasoning, ...apiConfig } = config
+      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, ...apiConfig } = config
       const request: CreateResponse = {
         ...apiConfig,
         include: include.size > 0 ? Array.from(include) : null,
@@ -653,7 +648,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(tools !== undefined ? { tools } : undefined),
         ...(toolChoice !== undefined ? { tool_choice: toolChoice } : undefined)
       }
-      return toChatCompletionsRequest(request, toChatMessages(messages, replayReasoning === true))
+      return toChatCompletionsRequest(request, toChatMessages(messages))
     }
   )
 
@@ -1781,14 +1776,13 @@ const toChatTool = (
 }
 
 const toChatMessages = (
-  messages: ReadonlyArray<PreparedMessage>,
-  replayReasoning: boolean
+  messages: ReadonlyArray<PreparedMessage>
 ): Array<ChatCompletionRequestMessage> => {
   const chatMessages: Array<ChatCompletionRequestMessage> = []
 
   for (const message of messages) {
     if (message.role === "assistant") {
-      const chatMessage = toAssistantChatMessage(message, replayReasoning)
+      const chatMessage = toAssistantChatMessage(message)
       if (chatMessage !== undefined) {
         chatMessages.push(chatMessage)
       }
@@ -1807,8 +1801,7 @@ const toChatMessages = (
  * returning `undefined` when the message has no text or tool calls to send.
  */
 const toAssistantChatMessage = (
-  message: PreparedMessage,
-  replayReasoning: boolean
+  message: PreparedMessage
 ): ChatCompletionRequestMessage | undefined => {
   let content: string | null = null
   const toolCalls: Array<ChatCompletionRequestToolCall> = []
@@ -1828,7 +1821,7 @@ const toAssistantChatMessage = (
   return {
     role: "assistant",
     content,
-    ...(replayReasoning && message.reasoning.length > 0
+    ...(message.reasoning.length > 0
       ? { reasoning_content: message.reasoning }
       : undefined),
     ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
