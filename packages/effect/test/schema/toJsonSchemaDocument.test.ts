@@ -1795,11 +1795,11 @@ describe("toJsonSchemaDocument", () => {
 
       it("isPowerOf", () => {
         const powers: Array<number> = []
-        for (let p = 1n; p <= BigInt(globalThis.Number.MAX_SAFE_INTEGER); p *= 2n) {
+        for (let p = 1n; p <= BigInt(globalThis.Number.MAX_SAFE_INTEGER); p *= 3n) {
           powers.push(globalThis.Number(p))
         }
         assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isPowerOf(2)),
+          Schema.Int.check(Schema.isPowerOf(3)),
           {
             schema: {
               "type": "integer",
