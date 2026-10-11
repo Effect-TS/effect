@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Decode Node HTTP request and response text with `TextDecoder`, so a leading UTF-8 BOM no longer breaks `json` on the Node server and `NodeHttpClient.layerNodeHttp`.
+Ignore a leading UTF-8 BOM when decoding Node HTTP request and response text, so `json` no longer fails on BOM-prefixed bodies.
