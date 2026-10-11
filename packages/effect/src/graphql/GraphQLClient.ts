@@ -6,7 +6,8 @@
  *
  * Retryable subscription transport failures restart the middleware chain on
  * the `subscriptionRetry` schedule. {@link pages} and {@link items} provide
- * cursor pagination. See `GraphQLProtocol` for transport options.
+ * cursor pagination, and {@link makeTest} builds a mock client for tests. See
+ * `GraphQLProtocol` for transport options.
  *
  * @stability experimental
  * @since 4.0.0
@@ -17,6 +18,7 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as UrlParams from "../http/UrlParams.ts"
+import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Option from "../Option.ts"
 import type * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
@@ -720,3 +722,143 @@ export const items = <Op extends GraphQL.Any, Node, R2 = never>(
   }
 ): Stream.Stream<Node, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>> =>
   Stream.flatMap(pages(method, options), (connection) => Stream.fromArray(connection.nodes ?? []))
+
+/**
+ * The options a {@link makeTest} handler receives: the `headers` and
+ * `urlParams` the caller passed, unchanged.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.0.0
+ */
+export interface TestCallOptions {
+  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly urlParams?: UrlParams.Input | undefined
+}
+
+/**
+ * A {@link makeTest} handler for one operation. Queries and mutations return
+ * an `Effect` and subscriptions a `Stream` of the decoded result type.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.0.0
+ */
+export type TestHandler<Op extends GraphQL.Any> = Op["kind"] extends "subscription" ? (
+    variables: GraphQL.Variables<Op>,
+    options: TestCallOptions
+  ) => Stream.Stream<GraphQL.Result<Op>, GraphQL.Error<Op>>
+  : (
+    variables: GraphQL.Variables<Op>,
+    options: TestCallOptions
+  ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>>
+
+/**
+ * The handlers given to {@link makeTest}, keyed by operation name. Every
+ * handler is optional.
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.0.0
+ */
+export type TestHandlers<Ops extends GraphQL.Any> = {
+  readonly [Op in Ops as Op["name"]]?: TestHandler<Op>
+}
+
+/**
+ * Builds a client for tests that answers each operation from a handler,
+ * without a protocol.
+ *
+ * **Details**
+ *
+ * Handlers receive the caller's `variables` and options unchanged and return
+ * values in their decoded form. Nothing is encoded, decoded or validated, and
+ * no middleware runs. Called with `{ partial: true }`, a method returns
+ * `{ data, errors: [] }`. Subscriptions are not retried. Every method carries
+ * `.operation`, so {@link pages} and {@link items} work on it.
+ *
+ * Calling an operation without a handler dies with an `UnimplementedError`
+ * defect, so `catchTag` in the code under test cannot swallow a missing stub.
+ *
+ * The client's methods keep the types of the real client's, including the
+ * services every attached middleware requires. Code under test still has to
+ * provide them, even though the mock never uses them.
+ *
+ * To test partial data together with `errors`, or the encode and decode path,
+ * provide a scripted `GraphQLProtocol` layer to {@link make} instead.
+ *
+ * **Example** (Replacing a client service in tests)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer, Schema } from "effect"
+ * import { GraphQL, GraphQLClient, GraphQLGroup } from "effect/graphql"
+ *
+ * const RepoIssues = GraphQL.query("RepoIssues", {
+ *   document: "query RepoIssues($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues{totalCount}}}",
+ *   variables: { owner: Schema.String, name: Schema.String },
+ *   result: Schema.Struct({
+ *     repository: Schema.NullOr(Schema.Struct({ issues: Schema.Struct({ totalCount: Schema.Int }) }))
+ *   })
+ * })
+ * const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues)
+ *
+ * class GitHub extends Context.Service<GitHub>()("app/GitHub", {
+ *   make: GraphQLClient.make(GitHubGraphQLGroup)
+ * }) {}
+ *
+ * const GitHubTest = Layer.succeed(
+ *   GitHub,
+ *   GraphQLClient.makeTest(GitHubGraphQLGroup)({
+ *     RepoIssues: ({ name }) => Effect.succeed({ repository: { issues: { totalCount: name.length } } })
+ *   })
+ * )
+ *
+ * const program = GitHub.use((github) => github.RepoIssues({ owner: "Effect-TS", name: "effect" }))
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(GitHubTest))) // => { repository: { issues: { totalCount: 6 } } }
+ * ```
+ *
+ * @stability experimental
+ * @category testing
+ * @since 4.0.0
+ */
+export const makeTest =
+  <Ops extends GraphQL.Any>(group: GraphQLGroup<Ops>) => (handlers: TestHandlers<Ops>): GraphQLClient<Ops> => {
+    // Type boundary: the mapped type keys handlers by name, which a lookup by a
+    // runtime name cannot follow.
+    const byName = handlers as Record<string, TestHandler<Ops> | undefined>
+    const client: Record<string, unknown> = {}
+    for (const operation of group.operations) {
+      client[operation.name] = makeTestMethod(operation, byName[operation.name])
+    }
+    // The loop cannot prove the mapped type's name/kind relationship.
+    return client as GraphQLClient<Ops>
+  }
+
+// Handlers are called through these erased signatures; `makeTest` has
+// already checked them against the operation.
+type ErasedTestHandler = (variables: unknown, options: TestCallOptions) => unknown
+
+const makeTestMethod = (operation: GraphQL.Any, handler: ErasedTestHandler | undefined) => {
+  const subscription = operation.kind === "subscription"
+  if (handler === undefined) {
+    const unimplemented = () => {
+      const prevLimit = getStackTraceLimit()
+      setStackTraceLimit(2)
+      const error = new Error(`GraphQLClient: Unimplemented operation "${operation.name}"`)
+      setStackTraceLimit(prevLimit)
+      error.name = "UnimplementedError"
+      return subscription ? Stream.die(error) : Effect.die(error)
+    }
+    return Object.assign(unimplemented, { operation })
+  }
+  const call = (variables: unknown, options: (TestCallOptions & { readonly partial?: boolean }) | undefined) => {
+    const run = () => handler(variables ?? {}, options ?? {})
+    if (subscription) return Stream.suspend(run as () => Stream.Stream<unknown, unknown>)
+    const result = Effect.suspend(run as () => Effect.Effect<unknown, unknown>)
+    return options?.partial === true
+      ? Effect.map(result, (data): PartialResult<unknown> => ({ data, errors: [] }))
+      : result
+  }
+  return Object.assign(call, { operation })
+}
