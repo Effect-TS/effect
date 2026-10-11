@@ -494,6 +494,62 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   })
 })
 
+// Codecs depend only on the serialization and the RPC schemas, so servers
+// created per connection or per request share them instead of rebuilding them.
+const rpcCodecsCache = new WeakMap<
+  RpcSerialization.CodecFor,
+  WeakMap<Rpc.AnyWithProps, {
+    readonly decode: (u: unknown) => Effect.Effect<any, Schema.SchemaError>
+    readonly encodeChunk: (
+      u: NonEmptyReadonlyArray<unknown>
+    ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
+    readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+  }>
+>()
+
+const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps) => {
+  let cache = rpcCodecsCache.get(codecFor)
+  if (cache === undefined) {
+    cache = new WeakMap()
+    rpcCodecsCache.set(codecFor, cache)
+  }
+  let codecs = cache.get(rpc)
+  if (codecs === undefined) {
+    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    codecs = {
+      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
+      encodeChunk: Schema.encodeUnknownEffect(
+        codecFor(
+          Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
+        )
+      ) as any,
+      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
+    }
+    cache.set(rpc, codecs)
+  }
+  return codecs
+}
+
+const defectCodecsCache = new WeakMap<RpcSerialization.CodecFor, {
+  readonly encodeDefectUnsafe: (defect: unknown) => unknown
+  readonly encodeUnknownRequestExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}>()
+
+const defectCodecs = (codecFor: RpcSerialization.CodecFor) => {
+  let codecs = defectCodecsCache.get(codecFor)
+  if (codecs === undefined) {
+    codecs = {
+      encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
+      // Unknown tags have no RPC schema, so use a defect-only exit schema.
+      encodeUnknownRequestExit: Schema.encodeUnknownEffect(
+        codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
+      ) as any
+    }
+    defectCodecsCache.set(codecFor, codecs)
+  }
+  return codecs
+}
+
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
 // pair. Request fibers on persistent connections keep one context across
@@ -586,11 +642,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsSpanPropagation,
     supportsTransferables
   } = yield* Protocol
-  const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
-  // Unknown tags have no RPC schema, so use a defect-only exit schema.
-  const encodeUnknownRequestExit: Schemas["encodeExit"] = Schema.encodeUnknownEffect(
-    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
-  ) as any
+  const { encodeDefectUnsafe, encodeUnknownRequestExit } = defectCodecs(codecFor)
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -666,16 +718,9 @@ export const make: <Rpcs extends Rpc.Any>(
     let schemas = schemasCache.get(rpc)
     if (!schemas) {
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
-      const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
         tag: rpc._tag,
-        decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
-        encodeChunk: Schema.encodeUnknownEffect(
-          codecFor(
-            Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
-          )
-        ) as any,
-        encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,
+        ...rpcCodecs(codecFor, rpc),
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -1109,7 +1154,7 @@ export const makeProtocolWithHttpEffect: (
   RpcSerialization.RpcSerialization
 > = Effect.fnUntraced(function*(options = {}) {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const includesFraming = serialization.includesFraming
   const isBinary = !serialization.contentType.includes("json")
 
@@ -1569,7 +1614,7 @@ const makeSocketProtocol: Effect.Effect<
   RpcSerialization.RpcSerialization
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const disconnects = yield* Queue.make<number>()
 
   let clientId = 0

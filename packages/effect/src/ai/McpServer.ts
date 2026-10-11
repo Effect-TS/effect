@@ -753,7 +753,10 @@ const runWithRuntime = Effect.fnUntraced(function*(
   },
   runtime: McpRuntime.ServerRuntimeShape,
   transport: "custom" | "http" | "stdio",
-  requestNotifications?: Queue.Dequeue<QueuedServerNotification>
+  requestScoped?: {
+    readonly notifications: Queue.Dequeue<QueuedServerNotification>
+    readonly handlers: Context.Context<never>
+  }
 ) {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
@@ -843,7 +846,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const { core, notificationDelivery, notifications } = internalState.get(server)!
-  const handlers = yield* runtime.installHandlers({
+  const handlers = requestScoped?.handlers ?? (yield* runtime.installHandlers({
     core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
@@ -857,7 +860,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     }),
     defaultLogLevel,
     serverInfo: options
-  })
+  }))
 
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(key: McpClientKey) {
@@ -1278,7 +1281,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   }
 
-  if (requestNotifications === undefined) {
+  if (requestScoped === undefined) {
     yield* Effect.acquireRelease(
       Effect.sync(() => {
         notificationDelivery.consumers++
@@ -1290,7 +1293,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     )
   }
   const notificationTails = new Map<number, Deferred.Deferred<void>>()
-  yield* Queue.take(requestNotifications ?? notifications).pipe(
+  yield* Queue.take(requestScoped?.notifications ?? notifications).pipe(
     Effect.flatMap(Effect.fnUntraced(function*(queued) {
       const { delivered, listChangeRevision, notification, targetClientId, requestContext, requestHeaders } = queued
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
@@ -1722,7 +1725,17 @@ export const layerHttpRequestScoped = (options: {
       )
     }
     const server = yield* McpServer
-    const { notificationDelivery } = internalState.get(server)!
+    const { core, notificationDelivery } = internalState.get(server)!
+    // Subscriptions are disabled, so handlers hold no per-request state and
+    // read registrations from the shared core on every call. Request services
+    // still take precedence over the layer context captured here.
+    const handlers = yield* (runtime.installHandlers({
+      core,
+      subscribeServerNotifications: Effect.die("Subscriptions are disabled for request-scoped MCP servers"),
+      getListChangeRevision: () => notificationDelivery.listChangeRevision,
+      defaultLogLevel: yield* CurrentLogLevel,
+      serverInfo: options
+    }) as Effect.Effect<Context.Context<never>>)
     yield* Effect.acquireRelease(
       Effect.sync(() => {
         notificationDelivery.requestEndpoints++
@@ -1742,7 +1755,7 @@ export const layerHttpRequestScoped = (options: {
           Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
         )
         const notifications = yield* Queue.make<QueuedServerNotification>()
-        yield* runWithRuntime(serverOptions, runtime, "http", notifications).pipe(
+        yield* runWithRuntime(serverOptions, runtime, "http", { notifications, handlers }).pipe(
           Effect.provideService(RpcServer.Protocol, protocol),
           Effect.provideService(McpServer, server),
           Effect.forkScoped({ startImmediately: true })
