@@ -50,7 +50,7 @@ import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
-import { PassThrough } from "node:stream"
+import { PassThrough, type Writable } from "node:stream"
 import { buildSpawnOptions } from "./internal/nodeChildProcessSpawner.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
@@ -79,6 +79,15 @@ type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
+
+// Buffered writes can fail after the sink has been interrupted and removed its
+// error listener. Keep a fallback until close, without replacing the sink
+// listener that propagates errors while it is active.
+const handleInputErrors = (writable: Writable): void => {
+  const onError = () => {}
+  writable.on("error", onError)
+  writable.once("close", () => writable.off("error", onError))
+}
 
 /** The leader has not exited, or a member of its process group still exists. */
 const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean => {
@@ -244,6 +253,7 @@ const make = Effect.gen(function*() {
           // Create a sink to write to for input file descriptors
           let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
           if (nodeStream && "write" in nodeStream) {
+            handleInputErrors(nodeStream)
             sink = NodeSink.fromWritable({
               evaluate: () => nodeStream,
               onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
@@ -300,6 +310,7 @@ const make = Effect.gen(function*() {
       // sink that will attached to the process handle
       let sink: Sink.Sink<void, unknown, never, PlatformError.PlatformError> = Sink.drain
       if (Predicate.isNotNull(childProcess.stdin)) {
+        handleInputErrors(childProcess.stdin)
         sink = NodeSink.fromWritable({
           evaluate: () => childProcess.stdin!,
           onError: (error) => toPlatformError("fromWritable(stdin)", toError(error), command),
