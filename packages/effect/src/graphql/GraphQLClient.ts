@@ -19,6 +19,7 @@ import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as UrlParams from "../http/UrlParams.ts"
+import * as internalGraphQL from "../internal/graphql.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -35,8 +36,7 @@ import {
   type GraphQLError,
   isGraphQLClientError,
   PaginationError,
-  type Reason,
-  ResponseError
+  type Reason
 } from "./GraphQLClientError.ts"
 import type { GraphQLGroup } from "./GraphQLGroup.ts"
 import type * as GraphQLMiddleware from "./GraphQLMiddleware.ts"
@@ -393,16 +393,7 @@ const makeMethod = <Op extends GraphQL.Any>(
     Effect.catch(decodeResult(data), schemaFail((description) => new DecodeError({ description })))
 
   const responseError = (result: ExecutionResult, errors: NonEmptyReadonlyArray<GraphQLError>) =>
-    Effect.fail(fail(
-      new ResponseError({
-        errors,
-        // `data` is whatever the protocol returned; the HTTP transport parses
-        // it from JSON, which is what `ResponseError` declares.
-        ...(result.data === undefined ? {} : { data: result.data as Schema.Json }),
-        ...(result.extensions === undefined ? {} : { extensions: result.extensions }),
-        ...(result.status === undefined ? {} : { status: result.status })
-      })
-    ))
+    Effect.fail(fail(internalGraphQL.responseError(result, errors)))
 
   // GraphQL only allows a `null` or missing `data` when there are `errors`,
   // so the result codec is not consulted for it: `Schema.Json` would accept
@@ -421,7 +412,11 @@ const makeMethod = <Op extends GraphQL.Any>(
     if (result.data === null || result.data === undefined) {
       return isReadonlyArrayNonEmpty(errors) ? responseError(result, errors) : missingData
     }
-    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => ({ data, errors }))
+    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => {
+      const partial = { data, errors }
+      internalGraphQL.partialResponses.set(partial, result)
+      return partial
+    })
   }
 
   if (operation.kind === "subscription") {

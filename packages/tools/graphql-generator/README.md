@@ -181,9 +181,10 @@ doesn't compile. The generator needs nothing beyond this convention.
 
 ### Batching
 
-Use the DataLoader pattern with `RequestResolver`: collect concurrent lookups
-and call one generated operation. Generate `repos.graphql.ts` from this GitHub
-document and add `ReposGraphQLGroup` to the `GitHub` service's groups above:
+`GraphQLResolver` from `effect/graphql` collects concurrent lookups and makes
+one call to a generated operation, DataLoader style. Generate
+`repos.graphql.ts` from this GitHub document and add `ReposGraphQLGroup` to
+the `GitHub` service's groups above:
 
 ```graphql
 query RepoNodes($ids: [ID!]!) {
@@ -195,44 +196,49 @@ query RepoNodes($ids: [ID!]!) {
 ```
 
 ```ts
-import { Effect, Exit, Request, RequestResolver } from "effect"
-import { RepoNodes } from "./src/repos.graphql.ts"
-
-type Repo = Extract<NonNullable<RepoNodes.Result["nodes"]>[number], { __typename: "Repository" }>
-class GetRepo extends Request.Class<{ readonly id: string }, Repo, Error> {}
+import { Effect, RequestResolver } from "effect"
+import { GraphQLResolver } from "effect/graphql"
 
 const repos = (ids: ReadonlyArray<string>) =>
   Effect.gen(function*() {
     const github = yield* GitHub
-    const resolver = RequestResolver.make<GetRepo>(Effect.fn(function*(entries) {
-      const { data, errors } = yield* github.RepoNodes(
-        { ids: entries.map((entry) => entry.request.id) },
-        { partial: true }
-      ).pipe(Effect.mapError((error) => new Error(String(error))))
-      for (const [index, entry] of entries.entries()) {
-        const node = data.nodes?.[index]
-        const error = errors.find((error) => error.path?.[0] === "nodes" && error.path[1] === index)
-        entry.completeUnsafe(
-          !error && node?.__typename === "Repository" && node.id === entry.request.id
-            ? Exit.succeed(node)
-            : Exit.fail(new Error(error?.message ?? `Repository not found: ${entry.request.id}`))
-        )
-      }
-    })).pipe(
-      RequestResolver.setDelay("10 millis"),
-      RequestResolver.batchN(100) // GitHub's nodes(ids:) limit
-    )
-    const getRepo = (id: string) => Effect.request(new GetRepo({ id }), resolver)
+    const RepoById = GraphQLResolver.ordered(github.RepoNodes, {
+      variables: (ids: ReadonlyArray<string>) => ({ ids }),
+      path: ["nodes"],
+      typename: "Repository"
+    }).pipe(RequestResolver.batchN(100)) // GitHub's nodes(ids:) limit
+    const getRepo = GraphQLResolver.request(RepoById)
     return yield* Effect.forEach(ids, getRepo, { concurrency: "unbounded" })
   })
 ```
 
-Middleware still run because the resolver calls the generated client. A missing
-node or null result fails only its entry; callers can catch failures in
-`getRepo` if they want to collect successes too. GraphQL errors can otherwise
-fail the whole `nodes(ids:)` call, so use `{ partial: true }` and match errors
-to entries by `path`, as above. Transport or decoding failures still fail the
-batch.
+`ordered` matches the `nodes` list to the ids by position. `path` leads from
+the result to the list, one autocompleted key at a time, and `typename`
+narrows each entry to `Repository`. A `null` entry or a node of another type
+fails only its own lookup, with `Cause.NoSuchElementError`, and a GraphQL
+error at `["nodes", i]` fails only entry `i`. Any other GraphQL error, and
+transport or decoding failures, fail the whole batch. Middleware still run,
+because the resolver calls the generated client.
+
+When results come back in any order, as from a search, `findById` matches them
+by a key read from each result:
+
+```ts
+// search(query: $query, type: REPOSITORY, first: 50) { pageInfo { hasNextPage } nodes { ... } }
+const RepoByName = GraphQLResolver.findById(github.SearchRepos, {
+  key: (repo) => repo.nameWithOwner,
+  variables: (names) => ({ query: names.map((name) => `repo:${name}`).join(" ") }),
+  path: ["search", "nodes"],
+  typename: "Repository"
+}).pipe(RequestResolver.batchN(50))
+```
+
+Write `key` before `variables`, so that the key type is inferred from it.
+
+A list field returns one page, so a key past the end of the page would look
+missing. Set the page size (`first`, `limit`) and `RequestResolver.batchN` to
+the same value; when the object holding the list reports
+`pageInfo.hasNextPage: true`, the whole batch fails instead.
 
 - For the simplest option, call a method per item with
   `Effect.forEach(items, f, { concurrency: 4 })`, at the cost of one request
