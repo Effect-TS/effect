@@ -43,7 +43,6 @@ import {
   type CreateResponse200,
   type CreateResponse200Sse,
   type CreateResponseRequestJson,
-  type IncludeEnum,
   type InputContent,
   type MessageStatus,
   OpenAiClient,
@@ -64,7 +63,7 @@ type ImageDetail = "auto" | "low" | "high"
 
 type ConfigOptions = Simplify<
   & Partial<
-    Omit<CreateResponse, "input" | "tools" | "tool_choice" | "stream" | "text">
+    Omit<CreateResponse, "input" | "tools" | "tool_choice" | "stream" | "text" | "store" | "conversation">
   >
   & {
     /**
@@ -625,13 +624,9 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<CreateResponseRequestJson, AiError.AiError> {
-      const include = new Set<IncludeEnum>()
-      const capabilities = getModelCapabilities(config.model!)
       const messages = yield* prepareMessages({
         config,
         options,
-        capabilities,
-        include,
         toolNameMapper
       })
       const { toolChoice, tools } = yield* prepareTools({
@@ -646,7 +641,6 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, ...apiConfig } = config
       const request: CreateResponse = {
         ...apiConfig,
-        include: include.size > 0 ? Array.from(include) : null,
         text: {
           verbosity: config.text?.verbosity ?? null,
           format: responseFormat
@@ -777,26 +771,12 @@ const prepareMessages = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
     config,
     options,
-    capabilities,
-    include,
     toolNameMapper
   }: {
     readonly config: typeof Config.Service
     readonly options: LanguageModel.ProviderOptions
-    readonly include: Set<IncludeEnum>
-    readonly capabilities: ModelCapabilities
     readonly toolNameMapper: Tool.NameMapper<Tools>
   }): Effect.fn.Return<ReadonlyArray<ChatCompletionRequestMessage>, AiError.AiError> {
-    const hasConversation = Predicate.isNotNullish(config.conversation)
-
-    // Handle Included Features
-    if (config.top_logprobs !== undefined) {
-      include.add("message.output_text.logprobs")
-    }
-    if (config.store === false && capabilities.isReasoningModel) {
-      include.add("reasoning.encrypted_content")
-    }
-
     const messages: Array<ChatCompletionRequestMessage> = []
 
     for (const message of options.prompt.content) {
@@ -880,31 +860,18 @@ const prepareMessages = Effect.fnUntraced(
           for (const part of message.content) {
             switch (part.type) {
               case "text": {
-                // Skip items that already exist in the conversation context or
-                // the provider's store
-                if (Predicate.isNotNull(getItemId(part)) && (hasConversation || config.store === true)) {
-                  break
-                }
-
                 content = (content ?? "") + part.text
                 break
               }
 
               case "reasoning": {
-                if (hasConversation && Predicate.isNotNull(getItemId(part))) {
-                  break
-                }
-
                 reasoning += part.text
                 reasoningField ??= part.options.openai?.reasoningField ?? undefined
                 break
               }
 
               case "tool-call": {
-                if (
-                  part.providerExecuted ||
-                  (Predicate.isNotNull(getItemId(part)) && (hasConversation || config.store === true))
-                ) {
+                if (part.providerExecuted) {
                   break
                 }
 
@@ -1743,13 +1710,6 @@ const toChatMessageContent = (
 const isFileId = (data: string, config: typeof Config.Service): boolean =>
   config.fileIdPrefixes != null && config.fileIdPrefixes.some((prefix) => data.startsWith(prefix))
 
-const getItemId = (
-  part:
-    | Prompt.TextPart
-    | Prompt.ReasoningPart
-    | Prompt.ToolCallPart
-    | Prompt.ToolResultPart
-): string | null => part.options.openai?.itemId ?? null
 const getExtraContent = (
   part: Prompt.ToolCallPart
 ): Schema.JsonObject | null => part.options.openai?.extraContent ?? null
@@ -1813,54 +1773,6 @@ const prepareResponseFormat = Effect.fnUntraced(function*({ config, options }: {
   }
   return { type: "text" }
 })
-
-interface ModelCapabilities {
-  readonly isReasoningModel: boolean
-  readonly systemMessageMode: "remove" | "system" | "developer"
-  readonly supportsFlexProcessing: boolean
-  readonly supportsPriorityProcessing: boolean
-  /**
-   * Allow temperature, topP, logProbs when reasoningEffort is none.
-   */
-  readonly supportsNonReasoningParameters: boolean
-}
-
-const getModelCapabilities = (modelId: string): ModelCapabilities => {
-  const supportsFlexProcessing = modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini") ||
-    (modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat"))
-
-  const supportsPriorityProcessing = modelId.startsWith("gpt-4") ||
-    modelId.startsWith("gpt-5-mini") ||
-    (modelId.startsWith("gpt-5") &&
-      !modelId.startsWith("gpt-5-nano") &&
-      !modelId.startsWith("gpt-5-chat")) ||
-    modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini")
-
-  // Use allowlist approach: only known reasoning models should use 'developer' role
-  // This prevents issues with fine-tuned models, third-party models, and custom models
-  const isReasoningModel = modelId.startsWith("o1") ||
-    modelId.startsWith("o3") ||
-    modelId.startsWith("o4-mini") ||
-    modelId.startsWith("codex-mini") ||
-    modelId.startsWith("computer-use-preview") ||
-    (modelId.startsWith("gpt-5") && !modelId.startsWith("gpt-5-chat"))
-
-  // https://platform.openai.com/docs/guides/latest-model#gpt-5-1-parameter-compatibility
-  // GPT-5.1 and GPT-5.2 support temperature, topP, logProbs when reasoningEffort is none
-  const supportsNonReasoningParameters = modelId.startsWith("gpt-5.1") || modelId.startsWith("gpt-5.2")
-
-  const systemMessageMode = isReasoningModel ? "developer" : "system"
-
-  return {
-    supportsFlexProcessing,
-    supportsPriorityProcessing,
-    isReasoningModel,
-    systemMessageMode,
-    supportsNonReasoningParameters
-  }
-}
 
 const getUsage = (usage: CreateResponse200["usage"]): Response.Usage => {
   if (Predicate.isNullish(usage)) {
