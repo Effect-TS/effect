@@ -4,8 +4,7 @@ import type { ExecutionResult } from "../graphql/GraphQLProtocol.ts"
 import type * as Schema from "../Schema.ts"
 
 /**
- * The `ResponseError` a strict call fails with: the errors plus the raw
- * `data`, `extensions` and `status` of the response.
+ * Builds a response error with raw data and transport metadata.
  *
  * @internal
  */
@@ -15,17 +14,14 @@ export const responseError = (
 ): ResponseError =>
   new ResponseError({
     errors,
-    // `data` is whatever the protocol returned; the HTTP transport parses it
-    // from JSON, which is what `ResponseError` declares.
     ...(result?.data === undefined ? {} : { data: result.data as Schema.Json }),
     ...(result?.extensions === undefined ? {} : { extensions: result.extensions }),
     ...(result?.status === undefined ? {} : { status: result.status })
   })
 
 /**
- * The response each `{ partial: true }` result was decoded from, so that
- * `GraphQLResolver` can fail with the same `ResponseError` as a strict call.
- * Results from `GraphQLClient.makeTest` have no entry.
+ * Raw responses for partial results, used by resolvers to preserve error
+ * metadata. Mock client results have no entry.
  *
  * @internal
  */
