@@ -354,9 +354,15 @@ importers:
       ast-types:
         specifier: ^0.16.3
         version: 0.16.3
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
       immer:
         specifier: ^11.1.21
         version: 11.1.21
+      miniflare:
+        specifier: 5.20260925.0-alpha
+        version: 5.20260925.0-alpha(@types/node@26.6.5)
       protobufjs:
         specifier: ^8.8.0
         version: 8.8.0
