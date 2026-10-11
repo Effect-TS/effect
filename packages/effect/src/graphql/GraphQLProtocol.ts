@@ -1,9 +1,10 @@
 /**
  * Raw transports for `GraphQLClient`, accepting encoded requests and returning
- * `ExecutionResult` values without schema decoding or middleware.
+ * raw response bodies, with the HTTP status where there is one, without schema
+ * decoding or middleware.
  *
- * - {@link layerHttp} uses HTTP POST and graphql-sse subscriptions, with an
- *   optional graphql-ws subscription transport.
+ * - {@link layerHttp} uses HTTP POST (or GET for queries) and graphql-sse
+ *   subscriptions, with an optional graphql-ws subscription transport.
  * - {@link layerWebSocket} multiplexes all operations over graphql-ws.
  *
  * {@link makeHttp} and {@link makeWebSocket} construct the same transports as effects.
@@ -23,6 +24,7 @@ import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
+import type * as UrlParams from "../http/UrlParams.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
@@ -30,6 +32,7 @@ import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
+import type { Kind } from "./GraphQL.ts"
 import { GraphQLError, TransportError } from "./GraphQLClientError.ts"
 
 /**
@@ -38,26 +41,40 @@ import { GraphQLError, TransportError } from "./GraphQLClientError.ts"
  *
  * **Details**
  *
- * `variables` are already encoded through the operation's variables Schema.
- * `headers` are applied by the HTTP transport; a WebSocket transport ignores
- * them because graphql-ws has no per-operation headers.
+ * `kind` is the operation type, which the HTTP transport uses to send queries
+ * as `GET` when `queryMethod: "GET"` is set. `variables` are already encoded
+ * through the operation's variables Schema.
+ *
+ * `headers` and `urlParams` are applied by the HTTP transport, to queries,
+ * mutations and graphql-sse subscriptions alike. A graphql-ws transport
+ * ignores both, because graphql-ws has no per-operation headers or URL.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface GraphQLRequest {
+  readonly kind: Kind
   readonly query: string
   readonly operationName: string
   readonly variables: unknown
   readonly extensions?: Record<string, unknown> | undefined
   readonly headers: Readonly<Record<string, string>>
+  readonly urlParams: UrlParams.UrlParams
 }
 
 /**
  * The raw result of executing a GraphQL operation, before `data` is decoded
  * with the result Schema. Middleware receive this from `next`, which is how
  * they read response `extensions` such as a rate-limit cost.
+ *
+ * **Details**
+ *
+ * `status` is transport metadata, not part of the GraphQL response body: the
+ * client decodes the body without it and then copies the HTTP status the
+ * transport reported. It is unset over graphql-ws and for graphql-sse events.
+ * Middleware may read or rewrite it, and a failed call's `ResponseError`
+ * carries the final value.
  *
  * @stability experimental
  * @category schemas
@@ -66,7 +83,8 @@ export interface GraphQLRequest {
 export const ExecutionResult = Schema.Struct({
   data: Schema.optional(Schema.Unknown),
   errors: Schema.optional(Schema.Array(GraphQLError)),
-  extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+  extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json)),
+  status: Schema.optional(Schema.Int)
 })
 
 /**
@@ -84,6 +102,13 @@ export type ExecutionResult = typeof ExecutionResult.Type
  * Both fail only with `TransportError`; GraphQL `errors` are left in the body
  * for the client to interpret.
  *
+ * **Details**
+ *
+ * Each answer is `{ body, status? }`. The HTTP transport sets `status` on
+ * `execute` responses and on a subscription the server rejected with a single
+ * GraphQL response. graphql-sse `next` events and graphql-ws messages leave it
+ * unset.
+ *
  * **Example** (A scripted transport for tests)
  *
  * ```ts import.meta.vitest
@@ -96,7 +121,7 @@ export type ExecutionResult = typeof ExecutionResult.Type
  * })
  *
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
- *   execute: () => Effect.succeed({ data: { viewer: { login: "tim" } } }),
+ *   execute: () => Effect.succeed({ body: { data: { viewer: { login: "tim" } } } }),
  *   subscribe: () => Stream.empty
  * })
  *
@@ -113,8 +138,14 @@ export type ExecutionResult = typeof ExecutionResult.Type
  * @since 4.0.0
  */
 export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
-  readonly execute: (request: GraphQLRequest) => Effect.Effect<unknown, TransportError>
-  readonly subscribe: (request: GraphQLRequest) => Stream.Stream<unknown, TransportError>
+  readonly execute: (request: GraphQLRequest) => Effect.Effect<{
+    readonly body: unknown
+    readonly status?: number | undefined
+  }, TransportError>
+  readonly subscribe: (request: GraphQLRequest) => Stream.Stream<{
+    readonly body: unknown
+    readonly status?: number | undefined
+  }, TransportError>
 }>()("effect/graphql/GraphQLProtocol") {}
 
 const graphqlResponseContentType = "application/graphql-response+json"
@@ -138,8 +169,24 @@ const postRequest = (url: string, request: GraphQLRequest, accept: string) =>
   HttpClientRequest.post(url).pipe(
     HttpClientRequest.setHeaders(request.headers),
     HttpClientRequest.setHeader("accept", accept),
+    HttpClientRequest.appendUrlParams(request.urlParams),
     HttpClientRequest.bodyJsonUnsafe(requestBody(request))
   )
+
+// The GraphQL-over-HTTP GET encoding. The caller's params go first and the
+// GraphQL params are set over them, so a caller cannot replace `query` or
+// `operationName`. `variables` and `extensions` are sent only when set.
+const getRequest = (url: string, request: GraphQLRequest, accept: string) => {
+  const params: Record<string, string> = { query: request.query, operationName: request.operationName }
+  if (request.variables !== undefined) params.variables = JSON.stringify(request.variables)
+  if (request.extensions !== undefined) params.extensions = JSON.stringify(request.extensions)
+  return HttpClientRequest.get(url).pipe(
+    HttpClientRequest.setHeaders(request.headers),
+    HttpClientRequest.setHeader("accept", accept),
+    HttpClientRequest.appendUrlParams(request.urlParams),
+    HttpClientRequest.setUrlParams(params)
+  )
+}
 
 const fromHttpClientError =
   (now: number) =>
@@ -184,7 +231,9 @@ const errorMessage = (cause: unknown): string => cause instanceof Error ? cause.
 // The graphql-sse distinct-mode events of a `text/event-stream` body. The
 // stream ends on a `complete` event or at EOF. A `retry:` line is kept and
 // reported as `retryAfter` if the body later fails.
-const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stream<unknown, TransportError> =>
+const sseEvents = (
+  response: HttpClientResponse.HttpClientResponse
+): Stream.Stream<{ readonly body: unknown }, TransportError> =>
   Stream.suspend(() => {
     let retryAfter: Duration.Duration | undefined
     let events: Array<Sse.Event> = []
@@ -214,7 +263,7 @@ const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stre
       Stream.filter((event) => event.event === "next"),
       Stream.mapEffect((event) =>
         Effect.try({
-          try: (): unknown => JSON.parse(event.data),
+          try: () => ({ body: JSON.parse(event.data) as unknown }),
           catch: (cause) =>
             new TransportError({ description: `Invalid graphql-sse next event: ${errorMessage(cause)}`, cause })
         })
@@ -224,6 +273,7 @@ const sseEvents = (response: HttpClientResponse.HttpClientResponse): Stream.Stre
 
 interface HttpOptions<R = never> {
   readonly url: string
+  readonly queryMethod?: "GET" | "POST" | undefined
   readonly subscriptions?: {
     readonly webSocket: WebSocketOptions<R>
   } | undefined
@@ -239,14 +289,19 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
       const execute = (request: GraphQLRequest) =>
         Effect.suspend(() => {
           const now = clock.currentTimeMillisUnsafe()
+          const toRequest = options.queryMethod === "GET" && request.kind === "query" ? getRequest : postRequest
           return client.execute(
-            postRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
+            toRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
-            Effect.flatMap(readResponse),
+            Effect.flatMap((response) =>
+              Effect.map(readResponse(response), (body) => ({ body, status: response.status }))
+            ),
             fromHttpClientError(now)
           )
         })
-      const subscribe = (request: GraphQLRequest): Stream.Stream<unknown, TransportError> =>
+      const subscribe = (
+        request: GraphQLRequest
+      ): Stream.Stream<{ readonly body: unknown; readonly status?: number }, TransportError> =>
         Stream.unwrap(Effect.suspend(() => {
           const now = clock.currentTimeMillisUnsafe()
           return client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
@@ -257,7 +312,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
               }
               // A server that rejects the subscription answers with a single
               // GraphQL response, which the client reads like a query's.
-              return Effect.map(readResponse(response), Stream.succeed)
+              return Effect.map(readResponse(response), (body) => Stream.succeed({ body, status: response.status }))
             }),
             fromHttpClientError(now)
           )
@@ -281,6 +336,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
  *
  * **Details**
  *
+ * Takes the same options as {@link layerHttp}, including `queryMethod`.
  * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
  * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead, and
  * the effect also builds the graphql-ws transport, so it needs a
@@ -293,6 +349,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
 export const makeHttp: {
   <R = never>(options: {
     readonly url: string
+    readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions: {
       readonly webSocket: {
         readonly url: string
@@ -308,7 +365,11 @@ export const makeHttp: {
     never,
     HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
   >
-  (options: { readonly url: string; readonly subscriptions?: undefined }): Effect.Effect<
+  (options: {
+    readonly url: string
+    readonly queryMethod?: "GET" | "POST" | undefined
+    readonly subscriptions?: undefined
+  }): Effect.Effect<
     GraphQLProtocol["Service"],
     never,
     HttpClient.HttpClient
@@ -323,6 +384,20 @@ export const makeHttp: {
  *
  * **Details**
  *
+ * With `queryMethod: "GET"` (default `"POST"`), queries are sent as `GET`
+ * with no body: `query` and `operationName` become URL params, plus
+ * `variables` and `extensions` as JSON when set. Mutations are always
+ * `POST`. A long query is not retried as `POST`.
+ *
+ * A request's `headers` and `urlParams`, from the call options or from
+ * middleware, are applied to every HTTP request. A query string already on
+ * `url` is kept. On `GET`, the request's `urlParams` come before the GraphQL
+ * params, which replace any caller param with the same name.
+ *
+ * Every response's HTTP `status` is passed to the client as
+ * `ExecutionResult.status`, and a call that fails with GraphQL `errors`
+ * reports it as `ResponseError.status`.
+ *
  * A response is a GraphQL response when its `Content-Type` is
  * `application/graphql-response+json`, whatever the status, or when it is
  * `application/json` and the body has a `data` or `errors` key. Anything else
@@ -330,11 +405,11 @@ export const makeHttp: {
  * header (numeric or HTTP-date) becomes `retryAfter`.
  *
  * A subscription is a `POST` with `Accept: text/event-stream`. Each `next`
- * event is emitted, and the stream ends on a `complete` event or when the
- * body ends. A body that fails is a retryable `TransportError`, with a
- * server `retry:` line as its `retryAfter`. A non-stream answer, such as a
- * `400` with `errors`, is read like a query's response. Interrupting the
- * stream aborts the request.
+ * event is emitted without a status, and the stream ends on a `complete`
+ * event or when the body ends. A body that fails is a retryable
+ * `TransportError`, with a server `retry:` line as its `retryAfter`. A
+ * non-stream answer, such as a `400` with `errors`, is read like a query's
+ * response, status included. Interrupting the stream aborts the request.
  *
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.
@@ -375,6 +450,43 @@ export const makeHttp: {
  * await Effect.runPromise(program) // => { viewer: { login: "tim" } }
  * ```
  *
+ * **Example** (Queries over GET with a per-call URL param)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, Schema } from "effect"
+ * import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol } from "effect/graphql"
+ * import { HttpClient, HttpClientResponse } from "effect/http"
+ *
+ * const Viewer = GraphQL.query("Viewer", {
+ *   document: "query Viewer{viewer{login}}",
+ *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
+ * })
+ *
+ * // A stand-in server that answers with the method and the `preview` param
+ * const FakeServer = Layer.succeed(
+ *   HttpClient.HttpClient,
+ *   HttpClient.make((request, url) =>
+ *     Effect.succeed(HttpClientResponse.fromWeb(
+ *       request,
+ *       new Response(
+ *         JSON.stringify({ data: { viewer: { login: `${request.method} ${url.searchParams.get("preview")}` } } }),
+ *         { headers: { "content-type": "application/graphql-response+json" } }
+ *       )
+ *     ))
+ *   )
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* GraphQLClient.make(GraphQLGroup.make(Viewer))
+ *   return yield* client.Viewer(undefined, { urlParams: { preview: "draft-token" } })
+ * }).pipe(
+ *   Effect.provide(GraphQLProtocol.layerHttp({ url: "https://cms.example.com/graphql", queryMethod: "GET" })),
+ *   Effect.provide(FakeServer)
+ * )
+ *
+ * await Effect.runPromise(program) // => { viewer: { login: "GET draft-token" } }
+ * ```
+ *
  * **Example** (Subscriptions over graphql-ws, everything else over POST)
  *
  * ```ts import.meta.vitest
@@ -403,6 +515,7 @@ export const makeHttp: {
 export const layerHttp: {
   <R = never>(options: {
     readonly url: string
+    readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions: {
       readonly webSocket: {
         readonly url: string
@@ -414,7 +527,11 @@ export const layerHttp: {
       }
     }
   }): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
-  (options: { readonly url: string; readonly subscriptions?: undefined }): Layer.Layer<
+  (options: {
+    readonly url: string
+    readonly queryMethod?: "GET" | "POST" | undefined
+    readonly subscriptions?: undefined
+  }): Layer.Layer<
     GraphQLProtocol,
     never,
     HttpClient.HttpClient
@@ -449,7 +566,7 @@ interface Connection {
 }
 
 interface Operation {
-  readonly queue: Queue.Queue<unknown, TransportError | Cause.Done>
+  readonly queue: Queue.Queue<{ readonly body: unknown }, TransportError | Cause.Done>
   readonly connection: Connection
 }
 
@@ -591,13 +708,13 @@ export const makeWebSocket = <R = never>(
           // Unknown ids, including operations this client already completed, are dropped.
           if (operation === undefined || operation.connection !== conn) return Effect.void
           if (message.type === "next") {
-            Queue.offerUnsafe(operation.queue, message.payload)
+            Queue.offerUnsafe(operation.queue, { body: message.payload })
             return Effect.void
           }
           operations.delete(id)
           if (message.type === "error") {
             // The server rejected the operation; the client fails it with a ResponseError.
-            Queue.offerUnsafe(operation.queue, { errors: message.payload })
+            Queue.offerUnsafe(operation.queue, { body: { errors: message.payload } })
           }
           Queue.endUnsafe(operation.queue)
           return Effect.void
@@ -699,21 +816,22 @@ export const makeWebSocket = <R = never>(
         )
       )
 
-    const operation = (request: GraphQLRequest): Stream.Stream<unknown, TransportError> =>
+    const operation = (request: GraphQLRequest): Stream.Stream<{ readonly body: unknown }, TransportError> =>
       Stream.unwrap(Effect.gen(function*() {
         const [id, conn] = yield* Effect.acquireRelease(register, ([id, conn]) => release(id, conn))
         yield* Deferred.await(conn.ack)
         if (conn.error !== undefined) {
           return yield* Effect.fail(conn.error)
         }
-        const queue = yield* Queue.unbounded<unknown, TransportError | Cause.Done>()
+        const queue = yield* Queue.unbounded<{ readonly body: unknown }, TransportError | Cause.Done>()
         operations.set(id, { queue, connection: conn })
-        // Per-call `request.headers` are ignored: graphql-ws has no per-operation headers.
+        // Per-call `request.headers` and `request.urlParams` are ignored:
+        // graphql-ws has no per-operation headers or URL.
         yield* send({ id, type: "subscribe", payload: requestBody(request) })
         return Stream.fromQueue(queue)
       }))
 
-    const execute = (request: GraphQLRequest): Effect.Effect<unknown, TransportError> =>
+    const execute = (request: GraphQLRequest): Effect.Effect<{ readonly body: unknown }, TransportError> =>
       Effect.flatMap(Stream.runHead(operation(request)), (result) =>
         result._tag === "Some"
           ? Effect.succeed(result.value)
@@ -738,7 +856,8 @@ export const makeWebSocket = <R = never>(
  * - `connectionParams` runs on every connection, allowing token refresh.
  *   Failure or a socket close during evaluation is a `TransportError`.
  * - Handshake `headers` require a Node or Bun WebSocket constructor; browsers
- *   cannot set them. Per-operation headers are ignored.
+ *   cannot set them. Per-operation `headers` and `urlParams` are ignored.
+ * - Results carry no HTTP `status`.
  * - `keepAlive` (default 10 seconds, or `false` to disable) sends `ping`.
  *   No server frame in the following interval causes a retryable failure.
  *   Server `ping` receives `pong`.

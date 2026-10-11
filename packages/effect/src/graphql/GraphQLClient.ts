@@ -16,11 +16,13 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as UrlParams from "../http/UrlParams.ts"
 import * as Option from "../Option.ts"
 import type * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
+import * as Struct from "../Struct.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import {
   DecodeError,
@@ -69,9 +71,11 @@ type ArgsWithOptions<Variables, Options> = {} extends Variables ? [variables: Va
  * An operation without variables is called as `client.Viewer()` or, with
  * options, `client.Viewer(undefined, { headers })`.
  *
- * `headers` are sent by the HTTP transport, ignored over graphql-ws, and
- * visible to middleware either way. `context` provides services for this
- * call only, and removes them from the method's requirements.
+ * `headers` and `urlParams` are sent by the HTTP transport, ignored over
+ * graphql-ws, and visible to middleware either way as
+ * `GraphQLRequest.headers` and `GraphQLRequest.urlParams`. `context` provides
+ * services for this call only, and removes them from the method's
+ * requirements.
  *
  * @stability experimental
  * @category models
@@ -83,6 +87,7 @@ export interface OperationMethod<Op extends GraphQL.Any> {
   <R2 = never>(
     ...args: ArgsWithOptions<GraphQL.Variables<Op>, {
       readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
       readonly partial: true
     }>
@@ -90,6 +95,7 @@ export interface OperationMethod<Op extends GraphQL.Any> {
   <R2 = never>(
     ...args: Args<GraphQL.Variables<Op>, {
       readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
       readonly partial?: false | undefined
     }>
@@ -99,7 +105,7 @@ export interface OperationMethod<Op extends GraphQL.Any> {
 /**
  * The client method for a subscription. It returns a `Stream` of decoded
  * events; an event with `errors` fails the stream with a `ResponseError`.
- * `headers` and `context` work as for {@link OperationMethod}.
+ * `headers`, `urlParams` and `context` work as for {@link OperationMethod}.
  *
  * @stability experimental
  * @category models
@@ -111,6 +117,7 @@ export interface SubscriptionMethod<Op extends GraphQL.Any> {
   <R2 = never>(
     ...args: Args<GraphQL.Variables<Op>, {
       readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     }>
   ): Stream.Stream<GraphQL.Result<Op>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
@@ -191,7 +198,7 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  *
  * // A scripted transport; use GraphQLProtocol.layerHttp({ url }) for a real server
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
- *   execute: () => Effect.succeed({ data: { viewer: { login: "tim" } } }),
+ *   execute: () => Effect.succeed({ body: { data: { viewer: { login: "tim" } } } }),
  *   subscribe: () => Stream.empty
  * })
  *
@@ -219,8 +226,10 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
  *   execute: () =>
  *     Effect.succeed({
- *       data: { a: { name: "a" }, b: null },
- *       errors: [{ message: "Could not resolve to a Repository", path: ["b"] }]
+ *       body: {
+ *         data: { a: { name: "a" }, b: null },
+ *         errors: [{ message: "Could not resolve to a Repository", path: ["b"] }]
+ *       }
  *     }),
  *   subscribe: () => Stream.empty
  * })
@@ -294,10 +303,12 @@ const retryableOnly = <Output, Error, Env>(
       isGraphQLClientError(input) && input.isRetryable ? step(now, input) : Cause.done(undefined)
   ))
 
-const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult)
+// `status` is transport metadata, so it is never read from the body.
+const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult.mapFields(Struct.omit(["status"])))
 
 interface CallOptions<R2 = never> {
   readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly urlParams?: UrlParams.Input | undefined
   readonly context?: Context.Context<R2> | undefined
   readonly partial?: boolean | undefined
 }
@@ -323,15 +334,23 @@ const makeMethod = <Op extends GraphQL.Any>(
     new DecodeError({ description: `Not a GraphQL response: ${description}` })
   )
 
-  const buildRequest = (variables: GraphQL.Variables<Op> | undefined, headers: CallOptions["headers"]) =>
+  const buildRequest = (variables: GraphQL.Variables<Op> | undefined, options: CallOptions | undefined) =>
     encodeVariables(variables ?? {}).pipe(
       Effect.catch(schemaFail((description) => new EncodeError({ description }))),
       Effect.map((encoded): GraphQLRequest => ({
+        kind: operation.kind,
         query: operation.document,
         operationName: operation.name,
         variables: encoded,
-        headers: headers ?? {}
+        headers: options?.headers ?? {},
+        urlParams: options?.urlParams === undefined ? UrlParams.empty : UrlParams.fromInput(options.urlParams)
       }))
+    )
+
+  const decodeResponse = ({ body, status }: { readonly body: unknown; readonly status?: number | undefined }) =>
+    decodeExecutionResult(body).pipe(
+      Effect.map((result): ExecutionResult => status === undefined ? result : { ...result, status }),
+      Effect.catch(notGraphQL)
     )
 
   // Like RpcMiddleware, `next` hides inner middleware errors and requirements;
@@ -343,7 +362,7 @@ const makeMethod = <Op extends GraphQL.Any>(
     index === chain.length
       ? protocol.execute(request).pipe(
         Effect.mapError(fail),
-        Effect.flatMap((body) => Effect.catch(decodeExecutionResult(body), notGraphQL))
+        Effect.flatMap(decodeResponse)
       )
       : chain[index].execute({
         operation,
@@ -358,7 +377,7 @@ const makeMethod = <Op extends GraphQL.Any>(
     index === chain.length
       ? protocol.subscribe(request).pipe(
         Stream.mapError(fail),
-        Stream.mapEffect((event) => Effect.catch(decodeExecutionResult(event), notGraphQL))
+        Stream.mapEffect(decodeResponse)
       )
       : chain[index].subscribe({
         operation,
@@ -376,7 +395,8 @@ const makeMethod = <Op extends GraphQL.Any>(
         // `data` is whatever the protocol returned; the HTTP transport parses
         // it from JSON, which is what `ResponseError` declares.
         ...(result.data === undefined ? {} : { data: result.data as Schema.Json }),
-        ...(result.extensions === undefined ? {} : { extensions: result.extensions })
+        ...(result.extensions === undefined ? {} : { extensions: result.extensions }),
+        ...(result.status === undefined ? {} : { status: result.status })
       })
     ))
 
@@ -402,7 +422,7 @@ const makeMethod = <Op extends GraphQL.Any>(
 
   if (operation.kind === "subscription") {
     const subscriptionMethod = <R2 = never>(...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>) =>
-      Stream.unwrap(Effect.map(buildRequest(variables, options?.headers), (request) => subscribe(0, request))).pipe(
+      Stream.unwrap(Effect.map(buildRequest(variables, options), (request) => subscribe(0, request))).pipe(
         Stream.mapEffect(decodeStrict),
         Stream.retry(retryPolicy),
         Stream.provideContext(callContext(options))
@@ -424,7 +444,7 @@ const makeMethod = <Op extends GraphQL.Any>(
     GraphQL.Error<Op>,
     Exclude<GraphQL.Services<Op>, R2>
   > {
-    return buildRequest(variables, options?.headers).pipe(
+    return buildRequest(variables, options).pipe(
       Effect.flatMap((request) => execute(0, request)),
       Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
       Effect.provideContext(callContext(options))
@@ -566,7 +586,7 @@ export type PagingVariables<Variables> = "after" extends keyof Variables
  *     const page = after === undefined
  *       ? { pageInfo: { hasNextPage: true, endCursor: "c1" }, nodes: [{ number: 1 }, { number: 2 }] }
  *       : { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ number: 3 }] }
- *     return Effect.succeed({ data: { repository: { issues: page } } })
+ *     return Effect.succeed({ body: { data: { repository: { issues: page } } } })
  *   },
  *   subscribe: () => Stream.empty
  * })
@@ -594,6 +614,7 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
     readonly connection: (result: GraphQL.Result<Op>) => C | null | undefined
     readonly options?: {
       readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     } | undefined
   }
@@ -665,7 +686,7 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
  *     const page = after === undefined
  *       ? { pageInfo: { hasNextPage: true, endCursor: "c1" }, nodes: [{ number: 1 }, null] }
  *       : { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ number: 3 }] }
- *     return Effect.succeed({ data: { repository: { issues: page } } })
+ *     return Effect.succeed({ body: { data: { repository: { issues: page } } } })
  *   },
  *   subscribe: () => Stream.empty
  * })
@@ -693,6 +714,7 @@ export const items = <Op extends GraphQL.Any, Node, R2 = never>(
     readonly connection: (result: GraphQL.Result<Op>) => NodesConnection<Node> | null | undefined
     readonly options?: {
       readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     } | undefined
   }
