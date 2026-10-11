@@ -11542,6 +11542,9 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * See https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream.
  *
+ * When `signal` aborts, the stream is interrupted even if the reader has
+ * stopped pulling, and the `ReadableStream` closes.
+ *
  * **Example** (Converting to a ReadableStream with services)
  *
  * ```ts import.meta.vitest
@@ -11560,23 +11563,36 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
 export const toReadableStreamWith: {
   <A, XR>(
     context: Context.Context<XR>,
-    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+    options?: {
+      readonly strategy?: QueuingStrategy<A> | undefined
+      readonly signal?: AbortSignal | undefined
+    }
   ): <E, R extends XR>(self: Stream<A, E, R>) => ReadableStream<A>
   <A, E, XR, R extends XR>(
     self: Stream<A, E, R>,
     context: Context.Context<XR>,
-    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+    options?: {
+      readonly strategy?: QueuingStrategy<A> | undefined
+      readonly signal?: AbortSignal | undefined
+    }
   ): ReadableStream<A>
 } = dual(
   (args) => isStream(args[0]),
   <A, E, XR, R extends XR>(
     self: Stream<A, E, R>,
     context: Context.Context<XR>,
-    options?: { readonly strategy?: QueuingStrategy<A> | undefined }
+    options?: {
+      readonly strategy?: QueuingStrategy<A> | undefined
+      readonly signal?: AbortSignal | undefined
+    }
   ): ReadableStream<A> => {
     let currentResolve: (() => void) | undefined = undefined
     let fiber: Fiber.Fiber<void, E> | undefined = undefined
+    let cancelled = false
     const latch = Latch.makeUnsafe(false)
+    const signal = options?.signal
+    // Interrupting the fiber directly also stops a consumer waiting for a pull.
+    const onAbort = () => fiber!.interruptUnsafe()
 
     return new ReadableStream<A>({
       start(controller) {
@@ -11593,12 +11609,18 @@ export const toReadableStreamWith: {
           context
         ))
         fiber.addObserver((exit) => {
-          if (exit._tag === "Failure") {
+          signal?.removeEventListener("abort", onAbort)
+          if (cancelled) return
+          if (exit._tag === "Failure" && signal?.aborted !== true) {
             controller.error(Cause.squash(exit.cause))
           } else {
             controller.close()
           }
         })
+        if (signal !== undefined && fiber.pollUnsafe() === undefined) {
+          if (signal.aborted) onAbort()
+          else signal.addEventListener("abort", onAbort, { once: true })
+        }
       },
       pull() {
         return new Promise<void>((resolve) => {
@@ -11608,6 +11630,7 @@ export const toReadableStreamWith: {
       },
       cancel() {
         if (!fiber) return
+        cancelled = true
         return Effect.runPromise(Effect.asVoid(Fiber.interrupt(fiber)))
       }
     }, options?.strategy)
