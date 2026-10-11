@@ -31,9 +31,7 @@ export const GitHubGraphQLGroup = GraphQLGroup.make(RepoNodes).middleware(GitHub
 
 export class GitHub extends Context.Service<
   GitHub,
-  GraphQLClient.GraphQLClient<
-    GraphQLGroup.Operations<typeof GitHubGraphQLGroup>
-  > & {
+  GraphQLClient.FromGroup<typeof GitHubGraphQLGroup> & {
     getRepo(id: string): Effect.Effect<
       { readonly __typename: "Repository"; readonly nameWithOwner: string },
       GraphQL.Error<typeof RepoNodes> | Cause.NoSuchElementError

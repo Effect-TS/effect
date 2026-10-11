@@ -38,7 +38,7 @@ import {
   PaginationError,
   type Reason
 } from "./GraphQLClientError.ts"
-import type { GraphQLGroup } from "./GraphQLGroup.ts"
+import type * as GraphQLGroup from "./GraphQLGroup.ts"
 import type * as GraphQLMiddleware from "./GraphQLMiddleware.ts"
 import { ExecutionResult, GraphQLProtocol, type GraphQLRequest } from "./GraphQLProtocol.ts"
 
@@ -149,6 +149,15 @@ export type GraphQLClient<Ops extends GraphQL.Any> = {
 }
 
 /**
+ * Derives the client type for all operations in a `GraphQLGroup`.
+ *
+ * @stability experimental
+ * @category utility types
+ * @since 4.0.0
+ */
+export type FromGroup<Group> = GraphQLClient<GraphQLGroup.Operations<Group>>
+
+/**
  * The default subscription retry schedule: exponential from 500 milliseconds
  * with factor 1.5, capped at 5 seconds, and never shorter than the server's
  * `retryAfter`.
@@ -255,7 +264,7 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  * @since 4.0.0
  */
 export const make = <Ops extends GraphQL.Any>(
-  group: GraphQLGroup<Ops>,
+  group: GraphQLGroup.GraphQLGroup<Ops>,
   options?: {
     readonly subscriptionRetry?: Schedule.Schedule<unknown, GraphQLClientError> | undefined
   } | undefined
@@ -290,7 +299,7 @@ type MiddlewareChain<Op extends GraphQL.Any> = ReadonlyArray<
 // Runtime tags erase middleware types; `make` requires all their identifiers.
 const middlewareChain = <Op extends GraphQL.Any>(
   context: Context.Context<never>,
-  group: GraphQLGroup<Op>,
+  group: GraphQLGroup.GraphQLGroup<Op>,
   operation: Op
 ): MiddlewareChain<Op> => [...group.middlewares, ...operation.middlewares].map((tag) => Context.getUnsafe(context, tag))
 
@@ -820,7 +829,8 @@ export type TestHandlers<Ops extends GraphQL.Any> = {
  * @since 4.0.0
  */
 export const makeTest =
-  <Ops extends GraphQL.Any>(group: GraphQLGroup<Ops>) => (handlers: TestHandlers<Ops>): GraphQLClient<Ops> => {
+  <Ops extends GraphQL.Any>(group: GraphQLGroup.GraphQLGroup<Ops>) =>
+  (handlers: TestHandlers<Ops>): GraphQLClient<Ops> => {
     // Type boundary: the mapped type keys handlers by name, which a lookup by a
     // runtime name cannot follow.
     const byName = handlers as Record<string, TestHandler<Ops> | undefined>
@@ -875,7 +885,7 @@ export const makeTest =
  */
 export const layerTest = <I, Service, Ops extends GraphQL.Any>(
   service: Context.Key<I, Service>,
-  group: GraphQLGroup<Ops> & (GraphQLClient<Ops> extends NoInfer<Service> ? unknown : never)
+  group: GraphQLGroup.GraphQLGroup<Ops> & (GraphQLClient<Ops> extends NoInfer<Service> ? unknown : never)
 ) =>
 (handlers: TestHandlers<Ops>): Layer.Layer<I> =>
   // The group constraint checks that the mock satisfies the service shape.
