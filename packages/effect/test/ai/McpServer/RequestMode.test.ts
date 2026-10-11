@@ -173,6 +173,42 @@ describe("McpServer.layerHttp mode: request", () => {
       }))
   }
 
+  it.live("should interrupt a streaming handler when the client aborts while its unread body is full", () =>
+    Effect.gen(function*() {
+      const headersSent = yield* Deferred.make<void>()
+      const backpressured = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const { dispose, handler } = HttpRouter.toWebHandler(
+        toolLayer("ProgressUnread", (server) =>
+          Effect.gen(function*() {
+            yield* reportProgress(server)
+            yield* Deferred.await(headersSent)
+            // Later chunks arrive while the client reads nothing, so the body stops pulling.
+            yield* reportProgress(server)
+            yield* reportProgress(server)
+            yield* Deferred.succeed(backpressured, undefined)
+            return yield* Effect.never
+          }).pipe(Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined)))),
+        { disableLogger: true }
+      )
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const abort = new AbortController()
+      const { body, headers } = callTool("ProgressUnread", 1)
+      const response = yield* Effect.promise(() =>
+        handler(
+          new Request(MCP_ENDPOINT, { method: "POST", headers, body: JSON.stringify(body), signal: abort.signal })
+        )
+      )
+      yield* Effect.addFinalizer(() => Effect.promise(() => response.body!.cancel()))
+      yield* Deferred.succeed(headersSent, undefined)
+      yield* Deferred.await(backpressured)
+      // Let the body stream take the next chunk and wait for a pull that never comes.
+      yield* Effect.sleep("50 millis")
+
+      abort.abort()
+      yield* Deferred.await(interrupted).pipe(Effect.timeout("1 second"))
+    }))
+
   it.live("should deliver overlapping requests only their own notifications", () =>
     Effect.gen(function*() {
       const arrived = { a: yield* Deferred.make<void>(), b: yield* Deferred.make<void>() }
