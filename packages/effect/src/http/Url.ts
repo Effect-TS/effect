@@ -388,6 +388,15 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * writing the updated parameters back to the URL. It returns a new `URL` object
  * with the modified parameters, ensuring immutability.
  *
+ * The result is normalized rather than preserved byte-for-byte: every
+ * parameter, including ones `f` left untouched, is re-encoded with the same
+ * rules that `setUrlParams` uses. The visible change is that a space is always
+ * written as `%20`, so an untouched `?foo=bar%20baz` stays
+ * `?foo=bar%20baz` instead of becoming `?foo=bar+baz`, and a literal `+` in a
+ * decoded value becomes `%2B`. Because the parameters are read back through
+ * `URLSearchParams`, other forms are normalized too — `?a=b,c` is written
+ * `?a=b%2Cc`, `?a=x/y` as `?a=x%2Fy`, and a bare `?a` as `?a=`.
+ *
  * **Example** (Modifying query parameters)
  *
  * ```ts import.meta.vitest
@@ -399,15 +408,6 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  *
  * changedUrl.toString() // => "https://example.com/?foo=bar&key=value"
  * ```
- *
- * The result is normalized rather than preserved byte-for-byte: every
- * parameter, including ones `f` left untouched, is re-encoded with the same
- * rules that `setUrlParams` uses. The visible change is that a space is always
- * written as `%20`, so an untouched `?foo=bar%20baz` stays
- * `?foo=bar%20baz` instead of becoming `?foo=bar+baz`, and a literal `+` in a
- * decoded value becomes `%2B`. Because the parameters are read back through
- * `URLSearchParams`, other forms are normalized too — `?a=b,c` is written
- * `?a=b%2Cc`, `?a=x/y` as `?a=x%2Fy`, and a bare `?a` as `?a=`.
  *
  * @stability unstable
  * @category transforming

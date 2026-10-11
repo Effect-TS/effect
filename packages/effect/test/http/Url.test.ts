@@ -150,9 +150,11 @@ describe("Url", () => {
     })
 
     it("Url.make agrees with the setters", () => {
+      // make appends onto any query already in the string; setUrlParams replaces.
+      // Compare on a URL with no prior query so only the shared encoder is under test.
       assertSuccess(
-        Url.make("https://example.com/test?existing=true", UrlParams.fromInput([["q", "a b+c"]]), undefined),
-        Url.setUrlParams(new URL("https://example.com/test?existing=true"), UrlParams.fromInput([["q", "a b+c"]]))
+        Url.make("https://example.com/test", UrlParams.fromInput([["q", "a b+c"]]), undefined),
+        Url.setUrlParams(new URL("https://example.com/test"), UrlParams.fromInput([["q", "a b+c"]]))
       )
     })
   })
