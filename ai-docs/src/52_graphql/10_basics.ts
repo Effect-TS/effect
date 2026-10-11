@@ -62,7 +62,7 @@ export const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues).middleware(GitHu
 // The client has one method per operation, named after it.
 export class GitHub extends Context.Service<
   GitHub,
-  GraphQLClient.GraphQLClient<GraphQLGroup.Operations<typeof GitHubGraphQLGroup>>
+  GraphQLClient.FromGroup<typeof GitHubGraphQLGroup>
 >()("app/GitHub") {
   static readonly layerTest = GraphQLClient.layerTest(GitHub, GitHubGraphQLGroup)
 
