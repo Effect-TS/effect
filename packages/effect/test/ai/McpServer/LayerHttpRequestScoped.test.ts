@@ -7,6 +7,8 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
+import * as Schema from "effect/Schema"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import { layer as makeMcpConformanceLayer } from "./McpConformance/McpConformance.ts"
@@ -15,7 +17,7 @@ import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
 import { makeHttpHarness, MCP_ENDPOINT } from "./TestUtils/McpHttpHarness.ts"
-import { makeMcpSseReader } from "./TestUtils/McpHttpResponse.ts"
+import { makeMcpSseReader, readMcpHttpResponse } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeWorkerdHarness } from "./TestUtils/McpWorkerdHarness.ts"
 
@@ -95,6 +97,60 @@ const reportProgress = (server: McpServer.McpServer["Service"]) =>
   )
 
 describe("McpServer.layerHttpRequestScoped", () => {
+  it.live("should expose tools registered after the first POST in later lists and discovery", () =>
+    Effect.gen(function*() {
+      const serverReady = yield* Deferred.make<McpServer.McpServer["Service"]>()
+      const harness = yield* makeHttpHarness(
+        Layer.effectDiscard(Effect.gen(function*() {
+          yield* Deferred.succeed(serverReady, yield* McpServer.McpServer)
+        })).pipe(
+          Layer.provideMerge(makeServerLayer({ name: "LateRegistration", protocols: [protocol], mode: "request" }))
+        )
+      )
+      let id = 0
+      const post = Effect.fnUntraced(function*(method: "tools/list" | "server/discover") {
+        const response = yield* harness.post({
+          jsonrpc: "2.0",
+          id: ++id,
+          method,
+          params: {
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
+              "io.modelcontextprotocol/clientCapabilities": {},
+              "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
+            }
+          }
+        }, {
+          "MCP-Protocol-Version": protocol.protocolVersion,
+          "Mcp-Method": method
+        })
+        assert.strictEqual(response.status, 200)
+        const message = Schema.decodeUnknownSync(Schema.Struct({ result: Schema.JsonObject }))(
+          yield* readMcpHttpResponse(response)
+        )
+        return message.result
+      })
+
+      assert.deepStrictEqual((yield* post("tools/list")).tools, [])
+      const before = yield* post("server/discover")
+      assert(Predicate.isObject(before.capabilities))
+      assert.notProperty(before.capabilities, "tools")
+
+      const server = yield* Deferred.await(serverReady)
+      yield* server.addTool({
+        tool: new McpSchema.Tool({ name: "LateTool", inputSchema: { type: "object" } }),
+        annotations: Context.empty(),
+        handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+      })
+
+      assert.deepStrictEqual((yield* post("tools/list")).tools, [
+        { name: "LateTool", inputSchema: { type: "object" } }
+      ])
+      const after = yield* post("server/discover")
+      assert(Predicate.isObject(after.capabilities))
+      assert.deepStrictEqual(after.capabilities.tools, { listChanged: false })
+    }).pipe(Effect.timeout("2 seconds")))
+
   // https://github.com/Effect-TS/effect/issues/9026
   it.live("should serve each POST when timers from completed requests never fire", () =>
     Effect.gen(function*() {
