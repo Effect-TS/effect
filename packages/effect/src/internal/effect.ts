@@ -449,9 +449,6 @@ export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalT
 // Shared by completed fibers, which never push again; frozen so a push throws
 const completedStack: Array<any> = Object.freeze([]) as any
 
-// JavaScriptCore is the engine whose errors carry a `line` property
-const isJavaScriptCore = typeof (new Error() as any).line === "number"
-
 /** @internal */
 export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   constructor(
@@ -588,14 +585,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
         observers[i](exit)
       }
     }
-    // Release the stack's backing store. V8's length setter is a runtime call,
-    // so the stack is swapped for the shared empty one there, and
-    // JavaScriptCore truncates in place faster.
-    if (isJavaScriptCore) {
-      this._stack.length = 0
-    } else {
-      this._stack = completedStack
-    }
+    // Release the stack's backing store
+    this._stack = completedStack
     this._children = undefined
     this.context = Context.empty()
   }
@@ -625,14 +616,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
             yielding = true
             const prev = current
             current = flatMap(yieldNow, () => prev as any) as any
-          }
-          // map / flatMap / as / tap / andThen frames are the most common
-          // primitive. Evaluating them inline (push the frame, continue with
-          // the wrapped effect) keeps the generic dispatch below for the rest.
-          if (cache.tracerContext === undefined && (current as any) instanceof ContImpl) {
-            this._stack.push(current as Primitive)
-            current = (current as any)[args]
-            continue
           }
           current = cache.tracerContext
             ? cache.tracerContext(current as any, this)
@@ -673,11 +656,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     while (true) {
       const op = popFrame(this._stack)
       if (op === undefined) return undefined
-      // ContImpl and generator frames only have a success continuation
-      if ((op as any) instanceof ContImpl || (op as any) instanceof IteratorImpl) {
-        if (symbol === contA) return op as any
-        continue
-      }
       const all = op[contAll]
       if (all !== undefined) {
         const cont = all.call(op, this, symbol)
@@ -701,17 +679,10 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   }
   // Passes a success value to the next continuation, or completes the run
   // loop with `exit` (or a new success Exit) when the stack is empty.
-  // ContImpl and generator continuations are called from their own sites,
-  // which only see one frame type, instead of the generic site shared by
-  // every frame type.
   continueWith(value: unknown, exit: Exit.Exit<any, any> | undefined): Primitive | Yield {
     const cont = this.getCont(contA)
     if (cont === undefined) {
       return this.yieldWith(exit ?? exitSucceed(value))
-    } else if ((cont as any) instanceof ContImpl) {
-      return cont[contA](value, this, exit)
-    } else if ((cont as any) instanceof IteratorImpl) {
-      return cont[contA](value, this)
     }
     // User handlers can be stored as continuations, so keep their arity
     return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
@@ -768,109 +739,6 @@ const popFrame = (stack: Array<Primitive | undefined>): Primitive | undefined =>
   const op = stack[0]
   stack[0] = undefined
   return op
-}
-
-// JavaScriptCore caches `instanceof` per receiver shape, so a check that sees
-// many frame types falls back to a runtime call, which costs more than the
-// frame fast paths in `runLoop`, `getCont` and `continueWith` save. There
-// `getCont` and `continueWith` take the generic paths, and `runLoop`
-// recognizes inlinable frames by the `evaluate` method it loads anyway: every
-// primitive whose `evaluate` is `evaluateCont` is evaluated inline. Keep this
-// `runLoop` in sync with the class method. Checking a flag in the methods
-// instead costs V8 a few percent on interpreter-bound code.
-if (isJavaScriptCore) {
-  FiberImpl.prototype.runLoop = function(this: FiberImpl, effect: Primitive): Exit.Exit<any, any> | Yield {
-    const prevFiber = (globalThis as any)[currentFiberTypeId]
-    ;(globalThis as any)[currentFiberTypeId] = this
-    const prevRunning = this._running
-    this._running = true
-    let yielding = false
-    let current: Primitive | Yield = effect
-    this.currentOpCount = 0
-    try {
-      while (true) {
-        try {
-          if (this._deferredInterrupt) {
-            this._deferredInterrupt = false
-            current = failCause(this._interruptedCause!) as any
-          }
-          this.currentOpCount++
-          const cache = this.cache
-          if (
-            !yielding &&
-            !cache.preventYield &&
-            cache.scheduler.shouldYield(this as any)
-          ) {
-            yielding = true
-            const prev = current
-            current = flatMap(yieldNow, () => prev as any) as any
-          }
-          if (cache.tracerContext) {
-            current = cache.tracerContext(current as any, this)
-          } else {
-            const evaluateCurrent = (current as any)[evaluate]
-            if (evaluateCurrent === evaluateCont) {
-              this._stack.push(current as Primitive)
-              current = (current as any)[args]
-              continue
-            }
-            current = evaluateCurrent.call(current, this)
-          }
-          if (current === Yield) {
-            const yielded = this._yielded!
-            if (ExitTypeId in yielded) {
-              this._deferredInterrupt = false
-              this._yielded = undefined
-              return yielded
-            } else if (this._deferredInterrupt) {
-              this._yielded = undefined
-              yielded()
-              continue
-            }
-            return Yield
-          }
-        } catch (error) {
-          if (!hasProperty(current, evaluate)) {
-            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
-          }
-          current = exitDie(error) as any
-        }
-      }
-    } finally {
-      this._running = prevRunning
-      ;(globalThis as any)[currentFiberTypeId] = prevFiber
-    }
-  }
-  FiberImpl.prototype.getCont = function(this: FiberImpl, symbol: contA | contE) {
-    if (this._deferredInterrupt) {
-      this._deferredInterrupt = false
-      return deferredInterruptCont
-    }
-    while (true) {
-      const op = popFrame(this._stack)
-      if (op === undefined) return undefined
-      const all = op[contAll]
-      if (all !== undefined) {
-        const cont = all.call(op, this, symbol)
-        if (cont) {
-          ;(cont as any)[symbol] = cont
-          return cont as any
-        }
-      }
-      if (op[symbol]) return op as any
-    }
-  } as FiberImpl["getCont"]
-  FiberImpl.prototype.continueWith = function(
-    this: FiberImpl,
-    value: unknown,
-    exit: Exit.Exit<any, any> | undefined
-  ): Primitive | Yield {
-    const cont = this.getCont(contA)
-    if (cont === undefined) {
-      return this.yieldWith(exit ?? exitSucceed(value))
-    }
-    return exit === undefined ? cont[contA](value, this) : cont[contA](value, this, exit)
-  }
 }
 
 /** @internal */
