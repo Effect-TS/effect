@@ -15,8 +15,7 @@ import { GitHubAuth } from "./10_basics.ts"
 //     nodes(ids: $ids) { __typename ... on Repository { nameWithOwner } }
 //   }
 //
-// `nodes` holds a `__typename` union: the selected `Repository`, plus a last
-// member for every other type.
+// Unselected node types are represented by `otherTypename`.
 export const RepoNodes = GraphQL.query("RepoNodes", {
   document: "query RepoNodes($ids:[ID!]!){nodes(ids:$ids){__typename ...on Repository{nameWithOwner}}}",
   variables: { ids: Schema.Array(Schema.String) },
@@ -32,9 +31,8 @@ export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
   make: Effect.gen(function*() {
     const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(GitHubAuth))
 
-    // Match nodes by position and narrow to Repository. Null entries and
-    // other types fail their lookup with Cause.NoSuchElementError.
-    // GitHub accepts up to 100 ids per call.
+    // Null entries and non-Repository nodes fail with NoSuchElementError.
+    // GitHub accepts at most 100 ids per request.
     const RepoById = GraphQLResolver.ordered(client.RepoNodes, {
       variables: (ids: ReadonlyArray<string>) => ({ ids }),
       path: ["nodes"],
@@ -52,7 +50,6 @@ export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
 
 export const repoNames = Effect.fn("repoNames")(function*(ids: ReadonlyArray<string>) {
   const github = yield* GitHub
-  // Concurrent lookups share the service's resolver, with at most 100 ids per request.
   const repos = yield* Effect.forEach(ids, github.getRepo, { concurrency: "unbounded" })
   return repos.map((repo) => repo.nameWithOwner)
 })

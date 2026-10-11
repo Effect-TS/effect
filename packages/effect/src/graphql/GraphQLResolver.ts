@@ -1,17 +1,10 @@
 /**
- * `RequestResolver` helpers that batch lookups through a generated client
- * method, in the style of `SqlResolver`.
+ * Batch lookups through a GraphQL client method with `RequestResolver`.
+ * {@link ordered} matches results by position; {@link findById} matches by
+ * key. {@link request} turns either resolver into `(key) => Effect`.
  *
- * {@link ordered} matches results to keys by position, for fields such as
- * `nodes(ids:)` that return one entry per id. {@link findById} matches them by
- * a key read from each result, for searches and collections that return
- * results in any order. {@link request} turns a resolver into a
- * `(key) => Effect`.
- *
- * The method is called with `{ partial: true }`, so middleware still run, and
- * a GraphQL error on one entry of an `ordered` list fails only that entry.
- * Neither helper adds a delay or a batch size: compose
- * `RequestResolver.setDelay` and `RequestResolver.batchN` with `.pipe`.
+ * Client middleware still run. Compose `RequestResolver.setDelay` and
+ * `RequestResolver.batchN` with `.pipe` to control batching.
  *
  * @stability experimental
  * @since 4.0.0
@@ -40,10 +33,8 @@ type NonNull<A> = Exclude<A, null | undefined>
 
 type Step<A, K> = K extends keyof NonNull<A> ? NonNull<A>[K] : never
 
-// Checks `P` one segment at a time, so autocomplete offers the keys of one
-// level and the cost grows with the length of `P`, not the size of the result
-// type. A list ends the path: extra segments past it, or a path that stops
-// before reaching one, have the wrong length.
+// Check one segment at a time for autocomplete without enumerating all paths.
+// The path must end at a list and cannot cross one.
 type CheckPath<A, P> = NonNull<A> extends ReadonlyArray<any> ? readonly []
   : P extends readonly [infer Head, ...infer Tail]
     ? readonly [Head extends keyof NonNull<A> ? Head : keyof NonNull<A>, ...CheckPath<Step<A, Head>, Tail>]
@@ -86,15 +77,13 @@ const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => {
 // -----------------------------------------------------------------------------
 
 /**
- * Looks up one key through a resolver from {@link ordered} or
- * {@link findById}, either curried by resolver or with the key first.
+ * Looks up a key with an {@link ordered} or {@link findById} resolver.
+ * Supports `request(resolver)(key)` and `request(key, resolver)`.
  *
  * **Details**
  *
- * Lookups made concurrently, for example with
- * `Effect.forEach(keys, get, { concurrency: "unbounded" })`, are batched into
- * one call. Equal keys in a batch, by `Equal` and `Hash`, are sent once and
- * all receive the result.
+ * Concurrent lookups are batched. Keys equal under `Equal` and `Hash`
+ * are sent once per batch and share the result.
  *
  * **Example** (Looking up repositories by id)
  *
@@ -151,31 +140,26 @@ export const request: {
 // -----------------------------------------------------------------------------
 
 /**
- * Creates a resolver that matches results to keys by position, for list fields
- * such as `nodes(ids:)` that return one entry per key, in order.
+ * Batches lookups by position for fields such as `nodes(ids:)` that return
+ * one entry per key, in order.
  *
  * **Details**
  *
- * `variables` builds the operation's variables from the batch's keys; the key
- * type comes from the annotation on its parameter. `path` is the keys from the
- * result root to the list, and autocompletes one level at a time. It only
- * passes through objects. `typename`, available when the list holds a
- * `__typename` union, narrows the success type to that member; an entry of
- * another type counts as missing.
+ * `variables` maps batch keys to operation variables; annotate its parameter
+ * to set the key type. `path` selects a list through object fields, with
+ * autocomplete at each level. For `__typename` unions, `typename` narrows
+ * the success type and treats other types as missing.
  *
- * A `null` entry, an entry of another `typename`, or a `null` object on the
- * way to the list fails with `Cause.NoSuchElementError`. A GraphQL error
- * whose path starts with `[...path, i]` fails only entry `i`, with a
- * `ResponseError` that holds just its errors and the response `status`. Any
- * other GraphQL error fails the whole batch with the same `ResponseError` as
- * a call without `partial`, as do transport, encode and decode errors. A list
- * whose length is not the number of keys fails the batch with a
- * `DecodeError`.
+ * Null entries, typename mismatches and null parents fail with
+ * `Cause.NoSuchElementError`. GraphQL errors whose paths start with
+ * `[...path, i]` fail only entry `i`; its `ResponseError` contains those errors
+ * and the response status. Other GraphQL errors fail the batch with the same
+ * `ResponseError` as a non-partial call. Transport, encode and decode errors
+ * also fail the batch. A list length mismatch fails with `DecodeError`.
  *
- * If the object holding the list has `pageInfo.hasNextPage: true`, the batch
- * fails with a `DecodeError`, because entries beyond the page would be
- * reported missing. Give the operation a page size at least as large as the
- * `RequestResolver.batchN` size.
+ * `pageInfo.hasNextPage: true` on the list's parent fails the batch with
+ * `DecodeError` to avoid reporting unreturned entries as missing. Set the
+ * operation's page size at least as large as `RequestResolver.batchN`.
  *
  * **Example** (Looking up repositories in a `Node` union)
  *
@@ -299,22 +283,19 @@ export const ordered = <
 }
 
 /**
- * Creates a resolver that matches results to keys by a key read from each
- * result, for searches and collections that return results in any order.
+ * Batches lookups by key for searches and collections that return results
+ * in any order.
  *
  * **Details**
  *
- * `key` reads the key from a result, and `variables` builds the operation's
- * variables from the batch's keys. The key type is inferred from `key`'s
- * return type when `key` is written before `variables`. Keys are compared
- * with `Equal` and `Hash`, as in `SqlResolver.findById`. `path` and
- * `typename` work as for {@link ordered}; `key` receives the narrowed type.
+ * Write `key` before `variables` to infer the key type from its return type.
+ * `variables` maps batch keys to operation variables. Keys are compared with
+ * `Equal` and `Hash`. `path` and `typename` work as in {@link ordered};
+ * `key` receives the narrowed item type.
  *
- * A key without a result, a `null` object on the way to the list, or
- * `pageInfo.hasNextPage: true` on the object holding the list behave as for
- * {@link ordered}. Any GraphQL error fails the whole batch with the same
- * `ResponseError` as a call without `partial`, because it cannot be matched
- * to a key.
+ * Missing keys, null parents and pagination behave as in {@link ordered}.
+ * Any GraphQL error fails the batch with the same `ResponseError` as a
+ * non-partial call, since error paths cannot be matched to keys.
  *
  * **Example** (Finding repositories through search)
  *
@@ -336,7 +317,6 @@ export const ordered = <
  *   })
  * })
  *
- * // Answers in reverse order
  * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
  *   execute: (request) => {
  *     const { query } = request.variables as { query: string }
@@ -402,8 +382,6 @@ export const findById = <
       for (let i = 0; i < keys.length; i++) MutableHashMap.set(pending, keys[i], targets[i])
       for (const item of list.items) {
         if (!matchesTypename(item, options.typename)) continue
-        // Type boundary: `item` is a decoded entry of the list at `path` that
-        // passed the `typename` check, which is what `key` accepts.
         const key = options.key(item as Narrow<Item<GraphQL.Result<Op>, P>, T>)
         const target = MutableHashMap.get(pending, key)
         if (target._tag === "None") continue
@@ -423,9 +401,8 @@ export const findById = <
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Deduplicates the batch by key, then calls the method with `{ partial: true }`
- * in the first entry's context. `targets[i]` completes every entry for
- * `keys[i]`.
+ * Calls the method in the first entry's context with deduplicated keys.
+ * Each target completes all entries sharing its key.
  */
 const callBatch = <Op extends GraphQL.Any, K>(
   method: OperationMethod<Op>,
@@ -452,9 +429,7 @@ const callBatch = <Op extends GraphQL.Any, K>(
       }
     }
   }
-  // Type boundary: the method's `partial: true` overload, with `variables`
-  // widened. The overloads' conditional parameter types over a generic `Op`
-  // cannot be called directly.
+  // Generic conditional parameters prevent calling the partial overload directly.
   const call = method as unknown as (
     variables: GraphQL.Variables<Op>,
     options: { readonly partial: true }
@@ -468,10 +443,7 @@ const callBatch = <Op extends GraphQL.Any, K>(
 const failWith = <Op extends GraphQL.Any>(method: OperationMethod<Op>) => (reason: Reason) =>
   Effect.fail(new GraphQLClientError({ operation: method.operation.name, reason }))
 
-/**
- * The `ResponseError` a call without `partial` fails with. Only called when
- * `result.errors` is non-empty.
- */
+// Called only when result.errors is non-empty.
 const batchResponseError = (
   fail: (reason: Reason) => Effect.Effect<never, GraphQLClientError>,
   result: PartialResult<unknown>
@@ -495,9 +467,6 @@ const completeAll = (targets: ReadonlyArray<Request.Entry<any>>, exit: Exit.Exit
   return Effect.void
 }
 
-/**
- * The index `i` of an error whose path starts with `[...path, i]`.
- */
 const entryIndex = (error: GraphQLError, path: ReadonlyArray<string>, length: number): number | undefined => {
   const errorPath = error.path
   if (errorPath === undefined || errorPath.length <= path.length) return undefined
@@ -508,16 +477,11 @@ const entryIndex = (error: GraphQLError, path: ReadonlyArray<string>, length: nu
   return typeof index === "number" && Number.isInteger(index) && index >= 0 && index < length ? index : undefined
 }
 
-/**
- * Follows `path` through the decoded data. `undefined` when an object on the
- * way, or the list itself, is `null`.
- */
 const findList = (
   data: unknown,
   path: ReadonlyArray<string>
 ): { readonly items: ReadonlyArray<unknown>; readonly truncated: boolean } | undefined => {
-  // Type boundary: `Path` has checked that every segment but the last names an
-  // object field and the last names a list field of the decoded result.
+  // Path guarantees object fields leading to a list.
   let parent = data as Record<string, unknown> | null | undefined
   for (let i = 0; i < path.length - 1; i++) {
     if (parent === null || parent === undefined) return undefined
