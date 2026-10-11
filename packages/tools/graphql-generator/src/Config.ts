@@ -13,8 +13,7 @@
  *   schema: "./schema/github.graphql",
  *   documents: ["src/**\/*.graphql"],
  *   scalars: {
- *     DateTime: "effect/Schema#DateTimeUtcFromString",
- *     URI: "./scalars.ts#Uri"
+ *     GitObjectID: "effect/Schema#String"
  *   }
  * })
  * ```
@@ -43,8 +42,9 @@ export const ScalarSpecifier = Schema.TemplateLiteral([Schema.String, "#", Schem
  *   documents, relative to the config file. `node_modules` and dot-directories
  *   are skipped, and the schema file is never treated as a document.
  * - `scalars`: a `Schema` codec per custom scalar, also able to override the
- *   built-in `Int`, `Float` and `ID`. Unmapped custom scalars decode as
- *   `Schema.Json`.
+ *   built-in `Int`, `Float` and `ID`. Custom scalars named `DateTime` and `URI`
+ *   default to `Schema.DateTimeUtcFromString` and `Schema.String`; `scalars`
+ *   can override them too. Other unmapped custom scalars decode as `Schema.Json`.
  * - `shared`: where the shared module goes. Defaults to the schema's name and
  *   directory, e.g. `github.graphql` or `github.json` gives
  *   `github.graphql.ts`.

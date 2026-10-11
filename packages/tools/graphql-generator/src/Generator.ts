@@ -88,8 +88,10 @@ export { ConfigError } from "./internal/Generate.ts"
  * - The shared module goes to `config.shared`, or next to the schema as
  *   `<schema name>.graphql.ts`, and holds only the scalars, enums, input
  *   objects and possible `__typename` unions the operations reach.
- * - Unmapped custom scalars decode as `Schema.Json`, and one warning lists
- *   every one the operations reach.
+ * - Custom scalars named `DateTime` and `URI` default to
+ *   `Schema.DateTimeUtcFromString` and `Schema.String`. Configured `scalars`
+ *   override these defaults. Other unmapped custom scalars decode as
+ *   `Schema.Json`, and one warning lists every one the operations reach.
  * - A selection on an interface or union decodes as a `Schema.Union`
  *   discriminated by `__typename`, which is added to the document. Types the
  *   selection doesn't name, including ones the server adds later, fall into
