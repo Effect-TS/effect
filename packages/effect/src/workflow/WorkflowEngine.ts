@@ -425,7 +425,8 @@ export interface Encoded {
   readonly resume: (
     workflow: Workflow.Any,
     executionId: string
-  ) => Effect.Effect<void>
+) => Effect.Effect<void>
+
   /**
    * Waits until a suspended execution has a result other than `Suspended`.
    *
