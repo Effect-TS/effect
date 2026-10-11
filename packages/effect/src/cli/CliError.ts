@@ -55,12 +55,16 @@ export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u
  * Domain errors implement {@link UserFacing} with this identifier so
  * `Command.run` can render them without wrapping them in {@link UserError}.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
 export const UserErrorTypeId: unique symbol = Symbol.for("~effect/cli/CliError/UserFacing")
 
 /**
+ * Type of {@link UserErrorTypeId}.
+ *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -96,6 +100,7 @@ export type UserErrorTypeId = typeof UserErrorTypeId
  * error._tag // => "Occupied"
  * ```
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -113,6 +118,7 @@ export interface UserFacing {
  * working. Other tagged errors opt in by setting {@link UserErrorTypeId} and
  * a string `userMessage`.
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
