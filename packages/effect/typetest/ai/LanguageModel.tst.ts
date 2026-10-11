@@ -98,6 +98,36 @@ describe("LanguageModel", () => {
       expect<ToolCallParams>().type.toBe<unknown>()
     })
 
+    it("returns undeclared tool names with opaque parameters when tool call validation is deferred", () => {
+      const toolkit = Toolkit.make(TransformTool)
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true,
+        toolCallValidation: "deferred"
+      })
+
+      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
+      type ToolCall = ProgramSuccess["toolCalls"][number]
+
+      expect<ToolCall["name"]>().type.toBe<string>()
+      expect<ToolCall["params"]>().type.toBe<unknown>()
+    })
+
+    it("returns tool calls without a toolkit when tool call validation is deferred", () => {
+      const program = LanguageModel.generateText({
+        prompt: "hello",
+        disableToolCallResolution: true,
+        toolCallValidation: "deferred"
+      })
+
+      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
+      type ToolCall = ProgramSuccess["toolCalls"][number]
+
+      expect<ToolCall["name"]>().type.toBe<string>()
+      expect<ToolCall["params"]>().type.toBe<unknown>()
+    })
+
     it("returns an empty tool record when no toolkit is provided", () => {
       const program = LanguageModel.generateText({
         prompt: "hello"
@@ -273,6 +303,22 @@ describe("LanguageModel", () => {
       type ToolCallParams = Extract<StreamPart, { readonly type: "tool-call" }>["params"]
 
       expect<ToolCallParams>().type.toBe<string>()
+    })
+
+    it("returns undeclared tool names with opaque parameters when tool call validation is deferred", () => {
+      const toolkit = Toolkit.make(TransformTool)
+      const stream = LanguageModel.streamText({
+        prompt: "hello",
+        toolkit,
+        disableToolCallResolution: true,
+        toolCallValidation: "deferred"
+      })
+
+      type StreamPart = typeof stream extends Stream.Stream<infer A, any, any> ? A : never
+      type ToolCall = Extract<StreamPart, { readonly type: "tool-call" }>
+
+      expect<ToolCall["name"]>().type.toBe<string>()
+      expect<ToolCall["params"]>().type.toBe<unknown>()
     })
 
     it("returns an empty tool record when no toolkit is provided", () => {
