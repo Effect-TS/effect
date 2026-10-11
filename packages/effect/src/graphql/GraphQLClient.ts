@@ -6,8 +6,9 @@
  *
  * Retryable subscription transport failures restart the middleware chain on
  * the `subscriptionRetry` schedule. {@link pages} and {@link items} provide
- * cursor pagination, and {@link makeTest} builds a mock client for tests. See
- * `GraphQLProtocol` for transport options.
+ * cursor pagination. {@link makeTest} builds a mock client for tests, and
+ * {@link layerTest} provides it as a service layer. See `GraphQLProtocol`
+ * for transport options.
  *
  * @stability experimental
  * @since 4.0.0
@@ -19,6 +20,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
+import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as Pull from "../Pull.ts"
 import * as Schedule from "../Schedule.ts"
@@ -837,6 +839,52 @@ export const makeTest =
     // The loop cannot prove the mapped type's name/kind relationship.
     return client as GraphQLClient<Ops>
   }
+
+/**
+ * Builds a mock layer for a client service using {@link makeTest}. Bind the
+ * service and group once to expose a `layerTest(handlers)` helper on the service.
+ * The group fixes the operation types before the handlers are checked.
+ *
+ * **Example** (Binding a mock layer to a client service)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Schema } from "effect"
+ * import { GraphQL, GraphQLClient, GraphQLGroup } from "effect/graphql"
+ *
+ * const RepoIssues = GraphQL.query("RepoIssues", {
+ *   document: "query RepoIssues($owner:String!,$name:String!){repository(owner:$owner,name:$name){issues{totalCount}}}",
+ *   variables: { owner: Schema.String, name: Schema.String },
+ *   result: Schema.Struct({
+ *     repository: Schema.NullOr(Schema.Struct({ issues: Schema.Struct({ totalCount: Schema.Int }) }))
+ *   })
+ * })
+ * const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues)
+ *
+ * class GitHub extends Context.Service<GitHub>()("app/GitHub", {
+ *   make: GraphQLClient.make(GitHubGraphQLGroup)
+ * }) {
+ *   static readonly layerTest = GraphQLClient.layerTest(GitHub, GitHubGraphQLGroup)
+ * }
+ *
+ * const program = GitHub.use((github) => github.RepoIssues({ owner: "Effect-TS", name: "effect" }))
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(GitHub.layerTest({
+ *   RepoIssues: ({ name }) => Effect.succeed({ repository: { issues: { totalCount: name.length } } })
+ * })))) // => { repository: { issues: { totalCount: 6 } } }
+ * ```
+ *
+ * @see {@link makeTest} for mock behavior and the middleware-services limitation.
+ * @stability experimental
+ * @category testing
+ * @since 4.0.0
+ */
+export const layerTest = <I, Service, Ops extends GraphQL.Any>(
+  service: Context.Key<I, Service>,
+  group: GraphQLGroup<Ops> & (GraphQLClient<Ops> extends NoInfer<Service> ? unknown : never)
+) =>
+(handlers: TestHandlers<Ops>): Layer.Layer<I> =>
+  // The group constraint checks that the mock satisfies the service shape.
+  Layer.succeed(service, makeTest(group)(handlers) as unknown as Service)
 
 // Handlers are called through these erased signatures; `makeTest` has
 // already checked them against the operation.
