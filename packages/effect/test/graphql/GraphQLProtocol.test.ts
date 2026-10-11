@@ -54,10 +54,13 @@ describe("GraphQLProtocol.layerHttp", () => {
       assert.deepStrictEqual(seen!.body, { query: Viewer.document, operationName: "Viewer", variables: {} })
     }))
 
-  it.effect("queryMethod GET sends a query as URL params after the caller's; a mutation is still POSTed", () =>
+  it.effect("queryMethod GET sends a query as URL params over the URL's and caller's; a mutation is still POSTed", () =>
     Effect.gen(function*() {
       const seen: Array<{ method: string; accept: string | undefined; bodyText: string | undefined; url: URL }> = []
-      const layer = GraphQLProtocol.layerHttp({ url: "http://localhost/graphql?tenant=a", queryMethod: "GET" }).pipe(
+      const layer = GraphQLProtocol.layerHttp({
+        url: "http://localhost/graphql?tenant=a&query=stale&operationName=Stale",
+        queryMethod: "GET"
+      }).pipe(
         Layer.provide(httpClientLayer((request, bodyText, url) => {
           seen.push({ method: request.method, accept: request.headers["accept"], bodyText, url })
           return graphqlResponse(
