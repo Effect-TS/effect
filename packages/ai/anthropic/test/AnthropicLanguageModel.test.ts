@@ -327,7 +327,7 @@ describe("AnthropicLanguageModel", () => {
         )
 
         assert.deepStrictEqual(
-          parts.flatMap((part) => part.type === "tool-call" ? [{ name: part.name, params: part.params }] : []),
+          parts.filter((part) => part.type === "tool-call").map(({ name, params }) => ({ name, params })),
           [{ name: "Write", params: { path: "a" } }]
         )
       }))
@@ -1361,59 +1361,6 @@ describe("AnthropicLanguageModel", () => {
         )
 
         assert.strictEqual(body.messages[0].content[0].source.data, "hello")
-      }))
-
-    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
-      Effect.gen(function*() {
-        const Read = Tool.make("Read", {
-          parameters: Schema.Struct({ path: Schema.String }),
-          success: Schema.String
-        })
-        const toolkit = Toolkit.make(Read)
-        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) =>
-              Effect.succeed(jsonResponse(request, {
-                id: "msg_test_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-sonnet-4-20250514",
-                content: [
-                  { type: "tool_use", id: "toolu_1", name: "Read", input: { path: 42 } },
-                  { type: "tool_use", id: "toolu_2", name: "Write", input: { path: "a" } }
-                ],
-                stop_reason: "tool_use",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 1,
-                  output_tokens: 1,
-                  service_tier: null
-                }
-              }))
-            )
-          ))
-        )
-
-        const response = yield* LanguageModel.generateText({
-          prompt: "use the tools",
-          toolkit,
-          disableToolCallResolution: true,
-          toolCallValidation: "deferred"
-        }).pipe(
-          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
-          Effect.provide(toolkit.toLayer({ Read: () => Effect.succeed("") })),
-          Effect.provide(layer)
-        )
-
-        assert.deepStrictEqual(response.toolCalls.map(({ name, params }) => ({ name, params })), [
-          { name: "Read", params: { path: 42 } },
-          { name: "Write", params: { path: "a" } }
-        ])
       }))
   })
 

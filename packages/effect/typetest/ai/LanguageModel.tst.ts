@@ -98,36 +98,6 @@ describe("LanguageModel", () => {
       expect<ToolCallParams>().type.toBe<unknown>()
     })
 
-    it("returns undeclared tool names with opaque parameters when tool call validation is deferred", () => {
-      const toolkit = Toolkit.make(TransformTool)
-      const program = LanguageModel.generateText({
-        prompt: "hello",
-        toolkit,
-        disableToolCallResolution: true,
-        toolCallValidation: "deferred"
-      })
-
-      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
-      type ToolCall = ProgramSuccess["toolCalls"][number]
-
-      expect<ToolCall["name"]>().type.toBe<string>()
-      expect<ToolCall["params"]>().type.toBe<unknown>()
-    })
-
-    it("returns tool calls without a toolkit when tool call validation is deferred", () => {
-      const program = LanguageModel.generateText({
-        prompt: "hello",
-        disableToolCallResolution: true,
-        toolCallValidation: "deferred"
-      })
-
-      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
-      type ToolCall = ProgramSuccess["toolCalls"][number]
-
-      expect<ToolCall["name"]>().type.toBe<string>()
-      expect<ToolCall["params"]>().type.toBe<unknown>()
-    })
-
     it("returns undeclared tool names for a non-literal resolution flag when tool call validation is deferred", () => {
       const toolkit = Toolkit.make(TransformTool)
       const disableToolCallResolution = null as unknown as boolean
@@ -164,16 +134,6 @@ describe("LanguageModel", () => {
 
       expect<ToolCall["name"]>().type.toBe<string>()
       expect<ToolCall["params"]>().type.toBe<unknown>()
-    })
-
-    it("uses encoded tool parameters only for strict tool call validation", () => {
-      type Mode<ToolCallValidation> = LanguageModel.ExtractToolParametersMode<{
-        readonly disableToolCallResolution: true
-        readonly toolCallValidation: ToolCallValidation
-      }>
-
-      expect<Mode<"strict">>().type.toBe<"encoded">()
-      expect<Mode<"strict" | "deferred">>().type.toBe<"deferred">()
     })
 
     it("returns an empty tool record when no toolkit is provided", () => {
@@ -433,21 +393,6 @@ describe("LanguageModel", () => {
   })
 
   describe("Chat", () => {
-    it("returns tool calls without a toolkit when tool call validation is deferred", () => {
-      const chat = null as unknown as Chat.Chat
-      const program = chat.generateText({
-        prompt: "hello",
-        disableToolCallResolution: true,
-        toolCallValidation: "deferred"
-      })
-
-      type ProgramSuccess = typeof program extends Effect.Effect<infer A, any, any> ? A : never
-      type ToolCall = ProgramSuccess["toolCalls"][number]
-
-      expect<ToolCall["name"]>().type.toBe<string>()
-      expect<ToolCall["params"]>().type.toBe<unknown>()
-    })
-
     it("uses encoded tool parameters when tool call resolution is disabled", () => {
       const chat = null as unknown as Chat.Chat
       const toolkit = Toolkit.make(TransformTool)

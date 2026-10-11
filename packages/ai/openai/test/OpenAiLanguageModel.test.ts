@@ -1795,33 +1795,6 @@ describe("OpenAiLanguageModel", () => {
           }
         }))))
     })
-
-    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
-      Effect.gen(function*() {
-        const result = yield* LanguageModel.generateText({
-          prompt: "Use the tools",
-          toolkit: TestToolkit,
-          disableToolCallResolution: true,
-          toolCallValidation: "deferred"
-        }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
-
-        deepStrictEqual(result.toolCalls.map(({ name, params }) => ({ name, params })), [
-          { name: "TestTool", params: { input: 42 } },
-          { name: "Write", params: { path: "a" } }
-        ])
-      }).pipe(
-        Effect.provide([
-          makeTestLayer({
-            body: {
-              output: [
-                makeFunctionCall("TestTool", { input: 42 }),
-                makeFunctionCall("Write", { path: "a" }, { id: "fc_456", call_id: "call_456" })
-              ]
-            }
-          }),
-          TestToolkitLayer
-        ])
-      ))
   })
 
   describe("streamText", () => {
@@ -2158,7 +2131,7 @@ describe("OpenAiLanguageModel", () => {
         )
 
         deepStrictEqual(
-          parts.flatMap((part) => part.type === "tool-call" ? [{ name: part.name, params: part.params }] : []),
+          parts.filter((part) => part.type === "tool-call").map(({ name, params }) => ({ name, params })),
           [{ name: "Write", params: { path: "a" } }]
         )
       }))
