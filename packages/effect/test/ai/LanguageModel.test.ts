@@ -53,6 +53,14 @@ const DynamicApprovalTool = Tool.make("DynamicApprovalTool", {
 
 const ApprovalToolkit = Toolkit.make(ApprovalTool, DynamicApprovalTool)
 
+const invalidToolCalls: Array<Response.ToolCallPartEncoded> = [
+  { type: "tool-call", id: "tool-invalid", name: "MyTool", params: { testParam: 42 } }
+]
+
+const undeclaredToolCalls: Array<Response.ToolCallPartEncoded> = [
+  { type: "tool-call", id: "tool-undeclared", name: "Write", params: { path: "a" } }
+]
+
 const ApprovalToolkitLayer = ApprovalToolkit.toLayer({
   ApprovalTool: () => Effect.succeed({ result: "approved-result" }),
   DynamicApprovalTool: () => Effect.succeed({ result: "dynamic-result" })
@@ -410,6 +418,52 @@ describe("LanguageModel", () => {
         strictEqual(response.toolCalls.length, 1)
         deepStrictEqual(response.toolCalls[0]!.params, { testParam: "test-param" })
         strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("rejects undeclared tool calls when tool call resolution is disabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: undeclaredToolCalls }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: [...invalidToolCalls, ...undeclaredToolCalls] }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        deepStrictEqual(response.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "MyTool", params: { testParam: 42 } },
+          { name: "Write", params: { path: "a" } }
+        ])
+      }))
+
+    it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(TestUtils.withLanguageModel({ generateText: undeclaredToolCalls }))
+
+        deepStrictEqual(response.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "Write", params: { path: "a" } }
+        ])
       }))
   })
 
@@ -1286,6 +1340,45 @@ describe("LanguageModel", () => {
 
         strictEqual(yield* Ref.get(active), 0)
         strictEqual(yield* Ref.get(maxActive), 1)
+      }))
+
+    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({ streamText: [...invalidToolCalls, ...undeclaredToolCalls] }),
+          Effect.provide(MyToolkitLayer)
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) => part.type === "tool-call" ? [{ name: part.name, params: part.params }] : []),
+          [
+            { name: "MyTool", params: { testParam: 42 } },
+            { name: "Write", params: { path: "a" } }
+          ]
+        )
+      }))
+
+    it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({
+          prompt: [],
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          TestUtils.withLanguageModel({ streamText: undeclaredToolCalls })
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) => part.type === "tool-call" ? [{ name: part.name, params: part.params }] : []),
+          [{ name: "Write", params: { path: "a" } }]
+        )
       }))
   })
 

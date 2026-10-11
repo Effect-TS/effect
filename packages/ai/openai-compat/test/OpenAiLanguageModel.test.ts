@@ -965,6 +965,50 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(reasoning.text, "I should greet the user.")
         assert.strictEqual(result.text, "Hello!")
       }))
+
+    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeToolCallsClient([
+          { name: "TestTool", arguments: { input: 42 } },
+          { name: "Write", arguments: { path: "a" } }
+        ])
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "TestTool", params: { input: 42 } },
+          { name: "Write", params: { path: "a" } }
+        ])
+      }))
+
+    it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeToolCallsClient([{ name: "TestTool", arguments: { input: "a" } }])
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the tools",
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "TestTool", params: { input: "a" } }
+        ])
+      }))
   })
 
   describe("generateObject", () => {
@@ -2018,6 +2062,28 @@ const makeChatCompletion = (overrides: Record<string, unknown> = {}) => ({
   }],
   ...overrides
 })
+
+const makeToolCallsClient = (calls: ReadonlyArray<{ readonly name: string; readonly arguments: unknown }>) =>
+  makeHttpClient((request) =>
+    Effect.succeed(jsonResponse(
+      request,
+      makeChatCompletion({
+        choices: [{
+          index: 0,
+          finish_reason: "tool_calls",
+          message: {
+            role: "assistant",
+            content: null,
+            tool_calls: calls.map((call, index) => ({
+              id: `call_${index}`,
+              type: "function",
+              function: { name: call.name, arguments: JSON.stringify(call.arguments) }
+            }))
+          }
+        }]
+      })
+    ))
+  )
 
 const makeLocalShellChunk = () => ({
   id: "chatcmpl_local_shell_1",
