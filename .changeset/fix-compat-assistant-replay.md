@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Replay assistant text, reasoning, and tool calls in Chat Completions requests even when their parts carry item IDs and `store` or `conversation` is configured. Remove unused Responses API include bookkeeping. Retain `store` and `conversation` as deprecated, ignored configuration options for compatibility; neither is sent to the provider.
+Replay assistant text, reasoning, and tool calls in Chat Completions requests even when their parts carry item IDs. Remove unused Responses API include bookkeeping and the unsupported `store` and `conversation` configuration options. Neither option is sent to the provider.

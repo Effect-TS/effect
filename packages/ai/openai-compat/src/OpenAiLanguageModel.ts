@@ -67,20 +67,6 @@ type ConfigOptions = Simplify<
   >
   & {
     /**
-     * Retained for configuration compatibility. Ignored by this adapter;
-     * assistant messages are always replayed in Chat Completions requests.
-     *
-     * @deprecated Completion storage is not supported by this adapter.
-     */
-    readonly store?: CreateResponse["store"]
-    /**
-     * Retained for configuration compatibility. Ignored by this adapter;
-     * Chat Completions has no server-managed conversation context.
-     *
-     * @deprecated Supply the conversation history in the prompt instead.
-     */
-    readonly conversation?: CreateResponse["conversation"]
-    /**
      * File ID prefixes used to identify file IDs in Responses API.
      * When undefined, all file data is treated as base64 content.
      *
