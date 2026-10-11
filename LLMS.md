@@ -380,6 +380,9 @@ operations from `.graphql` documents, then build a client with
 - **[Getting started with GraphQL clients](./ai-docs/src/52_graphql/10_basics.ts)**:
   Define a query, build a typed client service over HTTP with an auth
   middleware, and page through a cursor connection.
+- **[Testing code that uses a GraphQL client](./ai-docs/src/52_graphql/20_testing.ts)**:
+  Replace a client service with `GraphQLClient.makeTest`, answering each
+  operation from a handler instead of a server.
 
 ## Working with child processes
 
