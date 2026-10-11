@@ -2,11 +2,9 @@ import { assert, describe, it } from "@effect/vitest"
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
-import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Exit from "effect/Exit"
 import * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
@@ -222,12 +220,11 @@ describe("McpServer.layerHttp mode: request", () => {
         toolRegistration("ReportProgress", reportProgress).pipe(
           Layer.provideMerge(Layer.merge(
             makeServerLayer({ name: "DefaultMode", protocols: [protocol] }),
-            McpServer.layerHttp({
+            McpServer.layerHttpRequestScoped({
               name: "RequestMode",
               version: "1.0.0",
               path: "/request",
-              protocols: [protocol],
-              mode: "request"
+              protocols: [protocol]
             })
           ))
         )
@@ -246,24 +243,4 @@ describe("McpServer.layerHttp mode: request", () => {
         ], path)
       }
     }).pipe(Effect.timeout("2 seconds")))
-
-  it.effect("should reject configurations that require a long-lived server", () =>
-    Effect.gen(function*() {
-      for (
-        const options of [
-          { protocols: [protocol, McpProtocol.v2025_11_25] },
-          { protocols: [protocol], allowSubscriptions: true },
-          { protocols: [protocol], allowSessionTermination: true }
-        ] as const
-      ) {
-        const exit = yield* McpServer.layerHttp({
-          name: "RequestMode",
-          version: "1.0.0",
-          path: "/mcp",
-          mode: "request",
-          ...options
-        }).pipe(Layer.provide(HttpRouter.layer), Layer.build, Effect.scoped, Effect.exit)
-        assert.isTrue(Exit.isFailure(exit) && Cause.isIllegalArgumentError(Cause.squash(exit.cause)))
-      }
-    }))
 })

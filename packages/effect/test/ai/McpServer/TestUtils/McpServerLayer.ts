@@ -22,20 +22,30 @@ export const makeServerLayer = (options: {
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly mode?: "server" | "request" | undefined
-}) =>
-  McpServer.layerHttp({
+}) => {
+  const common = {
     name: options.name,
     version: options.version ?? "1.0.0",
     instructions: options.instructions,
-    path: "/mcp",
+    path: "/mcp" as const,
     protocols: options.protocols ?? [McpProtocol.v2025_06_18],
     allowedOrigins: ["https://allowed.example"],
-    extensions: options.extensions,
-    allowSessionTermination: options.allowSessionTermination,
-    mode: options.mode
-  }).pipe(
+    extensions: options.extensions
+  }
+  const layer: ReturnType<typeof McpServer.layerHttp> = options.mode === "request"
+    ? McpServer.layerHttpRequestScoped({
+      ...common,
+      // Request-mode conformance callers supply stateless adapters.
+      protocols: common.protocols as readonly [
+        McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>,
+        ...Array<McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>>
+      ]
+    })
+    : McpServer.layerHttp({ ...common, allowSessionTermination: options.allowSessionTermination })
+  return layer.pipe(
     Layer.provideMerge(Layer.succeed(
       References.CurrentLoggers,
       new Set([noopLogger])
     ))
   )
+}

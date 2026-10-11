@@ -2170,9 +2170,22 @@ describe("McpServer", () => {
   })
 
   for (
-    const [label, options] of [
-      ["allowSubscriptions is false", { allowSubscriptions: false }],
-      ["mode is request", { mode: "request" }]
+    const [label, makeLayer] of [
+      ["allowSubscriptions is false", () =>
+        McpServer.layerHttp({
+          name: "SubscriptionsTest",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [McpProtocol.v2026_07_28],
+          allowSubscriptions: false
+        })],
+      ["request scoped", () =>
+        McpServer.layerHttpRequestScoped({
+          name: "SubscriptionsTest",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [McpProtocol.v2026_07_28]
+        })]
     ] as const
   ) {
     it.effect(`disables HTTP subscription discovery and listening when ${label}`, () =>
@@ -2185,13 +2198,7 @@ describe("McpServer", () => {
               annotations: Context.empty(),
               handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
             })
-          })).pipe(Layer.provideMerge(McpServer.layerHttp({
-            name: "SubscriptionsTest",
-            version: "1.0.0",
-            path: "/mcp",
-            protocols: [McpProtocol.v2026_07_28],
-            ...options
-          })))
+          })).pipe(Layer.provideMerge(makeLayer()))
         )
         const post = (method: string, params: Record<string, unknown> = {}) =>
           harness.post({
