@@ -829,7 +829,10 @@ export const makeTest =
     const byName = handlers as Record<string, TestHandler<Ops> | undefined>
     const client: Record<string, unknown> = {}
     for (const operation of group.operations) {
-      client[operation.name] = makeTestMethod(operation, byName[operation.name])
+      client[operation.name] = makeTestMethod(
+        operation,
+        Object.hasOwn(byName, operation.name) ? byName[operation.name] : undefined
+      )
     }
     // The loop cannot prove the mapped type's name/kind relationship.
     return client as GraphQLClient<Ops>
@@ -853,7 +856,7 @@ const makeTestMethod = (operation: GraphQL.Any, handler: ErasedTestHandler | und
     return Object.assign(unimplemented, { operation })
   }
   const call = (variables: unknown, options: (TestCallOptions & { readonly partial?: boolean }) | undefined) => {
-    const run = () => handler(variables ?? {}, options ?? {})
+    const run = () => handler(variables === undefined ? {} : variables, options ?? {})
     if (subscription) return Stream.suspend(run as () => Stream.Stream<unknown, unknown>)
     const result = Effect.suspend(run as () => Effect.Effect<unknown, unknown>)
     return options?.partial === true
