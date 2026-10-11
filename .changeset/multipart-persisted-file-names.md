@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Multipart.toPersisted` failing on uploads named `.` or `..`, and on long multi-byte file names that exceed the file system name limit.
+Fix `Multipart.toPersisted` failing for uploads named `.` or `..` and for long multi-byte file names.

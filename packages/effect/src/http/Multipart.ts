@@ -692,7 +692,7 @@ const defaultWriteFile = (path: string, file: File) =>
 const maxPersistedFileNameBytes = 128
 const fileNameEncoder = new TextEncoder()
 
-// Keeps the last 128 UTF-8 bytes of the name and replaces names that resolve to a directory.
+// Keeps the trailing 128 UTF-8 bytes without splitting code points. Empty and dot names fall back to "file".
 const persistedFileName = (baseName: string): string => {
   const codePoints = Array.from(baseName)
   let fileName = ""
