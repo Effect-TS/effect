@@ -494,6 +494,57 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   })
 })
 
+// Built-in JSON codecs depend only on the RPC schemas and can be shared.
+// Other factories may capture state at construction, so keep them per server.
+const isSharedCodecFor = (codecFor: RpcSerialization.CodecFor) => codecFor === RpcSerialization.json.codecFor
+
+interface RpcCodecs {
+  readonly decode: (u: unknown) => Effect.Effect<any, Schema.SchemaError>
+  readonly encodeChunk: (
+    u: NonEmptyReadonlyArray<unknown>
+  ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
+  readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}
+
+const sharedRpcCodecs = new WeakMap<Rpc.AnyWithProps, RpcCodecs>()
+
+const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps): RpcCodecs => {
+  const shared = isSharedCodecFor(codecFor)
+  let codecs = shared ? sharedRpcCodecs.get(rpc) : undefined
+  if (codecs === undefined) {
+    const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    codecs = {
+      decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
+      encodeChunk: Schema.encodeUnknownEffect(
+        codecFor(
+          Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
+        )
+      ) as any,
+      encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
+    }
+    if (shared) sharedRpcCodecs.set(rpc, codecs)
+  }
+  return codecs
+}
+
+interface DefectCodecs {
+  readonly encodeDefectUnsafe: (defect: unknown) => unknown
+  readonly encodeUnknownRequestExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}
+
+let sharedDefectCodecs: DefectCodecs | undefined
+
+const makeDefectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs => ({
+  encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
+  // Unknown tags have no RPC schema, so use a defect-only exit schema.
+  encodeUnknownRequestExit: Schema.encodeUnknownEffect(
+    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
+  ) as any
+})
+
+const defectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs =>
+  isSharedCodecFor(codecFor) ? (sharedDefectCodecs ??= makeDefectCodecs(codecFor)) : makeDefectCodecs(codecFor)
+
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)
 // pair. Request fibers on persistent connections keep one context across
@@ -586,11 +637,7 @@ export const make: <Rpcs extends Rpc.Any>(
     supportsSpanPropagation,
     supportsTransferables
   } = yield* Protocol
-  const encodeDefectUnsafe = Schema.encodeSync(codecFor(Schema.Defect()))
-  // Unknown tags have no RPC schema, so use a defect-only exit schema.
-  const encodeUnknownRequestExit: Schemas["encodeExit"] = Schema.encodeUnknownEffect(
-    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
-  ) as any
+  const { encodeDefectUnsafe, encodeUnknownRequestExit } = defectCodecs(codecFor)
   const services = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
   const scope = yield* Scope.make()
 
@@ -666,16 +713,9 @@ export const make: <Rpcs extends Rpc.Any>(
     let schemas = schemasCache.get(rpc)
     if (!schemas) {
       const entry = Context.getOrUndefinedUnsafe(services, rpc.key) as Rpc.Handler<Rpcs["_tag"]>
-      const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
       schemas = {
         tag: rpc._tag,
-        decode: Schema.decodeUnknownEffect(codecFor(rpc.payloadSchema)) as any,
-        encodeChunk: Schema.encodeUnknownEffect(
-          codecFor(
-            Schema.NonEmptyArray(Option.isSome(streamSchemas) ? streamSchemas.value.success : Schema.Any)
-          )
-        ) as any,
-        encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any,
+        ...rpcCodecs(codecFor, rpc),
         context: entry.context
       }
       schemasCache.set(rpc, schemas)
@@ -1109,7 +1149,7 @@ export const makeProtocolWithHttpEffect: (
   RpcSerialization.RpcSerialization
 > = Effect.fnUntraced(function*(options = {}) {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const includesFraming = serialization.includesFraming
   const isBinary = !serialization.contentType.includes("json")
 
@@ -1569,7 +1609,7 @@ const makeSocketProtocol: Effect.Effect<
   RpcSerialization.RpcSerialization
 > = Effect.gen(function*() {
   const serialization = yield* RpcSerialization.RpcSerialization
-  const encodeDefectUnsafe = Schema.encodeSync(serialization.codecFor(Schema.Defect()))
+  const { encodeDefectUnsafe } = defectCodecs(serialization.codecFor)
   const disconnects = yield* Queue.make<number>()
 
   let clientId = 0
