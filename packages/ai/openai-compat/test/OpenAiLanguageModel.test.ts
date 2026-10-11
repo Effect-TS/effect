@@ -1005,6 +1005,63 @@ describe("OpenAiLanguageModel", () => {
           { name: "Write", params: { path: "a" } }
         ])
       }))
+
+    it.effect("replays reasoning alongside assistant text and tool calls", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        const prompt = Prompt.make([
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: [
+              { type: "reasoning", text: "The user wants a.txt; I should read it." },
+              { type: "text", text: "Let me read it." },
+              { type: "tool-call", id: "call_1", name: "TestTool", params: { input: "a.txt" } }
+            ]
+          },
+          {
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+          }
+        ])
+
+        yield* LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const requestBody = yield* getRequestBody(capturedRequest)
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            reasoning_content: "The user wants a.txt; I should read it.",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
   })
 
   describe("generateObject", () => {
@@ -1979,66 +2036,6 @@ describe("OpenAiLanguageModel", () => {
           "reasoning-delta",
           "reasoning-end",
           "finish"
-        ])
-      }))
-  })
-
-  describe("reasoning replay", () => {
-    const toolLoopPrompt = Prompt.make([
-      { role: "user", content: "What is in a.txt?" },
-      {
-        role: "assistant",
-        content: [
-          { type: "reasoning", text: "The user wants a.txt; I should read it." },
-          { type: "text", text: "Let me read it." },
-          { type: "tool-call", id: "call_1", name: "TestTool", params: { input: "a.txt" } }
-        ]
-      },
-      {
-        role: "tool",
-        content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
-      }
-    ])
-
-    const toolCall = {
-      id: "call_1",
-      type: "function",
-      function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
-    }
-
-    it.effect("replays reasoning alongside assistant text and tool calls", () =>
-      Effect.gen(function*() {
-        const requests: Array<HttpClientRequest.HttpClientRequest> = []
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              requests.push(request)
-              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
-            })
-          ))
-        )
-
-        yield* LanguageModel.generateText({
-          prompt: toolLoopPrompt,
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner")),
-          Effect.provide(layer)
-        )
-
-        const requestBody = yield* getRequestBody(requests[0])
-
-        assert.deepStrictEqual(requestBody.messages, [
-          { role: "user", content: "What is in a.txt?" },
-          {
-            role: "assistant",
-            content: "Let me read it.",
-            reasoning_content: "The user wants a.txt; I should read it.",
-            tool_calls: [toolCall]
-          },
-          { role: "tool", tool_call_id: "call_1", content: "hello" }
         ])
       }))
   })

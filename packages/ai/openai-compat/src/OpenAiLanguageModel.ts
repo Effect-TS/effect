@@ -6,11 +6,6 @@
  * or streaming chat completion results back into Effect AI response content and
  * metadata.
  *
- * Assistant reasoning is replayed as `reasoning_content` alongside the text
- * and tool calls from the same prompt message, as required by providers such
- * as DeepSeek, Moonshot Kimi and Zhipu GLM during tool loops. Reasoning-only
- * assistant turns are omitted.
- *
  * @stability unstable
  * @since 4.0.0
  */
@@ -37,7 +32,7 @@ import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
-import type { DeepMutable, Simplify } from "effect/Types"
+import type { Simplify } from "effect/Types"
 import * as InternalUtilities from "./internal/utilities.ts"
 import {
   type Annotation,
@@ -50,11 +45,8 @@ import {
   type CreateResponseRequestJson,
   type IncludeEnum,
   type InputContent,
-  type InputItem,
   type MessageStatus,
   OpenAiClient,
-  type ReasoningItem,
-  type SummaryTextContent,
   type TextResponseFormatConfiguration,
   type Tool as OpenAiClientTool,
   type UnknownChatCompletionEvent
@@ -648,7 +640,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(tools !== undefined ? { tools } : undefined),
         ...(toolChoice !== undefined ? { tool_choice: toolChoice } : undefined)
       }
-      return toChatCompletionsRequest(request, toChatMessages(messages))
+      return toChatCompletionsRequest(request, messages)
     }
   )
 
@@ -767,20 +759,6 @@ const getSystemMessageMode = (model: string): "system" | "developer" =>
     ? "developer"
     : "system"
 
-/**
- * The items converted from one prompt message. Keeping prompt-message
- * boundaries lets the chat conversion emit each assistant message as a single
- * chat message.
- */
-type PreparedMessage = {
-  readonly role: Prompt.Message["role"]
-  readonly items: ReadonlyArray<InputItem>
-  /**
-   * The concatenated text of the message's reasoning parts.
-   */
-  readonly reasoning: string
-}
-
 const prepareMessages = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
     config,
@@ -794,7 +772,7 @@ const prepareMessages = Effect.fnUntraced(
     readonly include: Set<IncludeEnum>
     readonly capabilities: ModelCapabilities
     readonly toolNameMapper: Tool.NameMapper<Tools>
-  }): Effect.fn.Return<ReadonlyArray<PreparedMessage>, AiError.AiError> {
+  }): Effect.fn.Return<ReadonlyArray<ChatCompletionRequestMessage>, AiError.AiError> {
     const hasConversation = Predicate.isNotNullish(config.conversation)
 
     // Handle Included Features
@@ -805,15 +783,12 @@ const prepareMessages = Effect.fnUntraced(
       include.add("reasoning.encrypted_content")
     }
 
-    const messages: Array<PreparedMessage> = []
+    const messages: Array<ChatCompletionRequestMessage> = []
 
     for (const message of options.prompt.content) {
-      const items: Array<InputItem> = []
-      let reasoning = ""
-
       switch (message.role) {
         case "system": {
-          items.push({
+          messages.push({
             role: getSystemMessageMode(config.model!),
             content: message.content
           })
@@ -877,157 +852,71 @@ const prepareMessages = Effect.fnUntraced(
             }
           }
 
-          items.push({ role: "user", content })
+          messages.push({ role: "user", content: toChatMessageContent(content) })
 
           break
         }
 
         case "assistant": {
-          const reasoningMessages: Record<string, DeepMutable<ReasoningItem>> = Object.create(null)
+          let content: string | null = null
+          let reasoning = ""
+          const toolCalls: Array<ChatCompletionRequestToolCall> = []
 
           for (const part of message.content) {
             switch (part.type) {
               case "text": {
-                const id = getItemId(part)
-
-                // When in conversation mode, skip items that already exist in the
-                // conversation context to avoid "Duplicate item found" errors
-                if (hasConversation && Predicate.isNotNull(id)) {
+                // Skip items that already exist in the conversation context or
+                // the provider's store
+                if (Predicate.isNotNull(getItemId(part)) && (hasConversation || config.store === true)) {
                   break
                 }
 
-                if (config.store === true && Predicate.isNotNull(id)) {
-                  items.push({ type: "item_reference", id })
-                  break
-                }
-
-                items.push({
-                  id: id!,
-                  type: "message",
-                  role: "assistant",
-                  status: part.options.openai?.status ?? "completed",
-                  content: [{
-                    type: "output_text",
-                    text: part.text,
-                    annotations: part.options.openai?.annotations ?? [],
-                    logprobs: []
-                  }]
-                })
-
+                content = (content ?? "") + part.text
                 break
               }
 
               case "reasoning": {
-                const id = getItemId(part)
-                const encryptedContent = getEncryptedContent(part)
-
-                if (hasConversation && Predicate.isNotNull(id)) {
+                if (hasConversation && Predicate.isNotNull(getItemId(part))) {
                   break
                 }
 
                 reasoning += part.text
-
-                if (Predicate.isNotNull(id)) {
-                  const message = reasoningMessages[id]
-
-                  if (config.store === true) {
-                    // Use item references to refer to reasoning (single reference)
-                    // when the first part is encountered
-                    if (Predicate.isUndefined(message)) {
-                      items.push({ type: "item_reference", id })
-
-                      // Store unused reasoning message to mark its id as used
-                      reasoningMessages[id] = {
-                        type: "reasoning",
-                        id,
-                        summary: []
-                      }
-                    }
-                  } else {
-                    const summaryParts: Array<SummaryTextContent> = []
-
-                    if (part.text.length > 0) {
-                      summaryParts.push({ type: "summary_text", text: part.text })
-                    }
-
-                    if (Predicate.isUndefined(message)) {
-                      reasoningMessages[id] = {
-                        type: "reasoning",
-                        id,
-                        summary: summaryParts,
-                        encrypted_content: encryptedContent ?? null
-                      }
-
-                      items.push(reasoningMessages[id])
-                    } else {
-                      message.summary.push(...summaryParts)
-
-                      // Update encrypted content to enable setting it in the
-                      // last summary part
-                      if (Predicate.isNotNull(encryptedContent)) {
-                        message.encrypted_content = encryptedContent
-                      }
-                    }
-                  }
-                }
-
                 break
               }
 
               case "tool-call": {
-                const id = getItemId(part)
-                const status = getStatus(part)
-
-                if (hasConversation && Predicate.isNotNull(id)) {
-                  break
-                }
-
-                if (config.store && Predicate.isNotNull(id)) {
-                  items.push({ type: "item_reference", id })
-                  break
-                }
-
-                if (part.providerExecuted) {
-                  break
-                }
-
-                const toolName = toolNameMapper.getProviderName(part.name)
-                const extraContent = getExtraContent(part)
-
-                items.push({
-                  type: "function_call",
-                  name: toolName,
-                  call_id: part.id,
-                  arguments: JSON.stringify(part.params),
-                  ...(Predicate.isNotNull(extraContent) ? { extra_content: extraContent } : {}),
-                  ...(Predicate.isNotNull(id) ? { id } : {}),
-                  ...(Predicate.isNotNull(status) ? { status } : {})
-                })
-
-                break
-              }
-
-              // Assistant tool-result parts are always provider executed
-              case "tool-result": {
-                // Skip execution denied results - these have no corresponding
-                // item in OpenAI's store
                 if (
-                  Predicate.hasProperty(part.result, "type") &&
-                  part.result.type === "execution-denied"
+                  part.providerExecuted ||
+                  (Predicate.isNotNull(getItemId(part)) && (hasConversation || config.store === true))
                 ) {
                   break
                 }
 
-                if (hasConversation) {
-                  break
-                }
+                const extraContent = getExtraContent(part)
 
-                if (config.store === true) {
-                  const id = getItemId(part) ?? part.id
-                  items.push({ type: "item_reference", id })
-                }
+                toolCalls.push({
+                  id: part.id,
+                  type: "function",
+                  function: {
+                    name: toolNameMapper.getProviderName(part.name),
+                    arguments: JSON.stringify(part.params)
+                  },
+                  ...(Predicate.isNotNull(extraContent) ? { extra_content: extraContent } : undefined)
+                })
+                break
               }
             }
+          }
+
+          // Text, reasoning and tool calls from one prompt message are sent as a
+          // single chat message so reasoning stays attached to its tool calls
+          if (content !== null || toolCalls.length > 0) {
+            messages.push({
+              role: "assistant",
+              content,
+              ...(reasoning.length > 0 ? { reasoning_content: reasoning } : undefined),
+              ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
+            })
           }
 
           break
@@ -1039,21 +928,16 @@ const prepareMessages = Effect.fnUntraced(
               continue
             }
 
-            const status = getStatus(part)
-
-            items.push({
-              type: "function_call_output",
-              call_id: part.id,
-              output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
-              ...(Predicate.isNotNull(status) ? { status } : {})
+            messages.push({
+              role: "tool",
+              tool_call_id: part.id,
+              content: typeof part.result === "string" ? part.result : JSON.stringify(part.result)
             })
           }
 
           break
         }
       }
-
-      messages.push({ role: message.role, items, reasoning })
     }
 
     return messages
@@ -1775,129 +1659,6 @@ const toChatTool = (
   return undefined
 }
 
-const toChatMessages = (
-  messages: ReadonlyArray<PreparedMessage>
-): Array<ChatCompletionRequestMessage> => {
-  const chatMessages: Array<ChatCompletionRequestMessage> = []
-
-  for (const message of messages) {
-    if (message.role === "assistant") {
-      const chatMessage = toAssistantChatMessage(message)
-      if (chatMessage !== undefined) {
-        chatMessages.push(chatMessage)
-      }
-    } else {
-      for (const item of message.items) {
-        chatMessages.push(...toChatMessagesFromItem(item))
-      }
-    }
-  }
-
-  return chatMessages
-}
-
-/**
- * Folds the items of one assistant prompt message into a single chat message,
- * returning `undefined` when the message has no text or tool calls to send.
- */
-const toAssistantChatMessage = (
-  message: PreparedMessage
-): ChatCompletionRequestMessage | undefined => {
-  let content: string | null = null
-  const toolCalls: Array<ChatCompletionRequestToolCall> = []
-
-  for (const item of message.items) {
-    if (Predicate.hasProperty(item, "type") && item.type === "message") {
-      content = (content ?? "") + toAssistantChatMessageContent(item.content)
-    } else if (Predicate.hasProperty(item, "type") && item.type === "function_call") {
-      toolCalls.push(toChatToolCall(item))
-    }
-  }
-
-  if (content === null && toolCalls.length === 0) {
-    return undefined
-  }
-
-  return {
-    role: "assistant",
-    content,
-    ...(message.reasoning.length > 0
-      ? { reasoning_content: message.reasoning }
-      : undefined),
-    ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
-  }
-}
-
-const toChatMessagesFromItem = (
-  item: InputItem
-): Array<ChatCompletionRequestMessage> => {
-  if (Predicate.hasProperty(item, "type") && item.type === "message") {
-    return [{
-      role: item.role,
-      content: toAssistantChatMessageContent(item.content)
-    }]
-  }
-
-  if (Predicate.hasProperty(item, "role")) {
-    return [{
-      role: item.role,
-      content: toChatMessageContent(item.content)
-    }]
-  }
-
-  switch (item.type) {
-    case "function_call": {
-      return [{
-        role: "assistant",
-        content: null,
-        tool_calls: [toChatToolCall(item)]
-      }]
-    }
-
-    case "function_call_output": {
-      return [{
-        role: "tool",
-        tool_call_id: item.call_id,
-        content: stringifyJson(item.output)
-      }]
-    }
-
-    default: {
-      return []
-    }
-  }
-}
-
-const toChatToolCall = (
-  item: Extract<InputItem, { readonly type: "function_call" }>
-): ChatCompletionRequestToolCall => ({
-  id: item.call_id,
-  type: "function",
-  function: {
-    name: item.name,
-    arguments: item.arguments
-  },
-  ...(item.extra_content !== undefined ? { extra_content: item.extra_content } : undefined)
-})
-
-const toAssistantChatMessageContent = (
-  content: ReadonlyArray<{
-    readonly type: string
-    readonly [x: string]: unknown
-  }>
-): string => {
-  let text = ""
-  for (const part of content) {
-    if (part.type === "output_text" && typeof part.text === "string") {
-      text += part.text
-    }
-    if (part.type === "refusal" && typeof part.refusal === "string") {
-      text += part.refusal
-    }
-  }
-  return text
-}
-
 const toChatMessageContent = (
   content: string | ReadonlyArray<InputContent>
 ): string | ReadonlyArray<ChatCompletionContentPart> => {
@@ -1955,11 +1716,6 @@ const toChatMessageContent = (
   return parts
 }
 
-const stringifyJson = (value: unknown): string =>
-  typeof value === "string"
-    ? value
-    : JSON.stringify(value)
-
 // =============================================================================
 // Utilities
 // =============================================================================
@@ -1974,15 +1730,6 @@ const getItemId = (
     | Prompt.ToolCallPart
     | Prompt.ToolResultPart
 ): string | null => part.options.openai?.itemId ?? null
-const getStatus = (
-  part:
-    | Prompt.TextPart
-    | Prompt.ToolCallPart
-    | Prompt.ToolResultPart
-): MessageStatus | null => part.options.openai?.status ?? null
-const getEncryptedContent = (
-  part: Prompt.ReasoningPart
-): string | null => part.options.openai?.encryptedContent ?? null
 const getExtraContent = (
   part: Prompt.ToolCallPart
 ): Schema.JsonObject | null => part.options.openai?.extraContent ?? null
