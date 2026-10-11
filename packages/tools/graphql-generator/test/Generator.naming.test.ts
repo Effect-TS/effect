@@ -16,7 +16,8 @@ type AuthorUser { name: String! }
 type Issue { id: ID! title: String! author: User assignee: User extra: AuthorUser }
 type Pull { id: ID! author: User }
 union Item = Issue | Pull
-type Query { issues: [Issue!]! pulls: [Issue!]! items: [Item!]! }
+type Wrapper { item: Item }
+type Query { issues: [Issue!]! pulls: [Issue!]! items: [Item!]! a: Wrapper b: Wrapper }
 `
 
 const generate = (documents: Readonly<Record<string, string>>) =>
@@ -67,6 +68,19 @@ fragment IssueSummary on Issue { title assignee { login } }
 
       const reordered = yield* generateBoard("query Board { issues { author { login name } assignee { name login } } }")
       assert.deepStrictEqual(classNames(reordered), ["BoardIssue", "BoardUser"])
+
+      const reorderedMembers = yield* generateBoard(`
+query Board {
+  a { item { ... on Issue { id } ... on Pull { id } } }
+  b { item { ... on Pull { id } ... on Issue { id } } }
+}
+`)
+      assert.deepStrictEqual(classNames(reorderedMembers), [
+        "BoardIssue",
+        "BoardItemOther",
+        "BoardPull",
+        "BoardWrapper"
+      ])
 
       // The same alias over different fields is a different selection, even though it decodes the same way.
       const aliased = yield* generateBoard(
