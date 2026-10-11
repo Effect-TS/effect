@@ -380,6 +380,17 @@ describe("SchemaRepresentation built-in number revivers", () => {
     })
   })
 
+  it("revives isPowerOf", () => {
+    assertFilterReviver({
+      schema: Schema.Number.check(Schema.isPowerOf(2)),
+      id: "effect/schema/isPowerOf",
+      payload: { base: 2 },
+      reviver: SchemaRepresentation.isPowerOfReviver,
+      valid: 8,
+      invalid: 6
+    })
+  })
+
   it("revives isGreaterThan", () => {
     assertFilterReviver({
       schema: Schema.Number.check(Schema.isGreaterThan(1)),
@@ -458,6 +469,15 @@ describe("SchemaRepresentation built-in number revivers", () => {
     json.representation.checks[0].representation.payload.divisor = "2"
 
     expectInvalidPayload(json, SchemaRepresentation.isMultipleOfReviver)
+  })
+
+  it("rejects a non-numeric isPowerOf payload", () => {
+    const json = SchemaRepresentation.toJson(
+      SchemaRepresentation.toRepresentation(Schema.Number.check(Schema.isPowerOf(2)).ast)
+    ) as any
+    json.representation.checks[0].representation.payload.base = "2"
+
+    expectInvalidPayload(json, SchemaRepresentation.isPowerOfReviver)
   })
 
   it("rejects a non-canonical isBetween payload", () => {

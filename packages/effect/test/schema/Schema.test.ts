@@ -1713,6 +1713,54 @@ Expected a string including "c"`
         }
       })
 
+      it("isPowerOf", async () => {
+        const schema = Schema.Number.check(Schema.isPowerOf(2))
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed(8)
+        await decoding.fail(
+          6,
+          `Expected a power of 2`
+        )
+      })
+
+      it("isPowerOf accepts only positive safe integer powers", () => {
+        const is = Schema.is(Schema.Number.check(Schema.isPowerOf(2)))
+        for (const value of [1, 2, 4, 1024, 4503599627370496]) {
+          assertTrue(is(value))
+        }
+        for (const value of [0, -0, -2, 0.5, 3, 6, 9007199254740992, NaN, Infinity, -Infinity]) {
+          assertFalse(is(value))
+        }
+
+        const isPowerOf3 = Schema.is(Schema.Number.check(Schema.isPowerOf(3)))
+        assertTrue(isPowerOf3(5559060566555523))
+        assertFalse(isPowerOf3(5559060566555524))
+        assertFalse(isPowerOf3(6))
+
+        const isPowerOfMaxSafe = Schema.is(Schema.Number.check(Schema.isPowerOf(Number.MAX_SAFE_INTEGER)))
+        assertTrue(isPowerOfMaxSafe(1))
+        assertTrue(isPowerOfMaxSafe(Number.MAX_SAFE_INTEGER))
+        assertFalse(isPowerOfMaxSafe(2))
+      })
+
+      it("isPowerOf rejects invalid bases", () => {
+        for (const base of [1, 0, -2, 2.5, NaN, Infinity, 9007199254740992]) {
+          throws(
+            () => Schema.isPowerOf(base),
+            new RangeError(`Expected a safe integer greater than or equal to 2, got ${String(base)}`)
+          )
+        }
+      })
+
+      it("isPowerOf preserves annotation overrides", async () => {
+        const schema = Schema.Number.check(Schema.isPowerOf(2, { expected: "a memory cost" }))
+        const asserts = new TestSchema.Asserts(schema)
+
+        await asserts.decoding().fail(6, `Expected a memory cost`)
+      })
+
       describe("isBetween", () => {
         it("included & included", async () => {
           const schema = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 3 }))

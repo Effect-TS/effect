@@ -28,6 +28,7 @@ describe("Schema built-in revivers", () => {
       SchemaRepresentation.isLessThanOrEqualToReviver,
       SchemaRepresentation.isBetweenReviver,
       SchemaRepresentation.isMultipleOfReviver,
+      SchemaRepresentation.isPowerOfReviver,
       SchemaRepresentation.isIntReviver,
       SchemaRepresentation.isMinLengthReviver,
       SchemaRepresentation.isMaxLengthReviver,

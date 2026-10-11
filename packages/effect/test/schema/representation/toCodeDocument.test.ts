@@ -501,6 +501,15 @@ describe("toCodeDocument", () => {
         }
       )
     })
+
+    it("Number & isPowerOf", () => {
+      assertSchema(
+        { schema: Schema.Number.check(Schema.isPowerOf(2)) },
+        {
+          codes: makeCode(`Schema.Number.check(Schema.isPowerOf(2))`, "number")
+        }
+      )
+    })
   })
 
   it("Boolean", () => {
