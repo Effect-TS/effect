@@ -1,4 +1,4 @@
-import { Context, type Effect, hole, Schema, type Stream } from "effect"
+import { Context, Effect, hole, type Layer, Schema, type Stream } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, type GraphQLProtocol } from "effect/graphql"
 import type { GraphQLClientError, GraphQLError } from "effect/graphql/GraphQLClientError"
 import { describe, expect, it } from "tstyche"
@@ -69,6 +69,22 @@ const connection = (r: RepoIssuesResult) => r.repository?.issues
 describe("GraphQLClient", () => {
   it("make requires the protocol and every attached middleware tag", () => {
     expect<Effect.Services<typeof make>>().type.toBe<GraphQLProtocol.GraphQLProtocol | Auth | Log>()
+  })
+
+  it("layerTest infers handlers from the group and rejects a mismatched service", () => {
+    class GitHub extends Context.Service<GitHub>()("test/GitHub", { make }) {
+      static readonly layerTest = GraphQLClient.layerTest(GitHub, group)
+    }
+
+    const layer = GitHub.layerTest({
+      RepoIssues: (variables, options) => {
+        expect(variables).type.toBe<GraphQL.Variables<typeof RepoIssues>>()
+        expect(options).type.toBe<GraphQLClient.TestCallOptions>()
+        return Effect.succeed(hole<RepoIssuesResult>())
+      }
+    })
+    expect(layer).type.toBe<Layer.Layer<GitHub>>()
+    expect(GraphQLClient.layerTest).type.not.toBeCallableWith(GitHub, GraphQLGroup.make(Viewer))
   })
 
   it("middleware requires and error appear only on the operations it is attached to", () => {
