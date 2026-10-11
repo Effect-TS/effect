@@ -2118,6 +2118,51 @@ describe("OpenAiLanguageModel", () => {
         assert.isDefined(parts.find((part) => part.type === "finish"))
       }))
 
+    it.effect("streams undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const streamEvents = [
+          {
+            type: "response.created",
+            sequence_number: 1,
+            response: makeDefaultResponse({ status: "in_progress" })
+          },
+          {
+            type: "response.output_item.added",
+            sequence_number: 2,
+            output_index: 0,
+            item: makeFunctionCall("Write", {}, { arguments: "", status: "in_progress" })
+          },
+          {
+            type: "response.output_item.done",
+            sequence_number: 3,
+            output_index: 0,
+            item: makeFunctionCall("Write", { path: "a" })
+          },
+          {
+            type: "response.completed",
+            sequence_number: 4,
+            response: makeDefaultResponse()
+          }
+        ] as unknown as ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "Use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer(streamEvents)),
+          Effect.provide(TestToolkitLayer)
+        )
+
+        deepStrictEqual(
+          parts.flatMap((part) => part.type === "tool-call" ? [{ name: part.name, params: part.params }] : []),
+          [{ name: "Write", params: { path: "a" } }]
+        )
+      }))
+
     it.effect("waits for the stable streamed web search action before emitting the tool call", () =>
       Effect.gen(function*() {
         const toolkit = Toolkit.make(OpenAiTool.WebSearch({}))

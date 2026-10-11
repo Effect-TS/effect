@@ -57,6 +57,10 @@ const invalidToolCalls: Array<Response.ToolCallPartEncoded> = [
   { type: "tool-call", id: "tool-invalid", name: "MyTool", params: { testParam: 42 } }
 ]
 
+const invalidProviderExecutedToolCalls: Array<Response.ToolCallPartEncoded> = [
+  { type: "tool-call", id: "tool-provider-executed", name: "MyTool", params: { testParam: 42 }, providerExecuted: true }
+]
+
 const undeclaredToolCalls: Array<Response.ToolCallPartEncoded> = [
   { type: "tool-call", id: "tool-undeclared", name: "Write", params: { path: "a" } }
 ]
@@ -451,6 +455,37 @@ describe("LanguageModel", () => {
           { name: "MyTool", params: { testParam: 42 } },
           { name: "Write", params: { path: "a" } }
         ])
+      }))
+
+    it.effect("validates provider-executed tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: invalidProviderExecutedToolCalls }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("ignores deferred tool call validation when tool call resolution is enabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          toolCallValidation: "deferred"
+        }).pipe(
+          TestUtils.withLanguageModel({ generateText: undeclaredToolCalls }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
       }))
 
     it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
@@ -1362,6 +1397,23 @@ describe("LanguageModel", () => {
             { name: "Write", params: { path: "a" } }
           ]
         )
+      }))
+
+    it.effect("validates provider-executed tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({ streamText: invalidProviderExecutedToolCalls }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
       }))
 
     it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
