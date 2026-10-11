@@ -21,6 +21,7 @@ export const makeServerLayer = (options: {
   readonly extensions?: Readonly<Record<`${string}/${string}`, Schema.Json>> | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
+  readonly mode?: "server" | "request" | undefined
 }) =>
   McpServer.layerHttp({
     name: options.name,
@@ -30,7 +31,8 @@ export const makeServerLayer = (options: {
     protocols: options.protocols ?? [McpProtocol.v2025_06_18],
     allowedOrigins: ["https://allowed.example"],
     extensions: options.extensions,
-    allowSessionTermination: options.allowSessionTermination
+    allowSessionTermination: options.allowSessionTermination,
+    mode: options.mode
   }).pipe(
     Layer.provideMerge(Layer.succeed(
       References.CurrentLoggers,
