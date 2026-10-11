@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, References } from "effect"
+import { vi } from "vitest"
 
 const withCaptureDisabled = <A>(run: () => A): A => {
   const limit = Error.stackTraceLimit
@@ -30,6 +31,35 @@ const countErrors = (run: () => void): number => {
 }
 
 describe("stack capture", { concurrent: false }, () => {
+  it("module loading skips stack formatting at limit zero", async () => {
+    const original = globalThis.Error
+    const limit = original.stackTraceLimit
+    let stackReads = 0
+    vi.resetModules()
+    original.stackTraceLimit = 0
+    globalThis.Error = new Proxy(original, {
+      construct(target, args, newTarget) {
+        return new Proxy(Reflect.construct(target, args, newTarget), {
+          get(target, key, receiver) {
+            if (key === "stack") {
+              stackReads++
+            }
+            return Reflect.get(target, key, receiver)
+          }
+        })
+      }
+    })
+    try {
+      // A dynamic import after clearing the cache exercises the load-time probe.
+      await import("effect/internal/effect")
+    } finally {
+      globalThis.Error = original
+      original.stackTraceLimit = limit
+      vi.resetModules()
+    }
+    assert.strictEqual(stackReads, 0)
+  })
+
   it("Effect.fn skips definition capture at limit zero", () => {
     const count = withCaptureDisabled(() => countErrors(() => Effect.fn("test")(() => Effect.void)))
     assert.strictEqual(count, 0)

@@ -1,18 +1,20 @@
 /**
  * Scoped HTTP client customization for TypeSafe requests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
+import type { HttpClient } from "effect/http/HttpClient"
 
 /**
  * Scoped configuration read when executing TypeSafe requests.
  *
  * @see {@link withClientTransform} for scoping an HTTP client transformation
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -34,6 +36,7 @@ export class TypeSafeConfig extends Context.Service<
 /**
  * Types used by the `TypeSafeConfig` context service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace TypeSafeConfig {
@@ -52,6 +55,7 @@ export declare namespace TypeSafeConfig {
  * Transforms the TypeSafe HTTP client for requests made by the supplied effect.
  * Replaces any existing scoped transform; compose them manually to apply both.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

@@ -5,6 +5,7 @@
  * detached process groups, so killing a handle terminates only its direct child;
  * descendants spawned by that child are left running.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -15,18 +16,18 @@ import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as PlatformError from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
-import type * as Scope from "effect/Scope"
-import * as Sink from "effect/Sink"
-import * as Stream from "effect/Stream"
-import * as ChildProcess from "effect/unstable/process/ChildProcess"
-import type { ChildProcessHandle } from "effect/unstable/process/ChildProcessSpawner"
+import * as ChildProcess from "effect/process/ChildProcess"
+import type { ChildProcessHandle } from "effect/process/ChildProcessSpawner"
 import {
   ChildProcessSpawner,
   ExitCode,
   make as makeSpawner,
   makeHandle,
   ProcessId
-} from "effect/unstable/process/ChildProcessSpawner"
+} from "effect/process/ChildProcessSpawner"
+import type * as Scope from "effect/Scope"
+import * as Sink from "effect/Sink"
+import * as Stream from "effect/Stream"
 
 const commandString = (command: ChildProcess.Command): string => {
   const { commands } = flattenCommand(command)
@@ -393,6 +394,7 @@ const make = Effect.gen(function*() {
 /**
  * Layer that provides the Deno child process spawner.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -401,6 +403,7 @@ export const layer: Layer.Layer<ChildProcessSpawner, never, Path.Path> = Layer.e
 /**
  * Result of flattening a pipeline of commands.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -412,6 +415,7 @@ export interface FlattenedPipeline {
 /**
  * Flattens a command into standard commands and their pipe options.
  *
+ * @stability unstable
  * @category transforming
  * @since 4.0.0
  */

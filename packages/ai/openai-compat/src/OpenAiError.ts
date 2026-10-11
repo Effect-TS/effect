@@ -12,12 +12,14 @@
  * makes those shapes available on the corresponding shared AI error metadata
  * interfaces without defining new runtime error classes.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
 /**
  * OpenAI-specific error metadata fields.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -44,6 +46,7 @@ export type OpenAiErrorMetadata = {
  * Extends base error metadata with rate limit specific information from
  * OpenAI's rate limit headers.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -66,7 +69,7 @@ export type OpenAiRateLimitMetadata = OpenAiErrorMetadata & {
   readonly resetTokens: string | null
 }
 
-declare module "effect/unstable/ai/AiError" {
+declare module "effect/ai/AiError" {
   /**
    * Metadata attached to rate limit errors returned by OpenAI-compatible APIs.
    *

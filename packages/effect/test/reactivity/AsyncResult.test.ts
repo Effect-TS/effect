@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Cause } from "effect"
-import { AsyncResult } from "effect/unstable/reactivity"
+import { AsyncResult } from "effect/reactivity"
 
 describe("AsyncResult", () => {
   it("waiting dispatches with optional options", () => {

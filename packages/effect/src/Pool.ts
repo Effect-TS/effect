@@ -7,6 +7,7 @@
  * pools, pools that resize with a time-to-live policy, custom strategy pools,
  * per-item concurrency limits, and runtime state types used by pool strategies.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -19,7 +20,6 @@ import * as Fiber from "./Fiber.ts"
 import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
-import * as Iterable from "./Iterable.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -31,10 +31,12 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
+const PoolClock = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
   readonly [AcquireContext]: Context.Context<Scope.Scope>
+  readonly [PoolClock]: Clock
 }
 
 /**
@@ -53,6 +55,7 @@ interface PoolImpl<A, E> extends Pool<A, E> {
  * @see {@link get} for acquiring an item from a pool
  * @see {@link invalidate} for removing a broken item from the pool
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -79,6 +82,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  * @see {@link State} for mutable runtime state instead of static configuration
  * @see {@link Strategy} for the resizing and reclamation contract stored on the config
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -111,6 +115,7 @@ export interface Config<A, E> {
  * @see {@link get} for acquiring items through the high-level API
  * @see {@link invalidate} for invalidating items through the high-level API
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -119,12 +124,11 @@ export interface State<A, E> {
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore
-  // Insertion order determines usage-TTL retirement order; reclaimed items move to the back.
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
   readonly invalidated: Set<PoolItem<A, E>>
-  readonly waiters: Set<() => void>
+  readonly waiters: Set<(failure?: Exit.Failure<A, E>) => void>
 }
 
 /**
@@ -139,12 +143,13 @@ export interface State<A, E> {
  * **Details**
  *
  * Each item stores the acquisition `Exit`, its finalizer, the current
- * reference count, and whether automatic reclaiming has been disabled because
- * the item was invalidated.
+ * reference count, when it last became idle, and whether automatic reclaiming
+ * has been disabled because the item was invalidated.
  *
  * @see {@link Strategy} for the custom strategy callbacks that receive and return pool items
  * @see {@link State} for the runtime sets that store active, available, and invalidated pool items
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -152,6 +157,8 @@ export interface PoolItem<A, E> {
   readonly exit: Exit.Exit<A, E>
   finalizer: Effect.Effect<void>
   refCount: number
+  /** Clock time at which the item was acquired or its last borrower released it. */
+  idleSince: number
   disableReclaim: boolean
   isAvailable: boolean
   availablePrevious: PoolItem<A, E> | undefined
@@ -176,6 +183,7 @@ export interface PoolItem<A, E> {
  *
  * @see {@link makeWithStrategy} for constructing a pool from a custom `Strategy`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -197,6 +205,7 @@ export interface Strategy<A, E> {
  *
  * This predicate narrows the input to `Pool<unknown, unknown>`.
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -227,6 +236,7 @@ export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u
  *
  * @see {@link makeWithTTL} for pools with min/max sizes and a TTL-based shrinking policy
  * @see {@link makeWithStrategy} for pools with a custom resizing and reclamation strategy
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -257,9 +267,11 @@ export const make = <A, E, R>(options: {
  * pool implementation. A value of `1` waits until existing items are fully
  * utilized before creating more items.
  *
- * `timeToLiveStrategy` controls when excess items expire: `"creation"` measures
- * from item creation, while `"usage"` measures from pool usage. The default is
- * `"usage"`.
+ * `timeToLiveStrategy` defaults to `"usage"`, which expires idle, unreserved
+ * excess items after `timeToLive` since their last borrower released them
+ * (or acquisition if never borrowed). It checks once per `timeToLive`, so
+ * retirement can take up to twice that duration. `"creation"` measures from
+ * item creation instead.
  *
  * **Example** (Creating a connection pool)
  *
@@ -294,6 +306,7 @@ export const make = <A, E, R>(options: {
  * await Effect.runPromise(program) // => ["executed: select 1"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -330,6 +343,7 @@ export const makeWithTTL = <A, E, R>(options: {
  * @see {@link makeWithTTL} for min/max pools that shrink excess items with a TTL policy
  * @see {@link Strategy} for the custom strategy contract consumed by this constructor
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -374,6 +388,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       [TypeId]: TypeId,
       [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
       [AcquireContext]: services as Context.Context<Scope.Scope>,
+      [PoolClock]: yield* Clock,
       config,
       state,
       pipe() {
@@ -413,7 +428,6 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       yield* item.finalizer
     }
   }
-  yield* semaphore.releaseAll
   if (self.state.waiters.size > 0) {
     const waiters = Array.from(self.state.waiters)
     self.state.waiters.clear()
@@ -441,6 +455,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  *
  * @see {@link invalidate} for removing an unhealthy item from future reuse
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -448,7 +463,7 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
   core.withFiber((fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
-    if (state.availableHead !== undefined) {
+    if (state.availableHead?.exit._tag === "Success") {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
         return leaseItem(self, state.availableHead, fiber)
@@ -483,6 +498,7 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
  *
  * @see {@link get} for borrowing an item for the lifetime of a scope
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -498,35 +514,36 @@ export const use: {
   self: Pool<A, E>,
   f: (item: A) => Effect.Effect<B, E2, R2>
 ): Effect.Effect<B, E | E2, R2> =>
-  internal.suspend(() => {
+  core.withFiber((fiber) => {
     const state = self.state
     if (state.isShuttingDown) return internal.interrupt
-    if (state.availableHead !== undefined) {
+    if (state.availableHead?.exit._tag === "Success") {
       state.usage++
       if (self.config.isFixed || targetSize(self) <= activeSize(self)) {
-        return useItem(self, state.availableHead, f)
+        return useItem(self, state.availableHead, f, fiber)
       }
       state.usage--
     }
-    return getSlowWith(self, (self, item, _fiber, restore) => useItem(self, item, f, restore))
+    return getSlowWith(self, (self, item, fiber, restore) => useItem(self, item, f, fiber, restore))
   }))
 
+// Count the lease and install its release in the same step.
 const useItem = <A, E, B, E2, R2>(
   self: Pool<A, E>,
   item: PoolItem<A, E>,
   f: (item: A) => Effect.Effect<B, E2, R2>,
+  fiber: Fiber.Fiber<unknown, unknown>,
   restore?: <AX, EX, RX>(effect: Effect.Effect<AX, EX, RX>) => Effect.Effect<AX, EX, RX>
 ): Effect.Effect<B, E | E2, R2> => {
-  if (!leaseItemBookkeeping(self, item)) {
-    return item.exit as Exit.Exit<never, E>
-  }
+  leaseItemBookkeeping(self, item)
+  internal.onExitUnsafe(fiber, item.release)
   let body: Effect.Effect<B, E2, R2>
   try {
     body = f((item.exit as Exit.Success<A, E>).value)
   } catch (defect) {
-    return internal.flatMap(item.release(item.exit), () => core.exitDie(defect))
+    return core.exitDie(defect)
   }
-  return internal.onExitPrimitive(restore !== undefined ? restore(body) : body, item.release)
+  return restore !== undefined ? restore(body) : body
 }
 
 const getSlowWith = <A, E, X, R>(
@@ -542,7 +559,7 @@ const getSlowWith = <A, E, X, R>(
     const state = self.state
     state.usage++
     const wait: Effect.Effect<X, any, R> = internal.flatMap(
-      internal.onInterrupt(
+      internal.onError(
         restore(waitForItem(self)),
         () =>
           internal.sync(() => {
@@ -556,10 +573,17 @@ const getSlowWith = <A, E, X, R>(
         state.usage--
         return internal.interrupt
       }
-      if (state.availableHead !== undefined) {
-        return lease(self, state.availableHead, fiber, restore)
+      // Replace failed slots only when the pool cannot grow.
+      const item = firstHealthyAvailable(self) ??
+        (targetSize(self) <= activeSize(self) ? state.availableHead : undefined)
+      if (item === undefined) {
+        return wait
       }
-      return wait
+      if (item.exit._tag === "Failure") {
+        removeFailedItem(self, item)
+        return loop
+      }
+      return lease(self, item, fiber, restore)
     })
     const loop: Effect.Effect<X, any, R> = internal.suspend(() => {
       if (state.isShuttingDown) {
@@ -578,20 +602,17 @@ const getSlowWith = <A, E, X, R>(
     return loop
   })
 
-const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): boolean => {
-  const state = self.state
-  if (item.exit._tag === "Failure") {
-    state.usage--
-    state.items.delete(item)
-    state.invalidated.delete(item)
-    removeAvailable(self, item)
-    return false
-  }
+const leaseItemBookkeeping = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
   item.refCount++
   if (item.refCount >= self.config.concurrency) {
     removeAvailable(self, item)
   }
-  return true
+}
+
+const removeFailedItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => {
+  self.state.items.delete(item)
+  self.state.invalidated.delete(item)
+  removeAvailable(self, item)
 }
 
 const leaseItem = <A, E>(
@@ -599,14 +620,13 @@ const leaseItem = <A, E>(
   item: PoolItem<A, E>,
   fiber: Fiber.Fiber<unknown, unknown>
 ): Effect.Effect<A, E> => {
-  if (!leaseItemBookkeeping(self, item)) {
-    return item.exit
-  }
+  leaseItemBookkeeping(self, item)
   const scope = Context.getUnsafe(fiber.context, Scope.Scope)
   if (scope.state._tag === "Closed") {
-    return internal.flatMap(item.release(item.exit), () => item.exit)
+    internal.onExitUnsafe(fiber, item.release)
+  } else {
+    internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
   }
-  internal.scopeAddFinalizerUnsafe(scope, {}, item.release)
   return item.exit
 }
 
@@ -621,6 +641,9 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     const state = self.state
     item.refCount--
     state.usage--
+    if (item.refCount === 0) {
+      item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
+    }
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
     }
@@ -636,15 +659,21 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     return internal.void
   })
 
-const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void> =>
+const firstHealthyAvailable = <A, E>(self: Pool<A, E>): PoolItem<A, E> | undefined => {
+  let item = self.state.availableHead
+  while (item !== undefined && item.exit._tag === "Failure") item = item.availableNext
+  return item
+}
+
+const waitForItem = <A, E>(self: Pool<A, E>): Effect.Effect<void, E> =>
   internal.callback((resume) => {
     const state = self.state
-    if (state.availableHead !== undefined || state.isShuttingDown) {
+    if (firstHealthyAvailable(self) !== undefined || state.isShuttingDown) {
       return resume(internal.void)
     }
-    const observer = () => {
+    const observer = (failure?: Exit.Failure<A, E>) => {
       state.waiters.delete(observer)
-      resume(internal.void)
+      resume(failure ?? internal.void)
     }
     state.waiters.add(observer)
     return internal.sync(() => {
@@ -657,7 +686,7 @@ const wakeWaiters = <A, E>(self: Pool<A, E>, fiber: Fiber.Fiber<unknown, unknown
   if (waiters.size === 0) return
   fiber.currentDispatcher.scheduleTask(() => {
     let remaining = count
-    const toWake: Array<() => void> = []
+    const toWake: Array<(failure?: Exit.Failure<A, E>) => void> = []
     for (const notify of waiters) {
       if (remaining-- <= 0) break
       toWake.push(notify)
@@ -750,6 +779,7 @@ const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => 
  *
  * @see {@link get} for retrieving scoped items from the pool
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -776,6 +806,7 @@ export const invalidate: {
  *
  * @see {@link get} for acquiring an item
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -893,6 +924,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           exit,
           finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
           refCount: 0,
+          idleSince: impl[PoolClock].currentTimeMillisUnsafe(),
           disableReclaim: false,
           isAvailable: false,
           availablePrevious: undefined,
@@ -900,17 +932,26 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           release: undefined as any
         }
         item.release = constant(releaseItem(self, item))
-        self.state.items.add(item)
-        addAvailable(self, item)
-        if (self.config.strategy === strategyNoop) {
-          return exit._tag === "Success" ? Effect.succeed(item) : Effect.as(item.finalizer, item)
-        }
         const onAcquire = Effect.suspend(() =>
           // A borrower may have removed the item before the callback runs.
           self.state.items.has(item) ? self.config.strategy.onAcquire(item) : Effect.void
         )
+        if (exit._tag === "Success") {
+          self.state.items.add(item)
+          addAvailable(self, item)
+          return self.config.strategy === strategyNoop ? Effect.succeed(item) : Effect.as(onAcquire, item)
+        }
+        // Deliver a waiting borrower its own failure; otherwise retain the slot.
+        const waiter = firstHealthyAvailable(self) === undefined ? self.state.waiters.values().next().value : undefined
+        if (waiter !== undefined) {
+          waiter(exit)
+        } else {
+          self.state.items.add(item)
+          addAvailable(self, item)
+        }
+        // Do not let cleanup delay a replacement acquisition.
         return Effect.as(
-          exit._tag === "Success" ? onAcquire : Effect.flatMap(item.finalizer, () => onAcquire),
+          Effect.forkIn(Effect.andThen(item.finalizer, onAcquire), self.state.scope, { startImmediately: true }),
           item
         )
       })
@@ -980,19 +1021,21 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, E>> =>
-  Effect.succeed<Strategy<A, E>>({
+const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
+  const clock = yield* Clock
+  const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
+  return identity<Strategy<A, E>>({
     run: (pool) => {
-      // `state.items` iterates in insertion order, so its oldest live entry is
-      // the next to retire. Using it directly means an item stops being
-      // referenced by this strategy as soon as it leaves the pool.
       const process: Effect.Effect<void> = Effect.suspend(() => {
         if (activeSize(pool) <= targetSize(pool)) return Effect.void
+        const expired = clock.currentTimeMillisUnsafe() - ttlMillis
+        let oldest: PoolItem<A, E> | undefined
         for (const item of pool.state.items) {
-          if (pool.state.invalidated.has(item)) continue
-          return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+          if (item.refCount > 0 || item.idleSince > expired) continue
+          if (pool.state.invalidated.has(item) || reservations.has(item)) continue
+          if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
         }
-        return Effect.void
+        return oldest === undefined ? Effect.void : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
       })
       return process.pipe(
         Effect.delay(ttl),
@@ -1000,28 +1043,9 @@ const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, 
       )
     },
     onAcquire: (_) => Effect.void,
-    reclaim(pool) {
-      return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
-        if (pool.state.invalidated.size === 0) {
-          return Effect.undefined
-        }
-        const item = Iterable.head(
-          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim && !reservations.has(item))
-        )
-        if (item._tag === "None") {
-          return Effect.undefined
-        }
-        pool.state.invalidated.delete(item.value)
-        // Re-adding moves the reclaimed item to the back of the retirement order.
-        pool.state.items.delete(item.value)
-        pool.state.items.add(item.value)
-        if (item.value.refCount < pool.config.concurrency) {
-          addAvailable(pool, item.value)
-        }
-        return Effect.succeed(item.value)
-      })
-    }
+    reclaim: (_) => Effect.undefined
   })
+})
 
 const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
   Effect.withFiber<void>((fiber) => {

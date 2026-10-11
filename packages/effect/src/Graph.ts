@@ -6,6 +6,7 @@
  * both nodes and edges. The module includes traversal, analysis, path-finding,
  * transformation, and diagram export utilities.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
@@ -42,6 +43,7 @@ const TypeId = internal.TypeId
  *
  * @see {@link EdgeIndex} for edge identifiers instead of node identifiers
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -62,6 +64,7 @@ export type NodeIndex = number
  *
  * @see {@link NodeIndex} for node identifiers instead of edge identifiers
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -75,6 +78,7 @@ export type EdgeIndex = number
  * Use as the graph edge value that carries source node, target node, and stored
  * edge data together.
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -92,6 +96,7 @@ export interface Edge<out E> {
  * Use when writing graph-polymorphic types or helpers that need to preserve
  * whether a graph is directed or undirected.
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -100,6 +105,7 @@ export type Kind = "directed" | "undirected"
 /**
  * A node and its stable index in a graph snapshot.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -111,6 +117,7 @@ export interface IndexedNode<out N> {
 /**
  * An edge and its stable index in a graph snapshot.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -137,6 +144,7 @@ export interface IndexedEdge<out E> extends Edge<E> {
  * reconstruction, new identifiers continue after the greatest active index.
  *
  * @see {@link fromSnapshot} for reconstructing a graph
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -161,6 +169,7 @@ export interface Snapshot<out N, out E, out T extends Kind> {
  *
  * @see {@link MutableGraph} for the mutable counterpart used inside mutation scopes
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -175,6 +184,7 @@ export interface Graph<out N, out E, T extends Kind = "directed">
 /**
  * Companion namespace containing type-level metadata for immutable graphs.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -208,6 +218,7 @@ export declare namespace Graph {
  * @see {@link Graph} for the immutable graph interface
  * @see {@link mutate} for scoped mutation of an immutable graph
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -222,6 +233,7 @@ export interface MutableGraph<in out N, in out E, T extends Kind = "directed">
 /**
  * Companion namespace containing type-level metadata for scoped mutable graphs.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -261,6 +273,7 @@ const copyEdge = <E>(edge: Edge<E>): Edge<E> => ({
  * @see {@link directed} for constructing directed graphs
  * @see {@link UndirectedGraph} for graphs whose edges connect both endpoints
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -281,6 +294,7 @@ export type DirectedGraph<N, E> = Graph<N, E, "directed">
  * @see {@link undirected} for constructing undirected graphs
  * @see {@link DirectedGraph} for graphs whose edges have source-to-target direction
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -297,6 +311,7 @@ export type UndirectedGraph<N, E> = Graph<N, E, "undirected">
  * @see {@link MutableGraph} for the generic mutable graph type
  * @see {@link MutableUndirectedGraph} for mutable graphs without edge direction
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -313,6 +328,7 @@ export type MutableDirectedGraph<N, E> = MutableGraph<N, E, "directed">
  * @see {@link MutableDirectedGraph} for mutable graphs with directed edges
  * @see {@link MutableGraph} for the generic mutable graph type
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -334,6 +350,7 @@ export type MutableUndirectedGraph<N, E> = MutableGraph<N, E, "undirected">
  * Use when handling failures thrown by graph operations that reject invalid
  * graph structure or unsupported algorithm inputs.
  *
+ * @stability unstable
  * @category errors
  * @since 3.18.0
  */
@@ -398,6 +415,7 @@ const withMutationGuard = <N, E, T extends Kind, A>(
  * distinguish immutable graphs from mutable graphs or directed graphs from
  * undirected graphs.
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -436,6 +454,7 @@ export const isGraph: <N = unknown, E = unknown, T extends Kind = Kind, U = neve
  * ```
  *
  * @see {@link toSnapshot} for capturing a graph snapshot
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -526,6 +545,7 @@ export const fromSnapshot = <N, E, T extends Kind>(snapshot: Snapshot<N, E, T>):
  * ```
  *
  * @see {@link fromSnapshot} for reconstructing an immutable graph
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -568,6 +588,7 @@ export const toSnapshot = <N, E, T extends Kind = "directed">(
  *
  * @see {@link directed} for constructing a directed graph directly
  * @see {@link undirected} for constructing an undirected graph directly
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -614,6 +635,7 @@ export const make =
  * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.18.0
  */
@@ -650,6 +672,7 @@ export const directed: <N, E>(
  * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.18.0
  */
@@ -688,6 +711,7 @@ export const undirected: <N, E>(
  *
  * @see {@link endMutation} for finalizing the mutable graph
  * @see {@link mutate} for automatically scoped mutation
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -724,6 +748,7 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
  *
  * @see {@link beginMutation} for opening a manual mutation scope
  * @see {@link mutate} for automatically scoped mutation
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -795,6 +820,7 @@ const mutateScoped = <N, E, T extends Kind>(
  *
  * @see {@link beginMutation} for opening a manual mutation scope
  * @see {@link endMutation} for finalizing a manual mutation scope
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -860,9 +886,10 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
 
   [Hash.symbol](): number {
     const hash = Hash.hash(this.identity)
-    return this.type === "directed"
-      ? Hash.combine(Hash.hash(this.target))(Hash.combine(Hash.hash(this.source))(hash))
-      : Hash.optimize(hash ^ (Hash.hash(this.source) + Hash.hash(this.target)))
+    if (this.type === "directed") {
+      return Hash.optimize(Hash.combine(Hash.combine(hash, Hash.hash(this.source)), Hash.hash(this.target)))
+    }
+    return Hash.optimize(Hash.combine(hash, internal.endpointsHash(this.source, this.target)))
   }
 }
 
@@ -886,6 +913,7 @@ class EdgeIdentity<NI, EI> implements Equal.Equal {
  * with the same endpoint identities and projected edge identity are treated as
  * the same member by graph set operations.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -1018,6 +1046,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  * ```
  *
  * @see {@link sum} for combining graphs without merging equal nodes
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1115,6 +1144,7 @@ export const compose: {
  * ```
  *
  * @see {@link compose} for identity-based graph union
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1219,6 +1249,7 @@ export const intersection: {
  * ```
  *
  * @see {@link symmetricDifference} for retaining edges unique to either graph
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1312,6 +1343,7 @@ export const difference: {
  * ```
  *
  * @see {@link difference} for removing only the edges found in another graph
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1403,6 +1435,7 @@ export const symmetricDifference: {
  * ```
  *
  * @see {@link hasEdge} for testing one relationship
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1456,6 +1489,7 @@ export const complement: {
  * `direction` controls how directed edges are traversed and defaults to
  * `"outgoing"`.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -1505,6 +1539,7 @@ export interface NeighborhoodConfig {
  * ```
  *
  * @see {@link inducedSubgraph} for selecting nodes while preserving identifiers
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1571,6 +1606,7 @@ export const neighborhood: {
  *
  * @see {@link neighborhood} for selecting nodes by traversal distance
  *
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1630,6 +1666,7 @@ export const inducedSubgraph: {
  *
  * @see {@link compose} for merging overlapping logical nodes by identity
  *
+ * @stability unstable
  * @category set operations
  * @since 4.0.0
  */
@@ -1697,6 +1734,7 @@ export const sum: {
  * @see {@link mutate} for obtaining a mutable graph from an immutable graph
  * @see {@link addEdge} for connecting existing nodes
  *
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -1738,6 +1776,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
  * Graph.getNode(graph, 0) // => Option.some("Node A")
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -1773,6 +1812,7 @@ export const getNode: {
  * Graph.hasNode(graph, 999) // => false
  * ```
  *
+ * @stability unstable
  * @category predicates
  * @since 3.18.0
  */
@@ -1804,6 +1844,7 @@ export const hasNode: {
  * Graph.nodeCount(graphWithNodes) // => 3
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -1829,6 +1870,7 @@ export const nodeCount = <N, E, T extends Kind = "directed">(
  * Graph.findNode(graph, (data) => data === "Node D") // => Option.none()
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -1873,6 +1915,7 @@ export const findNode: {
  * Graph.findNodes(graph, (data) => data === "Not Found") // => []
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -1920,6 +1963,7 @@ export const findNodes: {
  * Graph.findEdge(graph, (data) => data > 100) // => Option.none()
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -1967,6 +2011,7 @@ export const findEdge: {
  * Graph.findEdges(graph, (data) => data > 100) // => []
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -2021,6 +2066,7 @@ export const findEdges: {
  * Graph.getNode(graph, 0) // => Option.some("NODE A")
  * ```
  *
+ * @stability unstable
  * @category transforming
  * @since 3.18.0
  */
@@ -2069,6 +2115,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  * Option.map(Graph.getEdge(result, 0), (edge) => edge.data) // => Option.some(20)
  * ```
  *
+ * @stability unstable
  * @category transforming
  * @since 3.18.0
  */
@@ -2128,6 +2175,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  *
  * @see {@link updateNode} for updating one node
  * @see {@link filterMapNodes} for mapping while removing nodes
+ * @stability unstable
  * @category mapping
  * @since 3.18.0
  */
@@ -2181,6 +2229,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  *
  * @see {@link updateEdge} for updating one edge
  * @see {@link filterMapEdges} for mapping while removing edges
+ * @stability unstable
  * @category mapping
  * @since 3.18.0
  */
@@ -2235,6 +2284,7 @@ export const mapEdges = <N, E, T extends Kind = "directed">(
  * Option.map(Graph.getEdge(graph, 0), (edge) => edge.source) // => Option.some(1)
  * ```
  *
+ * @stability unstable
  * @category transforming
  * @since 3.18.0
  */
@@ -2295,6 +2345,7 @@ export const reverse = <N, E, T extends Kind = "directed">(
  * Graph.nodeCount(graph) // => 2
  * ```
  *
+ * @stability unstable
  * @category filtering
  * @since 3.18.0
  */
@@ -2354,6 +2405,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
  * Graph.edgeCount(graph) // => 2
  * ```
  *
+ * @stability unstable
  * @category filtering
  * @since 3.18.0
  */
@@ -2414,6 +2466,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
  * Graph.nodeCount(graph) // => 2
  * ```
  *
+ * @stability unstable
  * @category filtering
  * @since 3.18.0
  */
@@ -2468,6 +2521,7 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
  * Graph.edgeCount(graph) // => 2
  * ```
  *
+ * @stability unstable
  * @category filtering
  * @since 3.18.0
  */
@@ -2553,6 +2607,7 @@ const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
  * @see {@link mutate} for obtaining a mutable graph from an immutable graph
  * @see {@link addNode} for creating node indexes before connecting them
  *
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -2638,6 +2693,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
  * Array.of(Graph.nodeCount(result), Graph.edgeCount(result)) // => [1, 0]
  * ```
  *
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -2670,6 +2726,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
  *
  * @see {@link removeNode} for removing one node
  *
+ * @stability unstable
  * @category mutations
  * @since 4.0.0
  */
@@ -2763,6 +2820,7 @@ const removeNodeInternal = <N, E, T extends Kind = "directed">(
  * Array.of(Graph.nodeCount(result), Graph.edgeCount(result)) // => [2, 0]
  * ```
  *
+ * @stability unstable
  * @category mutations
  * @since 3.18.0
  */
@@ -2796,6 +2854,7 @@ export const removeEdge = <N, E, T extends Kind = "directed">(
  *
  * @see {@link removeEdge} for removing one edge
  *
+ * @stability unstable
  * @category mutations
  * @since 4.0.0
  */
@@ -2898,6 +2957,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  * Graph.getEdge(graph, 0) // => Option.some({ source: 0, target: 1, data: 42 })
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -2946,6 +3006,7 @@ export const getEdge: {
  * ```
  *
  * @see {@link edgesBetween} for all matching edge identifiers
+ * @stability unstable
  * @category predicates
  * @since 3.18.0
  */
@@ -3007,6 +3068,7 @@ export const hasEdge: {
  * Graph.edgeCount(graphWithEdges) // => 3
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -3022,6 +3084,7 @@ export const edgeCount = <N, E, T extends Kind = "directed">(
  * Each edge is returned once in graph edge order, including self-loops.
  * Throws a `GraphError` when the node does not exist.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3086,6 +3149,7 @@ export const incidentEdges: {
  * Parallel edges and self-loops are returned separately in adjacency order.
  * Throws a `GraphError` for an undirected graph or missing node.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3119,6 +3183,7 @@ export const outgoingEdges: {
  * Parallel edges and self-loops are returned separately in reverse-adjacency
  * order. Throws a `GraphError` for an undirected graph or missing node.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3153,6 +3218,7 @@ export const incomingEdges: {
  * graphs include either stored orientation. Parallel edges are retained.
  * Throws a `GraphError` when either node does not exist.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3201,6 +3267,7 @@ export const edgesBetween: {
  * Parallel edges count separately and a self-loop contributes two. Throws a
  * `GraphError` for a directed graph or missing node.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3231,6 +3298,7 @@ export const degree: {
  * Parallel edges count separately and a self-loop contributes one. Throws a
  * `GraphError` for an undirected graph or missing node.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3261,6 +3329,7 @@ export const outDegree: {
  * Parallel edges count separately and a self-loop contributes one. Throws a
  * `GraphError` for an undirected graph or missing node.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3336,7 +3405,24 @@ const getUniqueDirectedNeighbors = <N, E>(
   graph: Graph<N, E, "directed"> | MutableGraph<N, E, "directed">,
   nodeIndex: NodeIndex,
   direction: Direction
-): Array<NodeIndex> => Array.from(new Set(getDirectedNeighbors(graph, nodeIndex, direction)))
+): Array<NodeIndex> => {
+  const neighbors = getDirectedNeighbors(graph, nodeIndex, direction)
+  if (neighbors.length > ScanDegreeLimit) {
+    return Array.from(new Set(neighbors))
+  }
+  // getDirectedNeighbors returns a fresh array, so duplicates are compacted in place
+  let length = 0
+  for (let i = 0; i < neighbors.length; i++) {
+    const neighbor = neighbors[i]
+    let j = 0
+    while (j < length && neighbors[j] !== neighbor) j++
+    if (j === length) neighbors[length++] = neighbor
+  }
+  neighbors.length = length
+  return neighbors
+}
+
+const ScanDegreeLimit = 32
 
 /**
  * Returns the neighboring node indices for a node.
@@ -3370,6 +3456,7 @@ const getUniqueDirectedNeighbors = <N, E>(
  * Graph.neighbors(graph, 1) // => []
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -3412,6 +3499,7 @@ export const neighbors: {
  * @see {@link predecessors} for incoming neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3452,6 +3540,7 @@ export const successors: {
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -3512,6 +3601,7 @@ export const predecessors: {
  * @deprecated Use {@link successors} for outgoing neighbors or {@link predecessors} for incoming neighbors.
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link predecessors} for incoming neighbors in a directed graph
+ * @stability unstable
  * @category getters
  * @since 3.18.0
  */
@@ -3573,6 +3663,7 @@ export const neighborsDirected: {
  * ```
  *
  * @see {@link toGraphViz} for generating DOT output
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -3625,6 +3716,7 @@ const escapeGraphVizString = (value: string): string =>
  * ```
  *
  * @see {@link toMermaid} for Mermaid diagram output
+ * @stability unstable
  * @category converting
  * @since 3.18.0
  */
@@ -3712,6 +3804,7 @@ export const toGraphViz: {
  * options.nodeShape?.("decision") // => "diamond"
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -3758,6 +3851,7 @@ export type MermaidNodeShape =
  * Array.of(horizontalOptions.direction, verticalOptions.direction, bottomUpOptions.direction) // => ["LR", "TB", "BT"]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -3800,6 +3894,7 @@ export type MermaidDirection =
  * Array.of(flowchartOptions.diagramType, graphOptions.diagramType, autoOptions.diagramType) // => ["flowchart", "graph", undefined]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -3843,6 +3938,7 @@ export type MermaidDiagramType =
  * ```
  *
  * @see {@link toMermaid} for generating Mermaid output
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -3961,6 +4057,7 @@ const formatMermaidNode = (
  * ```
  *
  * @see {@link toGraphViz} for GraphViz DOT output
+ * @stability unstable
  * @category converting
  * @since 3.18.0
  */
@@ -4034,6 +4131,7 @@ export const toMermaid: {
  * `"outgoing"` selects edges whose source is the node, while `"incoming"`
  * selects edges whose target is the node.
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -4066,6 +4164,7 @@ export type Direction = "outgoing" | "incoming"
  * Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))) // => [1, 0, 2]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -4083,6 +4182,7 @@ export type TraversalDirection = Direction | "undirected"
  * `path` repeats its first node at the end, so `edges.length` is always
  * `path.length - 1`.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -4105,6 +4205,7 @@ export interface CycleResult {
  * one-edge cycle, and two parallel undirected edges form a two-edge cycle.
  *
  * @see {@link isAcyclic} when only a boolean cycle check is needed
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -4208,6 +4309,7 @@ export const findCycle = <N, E, T extends Kind = "directed">(
  *
  * @see {@link findCycle} for retrieving one cycle witness
  * @see {@link topo} for ordering a directed acyclic graph
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -4341,6 +4443,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  * ```
  *
  * @see {@link maximumBipartiteMatching} for matching nodes after validation
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -4392,6 +4495,7 @@ export const isBipartite = <N, E>(
  * `left` and `right` refer to the bipartition derived by
  * `maximumBipartiteMatching`, not to the stored edge orientation.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -4476,6 +4580,7 @@ const bipartiteColors = <N, E>(
  * ```
  *
  * @see {@link isBipartite} for validating the graph without computing a matching
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -4652,6 +4757,7 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
  *
  * `direction` defaults to `"outgoing"` and is ignored for undirected graphs.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -4662,20 +4768,15 @@ export interface ReachabilityConfig {
 const getUnweightedDistances = <N, E, T extends Kind>(
   graph: Graph<N, E, T> | MutableGraph<N, E, T>,
   source: NodeIndex,
-  direction: TraversalDirection,
-  target?: NodeIndex
+  direction: TraversalDirection
 ): Map<NodeIndex, number> => {
   const impl = internal.toImpl(graph)
   if (!impl.nodes.has(source)) {
     throw missingNode(source)
   }
-  if (target !== undefined && !impl.nodes.has(target)) {
-    throw missingNode(target)
-  }
 
   const cache = csr.get(graph)
   const sourceNode = csr.getNodeIndex(cache, source)!
-  const targetNode = target === undefined ? undefined : csr.getNodeIndex(cache, target)!
   const adjacencies = csr.getAdjacencies(cache, graph.type === "undirected" ? "outgoing" : direction)
   const compactDistances = new Int32Array(cache.nodeIds.length)
   compactDistances.fill(-1)
@@ -4685,23 +4786,20 @@ const getUnweightedDistances = <N, E, T extends Kind>(
   let tail = 0
   queue[tail++] = sourceNode
 
-  while (head < tail) {
-    const current = queue[head++]
-    if (current === targetNode) {
-      break
-    }
-    const visit = (adjacency: csr.Adjacency) => {
-      for (let i = adjacency.rowOffsets[current]; i < adjacency.rowOffsets[current + 1]; i++) {
-        const neighbor = adjacency.columnIndices[i]
-        if (compactDistances[neighbor] === -1) {
-          compactDistances[neighbor] = compactDistances[current] + 1
-          queue[tail++] = neighbor
-        }
+  const visit = (adjacency: csr.Adjacency, current: number) => {
+    for (let i = adjacency.rowOffsets[current]; i < adjacency.rowOffsets[current + 1]; i++) {
+      const neighbor = adjacency.columnIndices[i]
+      if (compactDistances[neighbor] === -1) {
+        compactDistances[neighbor] = compactDistances[current] + 1
+        queue[tail++] = neighbor
       }
     }
-    visit(adjacencies.primary)
+  }
+  while (head < tail) {
+    const current = queue[head++]
+    visit(adjacencies.primary, current)
     if (adjacencies.secondary !== undefined) {
-      visit(adjacencies.secondary)
+      visit(adjacencies.secondary, current)
     }
   }
 
@@ -4735,6 +4833,7 @@ const getUnweightedDistances = <N, E, T extends Kind>(
  * @see {@link bfs} for lazy traversal in increasing hop distance
  * @see {@link dijkstra} for weighted shortest paths
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -4773,6 +4872,7 @@ export const unweightedDistances: {
  * @see {@link unweightedDistances} for hop distances to all reachable nodes
  * @see {@link dijkstra} for a minimum-cost path
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -4883,6 +4983,7 @@ export const hasPath: {
  * @see {@link isConnected} when only a boolean connectivity check is needed
  * @see {@link weaklyConnectedComponents} for directed graphs with orientation ignored
  * @see {@link stronglyConnectedComponents} for mutual directed reachability
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -5106,6 +5207,7 @@ const analyzeLowLinks = <N, E>(
  *
  * @see {@link articulationPoints} for single-node failure points
  * @see {@link biconnectedComponents} for maximal regions without an articulation split
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5146,6 +5248,7 @@ export const bridges = <N, E>(
  *
  * @see {@link bridges} for single-edge failure points
  * @see {@link biconnectedComponents} for the regions joined at articulation points
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5193,6 +5296,7 @@ export const articulationPoints = <N, E>(
  *
  * @see {@link articulationPoints} for the nodes shared between components
  * @see {@link bridges} for edges whose removal disconnects the graph
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5217,6 +5321,7 @@ export const biconnectedComponents = <N, E>(
  *
  * The source and target must be distinct existing nodes in a directed graph.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -5234,6 +5339,7 @@ export interface MaximumFlowConfig<E> {
  * `flows` contains every original edge, including zero-flow edges. `cut`
  * contains the crossing edge identifiers of the corresponding minimum cut.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -5251,6 +5357,7 @@ export interface MaximumFlowResult {
  * `source` contains nodes residual-reachable from the configured source and
  * `target` contains the remaining nodes.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -5446,6 +5553,7 @@ const solveMaximumFlow = <N, E>(
  * ```
  *
  * @see {@link minimumCut} for the residual-reachability partition
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5501,6 +5609,7 @@ export const maximumFlow: {
  * ```
  *
  * @see {@link maximumFlow} for per-edge flow values
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5545,6 +5654,7 @@ export const minimumCut: {
  * @see {@link isWeaklyConnected} when only a boolean check is needed
  * @see {@link stronglyConnectedComponents} for mutual directed reachability
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5630,6 +5740,7 @@ export const weaklyConnectedComponents = <N, E>(
  *
  * @see {@link isStronglyConnected} when only a boolean check is needed
  * @see {@link weaklyConnectedComponents} when edge orientation should be ignored
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -5763,6 +5874,7 @@ const csrReachesAll = (
  *
  * @see {@link connectedComponents} for the component partition
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -5791,6 +5903,7 @@ export const isConnected = <N, E>(
  *
  * @see {@link isStronglyConnected} when edge orientation must be respected
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -5820,6 +5933,7 @@ export const isWeaklyConnected = <N, E>(
  *
  * @see {@link isWeaklyConnected} when edge orientation should be ignored
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -5846,6 +5960,7 @@ export const isStronglyConnected = <N, E>(
  * The empty graph is not a tree. Parallel edges and self-loops prevent a graph
  * from being a tree. Throws a `GraphError` when used with a directed graph.
  *
+ * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
@@ -5880,6 +5995,7 @@ export const isTree = <N, E>(
  * Throws a `GraphError` for a directed graph or when a weight is `NaN` or
  * `-Infinity`. Edges weighted `Infinity` are omitted.
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -5905,8 +6021,7 @@ export const minimumSpanningForest: {
     compactByNode.set(index, nodes.length)
     nodes.push({ index, data })
   }
-  const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number; readonly order: number }> = []
-  let order = 0
+  const weightedEdges: Array<{ readonly index: EdgeIndex; readonly weight: number }> = []
   withMutationGuard(graph, () => {
     for (const [index, edge] of impl.edges) {
       const weight = cost(edge.data)
@@ -5914,12 +6029,11 @@ export const minimumSpanningForest: {
         throw new GraphError({ message: "Minimum spanning forest does not support NaN or -Infinity edge weights" })
       }
       if (weight !== Infinity) {
-        weightedEdges.push({ index, weight, order })
+        weightedEdges.push({ index, weight })
       }
-      order++
     }
   })
-  weightedEdges.sort((self, that) => self.weight - that.weight || self.order - that.order)
+  weightedEdges.sort((self, that) => self.weight - that.weight)
 
   const parents = new Uint32Array(nodes.length)
   const ranks = new Uint8Array(nodes.length)
@@ -5986,6 +6100,7 @@ export const minimumSpanningForest: {
  * coalesced by retaining the first edge for each required pair. Throws a
  * `GraphError` for an undirected graph or cyclic input.
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -6077,6 +6192,7 @@ export const transitiveReduction = <N, E>(
  * `costs` contains original edge data, not the numeric output of the cost
  * function unless the edge data is numeric.
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -6233,6 +6349,7 @@ const denseMinHeapPop = (heap: DenseMinHeap): boolean => {
  * `dijkstra` throws a `GraphError` when either endpoint does not exist or when
  * the cost function returns a negative weight or `NaN`.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -6288,6 +6405,7 @@ export interface DijkstraConfig<E> {
  * @see {@link astar} when a useful heuristic can guide the search
  * @see {@link bellmanFord} when edge costs may be negative
  * @see {@link floydWarshall} when shortest paths are needed for all pairs
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -6421,6 +6539,7 @@ export const dijkstra: {
  * source and target node indices. Unreachable pairs have distance `Infinity`,
  * path `null`, and empty edge and cost arrays.
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -6437,14 +6556,16 @@ export interface AllPairsResult<E> {
  *
  * **When to use**
  *
- * Use when many or all node pairs will be queried and cubic computation plus
- * quadratic result storage is acceptable.
+ * Use when many or all node pairs will be queried and cubic distance computation
+ * plus storage for reconstructed paths is acceptable.
  *
  * **Details**
  *
  * Computes distances, reconstructed node paths, and edge-data paths for every
- * source and target pair in O(V^3) time. Negative edge weights are allowed, and
- * `Infinity` behaves like an impassable edge.
+ * source and target pair. Distance computation takes O(V^3) time. Negative edge
+ * weights are allowed, and `Infinity` behaves like an impassable edge. Immutable
+ * path witnesses can require O(V^3) working storage; reconstructed paths have
+ * repeated nodes removed.
  *
  * **Gotchas**
  *
@@ -6473,6 +6594,7 @@ export interface AllPairsResult<E> {
  *
  * @see {@link dijkstra} for one query with non-negative edge costs
  * @see {@link bellmanFord} for one query that may include negative edge costs
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -6493,13 +6615,15 @@ export const floydWarshall: {
   const edgeIds = csr.getEdgeIds(cache)
   const edgeCache = csr.getEdgeEndpoints(cache)
   const size = cache.nodeIds.length
-  // Flat matrices keep the O(N^2) working set contiguous and avoid nested map lookups in the O(N^3) loop.
+  // Immutable witnesses retain the actual walks used by relaxation. Following
+  // independently updated next-hop rows can create cycles through rounding.
+  type Witness =
+    | { readonly target: number; readonly edge: number }
+    | { readonly target: number; readonly left: Witness; readonly right: Witness }
+  const witnesses: Array<Witness | undefined> = new Array(size * size)
+  // The flat distance matrix avoids nested map lookups in the O(N^3) loop.
   const distancesMatrix = new Float64Array(size * size)
-  const nextMatrix = new Int32Array(size * size)
-  const edgeMatrix = new Int32Array(size * size)
   distancesMatrix.fill(Infinity)
-  nextMatrix.fill(-1)
-  edgeMatrix.fill(-1)
   for (let i = 0; i < size; i++) {
     distancesMatrix[i * size + i] = 0
   }
@@ -6515,15 +6639,13 @@ export const floydWarshall: {
       const position = source * size + target
       if (weight < distancesMatrix[position]) {
         distancesMatrix[position] = weight
-        nextMatrix[position] = target
-        edgeMatrix[position] = edge
+        witnesses[position] = { target, edge }
       }
       if (graph.type === "undirected") {
         const reverse = target * size + source
         if (weight < distancesMatrix[reverse]) {
           distancesMatrix[reverse] = weight
-          nextMatrix[reverse] = source
-          edgeMatrix[reverse] = edge
+          witnesses[reverse] = { target: source, edge }
         }
       }
     }
@@ -6537,7 +6659,7 @@ export const floydWarshall: {
       if (distanceIK === Infinity) {
         continue
       }
-      const nextIK = nextMatrix[iRow + k]
+      const left = witnesses[iRow + k]
       for (let j = 0; j < size; j++) {
         const distanceKJ = distancesMatrix[kRow + j]
         if (distanceKJ === Infinity) {
@@ -6547,9 +6669,14 @@ export const floydWarshall: {
         if (!Number.isFinite(candidate)) {
           throw new GraphError({ message: "Floyd-Warshall distance calculation exceeded the finite number range" })
         }
-        if (candidate < distancesMatrix[iRow + j] && nextIK !== -1) {
+        if (candidate < distancesMatrix[iRow + j]) {
           distancesMatrix[iRow + j] = candidate
-          nextMatrix[iRow + j] = nextIK
+          const right = witnesses[kRow + j]
+          witnesses[iRow + j] = left === undefined
+            ? right
+            : right === undefined
+            ? left
+            : { target: j, left, right }
         }
       }
     }
@@ -6565,6 +6692,9 @@ export const floydWarshall: {
   const paths = new Map<NodeIndex, Map<NodeIndex, Array<NodeIndex> | null>>()
   const edgePaths = new Map<NodeIndex, Map<NodeIndex, Array<EdgeIndex>>>()
   const costs = new Map<NodeIndex, Map<NodeIndex, Array<E>>>()
+  // Reuse scratch storage; erased suffixes and completed paths clear only touched entries.
+  const positions = new Int32Array(size)
+  positions.fill(-1)
   for (let i = 0; i < size; i++) {
     const source = cache.nodeIds[i]
     const distanceRow = new Map<NodeIndex, number>()
@@ -6592,19 +6722,35 @@ export const floydWarshall: {
         const path = [source]
         const pathEdges: Array<EdgeIndex> = []
         const pathCosts: Array<E> = []
-        let current = i
-        while (current !== j) {
-          const next = nextMatrix[current * size + j]
-          if (next === -1) {
-            break
+        positions[i] = 0
+        const nodes = [i]
+        const stack = [witnesses[i * size + j]!]
+        // Witnesses only reference older witnesses, so this traversal cannot
+        // follow a cyclic pointer chain. Erase closed walks rather than return
+        // a truncated route or reject a valid zero-cost cycle.
+        while (stack.length > 0) {
+          const witness = stack.pop()!
+          const position = positions[witness.target]
+          if (position !== -1) {
+            for (let p = position + 1; p < nodes.length; p++) {
+              positions[nodes[p]] = -1
+            }
+            nodes.length = position + 1
+            path.length = position + 1
+            pathEdges.length = position
+            pathCosts.length = position
+          } else if ("edge" in witness) {
+            positions[witness.target] = nodes.length
+            nodes.push(witness.target)
+            path.push(cache.nodeIds[witness.target])
+            pathEdges.push(edgeIds[witness.edge])
+            pathCosts.push(edges[witness.edge].data)
+          } else {
+            stack.push(witness.right, witness.left)
           }
-          const edge = edgeMatrix[current * size + next]
-          if (edge !== -1) {
-            pathEdges.push(edgeIds[edge])
-            pathCosts.push(edges[edge].data)
-          }
-          current = next
-          path.push(cache.nodeIds[current])
+        }
+        for (const node of nodes) {
+          positions[node] = -1
         }
         pathRow.set(target, path)
         edgePathRow.set(target, pathEdges)
@@ -6635,6 +6781,7 @@ export const floydWarshall: {
  * Heuristic values must be finite and the heuristic must be consistent for A*
  * to guarantee a shortest path.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -6697,6 +6844,7 @@ export interface AstarConfig<E, N> {
  *
  * @see {@link dijkstra} when no useful heuristic is available
  * @see {@link bellmanFord} when edge costs may be negative
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -6754,7 +6902,7 @@ export const astar: {
   }
 
   const getHeuristic = (nodeData: N): number => {
-    const value = withMutationGuard(graph, () => config.heuristic(nodeData, targetNodeData))
+    const value = config.heuristic(nodeData, targetNodeData)
     if (!Number.isFinite(value)) {
       throw new GraphError({ message: "A* algorithm requires finite heuristic values" })
     }
@@ -6772,42 +6920,44 @@ export const astar: {
   const visited = new Uint8Array(cache.nodeIds.length)
   const openSet = denseMinHeapMake(cache.nodeIds.length)
   let sequence = 0
-  denseMinHeapPush(openSet, source, getHeuristic(sourceNodeData), sequence++)
+  withMutationGuard(graph, () => {
+    denseMinHeapPush(openSet, source, getHeuristic(sourceNodeData), sequence++)
 
-  while (openSet.size > 0) {
-    denseMinHeapPop(openSet)
-    const current = openSet.poppedNode
-    if (visited[current] !== 0) {
-      continue
-    }
-    visited[current] = 1
-    if (current === target) {
-      break
-    }
-
-    const currentScore = scores[current]
-    for (let i: number = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
-      const neighbor = outgoing.columnIndices[i]
-      if (visited[neighbor] !== 0) {
+    while (openSet.size > 0) {
+      denseMinHeapPop(openSet)
+      const current = openSet.poppedNode
+      if (visited[current] !== 0) {
         continue
       }
-      const edge = outgoing.edgeIndices[i]
-      const tentativeScore = currentScore + edgeWeights[edge]
-      if (edgeWeights[edge] !== Infinity && !Number.isFinite(tentativeScore)) {
-        throw new GraphError({ message: "A* distance calculation exceeded the finite number range" })
+      visited[current] = 1
+      if (current === target) {
+        break
       }
-      if (tentativeScore < scores[neighbor]) {
-        scores[neighbor] = tentativeScore
-        previousNode[neighbor] = current
-        previousEdge[neighbor] = edge
-        const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
-        if (!Number.isFinite(priority)) {
-          throw new GraphError({ message: "A* priority calculation exceeded the finite number range" })
+
+      const currentScore = scores[current]
+      for (let i: number = outgoing.rowOffsets[current]; i < outgoing.rowOffsets[current + 1]; i++) {
+        const neighbor = outgoing.columnIndices[i]
+        if (visited[neighbor] !== 0) {
+          continue
         }
-        denseMinHeapPush(openSet, neighbor, priority, sequence++)
+        const edge = outgoing.edgeIndices[i]
+        const tentativeScore = currentScore + edgeWeights[edge]
+        if (edgeWeights[edge] !== Infinity && !Number.isFinite(tentativeScore)) {
+          throw new GraphError({ message: "A* distance calculation exceeded the finite number range" })
+        }
+        if (tentativeScore < scores[neighbor]) {
+          scores[neighbor] = tentativeScore
+          previousNode[neighbor] = current
+          previousEdge[neighbor] = edge
+          const priority = tentativeScore + getHeuristic(cache.nodeData[neighbor] as N)
+          if (!Number.isFinite(priority)) {
+            throw new GraphError({ message: "A* priority calculation exceeded the finite number range" })
+          }
+          denseMinHeapPush(openSet, neighbor, priority, sequence++)
+        }
       }
     }
-  }
+  })
 
   if (scores[target] === Infinity) {
     return Option.none()
@@ -6845,6 +6995,7 @@ export const astar: {
  * Specifies the source and target node indices, plus a cost function that maps
  * each edge's data to a numeric weight.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -6899,6 +7050,7 @@ export interface BellmanFordConfig<E> {
  * ```
  *
  * @see {@link dijkstra} for non-negative edge costs
+ * @stability unstable
  * @category algorithms
  * @since 3.18.0
  */
@@ -7067,6 +7219,7 @@ export const bellmanFord: {
  *
  * Each fresh iterator repeats the path enumeration.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -7087,6 +7240,7 @@ export interface PathWalker<E> extends Iterable<PathResult<E>> {}
  *
  * `limit` must be a non-negative integer or `Infinity`.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -7112,6 +7266,7 @@ export interface SimplePathsConfig {
  *
  * Invalid costs and limits throw a `GraphError` when evaluated.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */
@@ -7152,6 +7307,7 @@ const pathWalker = <E>(iterator: () => Iterator<PathResult<E>>): PathWalker<E> =
  *
  * @see {@link allShortestPaths} for enumerating only minimum-cost routes
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -7266,6 +7422,7 @@ export const simplePaths: {
  * @see {@link dijkstra} when one shortest path is sufficient
  * @see {@link simplePaths} for routes regardless of cost
  *
+ * @stability unstable
  * @category algorithms
  * @since 4.0.0
  */
@@ -7341,18 +7498,12 @@ export const allShortestPaths: {
           throw new GraphError({ message: "All shortest paths distance calculation exceeded the finite number range" })
         }
         const known = distances[neighbor]
-        const predecessor = { node: currentNode, edge }
         if (nextDistance < known) {
           distances[neighbor] = nextDistance
-          previous[neighbor] = [predecessor]
+          previous[neighbor] = [{ node: currentNode, edge }]
           denseMinHeapPush(queue, neighbor, nextDistance, sequence++)
         } else if (nextDistance === known && nextDistance !== Infinity) {
-          const predecessors = previous[neighbor]
-          if (predecessors === undefined) {
-            previous[neighbor] = [predecessor]
-          } else {
-            predecessors.push(predecessor)
-          }
+          ;(previous[neighbor] ??= []).push({ node: currentNode, edge })
         }
       }
     }
@@ -7445,6 +7596,7 @@ export const allShortestPaths: {
  * Array.from(Graph.entries(allNodes)) // => [[0, "A"], [1, "B"]]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -7542,6 +7694,7 @@ const traversalStartPositions = (cache: csr.Csr, start: ReadonlyArray<NodeIndex>
  * @see {@link Walker} for the generic lazy iterator wrapper
  * @see {@link EdgeWalker} for edge iterators
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -7561,6 +7714,7 @@ export type NodeWalker<N> = Walker<NodeIndex, N>
  * @see {@link NodeWalker} for node iterators
  * @see {@link edges} for creating edge walkers
  *
+ * @stability unstable
  * @category models
  * @since 3.18.0
  */
@@ -7584,6 +7738,7 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  * Array.from(Graph.indices(dfs)) // => [0, 1]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -7607,6 +7762,7 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  * Array.from(Graph.values(dfs)) // => ["A", "B"]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -7630,6 +7786,7 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  * Array.from(Graph.entries(dfs)) // => [[0, "A"], [1, "B"]]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -7660,6 +7817,7 @@ export const entries = <T, N>(walker: Walker<T, N>): Iterable<[T, N]> =>
  * revalidates those starts against the graph snapshot it captures. Later
  * mutations are not observed by an active iterator.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -7711,6 +7869,7 @@ export interface SearchConfig {
  *
  * @see {@link bfs} for traversal in increasing hop distance
  * @see {@link dfsPostOrder} for emitting descendants before ancestors
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -7888,6 +8047,7 @@ export const dfs: {
  *
  * @see {@link dfs} for branch-first traversal
  * @see {@link unweightedDistances} for collecting hop counts
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -8016,6 +8176,7 @@ export const bfs: {
  *
  * Throws a `GraphError` when any initial node has incoming edges.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -8060,6 +8221,7 @@ export interface TopoConfig {
  * ```
  *
  * @see {@link isAcyclic} for checking the required graph property
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -8200,6 +8362,7 @@ export const topo: {
  * ```
  *
  * @see {@link dfs} for emitting nodes when first visited
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -8342,6 +8505,7 @@ export const dfsPostOrder: {
  * Array.from(Graph.indices(Graph.nodes(graph))) // => [0, 1, 2]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -8395,6 +8559,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
  * Array.from(Graph.indices(Graph.edges(graph))) // => [0, 1]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */
@@ -8434,6 +8599,7 @@ export const edges = <N, E, T extends Kind = "directed">(
  * nodes with no incoming edges. If omitted, `direction` defaults to
  * `"outgoing"`.
  *
+ * @stability unstable
  * @category configuration
  * @since 3.18.0
  */
@@ -8481,6 +8647,7 @@ export interface ExternalsConfig {
  * Array.from(Graph.indices(Graph.externals(graph, { direction: "incoming" }))) // => [0, 3]
  * ```
  *
+ * @stability unstable
  * @category iterators
  * @since 3.18.0
  */

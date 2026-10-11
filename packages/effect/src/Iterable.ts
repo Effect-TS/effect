@@ -6,6 +6,7 @@
  * fold iterable values while preserving the input as an iterable instead of
  * forcing an array first.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -51,6 +52,7 @@ import type { NoInfer } from "./Types.ts"
  * Array.from(first10) // => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -90,6 +92,7 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
  * Array.from(Iterable.range(1, 3)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -118,6 +121,7 @@ export const range = (start: number, end?: number): Iterable<number> => {
  * Array.from(Iterable.replicate("a", 3)) // => ["a", "a", "a"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -141,6 +145,7 @@ export const replicate: {
  *
  * @see {@link forever} for repeating without an upper bound
  * @see {@link replicate} for repeating a single value
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -165,6 +170,7 @@ export const repeat: {
  * @see {@link repeat} for repeating an iterable a specific number of times
  * @see {@link take} for bounding the unbounded result before materializing it
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -182,6 +188,7 @@ export const forever = <A>(self: Iterable<A>): Iterable<A> => repeat(self, Infin
  * Array.from(Iterable.fromRecord(x)) // => [["a", 1], ["b", 2], ["c", 3]]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -213,6 +220,7 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
  * Array.from(withZ) // => ["z", "a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -232,6 +240,7 @@ export const prepend: {
  * Array.from(Iterable.prependAll([1, 2], ["a", "b"])) // => ["a", "b", 1, 2]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -273,6 +282,7 @@ export const prependAll: {
  * @see {@link prepend} for adding one element before the existing elements
  * @see {@link appendAll} for appending all elements from another iterable
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -320,6 +330,7 @@ export const append: {
  * @see {@link append} for appending one value instead of another iterable
  * @see {@link prependAll} for yielding another iterable before `self`
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -375,6 +386,7 @@ export const appendAll: {
  * Array.from(runningMax) // => [-Infinity, 3, 3, 4, 4, 5, 9, 9]
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -413,6 +425,7 @@ export const scan: {
  * Iterable.isEmpty([1, 2, 3]) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -444,6 +457,7 @@ export const isEmpty = <A>(self: Iterable<A>): self is Iterable<never> => {
  * Iterable.size(range) // => 100
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -481,6 +495,7 @@ export const size = <A>(self: Iterable<A>): number => {
  * doubled // => Option.some(10)
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -521,6 +536,7 @@ export const head = <A>(self: Iterable<A>): Option<A> => {
  * Iterable.headUnsafe(nonEmpty) // => 1
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -562,6 +578,7 @@ export const headUnsafe = <A>(self: Iterable<A>): A => {
  * Array.from(firstFive) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -619,6 +636,7 @@ export const take: {
  * Array.from(stringPrefix) // => ["a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -673,6 +691,7 @@ export const takeWhile: {
  * Array.from(slice) // => [2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -738,6 +757,7 @@ export const drop: {
  * findSquareRoot // => Option.some(1)
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -798,6 +818,7 @@ export const findFirst: {
  * lastString // => Option.some("world")
  * ```
  *
+ * @stability stable
  * @category searching
  * @since 2.0.0
  */
@@ -862,6 +883,7 @@ export const findLast: {
  * Array.from(indexed) // => [[0, "apple"], [1, "banana"], [2, "cherry"]]
  * ```
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -917,6 +939,7 @@ export const zip: {
  * Array.from(totals) // => [21.98, 25.5, 15]
  * ```
  *
+ * @stability stable
  * @category zipping
  * @since 2.0.0
  */
@@ -982,6 +1005,7 @@ export const zipWith: {
  * Array.from(css).join("") // => "color: red; font-size: 14px; margin: 10px"
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -1044,6 +1068,7 @@ export const intersperse: {
  * hasAlmostTwo // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1093,6 +1118,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * containsThree([4, 5, 6]) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -1136,6 +1162,7 @@ export const contains: {
  * Array.from(Iterable.take(batchSums, 3)) // => [55, 155, 255]
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -1202,6 +1229,7 @@ export const chunksOf: {
  * Array.from(scatteredGroups) // => [[1], [2], [1], [2], [1]]
  * ```
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -1273,6 +1301,7 @@ export const groupWith: {
  * // Note: Only consecutive equal objects are grouped together
  * ```
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -1327,6 +1356,7 @@ export const group: <A>(self: Iterable<A>) => Iterable<NonEmptyArray<A>> = group
  * evenOdd // => { odd: [1, 3, 5], even: [2, 4, 6] }
  * ```
  *
+ * @stability stable
  * @category grouping
  * @since 2.0.0
  */
@@ -1381,6 +1411,7 @@ const constEmptyIterator: Iterator<never> = {
  * Array.from(Iterable.empty<string>()) // => []
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1418,6 +1449,7 @@ export const empty = <A = never>(): Iterable<A> => constEmpty
  * Array.from(evensOnly) // => [2, 4]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1453,6 +1485,7 @@ export const of = <A>(a: A): Iterable<A> => [a]
  * )) // => [3, 5, 7]
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -1512,6 +1545,7 @@ export const map: {
  * Array.from(indexed) // => ["a", "b", "b", "c", "c", "c"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1555,6 +1589,7 @@ export const flatMap: {
  * Array.from(flatWithEmpty) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1627,6 +1662,7 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
  * Array.from(evenIndexItems) // => ["0: a", "2: c", "4: e"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1689,6 +1725,7 @@ export const filterMap: {
  * Array.from(indexedUntilC) // => ["0: a", "1: b"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1726,6 +1763,7 @@ export const filterMapWhile: {
  * Array.from(Iterable.getSomes([Option.some(1), Option.none(), Option.some(2)])) // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1765,6 +1803,7 @@ export const getSomes = <A>(self: Iterable<Option<A>>): Iterable<A> => {
  * ])) // => ["err"]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -1804,6 +1843,7 @@ export const getFailures = <R0, L>(self: Iterable<Result<R0, L>>): Iterable<L> =
  * ])) // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -1867,6 +1907,7 @@ export const getSuccesses = <R0, L>(self: Iterable<Result<R0, L>>): Iterable<R0>
  * Array.from(processed) // => [30, 40, 50]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -1939,6 +1980,7 @@ export const filter: {
  * Array.from(foundValues) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -1992,6 +2034,7 @@ export const flatMapNullishOr: {
  * hasString // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -2048,6 +2091,7 @@ export const some: {
  * Array.from(collatz) // => [7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -2106,6 +2150,7 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
  * processed // => [[1, 2], [3, 4], [5, 6]]
  * ```
  *
+ * @stability stable
  * @category traversing
  * @since 2.0.0
  */
@@ -2166,6 +2211,7 @@ export const forEach: {
  * indexed // => ["0: a", "1: b", "2: c"]
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 2.0.0
  */
@@ -2223,6 +2269,7 @@ export const reduce: {
  * Array.from(dedupedFloats) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -2290,6 +2337,7 @@ export const dedupeAdjacentWith: {
  * Array.from(cleanedData) // => [100, 101, 102, 100]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -2336,6 +2384,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  * Array.from(testCases) // => ["admin_can_read", "admin_can_write", "admin_can_delete", "user_can_read", "user_can_write", "user_can_delete"]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -2410,6 +2459,7 @@ export const cartesianWith: {
  * Array.from(withEmpty) // => []
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -2432,6 +2482,7 @@ export const cartesian: {
  * Iterable.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0) // => 2
  * ```
  *
+ * @stability stable
  * @category folding
  * @since 3.16.0
  */

@@ -7,6 +7,7 @@
  * and `Layer`, while this module is useful when code needs to create, provide,
  * fork, close, or inspect scopes directly.
  *
+ * @stability stable
  * @since 2.0.0
  */
 
@@ -39,12 +40,14 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
  * Effect.runSync(program) // => [["sequential", "Empty"], "Closed"]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
 export interface Scope {
   readonly [TypeId]: typeof TypeId
   readonly strategy: "sequential" | "parallel"
+  readonly parent: Scope | undefined
   state: State.Open | State.Closed | State.Empty
 }
 /**
@@ -67,6 +70,7 @@ export interface Scope {
  * cleanups // => ["Cleanup!"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -75,9 +79,8 @@ export interface Closeable extends Scope {
 }
 
 /**
- * The `State` namespace contains the concrete states of a scope: `Empty`
- * before any finalizers are registered, `Open` with registered finalizers, and
- * `Closed` with the exit value used to close the scope.
+ * Scope states: `Empty` has no finalizers, `Open` has at least one, and
+ * `Closed` holds the exit value.
  *
  * **Example** (Checking scope states)
  *
@@ -94,17 +97,17 @@ export interface Closeable extends Scope {
  * Effect.runSync(program) // => ["Empty", "Closed"]
  * ```
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace State {
   /**
-   * Represents an open scope with no registered finalizers yet.
+   * Represents an open scope with no finalizers currently registered.
    *
    * **Details**
    *
-   * Adding the first finalizer transitions the scope to `Open`; closing an
-   * empty scope transitions directly to `Closed` without producing a finalizer
-   * effect.
+   * Adding a finalizer moves it to `Open`; removing the last one returns it
+   * to `Empty`.
    *
    * **Example** (Inspecting an empty scope state)
    *
@@ -209,6 +212,7 @@ export declare namespace State {
  * cleanups // => ["Cleanup"]
  * ```
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -234,6 +238,7 @@ export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
  * cleanups // => ["Cleanup 2", "Cleanup 1"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -265,6 +270,7 @@ export const make: (finalizerStrategy?: "sequential" | "parallel") => Effect<Clo
  * cleanups // => ["Cleanup"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -304,6 +310,7 @@ export const makeUnsafe: (finalizerStrategy?: "sequential" | "parallel") => Clos
  * events // => ["working", "cleanup"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -342,6 +349,7 @@ export const provide: {
  * exits // => [Exit.void]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -376,6 +384,7 @@ export const addFinalizerExit: (scope: Scope, finalizer: (exit: Exit<any, any>) 
  * events // => ["work", "cleanup 3", "cleanup 2", "cleanup 1"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -409,6 +418,7 @@ export const addFinalizer: (scope: Scope, finalizer: Effect<unknown>) => Effect<
  * cleanups // => ["child", "parent"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -450,6 +460,7 @@ export const fork: (
  * cleanups // => ["child", "parent"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -467,6 +478,8 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  *
  * Finalizers run in the scope's configured order and receive the supplied
  * `Exit`.
+ * By default, finalizers run uninterruptibly, so interrupting the closing fiber
+ * waits for them to finish; a finalizer can explicitly restore interruptibility.
  *
  * **Example** (Running scope finalizers)
  *
@@ -487,10 +500,11 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  * events // => ["work", "memory", "file", "database"]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
-export const close: <A, E>(self: Scope, exit: Exit<A, E>) => Effect<void> = effect.scopeClose
+export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = effect.scopeClose
 
 /**
  * Closes a scope unsafely with the provided exit value.
@@ -508,14 +522,17 @@ export const close: <A, E>(self: Scope, exit: Exit<A, E>) => Effect<void> = effe
  *
  * **Gotchas**
  *
- * Ignoring the returned effect skips registered finalizers.
+ * Ignoring the returned effect skips registered finalizers. The caller must
+ * run the returned effect uninterruptibly: the scope is already closed, so
+ * interruption during finalization can permanently skip remaining finalizers.
  *
  * @see {@link close} for the usual effectful close operation that always returns an `Effect`
  *
+ * @stability stable
  * @category unsafe
  * @since 4.0.0
  */
-export const closeUnsafe: <A, E>(self: Scope, exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
+export const closeUnsafe: <A, E>(self: Closeable, exit_: Exit<A, E>) => Effect<void, never, never> | undefined =
   effect.scopeCloseUnsafe
 
 /**
@@ -536,6 +553,7 @@ export const closeUnsafe: <A, E>(self: Scope, exit_: Exit<A, E>) => Effect<void,
  * @see `provide` for providing a scope without closing it automatically
  * @see `Effect.scoped` for creating and closing a fresh scope around a workflow
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */

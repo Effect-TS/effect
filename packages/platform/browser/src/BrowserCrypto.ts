@@ -6,6 +6,7 @@
  * browser programs can use the standard implementation while tests or embedded
  * runtimes can provide their own `Crypto` object.
  *
+ * @stability unstable
  * @since 1.0.0
  */
 import * as Context from "effect/Context"
@@ -22,6 +23,7 @@ import * as PlatformError from "effect/PlatformError"
  * Use to override the browser `Crypto` object used by the platform crypto
  * layer.
  *
+ * @stability unstable
  * @category services
  * @since 1.0.0
  */
@@ -48,6 +50,7 @@ export const WebCrypto = Context.Reference<Crypto>("@effect/platform-browser/Cry
  * fail with `PlatformError` when `crypto.subtle.digest` is unavailable or the
  * browser rejects the digest request.
  *
+ * @stability unstable
  * @category layers
  * @since 1.0.0
  */

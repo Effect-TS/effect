@@ -5,6 +5,7 @@
  * It forwards runner options to the core runtime and adds a `pagehide`
  * listener that interrupts the main fiber when the document is discarded.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "effect/Effect"
@@ -30,6 +31,7 @@ import { makeRunMain, type Teardown } from "effect/Runtime"
  * The `pagehide` interruption is best-effort. Browser teardown may prevent
  * asynchronous finalizers, network work, timers, or prompts from completing.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

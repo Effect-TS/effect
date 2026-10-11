@@ -9,23 +9,23 @@
  * to the driver's asynchronous query API. Streaming queries and `updateValues`
  * are not supported by this driver.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Sqlite from "@op-engineering/op-sqlite"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Fiber from "effect/Fiber"
 import { constFalse, identity } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Scope from "effect/Scope"
+import * as Reactivity from "effect/reactivity/Reactivity"
+import type * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import { classifySqliteError, SqlError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
-import { classifySqliteError, SqlError } from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 
@@ -47,6 +47,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
 /**
  * Runtime identifier attached to SQLite React Native client values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -55,6 +56,7 @@ export const TypeId: TypeId = "~@effect/sql-sqlite-react-native/SqliteClient"
 /**
  * Type-level identifier for SQLite React Native client values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -63,6 +65,7 @@ export type TypeId = "~@effect/sql-sqlite-react-native/SqliteClient"
 /**
  * React Native SQLite client service interface, extending `SqlClient` with its configuration and marking `updateValues` as unsupported for SQLite.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -77,6 +80,7 @@ export interface SqliteClient extends Client.SqlClient {
 /**
  * Service tag for the React Native SQLite client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -85,6 +89,7 @@ export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-re
 /**
  * Configuration for a React Native SQLite client, including the database filename, optional location and encryption key, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -105,6 +110,7 @@ export interface SqliteClientConfig {
  * Use to switch React Native SQLite query execution to the asynchronous driver
  * API for a scoped effect.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -116,6 +122,7 @@ export const AsyncQuery = Context.Reference<boolean>(
 /**
  * Runs an effect with `AsyncQuery` enabled, causing React Native SQLite queries in that effect to use the asynchronous driver API.
  *
+ * @stability unstable
  * @category providing services
  * @since 4.0.0
  */
@@ -127,6 +134,7 @@ interface SqliteConnection extends Connection {}
 /**
  * Creates a scoped React Native SQLite client from the supplied configuration, using a single serialized connection and honoring `AsyncQuery` for query execution.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -219,20 +227,9 @@ export const make = (
       })
     })
 
-    const semaphore = yield* Semaphore.make(1)
-    const connection = yield* makeConnection
-
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        connection
-      )
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: Effect.succeed(yield* makeConnection),
+      semaphore: yield* Semaphore.make(1)
     })
 
     return Object.assign(
@@ -240,6 +237,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -257,6 +255,7 @@ export const make = (
 /**
  * Builds a layer from an Effect `Config` value, providing both the React Native `SqliteClient` service and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -277,6 +276,7 @@ export const layerConfig = (
 /**
  * Builds a layer from a React Native SQLite client configuration, providing both `SqliteClient` and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

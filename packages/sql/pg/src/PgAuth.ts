@@ -13,16 +13,18 @@
  * are not supported. Server iteration counts above 1,000,000 are rejected
  * before password derivation.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
-import * as Encoding from "effect/Encoding"
+import * as Base64 from "effect/encoding/Base64"
 import * as Result from "effect/Result"
 import { createHash, createHmac, pbkdf2Sync } from "node:crypto"
 
 /**
  * Failure returned when an authentication exchange cannot be completed.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -63,10 +65,10 @@ const xor = (left: Uint8Array, right: Uint8Array): Uint8Array => {
   return result
 }
 
-const toBase64 = (bytes: Uint8Array): string => Encoding.encodeBase64(bytes)
+const toBase64 = (bytes: Uint8Array): string => Base64.encode(bytes)
 
 const fromBase64 = (text: string, field: string): Uint8Array => {
-  const decoded = Encoding.decodeBase64(text)
+  const decoded = Base64.decode(text)
   if (Result.isFailure(decoded)) {
     return fail(`Invalid base64 in SCRAM attribute "${field}"`)
   }
@@ -105,6 +107,7 @@ const md5PasswordUnsafe = (options: {
 /**
  * Computes the legacy PostgreSQL MD5 password response.
  *
+ * @stability unstable
  * @category authentication
  * @since 4.0.0
  */
@@ -117,6 +120,7 @@ export const md5Password = (options: {
 /**
  * The only SASL mechanism this module implements.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -125,6 +129,7 @@ export const SCRAM_SHA_256 = "SCRAM-SHA-256"
 /**
  * State after the client's first message, awaiting the server's challenge.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -138,6 +143,7 @@ export interface ScramFirst {
 /**
  * State after the client's final message, awaiting the server signature.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -149,6 +155,7 @@ export interface ScramFinal {
 /**
  * The SCRAM exchange state.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -210,6 +217,7 @@ const scramInitUnsafe = (options: {
 /**
  * Creates the first SCRAM-SHA-256 client message.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -277,6 +285,7 @@ const scramContinueUnsafe = (
 /**
  * Processes the server's SCRAM challenge and creates the client proof.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */
@@ -309,6 +318,7 @@ const scramFinishUnsafe = (state: ScramFinal, challenge: Uint8Array): void => {
 /**
  * Verifies the server's final SCRAM message.
  *
+ * @stability unstable
  * @category SCRAM
  * @since 4.0.0
  */

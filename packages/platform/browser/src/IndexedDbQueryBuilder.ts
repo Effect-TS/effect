@@ -9,6 +9,7 @@
  * stored rows with the table schema, and writes encode input values before
  * sending them to IndexedDB.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "effect/Array"
@@ -24,6 +25,7 @@ import type * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as Pipeable from "effect/Pipeable"
 import type * as Queue from "effect/Queue"
+import type * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Record from "effect/Record"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
@@ -31,7 +33,6 @@ import * as SchemaIssue from "effect/SchemaIssue"
 import * as SchemaParser from "effect/SchemaParser"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Utils from "effect/Utils"
 import type * as IndexedDb from "./IndexedDb.ts"
 import type * as IndexedDbDatabase from "./IndexedDbDatabase.ts"
@@ -56,6 +57,7 @@ const CommonProto = {
 /**
  * String union describing IndexedDB query failure categories such as decoding, encoding, and transaction errors.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -76,6 +78,7 @@ export type ErrorReason =
  *
  * @see {@link ErrorReason} for the supported failure categories
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -98,6 +101,7 @@ export class IndexedDbQueryError extends Data.TaggedError(
 /**
  * Typed query builder for an IndexedDB version, with helpers for table queries, database access, clearing data, and running effects in a shared transaction.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -146,6 +150,7 @@ export interface IndexedDbQueryBuilder<
 /**
  * Valid key-path type for a table schema, using encoded fields whose values are IndexedDB-valid keys.
  *
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -156,6 +161,7 @@ export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
 /**
  * Valid numeric key-path type for a table schema, used for auto-increment key paths.
  *
+ * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
@@ -166,6 +172,7 @@ export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
 /**
  * Namespace containing the typed IndexedDB query model interfaces and helper types.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace IndexedDbQuery {
@@ -724,6 +731,7 @@ export declare namespace IndexedDbQuery {
 /**
  * Service tag for the active `IDBTransaction` used to share a transaction across IndexedDB query effects.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -2043,6 +2051,7 @@ const awaitTransaction = (transaction: globalThis.IDBTransaction) =>
 /**
  * Creates an `IndexedDbQueryBuilder` from an open database reference, key-range constructor, table map, and reactivity service.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

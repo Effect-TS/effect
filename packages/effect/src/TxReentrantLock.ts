@@ -8,9 +8,11 @@
  * until the lock becomes available. This module includes manual, scoped, and
  * wrapper-style operations for read and write locking.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
+import { dual } from "./Function.ts"
 import * as HashMap from "./HashMap.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { NodeInspectSymbol, toJson } from "./Inspectable.ts"
@@ -61,6 +63,7 @@ const emptyState: LockState = {
  * await Effect.runPromise(program) // => ["reading", "writing"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -105,6 +108,7 @@ const TxReentrantLockProto: Omit<TxReentrantLock, typeof TypeId | "stateRef"> = 
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -141,6 +145,7 @@ export const make = (): Effect.Effect<TxReentrantLock> =>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -197,6 +202,7 @@ export const acquireRead = (self: TxReentrantLock): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -293,6 +299,7 @@ const releaseReadFor = (self: TxReentrantLock, fiberId: number): Effect.Effect<n
  *
  * Returns the remaining number of read locks held by this fiber.
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -353,6 +360,7 @@ const releaseWriteFor = (self: TxReentrantLock, fiberId: number): Effect.Effect<
  *
  * Returns the remaining number of write locks held by this fiber.
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -385,6 +393,7 @@ export const releaseWrite = (self: TxReentrantLock): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => [1, 0]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -392,7 +401,8 @@ export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Sc
   Effect.withFiber((fiber) =>
     Effect.acquireRelease(
       acquireRead(self),
-      () => releaseReadFor(self, fiber.id)
+      () => releaseReadFor(self, fiber.id),
+      { interruptible: true }
     )
   )
 
@@ -422,6 +432,7 @@ export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Sc
  * await Effect.runPromise(program) // => [1, 0]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -429,8 +440,23 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
   Effect.withFiber((fiber) =>
     Effect.acquireRelease(
       acquireWrite(self),
-      () => releaseWriteFor(self, fiber.id)
+      () => releaseWriteFor(self, fiber.id),
+      { interruptible: true }
     )
+  )
+
+/**
+ * Runs `effect` between `acquire` and `release`. Acquisition and `effect`
+ * inherit the caller's interruptibility, while the handoff from a successful
+ * acquisition to the release finalizer stays protected.
+ */
+const withAcquired = <A, E, R>(
+  acquire: Effect.Effect<number>,
+  effect: Effect.Effect<A, E, R>,
+  release: Effect.Effect<number>
+): Effect.Effect<A, E, R> =>
+  Effect.uninterruptibleMask((restore) =>
+    Effect.flatMap(restore(acquire), () => Effect.ensuring(restore(effect), release))
   )
 
 /**
@@ -453,29 +479,18 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
  * await Effect.runPromise(program) // => "read data"
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
 export const withReadLock: {
   <A, E, R>(effect: Effect.Effect<A, E, R>): (self: TxReentrantLock) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-} = ((...args: Array<any>) => {
-  if (args.length === 1) {
-    const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireRead(self),
-        () => effect,
-        () => releaseRead(self)
-      )
-  }
-  const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireRead(self),
-    () => effect,
-    () => releaseRead(self)
-  )
-}) as any
+} = dual(
+  2,
+  <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    withAcquired(acquireRead(self), effect, releaseRead(self))
+)
 
 /**
  * Runs the provided effect while holding a write lock. The lock is automatically
@@ -497,29 +512,18 @@ export const withReadLock: {
  * await Effect.runPromise(program) // => "wrote data"
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
 export const withWriteLock: {
   <A, E, R>(effect: Effect.Effect<A, E, R>): (self: TxReentrantLock) => Effect.Effect<A, E, R>
   <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
-} = ((...args: Array<any>) => {
-  if (args.length === 1) {
-    const [effect] = args
-    return (self: TxReentrantLock) =>
-      Effect.acquireUseRelease(
-        acquireWrite(self),
-        () => effect,
-        () => releaseWrite(self)
-      )
-  }
-  const [self, effect] = args
-  return Effect.acquireUseRelease(
-    acquireWrite(self),
-    () => effect,
-    () => releaseWrite(self)
-  )
-}) as any
+} = dual(
+  2,
+  <A, E, R>(self: TxReentrantLock, effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    withAcquired(acquireWrite(self), effect, releaseWrite(self))
+)
 
 /**
  * Runs an effect while holding a write lock.
@@ -545,6 +549,7 @@ export const withWriteLock: {
  * await Effect.runPromise(program) // => "exclusive operation"
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -576,6 +581,7 @@ export const withLock: {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -605,6 +611,7 @@ export const readLocks = (self: TxReentrantLock): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => 0
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -630,6 +637,7 @@ export const writeLocks = (self: TxReentrantLock): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -655,6 +663,7 @@ export const locked = (self: TxReentrantLock): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -680,6 +689,7 @@ export const readLocked = (self: TxReentrantLock): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => false
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -706,6 +716,7 @@ export const writeLocked = (self: TxReentrantLock): Effect.Effect<boolean> =>
  * TxReentrantLock.isTxReentrantLock(someValue) // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

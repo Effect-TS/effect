@@ -35,6 +35,7 @@ import {
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
+import { inspect } from "node:util"
 import {
   assertExitSuccess,
   assertFalse,
@@ -99,6 +100,35 @@ describe("Schema", () => {
   })
 
   describe("SchemaError", () => {
+    it("serializes as a tagged formatted message", () => {
+      const schema = Schema.Struct({ profile: Schema.Struct({ email: Schema.String }) })
+      const result = Schema.decodeUnknownResult(schema)({ profile: { email: null } })
+      assertTrue(Result.isFailure(result))
+      const error = result.failure
+      const expected = {
+        _tag: "SchemaError",
+        message: "Expected string\n  at [\"profile\"][\"email\"]"
+      }
+
+      deepStrictEqual(error.toJSON(), expected)
+      deepStrictEqual(JSON.parse(JSON.stringify(error)), expected)
+    })
+
+    it("inspects as a tagged formatted message", () => {
+      const result = Schema.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+      const error = result.failure
+      const expected = {
+        _tag: "SchemaError",
+        message: "Expected string"
+      }
+
+      strictEqual(
+        inspect(error, { depth: null }),
+        inspect(expected, { depth: null })
+      )
+    })
+
     it("extends Error and exposes the issue", () => {
       const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
       assertTrue(Result.isFailure(result))
@@ -405,6 +435,50 @@ Missing key
     await encoding.fail(1, `Expected string`)
   })
 
+  it("StringForLiteralAutocomplete", async () => {
+    const schema = Schema.StringForLiteralAutocomplete
+    const asserts = new TestSchema.Asserts(schema)
+
+    strictEqual(schema.ast, SchemaAST.string)
+
+    const make = asserts.make()
+    await make.succeed("a")
+    await make.fail(null, `Expected string`)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("a")
+    await decoding.fail(1, `Expected string`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed("a")
+    await encoding.fail(1, `Expected string`)
+  })
+
+  it("StringForLiteralAutocomplete | Literals", async () => {
+    const schema = Schema.Union([
+      Schema.StringForLiteralAutocomplete,
+      Schema.Literals(["GET", "POST"])
+    ])
+    const asserts = new TestSchema.Asserts(schema)
+
+    deepStrictEqual(schema.members[1].literals, ["GET", "POST"])
+
+    const make = asserts.make()
+    await make.succeed("GET")
+    await make.succeed("PATCH")
+    await make.fail(null, `Expected string | "GET" | "POST"`)
+
+    const decoding = asserts.decoding()
+    await decoding.succeed("GET")
+    await decoding.succeed("PATCH")
+    await decoding.fail(1, `Expected string | "GET" | "POST"`)
+
+    const encoding = asserts.encoding()
+    await encoding.succeed("GET")
+    await encoding.succeed("PATCH")
+    await encoding.fail(1, `Expected string | "GET" | "POST"`)
+  })
+
   it("Number", async () => {
     const schema = Schema.Number
     const asserts = new TestSchema.Asserts(schema)
@@ -578,35 +652,16 @@ Missing key
   })
 
   describe("Struct", () => {
-    it("should throw an error if there are duplicate property signatures", () => {
-      throws(
-        () =>
-          new SchemaAST.Objects(
-            [
-              new SchemaAST.PropertySignature("a", Schema.String.ast),
-              new SchemaAST.PropertySignature("b", Schema.String.ast),
-              new SchemaAST.PropertySignature("c", Schema.String.ast),
-              new SchemaAST.PropertySignature("a", Schema.String.ast),
-              new SchemaAST.PropertySignature("c", Schema.String.ast)
-            ],
-            []
-          ),
-        new Error(`Duplicate identifiers: ["a","c"]. ts(2300)`)
+    it("allows duplicate property signatures in the low-level AST constructor", () => {
+      const ast = new SchemaAST.Objects(
+        [
+          new SchemaAST.PropertySignature("a", Schema.String.ast),
+          new SchemaAST.PropertySignature("b", Schema.String.ast),
+          new SchemaAST.PropertySignature("a", Schema.Number.ast)
+        ],
+        []
       )
-    })
-
-    it("should throw an error if a large struct has duplicate property signatures", () => {
-      throws(
-        () =>
-          new SchemaAST.Objects(
-            Array.from(
-              { length: 32 },
-              (_, index) => new SchemaAST.PropertySignature(`field${index === 31 ? 0 : index}`, Schema.String.ast)
-            ),
-            []
-          ),
-        new Error(`Duplicate identifiers: ["field0"]. ts(2300)`)
-      )
+      deepStrictEqual(ast.propertySignatures.map((propertySignature) => propertySignature.name), ["a", "b", "a"])
     })
 
     describe("onExcessProperty", () => {
@@ -650,6 +705,60 @@ Expected no excess property
           { a: "a", b: "b", c: "c", [sym]: "sym" },
           { a: "a" }
         )
+      })
+
+      it("error ignores non-enumerable undeclared own properties without reading them", async () => {
+        const schema = Schema.Struct({
+          a: Schema.String
+        })
+        const asserts = new TestSchema.Asserts(schema)
+        const sym = Symbol("sym")
+        const input: Record<PropertyKey, unknown> = { a: "a" }
+        for (const key of ["stack", sym]) {
+          Object.defineProperty(input, key, {
+            get() {
+              throw new Error("Non-enumerable excess properties must not be read")
+            },
+            enumerable: false
+          })
+        }
+
+        for (const errors of ["first", "all"] as const) {
+          const parseOptions = { onExcessProperty: "error", errors } as const
+          await asserts.decoding({ parseOptions }).succeed(input, { a: "a" })
+          await asserts.encoding({ parseOptions }).succeed(input, { a: "a" })
+        }
+      })
+
+      it("error validates non-enumerable declared string and symbol properties", async () => {
+        for (const key of ["a", Symbol("a")]) {
+          const schema = Schema.Struct({ [key]: Schema.Number })
+          const input = Object.defineProperty({}, key, { value: 1, enumerable: false })
+          const invalid = Object.defineProperty({}, key, { value: "invalid", enumerable: false })
+          const asserts = new TestSchema.Asserts(schema)
+          const parseOptions = { onExcessProperty: "error" } as const
+          const message = `Expected number\n  at [${typeof key === "string" ? JSON.stringify(key) : String(key)}]`
+
+          await asserts.decoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.encoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.decoding({ parseOptions }).fail(invalid, message)
+          await asserts.encoding({ parseOptions }).fail(invalid, message)
+        }
+      })
+
+      it("error accepts Error internals in an open record", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Number)
+        const asserts = new TestSchema.Asserts(schema)
+        const decoding = asserts.decoding({ parseOptions: { onExcessProperty: "error" } })
+        await decoding.succeed(new Error("boom"), {})
+        await asserts.encoding({ parseOptions: { onExcessProperty: "error" } }).succeed(new Error("boom"), {})
+      })
+
+      it("error encodes tagged errors carrying runtime internals", async () => {
+        class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.Number }) {}
+        const asserts = new TestSchema.Asserts(NotFound)
+        const encoding = asserts.encoding({ parseOptions: { onExcessProperty: "error" } })
+        await encoding.succeed(new NotFound({ id: 1 }), { _tag: "NotFound", id: 1 })
       })
     })
 
@@ -1239,7 +1348,7 @@ Expected no excess property
       it("multiple checks", async () => {
         const schema = Schema.String.check(
           Schema.isMinLength(3),
-          Schema.isIncludes("c")
+          Schema.isIncluding("c")
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -1260,7 +1369,7 @@ Expected a string including "c"`
       it("aborting checks", async () => {
         const schema = Schema.String.check(
           Schema.isMinLength(2).abort(),
-          Schema.isIncludes("b")
+          Schema.isIncluding("b")
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -1375,8 +1484,8 @@ Expected a string including "c"`
         }
       })
 
-      it("isStartsWith", async () => {
-        const schema = Schema.String.check(Schema.isStartsWith("a"))
+      it("isStartingWith", async () => {
+        const schema = Schema.String.check(Schema.isStartingWith("a"))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1394,8 +1503,8 @@ Expected a string including "c"`
         )
       })
 
-      it("isEndsWith", async () => {
-        const schema = Schema.String.check(Schema.isEndsWith("a"))
+      it("isEndingWith", async () => {
+        const schema = Schema.String.check(Schema.isEndingWith("a"))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1918,8 +2027,8 @@ Expected a value between -2147483648 and 2147483647`
         )
       })
 
-      it("isPropertiesLengthBetween", async () => {
-        const schema = Schema.Record(Schema.String, Schema.Number).check(Schema.isPropertiesLengthBetween(2, 2))
+      it("isBetweenProperties", async () => {
+        const schema = Schema.Record(Schema.String, Schema.Number).check(Schema.isBetweenProperties(2, 2))
         const asserts = new TestSchema.Asserts(schema)
 
         const decoding = asserts.decoding()
@@ -1935,11 +2044,11 @@ Expected a value between -2147483648 and 2147483647`
         )
       })
 
-      it("isPropertiesLengthBetween with symbol keys", async () => {
+      it("isBetweenProperties with symbol keys", async () => {
         const sym1 = Symbol("test1")
         const sym2 = Symbol("test2")
         const schema = Schema.Record(Schema.Union([Schema.String, Schema.Symbol]), Schema.Number).check(
-          Schema.isPropertiesLengthBetween(2, 2)
+          Schema.isBetweenProperties(2, 2)
         )
         const asserts = new TestSchema.Asserts(schema)
 
@@ -4036,6 +4145,29 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.fail(null, "Expected object")
     })
 
+    for (const key of ["visible", Symbol("visible")]) {
+      it(`index signatures select only enumerable ${typeof key} properties`, async () => {
+        const input = { [key]: 1 }
+        const hidden = typeof key === "string" ? "hidden" : Symbol("hidden")
+        Object.defineProperty(input, hidden, {
+          get() {
+            throw new Error("Non-enumerable record entries must not be read")
+          },
+          enumerable: false
+        })
+        const schema = Schema.Record(typeof key === "string" ? Schema.String : Schema.Symbol, Schema.Number)
+        const asserts = new TestSchema.Asserts(schema)
+        const message = `Expected number\n  at [${typeof key === "string" ? JSON.stringify(key) : String(key)}]`
+
+        for (const parseOptions of [undefined, { onExcessProperty: "error" } as const]) {
+          await asserts.decoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.encoding({ parseOptions }).succeed(input, { [key]: 1 })
+          await asserts.decoding({ parseOptions }).fail({ [key]: "invalid" }, message)
+          await asserts.encoding({ parseOptions }).fail({ [key]: "invalid" }, message)
+        }
+      })
+    }
+
     it("Record(Symbol.check, Number) should use the key checks to select keys", async () => {
       const a = Symbol.for("a")
       const b = Symbol.for("b")
@@ -4084,6 +4216,11 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     describe("Literals keys", () => {
+      it("deduplicates repeated literal keys", () => {
+        const schema = Schema.Record(Schema.Literals(["a", "a", "b"]), Schema.Number)
+        deepStrictEqual(schema.ast.propertySignatures.map((propertySignature) => propertySignature.name), ["a", "b"])
+      })
+
       it("Record(Literals, Number)", async () => {
         const schema = Schema.Record(Schema.Literals(["a", "b"]), Schema.Number)
         const asserts = new TestSchema.Asserts(schema)
@@ -4601,6 +4738,36 @@ Expected a value between -2147483648 and 2147483647`
         strictEqual(secondCalls, 1)
       }))
 
+    it(`mode: "oneOf" succeeds on each execution of the same suspended decode effect`, () => {
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) => Effect.sync(() => s)),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))], { mode: "oneOf" })
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      strictEqual(Effect.runSync(effect), "a")
+      strictEqual(Effect.runSync(effect), "a")
+    })
+
+    it(`mode: "anyOf" does not reuse a previous success when all members now fail`, () => {
+      let succeeds = true
+      const first = Schema.String.pipe(Schema.decode({
+        decode: SchemaGetter.transformEffect((s) =>
+          Effect.suspend(() =>
+            succeeds ? Effect.succeed(s) : Effect.fail(new SchemaIssue.Forbidden({ message: "first failed" }))
+          )
+        ),
+        encode: SchemaGetter.passthrough()
+      }))
+      const schema = Schema.Union([first, Schema.String.check(Schema.isMinLength(5))])
+      const effect = SchemaParser.decodeUnknownEffect(schema)("a")
+
+      strictEqual(Effect.runSync(effect), "a")
+      succeeds = false
+      strictEqual(Effect.runSync(Effect.flip(effect))._tag, "AnyOf")
+    })
+
     it.effect(`mode: "oneOf" detects asynchronous successes in member order`, () =>
       Effect.gen(function*() {
         const firstStarted = yield* Deferred.make<void>()
@@ -4887,6 +5054,17 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("StructWithRest", () => {
+    it("should throw an error if there are duplicate property signatures", () => {
+      throws(
+        () =>
+          Schema.StructWithRest(
+            Schema.Struct({ a: Schema.String }),
+            [Schema.Record(Schema.Literals(["a", "b"]), Schema.Number)]
+          ),
+        new Error(`Duplicate identifier: "a". ts(2300)`)
+      )
+    })
+
     it("should throw an error if there are encodings", () => {
       throws(
         () =>
@@ -9415,9 +9593,21 @@ pointed message
           Schema.Struct({ _tag: Schema.tag("B"), type: Schema.tag("TypeB"), b: Schema.FiniteFromString })
         ]).pipe(Schema.toTaggedUnion("type"))
 
+        strictEqual(schema.tag, "type")
+
         // cases
         deepStrictEqual(schema.cases.TypeA, schema.members[0])
         deepStrictEqual(schema.cases.TypeB, schema.members[1])
+      })
+
+      it("should expose a symbol tag", () => {
+        const tag = Symbol.for("tag")
+        const schema = Schema.Union([
+          Schema.Struct({ [tag]: Schema.tag("A") }),
+          Schema.Struct({ [tag]: Schema.tag("B") })
+        ]).pipe(Schema.toTaggedUnion(tag))
+
+        strictEqual(schema.tag, tag)
       })
 
       it("should throw on duplicate discriminants", () => {
@@ -9483,6 +9673,8 @@ pointed message
           C: { c: Schema.Boolean },
           B: { b: Schema.FiniteFromString }
         }).annotate({})
+
+        strictEqual(schema.tag, "_tag")
 
         const { A, B, C } = schema.cases
 
@@ -10320,17 +10512,21 @@ describe("Check", () => {
   describe("brand", () => {
     it("single brand", async () => {
       const schema = Schema.String.pipe(Schema.brand("Positive"))
-      deepStrictEqual(schema.ast.annotations?.brands, ["Positive"])
+      strictEqual(schema.ast, Schema.String.ast)
+      strictEqual(schema.schema, Schema.String)
+      strictEqual(schema.identifier, "Positive")
     })
 
     it("double brand", async () => {
       const schema = Schema.String.pipe(Schema.brand("Positive"), Schema.brand("Int"))
-      deepStrictEqual(schema.ast.annotations?.brands, ["Positive", "Int"])
+      strictEqual(schema.ast, Schema.String.ast)
+      strictEqual(schema.schema.identifier, "Positive")
+      strictEqual(schema.identifier, "Int")
     })
 
     it("override the default identifier", async () => {
       const schema = Schema.String.pipe(Schema.brand("Positive"), Schema.brand("Int")).annotate({ identifier: "MyInt" })
-      deepStrictEqual(schema.ast.annotations?.brands, ["Positive", "Int"])
+      deepStrictEqual(schema.ast.annotations, { identifier: "MyInt" })
     })
   })
 
@@ -10343,7 +10539,7 @@ describe("Check", () => {
       await decoding.succeed("a")
       await decoding.fail(1, `Expected string`)
 
-      deepStrictEqual(schema.ast.annotations?.brands, ["a"])
+      strictEqual(schema.ast, Schema.String.ast)
     })
 
     it("single brand", async () => {
@@ -10357,8 +10553,6 @@ describe("Check", () => {
       await decoding.succeed(1)
       await decoding.fail("a", `Expected number`)
       await decoding.fail(1.2, `Expected an integer`)
-
-      deepStrictEqual(schema.ast.checks?.at(-1)?.annotations?.brands, ["Int"])
     })
 
     it("multiple brands", async () => {
@@ -10368,8 +10562,10 @@ describe("Check", () => {
       type Positive = number & Brand.Brand<"Positive">
       const Positive = Brand.check<Positive>(Schema.isGreaterThan(0))
 
-      const PositiveInt = Brand.all(Int, Positive)
-      const schema = Schema.Number.pipe(Schema.fromBrand("PositiveInt", PositiveInt))
+      const schema = Schema.Number.pipe(
+        Schema.fromBrand("Int", Int),
+        Schema.fromBrand("Positive", Positive)
+      )
 
       const asserts = new TestSchema.Asserts(schema)
 
@@ -10378,8 +10574,6 @@ describe("Check", () => {
       await decoding.fail("a", `Expected number`)
       await decoding.fail(1.2, `Expected an integer`)
       await decoding.fail(-1, `Expected a value greater than 0`)
-
-      deepStrictEqual(schema.ast.checks?.at(-1)?.annotations?.brands, ["PositiveInt"])
     })
   })
 

@@ -1,8 +1,8 @@
 import * as DenoSocket from "@effect/platform-deno/DenoSocket"
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Queue } from "effect"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Socket from "effect/unstable/socket/Socket"
 
 const ca = Deno.readTextFileSync(new URL("./fixtures/tls/ca.pem", import.meta.url))
 const cert = Deno.readTextFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
@@ -97,7 +97,51 @@ const replaceDenoConnect = (
     (descriptor) => Effect.sync(() => Object.defineProperty(Deno, "connect", descriptor))
   )
 
-describe("DenoSocket", () => {
+// Tests that replace Deno APIs must not overlap native connection tests.
+describe("DenoSocket", { concurrent: false }, () => {
+  for (const servername of ["mail.example.test", undefined]) {
+    it.effect(
+      servername === undefined
+        ? "preserves remote hostname when client TLS upgrade servername is omitted"
+        : "forwards explicit client TLS upgrade servername as hostname",
+      () =>
+        Effect.gen(function*() {
+          const { conn } = makeTestConn({ pendingRead: true })
+          const cause = new Error("stop before TLS handshake")
+          let receivedConn: Deno.TcpConn | undefined
+          let received: Deno.StartTlsOptions | undefined
+          yield* Effect.acquireRelease(
+            Effect.sync(() => {
+              const descriptor = Object.getOwnPropertyDescriptor(Deno, "startTls")!
+              Object.defineProperty(Deno, "startTls", {
+                ...descriptor,
+                value: (raw: Deno.TcpConn, options: Deno.StartTlsOptions) => {
+                  receivedConn = raw
+                  received = options
+                  return Promise.reject(cause)
+                }
+              })
+              return descriptor
+            }),
+            (descriptor) => Effect.sync(() => Object.defineProperty(Deno, "startTls", descriptor))
+          )
+          const socket = yield* DenoSocket.fromConn(Effect.succeed(conn))
+          const { upgrade } = yield* socket.reader
+          // Use a variable so this runtime regression can run before the public option is added.
+          const options = servername === undefined
+            ? { rejectUnauthorized: true }
+            : { rejectUnauthorized: true, servername }
+          const error = yield* upgrade(options).pipe(Effect.flip)
+
+          assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+          if (error.reason._tag === "SocketUpgradeError") assert.strictEqual(error.reason.cause, cause)
+          assert.strictEqual(receivedConn, conn)
+          assert.strictEqual(received?.unsafelyDisableHostnameVerification, false)
+          assert.strictEqual(received?.hostname, servername ?? (conn.remoteAddr as Deno.NetAddr).hostname)
+        })
+    )
+  }
+
   it.effect("upgrades a TCP reader to TLS", () =>
     Effect.gen(function*() {
       const listener = yield* makeTlsServer

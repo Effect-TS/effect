@@ -111,7 +111,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
     assertCode(schemas, {
       codes: [
         makeCode(
-          `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(Schema.Number.check(Schema.isFinite().annotate({ "expected": "a finite number" }))) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
+          `Schema.StructWithRest(Schema.Struct({ "child": Schema.optionalKey(Schema.Finite) }), [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))])`,
           `{ readonly "child"?: number } & { readonly [x: string]: Schema.Json }`
         ),
         makeCode(`X`, `X`)
@@ -158,7 +158,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
         nonRecursives: [{
           $ref: "A",
           code: makeCode(
-            `Schema.String.check(Schema.isPattern(new RegExp("^a+$")).annotate({ "expected": "a string matching the RegExp ^a+$", "identifier": "A" }))`,
+            `Schema.String.check(Schema.isPattern(new RegExp("^a+$", "u")).annotate({ "expected": "a string matching the RegExp ^a+$", "identifier": "A" }))`,
             `string`
           )
         }]

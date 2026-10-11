@@ -1,5 +1,5 @@
 import type { Effect, FileSystem, Path, PlatformError } from "effect"
-import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+import * as SchemaAOTCompilerBuild from "effect/schema/SchemaAOTCompiler/Build"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaAOTCompilerBuild", () => {

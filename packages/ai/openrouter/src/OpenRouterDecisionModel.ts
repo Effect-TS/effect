@@ -1,20 +1,22 @@
 /**
  * Decision models backed by OpenRouter's alpha Decisions API.
  *
+ * @stability unstable
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
+import * as DecisionModel from "effect/ai/DecisionModel"
+import * as Model from "effect/ai/Model"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as DecisionModel from "effect/unstable/ai/DecisionModel"
-import * as Model from "effect/unstable/ai/Model"
 import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
 /**
  * Request options that override model defaults at call time.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -29,6 +31,7 @@ export class Config extends Context.Service<
 /**
  * Creates an OpenRouter model descriptor with decision support.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -41,7 +44,9 @@ export const model = (
 /**
  * Creates a decision service that requires full choice and score distributions.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
+ * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -54,6 +59,7 @@ export const make = Effect.fnUntraced(function*(options: {
     Effect.succeed({ ...options.config, ...Context.getOrUndefined(services, Config) })
   )
   return yield* DecisionModel.make({
+    probabilityPrecision: 2,
     decide: Effect.fnUntraced(function*({ state, decisions }) {
       if (state === null || typeof state === "number" || typeof state === "boolean") {
         return yield* AiError.make({
@@ -126,6 +132,7 @@ export const make = Effect.fnUntraced(function*(options: {
 /**
  * Provides a decision model using the OpenRouter client service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
