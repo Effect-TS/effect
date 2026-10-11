@@ -355,7 +355,7 @@ export const fromDuplex = <RO>(
               }
               tls = isServer
                 ? new Tls.TLSSocket(raw as Net.Socket, { ...tlsOptions, isServer: true })
-                : Tls.connect({ ...tlsOptions, socket: raw as Net.Socket })
+                : Tls.connect({ ...tlsOptions, servername: upgradeOptions.servername, socket: raw as Net.Socket })
             } catch (cause) {
               attachReadListeners(raw)
               resume(Effect.fail(
