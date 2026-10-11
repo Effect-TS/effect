@@ -181,38 +181,64 @@ doesn't compile. The generator needs nothing beyond this convention.
 
 ### Batching
 
-The client doesn't merge operations into one aliased document at runtime; that
-would need a GraphQL parser at runtime. Instead:
+Use the DataLoader pattern with `RequestResolver`: collect concurrent lookups
+and call one generated operation. Generate `repos.graphql.ts` from this GitHub
+document and add `ReposGraphQLGroup` to the `GitHub` service's groups above:
 
-- call the method per item with `Effect.forEach(items, f, { concurrency: 4 })`,
-  at the cost of one request (and rate-limit charge) per item
-- fetch known IDs with `nodes(ids:)` and an inline fragment, up to 100 per
-  request on GitHub
-- as an escape hatch, build the aliased document at runtime as an operation
-  with `GraphQL.query(name, { document, variables?, result: Schema.Json })`,
-  give it its own `GraphQLClient.make(GraphQLGroup.make(op))` and call it
-  through that client, so middleware still run. Building the client needs the
-  `GraphQLProtocol` and any middleware you attach (with `.middleware(Tag)` on
-  the group) in context, and the operation needs a `variables` schema when the
-  document declares variables. `data` comes back as JSON for you to decode:
-
-```ts
-const Repos = GraphQL.query("Repos", {
-  document: `query Repos {
-    a: repository(owner: "Effect-TS", name: "effect") { name }
-    b: repository(owner: "Effect-TS", name: "website") { name }
-  }`,
-  result: Schema.Json
-})
-
-Effect.gen(function*() {
-  const batch = yield* GraphQLClient.make(GraphQLGroup.make(Repos).middleware(Auth))
-  const { data, errors } = yield* batch.Repos(undefined, { partial: true })
-})
+```graphql
+query RepoNodes($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on Repository { id nameWithOwner }
+  }
+}
 ```
 
-One missing item fails a whole `nodes(ids:)` or aliased batch, so call those
-with `{ partial: true }` and match errors to items by `path`.
+```ts
+import { Effect, Exit, Request, RequestResolver } from "effect"
+import { RepoNodes } from "./src/repos.graphql.ts"
+
+type Repo = Extract<NonNullable<RepoNodes.Result["nodes"]>[number], { __typename: "Repository" }>
+class GetRepo extends Request.Class<{ readonly id: string }, Repo, Error> {}
+
+const repos = (ids: ReadonlyArray<string>) =>
+  Effect.gen(function*() {
+    const github = yield* GitHub
+    const resolver = RequestResolver.make<GetRepo>(Effect.fn(function*(entries) {
+      const { data, errors } = yield* github.RepoNodes(
+        { ids: entries.map((entry) => entry.request.id) },
+        { partial: true }
+      ).pipe(Effect.mapError((error) => new Error(String(error))))
+      for (const [index, entry] of entries.entries()) {
+        const node = data.nodes?.[index]
+        const error = errors.find((error) => error.path?.[0] === "nodes" && error.path[1] === index)
+        entry.completeUnsafe(
+          !error && node?.__typename === "Repository" && node.id === entry.request.id
+            ? Exit.succeed(node)
+            : Exit.fail(new Error(error?.message ?? `Repository not found: ${entry.request.id}`))
+        )
+      }
+    })).pipe(
+      RequestResolver.setDelay("10 millis"),
+      RequestResolver.batchN(100) // GitHub's nodes(ids:) limit
+    )
+    const getRepo = (id: string) => Effect.request(new GetRepo({ id }), resolver)
+    return yield* Effect.forEach(ids, getRepo, { concurrency: "unbounded" })
+  })
+```
+
+Middleware still run because the resolver calls the generated client. A missing
+node or null result fails only its entry; callers can catch failures in
+`getRepo` if they want to collect successes too. GraphQL errors can otherwise
+fail the whole `nodes(ids:)` call, so use `{ partial: true }` and match errors
+to entries by `path`, as above. Transport or decoding failures still fail the
+batch.
+
+- For the simplest option, call a method per item with
+  `Effect.forEach(items, f, { concurrency: 4 })`, at the cost of one request
+  (and rate-limit charge) per item.
+
+See [the RequestResolver example](../../../ai-docs/src/05_batching/10_request-resolver.ts).
 
 ## Links
 
