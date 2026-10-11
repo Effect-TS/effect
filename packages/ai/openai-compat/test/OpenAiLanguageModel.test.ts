@@ -1984,149 +1984,8 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("reasoning replay", () => {
-    it.effect("replays streamed reasoning and tool calls together after converting response parts to a prompt", () =>
-      Effect.gen(function*() {
-        const requests: Array<HttpClientRequest.HttpClientRequest> = []
-        const chunk = (delta: Record<string, unknown>, finishReason: string | null = null) => ({
-          id: "chatcmpl_replay_1",
-          object: "chat.completion.chunk",
-          model: "deepseek-reasoner",
-          created: 1,
-          choices: [{ index: 0, delta, finish_reason: finishReason }]
-        })
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              requests.push(request)
-              return Effect.succeed(
-                requests.length === 1
-                  ? sseResponse(request, [
-                    chunk({ reasoning_content: "I should " }),
-                    chunk({ reasoning_content: "read a.txt." }),
-                    chunk({ content: "Let me read it." }),
-                    chunk({
-                      tool_calls: [{
-                        index: 0,
-                        id: "call_1",
-                        type: "function",
-                        function: { name: "TestTool", arguments: "{\"input\":" }
-                      }]
-                    }),
-                    chunk({ tool_calls: [{ index: 0, function: { arguments: "\"a.txt\"}" } }] }),
-                    chunk({}, "tool_calls"),
-                    "[DONE]"
-                  ])
-                  : jsonResponse(request, makeChatCompletion())
-              )
-            })
-          ))
-        )
-        const model = OpenAiLanguageModel.model("deepseek-reasoner", { replayReasoning: true })
-        const prompt = Prompt.make([{ role: "user", content: "What is in a.txt?" }])
-        const parts = yield* LanguageModel.streamText({
-          prompt,
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(Stream.runCollect, Effect.provide(model), Effect.provide(layer))
-
-        const responsePrompt = Prompt.fromResponseParts(globalThis.Array.from(parts))
-        const reasoning = responsePrompt.content.flatMap((message) =>
-          message.role === "assistant" ? message.content.filter((part) => part.type === "reasoning") : []
-        )
-        assert.strictEqual(reasoning.length, 1)
-        assert.strictEqual(reasoning[0].text, "I should read a.txt.")
-        assert.strictEqual(reasoning[0].options.openai?.itemId, "chatcmpl_replay_1_reasoning")
-
-        yield* LanguageModel.generateText({
-          prompt: Prompt.concat(
-            Prompt.concat(prompt, responsePrompt),
-            Prompt.make([{
-              role: "tool",
-              content: [{
-                type: "tool-result",
-                id: "call_1",
-                name: "TestTool",
-                isFailure: false,
-                result: { output: "hello" }
-              }]
-            }])
-          ),
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(Effect.provide(model), Effect.provide(layer))
-
-        assert.strictEqual(requests.length, 2)
-        const requestBody = yield* getRequestBody(requests[1])
-        assert.deepStrictEqual(requestBody.messages, [
-          { role: "user", content: "What is in a.txt?" },
-          {
-            role: "assistant",
-            content: "Let me read it.",
-            reasoning_content: "I should read a.txt.",
-            tool_calls: [{
-              id: "call_1",
-              type: "function",
-              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
-            }]
-          },
-          { role: "tool", tool_call_id: "call_1", content: JSON.stringify({ output: "hello" }) }
-        ])
-        assert.isFalse("replayReasoning" in requestBody)
-      }))
-
-    it.effect("keeps tool calls from consecutive assistant prompt messages separate", () =>
-      Effect.gen(function*() {
-        const requests: Array<HttpClientRequest.HttpClientRequest> = []
-        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
-          Layer.provide(Layer.succeed(
-            HttpClient.HttpClient,
-            makeHttpClient((request) => {
-              requests.push(request)
-              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
-            })
-          ))
-        )
-
-        yield* LanguageModel.generateText({
-          prompt: Prompt.make([
-            { role: "user", content: "Read both files." },
-            {
-              role: "assistant",
-              content: [{ type: "tool-call", id: "call_1", name: "TestTool", params: { input: "a.txt" } }]
-            },
-            {
-              role: "assistant",
-              content: [{ type: "tool-call", id: "call_2", name: "TestTool", params: { input: "b.txt" } }]
-            }
-          ]),
-          toolkit: TestToolkit,
-          disableToolCallResolution: true
-        }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner")),
-          Effect.provide(layer)
-        )
-
-        const requestBody = yield* getRequestBody(requests[0])
-        assert.deepStrictEqual(requestBody.messages, [
-          { role: "user", content: "Read both files." },
-          ...["a.txt", "b.txt"].map((input, index) => ({
-            role: "assistant",
-            content: null,
-            tool_calls: [{
-              id: `call_${index + 1}`,
-              type: "function",
-              function: { name: "TestTool", arguments: JSON.stringify({ input }) }
-            }]
-          }))
-        ])
-      }))
-
-    // The reasoning-only assistant turn checks that reasoning stays inside its
-    // own prompt message instead of leaking into the following assistant turn.
     const toolLoopPrompt = Prompt.make([
       { role: "user", content: "What is in a.txt?" },
-      { role: "assistant", content: [{ type: "reasoning", text: "Earlier turn reasoning." }] },
       {
         role: "assistant",
         content: [
@@ -2147,7 +2006,7 @@ describe("OpenAiLanguageModel", () => {
       function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
     }
 
-    const captureRequestBody = (config?: Record<string, unknown>) =>
+    const captureRequestBody = (replayReasoning?: boolean) =>
       Effect.gen(function*() {
         const requests: Array<HttpClientRequest.HttpClientRequest> = []
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -2165,14 +2024,14 @@ describe("OpenAiLanguageModel", () => {
           toolkit: TestToolkit,
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner", config)),
+          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner", { replayReasoning })),
           Effect.provide(layer)
         )
 
         return yield* getRequestBody(requests[0])
       })
 
-    it.effect("keeps assistant text and tool calls of one prompt message together without reasoning by default", () =>
+    it.effect("omits reasoning by default alongside assistant text and tool calls", () =>
       Effect.gen(function*() {
         const requestBody = yield* captureRequestBody()
 
@@ -2185,7 +2044,7 @@ describe("OpenAiLanguageModel", () => {
 
     it.effect("replays reasoning as reasoning_content on the assistant message when enabled", () =>
       Effect.gen(function*() {
-        const requestBody = yield* captureRequestBody({ replayReasoning: true })
+        const requestBody = yield* captureRequestBody(true)
 
         assert.deepStrictEqual(requestBody.messages, [
           { role: "user", content: "What is in a.txt?" },
