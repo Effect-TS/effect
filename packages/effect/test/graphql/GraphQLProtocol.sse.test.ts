@@ -4,6 +4,7 @@ import { GraphQLClient, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import * as UrlParams from "effect/http/UrlParams"
 import { expectReason, graphqlResponse, httpClientLayer, IssuesGroup, IssueUpdated } from "./fixtures.ts"
 
 const url = "http://localhost/graphql"
@@ -11,10 +12,12 @@ const url = "http://localhost/graphql"
 const event = (title: string) => ({ data: { issueUpdated: { title } } })
 
 const subscription: GraphQLProtocol.GraphQLRequest = {
+  kind: "subscription",
   query: IssueUpdated.document,
   operationName: "IssueUpdated",
   variables: { id: "I_1" },
-  headers: { authorization: "Bearer t" }
+  headers: { authorization: "Bearer t" },
+  urlParams: UrlParams.fromInput({ preview: "t" })
 }
 
 /**
@@ -45,16 +48,17 @@ const subscribe = (layer: Layer.Layer<HttpClient.HttpClient>) =>
   )
 
 describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", () => {
-  it.effect("POSTs with Accept: text/event-stream and emits next events until complete", () =>
+  it.effect("POSTs with Accept: text/event-stream and emits next events, without a status, until complete", () =>
     Effect.gen(function*() {
-      let seen: { headers: Record<string, string>; body: unknown } | undefined
-      const events = yield* subscribe(httpClientLayer((request, bodyText) => {
-        seen = { headers: request.headers, body: JSON.parse(bodyText!) }
+      let seen: { headers: Record<string, string>; body: unknown; url: URL } | undefined
+      const events = yield* subscribe(httpClientLayer((request, bodyText, url) => {
+        seen = { headers: request.headers, body: JSON.parse(bodyText!), url }
         return eventStream([next(event("a")), next(event("b")), "event: complete\ndata:\n\n"])
       })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(events, [event("a"), event("b")])
+      assert.deepStrictEqual(events, [{ body: event("a") }, { body: event("b") }])
       assert.include(seen!.headers["accept"], "text/event-stream")
       assert.strictEqual(seen!.headers["authorization"], "Bearer t")
+      assert.strictEqual(seen!.url.searchParams.get("preview"), "t")
       assert.deepStrictEqual(seen!.body, {
         query: IssueUpdated.document,
         operationName: "IssueUpdated",
@@ -85,6 +89,7 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
         expectReason("ResponseError")
       )
       assert.deepStrictEqual(reason.errors, [{ message: "denied" }])
+      assert.strictEqual(reason.status, 400)
     }))
 
   it.effect("interrupting the stream aborts the request", () =>

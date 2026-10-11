@@ -88,6 +88,23 @@ describe("GraphQLClient", () => {
         yield* client.Viewer(undefined, { context: Context.make(CurrentUser, { id: "ctx" }) })
         assert.strictEqual((yield* Ref.get(requests))[0].headers["authorization"], "Bearer ctx")
       }))
+
+    it.effect("middleware see the transport status from next and may rewrite it; ResponseError carries it", () =>
+      Effect.gen(function*() {
+        class Status extends GraphQLMiddleware.Service<Status>()("test/Status") {}
+        const StatusLive = Layer.succeed(Status, {
+          execute: ({ next, request }) =>
+            Effect.map(next(request), (result) => ({ ...result, status: result.status === 401 ? 403 : 500 })),
+          subscribe: ({ next, request }) => next(request)
+        })
+        const { layer } = yield* executeLayer({ errors: [{ message: "denied" }] }, 401)
+        const reason = yield* GraphQLClient.make(ViewerGroup.middleware(Status)).pipe(
+          Effect.flatMap((client) => client.Viewer()),
+          Effect.provide([layer, StatusLive]),
+          expectReason("ResponseError")
+        )
+        assert.strictEqual(reason.status, 403)
+      }))
   })
 
   it.effect("encodes variables through the custom scalar codec", () =>
