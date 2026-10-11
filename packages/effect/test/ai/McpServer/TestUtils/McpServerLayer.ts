@@ -32,14 +32,11 @@ export const makeServerLayer = (options: {
     allowedOrigins: ["https://allowed.example"],
     extensions: options.extensions
   }
-  const layer: ReturnType<typeof McpServer.layerHttp> = options.mode === "request"
+  const layer = options.mode === "request"
     ? McpServer.layerHttpRequestScoped({
       ...common,
-      // Request-mode conformance callers supply stateless adapters.
-      protocols: common.protocols as readonly [
-        McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>,
-        ...Array<McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>>
-      ]
+      // Request-mode callers supply stateless adapters.
+      protocols: common.protocols as Parameters<typeof McpServer.layerHttpRequestScoped>[0]["protocols"]
     })
     : McpServer.layerHttp({ ...common, allowSessionTermination: options.allowSessionTermination })
   return layer.pipe(

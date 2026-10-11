@@ -113,9 +113,9 @@ const RequestNotificationQueue = Context.Reference<Queue.Queue<QueuedServerNotif
   "effect/ai/McpServer/RequestNotificationQueue",
   { defaultValue: () => undefined }
 )
-// With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
-const isWithoutSharedConsumer = (delivery: { readonly consumers: number; readonly requestEndpoints: number }) =>
-  delivery.consumers === 0 && delivery.requestEndpoints > 0
+// Progress and logs belong to the request that emitted them.
+const isRequestNotification = (notification: McpCore.ServerNotification) =>
+  notification._tag === "Progress" || notification._tag === "LoggingMessage"
 
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
@@ -334,6 +334,9 @@ export class McpServer extends Context.Service<McpServer, {
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
     const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestEndpoints: 0 }
+    // With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
+    const withoutSharedConsumer = () =>
+      notificationDelivery.consumers === 0 && notificationDelivery.requestEndpoints > 0
     const pendingListChanges = new Map<string, QueuedServerNotification>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
@@ -367,13 +370,12 @@ export class McpServer extends Context.Service<McpServer, {
             // A request-scoped endpoint delivers its request's own progress and logs on that request's response.
             const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
             if (
-              requestQueue !== undefined && queued.requestContext !== undefined &&
-              (notification._tag === "Progress" || notification._tag === "LoggingMessage")
+              requestQueue !== undefined && queued.requestContext !== undefined && isRequestNotification(notification)
             ) {
               Queue.offerUnsafe(requestQueue, queued)
               return Effect.andThen(Deferred.await(delivered), acknowledge)
             }
-            if (isWithoutSharedConsumer(notificationDelivery)) {
+            if (withoutSharedConsumer()) {
               return acknowledge
             }
             let enqueued = false
@@ -406,7 +408,7 @@ export class McpServer extends Context.Service<McpServer, {
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
-        isWithoutSharedConsumer(notificationDelivery) ? Effect.void : Deferred.make<void>().pipe(
+        withoutSharedConsumer() ? Effect.void : Deferred.make<void>().pipe(
           Effect.flatMap((delivered) =>
             Queue.offer(notificationsQueue, {
               notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
@@ -1302,7 +1304,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           runtime.disconnect(clientId)
         }
       }
-      const requestNotification = notification._tag === "LoggingMessage" || notification._tag === "Progress"
+      const requestNotification = isRequestNotification(notification)
       const deliveryClientIds = requestNotification && requestContext !== undefined
         ? [requestContext.clientId]
         : targetClientId === undefined
