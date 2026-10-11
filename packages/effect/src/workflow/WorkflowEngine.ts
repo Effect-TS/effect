@@ -76,6 +76,14 @@ export class WorkflowEngine extends Context.Service<
 
     /**
      * Execute a registered workflow.
+     *
+     * **Details**
+     *
+     * Unless `discard` is set, a caller outside any workflow waits for the
+     * result. While the execution is suspended, the caller retries on
+     * `suspendedRetrySchedule`; engines that observe the final result wake it
+     * sooner. `ClusterWorkflowEngine` does so only for callers on the runner
+     * that owns the execution.
      */
     readonly execute: <
       Name extends string,
@@ -419,12 +427,14 @@ export interface Encoded {
     executionId: string
   ) => Effect.Effect<void>
   /**
-   * Waits until a suspended execution may have a newer result.
+   * Waits until a suspended execution has a final result.
    *
    * **Gotchas**
    *
    * External callers race this with their `suspendedRetrySchedule`, so it may
-   * complete spuriously, or never when the engine cannot observe the change.
+   * never complete when the engine cannot observe the result. Completing early
+   * spends a step of that schedule, so it should not complete while the
+   * execution is still suspended.
    */
   readonly awaitResultChange?: (
     workflow: Workflow.Any,
@@ -773,6 +783,23 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       Deferred.doneUnsafe(replaced, Exit.void)
     })
 
+    // Wait out a running replay and any replay that suspends again, so only a
+    // final result spends a step of the caller's retry schedule.
+    const awaitFinalResult = (executionId: string): Effect.Effect<void> =>
+      Effect.suspend(() => {
+        const state = executions.get(executionId)
+        if (!state?.fiber) return Effect.never
+        const exit = state.fiber.pollUnsafe()
+        if (exit === undefined) {
+          return Effect.andThen(Fiber.await(state.fiber), awaitFinalResult(executionId))
+        }
+        const suspended = (exit._tag === "Success" && exit.value._tag === "Suspended") ||
+          isPreempted(exit, state.instance)
+        return suspended
+          ? Effect.andThen(Deferred.await(state.replaced), awaitFinalResult(executionId))
+          : Effect.void
+      })
+
     const deferredResults = new Map<string, Exit.Exit<any, any>>()
 
     const clocks = yield* FiberMap.make<string>()
@@ -816,17 +843,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         }
         return (yield* exit) as any
       }),
-      awaitResultChange: (_workflow, executionId) =>
-        Effect.suspend(() => {
-          const state = executions.get(executionId)
-          if (!state?.fiber) return Effect.never
-          const exit = state.fiber.pollUnsafe()
-          // A running replay or a non-suspended result is ready for the caller.
-          const suspended = exit !== undefined && (
-            (exit._tag === "Success" && exit.value._tag === "Suspended") || isPreempted(exit, state.instance)
-          )
-          return suspended ? Deferred.await(state.replaced) : Effect.void
-        }),
+      awaitResultChange: (_workflow, executionId) => awaitFinalResult(executionId),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return
