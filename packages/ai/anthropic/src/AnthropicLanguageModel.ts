@@ -1749,7 +1749,7 @@ const makeResponse = Effect.fnUntraced(
             // Map the provider wire name (e.g. "memory") back to the tool's
             // custom name (e.g. "AnthropicMemory") that the toolkit is keyed by
             const toolName = toolNameMapper.getCustomName(part.name)
-            const params = yield* transformToolCallParams(options.tools, toolName, part.input)
+            const params = yield* transformToolCallParams(options, toolName, part.input)
 
             parts.push({
               type: "tool-call",
@@ -2189,7 +2189,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.id
                   })
 
-                  const params = yield* transformToolCallParams(options.tools, toolName, part.input)
+                  const params = yield* transformToolCallParams(options, toolName, part.input)
 
                   parts.push({
                     type: "tool-call",
@@ -2803,7 +2803,7 @@ const makeStreamResponse = Effect.fnUntraced(
 
                   const params = contentBlock.providerExecuted === true
                     ? toolParams
-                    : yield* transformToolCallParams(options.tools, contentBlock.name, toolParams)
+                    : yield* transformToolCallParams(options, contentBlock.name, toolParams)
 
                   parts.push({
                     type: "tool-call",
@@ -3243,20 +3243,24 @@ const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   return undefined
 })
 
-const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
-  tools: Tools,
+const transformToolCallParams = Effect.fnUntraced(function*(
+  options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
 ): Effect.fn.Return<unknown, AiError.AiError> {
-  const tool = tools.find((tool) => tool.name === toolName)
+  const tool = options.tools.find((tool) => tool.name === toolName)
 
   if (Predicate.isUndefined(tool)) {
+    // The caller validates calls to undeclared tools itself.
+    if (options.toolCallValidation === "deferred") {
+      return toolParams
+    }
     return yield* AiError.make({
       module: "AnthropicLanguageModel",
       method: "makeResponse",
       reason: new AiError.ToolNotFoundError({
         toolName,
-        availableTools: tools.map((tool) => tool.name)
+        availableTools: options.tools.map((tool) => tool.name)
       })
     })
   }

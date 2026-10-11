@@ -228,7 +228,7 @@ export interface Chat {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<{}>,
+      LanguageModel.GenerateTextResponse<{}, LanguageModel.ExtractToolParametersModeWithoutToolkit<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -310,7 +310,7 @@ export interface Chat {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Stream.Stream<
-      Response.StreamPart<{}>,
+      Response.StreamPart<{}, LanguageModel.ExtractToolParametersModeWithoutToolkit<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >

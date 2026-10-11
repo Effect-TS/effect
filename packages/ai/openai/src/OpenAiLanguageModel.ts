@@ -1562,7 +1562,7 @@ const makeResponse = Effect.fnUntraced(
               })
           })
 
-          const params = yield* transformToolCallParams(options.tools, part.name, toolParams)
+          const params = yield* transformToolCallParams(options, part.name, toolParams)
 
           parts.push({
             type: "tool-call",
@@ -2349,7 +2349,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     })
                 })
 
-                const params = yield* transformToolCallParams(options.tools, toolName, toolParams)
+                const params = yield* transformToolCallParams(options, toolName, toolParams)
 
                 parts.push({
                   type: "tool-params-end",
@@ -2657,7 +2657,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   })
               })
 
-              const params = yield* transformToolCallParams(options.tools, toolCall.name, toolParams)
+              const params = yield* transformToolCallParams(options, toolCall.name, toolParams)
 
               parts.push({
                 type: "tool-params-end",
@@ -3332,20 +3332,24 @@ const toFinishMetadata = (response: OpenAiSchema.Response): {
 const getUsageTokenDetail = (details: unknown, key: string): number | undefined =>
   Predicate.hasProperty(details, key) && typeof details[key] === "number" ? details[key] : undefined
 
-const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
-  tools: Tools,
+const transformToolCallParams = Effect.fnUntraced(function*(
+  options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
 ): Effect.fn.Return<unknown, AiError.AiError> {
-  const tool = tools.find((tool) => tool.name === toolName)
+  const tool = options.tools.find((tool) => tool.name === toolName)
 
   if (Predicate.isUndefined(tool)) {
+    // The caller validates calls to undeclared tools itself.
+    if (options.toolCallValidation === "deferred") {
+      return toolParams
+    }
     return yield* AiError.make({
       module: "OpenAiLanguageModel",
       method: "makeResponse",
       reason: new AiError.ToolNotFoundError({
         toolName,
-        availableTools: tools.map((tool) => tool.name)
+        availableTools: options.tools.map((tool) => tool.name)
       })
     })
   }
