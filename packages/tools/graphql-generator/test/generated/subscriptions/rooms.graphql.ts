@@ -3,6 +3,12 @@ import { GraphQL, GraphQLGroup } from "effect/graphql"
 import * as Schema from "effect/Schema"
 import * as Shared from "./shared.graphql.ts"
 
+/** A room members talk in. */
+export class RoomRoom extends Schema.Opaque<RoomRoom>()(Schema.Struct({
+  id: Shared.ID,
+  name: Schema.String
+})) {}
+
 /** `query Room` */
 export const Room = GraphQL.query("Room", {
   document: "query Room($by:RoomBy!){room(by:$by){id name}}",
@@ -11,16 +17,54 @@ export const Room = GraphQL.query("Room", {
   },
   result: Schema.Struct({
     /** Looks up a room. */
-    room: Schema.NullOr(Schema.Struct({
-      id: Shared.ID,
-      name: Schema.String
-    }))
+    room: Schema.NullOr(RoomRoom)
   })
 })
 export declare namespace Room {
   export type Variables = typeof Room.variables.Type
   export type Result = typeof Room.result.Type
 }
+
+/** Someone in a room. */
+export class RoomEventsMember extends Schema.Opaque<RoomEventsMember>()(Schema.Struct({
+  name: Schema.String,
+  role: GraphQL.enumLiterals(Shared.Role.literals)
+})) {}
+
+/** A member joined the room. */
+export class RoomEventsMemberJoined extends Schema.Opaque<RoomEventsMemberJoined>()(Schema.Struct({
+  __typename: Schema.Literal("MemberJoined"),
+  id: Shared.ID,
+  at: Schema.String,
+  member: RoomEventsMember
+})) {}
+
+/** A member posted a message. */
+export class RoomEventsMessagePosted extends Schema.Opaque<RoomEventsMessagePosted>()(Schema.Struct({
+  __typename: Schema.Literal("MessagePosted"),
+  id: Shared.ID,
+  at: Schema.String,
+  member: RoomEventsMember,
+  /** The message text. */
+  body: Schema.String
+})) {}
+
+/** The room was renamed. */
+export class RoomEventsRoomRenamed extends Schema.Opaque<RoomEventsRoomRenamed>()(Schema.Struct({
+  __typename: Schema.Literal("RoomRenamed"),
+  id: Shared.ID,
+  at: Schema.String,
+  /** The room's new name. */
+  name: Schema.String
+})) {}
+
+/** Something that happened in a room. */
+export class RoomEventsEventOther extends Schema.Opaque<RoomEventsEventOther>()(Schema.Struct({
+  __typename: GraphQL.otherTypename<Shared.Typename.Event>()(["MemberJoined", "MessagePosted", "RoomRenamed"]),
+  id: Shared.ID,
+  /** When it happened, as an ISO-8601 string. */
+  at: Schema.String
+})) {}
 
 /** `subscription RoomEvents` */
 export const RoomEvents = GraphQL.subscription("RoomEvents", {
@@ -31,39 +75,10 @@ export const RoomEvents = GraphQL.subscription("RoomEvents", {
   result: Schema.Struct({
     /** Every event in a room, as it happens. */
     events: Schema.Union([
-      Schema.Struct({
-        __typename: Schema.Literal("MemberJoined"),
-        id: Shared.ID,
-        at: Schema.String,
-        member: Schema.Struct({
-          name: Schema.String,
-          role: GraphQL.enumLiterals(Shared.Role.literals)
-        })
-      }),
-      Schema.Struct({
-        __typename: Schema.Literal("MessagePosted"),
-        id: Shared.ID,
-        at: Schema.String,
-        member: Schema.Struct({
-          name: Schema.String,
-          role: GraphQL.enumLiterals(Shared.Role.literals)
-        }),
-        /** The message text. */
-        body: Schema.String
-      }),
-      Schema.Struct({
-        __typename: Schema.Literal("RoomRenamed"),
-        id: Shared.ID,
-        at: Schema.String,
-        /** The room's new name. */
-        name: Schema.String
-      }),
-      Schema.Struct({
-        __typename: GraphQL.otherTypename<Shared.Typename.Event>()(["MemberJoined", "MessagePosted", "RoomRenamed"]),
-        id: Shared.ID,
-        /** When it happened, as an ISO-8601 string. */
-        at: Schema.String
-      })
+      RoomEventsMemberJoined,
+      RoomEventsMessagePosted,
+      RoomEventsRoomRenamed,
+      RoomEventsEventOther
     ])
   })
 })
