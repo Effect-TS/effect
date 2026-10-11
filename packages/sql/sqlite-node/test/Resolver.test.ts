@@ -2,8 +2,8 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, FileSystem, Iterable, Schema } from "effect"
-import { Reactivity } from "effect/unstable/reactivity"
-import { SqlError, SqlResolver } from "effect/unstable/sql"
+import { Reactivity } from "effect/reactivity"
+import { SqlError, SqlResolver } from "effect/sql"
 
 const makeClient = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -16,9 +16,8 @@ const makeClient = Effect.gen(function*() {
 const seededClient = Effect.gen(function*() {
   const sql = yield* makeClient
   yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-  for (const id of Iterable.range(1, 100)) {
-    yield* sql`INSERT INTO test ${sql.insert({ id, name: `name${id}` })}`
-  }
+  const rows = Array.from(Iterable.range(1, 100), (id) => ({ id, name: `name${id}` }))
+  yield* sql`INSERT INTO test ${sql.insert(rows)}`
   return sql
 })
 

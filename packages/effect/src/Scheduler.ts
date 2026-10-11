@@ -7,6 +7,7 @@
  * for queued tasks, and references for tuning or disabling automatic scheduler
  * yields.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Context from "./Context.ts"
@@ -26,6 +27,7 @@ import type * as Fiber from "./Fiber.ts"
  * priorities, and decides when fibers should yield control after consuming
  * their operation budget.
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -51,6 +53,7 @@ export interface Scheduler {
  * already scheduled tasks. Lower priority numbers run first, and equal
  * priorities run in FIFO order.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -72,6 +75,7 @@ export interface SchedulerDispatcher {
  * The default value creates a `MixedScheduler`. Provide this service to
  * customize execution mode, task dispatching, or yield behavior.
  *
+ * @stability stable
  * @category services
  * @since 2.0.0
  */
@@ -156,6 +160,7 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -273,6 +278,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  *
  * @see {@link PreventSchedulerYield} for bypassing scheduler yield checks entirely rather than tuning the operation budget
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */
@@ -299,6 +305,7 @@ export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/Max
  * @see {@link MaxOpsBeforeYield} for tuning yield frequency without disabling yield checks
  * @see {@link Scheduler} for providing custom scheduler yield behavior
  *
+ * @stability stable
  * @category services
  * @since 4.0.0
  */

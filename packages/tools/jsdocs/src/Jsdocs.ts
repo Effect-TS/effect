@@ -123,8 +123,17 @@ export interface ParsedModuleJSDoc {
   readonly range: readonly [number, number]
 }
 
+/**
+ * Stability of a documented public API. Untagged APIs are stable.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type JSDocStability = "stable" | "unstable" | "experimental"
+
 interface ParsedModuleTags {
   readonly since: string
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -138,6 +147,7 @@ interface ParsedModuleTags {
 export interface ParsedDeclarationTags {
   readonly category: string
   readonly since: string
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -151,6 +161,7 @@ export interface ParsedDeclarationTags {
 export interface ParsedNamespaceTags {
   readonly category: string | null
   readonly since: string
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
 }
@@ -163,6 +174,7 @@ export interface ParsedNamespaceTags {
  */
 export interface ParsedMemberTags {
   readonly since: string | null
+  readonly stability: JSDocStability
   readonly default: string | null
   readonly deprecated: string | null
   readonly see: ReadonlyArray<ParsedSeeTag>
@@ -354,6 +366,7 @@ export interface JSDocApiSeeTag {
 export interface JSDocApiTags {
   readonly category: string | null
   readonly since: string | null
+  readonly stability: JSDocStability
   readonly deprecated: string | null
   readonly default: string | null
 }
@@ -468,7 +481,7 @@ const tagOrder = new Map([
   ["deprecated", 0],
   ["default", 1],
   ["see", 2],
-  ["unstable", 3],
+  ["stability", 3],
   ["category", 4],
   ["since", 5]
 ])
@@ -778,7 +791,9 @@ function resolveBarrelImport(
 
 function resolveJSDocImports(
   cwd: string,
-  filename: string
+  filename: string,
+  sourceFile: ts.SourceFile,
+  checker: ts.TypeChecker
 ): Result<ParsedJSDocImports, string> {
   const absoluteFilename = path.resolve(filename)
   const packageRoot = findPackageRoot(absoluteFilename)
@@ -797,20 +812,17 @@ function resolveJSDocImports(
       error: `${relativeFilename} is not under ${normalizePathName(path.relative(cwd, metadata.value.sourceRoot))}`
     }
   }
-  if (path.basename(absoluteFilename) === "index.ts") {
-    return {
-      _tag: "Failure",
-      error: `${relativeFilename} is a barrel file; exclude it from jsdocs`
-    }
-  }
   if (path.extname(absoluteFilename) !== ".ts" || absoluteFilename.endsWith(".d.ts")) {
     return {
       _tag: "Failure",
       error: `${relativeFilename} is not a TypeScript source module`
     }
   }
-  const moduleSubpath = relativeToSourceRoot.slice(0, -".ts".length)
-  const moduleExportSubpath = `./${moduleSubpath}`
+  const isIndex = path.basename(absoluteFilename) === "index.ts"
+  const moduleSubpath = isIndex
+    ? relativeToSourceRoot.slice(0, -"index.ts".length).replace(/\/$/, "")
+    : relativeToSourceRoot.slice(0, -".ts".length)
+  const moduleExportSubpath = moduleSubpath === "" ? "." : `./${moduleSubpath}`
   const moduleExportTarget = `./src/${relativeToSourceRoot}`
   if (!isPackageSubpathExported(metadata.value.exports, moduleExportSubpath, moduleExportTarget)) {
     return {
@@ -820,7 +832,16 @@ function resolveJSDocImports(
       } for ${relativeFilename}`
     }
   }
-  const barrel = resolveBarrelImport(metadata.value, absoluteFilename)
+  const symbol = checker.getSymbolAtLocation(sourceFile)
+  const barrel = isIndex
+    ? {
+      _tag: "Success",
+      value: {
+        barrel: null,
+        flatNames: symbol === undefined ? [] : checker.getExportsOfModule(symbol).map((item) => item.name)
+      }
+    } as const
+    : resolveBarrelImport(metadata.value, absoluteFilename)
   if (barrel._tag === "Failure") {
     return barrel
   }
@@ -1457,16 +1478,17 @@ function extractParsedInlineLinks(source: string): ReadonlyArray<ParsedInlineLin
 
 function buildTags(
   scope: DocScope,
-  tags: ReadonlyArray<JSDocTag>
+  tags: ReadonlyArray<JSDocTag>,
+  requireStability = false
 ): Result<ParsedModuleTags | ParsedDeclarationTags | ParsedNamespaceTags | ParsedMemberTags, JSDocParseError> {
   const diagnostics: Array<JSDocDiagnostic> = []
   const allowed = scope === "declaration"
-    ? new Set(["deprecated", "see", "unstable", "category", "since"])
+    ? new Set(["deprecated", "see", "stability", "category", "since"])
     : scope === "member"
-    ? new Set(["deprecated", "default", "see", "since"])
+    ? new Set(["deprecated", "default", "see", "stability", "since"])
     : scope === "module"
-    ? new Set(["deprecated", "see", "since"])
-    : new Set(["deprecated", "see", "category", "since"])
+    ? new Set(["deprecated", "see", "stability", "since"])
+    : new Set(["deprecated", "see", "stability", "category", "since"])
   let previousOrder = -1
   const values = new Map<string, Array<string>>()
 
@@ -1497,7 +1519,9 @@ function buildTags(
     values.set(tag.name, [...values.get(tag.name) ?? [], tag.value.trim()])
   }
 
-  const singletonTags = scope === "member" ? ["deprecated", "default", "since"] : ["deprecated", "category", "since"]
+  const singletonTags = scope === "member"
+    ? ["deprecated", "default", "stability", "since"]
+    : ["deprecated", "stability", "category", "since"]
   for (const tag of singletonTags) {
     if ((values.get(tag)?.length ?? 0) > 1) {
       diagnostics.push(diagnostic("duplicate-tag", `JSDoc blocks may contain at most one @${tag} tag`))
@@ -1511,6 +1535,23 @@ function buildTags(
     }
   }
   const deprecated = values.get("deprecated")?.[0] ?? null
+  const stability = values.get("stability")?.[0]
+  if (stability !== undefined && stability !== "stable" && stability !== "unstable" && stability !== "experimental") {
+    diagnostics.push(
+      diagnostic("invalid-stability", "@stability must have the value stable, unstable, or experimental")
+    )
+  }
+  if (requireStability && stability === undefined) {
+    diagnostics.push(
+      diagnostic(
+        "missing-tag",
+        scope === "module" ? "Module JSDoc must include @stability" : "Public JSDoc must include @stability"
+      )
+    )
+  }
+  const resolvedStability: JSDocStability = stability === "unstable" || stability === "experimental"
+    ? stability
+    : "stable"
   if (deprecated === "") diagnostics.push(diagnostic("empty-tag", "@deprecated must include a message"))
   const since = values.get("since")?.[0] ?? null
   if ((scope === "declaration" || scope === "namespace" || scope === "namespace-declaration") && since === null) {
@@ -1535,25 +1576,34 @@ function buildTags(
     if (diagnostics.length > 0 || category === null || since === null) {
       return { _tag: "Failure", error: { diagnostics } }
     }
-    return { _tag: "Success", value: { category, since, deprecated, see: see.map(parseSeeTag) } }
+    return {
+      _tag: "Success",
+      value: { category, since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) }
+    }
   }
 
   if (scope === "member") {
     const defaultValue = values.get("default")?.[0] ?? null
     if (defaultValue === "") diagnostics.push(diagnostic("empty-tag", "@default must include a value"))
     if (diagnostics.length > 0) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, default: defaultValue, deprecated, see: see.map(parseSeeTag) } }
+    return {
+      _tag: "Success",
+      value: { since, stability: resolvedStability, default: defaultValue, deprecated, see: see.map(parseSeeTag) }
+    }
   }
 
   if (scope === "module") {
     if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-    return { _tag: "Success", value: { since, deprecated, see: see.map(parseSeeTag) } }
+    return { _tag: "Success", value: { since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) } }
   }
 
   const category = values.get("category")?.[0] ?? null
   if (category === "") diagnostics.push(diagnostic("empty-tag", "@category must include a value"))
   if (diagnostics.length > 0 || since === null) return { _tag: "Failure", error: { diagnostics } }
-  return { _tag: "Success", value: { category, since, deprecated, see: see.map(parseSeeTag) } }
+  return {
+    _tag: "Success",
+    value: { category, since, stability: resolvedStability, deprecated, see: see.map(parseSeeTag) }
+  }
 }
 
 function formatDiagnostic(diagnostic: ts.Diagnostic): string {
@@ -1836,7 +1886,7 @@ export interface JSDocModelFile extends ParsedJSDocFile {
  * @since 4.0.0
  */
 export interface JSDocModel {
-  readonly version: 2
+  readonly version: 3
   readonly generatedBy: "@effect/jsdocs"
   readonly generatedAt: string
   readonly inputHash?: string
@@ -1970,6 +2020,7 @@ function apiTags(
   return {
     category: "category" in tags ? tags.category : null,
     since: tags.since,
+    stability: tags.stability,
     deprecated: tags.deprecated,
     default: "default" in tags ? tags.default : null
   }
@@ -2394,6 +2445,7 @@ function moduleSeeTags(
     ? tags.value as ParsedModuleTags
     : {
       since: "0.0.0",
+      stability: "stable",
       deprecated: null,
       see: block.tags.filter((tag) => tag.name === "see" && tag.value.trim() !== "").map((tag) =>
         parseSeeTag(tag.value.trim())
@@ -2513,8 +2565,9 @@ function createExampleImportPolicy(files: ReadonlyArray<JSDocModelFile>): Exampl
       })
       continue
     }
-    for (const name of rootValues) addAllowed(file.imports.module, name)
-    namedModuleBySource.set(file.imports.module, new Set(rootValues))
+    const names = new Set([...rootValues, ...file.imports.flatNames])
+    for (const name of names) addAllowed(file.imports.module, name)
+    namedModuleBySource.set(file.imports.module, names)
   }
   return { allowedNamedBySource: allowedNamed, namespaceModuleBySource, flatModuleBySource, namedModuleBySource }
 }
@@ -2713,7 +2766,21 @@ function parseDocumentedTs(
   required = true,
   linkContext?: { readonly checker: ts.TypeChecker; readonly entry: ProgramCacheEntry; readonly cwd: string }
 ) {
-  const block = getNodeJSDoc(node)
+  let block = getNodeJSDoc(node)
+  // Barrel re-exports intentionally use minimal, tag-only JSDoc.
+  if (block !== undefined && (ts.isExportDeclaration(node) || ts.isExportSpecifier(node))) {
+    const loose = parseLooseJSDocBlock(block.raw, block.range)
+    if (loose.tags[0]?.line === 0) {
+      block = {
+        ...loose,
+        parsed: {
+          description: { short: "", whenToUse: null, details: null, gotchas: null },
+          examples: [],
+          tags: loose.tags
+        }
+      }
+    }
+  }
   if (block?.internal) return undefined
   if (block === undefined) {
     if (required) {
@@ -2726,7 +2793,9 @@ function parseDocumentedTs(
   }
   addModelDiagnostics(diagnostics, block.range, block.diagnostics)
   if (block.parsed === undefined) return undefined
-  const tags = buildTags(scope, block.parsed.tags)
+  // Only names that can be imported directly require @stability.
+  const requireStability = scope === "declaration" || (scope === "namespace" && ts.isSourceFile(node.parent))
+  const tags = buildTags(scope, block.parsed.tags, requireStability)
   if (tags._tag === "Failure") {
     addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
     return undefined
@@ -3249,7 +3318,7 @@ function parseModuleJSDocTs(
 ): ParsedModuleJSDoc | undefined {
   const block = parseLooseJSDocBlock(moduleJSDoc.raw, [moduleJSDoc.range[0], moduleJSDoc.range[1]])
   if (block.internal) return undefined
-  const tags = buildTags("module", block.tags)
+  const tags = buildTags("module", block.tags, true)
   if (tags._tag === "Failure") addModelDiagnostics(diagnostics, block.range, tags.error.diagnostics)
   const examples = parseModuleExamples(block)
   addModelDiagnostics(diagnostics, block.range, examples.diagnostics)
@@ -3277,6 +3346,22 @@ function parseSourceFileDocs(
     if (ts.isExportAssignment(statement)) continue
     if (ts.isExportDeclaration(statement)) {
       if (statement.exportClause === undefined) continue
+      if (ts.isNamespaceExport(statement.exportClause)) {
+        const documented = parseDocumentedTs(statement, "namespace", diagnostics, true, linkContext)
+        if (documented !== undefined) {
+          namespaces.push({
+            name: statement.exportClause.name.text,
+            signature: statement.getText(sourceFile),
+            range: nodeRange(statement),
+            description: documented.core.description,
+            examples: documented.core.examples,
+            tags: documented.tags as ParsedNamespaceTags,
+            declarations: [],
+            namespaces: []
+          })
+        }
+        continue
+      }
       if (ts.isNamedExports(statement.exportClause) && statement.exportClause.elements.length === 0) {
         diagnostics.push({
           ...diagnostic("empty-export", "Empty export declarations are not allowed"),
@@ -3425,7 +3510,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
       result.parsed.declarations.length > 0 || result.parsed.namespaces.length > 0 ||
       result.parsed.moduleJSDoc !== undefined
     ) {
-      const imports = resolveJSDocImports(cwd, filename)
+      const imports = resolveJSDocImports(cwd, filename, sourceFile, checker)
       if (imports._tag === "Success") importsValue = imports.value
       else {
         fileDiagnostics.push({
@@ -3453,7 +3538,7 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
     cwd
   })
   return {
-    version: 2,
+    version: 3,
     generatedBy: "@effect/jsdocs",
     generatedAt: new Date().toISOString(),
     inputHash: computeJSDocInputHash(options),
@@ -3493,7 +3578,7 @@ export function readJSDocModel(filename: string): Result<JSDocModel, string> {
   if (!fs.existsSync(filename)) return { _tag: "Failure", error: "missing" }
   try {
     const parsed = JSON.parse(fs.readFileSync(filename, "utf8")) as JSDocModel
-    if (parsed.version !== 2) return { _tag: "Failure", error: "Unsupported jsdocs model version" }
+    if (parsed.version !== 3) return { _tag: "Failure", error: "Unsupported jsdocs model version" }
     if (!Array.isArray(parsed.files)) return { _tag: "Failure", error: "Invalid jsdocs model: files must be an array" }
     if (!Array.isArray(parsed.apis)) return { _tag: "Failure", error: "Invalid jsdocs model: apis must be an array" }
     return { _tag: "Success", value: parsed }

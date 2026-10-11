@@ -6,6 +6,7 @@
  * fiber, interrupts that fiber on `SIGINT` or `SIGTERM`, and delegates final
  * exit-code handling to the configured teardown.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Effect } from "effect/Effect"
@@ -16,6 +17,7 @@ import * as Runtime from "effect/Runtime"
  * `SIGINT` or `SIGTERM` and invoking the configured teardown to determine the
  * process exit code.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

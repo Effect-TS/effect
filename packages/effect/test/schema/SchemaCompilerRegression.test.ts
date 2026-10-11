@@ -10,10 +10,27 @@ import {
   SchemaParser,
   SchemaTransformation
 } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import * as Codegen from "effect/internal/schema/codegen"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual } from "../utils/assert.ts"
 
 describe("compiler regression contracts", () => {
+  it.effect("re-running a compiled Struct decoder keeps earlier results intact", () =>
+    Effect.gen(function*() {
+      let ids = 0
+      const schema = Schema.Struct({
+        id: Schema.Number.pipe(Schema.decode({
+          decode: SchemaGetter.transformEffect(() => Effect.sync(() => ++ids)),
+          encode: SchemaGetter.passthrough()
+        }))
+      })
+      SchemaJITCompiler.enable(schema.ast)
+      const program = SchemaParser.decodeUnknownEffect(schema)({ id: 0 })
+      const first = yield* program
+      const second = yield* program
+      assert.deepStrictEqual([first, second], [{ id: 1 }, { id: 2 }])
+    }))
+
   it("preserves template literal issues after compilation", () => {
     const schema = Schema.TemplateLiteral(["count:", Schema.Int.check(Schema.isGreaterThan(0))])
     const inputs = ["count:1", "count:0", "count:1.5", "invalid", null]
@@ -254,6 +271,76 @@ describe("compiler regression contracts", () => {
     deepStrictEqual(SchemaParser.decodeUnknownSync(schema)(input), input)
     strictEqual(SchemaParser.is(schema)(input), true)
     strictEqual(SchemaParser.is(schema)({ key4095: 1 }), false)
+  })
+
+  it("applies generation limits to every occurrence of a reused schema", () => {
+    const compiles = (schema: Schema.Top) => Codegen.generate(schema.ast, "decode") !== undefined
+    const nest = (schema: Schema.Top, depth: number): Schema.Top => {
+      for (let i = 0; i < depth; i++) schema = Schema.Struct({ n: schema })
+      return schema
+    }
+    assert.isTrue(compiles(nest(Schema.String, 256)))
+    assert.isFalse(compiles(nest(Schema.String, 257)))
+    const inner = nest(Schema.String, 200)
+    assert.isFalse(compiles(nest(inner, 57)))
+    assert.isTrue(compiles(nest(inner, 56)))
+    assert.isFalse(compiles(nest(inner, 57)))
+
+    const field = Schema.Struct(Object.fromEntries(Array.from({ length: 600 }, (_, i) => [`f${i}`, Schema.String])))
+    assert.isFalse(compiles(Schema.Struct({ a: field, b: field, c: field, d: field })))
+    assert.isTrue(compiles(Schema.Struct({ a: field, b: field, c: field })))
+  })
+
+  it("does not generate code for schemas nesting a declaration or suspension", () => {
+    const Recursive: Schema.Top = Schema.Struct({ next: Schema.optionalKey(Schema.suspend(() => Recursive)) })
+    for (const field of [Schema.Date, Recursive]) {
+      assert.isUndefined(Codegen.generate(Schema.Struct({ a: Schema.Struct({ b: field }) }).ast, "decode"))
+    }
+  })
+
+  it("does not reanalyse a nested schema that cannot be generated for each enclosing schema", () => {
+    let reads = 0
+    const date: SchemaAST.AST = new Proxy(Schema.Date.ast, {
+      get(target, key, receiver) {
+        reads++
+        return Reflect.get(target, key, receiver)
+      }
+    })
+    const levels: Array<SchemaAST.AST> = [date]
+    for (let i = 0; i < 50; i++) {
+      levels.push(new SchemaAST.Objects([new SchemaAST.PropertySignature("n", levels[i])], []))
+    }
+    for (const ast of levels.slice(1).reverse()) {
+      assert.isUndefined(Codegen.generate(ast, "decode"))
+    }
+    assert.isBelow(reads, 10)
+  })
+
+  it("preserves repeated Union members when selecting generated decoders", () => {
+    const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.Number })
+    for (const mode of ["anyOf", "oneOf"] as const) {
+      const schema = Schema.Union([
+        member,
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String }),
+        member,
+        Schema.Never
+      ], { mode })
+      SchemaJITCompiler.enable(schema.ast)
+      const decode = SchemaParser.decodeUnknownResult(schema)
+      const is = SchemaParser.is(schema)
+      const input = { kind: "a", value: 1 } as const
+      strictEqual(is(input), mode === "anyOf")
+      const result = decode(input)
+      if (mode === "anyOf") {
+        deepStrictEqual(result, Result.succeed(input))
+      } else {
+        assert(Result.isFailure(result))
+        strictEqual(result.failure._tag, "OneOf")
+      }
+      const other = { kind: "b", value: "value" } as const
+      strictEqual(is(other), true)
+      deepStrictEqual(decode(other), Result.succeed(other))
+    }
   })
 
   it("stops oneOf after its second successful candidate", () => {

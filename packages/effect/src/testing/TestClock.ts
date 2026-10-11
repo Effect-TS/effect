@@ -8,6 +8,7 @@
  * live clock, and warning when a test appears to be waiting on time without
  * advancing it.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Arr from "../Array.ts"
@@ -88,6 +89,7 @@ import * as Semaphore from "../Semaphore.ts"
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -133,6 +135,7 @@ export interface TestClock extends Clock.Clock {
  * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace TestClock {
@@ -238,6 +241,7 @@ const millisToNanos = (millis: number): bigint => {
  * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -430,6 +434,7 @@ export const make = Effect.fnUntraced(function*(
  * await Effect.runPromise(Effect.provide(program, customTestClockLayer)) // => 3_600_000
  * ```
  *
+ * @stability stable
  * @category layers
  * @since 4.0.0
  */
@@ -463,6 +468,7 @@ export const layer: (options?: TestClock.Options) => Layer.Layer<TestClock> = fl
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -501,6 +507,7 @@ export const testClockWith = <A, E, R>(
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -538,6 +545,7 @@ export const adjust = (duration: Duration.Input): Effect.Effect<void> =>
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 2.0.0
  */
@@ -574,6 +582,7 @@ export const setTime = (timestamp: number): Effect.Effect<void> =>
  * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
+ * @stability stable
  * @category testing
  * @since 4.0.0
  */

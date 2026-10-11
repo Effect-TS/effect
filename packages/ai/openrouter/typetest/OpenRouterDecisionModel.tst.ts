@@ -1,6 +1,6 @@
 import { type OpenRouterClient, OpenRouterDecisionModel } from "@effect/ai-openrouter"
 import { Effect, type Layer, Schema } from "effect"
-import { Decision, DecisionModel, type Model } from "effect/unstable/ai"
+import { Decision, DecisionModel, type Model } from "effect/ai"
 import { describe, expect, it } from "tstyche"
 
 const Triage = Decision.make({

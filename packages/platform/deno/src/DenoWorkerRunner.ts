@@ -1,6 +1,7 @@
 /**
  * Runner-side Deno platform for Effect worker handlers using the standard `MessagePort` API.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -12,8 +13,8 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
-import * as WorkerRunner from "effect/unstable/workers/WorkerRunner"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
+import * as WorkerRunner from "effect/workers/WorkerRunner"
 
 const cachedPorts = new Set<MessagePort>()
 function globalHandleConnect(event: MessageEvent) {
@@ -26,6 +27,7 @@ if (typeof self !== "undefined" && "onconnect" in self) {
 /**
  * Creates a worker runner platform over a `MessagePort`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -158,6 +160,7 @@ export const make = (self: MessagePort): WorkerRunner.WorkerRunnerPlatform["Serv
 /**
  * Layer that provides the worker runner platform using the global worker scope.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -168,6 +171,7 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.sync(
 /**
  * Layer that provides the worker runner platform using the supplied `MessagePort`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -114,7 +114,7 @@
   note: "Use Channel.mapInput(self, (value) => Effect.succeed(f(value))); v4 consolidated pure and effectful input mapping."
 "effect/Channel#mapInputInEffect":
   replacement: "Channel.mapInput"
-  note: "Renamed to mapInput; the mapper remains effectful."
+  note: "Renamed to mapInput; the mapper remains effectful. Both overloads retain mapper service requirements in the resulting channel, so provide those services before running it."
 "effect/Channel#mapOut":
   replacement: "Channel.map"
   note: "Renamed to map; the v4 mapper also receives the element index."

@@ -7,6 +7,7 @@
  * the `QuitError` used when a user cancels input, a guard for that error, and a
  * constructor for custom terminal service implementations.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -25,6 +26,7 @@ const TypeId = "~effect/Terminal"
  * A `Terminal` represents a command-line interface which can read input from a
  * user and display messages to a user.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -58,6 +60,7 @@ export interface Terminal {
  * Keyboard key metadata for terminal input, including the key name and
  * modifier state.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -91,6 +94,7 @@ export interface Key {
  *
  * @see {@link Key} for the parsed key metadata stored on each input event
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -118,6 +122,7 @@ const QuitErrorTypeId = "~effect/Terminal/QuitError"
  *
  * @see {@link isQuitError} for checking unknown errors when handling terminal cancellation
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -147,6 +152,7 @@ export class QuitError extends Schema.Error<QuitError>("QuitError")({
  *
  * @see {@link QuitError} for the error value produced when terminal input is quit
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -160,6 +166,7 @@ export const isQuitError = (u: unknown): u is QuitError => Predicate.hasProperty
  * Use to access or provide platform terminal capabilities such as reading
  * input, writing output, and inspecting terminal dimensions.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -180,6 +187,7 @@ export const Terminal: Context.Service<Terminal, Terminal> = Context.Service("ef
  * `readLine`, and `display`; `make` attaches the `Terminal` service marker so
  * the result can be provided through the `Terminal` context service.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

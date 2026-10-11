@@ -1,18 +1,20 @@
 /**
  * Scoped HTTP client customization for OpenRouter requests.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { dual } from "effect/Function"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
+import type { HttpClient } from "effect/http/HttpClient"
 
 /**
  * Scoped configuration read when executing OpenRouter requests.
  *
  * @see {@link withClientTransform} for scoping an HTTP client transformation
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -34,6 +36,7 @@ export class OpenRouterConfig extends Context.Service<
 /**
  * Types associated with the `OpenRouterConfig` context service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace OpenRouterConfig {
@@ -53,6 +56,7 @@ export declare namespace OpenRouterConfig {
  * made by the supplied effect. Streaming chat completions ignore this transform.
  * Replaces any existing scoped transform; compose them manually to apply both.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

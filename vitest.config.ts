@@ -101,12 +101,13 @@ export default defineConfig({
             "test/schema/SchemaGetter.test.ts",
             "test/schema/toCodec.test.ts",
             "test/schema/toDifferJsonPatch.test.ts",
-            "test/unstable/http/HttpEffect.test.ts",
-            "test/unstable/http/HttpServerRequest.test.ts"
+            "test/http/HttpEffect.test.ts",
+            "test/http/HttpServerRequest.test.ts"
           ]
           : undefined
       ),
       ...project("@effect/ai-anthropic", "packages/ai/anthropic"),
+      ...project("@effect/ai-cloudflare", "packages/ai/cloudflare"),
       ...project("@effect/ai-openai", "packages/ai/openai"),
       ...project("@effect/ai-typesafe", "packages/ai/typesafe"),
       ...project("@effect/ai-openai-compat", "packages/ai/openai-compat"),

@@ -7,6 +7,7 @@
  * exit codes and already-reported failures. Application code usually calls the
  * platform-provided runner instead of using this module directly.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -54,6 +55,7 @@ import type * as Fiber from "./Fiber.ts"
  * await completed // => [Exit.succeed("Hello, World!"), 0]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export interface Teardown {
  *
  * @see {@link errorExitCode} for customizing failure exit codes
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -175,6 +178,7 @@ export const defaultTeardown: Teardown = <E, A>(
  * events // => ["Starting program", "Program completed", "Custom teardown logic"]
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -238,6 +242,7 @@ declare global {
  * Use to type properties keyed by `Runtime.errorExitCode` on custom error
  * values.
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -279,6 +284,7 @@ export type errorExitCode = "~effect/Runtime/errorExitCode"
  * @see {@link defaultTeardown} for the default failure exit-code rules that read this marker
  * @see {@link getErrorExitCode} for reading the marker from unknown error values
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -305,6 +311,7 @@ export const errorExitCode: errorExitCode = "~effect/Runtime/errorExitCode"
  *
  * @see {@link errorExitCode} for the marker read by this function
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -326,6 +333,7 @@ export const getErrorExitCode = (u: unknown): number => {
  * Use to type properties keyed by `Runtime.errorReported` on custom error
  * values.
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -368,6 +376,7 @@ export type errorReported = "~effect/Runtime/errorReported"
  * @see {@link errorExitCode} for controlling failure exit codes
  * @see {@link getErrorReported} for reading the marker from unknown error values
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -393,6 +402,7 @@ export const errorReported: errorReported = "~effect/Runtime/errorReported"
  *
  * @see {@link errorReported} for the marker read by this function
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */

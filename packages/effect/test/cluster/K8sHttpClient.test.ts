@@ -1,8 +1,42 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Schema } from "effect"
-import * as K8sHttpClient from "effect/unstable/cluster/K8sHttpClient"
+import { Effect, FileSystem, Schema } from "effect"
+import * as K8sHttpClient from "effect/cluster/K8sHttpClient"
+import { HttpClient, HttpClientResponse } from "effect/http"
+import { TestClock } from "effect/testing"
 
 describe.concurrent("K8sHttpClient", () => {
+  it.effect("uses the rotated token after the token cache expires", () => {
+    let token = "token-1"
+    const authorization: Array<string | undefined> = []
+
+    return Effect.gen(function*() {
+      const client = yield* K8sHttpClient.K8sHttpClient
+      const request = client.get("/v1/pods")
+      yield* request
+      token = "token-2"
+      yield* TestClock.adjust("61 seconds")
+      yield* request
+      assert.deepStrictEqual(authorization, ["Bearer token-1", "Bearer token-2"])
+    }).pipe(
+      Effect.provide(K8sHttpClient.layer),
+      Effect.provideService(
+        FileSystem.FileSystem,
+        FileSystem.makeNoop({
+          readFileString: () => Effect.sync(() => token)
+        })
+      ),
+      Effect.provideService(
+        HttpClient.HttpClient,
+        HttpClient.make((request) =>
+          Effect.sync(() => {
+            authorization.push(request.headers.authorization)
+            return HttpClientResponse.fromWeb(request, new Response(null, { status: 200 }))
+          })
+        )
+      )
+    )
+  })
+
   describe("Pod", () => {
     it.effect("decodes null condition lastTransitionTime values", () =>
       Effect.gen(function*() {

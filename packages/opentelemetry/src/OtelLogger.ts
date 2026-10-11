@@ -7,12 +7,14 @@
  * offers layers for installing that logger or creating a scoped SDK
  * `LoggerProvider` from one or more `LogRecordProcessor`s.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { SeverityNumber } from "@opentelemetry/api-logs"
 import * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
@@ -24,12 +26,14 @@ import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
 import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
+import * as Version from "effect/Version"
 import { nanosToHrTime, unknownToAttributeValue } from "./internal/attributes.ts"
 import { Resource } from "./Resource.ts"
 
 /**
  * Context service containing the OpenTelemetry `LoggerProvider` used to emit Effect log records.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -49,6 +53,7 @@ export class OtelLoggerProvider extends Context.Service<
  * ordinal `20000`, fall outside the OpenTelemetry logs data model and can be
  * treated as `UNSPECIFIED` by validating backends.
  *
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */
@@ -74,6 +79,7 @@ export const logLevelToSeverityNumber = (level: LogLevel.LogLevel): SeverityNumb
 /**
  * Creates an Effect logger that emits log records through the configured OpenTelemetry logger provider.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -84,16 +90,16 @@ export const make: Effect.Effect<
 > = Effect.gen(function*() {
   const loggerProvider = yield* OtelLoggerProvider
   const clock = yield* Clock.Clock
-  const otelLogger = loggerProvider.getLogger("@effect/opentelemetry")
+  const otelLogger = loggerProvider.getLogger("effect", Version.getCurrentVersion())
 
   return Logger.make((options) => {
-    const attributes: Record<string, any> = {
-      fiberId: options.fiber.id
-    }
+    const attributes: Record<string, any> = {}
 
     for (const [key, value] of Object.entries(options.fiber.getRef(References.CurrentLogAnnotations))) {
       Rec.assignProperty(attributes, key, unknownToAttributeValue(value))
     }
+
+    attributes["effect.fiberId"] = options.fiber.id
 
     const span = Context.getOrUndefined(options.fiber.context, Tracer.ParentSpan)
 
@@ -103,18 +109,25 @@ export const make: Effect.Effect<
     }
 
     const now = options.date.getTime()
+    // Outermost spans win duplicate labels.
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {
-      attributes[`logSpan.${label}`] = `${now - startTime}ms`
+      attributes[`effect.log_span.${label}`] = now - startTime
+    }
+
+    const errors = Cause.prettyErrors(options.cause, { includeCauseInStack: true })
+    if (errors.length > 0) {
+      attributes["exception.type"] = errors[0].name
+      attributes["exception.message"] = errors[0].message
+      attributes["exception.stacktrace"] = errors.map((error) => error.stack).join("\n")
     }
 
     const message = Arr.ensure(options.message).map(unknownToAttributeValue)
-    const hrTime = nanosToHrTime(clock.currentTimeNanosUnsafe())
     otelLogger.emit({
       body: message.length === 1 ? message[0] : message,
       severityText: options.logLevel,
       severityNumber: logLevelToSeverityNumber(options.logLevel),
-      timestamp: hrTime,
-      observedTimestamp: hrTime,
+      timestamp: options.date,
+      observedTimestamp: nanosToHrTime(clock.currentTimeNanosUnsafe()),
       attributes
     })
   })
@@ -137,6 +150,7 @@ export const make: Effect.Effect<
  * @see {@link make} for constructing the logger directly
  * @see {@link layerLoggerProvider} for creating the required logger provider
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -163,6 +177,7 @@ export const layer = (options: {
 /**
  * Creates a scoped OpenTelemetry logger provider from one or more log record processors, using the current `Resource` and flushing and shutting down the provider when the layer is released.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

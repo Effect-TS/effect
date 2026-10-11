@@ -6,6 +6,7 @@
  * module also contains small identity, constant, tuple, type-level, and
  * memoization helpers used across the library.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { TypeLambda } from "./HKT.ts"
@@ -29,6 +30,7 @@ import { pipeArguments } from "./Pipeable.ts"
  * // Equivalent to: (a: string) => number
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -96,6 +98,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  * pipe(2, sum(3)) // => 5
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -177,6 +180,7 @@ export const dual: {
  *
  * @see {@link pipe} for building left-to-right pipelines
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -198,6 +202,7 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  * constNull() // => null
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -220,6 +225,7 @@ export type LazyArg<A> = () => A
  * sum(2, 3) // => 5
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -240,6 +246,7 @@ export type FunctionN<A extends ReadonlyArray<unknown>, B> = (...args: A) => B
  * identity(5) // => 5
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -268,6 +275,7 @@ export const identity = <A>(a: A): A => a
  *
  * @see {@link cast} for changing only the static TypeScript type
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -288,6 +296,7 @@ export const satisfies = <A>() => <B extends A>(b: B) => b
  *
  * @see {@link satisfies} for checking assignability without changing the resulting type
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -312,6 +321,7 @@ export const cast: <A, B>(a: A) => B = identity as any
  * constNull() // => null
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -332,6 +342,7 @@ export const constant = <A>(value: A): LazyArg<A> => () => value
  * Function.constTrue() // => true
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 2.0.0
  */
@@ -352,6 +363,7 @@ export const constTrue: LazyArg<boolean> = constant(true)
  * Function.constFalse() // => false
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 2.0.0
  */
@@ -372,6 +384,7 @@ export const constFalse: LazyArg<boolean> = constant(false)
  * Function.constNull() // => null
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 2.0.0
  */
@@ -392,6 +405,7 @@ export const constNull: LazyArg<null> = constant(null)
  * Function.constUndefined() // => undefined
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 2.0.0
  */
@@ -413,6 +427,7 @@ export const constUndefined: LazyArg<undefined> = constant(undefined)
  * Function.constVoid() // => undefined
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 2.0.0
  */
@@ -436,6 +451,7 @@ export const constVoid: LazyArg<void> = constUndefined
  * Function.flip(f)("aaa")(2) // => -1
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -467,6 +483,7 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  * @see {@link flow} for composing a left-to-right sequence of functions
  * @see {@link pipe} for applying a value through a left-to-right sequence immediately
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -499,6 +516,7 @@ export const compose: {
  * }
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -525,6 +543,7 @@ export const absurd = <A>(_: never): A => {
  *
  * @see {@link untupled} for adapting a tuple-argument function back to multiple arguments
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -549,6 +568,7 @@ export const tupled = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B): 
  *
  * @see {@link tupled} for adapting a multi-argument function to one tuple argument
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -607,6 +627,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * ) // => [6, 8]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1091,6 +1112,7 @@ export function pipe(a: unknown, ...args: Array<any>): unknown {
  * @see {@link pipe} for applying a value through a left-to-right sequence immediately
  * @see {@link compose} for composing exactly two functions
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1284,6 +1306,7 @@ export function flow(
  *
  * ```
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -1306,6 +1329,7 @@ export const hole: <T>() => T = cast(absurd)
  * Function.SK(0, "hello") // => "hello"
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -1333,6 +1357,7 @@ export const SK = <A, B>(_: A, b: B): B => b
  * mutated after its first call, later calls still return the cached result for
  * that reference.
  *
+ * @stability stable
  * @category caching
  * @since 4.0.0
  */
@@ -1369,6 +1394,7 @@ export function memoize<A extends object, O extends {} | null>(f: (a: A) => O): 
  * different value, this memoization changes that behavior.
  *
  * @see {@link memoize} for memoizing functions without an idempotence requirement
+ * @stability stable
  * @category caching
  * @since 4.0.0
  */
@@ -1379,7 +1405,9 @@ export function memoizeIdempotent<A extends object>(f: (a: A) => A): (a: A) => A
     if (cached !== undefined) return cached
     const result = f(a)
     cache.set(a, result)
-    cache.set(result, result)
+    if (result !== a) {
+      cache.set(result, result)
+    }
     return result
   }
 }

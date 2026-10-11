@@ -4,9 +4,9 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import { flow, pipe } from "effect/Function"
+import { Persistable, Persistence } from "effect/persistence"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
-import { Persistable, Persistence } from "effect/unstable/persistence"
 
 class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
 class Requests extends Context.Service<Requests, { count: number }>()("Requests") {}
@@ -157,8 +157,8 @@ describe("Request", { concurrent: false }, () => {
   it("compares StructuralProto values when hashes collide", () => {
     class Req extends Request.Class<{ id: string; account: string }, string> {}
 
-    const a = new Req({ id: "id-8", account: "acct-2811" })
-    const b = new Req({ id: "id-14", account: "acct-755" })
+    const a = new Req({ id: "id-8", account: "acct-1975" })
+    const b = new Req({ id: "id-18", account: "acct-433" })
 
     assert.strictEqual(Hash.hash(a), Hash.hash(b))
     assert.strictEqual(Equal.equals(a, b), false)
@@ -423,6 +423,29 @@ describe("Request", { concurrent: false }, () => {
         assert.deepStrictEqual(batches, [1])
       }))
   }
+
+  it.effect("withCache completes many coalesced requests for one cache entry", () =>
+    Effect.gen(function*() {
+      const gate = yield* Deferred.make<void>()
+      const batches: Array<number> = []
+      const resolver = yield* Resolver.make<GetNameById>((entries) =>
+        Effect.sync(() => {
+          batches.push(entries.length)
+          for (const entry of entries) entry.completeUnsafe(Exit.succeed("Alice"))
+        })
+      ).pipe(Resolver.setDelayEffect(Deferred.await(gate)), Resolver.withCache({ capacity: 1 }))
+      const fibers = yield* Effect.forEach(
+        Array.range(1, 20_000),
+        () => Effect.request(new GetNameById({ id: 1 }), resolver).pipe(Effect.forkChild({ startImmediately: true }))
+      )
+      yield* Deferred.succeed(gate, undefined)
+      yield* Effect.yieldNow
+
+      assert.deepStrictEqual(batches, [1])
+      for (const fiber of fibers) {
+        assert.deepStrictEqual(fiber.pollUnsafe(), Exit.succeed("Alice"))
+      }
+    }))
 
   it.effect("withCache still caches completed failures", () =>
     Effect.gen(function*() {

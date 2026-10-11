@@ -7,10 +7,11 @@
  * keyed resource families such as tenant clients, regional connections, or
  * environment-specific services.
  *
+ * @stability unstable
  * @since 3.14.0
  */
 import * as Context from "./Context.ts"
-import type * as Duration from "./Duration.ts"
+import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import { identity } from "./Function.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./internal/stackTraceLimit.ts"
@@ -72,6 +73,7 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  * await Effect.runPromise(Effect.scoped(program)) // => { development: "development: SELECT 1", production: "production: SELECT 1" }
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 3.14.0
  */
@@ -150,6 +152,7 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  * await Effect.runPromise(Effect.scoped(program)) // => "development: SELECT * FROM users"
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.14.0
  */
@@ -161,6 +164,10 @@ export const make: <
   lookup: (key: K) => L,
   options?: {
     readonly idleTimeToLive?: IdleTimeToLiveInput<K> | undefined
+    /**
+     * Preloaded entries are retained only for their idle TTL. Keys whose idle
+     * TTL is zero are not preloaded (including when no TTL is specified).
+     */
     readonly preloadKeys?: PreloadKeys
   } | undefined
 ) => Effect.Effect<
@@ -187,7 +194,9 @@ export const make: <
 
   if (options?.preloadKeys) {
     for (const key of options.preloadKeys) {
-      yield* Effect.scoped(RcMap.get(rcMap, key))
+      if (!Duration.isZero(rcMap.idleTimeToLive(key))) {
+        yield* Effect.scoped(RcMap.get(rcMap, key))
+      }
     }
   }
 
@@ -250,6 +259,7 @@ export const make: <
  * await Effect.runPromise(Effect.scoped(program)) // => { development: "DEV: SELECT 1", production: "PROD: SELECT 1" }
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 3.14.0
  */
@@ -260,6 +270,10 @@ export const fromRecord = <
   layers: Layers,
   options?: {
     readonly idleTimeToLive?: IdleTimeToLiveInput<keyof Layers> | undefined
+    /**
+     * Preloaded entries are retained only for their idle TTL. Keys whose idle
+     * TTL is zero are not preloaded (including when no TTL is specified).
+     */
     readonly preload?: Preload | undefined
   } | undefined
 ): Effect.Effect<
@@ -292,6 +306,7 @@ export const fromRecord = <
  *
  * @see {@link Service} for creating concrete `LayerMap` service classes
  *
+ * @stability unstable
  * @category services
  * @since 3.14.0
  */
@@ -392,6 +407,7 @@ export interface TagClass<
  * await Effect.runPromise(program) // => "Hello, John!"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 3.14.0
  */
@@ -403,6 +419,10 @@ export const Service = <Self>() =>
       readonly lookup: (key: any) => Layer.Layer<any, any, any>
       readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>> | undefined
       readonly idleTimeToLive?: IdleTimeToLiveInput<any> | undefined
+      /**
+       * Preloaded entries are retained only for their idle TTL. Keys whose idle
+       * TTL is zero are not preloaded (including when no TTL is specified).
+       */
       readonly preloadKeys?:
         | Iterable<Options extends { readonly lookup: (key: infer K) => any } ? K : never>
         | undefined
@@ -411,6 +431,10 @@ export const Service = <Self>() =>
       readonly layers: Record<string, Layer.Layer<any, any, any>>
       readonly dependencies?: ReadonlyArray<Layer.Layer<any, any, any>> | undefined
       readonly idleTimeToLive?: IdleTimeToLiveInput<any> | undefined
+      /**
+       * Preloaded entries are retained only for their idle TTL. Keys whose idle
+       * TTL is zero are not preloaded (including when no TTL is specified).
+       */
       readonly preload?: boolean | undefined
     }, Options>
 >(
@@ -470,6 +494,7 @@ export const Service = <Self>() =>
 /**
  * Type helpers for values created with `LayerMap.Service`.
  *
+ * @stability unstable
  * @since 3.14.0
  */
 export declare namespace Service {

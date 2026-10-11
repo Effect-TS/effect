@@ -10,4 +10,11 @@ describe("Sink", () => {
 
     expect(recovered).type.toBe<Sink.Sink<number, string, never, "new-error">>()
   })
+
+  it("curried catchCause replaces the handled error type", () => {
+    const sink = null as unknown as Sink.Sink<number, string, never, "old-error">
+    const recovered = sink.pipe(Sink.catchCause((_) => Effect.fail("new-error" as const)))
+
+    expect(recovered).type.toBe<Sink.Sink<number, string, never, "new-error">>()
+  })
 })

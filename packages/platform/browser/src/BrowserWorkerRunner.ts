@@ -7,6 +7,7 @@
  * receives parent or client messages, runs Effect handlers, and posts responses
  * back through the browser messaging channel.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -18,8 +19,8 @@ import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Scope from "effect/Scope"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
-import * as WorkerRunner from "effect/unstable/workers/WorkerRunner"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
+import * as WorkerRunner from "effect/workers/WorkerRunner"
 
 const cachedPorts = new Set<MessagePort>()
 function globalHandleConnect(event: MessageEvent) {
@@ -32,6 +33,7 @@ if (typeof self !== "undefined" && "onconnect" in self) {
 /**
  * Creates a `WorkerRunnerPlatform` service that runs worker handlers over a `MessagePort` or `Window`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -183,6 +185,7 @@ export const make = (self: MessagePort | Window): WorkerRunner.WorkerRunnerPlatf
  * @see {@link make} for constructing a runner platform from an explicit endpoint
  * @see {@link layerMessagePort} for providing a platform from an explicit endpoint
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -193,6 +196,7 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.sync(
 /**
  * Layer that provides a `WorkerRunnerPlatform` using the supplied `MessagePort` or `Window`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

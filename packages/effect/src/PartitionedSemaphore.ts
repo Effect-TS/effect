@@ -5,10 +5,13 @@
  * groups of work compete for the same bounded resource and each group should
  * make progress without one busy group monopolizing released permits.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
+import * as Exit from "./Exit.ts"
 import { dual } from "./Function.ts"
+import * as internalEffect from "./internal/effect.ts"
 import * as MutableHashMap from "./MutableHashMap.ts"
 import * as Option from "./Option.ts"
 
@@ -21,6 +24,7 @@ import * as Option from "./Option.ts"
  * This marker is part of the runtime representation of partitioned semaphore
  * values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -38,6 +42,7 @@ export const PartitionedTypeId: PartitionedTypeId = "~effect/PartitionedSemaphor
  * Use this type when declaring fields that must contain the exact
  * `PartitionedTypeId` marker value.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -56,6 +61,7 @@ export type PartitionedTypeId = "~effect/PartitionedSemaphore"
  *
  * Waiting permits are distributed across partitions in round-robin order.
  *
+ * @stability unstable
  * @category models
  * @since 3.19.4
  */
@@ -88,6 +94,7 @@ export interface PartitionedSemaphore<in K> {
  * provides an alternate exported name for APIs that refer to a partitioned
  * permit pool.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -109,6 +116,7 @@ export interface Partitioned<in K> extends PartitionedSemaphore<K> {}
  *
  * @see {@link make} for creating a partitioned semaphore inside `Effect`
  *
+ * @stability unstable
  * @category constructors
  * @since 3.19.4
  */
@@ -140,36 +148,51 @@ export const makeUnsafe = <K = unknown>(options: {
 
   const partitions = MutableHashMap.empty<K, Set<Waiter>>()
   let iterator = partitions[Symbol.iterator]()
+  let releasing = false
+  let pendingPermits = 0
 
   const releaseUnsafe = (permits: number): number => {
-    while (permits > 0) {
-      if (waitingPermits === 0) {
-        totalPermits = Math.min(maxPermits, totalPermits + permits)
-        return totalPermits
-      }
+    if (permits > 0) {
+      pendingPermits += permits
+    }
 
-      let state = iterator.next()
-      if (state.done) {
-        iterator = partitions[Symbol.iterator]()
-        state = iterator.next()
-        if (state.done) {
-          return totalPermits
+    // Synchronous waiter finalizers can release again. Let the active loop
+    // allocate those permits rather than recursively resuming another fiber.
+    if (!releasing) {
+      releasing = true
+      try {
+        while (pendingPermits > 0 && waitingPermits > 0) {
+          let state = iterator.next()
+          if (state.done) {
+            iterator = partitions[Symbol.iterator]()
+            state = iterator.next()
+            if (state.done) {
+              break
+            }
+          }
+
+          const waiter = state.value[1].values().next().value
+          if (waiter === undefined) {
+            continue
+          }
+
+          waiter.permits -= 1
+          waitingPermits -= 1
+          pendingPermits -= 1
+
+          if (waiter.permits === 0) {
+            waiter.resume()
+          }
         }
+      } finally {
+        releasing = false
       }
+    }
 
-      const waiter = state.value[1].values().next().value
-      if (waiter === undefined) {
-        continue
-      }
-
-      waiter.permits -= 1
-      waitingPermits -= 1
-
-      if (waiter.permits === 0) {
-        waiter.resume()
-      }
-
-      permits -= 1
+    // Free permits must be visible before a reentrant release returns.
+    if (waitingPermits === 0) {
+      totalPermits = Math.min(maxPermits, totalPermits + pendingPermits)
+      pendingPermits = 0
     }
 
     return totalPermits
@@ -180,53 +203,64 @@ export const makeUnsafe = <K = unknown>(options: {
       return Effect.void
     }
 
-    return Effect.callback<void>((resume) => {
-      if (maxPermits < permits) {
-        resume(Effect.never)
-        return
-      }
+    if (maxPermits < permits) {
+      return Effect.never
+    }
 
+    return Effect.withFiber((fiber) => {
       if (totalPermits >= permits) {
+        // Keep the capacity check, deduction, and interruption cleanup in one evaluation step.
         totalPermits -= permits
-        resume(Effect.void)
-        return
+        internalEffect.onExitUnsafe(fiber, (exit) => {
+          if (Exit.isFailure(exit)) {
+            releaseUnsafe(permits)
+          }
+          return undefined
+        })
+        return Effect.void
       }
 
-      const needed = permits - totalPermits
-      if (totalPermits > 0) {
-        totalPermits = 0
-      }
-      waitingPermits += needed
-
-      const waiters = Option.getOrElse(
-        MutableHashMap.get(partitions, key),
-        () => {
-          const set = new Set<Waiter>()
-          MutableHashMap.set(partitions, key, set)
-          return set
+      return Effect.callback<void>((resume) => {
+        if (totalPermits >= permits) {
+          resume(take(key, permits))
+          return
         }
-      )
+        const needed = permits - totalPermits
+        if (totalPermits > 0) {
+          totalPermits = 0
+        }
+        waitingPermits += needed
 
-      const entry: Waiter = {
-        permits: needed,
-        resume: () => {
+        const waiters = Option.getOrElse(
+          MutableHashMap.get(partitions, key),
+          () => {
+            const set = new Set<Waiter>()
+            MutableHashMap.set(partitions, key, set)
+            return set
+          }
+        )
+
+        const entry: Waiter = {
+          permits: needed,
+          resume: () => {
+            cleanup()
+            resume(Effect.void)
+          }
+        }
+
+        const cleanup = () => {
+          if (waiters.delete(entry) && waiters.size === 0) {
+            MutableHashMap.remove(partitions, key)
+          }
+        }
+
+        waiters.add(entry)
+
+        return Effect.sync(() => {
           cleanup()
-          resume(Effect.void)
-        }
-      }
-
-      const cleanup = () => {
-        if (waiters.delete(entry) && waiters.size === 0) {
-          MutableHashMap.remove(partitions, key)
-        }
-      }
-
-      waiters.add(entry)
-
-      return Effect.sync(() => {
-        cleanup()
-        waitingPermits -= entry.permits
-        releaseUnsafe(permits - entry.permits)
+          waitingPermits -= entry.permits
+          releaseUnsafe(permits - entry.permits)
+        })
       })
     })
   }
@@ -279,17 +313,17 @@ export const makeUnsafe = <K = unknown>(options: {
           return Effect.asSome(effect)
         }
 
-        return Effect.suspend(() => {
+        return Effect.withFiber((fiber) => {
           if (!tryTake(permits)) {
             return Effect.succeed(Option.none())
           }
 
-          return Effect.ensuring(
-            Effect.asSome(effect),
-            Effect.sync(() => {
-              releaseUnsafe(permits)
-            })
-          )
+          // Register cleanup before the fiber can yield to the user effect.
+          internalEffect.onExitUnsafe(fiber, () => {
+            releaseUnsafe(permits)
+            return undefined
+          })
+          return Effect.asSome(effect)
         })
       }
   }
@@ -315,6 +349,7 @@ export const makeUnsafe = <K = unknown>(options: {
  *
  * @see {@link makeUnsafe} for synchronous construction
  *
+ * @stability unstable
  * @category constructors
  * @since 3.19.4
  */
@@ -343,6 +378,7 @@ export const make = <K = unknown>(options: {
  * @see {@link release} for returning permits to the shared pool
  * @see {@link withPermitsIfAvailable} for running only when permits are immediately available
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -362,6 +398,7 @@ export const available = <K>(self: PartitionedSemaphore<K>): Effect.Effect<numbe
  *
  * @see {@link available} for the current number of free permits
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -391,6 +428,7 @@ export const capacity = <K>(self: PartitionedSemaphore<K>): number => self.capac
  * @see {@link withPermits} for automatic acquire and release around an effect
  * @see {@link withPermit} for acquiring exactly one permit around an effect
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -418,6 +456,7 @@ export const take: {
  * @see {@link withPermits} for automatic acquire and release around an effect
  * @see {@link available} for reading the permit count without releasing
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -452,6 +491,7 @@ export const release: {
  * @see {@link take} for manual acquisition
  * @see {@link release} for manual release
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -496,6 +536,7 @@ export const withPermits: {
  * @see {@link take} for manual acquisition
  * @see {@link release} for manual release
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
@@ -534,6 +575,7 @@ export const withPermit: {
  * @see {@link withPermits} for the keyed variant that waits until permits are
  * available for a partition
  *
+ * @stability unstable
  * @category combinators
  * @since 4.0.0
  */

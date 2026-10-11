@@ -5,9 +5,9 @@ import * as ByteSize from "effect/ByteSize"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import * as Etag from "effect/unstable/http/Etag"
-import type * as HttpBody from "effect/unstable/http/HttpBody"
-import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
+import * as Etag from "effect/http/Etag"
+import type * as HttpBody from "effect/http/HttpBody"
+import * as HttpPlatform from "effect/http/HttpPlatform"
 
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
 

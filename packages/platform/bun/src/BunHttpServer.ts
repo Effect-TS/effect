@@ -9,10 +9,12 @@
  * for the server alone, the Bun HTTP support services, the combined server,
  * configurable server options, and a test server with an HTTP client.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { Server as BunServer, ServerWebSocket } from "bun"
 import type * as Arr from "effect/Array"
+import * as Cause from "effect/Cause"
 import * as Config from "effect/Config"
 import type { ConfigError } from "effect/Config"
 import * as Context from "effect/Context"
@@ -23,8 +25,24 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { constVoid, flow } from "effect/Function"
+import * as Cookies from "effect/http/Cookies"
+import * as Etag from "effect/http/Etag"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as Headers from "effect/http/Headers"
+import type { HttpClient } from "effect/http/HttpClient"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as IncomingMessage from "effect/http/HttpIncomingMessage"
+import type { HttpMethod } from "effect/http/HttpMethod"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import * as Server from "effect/http/HttpServer"
+import * as Error from "effect/http/HttpServerError"
+import * as ServerRequest from "effect/http/HttpServerRequest"
+import * as ServerResponse from "effect/http/HttpServerResponse"
+import type * as Multipart from "effect/http/Multipart"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
@@ -33,24 +51,8 @@ import * as Scheduler from "effect/Scheduler"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Cookies from "effect/unstable/http/Cookies"
-import * as Etag from "effect/unstable/http/Etag"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as Headers from "effect/unstable/http/Headers"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
-import * as HttpEffect from "effect/unstable/http/HttpEffect"
-import * as IncomingMessage from "effect/unstable/http/HttpIncomingMessage"
-import type { HttpMethod } from "effect/unstable/http/HttpMethod"
-import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
-import * as Server from "effect/unstable/http/HttpServer"
-import * as Error from "effect/unstable/http/HttpServerError"
-import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
-import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
-import type * as Multipart from "effect/unstable/http/Multipart"
-import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as NetAddress from "effect/unstable/net/NetAddress"
-import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./BunHttpPlatform.ts"
 import * as BunMultipart from "./BunMultipart.ts"
 import * as BunServices from "./BunServices.ts"
@@ -59,6 +61,7 @@ import * as BunStream from "./BunStream.ts"
 /**
  * Bun serve options accepted by the HTTP server, extended with typed route definitions.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -84,6 +87,7 @@ export type ServeOptions<R extends string> =
  * that is compressed when per-message deflate is negotiated. It defaults to
  * 1024, matching the default threshold of Node's `ws` server.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -105,6 +109,7 @@ export type WebSocketOptions =
 /**
  * Creates a scoped Bun `HttpServer` from `Bun.serve` options, stopping the server on scope finalization with optional graceful shutdown settings.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -188,7 +193,9 @@ export const make = Effect.fnUntraced(
 
         const httpEffect = HttpEffect.toHandled(httpApp, (request, response) =>
           Effect.sync(() => {
-            ;(request as BunServerRequest).resolve(makeResponse(request, response, services, scope))
+            const bunRequest = request as BunServerRequest
+            bunRequest.resolve(makeResponse(request, response, services, scope))
+            if (upgradedSources.has(bunRequest.source)) return upgradedResponse
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
@@ -225,6 +232,12 @@ export const make = Effect.fnUntraced(
 )
 
 const MIN_COMPRESSIBLE_SIZE = 1024
+
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = ServerResponse.empty({ status: 101 })
+
+// Keyed by source so request copies from `modify` share the upgrade state.
+const upgradedSources = new WeakSet<Request>()
 
 const makeResponse = (
   request: ServerRequest.HttpServerRequest,
@@ -293,6 +306,7 @@ const makeResponse = (
 /**
  * Layer that provides only `HttpServer` by constructing a scoped Bun server from the supplied serve options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -307,6 +321,7 @@ export const layerServer: <R extends string>(
 /**
  * Layer that provides Bun HTTP support services: `HttpPlatform`, weak ETag generation, and `BunServices`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -323,6 +338,7 @@ export const layerHttpServices: Layer.Layer<
 /**
  * Layer that provides a Bun `HttpServer` together with the Bun HTTP platform, ETag generator, and Bun services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -343,6 +359,7 @@ export const layer = <R extends string>(
 /**
  * Layer that starts a Bun HTTP server on an ephemeral port for tests.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -358,6 +375,7 @@ export const layerTest: Layer.Layer<
 /**
  * Creates the Bun HTTP server and support-services layer from configurable serve options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -612,6 +630,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
         ))
         return
       }
+      upgradedSources.add(this.source)
       const compressionThreshold = this.compressionThreshold
       resume(Effect.map(Deferred.await(deferred), (ws) => {
         const write = (chunk: Uint8Array | string | Socket.CloseEvent) =>
@@ -689,20 +708,21 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
 
           ws.data.run = push
           ws.data.onClose = fail
-          yield* Scope.addFinalizer(
+          yield* Scope.addFinalizerExit(
             scope,
-            Effect.suspend(() => {
-              // resume a pull blocked in another fiber before detaching
-              fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketCloseError({ code: 1006 })
-                })
-              )
-              ws.data.run = wsDefaultRun
-              ws.data.onClose = constVoid
-              ws.close(1000)
-              return Effect.void
-            })
+            (exit) =>
+              Effect.suspend(() => {
+                // resume a pull blocked in another fiber before detaching
+                fail(
+                  new Socket.SocketError({
+                    reason: new Socket.SocketCloseError({ code: 1006 })
+                  })
+                )
+                ws.data.run = wsDefaultRun
+                ws.data.onClose = constVoid
+                ws.close(closeCode(exit))
+                return Effect.void
+              })
           )
 
           return {
@@ -726,6 +746,9 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     })
   }
 }
+
+const closeCode = (exit: Exit.Exit<unknown, unknown>): number =>
+  Exit.isSuccess(exit) ? 1000 : Cause.hasInterruptsOnly(exit.cause) ? 1001 : 1011
 
 const emptyReadbleStream = new ReadableStream({
   start(controller) {

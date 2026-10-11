@@ -6,6 +6,7 @@
  * the same list object in place and keep its `length` field current. Taking
  * from an empty list returns the `Empty` symbol.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
@@ -30,6 +31,7 @@ import * as Count from "./internal/count.ts"
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -43,6 +45,7 @@ export interface MutableList<in out A> {
  * The MutableList namespace contains type definitions and utilities for working
  * with mutable linked lists.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace MutableList {
@@ -103,6 +106,7 @@ export declare namespace MutableList {
  * MutableList.take(list) === MutableList.Empty // => true
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -129,6 +133,7 @@ export const Empty: unique symbol = Symbol.for("effect/MutableList/Empty")
  * takeAndDouble(list) // => 10
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 4.0.0
  */
@@ -150,6 +155,7 @@ export type Empty = typeof Empty
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -158,6 +164,24 @@ export const make = <A>(): MutableList<A> => ({
   tail: undefined,
   length: 0
 })
+
+// A mutable tail bucket grows with every append while takes only advance its
+// offset, so a list that never drains keeps every slot it ever used. Copy the
+// live values into a fresh bucket once consumed slots dominate.
+const compactHead = <A>(self: MutableList<A>): void => {
+  const head = self.head!
+  if (
+    head.offset >= 1024 && head === self.tail && head.mutable &&
+    (head.array.length - head.offset) * 8 <= head.offset
+  ) {
+    self.head = self.tail = {
+      array: head.array.slice(head.offset),
+      mutable: true,
+      offset: 0,
+      next: undefined
+    }
+  }
+}
 
 const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
   array: [],
@@ -184,6 +208,7 @@ const emptyBucket = <A = never>(): MutableList.Bucket<A> => ({
  * list.length // => 3
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -216,6 +241,7 @@ export const append = <A>(self: MutableList<A>, message: A): void => {
  * MutableList.toArray(list) // => ["first", "second", "third", "last"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -248,6 +274,7 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
  * MutableList.toArray(list) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -281,17 +308,21 @@ export const prependAll = <A>(self: MutableList<A>, messages: Iterable<A>): void
  * MutableList.toArray(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
 export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArray<A>, mutable = false): void => {
+  if (messages.length === 0) {
+    return
+  }
   self.head = {
     array: messages as Array<A>,
     mutable,
     offset: 0,
     next: self.head
   }
-  if (!self.tail && messages.length > 0) self.tail = self.head
+  if (!self.tail) self.tail = self.head
   self.length += self.head.array.length
 }
 
@@ -313,6 +344,7 @@ export const prependAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArra
  * list.length // => 5
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -347,6 +379,7 @@ export const appendAll = <A>(self: MutableList<A>, messages: Iterable<A>): numbe
  * MutableList.toArray(list) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -388,6 +421,7 @@ export const appendAllUnsafe = <A>(self: MutableList<A>, messages: ReadonlyArray
  * MutableList.take(list) === MutableList.Empty // => true
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -419,6 +453,7 @@ export const clear = <A>(self: MutableList<A>): void => {
  * list.length // => 7
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -440,9 +475,10 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
       if (chunk.mutable) chunk.array[chunk.offset] = undefined as any
       chunk.offset++
       if (index === n) {
-        self.head = chunk
+        self.head = chunk.offset === chunk.array.length && chunk.next ? chunk.next : chunk
         self.length -= n
         if (self.length === 0) clear(self)
+        else compactHead(self)
         return array
       }
     }
@@ -471,6 +507,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  * @see {@link clear} for removing every value from the list
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -490,6 +527,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
       chunk.offset += n - count
       self.head = chunk
       self.length -= n
+      compactHead(self)
       return
     }
     count += size
@@ -515,6 +553,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
  * list.length // => 0
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -538,6 +577,7 @@ export const takeAll = <A>(self: MutableList<A>): Array<A> => takeN(self, self.l
  * list.length // => 2
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
@@ -553,6 +593,8 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
     } else {
       clear(self)
     }
+  } else {
+    compactHead(self)
   }
   return message
 }
@@ -573,6 +615,7 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
  *
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -604,6 +647,7 @@ export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
  *
  * @see {@link takeAll} for converting all elements to an array and clearing the list
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -612,6 +656,7 @@ export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, sel
 /**
  * Filters the MutableList in place, keeping only elements that satisfy the predicate.
  * This operation modifies the list and rebuilds its internal structure for efficiency.
+ * The predicate receives each element's current index.
  *
  * **Example** (Filtering in place)
  *
@@ -626,15 +671,17 @@ export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, sel
  * MutableList.toArray(list) // => [2, 4, 6, 8, 10]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */
 export const filter = <A>(self: MutableList<A>, f: (value: A, i: number) => boolean): void => {
   const array: Array<A> = []
   let chunk: MutableList.Bucket<A> | undefined = self.head
+  let index = 0
   while (chunk) {
     for (let i = chunk.offset; i < chunk.array.length; i++) {
-      if (f(chunk.array[i], i)) {
+      if (f(chunk.array[i], index++)) {
         array.push(chunk.array[i])
       }
     }
@@ -684,6 +731,7 @@ export const filter = <A>(self: MutableList<A>, f: (value: A, i: number) => bool
  * MutableList.toArray(list) // => ["banana", "cherry"]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 4.0.0
  */

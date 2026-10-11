@@ -4,6 +4,7 @@
  * document, so token text must encode literal `~` and `/` characters. URI
  * fragments additionally apply percent-encoding after JSON Pointer escaping.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -36,6 +37,7 @@
  * ```
  *
  * @see {@link unescapeToken} The inverse operation for decoding escaped tokens
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -72,6 +74,7 @@ export function escapeToken(token: string): string {
  * ```
  *
  * @see {@link escapeToken} The inverse operation for encoding tokens
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -129,6 +132,7 @@ export function decodeUriFragment(fragment: string): string | undefined {
  * ```
  *
  * @see {@link formatUriFragment} for the inverse operation
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -162,6 +166,7 @@ export function parseUriFragment(fragment: string): ReadonlyArray<string> | unde
  * ```
  *
  * @see {@link parseUriFragment} for the inverse operation
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */

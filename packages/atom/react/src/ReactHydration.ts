@@ -5,10 +5,11 @@
  * existing Atom values until after commit so React transitions do not update
  * the current UI too early.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 "use client"
-import * as Hydration from "effect/unstable/reactivity/Hydration"
+import * as Hydration from "effect/reactivity/Hydration"
 import * as React from "react"
 import { RegistryContext } from "./RegistryContext.ts"
 
@@ -16,6 +17,7 @@ import { RegistryContext } from "./RegistryContext.ts"
  * Props for a boundary that applies dehydrated Atom values to the nearest
  * {@link RegistryContext} while rendering its children.
  *
+ * @stability unstable
  * @category components
  * @since 4.0.0
  */
@@ -42,6 +44,7 @@ export interface HydrationBoundaryProps {
  * @see {@link Hydration.dehydrate} for producing dehydrated Atom state
  * @see {@link Hydration.hydrate} for lower-level non-React hydration
  *
+ * @stability unstable
  * @category components
  * @since 4.0.0
  */

@@ -4,12 +4,13 @@
  * atoms. Sharing one registry through React context lets components in the same
  * subtree read and write the same atom state.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 "use client"
 
-import type * as Atom from "effect/unstable/reactivity/Atom"
-import * as AtomRegistry from "effect/unstable/reactivity/AtomRegistry"
+import type * as Atom from "effect/reactivity/Atom"
+import * as AtomRegistry from "effect/reactivity/AtomRegistry"
 import * as React from "react"
 import * as Scheduler from "scheduler"
 
@@ -17,6 +18,7 @@ import * as Scheduler from "scheduler"
  * Schedules Atom registry work with React's scheduler at low priority and
  * returns a cancellation function for the scheduled task.
  *
+ * @stability unstable
  * @category context
  * @since 4.0.0
  */
@@ -38,6 +40,7 @@ export function scheduleTask(f: () => void): () => void {
  *
  * @see {@link RegistryProvider} for creating and providing a registry for a React subtree
  *
+ * @stability unstable
  * @category context
  * @since 4.0.0
  */
@@ -69,6 +72,7 @@ export const RegistryContext = React.createContext<AtomRegistry.AtomRegistry>(At
  *
  * @see {@link RegistryContext} for the React context supplied by this provider
  *
+ * @stability unstable
  * @category context
  * @since 4.0.0
  */

@@ -2,6 +2,51 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Option, PartitionedSemaphore, Scheduler } from "effect"
 
 describe("PartitionedSemaphore", () => {
+  it.effect("a resumed waiter can immediately reacquire released permits", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      yield* sem.take("holder", 1)
+      const waiter = yield* Effect.gen(function*() {
+        yield* sem.take("waiter", 1)
+        const released = yield* sem.release(1)
+        const available = yield* sem.available
+        const reacquired = yield* sem.withPermitsIfAvailable(1)(Effect.succeed("ok"))
+        return [released, available, reacquired]
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* sem.release(1)
+      assert.deepStrictEqual(yield* Fiber.join(waiter), [1, 1, Option.some("ok")])
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
+  it.effect("drains a long queue of synchronous withPermit tasks", () =>
+    Effect.gen(function*() {
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => tasks.push(task),
+          flush() {}
+        }),
+        shouldYield: () => false
+      }
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      yield* sem.take("holder", 1)
+      let completed = 0
+      for (let i = 0; i < 10_000; i++) {
+        // Detach so a stranded waiter cannot hang scope teardown on regression.
+        yield* sem.withPermit(String(i))(Effect.sync(() => completed++)).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkDetach({ startImmediately: true })
+        )
+      }
+      assert.strictEqual(completed, 0)
+      yield* sem.release(1).pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      while (tasks.length > 0) tasks.shift()!()
+      assert.strictEqual(completed, 10_000)
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
   it.effect("module-level combinators delegate to the instance api", () =>
     Effect.gen(function*() {
       const sem = yield* PartitionedSemaphore.make<string>({ permits: 2 })
@@ -88,6 +133,108 @@ describe("PartitionedSemaphore", () => {
 
       assert.strictEqual(yield* PartitionedSemaphore.available(sem), 4)
       yield* PartitionedSemaphore.take(sem, "c", 4)
+    }))
+
+  it.effect("interrupting an immediately satisfied take before completion restores permits", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      const tasks: Array<() => void> = []
+      let paused = false
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield: () => !paused && (paused = Effect.runSync(sem.available) === 0)
+      }
+
+      const taker = yield* sem.take("a", 1).pipe(
+        Effect.provideService(Scheduler.Scheduler, scheduler),
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isTrue(paused)
+      taker.interruptUnsafe()
+      while (tasks.length > 0) tasks.shift()!()
+      const exit = yield* Fiber.await(taker)
+
+      assert.isTrue(Exit.isFailure(exit))
+      assert.strictEqual(yield* sem.available, 1)
+    }))
+
+  it.effect("competing takes cannot acquire the same permit across scheduler yields", () =>
+    Effect.gen(function*() {
+      for (let yieldPoint = 0; yieldPoint < 20; yieldPoint++) {
+        const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+        const tasks: Array<() => void> = []
+        let checks = 0
+        const scheduler: Scheduler.Scheduler = {
+          executionMode: "async",
+          makeDispatcher: () => ({
+            scheduleTask: (task) => {
+              tasks.push(task)
+            },
+            flush() {}
+          }),
+          shouldYield: () => ++checks === yieldPoint
+        }
+
+        const first = yield* sem.take("first", 1).pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler),
+          Effect.forkChild({ startImmediately: true })
+        )
+        const second = yield* sem.take("second", 1).pipe(Effect.forkChild({ startImmediately: true }))
+        assert.isAtLeast(yield* sem.available, 0)
+        while (tasks.length > 0) tasks.shift()!()
+
+        const firstExit = first.pollUnsafe()
+        const secondExit = second.pollUnsafe()
+        const firstSucceeded = firstExit !== undefined && Exit.isSuccess(firstExit)
+        const secondSucceeded = secondExit !== undefined && Exit.isSuccess(secondExit)
+        assert.isFalse(firstSucceeded && secondSucceeded, "yield point " + yieldPoint)
+        assert.isAtLeast(yield* sem.available, 0, "yield point " + yieldPoint)
+
+        yield* Fiber.interrupt(first)
+        yield* Fiber.interrupt(second)
+        yield* sem.release(Number(firstSucceeded) + Number(secondSucceeded))
+        assert.strictEqual(yield* sem.available, 1, "yield point " + yieldPoint)
+      }
+    }))
+
+  it.effect("interrupting withPermitsIfAvailable before cleanup is installed restores permits", () =>
+    Effect.gen(function*() {
+      const sem = yield* PartitionedSemaphore.make<string>({ permits: 1 })
+      const tasks: Array<() => void> = []
+      let paused = false
+      let ran = false
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher: () => ({
+          scheduleTask: (task) => {
+            tasks.push(task)
+          },
+          flush() {}
+        }),
+        shouldYield: () => !paused && (paused = Effect.runSync(sem.available) === 0)
+      }
+
+      const user = Effect.sync(() => {
+        ran = true
+      })
+      const fiber = yield* sem.withPermitsIfAvailable(1)(user).pipe(
+        Effect.provideService(Scheduler.Scheduler, scheduler),
+        Effect.forkChild({ startImmediately: true })
+      )
+      assert.isTrue(paused)
+      fiber.interruptUnsafe()
+      while (tasks.length > 0) tasks.shift()!()
+      const exit = yield* Fiber.await(fiber)
+
+      assert.isTrue(Exit.isFailure(exit))
+      assert.isFalse(ran)
+      assert.strictEqual(yield* sem.available, 1)
     }))
 
   for (const key of ["other", "same"]) {

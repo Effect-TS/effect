@@ -8,6 +8,7 @@
  * workers to close on scope finalization before forcefully terminating them on
  * timeout.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Deferred from "effect/Deferred"
@@ -15,8 +16,8 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as Worker from "effect/unstable/workers/Worker"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
+import * as Worker from "effect/workers/Worker"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 import type * as ChildProcess from "node:child_process"
 import type * as WorkerThreads from "node:worker_threads"
 
@@ -25,6 +26,7 @@ import type * as WorkerThreads from "node:worker_threads"
  * process workers, wiring messages, errors, and exits into Effect workers and
  * terminating the worker if graceful shutdown times out.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -109,6 +111,7 @@ export const layerPlatform: Layer.Layer<Worker.WorkerPlatform> = Layer.succeed(W
  * Provides the Node `WorkerPlatform` together with a `Worker.Spawner` created
  * from the supplied worker or child-process spawning function.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

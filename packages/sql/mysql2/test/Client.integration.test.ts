@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Logger } from "effect"
-import { SqlClient, Statement } from "effect/unstable/sql"
+import { SqlClient, Statement } from "effect/sql"
 import { MysqlContainer } from "./utils.ts"
 
 const SqlLogger = Layer.succeed(Statement.CurrentTransformer)((statement) => {

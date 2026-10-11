@@ -4,9 +4,6 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
-import * as Schema from "effect/Schema"
-import * as Stream from "effect/Stream"
 import {
   HttpBody,
   HttpClient,
@@ -16,7 +13,10 @@ import {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse
-} from "effect/unstable/http"
+} from "effect/http"
+import * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
+import * as Stream from "effect/Stream"
 import * as Http from "node:http"
 
 const Todo = Schema.Struct({
@@ -105,6 +105,16 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
     })
   ),
   HttpRouter.route("GET", "/bytes", Effect.succeed(HttpServerResponse.uint8Array(responseBytes))),
+  HttpRouter.route(
+    "POST",
+    "/bom-json",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      return HttpServerResponse.text(`\uFEFF${JSON.stringify(yield* request.json)}`, {
+        contentType: "application/json"
+      })
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
@@ -155,6 +165,14 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         const response = yield* HttpClient.get("/bytes")
         void response.text
         assert.deepStrictEqual(new Uint8Array(yield* response.arrayBuffer), responseBytes)
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("request and response json ignore a leading UTF-8 BOM", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.post("/bom-json", {
+          body: HttpBody.text("\uFEFF{\"a\":1}", "application/json")
+        })
+        assert.deepStrictEqual(yield* response.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name === "undici") {

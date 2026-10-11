@@ -9,16 +9,17 @@
  * The provided layer uses strong ETags, unlike the portable `HttpPlatform`
  * layer, which uses weak ETags.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import { contentType } from "@std/media-types"
 import { extname } from "@std/path"
 import { ByteSliceStream } from "@std/streams"
+import * as Etag from "effect/http/Etag"
+import * as Platform from "effect/http/HttpPlatform"
+import * as Response from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
-import * as Etag from "effect/unstable/http/Etag"
-import * as Platform from "effect/unstable/http/HttpPlatform"
-import * as Response from "effect/unstable/http/HttpServerResponse"
 import * as DenoFileSystem from "./DenoFileSystem.ts"
 
 // gzip and deflate use the native CompressionStream, which does not expose a
@@ -36,6 +37,7 @@ const compression = NodeHttpCompression.make(Platform.makeCompressionWeb({
  * Creates the Deno `HttpPlatform`, serving file responses from resource-backed
  * readable streams and adding content type and content length headers.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export const make = Platform.make({
  * Provides the Deno `HttpPlatform` together with its filesystem and strong ETag
  * services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
