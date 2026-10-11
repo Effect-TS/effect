@@ -183,8 +183,8 @@ doesn't compile. The generator needs nothing beyond this convention.
 
 `GraphQLResolver` from `effect/graphql` collects concurrent lookups and makes
 one call to a generated operation, DataLoader style. Generate
-`repos.graphql.ts` from this GitHub document and add `ReposGraphQLGroup` to
-the `GitHub` service's groups above:
+`repos.graphql.ts` from this GitHub document. Create the client and reusable
+resolver in the `GitHub` service:
 
 ```graphql
 query RepoNodes($ids: [ID!]!) {
@@ -196,20 +196,39 @@ query RepoNodes($ids: [ID!]!) {
 ```
 
 ```ts
-import { Effect, RequestResolver } from "effect"
-import { GraphQLResolver } from "effect/graphql"
+import { Context, Effect, Layer, RequestResolver } from "effect"
+import { GraphQLClient, GraphQLGroup, GraphQLProtocol, GraphQLResolver } from "effect/graphql"
+import { FetchHttpClient } from "effect/http"
+import { IssuesGraphQLGroup } from "./src/issues.graphql.ts"
+import { ReposGraphQLGroup } from "./src/repos.graphql.ts"
+import { ViewerGraphQLGroup } from "./src/viewer.graphql.ts"
 
-const repos = (ids: ReadonlyArray<string>) =>
-  Effect.gen(function*() {
-    const github = yield* GitHub
-    const RepoById = GraphQLResolver.ordered(github.RepoNodes, {
+export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
+  make: Effect.gen(function*() {
+    const client = yield* GraphQLClient.make(
+      GraphQLGroup.merge(IssuesGraphQLGroup, ViewerGraphQLGroup, ReposGraphQLGroup)
+    )
+    const RepoById = GraphQLResolver.ordered(client.RepoNodes, {
       variables: (ids: ReadonlyArray<string>) => ({ ids }),
       path: ["nodes"],
       typename: "Repository"
     }).pipe(RequestResolver.batchN(100)) // GitHub's nodes(ids:) limit
-    const getRepo = GraphQLResolver.request(RepoById)
-    return yield* Effect.forEach(ids, getRepo, { concurrency: "unbounded" })
+    return { ...client, getRepo: GraphQLResolver.request(RepoById) }
   })
+}) {
+  static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
+    Layer.provide(GraphQLProtocol.layerHttp({ url: "https://api.github.com/graphql" })),
+    Layer.provide(FetchHttpClient.layer)
+  )
+}
+
+export const repoNames = Effect.fn("repoNames")(function*(ids: ReadonlyArray<string>) {
+  const github = yield* GitHub
+  const repos = yield* Effect.forEach(ids, github.getRepo, { concurrency: "unbounded" })
+  return repos.map((repo) => repo.nameWithOwner)
+})
+
+export const program = repoNames(["R_1", "R_2"]).pipe(Effect.provide(GitHub.layer))
 ```
 
 `ordered` matches the `nodes` list to the ids by position. `path` leads from
@@ -221,19 +240,23 @@ transport or decoding failures, fail the whole batch. Middleware still run,
 because the resolver calls the generated client.
 
 When results come back in any order, as from a search, `findById` matches them
-by a key read from each result:
+by a key read from each result. Add a `SearchRepos` operation to `repos.graphql`,
+then create its resolver inside `GitHub.make`, after the client:
 
 ```ts
 // search(query: $query, type: REPOSITORY, first: 50) { pageInfo { hasNextPage } nodes { ... } }
-const RepoByName = GraphQLResolver.findById(github.SearchRepos, {
+const RepoByName = GraphQLResolver.findById(client.SearchRepos, {
   key: (repo) => repo.nameWithOwner,
   variables: (names) => ({ query: names.map((name) => `repo:${name}`).join(" ") }),
   path: ["search", "nodes"],
   typename: "Repository"
 }).pipe(RequestResolver.batchN(50))
+const getRepoByName = GraphQLResolver.request(RepoByName)
 ```
 
-Write `key` before `variables`, so that the key type is inferred from it.
+Include `getRepoByName` in the returned service and use it with `Effect.forEach`,
+as with `getRepo` above. Write `key` before `variables`, so that the key type is
+inferred from it.
 
 A list field returns one page, so a key past the end of the page would look
 missing. Set the page size (`first`, `limit`) and `RequestResolver.batchN` to
