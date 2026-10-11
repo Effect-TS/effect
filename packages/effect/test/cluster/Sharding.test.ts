@@ -61,6 +61,8 @@ import {
 } from "./TestEntity.ts"
 
 // Isolate the long-lived stream from concurrent shard-metric tests.
+// Use a nonzero assignment refresh interval when advancing through claim expiry
+// so the runner-storage sync loop does not busy-poll between clock ticks.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
   it.effect("keeps the claim of an active request replayed after an entity defect", () =>
     Effect.gen(function*() {
@@ -96,7 +98,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           })
         }),
         { defectRetryPolicy: Schedule.forever }
-      ).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+      ).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         resetRequests: (ids) =>
           Effect.gen(function*() {
@@ -175,7 +177,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
             yield* Queue.offer(started, starts)
             return yield* Effect.never
           }).pipe(Effect.ensuring(Effect.sync(() => active--)))
-      }).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+      }).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         resetRequests: (ids) =>
           Effect.gen(function*() {
@@ -275,7 +277,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         expect(values).toEqual([0])
         assert.strictEqual(released.length, 0, "active stream claim must not be released after a chunk")
         assert.strictEqual(claimed.length, 1, "active stream must not be reclaimed on every poll")
-      }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         saveEnvelope: (message) =>
           storage.saveEnvelope(message).pipe(
@@ -410,7 +412,7 @@ describe.concurrent("Sharding", () => {
           1,
           "reset request was claimed but not redelivered before claim expiry"
         )
-      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 1000 }, (storage) => ({
+      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         unprocessedMessages: (shardIds, options) =>
           Effect.gen(function*() {
