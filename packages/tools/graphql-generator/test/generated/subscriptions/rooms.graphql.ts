@@ -26,31 +26,31 @@ export declare namespace Room {
 }
 
 /** Someone in a room. */
-export class RoomEventsMember extends Schema.Opaque<RoomEventsMember>()(Schema.Struct({
+export class Member extends Schema.Opaque<Member>()(Schema.Struct({
   name: Schema.String,
   role: GraphQL.enumLiterals(Shared.Role.literals)
 })) {}
 
 /** A member joined the room. */
-export class RoomEventsMemberJoined extends Schema.Opaque<RoomEventsMemberJoined>()(Schema.Struct({
+export class MemberJoined extends Schema.Opaque<MemberJoined>()(Schema.Struct({
   __typename: Schema.Literal("MemberJoined"),
   id: Shared.ID,
   at: Schema.String,
-  member: RoomEventsMember
+  member: Member
 })) {}
 
 /** A member posted a message. */
-export class RoomEventsMessagePosted extends Schema.Opaque<RoomEventsMessagePosted>()(Schema.Struct({
+export class MessagePosted extends Schema.Opaque<MessagePosted>()(Schema.Struct({
   __typename: Schema.Literal("MessagePosted"),
   id: Shared.ID,
   at: Schema.String,
-  member: RoomEventsMember,
+  member: Member,
   /** The message text. */
   body: Schema.String
 })) {}
 
 /** The room was renamed. */
-export class RoomEventsRoomRenamed extends Schema.Opaque<RoomEventsRoomRenamed>()(Schema.Struct({
+export class RoomRenamed extends Schema.Opaque<RoomRenamed>()(Schema.Struct({
   __typename: Schema.Literal("RoomRenamed"),
   id: Shared.ID,
   at: Schema.String,
@@ -59,7 +59,7 @@ export class RoomEventsRoomRenamed extends Schema.Opaque<RoomEventsRoomRenamed>(
 })) {}
 
 /** Something that happened in a room. */
-export class RoomEventsEventOther extends Schema.Opaque<RoomEventsEventOther>()(Schema.Struct({
+export class EventOther extends Schema.Opaque<EventOther>()(Schema.Struct({
   __typename: GraphQL.otherTypename<Shared.Typename.Event>()(["MemberJoined", "MessagePosted", "RoomRenamed"]),
   id: Shared.ID,
   /** When it happened, as an ISO-8601 string. */
@@ -75,10 +75,10 @@ export const RoomEvents = GraphQL.subscription("RoomEvents", {
   result: Schema.Struct({
     /** Every event in a room, as it happens. */
     events: Schema.Union([
-      RoomEventsMemberJoined,
-      RoomEventsMessagePosted,
-      RoomEventsRoomRenamed,
-      RoomEventsEventOther
+      MemberJoined,
+      MessagePosted,
+      RoomRenamed,
+      EventOther
     ])
   })
 })
