@@ -2006,7 +2006,7 @@ describe("OpenAiLanguageModel", () => {
       function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
     }
 
-    const captureRequestBody = (replayReasoning?: boolean) =>
+    it.effect("replays reasoning alongside assistant text and tool calls", () =>
       Effect.gen(function*() {
         const requests: Array<HttpClientRequest.HttpClientRequest> = []
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -2024,27 +2024,11 @@ describe("OpenAiLanguageModel", () => {
           toolkit: TestToolkit,
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner", { replayReasoning })),
+          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner")),
           Effect.provide(layer)
         )
 
-        return yield* getRequestBody(requests[0])
-      })
-
-    it.effect("omits reasoning by default alongside assistant text and tool calls", () =>
-      Effect.gen(function*() {
-        const requestBody = yield* captureRequestBody()
-
-        assert.deepStrictEqual(requestBody.messages, [
-          { role: "user", content: "What is in a.txt?" },
-          { role: "assistant", content: "Let me read it.", tool_calls: [toolCall] },
-          { role: "tool", tool_call_id: "call_1", content: "hello" }
-        ])
-      }))
-
-    it.effect("replays reasoning as reasoning_content on the assistant message when enabled", () =>
-      Effect.gen(function*() {
-        const requestBody = yield* captureRequestBody(true)
+        const requestBody = yield* getRequestBody(requests[0])
 
         assert.deepStrictEqual(requestBody.messages, [
           { role: "user", content: "What is in a.txt?" },
@@ -2056,7 +2040,6 @@ describe("OpenAiLanguageModel", () => {
           },
           { role: "tool", tool_call_id: "call_1", content: "hello" }
         ])
-        assert.isFalse("replayReasoning" in requestBody)
       }))
   })
 
