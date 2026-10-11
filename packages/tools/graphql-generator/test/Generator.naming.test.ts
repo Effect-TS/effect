@@ -11,9 +11,12 @@ import * as Effect from "effect/Effect"
 import { assertNoErrors, declaration, fileLines, generateIn, member, members } from "./utils/generator.ts"
 
 const schema = `
-type User { id: ID! login: String! }
-type Issue { id: ID! title: String! author: User assignee: User }
-type Query { issues: [Issue!]! pulls: [Issue!]! }
+type User { id: ID! login: String! name: String! }
+type AuthorUser { name: String! }
+type Issue { id: ID! title: String! author: User assignee: User extra: AuthorUser }
+type Pull { id: ID! author: User }
+union Item = Issue | Pull
+type Query { issues: [Issue!]! pulls: [Issue!]! items: [Item!]! }
 `
 
 const generate = (documents: Readonly<Record<string, string>>) =>
@@ -55,12 +58,21 @@ fragment IssueSummary on Issue { title assignee { login } }
       assert.strictEqual(member(board, "assignee"), "Schema.NullOr(IssueSummaryUser)")
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("identical selections of a type share one class", () =>
+  it.effect("identical selections of a type share one class, whatever their field order", () =>
     Effect.gen(function*() {
       const board = yield* generateBoard("query Board { issues { author { login } assignee { login } } }")
       assert.deepStrictEqual(classNames(board), ["BoardIssue", "BoardUser"])
       assert.strictEqual(member(board, "author"), "Schema.NullOr(BoardUser)")
       assert.strictEqual(member(board, "assignee"), "Schema.NullOr(BoardUser)")
+
+      const reordered = yield* generateBoard("query Board { issues { author { login name } assignee { name login } } }")
+      assert.deepStrictEqual(classNames(reordered), ["BoardIssue", "BoardUser"])
+
+      // The same alias over different fields is a different selection, even though it decodes the same way.
+      const aliased = yield* generateBoard(
+        "query Board { issues { author { value: login } assignee { value: name } } }"
+      )
+      assert.deepStrictEqual(classNames(aliased), ["BoardAssigneeUser", "BoardAuthorUser", "BoardIssue"])
     }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("clashing shapes all fall back to the field key, then to parent response keys until unique", () =>
@@ -78,9 +90,28 @@ fragment IssueSummary on Issue { title assignee { login } }
         "Schema.NullOr(BoardIssuesAuthorUser)",
         "Schema.NullOr(BoardPullsAuthorUser)"
       ])
+
+      // The shared `{ login }` takes the path of `assignee`, its first occurrence in the document.
+      const feed = yield* generateBoard(`
+query Feed {
+  items {
+    ... on Issue { author { id } }
+    ... on Pull { assignee: author { login } }
+    ... on Issue { later: author { login } }
+  }
+}
+`)
+      assert.deepStrictEqual(classNames(feed), [
+        "FeedAssigneeUser",
+        "FeedAuthorUser",
+        "FeedIssue",
+        "FeedItemOther",
+        "FeedPull"
+      ])
+      assert.strictEqual(member(feed, "later"), "Schema.NullOr(FeedAssigneeUser)")
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("a generated name matching a definition in another file is a located error, not a suffix", () =>
+  it.effect("a generated name matching a definition or another type's class is a located error, not a suffix", () =>
     Effect.gen(function*() {
       const generated = yield* generate({
         "src/a.graphql": "query Board { issues { title } }",
@@ -93,5 +124,17 @@ fragment IssueSummary on Issue { title assignee { login } }
       )
       for (const error of errors) assert.include(error.message, `"BoardIssue"`)
       assert.deepStrictEqual(generated.result.files, [])
+
+      // The `User` fallback `BoardAuthorUser` is the base name of the `AuthorUser` selection.
+      const crossType = yield* generate({
+        "src/board.graphql": "query Board { issues { author { login } assignee { name } extra { name } } }"
+      })
+      const crossTypeErrors = crossType.result.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
+      assert.deepStrictEqual(
+        crossTypeErrors.map(({ column, line }) => ({ line, column })),
+        [{ line: 1, column: 24 }, { line: 1, column: 59 }]
+      )
+      for (const error of crossTypeErrors) assert.include(error.message, `"BoardAuthorUser"`)
+      assert.deepStrictEqual(crossType.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
 })
