@@ -496,25 +496,21 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
 
 // Built-in JSON codecs depend only on the RPC schemas and can be shared.
 // Other factories may capture state at construction, so keep them per server.
-const rpcCodecsCache = new WeakMap<
-  RpcSerialization.CodecFor,
-  WeakMap<Rpc.AnyWithProps, {
-    readonly decode: (u: unknown) => Effect.Effect<any, Schema.SchemaError>
-    readonly encodeChunk: (
-      u: NonEmptyReadonlyArray<unknown>
-    ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
-    readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
-  }>
->()
+const isSharedCodecFor = (codecFor: RpcSerialization.CodecFor) => codecFor === RpcSerialization.json.codecFor
 
-const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps) => {
-  const cacheable = codecFor === RpcSerialization.json.codecFor
-  let cache = cacheable ? rpcCodecsCache.get(codecFor) : undefined
-  if (cacheable && cache === undefined) {
-    cache = new WeakMap()
-    rpcCodecsCache.set(codecFor, cache)
-  }
-  let codecs = cache?.get(rpc)
+interface RpcCodecs {
+  readonly decode: (u: unknown) => Effect.Effect<any, Schema.SchemaError>
+  readonly encodeChunk: (
+    u: NonEmptyReadonlyArray<unknown>
+  ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError>
+  readonly encodeExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
+}
+
+const sharedRpcCodecs = new WeakMap<Rpc.AnyWithProps, RpcCodecs>()
+
+const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps): RpcCodecs => {
+  const shared = isSharedCodecFor(codecFor)
+  let codecs = shared ? sharedRpcCodecs.get(rpc) : undefined
   if (codecs === undefined) {
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
     codecs = {
@@ -526,31 +522,28 @@ const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps) =
       ) as any,
       encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
     }
-    cache?.set(rpc, codecs)
+    if (shared) sharedRpcCodecs.set(rpc, codecs)
   }
   return codecs
 }
 
-const defectCodecsCache = new WeakMap<RpcSerialization.CodecFor, {
+interface DefectCodecs {
   readonly encodeDefectUnsafe: (defect: unknown) => unknown
   readonly encodeUnknownRequestExit: (u: unknown) => Effect.Effect<ResponseExitEncoded["exit"], Schema.SchemaError>
-}>()
-
-const defectCodecs = (codecFor: RpcSerialization.CodecFor) => {
-  const cacheable = codecFor === RpcSerialization.json.codecFor
-  let codecs = cacheable ? defectCodecsCache.get(codecFor) : undefined
-  if (codecs === undefined) {
-    codecs = {
-      encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
-      // Unknown tags have no RPC schema, so use a defect-only exit schema.
-      encodeUnknownRequestExit: Schema.encodeUnknownEffect(
-        codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
-      ) as any
-    }
-    if (cacheable) defectCodecsCache.set(codecFor, codecs)
-  }
-  return codecs
 }
+
+let sharedDefectCodecs: DefectCodecs | undefined
+
+const makeDefectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs => ({
+  encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
+  // Unknown tags have no RPC schema, so use a defect-only exit schema.
+  encodeUnknownRequestExit: Schema.encodeUnknownEffect(
+    codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
+  ) as any
+})
+
+const defectCodecs = (codecFor: RpcSerialization.CodecFor): DefectCodecs =>
+  isSharedCodecFor(codecFor) ? (sharedDefectCodecs ??= makeDefectCodecs(codecFor)) : makeDefectCodecs(codecFor)
 
 // Merging the handler entry services with the request fiber services costs
 // O(services), so the merged context is cached per (entry, fiber context)

@@ -1745,7 +1745,6 @@ export const layerHttpRequestScoped = (options: {
           notificationDelivery.requestEndpoints--
         })
     )
-    const serverOptions = { ...options, allowSubscriptions: false }
     // Each POST runs its own RPC server in the request scope, so no fiber,
     // timer, or queue consumer outlives the request that created it.
     yield* addMcpHttpRoutes(
@@ -1755,7 +1754,7 @@ export const layerHttpRequestScoped = (options: {
           Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
         )
         const notifications = yield* Queue.make<QueuedServerNotification>()
-        yield* runWithRuntime(serverOptions, runtime, "http", { notifications, handlers }).pipe(
+        yield* runWithRuntime(options, runtime, "http", { notifications, handlers }).pipe(
           Effect.provideService(RpcServer.Protocol, protocol),
           Effect.provideService(McpServer, server),
           Effect.forkScoped({ startImmediately: true })
