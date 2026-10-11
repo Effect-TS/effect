@@ -12,6 +12,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -75,6 +76,14 @@ export class WorkflowEngine extends Context.Service<
 
     /**
      * Execute a registered workflow.
+     *
+     * **Details**
+     *
+     * Unless `discard` is set, a caller outside any workflow waits for the
+     * result. While the execution is suspended, the caller retries on
+     * `suspendedRetrySchedule`; engines that observe the final result wake it
+     * sooner. `ClusterWorkflowEngine` does so only for callers on the runner
+     * that owns the execution.
      */
     readonly execute: <
       Name extends string,
@@ -417,6 +426,22 @@ export interface Encoded {
     workflow: Workflow.Any,
     executionId: string
   ) => Effect.Effect<void>
+
+  /**
+   * Waits until a suspended execution has a result other than `Suspended`.
+   *
+   * **Gotchas**
+   *
+   * External callers race this with their `suspendedRetrySchedule`, so it may
+   * never complete when the engine cannot observe the result. Completing while
+   * the execution is still suspended skips the sleep and spends a step of that
+   * schedule. A hook that keeps completing early makes the caller spin.
+   */
+  readonly awaitComplete?: (
+    workflow: Workflow.Any,
+    executionId: string
+  ) => Effect.Effect<void>
+
   readonly activityExecute: (
     activity: Activity.Any,
     attempt: number
@@ -551,7 +576,10 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
             )
           )
         )
-        yield* sleep
+        // Completion wakes the caller early; the schedule is the fallback.
+        yield* options.awaitComplete
+          ? Effect.raceFirst(sleep, options.awaitComplete(self, executionId))
+          : sleep
       }
     }),
     poll: options.poll,
@@ -688,6 +716,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interrupted: boolean
       resumeRequested: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
+      // Completed once a run succeeds with `Complete`, after which it cannot resume.
+      readonly done: Deferred.Deferred<void>
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -745,6 +775,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           }
           return Effect.forkIn(resume(state.parent), scope)
         }),
+        Effect.onExit((exit) => {
+          return Exit.isSuccess(exit) && exit.value._tag === "Complete"
+            ? Deferred.succeed(state.done, void 0)
+            : Effect.void
+        }),
         Effect.forkIn(entry.scope)
       )
     })
@@ -776,6 +811,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             interrupted: false,
             resumeRequested: false,
             fiber: undefined,
+            done: Deferred.makeUnsafe(),
             parent: options.parent?.executionId
           }
           executions.set(options.executionId, state)
@@ -791,6 +827,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         }
         return (yield* exit) as any
       }),
+      awaitComplete: (_workflow, executionId) =>
+        Effect.suspend(() => {
+          const state = executions.get(executionId)
+          return state ? Deferred.await(state.done) : Effect.never
+        }),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return

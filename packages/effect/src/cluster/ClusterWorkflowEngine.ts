@@ -291,10 +291,7 @@ export const make = Effect.gen(function*() {
       id: ""
     })
 
-    const maybeSuspended = Option.filter(
-      maybeReply,
-      (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-    )
+    const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
     if (Option.isNone(maybeSuspended)) return
     if (
@@ -328,10 +325,14 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
-  // A child or deferred may complete while a run is still unwinding. Subscribe
-  // to the run's reply before reading storage so the wake cannot fall between
-  // the run's last read and its suspended reply.
-  const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
+  // Subscribe to the run's next reply before reading storage, so a reply
+  // cannot fall between the read and the subscription. Returns `true` when the
+  // stored reply already settles the wait, `false` when a new reply arrived.
+  const awaitRunReply = Effect.fnUntraced(function*(
+    workflow: Workflow.Any,
+    request: Envelope.Request<any>,
+    isSettled: (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) => boolean
+  ) {
     const waiter = yield* storage.registerReplyHandler(
       new Message.OutgoingRequest<any>({
         envelope: request,
@@ -343,12 +344,45 @@ export const make = Effect.gen(function*() {
       })
     ).pipe(Effect.forkScoped({ startImmediately: true }))
     const reply = yield* replyForRequestId(request.requestId)
-    if (Option.isSome(reply)) return
-    yield* Fiber.join(waiter).pipe(
+    if (Option.isSome(reply) && isSettled(reply.value)) return true
+    yield* Fiber.join(waiter)
+    return false
+  }, Effect.scoped)
+
+  // A child or deferred may complete while a run is still unwinding. Wait for
+  // the run's reply so the wake cannot fall between the run's last read and
+  // its suspended reply.
+  const waitForRunReply = (workflow: Workflow.Any, request: Entity.Request<any>) =>
+    awaitRunReply(workflow, request, () => true).pipe(
+      Effect.asVoid,
       Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
       Effect.catchCause((cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause))
     )
-  }, Effect.scoped)
+
+  // Wake an external caller once its run publishes a reply other than
+  // `Suspended`. Replies are only observed on the runner that saves them, so
+  // callers on other runners, and any failure here, leave delivery to the
+  // caller's retry schedule.
+  const awaitComplete = (workflow: Workflow.Any, executionId: string) =>
+    Effect.gen(function*() {
+      const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
+      if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
+      const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
+      if (Option.isNone(requestId)) return yield* Effect.never
+      const request = Envelope.makeRequest<any>({
+        requestId: requestId.value,
+        address,
+        tag: "run",
+        payload: {},
+        headers: Headers.empty
+      })
+      // A replay that suspends again re-arms the wait, so it does not spend a
+      // step of the caller's retry schedule.
+      let settled = false
+      while (!settled) {
+        settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
+      }
+    }).pipe(Effect.catchCause(() => Effect.never))
 
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {
@@ -367,7 +401,7 @@ export const make = Effect.gen(function*() {
 
       const nonSuspendedReply = Option.filter(
         reply,
-        (reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended"
+        (reply) => !isSuspendedReply(reply)
       )
       if (Option.isSome(nonSuspendedReply)) {
         return Option.none()
@@ -617,6 +651,8 @@ export const make = Effect.gen(function*() {
 
     resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId)),
 
+    awaitComplete,
+
     activityExecute: Effect.fnUntraced(
       function*(activity, attempt) {
         const services = yield* Effect.context<WorkflowEngine.WorkflowInstance>()
@@ -808,6 +844,9 @@ const DeferredRpc = Rpc.make("deferred", {
 })
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
+
+const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
+  reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 

@@ -12,6 +12,7 @@ import {
   Logger,
   Option,
   Result,
+  Schedule,
   Schema,
   Scope,
   Tracer
@@ -669,6 +670,84 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         }).pipe(Effect.provide(context))
       }), 30_000)
   }
+
+  it.effect("wakes a suspended caller when its workflow completes", () =>
+    Effect.gen(function*() {
+      const retrying = yield* Latch.make()
+      const gate = DurableDeferred.make("CompletionWake/Gate", { success: Schema.String })
+      const workflow = Workflow.make("CompletionWake", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // The retry stays the fallback, but is too slow to deliver within the test.
+        suspendedRetrySchedule: Schedule.spaced("1 hour").pipe(Schedule.tap(() => retrying.open))
+      })
+      const context = yield* Layer.build(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* advanceUntil(() => retrying.isOpen(), "caller must wait on its retry schedule")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        yield* pollUntil(workflow, executionId, "Complete")
+        yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "completion must wake the caller", 1, 1000)
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+      }).pipe(Effect.provide(context))
+    }))
+
+  it.effect("delivers a completion through the retry schedule when the wake is lost", () =>
+    Effect.gen(function*() {
+      let dropWakes = false
+      let handlers = 0
+      const gate = DurableDeferred.make("LostWake/Gate", { success: Schema.String })
+      const workflow = Workflow.make("LostWake", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // Once the caller first waits, no reply notification reaches it.
+        suspendedRetrySchedule: Schedule.spaced("10 seconds").pipe(Schedule.tap(() =>
+          Effect.sync(() => {
+            dropWakes = true
+          })
+        ))
+      })
+      const storageLayer = Layer.effect(
+        MessageStorage.MessageStorage,
+        Effect.map(Effect.service(MessageStorage.MessageStorage), (storage) => ({
+          ...storage,
+          registerReplyHandler: (message) =>
+            Effect.suspend(() => {
+              handlers++
+              return dropWakes ? Effect.never : storage.registerReplyHandler(message)
+            }).pipe(Effect.ensuring(Effect.sync(() => handlers--)))
+        }))
+      ).pipe(Layer.provide(MessageStorage.layerMemory))
+      const context = yield* Layer.build(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+        )
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* advanceUntil(() => dropWakes, "caller must wait on its retry schedule")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        yield* pollUntil(workflow, executionId, "Complete")
+        assert.isUndefined(fiber.pollUnsafe(), "a lost wake must leave the caller on its schedule")
+        yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "the schedule must deliver the completion", 1000)
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+        assert.strictEqual(handlers, 0, "the caller must release its reply handlers")
+      }).pipe(Effect.provide(context))
+    }))
 
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
     Effect.gen(function*() {
