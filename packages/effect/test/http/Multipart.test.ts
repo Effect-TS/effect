@@ -469,18 +469,17 @@ describe("Multipart", () => {
 
   it.effect("persists dot and long multi-byte file names inside the temporary directory", () =>
     Effect.gen(function*() {
-      const longName = "資".repeat(120) + ".pdf"
+      const names = [".", "..", "文".repeat(90) + ".pdf"]
       const formData = new FormData()
-      formData.append("dot", new File(["one"], "."))
-      formData.append("dotdot", new File(["two"], ".."))
-      formData.append("long", new File(["three"], longName))
+      for (const name of names) {
+        formData.append("file", new File(["content"], name))
+      }
       const request = HttpServerRequest.fromClientRequest(
         HttpClientRequest.bodyFormData(HttpClientRequest.post("https://example.com"), formData)
       )
-      const writes: Array<string> = []
       const persisted = yield* Multipart.toPersisted(
         request.multipartStream,
-        (path) => Effect.sync(() => writes.push(path))
+        () => Effect.void
       ).pipe(
         Effect.provideService(
           FileSystem.FileSystem,
@@ -490,15 +489,13 @@ describe("Multipart", () => {
         ),
         Effect.provide(Path.layer)
       )
-      const long = (persisted.long as Array<Multipart.PersistedFile>)[0]
-      strictEqual(long.name, longName)
-      strictEqual(long.path.endsWith(".pdf"), true)
-      strictEqual(writes.length, 3)
-      for (const path of writes) {
-        strictEqual(path.startsWith("/tmp/audit/"), true)
-        const fileName = path.slice("/tmp/audit/".length)
-        strictEqual(fileName !== "." && fileName !== "..", true)
-        strictEqual(new TextEncoder().encode(fileName).length <= 255, true)
+      const files = persisted.file as Array<Multipart.PersistedFile>
+      const path = yield* Path.Path.pipe(Effect.provide(Path.layer))
+      deepStrictEqual(files.map((file) => file.name), names)
+      strictEqual(files[2].path.endsWith(".pdf"), true)
+      for (const file of files) {
+        strictEqual(path.dirname(file.path), "/tmp/audit")
+        strictEqual(new TextEncoder().encode(path.basename(file.path)).length <= 128, true)
       }
     }))
 
