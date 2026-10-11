@@ -1599,6 +1599,11 @@ const mcpStdioSerialization = (
  * revision's schema. It does not implement the historical two-endpoint
  * HTTP+SSE transport, GET SSE, event resumption, or session expiry.
  *
+ * **Gotchas**
+ *
+ * This layer starts a scoped server fiber. For sharing it across Cloudflare
+ * Workers requests, see `HttpRouter.toWebHandler` for setup and limitations.
+ *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
  *
