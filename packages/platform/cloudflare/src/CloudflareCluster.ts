@@ -30,12 +30,9 @@ import * as Option from "effect/Option"
 import type { PersistedQueueFactory } from "effect/persistence/PersistedQueue"
 import type * as Rpc from "effect/rpc/Rpc"
 import * as RpcClient from "effect/rpc/RpcClient"
-import type * as RpcGroup from "effect/rpc/RpcGroup"
 import { type FromClient, RequestId } from "effect/rpc/RpcMessage"
 import * as RpcSchema from "effect/rpc/RpcSchema"
-import type * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
 import type * as SqlClient from "effect/sql/SqlClient"
 import * as Stream from "effect/Stream"
 import type { WorkflowEngine } from "effect/workflow/WorkflowEngine"
@@ -511,8 +508,7 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  * **Details**
  *
  * Provides the cluster `Sharding` service on top of the four same-Worker
- * Durable Object namespace bindings, also as {@link CloudflareSharding} for
- * {@link toLayer}, plus the `WorkflowEngine` backed by the
+ * Durable Object namespace bindings, plus the `WorkflowEngine` backed by the
  * workflow class and the `PersistedQueueFactory` backed by the queue class, so
  * the `DurableQueue` user API works out of the box. `Entity.client` resolves
  * an entity to its Durable Object by
@@ -529,33 +525,12 @@ const make = Effect.fnUntraced(function*(options: LayerOptions) {
  */
 export const layer = (
   options: LayerOptions
-): Layer.Layer<Sharding | CloudflareSharding | WorkflowEngine | PersistedQueueFactory> =>
+): Layer.Layer<Sharding | WorkflowEngine | PersistedQueueFactory> =>
   Layer.mergeAll(
-    Layer.effectContext(Effect.map(make(options), (sharding) =>
-      Context.make(Sharding, sharding).pipe(
-        Context.add(CloudflareSharding, sharding)
-      ))),
+    Layer.effect(Sharding, make(options)),
     CloudflareWorkflowEngine.layer({ workflowNamespace: options.workflowNamespace }),
     CloudflarePersistedQueue.layer({ queueNamespace: options.queueNamespace })
   )
-
-/**
- * The cluster `Sharding` service of {@link layer}, under a tag only the
- * Cloudflare cluster provides.
- *
- * **Details**
- *
- * {@link toLayer} registers through this service, so a handler layer built
- * with it can only run where each entity Durable Object provides
- * {@link DurableObjectSqlClient}.
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export class CloudflareSharding extends Context.Service<CloudflareSharding, Sharding["Service"]>()(
-  "@effect/platform-cloudflare/CloudflareCluster/CloudflareSharding"
-) {}
 
 /**
  * An `SqlClient` on the current entity Durable Object's own SQLite storage.
@@ -564,12 +539,15 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  *
  * Use to keep rows next to the entity's mailbox from an entity handler build
  * or handler, such as state that must survive eviction and commit atomically
- * with each step. Register those handlers with {@link toLayer}.
+ * with each step. Register the handlers with `Entity.toLayer` and read the
+ * client with {@link DurableObjectSqlClient.orDie} in the build.
  *
  * **Details**
  *
  * Each entity Durable Object provides this service, an `@effect/sql-sqlite-do`
- * client, to its handler build and handlers. It is a separate tag, so any
+ * client, to its handler build and handlers, including handlers registered
+ * with `Entity.toLayerQueue`. Yielding the tag directly leaves it as a layer
+ * requirement; `orDie` has none. It is a separate tag, so any
  * `SqlClient` from the Worker layer (a D1 database, say) stays reachable inside
  * the handlers. To run code written against `SqlClient.SqlClient`, provide this
  * client as that service locally.
@@ -580,6 +558,8 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  *
  * **Gotchas**
  *
+ * - Outside an entity Durable Object, `orDie` dies on the first handler build.
+ *   In tests, provide this service from any SQL layer.
  * - Table names starting with `cluster_` are reserved for the entity mailbox.
  * - A row, like an encoded message, cannot exceed 2 MB.
  * - A storage transaction closes the Durable Object's input gate until it
@@ -587,6 +567,21 @@ export class CloudflareSharding extends Context.Service<CloudflareSharding, Shar
  *   resume. Keep transactions to SQL work.
  * - Mailbox writes wait for an open transaction to finish, so a rollback never
  *   takes another handler's stored reply with it.
+ *
+ * **Example** (Storing rows from entity handlers)
+ *
+ * ```ts
+ * import { CloudflareCluster } from "@effect/platform-cloudflare"
+ * import { Effect } from "effect"
+ *
+ * const JournalLayer = Journal.toLayer(Effect.gen(function*() {
+ *   const sql = yield* CloudflareCluster.DurableObjectSqlClient.orDie
+ *   yield* sql`CREATE TABLE IF NOT EXISTS journal (entry TEXT NOT NULL)`.pipe(Effect.orDie)
+ *   return Journal.of({
+ *     Append: ({ payload }) => sql`INSERT INTO journal (entry) VALUES (${payload.entry})`.pipe(Effect.orDie)
+ *   })
+ * }))
+ * ```
  *
  * @stability unstable
  * @category services
@@ -604,83 +599,13 @@ export class DurableObjectSqlClient extends Context.Service<DurableObjectSqlClie
   static readonly orDie: Effect.Effect<SqlClient.SqlClient> = Effect.flatMap(
     Effect.serviceOption(DurableObjectSqlClient),
     Option.match({
-      onNone: () => Effect.die(new Error("DurableObjectSqlClient is not available outside an entity Durable Object")),
+      onNone: () =>
+        Effect.die(
+          new Error(
+            "DurableObjectSqlClient is not available outside an entity Durable Object; provide it from a SQL layer in tests"
+          )
+        ),
       onSome: Effect.succeed
     })
   )
 }
-
-/**
- * Handler build options accepted by {@link toLayer}, the same as
- * `Entity.toLayer`.
- *
- * **Details**
- *
- * `concurrency`, `disableFatalDefects`, `defectRetryPolicy`, and
- * `spanAttributes` apply inside the entity Durable Object. `maxIdleTime` and
- * `mailboxCapacity` are accepted for parity and have no effect: hibernation
- * owns idle entities and the mailbox capacity is fixed at 4096.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface ToLayerOptions {
-  readonly maxIdleTime?: Duration.Input | undefined
-  readonly concurrency?: number | "unbounded" | undefined
-  readonly mailboxCapacity?: number | "unbounded" | undefined
-  readonly disableFatalDefects?: boolean | undefined
-  readonly defectRetryPolicy?: Schedule.Schedule<any, unknown> | undefined
-  readonly spanAttributes?: Record<string, string> | undefined
-}
-
-/**
- * Registers entity handlers whose build or handlers use
- * {@link DurableObjectSqlClient}.
- *
- * **When to use**
- *
- * Use when the handler build or the handlers read
- * {@link DurableObjectSqlClient}, in place of `entity.toLayer(build)`.
- * `Entity.toLayer` would leave that service as a layer requirement; this
- * helper satisfies it from the entity Durable Object instead.
- *
- * **Details**
- *
- * The layer requires {@link CloudflareSharding}, which only {@link layer}
- * provides, so it cannot be built where no entity Durable Object provides the
- * client. To test the handlers with `Entity.makeTestClient`, register the same
- * build with `entity.toLayer(build)` and provide {@link DurableObjectSqlClient}
- * from any SQL layer, for example an in-memory `@effect/sql-sqlite-node`
- * client.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const toLayer = <
-  Type extends string,
-  Rpcs extends Rpc.Any,
-  Handlers extends Entity.HandlersFrom<Rpcs>,
-  RX = never
->(
-  entity: Entity.Entity<Type, Rpcs>,
-  build: Handlers | Effect.Effect<Handlers, never, RX>,
-  options?: ToLayerOptions | undefined
-): Layer.Layer<
-  never,
-  never,
-  | Exclude<RX, Scope.Scope | Entity.CurrentAddress | Entity.CurrentRunnerAddress | DurableObjectSqlClient>
-  | Exclude<RpcGroup.HandlersServices<Rpcs, Handlers>, DurableObjectSqlClient>
-  | Rpc.ServicesClient<Rpcs>
-  | Rpc.ServicesServer<Rpcs>
-  | Rpc.Middleware<Rpcs>
-  | CloudflareSharding
-> =>
-  // The entity Durable Object provides the client the type erases.
-  Layer.effectDiscard(Effect.flatMap(CloudflareSharding, (sharding) =>
-    sharding.registerEntity(
-      entity,
-      (Effect.isEffect(build) ? build : Effect.succeed(build)) as Effect.Effect<Handlers>,
-      options
-    )))
