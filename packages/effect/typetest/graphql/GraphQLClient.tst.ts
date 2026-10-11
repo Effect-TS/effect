@@ -67,6 +67,10 @@ const variables = { owner: "Effect-TS", name: "effect" }
 const connection = (r: RepoIssuesResult) => r.repository?.issues
 
 describe("GraphQLClient", () => {
+  it("FromGroup is the client type make builds for a group", () => {
+    expect<GraphQLClient.FromGroup<typeof group>>().type.toBe<Effect.Success<typeof make>>()
+  })
+
   it("make requires the protocol and every attached middleware tag", () => {
     expect<Effect.Services<typeof make>>().type.toBe<GraphQLProtocol.GraphQLProtocol | Auth | Log>()
   })
