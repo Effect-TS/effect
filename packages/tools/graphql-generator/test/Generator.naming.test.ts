@@ -1,9 +1,8 @@
 /**
- * Names of the classes extracted from nested result selections (EFF-1995
- * points 3 to 6): the `<Operation><Type>` base name, one class for identical
- * selections, the field-key fallback when shapes clash, and the diagnostic
- * when a generated name collides with a definition. The subscriptions
- * snapshot set covers union members and the catch-all.
+ * Extracted selection names (EFF-1997): bare GraphQL type names, file-wide
+ * sharing of identical selections, and field/parent/operation fallbacks for
+ * clashes, including imported and declared names. The subscriptions snapshot
+ * set covers union members and the catch-all.
  */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
@@ -38,7 +37,7 @@ const classNames = (text: string): ReadonlyArray<string> =>
   }).sort()
 
 describe("Generator nested selection names", () => {
-  it.effect("a nested selection is a class named <Operation><Type>, or <Fragment><Type> inside a fragment", () =>
+  it.effect("nested selections use bare type names, including inside fragments", () =>
     Effect.gen(function*() {
       const board = yield* generateBoard(`
 query Board {
@@ -48,26 +47,29 @@ query Board {
 
 fragment IssueSummary on Issue { title assignee { login } }
 `)
-      assert.deepStrictEqual(classNames(board), ["BoardIssue", "BoardUser", "IssueSummary", "IssueSummaryUser"])
+      assert.deepStrictEqual(classNames(board), ["Issue", "IssueSummary", "User"])
       assert.strictEqual(
-        declaration(board, "BoardIssue"),
-        "export class BoardIssue extends Schema.Opaque<BoardIssue>()(Schema.Struct({"
+        declaration(board, "Issue"),
+        "export class Issue extends Schema.Opaque<Issue>()(Schema.Struct({"
       )
-      assert.strictEqual(member(board, "issues"), "Schema.Array(BoardIssue)")
-      assert.strictEqual(member(board, "author"), "Schema.NullOr(BoardUser)")
+      assert.strictEqual(member(board, "issues"), "Schema.Array(Issue)")
+      assert.strictEqual(member(board, "author"), "Schema.NullOr(User)")
       assert.strictEqual(member(board, "pulls"), "Schema.Array(IssueSummary)")
-      assert.strictEqual(member(board, "assignee"), "Schema.NullOr(IssueSummaryUser)")
+      assert.strictEqual(member(board, "assignee"), "Schema.NullOr(User)")
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("identical selections of a type share one class, whatever their field order", () =>
+  it.effect("identical selections share one class across operations, whatever their field order", () =>
     Effect.gen(function*() {
-      const board = yield* generateBoard("query Board { issues { author { login } assignee { login } } }")
-      assert.deepStrictEqual(classNames(board), ["BoardIssue", "BoardUser"])
-      assert.strictEqual(member(board, "author"), "Schema.NullOr(BoardUser)")
-      assert.strictEqual(member(board, "assignee"), "Schema.NullOr(BoardUser)")
+      const reordered = yield* generateBoard(
+        "query Board { issues { author { login name } } } query Feed { pulls { id author { name login } } }"
+      )
+      assert.deepStrictEqual(classNames(reordered), ["IssuesIssue", "PullsIssue", "User"])
+      assert.deepStrictEqual(members(reordered, "author"), ["Schema.NullOr(User)", "Schema.NullOr(User)"])
 
-      const reordered = yield* generateBoard("query Board { issues { author { login name } assignee { name login } } }")
-      assert.deepStrictEqual(classNames(reordered), ["BoardIssue", "BoardUser"])
+      const board = yield* generateBoard("query Board { issues { author { login } assignee { login } } }")
+      assert.deepStrictEqual(classNames(board), ["Issue", "User"])
+      assert.strictEqual(member(board, "author"), "Schema.NullOr(User)")
+      assert.strictEqual(member(board, "assignee"), "Schema.NullOr(User)")
 
       const reorderedMembers = yield* generateBoard(`
 query Board {
@@ -76,33 +78,33 @@ query Board {
 }
 `)
       assert.deepStrictEqual(classNames(reorderedMembers), [
-        "BoardIssue",
-        "BoardItemOther",
-        "BoardPull",
-        "BoardWrapper"
+        "Issue",
+        "ItemOther",
+        "Pull",
+        "Wrapper"
       ])
 
       // The same alias over different fields is a different selection, even though it decodes the same way.
       const aliased = yield* generateBoard(
         "query Board { issues { author { value: login } assignee { value: name } } }"
       )
-      assert.deepStrictEqual(classNames(aliased), ["BoardAssigneeUser", "BoardAuthorUser", "BoardIssue"])
+      assert.deepStrictEqual(classNames(aliased), ["AssigneeUser", "AuthorUser", "Issue"])
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("clashing shapes all fall back to the field key, then to parent response keys until unique", () =>
+  it.effect("clashing shapes fall back to field keys, then parents, and only then the operation", () =>
     Effect.gen(function*() {
       const board = yield* generateBoard("query Board { issues { author { login } } pulls { author { id login } } }")
       assert.deepStrictEqual(classNames(board), [
-        "BoardIssuesAuthorUser",
-        "BoardIssuesIssue",
-        "BoardPullsAuthorUser",
-        "BoardPullsIssue"
+        "IssuesAuthorUser",
+        "IssuesIssue",
+        "PullsAuthorUser",
+        "PullsIssue"
       ])
-      assert.strictEqual(member(board, "issues"), "Schema.Array(BoardIssuesIssue)")
-      assert.strictEqual(member(board, "pulls"), "Schema.Array(BoardPullsIssue)")
+      assert.strictEqual(member(board, "issues"), "Schema.Array(IssuesIssue)")
+      assert.strictEqual(member(board, "pulls"), "Schema.Array(PullsIssue)")
       assert.deepStrictEqual(members(board, "author").slice().sort(), [
-        "Schema.NullOr(BoardIssuesAuthorUser)",
-        "Schema.NullOr(BoardPullsAuthorUser)"
+        "Schema.NullOr(IssuesAuthorUser)",
+        "Schema.NullOr(PullsAuthorUser)"
       ])
 
       // The shared `{ login }` takes the path of `assignee`, its first occurrence in the document.
@@ -116,39 +118,41 @@ query Feed {
 }
 `)
       assert.deepStrictEqual(classNames(feed), [
-        "FeedAssigneeUser",
-        "FeedAuthorUser",
-        "FeedIssue",
-        "FeedItemOther",
-        "FeedPull"
+        "AssigneeUser",
+        "AuthorUser",
+        "Issue",
+        "ItemOther",
+        "Pull"
       ])
-      assert.strictEqual(member(feed, "later"), "Schema.NullOr(FeedAssigneeUser)")
+      assert.strictEqual(member(feed, "later"), "Schema.NullOr(AssigneeUser)")
+
+      const operations = yield* generateBoard(
+        "query Board { issues { author { login } } } query Feed { issues { author { id } } }"
+      )
+      assert.deepStrictEqual(classNames(operations), [
+        "BoardIssuesAuthorUser",
+        "BoardIssuesIssue",
+        "FeedIssuesAuthorUser",
+        "FeedIssuesIssue"
+      ])
+      assert.deepStrictEqual(members(operations, "author"), [
+        "Schema.NullOr(BoardIssuesAuthorUser)",
+        "Schema.NullOr(FeedIssuesAuthorUser)"
+      ])
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("a generated name matching a definition or another type's class is a located error, not a suffix", () =>
+  it.effect("names colliding with an operation or named fragment import fall back instead of failing", () =>
     Effect.gen(function*() {
       const generated = yield* generate({
-        "src/a.graphql": "query Board { issues { title } }",
-        "src/b.graphql": "query BoardIssue { pulls { id } }"
+        "src/user.graphql": "fragment User on User { name }",
+        "src/board.graphql": "query Issue { issues { title author { login } assignee { ...User } } }"
       })
-      const errors = generated.result.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
-      assert.deepStrictEqual(
-        errors.map(({ column, line, path }) => ({ file: path.split(/[\\/]/).pop(), line, column })),
-        [{ file: "a.graphql", line: 1, column: 15 }, { file: "b.graphql", line: 1, column: 7 }]
-      )
-      for (const error of errors) assert.include(error.message, `"BoardIssue"`)
-      assert.deepStrictEqual(generated.result.files, [])
-
-      // The `User` fallback `BoardAuthorUser` is the base name of the `AuthorUser` selection.
-      const crossType = yield* generate({
-        "src/board.graphql": "query Board { issues { author { login } assignee { name } extra { name } } }"
-      })
-      const crossTypeErrors = crossType.result.diagnostics.filter((diagnostic) => diagnostic.severity === "error")
-      assert.deepStrictEqual(
-        crossTypeErrors.map(({ column, line }) => ({ line, column })),
-        [{ line: 1, column: 24 }, { line: 1, column: 59 }]
-      )
-      for (const error of crossTypeErrors) assert.include(error.message, `"BoardAuthorUser"`)
-      assert.deepStrictEqual(crossType.result.files, [])
+      assertNoErrors(generated)
+      const board = generated.file("src/board.graphql.ts")
+      assert.include(board, "import { User } from \"./user.graphql.ts\"")
+      assert.deepStrictEqual(classNames(board), ["AuthorUser", "IssuesIssue"])
+      assert.strictEqual(member(board, "issues"), "Schema.Array(IssuesIssue)")
+      assert.strictEqual(member(board, "author"), "Schema.NullOr(AuthorUser)")
+      assert.strictEqual(member(board, "assignee"), "Schema.NullOr(User)")
     }).pipe(Effect.provide(NodeServices.layer)))
 })
