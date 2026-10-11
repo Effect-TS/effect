@@ -524,6 +524,58 @@ describe("WorkflowEngine", () => {
       )
     }))
 
+  it.effect("layerMemory does not spend a retry when a replay suspends again", () =>
+    Effect.gen(function*() {
+      const retrying = yield* Latch.make()
+      let runs = 0
+      const first = DurableDeferred.make("WorkflowEngine/ResuspendFirst", { success: Schema.String })
+      const second = DurableDeferred.make("WorkflowEngine/ResuspendSecond", { success: Schema.String })
+      const workflow = Workflow.make("WorkflowEngine/Resuspend", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // A single retry: only completion can deliver the result.
+        suspendedRetrySchedule: Schedule.spaced("1 hour").pipe(
+          Schedule.upTo({ times: 1 }),
+          Schedule.tap(() => retrying.open)
+        )
+      })
+      const complete = (deferred: typeof first, executionId: string, value: string) =>
+        DurableDeferred.succeed(deferred, {
+          token: DurableDeferred.tokenFromExecutionId(deferred, { workflow, executionId }),
+          value
+        })
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        for (let i = 0; i < 1000 && !retrying.isOpen(); i++) yield* TestClock.adjust(1)
+        assert(retrying.isOpen(), "caller must wait on its retry schedule")
+        yield* complete(first, executionId, "first")
+        const replayed = () => runs === 2
+        let polled = yield* workflow.poll(executionId)
+        for (let i = 0; i < 1000 && !(replayed() && Option.isSome(polled)); i++) {
+          yield* Effect.yieldNow
+          polled = yield* workflow.poll(executionId)
+        }
+        assert(replayed() && Option.isSome(polled) && polled.value._tag === "Suspended", "replay must suspend again")
+        yield* complete(second, executionId, "second")
+        for (let i = 0; i < 1000 && fiber.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1)
+        assert(fiber.pollUnsafe() !== undefined, "completion must wake the caller")
+        assert.strictEqual(yield* Fiber.join(fiber), "first/second")
+      }).pipe(
+        Effect.provide(
+          workflow.toLayer(() =>
+            Effect.gen(function*() {
+              runs++
+              const a = yield* DurableDeferred.await(first)
+              const b = yield* DurableDeferred.await(second)
+              return `${a}/${b}`
+            })
+          ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+        )
+      )
+    }))
+
   it.effect("layerMemory propagates interruption when the engine is shut down", () =>
     Effect.gen(function*() {
       const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {

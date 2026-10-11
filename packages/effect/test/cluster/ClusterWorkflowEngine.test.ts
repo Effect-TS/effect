@@ -700,6 +700,55 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(context))
     }))
 
+  it.effect("delivers a completion through the retry schedule when the wake is lost", () =>
+    Effect.gen(function*() {
+      let dropWakes = false
+      let handlers = 0
+      const gate = DurableDeferred.make("LostWake/Gate", { success: Schema.String })
+      const workflow = Workflow.make("LostWake", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // Once the caller first waits, no reply notification reaches it.
+        suspendedRetrySchedule: Schedule.spaced("10 seconds").pipe(Schedule.tap(() =>
+          Effect.sync(() => {
+            dropWakes = true
+          })
+        ))
+      })
+      const storageLayer = Layer.effect(
+        MessageStorage.MessageStorage,
+        Effect.map(Effect.service(MessageStorage.MessageStorage), (storage) => ({
+          ...storage,
+          registerReplyHandler: (message) =>
+            Effect.suspend(() => {
+              handlers++
+              return dropWakes ? Effect.never : storage.registerReplyHandler(message)
+            }).pipe(Effect.ensuring(Effect.sync(() => handlers--)))
+        }))
+      ).pipe(Layer.provide(MessageStorage.layerMemory))
+      const context = yield* Layer.build(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(
+          Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+        )
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* advanceUntil(() => dropWakes, "caller must wait on its retry schedule")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        yield* pollUntil(workflow, executionId, "Complete")
+        assert.isUndefined(fiber.pollUnsafe(), "a lost wake must leave the caller on its schedule")
+        yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "the schedule must deliver the completion", 1000)
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+        assert.strictEqual(handlers, 0, "the caller must release its reply handlers")
+      }).pipe(Effect.provide(context))
+    }))
+
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
