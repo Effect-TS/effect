@@ -4848,5 +4848,26 @@ describe("Effect", () => {
         })
       })
     }
+
+    it("errors thrown after resuming in the fiber's context reach the resumer", () => {
+      const deferred = Deferred.makeUnsafe<void>()
+      const fiber = Effect.runFork(Deferred.await(deferred))
+      const error = new Error("observer")
+      let calls = 0
+      fiber.addObserver(() => {
+        calls++
+        throw error
+      })
+
+      let thrown: unknown
+      try {
+        Deferred.doneUnsafe(deferred, Exit.void)
+      } catch (e) {
+        thrown = e
+      }
+
+      assert.strictEqual(thrown, error)
+      assert.strictEqual(calls, 1)
+    })
   })
 })
