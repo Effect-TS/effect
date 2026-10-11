@@ -1,5 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, Latch, Layer, Option, Ref, Schema, Scope } from "effect"
+import {
+  Cause,
+  Deferred,
+  Duration,
+  Effect,
+  Exit,
+  Fiber,
+  Latch,
+  Layer,
+  Option,
+  Ref,
+  Schedule,
+  Schema,
+  Scope
+} from "effect"
 import { TestClock } from "effect/testing"
 import { Activity, DurableClock, DurableDeferred, Workflow, WorkflowEngine } from "effect/workflow"
 
@@ -473,6 +487,42 @@ describe("WorkflowEngine", () => {
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
+
+  it.effect("layerMemory wakes a suspended caller when its workflow completes", () =>
+    Effect.gen(function*() {
+      const retrying = yield* Latch.make()
+      const gate = DurableDeferred.make("WorkflowEngine/CompletionWakeGate", { success: Schema.String })
+      const workflow = Workflow.make("WorkflowEngine/CompletionWake", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // The retry stays the fallback, but is too slow to deliver within the test.
+        suspendedRetrySchedule: Schedule.spaced("1 hour").pipe(Schedule.tap(() => retrying.open))
+      })
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        for (let i = 0; i < 1000 && !retrying.isOpen(); i++) yield* TestClock.adjust(1)
+        assert(retrying.isOpen(), "caller must wait on its retry schedule")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        let polled = yield* workflow.poll(executionId)
+        for (let i = 0; i < 1000 && !(Option.isSome(polled) && polled.value._tag === "Complete"); i++) {
+          yield* Effect.yieldNow
+          polled = yield* workflow.poll(executionId)
+        }
+        assert(Option.isSome(polled) && polled.value._tag === "Complete", "workflow must complete")
+        for (let i = 0; i < 1000 && fiber.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1)
+        assert(fiber.pollUnsafe() !== undefined, "completion must wake the caller")
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+      }).pipe(
+        Effect.provide(
+          workflow.toLayer(() => DurableDeferred.await(gate)).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+        )
+      )
+    }))
 
   it.effect("layerMemory propagates interruption when the engine is shut down", () =>
     Effect.gen(function*() {

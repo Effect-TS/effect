@@ -12,6 +12,7 @@ import {
   Logger,
   Option,
   Result,
+  Schedule,
   Schema,
   Scope,
   Tracer
@@ -669,6 +670,35 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         }).pipe(Effect.provide(context))
       }), 30_000)
   }
+
+  it.effect("wakes a suspended caller when its workflow completes", () =>
+    Effect.gen(function*() {
+      const retrying = yield* Latch.make()
+      const gate = DurableDeferred.make("CompletionWake/Gate", { success: Schema.String })
+      const workflow = Workflow.make("CompletionWake", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // The retry stays the fallback, but is too slow to deliver within the test.
+        suspendedRetrySchedule: Schedule.spaced("1 hour").pipe(Schedule.tap(() => retrying.open))
+      })
+      const context = yield* Layer.build(
+        workflow.toLayer(() => DurableDeferred.await(gate)).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* pollUntil(workflow, executionId, "Suspended")
+        yield* advanceUntil(() => retrying.isOpen(), "caller must wait on its retry schedule")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        yield* pollUntil(workflow, executionId, "Complete")
+        yield* advanceUntil(() => fiber.pollUnsafe() !== undefined, "completion must wake the caller", 1, 1000)
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+      }).pipe(Effect.provide(context))
+    }))
 
   it.effect("executes, resumes, deduplicates, and polls a suspended workflow", () =>
     Effect.gen(function*() {
