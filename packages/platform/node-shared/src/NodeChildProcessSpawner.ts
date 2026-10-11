@@ -19,9 +19,9 @@
  * `forceKillAfter`, the wait is limited to one second and never escalates.
  * With it, cleanup may take the configured duration plus a final one-second
  * wait after `SIGKILL`. Zombie descendants can consume either full bound. On
- * Windows, `taskkill` terminates the tree while the leader is running and only
- * the leader's exit is awaited. Descendants that outlive the leader are not
- * reclaimed by PID-based cleanup.
+ * Windows, `taskkill` terminates the tree while the leader is running, and
+ * cleanup waits only for the leader's exit. Descendants that outlive the
+ * leader are left running.
  *
  * POSIX cleanup targets a numeric process-group ID. If the group disappears
  * and its ID is reused before cleanup, an unrelated group may be signalled.
@@ -111,7 +111,7 @@ const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
   onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
 ) => {
-  // Once Node observes the leader's exit, its PID may already have been reused.
+  // After the leader exits, its PID may be reused by an unrelated process.
   if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
     onExit(null)
     return
