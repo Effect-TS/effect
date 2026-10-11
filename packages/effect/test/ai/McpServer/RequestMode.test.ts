@@ -16,7 +16,8 @@ import * as MultiRoundTripTest from "./McpConformance/MultiRoundTripTest.ts"
 import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
-import { MCP_ENDPOINT } from "./TestUtils/McpHttpHarness.ts"
+import { makeHttpHarness, MCP_ENDPOINT } from "./TestUtils/McpHttpHarness.ts"
+import { makeMcpSseReader } from "./TestUtils/McpHttpResponse.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 import { makeWorkerdHarness } from "./TestUtils/McpWorkerdHarness.ts"
 
@@ -35,16 +36,22 @@ describe("mode: request", () => {
 
 const progressToken = "progress-1"
 
-const callTool = (name: string, id: number) => ({
+const callTool = (
+  name: string,
+  id: number,
+  args: Record<string, unknown> = {},
+  metadata: Record<string, unknown> = {}
+) => ({
   body: {
     jsonrpc: "2.0",
     id,
     method: "tools/call",
     params: {
       name,
-      arguments: {},
+      arguments: args,
       _meta: {
         progressToken,
+        ...metadata,
         "io.modelcontextprotocol/protocolVersion": protocol.protocolVersion,
         "io.modelcontextprotocol/clientCapabilities": {},
         "io.modelcontextprotocol/clientInfo": { name: "test", version: "1.0.0" }
@@ -60,27 +67,40 @@ const callTool = (name: string, id: number) => ({
   }
 })
 
-const toolLayer = (
+const sseMessages = (body: string): Array<Record<string, any>> =>
+  body.split("\n").filter((line) => line.startsWith("data: ")).map((line) => JSON.parse(line.slice(6)))
+
+const toolRegistration = (
   name: string,
-  handle: (server: McpServer.McpServer["Service"]) => Effect.Effect<McpSchema.CallToolResult>
+  handle: (server: McpServer.McpServer["Service"], args: any) => Effect.Effect<McpSchema.CallToolResult>
 ) =>
   Layer.effectDiscard(Effect.gen(function*() {
     const server = yield* McpServer.McpServer
     yield* server.addTool({
       tool: new McpSchema.Tool({ name, inputSchema: { type: "object" } }),
       annotations: Context.empty(),
-      handle: () => handle(server)
+      handle: (args) => handle(server, args)
     })
-  })).pipe(Layer.provideMerge(makeServerLayer({ name: "RequestMode", protocols: [protocol], mode: "request" })))
+  }))
+
+const toolLayer = (
+  name: string,
+  handle: (server: McpServer.McpServer["Service"], args: any) => Effect.Effect<McpSchema.CallToolResult>
+) =>
+  toolRegistration(name, handle).pipe(
+    Layer.provideMerge(makeServerLayer({ name: "RequestMode", protocols: [protocol], mode: "request" }))
+  )
+
+const reportProgress = (server: McpServer.McpServer["Service"]) =>
+  server.notifications["notifications/progress"]({ progressToken, progress: 1 }).pipe(
+    Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] }))
+  )
 
 describe("McpServer.layerHttp mode: request", () => {
   // https://github.com/Effect-TS/effect/issues/9026
   it.live("should serve each POST when timers from completed requests never fire", () =>
     Effect.gen(function*() {
-      const worker = yield* makeWorkerdHarness(toolLayer("ReportProgress", (server) =>
-        server.notifications["notifications/progress"]({ progressToken, progress: 1 }).pipe(
-          Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] }))
-        )))
+      const worker = yield* makeWorkerdHarness(toolLayer("ReportProgress", reportProgress))
       // The first request builds the server and completes without serving MCP.
       const first = yield* worker.request(new Request(MCP_ENDPOINT, { method: "GET" }))
       assert.strictEqual(first.status, 405)
@@ -91,13 +111,9 @@ describe("McpServer.layerHttp mode: request", () => {
           new Request(MCP_ENDPOINT, { method: "POST", headers, body: JSON.stringify(body) })
         ).pipe(Effect.timeoutOrElse({
           duration: "1 second",
-          orElse: () =>
-            Effect.die(`POST ${id} stalled`)
+          orElse: () => Effect.die(`POST ${id} stalled`)
         }))
-        const messages = response.body.split("\n")
-          .filter((line) => line.startsWith("data: "))
-          .map((line) => JSON.parse(line.slice(6)))
-        assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
+        assert.deepStrictEqual(sseMessages(response.body).map((message) => message.method ?? message.id), [
           "notifications/progress",
           id
         ])
@@ -128,6 +144,108 @@ describe("McpServer.layerHttp mode: request", () => {
       abort.abort()
       yield* Deferred.await(interrupted).pipe(Effect.timeout("1 second"))
     }))
+
+  for (const cancel of ["abort", "body"] as const) {
+    it.live(`should interrupt a streaming handler when the client cancels by ${cancel} after headers`, () =>
+      Effect.gen(function*() {
+        const interrupted = yield* Deferred.make<void>()
+        const { dispose, handler } = HttpRouter.toWebHandler(
+          toolLayer("ProgressThenBlock", (server) =>
+            reportProgress(server).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )),
+          { disableLogger: true }
+        )
+        yield* Effect.addFinalizer(() => Effect.promise(dispose))
+        const abort = new AbortController()
+        const { body, headers } = callTool("ProgressThenBlock", 1)
+        const response = yield* Effect.promise(() =>
+          handler(
+            new Request(MCP_ENDPOINT, { method: "POST", headers, body: JSON.stringify(body), signal: abort.signal })
+          )
+        )
+        const reader = makeMcpSseReader(response)
+        yield* Effect.addFinalizer(() => reader.cancel)
+        assert.strictEqual((yield* reader.take()).method, "notifications/progress")
+
+        if (cancel === "abort") abort.abort()
+        else yield* reader.cancel
+        yield* Deferred.await(interrupted).pipe(Effect.timeout("1 second"))
+      }))
+  }
+
+  it.live("should deliver overlapping requests only their own notifications", () =>
+    Effect.gen(function*() {
+      const arrived = { a: yield* Deferred.make<void>(), b: yield* Deferred.make<void>() }
+      const harness = yield* makeHttpHarness(toolLayer("Overlap", (server, { marker }: { marker: "a" | "b" }) =>
+        Effect.gen(function*() {
+          // Both requests are in flight before either emits a notification.
+          yield* Deferred.succeed(arrived[marker], undefined)
+          yield* Deferred.await(arrived[marker === "a" ? "b" : "a"])
+          yield* server.notifications["notifications/progress"]({ progressToken, progress: 1, message: marker })
+          yield* server.notifications["notifications/message"]({ level: "info", data: marker })
+          if (marker === "a") {
+            yield* server.notifications["notifications/tools/list_changed"]({})
+          }
+          return new McpSchema.CallToolResult({ content: [{ type: "text", text: marker }] })
+        })))
+
+      const responses = yield* Effect.forEach(["a", "b"] as const, (marker) => {
+        // Both requests reuse the same JSON-RPC id and progress token.
+        const { body, headers } = callTool("Overlap", 1, { marker }, {
+          "io.modelcontextprotocol/logLevel": "debug"
+        })
+        return harness.post(body, headers).pipe(
+          Effect.flatMap((response) =>
+            Effect.promise(() => response.text())
+          ),
+          Effect.map((body) => [marker, sseMessages(body)] as const)
+        )
+      }, { concurrency: "unbounded" }).pipe(Effect.timeout("2 seconds"))
+
+      for (const [marker, messages] of responses) {
+        assert.deepStrictEqual(
+          messages.map((message) => [message.method ?? message.id, message.params ?? message.result.content]),
+          [
+            ["notifications/progress", { progressToken, progress: 1, message: marker }],
+            ["notifications/message", { level: "info", data: marker }],
+            [1, [{ type: "text", text: marker }]]
+          ]
+        )
+      }
+    }))
+
+  it.live("should keep default-mode notifications when a request-mode endpoint shares the server", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(
+        toolRegistration("ReportProgress", reportProgress).pipe(
+          Layer.provideMerge(Layer.merge(
+            makeServerLayer({ name: "DefaultMode", protocols: [protocol] }),
+            McpServer.layerHttp({
+              name: "RequestMode",
+              version: "1.0.0",
+              path: "/request",
+              protocols: [protocol],
+              mode: "request"
+            })
+          ))
+        )
+      )
+      for (const path of ["/mcp", "/request"]) {
+        const { body, headers } = callTool("ReportProgress", 1)
+        const response = yield* Effect.promise(() =>
+          harness.handler(
+            new Request(new URL(path, MCP_ENDPOINT), { method: "POST", headers, body: JSON.stringify(body) })
+          )
+        )
+        const messages = sseMessages(yield* Effect.promise(() => response.text()))
+        assert.deepStrictEqual(messages.map((message) => message.method ?? message.id), [
+          "notifications/progress",
+          1
+        ], path)
+      }
+    }).pipe(Effect.timeout("2 seconds")))
 
   it.effect("should reject configurations that require a long-lived server", () =>
     Effect.gen(function*() {
