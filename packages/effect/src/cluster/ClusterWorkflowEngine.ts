@@ -328,10 +328,13 @@ export const make = Effect.gen(function*() {
     yield* sharding.reset(requestId.value)
   }, Effect.scoped)
 
-  // A child or deferred may complete while a run is still unwinding. Subscribe
-  // to the run's reply before reading storage so the wake cannot fall between
-  // the run's last read and its suspended reply.
-  const waitForRunReply = Effect.fnUntraced(function*(workflow: Workflow.Any, request: Entity.Request<any>) {
+  // Subscribe to the run's next reply before reading storage, so a reply
+  // cannot fall between the read and the subscription.
+  const awaitRunReply = Effect.fnUntraced(function*(
+    workflow: Workflow.Any,
+    request: Envelope.Request<any>,
+    isSettled: (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) => boolean
+  ) {
     const waiter = yield* storage.registerReplyHandler(
       new Message.OutgoingRequest<any>({
         envelope: request,
@@ -343,12 +346,40 @@ export const make = Effect.gen(function*() {
       })
     ).pipe(Effect.forkScoped({ startImmediately: true }))
     const reply = yield* replyForRequestId(request.requestId)
-    if (Option.isSome(reply)) return
-    yield* Fiber.join(waiter).pipe(
+    if (Option.isSome(reply) && isSettled(reply.value)) return
+    yield* Fiber.join(waiter)
+  }, Effect.scoped)
+
+  // A child or deferred may complete while a run is still unwinding. Wait for
+  // the run's reply so the wake cannot fall between the run's last read and
+  // its suspended reply.
+  const waitForRunReply = (workflow: Workflow.Any, request: Entity.Request<any>) =>
+    awaitRunReply(workflow, request, () => true).pipe(
       Effect.catchTag("EntityNotAssignedToRunner", () => ClusterAbandon.interrupt),
       Effect.catchCause((cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause))
     )
-  }, Effect.scoped)
+
+  // Wake an external caller once its run publishes a reply other than
+  // Suspended. Replies are only observed on the runner that saves them, so
+  // elsewhere, or on any failure, the caller's retry schedule takes over.
+  const awaitResultChange = (workflow: Workflow.Any, executionId: string) =>
+    Effect.gen(function*() {
+      const entityType = `Workflow/${workflow._tag}`
+      const requestId = yield* requestIdFor({ workflow, entityType, executionId, tag: "run", id: "" })
+      if (Option.isNone(requestId)) return yield* Effect.never
+      const request = Envelope.makeRequest<any>({
+        requestId: requestId.value,
+        address: entityAddressFor({ workflow, entityType, executionId }),
+        tag: "run",
+        payload: {},
+        headers: Headers.empty
+      })
+      yield* awaitRunReply(
+        workflow,
+        request,
+        (reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended"
+      )
+    }).pipe(Effect.catchCause(() => Effect.never))
 
   const interrupt = Effect.fnUntraced(
     function*(workflow: Workflow.Any, executionId: string) {
@@ -616,6 +647,8 @@ export const make = Effect.gen(function*() {
     }),
 
     resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId)),
+
+    awaitResultChange,
 
     activityExecute: Effect.fnUntraced(
       function*(activity, attempt) {

@@ -12,6 +12,7 @@
  */
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
+import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
@@ -417,6 +418,18 @@ export interface Encoded {
     workflow: Workflow.Any,
     executionId: string
   ) => Effect.Effect<void>
+  /**
+   * Waits until a suspended execution may have a newer result.
+   *
+   * **Gotchas**
+   *
+   * External callers race this with their `suspendedRetrySchedule`, so it may
+   * complete spuriously, or never when the engine cannot observe the change.
+   */
+  readonly awaitResultChange?: (
+    workflow: Workflow.Any,
+    executionId: string
+  ) => Effect.Effect<void>
   readonly activityExecute: (
     activity: Activity.Any,
     attempt: number
@@ -551,7 +564,10 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
             )
           )
         )
-        yield* sleep
+        // Completion wakes the caller early; the schedule is the fallback.
+        yield* options.awaitResultChange
+          ? Effect.raceFirst(sleep, options.awaitResultChange(self, executionId))
+          : sleep
       }
     }),
     poll: options.poll,
@@ -642,6 +658,9 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
       )
   })
 
+const isPreempted = (exit: Exit.Exit<unknown, unknown>, instance: WorkflowInstance["Service"]) =>
+  Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended
+
 const defaultRetrySchedule = Schedule.min([
   Schedule.exponential(200, 1.5),
   Schedule.spaced(30000)
@@ -688,6 +707,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interrupted: boolean
       resumeRequested: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
+      // Completed when a replay replaces `fiber`.
+      replaced: Deferred.Deferred<void>
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -747,6 +768,9 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         }),
         Effect.forkIn(entry.scope)
       )
+      const replaced = state.replaced
+      state.replaced = Deferred.makeUnsafe()
+      Deferred.doneUnsafe(replaced, Exit.void)
     })
 
     const deferredResults = new Map<string, Exit.Exit<any, any>>()
@@ -776,6 +800,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             interrupted: false,
             resumeRequested: false,
             fiber: undefined,
+            replaced: Deferred.makeUnsafe(),
             parent: options.parent?.executionId
           }
           executions.set(options.executionId, state)
@@ -785,12 +810,23 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         // Capture together so a wake that swaps in a replay cannot desync them.
         const instance = state.instance
         const exit = yield* Fiber.await(state.fiber!)
-        if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended) {
+        if (isPreempted(exit, instance)) {
           // A completion preempted the run; the caller retries into the replay.
           return new Workflow.Suspended({}) as any
         }
         return (yield* exit) as any
       }),
+      awaitResultChange: (_workflow, executionId) =>
+        Effect.suspend(() => {
+          const state = executions.get(executionId)
+          if (!state?.fiber) return Effect.never
+          const exit = state.fiber.pollUnsafe()
+          // A running replay or a non-suspended result is ready for the caller.
+          const suspended = exit !== undefined && (
+            (exit._tag === "Success" && exit.value._tag === "Suspended") || isPreempted(exit, state.instance)
+          )
+          return suspended ? Deferred.await(state.replaced) : Effect.void
+        }),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return
