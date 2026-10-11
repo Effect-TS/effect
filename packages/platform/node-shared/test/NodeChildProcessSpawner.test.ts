@@ -27,7 +27,8 @@ ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
 })
 
-describe("interrupted buffered input", () => {
+// Synchronous fixture runs must not block other tests with active timeout budgets.
+describe("interrupted buffered input", { concurrent: false, timeout: 15_000 }, () => {
   for (const input of ["stdin", "fd3"] as const) {
     it(`does not crash the host when ${input} is interrupted`, () => {
       // Isolate the host so an unhandled writable error becomes an assertion
