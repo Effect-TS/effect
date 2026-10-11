@@ -99,7 +99,7 @@ query One($show: Boolean!, $taskId: ID!) {
   }
 }
 `)
-      assert.strictEqual(member(ops, "task"), "Schema.NullOr(Schema.Struct({")
+      assert.strictEqual(member(ops, "task"), "Schema.NullOr(OneTask)")
       assert.strictEqual(member(ops, "id"), "Shared.ID")
       assert.strictEqual(member(ops, "title"), "Schema.optionalKey(Schema.String)")
     }).pipe(Effect.provide(NodeServices.layer)))
@@ -113,7 +113,7 @@ query One($show: Boolean!, $taskId: ID!) {
   }
 }
 `)
-      assert.strictEqual(member(ops, "task"), "Schema.optionalKey(Schema.NullOr(Schema.Struct({")
+      assert.strictEqual(member(ops, "task"), "Schema.optionalKey(Schema.NullOr(OneTask))")
       assert.strictEqual(member(ops, "title"), "Schema.String")
     }).pipe(Effect.provide(NodeServices.layer)))
 })
