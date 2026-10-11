@@ -16,14 +16,19 @@ import { GitHubAuth } from "./10_basics.ts"
 //   }
 //
 // Unselected node types are represented by `otherTypename`.
+export class RepoNodesRepository extends Schema.Opaque<RepoNodesRepository>()(
+  Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
+) {}
+
+export class RepoNodesNodeOther extends Schema.Opaque<RepoNodesNodeOther>()(
+  Schema.Struct({ __typename: GraphQL.otherTypename<"Issue" | "Repository" | "User">()(["Repository"]) })
+) {}
+
 export const RepoNodes = GraphQL.query("RepoNodes", {
   document: "query RepoNodes($ids:[ID!]!){nodes(ids:$ids){__typename ...on Repository{nameWithOwner}}}",
   variables: { ids: Schema.Array(Schema.String) },
   result: Schema.Struct({
-    nodes: Schema.Array(Schema.NullOr(Schema.Union([
-      Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String }),
-      Schema.Struct({ __typename: GraphQL.otherTypename<"Issue" | "Repository" | "User">()(["Repository"]) })
-    ])))
+    nodes: Schema.Array(Schema.NullOr(Schema.Union([RepoNodesRepository, RepoNodesNodeOther])))
   })
 })
 
@@ -33,7 +38,7 @@ export class GitHub extends Context.Service<
   GitHub,
   GraphQLClient.FromGroup<typeof GitHubGraphQLGroup> & {
     getRepo(id: string): Effect.Effect<
-      { readonly __typename: "Repository"; readonly nameWithOwner: string },
+      RepoNodesRepository,
       GraphQL.Error<typeof RepoNodes> | Cause.NoSuchElementError
     >
   }
