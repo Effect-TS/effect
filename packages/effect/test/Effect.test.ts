@@ -28,6 +28,7 @@ import {
   TxRef
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
+import * as core from "effect/internal/core"
 import { TestClock } from "effect/testing"
 import { AsyncLocalStorage } from "node:async_hooks"
 import { assertCauseFail } from "./utils/assert.ts"
@@ -118,6 +119,38 @@ describe("Effect", () => {
         }
       }
     })
+
+    it.live("runs map / flatMap frames made by another copy of the runtime", () =>
+      Effect.gen(function*() {
+        // A copy of the frame prototype with its own `evaluate`, as another
+        // copy of the module would make it, so the fiber takes its generic paths
+        const proto = Object.getPrototypeOf(Effect.map(Effect.void, () => 1))
+        const foreignProto = Object.defineProperties(
+          Object.create(Object.getPrototypeOf(proto)),
+          Object.getOwnPropertyDescriptors(proto)
+        )
+        foreignProto[core.evaluate] = function(this: any, fiber: any) {
+          fiber._stack.push(this)
+          return this[core.args]
+        }
+        const foreign = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+          Object.setPrototypeOf(effect, foreignProto)
+        const log: Array<string> = []
+        const program = Effect.succeed(1).pipe(
+          (self) => foreign(Effect.map(self, (n) => n + 1)),
+          (self) => foreign(Effect.flatMap(self, (n) => Effect.as(Effect.sleep(1), n * 10))),
+          (self) => foreign(Effect.tap(self, (n) => Effect.sync(() => log.push(`tap ${n}`))))
+        )
+        assert.notStrictEqual(Object.getPrototypeOf(program), proto)
+        assert.strictEqual(yield* program, 20)
+        const failure = Effect.fail("e").pipe(
+          (self) => foreign(Effect.map(self, () => log.push("unreached"))),
+          Effect.ensuring(Effect.sync(() => log.push("finalizer"))),
+          Effect.catch((e) => Effect.succeed(e))
+        )
+        assert.strictEqual(yield* failure, "e")
+        assert.deepStrictEqual(log, ["tap 20", "finalizer"])
+      }))
 
     it.effect("auto-yields map / flatMap chains every MaxOpsBeforeYield operations", () =>
       Effect.gen(function*() {
