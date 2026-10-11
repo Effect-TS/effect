@@ -246,11 +246,7 @@ export const suiteWith = <R>(
         yield* second.offer({ n: 2n }, { id: "shared-custom-id" })
 
         const fiber = yield* second.take(Effect.succeed).pipe(Effect.forkScoped)
-        yield* TestClock.adjust(1000)
-        yield* Effect.sleep(1000).pipe(TestClock.withLive)
-
-        assert.isDefined(fiber.pollUnsafe())
-        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 2n })
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 2n })
       }), testOptions)
 
     it.effect("does not redeliver in-flight elements", () =>
