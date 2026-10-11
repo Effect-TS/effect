@@ -7882,6 +7882,66 @@ export function isMultipleOf(
   )
 }
 /**
+ * Validates that a number is an integer power of the specified base.
+ *
+ * **Details**
+ *
+ * Accepts positive safe integers equal to `base ** k` for some `k >= 0`, so `1`
+ * is always accepted. Unsafe integers are rejected even when they are
+ * mathematically powers of `base`.
+ *
+ * JSON Schema:
+ *
+ * JSON Schema has no power-of constraint, so this check is exported as an
+ * `enum` listing every safe integer power of `base` in ascending order.
+ *
+ * **Gotchas**
+ *
+ * Throws a `RangeError` when `base` is not a safe integer greater than or equal
+ * to `2`.
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export function isPowerOf(
+  base: number,
+  annotations?: Annotations.Filter
+): SchemaAST.Filter<number> {
+  if (!globalThis.Number.isSafeInteger(base) || base < 2) {
+    throw new globalThis.RangeError(
+      `Expected a safe integer greater than or equal to 2, got ${globalThis.String(base)}`
+    )
+  }
+  return makeFilter(
+    (input: number) => {
+      if (!globalThis.Number.isSafeInteger(input) || input < 1) return false
+      while (input % base === 0) input /= base
+      return input === 1
+    },
+    {
+      expected: `a power of ${base}`,
+      representation: {
+        id: "effect/schema/isPowerOf",
+        payload: { base }
+      },
+      toJsonSchema: () => ({ enum: safeIntegerPowersOf(base) }),
+      toCode: () => ({ runtime: `Schema.isPowerOf(${format(base)})` }),
+      ...annotations
+    }
+  )
+}
+
+function safeIntegerPowersOf(base: number): Array<number> {
+  const out = [1]
+  let power = 1
+  while (power <= globalThis.Number.MAX_SAFE_INTEGER / base) {
+    power *= base
+    out.push(power)
+  }
+  return out
+}
+/**
  * Validates that a number is a safe integer (within the safe integer range
  * that can be exactly represented in JavaScript).
  *

@@ -1253,6 +1253,27 @@ export const isMultipleOfReviver: FilterReviver<{
 )
 
 /**
+ * Reviver for persisted `isPowerOf` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isPowerOf}.
+ *
+ * @see {@link Schema.isPowerOf} for creating the corresponding check
+ *
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isPowerOfReviver: FilterReviver<{
+  readonly base: number
+}> = makeReviverFilter(
+  "effect/schema/isPowerOf",
+  Schema.Struct({ base: Schema.Finite }),
+  ({ annotations, payload }) => Schema.isPowerOf(payload.base, annotations)
+)
+
+/**
  * Reviver for persisted `isInt` checks.
  *
  * **When to use**
