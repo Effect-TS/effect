@@ -1,8 +1,8 @@
 /**
  * Emits per-document and shared modules from validated documents. Paths and
  * import specifiers are supplied by the caller; output needs no formatter.
- * Recursive input objects and generated class names that clash produce
- * diagnostics instead of output.
+ * Recursive input objects and generated class names that can't be made
+ * unique produce diagnostics instead of output.
  *
  * @internal
  */
@@ -51,7 +51,7 @@ export const emit = (options: Options): Output => {
   const errors = emitter.check()
   if (errors.length > 0) return { files: [], errors, unmappedScalars: [] }
   const emitted = options.files.map((file) => emitter.emitFile(file))
-  const emitErrors = [...emitted.flatMap((result) => result.errors), ...emitter.checkClassNames(emitted)]
+  const emitErrors = emitted.flatMap((result) => result.errors)
   if (emitErrors.length > 0) return { files: [], errors: emitErrors, unmappedScalars: [] }
   const shared = emitter.emitShared()
   return { files: [shared.file, ...emitted.map((result) => result.file)], errors: [], unmappedScalars: shared.unmapped }
@@ -297,21 +297,25 @@ const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: stri
 
 /**
  * A nested result selection written as its own Opaque class. Identical
- * selections in one definition share it, keeping the first one's path.
+ * selections anywhere in one file share it, keeping the first one's path.
  */
 interface ExtractedClass {
   readonly id: number
-  /** What the name ends with: the type's name, or `<AbstractType>Other` for a catch-all member. */
+  /** The type's name, or `<AbstractType>Other` for a catch-all member. */
   readonly typeName: string
   readonly description: string | undefined
+  /** The operation or fragment holding the selection. */
+  definition: string
   /** Response keys from the definition's root down to the field holding the selection. */
   path: ReadonlyArray<string>
   /** Where the selection is written in the file being emitted. */
   offset: number
-  /** The selection's place in the document (see `Sourced.order`). */
+  /** The definition's index in the file, then the selection's place in it (see `Sourced.order`). */
   order: ReadonlyArray<number>
   /** The struct, with `classRef(id)` standing for each class it uses. */
   readonly body: string
+  /** Fragments of this file the struct uses. */
+  readonly refs: ReadonlySet<string>
 }
 
 /**
@@ -338,28 +342,13 @@ const compareOrder = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): numbe
   return a.length - b.length
 }
 
-/** The classes extracted while rendering one operation or fragment, named after `prefix`. */
-interface ClassScope {
-  readonly prefix: string
-  readonly classes: Array<ExtractedClass>
-  readonly byShape: Map<string, ExtractedClass>
-}
-
 interface EmittedFile {
   readonly file: GeneratedFile
   readonly errors: ReadonlyArray<Diagnostic>
-  /** The class names generated for nested selections in the file. */
-  readonly generated: ReadonlyArray<GeneratedName>
-}
-
-/** A generated class name and where its selection is written. */
-interface GeneratedName {
-  readonly name: string
-  readonly offset: number
 }
 
 /**
- * Stands for an extracted class until the definition's classes are named.
+ * Stands for an extracted class until the file's classes are named.
  * `escapeComment` escapes the marker in the only text from documents that
  * structs carry.
  */
@@ -379,16 +368,17 @@ interface FileContext {
   readonly imports: Map<string, Ast.FragmentSpread>
   /** Fragments of this file referenced by the code being rendered. */
   localRefs: Set<string>
-  /** The classes of the definition being rendered. */
-  scope: ClassScope
+  /** The classes extracted so far, in order of extraction. */
+  readonly classes: Array<ExtractedClass>
+  readonly byShape: Map<string, ExtractedClass>
+  /** The name and index of the definition being rendered. */
+  definition: { readonly name: string; readonly index: number }
   /** Response keys from the definition's root to the selection being rendered. */
   readonly path: Array<string>
   /** Where the field holding the selection being rendered is written. */
   offset: number
   /** The document order of the field holding the selection being rendered. */
   order: ReadonlyArray<number>
-  /** Every class name generated for this file. */
-  readonly generated: Array<GeneratedName>
   readonly errors: Array<Diagnostic>
 }
 
@@ -818,40 +808,48 @@ class Emitter {
     const typename = `Schema.Literal(${JSON.stringify(parent.name)})`
     return nested && items.length > 0
       ? classStruct(
-        this.extract(ctx, parent.name, parent.description, this.structOf(ctx, parent, items, "", typename, false))
+        this.extract(ctx, parent.name, parent.description, () => this.structOf(ctx, parent, items, "", typename, false))
       )
       : this.structOf(ctx, parent, items, indent, typename, false)
   }
 
   /**
-   * Registers a struct written at the top level as a class of the current
-   * definition and refers to it. A struct with the same identity reuses the
-   * class, which keeps the path of whichever occurrence comes first in the
-   * document.
+   * Renders a struct written at the top level as a class of the file and
+   * refers to it. A struct with the same identity reuses the class, which
+   * keeps the path of whichever occurrence comes first in the document.
    */
-  extract(ctx: FileContext, typeName: string, description: string | undefined, struct: Struct): string {
-    const scope = ctx.scope
+  extract(ctx: FileContext, typeName: string, description: string | undefined, render: () => Struct): string {
+    const outer = ctx.localRefs
+    ctx.localRefs = new Set()
+    const struct = render()
+    const refs = ctx.localRefs
+    ctx.localRefs = outer
+    for (const ref of refs) outer.add(ref)
+    const order = [ctx.definition.index, ...ctx.order]
     const shape = `${typeName}\u0001${struct.identity}`
-    const existing = scope.byShape.get(shape)
+    const existing = ctx.byShape.get(shape)
     if (existing !== undefined) {
-      if (compareOrder(ctx.order, existing.order) < 0) {
+      if (compareOrder(order, existing.order) < 0) {
+        existing.definition = ctx.definition.name
         existing.path = ctx.path.slice()
         existing.offset = ctx.offset
-        existing.order = ctx.order
+        existing.order = order
       }
       return classRef(existing.id)
     }
     const extracted: ExtractedClass = {
-      id: scope.classes.length,
+      id: ctx.classes.length,
       typeName,
       description,
+      definition: ctx.definition.name,
       path: ctx.path.slice(),
       offset: ctx.offset,
-      order: ctx.order,
-      body: struct.code
+      order,
+      body: struct.code,
+      refs
     }
-    scope.classes.push(extracted)
-    scope.byShape.set(shape, extracted)
+    ctx.classes.push(extracted)
+    ctx.byShape.set(shape, extracted)
     return classRef(extracted.id)
   }
 
@@ -931,15 +929,22 @@ class Emitter {
       )
     if (selected.length === 0) {
       return nested
-        ? classStruct(this.extract(ctx, parent.name, parent.description, member(parent, others, "", othersIdentity)))
+        ? classStruct(
+          this.extract(ctx, parent.name, parent.description, () => member(parent, others, "", othersIdentity))
+        )
         : member(parent, others, indent, othersIdentity)
     }
     const members = [
       ...selected.map((name) => {
         const type = this.type(name)
-        return this.extract(ctx, name, type.description, member(type, `Schema.Literal(${JSON.stringify(name)})`, ""))
+        return this.extract(
+          ctx,
+          name,
+          type.description,
+          () => member(type, `Schema.Literal(${JSON.stringify(name)})`, "")
+        )
       }),
-      this.extract(ctx, `${parent.name}Other`, parent.description, member(parent, others, "", othersIdentity))
+      this.extract(ctx, `${parent.name}Other`, parent.description, () => member(parent, others, "", othersIdentity))
     ]
     const memberIndent = `${indent}  `
     return {
@@ -1067,9 +1072,10 @@ class Emitter {
 
   /**
    * Emits one per-file module. Fails with a located error when the module
-   * would import a fragment named like the group it exports; the import is
-   * found from the code actually emitted, so a spread written out inline
-   * counts only for the fragments it really brings in.
+   * would import a fragment named like the group it exports, or when a
+   * class can't be given a name of its own; the import is found from the
+   * code actually emitted, so a spread written out inline counts only for
+   * the fragments it really brings in.
    */
   emitFile(file: DocumentFile): EmittedFile {
     const ctx: FileContext = {
@@ -1079,42 +1085,90 @@ class Emitter {
       usesShared: false,
       imports: new Map(),
       localRefs: new Set(),
-      scope: { prefix: "", classes: [], byShape: new Map() },
+      classes: [],
+      byShape: new Map(),
+      definition: { name: "", index: 0 },
       path: [],
       offset: 0,
       order: [],
-      generated: [],
       errors: []
     }
 
     const fragments = new Map<string, { readonly code: string; readonly refs: ReadonlySet<string> }>()
     const operations: Array<string> = []
     const operationNames: Array<string> = []
-    for (const definition of file.document.definitions) {
+    file.document.definitions.forEach((definition, index) => {
+      if (definition._tag !== "FragmentDefinition" && definition._tag !== "OperationDefinition") return
+      const name = definition.name!
       ctx.localRefs = new Set()
+      ctx.definition = { name: name.value, index }
+      ctx.offset = name.loc.start
+      ctx.order = []
       if (definition._tag === "FragmentDefinition") {
-        const code = this.withClasses(ctx, definition.name, () => this.emitFragment(ctx, definition))
-        fragments.set(definition.name.value, { code, refs: ctx.localRefs })
-      } else if (definition._tag === "OperationDefinition") {
-        operations.push(this.withClasses(ctx, definition.name!, () => this.emitOperation(ctx, definition)))
-        operationNames.push(definition.name!.value)
+        fragments.set(name.value, { code: this.emitFragment(ctx, definition), refs: ctx.localRefs })
+      } else {
+        operations.push(this.emitOperation(ctx, definition))
+        operationNames.push(name.value)
       }
-    }
+    })
 
-    // Fragments are classes, so each one follows the fragments of this file it uses.
-    const ordered: Array<string> = []
-    const placed = new Set<string>()
-    const place = (name: string): void => {
-      if (placed.has(name)) return
-      placed.add(name)
-      for (const ref of fragments.get(name)!.refs) place(ref)
-      ordered.push(fragments.get(name)!.code)
-    }
-    for (const name of fragments.keys()) place(name)
-
-    const blocks = [...ordered, ...operations]
     const group = groupName(file.sourceName)
     const errors = ctx.errors
+    const taken = new Map<string, string>()
+    for (const name of importedNames) taken.set(name, "is reserved in generated code")
+    for (const name of [...fragments.keys(), ...operationNames]) {
+      taken.set(name, "is taken by a definition in this file")
+    }
+    for (const name of ctx.imports.keys()) taken.set(name, "is taken by a fragment this file imports")
+    if (operationNames.length > 0) taken.set(group, "is taken by the group this file exports")
+    const names = this.nameClasses(ctx, taken)
+    const fill = (text: string) => text.replace(classRefPattern, (_, id: string) => names[Number(id)]!)
+
+    // Fragments and classes are declared before the code that uses them: each
+    // fragment after the fragments it uses, and each class after the
+    // fragments and classes it uses.
+    const blocks: Array<string> = []
+    const placedClasses = new Set<number>()
+    const placedFragments = new Set<string>()
+    const placeClasses = (code: string): void => {
+      // A class only uses classes extracted before it.
+      const used = new Set<number>()
+      const visit = (text: string): void => {
+        for (const match of text.matchAll(classRefPattern)) {
+          const id = Number(match[1])
+          if (used.has(id)) continue
+          used.add(id)
+          visit(ctx.classes[id]!.body)
+        }
+      }
+      visit(code)
+      for (const id of Array.from(used).sort((a, b) => a - b)) {
+        if (placedClasses.has(id)) continue
+        placedClasses.add(id)
+        const extracted = ctx.classes[id]!
+        for (const ref of extracted.refs) placeFragment(ref)
+        const name = names[id]!
+        blocks.push(
+          `${jsdoc(descriptionLines(extracted.description), "")}export class ${name} extends Schema.Opaque<${name}>()(${
+            fill(extracted.body)
+          }) {}`
+        )
+      }
+    }
+    const placeFragment = (name: string): void => {
+      if (placedFragments.has(name)) return
+      placedFragments.add(name)
+      const fragment = fragments.get(name)!
+      for (const ref of fragment.refs) placeFragment(ref)
+      placeClasses(fragment.code)
+      blocks.push(fill(fragment.code))
+    }
+    for (const name of fragments.keys()) placeFragment(name)
+    for (const operation of operations) {
+      placeClasses(operation)
+      blocks.push(fill(operation))
+    }
+
     if (operationNames.length > 0) {
       blocks.push(
         `/** Every operation in ${file.sourceName}. */\nexport const ${group} = GraphQLGroup.make(${
@@ -1157,135 +1211,53 @@ class Emitter {
         path: file.outputPath,
         contents: `${[header(file.sourceName), ...imports].join("\n")}\n\n${blocks.join("\n\n")}\n`
       },
-      errors,
-      generated: ctx.generated
+      errors
     }
   }
 
   /**
-   * Renders one operation or fragment, then names the classes it extracted
-   * and declares them before it, each after the classes it uses.
+   * Names the file's classes after their types. Classes that would share a
+   * name, and ones whose name is `taken` or can't be bound, all add their
+   * field's response key, then parent response keys one at a time, then
+   * their definition's name, until the names are free. Ones that run out
+   * are reported.
    */
-  withClasses(ctx: FileContext, name: Ast.Name, render: () => string): string {
-    const scope: ClassScope = { prefix: name.value, classes: [], byShape: new Map() }
-    ctx.scope = scope
-    ctx.offset = name.loc.start
-    ctx.order = []
-    const code = render()
-    const names = this.nameClasses(ctx, scope)
-    const fill = (text: string) => text.replace(classRefPattern, (_, id: string) => names[Number(id)]!)
-    const classes = scope.classes.map((extracted) => {
-      const name = names[extracted.id]!
-      return `${
-        jsdoc(descriptionLines(extracted.description), "")
-      }export class ${name} extends Schema.Opaque<${name}>()(${fill(extracted.body)}) {}`
-    })
-    return [...classes, fill(code)].join("\n\n")
-  }
-
-  /**
-   * Names a definition's classes `<prefix><TypeName>`. Classes of one type
-   * that want the same name all add the next response key up their path,
-   * until their names differ; ones that run out of keys are reported. Equal
-   * names across types are left to `checkClassNames`.
-   */
-  nameClasses(ctx: FileContext, scope: ClassScope): Array<string> {
-    const classes = scope.classes
+  nameClasses(ctx: FileContext, taken: ReadonlyMap<string, string>): Array<string> {
+    const classes = ctx.classes
     const levels = classes.map(() => 0)
-    const nameAt = (extracted: ExtractedClass, level: number): string =>
-      `${scope.prefix}${
-        extracted.path.slice(extracted.path.length - level).map(capitalize).join("")
-      }${extracted.typeName}`
+    const nameAt = (extracted: ExtractedClass, level: number): string => {
+      const keys = extracted.path.slice(Math.max(0, extracted.path.length - level)).map(capitalize).join("")
+      return `${level > extracted.path.length ? extracted.definition : ""}${keys}${extracted.typeName}`
+    }
     let names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
-    let clashing: Array<ReadonlyArray<number>> = []
+    let conflicts: Array<number> = []
     for (;;) {
-      const byName = Arr.groupBy(classes.map((_, i) => i), (i) => `${classes[i]!.typeName}\u0001${names[i]}`)
-      clashing = Object.values(byName).filter((group) => group.length > 1)
+      const counts = new Map<string, number>()
+      for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1)
+      conflicts = names.flatMap((name, i) => counts.get(name)! > 1 || taken.has(name) || unbindable(name) ? [i] : [])
       let advanced = false
-      for (const group of clashing) {
-        for (const i of group) {
-          if (levels[i]! < classes[i]!.path.length) {
-            levels[i]!++
-            advanced = true
-          }
+      for (const i of conflicts) {
+        if (levels[i]! <= classes[i]!.path.length) {
+          levels[i]!++
+          advanced = true
         }
       }
       if (!advanced) break
       names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
     }
-    const reported = new Set<number>()
-    for (const group of clashing) {
-      for (const i of group) {
-        reported.add(i)
-        ctx.errors.push(make(
-          ctx.file.source,
-          classes[i]!.offset,
-          `Different selections here would all generate the class "${names[i]}"; alias one of the fields.`
-        ))
-      }
-    }
-    for (const [i, extracted] of classes.entries()) {
-      if (!reported.has(i)) ctx.generated.push({ name: names[i]!, offset: extracted.offset })
+    const counts = new Map<string, number>()
+    for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1)
+    for (const i of conflicts.sort((a, b) => classes[a]!.offset - classes[b]!.offset)) {
+      const name = names[i]!
+      ctx.errors.push(make(
+        ctx.file.source,
+        classes[i]!.offset,
+        counts.get(name)! > 1
+          ? `Different selections here would all generate the class "${name}"; alias one of the fields.`
+          : `The generated class name "${name}" ${taken.get(name) ?? "is reserved in generated code"}; alias the field.`
+      ))
     }
     return names
-  }
-
-  /**
-   * Generated class names that are reserved, taken by the group of their
-   * file, or equal to an operation, fragment or class name anywhere, sorted
-   * by file and position.
-   */
-  checkClassNames(emitted: ReadonlyArray<EmittedFile>): Array<Diagnostic> {
-    const files = this.options.files
-    const errors: Array<{ readonly file: number; readonly offset: number; readonly message: string }> = []
-    const owners = new Map<string, Array<{ readonly file: number; readonly offset: number }>>()
-    const own = (name: string, file: number, offset: number): void => {
-      const entries = owners.get(name)
-      if (entries === undefined) owners.set(name, [{ file, offset }])
-      else entries.push({ file, offset })
-    }
-    const generated = new Set<string>()
-    emitted.forEach((result, file) => {
-      const group = groupName(files[file]!.sourceName)
-      for (const { name, offset } of result.generated) {
-        generated.add(name)
-        own(name, file, offset)
-        if (importedNames.has(name) || unbindable(name)) {
-          errors.push({
-            file,
-            offset,
-            message: `The generated class name "${name}" is reserved in generated code; alias the field.`
-          })
-        } else if (name === group) {
-          errors.push({
-            file,
-            offset,
-            message: `The generated class name "${name}" is taken by the group this file exports.`
-          })
-        }
-      }
-    })
-    files.forEach((file, index) => {
-      for (const definition of file.document.definitions) {
-        if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
-        if (definition.name !== undefined && generated.has(definition.name.value)) {
-          own(definition.name.value, index, definition.name.loc.start)
-        }
-      }
-    })
-    for (const [name, entries] of owners) {
-      if (entries.length < 2) continue
-      for (const { file, offset } of entries) {
-        errors.push({
-          file,
-          offset,
-          message: `There can be only one operation, fragment or generated class named "${name}".`
-        })
-      }
-    }
-    return errors
-      .sort((a, b) => a.file - b.file || a.offset - b.offset)
-      .map((error) => make(files[error.file]!.source, error.offset, error.message))
   }
 
   /**

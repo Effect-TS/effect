@@ -22,20 +22,20 @@ import { FetchHttpClient } from "effect/http"
 //   }
 //
 // Each nested selection is its own class, so editor hovers show its name.
-export class RepoIssuesPageInfo extends Schema.Opaque<RepoIssuesPageInfo>()(
+export class PageInfo extends Schema.Opaque<PageInfo>()(
   Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) })
 ) {}
 
-export class RepoIssuesIssue extends Schema.Opaque<RepoIssuesIssue>()(
+export class Issue extends Schema.Opaque<Issue>()(
   Schema.Struct({ number: Schema.Int, title: Schema.String })
 ) {}
 
-export class RepoIssuesIssueConnection extends Schema.Opaque<RepoIssuesIssueConnection>()(
-  Schema.Struct({ pageInfo: RepoIssuesPageInfo, nodes: Schema.NullOr(Schema.Array(Schema.NullOr(RepoIssuesIssue))) })
+export class IssueConnection extends Schema.Opaque<IssueConnection>()(
+  Schema.Struct({ pageInfo: PageInfo, nodes: Schema.NullOr(Schema.Array(Schema.NullOr(Issue))) })
 ) {}
 
-export class RepoIssuesRepository extends Schema.Opaque<RepoIssuesRepository>()(
-  Schema.Struct({ issues: RepoIssuesIssueConnection })
+export class Repository extends Schema.Opaque<Repository>()(
+  Schema.Struct({ issues: IssueConnection })
 ) {}
 
 export const RepoIssues = GraphQL.query("RepoIssues", {
@@ -47,7 +47,7 @@ export const RepoIssues = GraphQL.query("RepoIssues", {
     after: Schema.optional(Schema.NullOr(Schema.String))
   },
   result: Schema.Struct({
-    repository: Schema.NullOr(RepoIssuesRepository)
+    repository: Schema.NullOr(Repository)
   })
 })
 

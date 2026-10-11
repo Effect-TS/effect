@@ -79,23 +79,25 @@ reach. Defaulted scalars are not included in that warning.
   whole type
 - `FooGraphQLGroup`, a `GraphQLGroup` with every operation in the file
 
-A nested selection's class is named after its operation and type, such as
-`RepoIssuesIssue`, or after its fragment inside one, such as
-`IssueSummaryUser`. The member covering the types an interface or union
-selection doesn't name ends in `Other`, such as `RoomEventsEventOther`. An
-interface or union selection without any `... on` type conditions is one
-struct rather than a union, so its class takes the abstract type's name with
-no `Other`, such as `RoomEventsEvent`.
+A nested selection's class is named after its GraphQL type, such as `Issue`
+or `User`, inside fragments too. Every class is a top-level export of the
+file, so operations and fragments in one file draw from the same names. The
+member covering the types an interface or union selection doesn't name ends
+in `Other`, such as `EventOther`. An interface or union selection without any
+`... on` type conditions is one struct rather than a union, so its class takes
+the abstract type's name with no `Other`, such as `Event`.
 
-Selections of a type share one class when they select the same fields under
-the same response keys, with the same nested selections and `@skip` /
-`@include` optionality, in any order. When different selections of a type
-would get the same name, each adds its field's response key
-(`RepoIssuesAuthorUser`), then parent response keys until the names differ;
-a shared class uses the path of its first occurrence. A generated name that
-matches an operation, fragment or generated class of another type is an
-error, as is a clash left after every response key is used: rename the
-definition or alias the field.
+Selections of a type share one class across the whole file when they select
+the same fields under the same response keys, with the same nested
+selections and `@skip` / `@include` optionality, in any order. When different
+selections would get the same name, or a name is already taken by an
+operation, fragment or import in the file, by the file's group or by
+`Schema`, `GraphQL`, `GraphQLGroup` or `Shared`, each adds its field's
+response key (`AuthorUser`), then parent response keys one at a time
+(`CommentsAuthorUser`), then the operation or fragment name
+(`RepoIssuesCommentsAuthorUser`), until the names are free. A shared class
+uses the path of its first occurrence. A clash left after all of that is an
+error: alias the field.
 
 The shared module holds only the scalars, enums, input objects and
 `__typename` unions the operations reach. Commit the generated files, and
