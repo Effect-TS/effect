@@ -479,6 +479,26 @@ const AsyncResource: (new(type: string) => AsyncContext) | undefined = (() => {
 const captureAsyncContext = (): AsyncContext | undefined =>
   AsyncResource === undefined ? undefined : new AsyncResource("effect/Fiber")
 
+// Cloudflare Workers ties an AsyncResource to the request that created it, and
+// throws before running the callback when a later request enters it. Resume the
+// fiber in the current context instead.
+const evaluateInAsyncContext = (fiber: FiberImpl, asyncContext: AsyncContext, effect: Primitive): void => {
+  let entered = false
+  try {
+    return asyncContext.runInAsyncScope(
+      (effect) => {
+        entered = true
+        fiber.evaluate(effect)
+      },
+      undefined,
+      effect
+    )
+  } catch (error) {
+    if (entered) throw error
+    return fiber.evaluate(effect)
+  }
+}
+
 /** @internal */
 export const getCurrentFiber = (): Fiber.Fiber<any, any> | undefined => (globalThis as any)[currentFiberTypeId]
 
@@ -585,7 +605,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     } else if (this._asyncContext !== undefined) {
       const asyncContext = this._asyncContext
       this._asyncContext = undefined
-      return asyncContext.runInAsyncScope(this.evaluate, this, effect)
+      return evaluateInAsyncContext(this, asyncContext, effect)
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
       this._yielded = undefined

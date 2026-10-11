@@ -106,9 +106,13 @@ const setTimer: (f: () => void) => () => void = "setImmediate" in globalThis
     return (): void => clearTimeout(timer)
   }
 
-// Some runtimes (e.g. Cloudflare Workers) throw when a timer is set in global
-// scope. Fall back to a microtask so effects can still yield at module load.
-const setImmediate = (f: () => void) => {
+// Cloudflare Workers drops timers set by a request once it has responded, which
+// would strand the dispatcher's queued tasks, so always use a microtask there.
+const isCloudflareWorkers = (globalThis as any).navigator?.userAgent === "Cloudflare-Workers"
+
+// Some runtimes throw when a timer is set in global scope. Fall back to a
+// microtask so effects can still yield at module load.
+const setImmediate = isCloudflareWorkers ? setMicrotask : (f: () => void) => {
   try {
     return setTimer(f)
   } catch {
@@ -159,6 +163,26 @@ class PriorityBuckets {
  * `MixedScheduler` supports synchronous and asynchronous execution modes, uses
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
+ *
+ * In `"async"` mode, queued tasks run in a `setImmediate` (or `setTimeout(0)`)
+ * callback. On Cloudflare Workers they run in a microtask instead, because a
+ * timer set by a request never fires once that request has responded, which
+ * would leave long-lived fibers unable to make progress.
+ *
+ * **Gotchas**
+ *
+ * On Cloudflare Workers, yielding does not return control to the event loop:
+ *
+ * - a CPU-bound fiber delays other requests on the same isolate until it
+ *   finishes or waits on I/O
+ * - a loop that polls with `Effect.yieldNow` for an I/O result never sees it,
+ *   and runs until the CPU limit
+ * - `Effect.sleep`, timeouts, and schedules still use timers owned by the
+ *   request that set them, so a long-lived fiber that sleeps stops when that
+ *   request ends
+ *
+ * Pass a custom `setImmediate` function to the constructor to change how
+ * queued tasks are dispatched.
  *
  * @stability stable
  * @category models
