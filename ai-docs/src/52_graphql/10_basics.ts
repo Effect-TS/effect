@@ -20,6 +20,24 @@ import { FetchHttpClient } from "effect/http"
 //       }
 //     }
 //   }
+//
+// Each nested selection is its own class, so editor hovers show its name.
+export class RepoIssuesPageInfo extends Schema.Opaque<RepoIssuesPageInfo>()(
+  Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) })
+) {}
+
+export class RepoIssuesIssue extends Schema.Opaque<RepoIssuesIssue>()(
+  Schema.Struct({ number: Schema.Int, title: Schema.String })
+) {}
+
+export class RepoIssuesIssueConnection extends Schema.Opaque<RepoIssuesIssueConnection>()(
+  Schema.Struct({ pageInfo: RepoIssuesPageInfo, nodes: Schema.NullOr(Schema.Array(Schema.NullOr(RepoIssuesIssue))) })
+) {}
+
+export class RepoIssuesRepository extends Schema.Opaque<RepoIssuesRepository>()(
+  Schema.Struct({ issues: RepoIssuesIssueConnection })
+) {}
+
 export const RepoIssues = GraphQL.query("RepoIssues", {
   document:
     "query RepoIssues($owner:String!,$name:String!,$after:String){repository(owner:$owner,name:$name){issues(first:50,after:$after){pageInfo{hasNextPage endCursor}nodes{number title}}}}",
@@ -29,12 +47,7 @@ export const RepoIssues = GraphQL.query("RepoIssues", {
     after: Schema.optional(Schema.NullOr(Schema.String))
   },
   result: Schema.Struct({
-    repository: Schema.NullOr(Schema.Struct({
-      issues: Schema.Struct({
-        pageInfo: Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) }),
-        nodes: Schema.NullOr(Schema.Array(Schema.NullOr(Schema.Struct({ number: Schema.Int, title: Schema.String }))))
-      })
-    }))
+    repository: Schema.NullOr(RepoIssuesRepository)
   })
 })
 

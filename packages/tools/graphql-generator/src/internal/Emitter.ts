@@ -1,7 +1,8 @@
 /**
  * Emits per-document and shared modules from validated documents. Paths and
  * import specifiers are supplied by the caller; output needs no formatter.
- * Recursive input objects produce diagnostics instead of output.
+ * Recursive input objects and generated class names that clash produce
+ * diagnostics instead of output.
  *
  * @internal
  */
@@ -50,8 +51,8 @@ export const emit = (options: Options): Output => {
   const errors = emitter.check()
   if (errors.length > 0) return { files: [], errors, unmappedScalars: [] }
   const emitted = options.files.map((file) => emitter.emitFile(file))
-  const importErrors = emitted.flatMap((result) => result.errors)
-  if (importErrors.length > 0) return { files: [], errors: importErrors, unmappedScalars: [] }
+  const emitErrors = [...emitted.flatMap((result) => result.errors), ...emitter.checkClassNames(emitted)]
+  if (emitErrors.length > 0) return { files: [], errors: emitErrors, unmappedScalars: [] }
   const shared = emitter.emitShared()
   return { files: [shared.file, ...emitted.map((result) => result.file)], errors: [], unmappedScalars: shared.unmapped }
 }
@@ -68,8 +69,14 @@ const header = (sourceName: string | undefined): string =>
     ? `${headerPrefix}. Do not edit.`
     : `${headerPrefix} from ${sourceName}. Do not edit.`
 
-/** Escapes `*\/` so text can't end the JSDoc comment it is written into. */
-const escapeComment = (text: string): string => text.replace(/\*\//g, "*\\/")
+/** A private-use character marking class references in rendered structs (see `classRef`). */
+const classMarker = "\uE000"
+
+/**
+ * Escapes `*\/` so text can't end the JSDoc comment it is written into, and
+ * the class reference marker so it can't be mistaken for one.
+ */
+const escapeComment = (text: string): string => text.replace(/\*\//g, "*\\/").replace(/\uE000/g, "\\uE000")
 
 const deprecation = (reason: string): string => escapeComment(reason.replace(/\s*\r?\n\s*/g, " "))
 
@@ -219,6 +226,12 @@ interface Sourced<S extends Ast.Selection> {
   readonly selection: S
   readonly via: Ast.FragmentSpread | undefined
   readonly conditional: boolean
+  /**
+   * The selection's index in each enclosing selection set, from the
+   * definition's root, with fragments expanded where they are spread.
+   * Comparing two orders tells which selection comes first in the document.
+   */
+  readonly order: ReadonlyArray<number>
 }
 
 /** A selection after inline fragments are flattened into their parent. */
@@ -234,7 +247,7 @@ interface SpreadItem {
 type Item = { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Sourced<Ast.Field>> } | SpreadItem
 
 const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Selection>> =>
-  selections.map((selection) => ({ selection, via: undefined, conditional: false }))
+  selections.map((selection, i) => ({ selection, via: undefined, conditional: false, order: [i] }))
 
 /**
  * How `@skip` / `@include` decide a selection: a literal
@@ -282,6 +295,81 @@ const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: stri
   return `${prefix.trimEnd()}\n${lines.join("\n")}`
 }
 
+/**
+ * A nested result selection written as its own Opaque class. Identical
+ * selections in one definition share it, keeping the first one's path.
+ */
+interface ExtractedClass {
+  readonly id: number
+  /** What the name ends with: the type's name, or `<AbstractType>Other` for a catch-all member. */
+  readonly typeName: string
+  readonly description: string | undefined
+  /** Response keys from the definition's root down to the field holding the selection. */
+  path: ReadonlyArray<string>
+  /** Where the selection is written in the file being emitted. */
+  offset: number
+  /** The selection's place in the document (see `Sourced.order`). */
+  order: ReadonlyArray<number>
+  /** The struct, with `classRef(id)` standing for each class it uses. */
+  readonly body: string
+}
+
+/**
+ * A rendered struct or struct member. `identity` stands for the selection
+ * that produced it: response keys, the fields they select, optionality and
+ * nested classes and fragments, independent of the order keys are written in.
+ */
+interface Struct {
+  readonly code: string
+  readonly identity: string
+}
+
+/** A reference to a fragment, standing for its own selection. */
+const fragmentStruct = (name: string): Struct => ({ code: name, identity: name })
+
+/** A reference to an extracted class, whose id stands for the class's identity. */
+const classStruct = (ref: string): Struct => ({ code: ref, identity: ref })
+
+/** Which of two `Sourced.order`s comes first in the document. */
+const compareOrder = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): number => {
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i]) return a[i]! - b[i]!
+  }
+  return a.length - b.length
+}
+
+/** The classes extracted while rendering one operation or fragment, named after `prefix`. */
+interface ClassScope {
+  readonly prefix: string
+  readonly classes: Array<ExtractedClass>
+  readonly byShape: Map<string, ExtractedClass>
+}
+
+interface EmittedFile {
+  readonly file: GeneratedFile
+  readonly errors: ReadonlyArray<Diagnostic>
+  /** The class names generated for nested selections in the file. */
+  readonly generated: ReadonlyArray<GeneratedName>
+}
+
+/** A generated class name and where its selection is written. */
+interface GeneratedName {
+  readonly name: string
+  readonly offset: number
+}
+
+/**
+ * Stands for an extracted class until the definition's classes are named.
+ * `escapeComment` escapes the marker in the only text from documents that
+ * structs carry.
+ */
+const classRef = (id: number): string => `${classMarker}${id}${classMarker}`
+
+const classRefPattern = /\uE000(\d+)\uE000/g
+
+/** `author` → `Author`, for response keys in class names. */
+const capitalize = (key: string): string => key.slice(0, 1).toUpperCase() + key.slice(1)
+
 interface FileContext {
   readonly file: DocumentFile
   usesSchema: boolean
@@ -291,6 +379,17 @@ interface FileContext {
   readonly imports: Map<string, Ast.FragmentSpread>
   /** Fragments of this file referenced by the code being rendered. */
   localRefs: Set<string>
+  /** The classes of the definition being rendered. */
+  scope: ClassScope
+  /** Response keys from the definition's root to the selection being rendered. */
+  readonly path: Array<string>
+  /** Where the field holding the selection being rendered is written. */
+  offset: number
+  /** The document order of the field holding the selection being rendered. */
+  order: ReadonlyArray<number>
+  /** Every class name generated for this file. */
+  readonly generated: Array<GeneratedName>
+  readonly errors: Array<Diagnostic>
 }
 
 class Emitter {
@@ -526,19 +625,24 @@ class Emitter {
    */
   narrow(file: DocumentFile, selections: ReadonlyArray<Sourced<Ast.Selection>>, target: string): Array<FlatSelection> {
     const out: Array<FlatSelection> = []
-    for (const { conditional: outer, selection, via } of selections) {
+    for (const { conditional: outer, order, selection, via } of selections) {
       const included = inclusion(selection.directives)
       if (included === "exclude") continue
       const conditional = outer || included === "conditional"
       switch (selection._tag) {
         case "Field":
-          out.push({ selection, via, conditional })
+          out.push({ selection, via, conditional, order })
           break
         case "InlineFragment":
           if (this.applies(selection.typeCondition?.name.value, target)) {
             out.push(...this.narrow(
               file,
-              selection.selectionSet.selections.map((selection) => ({ selection, via, conditional })),
+              selection.selectionSet.selections.map((selection, i) => ({
+                selection,
+                via,
+                conditional,
+                order: [...order, i]
+              })),
               target
             ))
           }
@@ -547,9 +651,9 @@ class Emitter {
           const fragment = this.fragment(selection.name.value)
           const condition = fragment.definition.typeCondition.name.value
           if (condition === target && this.type(target)._tag === "ObjectType" && !conditional) {
-            out.push({ selection, via, conditional })
+            out.push({ selection, via, conditional, order })
           } else if (this.applies(condition, target)) {
-            out.push(...this.narrow(file, this.expand(file, fragment, selection, via, conditional), target))
+            out.push(...this.narrow(file, this.expand(file, fragment, selection, via, conditional, order), target))
           }
           break
         }
@@ -564,11 +668,17 @@ class Emitter {
     fragment: FragmentEntry,
     spread: Ast.FragmentSpread,
     via: Ast.FragmentSpread | undefined,
-    conditional: boolean
+    conditional: boolean,
+    order: ReadonlyArray<number>
   ): Array<Sourced<Ast.Selection>> {
     // A local fragment's selections are written in this file; another file's come in through this spread.
     const through = fragment.file === file ? undefined : via ?? spread
-    return fragment.definition.selectionSet.selections.map((selection) => ({ selection, via: through, conditional }))
+    return fragment.definition.selectionSet.selections.map((selection, i) => ({
+      selection,
+      via: through,
+      conditional,
+      order: [...order, i]
+    }))
   }
 
   group(flat: ReadonlyArray<FlatSelection>): Array<Item> {
@@ -580,7 +690,7 @@ class Emitter {
       if (selection._tag === "Field") {
         const key = (selection.alias ?? selection.name).value
         const existing = fields.get(key)
-        const sourced = { selection, via: entry.via, conditional: entry.conditional }
+        const sourced = { selection, via: entry.via, conditional: entry.conditional, order: entry.order }
         if (existing === undefined) {
           const merged = [sourced]
           fields.set(key, merged)
@@ -651,7 +761,11 @@ class Emitter {
       flat = flat.flatMap((entry) => {
         const selection = entry.selection
         if (selection._tag !== "FragmentSpread" || selection.name.value !== overlapping.name) return [entry]
-        return this.narrow(file, this.expand(file, fragment, selection, entry.via, entry.conditional), target)
+        return this.narrow(
+          file,
+          this.expand(file, fragment, selection, entry.via, entry.conditional, entry.order),
+          target
+        )
       })
     }
   }
@@ -679,26 +793,66 @@ class Emitter {
    * The Schema for a selection set on `parentName`, starting on a line
    * indented by `indent`. A selection that is only one spread of a fragment
    * on exactly that type references the fragment unless `alwaysStruct` is
-   * set.
+   * set. With `nested` set, a struct with members is extracted as a class.
    */
   selection(
     ctx: FileContext,
     parentName: string,
     selections: ReadonlyArray<Sourced<Ast.Selection>>,
     indent: string,
-    alwaysStruct = false
-  ): string {
+    alwaysStruct = false,
+    nested = false
+  ): Struct {
     const parent = this.type(parentName)
     if (isAbstract(parent)) {
       const only = alwaysStruct ? undefined : this.onlySpread(selections, parentName)
-      return only !== undefined ? this.fragmentRef(ctx, only) : this.abstractSelection(ctx, parent, selections, indent)
+      return only !== undefined
+        ? fragmentStruct(this.fragmentRef(ctx, only))
+        : this.abstractSelection(ctx, parent, selections, indent, nested)
     }
     const items = this.resolveItems(ctx.file, selections, parentName)
     const only = items[0]
     if (!alwaysStruct && items.length === 1 && only!._tag === "Spread") {
-      return this.fragmentRef(ctx, only!)
+      return fragmentStruct(this.fragmentRef(ctx, only!))
     }
-    return this.structOf(ctx, parent, items, indent, `Schema.Literal(${JSON.stringify(parent.name)})`, false)
+    const typename = `Schema.Literal(${JSON.stringify(parent.name)})`
+    return nested && items.length > 0
+      ? classStruct(
+        this.extract(ctx, parent.name, parent.description, this.structOf(ctx, parent, items, "", typename, false))
+      )
+      : this.structOf(ctx, parent, items, indent, typename, false)
+  }
+
+  /**
+   * Registers a struct written at the top level as a class of the current
+   * definition and refers to it. A struct with the same identity reuses the
+   * class, which keeps the path of whichever occurrence comes first in the
+   * document.
+   */
+  extract(ctx: FileContext, typeName: string, description: string | undefined, struct: Struct): string {
+    const scope = ctx.scope
+    const shape = `${typeName}\u0001${struct.identity}`
+    const existing = scope.byShape.get(shape)
+    if (existing !== undefined) {
+      if (compareOrder(ctx.order, existing.order) < 0) {
+        existing.path = ctx.path.slice()
+        existing.offset = ctx.offset
+        existing.order = ctx.order
+      }
+      return classRef(existing.id)
+    }
+    const extracted: ExtractedClass = {
+      id: scope.classes.length,
+      typeName,
+      description,
+      path: ctx.path.slice(),
+      offset: ctx.offset,
+      order: ctx.order,
+      body: struct.code
+    }
+    scope.classes.push(extracted)
+    scope.byShape.set(shape, extracted)
+    return classRef(extracted.id)
   }
 
   /** The one spread a selection set consists of, when it is an unconditional spread of a fragment on `parentName`. */
@@ -747,41 +901,58 @@ class Emitter {
   /**
    * A selection on an interface or union: one struct per
    * selected object type with `__typename: Schema.Literal("T")`, and one for
-   * every other possible type with `GraphQL.otherTypename`.
+   * every other possible type with `GraphQL.otherTypename`. Each member of
+   * the union is extracted as a class; without selected types the one struct
+   * is extracted only when `nested` is set. The identity ignores the order the
+   * types are mentioned in, which only decides the order members are written.
    */
   abstractSelection(
     ctx: FileContext,
     parent: SchemaModel.InterfaceType | SchemaModel.UnionType,
     selections: ReadonlyArray<Sourced<Ast.Selection>>,
-    indent: string
-  ): string {
+    indent: string,
+    nested: boolean
+  ): Struct {
     ctx.usesGraphQL = true
     const selected = this.selectedTypes(parent, selections)
     const others = `GraphQL.otherTypename<${this.typename(ctx, parent.name)}>()([${
       selected.map((name) => JSON.stringify(name)).join(", ")
     }])`
-    const member = (type: SchemaModel.NamedType, typename: string, indent: string) =>
+    const othersIdentity = `GraphQL.otherTypename(${selected.slice().sort().join(",")})`
+    const member = (type: SchemaModel.NamedType, typename: string, indent: string, typenameIdentity = typename) =>
       this.structOf(
         ctx,
         type,
         this.resolveItems(ctx.file, selections, type.name, ["__typename"]),
         indent,
         typename,
-        true
+        true,
+        typenameIdentity
       )
-    if (selected.length === 0) return member(parent, others, indent)
-    const memberIndent = `${indent}  `
+    if (selected.length === 0) {
+      return nested
+        ? classStruct(this.extract(ctx, parent.name, parent.description, member(parent, others, "", othersIdentity)))
+        : member(parent, others, indent, othersIdentity)
+    }
     const members = [
-      ...selected.map((name) => member(this.type(name), `Schema.Literal(${JSON.stringify(name)})`, memberIndent)),
-      member(parent, others, memberIndent)
+      ...selected.map((name) => {
+        const type = this.type(name)
+        return this.extract(ctx, name, type.description, member(type, `Schema.Literal(${JSON.stringify(name)})`, ""))
+      }),
+      this.extract(ctx, `${parent.name}Other`, parent.description, member(parent, others, "", othersIdentity))
     ]
-    return `Schema.Union([\n${members.map((member) => `${memberIndent}${member}`).join(",\n")}\n${indent}])`
+    const memberIndent = `${indent}  `
+    return {
+      code: `Schema.Union([\n${members.map((member) => `${memberIndent}${member}`).join(",\n")}\n${indent}])`,
+      identity: `Schema.Union(${members.slice().sort().join(",")})`
+    }
   }
 
   /**
    * A struct for `items` on `parent`. `typename` is the Schema for a
    * selected `__typename`; with `discriminated` set, `__typename` comes first
-   * whether or not it was selected.
+   * whether or not it was selected. `typenameIdentity` stands for `typename`
+   * in the identity.
    */
   structOf(
     ctx: FileContext,
@@ -789,19 +960,28 @@ class Emitter {
     items: ReadonlyArray<Item>,
     indent: string,
     typename: string,
-    discriminated: boolean
-  ): string {
+    discriminated: boolean,
+    typenameIdentity = typename
+  ): Struct {
     ctx.usesSchema = true
     const memberIndent = `${indent}  `
     const members: Array<string> = discriminated ? [`${memberIndent}__typename: ${typename}`] : []
+    const identities: Array<string> = []
     for (const item of items) {
       if (item._tag === "Spread") {
-        members.push(`${memberIndent}...${this.fragmentRef(ctx, item)}.fields`)
+        const name = this.fragmentRef(ctx, item)
+        members.push(`${memberIndent}...${name}.fields`)
+        identities.push(`...${name}`)
       } else if (!(discriminated && item.key === "__typename")) {
-        members.push(this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename))
+        const member = this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename, typenameIdentity)
+        members.push(member.code)
+        identities.push(member.identity)
       }
     }
-    return struct(members, indent)
+    return {
+      code: struct(members, indent),
+      identity: [discriminated ? typenameIdentity : "", ...identities.sort()].join("\u0002")
+    }
   }
 
   resultMember(
@@ -810,35 +990,66 @@ class Emitter {
     key: string,
     fields: ReadonlyArray<Sourced<Ast.Field>>,
     indent: string,
-    typename: string
-  ): string {
+    typename: string,
+    typenameIdentity: string
+  ): Struct {
     const name = fields[0]!.selection.name.value
-    const optional = (expression: string): string =>
-      fields.every((field) => field.conditional) ? `Schema.optionalKey(${expression})` : expression
-    if (name === "__typename") return `${indent}${propertyKey(key)}: ${optional(typename)}`
+    const isOptional = fields.every((field) => field.conditional)
+    const optional = (expression: string): string => isOptional ? `Schema.optionalKey(${expression})` : expression
+    const identity = (inner: string) => [key, name, isOptional ? "?" : "", inner].join("\u0003")
+    if (name === "__typename") {
+      return { code: `${indent}${propertyKey(key)}: ${optional(typename)}`, identity: identity(typenameIdentity) }
+    }
     const definition = this.fieldDefinition(parent, name)
     const typeName = SchemaModel.namedTypeOf(definition.type)
     const type = this.type(typeName)
     const inner = type._tag === "ObjectType" || isAbstract(type)
-      ? this.selection(
+      ? this.nestedSelection(
         ctx,
+        key,
+        fields[0]!,
         typeName,
+        indent,
         // The parent's key covers its only occurrence's condition. With several
         // occurrences, the parent can be present because of another one, so
         // each occurrence's condition carries over to the children it adds.
-        fields.flatMap(({ conditional, selection: field, via }) =>
-          (field.selectionSet?.selections ?? []).map((selection) => ({
+        fields.flatMap(({ conditional, order, selection: field, via }) =>
+          (field.selectionSet?.selections ?? []).map((selection, i) => ({
             selection,
             via,
-            conditional: conditional && fields.length > 1
+            conditional: conditional && fields.length > 1,
+            order: [...order, i]
           }))
-        ),
-        indent
+        )
       )
-      : this.resultLeaf(ctx, type)
+      : undefined
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    const expression = optional(typeSchema(definition.type, () => inner))
-    return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`
+    const expression = optional(typeSchema(definition.type, () => inner?.code ?? this.resultLeaf(ctx, type)))
+    return {
+      code: `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`,
+      // A leaf's Schema follows from the field.
+      identity: identity(inner?.identity ?? "")
+    }
+  }
+
+  /** The selection under the field `key`, with `key` added to the path of the classes it extracts. */
+  nestedSelection(
+    ctx: FileContext,
+    key: string,
+    first: Sourced<Ast.Field>,
+    typeName: string,
+    indent: string,
+    selections: ReadonlyArray<Sourced<Ast.Selection>>
+  ): Struct {
+    const { offset, order } = ctx
+    ctx.path.push(key)
+    ctx.offset = (first.via ?? first.selection).loc.start
+    ctx.order = first.order
+    const expression = this.selection(ctx, typeName, selections, indent, false, true)
+    ctx.path.pop()
+    ctx.offset = offset
+    ctx.order = order
+    return expression
   }
 
   resultLeaf(ctx: FileContext, type: SchemaModel.NamedType): string {
@@ -860,14 +1071,20 @@ class Emitter {
    * found from the code actually emitted, so a spread written out inline
    * counts only for the fragments it really brings in.
    */
-  emitFile(file: DocumentFile): { readonly file: GeneratedFile; readonly errors: ReadonlyArray<Diagnostic> } {
+  emitFile(file: DocumentFile): EmittedFile {
     const ctx: FileContext = {
       file,
       usesSchema: false,
       usesGraphQL: false,
       usesShared: false,
       imports: new Map(),
-      localRefs: new Set()
+      localRefs: new Set(),
+      scope: { prefix: "", classes: [], byShape: new Map() },
+      path: [],
+      offset: 0,
+      order: [],
+      generated: [],
+      errors: []
     }
 
     const fragments = new Map<string, { readonly code: string; readonly refs: ReadonlySet<string> }>()
@@ -876,9 +1093,10 @@ class Emitter {
     for (const definition of file.document.definitions) {
       ctx.localRefs = new Set()
       if (definition._tag === "FragmentDefinition") {
-        fragments.set(definition.name.value, { code: this.emitFragment(ctx, definition), refs: ctx.localRefs })
+        const code = this.withClasses(ctx, definition.name, () => this.emitFragment(ctx, definition))
+        fragments.set(definition.name.value, { code, refs: ctx.localRefs })
       } else if (definition._tag === "OperationDefinition") {
-        operations.push(this.emitOperation(ctx, definition))
+        operations.push(this.withClasses(ctx, definition.name!, () => this.emitOperation(ctx, definition)))
         operationNames.push(definition.name!.value)
       }
     }
@@ -896,7 +1114,7 @@ class Emitter {
 
     const blocks = [...ordered, ...operations]
     const group = groupName(file.sourceName)
-    const errors: Array<Diagnostic> = []
+    const errors = ctx.errors
     if (operationNames.length > 0) {
       blocks.push(
         `/** Every operation in ${file.sourceName}. */\nexport const ${group} = GraphQLGroup.make(${
@@ -939,8 +1157,135 @@ class Emitter {
         path: file.outputPath,
         contents: `${[header(file.sourceName), ...imports].join("\n")}\n\n${blocks.join("\n\n")}\n`
       },
-      errors
+      errors,
+      generated: ctx.generated
     }
+  }
+
+  /**
+   * Renders one operation or fragment, then names the classes it extracted
+   * and declares them before it, each after the classes it uses.
+   */
+  withClasses(ctx: FileContext, name: Ast.Name, render: () => string): string {
+    const scope: ClassScope = { prefix: name.value, classes: [], byShape: new Map() }
+    ctx.scope = scope
+    ctx.offset = name.loc.start
+    ctx.order = []
+    const code = render()
+    const names = this.nameClasses(ctx, scope)
+    const fill = (text: string) => text.replace(classRefPattern, (_, id: string) => names[Number(id)]!)
+    const classes = scope.classes.map((extracted) => {
+      const name = names[extracted.id]!
+      return `${
+        jsdoc(descriptionLines(extracted.description), "")
+      }export class ${name} extends Schema.Opaque<${name}>()(${fill(extracted.body)}) {}`
+    })
+    return [...classes, fill(code)].join("\n\n")
+  }
+
+  /**
+   * Names a definition's classes `<prefix><TypeName>`. Classes of one type
+   * that want the same name all add the next response key up their path,
+   * until their names differ; ones that run out of keys are reported. Equal
+   * names across types are left to `checkClassNames`.
+   */
+  nameClasses(ctx: FileContext, scope: ClassScope): Array<string> {
+    const classes = scope.classes
+    const levels = classes.map(() => 0)
+    const nameAt = (extracted: ExtractedClass, level: number): string =>
+      `${scope.prefix}${
+        extracted.path.slice(extracted.path.length - level).map(capitalize).join("")
+      }${extracted.typeName}`
+    let names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
+    let clashing: Array<ReadonlyArray<number>> = []
+    for (;;) {
+      const byName = Arr.groupBy(classes.map((_, i) => i), (i) => `${classes[i]!.typeName}\u0001${names[i]}`)
+      clashing = Object.values(byName).filter((group) => group.length > 1)
+      let advanced = false
+      for (const group of clashing) {
+        for (const i of group) {
+          if (levels[i]! < classes[i]!.path.length) {
+            levels[i]!++
+            advanced = true
+          }
+        }
+      }
+      if (!advanced) break
+      names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
+    }
+    const reported = new Set<number>()
+    for (const group of clashing) {
+      for (const i of group) {
+        reported.add(i)
+        ctx.errors.push(make(
+          ctx.file.source,
+          classes[i]!.offset,
+          `Different selections here would all generate the class "${names[i]}"; alias one of the fields.`
+        ))
+      }
+    }
+    for (const [i, extracted] of classes.entries()) {
+      if (!reported.has(i)) ctx.generated.push({ name: names[i]!, offset: extracted.offset })
+    }
+    return names
+  }
+
+  /**
+   * Generated class names that are reserved, taken by the group of their
+   * file, or equal to an operation, fragment or class name anywhere, sorted
+   * by file and position.
+   */
+  checkClassNames(emitted: ReadonlyArray<EmittedFile>): Array<Diagnostic> {
+    const files = this.options.files
+    const errors: Array<{ readonly file: number; readonly offset: number; readonly message: string }> = []
+    const owners = new Map<string, Array<{ readonly file: number; readonly offset: number }>>()
+    const own = (name: string, file: number, offset: number): void => {
+      const entries = owners.get(name)
+      if (entries === undefined) owners.set(name, [{ file, offset }])
+      else entries.push({ file, offset })
+    }
+    const generated = new Set<string>()
+    emitted.forEach((result, file) => {
+      const group = groupName(files[file]!.sourceName)
+      for (const { name, offset } of result.generated) {
+        generated.add(name)
+        own(name, file, offset)
+        if (importedNames.has(name) || unbindable(name)) {
+          errors.push({
+            file,
+            offset,
+            message: `The generated class name "${name}" is reserved in generated code; alias the field.`
+          })
+        } else if (name === group) {
+          errors.push({
+            file,
+            offset,
+            message: `The generated class name "${name}" is taken by the group this file exports.`
+          })
+        }
+      }
+    })
+    files.forEach((file, index) => {
+      for (const definition of file.document.definitions) {
+        if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
+        if (definition.name !== undefined && generated.has(definition.name.value)) {
+          own(definition.name.value, index, definition.name.loc.start)
+        }
+      }
+    })
+    for (const [name, entries] of owners) {
+      if (entries.length < 2) continue
+      for (const { file, offset } of entries) {
+        errors.push({
+          file,
+          offset,
+          message: `There can be only one operation, fragment or generated class named "${name}".`
+        })
+      }
+    }
+    return errors
+      .sort((a, b) => a.file - b.file || a.offset - b.offset)
+      .map((error) => make(files[error.file]!.source, error.offset, error.message))
   }
 
   /**
@@ -955,10 +1300,10 @@ class Emitter {
     const doc = docLines([`\`fragment ${name} on ${type.name}\``], descriptionLines(description))
     const selections = written(definition.selectionSet.selections)
     if (isAbstract(type)) {
-      const body = this.abstractSelection(ctx, type, selections, "")
+      const body = this.abstractSelection(ctx, type, selections, "", false).code
       return `${jsdoc(doc, "")}export const ${name} = ${body}\nexport type ${name} = typeof ${name}.Type`
     }
-    const body = this.selection(ctx, type.name, selections, "", true)
+    const body = this.selection(ctx, type.name, selections, "", true).code
     return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
   }
 
@@ -984,7 +1329,7 @@ class Emitter {
       })
       lines.push(`  variables: {\n${members.join(",\n")}\n  },`)
     }
-    lines.push(`  result: ${this.selection(ctx, root, written(definition.selectionSet.selections), "  ")}`)
+    lines.push(`  result: ${this.selection(ctx, root, written(definition.selectionSet.selections), "  ").code}`)
     return [
       `${jsdoc(doc, "")}export const ${name} = GraphQL.${definition.operation}(${JSON.stringify(name)}, {`,
       ...lines,

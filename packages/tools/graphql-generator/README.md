@@ -74,7 +74,28 @@ reach. Defaulted scalars are not included in that warning.
   Schemas, plus a type namespace such as `RepoIssues.Variables` and
   `RepoIssues.Result`
 - a Schema per fragment
+- a `Schema.Opaque` class per nested object selection and per member of an
+  interface or union selection, so editor hovers show a name instead of the
+  whole type
 - `FooGraphQLGroup`, a `GraphQLGroup` with every operation in the file
+
+A nested selection's class is named after its operation and type, such as
+`RepoIssuesIssue`, or after its fragment inside one, such as
+`IssueSummaryUser`. The member covering the types an interface or union
+selection doesn't name ends in `Other`, such as `RoomEventsEventOther`. An
+interface or union selection without any `... on` type conditions is one
+struct rather than a union, so its class takes the abstract type's name with
+no `Other`, such as `RoomEventsEvent`.
+
+Selections of a type share one class when they select the same fields under
+the same response keys, with the same nested selections and `@skip` /
+`@include` optionality, in any order. When different selections of a type
+would get the same name, each adds its field's response key
+(`RepoIssuesAuthorUser`), then parent response keys until the names differ;
+a shared class uses the path of its first occurrence. A generated name that
+matches an operation, fragment or generated class of another type is an
+error, as is a clash left after every response key is used: rename the
+definition or alias the field.
 
 The shared module holds only the scalars, enums, input objects and
 `__typename` unions the operations reach. Commit the generated files, and
