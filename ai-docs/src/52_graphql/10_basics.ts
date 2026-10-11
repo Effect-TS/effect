@@ -60,12 +60,13 @@ export class GitHubAuth extends GraphQLMiddleware.Service<GitHubAuth>()("app/Git
 export const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues).middleware(GitHubAuth)
 
 // The client has one method per operation, named after it.
-export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
-  make: GraphQLClient.make(GitHubGraphQLGroup)
-}) {
+export class GitHub extends Context.Service<
+  GitHub,
+  GraphQLClient.GraphQLClient<GraphQLGroup.Operations<typeof GitHubGraphQLGroup>>
+>()("app/GitHub") {
   static readonly layerTest = GraphQLClient.layerTest(GitHub, GitHubGraphQLGroup)
 
-  static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
+  static readonly layer = Layer.effect(GitHub, GraphQLClient.make(GitHubGraphQLGroup)).pipe(
     Layer.provide(GitHubAuth.layer),
     // Queries and mutations are sent as `POST`. Subscriptions use graphql-sse
     // here, or graphql-ws with `GraphQLProtocol.layerWebSocket`.
