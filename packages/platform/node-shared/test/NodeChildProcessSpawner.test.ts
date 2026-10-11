@@ -13,6 +13,7 @@ import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 
 const NodeServices = NodeChildProcessSpawner.layer.pipe(
@@ -24,6 +25,22 @@ const NodeServices = NodeChildProcessSpawner.layer.pipe(
 
 ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
+})
+
+describe("interrupted buffered input", () => {
+  for (const input of ["stdin", "fd3"] as const) {
+    it(`does not crash the host when ${input} is interrupted`, () => {
+      // Isolate the host so an unhandled writable error becomes an assertion
+      // failure rather than an uncaught exception in the test runner.
+      const result = spawnSync(process.execPath, [join(__dirname, "fixtures", "buffered-input.ts"), input], {
+        encoding: "utf8",
+        timeout: 10_000
+      })
+      assert.strictEqual(result.error, undefined)
+      assert.strictEqual(result.status, 0, result.stderr)
+      assert.strictEqual(result.stdout, "program finished: Failure\nstill alive after 500ms\n")
+    })
+  }
 })
 
 describe("buildSpawnOptions", () => {
