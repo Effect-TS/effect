@@ -28,7 +28,7 @@ const SearchRepos = GraphQL.query("SearchRepos", {
   })
 })
 
-const repo = (nameWithOwner: string) => ({ __typename: "Repository", nameWithOwner })
+const repo = (nameWithOwner: string) => ({ __typename: "Repository" as const, nameWithOwner })
 
 /** Answers each request with `respond(variables)` and records the requests. */
 const makeClient = (respond: (variables: any) => unknown) =>
@@ -59,9 +59,9 @@ const byId = (client: Effect.Success<ReturnType<typeof makeClient>>["client"]) =
 
 const byName = (client: Effect.Success<ReturnType<typeof makeClient>>["client"]) =>
   GraphQLResolver.request(GraphQLResolver.findById(client.SearchRepos, {
+    key: (repo) => repo.nameWithOwner,
     variables: (names) => ({ query: names.map((name) => `repo:${name}`).join(" ") }),
     path: ["search", "nodes"],
-    key: (repo) => repo.nameWithOwner,
     typename: "Repository"
   }))
 
@@ -152,6 +152,7 @@ describe("GraphQLResolver", () => {
 
         for (const result of results) {
           assert.instanceOf(result, GraphQLClientError)
+          assert.strictEqual(result.reason._tag, "DecodeError")
         }
       }))
   })

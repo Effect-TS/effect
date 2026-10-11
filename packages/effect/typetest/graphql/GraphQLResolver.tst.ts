@@ -17,6 +17,17 @@ const method = hole<GraphQLClient.OperationMethod<typeof SearchRepos>>()
 const variables = (keys: ReadonlyArray<string>) => ({ query: keys.join(" ") })
 
 describe("GraphQLResolver", () => {
+  it("key-first findById infers string request keys", () => {
+    const get = GraphQLResolver.request(GraphQLResolver.findById(method, {
+      key: (repo) => repo.nameWithOwner,
+      variables: (names) => ({ query: names.join(" ") }),
+      path: ["search", "nodes"],
+      typename: "Repository"
+    }))
+    expect(get).type.toBeCallableWith("Effect-TS/effect")
+    expect(get).type.not.toBeCallableWith(123)
+  })
+
   it("rejects a path segment that is not a key of the object at that level", () => {
     expect(GraphQLResolver.ordered).type.not.toBeCallableWith(method, { variables, path: ["search", "edges"] })
     expect(GraphQLResolver.ordered).type.not.toBeCallableWith(method, {
