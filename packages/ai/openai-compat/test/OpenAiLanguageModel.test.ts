@@ -1062,6 +1062,71 @@ describe("OpenAiLanguageModel", () => {
           { role: "tool", tool_call_id: "call_1", content: "hello" }
         ])
       }))
+
+    it.effect("replays decoded Groq reasoning under its original field alongside text and tool calls", () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(
+                request,
+                requests.length > 1 ? makeChatCompletion() : makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      reasoning: "Need the file",
+                      content: "Let me read it.",
+                      tool_calls: [{
+                        id: "call_1",
+                        type: "function",
+                        function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            })
+          ))
+        )
+
+        const generate = (prompt: Prompt.Prompt) =>
+          LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("openai/gpt-oss-120b")),
+            Effect.provide(layer)
+          )
+
+        const prompt = Prompt.make("What is in a.txt?")
+        const first = yield* generate(prompt)
+        yield* generate(Prompt.concat(
+          Prompt.concat(prompt, Prompt.fromResponseParts(first.content)),
+          Prompt.make([{
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+          }])
+        ))
+
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            reasoning: "Need the file",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
   })
 
   describe("generateObject", () => {
