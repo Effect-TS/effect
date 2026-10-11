@@ -6229,6 +6229,26 @@ Expected a value between -2147483648 and 2147483647`
     }
   })
 
+  it("fromURLSearchParams does not decode sparse arrays past the hole bound", async () => {
+    const lenient = new TestSchema.Asserts(
+      Schema.fromURLSearchParams(Schema.Struct({ a: Schema.Array(Schema.UndefinedOr(Schema.String)) }))
+    )
+    await lenient.decoding().fail(
+      new URLSearchParams("a[0]=x&a[1000]=y"),
+      `Expected array
+  at ["a"]`
+    )
+
+    const strict = new TestSchema.Asserts(
+      Schema.fromURLSearchParams(Schema.Struct({ a: Schema.Array(Schema.String) }))
+    )
+    await strict.decoding({ parseOptions: { errors: "all" } }).fail(
+      new URLSearchParams("a[0]=x&a[1000]=y"),
+      `Expected array
+  at ["a"]`
+    )
+  })
+
   it("Trim", async () => {
     const schema = Schema.Trim
     const asserts = new TestSchema.Asserts(schema)
