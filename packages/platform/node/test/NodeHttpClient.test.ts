@@ -30,6 +30,7 @@ const TodoWithoutId = Schema.Struct({
 })
 const largeResponseBody = "a".repeat(10 * 1024 * 1024)
 const responseBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+const bomJsonBytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode("{\"a\":1}")])
 const formDataResponses = [
   {
     name: "URL-encoded",
@@ -105,6 +106,19 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
     })
   ),
   HttpRouter.route("GET", "/bytes", Effect.succeed(HttpServerResponse.uint8Array(responseBytes))),
+  HttpRouter.route(
+    "GET",
+    "/bom-json",
+    Effect.succeed(HttpServerResponse.uint8Array(bomJsonBytes, { contentType: "application/json" }))
+  ),
+  HttpRouter.route(
+    "POST",
+    "/echo-json",
+    Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      return HttpServerResponse.jsonUnsafe(yield* request.json)
+    })
+  ),
   ...formDataResponses.map(({ body, contentType, path }) =>
     HttpRouter.route("GET", path, Effect.succeed(HttpServerResponse.text(body, { contentType })))
   ),
@@ -155,6 +169,17 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         const response = yield* HttpClient.get("/bytes")
         void response.text
         assert.deepStrictEqual(new Uint8Array(yield* response.arrayBuffer), responseBytes)
+      }).pipe(Effect.provide(localServerTestLayer)))
+
+    it.effect("json ignores a leading UTF-8 BOM", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.get("/bom-json")
+        assert.deepStrictEqual(yield* response.json, { a: 1 })
+        const echoed = yield* HttpClient.post("/echo-json", {
+          body: HttpBody.uint8Array(bomJsonBytes, "application/json")
+        })
+        assert.strictEqual(echoed.status, 200)
+        assert.deepStrictEqual(yield* echoed.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
     if (name === "undici") {

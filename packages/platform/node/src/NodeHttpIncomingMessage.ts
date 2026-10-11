@@ -78,7 +78,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.map(this.arrayBuffer, (_) => Buffer.from(_).toString("utf8"))
+    this.textEffect = Effect.map(this.arrayBuffer, (_) => new TextDecoder().decode(_))
     return this.textEffect
   }
 
