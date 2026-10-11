@@ -2097,13 +2097,6 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     .map((part) => (Arr.isCanonicalArrayIndex(part) ? globalThis.Number(part) : part))
 }
 
-interface IndexedContainer {
-  readonly parent: any
-  readonly key: PropertyKey
-  length: number
-  count: number
-}
-
 const MAX_ARRAY_HOLES = 20
 
 /**
@@ -2167,18 +2160,12 @@ export function makeTreeRecord<A>(
   const duplicates = new WeakSet<object>()
   // Indexed containers are built as plain objects so that large indices never
   // allocate sparse arrays, and are materialized once all entries are applied
-  const indexed = new Map<object, IndexedContainer>()
+  const indexed = new Map<object, { readonly parent: any; readonly key: PropertyKey; length: number }>()
 
   function assign(self: any, key: PropertyKey, value: unknown): void {
     const state = indexed.get(self)
-    if (state !== undefined) {
-      const index = key as number
-      if (!Object.hasOwn(self, index)) {
-        state.count++
-      }
-      if (index >= state.length) {
-        state.length = index + 1
-      }
+    if (state !== undefined && (key as number) >= state.length) {
+      state.length = (key as number) + 1
     }
     InternalRecord.assignProperty(self, key, value)
   }
@@ -2191,7 +2178,7 @@ export function makeTreeRecord<A>(
     const container = {}
     containers.add(container)
     if (shouldBeArray) {
-      indexed.set(container, { parent: self, key, length: 0, count: 0 })
+      indexed.set(container, { parent: self, key, length: 0 })
     }
     assign(self, key, container)
     return container
@@ -2241,18 +2228,11 @@ export function makeTreeRecord<A>(
 
   // Children are created after their parents, so materializing in reverse
   // creation order replaces every nested container before its parent is copied
-  const builders = Array.from(indexed)
-  for (let i = builders.length - 1; i >= 0; i--) {
-    const [builder, { count, key, length, parent }] = builders[i]
-    // Skip containers that were replaced by a later conflicting path
-    if (length - count > MAX_ARRAY_HOLES || !Object.hasOwn(parent, key) || parent[key] !== builder) {
-      continue
+  for (const [builder, { key, length, parent }] of Array.from(indexed).reverse()) {
+    // A later conflicting path may have replaced the container in its parent
+    if (parent[key] === builder && length - Object.keys(builder).length <= MAX_ARRAY_HOLES) {
+      InternalRecord.assignProperty(parent, key, Object.assign(new Array(length), builder))
     }
-    const array: Array<unknown> = new Array(length)
-    for (const index of Object.keys(builder)) {
-      array[globalThis.Number(index)] = (builder as any)[index]
-    }
-    InternalRecord.assignProperty(parent, key, array)
   }
   return out
 }
