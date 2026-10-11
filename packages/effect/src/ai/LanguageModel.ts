@@ -618,16 +618,12 @@ export type ExtractTools<Options> = Options extends {
  * @category utility types
  * @since 4.0.0
  */
-export type ExtractToolParametersMode<Options> = Options extends {
-  readonly disableToolCallResolution: true
-} ? MayDeferToolCallValidation<Options> extends true ? "deferred" : "encoded"
-  : true extends Options["disableToolCallResolution" & keyof Options] ?
-    MayDeferToolCallValidation<Options> extends true ? "deferred" : "opaque"
-  : "opaque"
-
-// A non-literal `toolCallValidation` may still defer validation at runtime.
-type MayDeferToolCallValidation<Options> = "deferred" extends Options["toolCallValidation" & keyof Options] ? true
-  : false
+export type ExtractToolParametersMode<Options> =
+  // Non-literal option types may still defer validation at runtime.
+  "deferred" extends Options["toolCallValidation" & keyof Options] ?
+    true extends Options["disableToolCallResolution" & keyof Options] ? "deferred" : "opaque"
+    : Options extends { readonly disableToolCallResolution: true } ? "encoded"
+    : "opaque"
 
 /**
  * Resolves the tool parameters mode for requests without a toolkit:
@@ -1173,7 +1169,7 @@ export const make: (params: {
         }
       }
       const ResponseSchema = Schema.mutable(
-        Schema.Array(makePartSchema(Toolkit.empty, deferToolCallValidation))
+        Schema.Array(withUndeclaredToolCalls(Response.Part(Toolkit.empty), deferToolCallValidation))
       )
       const rawContent = yield* generateWithNonIncrementalFallback()
       const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
@@ -1211,7 +1207,7 @@ export const make: (params: {
         }
       }
       const ResponseSchema = Schema.mutable(
-        Schema.Array(makePartSchema(Toolkit.empty, deferToolCallValidation))
+        Schema.Array(withUndeclaredToolCalls(Response.Part(Toolkit.empty), deferToolCallValidation))
       )
       const rawContent = yield* generateWithNonIncrementalFallback()
       const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
@@ -1285,10 +1281,12 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.mutable(Schema.Array(makePartSchema(
-      options.disableToolCallResolution === true && !deferToolCallValidation
-        ? makeToolkitWithEncodedParameters(toolkit)
-        : makeToolkitWithOpaqueParameters(toolkit),
+    const ResponseSchema = Schema.mutable(Schema.Array(withUndeclaredToolCalls(
+      Response.Part(
+        options.disableToolCallResolution === true && !deferToolCallValidation
+          ? makeToolkitWithEncodedParameters(toolkit)
+          : makeToolkitWithOpaqueParameters(toolkit)
+      ),
       deferToolCallValidation
     )))
 
@@ -1298,7 +1296,7 @@ export const make: (params: {
       const rawContent = yield* generateWithNonIncrementalFallback()
       const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
       if (deferToolCallValidation) {
-        yield* validateProviderExecutedToolCalls(toolkit, rawContent, "encoded")
+        yield* validateProviderExecutedToolCalls(makeToolkitWithEncodedParameters(toolkit), rawContent)
       }
       if (tracker) {
         const responseMetadata = content.find((part) => part.type === "response-metadata")
@@ -1444,7 +1442,9 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const schema = Schema.NonEmptyArray(makeStreamPartSchema(Toolkit.empty, deferToolCallValidation))
+      const schema = Schema.NonEmptyArray(
+        withUndeclaredToolCalls(Response.StreamPart(Toolkit.empty), deferToolCallValidation)
+      )
       const decodeParts = Schema.decodeEffect(schema)
       return pipe(
         streamWithNonIncrementalFallback(),
@@ -1493,7 +1493,9 @@ export const make: (params: {
           providerOptions.incrementalPrompt = prepared.value.prompt
         }
       }
-      const schema = Schema.NonEmptyArray(makeStreamPartSchema(Toolkit.empty, deferToolCallValidation))
+      const schema = Schema.NonEmptyArray(
+        withUndeclaredToolCalls(Response.StreamPart(Toolkit.empty), deferToolCallValidation)
+      )
       const decodeParts = Schema.decodeEffect(schema)
       return pipe(
         streamWithNonIncrementalFallback(),
@@ -1596,10 +1598,12 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.NonEmptyArray(makeStreamPartSchema(
-      options.disableToolCallResolution === true && !deferToolCallValidation
-        ? makeToolkitWithEncodedParameters(toolkit)
-        : makeToolkitWithOpaqueParameters(toolkit),
+    const ResponseSchema = Schema.NonEmptyArray(withUndeclaredToolCalls(
+      Response.StreamPart(
+        options.disableToolCallResolution === true && !deferToolCallValidation
+          ? makeToolkitWithEncodedParameters(toolkit)
+          : makeToolkitWithOpaqueParameters(toolkit)
+      ),
       deferToolCallValidation
     ))
     const decodeParts = Schema.decodeEffect(ResponseSchema)
@@ -1607,11 +1611,12 @@ export const make: (params: {
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
+      const encodedToolkit = deferToolCallValidation ? makeToolkitWithEncodedParameters(toolkit) : undefined
       return streamWithNonIncrementalFallback().pipe(
         Stream.mapArrayEffect((parts) =>
           decodeParts(parts).pipe(
-            deferToolCallValidation
-              ? Effect.tap(() => validateProviderExecutedToolCalls(toolkit, parts, "encoded"))
+            encodedToolkit
+              ? Effect.tap(() => validateProviderExecutedToolCalls(encodedToolkit, parts))
               : identity,
             tracker ?
               Effect.tap((decodedParts) => {
@@ -2518,27 +2523,13 @@ const UndeclaredToolCallPart = Response.ToolCallPart("", Schema.Unknown).mapFiel
   name: Schema.String
 }))
 
-const makePartSchema = (
-  toolkit: Toolkit.Any,
-  deferToolCallValidation: boolean
-): ReturnType<typeof Response.Part<Toolkit.Any>> =>
-  deferToolCallValidation
-    ? Schema.Union([Response.Part(toolkit), UndeclaredToolCallPart]) as any
-    : Response.Part(toolkit)
-
-const makeStreamPartSchema = (
-  toolkit: Toolkit.Any,
-  deferToolCallValidation: boolean
-): ReturnType<typeof Response.StreamPart<Toolkit.Any>> =>
-  deferToolCallValidation
-    ? Schema.Union([Response.StreamPart(toolkit), UndeclaredToolCallPart]) as any
-    : Response.StreamPart(toolkit)
+const withUndeclaredToolCalls = <S extends Schema.Top>(partSchema: S, deferToolCallValidation: boolean): S =>
+  deferToolCallValidation ? Schema.Union([partSchema, UndeclaredToolCallPart]) as any : partSchema
 
 // Provider-executed tools bypass Toolkit, so validate their parameters here.
-const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any>>(
-  toolkit: Toolkit.WithHandler<Tools>,
-  parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>,
-  parametersMode: "decoded" | "encoded" = "decoded"
+const validateProviderExecutedToolCalls = (
+  toolkit: { readonly tools: Record<string, Tool.Any> },
+  parts: ReadonlyArray<Response.PartEncoded | Response.StreamPartEncoded>
 ): Effect.Effect<void, Schema.SchemaError> =>
   Effect.forEach(
     parts,
@@ -2551,9 +2542,7 @@ const validateProviderExecutedToolCalls = <Tools extends Record<string, Tool.Any
         return Effect.void
       }
       return Effect.asVoid(
-        Schema.decodeUnknownEffect(
-          parametersMode === "encoded" ? Schema.toEncoded(tool.parametersSchema) : tool.parametersSchema
-        )(part.params)
+        Schema.decodeUnknownEffect(tool.parametersSchema)(part.params)
       ) as Effect.Effect<void, Schema.SchemaError>
     },
     { discard: true }
