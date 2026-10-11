@@ -1898,6 +1898,99 @@ describe("OpenAiLanguageModel", () => {
       }))
   })
 
+  describe("reasoning replay", () => {
+    // The reasoning-only assistant turn checks that reasoning stays inside its
+    // own prompt message instead of leaking into the following assistant turn.
+    const toolLoopPrompt = Prompt.make([
+      { role: "user", content: "What is in a.txt?" },
+      { role: "assistant", content: [{ type: "reasoning", text: "Earlier turn reasoning." }] },
+      {
+        role: "assistant",
+        content: [
+          { type: "reasoning", text: "The user wants a.txt; I should read it." },
+          { type: "text", text: "Let me read it." },
+          { type: "tool-call", id: "call_1", name: "TestTool", params: { input: "a.txt" } }
+        ]
+      },
+      {
+        role: "tool",
+        content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+      }
+    ])
+
+    const toolCall = {
+      id: "call_1",
+      type: "function",
+      function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+    }
+
+    const captureRequestBody = (config?: Record<string, unknown>) =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: toolLoopPrompt,
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner", config)),
+          Effect.provide(layer)
+        )
+
+        return yield* getRequestBody(requests[0])
+      })
+
+    it.effect("keeps assistant text and tool calls of one prompt message together without reasoning by default", () =>
+      Effect.gen(function*() {
+        const requestBody = yield* captureRequestBody()
+
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          { role: "assistant", content: "Let me read it.", tool_calls: [toolCall] },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
+
+    it.effect("replays reasoning as reasoning_content on the assistant message when enabled", () =>
+      Effect.gen(function*() {
+        const requestBody = yield* captureRequestBody({ replayReasoning: true })
+
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            reasoning_content: "The user wants a.txt; I should read it.",
+            tool_calls: [toolCall]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+        assert.isFalse("replayReasoning" in requestBody)
+      }))
+
+    it.effect("replays reasoning under the configured field name", () =>
+      Effect.gen(function*() {
+        const requestBody = yield* captureRequestBody({ replayReasoning: "reasoning" })
+
+        assert.deepStrictEqual(requestBody.messages[1], {
+          role: "assistant",
+          content: "Let me read it.",
+          reasoning: "The user wants a.txt; I should read it.",
+          tool_calls: [toolCall]
+        })
+        assert.isFalse("replayReasoning" in requestBody)
+      }))
+  })
+
   describe("config", () => {
     it.effect("does not leak library-only fields into request body", () =>
       Effect.gen(function*() {
