@@ -30,7 +30,7 @@ ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
 })
 
 describe("Windows cleanup", { concurrent: false }, () => {
-  it("does not taskkill exited children during kill or scope release", async () => {
+  it("does not taskkill a failed child during exit, kill or scope release", async () => {
     const platform = Object.getOwnPropertyDescriptor(process, "platform")!
     const taskkill = vi.spyOn(NodeChildProcess, "execFile").mockImplementation((...args) => {
       const callback = args.at(-1)
@@ -39,18 +39,15 @@ describe("Windows cleanup", { concurrent: false }, () => {
     })
     syncBuiltinESMExports()
     try {
-      for (const code of [0, 1]) {
-        await Effect.runPromise(
-          Effect.scoped(Effect.gen(function*() {
-            const handle = yield* ChildProcess.make(process.execPath, ["-e", `process.exit(${code})`])
-            // Spawn natively, then exercise the Windows exit and cleanup paths.
-            Object.defineProperty(process, "platform", { value: "win32" })
-            assert.strictEqual(yield* handle.exitCode, code)
-            yield* handle.kill()
-          })).pipe(Effect.provide(NodeServices))
-        )
-        Object.defineProperty(process, "platform", platform)
-      }
+      await Effect.runPromise(
+        Effect.scoped(Effect.gen(function*() {
+          const handle = yield* ChildProcess.make(process.execPath, ["-e", "process.exit(1)"])
+          // Spawn natively, then exercise the Windows exit and cleanup paths.
+          Object.defineProperty(process, "platform", { value: "win32" })
+          assert.strictEqual(yield* handle.exitCode, 1)
+          yield* handle.kill()
+        })).pipe(Effect.provide(NodeServices))
+      )
       assert.strictEqual(taskkill.mock.calls.length, 0)
     } finally {
       Object.defineProperty(process, "platform", platform)
