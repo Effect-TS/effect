@@ -1034,7 +1034,7 @@ export const omitsBody = (response: HttpServerResponse, withoutBody = false): bo
  * **Details**
  *
  * Cookies are appended as `Set-Cookie` headers. Stream bodies are converted using
- * the supplied context.
+ * the supplied context, and are interrupted when `signal` aborts.
  *
  * Bodies are omitted for statuses 204, 205, and 304, or when `withoutBody` is true
  * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
@@ -1055,6 +1055,7 @@ export const toWeb = (
   options?: {
     readonly withoutBody?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
+    readonly signal?: AbortSignal | undefined
   }
 ): Response => {
   const headers = new globalThis.Headers(response.headers)
@@ -1131,7 +1132,8 @@ export const toWeb = (
       return new Response(
         Stream.toReadableStreamWith(
           body.stream,
-          options?.context ?? Context.empty()
+          options?.context ?? Context.empty(),
+          { signal: options?.signal }
         ),
         {
           status: response.status,

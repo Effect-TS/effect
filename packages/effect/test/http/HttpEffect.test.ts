@@ -160,6 +160,32 @@ describe("HttpEffect", () => {
       strictEqual(response.headers.get("content-length"), "9007199254740993")
     })
 
+    test.each(["before the request", "while the handler starts"] as const)(
+      "an abort %s interrupts the handler as a client abort",
+      async (when) => {
+        const controller = new AbortController()
+        if (when === "before the request") controller.abort()
+        let interrupted = false
+        const handler = HttpEffect.toWebHandler(
+          Effect.sync(() => {
+            if (when === "while the handler starts") controller.abort()
+          }).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            ),
+            // Handlers are uninterruptible unless they opt in, as router routes do.
+            Effect.interruptible
+          )
+        )
+        const response = await handler(new Request("http://localhost:3000/", { signal: controller.signal }))
+        strictEqual(response.status, 499)
+        strictEqual(interrupted, true)
+      }
+    )
+
     test("stream scope", async () => {
       let order = 0
       let streamFinalized = 0
