@@ -1,20 +1,21 @@
 /**
  * HTTP client for TypeSafe System One and model discovery.
  *
+ * @stability unstable
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
 import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { flow, identity } from "effect/Function"
+import * as HttpClient from "effect/http/HttpClient"
+import type * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import type * as Schema from "effect/Schema"
-import * as AiError from "effect/unstable/ai/AiError"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import type * as HttpClientError from "effect/unstable/http/HttpClientError"
-import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as Errors from "./internal/errors.ts"
 import { TypeSafeConfig } from "./TypeSafeConfig.ts"
 import * as TypeSafeSchema from "./TypeSafeSchema.ts"
@@ -22,6 +23,7 @@ import * as TypeSafeSchema from "./TypeSafeSchema.ts"
 /**
  * Low-level TypeSafe operations.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -36,6 +38,7 @@ export interface Service {
 /**
  * TypeSafe client service.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -44,6 +47,7 @@ export class TypeSafeClient extends Context.Service<TypeSafeClient, Service>()("
 /**
  * Authentication, endpoint and HTTP customization options.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -59,6 +63,7 @@ const decodeListModels = HttpClientResponse.schemaBodyJson(TypeSafeSchema.ListMo
 /**
  * Builds a client without automatic retries. Scoped transforms run after the constructor transform.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -114,6 +119,7 @@ export const make = Effect.fnUntraced(
 /**
  * Provides a client from explicit options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -123,6 +129,7 @@ export const layer = (options: Options): Layer.Layer<TypeSafeClient, never, Http
 /**
  * Provides a client from configuration, defaulting to TYPESAFE_API_KEY.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

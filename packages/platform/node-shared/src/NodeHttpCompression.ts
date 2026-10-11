@@ -6,12 +6,13 @@
  * `node:zlib` APIs, preserving an exact `Content-Length`. Streaming bodies go
  * through `node:zlib` transform streams that flush each input chunk.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
-import * as HttpBody from "effect/unstable/http/HttpBody"
-import type * as Platform from "effect/unstable/http/HttpPlatform"
-import * as Response from "effect/unstable/http/HttpServerResponse"
+import * as HttpBody from "effect/http/HttpBody"
+import type * as Platform from "effect/http/HttpPlatform"
+import * as Response from "effect/http/HttpServerResponse"
 import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"
@@ -20,6 +21,7 @@ import * as Zlib from "node:zlib"
  * The compression algorithms supported by the runtime's `node:zlib`. `zstd`
  * requires Node.js 22.15 or newer.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -81,6 +83,7 @@ const compress = (
  * the asynchronous `node:zlib` APIs, setting the exact `Content-Length` of the
  * compressed body. All other bodies are delegated to `fallback`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -104,6 +107,7 @@ export const make = (fallback: Platform.Compression): Platform.Compression => ({
  * Creates a `node:zlib` compression transform stream that flushes each input
  * chunk, for streaming response bodies.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -137,6 +141,7 @@ export const compressTransform = (
  * A Web `ReadableStream` version of `compressTransform`, for platforms that
  * stream response bodies as Web streams.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

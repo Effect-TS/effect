@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { Effect, Schema, SchemaAST, SchemaParser } from "effect"
-import { SchemaCompiler, SchemaJITCompiler } from "effect/unstable/schema"
+import { SchemaCompiler, SchemaJITCompiler } from "effect/schema"
 import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaCompiler", () => {
@@ -45,6 +45,35 @@ describe("SchemaCompiler", () => {
     } finally {
       initialize.mockRestore()
     }
+  })
+
+  it("retains a resolved Union member parser after replacement", () => {
+    const child = Schema.String.annotate({ title: "resolved Union candidate" })
+    const decode = SchemaParser.decodeUnknownSync(Schema.Union([child, Schema.Number]))
+
+    strictEqual(decode("original"), "original")
+
+    SchemaCompiler.set(child.ast, {
+      decode: () => "replacement",
+      decodeEffect: () => Effect.succeed("replacement")
+    })
+
+    strictEqual(decode("cached"), "cached")
+    strictEqual(SchemaParser.decodeUnknownSync(child)("new consumer"), "replacement")
+  })
+
+  it("uses a replacement for an unresolved Union member", () => {
+    const child = Schema.String.annotate({ title: "unresolved Union candidate" })
+    const decode = SchemaParser.decodeUnknownSync(Schema.Union([Schema.Number, child]))
+
+    strictEqual(decode(1), 1)
+
+    SchemaCompiler.set(child.ast, {
+      decode: () => "replacement",
+      decodeEffect: () => Effect.succeed("replacement")
+    })
+
+    strictEqual(decode("first visit"), "replacement")
   })
 
   it("installs a decoder in the shared registry", () => {

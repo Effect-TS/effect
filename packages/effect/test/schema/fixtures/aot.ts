@@ -1,5 +1,5 @@
 import { Effect, Option, Schema, SchemaGetter, SchemaTransformation } from "effect"
-import { invalid } from "effect/unstable/schema/SchemaCompiler"
+import { invalid } from "effect/schema/SchemaCompiler"
 import { constructionSchemas } from "./construction.ts"
 
 export const key = Symbol("key")
@@ -40,6 +40,7 @@ const pureTransform = (decode: (input: string) => number) =>
     )
   )
 const sharedPureTransform = pureTransform(Number)
+const repeatedUnionMember = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.Number })
 
 const middleware = transformed.pipe(
   Schema.middlewareDecoding((effect) => {
@@ -102,6 +103,15 @@ export const synchronous = {
   oneOf: {
     schema: Schema.Union([Schema.String, Schema.Literal("a")], { mode: "oneOf" }),
     inputs: ["b", "a", false]
+  },
+  repeatedOneOf: {
+    schema: Schema.Union([
+      repeatedUnionMember,
+      Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String }),
+      repeatedUnionMember,
+      Schema.Never
+    ], { mode: "oneOf" }),
+    inputs: [{ kind: "a", value: 1 }, { kind: "b", value: "value" }, { kind: "c" }]
   },
   sentinel: {
     schema: Schema.Union([Schema.Symbol, Schema.String]),

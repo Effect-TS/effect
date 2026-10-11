@@ -7,15 +7,16 @@
  * provides the Bun file-system layer and ETag generator required by
  * `HttpPlatform`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import type * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
+import * as Etag from "effect/http/Etag"
+import * as Platform from "effect/http/HttpPlatform"
+import * as Response from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
-import * as Etag from "effect/unstable/http/Etag"
-import * as Platform from "effect/unstable/http/HttpPlatform"
-import * as Response from "effect/unstable/http/HttpServerResponse"
 import * as BunFileSystem from "./BunFileSystem.ts"
 
 // Bun's CompressionStream supports an extended format set covering brotli and
@@ -60,6 +61,7 @@ const make: Effect.Effect<
 /**
  * Layer that provides the Bun `HttpPlatform`, including file responses backed by `Bun.file`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

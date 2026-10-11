@@ -5,6 +5,7 @@
  * constructor for reducers and a helper for reversing the order in which values
  * are combined.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -48,6 +49,7 @@ import type * as Combiner from "./Combiner.ts"
  * @see {@link make} – create a `Reducer` from a function and initial value
  * @see {@link Combiner.Combiner} – parent interface without `initialValue`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -111,6 +113,7 @@ export interface Reducer<A> extends Combiner.Combiner<A> {
  * @see {@link Reducer} – the interface this creates
  * @see {@link flip} – reverse the argument order
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -163,6 +166,7 @@ export function make<A>(
  * @see {@link make}
  * @see {@link Combiner.flip} – the same operation on a plain `Combiner`
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

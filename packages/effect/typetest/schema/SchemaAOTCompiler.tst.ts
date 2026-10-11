@@ -1,5 +1,5 @@
 import { Schema, SchemaAST } from "effect"
-import * as SchemaAOTCompiler from "effect/unstable/schema/SchemaAOTCompiler"
+import * as SchemaAOTCompiler from "effect/schema/SchemaAOTCompiler"
 import { describe, expect, it } from "tstyche"
 
 describe("SchemaAOTCompiler", () => {

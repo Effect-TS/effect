@@ -1,6 +1,7 @@
 /**
  * Native Deno implementation of the Effect `HttpServer`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "effect/Config"
@@ -11,32 +12,32 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import type * as FileSystem from "effect/FileSystem"
 import { flow } from "effect/Function"
+import * as Cookies from "effect/http/Cookies"
+import * as Etag from "effect/http/Etag"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import * as Headers from "effect/http/Headers"
+import type * as HttpBody from "effect/http/HttpBody"
+import type { HttpClient } from "effect/http/HttpClient"
+import * as HttpEffect from "effect/http/HttpEffect"
+import * as IncomingMessage from "effect/http/HttpIncomingMessage"
+import type { HttpMethod } from "effect/http/HttpMethod"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import * as Server from "effect/http/HttpServer"
+import * as Error from "effect/http/HttpServerError"
+import * as ServerRequest from "effect/http/HttpServerRequest"
+import * as ServerResponse from "effect/http/HttpServerResponse"
+import type * as Multipart from "effect/http/Multipart"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Inspectable from "effect/Inspectable"
 import * as Layer from "effect/Layer"
+import * as NetAddress from "effect/net/NetAddress"
 import * as Option from "effect/Option"
 import type * as Path from "effect/Path"
 import type * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
+import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
-import * as Cookies from "effect/unstable/http/Cookies"
-import * as Etag from "effect/unstable/http/Etag"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import * as Headers from "effect/unstable/http/Headers"
-import type * as HttpBody from "effect/unstable/http/HttpBody"
-import type { HttpClient } from "effect/unstable/http/HttpClient"
-import * as HttpEffect from "effect/unstable/http/HttpEffect"
-import * as IncomingMessage from "effect/unstable/http/HttpIncomingMessage"
-import type { HttpMethod } from "effect/unstable/http/HttpMethod"
-import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
-import * as Server from "effect/unstable/http/HttpServer"
-import * as Error from "effect/unstable/http/HttpServerError"
-import * as ServerRequest from "effect/unstable/http/HttpServerRequest"
-import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
-import type * as Multipart from "effect/unstable/http/Multipart"
-import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as NetAddress from "effect/unstable/net/NetAddress"
-import * as Socket from "effect/unstable/socket/Socket"
 import * as Platform from "./DenoHttpPlatform.ts"
 import * as DenoMultipart from "./DenoMultipart.ts"
 import * as DenoServices from "./DenoServices.ts"
@@ -51,6 +52,7 @@ import * as DenoServices from "./DenoServices.ts"
  * WebSocket settings that apply to every upgrade; `protocol` therefore cannot
  * vary per request.
  *
+ * @stability unstable
  * @category options
  * @since 4.0.0
  */
@@ -61,6 +63,7 @@ export type ServeOptions =
 /**
  * Creates a scoped native Deno HTTP server.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -113,7 +116,9 @@ export const make = Effect.fnUntraced(function*(
 
       const httpEffect = HttpEffect.toHandled(httpApp, (request, response) => {
         const denoRequest = request as DenoServerRequest
-        if (denoRequest.upgraded) return cancelResponseBody(response.body)
+        if (upgradedSources.has(denoRequest.source)) {
+          return Effect.as(cancelResponseBody(response.body), upgradedResponse)
+        }
         return Effect.flatMap(
           makeResponse(request, response, services, scope),
           (response) => Effect.sync(() => denoRequest.resolve(response))
@@ -207,6 +212,7 @@ const makeResponse = Effect.fnUntraced(function*(
 /**
  * Provides only the native Deno HTTP server.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -224,6 +230,7 @@ export const layerServer: (
 /**
  * Provides Deno HTTP platform services and the standard Deno service set.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -236,6 +243,7 @@ export const layerHttpServices: Layer.Layer<HttpPlatform | Etag.Generator | Deno
 /**
  * Provides a native Deno HTTP server together with Deno HTTP services.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -251,6 +259,7 @@ export const layer = (
 /**
  * Starts a Deno HTTP server on an ephemeral loopback port for tests.
  *
+ * @stability unstable
  * @category testing
  * @since 4.0.0
  */
@@ -266,6 +275,7 @@ export const layerTest: Layer.Layer<
 /**
  * Creates the Deno HTTP server and support-services layer from configurable options.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -294,7 +304,6 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
   readonly url: string
   readonly websocketOptions: Deno.UpgradeWebSocketOptions | undefined
   public resolve: (response: Response) => void
-  public upgraded = false
   public headersOverride?: Headers.Headers | undefined
   private remoteAddressOverride?: Option.Option<string> | undefined
 
@@ -458,7 +467,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       }),
       (upgrade) => {
         const ws = bufferedWebSocket(upgrade.socket)
-        this.upgraded = true
+        upgradedSources.add(this.source)
         this.resolve(upgrade.response)
         return Socket.fromWebSocket(
           Effect.acquireRelease(
@@ -550,6 +559,12 @@ const bufferedWebSocket = (ws: WebSocket): Socket.WebSocketLike => {
     send: (data) => ws.send(data)
   }
 }
+
+// Reported to middleware in place of the handler's discarded response.
+const upgradedResponse = ServerResponse.empty({ status: 101 })
+
+// Keyed by source so request copies from `modify` share the upgrade state.
+const upgradedSources = new WeakSet<Request>()
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
   if (body._tag === "Raw" && typeof ReadableStream !== "undefined" && body.body instanceof ReadableStream) {

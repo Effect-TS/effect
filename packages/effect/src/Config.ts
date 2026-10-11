@@ -5,8 +5,10 @@
  * multiple settings. Configs are also Effects, so they can be yielded in
  * `Effect.gen` after a provider has been supplied.
  *
+ * @stability stable
  * @since 4.0.0
  */
+import * as Cause from "./Cause.ts"
 import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
@@ -44,6 +46,7 @@ const TypeId = "~effect/Config"
  * Config.isConfig("not a config") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -66,6 +69,7 @@ export const isConfig = (u: unknown): u is Config<unknown> => Predicate.hasPrope
  * @see {@link orElse} – recover from a ConfigError
  * @see {@link withDefault} – provide a fallback when relevant input is absent
  *
+ * @stability stable
  * @category errors
  * @since 4.0.0
  */
@@ -102,6 +106,7 @@ export class ConfigError {
  *
  * @see {@link schema} – the main way to create a Config
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -110,33 +115,14 @@ export interface Config<out T> extends Effect.Effect<T, ConfigError> {
   readonly parse: (provider: ConfigProvider.ConfigProvider) => Effect.Effect<T, ConfigError>
 }
 
-// Config composition needs to distinguish an absent recipe from a hard failure
-// before the public Effect error channel is finalized. `hasInput` records
-// provider evidence separately from the value, because successful values such
-// as `undefined` and values supplied by defaults are not evidence of input.
-// Hard failures carry the same evidence so recovery cannot erase it.
-interface Resolved<out T> {
-  readonly _tag: "Resolved"
-  readonly value: T
-  readonly hasInput: boolean
-}
-
-interface Absent {
-  readonly _tag: "Absent"
-  readonly error: ConfigError
-}
-
-type Resolution<T> = Resolved<T> | Absent
-
-interface EvaluationFailure {
-  readonly error: ConfigError
-  readonly hasInput: boolean
-}
+// Result failure represents recoverable absence; Effect failure represents an
+// invalid value or a source error. Keep them separate until parsing completes.
+type Resolution<T> = Result.Result<T, ConfigError>
 
 type Evaluator<T> = (
   provider: ConfigProvider.ConfigProvider,
   pathPrefix: Path
-) => Effect.Effect<Resolution<T>, EvaluationFailure>
+) => Effect.Effect<Resolution<T>, ConfigError>
 
 interface ConfigImpl<out T> extends Config<T> {
   readonly evaluator: Evaluator<T>
@@ -163,12 +149,7 @@ function make<T>(
   const self = Object.create(Proto)
   self.evaluator = evaluator
   self.parse = (provider: ConfigProvider.ConfigProvider) =>
-    evaluator(provider, []).pipe(
-      Effect.mapErrorEager((failure) => failure.error),
-      Effect.flatMapEager((resolution) =>
-        resolution._tag === "Resolved" ? Effect.succeed(resolution.value) : Effect.fail(resolution.error)
-      )
-    )
+    Effect.flatMapEager(evaluator(provider, []), Effect.fromResult)
   return self
 }
 
@@ -176,52 +157,7 @@ const evaluateAt = <T>(
   self: Config<T>,
   provider: ConfigProvider.ConfigProvider,
   pathPrefix: Path
-): Effect.Effect<Resolution<T>, EvaluationFailure> => (self as ConfigImpl<T>).evaluator(provider, pathPrefix)
-
-const resolved = <T>(value: T, hasInput: boolean): Resolution<T> => ({
-  _tag: "Resolved",
-  value,
-  hasInput
-})
-
-const absent = (error: ConfigError): Absent => ({
-  _tag: "Absent",
-  error
-})
-
-const evaluationFailure = (error: ConfigError, hasInput: boolean): EvaluationFailure => ({
-  error,
-  hasInput
-})
-
-const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
-
-const catchSourceError = <A, E, R>(
-  self: Effect.Effect<A, E, R>,
-  hasInput: boolean
-): Effect.Effect<A, E | EvaluationFailure, R> =>
-  self.pipe(
-    Effect.catchDefect((defect) =>
-      isSourceError(defect)
-        ? Effect.fail(evaluationFailure(new ConfigError(defect), hasInput))
-        : Effect.die(defect)
-    )
-  )
-
-const preserveInputEvidence = <T>(
-  self: Effect.Effect<Resolution<T>, EvaluationFailure>,
-  hasInput: boolean
-): Effect.Effect<Resolution<T>, EvaluationFailure> => {
-  if (!hasInput) return self
-  return self.pipe(
-    Effect.mapErrorEager((failure) => evaluationFailure(failure.error, true)),
-    Effect.flatMapEager((resolution) =>
-      resolution._tag === "Resolved"
-        ? Effect.succeed(resolved(resolution.value, true))
-        : Effect.fail(evaluationFailure(resolution.error, true))
-    )
-  )
-}
+): Effect.Effect<Resolution<T>, ConfigError> => (self as ConfigImpl<T>).evaluator(provider, pathPrefix)
 
 /**
  * Transforms the parsed value of a config with a pure function.
@@ -246,6 +182,7 @@ const preserveInputEvidence = <T>(
  *
  * @see {@link mapEffect} – when the transformation can fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -253,11 +190,82 @@ export const map: {
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => B): Config<B> => {
+  return make((provider, pathPrefix) => Effect.map(evaluateAt(self, provider, pathPrefix), Result.map(f)))
+})
+
+/**
+ * Lets you sequence multiple configs that depend on each other or branch to
+ * multiple different configs depending on the parent.
+ *
+ * **When to use**
+ *
+ * Use when you want to maintain 2 sets of env vars with different names, and switch
+ * between whole sets based on a single dedicated env var. Or when you want to
+ * provide a variety of environment variable names (`PORT`, `BACKEND_PORT`,
+ * `API_PORT`) in order of preference for a specific configuration option, such
+ * as the listening port.
+ *
+ * **Example** (fallback configs and branching)
+ *
+ * ```ts import.meta.vitest
+ * import { Config, Option } from "effect"
+ *
+ * const EnvVar = (name: string) =>
+ *   Config.Literals([
+ *     ...["prod", "production", "PROD", "PRODUCTION"] as const,
+ *     ...["dev", "development", "DEV", "DEVELOPMENT"] as const
+ *   ], name)
+ *
+ * const withAbsenceFallback = <A, B>(fallback: Config.Config<A>) => (self: Config.Config<B>): Config.Config<A | B> =>
+ *   Config.flatMap(
+ *     Config.option(self),
+ *     Option.match({
+ *       onNone: () => fallback,
+ *       onSome: Config.succeed<A | B>
+ *     })
+ *   )
+ *
+ * // const ENV: Config.Config<"dev" | "prod">
+ * const ENV = EnvVar("ENV").pipe(
+ *   withAbsenceFallback(EnvVar("NODE_ENV")),
+ *   Config.map((fuzzyEnv) =>
+ *     fuzzyEnv.toLowerCase().startsWith("dev") ? "dev" : "prod"),
+ *   Config.withDefault('dev')
+ * )
+ *
+ * // const hostConfig: Config.Config<string>
+ * const hostConfig = ENV.pipe(
+ *   Config.flatMap((env) =>
+ *     env === "dev"
+ *       // dev is very forgiving
+ *       ? Config.NonEmptyString("DEV_HOST").pipe(
+ *         Config.orElse(() => Config.NonEmptyString("HOST")),
+ *         Config.orElse(() => Config.succeed("localhost"))
+ *       )
+ *       // prod is much stricter
+ *       : Config.NonEmptyString("PROD_HOST").pipe(
+ *         withAbsenceFallback(Config.NonEmptyString("HOST"))
+ *       )
+ *   )
+ * )
+ * ```
+ *
+ * @stability stable
+ * @category mapping
+ * @since 4.0.0
+ */
+export const flatMap: {
+  <A, B>(f: (a: A) => Config<B>): (self: Config<A>) => Config<B>
+  <A, B>(self: Config<A>, f: (a: A) => Config<B>): Config<B>
+} = dual(2, <A, B>(self: Config<A>, f: (a: A) => Config<B>): Config<B> => {
   return make((provider, pathPrefix) =>
-    Effect.map(evaluateAt(self, provider, pathPrefix), (resolution) =>
-      resolution._tag === "Resolved"
-        ? resolved(f(resolution.value), resolution.hasInput)
-        : resolution)
+    Effect.flatMap(
+      evaluateAt(self, provider, pathPrefix),
+      Result.match({
+        onSuccess: (success) => evaluateAt(f(success), provider, pathPrefix),
+        onFailure: (error) => Effect.succeed(Result.fail(error))
+      })
+    )
   )
 })
 
@@ -283,6 +291,7 @@ export const map: {
  *
  * @see {@link map} – when the transformation cannot fail
  *
+ * @stability stable
  * @category mapping
  * @since 2.0.0
  */
@@ -291,13 +300,13 @@ export const mapEffect: {
   <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B> => {
   return make((provider, pathPrefix) =>
-    Effect.flatMap(evaluateAt(self, provider, pathPrefix), (resolution) =>
-      resolution._tag === "Resolved"
-        ? f(resolution.value).pipe(
-          Effect.mapEager((value) => resolved(value, resolution.hasInput)),
-          Effect.mapErrorEager((error) => evaluationFailure(error, resolution.hasInput))
-        )
-        : Effect.succeed(resolution))
+    Effect.flatMap(
+      evaluateAt(self, provider, pathPrefix),
+      (resolution): Effect.Effect<Resolution<B>, ConfigError> =>
+        Result.isSuccess(resolution)
+          ? Effect.mapEager(f(resolution.success), Result.succeed)
+          : Effect.succeed(Result.fail(resolution.failure))
+    )
   )
 })
 
@@ -317,25 +326,30 @@ export const mapEffect: {
  *
  * **Gotchas**
  *
- * Recovery preserves whether the primary config read provider input. When the
- * recovered config is composed with {@link all}, invalid input in the primary
- * branch still makes the enclosing group partially supplied, so an outer
- * {@link withDefault} or {@link option} does not replace the whole group.
+ * The fallback's result replaces the original failure. If the fallback is
+ * absent, an outer {@link withDefault} or {@link option} can recover it. If the
+ * fallback fails, only its error propagates. Defects and interruptions never
+ * reach the fallback; they propagate unchanged.
  *
- * **Example** (Falling back to a literal)
+ * **Example** (Trying another port before using a default)
  *
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const hostConfig = Config.String("HOST").pipe(
- *   Config.orElse(() => Config.succeed("localhost"))
+ * const port = Config.Int("PORT").pipe(
+ *   Config.orElse(() => Config.Int("BACKUP_PORT")),
+ *   Config.withDefault(3000)
  * )
- * const provider = ConfigProvider.fromUnknown({})
- * Effect.runSync(hostConfig.parse(provider)) // => "localhost"
+ * const provider = ConfigProvider.fromUnknown({ PORT: "invalid", BACKUP_PORT: "8080" })
+ * await Effect.runPromise(port.parse(provider)) // => 8080
+ *
+ * const missingBackup = ConfigProvider.fromUnknown({ PORT: "invalid" })
+ * await Effect.runPromise(port.parse(missingBackup)) // => 3000
  * ```
  *
  * @see {@link withDefault} – fallback only on semantic absence
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -344,15 +358,17 @@ export const orElse: {
   <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2>
 } = dual(2, <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2> => {
   return make<A | A2>((provider, pathPrefix) =>
-    Effect.matchEffect(evaluateAt(self, provider, pathPrefix), {
-      onFailure: (failure) =>
-        preserveInputEvidence(
-          evaluateAt(that(failure.error), provider, pathPrefix),
-          failure.hasInput
-        ),
-      onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, EvaluationFailure> =>
-        resolution._tag === "Absent"
-          ? evaluateAt(that(resolution.error), provider, pathPrefix)
+    Effect.matchCauseEffect(evaluateAt(self, provider, pathPrefix), {
+      // Only plain failures reach the fallback; defects and interruptions propagate unchanged.
+      onFailure: (cause) => {
+        const error = Cause.findErrorOption(cause)
+        return Option.isSome(error) && cause.reasons.every(Cause.isFailReason)
+          ? evaluateAt(that(error.value), provider, pathPrefix)
+          : Effect.failCause(cause)
+      },
+      onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, ConfigError> =>
+        Result.isFailure(resolution)
+          ? evaluateAt(that(resolution.failure), provider, pathPrefix)
           : Effect.succeed(resolution)
     })
   )
@@ -370,17 +386,17 @@ export const orElse: {
  * Accepts a tuple (preserves positions), an iterable, or a record of configs.
  * Returns a config whose parsed value mirrors the input shape.
  *
- * A combined config is absent when at least one child cannot resolve and none
- * of the other children read provider input. This lets {@link withDefault} and
- * {@link option} handle a wholly absent group. Once any child reads input, a
- * missing sibling makes the group incomplete and parsing fails. Values supplied
- * by child defaults do not count as provider input.
+ * A combined config is absent when any child is absent and no child fails.
+ * Validation and source errors propagate even when another child is absent.
+ * An outer {@link withDefault} replaces the entire absent group, while
+ * {@link option} returns `None`. Apply defaults to individual children to
+ * preserve the values of other children.
  *
- * Unlike a `Schema.Struct` passed to {@link schema}, `all` only considers input
- * read by its children. An explicitly present but empty parent container does
- * not by itself make the group present.
+ * Unlike a `Schema.Struct` passed to {@link schema}, `all` combines independent
+ * lookups. A struct validates an existing object and fails when required fields
+ * are missing; `all` can recover missing children through a group default.
  *
- * **Example** (Combining configs as a struct)
+ * **Example** (Defaulting an incomplete config group)
  *
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
@@ -388,12 +404,16 @@ export const orElse: {
  * const dbConfig = Config.all({
  *   host: Config.String("host"),
  *   port: Config.Number("port")
- * })
+ * }).pipe(Config.withDefault({ host: "localhost", port: 5432 }))
  *
- * const provider = ConfigProvider.fromUnknown({ host: "localhost", port: 5432 })
- * Effect.runSync(dbConfig.parse(provider)) // => { host: "localhost", port: 5432 }
+ * const provider = ConfigProvider.fromUnknown({ host: "db.internal", port: 6000 })
+ * await Effect.runPromise(dbConfig.parse(provider)) // => { host: "db.internal", port: 6000 }
+ *
+ * const missingPort = ConfigProvider.fromUnknown({ host: "db.internal" })
+ * await Effect.runPromise(dbConfig.parse(missingPort)) // => { host: "localhost", port: 5432 }
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -414,87 +434,21 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
     : Symbol.iterator in arg
     ? [...arg as any]
     : arg
-  if (globalThis.Array.isArray(configs)) {
-    return make((provider, pathPrefix) =>
-      Effect.flatMapEager(
-        Effect.all(configs.map((config) => Effect.result(evaluateAt(config, provider, pathPrefix)))),
-        resolveArray
+  return make<any>((provider, pathPrefix) =>
+    globalThis.Array.isArray(configs)
+      ? Effect.mapEager(
+        Effect.all(configs.map((config) => evaluateAt(config, provider, pathPrefix))),
+        Result.all
       )
-    ) as any
-  } else {
-    return make((provider, pathPrefix) =>
-      Effect.flatMapEager(
-        Effect.all(Rec.map(configs, (config) => Effect.result(evaluateAt(config, provider, pathPrefix)))),
-        resolveRecord
+      : Effect.mapEager(
+        Effect.all(Rec.map(configs, (config) => evaluateAt(config, provider, pathPrefix))),
+        Result.all
       )
-    ) as any
-  }
-}
-
-const resolveArray = (
-  results: ReadonlyArray<Result.Result<Resolution<any>, EvaluationFailure>>
-): Effect.Effect<Resolution<Array<any>>, EvaluationFailure> => {
-  const values: Array<any> = []
-  let firstFailure: EvaluationFailure | undefined
-  let firstAbsent: Absent | undefined
-  let hasInput = false
-  for (const result of results) {
-    if (Result.isFailure(result)) {
-      firstFailure ??= result.failure
-      hasInput = hasInput || result.failure.hasInput
-      continue
-    }
-    const resolution = result.success
-    if (resolution._tag === "Absent") {
-      firstAbsent ??= resolution
-    } else {
-      values.push(resolution.value)
-      hasInput = hasInput || resolution.hasInput
-    }
-  }
-  if (firstFailure !== undefined) {
-    return Effect.fail(evaluationFailure(firstFailure.error, hasInput))
-  }
-  if (firstAbsent !== undefined) {
-    return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
-  }
-  return Effect.succeed(resolved(values, hasInput))
-}
-
-const resolveRecord = (
-  results: Record<string, Result.Result<Resolution<any>, EvaluationFailure>>
-): Effect.Effect<Resolution<Record<string, any>>, EvaluationFailure> => {
-  const values: Record<string, any> = {}
-  let firstFailure: EvaluationFailure | undefined
-  let firstAbsent: Absent | undefined
-  let hasInput = false
-  for (const key in results) {
-    const result = results[key]
-    if (Result.isFailure(result)) {
-      firstFailure ??= result.failure
-      hasInput = hasInput || result.failure.hasInput
-      continue
-    }
-    const resolution = result.success
-    if (resolution._tag === "Absent") {
-      firstAbsent ??= resolution
-    } else {
-      InternalRecord.assignProperty(values, key, resolution.value)
-      hasInput = hasInput || resolution.hasInput
-    }
-  }
-  if (firstFailure !== undefined) {
-    return Effect.fail(evaluationFailure(firstFailure.error, hasInput))
-  }
-  if (firstAbsent !== undefined) {
-    return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
-  }
-  return Effect.succeed(resolved(values, hasInput))
+  ) as any
 }
 
 /**
- * Provides a fallback value when the config cannot resolve because none of its
- * relevant input is present.
+ * Provides a fallback value when the config is absent.
  *
  * **When to use**
  *
@@ -502,9 +456,12 @@ const resolveRecord = (
  *
  * **Gotchas**
  *
- * Validation errors and partially supplied groups still propagate. A schema
- * that successfully decodes absent input also keeps its decoded value instead
- * of using the default. Schema configs first represent a missing or
+ * Validation and source errors still propagate. For an {@link all} group, any
+ * absent child causes the default to replace the entire group unless another
+ * child fails. Apply defaults to individual children to preserve other values.
+ *
+ * A schema that successfully decodes absent input keeps its decoded value
+ * instead of using the default. Schema configs first represent a missing or
  * incompatible provider shape as `undefined`; the default is used only when
  * the schema rejects that value and no relevant input was found.
  *
@@ -522,6 +479,7 @@ const resolveRecord = (
  * @see {@link option} – returns `Option` instead of a default value
  * @see {@link orElse} – catches all errors, not just absent input
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -532,14 +490,14 @@ export const withDefault: {
   return make<A | A2>((provider, pathPrefix) =>
     Effect.mapEager(
       evaluateAt(self, provider, pathPrefix),
-      (resolution) => resolution._tag === "Absent" ? resolved(defaultValue, false) : resolution
+      (resolution) => Result.isFailure(resolution) ? Result.succeed(defaultValue) : resolution
     )
   )
 })
 
 /**
  * Makes a config optional: returns `Some(value)` on success and `None` when the
- * config cannot resolve because none of its relevant input is present.
+ * config is absent.
  *
  * **When to use**
  *
@@ -547,8 +505,9 @@ export const withDefault: {
  *
  * **Gotchas**
  *
- * Validation errors and partially supplied groups still propagate. Successful
- * values are always wrapped in `Some`, including `undefined` when the schema
+ * Validation and source errors still propagate. For an {@link all} group, any
+ * absent child produces `None` unless another child fails. Successful values
+ * are always wrapped in `Some`, including `undefined` when the schema
  * explicitly accepts it. Schema configs first represent a missing or
  * incompatible provider shape as `undefined`; `None` is returned only when the
  * schema rejects that value and no relevant input was found.
@@ -566,6 +525,7 @@ export const withDefault: {
  *
  * @see {@link withDefault} – provide a concrete fallback value instead
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -583,6 +543,7 @@ export const option = <A>(self: Config<A>): Config<Option.Option<A>> =>
  * @see {@link Config} for the config type whose parsed value is extracted
  * @see {@link Effect.Success} for extracting the success type from any `Effect`
  *
+ * @stability stable
  * @category utility types
  * @since 2.5.0
  */
@@ -603,6 +564,7 @@ export type Success<T> = [T] extends [Config<infer A>] ? A : never
  *
  * @see {@link unwrap} – construct a `Config` from a `Wrap<T>`
  *
+ * @stability stable
  * @category utility types
  * @since 2.0.0
  */
@@ -648,6 +610,7 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  *
  * @see {@link Wrap} – the utility type accepted by this function
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -667,21 +630,31 @@ interface ConfigCursor {
   readonly toString: () => string
 }
 
+const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
+
 const cursorToString = (): string => "<configuration>"
+
+// Rewrites each reason of a failure individually, so unrelated defects and
+// interruptions survive the conversion.
+const mapReasons =
+  <E, E2>(f: (reason: Cause.Reason<E>) => Cause.Reason<E2>) =>
+  <A, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E2, R> =>
+    Effect.catchCause(self, (cause) => Effect.failCause(Cause.fromReasons(cause.reasons.map(f))))
 
 const loadCursor: (
   provider: ConfigProvider.ConfigProvider,
   path: Path
 ) => Effect.Effect<ConfigCursor> = (provider, path) =>
   provider.load(path).pipe(
-    Effect.orDie,
+    // Source errors travel as defects so they bypass schema issue recovery; `schema` converts them back.
+    mapReasons<SourceError, never>((reason) =>
+      Cause.isFailReason(reason) ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason)) : reason
+    ),
     Effect.mapEager((node) => ({ provider, path, node, toString: cursorToString }))
   )
 
 const loadChildCursor = (cursor: ConfigCursor, segment: string | number): Effect.Effect<ConfigCursor> =>
   loadCursor(cursor.provider, [...cursor.path, segment])
-
-const getScalar = (node: ConfigProvider.Node | undefined): string | undefined => node?.value
 
 const decodeFromCursor = (
   ast: SchemaAST.AST,
@@ -723,7 +696,7 @@ const hasProviderInput = (
     case "Suspend":
       return hasProviderInput(ast.thunk(), node)
     default:
-      return getScalar(node) !== undefined
+      return node?.value !== undefined
   }
 }
 
@@ -774,9 +747,8 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
         for (const member of ast.types) {
           recur(member)
         }
-        return isScalarInput(ast)
-          ? decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
-          : ast.recur(recur)
+        if (!isScalarInput(ast)) return ast.recur(recur)
+        break
       case "Suspend": {
         const target = ast.thunk()
         // Force new branches so opaque encodings fail when the Config is constructed.
@@ -786,9 +758,8 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
       case "Declaration":
       case "Any":
         throw new globalThis.Error("Config.schema does not support opaque StringTree encodings", { cause: ast })
-      default:
-        return decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
     }
+    return decodeFromCursor(ast, (cursor) => Effect.succeed(cursor.node?.value))
   })
   return recur(root)
 })
@@ -834,9 +805,9 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
  * also be accepted.
  *
  * `Schema.Struct` and {@link all} describe different lookup models. An
- * explicitly present empty object is relevant input for a struct and required
- * fields are validated. The same empty parent container does not make an
- * `all` group present when all of its child configs are absent.
+ * existing object, even an empty one, is validated as a whole by a struct;
+ * missing required fields cause a validation failure. An `all` group combines
+ * independent lookups and is absent if any child is absent and none fail.
  *
  * The canonical `StringTree` encoding must expose a concrete scalar, object,
  * array, or union shape. Opaque encodings such as `Schema.Any`,
@@ -871,6 +842,7 @@ const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
  * @see {@link String} / {@link Number} / {@link Boolean} – shortcuts for
  *   single-value configs
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -883,24 +855,25 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
   const localPath = typeof path === "string" ? [path] : path ?? []
   return make((provider, pathPrefix) => {
     const fullPath = [...pathPrefix, ...localPath]
-    return catchSourceError(loadCursor(provider, fullPath), false).pipe(
-      Effect.flatMapEager((cursor) => {
-        const hasInput = hasProviderInput(encodedAst, cursor.node)
-        return catchSourceError(
-          decodeCursor(cursor).pipe(
-            Effect.mapEager((value) => resolved(value, hasInput)),
-            Effect.catchEager((issue) => {
-              const error = new ConfigError(
-                new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
-              )
-              return hasInput
-                ? Effect.fail(evaluationFailure(error, true))
-                : Effect.succeed(absent(error))
-            })
-          ),
-          hasInput
+    return loadCursor(provider, fullPath).pipe(
+      Effect.flatMapEager((cursor) =>
+        decodeCursor(cursor).pipe(
+          Effect.mapEager(Result.succeed),
+          Effect.catchEager((issue) => {
+            const error = new ConfigError(
+              new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
+            )
+            return hasProviderInput(encodedAst, cursor.node)
+              ? Effect.fail(error)
+              : Effect.succeed(Result.fail(error))
+          })
         )
-      })
+      ),
+      mapReasons((reason) =>
+        Cause.isDieReason(reason) && isSourceError(reason.defect)
+          ? Cause.makeFailReason(new ConfigError(reason.defect)).annotate(Cause.reasonAnnotations(reason))
+          : reason
+      )
     )
   })
 }
@@ -932,11 +905,12 @@ const isPath = (u: unknown): u is string | Path => Predicate.isString(u) || glob
  * Use when you need to re-raise a specific config error, such as inside
  * {@link orElse}.
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
-export function fail(err: SourceError | Schema.SchemaError) {
-  return make(() => Effect.fail(evaluationFailure(new ConfigError(err), false)))
+export function fail(err: SourceError | Schema.SchemaError): Config<never> {
+  return make(() => Effect.fail(new ConfigError(err)))
 }
 
 /**
@@ -960,11 +934,12 @@ export function fail(err: SourceError | Schema.SchemaError) {
  * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
 export function succeed<T>(value: T) {
-  return make(() => Effect.succeed(resolved(value, false)))
+  return make(() => Effect.succeed(Result.succeed(value)))
 }
 
 /**
@@ -992,6 +967,7 @@ export function succeed<T>(value: T) {
  * @see {@link NonEmptyString} – rejects empty strings
  * @see {@link schema} – for more complex types
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1013,6 +989,7 @@ export function String(name?: string) {
  *
  * @see {@link String} for allowing empty strings
  *
+ * @stability stable
  * @category constructors
  * @since 3.7.0
  */
@@ -1035,6 +1012,7 @@ export function NonEmptyString(name?: string) {
  * @see {@link Finite} for rejecting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1056,6 +1034,7 @@ export function Number(name?: string) {
  * @see {@link Number} for accepting `NaN` and `Infinity`
  * @see {@link Int} for accepting only integers
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1077,6 +1056,7 @@ export function Finite(name?: string) {
  * @see {@link Number} for accepting any number
  * @see {@link Port} for accepting only integers in `1` through `65535`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1106,6 +1086,7 @@ export function Int(name?: string) {
  * ```
  *
  * @see {@link Literals} – accepts multiple literal values
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1136,6 +1117,7 @@ export function Literal<L extends SchemaAST.LiteralValue>(literal: L, name?: str
  *
  * @see {@link Literal} for accepting one specific literal value
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1169,6 +1151,7 @@ export function Literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  * ```
  *
  * @see {@link Record} for key-value input from structural records or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1236,6 +1219,7 @@ export function Array<V extends Schema.ConstraintCodec<unknown, unknown>>(
  * ```
  *
  * @see {@link Array} for array input from structural arrays or separated strings.
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1311,6 +1295,7 @@ export function Record<
  * ) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1353,6 +1338,7 @@ export function Boolean(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 2.5.0
  */
@@ -1368,6 +1354,7 @@ export function Duration(name?: string) {
  * Decimal symbols such as `kB` use powers of 1,000, while binary symbols such
  * as `KiB` use powers of 1,024.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1406,6 +1393,7 @@ export function ByteSize(name?: string) {
  *
  * @see {@link Int} for integer config values outside the port range
  *
+ * @stability stable
  * @category constructors
  * @since 3.16.0
  */
@@ -1443,6 +1431,7 @@ export function Port(name?: string) {
  * ) // => "Info"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1483,6 +1472,7 @@ export function LogLevel(name?: string) {
  *
  * @see {@link String} for non-secret string settings
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1525,6 +1515,7 @@ export function Redacted(name?: string) {
  *
  * @see {@link schema} for decoding configuration values with a custom codec
  *
+ * @stability stable
  * @category constructors
  * @since 3.11.0
  */
@@ -1558,6 +1549,7 @@ export function URL(name?: string) {
  * Effect.runSync(createdAt.parse(provider)).toISOString() // => "2024-01-15T00:00:00.000Z"
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1613,6 +1605,7 @@ export function Date(name?: string) {
  * @see {@link all} – combine multiple configs into a struct
  * @see {@link schema} – read structured config from a schema
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */

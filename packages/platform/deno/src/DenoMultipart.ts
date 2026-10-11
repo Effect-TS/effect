@@ -7,18 +7,20 @@
  * temporary files through the current `FileSystem`, `Path`, and `Scope`
  * services.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Effect from "effect/Effect"
 import type { FileSystem } from "effect/FileSystem"
+import * as Multipart from "effect/http/Multipart"
 import type { Path } from "effect/Path"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import * as Multipart from "effect/unstable/http/Multipart"
 
 /**
  * Parses a web `Request` body as multipart data and returns a stream of multipart parts.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -39,6 +41,7 @@ export const stream = (source: Request): Stream.Stream<Multipart.Part, Multipart
 /**
  * Parses and persists multipart data from a web `Request`, requiring file-system, path, and scope services.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

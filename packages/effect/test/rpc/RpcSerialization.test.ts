@@ -1,10 +1,10 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Layer, Schema, Stream } from "effect"
-import { SchemaBinary } from "effect/unstable/encoding"
-import { HttpRouter } from "effect/unstable/http"
-import * as HttpClient from "effect/unstable/http/HttpClient"
-import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/unstable/rpc"
+import { SchemaBinary } from "effect/encoding"
+import { HttpRouter } from "effect/http"
+import * as HttpClient from "effect/http/HttpClient"
+import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import { Rpc, RpcClient, RpcGroup, type RpcMessage, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
   _tag: "Exit",
@@ -292,6 +292,13 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(bytes.slice(split)), [message])
   })
 
+  it("ndjson skips lines that are not JSON and keeps decoding", () => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("{\"id\":1}\nnot json\n{\"id\":2}\n"), [{ id: 1 }, { id: 2 }])
+    assert.deepStrictEqual(parser.decode("{\"id\":4}\n"), [{ id: 4 }])
+  })
+
   it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization
@@ -391,6 +398,44 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(decoded, [{
       _tag: "Request",
       id: "",
+      tag: "users.get",
+      payload: null,
+      headers: []
+    }])
+  })
+
+  it("jsonRpc skips non-objects in a batch without losing requests", () => {
+    const parser = RpcSerialization.jsonRpc().makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("null"), [])
+    assert.deepStrictEqual(parser.decode("7"), [])
+    assert.deepStrictEqual(
+      parser.decode(
+        "[null,{\"jsonrpc\":\"2.0\",\"method\":1},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}]"
+      ),
+      [{
+        _tag: "Request",
+        id: "",
+        tag: 1,
+        isNotification: true,
+        payload: null,
+        headers: []
+      }, {
+        _tag: "Request",
+        id: 2,
+        tag: "users.get",
+        payload: null,
+        headers: []
+      }]
+    )
+  })
+
+  it("ndJsonRpc keeps requests that share a chunk with a value that is not a message", () => {
+    const parser = RpcSerialization.ndJsonRpc().makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("null\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"users.get\"}\n"), [{
+      _tag: "Request",
+      id: 2,
       tag: "users.get",
       payload: null,
       headers: []

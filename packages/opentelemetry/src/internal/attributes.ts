@@ -24,6 +24,16 @@ export const unknownToAttributeValue = (value: unknown): Otel.AttributeValue => 
     return value
   } else if (typeof value === "bigint") {
     return value.toString()
+  } else if (Array.isArray(value) && isHomogeneousPrimitiveArray(value)) {
+    return value.slice() as Otel.AttributeValue
   }
   return Inspectable.toStringUnknown(value)
+}
+
+const isHomogeneousPrimitiveArray = (
+  array: ReadonlyArray<unknown>
+): array is Array<string> | Array<number> | Array<boolean> => {
+  const type = typeof array[0]
+  return (array.length === 0 || type === "string" || type === "number" || type === "boolean") &&
+    array.every((item) => typeof item === type)
 }

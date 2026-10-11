@@ -3,11 +3,15 @@ import type { Effect, Repeat, Retry } from "../Effect.ts"
 import { constant, constTrue, dual, identity } from "../Function.ts"
 import * as Option from "../Option.ts"
 import * as Pull from "../Pull.ts"
+import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import type { NoInfer } from "../Types.ts"
 import { internalCall } from "../Utils.ts"
 import * as core from "./core.ts"
 import * as effect from "./effect.ts"
+
+const findErrorOnly = <E>(cause: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> =>
+  cause.reasons.every(core.isFailReason) ? effect.findError(cause) : Result.fail(cause as Cause.Cause<never>)
 
 /** @internal */
 export const repeatOrElse: {
@@ -29,21 +33,22 @@ export const repeatOrElse: {
 ): Effect<B, E3, R | R2 | R3> =>
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
-    return effect.catch_(
-      effect.forever(
-        effect.tap(
-          effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
-          (meta_) =>
-            effect.sync(() => {
-              meta = meta_
-            })
+    return effect.catchCauseFilter(
+      Pull.catchDone(
+        effect.forever(
+          effect.tap(
+            effect.flatMap(effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)), step),
+            (meta_) =>
+              effect.sync(() => {
+                meta = meta_
+              })
+          ),
+          { disableYield: true }
         ),
-        { disableYield: true }
+        (out) => effect.succeed(out as B)
       ),
-      (error) =>
-        core.isDone(error)
-          ? effect.succeed(error.value as B)
-          : orElse(error as E | E2, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
+      findErrorOnly,
+      (error) => orElse(error, meta.attempt === 0 ? Option.none() : Option.some(meta as any))
     )
   }))
 
@@ -66,8 +71,9 @@ export const retryOrElse: {
   effect.flatMap(Schedule.toStepWithMetadata(policy), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
     let lastError!: E
-    const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catch_(
+    const loop: Effect<A, E1 | Cause.Done<A1>, R | R1> = effect.catchCauseFilter(
       effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta)),
+      findErrorOnly,
       (error) => {
         lastError = error
         return effect.flatMap(step(error), (meta_) => {
@@ -198,7 +204,7 @@ export const scheduleFrom = dual<
   effect.flatMap(Schedule.toStepWithMetadata(schedule), (step) => {
     let meta = Schedule.CurrentMetadata.defaultValue()
     const selfWithMeta = effect.suspend(() => effect.provideService(self, Schedule.CurrentMetadata, meta))
-    return effect.catch_(
+    return Pull.catchDone(
       effect.flatMap(
         step(initial),
         (meta_) => {
@@ -210,10 +216,10 @@ export const scheduleFrom = dual<
             step(meta_) {
               meta = meta_
             }
-          }) as Effect<never, E, R | Env>
+          }) as Effect<never, E | Error | Cause.Done<Output>, R | Env>
         }
       ),
-      (error) => core.isDone(error) ? effect.succeed(error.value as Output) : effect.fail(error as E | Error)
+      (out) => effect.succeed(out as Output)
     )
   }))
 

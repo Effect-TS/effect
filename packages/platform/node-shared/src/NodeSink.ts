@@ -7,6 +7,7 @@
  * the supplied `onError` function, and can end the writable when the upstream
  * data is done.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type { NonEmptyReadonlyArray } from "effect/Array"
@@ -23,6 +24,7 @@ import type { Writable } from "node:stream"
  * backpressure, mapping writable errors with `onError`, and ending the stream
  * on completion unless `endOnDone` is `false`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -41,6 +43,7 @@ export const fromWritable = <E, A = Uint8Array | string>(
  * Node writable stream, respecting backpressure and optionally ending the
  * writable when upstream is done.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -70,6 +73,7 @@ export const fromWritableChannel = <IE, E, A = Uint8Array | string>(
  * The loop waits for `drain` when needed, fails on writable errors, and ends
  * the writable on upstream completion unless `endOnDone` is `false`.
  *
+ * @stability unstable
  * @category converting
  * @since 4.0.0
  */

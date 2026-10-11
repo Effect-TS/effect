@@ -4,12 +4,14 @@
  * Provides OpenRouter-specific metadata fields for AI error types through
  * module augmentation, enabling typed access to OpenRouter error details.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 
 /**
  * OpenRouter-specific error metadata fields.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -31,6 +33,7 @@ export type OpenRouterErrorMetadata = {
 /**
  * OpenRouter-specific rate limit metadata fields.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -41,7 +44,7 @@ export type OpenRouterRateLimitMetadata = OpenRouterErrorMetadata & {
   readonly resetTokens: string | null
 }
 
-declare module "effect/unstable/ai/AiError" {
+declare module "effect/ai/AiError" {
   /**
    * OpenRouter metadata attached to `RateLimitError` values.
    *

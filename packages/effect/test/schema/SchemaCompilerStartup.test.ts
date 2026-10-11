@@ -10,7 +10,7 @@ describe("Schema compiler startup", () => {
     assert.strictEqual(before.compiled, undefined)
     const unused = Schema.Struct({ a: Schema.Number })
     const make = SchemaParser.make(unused)
-    await import("effect/unstable/schema/SchemaJITCompiler/enable")
+    await import("effect/schema/SchemaJITCompiler/enable")
     assert.strictEqual(Registry.resolve(schema.ast), before)
     assert.deepStrictEqual(SchemaParser.decodeUnknownSync(schema)({ a: "a" }), { a: "a" })
     assert.deepStrictEqual(make({ a: 1 }), { a: 1 })

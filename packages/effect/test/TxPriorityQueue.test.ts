@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Option, Order, TxPriorityQueue } from "effect"
+import { Effect, Fiber, Option, Order, TxPriorityQueue, TxRef } from "effect"
 
 describe("TxPriorityQueue", () => {
   describe("constructors", () => {
@@ -77,6 +77,29 @@ describe("TxPriorityQueue", () => {
   })
 
   describe("mutations", () => {
+    it.effect("offerAll preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const queue = yield* TxPriorityQueue.empty<number>(Order.Number)
+        const gate = yield* TxRef.make(false)
+        const offer = TxPriorityQueue.offerAll(
+          queue,
+          (function*() {
+            yield 2
+            yield 1
+          })()
+        )
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            yield* offer
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        yield* Fiber.join(fiber)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(queue), [1, 2])
+      }))
+
     it.effect("offer + take returns elements in priority order", () =>
       Effect.tx(Effect.gen(function*() {
         const pq = yield* TxPriorityQueue.empty<number>(Order.Number)
@@ -133,6 +156,40 @@ describe("TxPriorityQueue", () => {
         yield* TxPriorityQueue.offerAll(pq, [3, 1, 2])
         const all = yield* TxPriorityQueue.toArray(pq)
         assert.deepStrictEqual(all, [1, 2, 3])
+      })))
+
+    it.effect("offerAll does not compare every queued element for one new value", () =>
+      Effect.tx(Effect.gen(function*() {
+        let comparisons = 0
+        const order: Order.Order<number> = (a, b) => {
+          comparisons++
+          return Order.Number(a, b)
+        }
+        const pq = yield* TxPriorityQueue.fromIterable(order, Array.from({ length: 128 }, (_, i) => i * 2))
+        comparisons = 0
+        yield* TxPriorityQueue.offerAll(pq, [127])
+        assert.isBelow(comparisons, 32)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), [
+          ...Array.from({ length: 64 }, (_, i) => i * 2),
+          127,
+          ...Array.from({ length: 64 }, (_, i) => (i + 64) * 2)
+        ])
+      })))
+
+    it.effect("offerAll avoids repeated full-range searches for an interleaved batch", () =>
+      Effect.tx(Effect.gen(function*() {
+        let comparisons = 0
+        const order: Order.Order<number> = (a, b) => {
+          comparisons++
+          return Order.Number(a, b)
+        }
+        const queued = Array.from({ length: 256 }, (_, i) => i * 2)
+        const incoming = Array.from({ length: 256 }, (_, i) => i * 2 + 1)
+        const pq = yield* TxPriorityQueue.fromIterable(order, queued)
+        comparisons = 0
+        yield* TxPriorityQueue.offerAll(pq, incoming)
+        assert.isBelow(comparisons, 900)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(pq), Array.from({ length: 512 }, (_, i) => i))
       })))
   })
 

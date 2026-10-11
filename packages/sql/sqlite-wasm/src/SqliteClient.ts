@@ -10,6 +10,7 @@
  * clients can stream query rows; worker-backed clients cannot. `updateValues`
  * is not supported by this driver.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 // oxlint-disable-next-line effect/no-import-from-barrel-package
@@ -21,19 +22,18 @@ import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Rec from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Semaphore from "effect/Semaphore"
+import * as Client from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import { classifySqliteError, SqlError } from "effect/sql/SqlError"
+import * as Statement from "effect/sql/Statement"
 import * as Stream from "effect/Stream"
-import * as Reactivity from "effect/unstable/reactivity/Reactivity"
-import * as Client from "effect/unstable/sql/SqlClient"
-import type { Connection } from "effect/unstable/sql/SqlConnection"
-import { classifySqliteError, SqlError } from "effect/unstable/sql/SqlError"
-import * as Statement from "effect/unstable/sql/Statement"
 import type { OpfsWorkerMessage } from "./internal/opfsWorker.ts"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
@@ -44,6 +44,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
 /**
  * Runtime identifier attached to SQLite WASM client values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -52,6 +53,7 @@ export const TypeId: TypeId = "~@effect/sql-sqlite-wasm/SqliteClient"
 /**
  * Type-level identifier for SQLite WASM client values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -60,6 +62,7 @@ export type TypeId = "~@effect/sql-sqlite-wasm/SqliteClient"
 /**
  * SQLite WASM client service interface, extending `SqlClient` with database `export` and `import` operations and marking `updateValues` as unsupported for SQLite.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -76,6 +79,7 @@ export interface SqliteClient extends Client.SqlClient {
 /**
  * Service tag for the SQLite WASM client.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -84,6 +88,7 @@ export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-wa
 /**
  * Configuration for an in-memory SQLite WASM client, including optional reactivity hooks, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -97,6 +102,7 @@ export interface SqliteClientMemoryConfig {
 /**
  * Configuration for a worker-backed SQLite WASM client, including the scoped worker or message port, optional reactivity hooks, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -113,6 +119,10 @@ interface SqliteConnection extends Connection {
   readonly import: (data: Uint8Array) => Effect.Effect<void, SqlError>
 }
 
+interface SqliteMemoryConnection extends SqliteConnection {
+  readonly isTransaction: () => boolean
+}
+
 const initModule = Effect.runSync(
   Effect.cached(Effect.promise(() => SQLiteESMFactory()))
 )
@@ -126,6 +136,7 @@ const registered = new Set<string>()
 /**
  * Creates a scoped in-memory SQLite WASM client using the memory VFS, serializing access through a semaphore and exposing database `export` and `import` operations.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -197,7 +208,8 @@ export const makeMemory = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      return identity<SqliteConnection>({
+      return identity<SqliteMemoryConnection>({
+        isTransaction: () => sqlite3.get_autocommit(db) === 0,
         execute(sql, params, transformRows) {
           return transformRows
             ? Effect.map(run(sql, params), transformRows)
@@ -253,20 +265,10 @@ export const makeMemory = (
       })
     })
 
-    const semaphore = yield* Semaphore.make(1)
-    const connection = yield* makeConnection
-
-    const acquirer = semaphore.withPermits(1)(Effect.succeed(connection))
-    const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      return Effect.as(
-        Effect.tap(
-          restore(semaphore.take(1)),
-          () => Scope.addFinalizer(scope, semaphore.release(1))
-        ),
-        connection
-      )
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: Effect.succeed(yield* makeConnection),
+      semaphore: yield* Semaphore.make(1),
+      isTransaction: (conn) => conn.isTransaction()
     })
 
     return Object.assign(
@@ -274,6 +276,7 @@ export const makeMemory = (
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -284,9 +287,9 @@ export const makeMemory = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: semaphore.withPermits(1)(connection.export),
+        export: Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.export)),
         import(data: Uint8Array) {
-          return semaphore.withPermits(1)(connection.import(data))
+          return Effect.scoped(Effect.flatMap(transactionAcquirer, (conn) => conn.import(data)))
         }
       }
     )
@@ -295,6 +298,7 @@ export const makeMemory = (
 /**
  * Creates a scoped worker-backed SQLite WASM client, communicating with the configured worker or message port, restarting the scoped connection on worker errors, and exposing database `export` and `import` operations.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -433,21 +437,17 @@ export const make = (
 
     const connectionRef = yield* ScopedRef.fromAcquire(makeConnection)
 
-    const semaphore = yield* Semaphore.make(1)
-    const acquirer = semaphore.withPermits(1)(ScopedRef.get(connectionRef))
-    const transactionAcquirer = Effect.uninterruptibleMask(Effect.fnUntraced(function*(restore) {
-      const fiber = Fiber.getCurrent()!
-      const scope = Context.getUnsafe(fiber.context, Scope.Scope)
-      yield* restore(semaphore.take(1))
-      yield* Scope.addFinalizer(scope, semaphore.release(1))
-      return yield* ScopedRef.get(connectionRef)
-    }))
+    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+      connection: ScopedRef.get(connectionRef),
+      semaphore: yield* Semaphore.make(1)
+    })
 
     return Object.assign(
       (yield* Client.make({
         acquirer,
         compiler,
         transactionAcquirer,
+        onCommitFailure,
         releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
@@ -458,9 +458,9 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        export: Effect.flatMap(acquirer, (connection) => connection.export),
+        export: Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.export)),
         import(data: Uint8Array) {
-          return Effect.flatMap(acquirer, (connection) => connection.import(data))
+          return Effect.scoped(Effect.flatMap(acquirer, (connection) => connection.import(data)))
         }
       }
     )
@@ -481,6 +481,7 @@ const extractRows = (rows: WorkerResult) => rows[1]
 /**
  * Fiber reference that stores transferables to include with worker-backed SQLite WASM query messages.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -492,6 +493,7 @@ export const Transferables = Context.Reference<ReadonlyArray<Transferable>>(
 /**
  * Runs an effect with the supplied transferables attached to worker-backed SQLite WASM query messages.
  *
+ * @stability unstable
  * @category transferables
  * @since 4.0.0
  */
@@ -502,6 +504,7 @@ export const withTransferables =
 /**
  * Builds a layer from an Effect `Config` value, providing both the in-memory SQLite WASM `SqliteClient` service and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -522,6 +525,7 @@ export const layerMemoryConfig = (
 /**
  * Builds a layer from an in-memory SQLite WASM client configuration, providing both `SqliteClient` and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -538,6 +542,7 @@ export const layerMemory = (
 /**
  * Builds a layer from a worker-backed SQLite WASM client configuration, providing both `SqliteClient` and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -554,6 +559,7 @@ export const layer = (
 /**
  * Builds a layer from an Effect `Config` value, providing both the worker-backed SQLite WASM `SqliteClient` service and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

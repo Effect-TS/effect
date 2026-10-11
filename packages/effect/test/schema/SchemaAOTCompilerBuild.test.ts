@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Path, SchemaParser } from "effect"
 import * as CompilerRegistry from "effect/internal/schema/compilerRegistry"
-import * as SchemaAOTCompilerBuild from "effect/unstable/schema/SchemaAOTCompiler/Build"
+import * as SchemaAOTCompilerBuild from "effect/schema/SchemaAOTCompiler/Build"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"

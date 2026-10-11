@@ -6,28 +6,29 @@
  * choosing serialization, runner health checks, runner storage, message
  * storage, and optional client-only mode from the supplied options.
  *
+ * @stability unstable
  * @since 4.0.0
  */
+import * as HttpRunner from "effect/cluster/HttpRunner"
+import * as MessageStorage from "effect/cluster/MessageStorage"
+import * as RunnerHealth from "effect/cluster/RunnerHealth"
+import * as Runners from "effect/cluster/Runners"
+import * as RunnerStorage from "effect/cluster/RunnerStorage"
+import type { Sharding } from "effect/cluster/Sharding"
+import * as ShardingConfig from "effect/cluster/ShardingConfig"
+import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
+import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
+import type * as Etag from "effect/http/Etag"
+import * as FetchHttpClient from "effect/http/FetchHttpClient"
+import type { HttpPlatform } from "effect/http/HttpPlatform"
+import type { HttpServer } from "effect/http/HttpServer"
+import type { ServeError } from "effect/http/HttpServerError"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as HttpRunner from "effect/unstable/cluster/HttpRunner"
-import * as MessageStorage from "effect/unstable/cluster/MessageStorage"
-import * as RunnerHealth from "effect/unstable/cluster/RunnerHealth"
-import * as Runners from "effect/unstable/cluster/Runners"
-import * as RunnerStorage from "effect/unstable/cluster/RunnerStorage"
-import type { Sharding } from "effect/unstable/cluster/Sharding"
-import * as ShardingConfig from "effect/unstable/cluster/ShardingConfig"
-import * as SqlMessageStorage from "effect/unstable/cluster/SqlMessageStorage"
-import * as SqlRunnerStorage from "effect/unstable/cluster/SqlRunnerStorage"
-import type * as Etag from "effect/unstable/http/Etag"
-import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
-import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
-import type { HttpServer } from "effect/unstable/http/HttpServer"
-import type { ServeError } from "effect/unstable/http/HttpServerError"
-import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
-import type { SqlClient } from "effect/unstable/sql/SqlClient"
+import * as RpcSerialization from "effect/rpc/RpcSerialization"
+import type { SqlClient } from "effect/sql/SqlClient"
 import { layerK8sHttpClient } from "./BunClusterSocket.ts"
 import * as BunCrypto from "./BunCrypto.ts"
 import * as BunFileSystem from "./BunFileSystem.ts"
@@ -39,6 +40,7 @@ export {
   /**
    * Layer that provides a Kubernetes HTTP client for runner health checks.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -48,6 +50,7 @@ export {
 /**
  * Layer that provides a Bun HTTP server for cluster runners.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -94,6 +97,7 @@ export const layerHttpServer: Layer.Layer<
  * @see {@link layerHttpServer} for the server layer used by non-client-only transports
  * @see {@link layerK8sHttpClient} for Kubernetes runner health support
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

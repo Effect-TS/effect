@@ -9,6 +9,7 @@
  * core operations for reading, setting, updating, and modifying a transactional
  * value while returning a separate result.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Effect from "./Effect.ts"
@@ -55,6 +56,7 @@ const TypeId = "~effect/TxRef"
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -95,6 +97,7 @@ export interface TxRef<in out A> extends Pipeable {
  * await Effect.runPromise(program) // => [42, "Bob"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -122,6 +125,7 @@ export const make = <A>(initial: A) => Effect.sync(() => makeUnsafe(initial))
  * config.value // => { timeout: 5000, retries: 3 }
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -134,6 +138,15 @@ export const makeUnsafe = <A>(initial: A): TxRef<A> => ({
   version: 0,
   value: initial
 })
+
+const journalEntry = <A>(state: Effect.Transaction["Service"], self: TxRef<A>) => {
+  let entry = state.journal.get(self)
+  if (entry === undefined) {
+    entry = { version: self.version, value: self.value, written: false }
+    state.journal.set(self, entry)
+  }
+  return entry
+}
 
 /**
  * Modifies the value of the `TxRef` using the provided function.
@@ -160,6 +173,7 @@ export const makeUnsafe = <A>(initial: A): TxRef<A> => ({
  * await Effect.runPromise(program) // => [0, 1]
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -173,12 +187,10 @@ export const modify: {
   Effect.Transaction.pipe(
     Effect.flatMap((state) =>
       Effect.sync(() => {
-        if (!state.journal.has(self)) {
-          state.journal.set(self, { version: self.version, value: self.value })
-        }
-        const current = state.journal.get(self)!
+        const current = journalEntry(state, self)
         const [returnValue, next] = f(current.value)
         current.value = next
+        current.written = true
         return returnValue
       })
     ),
@@ -211,6 +223,7 @@ export const modify: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -248,10 +261,15 @@ export const update: {
  * await Effect.runPromise(program) // => 42
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
-export const get = <A>(self: TxRef<A>): Effect.Effect<A> => modify(self, (current) => [current, current])
+export const get = <A>(self: TxRef<A>): Effect.Effect<A> =>
+  Effect.Transaction.pipe(
+    Effect.map((state) => journalEntry(state, self).value),
+    Effect.tx
+  )
 
 /**
  * Sets the value of the `TxRef`.
@@ -279,6 +297,7 @@ export const get = <A>(self: TxRef<A>): Effect.Effect<A> => modify(self, (curren
  * await Effect.runPromise(program) // => 100
  * ```
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */

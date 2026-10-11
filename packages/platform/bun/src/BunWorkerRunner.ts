@@ -7,6 +7,7 @@
  * responses through the worker `postMessage` channel, and closes when the
  * parent sends the close message.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
@@ -17,8 +18,8 @@ import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import { WorkerError, WorkerReceiveError, WorkerSpawnError } from "effect/unstable/workers/WorkerError"
-import * as WorkerRunner from "effect/unstable/workers/WorkerRunner"
+import { WorkerError, WorkerReceiveError, WorkerSpawnError } from "effect/workers/WorkerError"
+import * as WorkerRunner from "effect/workers/WorkerRunner"
 
 declare const self: MessagePort
 
@@ -27,6 +28,7 @@ declare const self: MessagePort
  * routing parent messages to the registered handler and sending responses back
  * through the worker port.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -62,7 +64,6 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succe
               trackFiber(fiber)
             }
           } else {
-            port.close()
             Deferred.doneUnsafe(closeLatch, Exit.void)
           }
         }

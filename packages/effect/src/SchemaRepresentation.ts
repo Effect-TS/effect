@@ -1,6 +1,7 @@
 /**
  * Open, compiler-extensible representation of Effect schemas.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as InternalRecord from "./internal/record.ts"
@@ -18,6 +19,7 @@ import * as InternalGetter from "./SchemaGetter.ts"
 /**
  * Open persistence identity carried by declarations and opaque checks.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -29,6 +31,7 @@ export interface RepresentationAnnotation {
 /**
  * Open persistence identity and schema dependencies carried by opaque checks.
  *
+ * @stability stable
  * @category annotations
  * @since 4.0.0
  */
@@ -37,8 +40,9 @@ export interface CheckRepresentationAnnotation<S> extends RepresentationAnnotati
 }
 
 /**
- * Input passed to JSON Schema compiler annotations.
+ * Input and output contracts for JSON Schema compiler annotations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace ToJsonSchema {
@@ -54,23 +58,76 @@ export declare namespace ToJsonSchema {
   }
 
   /**
-   * Compiles a check to a JSON Schema fragment.
+   * The result of compiling a check to JSON Schema.
+   *
+   * **Details**
+   *
+   * Return the JSON Schema fragment directly when it represents the check
+   * exactly. Return `[schema, true]` when the fragment is a safe, looser
+   * approximation: it must accept every value accepted by the check, but may
+   * accept additional values. Use `[{}, true]` when the constraint is omitted;
+   * a bare `{}` declares that the check imposes no constraint.
+   *
+   * Approximation propagates through enclosing schemas and dependencies listed
+   * in `representation.schemas`, including recursive references. A `oneOf`
+   * union with an approximate branch exports as `anyOf`. Approximate record-key
+   * patterns cannot be used as `patternProperties` selectors.
    *
    * **Gotchas**
    *
-   * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
-   * mutated after this function returns. Local `$defs` references must use valid JSON Pointer URI fragments. Return a
-   * new object graph to produce different output during a later compilation.
+   * The compiler trusts the callback's declaration; it does not prove that the
+   * fragment is exact or safely looser. Returning a plain fragment does not
+   * override approximation inherited from a schema dependency.
+   *
+   * **Example** (Declaring a Unicode length approximation)
+   *
+   * ```ts import.meta.vitest
+   * import { Schema } from "effect"
+   *
+   * const short = Schema.String.check(Schema.makeFilter(
+   *   (value: string) => value.length <= 1,
+   *   { toJsonSchema: () => [{ maxLength: 1 }, true] }
+   * ))
+   * const schema = Schema.Union([short, Schema.Literal("😀")], { mode: "oneOf" })
+   * const document = Schema.toJsonSchemaDocument(schema)
+   *
+   * Schema.is(schema)("😀") // => true
+   * document.schema.oneOf // => undefined
+   * document.schema.anyOf // => [{ type: "string", maxLength: 1 }, { type: "string", enum: ["😀"] }]
+   * ```
    *
    * @category models
    * @since 4.0.0
    */
-  export type Check = (input: CheckInput) => JsonSchema.JsonSchema
+  export type CheckOutput = JsonSchema.JsonSchema | readonly [schema: JsonSchema.JsonSchema, approximate: true]
+
+  /**
+   * Compiles a check to a JSON Schema fragment.
+   *
+   * **Details**
+   *
+   * Return a fragment for an exact translation or `[fragment, true]` for a safe,
+   * looser approximation. Dependencies in `representation.schemas` are compiled
+   * into the input's `schemas` array; their approximation status propagates automatically.
+   *
+   * **Gotchas**
+   *
+   * Treat the input schemas as immutable. The returned fragment must be a valid JSON Schema object graph and must not be
+   * mutated after this function returns. Local `$defs` references must use valid JSON Pointer URI fragments. Return a
+   * new object graph to produce different output during a later compilation.
+   *
+   * @see {@link CheckOutput} for exact and approximate results
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type Check = (input: CheckInput) => CheckOutput
 }
 
 /**
  * Input and output contracts for code generation annotations.
  *
+ * @stability stable
  * @since 4.0.0
  */
 export declare namespace Generation {
@@ -137,6 +194,7 @@ export declare namespace Generation {
 /**
  * A custom opaque declaration.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -151,6 +209,7 @@ export interface Declaration {
 /**
  * A lazily resolved representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -164,6 +223,7 @@ export interface Suspend {
 /**
  * A named reference.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -181,6 +241,7 @@ interface Keyword<Tag extends string> {
 /**
  * The null keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -188,6 +249,7 @@ export interface Null extends Keyword<"Null"> {}
 /**
  * The undefined keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -195,6 +257,7 @@ export interface Undefined extends Keyword<"Undefined"> {}
 /**
  * The void keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -202,6 +265,7 @@ export interface Void extends Keyword<"Void"> {}
 /**
  * The never keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -209,6 +273,7 @@ export interface Never extends Keyword<"Never"> {}
 /**
  * The unknown keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -216,6 +281,7 @@ export interface Unknown extends Keyword<"Unknown"> {}
 /**
  * The any keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -224,6 +290,7 @@ export interface Any extends Keyword<"Any"> {}
 /**
  * A string representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -232,6 +299,7 @@ export interface String extends Keyword<"String"> {}
 /**
  * A number representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -239,6 +307,7 @@ export interface Number extends Keyword<"Number"> {}
 /**
  * A boolean representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -246,6 +315,7 @@ export interface Boolean extends Keyword<"Boolean"> {}
 /**
  * A bigint representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -253,6 +323,7 @@ export interface BigInt extends Keyword<"BigInt"> {}
 /**
  * A symbol representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -266,6 +337,7 @@ export interface Symbol extends Keyword<"Symbol"> {}
  * The live representation stores the native literal value. Persistent codecs
  * add an explicit type discriminator when encoding it.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -281,6 +353,7 @@ export interface Literal extends Keyword<"Literal"> {
  * Globally registered symbols have an exact JSON string representation. Local
  * symbols have no JSON representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -291,6 +364,7 @@ export interface UniqueSymbol extends Keyword<"UniqueSymbol"> {
 /**
  * The object keyword representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -304,6 +378,7 @@ export interface ObjectKeyword extends Keyword<"ObjectKeyword"> {}
  * Enum members are stored as native string or finite number values. Persistent
  * codecs add an explicit type discriminator when encoding them.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -314,6 +389,7 @@ export interface Enum extends Keyword<"Enum"> {
 /**
  * A template literal representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -324,6 +400,7 @@ export interface TemplateLiteral extends Keyword<"TemplateLiteral"> {
 /**
  * A tuple element.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -336,6 +413,7 @@ export interface Element {
 /**
  * An array or tuple representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -357,6 +435,7 @@ export interface Arrays extends Keyword<"Arrays"> {
  * Local symbols can be represented while the schema is live, but persistent
  * codecs reject them because they cannot be reconstructed by identity.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -371,6 +450,7 @@ export interface PropertySignature {
 /**
  * An index signature.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -382,6 +462,7 @@ export interface IndexSignature {
 /**
  * An object representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -393,6 +474,7 @@ export interface Objects extends Keyword<"Objects"> {
 /**
  * A union representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -404,6 +486,7 @@ export interface Union extends Keyword<"Union"> {
 /**
  * The structural schema representation.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -434,6 +517,7 @@ export type Representation =
 /**
  * A structural check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -442,6 +526,7 @@ export type Check = Filter | FilterGroup
 /**
  * An opaque leaf check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -455,6 +540,7 @@ export interface Filter {
 /**
  * A non-empty group of checks.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -468,6 +554,7 @@ export interface FilterGroup {
 /**
  * Named representation definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -478,6 +565,7 @@ export interface References {
 /**
  * A single representation and its definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -489,6 +577,7 @@ export interface Document {
 /**
  * Multiple representations sharing definitions.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -500,6 +589,7 @@ export interface MultiDocument {
 /**
  * Reviver for a declaration.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -516,6 +606,7 @@ export interface DeclarationReviver<P> {
 /**
  * Reviver for a leaf check.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -532,6 +623,7 @@ export interface FilterReviver<P> {
 /**
  * Reviver for a check group.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -548,6 +640,7 @@ export interface FilterGroupReviver<P> {
 /**
  * A check reviver.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -556,6 +649,7 @@ export type CheckReviver<P> = FilterReviver<P> | FilterGroupReviver<P>
 /**
  * A typed reviver.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -564,6 +658,7 @@ export type Reviver<P> = DeclarationReviver<P> | CheckReviver<P>
 /**
  * A reviver erased only at collection boundaries.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -572,6 +667,7 @@ export type AnyReviver = Reviver<any>
 /**
  * Creates a declaration reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -584,6 +680,7 @@ export const makeReviverDeclaration: <P>(
 /**
  * Creates a filter reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -596,6 +693,7 @@ export const makeReviverFilter: <P>(
 /**
  * Creates a filter group reviver while inferring its payload type from `payloadSchema`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -676,6 +774,7 @@ const RedactedRepresentationPayload: Schema.Decoder<RedactedRepresentationPayloa
  *
  * @see {@link Schema.isTrimmed} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -694,6 +793,7 @@ export const isTrimmedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isPattern} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -715,6 +815,7 @@ export const isPatternReviver: FilterReviver<{
  *
  * @see {@link Schema.isStringFinite} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -733,6 +834,7 @@ export const isStringFiniteReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isStringBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -751,6 +853,7 @@ export const isStringBigIntReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isStringSymbol} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -769,6 +872,7 @@ export const isStringSymbolReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUUID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -789,6 +893,7 @@ export const isUUIDReviver: FilterReviver<{
  *
  * @see {@link Schema.isGUID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -807,6 +912,7 @@ export const isGUIDReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isULID} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -825,6 +931,7 @@ export const isULIDReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isBase64} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -843,6 +950,7 @@ export const isBase64Reviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isBase64Url} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -853,63 +961,66 @@ export const isBase64UrlReviver: FilterReviver<null> = makeReviverFilter(
 )
 
 /**
- * Reviver for persisted `isStartsWith` checks.
+ * Reviver for persisted `isStartingWith` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isStartsWith}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isStartingWith}.
  *
- * @see {@link Schema.isStartsWith} for creating the corresponding check
+ * @see {@link Schema.isStartingWith} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isStartsWithReviver: FilterReviver<{
+export const isStartingWithReviver: FilterReviver<{
   readonly startsWith: string
 }> = makeReviverFilter(
-  "effect/schema/isStartsWith",
+  "effect/schema/isStartingWith",
   Schema.Struct({ startsWith: Schema.String }),
-  ({ annotations, payload }) => Schema.isStartsWith(payload.startsWith, annotations)
+  ({ annotations, payload }) => Schema.isStartingWith(payload.startsWith, annotations)
 )
 
 /**
- * Reviver for persisted `isEndsWith` checks.
+ * Reviver for persisted `isEndingWith` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isEndsWith}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isEndingWith}.
  *
- * @see {@link Schema.isEndsWith} for creating the corresponding check
+ * @see {@link Schema.isEndingWith} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isEndsWithReviver: FilterReviver<{
+export const isEndingWithReviver: FilterReviver<{
   readonly endsWith: string
 }> = makeReviverFilter(
-  "effect/schema/isEndsWith",
+  "effect/schema/isEndingWith",
   Schema.Struct({ endsWith: Schema.String }),
-  ({ annotations, payload }) => Schema.isEndsWith(payload.endsWith, annotations)
+  ({ annotations, payload }) => Schema.isEndingWith(payload.endsWith, annotations)
 )
 
 /**
- * Reviver for persisted `isIncludes` checks.
+ * Reviver for persisted `isIncluding` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isIncludes}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isIncluding}.
  *
- * @see {@link Schema.isIncludes} for creating the corresponding check
+ * @see {@link Schema.isIncluding} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isIncludesReviver: FilterReviver<{
+export const isIncludingReviver: FilterReviver<{
   readonly includes: string
 }> = makeReviverFilter(
-  "effect/schema/isIncludes",
+  "effect/schema/isIncluding",
   Schema.Struct({ includes: Schema.String }),
-  ({ annotations, payload }) => Schema.isIncludes(payload.includes, annotations)
+  ({ annotations, payload }) => Schema.isIncluding(payload.includes, annotations)
 )
 
 /**
@@ -921,6 +1032,7 @@ export const isIncludesReviver: FilterReviver<{
  *
  * @see {@link Schema.isUppercased} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -939,6 +1051,7 @@ export const isUppercasedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isLowercased} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -957,6 +1070,7 @@ export const isLowercasedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isCapitalized} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -975,6 +1089,7 @@ export const isCapitalizedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUncapitalized} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -993,6 +1108,7 @@ export const isUncapitalizedReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isFinite} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1011,6 +1127,7 @@ export const isFiniteReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isGreaterThan} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1031,6 +1148,7 @@ export const isGreaterThanReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualTo} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1051,6 +1169,7 @@ export const isGreaterThanOrEqualToReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThan} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1071,6 +1190,7 @@ export const isLessThanReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualTo} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1091,6 +1211,7 @@ export const isLessThanOrEqualToReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetween} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1119,6 +1240,7 @@ export const isBetweenReviver: FilterReviver<{
  *
  * @see {@link Schema.isMultipleOf} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1139,6 +1261,7 @@ export const isMultipleOfReviver: FilterReviver<{
  *
  * @see {@link Schema.isInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1157,6 +1280,7 @@ export const isIntReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isMinLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1177,6 +1301,7 @@ export const isMinLengthReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1189,24 +1314,74 @@ export const isMaxLengthReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isLengthBetween` checks.
+ * Reviver for persisted `isBetweenLength` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isLengthBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenLength}.
  *
- * @see {@link Schema.isLengthBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenLength} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isLengthBetweenReviver: FilterReviver<{
+export const isBetweenLengthReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isLengthBetween",
+  "effect/schema/isBetweenLength",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isLengthBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenLength(payload.minimum, payload.maximum, annotations)
+)
+
+/**
+ * Reviver for persisted `isMinCodePoints` checks.
+ *
+ * @see {@link Schema.isMinCodePoints} for creating the corresponding check
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isMinCodePointsReviver: FilterReviver<{
+  readonly minCodePoints: number
+}> = makeReviverFilter(
+  "effect/schema/isMinCodePoints",
+  Schema.Struct({ minCodePoints: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isMinCodePoints(payload.minCodePoints, annotations)
+)
+
+/**
+ * Reviver for persisted `isMaxCodePoints` checks.
+ *
+ * @see {@link Schema.isMaxCodePoints} for creating the corresponding check
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isMaxCodePointsReviver: FilterReviver<{
+  readonly maxCodePoints: number
+}> = makeReviverFilter(
+  "effect/schema/isMaxCodePoints",
+  Schema.Struct({ maxCodePoints: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isMaxCodePoints(payload.maxCodePoints, annotations)
+)
+
+/**
+ * Reviver for persisted `isBetweenCodePoints` checks.
+ *
+ * @see {@link Schema.isBetweenCodePoints} for creating the corresponding check
+ * @stability stable
+ * @category validation
+ * @since 4.0.0
+ */
+export const isBetweenCodePointsReviver: FilterReviver<{
+  readonly minimum: number
+  readonly maximum: number
+}> = makeReviverFilter(
+  "effect/schema/isBetweenCodePoints",
+  Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
+  ({ annotations, payload }) => Schema.isBetweenCodePoints(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1218,6 +1393,7 @@ export const isLengthBetweenReviver: FilterReviver<{
  *
  * @see {@link Schema.isMinSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1238,6 +1414,7 @@ export const isMinSizeReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1250,24 +1427,25 @@ export const isMaxSizeReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isSizeBetween` checks.
+ * Reviver for persisted `isBetweenSize` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isSizeBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenSize}.
  *
- * @see {@link Schema.isSizeBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenSize} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isSizeBetweenReviver: FilterReviver<{
+export const isBetweenSizeReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isSizeBetween",
+  "effect/schema/isBetweenSize",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isSizeBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenSize(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1279,6 +1457,7 @@ export const isSizeBetweenReviver: FilterReviver<{
  *
  * @see {@link Schema.isMinProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1299,6 +1478,7 @@ export const isMinPropertiesReviver: FilterReviver<{
  *
  * @see {@link Schema.isMaxProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1311,24 +1491,25 @@ export const isMaxPropertiesReviver: FilterReviver<{
 )
 
 /**
- * Reviver for persisted `isPropertiesLengthBetween` checks.
+ * Reviver for persisted `isBetweenProperties` checks.
  *
  * **When to use**
  *
- * Use when reconstructing documents that may contain checks created by {@link Schema.isPropertiesLengthBetween}.
+ * Use when reconstructing documents that may contain checks created by {@link Schema.isBetweenProperties}.
  *
- * @see {@link Schema.isPropertiesLengthBetween} for creating the corresponding check
+ * @see {@link Schema.isBetweenProperties} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
-export const isPropertiesLengthBetweenReviver: FilterReviver<{
+export const isBetweenPropertiesReviver: FilterReviver<{
   readonly minimum: number
   readonly maximum: number
 }> = makeReviverFilter(
-  "effect/schema/isPropertiesLengthBetween",
+  "effect/schema/isBetweenProperties",
   Schema.Struct({ minimum: Schema.Natural, maximum: Schema.Natural }),
-  ({ annotations, payload }) => Schema.isPropertiesLengthBetween(payload.minimum, payload.maximum, annotations)
+  ({ annotations, payload }) => Schema.isBetweenProperties(payload.minimum, payload.maximum, annotations)
 )
 
 /**
@@ -1340,6 +1521,7 @@ export const isPropertiesLengthBetweenReviver: FilterReviver<{
  *
  * @see {@link Schema.isPropertyNames} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1358,6 +1540,7 @@ export const isPropertyNamesReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.isUnique} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1375,6 +1558,7 @@ export const isUniqueReviver: FilterReviver<null> = makeReviverFilter(
  * Use when reconstructing documents that may contain checks created by {@link Schema.isUniqueKey}.
  *
  * @see {@link Schema.isUniqueKey} for creating the corresponding check
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1393,6 +1577,7 @@ export const isUniqueKeyReviver: FilterReviver<null> = makeReviverFilter(
  *
  * @see {@link Schema.Option} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1414,6 +1599,7 @@ export const OptionReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Result} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1435,6 +1621,7 @@ export const ResultReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Redacted} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1456,6 +1643,7 @@ export const RedactedReviver: DeclarationReviver<RedactedRepresentationPayload> 
  *
  * @see {@link Schema.CauseReason} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1477,6 +1665,7 @@ export const CauseReasonReviver: DeclarationReviver<null> = makeReviverDeclarati
  *
  * @see {@link Schema.Cause} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1498,6 +1687,7 @@ export const CauseReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ErrorInstance} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1519,6 +1709,7 @@ export const ErrorInstanceReviver: DeclarationReviver<ErrorRepresentationPayload
  *
  * @see {@link Schema.Exit} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1540,6 +1731,7 @@ export const ExitReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ReadonlyMap} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1555,6 +1747,7 @@ export const ReadonlyMapReviver: DeclarationReviver<null> = makeReviverDeclarati
 /**
  * Reviver for persisted {@link Schema.Graph} declarations.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1576,6 +1769,7 @@ export const GraphReviver: DeclarationReviver<"directed" | "undirected"> = makeR
  *
  * @see {@link Schema.HashMap} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1597,6 +1791,7 @@ export const HashMapReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.ReadonlySet} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1618,6 +1813,7 @@ export const ReadonlySetReviver: DeclarationReviver<null> = makeReviverDeclarati
  *
  * @see {@link Schema.HashSet} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1639,6 +1835,7 @@ export const HashSetReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.Chunk} for creating the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1660,6 +1857,7 @@ export const ChunkReviver: DeclarationReviver<null> = makeReviverDeclaration(
  *
  * @see {@link Schema.RegExp} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1677,6 +1875,7 @@ export const RegExpReviver: DeclarationReviver<null> = makeFixedDeclarationReviv
  *
  * @see {@link Schema.URL} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1691,6 +1890,7 @@ export const URLReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
  *
  * @see {@link Schema.Date} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1705,6 +1905,7 @@ export const DateReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.Duration} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1716,6 +1917,7 @@ export const DurationReviver: DeclarationReviver<null> = makeFixedDeclarationRev
 /**
  * Reviver for persisted {@link Schema.ByteSize} declarations.
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1733,6 +1935,7 @@ export const ByteSizeReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.BigDecimal} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1750,6 +1953,7 @@ export const BigDecimalReviver: DeclarationReviver<null> = makeFixedDeclarationR
  *
  * @see {@link Schema.File} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1764,6 +1968,7 @@ export const FileReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.FormData} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1781,6 +1986,7 @@ export const FormDataReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.URLSearchParams} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1798,6 +2004,7 @@ export const URLSearchParamsReviver: DeclarationReviver<null> = makeFixedDeclara
  *
  * @see {@link Schema.Uint8Array} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1815,6 +2022,7 @@ export const Uint8ArrayReviver: DeclarationReviver<null> = makeFixedDeclarationR
  *
  * @see {@link Schema.DateTimeUtc} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1832,6 +2040,7 @@ export const DateTimeUtcReviver: DeclarationReviver<null> = makeFixedDeclaration
  *
  * @see {@link Schema.TimeZoneOffset} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1849,6 +2058,7 @@ export const TimeZoneOffsetReviver: DeclarationReviver<null> = makeFixedDeclarat
  *
  * @see {@link Schema.TimeZoneNamed} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1866,6 +2076,7 @@ export const TimeZoneNamedReviver: DeclarationReviver<null> = makeFixedDeclarati
  *
  * @see {@link Schema.TimeZone} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1883,6 +2094,7 @@ export const TimeZoneReviver: DeclarationReviver<null> = makeFixedDeclarationRev
  *
  * @see {@link Schema.DateTimeZoned} for the corresponding schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -1900,6 +2112,7 @@ export const DateTimeZonedReviver: DeclarationReviver<null> = makeFixedDeclarati
  *
  * @see {@link Schema.isGreaterThanDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1920,6 +2133,7 @@ export const isGreaterThanDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualToDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1940,6 +2154,7 @@ export const isGreaterThanOrEqualToDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1960,6 +2175,7 @@ export const isLessThanDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualToDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -1980,6 +2196,7 @@ export const isLessThanOrEqualToDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenDate} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2008,6 +2225,7 @@ export const isBetweenDateReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2028,6 +2246,7 @@ export const isGreaterThanBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isGreaterThanOrEqualToBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2048,6 +2267,7 @@ export const isGreaterThanOrEqualToBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2068,6 +2288,7 @@ export const isLessThanBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isLessThanOrEqualToBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2088,6 +2309,7 @@ export const isLessThanOrEqualToBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.isBetweenBigInt} for creating the corresponding check
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -2116,6 +2338,7 @@ export const isBetweenBigIntReviver: FilterReviver<{
  *
  * @see {@link Schema.Json} for the corresponding immutable JSON schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -2130,6 +2353,7 @@ export const JsonReviver: DeclarationReviver<null> = makeFixedDeclarationReviver
  *
  * @see {@link Schema.MutableJson} for the corresponding mutable JSON schema
  *
+ * @stability stable
  * @category schemas
  * @since 4.0.0
  */
@@ -2150,6 +2374,8 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
   isIntReviver,
   isMinLengthReviver,
   isMaxLengthReviver,
+  isMinCodePointsReviver,
+  isMaxCodePointsReviver,
   isMinPropertiesReviver,
   isMaxPropertiesReviver,
   isPropertyNamesReviver,
@@ -2170,18 +2396,21 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
  *
  * - `"error"` rejects the document and is the default.
  * - `"ignore"` skips the constraint.
- * - `"apply"` compiles and enforces the constraint with the runtime's native regular expression engine.
+ * - `"apply"` compiles and enforces the constraint with the runtime's native regular expression engine in Unicode
+ *   mode. Patterns that cannot be compiled with the `u` flag are rejected with their source path.
  *
  * **Gotchas**
  *
  * Use `patterns: "apply"` only for trusted documents because regular expression evaluation may block for an unbounded
  * amount of time. `patterns: "ignore"` can admit values the source rejects, but can also reject previously valid
  * values inside `oneOf` when removing constraints makes multiple branches match.
+ * Input documents are assumed to be valid Draft 2020-12 schemas and are not validated against the meta-schema.
  * Ignoring `patternProperties` also skips its value constraints and `additionalProperties`, because matching keys cannot
  * be determined without evaluating the patterns.
  * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
  * through unchanged.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2198,6 +2427,7 @@ export interface FromJsonSchemaOptions {
 /**
  * Runtime and TypeScript source generated for one schema.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2209,6 +2439,7 @@ export interface Code {
 /**
  * Creates generated runtime and TypeScript source strings for a schema.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2217,6 +2448,7 @@ export const makeCode: (runtime: string, Type: string) => Code = InternalToCodeD
 /**
  * Auxiliary source artifact emitted while generating schema code.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2239,6 +2471,7 @@ export type Artifact =
 /**
  * Generated schema code together with named references and auxiliary artifacts.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2257,6 +2490,7 @@ export interface CodeDocument {
 /**
  * Information supplied to a reference policy for one representation candidate.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2291,6 +2525,7 @@ export interface ReferencePolicyInput {
  *
  * @see {@link ToRepresentationOptions} for configuring representation generation
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -2299,6 +2534,7 @@ export type ReferencePolicy = (input: ReferencePolicyInput) => string | undefine
 /**
  * Options for generating schema representations.
  *
+ * @stability stable
  * @category configuration
  * @since 4.0.0
  */
@@ -2330,10 +2566,13 @@ export interface ToRepresentationOptions {
  * **Details**
  *
  * Apply `SchemaAST.toType` to the AST first to lower its type side instead. The optional reference policy controls which
- * candidates are moved into the document's shared reference table.
+ * candidates are moved into the document's shared reference table. TypeScript-only
+ * distinctions such as those added by `Schema.brand` are absent from the AST
+ * and cannot be reconstructed from the resulting document.
  *
  * @see {@link toRepresentations} for multiple roots sharing one reference table
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2355,6 +2594,7 @@ export function toRepresentation(ast: SchemaAST.AST, options?: ToRepresentationO
  *
  * @see {@link toRepresentation} for a single AST root
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2372,6 +2612,7 @@ export function toRepresentations(
  *
  * Use when an API such as `toCodeDocument` requires a `MultiDocument`.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2396,22 +2637,33 @@ export function toMultiDocument(document: Document): MultiDocument {
  * decoder remains the final authority. Passing JSON Schema validation does not
  * guarantee that Effect decoding will succeed.
  *
+ * A `oneOf` union exports as `anyOf` when any branch contains a known
+ * approximation; otherwise it retains `oneOf`. Approximation propagates through
+ * checks, nested schemas, check dependencies, and recursive references. Filters
+ * without a `toJsonSchema` callback and opaque declarations are approximate.
+ * Custom callbacks declare their result using {@link ToJsonSchema.CheckOutput}.
+ *
  * **Gotchas**
  *
  * - Reference allocation is already fixed in the input `Document`. The inherited `referencePolicy` option has no effect
  *   here; pass it to {@link toRepresentation} when creating the document.
- * - String length, RegExp flags, decoded-object property checks, and `oneOf` can differ from Effect validation.
+ * - String length, RegExp flags, and decoded-object property checks can differ from Effect validation.
  * - Opaque declarations are represented by an unconstrained JSON Schema.
  * - Check callback results are used directly, and exceptions raised by a callback pass through unchanged. Callbacks
- *   must treat their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must
+ *   must treat their input schemas as immutable. Each returned fragment must be a valid JSON Schema object graph and must
  *   not be mutated after the callback returns. The callback author is responsible for the emitted semantics.
  * - Local definition references returned by callbacks are resolved together with compiler-generated references.
  *   Invalid JSON Pointer URI fragments throw an `Error`.
  * - The default `onExcessProperty: "ignore"` matches the decoder default. Use `onExcessProperty: "error"` in both
  *   places when a closed object contract is required.
+ * - Record keys require an exact translation to a pattern before they can select `patternProperties` values.
+ *   Otherwise, `"ignore"` omits that index-signature constraint. In `"error"` mode, the compiler emits the generated
+ *   key schemas under `propertyNames` and allows unmatched properties to satisfy any candidate index value schema.
+ *   Exact selectors from other index signatures are retained, even when their value schemas are approximate.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2429,19 +2681,25 @@ export function toJsonSchemaDocument(
  *
  * Use when several representation roots must share the same JSON Schema definitions.
  *
+ * **Details**
+ *
+ * Uses the same approximation tracking and `oneOf` and record-key fallbacks as
+ * {@link toJsonSchemaDocument}, including across shared and recursive definitions.
+ *
  * **Gotchas**
  *
  * - Reference allocation is already fixed in the input `MultiDocument`. The inherited `referencePolicy` option has no
  *   effect here; pass it to {@link toRepresentations} when creating the document.
  * - Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
- *   their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
+ *   their input schemas as immutable. Each returned fragment must be a valid JSON Schema object graph and must not be
  *   mutated after the callback returns. Local definition references returned by callbacks are resolved together with
  *   compiler-generated references. Invalid JSON Pointer URI fragments throw an `Error`.
- * - String length, RegExp flags, decoded-object property checks, `oneOf`, and custom check callbacks can differ from
+ * - String length, RegExp flags, decoded-object property checks, and custom check callbacks can differ from
  *   Effect validation, as described by {@link toJsonSchemaDocument}.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2463,6 +2721,7 @@ export function toJsonSchemaMultiDocument(
  *
  * Opaque declarations and leaf checks require `toCode` callbacks. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2693,6 +2952,7 @@ const decodeMultiDocument = Schema.decodeSync(MultiDocumentFromJson)
  * @see {@link toRepresentation} for constructing the live document
  * @see {@link toJsonMultiDocument} for documents with multiple roots
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2714,6 +2974,7 @@ export function toJson(document: Document): Schema.Json {
  * @see {@link toRepresentations} for constructing the live multi-document
  * @see {@link toJson} for a single-root document
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2736,6 +2997,7 @@ export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
  * @see {@link fromRepresentation} for reconstructing a runtime schema
  * @see {@link fromJsonMultiDocument} for multiple roots sharing references
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -2758,6 +3020,7 @@ export function fromJson(input: Schema.Json): Document {
  * @see {@link fromRepresentations} for reconstructing runtime schemas
  * @see {@link fromJson} for a single root
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -2793,6 +3056,7 @@ export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
  * @see {@link fromJson} for decoding a persisted document
  * @see {@link fromRepresentations} for multiple roots sharing references
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2817,6 +3081,7 @@ export function fromRepresentation(
  * @see {@link fromJsonMultiDocument} for decoding a persisted multi-document
  * @see {@link fromRepresentation} for a single root
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -2839,6 +3104,8 @@ export function fromRepresentations(
  * Translates a Draft 2020-12 subset using Effect schemas and built-in checks. Validation follows those checks and the
  * decoder's parse options, so import and re-export do not guarantee identical accepted values or a lossless round trip.
  * Import errors explain the unsupported constraint or reference and include its source path.
+ * The input is assumed to be a valid Draft 2020-12 document; this function does not validate it against the meta-schema.
+ * Instance validation semantics assume JSON-compatible JavaScript values produced by `JSON.parse`.
  *
  * **Gotchas**
  *
@@ -2850,8 +3117,10 @@ export function fromRepresentations(
  *   Object keyword scopes still constrain declared properties in intersections. Combinations requiring index
  *   signatures that exclude explicit properties or patterned keys are rejected with an explanation of the limitation.
  * - Property count and name checks run on the decoded object, after excess properties have been stripped.
- * - String length checks count UTF-16 code units. `integer` uses `Schema.isInt`, which requires safe integers.
- *   Applied patterns use `Schema.isPattern` without adding a Unicode flag.
+ * - String `minLength` and `maxLength` checks count Unicode code points, except that `minLength: 1` uses the equivalent
+ *   UTF-16 non-empty check. `integer` uses `Schema.isInt`, which requires safe integers.
+ * - Applied patterns use `Schema.isPattern` with the `u` flag. Patterns that cannot be compiled in Unicode mode are
+ *   rejected as unsupported translations with their source path.
  * - `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, active `if` / `then` / `else`,
  *   `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying the unsupported keyword. Inactive
  *   conditional keywords and `minContains` / `maxContains` without `contains` have no validation effect and are ignored.
@@ -2874,6 +3143,7 @@ export function fromRepresentations(
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2894,6 +3164,7 @@ export function fromJsonSchemaDocument(
  * **Details**
  *
  * Uses the same best-effort translation, built-in checks, and excess-property behavior as {@link fromJsonSchemaDocument}.
+ * The input is assumed to be a valid Draft 2020-12 document; this function does not validate it against the meta-schema.
  *
  * **Gotchas**
  *
@@ -2916,6 +3187,7 @@ export function fromJsonSchemaDocument(
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link toRepresentations} for converting the returned schema ASTs to a representation document
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

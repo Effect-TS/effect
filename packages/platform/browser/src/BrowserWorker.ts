@@ -6,14 +6,15 @@
  * protocol. `layer` combines that platform with a `Spawner` built from a
  * callback that creates or returns the worker endpoint for each worker id.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
-import * as Worker from "effect/unstable/workers/Worker"
-import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
+import * as Worker from "effect/workers/Worker"
+import { WorkerError, WorkerReceiveError } from "effect/workers/WorkerError"
 
 /**
  * Creates browser worker layers by combining the default `WorkerPlatform` with a spawner for `Worker`, `SharedWorker`, or `MessagePort` instances.
@@ -35,6 +36,7 @@ import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerE
  *
  * @see {@link layerPlatform} for providing only the browser worker platform
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -49,6 +51,7 @@ export const layer = (
 /**
  * Layer that provides the browser `WorkerPlatform` for `Worker`, `SharedWorker`, and `MessagePort` communication.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

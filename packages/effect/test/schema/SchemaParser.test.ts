@@ -675,6 +675,28 @@ describe("SchemaParser", () => {
   })
 
   describe("asserts", () => {
+    it("should use the default parse options", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+
+      // `errors: "all"` would report both keys
+      throws(() => SchemaParser.asserts(schema, { a: 1, b: 2 }), (e) => {
+        assertSchemaIssueError(e, `Expected string\n  at ["a"]`)
+      })
+
+      // `onExcessProperty: "error"` would reject the excess key
+      SchemaParser.asserts(schema, { a: "a", b: "b", c: 1 })
+    })
+
+    it("should assert the type side of the schema", () => {
+      const schema = Schema.Struct({ a: Schema.FiniteFromString })
+
+      SchemaParser.asserts(schema, { a: 1 })
+
+      throws(() => SchemaParser.asserts(schema, { a: "1" }), (e) => {
+        assertSchemaIssueError(e, `Expected number\n  at ["a"]`)
+      })
+    })
+
     it("should throw an error when the cause is not an Issue", () => {
       const schema = Schema.declareConstructor<string>()(
         [],

@@ -1,8 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scope } from "effect"
+import { Clock, Deferred, Duration, Effect, Exit, Fiber, pipe, Pool, Ref, Schedule, Scheduler, Scope } from "effect"
 import { TestClock } from "effect/testing"
 import { collectGarbage } from "./utils/gc.ts"
+
+const waitUntil = (predicate: () => boolean) =>
+  Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(predicate)), { until: (done) => done })
 
 describe("Pool", () => {
   it.effect("preallocates pool items", () =>
@@ -44,6 +47,27 @@ describe("Pool", () => {
       strictEqual(result, 0)
     }))
 
+  it.effect("shutdown waits for borrowed items before releasing owner dependencies", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const owner = yield* Scope.make()
+      const borrower = yield* Scope.make()
+      yield* Scope.addFinalizer(owner, Effect.sync(() => events.push("owner-dependency-released")))
+      const pool = yield* Pool.make({
+        size: 1,
+        acquire: Effect.acquireRelease(
+          Effect.succeed("resource"),
+          () => Effect.sync(() => events.push("resource-released"))
+        )
+      }).pipe(Scope.provide(owner))
+      yield* Pool.get(pool).pipe(Scope.provide(borrower))
+      const closing = yield* Effect.forkChild(Scope.close(owner, Exit.void), { startImmediately: true })
+      yield* Effect.yieldNow
+      yield* Scope.close(borrower, Exit.void)
+      yield* Fiber.join(closing)
+      deepStrictEqual(events, ["resource-released", "owner-dependency-released"])
+    }))
+
   it.effect("defects don't prevent cleanup", () =>
     Effect.gen(function*() {
       const count = yield* Ref.make(0)
@@ -72,19 +96,42 @@ describe("Pool", () => {
       strictEqual(item, 1)
     }))
 
-  it.effect("reports failures via get", () =>
+  it.effect("keeps failed background capacity until a borrower reaches it", () =>
     Effect.gen(function*() {
-      const count = yield* Ref.make(0)
-      const get = Effect.acquireRelease(
-        Effect.flatMap(
-          Ref.updateAndGet(count, (n) => n + 1),
-          Effect.fail
-        ),
-        () => Ref.update(count, (n) => n - 1)
-      )
-      const pool = yield* Pool.make({ acquire: get, size: 10 })
-      const values = yield* Effect.all(Effect.replicate(9)(Effect.flip(Pool.get(pool))))
-      deepStrictEqual(Array.from(values), [1, 2, 3, 4, 5, 6, 7, 8, 9])
+      const releaseFailure = yield* Deferred.make<void>()
+      const failed = yield* Deferred.make<void>()
+      let attempts = 0
+      const pool = yield* Pool.makeWithTTL({
+        acquire: Effect.suspend(() => {
+          const attempt = ++attempts
+          return attempt === 2
+            ? Effect.andThen(
+              Deferred.await(releaseFailure),
+              Effect.andThen(
+                Deferred.succeed(failed, undefined),
+                Effect.fail("background")
+              )
+            )
+            : Effect.succeed(attempt)
+        }),
+        min: 2,
+        max: 3,
+        timeToLive: Duration.infinity
+      })
+      yield* waitUntil(() => pool.state.availableHead?.exit._tag === "Success")
+      yield* Deferred.succeed(releaseFailure, undefined)
+      yield* Deferred.await(failed)
+      yield* waitUntil(() => pool.state.items.size === 2)
+      for (let i = 0; i < 5; i++) {
+        strictEqual(yield* Pool.use(pool, Effect.succeed), 1)
+      }
+      strictEqual(attempts, 2)
+      strictEqual(pool.state.items.size, 2)
+      const owner = yield* Scope.make()
+      strictEqual(yield* Scope.provide(Pool.get(pool), owner), 1)
+      strictEqual(yield* Pool.use(pool, Effect.succeed), 3)
+      strictEqual(attempts, 3)
+      yield* Scope.close(owner, Exit.void)
     }))
 
   it.live("blocks when item not available", () =>
@@ -184,6 +231,82 @@ describe("Pool", () => {
       strictEqual(result, 11)
     }))
 
+  describe("usage TTL idle timeout", () => {
+    it.effect("shrinks to min in idle order rather than acquisition order", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const finalized: Array<number> = []
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.acquireRelease(
+            Effect.sync(() => ++acquired),
+            (value) => Effect.sync(() => finalized.push(value))
+          ),
+          min: 1,
+          max: 3,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        const first = yield* Scope.fork(yield* Effect.scope)
+        const second = yield* Scope.fork(yield* Effect.scope)
+        const third = yield* Scope.fork(yield* Effect.scope)
+        strictEqual(yield* Pool.get(pool).pipe(Scope.provide(first)), 1)
+        strictEqual(yield* Pool.get(pool).pipe(Scope.provide(second)), 2)
+        strictEqual(yield* Pool.get(pool).pipe(Scope.provide(third)), 3)
+
+        yield* TestClock.adjust(100)
+        yield* Scope.close(second, Exit.void)
+        yield* TestClock.adjust(100)
+        yield* Scope.close(first, Exit.void)
+        yield* TestClock.adjust(100)
+        yield* Scope.close(third, Exit.void)
+        yield* TestClock.adjust(700)
+        deepStrictEqual(finalized, [])
+        yield* TestClock.adjust(1000)
+        deepStrictEqual(finalized, [2, 1])
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(2000)
+        deepStrictEqual(finalized, [2, 1])
+        strictEqual(yield* Pool.use(pool, Effect.succeed), 3)
+        strictEqual(acquired, 3)
+      }))
+
+    it.effect("retains items used every 3 seconds across TTL sweeps", () =>
+      Effect.gen(function*() {
+        let acquired = 0
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.sync(() => ++acquired),
+          min: 0,
+          max: 10,
+          timeToLive: "10 seconds",
+          timeToLiveStrategy: "usage"
+        })
+        for (let i = 0; i < 20; i++) {
+          yield* Effect.scoped(Pool.get(pool))
+          yield* TestClock.adjust("3 seconds")
+        }
+        strictEqual(acquired, 1)
+      }))
+
+    it.effect("measures idle time with the pool clock when a release runs under another clock", () =>
+      Effect.gen(function*() {
+        const pool = yield* Pool.makeWithTTL({
+          acquire: Effect.succeed("resource"),
+          min: 0,
+          max: 1,
+          timeToLive: 1000,
+          timeToLiveStrategy: "usage"
+        })
+        const clock = yield* Clock.Clock
+        yield* Pool.use(pool, Effect.succeed).pipe(
+          Effect.provideService(Clock.Clock, { ...clock, currentTimeMillisUnsafe: () => 1_000_000 })
+        )
+        yield* TestClock.adjust(999)
+        strictEqual(pool.state.items.size, 1)
+        yield* TestClock.adjust(1)
+        strictEqual(pool.state.items.size, 0)
+      }))
+  })
+
   it.effect("max pool size", () =>
     Effect.gen(function*() {
       const deferred = yield* Deferred.make<void>()
@@ -247,31 +370,29 @@ describe("Pool", () => {
       strictEqual(max, 15)
     }))
 
-  it.effect("concurrency reclaim", () =>
+  it.effect("usage TTL retains shared items with active borrowers", () =>
     Effect.gen(function*() {
-      const count = yield* Ref.make(0)
-      const acquire = Effect.acquireRelease(
-        Ref.updateAndGet(count, (n) => n + 1),
-        () => Ref.update(count, (n) => n - 1)
-      )
+      let acquired = 0
       const pool = yield* Pool.makeWithTTL({
-        acquire,
+        acquire: Effect.sync(() => ++acquired),
         min: 0,
         max: 2,
         concurrency: 2,
         timeToLive: Duration.seconds(60)
       })
 
-      const scope1 = yield* Scope.make()
-      yield* Scope.provide(Pool.get(pool), scope1)
-      yield* Pool.get(pool)
-      yield* Effect.scoped(Pool.get(pool))
-      yield* TestClock.adjust(Duration.seconds(60))
-      yield* Scope.close(scope1, Exit.void)
-      yield* Pool.get(pool)
-      yield* Pool.get(pool)
+      const scope1 = yield* Scope.fork(yield* Effect.scope)
+      strictEqual(yield* Scope.provide(Pool.get(pool), scope1), 1)
       strictEqual(yield* Pool.get(pool), 1)
-      strictEqual(yield* Ref.get(count), 2)
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 2)
+      yield* TestClock.adjust(Duration.seconds(60))
+      strictEqual(pool.state.invalidated.size, 0)
+      strictEqual(pool.state.items.size, 1)
+      yield* Scope.close(scope1, Exit.void)
+      strictEqual(yield* Pool.get(pool), 1)
+      strictEqual(yield* Pool.get(pool), 3)
+      strictEqual(yield* Pool.get(pool), 3)
+      strictEqual(acquired, 3)
     }))
 
   it.effect("reserve takes an item out of shared circulation", () =>
@@ -381,7 +502,7 @@ describe("Pool", () => {
       assert.strictEqual(pool.state.usage, 0)
     }))
 
-  it.effect("usage TTL reclaim skips reserved items", () =>
+  it.effect("usage TTL preserves reservations and waits for capacity", () =>
     Effect.gen(function*() {
       let acquired = 0
       const pool = yield* Pool.makeWithTTL({
@@ -391,24 +512,25 @@ describe("Pool", () => {
         concurrency: 2,
         timeToLive: 1000
       })
-      const owner = yield* Scope.make()
-      const reservation = yield* Scope.make()
+      const owner = yield* Scope.fork(yield* Effect.scope)
+      const reservation = yield* Scope.fork(yield* Effect.scope)
       yield* Pool.get(pool).pipe(Scope.provide(owner))
       yield* Pool.reserve(pool, 1).pipe(Scope.provide(reservation))
       yield* Pool.use(pool, Effect.succeed)
       yield* TestClock.adjust(1000)
+      assert.strictEqual(pool.state.items.size, 1)
+      assert.strictEqual(pool.state.invalidated.size, 0)
 
       const first = yield* Pool.get(pool).pipe(Scope.provide(owner))
-      yield* TestClock.adjust(0)
       const second = yield* Pool.get(pool).pipe(Scope.provide(owner))
-      // The invalidated item 1 is still reserved, so reclaim must not
-      // un-invalidate it; the waiter is served by a fresh item instead.
-      const result = yield* Pool.use(pool, Effect.succeed)
+      const next = yield* Pool.use(pool, Effect.succeed).pipe(Effect.forkChild({ startImmediately: true }))
+      assert.isUndefined(next.pollUnsafe())
       yield* Scope.close(reservation, Exit.void)
+      const result = yield* Fiber.join(next)
       yield* Scope.close(owner, Exit.void)
 
-      assert.deepStrictEqual([first, second], [2, 2])
-      assert.strictEqual(result, 3)
+      assert.deepStrictEqual([first, second], [3, 3])
+      assert.strictEqual(result, 1)
       assert.strictEqual(acquired, 3)
       assert.strictEqual(pool.state.usage, 0)
     }))
@@ -605,9 +727,7 @@ describe("Pool", () => {
       for (let i = 0; i < 10; i++) {
         fibers.push(yield* Effect.forkChild(Pool.get(pool), { startImmediately: true }))
       }
-      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
-        until: (size) => size === fibers.length
-      })
+      yield* waitUntil(() => pool.state.waiters.size === fibers.length)
       yield* Effect.all(fibers.map(Fiber.interrupt), { concurrency: "unbounded", discard: true })
       strictEqual(pool.state.waiters.size, 0)
       strictEqual(pool.state.usage, 1)
@@ -628,9 +748,7 @@ describe("Pool", () => {
       for (let i = 0; i < 10; i++) {
         fibers.push(yield* Effect.forkChild(Effect.scoped(Pool.get(pool)), { startImmediately: true }))
       }
-      yield* Effect.repeat(Effect.andThen(Effect.yieldNow, Effect.sync(() => pool.state.waiters.size)), {
-        until: (size) => size === fibers.length
-      })
+      yield* waitUntil(() => pool.state.waiters.size === fibers.length)
       yield* Deferred.succeed(acquire, undefined)
       yield* Effect.all(fibers.map(Fiber.join), { concurrency: "unbounded", discard: true })
       strictEqual(pool.state.waiters.size, 0)
@@ -682,6 +800,21 @@ describe("Pool", () => {
       strictEqual(yield* Pool.use(pool, (item) => Effect.succeed(item)), "resource")
     }))
 
+  it.effect("an interrupted use returns its lease", () =>
+    Effect.gen(function*() {
+      for (let budget = 2; budget <= 10; budget++) {
+        const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
+        const fiber = yield* Effect.forkChild(
+          Pool.use(pool, () => Effect.never).pipe(Effect.provideService(Scheduler.MaxOpsBeforeYield, budget)),
+          { startImmediately: true }
+        )
+        yield* Fiber.interrupt(fiber)
+        strictEqual(pool.state.usage, 0, `MaxOpsBeforeYield ${budget}`)
+        const next = yield* Effect.forkChild(Pool.use(pool, Effect.succeed), { startImmediately: true })
+        assert.isDefined(next.pollUnsafe(), `MaxOpsBeforeYield ${budget}`)
+      }
+    }))
+
   it.effect("use waits for an available item", () =>
     Effect.gen(function*() {
       const pool = yield* Pool.make({ acquire: Effect.succeed("resource"), size: 1 })
@@ -719,18 +852,18 @@ describe("Pool", () => {
         Ref.updateAndGet(allocations, (n) => n + 1),
         () => Ref.update(released, (n) => n + 1)
       ).pipe(
-        Effect.andThen(Effect.fail("boom"))
+        Effect.flatMap((n) => n <= 10 ? Effect.fail("boom") : Effect.succeed(n))
       )
       const pool = yield* Pool.make({ acquire: get, size: 10 }).pipe(
         Scope.provide(scope)
       )
-      yield* Effect.scoped(Pool.get(pool)).pipe(
-        Effect.ignore
-      )
-      strictEqual(yield* Ref.get(allocations), 10)
+      yield* Effect.repeat(Ref.get(released), { until: (n) => n === 10 })
+      strictEqual(yield* Effect.scoped(Pool.get(pool)), 11)
+      strictEqual(yield* Ref.get(allocations), 11)
       strictEqual(yield* Ref.get(released), 10)
+      yield* Scope.close(scope, Exit.void)
     }))
-  it.effect("skips strategy callbacks for failures consumed during finalization", () =>
+  it.effect("runs strategy callbacks for a replacement before failed background cleanup", () =>
     Effect.gen(function*() {
       const cleanupStarted = yield* Deferred.make<void>()
       const resumeCleanup = yield* Deferred.make<void>()
@@ -762,13 +895,12 @@ describe("Pool", () => {
       })
       yield* Effect.addFinalizer(() => Deferred.succeed(resumeCleanup, undefined))
       yield* Deferred.await(cleanupStarted)
-      strictEqual(yield* Effect.flip(Effect.scoped(Pool.get(pool))), "boom")
-      strictEqual(callbacks, 0)
-      yield* Deferred.succeed(resumeCleanup, undefined)
       strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
-      yield* Deferred.await(replacementAcquired)
+      yield* Effect.yieldNow
+      strictEqual(yield* Deferred.isDone(replacementAcquired), true)
       strictEqual(acquired, 2)
       strictEqual(callbacks, 1)
+      yield* Deferred.succeed(resumeCleanup, undefined)
     }))
 
   it.effect("admits one waiter per released lease", () =>
@@ -860,7 +992,7 @@ describe("Pool", () => {
           strictEqual(pool.state.items.size, 0)
         }))
 
-      it.effect("does not requeue failures consumed during asynchronous cleanup", () =>
+      it.effect("retries background failures during asynchronous cleanup without requeueing them", () =>
         Effect.gen(function*() {
           const references: Array<WeakRef<object>> = []
           const control = new WeakRef({})
@@ -888,10 +1020,9 @@ describe("Pool", () => {
           })
           yield* Effect.addFinalizer(() => Deferred.succeed(resumeCleanup, undefined))
           yield* Deferred.await(cleanupStarted)
-          assert.isTrue(Exit.isFailure(yield* Effect.exit(Effect.scoped(Pool.get(pool)))))
+          strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
           strictEqual(finalized, 0)
           yield* Deferred.succeed(resumeCleanup, undefined)
-          strictEqual(yield* Effect.scoped(Pool.get(pool)), "replacement")
           strictEqual(acquired, 2)
           strictEqual(finalized, 1)
           assert.lengthOf(references, 1)

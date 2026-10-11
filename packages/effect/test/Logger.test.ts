@@ -1,10 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Exit, Scope } from "effect"
+import { Deferred, Exit, Fiber, Scope } from "effect"
 import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
+import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 
 describe("Logger", () => {
@@ -216,5 +217,56 @@ describe("Logger", () => {
       assert.strictEqual(result[1], "first")
       assert.strictEqual(result[2], "second")
       assert.match(result[3] as string, /boom/)
+    }))
+
+  it.effect("batched final flush uses the construction context", () =>
+    Effect.gen(function*() {
+      const output: Array<string> = []
+      const constructionLogger = Logger.make((options) => {
+        output.push(`construction:${String(options.message)}`)
+      })
+      const closingLogger = Logger.make((options) => {
+        output.push(`closing:${String(options.message)}`)
+      })
+      const scope = yield* Scope.make()
+      const logger = yield* Logger.batched(Logger.make((options) => String(options.message)), {
+        window: "1 hour",
+        flush: (batch) => Effect.log(batch.join(","))
+      }).pipe(Scope.provide(scope), Effect.provide(Logger.layer([constructionLogger])))
+
+      yield* Effect.log("buffered").pipe(Effect.provide(Logger.layer([logger])))
+      yield* Scope.close(scope, Exit.void).pipe(Effect.provide(Logger.layer([closingLogger])))
+
+      assert.deepStrictEqual(output, ["construction:buffered"])
+    }))
+
+  it.effect("batched finishes an in-flight flush before flushing remaining entries on scope close", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const started = yield* Deferred.make<void>()
+      const scope = yield* Scope.make()
+      const logger = yield* Logger.batched(Logger.make((options) => String(options.message)), {
+        window: 1,
+        flush: (batch) =>
+          Effect.gen(function*() {
+            events.push(`start:${batch.join(",")}`)
+            if (batch[0] === "first") {
+              yield* Deferred.succeed(started, undefined)
+              yield* Effect.sleep(50)
+            }
+            events.push(`end:${batch.join(",")}`)
+          })
+      }).pipe(Scope.provide(scope))
+
+      yield* Effect.log("first").pipe(Effect.provide(Logger.layer([logger])))
+      yield* TestClock.adjust(1)
+      yield* Deferred.await(started)
+      yield* Effect.log("second").pipe(Effect.provide(Logger.layer([logger])))
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+      yield* TestClock.adjust(50)
+      yield* Fiber.join(closing)
+
+      assert.deepStrictEqual(events, ["start:first", "end:first", "start:second", "end:second"])
     }))
 })

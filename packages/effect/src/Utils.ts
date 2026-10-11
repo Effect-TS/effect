@@ -8,6 +8,7 @@
  * used by modules such as `Effect`, `Option`, and `Result` to type their
  * `gen` APIs.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type { Kind, TypeLambda } from "./HKT.ts"
@@ -15,7 +16,8 @@ import { getStackTraceLimit } from "./internal/stackTraceLimit.ts"
 import type * as Types from "./Types.ts"
 
 /**
- * Yields its wrapped value exactly once through an `IterableIterator`.
+ * Yields its wrapped value exactly once, then completes with the value sent
+ * back in.
  *
  * **When to use**
  *
@@ -25,10 +27,11 @@ import type * as Types from "./Types.ts"
  *
  * **Details**
  *
- * The first call to `next()` returns `{ value: self, done: false }`. Every
- * subsequent call returns `{ value: a, done: true }` where `a` is the argument
- * passed to `next()`. `[Symbol.iterator]()` returns a **new** `SingleShotGen`
- * wrapping the same value, so the outer type can be iterated multiple times.
+ * The first call to `next()` returns a fresh `{ value: self, done: false }`.
+ * Every subsequent call returns `{ value: a, done: true }` where `a` is the
+ * argument passed to `next()`. To keep `yield*` cheap, the completion result
+ * is the iterator itself rather than a new object, so only the iterator and
+ * the single yielded result are allocated per `yield*`.
  *
  * **Example** (Yielding a wrapped value in a generator)
  *
@@ -37,21 +40,23 @@ import type * as Types from "./Types.ts"
  *
  * const gen = new Utils.SingleShotGen<string, number>("hello")
  *
- * gen.next(0) // => { value: "hello", done: false }
+ * gen.next(0).value // => "hello"
  *
- * gen.next(42) // => { value: 42, done: true }
+ * gen.next(42).value // => 42
  * ```
  *
  * @see {@link Gen} for the type-level signature that relies on `SingleShotGen`
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
-export class SingleShotGen<T, A> implements IterableIterator<T, A> {
-  private called = false
-  readonly self: T
+export class SingleShotGen<T, A> implements Iterator<T, A> {
+  declare private value: T | A
+  declare private done: boolean
 
   constructor(self: T) {
-    this.self = self
+    this.value = self
+    this.done = false
   }
 
   /**
@@ -65,30 +70,12 @@ export class SingleShotGen<T, A> implements IterableIterator<T, A> {
    * @since 2.0.0
    */
   next(a: A): IteratorResult<T, A> {
-    return this.called ?
-      ({
-        value: a,
-        done: true
-      }) :
-      (this.called = true,
-        ({
-          value: this.self,
-          done: false
-        }))
-  }
-
-  /**
-   * Creates a fresh single-shot iterator over the stored value.
-   *
-   * **When to use**
-   *
-   * Use to iterate the wrapped value again without reusing the consumed
-   * iterator state.
-   *
-   * @since 2.0.0
-   */
-  [Symbol.iterator](): IterableIterator<T, A> {
-    return new SingleShotGen<T, A>(this.self)
+    if (this.done) {
+      this.value = a
+      return this as unknown as IteratorReturnResult<A>
+    }
+    this.done = true
+    return { value: this.value as T, done: false }
   }
 }
 
@@ -128,6 +115,7 @@ export class SingleShotGen<T, A> implements IterableIterator<T, A> {
  * ```
  *
  * @see {@link Gen} for the type-level signature that uses `Variance`
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -168,6 +156,7 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  *
  * @see {@link Variance} for encoding the variance used for inference
  * @see {@link SingleShotGen} for the iterator protocol that makes yielding work
+ * @stability stable
  * @category models
  * @since 2.0.0
  */

@@ -9,6 +9,7 @@
  * is empty, so they can be combined with other transactional reads and writes in
  * one atomic workflow.
  *
+ * @stability stable
  * @since 4.0.0
  */
 
@@ -53,6 +54,7 @@ const TypeId = "~effect/TxPriorityQueue"
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -84,22 +86,39 @@ const makeTxPriorityQueue = <A>(ref: TxRef.TxRef<Chunk<A>>, ord: Order<A>): TxPr
   return self
 }
 
-const insertSorted = <A>(chunk: Chunk<A>, value: A, ord: Order<A>): Chunk<A> => {
-  const arr = C.toArray(chunk) as Array<A>
-  let lo = 0
-  let hi = arr.length
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1
-    if (ord(arr[mid], value) <= 0) {
-      lo = mid + 1
-    } else {
-      hi = mid
+/**
+ * Merges the sorted `values` into the sorted `chunk`. Existing elements stay
+ * ahead of equal incoming ones, and incoming ties keep their input order.
+ *
+ * Each insertion point is found by galloping forward from the previous one and
+ * then bisecting, so a value that lands close to the last one costs only a few
+ * comparisons.
+ */
+const mergeSorted = <A>(chunk: Chunk<A>, values: ReadonlyArray<A>, ord: Order<A>): Chunk<A> => {
+  const arr = C.toReadonlyArray(chunk)
+  const out: Array<A> = Array(arr.length + values.length)
+  let i = 0
+  let k = 0
+  for (const value of values) {
+    let lo = i
+    let hi = i
+    for (let step = 1; hi < arr.length && ord(arr[hi], value) <= 0; step *= 2) {
+      lo = hi + 1
+      hi += step
     }
+    hi = Math.min(hi, arr.length)
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1
+      if (ord(arr[mid], value) <= 0) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    for (; i < lo; i++) out[k++] = arr[i]
+    out[k++] = value
   }
-  const out = Array(arr.length + 1) as Array<A>
-  for (let i = 0; i < lo; i++) out[i] = arr[i]
-  out[lo] = value
-  for (let i = lo; i < arr.length; i++) out[i + 1] = arr[i]
+  for (; i < arr.length; i++) out[k++] = arr[i]
   return C.fromIterable(out)
 }
 
@@ -119,6 +138,7 @@ const insertSorted = <A>(chunk: Chunk<A>, value: A, ord: Order<A>): Chunk<A> => 
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -141,6 +161,7 @@ export const empty = <A>(order: Order<A>): Effect.Effect<TxPriorityQueue<A>> =>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -181,6 +202,7 @@ export function fromIterable<A>(
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -203,6 +225,7 @@ export const make = <A>(order: Order<A>) => (...elements: Array<A>): Effect.Effe
  * await Effect.runPromise(program) // => 3
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -224,6 +247,7 @@ export const size = <A>(self: TxPriorityQueue<A>): Effect.Effect<number> => Effe
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -245,6 +269,7 @@ export const isEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => 
  * await Effect.runPromise(program) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -271,6 +296,7 @@ export const isNonEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> 
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -305,6 +331,7 @@ export const peek = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -329,6 +356,7 @@ export const peekOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -338,7 +366,7 @@ export const offer: {
 } = dual(
   2,
   <A>(self: TxPriorityQueue<A>, value: A): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => insertSorted(chunk, value, self.ord))
+    TxRef.update(self.ref, (chunk) => mergeSorted(chunk, [value], self.ord))
 )
 
 /**
@@ -358,6 +386,7 @@ export const offer: {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -366,11 +395,10 @@ export const offerAll: {
   <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void>
 } = dual(
   2,
-  <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> =>
-    TxRef.update(self.ref, (chunk) => {
-      const arr = [...C.toArray(chunk), ...values].sort((a, b) => self.ord(a, b))
-      return C.fromIterable(arr)
-    })
+  <A>(self: TxPriorityQueue<A>, values: Iterable<A>): Effect.Effect<void> => {
+    const sorted = Array.from(values).sort(self.ord)
+    return TxRef.update(self.ref, (chunk) => mergeSorted(chunk, sorted, self.ord))
+  }
 )
 
 /**
@@ -389,6 +417,7 @@ export const offerAll: {
  * await Effect.runPromise(program) // => 1
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -419,6 +448,7 @@ export const take = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -444,6 +474,7 @@ export const takeAll = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  * await Effect.runPromise(program) // => Option.none()
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -472,6 +503,7 @@ export const takeOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  * await Effect.runPromise(program) // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category mutations
  * @since 2.0.0
  */
@@ -508,6 +540,7 @@ export const takeUpTo: {
  * await Effect.runPromise(program) // => [1, 3, 5]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -537,6 +570,7 @@ export const removeIf: {
  * await Effect.runPromise(program) // => [2, 4]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 2.0.0
  */
@@ -565,6 +599,7 @@ export const retainIf: {
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -587,6 +622,7 @@ export const toArray = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */

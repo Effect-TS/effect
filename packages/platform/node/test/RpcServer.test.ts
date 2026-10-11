@@ -1,22 +1,111 @@
 import { NodeHttpServer, NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
-import { Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/unstable/cluster"
-import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/unstable/http"
-import type * as NetAddress from "effect/unstable/net/NetAddress"
-import { Rpc, RpcClient, RpcGroup, RpcSerialization, RpcServer, RpcTest } from "effect/unstable/rpc"
-import { SocketServer } from "effect/unstable/socket"
+import { Entity, EntityProxy, EntityProxyServer, Sharding } from "effect/cluster"
+import { HttpClient, HttpClientRequest, HttpRouter, HttpServer } from "effect/http"
+import type * as NetAddress from "effect/net/NetAddress"
+import { Rpc, RpcClient, RpcGroup, RpcSerialization, RpcServer, RpcTest } from "effect/rpc"
+import { SocketServer } from "effect/socket"
 import { e2eSuite, UsersClient } from "./fixtures/rpc-e2e.ts"
 import { RpcLayer, User } from "./fixtures/rpc-schemas.ts"
 
 describe("RpcServer", () => {
+  describe("request defect isolation over HTTP", () => {
+    const Ok = Rpc.make("Ok", { success: Schema.String })
+    const serverGroup = RpcGroup.make(
+      Ok,
+      Rpc.make("Invalid", { payload: { value: Schema.String } })
+    )
+    const clientGroup = RpcGroup.make(
+      Ok,
+      Rpc.make("Missing"),
+      Rpc.make("MissingWithSchemas", { success: Schema.Number, error: Schema.String }),
+      Rpc.make("Invalid", { payload: { value: Schema.Number } })
+    )
+    const Server = HttpRouter.serve(
+      RpcServer.layer(serverGroup).pipe(
+        Layer.provide(serverGroup.toLayer({
+          Ok: () => Effect.succeed("ok"),
+          Invalid: () => Effect.void
+        })),
+        Layer.provideMerge(RpcServer.layerProtocolHttp({ path: "/rpc" }))
+      ),
+      { disableListenLog: true, disableLogger: true }
+    )
+
+    // Fingerprinted payloads require both peers to share the schema, so a
+    // mismatch is reported as a fingerprint error instead of the original
+    // diagnostic. The defect still only fails its own request.
+    const fingerprintDiagnostic = "Expected matching layout fingerprint"
+    const cases = [
+      {
+        name: "JSON",
+        serialization: RpcSerialization.layerJson,
+        invalidPayload: ["Expected string", "at [\"value\"]"]
+      },
+      {
+        name: "SchemaBinary",
+        serialization: RpcSerialization.layerSchemaBinary(),
+        invalidPayload: ["Missing key", "at [\"value\"]"]
+      },
+      {
+        name: "SchemaBinary with fingerprints",
+        serialization: RpcSerialization.layerSchemaBinary({ fingerprintPayloads: true }),
+        unknownTag: fingerprintDiagnostic,
+        invalidPayload: [fingerprintDiagnostic]
+      }
+    ]
+
+    const assertDie = (exit: Exit.Exit<unknown, unknown>, diagnostics: ReadonlyArray<string>) => {
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(exit.cause.reasons.length, 1)
+      assert.strictEqual(exit.cause.reasons[0]._tag, "Die")
+      const diagnostic = String(Cause.squash(exit.cause))
+      for (const expected of diagnostics) {
+        assert.include(diagnostic, expected)
+      }
+    }
+
+    for (const { invalidPayload, name, serialization, unknownTag } of cases) {
+      const ClientProtocol = RpcClient.layerProtocolHttp({
+        url: "",
+        transformClient: HttpClient.mapRequest(HttpClientRequest.appendUrl("/rpc"))
+      }).pipe(
+        Layer.provideMerge(Server),
+        Layer.provide([NodeHttpServer.layerTest, serialization])
+      )
+
+      for (const tag of ["Missing", "MissingWithSchemas"] as const) {
+        it.effect(`${name}: unknown tag ${tag} fails only its request and the client remains reusable`, () =>
+          Effect.gen(function*() {
+            const client = yield* RpcClient.make(clientGroup)
+            assert.strictEqual(yield* client.Ok(), "ok")
+            const missing = yield* Effect.exit(client[tag]())
+            assert.strictEqual(yield* client.Ok(), "ok")
+            if (unknownTag === undefined) {
+              assert.deepStrictEqual(missing, Exit.die(`Unknown request tag: ${tag}`))
+            } else {
+              assertDie(missing, [unknownTag])
+            }
+          }).pipe(Effect.provide(ClientProtocol)))
+      }
+
+      it.effect(`${name}: an invalid payload fails only its request and the client remains reusable`, () =>
+        Effect.gen(function*() {
+          const client = yield* RpcClient.make(clientGroup)
+          assert.strictEqual(yield* client.Ok(), "ok")
+          const invalid = yield* Effect.exit(client.Invalid({ value: 42 }))
+          assert.strictEqual(yield* client.Ok(), "ok")
+          assertDie(invalid, invalidPayload)
+        }).pipe(Effect.provide(ClientProtocol)))
+    }
+  })
+
   // http ndjson
-  const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" }).pipe(
-    Layer.provide(HttpRouter.layer)
-  )
-  const HttpNdjsonServer = RpcLayer.pipe(
-    Layer.provideMerge(HttpProtocol),
-    Layer.provide(HttpRouter.serve(HttpProtocol, { disableListenLog: true, disableLogger: true }))
+  const HttpProtocol = RpcServer.layerProtocolHttp({ path: "/rpc" })
+  const HttpNdjsonServer = HttpRouter.serve(
+    RpcLayer.pipe(Layer.provideMerge(HttpProtocol)),
+    { disableListenLog: true, disableLogger: true }
   )
   const HttpNdjsonClient = UsersClient.layer.pipe(
     Layer.provide(
@@ -53,12 +142,10 @@ describe("RpcServer", () => {
   )
 
   // websocket
-  const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" }).pipe(
-    Layer.provide(HttpRouter.layer)
-  )
-  const HttpWsServer = RpcLayer.pipe(
-    Layer.provideMerge(WsProtocol),
-    Layer.provide(HttpRouter.serve(WsProtocol, { disableListenLog: true, disableLogger: true }))
+  const WsProtocol = RpcServer.layerProtocolWebsocket({ path: "/rpc" })
+  const HttpWsServer = HttpRouter.serve(
+    RpcLayer.pipe(Layer.provideMerge(WsProtocol)),
+    { disableListenLog: true, disableLogger: true }
   )
   const HttpWsClient = UsersClient.layer.pipe(
     Layer.provide(RpcClient.layerProtocolSocket()),
