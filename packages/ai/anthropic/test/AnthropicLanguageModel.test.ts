@@ -254,6 +254,84 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, toolParams)
       }))
 
+    it.effect("streams undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  type: "message_start",
+                  message: {
+                    id: "msg_test_1",
+                    type: "message",
+                    role: "assistant",
+                    model: "claude-sonnet-4-20250514",
+                    content: [],
+                    stop_reason: null,
+                    stop_sequence: null,
+                    usage: {
+                      cache_creation: null,
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      inference_geo: null,
+                      input_tokens: 10,
+                      output_tokens: 0,
+                      service_tier: null
+                    }
+                  }
+                },
+                {
+                  type: "content_block_start",
+                  index: 0,
+                  content_block: { type: "tool_use", id: "toolu_test_1", name: "Write", input: {} }
+                },
+                {
+                  type: "content_block_delta",
+                  index: 0,
+                  delta: { type: "input_json_delta", partial_json: JSON.stringify({ path: "a" }) }
+                },
+                { type: "content_block_stop", index: 0 },
+                {
+                  type: "message_delta",
+                  delta: { stop_reason: "tool_use", stop_sequence: null },
+                  usage: {
+                    cache_creation_input_tokens: null,
+                    cache_read_input_tokens: null,
+                    input_tokens: null,
+                    output_tokens: 5
+                  }
+                },
+                { type: "message_stop" }
+              ]))
+            )
+          ))
+        )
+        const Read = Tool.make("Read", {
+          parameters: Schema.Struct({ path: Schema.String }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(Read)
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "use the tools",
+          toolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(toolkit.toLayer({ Read: () => Effect.succeed("") })),
+          Effect.provide(layer)
+        )
+
+        assert.deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map(({ name, params }) => ({ name, params })),
+          [{ name: "Write", params: { path: "a" } }]
+        )
+      }))
+
     for (const blockType of ["tool_use", "server_tool_use"] as const) {
       it.effect(`fails with AiError for malformed streamed ${blockType} JSON`, () =>
         Effect.gen(function*() {

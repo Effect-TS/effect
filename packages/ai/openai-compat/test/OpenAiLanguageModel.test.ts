@@ -965,6 +965,46 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(reasoning.text, "I should greet the user.")
         assert.strictEqual(result.text, "Hello!")
       }))
+
+    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(
+            request,
+            makeChatCompletion({
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [
+                    { id: "call_1", type: "function", function: { name: "TestTool", arguments: "{\"input\":42}" } },
+                    { id: "call_2", type: "function", function: { name: "Write", arguments: "{\"path\":\"a\"}" } }
+                  ]
+                }
+              }]
+            })
+          ))
+        )
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "TestTool", params: { input: 42 } },
+          { name: "Write", params: { path: "a" } }
+        ])
+      }))
   })
 
   describe("generateObject", () => {
@@ -1111,6 +1151,51 @@ describe("OpenAiLanguageModel", () => {
         if (finish?.type === "finish") {
           assert.strictEqual(finish.reason, "stop")
         }
+      }))
+
+    it.effect("streams undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeHttpClient((request) =>
+          Effect.succeed(sseResponse(request, [
+            {
+              id: "chatcmpl_undeclared",
+              object: "chat.completion.chunk",
+              model: "gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [{
+                    index: 0,
+                    id: "call_1",
+                    type: "function",
+                    function: { name: "Write", arguments: JSON.stringify({ path: "a" }) }
+                  }]
+                },
+                finish_reason: "tool_calls"
+              }]
+            },
+            "[DONE]"
+          ]))
+        )
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map(({ name, params }) => ({ name, params })),
+          [{ name: "Write", params: { path: "a" } }]
+        )
       }))
 
     it.effect("emits text when streamed tool_calls is null", () =>
