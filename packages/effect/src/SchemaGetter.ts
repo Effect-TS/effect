@@ -2097,6 +2097,15 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     .map((part) => (Arr.isCanonicalArrayIndex(part) ? globalThis.Number(part) : part))
 }
 
+interface IndexedContainer {
+  readonly parent: any
+  readonly key: PropertyKey
+  length: number
+  count: number
+}
+
+const MAX_ARRAY_HOLES = 20
+
 /**
  * Builds a nested tree object from a list of bracket-path entries.
  *
@@ -2120,6 +2129,10 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  *   - `""` → real empty key
  * - Numeric bracket segments become array indices only when they are valid
  *   JavaScript array-index strings; otherwise they remain object keys.
+ * - An indexed container becomes an array only when it has at most 20 holes
+ *   (missing indices below its highest index). Otherwise it is returned as an
+ *   object keyed by the index strings, so untrusted input such as
+ *   `a[4294967294]` cannot produce huge sparse arrays.
  * - Duplicate keys for the same path are merged into arrays.
  * - If a structural path conflicts with a previous leaf or a different container
  *   type, the later structural path replaces the conflicting value.
@@ -2152,15 +2165,35 @@ export function makeTreeRecord<A>(
   const out: any = {}
   const containers = new WeakSet<object>()
   const duplicates = new WeakSet<object>()
+  // Indexed containers are built as plain objects so that large indices never
+  // allocate sparse arrays, and are materialized once all entries are applied
+  const indexed = new Map<object, IndexedContainer>()
+
+  function assign(self: any, key: PropertyKey, value: unknown): void {
+    const state = indexed.get(self)
+    if (state !== undefined) {
+      const index = key as number
+      if (!Object.hasOwn(self, index)) {
+        state.count++
+      }
+      if (index >= state.length) {
+        state.length = index + 1
+      }
+    }
+    InternalRecord.assignProperty(self, key, value)
+  }
 
   function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
     const current = Object.hasOwn(self, key) ? self[key] : undefined
-    if (containers.has(current) && Array.isArray(current) === shouldBeArray) {
+    if (containers.has(current) && indexed.has(current) === shouldBeArray) {
       return current
     }
-    const container = shouldBeArray ? [] : {}
+    const container = {}
     containers.add(container)
-    InternalRecord.assignProperty(self, key, container)
+    if (shouldBeArray) {
+      indexed.set(container, { parent: self, key, length: 0, count: 0 })
+    }
+    assign(self, key, container)
     return container
   }
 
@@ -2171,28 +2204,31 @@ export function makeTreeRecord<A>(
       const isLast = i === tokens.length - 1
 
       // We are inside an array and see "[]" (empty token) => append
-      if (Array.isArray(cur) && token === "") {
+      if (token === "" && indexed.has(cur)) {
+        const index = indexed.get(cur)!.length
         if (isLast) {
-          cur.push(value)
+          assign(cur, index, value)
         } else {
           // bracket path: "foo[][bar]" => push a new element and descend into it
           const next = tokens[i + 1]
           const shouldBeArray = typeof next === "number" || next === ""
-          const index = cur.length
           cur = getOrCreateContainer(cur, index, shouldBeArray)
         }
       } else if (isLast) {
         // If we're setting a value at a path that already exists
         // convert it to an array to support multiple values for the same key
         const hasOwn = Object.hasOwn(cur, token)
-        if (hasOwn && Array.isArray(cur[token]) && (containers.has(cur[token]) || duplicates.has(cur[token]))) {
-          cur[token].push(value)
+        const current = hasOwn ? cur[token] : undefined
+        if (indexed.has(current)) {
+          assign(current, indexed.get(current)!.length, value)
+        } else if (duplicates.has(current)) {
+          current.push(value)
         } else if (hasOwn) {
-          const values = [cur[token], value]
+          const values = [current, value]
           duplicates.add(values)
-          InternalRecord.assignProperty(cur, token, values)
+          assign(cur, token, values)
         } else {
-          InternalRecord.assignProperty(cur, token, value)
+          assign(cur, token, value)
         }
       } else {
         const next = tokens[i + 1]
@@ -2202,6 +2238,22 @@ export function makeTreeRecord<A>(
       }
     })
   })
+
+  // Children are created after their parents, so materializing in reverse
+  // creation order replaces every nested container before its parent is copied
+  const builders = Array.from(indexed)
+  for (let i = builders.length - 1; i >= 0; i--) {
+    const [builder, { count, key, length, parent }] = builders[i]
+    // Skip containers that were replaced by a later conflicting path
+    if (length - count > MAX_ARRAY_HOLES || !Object.hasOwn(parent, key) || parent[key] !== builder) {
+      continue
+    }
+    const array: Array<unknown> = new Array(length)
+    for (const index of Object.keys(builder)) {
+      array[globalThis.Number(index)] = (builder as any)[index]
+    }
+    InternalRecord.assignProperty(parent, key, array)
+  }
   return out
 }
 
