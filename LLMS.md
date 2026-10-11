@@ -383,6 +383,9 @@ operations from `.graphql` documents, then build a client with
 - **[Testing code that uses a GraphQL client](./ai-docs/src/52_graphql/20_testing.ts)**:
   Replace a client service with `GraphQLClient.layerTest`, answering each
   operation from a handler instead of a server.
+- **[Batching lookups with GraphQLResolver](./ai-docs/src/52_graphql/30_batching.ts)**:
+  Collect concurrent lookups by id into one `nodes(ids:)` request with
+  `GraphQLResolver`, instead of one request per id.
 
 ## Working with child processes
 

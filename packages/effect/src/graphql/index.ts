@@ -40,3 +40,9 @@ export * as GraphQLMiddleware from "./GraphQLMiddleware.ts"
  * @since 4.0.0
  */
 export * as GraphQLProtocol from "./GraphQLProtocol.ts"
+
+/**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as GraphQLResolver from "./GraphQLResolver.ts"
