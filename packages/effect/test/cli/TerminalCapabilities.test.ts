@@ -1,8 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import { ConfigProvider, Effect, FileSystem, Layer, Path, Stdio } from "effect"
-import { TestConsole } from "effect/testing"
 import { CliOutput, Command, TerminalCapabilities } from "effect/cli"
 import { ChildProcessSpawner } from "effect/process"
+import { TestConsole } from "effect/testing"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
 const capabilities = (input: {
