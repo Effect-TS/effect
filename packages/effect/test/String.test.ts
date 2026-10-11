@@ -534,6 +534,13 @@ describe("String", () => {
   })
 
   describe("linesIterator", () => {
+    it("continues from the current position when used as an iterable", () => {
+      const iterator = S.linesIterator("hello\nworld\n")
+      deepStrictEqual(iterator.next(), { done: false, value: "hello" })
+      deepStrictEqual(Array.from(iterator), ["world"])
+      deepStrictEqual(Array.from(iterator), [])
+    })
+
     it("yields lines without separators", () => {
       deepStrictEqual(Array.from(S.linesIterator("hello\nworld\n")), ["hello", "world"])
     })
@@ -552,6 +559,13 @@ describe("String", () => {
   })
 
   describe("linesWithSeparators", () => {
+    it("continues from the current position when used as an iterable", () => {
+      const iterator = S.linesWithSeparators("hello\nworld\n")
+      deepStrictEqual(iterator.next(), { done: false, value: "hello\n" })
+      deepStrictEqual(Array.from(iterator), ["world\n"])
+      deepStrictEqual(Array.from(iterator), [])
+    })
+
     it("yields lines with separators", () => {
       deepStrictEqual(Array.from(S.linesWithSeparators("hello\nworld\n")), ["hello\n", "world\n"])
     })

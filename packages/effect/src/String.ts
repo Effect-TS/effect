@@ -1238,7 +1238,7 @@ class LinesIterator implements IterableIterator<string> {
   }
 
   [Symbol.iterator](): IterableIterator<string> {
-    return new LinesIterator(this.s, this.stripped)
+    return this
   }
 
   private get done(): boolean {
