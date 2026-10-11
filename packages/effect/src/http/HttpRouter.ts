@@ -1360,6 +1360,49 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * request arrives, in which case that request waits for the build to finish.
  * If the build fails, every request rejects with the build error.
  *
+ * **Gotchas**
+ *
+ * On Cloudflare Workers, construct the handler at module scope, not lazily
+ * inside `fetch`. Shared fibers started during a request capture that
+ * request's async context and cannot safely resume in later requests. Layers
+ * built at module scope must not depend on request-time I/O during
+ * construction. If bindings are needed there, Workers exposes them through
+ * `import { env } from "cloudflare:workers"`.
+ *
+ * Prefer request-local work, or host long-lived servers in a Durable Object
+ * using its supported lifecycle APIs; this does not promise indefinite
+ * background execution. If a Worker shares fibers across requests, provide
+ * a sync scheduler to the whole application as below. This avoids lost
+ * scheduler turns, but not request-owned timers or async-context restrictions.
+ * CPU-heavy fibers delay other requests, and `yieldNow` loops polling for I/O
+ * can spin until the CPU limit. Timers used by `Effect.sleep`, timeouts and
+ * schedules in shared fibers can still be lost when their owning request
+ * ends. Bound each request's wait for shared work with a request-local timeout.
+ *
+ * **Example** (Opting in to the sync scheduler on Workers)
+ *
+ * ```ts
+ * import { Effect, Layer, Scheduler } from "effect"
+ * import { HttpRouter, HttpServer, HttpServerResponse } from "effect/http"
+ *
+ * const SyncScheduler = Layer.succeed(
+ *   Scheduler.Scheduler,
+ *   new Scheduler.MixedScheduler("sync")
+ * )
+ * const AppLive = HttpRouter.add(
+ *   "GET",
+ *   "/ping",
+ *   Effect.succeed(HttpServerResponse.text("pong"))
+ * ).pipe(Layer.provide(HttpServer.layerServices))
+ *
+ * // Build once at module scope. The scheduler is also retained for requests.
+ * const app = HttpRouter.toWebHandler(
+ *   AppLive.pipe(Layer.provideMerge(SyncScheduler))
+ * )
+ *
+ * export default { fetch: (request: Request) => app.handler(request) }
+ * ```
+ *
  * @stability unstable
  * @category converting
  * @since 4.0.0

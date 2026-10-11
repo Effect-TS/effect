@@ -160,6 +160,34 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
+ * **Gotchas**
+ *
+ * On Cloudflare Workers, a timer scheduled by a request can be discarded when
+ * that request ends. A shared fiber can then hang on a later request. Prefer
+ * request-local work, or host shared servers in a Durable Object using its
+ * supported lifecycle APIs. Durable Objects do not guarantee indefinite
+ * background execution.
+ *
+ * If you share fibers across requests in a Worker, opt in to
+ * `new MixedScheduler("sync")` for the whole application, including layer
+ * construction and request fibers. Provide it through the `Scheduler` service;
+ * for an individual run, use the `scheduler` option of `Effect.runFork`. Queues
+ * use the dispatcher of the fiber that created them, so configuring only the
+ * consumer is not enough. See `HttpRouter.toWebHandler` for a layer recipe.
+ *
+ * Sync mode dispatches through microtasks: yielding does not return to the
+ * event loop. CPU-heavy fibers delay other requests on the isolate, and a
+ * `yieldNow` loop polling for I/O can spin until the CPU limit. This does not
+ * change request ownership of timers used by `Effect.sleep`, timeouts or
+ * schedules in shared fibers. Those timers can still be lost when their
+ * owning request ends.
+ *
+ * Construct shared fibers and handlers at module scope, not lazily inside
+ * `fetch`. A fiber created during a request captures its async context and
+ * cannot safely resume in a later request; changing the scheduler does not
+ * fix that. Use a per-request timeout to bound waits for shared work, rather
+ * than relying on the Worker to report a hung fiber.
+ *
  * @stability stable
  * @category models
  * @since 2.0.0
