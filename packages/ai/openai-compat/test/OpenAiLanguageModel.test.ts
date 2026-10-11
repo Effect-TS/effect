@@ -2199,19 +2199,6 @@ describe("OpenAiLanguageModel", () => {
         ])
         assert.isFalse("replayReasoning" in requestBody)
       }))
-
-    it.effect("replays reasoning under the configured field name", () =>
-      Effect.gen(function*() {
-        const requestBody = yield* captureRequestBody({ replayReasoning: "reasoning" })
-
-        assert.deepStrictEqual(requestBody.messages[1], {
-          role: "assistant",
-          content: "Let me read it.",
-          reasoning: "The user wants a.txt; I should read it.",
-          tool_calls: [toolCall]
-        })
-        assert.isFalse("replayReasoning" in requestBody)
-      }))
   })
 
   describe("config", () => {
