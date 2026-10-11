@@ -494,8 +494,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   })
 })
 
-// Codecs depend only on the serialization and the RPC schemas, so servers
-// created per connection or per request share them instead of rebuilding them.
+// Built-in JSON codecs depend only on the RPC schemas and can be shared.
+// Other factories may capture state at construction, so keep them per server.
 const rpcCodecsCache = new WeakMap<
   RpcSerialization.CodecFor,
   WeakMap<Rpc.AnyWithProps, {
@@ -508,12 +508,13 @@ const rpcCodecsCache = new WeakMap<
 >()
 
 const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps) => {
-  let cache = rpcCodecsCache.get(codecFor)
-  if (cache === undefined) {
+  const cacheable = codecFor === RpcSerialization.json.codecFor
+  let cache = cacheable ? rpcCodecsCache.get(codecFor) : undefined
+  if (cacheable && cache === undefined) {
     cache = new WeakMap()
     rpcCodecsCache.set(codecFor, cache)
   }
-  let codecs = cache.get(rpc)
+  let codecs = cache?.get(rpc)
   if (codecs === undefined) {
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
     codecs = {
@@ -525,7 +526,7 @@ const rpcCodecs = (codecFor: RpcSerialization.CodecFor, rpc: Rpc.AnyWithProps) =
       ) as any,
       encodeExit: Schema.encodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any))) as any
     }
-    cache.set(rpc, codecs)
+    cache?.set(rpc, codecs)
   }
   return codecs
 }
@@ -536,7 +537,8 @@ const defectCodecsCache = new WeakMap<RpcSerialization.CodecFor, {
 }>()
 
 const defectCodecs = (codecFor: RpcSerialization.CodecFor) => {
-  let codecs = defectCodecsCache.get(codecFor)
+  const cacheable = codecFor === RpcSerialization.json.codecFor
+  let codecs = cacheable ? defectCodecsCache.get(codecFor) : undefined
   if (codecs === undefined) {
     codecs = {
       encodeDefectUnsafe: Schema.encodeSync(codecFor(Schema.Defect())),
@@ -545,7 +547,7 @@ const defectCodecs = (codecFor: RpcSerialization.CodecFor) => {
         codecFor(Schema.Exit(Schema.Never, Schema.Never, Schema.Defect()))
       ) as any
     }
-    defectCodecsCache.set(codecFor, codecs)
+    if (cacheable) defectCodecsCache.set(codecFor, codecs)
   }
   return codecs
 }
