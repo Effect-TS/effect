@@ -7886,14 +7886,11 @@ export function isMultipleOf(
  *
  * **Details**
  *
- * Accepts positive safe integers equal to `base ** k` for some `k >= 0`, so `1`
- * is always accepted. Unsafe integers are rejected even when they are
- * mathematically powers of `base`.
+ * Accepts safe integers equal to `base ** k` for some `k >= 0`, including `1`.
  *
  * JSON Schema:
  *
- * JSON Schema has no power-of constraint, so this check is exported as an
- * `enum` listing every safe integer power of `base` in ascending order.
+ * This check corresponds to an `enum` of every safe integer power of `base`.
  *
  * **Gotchas**
  *
@@ -7925,21 +7922,15 @@ export function isPowerOf(
         id: "effect/schema/isPowerOf",
         payload: { base }
       },
-      toJsonSchema: () => ({ enum: safeIntegerPowersOf(base) }),
+      toJsonSchema: () => {
+        const powers = [1]
+        for (let power = base; power <= globalThis.Number.MAX_SAFE_INTEGER; power *= base) powers.push(power)
+        return { enum: powers }
+      },
       toCode: () => ({ runtime: `Schema.isPowerOf(${format(base)})` }),
       ...annotations
     }
   )
-}
-
-function safeIntegerPowersOf(base: number): Array<number> {
-  const out = [1]
-  let power = 1
-  while (power <= globalThis.Number.MAX_SAFE_INTEGER / base) {
-    power *= base
-    out.push(power)
-  }
-  return out
 }
 /**
  * Validates that a number is a safe integer (within the safe integer range
