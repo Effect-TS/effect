@@ -4198,6 +4198,13 @@ export interface StructWithRest<
  *
  * **Gotchas**
  *
+ * The base schema must have an object-shaped encoded type. Whole-object
+ * transformations are not supported, even with an empty rest array. Apply
+ * transformations such as `Schema.fromJsonString` to the completed
+ * `StructWithRest` schema instead. Object-shaped encoded types alone do not
+ * guarantee compatibility: unsupported encodings are still rejected at runtime.
+ * Transformations on individual fields remain supported.
+ *
  * TypeScript index signatures also apply to fixed keys. `StructWithRest` does
  * not reject incompatible fixed fields at the call site; use
  * `StructWithRest.ValidateRecords` when you want an explicit type-level
@@ -4222,7 +4229,7 @@ export interface StructWithRest<
  * @since 4.0.0
  */
 export function StructWithRest<
-  const S extends StructWithRest.Objects,
+  const S extends StructWithRest.Objects & { readonly Encoded: object },
   const Records extends StructWithRest.Records
 >(
   schema: S,
