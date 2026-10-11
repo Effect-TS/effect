@@ -63,6 +63,8 @@ export const GitHubGraphQLGroup = GraphQLGroup.make(RepoIssues).middleware(GitHu
 export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
   make: GraphQLClient.make(GitHubGraphQLGroup)
 }) {
+  static readonly layerTest = GraphQLClient.layerTest(GitHub, GitHubGraphQLGroup)
+
   static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
     Layer.provide(GitHubAuth.layer),
     // Queries and mutations are sent as `POST`. Subscriptions use graphql-sse
