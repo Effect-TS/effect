@@ -4,7 +4,7 @@
  * Collect concurrent lookups by id into one `nodes(ids:)` request with
  * `GraphQLResolver`, instead of one request per id.
  */
-import { Context, Effect, Layer, RequestResolver, Schema } from "effect"
+import { type Cause, Context, Effect, Layer, RequestResolver, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol, GraphQLResolver } from "effect/graphql"
 import { FetchHttpClient } from "effect/http"
 import { GitHubAuth } from "./10_basics.ts"
@@ -27,21 +27,34 @@ export const RepoNodes = GraphQL.query("RepoNodes", {
   })
 })
 
-export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
-  make: Effect.gen(function*() {
-    const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(GitHubAuth))
+export const GitHubGraphQLGroup = GraphQLGroup.make(RepoNodes).middleware(GitHubAuth)
 
-    // Null entries and non-Repository nodes fail with NoSuchElementError.
-    // GitHub accepts at most 100 ids per request.
-    const RepoById = GraphQLResolver.ordered(client.RepoNodes, {
-      variables: (ids: ReadonlyArray<string>) => ({ ids }),
-      path: ["nodes"],
-      typename: "Repository"
-    }).pipe(RequestResolver.batchN(100))
-    return { ...client, getRepo: GraphQLResolver.request(RepoById) }
-  })
-}) {
-  static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
+export class GitHub extends Context.Service<
+  GitHub,
+  GraphQLClient.GraphQLClient<
+    GraphQLGroup.Operations<typeof GitHubGraphQLGroup>
+  > & {
+    getRepo(id: string): Effect.Effect<
+      { readonly __typename: "Repository"; readonly nameWithOwner: string },
+      GraphQL.Error<typeof RepoNodes> | Cause.NoSuchElementError
+    >
+  }
+>()("app/GitHub") {
+  static readonly layer = Layer.effect(
+    GitHub,
+    Effect.gen(function*() {
+      const client = yield* GraphQLClient.make(GitHubGraphQLGroup)
+
+      // Null entries and non-Repository nodes fail with NoSuchElementError.
+      // GitHub accepts at most 100 ids per request.
+      const RepoById = GraphQLResolver.ordered(client.RepoNodes, {
+        variables: (ids: ReadonlyArray<string>) => ({ ids }),
+        path: ["nodes"],
+        typename: "Repository"
+      }).pipe(RequestResolver.batchN(100))
+      return { ...client, getRepo: GraphQLResolver.request(RepoById) }
+    })
+  ).pipe(
     Layer.provide(GitHubAuth.layer),
     Layer.provide(GraphQLProtocol.layerHttp({ url: "https://api.github.com/graphql" })),
     Layer.provide(FetchHttpClient.layer)
