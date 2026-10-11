@@ -576,6 +576,44 @@ describe("WorkflowEngine", () => {
       )
     }))
 
+  it.effect("layerMemory does not wake a caller from a run that died before a resume", () =>
+    Effect.gen(function*() {
+      const retrying = yield* Latch.make()
+      let runs = 0
+      const gate = DurableDeferred.make("WorkflowEngine/DiedGate", { success: Schema.String })
+      const workflow = Workflow.make("WorkflowEngine/Died", {
+        payload: {},
+        success: Schema.String,
+        idempotencyKey: () => "one",
+        // A single retry: only completion can deliver the result.
+        suspendedRetrySchedule: Schedule.spaced("1 hour").pipe(
+          Schedule.upTo({ times: 1 }),
+          Schedule.tap(() => retrying.open)
+        )
+      }).annotate(Workflow.CaptureDefects, false)
+      yield* Effect.gen(function*() {
+        const executionId = yield* workflow.executionId({})
+        assert(Exit.isFailure(yield* Effect.exit(workflow.execute({}))), "first run must die")
+        yield* workflow.resume(executionId)
+        const fiber = yield* workflow.execute({}).pipe(Effect.forkChild({ startImmediately: true }))
+        for (let i = 0; i < 1000 && !retrying.isOpen(); i++) yield* TestClock.adjust(1)
+        assert(retrying.isOpen(), "caller must wait on its retry schedule")
+        assert.isUndefined(fiber.pollUnsafe(), "the died run must not wake the caller")
+        yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        })
+        for (let i = 0; i < 1000 && fiber.pollUnsafe() === undefined; i++) yield* TestClock.adjust(1)
+        assert(fiber.pollUnsafe() !== undefined, "completion must wake the caller")
+        assert.strictEqual(yield* Fiber.join(fiber), "done")
+      }).pipe(
+        Effect.provide(
+          workflow.toLayer(() => Effect.suspend(() => ++runs === 1 ? Effect.die("boom") : DurableDeferred.await(gate)))
+            .pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+        )
+      )
+    }))
+
   it.effect("layerMemory propagates interruption when the engine is shut down", () =>
     Effect.gen(function*() {
       const Stuck = Workflow.make("WorkflowEngine/ShutdownWorkflow", {
