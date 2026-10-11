@@ -24,7 +24,7 @@ import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
-import type * as UrlParams from "../http/UrlParams.ts"
+import * as UrlParams from "../http/UrlParams.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import * as Result from "../Result.ts"
@@ -173,17 +173,28 @@ const postRequest = (url: string, request: GraphQLRequest, accept: string) =>
     HttpClientRequest.bodyJsonUnsafe(requestBody(request))
   )
 
-// The GraphQL-over-HTTP GET encoding. The caller's params go first and the
-// GraphQL params are set over them, so a caller cannot replace `query` or
-// `operationName`. `variables` and `extensions` are sent only when set.
+const graphqlGetParams = new Set(["query", "operationName", "variables", "extensions"])
+
+// Remove all protocol params from the configured URL and caller params before
+// adding the request's values, including when optional fields are unset. Split
+// the URL without resolving it so relative URLs remain supported.
 const getRequest = (url: string, request: GraphQLRequest, accept: string) => {
+  const hashIndex = url.indexOf("#")
+  const hash = hashIndex === -1 ? "" : url.slice(hashIndex)
+  const withoutHash = hashIndex === -1 ? url : url.slice(0, hashIndex)
+  const queryIndex = withoutHash.indexOf("?")
+  const baseUrl = queryIndex === -1 ? withoutHash : withoutHash.slice(0, queryIndex)
+  const urlParams = [
+    ...UrlParams.fromInput(new URLSearchParams(queryIndex === -1 ? "" : withoutHash.slice(queryIndex + 1))),
+    ...request.urlParams
+  ].filter(([key]) => !graphqlGetParams.has(key))
   const params: Record<string, string> = { query: request.query, operationName: request.operationName }
   if (request.variables !== undefined) params.variables = JSON.stringify(request.variables)
   if (request.extensions !== undefined) params.extensions = JSON.stringify(request.extensions)
-  return HttpClientRequest.get(url).pipe(
+  return HttpClientRequest.get(baseUrl + hash).pipe(
     HttpClientRequest.setHeaders(request.headers),
     HttpClientRequest.setHeader("accept", accept),
-    HttpClientRequest.appendUrlParams(request.urlParams),
+    HttpClientRequest.appendUrlParams(urlParams),
     HttpClientRequest.setUrlParams(params)
   )
 }
