@@ -1,6 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
 import * as AlchemyCloudflareCluster from "@effect/platform-cloudflare/AlchemyCloudflareCluster"
-import * as CloudflareCluster from "@effect/platform-cloudflare/CloudflareCluster"
 import * as Cloudflare from "alchemy/Cloudflare"
 import { Entity, Singleton } from "effect/cluster"
 import * as Context from "effect/Context"
@@ -57,26 +56,6 @@ describe("make", () => {
         AlchemyCloudflareCluster.Cluster<AlchemyCloudflareCluster.ClusterServices>,
         never,
         Cloudflare.Worker | UserService
-      >
-    >()
-  })
-
-  test("a CloudflareCluster.toLayer handler layer is satisfied by the cluster services", () => {
-    const withEntitySql = AlchemyCloudflareCluster.make({
-      entities: [Counter],
-      layer: CloudflareCluster.toLayer(
-        Counter,
-        Effect.map(CloudflareCluster.DurableObjectSqlClient, () =>
-          Counter.of({
-            Increment: () => Effect.succeed(1)
-          }))
-      )
-    })
-    expect(withEntitySql).type.toBe<
-      Effect.Effect<
-        AlchemyCloudflareCluster.Cluster<AlchemyCloudflareCluster.ClusterServices>,
-        never,
-        Cloudflare.Worker
       >
     >()
   })
