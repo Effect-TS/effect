@@ -152,6 +152,32 @@ describe("McpServer.layerHttpRequestScoped", () => {
     }).pipe(Effect.timeout("2 seconds")))
 
   // https://github.com/Effect-TS/effect/issues/9026
+  it.live("should let each request's services override the layer services seen by tools", () =>
+    Effect.gen(function*() {
+      const Label = Context.Reference<string>("test/RequestScoped/Label", { defaultValue: () => "default" })
+      const { dispose, handler } = HttpRouter.toWebHandler(
+        toolLayer("Label", () =>
+          Effect.gen(function*() {
+            return new McpSchema.CallToolResult({ content: [{ type: "text", text: yield* Label }] })
+          })).pipe(Layer.provide(Layer.succeed(Label)("layer"))),
+        { disableLogger: true }
+      )
+      yield* Effect.addFinalizer(() => Effect.promise(dispose))
+      const call = (override?: string) => {
+        const { body, headers } = callTool("Label", 1)
+        return Effect.promise(() =>
+          handler(
+            new Request(MCP_ENDPOINT, { method: "POST", headers, body: JSON.stringify(body) }),
+            override === undefined ? undefined : Label.context(override)
+          )
+        ).pipe(Effect.flatMap(readMcpHttpResponse))
+      }
+
+      for (const override of [undefined, "first", "second"]) {
+        assert.nestedPropertyVal(yield* call(override), "result.content[0].text", override ?? "layer")
+      }
+    }))
+
   it.live("should serve each POST when timers from completed requests never fire", () =>
     Effect.gen(function*() {
       const worker = yield* makeWorkerdHarness(toolLayer("ReportProgress", reportProgress))
