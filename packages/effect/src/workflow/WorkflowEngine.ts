@@ -439,8 +439,9 @@ export interface Encoded {
   readonly awaitComplete?: (
     workflow: Workflow.Any,
     executionId: string
-  ) => Effect.Effect<void>
-  readonly activityExecute: (
+) => Effect.Effect<void>
+
+readonly activityExecute: (
     activity: Activity.Any,
     attempt: number
   ) => Effect.Effect<
