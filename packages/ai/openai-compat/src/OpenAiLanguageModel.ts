@@ -103,12 +103,11 @@ type ConfigOptions = Simplify<
      * text and tool calls of the same assistant prompt message. Providers such
      * as DeepSeek, Moonshot Kimi and Zhipu GLM require this in tool loops.
      *
-     * `true` sends the reasoning as `reasoning_content`; a field name sends it
-     * under that field instead.
+     * `true` sends the reasoning as `reasoning_content`.
      *
      * Defaults to `false`.
      */
-    readonly replayReasoning?: boolean | "reasoning_content" | "reasoning" | undefined
+    readonly replayReasoning?: boolean | undefined
   }
 >
 type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknown }
@@ -654,7 +653,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(tools !== undefined ? { tools } : undefined),
         ...(toolChoice !== undefined ? { tool_choice: toolChoice } : undefined)
       }
-      return toChatCompletionsRequest(request, toChatMessages(messages, getReasoningReplayField(replayReasoning)))
+      return toChatCompletionsRequest(request, toChatMessages(messages, replayReasoning === true))
     }
   )
 
@@ -1781,22 +1780,15 @@ const toChatTool = (
   return undefined
 }
 
-type ReasoningReplayField = "reasoning_content" | "reasoning"
-
-const getReasoningReplayField = (
-  replayReasoning: boolean | ReasoningReplayField | undefined
-): ReasoningReplayField | undefined =>
-  replayReasoning === true ? "reasoning_content" : replayReasoning === false ? undefined : replayReasoning
-
 const toChatMessages = (
   messages: ReadonlyArray<PreparedMessage>,
-  reasoningField: ReasoningReplayField | undefined
+  replayReasoning: boolean
 ): Array<ChatCompletionRequestMessage> => {
   const chatMessages: Array<ChatCompletionRequestMessage> = []
 
   for (const message of messages) {
     if (message.role === "assistant") {
-      const chatMessage = toAssistantChatMessage(message, reasoningField)
+      const chatMessage = toAssistantChatMessage(message, replayReasoning)
       if (chatMessage !== undefined) {
         chatMessages.push(chatMessage)
       }
@@ -1816,7 +1808,7 @@ const toChatMessages = (
  */
 const toAssistantChatMessage = (
   message: PreparedMessage,
-  reasoningField: ReasoningReplayField | undefined
+  replayReasoning: boolean
 ): ChatCompletionRequestMessage | undefined => {
   let content: string | null = null
   const toolCalls: Array<ChatCompletionRequestToolCall> = []
@@ -1836,8 +1828,8 @@ const toAssistantChatMessage = (
   return {
     role: "assistant",
     content,
-    ...(reasoningField !== undefined && message.reasoning.length > 0
-      ? { [reasoningField]: message.reasoning }
+    ...(replayReasoning && message.reasoning.length > 0
+      ? { reasoning_content: message.reasoning }
       : undefined),
     ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
   }
