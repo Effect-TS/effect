@@ -165,6 +165,12 @@ declare module "effect/ai/Prompt" {
        * parameter.
        */
       readonly encryptedContent?: string | null
+      /**
+       * The chat message field the reasoning was returned under. Replayed
+       * reasoning is sent back under the same field, defaulting to
+       * `reasoning_content`.
+       */
+      readonly reasoningField?: "reasoning" | "reasoning_content" | null
     } | null
   }
 
@@ -342,6 +348,10 @@ declare module "effect/ai/Response" {
        * Encrypted reasoning content that can be sent back in later requests.
        */
       readonly encryptedContent?: string | null
+      /**
+       * The chat message field the provider returned the reasoning under.
+       */
+      readonly reasoningField?: "reasoning" | "reasoning_content" | null
     } | null
   }
 
@@ -365,6 +375,10 @@ declare module "effect/ai/Response" {
        * Encrypted reasoning content that can be sent back in later requests.
        */
       readonly encryptedContent?: string | null
+      /**
+       * The chat message field the provider returned the reasoning under.
+       */
+      readonly reasoningField?: "reasoning" | "reasoning_content" | null
     } | null
   }
 
@@ -860,6 +874,7 @@ const prepareMessages = Effect.fnUntraced(
         case "assistant": {
           let content: string | null = null
           let reasoning = ""
+          let reasoningField: ReasoningField | undefined
           const toolCalls: Array<ChatCompletionRequestToolCall> = []
 
           for (const part of message.content) {
@@ -881,6 +896,7 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 reasoning += part.text
+                reasoningField ??= part.options.openai?.reasoningField ?? undefined
                 break
               }
 
@@ -914,7 +930,7 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               role: "assistant",
               content,
-              ...(reasoning.length > 0 ? { reasoning_content: reasoning } : undefined),
+              ...(reasoning.length > 0 ? { [reasoningField ?? "reasoning_content"]: reasoning } : undefined),
               ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
             })
           }
@@ -1014,9 +1030,10 @@ const makeResponse = Effect.fnUntraced(
     const message = choice?.message
 
     if (message !== undefined) {
-      const reasoning = message.reasoning ?? message.reasoning_content
-      if (Predicate.isNotNullish(reasoning) && reasoning.length > 0) {
-        parts.push({ type: "reasoning", text: reasoning })
+      const reasoningField = getResponseReasoningField(message)
+      const reasoning = reasoningField !== undefined ? message[reasoningField] : undefined
+      if (reasoningField !== undefined && Predicate.isNotNullish(reasoning) && reasoning.length > 0) {
+        parts.push({ type: "reasoning", text: reasoning, metadata: { openai: { reasoningField } } })
       }
 
       if (
@@ -1200,14 +1217,17 @@ const makeStreamResponse = Effect.fnUntraced(
           return parts
         }
 
-        const reasoningDelta = choice.delta?.reasoning ?? choice.delta?.reasoning_content
-        if (Predicate.isNotNullish(reasoningDelta) && reasoningDelta.length > 0) {
+        const reasoningField = Predicate.isNotNullish(choice.delta)
+          ? getResponseReasoningField(choice.delta)
+          : undefined
+        const reasoningDelta = reasoningField !== undefined ? choice.delta?.[reasoningField] : undefined
+        if (reasoningField !== undefined && Predicate.isNotNullish(reasoningDelta) && reasoningDelta.length > 0) {
           if (!reasoningStarted) {
             reasoningStarted = true
             parts.push({
               type: "reasoning-start",
               id: reasoningId,
-              metadata: { openai: { ...makeItemIdMetadata(reasoningId) } }
+              metadata: { openai: { ...makeItemIdMetadata(reasoningId), reasoningField } }
             })
           }
           parts.push({ type: "reasoning-delta", id: reasoningId, delta: reasoningDelta })
@@ -1733,6 +1753,23 @@ const getItemId = (
 const getExtraContent = (
   part: Prompt.ToolCallPart
 ): Schema.JsonObject | null => part.options.openai?.extraContent ?? null
+
+/**
+ * The chat message field carrying reasoning text. Providers differ: DeepSeek,
+ * Kimi and GLM use `reasoning_content`, while Groq uses `reasoning` and
+ * rejects `reasoning_content` on request messages.
+ */
+type ReasoningField = "reasoning" | "reasoning_content"
+
+const getResponseReasoningField = (message: {
+  readonly reasoning?: string | null | undefined
+  readonly reasoning_content?: string | null | undefined
+}): ReasoningField | undefined =>
+  Predicate.isNotNullish(message.reasoning)
+    ? "reasoning"
+    : Predicate.isNotNullish(message.reasoning_content)
+    ? "reasoning_content"
+    : undefined
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 

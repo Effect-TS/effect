@@ -998,6 +998,10 @@ export type ChatCompletionRequestMessage =
      * `reasoning_content`.
      */
     readonly reasoning_content?: string | undefined
+    /**
+     * Assistant reasoning replayed for providers that read it from `reasoning`.
+     */
+    readonly reasoning?: string | undefined
   }
   | {
     readonly role: "tool"
