@@ -610,9 +610,9 @@ export type ExtractTools<Options> = Options extends {
   : {}
 
 /**
- * Resolves to `"opaque"` when tool call resolution is enabled. When it is
- * disabled, resolves to `"encoded"` for strict tool call validation and
- * `"deferred"` otherwise.
+ * Resolves to `"deferred"` when tool call resolution may be disabled with
+ * deferred tool call validation. Otherwise resolves to `"encoded"` when tool
+ * call resolution is disabled and `"opaque"` when it may be enabled.
  *
  * @stability unstable
  * @category utility types
@@ -620,21 +620,25 @@ export type ExtractTools<Options> = Options extends {
  */
 export type ExtractToolParametersMode<Options> = Options extends {
   readonly disableToolCallResolution: true
-} ?
-  "toolCallValidation" extends keyof Options ?
-    [Options["toolCallValidation" & keyof Options]] extends ["strict" | undefined] ? "encoded" : "deferred"
-  : "encoded"
+} ? MayDeferToolCallValidation<Options> extends true ? "deferred" : "encoded"
+  : true extends Options["disableToolCallResolution" & keyof Options] ?
+    MayDeferToolCallValidation<Options> extends true ? "deferred" : "opaque"
   : "opaque"
+
+// A non-literal `toolCallValidation` may still defer validation at runtime.
+type MayDeferToolCallValidation<Options> = "deferred" extends Options["toolCallValidation" & keyof Options] ? true
+  : false
 
 /**
  * Resolves the tool parameters mode for requests without a toolkit:
- * `"deferred"` when tool call validation is deferred, otherwise `"decoded"`.
+ * `"deferred"` when tool call validation may be deferred, otherwise
+ * `"decoded"`.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.4
  */
-export type ExtractToolParametersModeWithoutToolkit<Options> = ExtractToolParametersMode<Options> extends "deferred"
+export type ExtractToolParametersModeWithoutToolkit<Options> = "deferred" extends ExtractToolParametersMode<Options>
   ? "deferred"
   : "decoded"
 
@@ -908,7 +912,7 @@ export const make: (params: {
   >(
     options: Options & GenerateTextOptions<Tools>
   ): Effect.Effect<
-    GenerateTextResponse<Tools>,
+    GenerateTextResponse<Tools, Response.ToolParametersMode>,
     ExtractError<Options>,
     ExtractServices<Options>
   > =>
