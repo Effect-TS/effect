@@ -102,13 +102,13 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<undefined>("ContextTest/Undefined", { fiberCached: true })
+    const Undefined = Context.Service<number | undefined>("ContextTest/Undefined", { fiberCached: true })
     const Missing = Context.Service<undefined>("ContextTest/Missing")
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
       defaultValue: () => "default",
       fiberCached: true
     })
-    const context = Context.make(Undefined, undefined).pipe(Context.add(Ref, undefined))
+    const context = Context.make(Undefined, 1).pipe(Context.add(Undefined, undefined), Context.add(Ref, undefined))
 
     assertTrue(Context.getOption(context, Undefined)._tag === "Some")
     assertTrue(Context.getOption(context, Missing)._tag === "None")
@@ -265,10 +265,14 @@ describe("Context", () => {
   })
 
   it("pick and omit preserve services and source ordering", () => {
-    const source = Context.make(A, 1).pipe(Context.add(B, 2), Context.add(C, 3))
+    const source = Context.make(A, 1).pipe(Context.add(B, 2), Context.add(C, 0), Context.add(C, 3))
 
-    const picked = Context.pick(C)(source)
+    const impl = source as any as ContextInternals
+    strictEqual(impl._flat, undefined)
     const empty = Context.pick()(source)
+    strictEqual(impl._flat, undefined)
+    const picked = Context.pick(C)(source)
+    strictEqual(impl._flat, undefined)
     deepStrictEqual([...picked.mapUnsafe], [[C.key, 3]])
     deepStrictEqual([...empty.mapUnsafe], [])
     assertFalse(Context.hasSameCache(source, picked))
