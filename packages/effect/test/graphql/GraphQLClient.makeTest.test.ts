@@ -1,7 +1,19 @@
 import { assert, describe, it } from "@effect/vitest"
-import { DateTime, Effect, Stream } from "effect"
-import { GraphQLClient } from "effect/graphql"
+import { DateTime, Effect, Schema, Stream } from "effect"
+import { GraphQL, GraphQLClient, GraphQLGroup } from "effect/graphql"
 import { IssuesGroup } from "./fixtures.ts"
+
+const viewerResult = Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
+
+// Variables that may be `null` as a whole.
+const NullableVariables = GraphQL.query("NullableVariables", {
+  document: "query NullableVariables{viewer{login}}",
+  variables: Schema.NullOr(Schema.Struct({ login: Schema.String })),
+  result: viewerResult
+})
+
+// A valid operation name that is also an `Object.prototype` method.
+const ToString = GraphQL.query("toString", { document: "query toString{viewer{login}}", result: viewerResult })
 
 const issue = (number: number) => ({
   number,
@@ -32,6 +44,15 @@ describe("GraphQLClient.makeTest", () => {
 
       assert.strictEqual(yield* client.RepoIssues(called), result)
       assert.strictEqual(received[0], called)
+
+      const nullable = GraphQLClient.makeTest(GraphQLGroup.make(NullableVariables))({
+        NullableVariables: (variables) => {
+          received.push(variables)
+          return Effect.succeed({ viewer: { login: "tim" } })
+        }
+      })
+      yield* nullable.NullableVariables(null)
+      assert.strictEqual(received[1], null)
     }))
 
   it.effect("partial: true returns the handler's value as data with no errors", () =>
@@ -54,6 +75,11 @@ describe("GraphQLClient.makeTest", () => {
       assert.instanceOf(defect, Error)
       assert.strictEqual(defect.name, "UnimplementedError")
       assert.strictEqual(defect.message, `GraphQLClient: Unimplemented operation "RepoIssues"`)
+
+      const inherited = GraphQLClient.makeTest(GraphQLGroup.make(ToString))({})
+      const inheritedDefect = yield* inherited.toString().pipe(Effect.catchDefect(Effect.fail), Effect.flip)
+      assert.instanceOf(inheritedDefect, Error)
+      assert.strictEqual(inheritedDefect.name, "UnimplementedError")
     }))
 
   it.effect("GraphQLClient.pages drives a mock method across two pages", () =>
