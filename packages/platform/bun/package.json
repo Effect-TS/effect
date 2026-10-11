@@ -72,6 +72,6 @@
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "effect": "workspace:^",
-    "tinybench": "^6.2.0"
+    "tinybench": "^6.2.1"
   }
 }
