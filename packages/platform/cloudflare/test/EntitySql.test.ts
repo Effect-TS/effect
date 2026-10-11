@@ -7,7 +7,7 @@ import { makeEntityManager } from "@effect/platform-cloudflare/internal/entityRu
 import { ensureEntityStorage } from "@effect/platform-cloudflare/internal/entityStorage"
 import * as SqliteClient from "@effect/sql-sqlite-do/SqliteClient"
 import { afterAll, assert, beforeAll, describe, it } from "@effect/vitest"
-import { Context, Effect, Exit, Schema, Scope } from "effect"
+import { Cause, Context, Effect, Exit, Schema, Scope } from "effect"
 import { ClusterSchema, Entity, EntityAddress, EntityId, EntityType, ShardId } from "effect/cluster"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import { Rpc } from "effect/rpc"
@@ -129,6 +129,22 @@ const makeNotes = Effect.fnUntraced(function*(entityId: string) {
 })
 
 describe("Entity DurableObjectSqlClient", () => {
+  it.effect("orDie returns the provided Durable Object client", () =>
+    Effect.gen(function*() {
+      const sql = yield* CloudflareCluster.DurableObjectSqlClient.orDie.pipe(
+        Effect.provideService(CloudflareCluster.DurableObjectSqlClient, appSql)
+      )
+
+      assert.strictEqual(sql, appSql)
+    }))
+
+  it.effect("orDie defects when no Durable Object client is provided", () =>
+    Effect.gen(function*() {
+      const exit = yield* Effect.exit(CloudflareCluster.DurableObjectSqlClient.orDie)
+
+      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+    }))
+
   beforeAll(() => {
     assert.isTrue(registerEntity(Notes.type, registration))
   })
