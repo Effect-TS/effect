@@ -355,7 +355,8 @@ export const make = (
         Deferred.doneUnsafe(ended, Effect.void)
       }
       const removeListeners = () => {
-        conn.removeListener("error", onError)
+        // Tedious can emit a queued error after end, even once pool cleanup
+        // has closed the connection. Keep onError for the connection lifetime.
         conn.removeListener("end", onEnd)
       }
       const onEnd = () => {
