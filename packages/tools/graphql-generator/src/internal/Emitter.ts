@@ -226,6 +226,12 @@ interface Sourced<S extends Ast.Selection> {
   readonly selection: S
   readonly via: Ast.FragmentSpread | undefined
   readonly conditional: boolean
+  /**
+   * The selection's index in each enclosing selection set, from the
+   * definition's root, with fragments expanded where they are spread.
+   * Comparing two orders tells which selection comes first in the document.
+   */
+  readonly order: ReadonlyArray<number>
 }
 
 /** A selection after inline fragments are flattened into their parent. */
@@ -241,7 +247,7 @@ interface SpreadItem {
 type Item = { readonly _tag: "Field"; readonly key: string; readonly fields: Array<Sourced<Ast.Field>> } | SpreadItem
 
 const written = (selections: ReadonlyArray<Ast.Selection>): Array<Sourced<Ast.Selection>> =>
-  selections.map((selection) => ({ selection, via: undefined, conditional: false }))
+  selections.map((selection, i) => ({ selection, via: undefined, conditional: false, order: [i] }))
 
 /**
  * How `@skip` / `@include` decide a selection: a literal
@@ -299,11 +305,31 @@ interface ExtractedClass {
   readonly typeName: string
   readonly description: string | undefined
   /** Response keys from the definition's root down to the field holding the selection. */
-  readonly path: ReadonlyArray<string>
+  path: ReadonlyArray<string>
   /** Where the selection is written in the file being emitted. */
-  readonly offset: number
+  offset: number
+  /** The selection's place in the document (see `Sourced.order`). */
+  order: ReadonlyArray<number>
   /** The struct, with `classRef(id)` standing for each class it uses. */
   readonly body: string
+}
+
+/**
+ * A rendered struct or struct member. `identity` stands for the selection
+ * that produced it: response keys, the fields they select, optionality and
+ * nested classes and fragments, independent of the order keys are written in.
+ */
+interface Struct {
+  readonly code: string
+  readonly identity: string
+}
+
+/** Which of two `Sourced.order`s comes first in the document. */
+const compareOrder = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): number => {
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (a[i] !== b[i]) return a[i]! - b[i]!
+  }
+  return a.length - b.length
 }
 
 /** The classes extracted while rendering one operation or fragment, named after `prefix`. */
@@ -353,6 +379,8 @@ interface FileContext {
   readonly path: Array<string>
   /** Where the field holding the selection being rendered is written. */
   offset: number
+  /** The document order of the field holding the selection being rendered. */
+  order: ReadonlyArray<number>
   /** Every class name generated for this file. */
   readonly generated: Array<GeneratedName>
   readonly errors: Array<Diagnostic>
@@ -591,19 +619,24 @@ class Emitter {
    */
   narrow(file: DocumentFile, selections: ReadonlyArray<Sourced<Ast.Selection>>, target: string): Array<FlatSelection> {
     const out: Array<FlatSelection> = []
-    for (const { conditional: outer, selection, via } of selections) {
+    for (const { conditional: outer, order, selection, via } of selections) {
       const included = inclusion(selection.directives)
       if (included === "exclude") continue
       const conditional = outer || included === "conditional"
       switch (selection._tag) {
         case "Field":
-          out.push({ selection, via, conditional })
+          out.push({ selection, via, conditional, order })
           break
         case "InlineFragment":
           if (this.applies(selection.typeCondition?.name.value, target)) {
             out.push(...this.narrow(
               file,
-              selection.selectionSet.selections.map((selection) => ({ selection, via, conditional })),
+              selection.selectionSet.selections.map((selection, i) => ({
+                selection,
+                via,
+                conditional,
+                order: [...order, i]
+              })),
               target
             ))
           }
@@ -612,9 +645,9 @@ class Emitter {
           const fragment = this.fragment(selection.name.value)
           const condition = fragment.definition.typeCondition.name.value
           if (condition === target && this.type(target)._tag === "ObjectType" && !conditional) {
-            out.push({ selection, via, conditional })
+            out.push({ selection, via, conditional, order })
           } else if (this.applies(condition, target)) {
-            out.push(...this.narrow(file, this.expand(file, fragment, selection, via, conditional), target))
+            out.push(...this.narrow(file, this.expand(file, fragment, selection, via, conditional, order), target))
           }
           break
         }
@@ -629,11 +662,17 @@ class Emitter {
     fragment: FragmentEntry,
     spread: Ast.FragmentSpread,
     via: Ast.FragmentSpread | undefined,
-    conditional: boolean
+    conditional: boolean,
+    order: ReadonlyArray<number>
   ): Array<Sourced<Ast.Selection>> {
     // A local fragment's selections are written in this file; another file's come in through this spread.
     const through = fragment.file === file ? undefined : via ?? spread
-    return fragment.definition.selectionSet.selections.map((selection) => ({ selection, via: through, conditional }))
+    return fragment.definition.selectionSet.selections.map((selection, i) => ({
+      selection,
+      via: through,
+      conditional,
+      order: [...order, i]
+    }))
   }
 
   group(flat: ReadonlyArray<FlatSelection>): Array<Item> {
@@ -645,7 +684,7 @@ class Emitter {
       if (selection._tag === "Field") {
         const key = (selection.alias ?? selection.name).value
         const existing = fields.get(key)
-        const sourced = { selection, via: entry.via, conditional: entry.conditional }
+        const sourced = { selection, via: entry.via, conditional: entry.conditional, order: entry.order }
         if (existing === undefined) {
           const merged = [sourced]
           fields.set(key, merged)
@@ -716,7 +755,11 @@ class Emitter {
       flat = flat.flatMap((entry) => {
         const selection = entry.selection
         if (selection._tag !== "FragmentSpread" || selection.name.value !== overlapping.name) return [entry]
-        return this.narrow(file, this.expand(file, fragment, selection, entry.via, entry.conditional), target)
+        return this.narrow(
+          file,
+          this.expand(file, fragment, selection, entry.via, entry.conditional, entry.order),
+          target
+        )
       })
     }
   }
@@ -769,22 +812,35 @@ class Emitter {
     const typename = `Schema.Literal(${JSON.stringify(parent.name)})`
     return nested && items.length > 0
       ? this.extract(ctx, parent.name, parent.description, this.structOf(ctx, parent, items, "", typename, false))
-      : this.structOf(ctx, parent, items, indent, typename, false)
+      : this.structOf(ctx, parent, items, indent, typename, false).code
   }
 
-  /** Registers a struct written at the top level as a class of the current definition and refers to it. */
-  extract(ctx: FileContext, typeName: string, description: string | undefined, body: string): string {
+  /**
+   * Registers a struct written at the top level as a class of the current
+   * definition and refers to it. A struct with the same identity reuses the
+   * class, which keeps the path of whichever occurrence comes first in the
+   * document.
+   */
+  extract(ctx: FileContext, typeName: string, description: string | undefined, struct: Struct): string {
     const scope = ctx.scope
-    const shape = `${typeName}\u0001${body}`
+    const shape = `${typeName}\u0001${struct.identity}`
     const existing = scope.byShape.get(shape)
-    if (existing !== undefined) return classRef(existing.id)
+    if (existing !== undefined) {
+      if (compareOrder(ctx.order, existing.order) < 0) {
+        existing.path = ctx.path.slice()
+        existing.offset = ctx.offset
+        existing.order = ctx.order
+      }
+      return classRef(existing.id)
+    }
     const extracted: ExtractedClass = {
       id: scope.classes.length,
       typeName,
       description,
       path: ctx.path.slice(),
       offset: ctx.offset,
-      body
+      order: ctx.order,
+      body: struct.code
     }
     scope.classes.push(extracted)
     scope.byShape.set(shape, extracted)
@@ -865,7 +921,7 @@ class Emitter {
     if (selected.length === 0) {
       return nested
         ? this.extract(ctx, parent.name, parent.description, member(parent, others, ""))
-        : member(parent, others, indent)
+        : member(parent, others, indent).code
     }
     const members = [
       ...selected.map((name) => {
@@ -890,18 +946,26 @@ class Emitter {
     indent: string,
     typename: string,
     discriminated: boolean
-  ): string {
+  ): Struct {
     ctx.usesSchema = true
     const memberIndent = `${indent}  `
     const members: Array<string> = discriminated ? [`${memberIndent}__typename: ${typename}`] : []
+    const identities: Array<string> = []
     for (const item of items) {
       if (item._tag === "Spread") {
-        members.push(`${memberIndent}...${this.fragmentRef(ctx, item)}.fields`)
+        const name = this.fragmentRef(ctx, item)
+        members.push(`${memberIndent}...${name}.fields`)
+        identities.push(`...${name}`)
       } else if (!(discriminated && item.key === "__typename")) {
-        members.push(this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename))
+        const member = this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename)
+        members.push(member.code)
+        identities.push(member.identity)
       }
     }
-    return struct(members, indent)
+    return {
+      code: struct(members, indent),
+      identity: [discriminated ? typename : "", ...identities.sort()].join("\u0002")
+    }
   }
 
   resultMember(
@@ -911,11 +975,14 @@ class Emitter {
     fields: ReadonlyArray<Sourced<Ast.Field>>,
     indent: string,
     typename: string
-  ): string {
+  ): Struct {
     const name = fields[0]!.selection.name.value
-    const optional = (expression: string): string =>
-      fields.every((field) => field.conditional) ? `Schema.optionalKey(${expression})` : expression
-    if (name === "__typename") return `${indent}${propertyKey(key)}: ${optional(typename)}`
+    const isOptional = fields.every((field) => field.conditional)
+    const optional = (expression: string): string => isOptional ? `Schema.optionalKey(${expression})` : expression
+    const identity = (inner: string) => [key, name, isOptional ? "?" : "", inner].join("\u0003")
+    if (name === "__typename") {
+      return { code: `${indent}${propertyKey(key)}: ${optional(typename)}`, identity: identity("") }
+    }
     const definition = this.fieldDefinition(parent, name)
     const typeName = SchemaModel.namedTypeOf(definition.type)
     const type = this.type(typeName)
@@ -929,18 +996,23 @@ class Emitter {
         // The parent's key covers its only occurrence's condition. With several
         // occurrences, the parent can be present because of another one, so
         // each occurrence's condition carries over to the children it adds.
-        fields.flatMap(({ conditional, selection: field, via }) =>
-          (field.selectionSet?.selections ?? []).map((selection) => ({
+        fields.flatMap(({ conditional, order, selection: field, via }) =>
+          (field.selectionSet?.selections ?? []).map((selection, i) => ({
             selection,
             via,
-            conditional: conditional && fields.length > 1
+            conditional: conditional && fields.length > 1,
+            order: [...order, i]
           }))
         )
       )
-      : this.resultLeaf(ctx, type)
+      : undefined
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    const expression = optional(typeSchema(definition.type, () => inner))
-    return `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`
+    const expression = optional(typeSchema(definition.type, () => inner ?? this.resultLeaf(ctx, type)))
+    return {
+      code: `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`,
+      // A leaf's Schema follows from the field; a nested selection's is the classes and fragments it uses.
+      identity: identity(inner?.replace(/\s+/g, "") ?? "")
+    }
   }
 
   /** The selection under the field `key`, with `key` added to the path of the classes it extracts. */
@@ -952,12 +1024,14 @@ class Emitter {
     indent: string,
     selections: ReadonlyArray<Sourced<Ast.Selection>>
   ): string {
-    const offset = ctx.offset
+    const { offset, order } = ctx
     ctx.path.push(key)
     ctx.offset = (first.via ?? first.selection).loc.start
+    ctx.order = first.order
     const expression = this.selection(ctx, typeName, selections, indent, false, true)
     ctx.path.pop()
     ctx.offset = offset
+    ctx.order = order
     return expression
   }
 
@@ -991,6 +1065,7 @@ class Emitter {
       scope: { prefix: "", classes: [], byShape: new Map() },
       path: [],
       offset: 0,
+      order: [],
       generated: [],
       errors: []
     }
@@ -1078,6 +1153,7 @@ class Emitter {
     const scope: ClassScope = { prefix: name.value, classes: [], byShape: new Map() }
     ctx.scope = scope
     ctx.offset = name.loc.start
+    ctx.order = []
     const code = render()
     const names = this.nameClasses(ctx, scope)
     const fill = (text: string) => text.replace(classRefPattern, (_, id: string) => names[Number(id)]!)
@@ -1091,9 +1167,10 @@ class Emitter {
   }
 
   /**
-   * Names a definition's classes `<prefix><TypeName>`. Every class whose name
-   * is wanted by another one adds the next response key up its path, until the
-   * names are unique; two that run out of keys are reported.
+   * Names a definition's classes `<prefix><TypeName>`. Classes of one type
+   * that want the same name all add the next response key up their path,
+   * until their names differ; ones that run out of keys are reported. Equal
+   * names across types are left to `checkClassNames`.
    */
   nameClasses(ctx: FileContext, scope: ClassScope): Array<string> {
     const classes = scope.classes
@@ -1105,7 +1182,7 @@ class Emitter {
     let names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
     let clashing: Array<ReadonlyArray<number>> = []
     for (;;) {
-      const byName = Arr.groupBy(classes.map((_, i) => i), (i) => names[i]!)
+      const byName = Arr.groupBy(classes.map((_, i) => i), (i) => `${classes[i]!.typeName}\u0001${names[i]}`)
       clashing = Object.values(byName).filter((group) => group.length > 1)
       let advanced = false
       for (const group of clashing) {
@@ -1119,8 +1196,10 @@ class Emitter {
       if (!advanced) break
       names = classes.map((extracted, i) => nameAt(extracted, levels[i]!))
     }
+    const reported = new Set<number>()
     for (const group of clashing) {
       for (const i of group) {
+        reported.add(i)
         ctx.errors.push(make(
           ctx.file.source,
           classes[i]!.offset,
@@ -1128,7 +1207,9 @@ class Emitter {
         ))
       }
     }
-    for (const [i, extracted] of classes.entries()) ctx.generated.push({ name: names[i]!, offset: extracted.offset })
+    for (const [i, extracted] of classes.entries()) {
+      if (!reported.has(i)) ctx.generated.push({ name: names[i]!, offset: extracted.offset })
+    }
     return names
   }
 
