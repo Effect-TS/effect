@@ -401,7 +401,7 @@ export const make = Effect.gen(function*() {
 
       const nonSuspendedReply = Option.filter(
         reply,
-        (reply) => reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended"
+        (reply) => !isSuspendedReply(reply)
       )
       if (Option.isSome(nonSuspendedReply)) {
         return Option.none()

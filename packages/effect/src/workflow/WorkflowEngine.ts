@@ -425,7 +425,7 @@ export interface Encoded {
   readonly resume: (
     workflow: Workflow.Any,
     executionId: string
-) => Effect.Effect<void>
+  ) => Effect.Effect<void>
 
   /**
    * Waits until a suspended execution has a result other than `Suspended`.
@@ -434,14 +434,15 @@ export interface Encoded {
    *
    * External callers race this with their `suspendedRetrySchedule`, so it may
    * never complete when the engine cannot observe the result. Completing while
-   * the execution is still suspended spends a step of that schedule.
+   * the execution is still suspended skips the sleep and spends a step of that
+   * schedule. A hook that keeps completing early makes the caller spin.
    */
   readonly awaitComplete?: (
     workflow: Workflow.Any,
     executionId: string
-) => Effect.Effect<void>
+  ) => Effect.Effect<void>
 
-readonly activityExecute: (
+  readonly activityExecute: (
     activity: Activity.Any,
     attempt: number
   ) => Effect.Effect<
@@ -715,7 +716,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interrupted: boolean
       resumeRequested: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
-      // Completed once a run ends with a result other than `Suspended`.
+      // Completed once a run succeeds with `Complete`, after which it cannot resume.
       readonly done: Deferred.Deferred<void>
     }
     const executions = new Map<string, ExecutionState>()
@@ -775,12 +776,9 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.forkIn(resume(state.parent), scope)
         }),
         Effect.onExit((exit) => {
-          // A run that suspended, or was preempted by a completion, has no
-          // result for the callers waiting on `done`.
-          const suspended = Exit.isSuccess(exit)
-            ? exit.value._tag === "Suspended"
-            : Cause.hasInterruptsOnly(exit.cause) && instance.suspended
-          return suspended ? Effect.void : Deferred.succeed(state.done, void 0)
+          return Exit.isSuccess(exit) && exit.value._tag === "Complete"
+            ? Deferred.succeed(state.done, void 0)
+            : Effect.void
         }),
         Effect.forkIn(entry.scope)
       )
