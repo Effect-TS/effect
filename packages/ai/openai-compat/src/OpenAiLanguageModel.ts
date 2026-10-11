@@ -37,6 +37,7 @@ import * as InternalUtilities from "./internal/utilities.ts"
 import {
   type Annotation,
   type ChatCompletionContentPart,
+  type ChatCompletionRequestMessage,
   type ChatCompletionRequestToolCall,
   type CreateResponse,
   type CreateResponse200,
@@ -97,6 +98,17 @@ type ConfigOptions = Simplify<
      * Defaults to `true`.
      */
     readonly strictJsonSchema?: boolean | undefined
+    /**
+     * Replays assistant reasoning parts on the chat message that carries the
+     * text and tool calls of the same assistant prompt message. Providers such
+     * as DeepSeek, Moonshot Kimi and Zhipu GLM require this in tool loops.
+     *
+     * `true` sends the reasoning as `reasoning_content`; a field name sends it
+     * under that field instead.
+     *
+     * Defaults to `false`.
+     */
+    readonly replayReasoning?: boolean | "reasoning_content" | "reasoning" | undefined
   }
 >
 type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknown }
@@ -631,10 +643,9 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         config,
         options
       })
-      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, ...apiConfig } = config
+      const { fileIdPrefixes: _fip, strictJsonSchema: _sjs, replayReasoning, ...apiConfig } = config
       const request: CreateResponse = {
         ...apiConfig,
-        input: messages,
         include: include.size > 0 ? Array.from(include) : null,
         text: {
           verbosity: config.text?.verbosity ?? null,
@@ -643,7 +654,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(tools !== undefined ? { tools } : undefined),
         ...(toolChoice !== undefined ? { tool_choice: toolChoice } : undefined)
       }
-      return toChatCompletionsRequest(request)
+      return toChatCompletionsRequest(request, toChatMessages(messages, getReasoningReplayField(replayReasoning)))
     }
   )
 
@@ -762,6 +773,20 @@ const getSystemMessageMode = (model: string): "system" | "developer" =>
     ? "developer"
     : "system"
 
+/**
+ * The items converted from one prompt message. Keeping prompt-message
+ * boundaries lets the chat conversion emit each assistant message as a single
+ * chat message.
+ */
+type PreparedMessage = {
+  readonly role: Prompt.Message["role"]
+  readonly items: ReadonlyArray<InputItem>
+  /**
+   * The concatenated text of the message's reasoning parts.
+   */
+  readonly reasoning: string
+}
+
 const prepareMessages = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
     config,
@@ -775,7 +800,7 @@ const prepareMessages = Effect.fnUntraced(
     readonly include: Set<IncludeEnum>
     readonly capabilities: ModelCapabilities
     readonly toolNameMapper: Tool.NameMapper<Tools>
-  }): Effect.fn.Return<ReadonlyArray<InputItem>, AiError.AiError> {
+  }): Effect.fn.Return<ReadonlyArray<PreparedMessage>, AiError.AiError> {
     const hasConversation = Predicate.isNotNullish(config.conversation)
 
     // Handle Included Features
@@ -786,12 +811,15 @@ const prepareMessages = Effect.fnUntraced(
       include.add("reasoning.encrypted_content")
     }
 
-    const messages: Array<InputItem> = []
+    const messages: Array<PreparedMessage> = []
 
     for (const message of options.prompt.content) {
+      const items: Array<InputItem> = []
+      let reasoning = ""
+
       switch (message.role) {
         case "system": {
-          messages.push({
+          items.push({
             role: getSystemMessageMode(config.model!),
             content: message.content
           })
@@ -855,7 +883,7 @@ const prepareMessages = Effect.fnUntraced(
             }
           }
 
-          messages.push({ role: "user", content })
+          items.push({ role: "user", content })
 
           break
         }
@@ -875,11 +903,11 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 if (config.store === true && Predicate.isNotNull(id)) {
-                  messages.push({ type: "item_reference", id })
+                  items.push({ type: "item_reference", id })
                   break
                 }
 
-                messages.push({
+                items.push({
                   id: id!,
                   type: "message",
                   role: "assistant",
@@ -903,6 +931,8 @@ const prepareMessages = Effect.fnUntraced(
                   break
                 }
 
+                reasoning += part.text
+
                 if (Predicate.isNotNull(id)) {
                   const message = reasoningMessages[id]
 
@@ -910,7 +940,7 @@ const prepareMessages = Effect.fnUntraced(
                     // Use item references to refer to reasoning (single reference)
                     // when the first part is encountered
                     if (Predicate.isUndefined(message)) {
-                      messages.push({ type: "item_reference", id })
+                      items.push({ type: "item_reference", id })
 
                       // Store unused reasoning message to mark its id as used
                       reasoningMessages[id] = {
@@ -934,7 +964,7 @@ const prepareMessages = Effect.fnUntraced(
                         encrypted_content: encryptedContent ?? null
                       }
 
-                      messages.push(reasoningMessages[id])
+                      items.push(reasoningMessages[id])
                     } else {
                       message.summary.push(...summaryParts)
 
@@ -959,7 +989,7 @@ const prepareMessages = Effect.fnUntraced(
                 }
 
                 if (config.store && Predicate.isNotNull(id)) {
-                  messages.push({ type: "item_reference", id })
+                  items.push({ type: "item_reference", id })
                   break
                 }
 
@@ -970,7 +1000,7 @@ const prepareMessages = Effect.fnUntraced(
                 const toolName = toolNameMapper.getProviderName(part.name)
                 const extraContent = getExtraContent(part)
 
-                messages.push({
+                items.push({
                   type: "function_call",
                   name: toolName,
                   call_id: part.id,
@@ -1000,7 +1030,7 @@ const prepareMessages = Effect.fnUntraced(
 
                 if (config.store === true) {
                   const id = getItemId(part) ?? part.id
-                  messages.push({ type: "item_reference", id })
+                  items.push({ type: "item_reference", id })
                 }
               }
             }
@@ -1017,7 +1047,7 @@ const prepareMessages = Effect.fnUntraced(
 
             const status = getStatus(part)
 
-            messages.push({
+            items.push({
               type: "function_call_output",
               call_id: part.id,
               output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
@@ -1028,6 +1058,8 @@ const prepareMessages = Effect.fnUntraced(
           break
         }
       }
+
+      messages.push({ role: message.role, items, reasoning })
     }
 
     return messages
@@ -1584,8 +1616,10 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   return { tools, toolChoice }
 })
 
-const toChatCompletionsRequest = (payload: CreateResponse): CreateResponseRequestJson => {
-  const messages = toChatMessages(payload.input)
+const toChatCompletionsRequest = (
+  payload: CreateResponse,
+  messages: ReadonlyArray<ChatCompletionRequestMessage>
+): CreateResponseRequestJson => {
   const responseFormat = toChatResponseFormat(payload.text?.format)
   const tools = payload.tools !== undefined
     ? payload.tools.map(toChatTool).filter((tool): tool is NonNullable<ReturnType<typeof toChatTool>> =>
@@ -1747,46 +1781,71 @@ const toChatTool = (
   return undefined
 }
 
+type ReasoningReplayField = "reasoning_content" | "reasoning"
+
+const getReasoningReplayField = (
+  replayReasoning: boolean | ReasoningReplayField | undefined
+): ReasoningReplayField | undefined =>
+  replayReasoning === true ? "reasoning_content" : replayReasoning === false ? undefined : replayReasoning
+
 const toChatMessages = (
-  input: CreateResponse["input"]
-): Array<CreateResponseRequestJson["messages"][number]> => {
-  if (Predicate.isUndefined(input)) {
-    return []
-  }
+  messages: ReadonlyArray<PreparedMessage>,
+  reasoningField: ReasoningReplayField | undefined
+): Array<ChatCompletionRequestMessage> => {
+  const chatMessages: Array<ChatCompletionRequestMessage> = []
 
-  if (typeof input === "string") {
-    return [{ role: "user", content: input }]
-  }
-
-  const messages: Array<CreateResponseRequestJson["messages"][number]> = []
-
-  for (const item of input) {
-    if (Predicate.hasProperty(item, "type") && item.type === "function_call") {
-      const previous = messages.at(-1)
-      const toolCall = toChatToolCall(item)
-      if (previous?.role === "assistant" && previous.tool_calls !== undefined) {
-        messages[messages.length - 1] = {
-          ...previous,
-          tool_calls: [...previous.tool_calls, toolCall]
-        }
-      } else {
-        messages.push({
-          role: "assistant",
-          content: null,
-          tool_calls: [toolCall]
-        })
+  for (const message of messages) {
+    if (message.role === "assistant") {
+      const chatMessage = toAssistantChatMessage(message, reasoningField)
+      if (chatMessage !== undefined) {
+        chatMessages.push(chatMessage)
       }
     } else {
-      messages.push(...toChatMessagesFromItem(item))
+      for (const item of message.items) {
+        chatMessages.push(...toChatMessagesFromItem(item))
+      }
     }
   }
 
-  return messages
+  return chatMessages
+}
+
+/**
+ * Folds the items of one assistant prompt message into a single chat message,
+ * returning `undefined` when the message has no text or tool calls to send.
+ */
+const toAssistantChatMessage = (
+  message: PreparedMessage,
+  reasoningField: ReasoningReplayField | undefined
+): ChatCompletionRequestMessage | undefined => {
+  let content: string | null = null
+  const toolCalls: Array<ChatCompletionRequestToolCall> = []
+
+  for (const item of message.items) {
+    if (Predicate.hasProperty(item, "type") && item.type === "message") {
+      content = (content ?? "") + toAssistantChatMessageContent(item.content)
+    } else if (Predicate.hasProperty(item, "type") && item.type === "function_call") {
+      toolCalls.push(toChatToolCall(item))
+    }
+  }
+
+  if (content === null && toolCalls.length === 0) {
+    return undefined
+  }
+
+  return {
+    role: "assistant",
+    content,
+    ...(reasoningField !== undefined && message.reasoning.length > 0
+      ? { [reasoningField]: message.reasoning }
+      : undefined),
+    ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : undefined)
+  }
 }
 
 const toChatMessagesFromItem = (
   item: InputItem
-): Array<CreateResponseRequestJson["messages"][number]> => {
+): Array<ChatCompletionRequestMessage> => {
   if (Predicate.hasProperty(item, "type") && item.type === "message") {
     return [{
       role: item.role,

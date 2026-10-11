@@ -993,6 +993,15 @@ export type ChatCompletionRequestMessage =
     readonly role: "system" | "developer" | "user" | "assistant"
     readonly content: string | ReadonlyArray<ChatCompletionContentPart> | null
     readonly tool_calls?: ReadonlyArray<ChatCompletionRequestToolCall> | undefined
+    /**
+     * Assistant reasoning replayed for providers that read it from
+     * `reasoning_content`.
+     */
+    readonly reasoning_content?: string | undefined
+    /**
+     * Assistant reasoning replayed for providers that read it from `reasoning`.
+     */
+    readonly reasoning?: string | undefined
   }
   | {
     readonly role: "tool"
