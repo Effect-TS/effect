@@ -324,6 +324,12 @@ interface Struct {
   readonly identity: string
 }
 
+/** A reference to a fragment, standing for its own selection. */
+const fragmentStruct = (name: string): Struct => ({ code: name, identity: name })
+
+/** A reference to an extracted class, whose id stands for the class's identity. */
+const classStruct = (ref: string): Struct => ({ code: ref, identity: ref })
+
 /** Which of two `Sourced.order`s comes first in the document. */
 const compareOrder = (a: ReadonlyArray<number>, b: ReadonlyArray<number>): number => {
   for (let i = 0; i < Math.min(a.length, b.length); i++) {
@@ -796,23 +802,25 @@ class Emitter {
     indent: string,
     alwaysStruct = false,
     nested = false
-  ): string {
+  ): Struct {
     const parent = this.type(parentName)
     if (isAbstract(parent)) {
       const only = alwaysStruct ? undefined : this.onlySpread(selections, parentName)
       return only !== undefined
-        ? this.fragmentRef(ctx, only)
+        ? fragmentStruct(this.fragmentRef(ctx, only))
         : this.abstractSelection(ctx, parent, selections, indent, nested)
     }
     const items = this.resolveItems(ctx.file, selections, parentName)
     const only = items[0]
     if (!alwaysStruct && items.length === 1 && only!._tag === "Spread") {
-      return this.fragmentRef(ctx, only!)
+      return fragmentStruct(this.fragmentRef(ctx, only!))
     }
     const typename = `Schema.Literal(${JSON.stringify(parent.name)})`
     return nested && items.length > 0
-      ? this.extract(ctx, parent.name, parent.description, this.structOf(ctx, parent, items, "", typename, false))
-      : this.structOf(ctx, parent, items, indent, typename, false).code
+      ? classStruct(
+        this.extract(ctx, parent.name, parent.description, this.structOf(ctx, parent, items, "", typename, false))
+      )
+      : this.structOf(ctx, parent, items, indent, typename, false)
   }
 
   /**
@@ -895,7 +903,8 @@ class Emitter {
    * selected object type with `__typename: Schema.Literal("T")`, and one for
    * every other possible type with `GraphQL.otherTypename`. Each member of
    * the union is extracted as a class; without selected types the one struct
-   * is extracted only when `nested` is set.
+   * is extracted only when `nested` is set. The identity ignores the order the
+   * types are mentioned in, which only decides the order members are written.
    */
   abstractSelection(
     ctx: FileContext,
@@ -903,41 +912,47 @@ class Emitter {
     selections: ReadonlyArray<Sourced<Ast.Selection>>,
     indent: string,
     nested: boolean
-  ): string {
+  ): Struct {
     ctx.usesGraphQL = true
     const selected = this.selectedTypes(parent, selections)
     const others = `GraphQL.otherTypename<${this.typename(ctx, parent.name)}>()([${
       selected.map((name) => JSON.stringify(name)).join(", ")
     }])`
-    const member = (type: SchemaModel.NamedType, typename: string, indent: string) =>
+    const othersIdentity = `GraphQL.otherTypename(${selected.slice().sort().join(",")})`
+    const member = (type: SchemaModel.NamedType, typename: string, indent: string, typenameIdentity = typename) =>
       this.structOf(
         ctx,
         type,
         this.resolveItems(ctx.file, selections, type.name, ["__typename"]),
         indent,
         typename,
-        true
+        true,
+        typenameIdentity
       )
     if (selected.length === 0) {
       return nested
-        ? this.extract(ctx, parent.name, parent.description, member(parent, others, ""))
-        : member(parent, others, indent).code
+        ? classStruct(this.extract(ctx, parent.name, parent.description, member(parent, others, "", othersIdentity)))
+        : member(parent, others, indent, othersIdentity)
     }
     const members = [
       ...selected.map((name) => {
         const type = this.type(name)
         return this.extract(ctx, name, type.description, member(type, `Schema.Literal(${JSON.stringify(name)})`, ""))
       }),
-      this.extract(ctx, `${parent.name}Other`, parent.description, member(parent, others, ""))
+      this.extract(ctx, `${parent.name}Other`, parent.description, member(parent, others, "", othersIdentity))
     ]
     const memberIndent = `${indent}  `
-    return `Schema.Union([\n${members.map((member) => `${memberIndent}${member}`).join(",\n")}\n${indent}])`
+    return {
+      code: `Schema.Union([\n${members.map((member) => `${memberIndent}${member}`).join(",\n")}\n${indent}])`,
+      identity: `Schema.Union(${members.slice().sort().join(",")})`
+    }
   }
 
   /**
    * A struct for `items` on `parent`. `typename` is the Schema for a
    * selected `__typename`; with `discriminated` set, `__typename` comes first
-   * whether or not it was selected.
+   * whether or not it was selected. `typenameIdentity` stands for `typename`
+   * in the identity.
    */
   structOf(
     ctx: FileContext,
@@ -945,7 +960,8 @@ class Emitter {
     items: ReadonlyArray<Item>,
     indent: string,
     typename: string,
-    discriminated: boolean
+    discriminated: boolean,
+    typenameIdentity = typename
   ): Struct {
     ctx.usesSchema = true
     const memberIndent = `${indent}  `
@@ -957,14 +973,14 @@ class Emitter {
         members.push(`${memberIndent}...${name}.fields`)
         identities.push(`...${name}`)
       } else if (!(discriminated && item.key === "__typename")) {
-        const member = this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename)
+        const member = this.resultMember(ctx, parent, item.key, item.fields, memberIndent, typename, typenameIdentity)
         members.push(member.code)
         identities.push(member.identity)
       }
     }
     return {
       code: struct(members, indent),
-      identity: [discriminated ? typename : "", ...identities.sort()].join("\u0002")
+      identity: [discriminated ? typenameIdentity : "", ...identities.sort()].join("\u0002")
     }
   }
 
@@ -974,14 +990,15 @@ class Emitter {
     key: string,
     fields: ReadonlyArray<Sourced<Ast.Field>>,
     indent: string,
-    typename: string
+    typename: string,
+    typenameIdentity: string
   ): Struct {
     const name = fields[0]!.selection.name.value
     const isOptional = fields.every((field) => field.conditional)
     const optional = (expression: string): string => isOptional ? `Schema.optionalKey(${expression})` : expression
     const identity = (inner: string) => [key, name, isOptional ? "?" : "", inner].join("\u0003")
     if (name === "__typename") {
-      return { code: `${indent}${propertyKey(key)}: ${optional(typename)}`, identity: identity("") }
+      return { code: `${indent}${propertyKey(key)}: ${optional(typename)}`, identity: identity(typenameIdentity) }
     }
     const definition = this.fieldDefinition(parent, name)
     const typeName = SchemaModel.namedTypeOf(definition.type)
@@ -1007,11 +1024,11 @@ class Emitter {
       )
       : undefined
     const doc = docLines(descriptionLines(definition.description), deprecatedTag(definition.deprecationReason))
-    const expression = optional(typeSchema(definition.type, () => inner ?? this.resultLeaf(ctx, type)))
+    const expression = optional(typeSchema(definition.type, () => inner?.code ?? this.resultLeaf(ctx, type)))
     return {
       code: `${jsdoc(doc, indent)}${indent}${propertyKey(key)}: ${expression}`,
-      // A leaf's Schema follows from the field; a nested selection's is the classes and fragments it uses.
-      identity: identity(inner?.replace(/\s+/g, "") ?? "")
+      // A leaf's Schema follows from the field.
+      identity: identity(inner?.identity ?? "")
     }
   }
 
@@ -1023,7 +1040,7 @@ class Emitter {
     typeName: string,
     indent: string,
     selections: ReadonlyArray<Sourced<Ast.Selection>>
-  ): string {
+  ): Struct {
     const { offset, order } = ctx
     ctx.path.push(key)
     ctx.offset = (first.via ?? first.selection).loc.start
@@ -1283,10 +1300,10 @@ class Emitter {
     const doc = docLines([`\`fragment ${name} on ${type.name}\``], descriptionLines(description))
     const selections = written(definition.selectionSet.selections)
     if (isAbstract(type)) {
-      const body = this.abstractSelection(ctx, type, selections, "", false)
+      const body = this.abstractSelection(ctx, type, selections, "", false).code
       return `${jsdoc(doc, "")}export const ${name} = ${body}\nexport type ${name} = typeof ${name}.Type`
     }
-    const body = this.selection(ctx, type.name, selections, "", true)
+    const body = this.selection(ctx, type.name, selections, "", true).code
     return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
   }
 
@@ -1312,7 +1329,7 @@ class Emitter {
       })
       lines.push(`  variables: {\n${members.join(",\n")}\n  },`)
     }
-    lines.push(`  result: ${this.selection(ctx, root, written(definition.selectionSet.selections), "  ")}`)
+    lines.push(`  result: ${this.selection(ctx, root, written(definition.selectionSet.selections), "  ").code}`)
     return [
       `${jsdoc(doc, "")}export const ${name} = GraphQL.${definition.operation}(${JSON.stringify(name)}, {`,
       ...lines,
