@@ -66,8 +66,13 @@ export type GraphQLError = typeof GraphQLError.Type
  * `{ partial: true }` to receive decoded `{ data, errors }` instead.
  *
  * On this error, `data` is raw. `GraphQLError.path[0]` identifies the response
- * key (or alias). HTTP 4xx responses with a GraphQL body also use this reason
- * rather than `TransportError`.
+ * key (or alias). Non-2xx HTTP responses with a GraphQL body also use this
+ * reason rather than `TransportError`.
+ *
+ * `status` is the HTTP status of the response, as the transport reported it
+ * and middleware left it. It is unset over graphql-ws and for graphql-sse
+ * events. A `ResponseError` is never retryable, whatever the status: a `429`
+ * or `503` that carries a GraphQL `errors` body is not retried.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -76,10 +81,12 @@ export type GraphQLError = typeof GraphQLError.Type
  *
  * const reason = new GraphQLClientError.ResponseError({
  *   errors: [{ message: "Not found", path: ["repository"] }],
- *   data: { repository: null }
+ *   data: { repository: null },
+ *   status: 200
  * })
  *
  * reason.isRetryable // => false
+ * reason.status // => 200
  * reason.errors.map((error) => error.path?.[0]) // => ["repository"]
  * ```
  *
@@ -91,12 +98,14 @@ export class ResponseError
   extends Schema.TaggedError<ResponseError>("effect/graphql/GraphQLClientError/ResponseError")("ResponseError", {
     errors: Schema.NonEmptyArray(GraphQLError),
     data: Schema.optional(Schema.Json),
-    extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+    extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json)),
+    status: Schema.optional(Schema.Int)
   })
 {
   /**
    * A `ResponseError` is never retryable: the server executed the operation
-   * and reported errors for it.
+   * and reported errors for it. This holds for any `status`, including `429`
+   * and `5xx`.
    *
    * @since 4.0.0
    */

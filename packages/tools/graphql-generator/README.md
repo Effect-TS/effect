@@ -188,9 +188,28 @@ would need a GraphQL parser at runtime. Instead:
   at the cost of one request (and rate-limit charge) per item
 - fetch known IDs with `nodes(ids:)` and an inline fragment, up to 100 per
   request on GitHub
-- as an escape hatch, send a hand-written aliased document with
-  `GraphQLProtocol.execute` and decode `data` yourself; this skips the
-  client's middleware
+- as an escape hatch, build the aliased document at runtime as an operation
+  with `GraphQL.query(name, { document, variables?, result: Schema.Json })`,
+  give it its own `GraphQLClient.make(GraphQLGroup.make(op))` and call it
+  through that client, so middleware still run. Building the client needs the
+  `GraphQLProtocol` and any middleware you attach (with `.middleware(Tag)` on
+  the group) in context, and the operation needs a `variables` schema when the
+  document declares variables. `data` comes back as JSON for you to decode:
+
+```ts
+const Repos = GraphQL.query("Repos", {
+  document: `query Repos {
+    a: repository(owner: "Effect-TS", name: "effect") { name }
+    b: repository(owner: "Effect-TS", name: "website") { name }
+  }`,
+  result: Schema.Json
+})
+
+Effect.gen(function*() {
+  const batch = yield* GraphQLClient.make(GraphQLGroup.make(Repos).middleware(Auth))
+  const { data, errors } = yield* batch.Repos(undefined, { partial: true })
+})
+```
 
 One missing item fails a whole `nodes(ids:)` or aliased batch, so call those
 with `{ partial: true }` and match errors to items by `path`.
