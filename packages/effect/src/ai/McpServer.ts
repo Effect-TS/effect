@@ -1711,40 +1711,6 @@ export const layerHttpRequestScoped = (options: {
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> =>
-  layerRequestHttp(options).pipe(Layer.provide(McpRuntime.layer(options.protocols)))
-
-const layerMcpProtocolHttp = (options: {
-  readonly path: HttpRouter.PathInput
-  readonly allowedOrigins?: ReadonlyArray<string> | undefined
-  readonly allowSessionTermination?: boolean | undefined
-}): Layer.Layer<
-  RpcServer.Protocol,
-  never,
-  McpRuntime.ServerRuntime | HttpRouter.HttpRouter
-> =>
-  Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
-    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
-      Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
-    )
-    yield* addMcpHttpRoutes(options, httpEffect)
-    return protocol
-  }))
-
-const layerRequestHttp = (options: {
-  readonly name: string
-  readonly version: string
-  readonly instructions?: string | undefined
-  readonly description?: string | undefined
-  readonly websiteUrl?: string | undefined
-  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly path: HttpRouter.PathInput
-  readonly extensions?: ServerExtensions | undefined
-  readonly allowedOrigins?: ReadonlyArray<string> | undefined
-}): Layer.Layer<
-  McpServer | McpServerClient,
-  Cause.IllegalArgumentError,
-  McpRuntime.ServerRuntime | HttpRouter.HttpRouter
-> =>
   Layer.effectDiscard(Effect.gen(function*() {
     const runtime = yield* McpRuntime.ServerRuntime
     const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
@@ -1783,8 +1749,26 @@ const layerRequestHttp = (options: {
       })
     )
   })).pipe(
-    Layer.provideMerge(McpServer.layer)
+    Layer.provideMerge(McpServer.layer),
+    Layer.provide(McpRuntime.layer(options.protocols))
   )
+
+const layerMcpProtocolHttp = (options: {
+  readonly path: HttpRouter.PathInput
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+  readonly allowSessionTermination?: boolean | undefined
+}): Layer.Layer<
+  RpcServer.Protocol,
+  never,
+  McpRuntime.ServerRuntime | HttpRouter.HttpRouter
+> =>
+  Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
+    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
+      Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
+    )
+    yield* addMcpHttpRoutes(options, httpEffect)
+    return protocol
+  }))
 
 const addMcpHttpRoutes = Effect.fnUntraced(function*(
   options: {

@@ -22,7 +22,7 @@ import { makeWorkerdHarness } from "./TestUtils/McpWorkerdHarness.ts"
 const protocol = McpProtocol.v2026_07_28
 const conformance = makeMcpConformanceLayer(protocol, { mode: "request" })
 
-describe("mode: request", () => {
+describe("McpServer.layerHttpRequestScoped conformance", () => {
   BaseProtocolTest.statelessModernSuite(protocol, conformance)
   ToolsTest.suite(protocol, conformance)
   ToolsTest.statelessModernSuite(protocol, conformance)
@@ -94,7 +94,7 @@ const reportProgress = (server: McpServer.McpServer["Service"]) =>
     Effect.as(new McpSchema.CallToolResult({ content: [{ type: "text", text: "done" }] }))
   )
 
-describe("McpServer.layerHttp mode: request", () => {
+describe("McpServer.layerHttpRequestScoped", () => {
   // https://github.com/Effect-TS/effect/issues/9026
   it.live("should serve each POST when timers from completed requests never fire", () =>
     Effect.gen(function*() {
@@ -250,7 +250,7 @@ describe("McpServer.layerHttp mode: request", () => {
       }
     }))
 
-  it.live("should keep default-mode notifications when a request-mode endpoint shares the server", () =>
+  it.live("should keep layerHttp notifications when a request-scoped endpoint shares the server", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(
         toolRegistration("ReportProgress", reportProgress).pipe(
