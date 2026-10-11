@@ -427,16 +427,15 @@ export interface Encoded {
     executionId: string
   ) => Effect.Effect<void>
   /**
-   * Waits until a suspended execution has a final result.
+   * Waits until a suspended execution has a result other than `Suspended`.
    *
    * **Gotchas**
    *
    * External callers race this with their `suspendedRetrySchedule`, so it may
-   * never complete when the engine cannot observe the result. Completing early
-   * spends a step of that schedule, so it should not complete while the
-   * execution is still suspended.
+   * never complete when the engine cannot observe the result. Completing while
+   * the execution is still suspended spends a step of that schedule.
    */
-  readonly awaitResultChange?: (
+  readonly awaitComplete?: (
     workflow: Workflow.Any,
     executionId: string
   ) => Effect.Effect<void>
@@ -575,8 +574,8 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
           )
         )
         // Completion wakes the caller early; the schedule is the fallback.
-        yield* options.awaitResultChange
-          ? Effect.raceFirst(sleep, options.awaitResultChange(self, executionId))
+        yield* options.awaitComplete
+          ? Effect.raceFirst(sleep, options.awaitComplete(self, executionId))
           : sleep
       }
     }),
@@ -668,9 +667,6 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
       )
   })
 
-const isPreempted = (exit: Exit.Exit<unknown, unknown>, instance: WorkflowInstance["Service"]) =>
-  Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended
-
 const defaultRetrySchedule = Schedule.min([
   Schedule.exponential(200, 1.5),
   Schedule.spaced(30000)
@@ -717,8 +713,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       interrupted: boolean
       resumeRequested: boolean
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
-      // Completed when a replay replaces `fiber`.
-      replaced: Deferred.Deferred<void>
+      // Completed once a run ends with a result other than `Suspended`.
+      readonly done: Deferred.Deferred<void>
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -776,29 +772,17 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           }
           return Effect.forkIn(resume(state.parent), scope)
         }),
+        Effect.onExit((exit) => {
+          // A run that suspended, or was preempted by a completion, has no
+          // result for the callers waiting on `done`.
+          const suspended = Exit.isSuccess(exit)
+            ? exit.value._tag === "Suspended"
+            : Cause.hasInterruptsOnly(exit.cause) && instance.suspended
+          return suspended ? Effect.void : Deferred.succeed(state.done, void 0)
+        }),
         Effect.forkIn(entry.scope)
       )
-      const replaced = state.replaced
-      state.replaced = Deferred.makeUnsafe()
-      Deferred.doneUnsafe(replaced, Exit.void)
     })
-
-    // Wait out a running replay and any replay that suspends again, so only a
-    // final result spends a step of the caller's retry schedule.
-    const awaitFinalResult = (executionId: string): Effect.Effect<void> =>
-      Effect.suspend(() => {
-        const state = executions.get(executionId)
-        if (!state?.fiber) return Effect.never
-        const exit = state.fiber.pollUnsafe()
-        if (exit === undefined) {
-          return Effect.andThen(Fiber.await(state.fiber), awaitFinalResult(executionId))
-        }
-        const suspended = (exit._tag === "Success" && exit.value._tag === "Suspended") ||
-          isPreempted(exit, state.instance)
-        return suspended
-          ? Effect.andThen(Deferred.await(state.replaced), awaitFinalResult(executionId))
-          : Effect.void
-      })
 
     const deferredResults = new Map<string, Exit.Exit<any, any>>()
 
@@ -827,7 +811,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             interrupted: false,
             resumeRequested: false,
             fiber: undefined,
-            replaced: Deferred.makeUnsafe(),
+            done: Deferred.makeUnsafe(),
             parent: options.parent?.executionId
           }
           executions.set(options.executionId, state)
@@ -837,13 +821,17 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         // Capture together so a wake that swaps in a replay cannot desync them.
         const instance = state.instance
         const exit = yield* Fiber.await(state.fiber!)
-        if (isPreempted(exit, instance)) {
+        if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause) && instance.suspended) {
           // A completion preempted the run; the caller retries into the replay.
           return new Workflow.Suspended({}) as any
         }
         return (yield* exit) as any
       }),
-      awaitResultChange: (_workflow, executionId) => awaitFinalResult(executionId),
+      awaitComplete: (_workflow, executionId) =>
+        Effect.suspend(() => {
+          const state = executions.get(executionId)
+          return state ? Deferred.await(state.done) : Effect.never
+        }),
       interrupt: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
         if (!state) return

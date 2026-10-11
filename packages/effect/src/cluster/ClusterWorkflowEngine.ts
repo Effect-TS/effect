@@ -291,10 +291,7 @@ export const make = Effect.gen(function*() {
       id: ""
     })
 
-    const maybeSuspended = Option.filter(
-      maybeReply,
-      (reply) => reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
-    )
+    const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
     if (Option.isNone(maybeSuspended)) return
     if (
@@ -362,15 +359,15 @@ export const make = Effect.gen(function*() {
       Effect.catchCause((cause) => ClusterAbandon.isCause(cause) ? ClusterAbandon.interrupt : Effect.failCause(cause))
     )
 
-  // Wake an external caller once its run publishes a final reply. Replies are
-  // only observed on the runner that saves them, so callers on other runners,
-  // and any failure here, leave delivery to the caller's retry schedule.
-  const awaitResultChange = (workflow: Workflow.Any, executionId: string) =>
+  // Wake an external caller once its run publishes a reply other than
+  // `Suspended`. Replies are only observed on the runner that saves them, so
+  // callers on other runners, and any failure here, leave delivery to the
+  // caller's retry schedule.
+  const awaitComplete = (workflow: Workflow.Any, executionId: string) =>
     Effect.gen(function*() {
-      const entityType = `Workflow/${workflow._tag}`
-      const address = entityAddressFor({ workflow, entityType, executionId })
+      const address = entityAddressFor({ workflow, entityType: `Workflow/${workflow._tag}`, executionId })
       if (!sharding.hasShardId(address.shardId)) return yield* Effect.never
-      const requestId = yield* requestIdFor({ workflow, entityType, executionId, tag: "run", id: "" })
+      const requestId = yield* storage.requestIdForPrimaryKey({ address, tag: "run", id: "" })
       if (Option.isNone(requestId)) return yield* Effect.never
       const request = Envelope.makeRequest<any>({
         requestId: requestId.value,
@@ -383,7 +380,7 @@ export const make = Effect.gen(function*() {
       // step of the caller's retry schedule.
       let settled = false
       while (!settled) {
-        settled = yield* awaitRunReply(workflow, request, isFinalReply)
+        settled = yield* awaitRunReply(workflow, request, (reply) => !isSuspendedReply(reply))
       }
     }).pipe(Effect.catchCause(() => Effect.never))
 
@@ -654,7 +651,7 @@ export const make = Effect.gen(function*() {
 
     resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId)),
 
-    awaitResultChange,
+    awaitComplete,
 
     activityExecute: Effect.fnUntraced(
       function*(activity, attempt) {
@@ -848,8 +845,8 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
-const isFinalReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
-  reply.exit._tag !== "Success" || reply.exit.value._tag !== "Suspended"
+const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
+  reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 
