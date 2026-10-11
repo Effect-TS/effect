@@ -31,8 +31,7 @@ export default defineConfig({
   documents: ["src/**/*.graphql"],
   // One Schema codec per custom scalar, as "<module>#<export>"
   scalars: {
-    DateTime: "effect/Schema#DateTimeUtcFromString",
-    URI: "./src/scalars.ts#Uri"
+    GitObjectID: "effect/Schema#String"
   }
 })
 ```
@@ -60,8 +59,11 @@ rewritten relative to the shared module; a bare module is imported as written.
 The generator doesn't check the target; `tsc` does.
 
 Unless overridden, `Int` is a 32-bit integer, `Float` a finite number and `ID`
-a string. A custom scalar without a mapping decodes as `Schema.Json`, with one
-warning listing every unmapped scalar the operations reach.
+a string. Custom scalars named exactly `DateTime` and `URI` default to
+`Schema.DateTimeUtcFromString` and `Schema.String`. A `scalars` entry overrides
+any of these defaults. Other custom scalars without a mapping decode as
+`Schema.Json`, with one warning listing every unmapped scalar the operations
+reach. Defaulted scalars are not included in that warning.
 
 ## Generated files
 

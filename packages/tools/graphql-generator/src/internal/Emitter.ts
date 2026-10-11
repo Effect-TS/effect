@@ -184,7 +184,7 @@ const unbindable = (name: string): boolean => reservedWords.has(name) || name ==
 /** Names every per-file module imports, which operations and fragments can't take. */
 const importedNames: ReadonlySet<string> = new Set(["Schema", "Shared", "GraphQL", "GraphQLGroup"])
 
-const builtInSharedScalars: ReadonlyArray<string> = ["Int", "Float", "ID"]
+const builtInSharedScalars: ReadonlyArray<string> = ["Int", "Float", "ID", "DateTime", "URI"]
 
 const builtInScalarCodec = (name: string, schema: string): string => {
   switch (name) {
@@ -192,6 +192,8 @@ const builtInScalarCodec = (name: string, schema: string): string => {
       return `${schema}.Number.check(${schema}.isInt32())`
     case "Float":
       return `${schema}.Finite`
+    case "DateTime":
+      return `${schema}.DateTimeUtcFromString`
     default:
       return `${schema}.String`
   }
@@ -1088,9 +1090,9 @@ class Emitter {
     all.delete("Boolean")
 
     const byName = Array.from(all).sort()
-    const builtIns = builtInSharedScalars.filter((name) => all.has(name))
+    const builtIns = builtInSharedScalars.filter((name) => all.has(name) && this.type(name)._tag === "ScalarType")
     const scalars = byName.filter((name) =>
-      this.type(name)._tag === "ScalarType" && !SchemaModel.builtInScalarNames.includes(name)
+      this.type(name)._tag === "ScalarType" && !builtInSharedScalars.includes(name)
     )
     const enums = byName.flatMap((name) => {
       const type = this.type(name)
