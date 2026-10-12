@@ -625,7 +625,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly toolNameMapper: Tool.NameMapper<Tools>
     }): Effect.fn.Return<{
       readonly request: CreateResponseRequestJson
-      readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+      readonly toolCodecs: ToolCodecs
     }, AiError.AiError> {
       const messages = yield* prepareMessages({
         config,
@@ -983,7 +983,7 @@ const makeResponse = Effect.fnUntraced(
     readonly rawResponse: CreateResponse200
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
-    readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<
     Array<Response.PartEncoded>,
     AiError.AiError
@@ -1081,7 +1081,7 @@ const makeStreamResponse = Effect.fnUntraced(
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
-    readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+    readonly toolCodecs: ToolCodecs
   }): Effect.fn.Return<
     Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
     AiError.AiError
@@ -1373,13 +1373,14 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
-type PreparedToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
+type ToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
+type ToolCodecs = ReadonlyMap<Tool.Any, ToolCodec>
 
 const transformToolCallParams = Effect.fnUntraced(function*(
   options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown,
-  toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+  toolCodecs: ToolCodecs
 ): Effect.fn.Return<unknown, AiError.AiError> {
   const tool = options.tools.find((tool) => tool.name === toolName)
 
@@ -1401,7 +1402,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     return toolParams
   }
 
-  const codec = toolCodecs?.get(tool) ?? (yield* tryCodecTransform(tool.parametersSchema, "makeResponse")).codec
+  const codec = toolCodecs.get(tool) ?? (yield* tryCodecTransform(tool.parametersSchema, "makeResponse")).codec
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
@@ -1425,16 +1426,17 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
 }): Effect.fn.Return<{
   readonly tools: ReadonlyArray<OpenAiClientTool> | undefined
   readonly toolChoice: OpenAiToolChoice | undefined
-  readonly toolCodecs?: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+  readonly toolCodecs: ToolCodecs
 }, AiError.AiError> {
+  const toolCodecs = new Map<Tool.Any, ToolCodec>()
+
   // Return immediately if no tools are in the toolkit
   if (options.tools.length === 0) {
-    return { tools: undefined, toolChoice: undefined }
+    return { tools: undefined, toolChoice: undefined, toolCodecs }
   }
 
   const tools: Array<OpenAiClientTool> = []
   let toolChoice: OpenAiToolChoice | undefined = undefined
-  let toolCodecs: Map<Tool.Any, PreparedToolCodec> | undefined
 
   // Filter the incoming tools down to the set of allowed tools as indicated by
   // the tool choice. This must be done here given that there is no tool name
@@ -1458,9 +1460,6 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
         const prepared = yield* tryCodecTransform(tool.parametersSchema, "prepareTools")
         parameters = prepared.jsonSchema
         // Keep the codec paired with this request's schema.
-        if (toolCodecs === undefined) {
-          toolCodecs = new Map<Tool.Any, PreparedToolCodec>()
-        }
         toolCodecs.set(tool, prepared.codec)
       }
       tools.push({
