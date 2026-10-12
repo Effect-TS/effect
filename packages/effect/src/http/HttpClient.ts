@@ -952,6 +952,12 @@ export const retry: {
  * Specifying a `while` predicate allows you to consider other errors as
  * transient, and is ignored in "response-only" mode.
  *
+ * When a transient response, or the response of a status code error, carries a
+ * `Retry-After` header, the next attempt waits at least that long. A longer
+ * delay from the schedule still applies. With `maxRetryAfter`, a `Retry-After`
+ * longer than that stops the retries, and the response or error is returned as
+ * is, for callers that cannot wait that long.
+ *
  * @stability unstable
  * @category error handling
  * @since 4.0.0
@@ -975,6 +981,7 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<NoInfer<E | ES>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, ES, R1>
       readonly times?: number
+      readonly maxRetryAfter?: Duration.Input | undefined
     }
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E | ES, R1 | R>
   <
@@ -997,6 +1004,7 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<NoInfer<E | ES>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, ES, R1>
       readonly times?: number
+      readonly maxRetryAfter?: Duration.Input | undefined
     }
   ): HttpClient.With<E | ES, R1 | R>
   <B, E, ES = never, R1 = never>(
@@ -1021,25 +1029,34 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<E | ES>
       readonly schedule?: Schedule.Schedule<B, any, ES, R1>
       readonly times?: number
+      readonly maxRetryAfter?: Duration.Input | undefined
     } | Schedule.Schedule<B, any, ES, R1>
   ): HttpClient.With<E | ES, R1 | R> => {
     const isOnlySchedule = Schedule.isSchedule(options)
     const retryOn = isOnlySchedule ? "errors-and-responses" : options.retryOn ?? "errors-and-responses"
-    const schedule = isOnlySchedule ? options : options.schedule
-    const passthroughSchedule = schedule && Schedule.passthrough(schedule)
+    const schedule = withRetryAfter(isOnlySchedule ? options : options.schedule ?? Schedule.forever)
     const times = isOnlySchedule ? undefined : options.times
+    const isRetryable = isOnlySchedule || options.while === undefined
+      ? isTransientError
+      : Predicate.or(isTransientError, options.while)
+    const maxRetryAfter = isOnlySchedule || options.maxRetryAfter === undefined
+      ? undefined
+      : Duration.fromInputUnsafe(options.maxRetryAfter)
     return transformResponse(
       self,
       flow(
         retryOn === "errors-only" ? identity : Effect.repeat({
-          schedule: passthroughSchedule!,
+          schedule: Schedule.passthrough(schedule),
           times,
-          while: isTransientResponse
+          while: maxRetryAfter === undefined
+            ? isTransientResponse
+            : (response: HttpClientResponse.HttpClientResponse) =>
+              isTransientResponse(response) ? retryAfterWithin(response, maxRetryAfter) : Effect.succeed(false)
         }),
         retryOn === "response-only" ? identity : Effect.retry({
-          while: isOnlySchedule || options.while === undefined
-            ? isTransientError
-            : Predicate.or(isTransientError, options.while),
+          while: maxRetryAfter === undefined
+            ? isRetryable
+            : (error: E | ES) => isRetryable(error) ? retryAfterWithin(error, maxRetryAfter) : Effect.succeed(false),
           schedule,
           times
         })
@@ -1267,7 +1284,10 @@ export const withRateLimiter: {
       if (options.disableResponseInspection || response.status !== 429) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
-      const retryAfter = parseRetryAfter(clock, getHeader(response.headers, ...headerNames.retryAfter))
+      const retryAfter = parseRetryAfter(
+        clock.currentTimeMillisUnsafe(),
+        getHeader(response.headers, ...headerNames.retryAfter)
+      )
       if (retryAfter === undefined) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
@@ -1447,7 +1467,7 @@ const parseRateLimitWindow = (
 }
 
 const parseRetryAfter = (
-  clock: Clock,
+  nowMillis: number,
   value: string | undefined
 ): Duration.Duration | undefined => {
   if (value === undefined) {
@@ -1464,7 +1484,7 @@ const parseRetryAfter = (
   if (Number.isNaN(parsedDate)) {
     return undefined
   }
-  const millis = parsedDate - clock.currentTimeMillisUnsafe()
+  const millis = parsedDate - nowMillis
   if (millis <= 0) {
     return Duration.millis(1)
   }
@@ -1925,6 +1945,29 @@ const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&
   (error.reason._tag === "TransportError" ||
     (error.reason._tag === "StatusCodeError" && isTransientResponse(error.reason.response)))
+
+const retryAfterOf = (input: unknown, nowMillis: number): Duration.Duration | undefined => {
+  const response = Predicate.hasProperty(input, HttpClientResponse.TypeId)
+    ? input as HttpClientResponse.HttpClientResponse
+    : Error.isHttpClientError(input) && input.reason._tag === "StatusCodeError"
+    ? input.reason.response
+    : undefined
+  return response && parseRetryAfter(nowMillis, response.headers["retry-after"])
+}
+
+const withRetryAfter = <ES, R1>(
+  schedule: Schedule.Schedule<unknown, any, ES, R1>
+): Schedule.Schedule<unknown, any, ES, R1> =>
+  Schedule.modifyDelay(schedule, ({ duration, input, now }) => {
+    const retryAfter = retryAfterOf(input, now)
+    return Effect.succeed(retryAfter ? Duration.max(duration, retryAfter) : duration)
+  })
+
+const retryAfterWithin = (input: unknown, max: Duration.Duration): Effect.Effect<boolean> =>
+  Effect.clockWith((clock) => {
+    const retryAfter = retryAfterOf(input, clock.currentTimeMillisUnsafe())
+    return Effect.succeed(retryAfter === undefined || Duration.isLessThanOrEqualTo(retryAfter, max))
+  })
 
 const isTooManyRequestsHttpClientError = (
   error: unknown
