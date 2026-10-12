@@ -39,14 +39,13 @@ export class Uninterruptible
 }
 
 /**
- * Annotation that interrupts a cluster request when entity termination starts,
- * rather than waiting for the termination grace period to expire.
+ * Interrupts the request as soon as entity termination starts, instead of
+ * waiting for `entityTerminationTimeout`. Defaults to `false`.
  *
- * The default value is `false`. Use for long-lived requests that cannot finish
- * on their own. Persisted requests resume under the next owner without saving
- * the interruption as a reply. Non-persisted requests receive an interrupt exit.
- *
- * Server-side `Uninterruptible` takes precedence over this annotation.
+ * Use for long-lived requests that never finish on their own. Persisted
+ * requests resume on the next owner without saving the interrupt as a reply.
+ * Non-persisted requests receive an interrupt exit. Server-side
+ * `Uninterruptible` takes precedence.
  *
  * @since 1.0.0
  * @category Annotations

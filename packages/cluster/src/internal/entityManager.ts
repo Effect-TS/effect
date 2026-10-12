@@ -75,7 +75,6 @@ export type EntityState = {
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
     sentExit: boolean
-    /** Treat early termination interrupts like shutdown interrupts. */
     terminating?: boolean | undefined
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
