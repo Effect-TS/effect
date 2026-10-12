@@ -3,10 +3,19 @@
 // would take to make the executor a child process or a remote machine.
 import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/rpc/RpcServer"
+import type * as WorkerRunner from "effect/workers/WorkerRunner"
 import { ExecutorState, listFile, runFile } from "../Executor.ts"
 import * as Platform from "../Platform.ts"
 import { ExecutorRpcs } from "../Protocol.ts"
-import { platforms } from "./platforms.ts"
+
+/** What an executor needs from a platform (`./platform/*.ts`): the worker runner it serves its protocol through. */
+export type Services = WorkerRunner.WorkerRunnerPlatform
+
+const platforms: Platform.Imports<Services> = {
+  node: () => import("./platform/node.ts"),
+  bun: () => import("./platform/bun.ts"),
+  deno: () => import("./platform/deno.ts")
+}
 
 const Handlers = ExecutorRpcs.toLayer({
   ListFile: ({ path }) => listFile(path),
