@@ -102,7 +102,7 @@ export const agent = (ctx: ReporterContext): Reporter => {
         const r = s.results.get(t.id)
         if (!r || !isBad(r) || byBail(r)) continue
         lines.push("")
-        lines.push(`--- ${r.status.toUpperCase()} ${t.id}`)
+        lines.push(`--- ${r.status.toUpperCase()} [${t.shortId}] ${t.id}`)
         lines.push(`attempt=${r.attempt}/${t.retries + 1} seed=${r.seed} duration=${r.durationMs}ms`)
         for (const f of r.failures) lines.push(...renderFailure(f))
         if (r.console.length > 0) {
@@ -120,7 +120,7 @@ export const agent = (ctx: ReporterContext): Reporter => {
         for (const t of flaky) {
           const r = s.results.get(t.id)!
           lines.push(
-            `FLAKY ${t.id} passed on attempt ${r.attempt} (earlier: ${
+            `FLAKY [${t.shortId}] ${t.id} passed on attempt ${r.attempt} (earlier: ${
               r.previousAttempts.map((a) => a.status).join(", ")
             })`
           )
@@ -139,7 +139,9 @@ export const agent = (ctx: ReporterContext): Reporter => {
       const skipped = s.planned.filter((t) => s.results.get(t.id)?.status === "skipped" && !byBail(s.results.get(t.id)))
       if (skipped.length) {
         lines.push("")
-        for (const t of skipped) lines.push(`SKIP ${t.id} (${s.results.get(t.id)!.skipReason ?? "skipped"})`)
+        for (const t of skipped) {
+          lines.push(`SKIP [${t.shortId}] ${t.id} (${s.results.get(t.id)!.skipReason ?? "skipped"})`)
+        }
       }
       ctx.write(lines.join("\n") + "\n")
     }
@@ -192,7 +194,7 @@ export const human = (ctx: ReporterContext): Reporter => {
         const r = s.results.get(t.id)!
         if (!isBad(r)) continue
         out.push("")
-        out.push(red(bold(` ${r.status.toUpperCase()} `)) + " " + bold(t.id))
+        out.push(red(bold(` ${r.status.toUpperCase()} `)) + " " + dim(`[${t.shortId}]`) + " " + bold(t.id))
         for (const f of r.failures) {
           for (const l of renderFailure(f)) {
             out.push("  " + (l.trimStart().startsWith(">") ? red(l) : l.includes("→") ? yellow(l) : l))

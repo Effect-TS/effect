@@ -40,6 +40,8 @@ export type Status = typeof Status.Type
 
 export const PlannedTest = Schema.Struct({
   id: Schema.String,
+  /** 8 hex characters derived from `id`: stable across runs, accepted by `--test` */
+  shortId: Schema.String,
   file: Schema.String,
   tags: Schema.Array(Schema.String),
   timeoutMs: Schema.Number,

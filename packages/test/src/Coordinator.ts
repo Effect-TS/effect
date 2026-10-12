@@ -80,6 +80,9 @@ const fnv1a = (s: string) => {
 }
 export const testSeed = (runSeed: number, id: string) => fnv1a(`${runSeed}:${id}`)
 
+/** A short, stable handle for a test: 8 hex characters of a hash of its full id. */
+export const shortId = (id: string) => fnv1a(id).toString(16).padStart(8, "0")
+
 const ancestry = (byId: Map<string, ListedNode>, node: ListedNode) => {
   const chain: Array<ListedNode> = []
   for (let n: ListedNode | undefined = node; n; n = n.parent !== undefined ? byId.get(n.parent) : undefined) {
@@ -93,8 +96,9 @@ export const plan = (
   opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
 ): Array<PlannedTest> => {
   const planned: Array<PlannedTest & { only: boolean }> = []
-  // an exact id selects exactly that test; anything else is a substring match
-  const exact = opts.test !== undefined && listings.some((l) => l.nodes.some((n) => n.id === opts.test))
+  // an exact id or short id selects exactly that test; anything else is a substring match
+  const exact = opts.test !== undefined &&
+    listings.some((l) => l.nodes.some((n) => n.id === opts.test || (n.kind === "test" && shortId(n.id) === opts.test)))
   for (const { file, nodes } of listings) {
     const byId = new Map(nodes.map((n) => [n.id, n]))
     for (const node of nodes) {
@@ -105,12 +109,18 @@ export const plan = (
         return undefined
       }
       const tags = [...new Set(chain.flatMap((n) => n.tags))]
-      if (opts.test !== undefined && (exact ? node.id !== opts.test : !node.id.includes(opts.test))) continue
+      const sid = shortId(node.id)
+      if (
+        opts.test !== undefined && (exact ? node.id !== opts.test && sid !== opts.test : !node.id.includes(opts.test))
+      ) {
+        continue
+      }
       if (opts.tag !== undefined && !tags.includes(opts.tag)) continue
       if (opts.ids !== undefined && !opts.ids.has(node.id) && !opts.ids.has(file)) continue
       const skip = nearest("skip")
       planned.push({
         id: node.id,
+        shortId: sid,
         file,
         tags,
         timeoutMs: nearest("timeoutMs") ?? DEFAULT_TIMEOUT_MS,
@@ -164,7 +174,7 @@ export const run = (opts: RunOptions) =>
     // a file that fails to list becomes a single failed planned test, so it can't vanish silently
     for (const { file } of loadErrors) {
       const id = path.relative(process.cwd(), file)
-      planned.push({ id, file: id, tags: [], timeoutMs: 0, retries: 0, seed: 0 })
+      planned.push({ id, shortId: shortId(id), file: id, tags: [], timeoutMs: 0, retries: 0, seed: 0 })
     }
     // a run that selects nothing is red: an agent must never read "nothing ran" as "all green"
     const selection: Selection = {
@@ -349,7 +359,9 @@ const renderList = (
       if (n.skip) bits.push(`skip="${n.skip}"`)
       if (n.only) bits.push("only")
       for (const f of n.fixtures) bits.push(`provide=${f.name}`)
-      const label = n.kind === "suite" ? (n.parent === undefined ? n.name : `${n.name}/`) : n.name
+      const label = n.kind === "suite"
+        ? (n.parent === undefined ? n.name : `${n.name}/`)
+        : `[${shortId(n.id)}] ${n.name}`
       out += `${"  ".repeat(depth(n))}${label}${bits.length ? `  [${bits.join(" ")}]` : ""}${
         n.kind === "test" ? `  at=${n.location ?? "?"}` : ""
       }\n`

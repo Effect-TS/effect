@@ -166,7 +166,7 @@ export const cli = Command.make("etest", {
     }
     const ctx: Reporters.ReporterContext = {
       write,
-      rerun: (t, runSeed) => `${launcher} ${bin} ${t.file} --test "${t.id}" --seed ${runSeed}`
+      rerun: (t, runSeed) => `${launcher} ${bin} ${t.file} --test ${t.shortId} --seed ${runSeed}`
     }
     const reporter = options.reporter === "human"
       ? Reporters.human(ctx)

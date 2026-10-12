@@ -32,6 +32,11 @@ finds `*.test.ts` files under the given paths.
 - **Never green when nothing ran.** A path that doesn't exist, or a selection with no tests (no test files, no tests in them,
   or nothing matching `--test` / `--tag` / `--failed`), is an error on stderr with the reason, exit 1. A file whose listing
   fails for any reason (a load error, or an executor that died) is reported as a failed `load` entry instead of vanishing.
+- **Output contract.** `--reporter jsonl` is versioned (`schemaVersion` in `RunPlanned`) and documented in `EVENTS.md`.
+  Every reporter prints what was selected and how (`selected 3 of 60 tests in 8 files (examples); --test "fees"`). Each
+  test has a short id (8 hex characters of a hash of its full id, stable across runs) that `--test` accepts and rerun
+  hints use. A closed stdout (`etest | head`) stops the output but not the run, and the exit code is kept. Usage errors
+  print only the error and a `--help` hint (`helpOnError: false`, added to effect/cli for this).
 - **`--failed`** re-runs the failures recorded in `node_modules/.cache/etest/last-run.json` (`src/cli/LastRun.ts`). The record
   is merged across runs: tests that ran replace their entry (a pass removes it), others are kept, and entries whose file no
   longer exists are dropped. A file that failed to load is recorded by its file id and re-runs as a whole. No record is an
