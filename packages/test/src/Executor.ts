@@ -1,12 +1,11 @@
 // The executor: loads test files, lists their tree, and runs selected
 // tests as fibers. It knows nothing about filtering, seeds or reporting; the
 // coordinator sends it fully resolved per-test instructions.
-import { Cause, Console, Context, Deferred, Effect, Exit, Layer, Option, Queue, Random, Scope, Semaphore, Stream } from "effect"
+import { Cause, Console, Context, Deferred, Effect, Exit, Formatter, Layer, Option, Queue, Random, Scope, Semaphore, Stream } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as path from "node:path"
 import { pathToFileURL } from "node:url"
-import { AssertionError, CurrentSink, setPlainSink, show, Sink } from "./Assert.ts"
 import { locationFromStack } from "./CallSite.ts"
 import type { Failure, ListedNode, RunFileTest, Status, TestFinished } from "./Protocol.ts"
 import { LoadError } from "./Protocol.ts"
@@ -59,7 +58,6 @@ export const listFile = (file: string) =>
         ...(o.retries !== undefined ? { retries: o.retries } : {}),
         ...(o.skip ? { skip: typeof o.skip === "string" ? o.skip : "skipped" } : {}),
         ...(o.only ? { only: true } : {}),
-        ...(o.noAssertions ? { noAssertions: true } : {}),
         ...(node.location ? { location: `${node.location.file}:${node.location.line}` } : {})
       })
       if (node._tag === "Suite") for (const c of node.children) visit(c, id, childId(id, c))
@@ -73,15 +71,13 @@ export const listFile = (file: string) =>
 /** Per-executor state: the run's MemoMap and Scope live as long as the executor. */
 export class ExecutorState extends Context.Service<ExecutorState, {
   readonly runMemo: Layer.MemoMap
-  /** Plain tests run one at a time per executor: see `setPlainSink` */
-  readonly plainLock: Semaphore.Semaphore
   readonly shared: ReadonlySet<Layer.Layer<any, any, any>>
 }>()("effect/test/ExecutorState") {
   static layer = Layer.effect(ExecutorState)(Effect.gen(function*() {
     const shared = new Set<Layer.Layer<any, any, any>>(yield* loadConfig(process.env.EFFECT_TEST_CONFIG))
     const runScope = yield* Effect.scope
     const runContext = yield* Effect.context<never>()
-    return { runMemo: makeRunMemoMap(shared, runScope, runContext), shared, plainLock: Semaphore.makeUnsafe(1) }
+    return { runMemo: makeRunMemoMap(shared, runScope, runContext), shared }
   }))
 }
 
@@ -175,7 +171,7 @@ class FixtureFailure {
 export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<RunFileTest>) =>
   Stream.callback<Event, LoadError, ExecutorState>((queue) =>
     Effect.gen(function*() {
-      const { plainLock, runMemo, shared } = yield* ExecutorState
+      const { runMemo, shared } = yield* ExecutorState
       const root = yield* load(file)
       const rel = path.relative(process.cwd(), file)
       const selected = new Map(tests.map((t) => [t.id, t]))
@@ -247,8 +243,7 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
           for (let attempt = 1;; attempt++) {
             yield* emit({ _tag: "TestStarted", id, attempt })
             const start = Date.now()
-            const run = runAttempt(node, fixtures, memo, plan)
-            const r = yield* (node.body._tag === "Plain" ? plainLock.withPermits(1)(run) : run)
+            const r = yield* runAttempt(node, fixtures, memo, plan)
             const done = r.status === "passed" || attempt > plan.retries
             if (done) {
               return yield* emit({
@@ -275,7 +270,6 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
       ) =>
         Effect.scoped(Effect.gen(function*() {
           const scope = yield* Effect.scope
-          const sink = new Sink()
           const fx = yield* Effect.result(buildFixtures(fixtures, memo, scope))
           if (fx._tag === "Failure") {
             const f = fx.failure
@@ -290,13 +284,12 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
           }
           const env = yield* Layer.buildWithScope(TestEnv, scope)
           const testConsole = Context.get(env, Console.Console) as unknown as TestConsole.TestConsole
-          const exit = yield* bodyEffect(node, sink).pipe(
+          const exit = yield* bodyEffect(node).pipe(
             Effect.scoped, // the body's own Scope closes (finalizers run) before results are read
             // the body's own `Effect.provide`s fork from the test's MemoMap (added last: every built
             // context, TestEnv's included, carries the MemoMap it was built with)
             Effect.provideContext(Context.add(Context.merge(fx.success.ctx, env), Layer.CurrentMemoMap, fx.success.testMemo)),
             Random.withSeed(plan.seed),
-            Effect.provideService(CurrentSink, sink),
             Effect.timeoutOption(plan.timeoutMs), // outside the TestClock: real time
             Effect.exit
           )
@@ -304,7 +297,7 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
             ...(yield* testConsole.logLines).map(line),
             ...(yield* testConsole.errorLines).map((l) => `[error] ${line(l)}`)
           ]
-          return { ...classify(exit, sink, plan, node), console: consoleLines }
+          return { ...classify(exit, plan, node), console: consoleLines }
         }))
 
       yield* walk(root, rel, [], runMemo)
@@ -321,33 +314,33 @@ const isGenerator = (u: unknown): u is Generator =>
   typeof u === "object" && u !== null && typeof (u as any).next === "function" &&
   typeof (u as any)[Symbol.iterator] === "function"
 
-const bodyEffect = (node: TestNode<any>, sink: Sink): Effect.Effect<unknown, unknown> => {
+const bodyEffect = (node: TestNode<any>): Effect.Effect<unknown, unknown> => {
   if (node.body._tag === "Effect") return node.body.effect as Effect.Effect<unknown, unknown>
   const run = node.body.run
-  // The caller holds the executor's plain-test lock, so `plainSink` is ours until we clear it.
   return Effect.flatMap(
-    Effect.sync(() => {
-      setPlainSink(sink)
-      return run()
-    }),
+    Effect.sync(run),
     (result) =>
       // an Effect or a generator in the result is reported by `classify`: it never ran
       result instanceof Promise ? Effect.promise(() => result) : Effect.succeed(result)
-  ).pipe(Effect.ensuring(Effect.sync(() => setPlainSink(undefined))))
+  )
 }
 
 // --- Cause-aware classification
 
+const show = (u: unknown): string => typeof u === "string" ? JSON.stringify(u) : Formatter.format(u)
+
 const userFrameOf = (u: unknown) => u instanceof Error ? locationFromStack(u.stack) : undefined
+
+/** `node:assert` (and most assertion libraries) throw an `AssertionError`. */
+const isAssertionError = (u: unknown): u is Error =>
+  u instanceof Error && (u.name === "AssertionError" || (u as { code?: unknown }).code === "ERR_ASSERTION")
 
 const classify = (
   exit: Exit.Exit<Option.Option<unknown>, unknown>,
-  sink: Sink,
   plan: RunFileTest,
   node: TestNode<any>
 ): { status: Status; failures: Array<Failure> } => {
   const failures: Array<Failure> = []
-  let mainAssertion: AssertionError | undefined
   if (Exit.isSuccess(exit) && Option.isNone(exit.value)) {
     return {
       status: "timedOut",
@@ -355,7 +348,7 @@ const classify = (
         kind: "timeout",
         message: `test exceeded its timeout of ${plan.timeoutMs}ms; its fiber was interrupted and finalizers ran`,
         ...(node.location ? { location: node.location } : {})
-      }, ...sink.failures.map((f) => f.failure)]
+      }]
     }
   }
   if (Exit.isFailure(exit)) {
@@ -378,26 +371,20 @@ const classify = (
           ...(loc ? { location: loc } : {})
         })
       } else if (Cause.isDieReason(reason)) {
-        if (reason.defect instanceof AssertionError) {
-          mainAssertion = reason.defect
-          continue // reported through the sink
-        }
         const d = reason.defect as any
         const loc = userFrameOf(d)
-        failures.push({
-          kind: "defect",
-          message: d instanceof Error ? `${d.name}: ${d.message}` : show(d),
-          ...(loc ? { location: loc } : {})
-        })
+        failures.push(
+          isAssertionError(d)
+            ? { kind: "assertion", message: d.message, ...(loc ? { location: loc } : {}) }
+            : {
+              kind: "defect",
+              message: d instanceof Error ? `${d.name}: ${d.message}` : show(d),
+              ...(loc ? { location: loc } : {})
+            }
+        )
       }
     }
   }
-  const assertionFailures = sink.failures.map(({ error, failure }) =>
-    error === mainAssertion
-      ? failure
-      : { ...failure, forked: true, message: `${failure.message} (in a forked fiber)` }
-  )
-  failures.unshift(...assertionFailures)
   if (Exit.isSuccess(exit)) {
     const value = Option.getOrUndefined(exit.value)
     if (isGenerator(value)) {
@@ -410,12 +397,6 @@ const classify = (
       failures.push({
         kind: "discardedEffect",
         message: "test body produced an Effect that was never run (pass the Effect itself as the body, or `yield*` it)",
-        ...(node.location ? { location: node.location } : {})
-      })
-    } else if (sink.count === 0 && !plan.noAssertions && failures.length === 0) {
-      failures.push({
-        kind: "noAssertions",
-        message: "test made no assertions (pass `noAssertions: true` if that is intended)",
         ...(node.location ? { location: node.location } : {})
       })
     }

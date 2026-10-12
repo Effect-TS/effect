@@ -21,7 +21,6 @@ export const FailureKind = Schema.Literals([
   "defect",
   "timeout",
   "interrupted",
-  "noAssertions",
   "discardedEffect",
   "fixture",
   "load"
@@ -34,7 +33,6 @@ export const Failure = Schema.Struct({
   kind: FailureKind,
   message: Schema.String,
   /** the failure came from a fiber other than the test's main fiber */
-  forked: opt(Schema.Boolean),
   expected: opt(Schema.String),
   actual: opt(Schema.String),
   diff: opt(Schema.Array(DiffEntry)),
@@ -54,7 +52,6 @@ export const PlannedTest = Schema.Struct({
   timeoutMs: Schema.Number,
   retries: Schema.Number,
   seed: Schema.Number,
-  noAssertions: Schema.Boolean,
   skip: opt(Schema.String)
 })
 export type PlannedTest = typeof PlannedTest.Type
@@ -113,7 +110,6 @@ export const ListedNode = Schema.Struct({
   tags: Schema.Array(Schema.String),
   skip: opt(Schema.String),
   only: opt(Schema.Boolean),
-  noAssertions: opt(Schema.Boolean),
   fixtures: Schema.Array(FixtureInfo),
   location: opt(Schema.String)
 })
@@ -128,8 +124,7 @@ export const RunFileTest = Schema.Struct({
   id: Schema.String,
   seed: Schema.Number,
   timeoutMs: Schema.Number,
-  retries: Schema.Number,
-  noAssertions: Schema.Boolean
+  retries: Schema.Number
 })
 export type RunFileTest = typeof RunFileTest.Type
 

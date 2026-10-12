@@ -31,7 +31,6 @@ finds `*.test.ts` files under the given paths.
 | File | Role |
 |---|---|
 | `src/Test.ts` | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.noAssertions` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
-| `src/Assert.ts` | `assertEquals` / `assertTrue` / `assertFalse` / `fail`, the per-test assertion `Sink`, and a structural diff that agrees with `Equal` |
 | `src/CallSite.ts` | Call-site capture from the V8 stack, plus a code frame read from disk (no transform) |
 | `src/Protocol.ts` | Schema'd `TestEvent` union, the listing schema, and the `ExecutorRpcs` RpcGroup (`ListFile`, `RunFile` → `Stream`) |
 | `src/Executor.ts` | Loads a file, lists its tree, and runs the selected tests as fibers with fixtures, the test environment, timeouts, retries and Cause classification |
@@ -50,7 +49,7 @@ finds `*.test.ts` files under the given paths.
 1. **Tests are values (syntax B, see below).** A test file's `export default` *is* its tree: a `Test.suite(...)` or a single
    `Test.test`. Nothing registers globally on import. If the default export is not a tree, the file fails with
    `no tests exported from <file>`, reported as a failed pseudo-test of kind `load`, or as `LOAD ERROR` under `--list`. Options (`timeout`, `retries`,
-   `tags`, `skip`, `only`, `noAssertions`) are data on the node, given inline or through pipeable transformers. The coordinator
+   `tags`, `skip`, `only`) are data on the node, given inline or through pipeable transformers. The coordinator
    resolves them nearest-wins: tags are unioned, and `skip` and `only` are inherited. Each node captures its definition site from the stack.
    Test ids are `file > suite > … > test`. The root suite's name is shown in `--list` but left out of ids, because the file already
    identifies the root.
@@ -84,26 +83,20 @@ finds `*.test.ts` files under the given paths.
    dispatch against a `Deferred`. That interrupts every in-flight `RunFile` stream, the Rpc client sends `Interrupt` to the
    worker, and the worker interrupts the test fibers. Ctrl-C works the same way: `runMain` interrupts the program, and a
    finalizer in a worker was observed to run.
-5. **No silent greens.**
-   - (a) The assertion `Sink` lives in a `Context.Reference`. Forked fibers, even with `forkDetach`, inherit it, so a
-     failed assertion in a forked fiber fails the owning test and is labelled `assertion (forked fiber)`. Assertions find the sink through
-     `Fiber.getCurrent()`. Promise bodies lose the fiber after the first `await`, so **plain tests run one at a time
-     per executor** and the running one's sink is kept in a module variable (`setPlainSink`). There is no
-     AsyncLocalStorage. Effect tests stay concurrent. `examples/plain.test.ts` checks it (it fails without the lock).
-     Known gap: an assertion in a promise a plain test left floating, running after that test ended, lands in no sink
-     or in the next plain test's.
-   - (b) A test that passes with `sink.count === 0` fails with `noAssertions`. The opt-out is the `noAssertions: true` option.
-   - (c) If the body's *result* is an Effect, the test fails with `discardedEffect`: a plain function returning an Effect,
-     an async function resolving to one, or an Effect producing `Effect<Effect>`. A bare `function*` type-checks as a plain
-     function but only returns an unstarted generator, so that fails too, with a hint to write `Effect.gen(function*() {...})`.
-6. **Assertions** are *synchronous throwing functions*, not Effects. That makes them work identically in sync, Promise and
-   Effect bodies, and an assertion can never be built and then dropped. `assertEquals` uses `Equal.equals`. On failure it
-   produces structured data: `expected`, `actual`, `diff` (only the differing paths, `expected → actual`) and `location`.
-   **Code frame without a transform:** `new Error().stack` gives the first frame outside the framework or `effect`. Node's type
+5. **No silent greens** (what is left of it without our own assertions). If the body's *result* is an Effect, the test
+   fails with `discardedEffect`: a plain function returning an Effect, an async function resolving to one, or an Effect
+   producing `Effect<Effect>`. A bare `function*` type-checks as a plain function but only returns an unstarted generator,
+   so that fails too, with a hint to write `Effect.gen(function*() {...})`. The "zero assertions" rule and failing a test
+   from an assertion in an un-joined forked fiber needed our own assertion record; both return with the assertions work.
+6. **No assertions of our own (for now).** A test fails by throwing, rejecting or failing its Effect. The examples use
+   `node:assert`; its `AssertionError` (name `AssertionError` or code `ERR_ASSERTION`, so most libraries match) is reported
+   as kind `assertion` with its own message, which for `deepStrictEqual` already contains a diff. Assertions are a separate
+   concern, tackled later (see the *Assertions* ticket).
+   **Code frame without a transform:** the error's stack gives the first frame outside the framework or `effect`. Node's type
    stripping keeps columns exact, and the frame is rendered as `file:line:col` plus the previous line and a caret.
 7. **Cause-aware failures.** The exit Cause is classified as a typed `Fail` (shows `_tag` plus fields, located from
    the error's construction stack), a `Die` (defect: name, message, location), an interrupt-only Cause (`interrupted`) or a timeout.
-   Assertion defects are recognised and reported once, from the sink. Fixture build failures are their own kind (`fixture`,
+   A defect that is an `AssertionError` is reported as kind `assertion`. Fixture build failures are their own kind (`fixture`,
    naming the layer and whether it is shared).
 8. **Coordinator plus executor pool over Rpc.** `ExecutorRpcs` is an `RpcGroup` with
    `ListFile({ path }) -> { file, nodes }` and `RunFile({ path, concurrency, tests }) -> Stream<TestStarted | TestFinished>`.
@@ -128,7 +121,7 @@ finds `*.test.ts` files under the given paths.
 ## What was hard or surprising
 
 - **Almost nothing in the Effect stack fought back.** The Rpc worker pool with a streaming RPC, interrupt propagation into
-  the worker, `Layer.buildWithMemoMap` for suite, test and shared fixtures, `Context.Reference` inheritance for the sink, and TestClock/TestConsole/seeded
+  the worker, `Layer.buildWithMemoMap` for suite, test and shared fixtures, and TestClock/TestConsole/seeded
   Random all worked as documented. The whole design is mostly composition of existing primitives.
 - **Node type stripping rejects parameter properties** (`constructor(readonly x: X)`). The worker died with an opaque
   `WorkerReceiveError: An error event was emitted`, and the real SyntaxError was lost in the Rpc/worker error path. Agents
@@ -153,8 +146,7 @@ finds `*.test.ts` files under the given paths.
   **type-checked**: a missing `Test.provide` is a compile error that names the missing service. The catch is *where* the
   error appears. A default export can't constrain its own type, so the check lives in an aggregator (`examples/typecheck.ts`),
   which a real CLI would generate. The same tree value can be reused (contract tests) because nodes are just values: ids come
-  from the position in the tree, not from the object. Sync assertions plus a fiber-inherited sink cover sync, Promise and Effect
-  bodies with one API and remove the "dropped assertion effect" class entirely. There is a single
+  from the position in the tree, not from the object. There is a single
   `Test.test` (like ZIO Test's `test`): its body is an Effect, or a plain function (awaited if it returns a Promise).
   A function never "returns an Effect to run": the Effect itself is the body. Generators are written `Effect.gen(function*() {...})`, as everywhere in Effect.
 - **Isolation and execution model.** Long-lived pooled workers that run many files as fibers work. Module state is shared per
@@ -179,7 +171,7 @@ finds `*.test.ts` files under the given paths.
 - No module reloading or isolation between files in a worker. Plain `console.log` from tests goes to the worker's stdout,
   which is piped to the coordinator's **stderr** (not attributed to a test). Only Effect `Console` output is captured per test.
 - Promise tests can't be cancelled. Timing out a Promise test interrupts the fiber, but the promise keeps running.
-- Assertion failures that arrive *after* a test has finished (late forked fibers) are ignored.
+- A failure in a forked fiber the test never joins is not attributed to the test (it needs the assertions work).
 - Retries reuse the same seed for every attempt. Retries are meant for environmental flakes, not random ones.
 - No watch mode, snapshots, result cache, remote executors, property tests, auto-advance, hang dumps or leak detection.
 - No config file; the K=4 and T=8 concurrency limits are hard-coded and the default timeout is 5 s.

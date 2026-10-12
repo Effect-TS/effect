@@ -24,7 +24,7 @@ const indent = (s: string, n = 2) => s.split("\n").map((l) => " ".repeat(n) + l)
 
 const renderFailure = (f: Failure): Array<string> => {
   const out: Array<string> = []
-  const label = f.forked ? `${f.kind} (forked fiber)` : f.kind
+  const label = f.kind
   out.push(`${label}: ${f.message}`)
   if (f.errorTag) out.push(`  _tag: ${f.errorTag}`)
   if (f.errorFields) out.push(`  fields: ${f.errorFields}`)

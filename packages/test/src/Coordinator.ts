@@ -84,7 +84,6 @@ export const plan = (
         tags,
         timeoutMs: nearest("timeoutMs") ?? DEFAULT_TIMEOUT_MS,
         retries: nearest("retries") ?? 0,
-        noAssertions: nearest("noAssertions") ?? false,
         seed: testSeed(opts.seed, node.id),
         only: chain.some((n) => n.only),
         ...(skip !== undefined ? { skip } : {})
@@ -135,7 +134,7 @@ export const run = (opts: RunOptions) =>
     for (const e of loadErrors) {
       if (e._tag !== "LoadError") continue
       const id = path.relative(process.cwd(), e.path)
-      planned.push({ id, file: id, tags: [], timeoutMs: 0, retries: 0, noAssertions: false, seed: 0 })
+      planned.push({ id, file: id, tags: [], timeoutMs: 0, retries: 0, seed: 0 })
     }
 
     const terminal = new Map<string, TestFinished>()
@@ -174,7 +173,7 @@ export const run = (opts: RunOptions) =>
     for (const t of planned) {
       if (t.skip !== undefined || terminal.has(t.id)) continue
       const list = byFile.get(t.file) ?? []
-      list.push({ id: t.id, seed: t.seed, timeoutMs: t.timeoutMs, retries: t.retries, noAssertions: t.noAssertions })
+      list.push({ id: t.id, seed: t.seed, timeoutMs: t.timeoutMs, retries: t.retries })
       byFile.set(t.file, list)
     }
 
@@ -283,7 +282,6 @@ const renderList = (
       if (n.retries !== undefined) bits.push(`retries=${n.retries}`)
       if (n.skip) bits.push(`skip="${n.skip}"`)
       if (n.only) bits.push("only")
-      if (n.noAssertions) bits.push("noAssertions")
       for (const f of n.fixtures) bits.push(`provide=${f.name}`)
       const label = n.kind === "suite" ? (n.parent === undefined ? n.name : `${n.name}/`) : n.name
       out += `${"  ".repeat(depth(n))}${label}${bits.length ? `  [${bits.join(" ")}]` : ""}${

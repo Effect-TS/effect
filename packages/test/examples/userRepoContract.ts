@@ -2,7 +2,7 @@
 // several implementations (see contract.test.ts). It is a plain function of the
 // implementation's Layer and provides it to each test, so every test gets a fresh repo.
 import { Context, Data, Effect, type Layer, Option } from "effect"
-import { assertEquals, assertTrue } from "../src/Assert.ts"
+import * as assert from "node:assert"
 import * as Test from "../src/Test.ts"
 
 export interface User {
@@ -22,11 +22,11 @@ export const userRepoContract = <E, R>(implementation: Layer.Layer<UserRepo, E, 
       const repo = yield* UserRepo
       const created = yield* repo.create("ada@example.com")
       const found = yield* repo.findByEmail("ada@example.com")
-      assertEquals(found, Option.some(created))
+      assert.deepStrictEqual(found, Option.some(created))
     })),
     Test.test("unknown email is None", Effect.gen(function*() {
       const repo = yield* UserRepo
-      assertTrue(Option.isNone(yield* repo.findByEmail("nobody@example.com")))
+      assert.ok(Option.isNone(yield* repo.findByEmail("nobody@example.com")))
     })),
     Test.test("emails are unique", Effect.gen(function*() {
       const repo = yield* UserRepo
@@ -35,6 +35,6 @@ export const userRepoContract = <E, R>(implementation: Layer.Layer<UserRepo, E, 
         Effect.map((user) => `created user #${user.id}`),
         Effect.catchTag("DuplicateEmail", (e) => Effect.succeed(`DuplicateEmail(${e.email})`))
       )
-      assertEquals(second, "DuplicateEmail(grace@example.com)")
+      assert.deepStrictEqual(second, "DuplicateEmail(grace@example.com)")
     }))
   ].map(Test.provide(implementation)))

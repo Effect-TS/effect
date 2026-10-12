@@ -6,7 +6,7 @@
 // fixtures-a and fixtures-b reuse one lazily built instance. The file doesn't depend on
 // that: it passes with and without the config. fixtures-a and fixtures-b are identical on purpose.
 import { Effect } from "effect"
-import { assertEquals, assertTrue } from "../src/Assert.ts"
+import * as assert from "node:assert"
 import * as Test from "../src/Test.ts"
 import { Database, Schema_, Seeds, Tx } from "./shared.ts"
 
@@ -22,16 +22,16 @@ const checks = (suite: string) =>
     const seeds = yield* Seeds
     const tx = yield* Tx
     seen.db ??= db.instance // root suite (or the shared one from the config): one Database
-    assertEquals(db.instance, seen.db)
-    assertEquals(schema.dbInstance, db.instance)
+    assert.deepStrictEqual(db.instance, seen.db)
+    assert.deepStrictEqual(schema.dbInstance, db.instance)
     seen.schema ??= schema.instance // root suite: one Schema for the whole file
-    assertEquals(schema.instance, seen.schema)
+    assert.deepStrictEqual(schema.instance, seen.schema)
     seen.seeds[suite] ??= seeds.instance // suite: one Seeds per suite
-    assertEquals(seeds.instance, seen.seeds[suite])
-    assertTrue(!seen.tx.has(tx.instance), "Tx must be fresh per test")
+    assert.deepStrictEqual(seeds.instance, seen.seeds[suite])
+    assert.ok(!seen.tx.has(tx.instance), "Tx must be fresh per test")
     seen.tx.add(tx.instance)
     tx.writes.push("insert")
-    assertEquals(tx.writes, ["insert"])
+    assert.deepStrictEqual(tx.writes, ["insert"])
   }
 
 // provided on a test: built for every test

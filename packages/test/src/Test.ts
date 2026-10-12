@@ -28,8 +28,6 @@ export interface Options {
   /** `true` or a reason */
   readonly skip?: boolean | string
   readonly only?: boolean
-  /** opt out of the "a test must make at least one assertion" rule */
-  readonly noAssertions?: boolean
 }
 
 export type Body =
@@ -162,7 +160,6 @@ export const timeout = (timeout: Duration.Input) => withOptions({ timeout })
 export const retries = (retries: number) => withOptions({ retries })
 export const skip = (reason: string | boolean = true) => withOptions({ skip: reason })
 export const only = withOptions({ only: true })
-export const noAssertions = withOptions({ noAssertions: true })
 
 export const isNode = (u: unknown): u is Node<unknown> =>
   typeof u === "object" && u !== null && ((u as any)._tag === "Suite" || (u as any)._tag === "Test") &&

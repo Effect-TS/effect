@@ -8,7 +8,6 @@ import failures from "./failures.test.ts"
 import fixturesA from "./fixtures-a.test.ts"
 import fixturesB from "./fixtures-b.test.ts"
 import options from "./options.test.ts"
-import plain from "./plain.test.ts"
 import provide from "./provide.test.ts"
 
 basics satisfies Test.Runnable
@@ -17,5 +16,4 @@ failures satisfies Test.Runnable
 fixturesA satisfies Test.Runnable
 fixturesB satisfies Test.Runnable
 options satisfies Test.Runnable
-plain satisfies Test.Runnable
 provide satisfies Test.Runnable
