@@ -276,7 +276,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   // Pieces of the unterminated line, joined once when the line ends
   let pending: Array<string>
   let pendingLength: number
-  let pendingFieldLength: number
   let discardTrailingNewline: boolean
   // Incremented by `reset`, so `feed` can stop if `onParse` resets the parser
   let generation = 0
@@ -294,7 +293,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     isFirstChunk = true
     pending = []
     pendingLength = 0
-    pendingFieldLength = -1
     discardTrailingNewline = false
 
     lastEventId = undefined
@@ -316,7 +314,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     const currentGeneration = generation
     let position = 0
 
-    // Scan only the new chunk, pending pieces are not read again
     while (position < length) {
       // Skip the LF of a CRLF, whose CR may have ended the previous chunk
       if (discardTrailingNewline) {
@@ -327,38 +324,29 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
         }
       }
 
-      let lineEnd = -1
-      let fieldLength = pendingFieldLength
-
-      for (let index = position; index < length; ++index) {
-        const code = chunk.charCodeAt(index)
-        if (code === CR || code === LF) {
-          lineEnd = index
-          break
-        } else if (code === COLON && fieldLength < 0) {
-          fieldLength = pendingLength + index - position
-        }
+      let lineEnd = position
+      while (lineEnd < length) {
+        const code = chunk.charCodeAt(lineEnd)
+        if (code === CR || code === LF) break
+        ++lineEnd
       }
 
-      if (lineEnd < 0) {
+      if (lineEnd === length) {
         pending.push(chunk.slice(position))
         pendingLength += length - position
-        pendingFieldLength = fieldLength
         break
       }
 
       discardTrailingNewline = chunk.charCodeAt(lineEnd) === CR
 
-      if (pending.length === 0) {
-        parseEventStreamLine(chunk, position, fieldLength, lineEnd - position)
-      } else {
-        pending.push(chunk.slice(position, lineEnd))
-        const line = pending.join("")
+      let line = chunk.slice(position, lineEnd)
+      if (pending.length > 0) {
+        pending.push(line)
+        line = pending.join("")
         pending = []
         pendingLength = 0
-        pendingFieldLength = -1
-        parseEventStreamLine(line, 0, fieldLength, line.length)
       }
+      parseLine(line)
 
       if (generation !== currentGeneration) {
         // `onParse` reset the parser, so drop the rest of this chunk
@@ -375,13 +363,8 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     }
   }
 
-  function parseEventStreamLine(
-    lineBuffer: string,
-    index: number,
-    fieldLength: number,
-    lineLength: number
-  ) {
-    if (lineLength === 0) {
+  function parseLine(line: string) {
+    if (line.length === 0) {
       // End of event. Clear the state first so a throwing `onParse` cannot
       // leak it into the next event
       const event = eventName || "message"
@@ -399,24 +382,16 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       return
     }
 
-    const noValue = fieldLength < 0
-    const field = lineBuffer.slice(index, index + (noValue ? lineLength : fieldLength))
-    let step = 0
-
-    if (noValue) {
-      step = lineLength
-    } else if (lineBuffer[index + fieldLength + 1] === " ") {
-      step = fieldLength + 2
-    } else {
-      step = fieldLength + 1
+    const colon = line.indexOf(":")
+    let field = line
+    let value = ""
+    if (colon >= 0) {
+      field = line.slice(0, colon)
+      value = line.slice(line.charCodeAt(colon + 1) === SPACE ? colon + 2 : colon + 1)
     }
 
-    const position = index + step
-    const valueLength = lineLength - step
-    const value = lineBuffer.slice(position, position + valueLength).toString()
-
     if (field === "data") {
-      data += value ? `${value}\n` : "\n"
+      data += value + "\n"
     } else if (field === "event") {
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
@@ -431,7 +406,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 const BOM = "\uFEFF"
 const LF = 10
 const CR = 13
-const COLON = 58
+const SPACE = 32
 
 /**
  * Stateful Server-Sent Events parser returned by `makeParser`.
