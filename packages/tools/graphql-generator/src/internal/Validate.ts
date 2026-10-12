@@ -20,7 +20,7 @@ export interface File {
 /**
  * Collects every diagnostic across `files`, ordered by file (input order) and
  * then by position. Each diagnostic is reported in the file holding the node
- * it points at. Messages follow graphql-js where it has a matching rule,
+ * it points at. Messages follow graphql-js 16.14.2 where it has a matching rule,
  * without its "Did you mean" suggestion lists.
  *
  * - Fields exist on their parent type (`__typename` exists on every composite
@@ -42,14 +42,17 @@ export interface File {
  *   fragment spreads, can be merged: the same field with the same arguments
  *   unless their parents are different object types, compatible response
  *   shapes, and mergeable subselections. The second field is reported.
- * - `@skip` and `@include` appear only on fields and fragments, at most once
- *   per location, with a required `if: Boolean!`. Other directives are passed
- *   to the server unchecked.
+ * - `@skip` and `@include` appear only on fields, fragment spreads and inline
+ *   fragments, at most once per location, with a required `if: Boolean!`. Other
+ *   directives are passed to the server unchecked.
  * - Literal arguments, input fields and variable defaults match their input
  *   types: enum values exist, required input fields are provided, input fields
- *   are known and unique, and a `@oneOf` input sets exactly one non-null key.
- *   Custom scalars accept any literal, and `Int` literals are not range
- *   checked.
+ *   are known and unique. A `@oneOf` input supplies exactly one field and no
+ *   null literal, matching graphql-js 16.14.2. Nullable variables in those
+ *   fields remain accepted; the server must reject null variable values. The
+ *   runtime variables `Schema` checks the declared variable type, not the
+ *   enclosing document literal. Custom scalars accept any literal, and `Int`
+ *   literals are not range checked.
  *
  * Fields under an unknown field or type are not checked further. The server
  * schema is not validated.
@@ -732,8 +735,12 @@ class Validator {
         return
       }
       const nullable = type._tag === "NonNullTypeRef" ? type.ofType : type
-      if (value._tag === "ListValue" && nullable._tag === "ListTypeRef") {
-        for (const item of value.values) inValue(item, nullable.ofType, false)
+      if (nullable._tag === "ListTypeRef") {
+        if (value._tag === "ListValue") {
+          for (const item of value.values) inValue(item, nullable.ofType, false)
+        } else {
+          inValue(value, nullable.ofType, false)
+        }
       } else if (value._tag === "ObjectValue" && nullable._tag === "NamedTypeRef") {
         const named = this.schema.types.get(nullable.name)
         if (named?._tag !== "InputObjectType") return
