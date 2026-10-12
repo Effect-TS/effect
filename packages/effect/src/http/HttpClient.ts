@@ -1034,29 +1034,25 @@ export const retryTransient: {
   ): HttpClient.With<E | ES, R1 | R> => {
     const isOnlySchedule = Schedule.isSchedule(options)
     const retryOn = isOnlySchedule ? "errors-and-responses" : options.retryOn ?? "errors-and-responses"
-    const schedule = withRetryAfter(isOnlySchedule ? options : options.schedule ?? Schedule.forever)
+    const schedule = withRetryAfter(
+      isOnlySchedule ? options : options.schedule ?? Schedule.forever,
+      isOnlySchedule || options.maxRetryAfter === undefined
+        ? undefined
+        : Duration.fromInputUnsafe(options.maxRetryAfter)
+    )
     const times = isOnlySchedule ? undefined : options.times
-    const isRetryable = isOnlySchedule || options.while === undefined
-      ? isTransientError
-      : Predicate.or(isTransientError, options.while)
-    const maxRetryAfter = isOnlySchedule || options.maxRetryAfter === undefined
-      ? undefined
-      : Duration.fromInputUnsafe(options.maxRetryAfter)
     return transformResponse(
       self,
       flow(
         retryOn === "errors-only" ? identity : Effect.repeat({
-          schedule: Schedule.passthrough(schedule),
+          schedule,
           times,
-          while: maxRetryAfter === undefined
-            ? isTransientResponse
-            : (response: HttpClientResponse.HttpClientResponse) =>
-              isTransientResponse(response) ? retryAfterWithin(response, maxRetryAfter) : Effect.succeed(false)
+          while: isTransientResponse
         }),
         retryOn === "response-only" ? identity : Effect.retry({
-          while: maxRetryAfter === undefined
-            ? isRetryable
-            : (error: E | ES) => isRetryable(error) ? retryAfterWithin(error, maxRetryAfter) : Effect.succeed(false),
+          while: isOnlySchedule || options.while === undefined
+            ? isTransientError
+            : Predicate.or(isTransientError, options.while),
           schedule,
           times
         })
@@ -1956,18 +1952,22 @@ const retryAfterOf = (input: unknown, nowMillis: number): Duration.Duration | un
 }
 
 const withRetryAfter = <ES, R1>(
-  schedule: Schedule.Schedule<unknown, any, ES, R1>
+  schedule: Schedule.Schedule<unknown, any, ES, R1>,
+  maxRetryAfter: Duration.Duration | undefined
 ): Schedule.Schedule<unknown, any, ES, R1> =>
-  Schedule.modifyDelay(schedule, ({ duration, input, now }) => {
-    const retryAfter = retryAfterOf(input, now)
-    return Effect.succeed(retryAfter ? Duration.max(duration, retryAfter) : duration)
-  })
-
-const retryAfterWithin = (input: unknown, max: Duration.Duration): Effect.Effect<boolean> =>
-  Effect.clockWith((clock) => {
-    const retryAfter = retryAfterOf(input, clock.currentTimeMillisUnsafe())
-    return Effect.succeed(retryAfter === undefined || Duration.isLessThanOrEqualTo(retryAfter, max))
-  })
+  Schedule.fromStep(
+    Effect.map(Schedule.toStep(schedule), (step) => (now: number, input: unknown) =>
+      Effect.flatMap(step(now, input), ([output, delay]) => {
+        const retryAfter = retryAfterOf(input, now)
+        if (retryAfter === undefined) {
+          return Effect.succeed([output, delay] as [unknown, Duration.Duration])
+        }
+        if (maxRetryAfter !== undefined && Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
+          return Cause.done(output)
+        }
+        return Effect.succeed([output, Duration.max(delay, retryAfter)] as [unknown, Duration.Duration])
+      }))
+  )
 
 const isTooManyRequestsHttpClientError = (
   error: unknown
