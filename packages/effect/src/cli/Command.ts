@@ -1707,11 +1707,19 @@ const getOutOfScopeGlobalFlagErrors = (
 const showHelp = <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   error: CliError.ShowHelp,
-  renderErrors: boolean
+  renderErrors: boolean,
+  helpOnError: boolean
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
     const formatter = yield* CliOutput.Formatter
+    if (!helpOnError && error.errors.length > 0) {
+      if (renderErrors) {
+        yield* Console.error(formatter.formatErrors(error.errors as any))
+        yield* Console.error(`Run "${error.commandPath.join(" ")} --help" for usage.`)
+      }
+      return
+    }
     const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
     yield* Console.log(formatter.formatHelpDoc(helpDoc))
     if (renderErrors && error.errors.length > 0) {
@@ -1734,10 +1742,13 @@ const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
  * Use when command-line arguments should come from `Stdio` at the application
  * entry point.
  *
- * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help documents are rendered when help is requested and, by default, when
+ * parsing fails. By default, parse error details and `CliError.UserError`
+ * failures are also rendered with the installed `CliOutput.Formatter` before the
+ * error is rethrown. Set `renderErrors` to `false` when the host application
+ * owns error rendering. Set `helpOnError` to `false` to render only the parse
+ * errors and a one-line hint to use `--help`, instead of the full help, when
+ * parsing fails.
  *
  * **Example** (Running commands with standard input)
  *
@@ -1792,6 +1803,7 @@ export const run: {
   (config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
+    readonly helpOnError?: boolean | undefined
   }): <Name extends string, Input, E, R, ContextInput>(
     command: Command<Name, Input, ContextInput, E, R>
   ) => Effect.Effect<void, E | CliError.CliError, R | Environment>
@@ -1800,6 +1812,7 @@ export const run: {
     config: {
       readonly version: string
       readonly renderErrors?: boolean | undefined
+      readonly helpOnError?: boolean | undefined
     }
   ): Effect.Effect<void, E | CliError.CliError, R | Environment>
 } = dual(2, <Name extends string, Input, E, R, ContextInput>(
@@ -1807,6 +1820,7 @@ export const run: {
   config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
+    readonly helpOnError?: boolean | undefined
   }
 ) =>
   Stdio.Stdio.use(({ args }) =>
@@ -1824,10 +1838,13 @@ export const run: {
  * Use when you need to test CLI applications or programmatically execute
  * commands with specific arguments.
  *
- * Help documents are always rendered. By default, parse error details and
- * `CliError.UserError` failures are also rendered with the installed
- * `CliOutput.Formatter` before the error is rethrown. Set `renderErrors` to
- * `false` when the host application owns error rendering.
+ * Help documents are rendered when help is requested and, by default, when
+ * parsing fails. By default, parse error details and `CliError.UserError`
+ * failures are also rendered with the installed `CliOutput.Formatter` before the
+ * error is rethrown. Set `renderErrors` to `false` when the host application
+ * owns error rendering. Set `helpOnError` to `false` to render only the parse
+ * errors and a one-line hint to use `--help`, instead of the full help, when
+ * parsing fails.
  *
  * **Example** (Running commands with explicit arguments)
  *
@@ -1884,6 +1901,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
   config: {
     readonly version: string
     readonly renderErrors?: boolean | undefined
+    readonly helpOnError?: boolean | undefined
   }
 ): (
   input: ReadonlyArray<string>
@@ -1999,7 +2017,11 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
         CliError.isCliError(error) && error._tag === "ShowHelp"
           ? Result.succeed(error)
           : Result.fail(error),
-      (error) => Effect.andThen(showHelp(command, error, config.renderErrors !== false), Effect.fail(error))
+      (error) =>
+        Effect.andThen(
+          showHelp(command, error, config.renderErrors !== false, config.helpOnError !== false),
+          Effect.fail(error)
+        )
     ),
     Effect.catchFilter(
       (error) =>

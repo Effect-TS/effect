@@ -953,6 +953,29 @@ describe("Command", () => {
         assert.include((yield* TestConsole.logLines).join("\n"), "USAGE")
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should render only errors and a hint when helpOnError is disabled", () =>
+      Effect.gen(function*() {
+        const command = Command.make("deploy", { target: Flag.String("target") })
+        const config = { version: "1.0.0", helpOnError: false } as const
+
+        const parseFailure = yield* Effect.flip(Command.runWith(command, config)(["--unknown"]))
+
+        assert.instanceOf(parseFailure, CliError.ShowHelp)
+        assert.isEmpty(yield* TestConsole.logLines)
+        const errors = (yield* TestConsole.errorLines).join("\n")
+        assert.include(errors, "--unknown")
+        assert.include(errors, `Run "deploy --help" for usage.`)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should still render help on --help when helpOnError is disabled", () =>
+      Effect.gen(function*() {
+        const command = Command.make("deploy", { target: Flag.String("target") })
+
+        yield* Command.runWith(command, { version: "1.0.0", helpOnError: false })(["--help"])
+
+        assert.include((yield* TestConsole.logLines).join("\n"), "USAGE")
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should still render help when automatic error rendering is disabled", () =>
       Effect.gen(function*() {
         const child = Command.make("child")
