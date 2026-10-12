@@ -274,9 +274,6 @@ const inclusion = (directives: ReadonlyArray<Ast.Directive>): "exclude" | "inclu
 const isAbstract = (type: SchemaModel.NamedType): type is SchemaModel.InterfaceType | SchemaModel.UnionType =>
   type._tag === "InterfaceType" || type._tag === "UnionType"
 
-/** The name a type takes in the shared module's `Typename` namespace. */
-const typenameMember = (name: string): string => unbindable(name) ? `${name}_` : name
-
 /** `prefix` followed by `"A" | "B"`, wrapped onto `|` lines when it doesn't fit in 120 columns. */
 const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: string): string => {
   if (names.length === 0) return `${prefix}never`
@@ -391,12 +388,25 @@ class Emitter {
   readonly reached = new Set<string>()
   /** Interfaces and unions the per-file modules reference through `Shared.Typename`. */
   readonly reachedAbstract = new Set<string>()
+  /** Allocated before rendering references, with original abstract names reserved. */
+  readonly typenameMembers = new Map<string, string>()
   readonly fragmentKeyCache = new Map<string, ReadonlyArray<string>>()
 
   readonly options: Options
 
   constructor(options: Options) {
     this.options = options
+    const abstractNames = Array.from(options.schema.types.values()).filter(isAbstract).map((type) => type.name).sort()
+    const taken = new Set(abstractNames)
+    for (const name of abstractNames) {
+      let member = name
+      if (unbindable(name)) {
+        member = `${name}_`
+        while (taken.has(member)) member = `${member}_`
+        taken.add(member)
+      }
+      this.typenameMembers.set(name, member)
+    }
     for (const file of options.files) {
       for (const definition of file.document.definitions) {
         if (definition._tag === "FragmentDefinition") {
@@ -779,7 +789,7 @@ class Emitter {
   typename(ctx: FileContext, name: string): string {
     ctx.usesShared = true
     this.reachedAbstract.add(name)
-    return `Shared.Typename.${typenameMember(name)}`
+    return `Shared.Typename.${this.typenameMembers.get(name)!}`
   }
 
   /**
@@ -1523,7 +1533,9 @@ class Emitter {
       const members = Array.from(this.reachedAbstract).sort().map((name) => {
         const kind = this.type(name)._tag === "InterfaceType" ? "interface" : "union"
         const doc = `  /** Every possible \`__typename\` of ${kind} \`${name}\`. */\n`
-        return `${doc}${literalUnion(`  export type ${typenameMember(name)} = `, this.possibleTypes(name), "  ")}`
+        return `${doc}${
+          literalUnion(`  export type ${this.typenameMembers.get(name)!} = `, this.possibleTypes(name), "  ")
+        }`
       })
       blocks.push(
         `/** The possible \`__typename\` values of each interface and union the operations select from. */\n` +
