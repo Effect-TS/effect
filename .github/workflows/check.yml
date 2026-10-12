@@ -157,6 +157,9 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
+        env:
+          # EFF-2033 diagnostic only (not for merge): print testcontainers lifecycle phases on Node.
+          DEBUG: ${{ matrix.runtime == 'Node' && 'testcontainers*' || '' }}
         run: ${{ matrix.command }}
 
   doctest:
