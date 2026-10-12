@@ -417,9 +417,8 @@ const sqliteCauseWithErrno = (cause: unknown): unknown => {
   return Object.assign(cause, { errno: errcode })
 }
 
-// Some node:sqlite implementations, such as Deno's, do not provide
-// `enableLoadExtension`; extension loading is then governed by `allowExtension`
-// alone.
+// Deno's node:sqlite has no `enableLoadExtension`, so `allowExtension` alone
+// controls extension loading there.
 const setLoadExtensionEnabled = (db: DatabaseSync, enabled: boolean): void => {
   if (typeof db.enableLoadExtension === "function") {
     db.enableLoadExtension(enabled)
