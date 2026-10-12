@@ -58,6 +58,8 @@ describe("GraphQLClient subscriptions", () => {
         (e) => Ref.update(received, (all) => [...all, e.issueUpdated.title])
       ).pipe(expectReason("ResponseError"))
       assert.deepStrictEqual(reason.errors, [{ message: "gone" }])
+      assert.isUndefined(reason.status)
+      assert.isFalse(reason.isRetryable)
       assert.deepStrictEqual(yield* Ref.get(received), ["a"])
       assert.strictEqual(yield* attempts, 1)
     }))
