@@ -7,7 +7,7 @@ import { Worker } from "node:worker_threads"
 import { moduleUrl, type Platform } from "../../Platform.ts"
 import type { Services } from "../bin.ts"
 
-const executor = moduleUrl("../../executor-worker/main", import.meta.url)
+const executor = moduleUrl("../../executor-worker/node", import.meta.url)
 
 export const platform: Platform<Services> = {
   runtime: "node",

@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import { moduleUrl, type Platform } from "../../Platform.ts"
 import type { Services } from "../bin.ts"
 
-const executor = moduleUrl("../../executor-worker/main", import.meta.url)
+const executor = moduleUrl("../../executor-worker/bun", import.meta.url)
 
 export const platform: Platform<Services> = {
   runtime: "bun",
