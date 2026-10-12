@@ -178,6 +178,24 @@ describe("Validate: positions, merging, directives and values", () => {
     )
   })
 
+  it("a variable in a literal coerced to a list is checked against the list's item type, through nested lists", () => {
+    const validateLists = validateWith(
+      readSdl(`input I { id: ID! } type Query { many(inputs: [I!]!): Int nested(inputs: [[I!]]): Int }`)
+    )
+    assert.deepStrictEqual(
+      validateLists({
+        "q.graphql": [
+          `query Q($id: ID) { many(inputs: { id: $id }) }`,
+          `query R($id: ID) { nested(inputs: { id: $id }) }`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:1:39 Variable "$id" of type "ID" used in position expecting type "ID!".`,
+        `q.graphql:2:41 Variable "$id" of type "ID" used in position expecting type "ID!".`
+      ]
+    )
+  })
+
   it("fields sharing a response key are compared through fragments, inline fragments and subselections", () => {
     assert.deepStrictEqual(
       validateValues({
