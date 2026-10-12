@@ -133,6 +133,21 @@ describe("Generator document templates", () => {
       }
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("slicing rejects a per-slice fragment renamed onto a shared fragment's name", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateTasks({
+        "src/collide.graphql": `
+          query Collide($show: Boolean!) { tasks { ...F ..._0_F } }
+          fragment F on Task { title @include(if: $show) }
+          fragment _0_F on Task { id }
+        `
+      })
+      assertNoErrors(generated)
+      const { Collide } = yield* importGenerated(generated, "src/collide.graphql.ts")
+      assert(Collide.template !== undefined)
+      assert.throws(() => renderSlices("query", "Collide", Collide.template, ["_0_", "_1_"]), /fragment _0_F/)
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("slicing preserves dollar-name literals and renames fragments with transitive variable references", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks({
