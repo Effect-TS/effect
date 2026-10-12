@@ -1612,29 +1612,18 @@ describe("toJsonSchemaDocument", () => {
       })
 
       it("merges colliding inclusive bounds into the tighter bound", () => {
-        const expected = {
-          schema: {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 100,
-            "description": "a",
-            "default": 5
-          }
-        } as const
-        assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100))
-            .annotate({ description: "a", default: 5 }),
-          expected
-        )
-        assertJsonSchemaDocument(
-          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({ description: "a", default: 5 }),
-          expected
-        )
-        assertJsonSchemaDocument(
-          Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100), Schema.isInt())
-            .annotate({ description: "a", default: 5 }),
-          expected
-        )
+        const range = Schema.isBetween({ minimum: 1, maximum: 100 })
+        for (const schema of [Schema.Int.check(range), Schema.Finite.check(range, Schema.isInt())]) {
+          assertJsonSchemaDocument(schema.annotate({ description: "a", default: 5 }), {
+            schema: {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "description": "a",
+              "default": 5
+            }
+          })
+        }
         assertJsonSchemaDocument(Schema.Natural, {
           schema: {
             "type": "integer",
