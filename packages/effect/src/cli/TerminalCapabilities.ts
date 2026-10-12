@@ -137,8 +137,9 @@ const environment = Config.all({
  *
  * **When to use**
  *
- * Provide this layer to opt in. Tests inject both the TTY flags and the
- * environment, so the precedence rules do not depend on the host machine.
+ * Use when a CLI should opt in to terminal detection.
+ * Tests inject both the TTY flags and the environment, so the precedence
+ * rules do not depend on the host machine.
  *
  * **Details**
  *
