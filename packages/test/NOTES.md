@@ -30,7 +30,7 @@ finds `*.test.ts` files under the given paths.
 
 | File | Role |
 |---|---|
-| `src/Test.ts` | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.noAssertions` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
+| `src/Test.ts` | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
 | `src/CallSite.ts` | Call-site capture from the V8 stack, plus a code frame read from disk (no transform) |
 | `src/Protocol.ts` | Schema'd `TestEvent` union, the listing schema, and the `ExecutorRpcs` RpcGroup (`ListFile`, `RunFile` → `Stream`) |
 | `src/Executor.ts` | Loads a file, lists its tree, and runs the selected tests as fibers with fixtures, the test environment, timeouts, retries and Cause classification |
