@@ -4,7 +4,7 @@ import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerRes
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
-// Node, Deno and workerd make some native headers immutable; Bun does not, so tests force it
+// Bun leaves `Response.redirect` headers mutable, unlike Node, Deno and workerd
 const immutableHeaders = (response: Response): Response => {
   for (const method of ["append", "delete", "set"]) {
     Object.defineProperty(response.headers, method, {

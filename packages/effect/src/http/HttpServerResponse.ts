@@ -1045,8 +1045,7 @@ const mergeRawHeaders = (raw: Response, headers: globalThis.Headers): Response =
   } catch (error) {
     if (!(error instanceof TypeError)) throw error
   }
-  // Immutable headers: copy the response, which keeps its status, body and
-  // runtime-specific members such as workerd's `webSocket`.
+  // The copy keeps runtime-specific members such as workerd's `webSocket`
   const copy = new Response(raw.body, raw)
   mergeHeaders(copy.headers, headers)
   return copy
@@ -1066,9 +1065,9 @@ const mergeRawHeaders = (raw: Response, headers: globalThis.Headers): Response =
  *
  * A raw `Response` body is returned as-is after the outer headers are merged
  * into it: outer headers replace native ones, and cookies are appended. If its
- * headers are immutable (such as `Response.redirect` or a workerd WebSocket
- * upgrade), they are merged into a copy that keeps the status, body and
- * runtime-specific members. Constructing the copy can throw, as it does for
+ * headers are immutable, as with `Response.redirect` or a workerd WebSocket
+ * upgrade, the headers are merged into a copy that keeps the status, body and
+ * runtime-specific members. Copying can throw, as it does for
  * `Response.error()` on Node. When its body is omitted, the bodyless
  * `Response` keeps those merged headers and uses the outer status for 204, 205
  * and 304, or the raw `Response` status otherwise.
