@@ -116,6 +116,10 @@ type Provided<N, ROut, RIn> = N extends SuiteNode<infer R> ? SuiteNode<Exclude<R
  * Reuse follows Effect's MemoMap semantics: a Layer value already built further out
  * (an enclosing suite, or a shared layer from the test config) is reused rather than
  * built again. `Layer.fresh(layer)` opts out.
+ *
+ * As with `Effect.provide`, provide once per node: compose the layers first
+ * (`Layer.provide`, `Layer.provideMerge`, `Layer.mergeAll`). Providing at different
+ * levels (a suite and a test below it) is how lifetimes are chosen.
  */
 export const provide = <ROut, E, RIn>(
   layer: Layer.Layer<ROut, E, RIn>,

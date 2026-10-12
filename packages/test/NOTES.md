@@ -69,8 +69,9 @@ wires both sides together.
    - on a test: built for every **attempt**, in the attempt's MemoMap and Scope. Same as `Effect.provide` in the body.
      Reuse follows Effect's MemoMap semantics. MemoMaps are forked down the tree (run → suite → … → test attempt), so a layer
      value already built further out is reused, including by `Effect.provide` inside a test body. `Layer.fresh(layer)` opts out.
-     Fixtures are built outermost-first: a later `provide` in the pipe wraps the earlier ones, so it is built first and can feed
-     them. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
+     Provide once per node, as with `Effect.provide`: compose the layers first (`Layer.provide`, `Layer.provideMerge`,
+     `Layer.mergeAll`). Providing at different levels (a suite, then a test below it) is how lifetimes are chosen; an outer
+     level's fixtures are built first and can feed inner ones. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
      never builds its layers. A fresh fixture for every test in a suite is written per test (`tests.map(Test.provide(layer))`),
      and a reusable suite that needs that takes its layer as a parameter (`userRepoContract(InMemoryUserRepo)`).
      **Cross-file sharing is config, and config only optimises.** `etest.config.ts` (default export `Test.config({ shared })`,
@@ -224,10 +225,10 @@ const suite = (name: string) =>
     Test.provide(Seeds.layer) // once per suite
   )
 
-// The last provide is the outermost: Database is built first and feeds Schema.
+// One provide per node, layers composed first: Database feeds Schema and stays available to the tests.
 export default Test.suite("fixtures", [suite("users"), suite("orders")]).pipe(
-  Test.provide(Schema_.layer), // root suite = once per file; Layer<Schema_, never, Database>
-  Test.provide(Database.layer), // once per file, or the run's shared instance with the config
+  // root suite = once per file; Database is the run's shared instance with the config
+  Test.provide(Schema_.layer.pipe(Layer.provideMerge(Database.layer))),
   Test.tags("fixtures")
 ) // Suite<never>
 ```
@@ -335,8 +336,8 @@ examples/typecheck.ts(15,11): error TS1360: Type 'SuiteNode<Database>' does not 
 - **Over-providing is silent.** Providing a layer nothing needs compiles without complaint. (A config-shared layer with requirements is a compile error.)
 - **Sharing depends on object identity.** The config and the files must use one exported Layer value. A look-alike layer written
   inline is a different value and is not shared. Layers _inside_ a composed layer are still matched one by one.
-- **Fixture order is pipe order.** "Later `provide` is outer" matches the types, but it is easy to get backwards. It is correct by
-  construction only because the types reject the wrong order when there is a dependency.
+- **Several `Test.provide`s on one node** still work (a later one wraps the earlier ones), but like several `Effect.provide`s
+  they are an anti-pattern: compose the layers and provide once. Nothing enforces this yet.
 - **`exactOptionalPropertyTypes` noise.** With an _optional_ phantom property, every error carried the extra line "Consider adding
   'undefined'…". Making the phantom required (type-only) removed it.
 - **No variance surprises** in the cases tried. `TestNode<any>` is not assignable to `TestNode<never>`, which is correct but means framework

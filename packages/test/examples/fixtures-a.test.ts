@@ -6,6 +6,7 @@
 // fixtures-a and fixtures-b reuse one lazily built instance. The file doesn't depend on
 // that: it passes with and without the config. fixtures-a and fixtures-b are identical on purpose.
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as assert from "node:assert"
 import * as Test from "../src/Test.ts"
 import { Database, Schema_, Seeds, Tx } from "./shared.ts"
@@ -43,9 +44,8 @@ const suite = (name: string) =>
     Test.provide(Seeds.layer)
   )
 
-// The last provide is the outermost: Database is built first and feeds Schema.
+// One provide per node, layers composed first: Database feeds Schema and stays available to the tests.
 export default Test.suite("fixtures", [suite("users"), suite("orders")]).pipe(
-  Test.provide(Schema_.layer),
-  Test.provide(Database.layer),
+  Test.provide(Schema_.layer.pipe(Layer.provideMerge(Database.layer))),
   Test.tags("fixtures")
 )

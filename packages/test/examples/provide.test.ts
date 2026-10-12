@@ -92,9 +92,10 @@ export default Test.suite("Effect.provide in a body", [
   ),
   composition
 ]).pipe(
-  Test.provide(OuterSeeds.layer),
-  Test.provide(OuterDatabase.layer),
-  Test.provide(Tx.layer),
-  Test.provide(Seeds.layer),
-  Test.provide(Database.layer) // shared via etest.config.ts, when the config is used
+  Test.provide(
+    Layer.mergeAll(OuterSeeds.layer, OuterDatabase.layer).pipe(
+      // Database is shared via etest.config.ts when the config is used, even nested in a composed layer
+      Layer.provideMerge(Layer.mergeAll(Tx.layer, Seeds.layer, Database.layer))
+    )
+  )
 )

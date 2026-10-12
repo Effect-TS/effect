@@ -110,8 +110,8 @@ export default Test.suite("Account", [
         yield* account.withdraw(30)
         assert.strictEqual(yield* account.balance, 70)
       })
-      // the later `provide` is outer: free fees are built first and feed the account
-    ).pipe(Test.provide(Account.layer(100)), Test.provide(Fees.free)),
+      // compose the layers, then provide once: this account is built with free fees
+    ).pipe(Test.provide(Account.layer(100).pipe(Layer.provide(Fees.free)))),
 
     Test.test(
       "part of a test can override it, and the innermost provide wins",

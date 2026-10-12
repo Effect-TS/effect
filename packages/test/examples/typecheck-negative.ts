@@ -1,7 +1,7 @@
 // Not a test file. Proves that a missing fixture is a COMPILE error: each line below is an
 // unsatisfied tree, and `tsc` fails if any `@ts-expect-error` is unused.
 import * as Effect from "effect/Effect"
-import type * as Layer from "effect/Layer"
+import * as Layer from "effect/Layer"
 import * as Test from "../src/Test.ts"
 import { Database, Schema_ } from "./shared.ts"
 import { type UserRepo, userRepoContract } from "./userRepoContract.ts"
@@ -38,8 +38,7 @@ const ok: Test.Runnable = Test.suite("db", [
     })
   )
 ]).pipe(
-  Test.provide(Schema_.layer),
-  Test.provide(Database.layer)
+  Test.provide(Schema_.layer.pipe(Layer.provideMerge(Database.layer)))
 )
 
 export { halfProvided, ok, sharedWithRequirement, unprovided }
