@@ -955,7 +955,7 @@ export const retry: {
  * A `Retry-After` header on a transient response, or on the response of a
  * status code error, sets the minimum delay before the next attempt. If it
  * exceeds `maxRetryAfter` (one minute by default), retrying stops and the last
- * response or error is returned. Set a larger cap to allow longer waits.
+ * response or error is returned.
  *
  * @stability unstable
  * @category error handling
@@ -1035,9 +1035,7 @@ export const retryTransient: {
     const retryOn = isOnlySchedule ? "errors-and-responses" : options.retryOn ?? "errors-and-responses"
     const schedule = withRetryAfter(
       isOnlySchedule ? options : options.schedule ?? Schedule.forever,
-      isOnlySchedule || options.maxRetryAfter === undefined
-        ? Duration.minutes(1)
-        : Duration.fromInputUnsafe(options.maxRetryAfter)
+      Duration.fromInputUnsafe(isOnlySchedule ? "1 minute" : options.maxRetryAfter ?? "1 minute")
     )
     const times = isOnlySchedule ? undefined : options.times
     return transformResponse(
@@ -1942,12 +1940,12 @@ const isTransientHttpError = (error: unknown) =>
     (error.reason._tag === "StatusCodeError" && isTransientResponse(error.reason.response)))
 
 const retryAfterOf = (input: unknown, nowMillis: number): Duration.Duration | undefined => {
-  const response = Predicate.hasProperty(input, HttpClientResponse.TypeId)
+  const response = Error.isHttpClientError(input)
+    ? input.response
+    : Predicate.hasProperty(input, HttpClientResponse.TypeId)
     ? input as HttpClientResponse.HttpClientResponse
-    : Error.isHttpClientError(input) && input.reason._tag === "StatusCodeError"
-    ? input.reason.response
     : undefined
-  return response && parseRetryAfter(nowMillis, response.headers["retry-after"])
+  return parseRetryAfter(nowMillis, response?.headers["retry-after"])
 }
 
 const withRetryAfter = <ES, R1>(
@@ -1955,17 +1953,16 @@ const withRetryAfter = <ES, R1>(
   maxRetryAfter: Duration.Duration
 ): Schedule.Schedule<unknown, any, ES, R1> =>
   Schedule.fromStep(
-    Effect.map(Schedule.toStep(schedule), (step) => (now: number, input: unknown) =>
-      Effect.flatMap(step(now, input), ([output, delay]) => {
-        const retryAfter = retryAfterOf(input, now)
-        if (retryAfter === undefined) {
-          return Effect.succeed([output, delay] as [unknown, Duration.Duration])
-        }
-        if (Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
-          return Cause.done(output)
-        }
-        return Effect.succeed([output, Duration.max(delay, retryAfter)] as [unknown, Duration.Duration])
-      }))
+    Effect.map(Schedule.toStep(schedule), (step) => (now: number, input: unknown) => {
+      const retryAfter = retryAfterOf(input, now)
+      if (retryAfter === undefined) {
+        return step(now, input)
+      }
+      if (Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
+        return Cause.done()
+      }
+      return Effect.map(step(now, input), ([output, delay]) => [output, Duration.max(delay, retryAfter)])
+    })
   )
 
 const isTooManyRequestsHttpClientError = (
