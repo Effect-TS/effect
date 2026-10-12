@@ -136,6 +136,7 @@ describe("Validate", () => {
       }),
       [
         "viewer.graphql:1:76 Cannot spread fragment \"B\" within itself via \"A\".",
+        "fragments.graphql:1:32 Fields \"user\" conflict because they have differing arguments. Use different aliases on the fields to fetch both if this was intentional.",
         "fragments.graphql:1:41 Variable \"$id\" is not defined by operation \"Viewer\"."
       ]
     )
@@ -191,7 +192,7 @@ describe("Validate: positions, merging, directives and values", () => {
       }),
       [
         `q.graphql:3:22 Fields "x" conflict because "name" and "email" are different fields. Use different aliases on the fields to fetch both if this was intentional.`,
-        `q.graphql:4:47 Fields "friends" conflict because subfields "a" conflict because "name" and "email" are different fields. Use different aliases on the fields to fetch both if this was intentional.`,
+        `q.graphql:4:57 Fields "friends" conflict because subfields "a" conflict because "name" and "email" are different fields. Use different aliases on the fields to fetch both if this was intentional.`,
         `q.graphql:5:64 Fields "v" conflict because they return conflicting types "String!" and "String". Use different aliases on the fields to fetch both if this was intentional.`
       ]
     )
