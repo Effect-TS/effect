@@ -11,9 +11,9 @@ import * as Path from "effect/Path"
 import {
   assertDeclaredInOrder,
   assertNoErrors,
-  documentOf,
   generateIn,
   generateTasks,
+  importGenerated,
   member
 } from "./utils/generator.ts"
 
@@ -21,7 +21,7 @@ import {
 // and dependency order disagree.
 const fragments = `
 fragment TaskSchedule on Task {
-  due
+  estimate
   ...TaskCore
 }
 
@@ -50,7 +50,11 @@ query Titled {
 const generate = generateTasks({ "src/fragments.graphql": fragments, "src/tasks.graphql": tasks }).pipe(
   Effect.map((generated) => {
     assertNoErrors(generated)
-    return { fragments: generated.file("src/fragments.graphql.ts"), tasks: generated.file("src/tasks.graphql.ts") }
+    return {
+      generated,
+      fragments: generated.file("src/fragments.graphql.ts"),
+      tasks: generated.file("src/tasks.graphql.ts")
+    }
   })
 )
 
@@ -76,7 +80,7 @@ describe("Generator per-file output", () => {
       assert.deepStrictEqual(generated.result.deletes.map((file) => path.basename(file)), ["orphan.graphql.ts"])
       const fs = yield* FileSystem.FileSystem
       assert.strictEqual(yield* fs.readFileString(generated.result.deletes[0]!), orphan)
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)))
+    }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("fragments are declared after the fragments they spread", () =>
     Effect.gen(function*() {
@@ -94,10 +98,11 @@ describe("Generator per-file output", () => {
 
   it.effect("documents append every fragment they use, including through other fragments, in order of first use", () =>
     Effect.gen(function*() {
-      const { tasks } = yield* generate
+      const { generated } = yield* generate
+      const module = yield* importGenerated(generated, "src/tasks.graphql.ts")
       assert.strictEqual(
-        documentOf(tasks, "Scheduled"),
-        "query Scheduled{tasks{...TaskSchedule}}fragment TaskSchedule on Task{due...TaskCore}fragment TaskCore on Task{id title}"
+        module.Scheduled.document,
+        "query Scheduled{tasks{...TaskSchedule}}fragment TaskSchedule on Task{estimate...TaskCore}fragment TaskCore on Task{id title}"
       )
     }).pipe(Effect.provide(NodeServices.layer)))
 })
