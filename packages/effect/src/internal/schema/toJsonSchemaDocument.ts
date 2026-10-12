@@ -121,25 +121,23 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
-// Two inclusive bounds on the same schema object are equivalent to the tighter one, so a colliding `minimum` or
-// `maximum` can be merged in place instead of being moved into `allOf`. Any other collision keeps `allOf`.
-function tightenCollidingBounds(
+// Merges an inlineable check into the schema it applies to. Two inclusive bounds on the same schema object are
+// equivalent to the tighter one, so a colliding `minimum` or `maximum` is tightened in place. Any other collision
+// returns `undefined`, and the caller keeps the check in `allOf`.
+function mergeInlineCheck(
   left: JsonSchema.JsonSchema,
   right: JsonSchema.JsonSchema,
   rightKeys: ReadonlyArray<string>
 ): JsonSchema.JsonSchema | undefined {
   if (typeof left.$ref === "string") return undefined
-  const out: JsonSchema.JsonSchema = { ...left }
+  const out: JsonSchema.JsonSchema = { ...left, ...right }
   for (const key of rightKeys) {
-    if (!Object.hasOwn(left, key)) {
-      out[key] = right[key]
-      continue
-    }
+    if (!Object.hasOwn(left, key)) continue
     const a = left[key]
     const b = right[key]
     if (typeof a !== "number" || typeof b !== "number") return undefined
-    if (key === "minimum") out[key] = Math.max(a, b)
-    else if (key === "maximum") out[key] = Math.min(a, b)
+    if (key === "minimum") out.minimum = Math.max(a, b)
+    else if (key === "maximum") out.maximum = Math.min(a, b)
     else return undefined
   }
   return out
@@ -174,9 +172,8 @@ function appendJsonSchema(
     }
   }
   if (inlineCheck) {
-    if (hasNoCollisions(left, rightKeys)) return { ...left, ...right }
-    const tightened = tightenCollidingBounds(left, right, rightKeys)
-    if (tightened !== undefined) return tightened
+    const merged = mergeInlineCheck(left, right, rightKeys)
+    if (merged !== undefined) return merged
   }
   const members = Array.isArray(right.allOf) && rightKeys.length === 1 ? right.allOf : [right]
   if (Array.isArray(left.allOf)) {
