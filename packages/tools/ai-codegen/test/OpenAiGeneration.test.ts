@@ -125,6 +125,101 @@ const cases: ReadonlyArray<Case> = [
     },
     valid: [{ noise_reduction: null }, { noise_reduction: { type: "near_field" } }],
     invalid: [{ noise_reduction: "on" }]
+  },
+  {
+    // FineTuningJob.method: a nullable reference narrowed by the `if` condition
+    name: "nullable alternatives merged with an object constraint",
+    schemas: {
+      Method: object({
+        type: { type: "string", enum: ["supervised", "dpo"] },
+        dpo: object({ beta: { type: "number" } })
+      }),
+      Root: {
+        ...object({ method: { anyOf: [ref("Method"), { type: "null" }] }, hyperparameters: { type: "object" } }),
+        if: {
+          properties: { method: { type: "object", properties: { type: { enum: ["dpo"] } }, required: ["type"] } },
+          required: ["method"]
+        },
+        else: { required: ["hyperparameters"] }
+      }
+    },
+    valid: [{ method: { type: "dpo", dpo: { beta: 1 } } }, { method: null, hyperparameters: {} }],
+    invalid: [{ method: { type: "supervised" } }, { method: { type: "dpo", dpo: { beta: "high" } } }]
+  },
+  {
+    // CreateRunRequest.truncation_strategy and response_format
+    name: "OpenAPI 3.0 nullable markers left in a 3.1 spec",
+    schemas: {
+      Truncation: object({ type: tag("auto") }, ["type"]),
+      Root: object({
+        truncation: { allOf: [ref("Truncation"), { nullable: true }] },
+        format: { ...ref("Truncation"), nullable: true }
+      })
+    },
+    valid: [{ truncation: null, format: null }, { truncation: { type: "auto" }, format: { type: "auto" } }],
+    invalid: [{ truncation: { type: "last_messages" } }, { format: "auto" }]
+  },
+  {
+    // ImageRefParam
+    name: "exactly one of two keys",
+    schemas: {
+      Root: {
+        ...object({ image_url: string, file_id: string }),
+        anyOf: [{ required: ["image_url"] }, { required: ["file_id"] }],
+        not: { required: ["image_url", "file_id"] },
+        additionalProperties: false
+      }
+    },
+    valid: [{ image_url: "https://example.com/a.png" }, { file_id: "file_1" }],
+    invalid: [{}, { image_url: "https://example.com/a.png", file_id: "file_1" }]
+  },
+  {
+    // EnvironmentParamOpenaiHosted
+    name: "keys that cannot be combined",
+    schemas: {
+      Root: {
+        ...object({
+          type: tag("hosted"),
+          environment_id: string,
+          packages: { type: "array", items: string },
+          network: string
+        }, [
+          "type"
+        ]),
+        additionalProperties: false,
+        not: { required: ["environment_id"], anyOf: [{ required: ["packages"] }, { required: ["network"] }] }
+      }
+    },
+    valid: [{ type: "hosted" }, { type: "hosted", environment_id: "env_1" }, {
+      type: "hosted",
+      packages: ["numpy"],
+      network: "none"
+    }],
+    invalid: [{ type: "hosted", environment_id: "env_1", packages: [] }, {
+      type: "hosted",
+      environment_id: "env_1",
+      network: "none"
+    }]
+  },
+  {
+    // Metadata, FunctionParameters and free-form objects
+    name: "maps and free-form objects",
+    schemas: {
+      Root: object({
+        metadata: { anyOf: [{ type: "object", additionalProperties: string }, { type: "null" }] },
+        parameters: { type: "object", additionalProperties: true },
+        options: { type: "object" }
+      })
+    },
+    valid: [{ metadata: { user: "u_1" }, parameters: { type: "object", properties: {} }, options: { seed: 1 } }],
+    invalid: [{ metadata: { user: 1 } }, { options: "seed" }]
+  },
+  {
+    // LocalShellToolCallOutput requires `call_id` without declaring it
+    name: "required keys missing from properties",
+    schemas: { Root: object({ type: tag("local_shell_call_output"), output: string }, ["type", "call_id", "output"]) },
+    valid: [{ type: "local_shell_call_output", call_id: "call_1", output: "ok" }],
+    invalid: [{ type: "local_shell_call_output", output: "ok" }]
   }
 ]
 
@@ -179,7 +274,10 @@ describe("OpenAI generation", () => {
       const schema = yield* generateAndImport(schemas)
       const decode = Schema.decodeUnknownExit(schema)
       for (const value of valid) {
-        assert.isTrue(Exit.isSuccess(decode(value)), `expected to accept ${JSON.stringify(value)}`)
+        const exit = decode(value)
+        assert.isTrue(Exit.isSuccess(exit), `expected to accept ${JSON.stringify(value)}`)
+        // Accepted values must decode without losing keys
+        if (Exit.isSuccess(exit)) assert.deepStrictEqual(exit.value, value)
       }
       for (const value of invalid) {
         assert.isTrue(Exit.isFailure(decode(value)), `expected to reject ${JSON.stringify(value)}`)
