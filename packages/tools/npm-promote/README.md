@@ -20,10 +20,11 @@ Each run:
    target version is missing, nothing is promoted.
 3. Runs `npm dist-tag add <name>@<version> latest`, `effect` first, for every
    package whose `latest` is lower than the target. The CDN caches the
-   abbreviated metadata for minutes, so the live `latest` is read from the
-   dist-tags endpoint before each write. A higher `latest` is never moved back,
-   so a run that failed halfway is finished by the next one. A failed write
-   stops the run, so no package moves ahead of `effect`.
+   abbreviated metadata for minutes, so it only decides visibility; each
+   package is decided from its live `latest` on the dist-tags endpoint. A
+   higher `latest` is never moved back, so a run that failed halfway is
+   finished by the next one. A failed read or write stops the run, so no
+   package moves ahead of `effect`.
 4. Deploys the website for the version bump commit when `effect`'s live
    `latest` is exactly the target and no deploy is recorded for that commit.
    Deploys are recorded as GitHub deployments in the `website-v4` environment,
@@ -36,7 +37,10 @@ default) and the release is still not visible or cannot be promoted, the tool
 opens or updates a single tracking issue. For versions that are not visible it
 checks each version's own registry document and lists versions missing from npm
 (404), versions published but not visible yet, and versions whose check failed.
-Failed `npm dist-tag add` writes are listed separately. Prerelease versions are
+Failed `npm dist-tag add` writes are listed separately, and a registry read
+that fails during promotion lists its version as unchecked. Read failures while
+deciding the website deploy happen after promotion succeeded, so they fail the
+run and are retried, but never open the tracking issue. Prerelease versions are
 never promoted.
 
 `--dry-run` reads the registry and prints the plan. It never moves dist-tags,
@@ -71,7 +75,9 @@ and writing a tag.
 
 To change `latest` by hand, set `NPM_PROMOTE_PAUSED=true`, then wait until no
 `npm promote` run is in progress: pausing only skips runs that have not started.
-Unpause once the manual change is done.
+Unpause once the manual change is done. To roll back a bad release, stay paused
+until `main` has a fixed version: once unpaused, the tool moves `latest` back
+to the version at HEAD.
 
 ## Website deploys
 

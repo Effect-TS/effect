@@ -6,6 +6,16 @@ export class NpmPromoteError extends Schema.TaggedError<NpmPromoteError>()("NpmP
 }) {}
 
 /**
+ * Reading `pkg` from the registry failed while promoting. Packages after it
+ * were not promoted.
+ */
+export class RegistryError extends Schema.TaggedError<RegistryError>()("RegistryError", {
+  message: Schema.String,
+  pkg: Schema.Struct({ name: Schema.String, version: Schema.String }),
+  cause: Schema.optional(Schema.Defect())
+}) {}
+
+/**
  * Moving `latest` failed for `pkg`. Packages after it were not promoted.
  */
 export class PromotionError extends Schema.TaggedError<PromotionError>()("PromotionError", {

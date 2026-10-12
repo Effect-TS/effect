@@ -9,10 +9,10 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Semver from "semver"
-import { NpmPromoteError, PromotionError } from "./NpmPromoteError.ts"
+import { NpmPromoteError, PromotionError, RegistryError } from "./NpmPromoteError.ts"
 import * as Process from "./Process.ts"
 
-export { NpmPromoteError, PromotionError } from "./NpmPromoteError.ts"
+export { NpmPromoteError, PromotionError, RegistryError } from "./NpmPromoteError.ts"
 
 /**
  * A public workspace package and the version it has at HEAD.
@@ -132,6 +132,9 @@ export const liveLatest = Effect.fnUntraced(function*(name: string) {
   )
 })
 
+const registryError = (pkg: ReleasePackage, cause: NpmPromoteError) =>
+  new RegistryError({ message: `${cause.message} while promoting ${pkg.name}@${pkg.version}`, pkg, cause })
+
 /**
  * Puts `effect` first and keeps the input order for everything else.
  */
@@ -159,16 +162,21 @@ const needsPromotion = (pkg: ReleasePackage, latest: string | undefined): Effect
  * versions are visible in the registry's abbreviated metadata.
  *
  * `effect` is promoted first. Packages whose `latest` already equals the
- * target, or is higher than it, are left alone. Before each write the live
- * `latest` is read again, because the abbreviated metadata can be stale. A
- * failed write stops promotion with a `PromotionError`, so no package moves
- * ahead of the ones before it. With `dryRun` the result is the same plan, but
+ * target, or is higher than it, are left alone. The abbreviated metadata only
+ * decides visibility: it is CDN-cached and can be stale, so each package is
+ * decided from its live `latest`. A failed registry read stops promotion with
+ * a `RegistryError` and a failed write with a `PromotionError`, so no package
+ * moves ahead of the ones before it. With `dryRun` the result is the same plan, but
  * no dist-tag is changed.
  */
 export const promote = Effect.fnUntraced(function*(
   packages: ReadonlyArray<ReleasePackage>,
   options?: { readonly dryRun?: boolean | undefined }
-): Effect.fn.Return<PromoteResult, NpmPromoteError | PromotionError, HttpClient.HttpClient | NpmCli> {
+): Effect.fn.Return<
+  PromoteResult,
+  NpmPromoteError | PromotionError | RegistryError,
+  HttpClient.HttpClient | NpmCli
+> {
   for (const pkg of packages) {
     if (Semver.valid(pkg.version) === null) {
       return yield* new NpmPromoteError({ message: `${pkg.name} has an invalid target version: ${pkg.version}` })
@@ -176,7 +184,11 @@ export const promote = Effect.fnUntraced(function*(
   }
 
   const ordered = promotionOrder(packages)
-  const metadata = yield* Effect.forEach(ordered, (pkg) => fetchMetadata(pkg.name), { concurrency: 8 })
+  const metadata = yield* Effect.forEach(
+    ordered,
+    (pkg) => fetchMetadata(pkg.name).pipe(Effect.mapError((cause) => registryError(pkg, cause))),
+    { concurrency: 8 }
+  )
 
   const pending = ordered.filter((pkg, i) =>
     Option.match(metadata[i], {
@@ -192,8 +204,8 @@ export const promote = Effect.fnUntraced(function*(
   const promoted: Array<ReleasePackage> = []
   for (let i = 0; i < ordered.length; i++) {
     const pkg = ordered[i]
-    const cachedLatest = Option.getOrThrow(metadata[i])["dist-tags"].latest
-    if (!(yield* needsPromotion(pkg, cachedLatest)) || !(yield* needsPromotion(pkg, yield* liveLatest(pkg.name)))) {
+    const latest = yield* liveLatest(pkg.name).pipe(Effect.mapError((cause) => registryError(pkg, cause)))
+    if (!(yield* needsPromotion(pkg, latest))) {
       continue
     }
     if (options?.dryRun !== true) {

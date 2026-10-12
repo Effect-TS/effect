@@ -190,6 +190,16 @@ export const promoteRelease = Effect.fnUntraced(function*(
         Effect.succeed([{ _tag: "PromotionFailed", pkg: error.pkg, reason: error.reason }])
       ).pipe(
         Effect.andThen(Effect.fail(new NpmPromoteError({ message: error.message, cause: error })))
+      )),
+    // A registry read that keeps failing is reported as unchecked, never as missing.
+    Effect.catchTag("RegistryError", (error) =>
+      alertIfOverdue(
+        release,
+        effect,
+        options,
+        Effect.succeed([{ _tag: "Unknown", pkg: error.pkg, reason: error.message }])
+      ).pipe(
+        Effect.andThen(Effect.fail(new NpmPromoteError({ message: error.message, cause: error })))
       ))
   )
 
