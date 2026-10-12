@@ -13,11 +13,11 @@
  * @stability experimental
  * @since 4.0.0
  */
-import { isReadonlyArrayNonEmpty, type NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as internalGraphQL from "../internal/graphql.ts"
@@ -32,12 +32,10 @@ import * as Struct from "../Struct.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import {
   DecodeError,
-  EncodeError,
   GraphQLClientError,
   type GraphQLError,
   isGraphQLClientError,
-  PaginationError,
-  type Reason
+  PaginationError
 } from "./GraphQLClientError.ts"
 import type * as GraphQLGroup from "./GraphQLGroup.ts"
 import type * as GraphQLMiddleware from "./GraphQLMiddleware.ts"
@@ -340,19 +338,14 @@ const makeMethod = <Op extends GraphQL.Any>(
   protocol: GraphQLProtocol["Service"],
   retryPolicy: Schedule.Schedule<unknown, unknown>
 ): OperationMethod<Op> | SubscriptionMethod<Op> => {
-  const fail = (reason: Reason) => new GraphQLClientError({ operation: operation.name, reason })
-  const schemaFail = (make: (description: string) => Reason) => (error: Schema.SchemaError) =>
-    Effect.fail(fail(make(error.message)))
-  const encodeVariables = Schema.encodeEffect(operation.variables)
-  const decodeResult = Schema.decodeUnknownEffect(operation.result)
+  const { decodePartial, decodeStrict, encodeVariables, fail, schemaFail } = internalGraphQL.makeCodec(operation)
 
   const notGraphQL = schemaFail((description) =>
     new DecodeError({ description: `Not a GraphQL response: ${description}` })
   )
 
   const buildRequest = (variables: GraphQL.Variables<Op> | undefined, options: CallOptions | undefined) =>
-    encodeVariables(variables ?? {}).pipe(
-      Effect.catch(schemaFail((description) => new EncodeError({ description }))),
+    encodeVariables(variables).pipe(
       Effect.map((encoded): GraphQLRequest => ({
         kind: operation.kind,
         query: operation.document,
@@ -373,21 +366,23 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.catch(notGraphQL)
     )
 
-  // Like RpcMiddleware, `next` hides inner middleware errors and requirements;
-  // they still appear on the client method's type.
+  // `next` hides inner middleware errors and requirements from middleware,
+  // but not from the client method. Force POST only at the transport boundary.
   const execute = (
     index: number,
-    request: GraphQLRequest
+    request: GraphQLRequest,
+    forcePost: boolean
   ): Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>> =>
     index === chain.length
       ? protocol.execute(request).pipe(
+        forcePost ? Effect.provideService(internalGraphQL.ForcePost, true) : identity,
         Effect.mapError(fail),
         Effect.flatMap(decodeResponse)
       )
       : chain[index].execute({
         operation,
         request,
-        next: (request) => execute(index + 1, request) as Effect.Effect<ExecutionResult, GraphQLClientError>
+        next: (request) => execute(index + 1, request, forcePost) as Effect.Effect<ExecutionResult, GraphQLClientError>
       })
 
   const subscribe = (
@@ -404,36 +399,6 @@ const makeMethod = <Op extends GraphQL.Any>(
         request,
         next: (request) => subscribe(index + 1, request) as Stream.Stream<ExecutionResult, GraphQLClientError>
       })
-
-  const decodeData = (data: unknown) =>
-    Effect.catch(decodeResult(data), schemaFail((description) => new DecodeError({ description })))
-
-  const responseError = (result: ExecutionResult, errors: NonEmptyReadonlyArray<GraphQLError>) =>
-    Effect.fail(fail(internalGraphQL.responseError(result, errors)))
-
-  // GraphQL only allows a `null` or missing `data` when there are `errors`,
-  // so the result codec is not consulted for it: `Schema.Json` would accept
-  // `null` and turn an invalid response into a success.
-  const missingData = Effect.fail(fail(new DecodeError({ description: "data is null or missing without errors" })))
-
-  const decodeStrict = (result: ExecutionResult) => {
-    const errors = result.errors ?? []
-    if (isReadonlyArrayNonEmpty(errors)) return responseError(result, errors)
-    if (result.data === null || result.data === undefined) return missingData
-    return decodeData(result.data)
-  }
-
-  const decodePartial = (result: ExecutionResult) => {
-    const errors = result.errors ?? []
-    if (result.data === null || result.data === undefined) {
-      return isReadonlyArrayNonEmpty(errors) ? responseError(result, errors) : missingData
-    }
-    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => {
-      const partial = { data, errors }
-      internalGraphQL.partialResponses.set(partial, result)
-      return partial
-    })
-  }
 
   if (operation.kind === "subscription") {
     const subscriptionMethod = <R2 = never>(...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>) =>
@@ -460,11 +425,12 @@ const makeMethod = <Op extends GraphQL.Any>(
     Exclude<GraphQL.Services<Op>, R2>
   > {
     return buildRequest(variables, options).pipe(
-      Effect.flatMap((request) => execute(0, request)),
+      Effect.flatMap((request) => execute(0, request, false)),
       Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
       Effect.provideContext(callContext(options))
     )
   }
+  internalGraphQL.rawExecutors.set(method, (request) => execute(0, request, true))
   return Object.assign(method, { operation })
 }
 

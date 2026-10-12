@@ -1,7 +1,8 @@
 /**
  * Batch lookups through a GraphQL client method with `RequestResolver`.
  * {@link ordered} matches results by position; {@link findById} matches by
- * key. {@link request} turns either resolver into `(key) => Effect`.
+ * key; {@link aliased} repeats an operation under aliases in one request.
+ * {@link request} turns any of them into `(key) => Effect`.
  *
  * Client middleware still run. When a method needs services, such as a
  * middleware's `requires`, `batchKey` keeps lookups with different services
@@ -11,7 +12,7 @@
  * @stability experimental
  * @since 4.0.0
  */
-import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
+import { isReadonlyArrayNonEmpty, type NonEmptyArray, type NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
@@ -19,6 +20,8 @@ import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
+import * as Headers from "../http/Headers.ts"
+import * as UrlParams from "../http/UrlParams.ts"
 import * as internalGraphQL from "../internal/graphql.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as Request from "../Request.ts"
@@ -27,6 +30,7 @@ import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { OperationMethod, PartialResult } from "./GraphQLClient.ts"
 import { DecodeError, GraphQLClientError, type GraphQLError, type Reason } from "./GraphQLClientError.ts"
+import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -83,7 +87,8 @@ const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => {
 // -----------------------------------------------------------------------------
 
 /**
- * Looks up a key with an {@link ordered} or {@link findById} resolver.
+ * Looks up a key with an {@link ordered}, {@link findById} or {@link aliased}
+ * resolver.
  * Supports `request(resolver)(key)` and `request(key, resolver)`.
  *
  * **Details**
@@ -415,6 +420,202 @@ export const findById = <
       return Effect.void
     })
   )
+}
+
+/**
+ * Batches calls to a generated query or mutation by repeating the operation
+ * under aliases in one request.
+ *
+ * **When to use**
+ *
+ * Use when the API has no field that takes a list of keys, such as GitHub's
+ * pull requests by repository and number. When one exists, {@link ordered}
+ * or {@link findById} send a smaller query.
+ *
+ * **Details**
+ *
+ * Use {@link request} to get `(variables) => Effect`. Variables that encode
+ * to the same JSON share a slice; each slice uses the operation's result Schema.
+ * Throws if the operation has no document template.
+ *
+ * Batches use `POST` even with `queryMethod: "GET"`. The default batch size
+ * is 10; change it with `RequestResolver.batchN`. Middleware run once per
+ * batch, and `batchKey` works as in {@link ordered}. Mock and custom methods
+ * are called once per slice instead.
+ *
+ * Errors with a matching `path[0]` fail only that slice, with the alias prefix
+ * removed from the error path. Errors without a matching path, transport errors
+ * and middleware failures fail the batch.
+ *
+ * **Gotchas**
+ *
+ * An error under a non-null root field can null the entire response, failing
+ * every slice. GitHub's `repository` and `pullRequest` are nullable.
+ *
+ * Middleware that hash queries must use `request.query`, not
+ * `operation.document`. Trusted-document allowlists don't support batching;
+ * query hashing does, since the same operation and slice count produce the
+ * same document.
+ *
+ * Mutations are allowed, but the caller cannot control root-field order.
+ *
+ * **Example** (Looking up pull requests by number)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Layer, RequestResolver, Schema, Stream } from "effect"
+ * import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol, GraphQLResolver } from "effect/graphql"
+ *
+ * // Generated from:
+ * //   query PullRequest($owner: String!, $name: String!, $number: Int!) {
+ * //     repository(owner: $owner, name: $name) { pullRequest(number: $number) { title } }
+ * //   }
+ * const PullRequest = GraphQL.query("PullRequest", {
+ *   document: {
+ *     variables: [
+ *       { name: "owner", body: "String!" },
+ *       { name: "name", body: "String!" },
+ *       { name: "number", body: "Int!" }
+ *     ],
+ *     selections: [{
+ *       name: "repository",
+ *       body: ["(owner:$", "owner", ",name:$", "name", "){pullRequest(number:$", "number", "){title}}"]
+ *     }],
+ *     fragments: []
+ *   },
+ *   variables: { owner: Schema.String, name: Schema.String, number: Schema.Int },
+ *   result: Schema.Struct({
+ *     repository: Schema.NullOr(Schema.Struct({
+ *       pullRequest: Schema.NullOr(Schema.Struct({ title: Schema.String }))
+ *     }))
+ *   })
+ * })
+ *
+ * // A stand-in server that answers every aliased slice
+ * const queries: Array<string> = []
+ * const Scripted = Layer.succeed(GraphQLProtocol.GraphQLProtocol, {
+ *   execute: (request) => {
+ *     queries.push(request.query)
+ *     const data: Record<string, unknown> = {}
+ *     for (const [key, number] of Object.entries(request.variables as Record<string, unknown>)) {
+ *       const prefix = /^(_\d+_)number$/.exec(key)?.[1]
+ *       if (prefix !== undefined) data[`${prefix}repository`] = { pullRequest: { title: `PR ${number}` } }
+ *     }
+ *     return Effect.succeed({ body: { data } })
+ *   },
+ *   subscribe: () => Stream.empty
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const github = yield* GraphQLClient.make(GraphQLGroup.make(PullRequest))
+ *   const PullRequests = GraphQLResolver.aliased(github.PullRequest).pipe(RequestResolver.batchN(20))
+ *   const getPullRequest = GraphQLResolver.request(PullRequests)
+ *   const results = yield* Effect.forEach(
+ *     [1, 2, 3],
+ *     (number) => getPullRequest({ owner: "Effect-TS", name: "effect", number }),
+ *     { concurrency: "unbounded" }
+ *   )
+ *   return [results.map((result) => result.repository?.pullRequest?.title), queries.length]
+ * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(Scripted))) // => [["PR 1", "PR 2", "PR 3"], 1]
+ * ```
+ *
+ * @stability experimental
+ * @category resolvers
+ * @since 4.0.0
+ */
+export const aliased = <Op extends GraphQL.Any>(
+  method: OperationMethod<Op>,
+  ...[options]: {} extends BatchKey<Op> ? [options?: BatchKey<Op>] : [options: BatchKey<Op>]
+): RequestResolver.RequestResolver<AliasedRequest<Op>> => {
+  const operation = method.operation
+  const template = operation.template
+  if (template === undefined) {
+    throw new Error(`GraphQLResolver.aliased: operation ${operation.name} has no document template`)
+  }
+  const codec = internalGraphQL.makeCodec(operation)
+  // The registered hook uses this operation's middleware errors and services.
+  const execute = internalGraphQL.rawExecutors.get(method) as
+    | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
+    | undefined
+  // Generic conditional parameters prevent calling the strict overload directly.
+  const call = method as unknown as (
+    variables: GraphQL.Variables<Op>
+  ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
+
+  return makeResolver(options?.batchKey)<AliasedRequest<Op>>((entries) =>
+    Effect.flatMap(
+      Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
+      (encoded) => {
+        const slices: Array<Slice<Op>> = []
+        const byJson = new Map<string, Slice<Op>>()
+        for (let i = 0; i < entries.length; i++) {
+          const exit = encoded[i]
+          if (exit._tag === "Failure") {
+            entries[i].completeUnsafe(exit)
+            continue
+          }
+          const json = internalGraphQL.canonicalJson(exit.value)
+          const slice = byJson.get(json)
+          if (slice !== undefined) {
+            slice.entries.push(entries[i])
+            continue
+          }
+          const created = { variables: entries[i].request.key, encoded: exit.value, entries: [entries[i]] }
+          byJson.set(json, created)
+          slices.push(created)
+        }
+        const complete = <R>(slice: Slice<Op>, effect: Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, R>) =>
+          Effect.map(Effect.exit(effect), (exit) => {
+            for (const entry of slice.entries) entry.completeUnsafe(exit)
+          })
+        if (execute === undefined) {
+          return Effect.forEach(slices, (slice) => complete(slice, call(slice.variables)), { discard: true })
+        }
+        if (!isReadonlyArrayNonEmpty(slices)) return Effect.void
+        const prefixes = slices.map((_, i) => `_${i}_`)
+        return Effect.suspend(() =>
+          execute({
+            kind: operation.kind,
+            query: internalGraphQL.renderSlices(
+              operation.kind,
+              operation.name,
+              template,
+              prefixes as NonEmptyArray<string>
+            ),
+            operationName: operation.name,
+            variables: Object.fromEntries(
+              slices.flatMap((slice, i) =>
+                Object.entries(slice.encoded ?? {}).map(([name, value]) => [prefixes[i] + name, value])
+              )
+            ),
+            headers: Headers.empty,
+            urlParams: UrlParams.empty
+          })
+        ).pipe(
+          Effect.flatMap((result) => {
+            const results = internalGraphQL.splitSlices(result, template, prefixes)
+            return results === undefined
+              ? codec.failResponse(result)
+              : Effect.forEach(slices, (slice, i) => complete(slice, codec.decodeStrict(results[i])), { discard: true })
+          })
+        )
+      }
+    ).pipe(Effect.provideContext(entries[0].context))
+  ).pipe(RequestResolver.batchN(10))
+}
+
+type AliasedRequest<Op extends GraphQL.Any> = KeyRequest<
+  GraphQL.Variables<Op>,
+  GraphQL.Result<Op>,
+  GraphQL.Error<Op>,
+  GraphQL.Services<Op>
+>
+
+interface Slice<Op extends GraphQL.Any> {
+  readonly variables: GraphQL.Variables<Op>
+  readonly encoded: unknown
+  readonly entries: Array<Request.Entry<AliasedRequest<Op>>>
 }
 
 // -----------------------------------------------------------------------------

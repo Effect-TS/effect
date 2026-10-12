@@ -386,6 +386,10 @@ operations from `.graphql` documents, then build a client with
 - **[Batching lookups with GraphQLResolver](./ai-docs/src/52_graphql/30_batching.ts)**:
   Collect concurrent lookups by id into one `nodes(ids:)` request with
   `GraphQLResolver`, instead of one request per id.
+- **[Batching single-item lookups with aliases](./ai-docs/src/52_graphql/40_aliased-batching.ts)**:
+  When an API has no field that takes a list of keys, `GraphQLResolver.aliased`
+  repeats a generated operation under aliases, so concurrent lookups share one
+  request and keep their generated types.
 
 ## Working with child processes
 
