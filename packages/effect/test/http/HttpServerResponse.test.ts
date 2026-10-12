@@ -4,6 +4,18 @@ import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerRes
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
+// Node, Deno and Workers make `Response.redirect` headers immutable and Bun does not, so the fixture makes them so
+const immutableRedirect = (): Response => {
+  const response = Response.redirect("http://localhost/target", 302)
+  const immutable = (): never => {
+    throw new TypeError("Headers are immutable")
+  }
+  for (const method of ["append", "delete", "set"]) {
+    Object.defineProperty(response.headers, method, { value: immutable })
+  }
+  return response
+}
+
 describe("HttpServerResponse", () => {
   describe("toWeb", () => {
     it.each([
@@ -85,7 +97,7 @@ describe("HttpServerResponse", () => {
     })
 
     it("merges outer headers into a raw Response whose headers are immutable", () => {
-      const native = Response.redirect("http://localhost/target", 302)
+      const native = immutableRedirect()
       assert.throws(() => native.headers.set("x-probe", "native"), TypeError)
       const web = HttpServerResponse.toWeb(
         HttpServerResponse.raw(native, {
@@ -101,7 +113,7 @@ describe("HttpServerResponse", () => {
     })
 
     it("merges outer headers into an immutable raw Response for HEAD", () => {
-      const native = Response.redirect("http://localhost/target", 302)
+      const native = immutableRedirect()
       const web = HttpServerResponse.toWeb(
         HttpServerResponse.raw(native, { headers: { "x-outer": "outer" } }),
         { withoutBody: true }
@@ -114,7 +126,7 @@ describe("HttpServerResponse", () => {
     })
 
     it("leaves an immutable raw Response as it is when there is nothing to merge", () => {
-      const native = Response.redirect("http://localhost/target", 302)
+      const native = immutableRedirect()
       assert.strictEqual(HttpServerResponse.toWeb(HttpServerResponse.raw(native)), native)
     })
 
