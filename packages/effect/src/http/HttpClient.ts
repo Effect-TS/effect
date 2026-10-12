@@ -1453,11 +1453,14 @@ const parseRetryAfter = (
   if (value === undefined) {
     return undefined
   }
-  const numeric = parseNumberHeader(value)
-  if (numeric !== undefined) {
-    return Duration.max(Duration.seconds(numeric), Duration.millis(1))
+  const trimmed = value.trim()
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    const numeric = Number(trimmed)
+    return Number.isFinite(numeric)
+      ? Duration.max(Duration.seconds(numeric), Duration.millis(1))
+      : undefined
   }
-  const parsedDate = Date.parse(value)
+  const parsedDate = Date.parse(trimmed)
   if (Number.isNaN(parsedDate)) {
     return undefined
   }
