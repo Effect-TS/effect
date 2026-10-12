@@ -11,11 +11,13 @@ type Dog implements Node { id: ID! }
 type Query { user(id: ID!): User orphan: Orphan }
 `)
 
-const validate = (files: Record<string, string>): ReadonlyArray<string> =>
+const validateWith = (schema: ReturnType<typeof readSdl>) => (files: Record<string, string>): ReadonlyArray<string> =>
   Validate.validate(
     schema,
     Object.entries(files).map(([path, body]) => ({ source: source(body, path), document: parseOrThrow(body, path) }))
   ).map(({ column, line, message, path }) => `${path}:${line}:${column} ${message}`)
+
+const validate = validateWith(schema)
 
 describe("Validate", () => {
   it("fields exist on their parent type", () => {
@@ -135,6 +137,126 @@ describe("Validate", () => {
       [
         "viewer.graphql:1:76 Cannot spread fragment \"B\" within itself via \"A\".",
         "fragments.graphql:1:41 Variable \"$id\" is not defined by operation \"Viewer\"."
+      ]
+    )
+  })
+})
+
+const validateValues = validateWith(readSdl(`
+scalar Date
+interface Node { id: ID! }
+type User implements Node { id: ID! name: String! email: String friends(first: Int!): [User!]! }
+type Dog implements Node { id: ID! name: String }
+enum Role { ADMIN USER }
+input UserInput { name: String! role: Role }
+input By @oneOf { id: ID name: String }
+type Query {
+  user(id: ID!): User
+  node(id: ID!): Node
+  users(first: Int, role: Role): [User!]
+  find(by: By!): User
+  at(date: Date): Int
+}
+type Mutation { createUser(input: UserInput!): User }
+`))
+
+describe("Validate: positions, merging, directives and values", () => {
+  it("a variable is used only where its type is allowed; a default lets a nullable variable fill a non-null position", () => {
+    assert.deepStrictEqual(
+      validateValues({
+        "q.graphql": [
+          `query A($id: ID) { user(id: $id) { id } }`,
+          `query B($b: Boolean) { user(id: "1") { name @include(if: $b) } }`,
+          `query C($id: ID = "1") { user(id: $id) { id } }`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:1:29 Variable "$id" of type "ID" used in position expecting type "ID!".`,
+        `q.graphql:2:58 Variable "$b" of type "Boolean" used in position expecting type "Boolean!".`
+      ]
+    )
+  })
+
+  it("fields sharing a response key are compared through fragments, inline fragments and subselections", () => {
+    assert.deepStrictEqual(
+      validateValues({
+        "q.graphql": [
+          `query Q { user(id: "1") { ...A ...B } }`,
+          `fragment A on User { x: name }`,
+          `fragment B on User { x: email }`,
+          `query R { user(id: "1") { friends(first: 1) { a: name } friends(first: 1) { a: email } } }`,
+          `query S { node(id: "1") { ... on User { v: name } ... on Dog { v: name } } }`,
+          `query T { node(id: "1") { ... on User { v: id } ... on Dog { v: id } } }`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:3:22 Fields "x" conflict because "name" and "email" are different fields. Use different aliases on the fields to fetch both if this was intentional.`,
+        `q.graphql:4:47 Fields "friends" conflict because subfields "a" conflict because "name" and "email" are different fields. Use different aliases on the fields to fetch both if this was intentional.`,
+        `q.graphql:5:64 Fields "v" conflict because they return conflicting types "String!" and "String". Use different aliases on the fields to fetch both if this was intentional.`
+      ]
+    )
+  })
+
+  it("@skip and @include need an if: Boolean!, appear once per location and only on fields and fragments; other directives are tolerated", () => {
+    assert.deepStrictEqual(
+      validateValues({
+        "q.graphql": [
+          `query Q($s: String!) { user(id: "1") { a: name @include b: email @skip(if: $s) c: id @skip(if: false) @skip(if: true) d: name @cached } }`,
+          `query R @skip(if: false) { user(id: "1") { name } }`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:1:48 Directive "@include" argument "if" of type "Boolean!" is required, but it was not provided.`,
+        `q.graphql:1:76 Variable "$s" of type "String!" used in position expecting type "Boolean!".`,
+        `q.graphql:1:103 The directive "@skip" can only be used once at this location.`,
+        `q.graphql:2:9 Directive "@skip" may not be used on QUERY.`
+      ]
+    )
+  })
+
+  it("literal arguments and variable defaults match their input types; custom scalars take any literal and ID takes an Int", () => {
+    assert.deepStrictEqual(
+      validateValues({
+        "q.graphql": [
+          `query Q($r: Role = "ADMIN") {`,
+          `  a: users(first: 1.5) { id }`,
+          `  b: users(role: SUPER) { id }`,
+          `  c: user(id: null) { id }`,
+          `  d: find(by: { id: "1", name: "x" }) { id }`,
+          `  e: user(id: 1) { id }`,
+          `  f: at(date: "2026-10-12")`,
+          `  g: users(role: $r) { id }`,
+          `}`,
+          `mutation M {`,
+          `  a: createUser(input: { role: ADMIN }) { id }`,
+          `  b: createUser(input: { name: "a", bogus: 1 }) { id }`,
+          `}`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:1:20 Enum "Role" cannot represent non-enum value: "ADMIN".`,
+        `q.graphql:2:19 Int cannot represent non-integer value: 1.5`,
+        `q.graphql:3:18 Value "SUPER" does not exist in "Role" enum.`,
+        `q.graphql:4:15 Expected value of type "ID!", found null.`,
+        `q.graphql:5:15 OneOf Input Object "By" must specify exactly one key.`,
+        `q.graphql:11:24 Field "UserInput.name" of required type "String!" was not provided.`,
+        `q.graphql:12:37 Field "bogus" is not defined by type "UserInput".`
+      ]
+    )
+  })
+
+  it("variable, argument and input field names are unique", () => {
+    assert.deepStrictEqual(
+      validateValues({
+        "q.graphql": [
+          `query Q($a: ID!, $a: ID!) { user(id: $a, id: "2") { id } }`,
+          `mutation M { createUser(input: { name: "a", name: "b" }) { id } }`
+        ].join("\n")
+      }),
+      [
+        `q.graphql:1:18 There can be only one variable named "$a".`,
+        `q.graphql:1:42 There can be only one argument named "id".`,
+        `q.graphql:2:45 There can be only one input field named "name".`
       ]
     )
   })
