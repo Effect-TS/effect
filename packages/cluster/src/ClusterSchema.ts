@@ -39,6 +39,24 @@ export class Uninterruptible
 }
 
 /**
+ * Interrupts the request as soon as entity termination starts, instead of
+ * waiting for `entityTerminationTimeout`. Defaults to `false`.
+ *
+ * Use for long-lived requests that never finish on their own. Persisted
+ * requests resume on the next owner without saving the interrupt as a reply.
+ * Non-persisted requests receive an interrupt exit. Server-side
+ * `Uninterruptible` takes precedence.
+ *
+ * @since 1.0.0
+ * @category Annotations
+ */
+export class InterruptOnTermination
+  extends Context.Reference<InterruptOnTermination>()("@effect/cluster/ClusterSchema/InterruptOnTermination", {
+    defaultValue: constFalse
+  })
+{}
+
+/**
  * @since 1.0.0
  * @category Annotations
  */

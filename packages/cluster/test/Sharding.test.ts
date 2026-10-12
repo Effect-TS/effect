@@ -27,6 +27,7 @@ import {
   Cause,
   Chunk,
   Context,
+  Deferred,
   Effect,
   Equal,
   Exit,
@@ -754,6 +755,85 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
+  it.effect("InterruptOnTermination interrupts requests early unless Uninterruptible", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const finish = yield* Deferred.make<void>()
+      const layer = TerminationEntity.toLayer({
+        Stream: () => Stream.concat(Stream.succeed(void 0), Stream.never),
+        Uninterruptible: () => Deferred.await(finish),
+        Persisted: () => Effect.never
+      }, { concurrency: "unbounded" }).pipe(Layer.provideMerge(makeTerminationSharding(storageState)))
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* TerminationEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust(1000)
+
+        const stream = yield* client.Stream().pipe(Stream.runDrain, Effect.fork)
+        const request = yield* client.Uninterruptible().pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust(100)
+        const streamExit = stream.unsafePoll()
+        assert(streamExit && Exit.isFailure(streamExit) && Cause.isInterrupted(streamExit.cause))
+        assert.isNull(request.unsafePoll())
+        assert.strictEqual(storageState.releaseCalls.length, 0)
+
+        yield* Deferred.succeed(finish, void 0)
+        yield* TestClock.adjust(100)
+        assert.deepStrictEqual(request.unsafePoll(), Exit.void)
+        assert.strictEqual(storageState.releaseCalls.length, 1)
+      }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
+    }))
+
+  it.effect("InterruptOnTermination resumes persisted requests on the next owner", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      let attempts = 0
+      const layer = TerminationEntity.toLayer({
+        Stream: () => Stream.never,
+        Uninterruptible: () => Effect.never,
+        Persisted: () => Effect.suspend(() => ++attempts === 1 ? Effect.never : Effect.void)
+      }).pipe(Layer.provideMerge(makeTerminationSharding(storageState)))
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* TerminationEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust(1000)
+
+        const request = yield* client.Persisted().pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.isNull(request.unsafePoll())
+
+        storageState.assignSelf = true
+        for (let i = 0; i < 100 && request.unsafePoll() === null; i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.deepStrictEqual(request.unsafePoll(), Exit.void)
+        assert.strictEqual(attempts, 2)
+      }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
+    }))
+
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -1235,6 +1315,33 @@ describe("Sharding graceful shutdown", () => {
       assert.strictEqual(stopped, 2)
     }).pipe(Effect.provide(TestSharding)))
 })
+
+const TerminationEntity = Entity.make("TerminationEntity", [
+  Rpc.make("Stream", { stream: true }),
+  Rpc.make("Uninterruptible").annotate(ClusterSchema.Uninterruptible, "server"),
+  Rpc.make("Persisted").annotate(ClusterSchema.Persisted, true)
+]).annotateRpcs(ClusterSchema.InterruptOnTermination, true)
+
+const makeTerminationSharding = (state: FailoverStorageState) =>
+  Sharding.layer.pipe(
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Effect.clock, (clock) => makeFailoverStorage(state, clock))
+    )),
+    Layer.provide([RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      shardLockExpiration: 3000,
+      shardLockRefreshInterval: 100,
+      entityTerminationTimeout: 1000,
+      entityMessagePollInterval: 10,
+      entityReplyPollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
 
 interface FailoverStorageState {
   blackholed: boolean

@@ -23,7 +23,7 @@ import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, MalformedMessage } from "../ClusterError.js"
 import * as ClusterMetrics from "../ClusterMetrics.js"
-import { Persisted, Uninterruptible } from "../ClusterSchema.js"
+import { InterruptOnTermination, Persisted, Uninterruptible } from "../ClusterSchema.js"
 import type { Entity, HandlersFrom } from "../Entity.js"
 import { CurrentAddress, CurrentRunnerAddress, KeepAliveLatch, KeepAliveRpc, Request } from "../Entity.js"
 import type { EntityAddress } from "../EntityAddress.js"
@@ -74,6 +74,8 @@ export type EntityState = {
     readonly rpc: Rpc.AnyWithProps
     readonly message: Message.IncomingRequestLocal<any>
     sentReply: boolean
+    sentExit: boolean
+    terminating?: boolean | undefined
     lastSentChunk: Option.Option<Reply.Chunk<Rpc.Any>>
     sequence: number
   }>
@@ -222,9 +224,9 @@ export const make = Effect.fnUntraced(function*<
                   Context.get(request.rpc.annotations, Persisted) &&
                   Exit.isFailure(response.exit) &&
                   Exit.isInterrupted(response.exit) &&
-                  (isShuttingDown || Uninterruptible.forServer(request.rpc.annotations))
+                  (isShuttingDown || request.terminating || Uninterruptible.forServer(request.rpc.annotations))
                 ) {
-                  if (!isShuttingDown) {
+                  if (!isShuttingDown && !request.terminating) {
                     return server.write(0, {
                       ...request.message.envelope,
                       id: RequestId(request.message.envelope.requestId),
@@ -240,6 +242,7 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(response.requestId)
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
+                request.sentExit = true
                 return retryRespond(
                   4,
                   Effect.suspend(() =>
@@ -421,7 +424,18 @@ export const make = Effect.fnUntraced(function*<
         drainingServers.set(address.entityId, state)
         internalInterruptors.add(fiber.id())
         return Effect.raceFirst(
-          state.write(0, { _tag: "Eof" }).pipe(
+          Effect.gen(function*() {
+            for (const [requestId, request] of activeRequests) {
+              if (
+                request.sentExit ||
+                !Context.get(request.rpc.annotations, InterruptOnTermination) ||
+                Uninterruptible.forServer(request.rpc.annotations)
+              ) continue
+              request.terminating = true
+              yield* state.write(0, { _tag: "Interrupt", requestId: RequestId(requestId), interruptors: [] })
+            }
+            yield* state.write(0, { _tag: "Eof" })
+          }).pipe(
             Effect.andThen(endLatch.await),
             Effect.timeoutOption(config.entityTerminationTimeout),
             Effect.interruptible
@@ -531,6 +545,7 @@ export const make = Effect.fnUntraced(function*<
                 rpc,
                 message,
                 sentReply: false,
+                sentExit: false,
                 lastSentChunk: message.lastSentReply as any,
                 sequence: Option.match(message.lastSentReply, {
                   onNone: () => 0,
