@@ -5,6 +5,7 @@
  */
 import * as OpenApiGenerator from "@effect/openapi-generator/OpenApiGenerator"
 import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -14,6 +15,7 @@ import * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Path_ from "effect/Path"
 import * as Predicate from "effect/Predicate"
+import * as Record from "effect/Record"
 import type * as Schema from "effect/Schema"
 import type { DiscoveredProvider } from "./Discovery.ts"
 
@@ -90,16 +92,13 @@ export const CodeGenerator: Context.Service<CodeGenerator, CodeGenerator> = Cont
   "@effect/ai-codegen/CodeGenerator"
 )
 
-const isRecord = (u: unknown): u is { readonly [x: string]: unknown } =>
-  Predicate.isObjectOrArray(u) && !Array.isArray(u)
-
 /** A bare `{ "type": "string" }` branch - the open half of an open enum. */
 const isOpenStringBranch = (branch: unknown): boolean =>
-  isRecord(branch) && branch.type === "string" && Object.keys(branch).length === 1
+  Predicate.isObject(branch) && branch.type === "string" && Object.keys(branch).length === 1
 
 /** The value of a `{ "const": "..." }` branch, when it is a string const. */
 const constBranchValue = (branch: unknown): string | undefined =>
-  isRecord(branch) && Predicate.isString(branch.const) ? branch.const : undefined
+  Predicate.isObject(branch) && Predicate.isString(branch.const) ? branch.const : undefined
 
 /**
  * Collapse an open enum's const branches into a single `enum` branch.
@@ -133,17 +132,21 @@ const normalizeOpenEnum = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => 
 const isStringArray = (u: unknown): u is ReadonlyArray<string> => Array.isArray(u) && u.every(Predicate.isString)
 
 const requiredKey = (branch: unknown): string | undefined =>
-  isRecord(branch) && Object.keys(branch).length === 1 && isStringArray(branch.required) &&
+  Predicate.isObject(branch) && Object.keys(branch).length === 1 && isStringArray(branch.required) &&
     branch.required.length === 1
     ? branch.required[0]
     : undefined
 
-const choiceMode = (js: JsonSchema.JsonSchema): "anyOf" | "oneOf" | undefined =>
-  Array.isArray(js.oneOf)
-    ? (js.anyOf === undefined ? "oneOf" : undefined)
-    : Array.isArray(js.anyOf)
-    ? "anyOf"
-    : undefined
+const choiceMode = (js: JsonSchema.JsonSchema): "anyOf" | "oneOf" | undefined => {
+  if (Array.isArray(js.oneOf)) return js.anyOf === undefined ? "oneOf" : undefined
+  return Array.isArray(js.anyOf) ? "anyOf" : undefined
+}
+
+/** The choice keyword of a schema made only of that choice and annotations. */
+const bareChoice = (js: JsonSchema.JsonSchema): "anyOf" | "oneOf" | undefined => {
+  const mode = choiceMode(js)
+  return mode !== undefined && Object.keys(js).every((key) => key === mode || isAnnotation(key)) ? mode : undefined
+}
 
 const absent = (keys: ReadonlyArray<string>): JsonSchema.JsonSchema => ({
   properties: Object.fromEntries(keys.map((key) => [key, false]))
@@ -173,7 +176,7 @@ const negatedClassPattern = (not: { readonly [x: string]: unknown }): string | u
 /** Rewrites supported negations as positive constraints; leaves other forms for the importer to reject. */
 const rewriteNot = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   const not = js.not
-  if (!isRecord(not)) return js
+  if (!Predicate.isObject(not)) return js
   const { not: _, ...rest } = js
 
   const type = typeComplement(not, rest.type)
@@ -220,7 +223,7 @@ const definitionKey = ($ref: string): string | undefined => {
 }
 
 const isNullableMarker = (member: unknown): boolean =>
-  isRecord(member) && member.nullable === true && Object.keys(member).length === 1
+  Predicate.isObject(member) && member.nullable === true && Object.keys(member).length === 1
 
 /** Converts legacy `nullable: true` markers, including standalone `allOf` members, to null unions. */
 const rewriteNullable = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
@@ -228,12 +231,11 @@ const rewriteNullable = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   if (js.nullable !== true && !allOf?.some(isNullableMarker)) return js
   const { nullable: _, ...rest } = js
   const members = allOf?.filter((member) => !isNullableMarker(member))
-  const schema = members === undefined ? rest : members.length === 0 ? omitAllOf(rest) : { ...rest, allOf: members }
+  const { allOf: _allOf, ...base } = rest
+  const schema = members === undefined ? rest : members.length === 0 ? base : { ...base, allOf: members }
   const annotations = pick(schema, isAnnotation)
   return { ...annotations, anyOf: [pick(schema, (key) => !isAnnotation(key)), { type: "null" }] }
 }
-
-const omitAllOf = ({ allOf: _, ...rest }: JsonSchema.JsonSchema): JsonSchema.JsonSchema => rest
 
 const objectKeys = new Set(["type", "properties", "required", "additionalProperties"])
 const annotationKeys = new Set([
@@ -251,13 +253,13 @@ const annotationKeys = new Set([
 const isAnnotation = (key: string): boolean => annotationKeys.has(key) || key.startsWith("x-")
 
 const pick = (js: JsonSchema.JsonSchema, predicate: (key: string) => boolean): JsonSchema.JsonSchema =>
-  Object.fromEntries(Object.entries(js).filter(([key]) => predicate(key)))
+  Record.filter(js, (_, key) => predicate(key))
 
 /** Object constraints and annotations only; no typed `additionalProperties`. */
 const isPlainObject = (js: JsonSchema.JsonSchema): boolean =>
   (js.type === undefined || js.type === "object") &&
   (js.additionalProperties === undefined || Predicate.isBoolean(js.additionalProperties)) &&
-  (js.properties === undefined || isRecord(js.properties)) &&
+  (js.properties === undefined || Predicate.isObject(js.properties)) &&
   (js.required === undefined || isStringArray(js.required)) &&
   Object.keys(js).every((key) => objectKeys.has(key) || isAnnotation(key))
 
@@ -265,7 +267,7 @@ const excludesObject = (js: JsonSchema.JsonSchema): boolean =>
   Predicate.isString(js.type) ? js.type !== "object" : isStringArray(js.type) && !js.type.includes("object")
 
 const isObjectSchema = (js: JsonSchema.JsonSchema): boolean =>
-  js.type === "object" || (js.type === undefined && isPlainObject(js) && (js.properties ?? js.required) !== undefined)
+  js.type === "object" || (isPlainObject(js) && (js.properties ?? js.required) !== undefined)
 
 const declaredKeys = (js: JsonSchema.JsonSchema): ReadonlyArray<string> => [
   ...Object.keys((js.properties as object | undefined) ?? {}),
@@ -282,9 +284,7 @@ const mergeObjects = (left: JsonSchema.JsonSchema, right: JsonSchema.JsonSchema)
   const properties: { [x: string]: unknown } = { ...leftProperties }
   for (const [key, schema] of Object.entries(rightProperties)) {
     const current = properties[key]
-    properties[key] = current === undefined
-      ? left.additionalProperties === false ? false : schema
-      : JSON.stringify(current) === JSON.stringify(schema)
+    properties[key] = current === undefined || JSON.stringify(current) === JSON.stringify(schema)
       ? schema
       : current === false || schema === false
       ? false
@@ -298,7 +298,10 @@ const mergeObjects = (left: JsonSchema.JsonSchema, right: JsonSchema.JsonSchema)
       if (!Object.hasOwn(closedProperties, key)) properties[key] = false
     }
   }
-  const required = [...new Set([...(left.required as Array<string> ?? []), ...(right.required as Array<string> ?? [])])]
+  const required = Arr.union(
+    left.required as ReadonlyArray<string> ?? [],
+    right.required as ReadonlyArray<string> ?? []
+  )
   const additionalProperties = left.additionalProperties === false || right.additionalProperties === false
     ? false
     : left.additionalProperties ?? right.additionalProperties
@@ -318,18 +321,26 @@ type Choice = {
 
 type Part = { readonly _tag: "Object"; readonly schema: JsonSchema.JsonSchema } | Choice
 
+/** Object constraints do not apply to a non-object, which is dropped only when an object is required. */
+const withNonObject = (
+  nonObject: JsonSchema.JsonSchema,
+  other: JsonSchema.JsonSchema
+): ReadonlyArray<JsonSchema.JsonSchema> | undefined =>
+  isPlainObject(other) ? (other.type === "object" ? [] : [nonObject]) : undefined
+
 /** Intersects branches: `[]` for incompatible types, `undefined` if an exact merge is unsupported. */
 const mergeBranch = (
   object: JsonSchema.JsonSchema,
   branch: JsonSchema.JsonSchema
 ): ReadonlyArray<JsonSchema.JsonSchema> | undefined => {
-  if (excludesObject(object)) {
-    return excludesObject(branch) || !isPlainObject(branch) ? undefined : branch.type === "object" ? [] : [object]
-  }
-  if (excludesObject(branch)) return isPlainObject(object) ? (object.type === "object" ? [] : [branch]) : undefined
+  if (excludesObject(object)) return withNonObject(object, branch)
+  if (excludesObject(branch)) return withNonObject(branch, object)
   if (!isPlainObject(object) || !isPlainObject(branch)) return undefined
   return [{ ...pick(branch, isAnnotation), ...mergeObjects(object, branch) }]
 }
+
+const withBranches = (choice: Choice, branches: ReadonlyArray<JsonSchema.JsonSchema> | undefined): Part | undefined =>
+  branches === undefined ? undefined : { ...choice, branches }
 
 const mergeBranches = (
   branches: ReadonlyArray<JsonSchema.JsonSchema>,
@@ -346,8 +357,7 @@ const mergeBranches = (
 
 /** Applies object constraints to each branch, dropping non-objects only when an object is required. */
 const mergeIntoChoice = (object: JsonSchema.JsonSchema, choice: Choice): Part | undefined => {
-  const branches = mergeBranches(choice.branches, (branch) => mergeBranch(object, branch))
-  return branches === undefined ? undefined : { ...choice, branches }
+  return withBranches(choice, mergeBranches(choice.branches, (branch) => mergeBranch(object, branch)))
 }
 
 /**
@@ -358,28 +368,30 @@ const mergeChoices = (left: Choice, right: Choice): Part | undefined => {
   if (right.branches.length === 1 && isPlainObject(right.branches[0])) return mergeIntoChoice(right.branches[0], left)
   if (left.branches.length === 1 && isPlainObject(left.branches[0])) return mergeIntoChoice(left.branches[0], right)
   if (left.mode === "anyOf" && right.mode === "anyOf") {
-    const branches = mergeBranches(
-      left.branches,
-      (outer) => mergeBranches(right.branches, (inner) => mergeBranch(outer, inner))
+    return withBranches(
+      left,
+      mergeBranches(left.branches, (outer) => mergeBranches(right.branches, (inner) => mergeBranch(outer, inner)))
     )
-    return branches === undefined ? undefined : { ...left, branches }
   }
   const [outer, inner] = left.mode === "oneOf" ? [left, right] : [right, left]
-  const branches = mergeBranches(outer.branches, (branch) => {
-    const nested = mergeBranches(inner.branches, (alternative) => mergeBranch(alternative, branch))
-    return nested === undefined ? undefined : [{ ...pick(branch, isAnnotation), [inner.mode]: nested }]
-  })
-  return branches === undefined ? undefined : { ...outer, branches }
+  return withBranches(
+    outer,
+    mergeBranches(outer.branches, (branch) => {
+      const nested = mergeBranches(inner.branches, (alternative) => mergeBranch(alternative, branch))
+      return nested === undefined ? undefined : [{ ...pick(branch, isAnnotation), [inner.mode]: nested }]
+    })
+  )
 }
 
-const mergeParts = (left: Part, right: Part): Part | undefined =>
-  left._tag === "Object"
-    ? right._tag === "Object"
+const mergeParts = (left: Part, right: Part): Part | undefined => {
+  if (left._tag === "Object") {
+    return right._tag === "Object"
       ? { _tag: "Object", schema: mergeObjects(left.schema, right.schema) }
       : mergeIntoChoice(left.schema, right)
-    : right._tag === "Object"
-    ? mergeIntoChoice(right.schema, left)
-    : mergeChoices(left, right)
+  }
+  if (right._tag === "Object") return mergeIntoChoice(right.schema, left)
+  return mergeChoices(left, right)
+}
 
 /**
  * Merges object compositions before automatic closing, distributes constraints into choices,
@@ -392,7 +404,7 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
     rewriteNot(rewriteConditional(rewriteNullable(js)))
 
   const dereference = (member: unknown): JsonSchema.JsonSchema | undefined => {
-    if (!isRecord(member)) return undefined
+    if (!Predicate.isObject(member)) return undefined
     if (!Predicate.isString(member.$ref)) return compose(prepare(member))
     const { $ref, ...siblings } = member
     const key = definitionKey($ref)
@@ -411,8 +423,8 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
     const schema = dereference(member)
     if (schema === undefined) return undefined
     if (isPlainObject(schema)) return { _tag: "Object", schema }
-    const mode = choiceMode(schema)
-    if (mode === undefined || !Object.keys(schema).every((key) => key === mode || isAnnotation(key))) return undefined
+    const mode = bareChoice(schema)
+    if (mode === undefined) return undefined
     const branches: Array<JsonSchema.JsonSchema> = []
     for (const branch of schema[mode] as ReadonlyArray<unknown>) {
       const resolved = dereference(branch)
@@ -423,19 +435,18 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
   }
 
   const compose = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-    const allOf = Array.isArray(js.allOf) ? js.allOf : []
-    const { allOf: _allOf, anyOf, oneOf, ...rest } = js
-    if (!isPlainObject(rest)) return js
-    const own = pick(rest, (key) => objectKeys.has(key))
-    const hasOwn = own.properties !== undefined || own.required !== undefined
     // Sibling choices must both hold.
     const members = [
-      ...allOf,
-      ...(Array.isArray(anyOf) ? [{ anyOf }] : []),
-      ...(Array.isArray(oneOf) ? [{ oneOf }] : [])
+      ...(Array.isArray(js.allOf) ? js.allOf : []),
+      ...(Array.isArray(js.anyOf) ? [{ anyOf: js.anyOf }] : []),
+      ...(Array.isArray(js.oneOf) ? [{ oneOf: js.oneOf }] : [])
     ]
+    const hasOwn = js.properties !== undefined || js.required !== undefined
     // Preserve references when no intersection is needed.
     if ((hasOwn ? 1 : 0) + members.length < 2) return js
+    const { allOf: _allOf, anyOf: _anyOf, oneOf: _oneOf, ...rest } = js
+    if (!isPlainObject(rest)) return js
+    const own = pick(rest, (key) => objectKeys.has(key))
     let part: Part = { _tag: "Object", schema: own }
     for (const member of members) {
       const next = toPart(member)
@@ -450,10 +461,10 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
   }
 
   const dropRedundantObjectType = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-    const mode = choiceMode(js)
-    if (mode === undefined || js.type !== "object") return js
+    if (js.type !== "object") return js
     const { type: _, ...rest } = js
-    if (!Object.keys(rest).every((key) => key === mode || isAnnotation(key))) return js
+    const mode = bareChoice(rest)
+    if (mode === undefined) return js
     const branches = rest[mode] as ReadonlyArray<unknown>
     return branches.every((branch) => {
         const resolved = dereference(branch)
@@ -468,16 +479,17 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
 
 /** Resolves component schemas using the same dialect conversion as the OpenAPI generator. */
 const makeResolver = (spec: Schema.Json) => {
-  const components = isRecord(spec) && isRecord(spec.components) && isRecord(spec.components.schemas)
-    ? spec.components.schemas
-    : {}
-  const openapi = isRecord(spec) && Predicate.isString(spec.openapi) ? spec.openapi : ""
+  const components =
+    Predicate.isObject(spec) && Predicate.isObject(spec.components) && Predicate.isObject(spec.components.schemas)
+      ? spec.components.schemas
+      : {}
+  const openapi = Predicate.isObject(spec) && Predicate.isString(spec.openapi) ? spec.openapi : ""
   const convert = openapi.trim().startsWith("3.0") ? JsonSchema.fromSchemaOpenApi3_0 : JsonSchema.fromSchemaOpenApi3_1
   const cache = new Map<string, JsonSchema.JsonSchema | undefined>()
   return (key: string): JsonSchema.JsonSchema | undefined => {
     if (!cache.has(key)) {
       const definition = Object.hasOwn(components, key) ? components[key] : undefined
-      cache.set(key, isRecord(definition) ? convert(definition).schema : undefined)
+      cache.set(key, Predicate.isObject(definition) ? convert(definition).schema : undefined)
     }
     return cache.get(key)
   }
@@ -486,9 +498,20 @@ const makeResolver = (spec: Schema.Json) => {
 /** Keep free-form objects open and close compositions only after normalization. */
 const shouldClose = (js: JsonSchema.JsonSchema): boolean =>
   js.type === "object" &&
-  isRecord(js.properties) && Object.keys(js.properties).length > 0 &&
+  Predicate.isObject(js.properties) && Object.keys(js.properties).length > 0 &&
   js.additionalProperties === undefined &&
   js.allOf === undefined && js.anyOf === undefined && js.oneOf === undefined
+
+/** Closes an object, declaring any required keys it leaves undeclared so they stay valid. */
+const closeObject = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+  const properties = js.properties as { readonly [x: string]: unknown }
+  const undeclared = isStringArray(js.required) ? js.required.filter((key) => !Object.hasOwn(properties, key)) : []
+  return {
+    ...js,
+    properties: { ...properties, ...Object.fromEntries(undeclared.map((key) => [key, {}])) },
+    additionalProperties: false
+  }
+}
 
 /**
  * Layer providing the CodeGenerator service.
@@ -550,18 +573,7 @@ export const layer: Layer.Layer<
       if (exclude) {
         for (const key of exclude) delete out[key]
       }
-      if (disableAdditionalProperties && shouldClose(out)) {
-        out.additionalProperties = false
-        // Keep undeclared required keys valid when closing the object.
-        const properties = out.properties as { readonly [x: string]: unknown }
-        const undeclared = isStringArray(out.required)
-          ? out.required.filter((key) => !Object.hasOwn(properties, key))
-          : []
-        if (undeclared.length > 0) {
-          out.properties = { ...properties, ...Object.fromEntries(undeclared.map((key) => [key, {}])) }
-        }
-      }
-      return out
+      return disableAdditionalProperties && shouldClose(out) ? closeObject(out) : out
     }
 
     return yield* openApiGen
