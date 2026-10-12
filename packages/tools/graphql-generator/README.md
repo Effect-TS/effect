@@ -219,6 +219,10 @@ import { Effect, Stream } from "effect"
 import { GraphQLClient } from "effect/graphql"
 
 export const recentIssues = Effect.fn("recentIssues")(function*(maxPages: number) {
+  // `Stream.take(0)` reads nothing, which would look like a complete read
+  if (!Number.isInteger(maxPages) || maxPages < 1) {
+    return yield* Effect.die(new RangeError(`maxPages must be a positive integer, got ${maxPages}`))
+  }
   const github = yield* GitHub
   const pages = yield* GraphQLClient.pages(github.RepoIssues, {
     variables: { owner: "Effect-TS", name: "effect" },
@@ -389,9 +393,10 @@ to the same JSON share a slice. A batch holds 10 slices unless you pipe
 `RequestResolver.batchN`, because GitHub's query cost and timeouts grow with
 its size.
 
-A non-null root field fails every slice when an error happens under it, since
-the `null` reaches `data`. GitHub's `repository` and `pullRequest` are
-nullable, so they don't. Middleware that hash the query should hash
+An error fails every slice when the root field and every field down to the
+error are non-null, since the `null` reaches `data`. One nullable field on
+the way keeps it inside the slice. GitHub's `repository` and `pullRequest`
+are both nullable. Middleware that hash the query should hash
 `request.query`, which holds the batched document, and allowlists of trusted
 documents can't cover batches.
 
@@ -493,21 +498,31 @@ export const firstPage = Effect.gen(function*() {
 ```
 
 `Stream.retry` on `pages` or `items` starts again from the first page. To
-retry only the page that timed out, repeat the call in a middleware. `next`
-returns the 502 or 504 as a result, so repeat on its `status`:
+retry only the page that timed out, repeat the call in a middleware. A
+timeout with a GraphQL body reaches the middleware as a result of `next`, and
+one without fails `next` with a `TransportError`, so check the `status` of
+both:
 
 ```ts
-import { Effect, Layer, Schedule } from "effect"
-import { GraphQLMiddleware } from "effect/graphql"
+import { Effect, Layer, Result, Schedule } from "effect"
+import { type GraphQLClientError, GraphQLMiddleware, type GraphQLProtocol } from "effect/graphql"
+
+const timedOut = (
+  outcome: Result.Result<GraphQLProtocol.ExecutionResult, GraphQLClientError.GraphQLClientError>
+) => {
+  const isTimeout = (status: number | undefined) => status === 502 || status === 504
+  if (Result.isSuccess(outcome)) return isTimeout(outcome.success.status)
+  const reason = outcome.failure.reason
+  return reason._tag === "TransportError" && isTimeout(reason.status)
+}
 
 export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("app/RetryTimeouts") {
   static readonly layer = Layer.succeed(RetryTimeouts, {
     execute: ({ next, request }) =>
-      Effect.repeat(next(request), {
-        while: (result) => result.status === 502 || result.status === 504,
-        schedule: Schedule.exponential("1 second"),
-        times: 3
-      }),
+      Effect.result(next(request)).pipe(
+        Effect.repeat({ while: timedOut, schedule: Schedule.exponential("1 second"), times: 3 }),
+        Effect.flatMap(Effect.fromResult)
+      ),
     subscribe: ({ next, request }) => next(request)
   })
 }
