@@ -692,6 +692,12 @@ const make = Effect.gen(function*() {
   const storageReadLatch = yield* Latch.make(true)
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
 
+  type PendingNotification = {
+    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
+    readonly message: Message.IncomingRequest<any>
+  }
+  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
+
   const storageReadLock = Semaphore.makeUnsafe(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
 
@@ -724,6 +730,124 @@ const make = Effect.gen(function*() {
 
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
+
+    // Resume unprocessed messages for entities that reached a full mailbox.
+    const entityResumptionState = MutableHashMap.empty<EntityAddress, {
+      unprocessed: Set<Snowflake.Snowflake>
+      interrupts: Map<Snowflake.Snowflake, Message.IncomingEnvelope>
+    }>()
+    const resumeEntityFromStorage = (lastReceivedMessage: Message.IncomingRequest<any>) => {
+      const address = lastReceivedMessage.envelope.address
+      const resumptionState = MutableHashMap.get(entityResumptionState, address)
+      if (Option.isSome(resumptionState)) {
+        resumptionState.value.unprocessed.add(lastReceivedMessage.envelope.requestId)
+        return Effect.void
+      }
+      MutableHashMap.set(entityResumptionState, address, {
+        unprocessed: new Set([lastReceivedMessage.envelope.requestId]),
+        interrupts: new Map()
+      })
+      return resumeEntityFromStorageImpl(address)
+    }
+    const resumeEntityFromStorageImpl = Effect.fnUntraced(
+      function*(address: EntityAddress) {
+        const state = entityManagers.get(address.entityType)
+        if (!state) {
+          MutableHashMap.remove(entityResumptionState, address)
+          return
+        }
+
+        const resumptionState = Option.getOrThrow(MutableHashMap.get(entityResumptionState, address))
+        let done = false
+
+        while (!done) { // oxlint-disable-line no-unmodified-loop-condition
+          // if the shard is no longer assigned to this runner, we stop
+          if (!MutableHashSet.has(acquiredShards, address.shardId)) {
+            return
+          }
+
+          // take a batch of unprocessed messages ids
+          const messageIds = Arr.empty<Snowflake.Snowflake>()
+          for (const id of resumptionState.unprocessed) {
+            if (messageIds.length === 1024) break
+            messageIds.push(id)
+          }
+
+          const messages = yield* storage.unprocessedMessagesById(messageIds)
+
+          // this should not happen, but we handle it just in case
+          if (messages.length === 0) {
+            yield* Effect.sleep(config.entityMessagePollInterval)
+            continue
+          }
+
+          let index = 0
+
+          const sendWithRetry: Effect.Effect<
+            void,
+            EntityNotAssignedToRunner
+          > = Effect.catchTags(
+            Effect.suspend(() => {
+              if (!MutableHashSet.has(acquiredShards, address.shardId)) {
+                return Effect.fail(new EntityNotAssignedToRunner({ address }))
+              }
+
+              const message = messages[index]
+              // check if this is a request that was interrupted
+              const interrupt = message._tag === "IncomingRequest" &&
+                resumptionState.interrupts.get(message.envelope.requestId)
+              return interrupt ?
+                Effect.flatMap(state.manager.send(message), () => {
+                  resumptionState.interrupts.delete(message.envelope.requestId)
+                  return state.manager.send(interrupt)
+                }) :
+                state.manager.send(message)
+            }),
+            {
+              MailboxFull: () => Effect.delay(sendWithRetry, config.sendRetryInterval),
+              AlreadyProcessingMessage: () => Effect.void
+            }
+          )
+
+          yield* Effect.whileLoop({
+            while: () => index < messages.length,
+            body: constant(sendWithRetry),
+            step: () => index++
+          })
+
+          for (const id of messageIds) {
+            resumptionState.unprocessed.delete(id)
+          }
+          if (resumptionState.unprocessed.size > 0) continue
+
+          // if we have caught up to the main storage loop, we let it take over
+          yield* withStorageReadLock(Effect.sync(() => {
+            if (resumptionState.unprocessed.size === 0) {
+              MutableHashMap.remove(entityResumptionState, address)
+              done = true
+            }
+          }))
+        }
+      },
+      Effect.retry({
+        while: (e) => e._tag === "PersistenceError",
+        schedule: Schedule.spaced(config.entityMessagePollInterval)
+      }),
+      Effect.catchCause((cause) => Effect.logDebug("Could not resume unprocessed messages", cause)),
+      (effect, address) =>
+        Effect.annotateLogs(effect, {
+          module: "effect/cluster/Sharding",
+          fiber: "Resuming unprocessed messages",
+          runner: selfAddress,
+          entity: address
+        }),
+      (effect, address) =>
+        Effect.ensuring(
+          effect,
+          Effect.sync(() => MutableHashMap.remove(entityResumptionState, address))
+        ),
+      Effect.forkIn(shardingScope)
+    )
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -992,124 +1116,6 @@ const make = Effect.gen(function*() {
       Effect.forever,
       Effect.forkIn(shardingScope)
     )
-
-    // Resume unprocessed messages for entities that reached a full mailbox.
-    const entityResumptionState = MutableHashMap.empty<EntityAddress, {
-      unprocessed: Set<Snowflake.Snowflake>
-      interrupts: Map<Snowflake.Snowflake, Message.IncomingEnvelope>
-    }>()
-    const resumeEntityFromStorage = (lastReceivedMessage: Message.IncomingRequest<any>) => {
-      const address = lastReceivedMessage.envelope.address
-      const resumptionState = MutableHashMap.get(entityResumptionState, address)
-      if (Option.isSome(resumptionState)) {
-        resumptionState.value.unprocessed.add(lastReceivedMessage.envelope.requestId)
-        return Effect.void
-      }
-      MutableHashMap.set(entityResumptionState, address, {
-        unprocessed: new Set([lastReceivedMessage.envelope.requestId]),
-        interrupts: new Map()
-      })
-      return resumeEntityFromStorageImpl(address)
-    }
-    const resumeEntityFromStorageImpl = Effect.fnUntraced(
-      function*(address: EntityAddress) {
-        const state = entityManagers.get(address.entityType)
-        if (!state) {
-          MutableHashMap.remove(entityResumptionState, address)
-          return
-        }
-
-        const resumptionState = Option.getOrThrow(MutableHashMap.get(entityResumptionState, address))
-        let done = false
-
-        while (!done) { // oxlint-disable-line no-unmodified-loop-condition
-          // if the shard is no longer assigned to this runner, we stop
-          if (!MutableHashSet.has(acquiredShards, address.shardId)) {
-            return
-          }
-
-          // take a batch of unprocessed messages ids
-          const messageIds = Arr.empty<Snowflake.Snowflake>()
-          for (const id of resumptionState.unprocessed) {
-            if (messageIds.length === 1024) break
-            messageIds.push(id)
-          }
-
-          const messages = yield* storage.unprocessedMessagesById(messageIds)
-
-          // this should not happen, but we handle it just in case
-          if (messages.length === 0) {
-            yield* Effect.sleep(config.entityMessagePollInterval)
-            continue
-          }
-
-          let index = 0
-
-          const sendWithRetry: Effect.Effect<
-            void,
-            EntityNotAssignedToRunner
-          > = Effect.catchTags(
-            Effect.suspend(() => {
-              if (!MutableHashSet.has(acquiredShards, address.shardId)) {
-                return Effect.fail(new EntityNotAssignedToRunner({ address }))
-              }
-
-              const message = messages[index]
-              // check if this is a request that was interrupted
-              const interrupt = message._tag === "IncomingRequest" &&
-                resumptionState.interrupts.get(message.envelope.requestId)
-              return interrupt ?
-                Effect.flatMap(state.manager.send(message), () => {
-                  resumptionState.interrupts.delete(message.envelope.requestId)
-                  return state.manager.send(interrupt)
-                }) :
-                state.manager.send(message)
-            }),
-            {
-              MailboxFull: () => Effect.delay(sendWithRetry, config.sendRetryInterval),
-              AlreadyProcessingMessage: () => Effect.void
-            }
-          )
-
-          yield* Effect.whileLoop({
-            while: () => index < messages.length,
-            body: constant(sendWithRetry),
-            step: () => index++
-          })
-
-          for (const id of messageIds) {
-            resumptionState.unprocessed.delete(id)
-          }
-          if (resumptionState.unprocessed.size > 0) continue
-
-          // if we have caught up to the main storage loop, we let it take over
-          yield* withStorageReadLock(Effect.sync(() => {
-            if (resumptionState.unprocessed.size === 0) {
-              MutableHashMap.remove(entityResumptionState, address)
-              done = true
-            }
-          }))
-        }
-      },
-      Effect.retry({
-        while: (e) => e._tag === "PersistenceError",
-        schedule: Schedule.spaced(config.entityMessagePollInterval)
-      }),
-      Effect.catchCause((cause) => Effect.logDebug("Could not resume unprocessed messages", cause)),
-      (effect, address) =>
-        Effect.annotateLogs(effect, {
-          module: "effect/cluster/Sharding",
-          fiber: "Resuming unprocessed messages",
-          runner: selfAddress,
-          entity: address
-        }),
-      (effect, address) =>
-        Effect.ensuring(
-          effect,
-          Effect.sync(() => MutableHashMap.remove(entityResumptionState, address))
-        ),
-      Effect.forkIn(shardingScope)
-    )
   }
 
   // --- Sending messages ---
@@ -1150,11 +1156,6 @@ const make = Effect.gen(function*() {
     return isRequest ? Effect.andThen(awaitShardLock(address.shardId), send) : send
   }
 
-  type PendingNotification = {
-    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
-    readonly message: Message.IncomingRequest<any>
-  }
-  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
   const notifyLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
     message: M,
     discard: boolean,
