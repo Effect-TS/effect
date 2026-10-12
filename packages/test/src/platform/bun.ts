@@ -4,9 +4,9 @@ import * as BunServices from "@effect/platform-bun/BunServices"
 import * as BunWorker from "@effect/platform-bun/BunWorker"
 import * as BunWorkerRunner from "@effect/platform-bun/BunWorkerRunner"
 import * as Layer from "effect/Layer"
-import type { Platform } from "../Platform.ts"
+import { moduleUrl, type Platform } from "../Platform.ts"
 
-const executor = new URL("../executor-worker.ts", import.meta.url)
+const executor = moduleUrl("../executor-worker", import.meta.url)
 
 export const platform: Platform = {
   runtime: "bun",

@@ -19,6 +19,14 @@ export interface Platform {
   readonly runMain: <E, A>(effect: Effect.Effect<A, E>) => void
 }
 
+/**
+ * URL of the module at `path` (no extension) relative to `base`, with the extension `base`
+ * itself was loaded with: `.ts` when running from source, `.js` once built. The build
+ * rewrites `.ts` in `import()` specifiers, but not in plain file URLs like this one.
+ */
+export const moduleUrl = (path: string, base: string): URL =>
+  new URL(`${path}${base.endsWith(".ts") ? ".ts" : ".js"}`, base)
+
 export const detect = (): Runtime => "Bun" in globalThis ? "bun" : "Deno" in globalThis ? "deno" : "node"
 
 /** The current runtime's platform. Only its module is imported. */

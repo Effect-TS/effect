@@ -12,7 +12,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { executorPool, run } from "./Coordinator.ts"
-import { detect } from "./Platform.ts"
+import { detect, moduleUrl } from "./Platform.ts"
 import * as Reporters from "./Reporters.ts"
 import { isConfig } from "./Test.ts"
 
@@ -95,7 +95,7 @@ const useConfig = Effect.fnUntraced(function*(file: string | undefined) {
   return resolved
 })
 
-const bin = path.relative(process.cwd(), fileURLToPath(new URL("./bin.ts", import.meta.url)))
+const bin = path.relative(process.cwd(), fileURLToPath(moduleUrl("./bin", import.meta.url)))
 /** How to start the CLI again on the runtime we are on, for rerun hints. */
 const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
 

@@ -5,9 +5,9 @@ import * as NodeWorker from "@effect/platform-node/NodeWorker"
 import * as NodeWorkerRunner from "@effect/platform-node/NodeWorkerRunner"
 import * as Layer from "effect/Layer"
 import { Worker } from "node:worker_threads"
-import type { Platform } from "../Platform.ts"
+import { moduleUrl, type Platform } from "../Platform.ts"
 
-const executor = new URL("../executor-worker.ts", import.meta.url)
+const executor = moduleUrl("../executor-worker", import.meta.url)
 
 export const platform: Platform = {
   runtime: "node",
