@@ -273,10 +273,15 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 
   // Processing state
   let isFirstChunk: boolean
-  let buffer: string
-  let startingPosition: number
-  let startingFieldLength: number
+  // Pieces of a line that has not been terminated yet. They are joined once
+  // the line ends, so a long line split across many chunks is only copied
+  // once instead of on every chunk.
+  let pending: Array<string>
+  let pendingLength: number
+  let pendingFieldLength: number
   let discardTrailingNewline: boolean
+  // Bumped by `reset`, so `feed` can stop when `onParse` resets the parser
+  let generation = 0
 
   // Event state
   let lastEventId: string | undefined
@@ -287,10 +292,11 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   return { feed, reset }
 
   function reset(): void {
+    generation++
     isFirstChunk = true
-    buffer = ""
-    startingPosition = 0
-    startingFieldLength = -1
+    pending = []
+    pendingLength = 0
+    pendingFieldLength = -1
     discardTrailingNewline = false
 
     lastEventId = undefined
@@ -299,75 +305,74 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   }
 
   function feed(chunk: string): SseError | undefined {
-    buffer = buffer ? buffer + chunk : chunk
-
     // Strip any UTF-8 byte order mark (BOM) at the start of the stream.
     // Note that we do not strip any non - UTF8 BOM, as eventsource streams are
     // always decoded as UTF8 as per the specification.
-    if (isFirstChunk && buffer.startsWith(BOM)) {
-      buffer = buffer.slice(BOM.length)
+    if (isFirstChunk && chunk.startsWith(BOM)) {
+      chunk = chunk.slice(BOM.length)
     }
 
     isFirstChunk = false
 
-    // Set up chunk-specific processing state
-    const length = buffer.length
+    const length = chunk.length
+    const currentGeneration = generation
     let position = 0
 
-    // Read the current buffer byte by byte
+    // Only the new chunk is scanned, pending pieces are never read again
     while (position < length) {
       // EventSource allows for carriage return + line feed, which means we
       // need to ignore a linefeed character if the previous character was a
-      // carriage return
-      // @todo refactor to reduce nesting, consider checking previous byte?
-      // @todo but consider multiple chunks etc
+      // carriage return, which may have been at the end of the previous chunk
       if (discardTrailingNewline) {
-        if (buffer[position] === "\n") {
-          ++position
-        }
         discardTrailingNewline = false
-      }
-
-      let lineLength = -1
-      let fieldLength = startingFieldLength
-      let character: string
-
-      for (let index = position + startingPosition; lineLength < 0 && index < length; ++index) {
-        character = buffer[index]
-        if (character === ":" && fieldLength < 0) {
-          fieldLength = index - position
-        } else if (character === "\r") {
-          discardTrailingNewline = true
-          lineLength = index - position
-        } else if (character === "\n") {
-          lineLength = index - position
+        if (chunk.charCodeAt(position) === LF) {
+          ++position
+          continue
         }
       }
 
-      if (lineLength < 0) {
-        startingPosition = length - position
-        startingFieldLength = fieldLength
-        break
-      } else {
-        startingPosition = 0
-        startingFieldLength = -1
+      let lineEnd = -1
+      let fieldLength = pendingFieldLength
+
+      for (let index = position; index < length; ++index) {
+        const code = chunk.charCodeAt(index)
+        if (code === CR || code === LF) {
+          lineEnd = index
+          break
+        } else if (code === COLON && fieldLength < 0) {
+          fieldLength = pendingLength + index - position
+        }
       }
 
-      parseEventStreamLine(buffer, position, fieldLength, lineLength)
+      if (lineEnd < 0) {
+        pending.push(chunk.slice(position))
+        pendingLength += length - position
+        pendingFieldLength = fieldLength
+        break
+      }
 
-      position += lineLength + 1
+      discardTrailingNewline = chunk.charCodeAt(lineEnd) === CR
+
+      if (pending.length === 0) {
+        parseEventStreamLine(chunk, position, fieldLength, lineEnd - position)
+      } else {
+        pending.push(chunk.slice(position, lineEnd))
+        const line = pending.join("")
+        pending = []
+        pendingLength = 0
+        pendingFieldLength = -1
+        parseEventStreamLine(line, 0, fieldLength, line.length)
+      }
+
+      if (generation !== currentGeneration) {
+        // `onParse` reset the parser, the rest of this chunk belongs to the old stream
+        return
+      }
+
+      position = lineEnd + 1
     }
 
-    if (position === length) {
-      // If we consumed the entire buffer to read the event, reset the buffer
-      buffer = ""
-    } else if (position > 0) {
-      // If there are bytes left to process, set the buffer to the unprocessed
-      // portion of the buffer only
-      buffer = buffer.slice(position)
-    }
-
-    if (buffer.length + data.length > maxEventSize) {
+    if (pendingLength + data.length > maxEventSize) {
       const error = new SseError({ reason: new EventTooLarge({ maxEventSize }) })
       reset()
       return error
@@ -425,6 +430,9 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 }
 
 const BOM = "\uFEFF"
+const LF = 10
+const CR = 13
+const COLON = 58
 
 /**
  * Stateful Server-Sent Events parser returned by `makeParser`.

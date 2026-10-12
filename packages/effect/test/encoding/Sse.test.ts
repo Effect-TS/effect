@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Stream } from "effect"
+import { Duration, Effect, Stream } from "effect"
 import * as Sse from "effect/encoding/Sse"
 import * as Schema from "effect/Schema"
 
@@ -89,6 +89,65 @@ describe("Sse", () => {
     assert.strictEqual((events[0] as Sse.Event).event, "message")
   })
 
+  it("parses the same events wherever a stream is split into chunks", () => {
+    const input = "id: 1\r\nevent: up\rdata: a:b\ndata\n\n:comment\nretry: 5\r\ndata:  x\r\n\r\ndata: y\n\n"
+    const expected: Array<Sse.AnyEvent> = [
+      { _tag: "Event", event: "up", id: "1", data: "a:b\n" },
+      new Sse.Retry({ duration: Duration.millis(5), lastEventId: "1" }),
+      { _tag: "Event", event: "message", id: "1", data: " x" },
+      { _tag: "Event", event: "message", id: "1", data: "y" }
+    ]
+
+    for (let i = 0; i < input.length; i++) {
+      for (let j = i; j < input.length; j++) {
+        const events: Array<Sse.AnyEvent> = []
+        const parser = Sse.makeParser((event) => events.push(event))
+        parser.feed(input.slice(0, i))
+        parser.feed(input.slice(i, j))
+        parser.feed(input.slice(j))
+        assert.deepStrictEqual(events, expected)
+      }
+    }
+  })
+
+  it("parses a long line split across many chunks", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+    const value = "x".repeat(10_000)
+    const input = `event: big\ndata: ${value}\n\n`
+
+    for (let i = 0; i < input.length; i += 7) {
+      parser.feed(input.slice(i, i + 7))
+    }
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "big",
+      id: undefined,
+      data: value
+    }])
+  })
+
+  it("discards buffered input on reset", () => {
+    const events: Array<string> = []
+    const parser = Sse.makeParser((event) => {
+      if (event._tag === "Event") {
+        events.push(event.data)
+        if (event.data === "a") parser.reset()
+      }
+    })
+
+    // a reset from the callback drops the rest of the chunk
+    parser.feed("data: a\n\ndata: b\n\nda")
+    parser.feed("ta: c\n\n")
+    // a reset between chunks drops a partial line
+    parser.feed("da")
+    parser.reset()
+    parser.feed("ta: d\n\ndata: e\n\n")
+
+    assert.deepStrictEqual(events, ["a", "e"])
+  })
+
   it("ignores retry values that are not ASCII digits", () => {
     const events: Array<Sse.AnyEvent> = []
     for (const value of ["123x", "+123", "-123", "1.5"]) {
@@ -166,6 +225,21 @@ describe("Sse", () => {
       assert.instanceOf(error.reason, Sse.EventTooLarge)
       assert.strictEqual(error.reason.maxEventSize, 4)
     }))
+
+  it("fails when an unterminated line split across chunks exceeds maxEventSize", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event), { maxEventSize: 4 })
+
+    assert.isUndefined(parser.feed("12"))
+    assert.isUndefined(parser.feed("34"))
+    const error = parser.feed("5")
+    assert.instanceOf(error, Sse.SseError)
+    assert.instanceOf(error.reason, Sse.EventTooLarge)
+
+    // the parser starts over after the error
+    assert.isUndefined(parser.feed("\uFEFFdata: x\n\n"))
+    assert.deepStrictEqual(events, [{ _tag: "Event", event: "message", id: undefined, data: "x" }])
+  })
 
   it.effect("fails when pending data exceeds maxEventSize", () =>
     Effect.gen(function*() {
