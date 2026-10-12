@@ -545,17 +545,19 @@ const timedOut = (outcome: Outcome) => {
   return status === 502 || status === 504
 }
 
-// A result's headers are raw; this reads `retry-after` in seconds, the form
-// GitHub sends, and falls back to the backoff for an HTTP date
-const retryAfter = (outcome: Outcome) => {
+// A result's headers are raw, so read `retry-after` as seconds or an HTTP
+// date, as the client does for errors
+const retryAfter = (outcome: Outcome, now: number) => {
   if (Result.isFailure(outcome)) return outcome.failure.retryAfter
-  const seconds = Number(outcome.success.headers?.["retry-after"] ?? Number.NaN)
-  return Number.isFinite(seconds) ? Duration.seconds(seconds) : undefined
+  const value = outcome.success.headers?.["retry-after"]?.trim()
+  if (value === undefined) return undefined
+  const millis = /^\d+$/.test(value) ? Number(value) * 1000 : Date.parse(value) - now
+  return Number.isNaN(millis) ? undefined : Duration.millis(Math.max(0, millis))
 }
 
 const timeoutRetry = Schedule.exponential("1 second").pipe(
   Schedule.setInputType<Outcome>(),
-  Schedule.modifyDelay(({ duration, input }) => Effect.succeed(retryAfter(input) ?? duration))
+  Schedule.modifyDelay(({ duration, input, now }) => Effect.succeed(retryAfter(input, now) ?? duration))
 )
 
 export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("app/RetryTimeouts") {
