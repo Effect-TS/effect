@@ -21,8 +21,7 @@ import type * as Ast from "./Ast.ts"
  * Prints an executable document compactly. Throws on type-system definitions
  * and extensions, which are outside the contract.
  */
-export const print = (document: Ast.Document): string =>
-  concatAll(document.definitions.map((definition) => printDefinition(definition)))
+export const print = (document: Ast.Document): string => concatAll(document.definitions.map(printDefinition))
 
 /**
  * Surrounds a name printed as a template placeholder. Names can't contain it

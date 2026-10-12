@@ -1591,28 +1591,24 @@ const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string)
   )
 
 /** A string or string array literal. */
-const literal = (value: unknown): string =>
-  Array.isArray(value) ? `[${value.map((item) => JSON.stringify(item)).join(", ")}]` : JSON.stringify(value)
+const literal = (value: string | ReadonlyArray<string>): string =>
+  typeof value === "string" ? JSON.stringify(value) : `[${value.map((item) => JSON.stringify(item)).join(", ")}]`
 
-/** A `DocumentTemplate` literal, one entry per line. */
-const emitTemplate = (documentTemplate: GraphQL.DocumentTemplate): string => {
-  const list = (key: string, entries: ReadonlyArray<string>) =>
-    entries.length === 0
-      ? [`    ${key}: []`]
-      : [`    ${key}: [`, entries.map((entry) => `      ${entry}`).join(",\n"), "    ]"]
-  const entry = (fields: Readonly<Record<string, unknown>>) =>
-    `{ ${
-      Object.entries(fields).flatMap(([key, value]) => value === undefined ? [] : [`${key}: ${literal(value)}`])
-        .join(", ")
-    } }`
+/** A `DocumentTemplate` literal with one line per entry, keys in the order `Printer.template` builds them. */
+const emitTemplate = ({ directives, fragments, selections, variables }: GraphQL.DocumentTemplate): string => {
+  const list = (key: string, entries: ReadonlyArray<object>) =>
+    entries.length === 0 ?
+      `    ${key}: []` :
+      `    ${key}: [\n${
+        entries.map((entry) =>
+          `      { ${Object.entries(entry).map(([name, value]) => `${name}: ${literal(value)}`).join(", ")} }`
+        ).join(",\n")
+      }\n    ]`
   const fields = [
-    list("variables", documentTemplate.variables.map(({ body, name }) => entry({ name, body }))),
-    ...(documentTemplate.directives === undefined ? [] : [[`    directives: ${literal(documentTemplate.directives)}`]]),
-    list(
-      "selections",
-      documentTemplate.selections.map(({ alias, body, name }) => entry({ alias, name, body }))
-    ),
-    list("fragments", documentTemplate.fragments.map(({ body, name }) => entry({ name, body })))
+    list("variables", variables),
+    ...(directives === undefined ? [] : [`    directives: ${literal(directives)}`]),
+    list("selections", selections),
+    list("fragments", fragments)
   ]
-  return `{\n${fields.map((lines) => lines.join("\n")).join(",\n")}\n  }`
+  return `{\n${fields.join(",\n")}\n  }`
 }

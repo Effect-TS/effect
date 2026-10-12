@@ -44,25 +44,42 @@ const renderParts = (parts: DocumentTemplate.Parts, prefix: string): string =>
 
 const isShared = (fragment: DocumentTemplate.Fragment): boolean => fragment.body.length <= 1
 
-const renderOperation = (
+/**
+ * Renders the template once per prefix. The empty prefix renders it as
+ * written; any other prefix renames variables and per-slice fragments and
+ * aliases root fields to the prefixed response key.
+ */
+const render = (
   kind: string,
   name: string,
-  variables: ReadonlyArray<string>,
-  directives: string,
-  selections: ReadonlyArray<string>,
-  fragments: ReadonlyArray<string>
+  template: DocumentTemplate,
+  prefixes: ReadonlyArray<string>
 ): string =>
   concatAll([
     kind,
     name,
-    variables.length === 0 ? "" : `(${concatAll(variables)})`,
-    directives,
-    `{${concatAll(selections)}}`,
-    ...fragments
+    template.variables.length === 0 ? "" : `(${
+      concatAll(
+        prefixes.flatMap((prefix) =>
+          template.variables.map((variable) => `$${prefix}${variable.name}:${variable.body}`)
+        )
+      )
+    })`,
+    template.directives === undefined ? "" : renderParts(template.directives, ""),
+    `{${
+      concatAll(prefixes.flatMap((prefix) =>
+        template.selections.map((selection) => {
+          const key = prefix === "" ? selection.alias : `${prefix}${selection.alias ?? selection.name}`
+          return `${key === undefined ? "" : `${key}:`}${selection.name ?? ""}${renderParts(selection.body, prefix)}`
+        })
+      ))
+    }}`,
+    ...template.fragments.flatMap((fragment) =>
+      (isShared(fragment) ? [""] : prefixes).map((prefix) =>
+        concatAll(["fragment", prefix + fragment.name, renderParts(fragment.body, prefix)])
+      )
+    )
   ])
-
-const renderFragment = (fragment: DocumentTemplate.Fragment, prefix: string): string =>
-  concatAll(["fragment", prefix + fragment.name, renderParts(fragment.body, prefix)])
 
 /**
  * Joins a template into the document it was split from.
@@ -70,42 +87,32 @@ const renderFragment = (fragment: DocumentTemplate.Fragment, prefix: string): st
  * @internal
  */
 export const joinTemplate = (kind: string, name: string, template: DocumentTemplate): string =>
-  renderOperation(
-    kind,
-    name,
-    template.variables.map((variable) => `$${variable.name}:${variable.body}`),
-    template.directives === undefined ? "" : renderParts(template.directives, ""),
-    template.selections.map((selection) =>
-      `${selection.alias === undefined ? "" : `${selection.alias}:`}${selection.name ?? ""}${
-        renderParts(selection.body, "")
-      }`
-    ),
-    template.fragments.map((fragment) => renderFragment(fragment, ""))
-  )
+  render(kind, name, template, [""])
 
-/**
- * Why a template can't be rendered as slices, or `undefined` if it can.
- *
- * @internal
- */
-export const unsliceableReason = (template: DocumentTemplate): string | undefined => {
+/** Why the template can't be rendered for these prefixes, if it can't. */
+const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<string>): string | undefined => {
   if (template.directives !== undefined && template.directives.length > 1) {
     return "its operation directives reference variables"
   }
   if (template.selections.some((selection) => selection.name === undefined)) {
     return "it has a fragment spread or inline fragment at the root"
   }
-  return undefined
+  const shared = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
+  const collision = template.fragments
+    .flatMap((fragment) => isShared(fragment) ? [] : prefixes.map((prefix) => prefix + fragment.name))
+    .find((renamed) => shared.has(renamed))
+  return collision === undefined ? undefined : `fragment ${collision} would collide with a shared fragment`
 }
 
 /**
  * Renders one operation that repeats the template once per prefix. Each
  * slice's variables, root response keys and per-slice fragments are renamed
  * with its prefix; operation directives and shared fragments appear once.
- * Prefixes must start a GraphQL name and be distinct.
+ * Prefixes must start a GraphQL name, and none may be a prefix of another.
  *
- * Throws if the template can't be sliced (see {@link unsliceableReason}),
- * rather than producing an invalid document.
+ * Throws rather than producing an invalid document when an operation
+ * directive references a variable, a root selection is a fragment spread or
+ * inline fragment, or a renamed fragment would take a shared fragment's name.
  *
  * @internal
  */
@@ -116,34 +123,9 @@ export const renderSlices = (
   template: DocumentTemplate,
   prefixes: NonEmptyReadonlyArray<string>
 ): string => {
-  const reason = unsliceableReason(template)
+  const reason = unsliceableReason(template, prefixes)
   if (reason !== undefined) {
     throw new Error(`Cannot render slices of operation ${name}: ${reason}`)
   }
-  const sharedFragmentNames = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
-  for (const fragment of template.fragments) {
-    if (isShared(fragment)) continue
-    for (const prefix of prefixes) {
-      const fragmentName = prefix + fragment.name
-      if (sharedFragmentNames.has(fragmentName)) {
-        throw new Error(
-          `Cannot render slices of operation ${name}: fragment ${fragmentName} would collide with a shared fragment`
-        )
-      }
-    }
-  }
-  return renderOperation(
-    kind,
-    name,
-    prefixes.flatMap((prefix) => template.variables.map((variable) => `$${prefix}${variable.name}:${variable.body}`)),
-    template.directives === undefined ? "" : renderParts(template.directives, ""),
-    prefixes.flatMap((prefix) =>
-      template.selections.map((selection) =>
-        `${prefix}${selection.alias ?? selection.name}:${selection.name}${renderParts(selection.body, prefix)}`
-      )
-    ),
-    template.fragments.flatMap((fragment) =>
-      isShared(fragment) ? [renderFragment(fragment, "")] : prefixes.map((prefix) => renderFragment(fragment, prefix))
-    )
-  )
+  return render(kind, name, template, prefixes)
 }
