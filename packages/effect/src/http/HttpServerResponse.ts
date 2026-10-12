@@ -1087,7 +1087,8 @@ export const toWeb = (
         mergeHeaders(raw.headers, headers)
         return raw
       } catch {
-        // Immutable headers: the copy keeps runtime-specific members such as workerd's `webSocket`
+        // Immutable headers. No `instanceof TypeError` check: it fails for errors from another realm, as under Jest.
+        // The copy keeps runtime-specific members such as workerd's `webSocket`.
         const copy = new Response(raw.body, raw)
         mergeHeaders(copy.headers, headers)
         return copy
