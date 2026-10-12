@@ -952,11 +952,10 @@ export const retry: {
  * Specifying a `while` predicate allows you to consider other errors as
  * transient, and is ignored in "response-only" mode.
  *
- * When a transient response, or the response of a status code error, carries a
- * `Retry-After` header, the next attempt waits at least that long. A longer
- * delay from the schedule still applies. With `maxRetryAfter`, a `Retry-After`
- * longer than that stops the retries, and the response or error is returned as
- * is, for callers that cannot wait that long.
+ * A `Retry-After` header on a transient response, or on the response of a
+ * status code error, sets the minimum delay before the next attempt. If it
+ * exceeds `maxRetryAfter`, retrying stops and the last response or error is
+ * returned.
  *
  * @stability unstable
  * @category error handling
