@@ -207,7 +207,6 @@ export const make = Effect.fnUntraced(function*<
                 if (!request) return Effect.void
 
                 request.sentReply = true
-                request.sentExit = true
 
                 if (
                   isShuttingDown &&
@@ -229,7 +228,6 @@ export const make = Effect.fnUntraced(function*<
                   (isShuttingDown || request.terminating || Uninterruptible.forServer(request.rpc.annotations))
                 ) {
                   if (!isShuttingDown && !request.terminating) {
-                    request.sentExit = false
                     return server.write(0, {
                       ...request.message.envelope,
                       id: RequestId(request.message.envelope.requestId),
@@ -245,6 +243,7 @@ export const make = Effect.fnUntraced(function*<
                   activeRequests.delete(response.requestId)
                   return options.storage.unregisterReplyHandler(request.message.envelope.requestId)
                 }
+                request.sentExit = true
                 return retryRespond(
                   4,
                   Effect.suspend(() =>
@@ -318,7 +317,6 @@ export const make = Effect.fnUntraced(function*<
           for (const id of defectRequestIds) {
             const request = activeRequests.get(id)
             if (!request) continue
-            request.sentExit = false
             const { lastSentChunk, message } = request
             yield* server.write(0, {
               ...message.envelope,
