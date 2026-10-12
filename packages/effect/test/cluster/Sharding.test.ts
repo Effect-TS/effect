@@ -4077,7 +4077,6 @@ const PendingLockSharding = (storageState: FailoverStorageState) =>
     }))
   )
 
-// https://github.com/Effect-TS/effect/issues/9043
 describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: false }, () => {
   it.effect("persists a discard send and delivers it once the shard lock is acquired", () =>
     Effect.gen(function*() {
