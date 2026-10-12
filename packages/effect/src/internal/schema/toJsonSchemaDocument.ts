@@ -121,9 +121,13 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
-// Merges an inlineable check into the schema it applies to. Two inclusive bounds on the same schema object are
-// equivalent to the tighter one, so a colliding `minimum` or `maximum` is tightened in place. Any other collision
-// returns `undefined`, and the caller keeps the check in `allOf`.
+// Two values of one of these keywords on the same schema object are equivalent to the tighter one: the larger lower
+// bound or the smaller upper bound.
+const lowerBoundKeywords = "|minimum|exclusiveMinimum|minLength|minItems|minProperties|"
+const upperBoundKeywords = "|maximum|exclusiveMaximum|maxLength|maxItems|maxProperties|"
+
+// Merges an inlineable check into the schema it applies to. A colliding bound is tightened in place. Any other
+// collision returns `undefined`, and the caller keeps the check in `allOf`.
 function mergeInlineCheck(
   left: JsonSchema.JsonSchema,
   right: JsonSchema.JsonSchema,
@@ -136,8 +140,8 @@ function mergeInlineCheck(
     const a = left[key]
     const b = right[key]
     if (typeof a !== "number" || typeof b !== "number") return undefined
-    if (key === "minimum") out.minimum = Math.max(a, b)
-    else if (key === "maximum") out.maximum = Math.min(a, b)
+    if (lowerBoundKeywords.includes(`|${key}|`)) out[key] = Math.max(a, b)
+    else if (upperBoundKeywords.includes(`|${key}|`)) out[key] = Math.min(a, b)
     else return undefined
   }
   return out

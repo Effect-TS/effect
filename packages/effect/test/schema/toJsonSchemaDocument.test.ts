@@ -1266,10 +1266,8 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "minItems": 1,
-                "allOf": [
-                  { "minItems": 2, "maxItems": 2 }
-                ]
+                "minItems": 2,
+                "maxItems": 2
               }
             }
           )
@@ -1359,10 +1357,7 @@ describe("toJsonSchemaDocument", () => {
                 "items": {
                   "type": "string"
                 },
-                "minItems": 1,
-                "allOf": [
-                  { "minItems": 2 }
-                ]
+                "minItems": 2
               }
             }
           )
@@ -1646,7 +1641,7 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
-      it("keeps allOf for collisions other than inclusive bounds", () => {
+      it("keeps allOf for collisions other than bounds", () => {
         assertJsonSchemaDocument(
           Schema.Int.annotate({ description: "a" }).check(Schema.isGreaterThanOrEqualTo(1, { description: "b" })),
           {
@@ -1660,12 +1655,48 @@ describe("toJsonSchemaDocument", () => {
           }
         )
         assertJsonSchemaDocument(
-          Schema.Finite.check(Schema.isGreaterThan(0), Schema.isGreaterThan(1)),
+          Schema.Finite.check(Schema.isMultipleOf(2), Schema.isMultipleOf(3)),
           {
             schema: {
               "type": "number",
-              "exclusiveMinimum": 0,
-              "allOf": [{ "exclusiveMinimum": 1 }]
+              "multipleOf": 2,
+              "allOf": [{ "multipleOf": 3 }]
+            }
+          }
+        )
+      })
+
+      it("merges colliding bounds of every kind into the tighter bound", () => {
+        assertJsonSchemaDocument(
+          Schema.Finite.check(
+            Schema.isGreaterThan(0),
+            Schema.isGreaterThan(1),
+            Schema.isLessThan(5),
+            Schema.isLessThan(3)
+          ),
+          { schema: { "type": "number", "exclusiveMinimum": 1, "exclusiveMaximum": 3 } }
+        )
+        assertJsonSchemaDocument(
+          Schema.String.check(Schema.isMaxLength(5), Schema.isMaxLength(10)),
+          { schema: { "type": "string", "maxLength": 5 } }
+        )
+        assertJsonSchemaDocument(
+          Schema.NonEmptyString.check(Schema.isMinLength(3)),
+          { schema: { "type": "string", "minLength": 2 } }
+        )
+        assertJsonSchemaDocument(
+          Schema.Record(Schema.String, Schema.String).check(
+            Schema.isMinProperties(1),
+            Schema.isMinProperties(2),
+            Schema.isMaxProperties(5),
+            Schema.isMaxProperties(3)
+          ),
+          {
+            schema: {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "minProperties": 2,
+              "maxProperties": 3
             }
           }
         )
