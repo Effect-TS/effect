@@ -18,8 +18,6 @@ import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
-import type { WorkerError } from "effect/workers/WorkerError"
-import type * as WorkerRunner from "effect/workers/WorkerRunner"
 import * as path from "node:path"
 import { pathToFileURL } from "node:url"
 import { locationFromStack } from "./CallSite.ts"
@@ -452,18 +450,14 @@ const classify = (
 // --- serving
 
 /**
- * An executor serving `ExecutorRpcs` to the coordinator that spawned it, over the
- * worker-runner protocol. Each runtime's entry (`executor-worker/{node,bun,deno}.ts`)
- * provides its worker runner. Swapping this transport (socket, stdio) is all it would
- * take to make the executor a child process or a remote machine.
+ * The executor: serves `ExecutorRpcs` over whichever `RpcServer.Protocol` it is given. It
+ * knows nothing about the transport; `executor-worker/*.ts` provides the worker one, and
+ * a socket or stdio protocol would make it a child process or a remote machine.
  */
-export const layerWorker: Layer.Layer<never, WorkerError, WorkerRunner.WorkerRunnerPlatform> = RpcServer.layer(
-  ExecutorRpcs
-).pipe(
+export const layer: Layer.Layer<never, never, RpcServer.Protocol> = RpcServer.layer(ExecutorRpcs).pipe(
   Layer.provide(ExecutorRpcs.toLayer({
     ListFile: ({ path }) => listFile(path),
     RunFile: ({ concurrency, config, path, tests }) => runFile(path, config, concurrency, tests)
   })),
-  Layer.provide(ExecutorState.layer),
-  Layer.provide(RpcServer.layerProtocolWorkerRunner)
+  Layer.provide(ExecutorState.layer)
 )
