@@ -1,7 +1,8 @@
 /**
  * GraphQL-level middleware provided as `Context.Service` implementations.
  * Middleware can rewrite requests and inspect raw results, including response
- * extensions. Provide implementations with `Layer.succeed` or `Layer.effect`.
+ * extensions and HTTP headers. Provide implementations with `Layer.succeed`
+ * or `Layer.effect`.
  *
  * @stability experimental
  * @since 4.0.0
@@ -28,11 +29,29 @@ const TypeId = "~effect/graphql/GraphQLMiddleware"
  * Both receive the operation being run, the request so far, and `next`, which
  * runs the rest of the chain with the given request and returns the raw
  * `ExecutionResult` (or, for `subscribe`, the stream of them). Its `status` is
- * the HTTP status the transport reported, if any; a middleware may rewrite it,
- * and a failed call's `ResponseError.status` is the final value.
+ * the HTTP status the transport reported, if any, and `headers` is a plain
+ * string record of HTTP response headers, including graphql-sse responses.
+ * Middleware may rewrite either; a failed call's `ResponseError` carries the
+ * final values. Both are unset over graphql-ws.
  *
  * Use {@link mapRequest} when the middleware only needs to transform the
  * request.
+ *
+ * **Example** (Reading a rate-limit header)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Stream } from "effect"
+ * import { GraphQLMiddleware } from "effect/graphql"
+ *
+ * const rateLimit: GraphQLMiddleware.Implementation = {
+ *   execute: ({ next, request }) => next(request).pipe(
+ *     Effect.tap((result) => Effect.log(result.headers?.["x-ratelimit-remaining"]))
+ *   ),
+ *   subscribe: ({ next, request }) => next(request).pipe(
+ *     Stream.tap((result) => Effect.log(result.headers?.["x-ratelimit-remaining"]))
+ *   )
+ * }
+ * ```
  *
  * @stability experimental
  * @category models

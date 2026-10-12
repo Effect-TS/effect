@@ -316,8 +316,8 @@ const retryableOnly = <Output, Error, Env>(
       isGraphQLClientError(input) && input.isRetryable ? step(now, input) : Cause.done(undefined)
   ))
 
-// `status` is transport metadata, so it is never read from the body.
-const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult.mapFields(Struct.omit(["status"])))
+// `status` and `headers` are transport metadata, never read from the body.
+const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult.mapFields(Struct.omit(["status", "headers"])))
 
 interface CallOptions<R2 = never> {
   readonly headers?: Readonly<Record<string, string>> | undefined
@@ -360,9 +360,17 @@ const makeMethod = <Op extends GraphQL.Any>(
       }))
     )
 
-  const decodeResponse = ({ body, status }: { readonly body: unknown; readonly status?: number | undefined }) =>
+  const decodeResponse = ({ body, status, headers }: {
+    readonly body: unknown
+    readonly status?: number | undefined
+    readonly headers?: Record<string, string> | undefined
+  }) =>
     decodeExecutionResult(body).pipe(
-      Effect.map((result): ExecutionResult => status === undefined ? result : { ...result, status }),
+      Effect.map((result): ExecutionResult => ({
+        ...result,
+        ...(status === undefined ? {} : { status }),
+        ...(headers === undefined ? {} : { headers })
+      })),
       Effect.catch(notGraphQL)
     )
 
