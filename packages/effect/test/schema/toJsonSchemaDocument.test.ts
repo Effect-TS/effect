@@ -1611,6 +1611,77 @@ describe("toJsonSchemaDocument", () => {
         })
       })
 
+      it("merges colliding inclusive bounds into the tighter bound", () => {
+        const expected = {
+          schema: {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "a",
+            "default": 5
+          }
+        } as const
+        assertJsonSchemaDocument(
+          Schema.Int.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100))
+            .annotate({ description: "a", default: 5 }),
+          expected
+        )
+        assertJsonSchemaDocument(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({ description: "a", default: 5 }),
+          expected
+        )
+        assertJsonSchemaDocument(
+          Schema.Finite.check(Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(100), Schema.isInt())
+            .annotate({ description: "a", default: 5 }),
+          expected
+        )
+        assertJsonSchemaDocument(Schema.Natural, {
+          schema: {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": globalThis.Number.MAX_SAFE_INTEGER
+          }
+        })
+      })
+
+      it("keeps the existing bound when a colliding bound is looser", () => {
+        assertJsonSchemaDocument(
+          Schema.Int.check(Schema.isGreaterThanOrEqualTo(-1e300), Schema.isLessThanOrEqualTo(1e300)),
+          {
+            schema: {
+              "type": "integer",
+              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+              "maximum": globalThis.Number.MAX_SAFE_INTEGER
+            }
+          }
+        )
+      })
+
+      it("keeps allOf for collisions other than inclusive bounds", () => {
+        assertJsonSchemaDocument(
+          Schema.Int.annotate({ description: "a" }).check(Schema.isGreaterThanOrEqualTo(1, { description: "b" })),
+          {
+            schema: {
+              "type": "integer",
+              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
+              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
+              "description": "a",
+              "allOf": [{ "minimum": 1, "description": "b" }]
+            }
+          }
+        )
+        assertJsonSchemaDocument(
+          Schema.Finite.check(Schema.isGreaterThan(0), Schema.isGreaterThan(1)),
+          {
+            schema: {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "allOf": [{ "exclusiveMinimum": 1 }]
+            }
+          }
+        )
+      })
+
       it("isInt32", () => {
         assertJsonSchemaDocument(
           Schema.Finite.check(Schema.isInt32()),

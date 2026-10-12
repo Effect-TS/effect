@@ -121,6 +121,30 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
+// Two inclusive bounds on the same schema object are equivalent to the tighter one, so a colliding `minimum` or
+// `maximum` can be merged in place instead of being moved into `allOf`. Any other collision keeps `allOf`.
+function tightenCollidingBounds(
+  left: JsonSchema.JsonSchema,
+  right: JsonSchema.JsonSchema,
+  rightKeys: ReadonlyArray<string>
+): JsonSchema.JsonSchema | undefined {
+  if (typeof left.$ref === "string") return undefined
+  const out: JsonSchema.JsonSchema = { ...left }
+  for (const key of rightKeys) {
+    if (!Object.hasOwn(left, key)) {
+      out[key] = right[key]
+      continue
+    }
+    const a = left[key]
+    const b = right[key]
+    if (typeof a !== "number" || typeof b !== "number") return undefined
+    if (key === "minimum") out[key] = Math.max(a, b)
+    else if (key === "maximum") out[key] = Math.min(a, b)
+    else return undefined
+  }
+  return out
+}
+
 // `format` and `content*` can affect validation, so they are not treated as pure annotations.
 const promotableAnnotationKeywords = "|title|description|default|examples|readOnly|writeOnly|"
 const inlineableAnnotatedCheckKeywords = inlineableCheckKeywords + promotableAnnotationKeywords
@@ -149,8 +173,10 @@ function appendJsonSchema(
         : appendJsonSchema(base, extracted.schema, inlineCheck)
     }
   }
-  if (inlineCheck && hasNoCollisions(left, rightKeys)) {
-    return { ...left, ...right }
+  if (inlineCheck) {
+    if (hasNoCollisions(left, rightKeys)) return { ...left, ...right }
+    const tightened = tightenCollidingBounds(left, right, rightKeys)
+    if (tightened !== undefined) return tightened
   }
   const members = Array.isArray(right.allOf) && rightKeys.length === 1 ? right.allOf : [right]
   if (Array.isArray(left.allOf)) {
