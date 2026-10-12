@@ -2,6 +2,7 @@
 // resolves options (nearest wins) into a plan, dispatches files to the executor
 // pool, enforces bail by interrupting in-flight work, and guarantees exactly one
 // terminal event per planned test.
+import * as Console from "effect/Console"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as RpcClient from "effect/rpc/RpcClient"
@@ -18,6 +19,8 @@ export interface RunOptions {
   readonly listJson: boolean
   readonly test: string | undefined
   readonly tag: string | undefined
+  /** only these test ids (a file's id selects the whole file), e.g. the failures from the last run */
+  readonly ids: ReadonlySet<string> | undefined
   readonly seed: number
   readonly workers: number
   readonly filesPerExecutor: number
@@ -33,16 +36,39 @@ const DEFAULT_TIMEOUT_MS = 5_000
 
 // --- discovery
 
-export const discover = (paths: ReadonlyArray<string>): Array<string> => {
-  const out: Array<string> = []
+/** The `*.test.ts` files under `paths`, plus the given paths that don't exist. */
+export const discover = (paths: ReadonlyArray<string>): { files: Array<string>; missing: Array<string> } => {
+  const files: Array<string> = []
+  const missing: Array<string> = []
   const visit = (p: string) => {
     const st = fs.statSync(p)
     if (st.isDirectory()) {
       for (const e of fs.readdirSync(p)) if (e !== "node_modules") visit(path.join(p, e))
-    } else if (p.endsWith(".test.ts")) out.push(path.resolve(p))
+    } else if (p.endsWith(".test.ts")) files.push(path.resolve(p))
   }
-  for (const p of paths.length ? paths : ["."]) visit(p)
-  return out.sort()
+  for (const p of paths.length ? paths : ["."]) {
+    if (fs.existsSync(p)) visit(p)
+    else missing.push(p)
+  }
+  return { files: files.sort(), missing }
+}
+
+/** Why a run selected no tests, for the error message. */
+const whyEmpty = (
+  paths: ReadonlyArray<string>,
+  files: ReadonlyArray<string>,
+  tests: number,
+  opts: Pick<RunOptions, "test" | "tag" | "ids">
+): string => {
+  const where = paths.length ? paths.join(", ") : "."
+  if (files.length === 0) return `no test files (*.test.ts) found in ${where}`
+  if (tests === 0) return `${files.length} test file(s) in ${where}, but none defines a test`
+  const filters = [
+    ...(opts.test !== undefined ? [`--test ${JSON.stringify(opts.test)}`] : []),
+    ...(opts.tag !== undefined ? [`--tag ${JSON.stringify(opts.tag)}`] : []),
+    ...(opts.ids !== undefined ? [`the ${opts.ids.size} test(s) given (e.g. --failed)`] : [])
+  ]
+  return `${tests} test(s) in ${files.length} file(s), but none matched ${filters.join(" and ")}`
 }
 
 // --- planning
@@ -64,7 +90,7 @@ const ancestry = (byId: Map<string, ListedNode>, node: ListedNode) => {
 
 export const plan = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
 ): Array<PlannedTest> => {
   const planned: Array<PlannedTest & { only: boolean }> = []
   // an exact id selects exactly that test; anything else is a substring match
@@ -81,6 +107,7 @@ export const plan = (
       const tags = [...new Set(chain.flatMap((n) => n.tags))]
       if (opts.test !== undefined && (exact ? node.id !== opts.test : !node.id.includes(opts.test))) continue
       if (opts.tag !== undefined && !tags.includes(opts.tag)) continue
+      if (opts.ids !== undefined && !opts.ids.has(node.id) && !opts.ids.has(file)) continue
       const skip = nearest("skip")
       planned.push({
         id: node.id,
@@ -106,7 +133,11 @@ export const run = (opts: RunOptions) =>
   Effect.gen(function*() {
     const startedAt = Date.now()
     const client = yield* RpcClient.make(ExecutorRpcs)
-    const files = discover(opts.paths)
+    const { files, missing } = discover(opts.paths)
+    if (missing.length > 0) {
+      yield* Console.error(`No such file or directory: ${missing.join(", ")}`)
+      return 1
+    }
 
     const listed = yield* Effect.forEach(
       files,
@@ -114,22 +145,32 @@ export const run = (opts: RunOptions) =>
       { concurrency: "unbounded" }
     )
     const listings = listed.flatMap((r) => r._tag === "Success" ? [r.success] : [])
-    const loadErrors = listed.flatMap((r) => r._tag === "Failure" ? [r.failure] : [])
+    // any file whose listing failed (a load error, or an executor that died) is kept, so it can't vanish
+    const loadErrors = listed.flatMap((r, i) => r._tag === "Failure" ? [{ file: files[i], error: r.failure }] : [])
 
     if (opts.list) {
       opts.write(opts.listJson ? renderListJson(listings, opts) : renderList(listings, opts))
-      for (const e of loadErrors) {
-        opts.write(`LOAD ERROR ${e._tag === "LoadError" ? `${e.path}: ${e.message}` : describe(e)}\n`)
+      for (const { error, file } of loadErrors) {
+        opts.write(
+          `LOAD ERROR ${
+            error._tag === "LoadError" ? `${error.path}: ${error.message}` : `${file}: ${describe(error)}`
+          }\n`
+        )
       }
       return loadErrors.length ? 1 : 0
     }
 
     const planned = plan(listings, opts)
-    // a file that fails to load becomes a single failed planned test, so it can't vanish silently
-    for (const e of loadErrors) {
-      if (e._tag !== "LoadError") continue
-      const id = path.relative(process.cwd(), e.path)
+    // a file that fails to list becomes a single failed planned test, so it can't vanish silently
+    for (const { file } of loadErrors) {
+      const id = path.relative(process.cwd(), file)
       planned.push({ id, file: id, tags: [], timeoutMs: 0, retries: 0, seed: 0 })
+    }
+    // a run that selects nothing is red: an agent must never read "nothing ran" as "all green"
+    if (planned.length === 0) {
+      const tests = listings.reduce((n, l) => n + l.nodes.filter((node) => node.kind === "test").length, 0)
+      yield* Console.error(`No tests selected: ${whyEmpty(opts.paths, files, tests, opts)}`)
+      return 1
     }
 
     const terminal = new Map<string, TestFinished>()
@@ -156,10 +197,12 @@ export const run = (opts: RunOptions) =>
     })
 
     emit({ _tag: "RunPlanned", runSeed: opts.seed, tests: planned.map(({ skip, ...t }) => skip ? { ...t, skip } : t) })
-    for (const e of loadErrors) {
-      if (e._tag !== "LoadError") continue
-      emit(finished(path.relative(process.cwd(), e.path), "failed", {
-        failures: [{ kind: "load", message: e.message }]
+    for (const { error, file } of loadErrors) {
+      emit(finished(path.relative(process.cwd(), file), "failed", {
+        failures: [{
+          kind: "load",
+          message: error._tag === "LoadError" ? error.message : `could not list the file: ${describe(error)}`
+        }]
       }))
     }
     for (const t of planned) {
@@ -258,7 +301,7 @@ const describe = (e: unknown): string => {
 
 const renderListJson = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
 ) => {
   const planned = new Map(plan(listings, opts).map((t) => [t.id, t]))
   const ids = [...planned.keys()]
@@ -272,7 +315,7 @@ const renderListJson = (
 
 const renderList = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
 ) => {
   const selected = new Set(plan(listings, opts).map((t) => t.id))
   let out = ""

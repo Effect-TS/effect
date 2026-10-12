@@ -15,6 +15,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { run } from "../Coordinator.ts"
 import * as Reporters from "../Reporters.ts"
 import { isConfig } from "../Test.ts"
+import * as LastRun from "./LastRun.ts"
 import { detect, moduleUrl } from "./Platform.ts"
 
 /** Ends the process with `code`. Whatever caused it has already been reported. */
@@ -38,6 +39,11 @@ const list = Flag.Boolean("list").pipe(
 const test = Flag.String("test").pipe(
   Flag.withDescription("Run only tests whose id contains this text"),
   Flag.optional
+)
+
+const failed = Flag.Boolean("failed").pipe(
+  Flag.withDescription(`Re-run only the tests that failed in previous runs (recorded in ${LastRun.location})`),
+  Flag.withDefault(false)
 )
 
 const tag = Flag.String("tag").pipe(
@@ -112,6 +118,7 @@ export const cli = Command.make("etest", {
   paths,
   list,
   test,
+  failed,
   tag,
   seed,
   workers,
@@ -133,27 +140,45 @@ export const cli = Command.make("etest", {
     const write = (s: string) => {
       process.stdout.write(s)
     }
+    let paths = options.paths
+    let ids: ReadonlySet<string> | undefined
+    if (options.failed) {
+      const last = LastRun.read()
+      if (last === undefined) {
+        yield* Console.error(`--failed: no previous run recorded (${LastRun.location})`)
+        return yield* new ExitCode({ code: 1 })
+      }
+      const entries = Object.entries(last.failed)
+      if (entries.length === 0) {
+        yield* Console.log("--failed: no failing tests recorded; nothing to re-run")
+        return
+      }
+      ids = new Set(entries.map(([id]) => id))
+      if (paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
+    }
     const ctx: Reporters.ReporterContext = {
       write,
       rerun: (t, runSeed) => `${launcher} ${bin} ${t.file} --test "${t.id}" --seed ${runSeed}`
     }
+    const reporter = options.reporter === "human"
+      ? Reporters.human(ctx)
+      : options.reporter === "jsonl"
+      ? Reporters.jsonl(ctx)
+      : Reporters.agent(ctx)
     const code = yield* run({
-      paths: options.paths,
+      paths,
       list: options.list,
       listJson: options.reporter === "jsonl",
       test: Option.getOrUndefined(options.test),
       tag: Option.getOrUndefined(options.tag),
+      ids,
       seed: Option.getOrElse(options.seed, () => Math.floor(Math.random() * 100_000)),
       workers: options.workers,
       filesPerExecutor: 4,
       testsPerFile: 8,
       bail: options.bail,
       config: configFile,
-      reporter: options.reporter === "human"
-        ? Reporters.human(ctx)
-        : options.reporter === "jsonl"
-        ? Reporters.jsonl(ctx)
-        : Reporters.agent(ctx),
+      reporter: options.list ? reporter : LastRun.recording(reporter),
       write
     }).pipe(Effect.scoped, Effect.provide(executorPool(options.workers, 4)))
     if (code !== 0) return yield* new ExitCode({ code })

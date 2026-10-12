@@ -1,14 +1,9 @@
 #!/usr/bin/env node
-// Runs on Node, Bun or Deno: the platform is picked from the runtime we are on.
-import * as Command from "effect/cli/Command"
-import PackageJson from "../../package.json" with { type: "json" }
-import { cli } from "./Cli.ts"
-import { makePlatforms } from "./Platform.ts"
+// Turns on Node's on-disk compile cache before anything heavy is loaded, so repeat runs skip
+// compiling (and type-stripping) every module again, then starts the CLI. The cache roughly
+// halves startup; where `enableCompileCache` doesn't exist (Bun, Deno) it is skipped.
+import * as Module from "node:module"
 
-const platforms = makePlatforms({
-  node: () => import("./platform/node.ts"),
-  bun: () => import("./platform/bun.ts"),
-  deno: () => import("./platform/deno.ts")
-})
+if (typeof Module.enableCompileCache === "function") Module.enableCompileCache()
 
-platforms.run(Command.run(cli, { version: PackageJson.version }))
+await import("./main.ts")
