@@ -220,6 +220,36 @@ const cases: ReadonlyArray<Case> = [
     schemas: { Root: object({ type: tag("local_shell_call_output"), output: string }, ["type", "call_id", "output"]) },
     valid: [{ type: "local_shell_call_output", call_id: "call_1", output: "ok" }],
     invalid: [{ type: "local_shell_call_output", output: "ok" }]
+  },
+  {
+    // A member closed by the spec forbids keys that only other members declare
+    name: "explicitly closed composition members",
+    schemas: {
+      Root: object({
+        merged: { allOf: [{ ...object({ a: string }), additionalProperties: false }, object({ b: string })] },
+        distributed: {
+          ...object({ a: string }),
+          additionalProperties: false,
+          anyOf: [object({ b: string }, ["b"]), { required: ["a"] }]
+        }
+      })
+    },
+    valid: [{ merged: { a: "a" }, distributed: { a: "a" } }],
+    invalid: [{ merged: { a: "a", b: "b" } }, { distributed: { b: "b" } }]
+  },
+  {
+    // Both alternatives keywords on one schema must hold together
+    name: "anyOf and oneOf on the same object",
+    schemas: {
+      Root: {
+        ...object({ a: string, b: string, c: string }),
+        allOf: [{ required: ["a"] }],
+        anyOf: [{ required: ["b"] }],
+        oneOf: [{ required: ["c"] }]
+      }
+    },
+    valid: [{ a: "a", b: "b", c: "c" }],
+    invalid: [{ a: "a" }, { a: "a", b: "b" }, { a: "a", c: "c" }]
   }
 ]
 
