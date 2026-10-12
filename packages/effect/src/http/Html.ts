@@ -1,12 +1,11 @@
 /**
- * Builds HTML from template literals that escape what they interpolate.
+ * Builds HTML from template literals that escape interpolated text.
  *
- * `Html.make` escapes every interpolated string, so text that came from a
- * person cannot add markup. Markup that is already safe is an `Html` value:
- * what `Html.make` returns, and `Html.rawUnsafe` for trusted markup such as an
- * inlined icon. Like `Template`, an interpolation can also be an `Option` or an
- * effect, and the resulting effect keeps the errors and service requirements of
- * the effects it awaits.
+ * `Html.make` escapes interpolated strings and inserts `Html` values as they
+ * are. An `Html` value comes from `Html.make`, or from `Html.rawUnsafe` for
+ * trusted markup such as an inlined icon. As with `Template`, an interpolation
+ * can also be an `Option` or an effect, and the result keeps the errors and
+ * services of the effects it awaits.
  *
  * **Safety**
  *
@@ -31,8 +30,8 @@ import * as Option from "../Option.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Template from "./Template.ts"
 
-// A symbol key cannot be produced by `JSON.parse` or `structuredClone`, so
-// parsed data cannot pass itself off as trusted markup.
+// `JSON.parse` and `structuredClone` cannot create symbol keys, so parsed data
+// cannot pass as trusted markup.
 const TypeId: unique symbol = Symbol.for("~effect/http/Html")
 
 /**
@@ -102,8 +101,8 @@ const entities: Record<string, string> = {
  *
  * **Details**
  *
- * The caller vouches that the text is safe markup. Use it for markup written by
- * the application, never for anything a person typed.
+ * The caller vouches that the text is safe markup. Use it only for markup the
+ * application controls, never for user input.
  *
  * @stability unstable
  * @category constructors
@@ -156,13 +155,12 @@ const toTemplate = (arg: Interpolated): Template.Interpolated => {
  *
  * **Details**
  *
- * Strings are escaped, `Html` values are inserted as they are, and `Option`
- * and effect interpolations are rendered the same way once they are
- * evaluated. The template itself is trusted markup. See the module
- * documentation for the places where escaping does not make an interpolation
- * safe.
+ * Strings are escaped and `Html` values are inserted as they are. `Option` and
+ * effect interpolations are rendered the same way once evaluated. The literal
+ * parts of the template are trusted markup. Escaping does not make every
+ * position safe; see the module documentation.
  *
- * An array of effects is not awaited; combine it with `Effect.all` first.
+ * Arrays of effects are not awaited, so combine them with `Effect.all` first.
  *
  * **Example** (Rendering a list)
  *

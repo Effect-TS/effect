@@ -231,7 +231,7 @@ export const text = (
  * Passing a string or an `Html` value returns a response directly. Using it as a
  * template tag returns an effect so interpolated values can be rendered with their
  * required services and errors. The tag does not escape what it interpolates; use
- * `Html.make` for markup that includes text from a person.
+ * `Html.make` for markup that includes untrusted text.
  *
  * @stability unstable
  * @category constructors
