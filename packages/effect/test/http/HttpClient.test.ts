@@ -397,32 +397,26 @@ Missing key
       }))
   })
 
-  describe("transient predicates", () => {
+  it("classifies transient responses and errors", () => {
     const request = HttpClientRequest.get("http://test/")
-    const respond = (status: number) => HttpClientResponse.fromWeb(request, new Response(null, { status }))
-    const statusError = (status: number) =>
-      new HttpClientError.HttpClientError({
-        reason: new HttpClientError.StatusCodeError({ request, response: respond(status) })
-      })
-
-    it("classifies the statuses retryTransient retries", () => {
-      const transient = [400, 401, 403, 404, 408, 409, 429, 500, 501, 502, 503, 504].filter((status) =>
-        HttpClient.isTransientResponse(respond(status))
-      )
-      assert.deepStrictEqual(transient, [408, 429, 500, 502, 503, 504])
-    })
-
-    it("classifies errors the way retryTransient does", () => {
-      assert.isTrue(HttpClient.isTransientError(statusError(503)))
-      assert.isFalse(HttpClient.isTransientError(statusError(404)))
-      assert.isTrue(
-        HttpClient.isTransientError(
-          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
-        )
-      )
-      assert.isTrue(HttpClient.isTransientError(new Cause.TimeoutError()))
-      assert.isFalse(HttpClient.isTransientError(new Error("boom")))
-    })
+    const responses = [200, 404, 408, 429, 500, 501, 502, 503, 504].map((status) =>
+      HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    )
+    const statusErrors = responses.map((response) =>
+      new HttpClientError.HttpClientError({ reason: new HttpClientError.StatusCodeError({ request, response }) })
+    )
+    const expected = [false, false, true, true, true, false, true, true, true]
+    assert.deepStrictEqual(responses.map(HttpClient.isTransientResponse), expected)
+    assert.deepStrictEqual(statusErrors.map(HttpClient.isTransientError), expected)
+    assert.deepStrictEqual(
+      [
+        new Cause.TimeoutError(),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.EncodeError({ request }) }),
+        new Error("boom")
+      ].map(HttpClient.isTransientError),
+      [true, true, false, false]
+    )
   })
 
   describe("retryTransient", () => {
