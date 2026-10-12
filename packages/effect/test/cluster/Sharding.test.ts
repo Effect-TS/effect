@@ -9,6 +9,7 @@ import {
   Equal,
   Exit,
   Fiber,
+  HashRing,
   Latch,
   Layer,
   Logger,
@@ -4054,5 +4055,171 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
         assert.isTrue(sharding.hasShardId(destinationShard))
         assert.strictEqual(duringFinalization, 0, "teardown must include singleton finalizers")
       }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
+    }))
+})
+
+const PendingLockCaller = Entity.make("PendingLockCaller", [
+  Rpc.make("Forward", { payload: { target: Schema.String } }).annotate(ClusterSchema.Persisted, false)
+])
+
+// Forwards a persisted discard send that its shard's release cannot interrupt.
+const PendingLockCallerLayer = PendingLockCaller.toLayer(Effect.gen(function*() {
+  const makeClient = yield* TestEntity.client
+  return {
+    Forward: ({ payload }) =>
+      makeClient(payload.target).GetUser({ id: 1 }, { discard: true }).pipe(Effect.orDie, Effect.uninterruptible)
+  }
+}))
+
+const PendingLockSharding = (
+  storageState: FailoverStorageState,
+  options?: {
+    readonly shardsPerGroup?: number
+    readonly entities?: Layer.Layer<never, never, Sharding.Sharding>
+  }
+) =>
+  Layer.merge(TestEntityNoState, options?.entities ?? Layer.empty).pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: options?.shardsPerGroup ?? 1,
+      entityTerminationTimeout: 1000,
+      entityMessagePollInterval: 10,
+      entityReplyPollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+
+const findEntityId = (sharding: Sharding.Sharding["Service"], shardId: ShardId.ShardId) => {
+  for (let i = 0;; i++) {
+    const entityId = EntityId.make(`entity-${i}`)
+    if (Equal.equals(sharding.getShardId(entityId, "default"), shardId)) return entityId
+  }
+}
+
+// https://github.com/Effect-TS/effect/issues/9043
+describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: false }, () => {
+  it.effect("persists a discard send and delivers it once the shard lock is acquired", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const driver = yield* MessageStorage.MemoryDriver
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const client = (yield* TestEntity.client)("1")
+        const send = yield* client.GetUser({ id: 1 }, { discard: true }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(100)
+        assert.deepStrictEqual(send.pollUnsafe(), Exit.void, "a discard send returns once persisted")
+        assert.strictEqual(driver.journal.length, 1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0, "delivery must wait for the shard lock")
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(10)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
+    }))
+
+  it.effect("persists a request and replies through storage once the shard lock is acquired", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const driver = yield* MessageStorage.MemoryDriver
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const client = (yield* TestEntity.client)("1")
+        const request = yield* client.GetUser({ id: 1 }).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(100)
+        assert.isUndefined(request.pollUnsafe())
+        assert.strictEqual(driver.journal.length, 1, "the request must be persisted while the lock is pending")
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0, "delivery must wait for the shard lock")
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* sharding.pollStorage
+        for (let i = 0; i < 100 && request.pollUnsafe() === undefined; i++) {
+          yield* TestClock.adjust(10)
+        }
+        const exit = request.pollUnsafe()
+        assert(exit && Exit.isSuccess(exit))
+        expect(exit.value).toEqual(new User({ id: 1, name: "User 1" }))
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
+    }))
+
+  it.effect("releases a rebalanced shard whose entity uninterruptibly sends to a shard awaiting its lock", () =>
+    Effect.gen(function*() {
+      // Find a shard that moves to the other runner on rebalance, and one that
+      // stays assigned here while its lock is held elsewhere.
+      const shardsPerGroup = 8
+      const ring = HashRing.make<RunnerAddress.RunnerAddress>()
+      HashRing.add(ring, RunnerAddress.make("localhost", 1234), { weight: 1 })
+      HashRing.add(ring, otherRunner.address, { weight: 1 })
+      const assignments = HashRing.getShards(ring, shardsPerGroup)!
+      const moved = ShardId.make("default", assignments.findIndex((a) => Equal.equals(a, otherRunner.address)) + 1)
+      const pending = ShardId.make("default", assignments.findIndex((a) => !Equal.equals(a, otherRunner.address)) + 1)
+      const storageState = makeFailoverStorageState({ acquireDenied: [pending] })
+
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const driver = yield* MessageStorage.MemoryDriver
+        const sharding = yield* Sharding.Sharding
+        while (!sharding.hasShardId(moved)) {
+          yield* TestClock.adjust(10)
+        }
+        const caller = (yield* PendingLockCaller.client)(findEntityId(sharding, moved))
+        const forward = yield* caller.Forward({ target: findEntityId(sharding, pending) }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(10)
+
+        storageState.otherRunnerHealthy = true
+        while (sharding.hasShardId(moved)) {
+          yield* TestClock.adjust(10)
+        }
+        // Past the entity termination timeout
+        for (let i = 0; i < 300 && !storageState.releaseCalls.some((shardId) => Equal.equals(shardId, moved)); i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.isTrue(
+          storageState.releaseCalls.some((shardId) => Equal.equals(shardId, moved)),
+          "the rebalanced shard lock must be released"
+        )
+        assert.deepStrictEqual(forward.pollUnsafe(), Exit.void)
+        assert.strictEqual(driver.journal.length, 1)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0, "delivery must wait for the shard lock")
+      }).pipe(
+        // Let a stuck send complete, so a failure does not hang scope teardown
+        Effect.ensuring(Effect.suspend(() => {
+          storageState.acquireDenied.length = 0
+          return Effect.repeat(TestClock.adjust(10), { times: 100 })
+        })),
+        Effect.provide(PendingLockSharding(storageState, { shardsPerGroup, entities: PendingLockCallerLayer })),
+        Effect.scoped
+      )
     }))
 })
