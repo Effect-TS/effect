@@ -34,7 +34,7 @@ const partialIssues = {
       }
     }
   },
-  errors: [{ message: "Not found", path: ["repository", "issues", "nodes", 1] }]
+  errors: [{ type: "NOT_FOUND", message: "Not found", path: ["repository", "issues", "nodes", 1] }]
 }
 
 const repoIssuesClient = (result: unknown) =>
@@ -138,11 +138,12 @@ describe("GraphQLClient", () => {
       assert.deepStrictEqual(yield* Ref.get(requests), [])
     }))
 
-  it.effect("a response with errors fails with ResponseError carrying the raw data", () =>
+  it.effect("a response with errors fails with ResponseError carrying the raw data and errors", () =>
     Effect.gen(function*() {
       const client = yield* repoIssuesClient(partialIssues)
       const reason = yield* expectReason("ResponseError")(client.RepoIssues(variables))
       assert.deepStrictEqual(reason.data, partialIssues.data)
+      assert.deepStrictEqual<unknown>(reason.errors, partialIssues.errors)
     }))
 
   it.effect("data that does not match the result schema is a DecodeError", () =>
