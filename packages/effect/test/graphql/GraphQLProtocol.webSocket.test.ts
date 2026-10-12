@@ -3,6 +3,7 @@ import { Deferred, type Duration, Effect, Fiber, Layer, Queue, Ref, Stream } fro
 
 import { GraphQLClient, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
+import * as Headers from "effect/http/Headers"
 import * as UrlParams from "effect/http/UrlParams"
 import { TestClock } from "effect/testing"
 import { expectReason, IssuesGroup, IssueUpdated, Viewer, type WsMessage, wsServer } from "./fixtures.ts"
@@ -16,7 +17,7 @@ const subscription = (id: string): GraphQLProtocol.GraphQLRequest => ({
   query: IssueUpdated.document,
   operationName: "IssueUpdated",
   variables: { id },
-  headers: {},
+  headers: Headers.empty,
   urlParams: UrlParams.empty
 })
 
@@ -155,7 +156,7 @@ describe("GraphQLProtocol.makeWebSocket", () => {
         query: Viewer.document,
         operationName: "Viewer",
         variables: {},
-        headers: {},
+        headers: Headers.empty,
         urlParams: UrlParams.empty
       }
 

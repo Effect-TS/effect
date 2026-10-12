@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Duration, Effect, Fiber, Layer, Stream } from "effect"
 import { GraphQLClient, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
+import * as Headers from "effect/http/Headers"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as UrlParams from "effect/http/UrlParams"
@@ -16,7 +17,7 @@ const subscription: GraphQLProtocol.GraphQLRequest = {
   query: IssueUpdated.document,
   operationName: "IssueUpdated",
   variables: { id: "I_1" },
-  headers: { authorization: "Bearer t" },
+  headers: Headers.fromInput({ authorization: "Bearer t" }),
   urlParams: UrlParams.fromInput({ preview: "t" })
 }
 
@@ -56,8 +57,8 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
         return eventStream([next(event("a")), next(event("b")), "event: complete\ndata:\n\n"])
       })).pipe(Stream.runCollect)
       assert.deepStrictEqual(events, [
-        { body: event("a"), headers: { "content-type": "text/event-stream" } },
-        { body: event("b"), headers: { "content-type": "text/event-stream" } }
+        { body: event("a"), headers: Headers.fromInput({ "content-type": "text/event-stream" }) },
+        { body: event("b"), headers: Headers.fromInput({ "content-type": "text/event-stream" }) }
       ])
       assert.include(seen!.headers["accept"], "text/event-stream")
       assert.strictEqual(seen!.headers["authorization"], "Bearer t")

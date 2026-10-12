@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Layer, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
+import * as Headers from "effect/http/Headers"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import {
@@ -128,8 +129,8 @@ describe("GraphQLProtocol.layerHttp", () => {
         ]),
         expectReason("ResponseError")
       )
-      assert.deepStrictEqual(seen?.headers, headers)
-      assert.deepStrictEqual(reason.headers, headers)
+      assert.deepStrictEqual(seen?.headers, Headers.fromInput(headers))
+      assert.deepStrictEqual(reason.headers, Headers.fromInput(headers))
     }))
 
   it.effect("a non-GraphQL 403 is a TransportError carrying response headers without Retry-After", () =>
@@ -139,7 +140,7 @@ describe("GraphQLProtocol.layerHttp", () => {
         expectReason("TransportError")
       )
       assert.strictEqual(reason.status, 403)
-      assert.deepStrictEqual(reason.headers, headers)
+      assert.deepStrictEqual(reason.headers, Headers.fromInput(headers))
     }))
 
   it.effect("a non-GraphQL 503 is a TransportError carrying a numeric Retry-After", () =>
