@@ -72,7 +72,9 @@ reach. Defaulted scalars are not included in that warning.
 - a `GraphQL.query`, `GraphQL.mutation` or `GraphQL.subscription` per
   operation, carrying the compact document and the variables and result
   Schemas, plus a type namespace such as `RepoIssues.Variables` and
-  `RepoIssues.Result`
+  `RepoIssues.Result`. Queries and mutations give the document as a
+  `GraphQL.DocumentTemplate`, which marks the variable and fragment names a
+  batch would rename; the operation joins it into the same compact text.
 - a Schema per fragment
 - a `Schema.Opaque` class per nested object selection and per member of an
   interface or union selection, so editor hovers show a name instead of the

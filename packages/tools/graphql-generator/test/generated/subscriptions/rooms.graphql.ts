@@ -11,7 +11,15 @@ export class RoomRoom extends Schema.Opaque<RoomRoom>()(Schema.Struct({
 
 /** `query Room` */
 export const Room = GraphQL.query("Room", {
-  document: "query Room($by:RoomBy!){room(by:$by){id name}}",
+  document: {
+    variables: [
+      { name: "by", body: "RoomBy!" }
+    ],
+    selections: [
+      { name: "room", body: ["(by:$", "by", "){id name}"] }
+    ],
+    fragments: []
+  },
   variables: {
     by: Shared.RoomBy
   },

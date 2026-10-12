@@ -207,15 +207,6 @@ export const assertDeclaredInOrder = (text: string, names: ReadonlyArray<string>
   assert.deepStrictEqual(indexed.slice().sort((a, b) => a.index - b.index).map(({ name }) => name), names)
 }
 
-/** The decoded `document` string of the operation exported as `name`. */
-export const documentOf = (text: string, name: string): string => {
-  const start = text.indexOf(`export const ${name} = `)
-  assert(start >= 0, `expected an operation export ${name}`)
-  const match = /document:\s*("(?:[^"\\]|\\.)*")/.exec(text.slice(start))
-  assert(match !== null, `expected a document string for ${name}`)
-  return JSON.parse(match[1]!)
-}
-
 /** The trimmed lines of the file, for whole-line assertions. */
 export const fileLines = lines
 

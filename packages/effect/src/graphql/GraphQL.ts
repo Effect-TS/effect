@@ -9,6 +9,7 @@
  * @stability experimental
  * @since 4.0.0
  */
+import * as internal from "../internal/graphql.ts"
 import { type Pipeable, pipeArguments } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
@@ -25,6 +26,95 @@ const TypeId = "~effect/graphql/GraphQL"
  * @since 4.0.0
  */
 export type Kind = "query" | "mutation" | "subscription"
+
+/**
+ * An operation document split into the pieces needed to rename and alias it
+ * without a GraphQL parser. The generator emits one for every query and
+ * mutation.
+ *
+ * **Details**
+ *
+ * A `body` is a {@link DocumentTemplate.Parts} array: literal text at even
+ * indices and, at odd indices, the variable names and fragment names that
+ * would be renamed if the operation were repeated under a prefix. Joining the
+ * pieces gives the printed document, which is what the operation sends.
+ *
+ * A fragment whose `body` has a name in it is per-slice: it references a
+ * variable, directly or through a fragment it spreads. Every other fragment is
+ * shared.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DocumentTemplate {
+  /** The variable definitions, in document order. */
+  readonly variables: ReadonlyArray<DocumentTemplate.Variable>
+  /** The operation's directives, if it has any. */
+  readonly directives?: DocumentTemplate.Parts | undefined
+  /** The root selections, in document order. */
+  readonly selections: ReadonlyArray<DocumentTemplate.Selection>
+  /** The fragments the operation uses, in the order they follow it. */
+  readonly fragments: ReadonlyArray<DocumentTemplate.Fragment>
+}
+
+/**
+ * The pieces of a {@link DocumentTemplate}.
+ *
+ * @stability experimental
+ * @since 4.0.0
+ */
+export declare namespace DocumentTemplate {
+  /**
+   * Literal text at even indices and names to rename at odd indices.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.0.0
+   */
+  export type Parts = ReadonlyArray<string>
+
+  /**
+   * A variable definition: `$name:` followed by `body`, the type, default
+   * value and directives as printed.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Variable {
+    readonly name: string
+    readonly body: string
+  }
+
+  /**
+   * A root selection. For a field, `body` is everything after its name and
+   * the response key is `alias ?? name`. A fragment spread or inline fragment
+   * has no `name`, and `body` is the whole selection.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Selection {
+    readonly alias?: string | undefined
+    readonly name?: string | undefined
+    readonly body: Parts
+  }
+
+  /**
+   * A fragment definition: `fragment` and `name`, followed by `body`, which
+   * starts at its type condition.
+   *
+   * @stability experimental
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Fragment {
+    readonly name: string
+    readonly body: Parts
+  }
+}
 
 /**
  * A GraphQL operation: the document to send, the operation name, the
@@ -47,6 +137,8 @@ export interface Operation<
   readonly name: Name
   /** The printed document, sent as-is. It is never parsed at runtime. */
   readonly document: string
+  /** The template the document was joined from, if it was given as one. */
+  readonly template: DocumentTemplate | undefined
   readonly variables: Variables
   readonly result: Result
   /** Middleware attached to this operation, outermost first. */
@@ -167,7 +259,7 @@ const makeOperation = <const K extends Kind>(kind: K) =>
 >(
   name: Name,
   options: {
-    readonly document: string
+    readonly document: string | DocumentTemplate
     readonly variables?: Variables | undefined
     readonly result: Result
   }
@@ -175,7 +267,10 @@ const makeOperation = <const K extends Kind>(kind: K) =>
   makeProto({
     kind,
     name,
-    document: options.document,
+    document: typeof options.document === "string"
+      ? options.document
+      : internal.joinTemplate(kind, name, options.document),
+    template: typeof options.document === "string" ? undefined : options.document,
     variables: options.variables === undefined
       ? Schema.Struct({})
       : Schema.isSchema(options.variables)
@@ -189,7 +284,8 @@ const makeOperation = <const K extends Kind>(kind: K) =>
  * Defines a query. Variables are passed to the client as their decoded type
  * and encoded through the Schema, so custom scalar codecs apply to inputs as
  * well as results. `variables` takes struct fields or any Schema; leaving it
- * out means the operation has no variables.
+ * out means the operation has no variables. `document` takes the printed
+ * document or a {@link DocumentTemplate}, which is joined once here.
  *
  * **Example** (A query with variables)
  *
@@ -224,7 +320,7 @@ export const query: <
 >(
   name: Name,
   options: {
-    readonly document: string
+    readonly document: string | DocumentTemplate
     readonly variables?: Variables | undefined
     readonly result: Result
   }
@@ -260,7 +356,7 @@ export const mutation: <
 >(
   name: Name,
   options: {
-    readonly document: string
+    readonly document: string | DocumentTemplate
     readonly variables?: Variables | undefined
     readonly result: Result
   }
@@ -301,7 +397,7 @@ export const subscription: <
 >(
   name: Name,
   options: {
-    readonly document: string
+    readonly document: string | DocumentTemplate
     readonly variables?: Variables | undefined
     readonly result: Result
   }
