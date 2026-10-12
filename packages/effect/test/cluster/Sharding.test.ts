@@ -366,9 +366,8 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           })
       }))))
     }))
-})
 
-describe.concurrent("Sharding", () => {
+  // Keep the ten-minute clock advance out of the concurrent Sharding batch.
   it.effect("redelivers a request reset while an asynchronous storage read is pending", () =>
     Effect.gen(function*() {
       const readStarted = yield* Deferred.make<void>()
@@ -427,7 +426,9 @@ describe.concurrent("Sharding", () => {
           })
       }))))
     }))
+})
 
+describe.concurrent("Sharding", () => {
   for (const pauseReply of [false, true]) {
     it.effect(
       pauseReply
