@@ -1,7 +1,13 @@
 import type { NonEmptyReadonlyArray } from "../Array.ts"
+import * as Context from "../Context.ts"
+import type * as Effect from "../Effect.ts"
+import type * as Exit from "../Exit.ts"
 import type { DocumentTemplate } from "../graphql/GraphQL.ts"
+import type { PartialResult } from "../graphql/GraphQLClient.ts"
 import { type GraphQLError, ResponseError } from "../graphql/GraphQLClientError.ts"
 import type { ExecutionResult } from "../graphql/GraphQLProtocol.ts"
+import type * as Headers from "../http/Headers.ts"
+import type * as UrlParams from "../http/UrlParams.ts"
 import type * as Schema from "../Schema.ts"
 
 /**
@@ -117,7 +123,6 @@ const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<s
  *
  * @internal
  */
-// oxlint-disable-next-line effect/no-unused-internal -- groundwork for alias batching in `GraphQLResolver`
 export const renderSlices = (
   kind: string,
   name: string,
@@ -130,3 +135,45 @@ export const renderSlices = (
   }
   return render(kind, name, template, prefixes)
 }
+
+/**
+ * Makes the HTTP transport POST a query even with `queryMethod: "GET"`. Alias
+ * batches set it, since their documents can exceed URL length limits.
+ *
+ * @internal
+ */
+export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
+
+/**
+ * The property under which client methods for queries and mutations carry
+ * their {@link Batch} capability.
+ *
+ * @internal
+ */
+export const batchId = "~effect/graphql/batch"
+
+/**
+ * Runs one call per entry of `variables`, as one aliased request where the
+ * client can. Returns each entry's result in order, with errors matched to
+ * it; fails as a whole when the batch itself fails.
+ *
+ * @internal
+ */
+export type Batch = (
+  variables: NonEmptyReadonlyArray<unknown>,
+  options: {
+    readonly headers?: Headers.Input | undefined
+    readonly urlParams?: UrlParams.Input | undefined
+  }
+) => Effect.Effect<ReadonlyArray<Exit.Exit<PartialResult<unknown>, unknown>>, unknown, unknown>
+
+/**
+ * JSON with object keys sorted, so equal JSON values give equal strings.
+ *
+ * @internal
+ */
+export const canonicalJson = (value: unknown): string =>
+  JSON.stringify(value, (_, value) =>
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]]))
+      : value)

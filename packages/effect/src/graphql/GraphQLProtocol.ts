@@ -26,6 +26,7 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as UrlParams from "../http/UrlParams.ts"
+import * as internalGraphQL from "../internal/graphql.ts"
 import { HeadersSchema } from "../internal/graphqlHeaders.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
@@ -309,9 +310,11 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   const http = Clock.clockWith((clock) =>
     HttpClient.HttpClient.useSync((client) => {
       const execute = (request: GraphQLRequest) =>
-        Effect.suspend(() => {
+        Effect.flatMap(Effect.service(internalGraphQL.ForcePost), (forcePost) => {
           const now = clock.currentTimeMillisUnsafe()
-          const toRequest = options.queryMethod === "GET" && request.kind === "query" ? getRequest : postRequest
+          const toRequest = options.queryMethod === "GET" && request.kind === "query" && !forcePost
+            ? getRequest
+            : postRequest
           return client.execute(
             toRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
@@ -410,7 +413,8 @@ export const makeHttp: {
  * With `queryMethod: "GET"` (default `"POST"`), queries are sent as `GET`
  * with no body: `query` and `operationName` become URL params, plus
  * `variables` and `extensions` as JSON when set. Mutations are always
- * `POST`. A long query is not retried as `POST`.
+ * `POST`, and so are `GraphQLResolver.aliased` batches. A long query is not
+ * retried as `POST`.
  *
  * A request's `headers` and `urlParams`, from the call options or from
  * middleware, are applied to every HTTP request. A query string already on

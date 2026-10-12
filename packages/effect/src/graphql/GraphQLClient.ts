@@ -18,6 +18,8 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import type * as Exit from "../Exit.ts"
+import { identity } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as internalGraphQL from "../internal/graphql.ts"
@@ -375,19 +377,22 @@ const makeMethod = <Op extends GraphQL.Any>(
 
   // Like RpcMiddleware, `next` hides inner middleware errors and requirements;
   // they still appear on the client method's type.
+  // `forcePost` reaches only the transport, not middleware or what they call.
   const execute = (
     index: number,
-    request: GraphQLRequest
+    request: GraphQLRequest,
+    forcePost: boolean
   ): Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>> =>
     index === chain.length
       ? protocol.execute(request).pipe(
+        forcePost ? Effect.provideService(internalGraphQL.ForcePost, true) : identity,
         Effect.mapError(fail),
         Effect.flatMap(decodeResponse)
       )
       : chain[index].execute({
         operation,
         request,
-        next: (request) => execute(index + 1, request) as Effect.Effect<ExecutionResult, GraphQLClientError>
+        next: (request) => execute(index + 1, request, forcePost) as Effect.Effect<ExecutionResult, GraphQLClientError>
       })
 
   const subscribe = (
@@ -460,12 +465,112 @@ const makeMethod = <Op extends GraphQL.Any>(
     Exclude<GraphQL.Services<Op>, R2>
   > {
     return buildRequest(variables, options).pipe(
-      Effect.flatMap((request) => execute(0, request)),
+      Effect.flatMap((request) => execute(0, request, false)),
       Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
       Effect.provideContext(callContext(options))
     )
   }
-  return Object.assign(method, { operation })
+  const template = operation.template
+  if (template === undefined) return Object.assign(method, { operation })
+
+  // Splits a batch response by slice prefix. An error belongs to the slice
+  // whose prefix starts `path[0]`; any other error fails the batch.
+  const splitSlices = (result: ExecutionResult, prefixes: NonEmptyReadonlyArray<string>) => {
+    const errors = result.errors ?? []
+    const sliceErrors = prefixes.map((): Array<GraphQLError> => [])
+    for (const error of errors) {
+      const key = error.path?.[0]
+      const index = typeof key === "string" ? sliceIndex(key, prefixes.length) : undefined
+      if (index === undefined) return responseError(result, errors as NonEmptyReadonlyArray<GraphQLError>)
+      sliceErrors[index].push(
+        { ...error, path: [(key as string).slice(prefixes[index].length), ...error.path!.slice(1)] } as GraphQLError
+      )
+    }
+    if (result.data === null || result.data === undefined) {
+      return isReadonlyArrayNonEmpty(errors) ? responseError(result, errors) : missingData
+    }
+    const data = result.data as Record<string, unknown>
+    return Effect.forEach(prefixes, (prefix, i) => {
+      const sliceData: Record<string, unknown> = {}
+      for (const selection of template.selections) {
+        const key = (selection.alias ?? selection.name)!
+        if (Object.hasOwn(data, prefix + key)) sliceData[key] = data[prefix + key]
+      }
+      const raw: ExecutionResult = { ...result, data: sliceData, errors: sliceErrors[i] }
+      return Effect.exit(Effect.map(decodeData(sliceData), (data): PartialResult<GraphQL.Result<Op>> => {
+        const partial = { data, errors: sliceErrors[i] }
+        internalGraphQL.partialResponses.set(partial, raw)
+        return partial
+      }))
+    })
+  }
+
+  // One request that repeats the operation once per distinct slice of
+  // encoded variables, for `GraphQLResolver.aliased`.
+  const batch = (
+    variables: NonEmptyReadonlyArray<unknown>,
+    options: Parameters<internalGraphQL.Batch>[1]
+  ): Effect.Effect<
+    ReadonlyArray<Exit.Exit<PartialResult<GraphQL.Result<Op>>, GraphQLClientError>>,
+    GraphQL.Error<Op>,
+    GraphQL.Services<Op>
+  > =>
+    Effect.flatMap(
+      Effect.forEach(variables, (variables) =>
+        Effect.exit(
+          Effect.catch(
+            encodeVariables(variables ?? {}),
+            schemaFail((description) => new EncodeError({ description }))
+          )
+        )),
+      (encoded) => {
+        const slices: Array<unknown> = []
+        const sliceOf = new Map<string, number>()
+        const indices = encoded.map((exit) => {
+          if (exit._tag === "Failure") return exit
+          const key = internalGraphQL.canonicalJson(exit.value)
+          let index = sliceOf.get(key)
+          if (index === undefined) {
+            index = slices.length
+            sliceOf.set(key, index)
+            slices.push(exit.value)
+          }
+          return index
+        })
+        const pick = (results: ReadonlyArray<Exit.Exit<PartialResult<GraphQL.Result<Op>>, GraphQLClientError>>) =>
+          indices.map((index) =>
+            typeof index === "number" ? results[index] : index as Exit.Exit<never, GraphQLClientError>
+          )
+        if (!isReadonlyArrayNonEmpty(slices)) return Effect.succeed(pick([]))
+        const prefixes = slices.map((_, i) => `_${i}_`) as unknown as NonEmptyReadonlyArray<string>
+        return Effect.suspend(() => {
+          const request: GraphQLRequest = {
+            kind: operation.kind,
+            query: internalGraphQL.renderSlices(operation.kind, operation.name, template, prefixes),
+            operationName: operation.name,
+            variables: Object.fromEntries(slices.flatMap((slice, i) =>
+              Object.entries(slice ?? {}).map(([name, value]) => [prefixes[i] + name, value])
+            )),
+            headers: Headers.fromInput(options.headers),
+            urlParams: options.urlParams === undefined ? UrlParams.empty : UrlParams.fromInput(options.urlParams)
+          }
+          return execute(0, request, true)
+        }).pipe(
+          Effect.flatMap((result) =>
+            splitSlices(result, prefixes)
+          ),
+          Effect.map(pick)
+        )
+      }
+    )
+  return Object.assign(method, { operation, [internalGraphQL.batchId]: batch })
+}
+
+const sliceIndex = (key: string, length: number): number | undefined => {
+  const match = /^_(\d+)_/.exec(key)
+  if (match === null) return undefined
+  const index = Number(match[1])
+  return index < length && match[0] === `_${index}_` ? index : undefined
 }
 
 /**
@@ -790,7 +895,8 @@ export type TestHandlers<Ops extends GraphQL.Any> = {
  * values in their decoded form. Nothing is encoded, decoded or validated, and
  * no middleware runs. Called with `{ partial: true }`, a method returns
  * `{ data, errors: [] }`. Subscriptions are not retried. Every method carries
- * `.operation`, so {@link pages} and {@link items} work on it.
+ * `.operation`, so {@link pages} and {@link items} work on it. Through
+ * `GraphQLResolver.aliased`, the handler is called once per slice.
  *
  * Calling an operation without a handler dies with an `UnimplementedError`
  * defect, so `catchTag` in the code under test cannot swallow a missing stub.
@@ -915,7 +1021,9 @@ const makeTestMethod = (operation: GraphQL.Any, handler: ErasedTestHandler | und
       error.name = "UnimplementedError"
       return subscription ? Stream.die(error) : Effect.die(error)
     }
-    return Object.assign(unimplemented, { operation })
+    return subscription
+      ? Object.assign(unimplemented, { operation })
+      : Object.assign(unimplemented, { operation, [internalGraphQL.batchId]: unimplemented })
   }
   const call = (variables: unknown, options: (TestCallOptions & { readonly partial?: boolean }) | undefined) => {
     const run = () => handler(variables === undefined ? {} : variables, options ?? {})
@@ -925,5 +1033,13 @@ const makeTestMethod = (operation: GraphQL.Any, handler: ErasedTestHandler | und
       ? Effect.map(result, (data): PartialResult<unknown> => ({ data, errors: [] }))
       : result
   }
-  return Object.assign(call, { operation })
+  if (subscription) return Object.assign(call, { operation })
+  // A batch calls the handler once per slice.
+  const batch: internalGraphQL.Batch = (variables, options) =>
+    Effect.forEach(
+      variables,
+      (variables) =>
+        Effect.exit(call(variables, { ...options, partial: true }) as Effect.Effect<PartialResult<unknown>, unknown>)
+    )
+  return Object.assign(call, { operation, [internalGraphQL.batchId]: batch })
 }

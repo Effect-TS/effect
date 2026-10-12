@@ -315,6 +315,56 @@ the same value; when the object holding the list reports
 
 See [the RequestResolver example](../../../ai-docs/src/05_batching/10_request-resolver.ts).
 
+### Aliased batching
+
+Some lookups have no list field. GitHub finds a pull request by repository
+and number, one at a time. `GraphQLResolver.aliased` repeats a generated query
+under aliases in one request, so each slice still has the generated types.
+Add this operation to `repos.graphql`:
+
+```graphql
+query PullRequest($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) { number title }
+  }
+}
+```
+
+Then create the resolver inside `GitHub.make`, after the client:
+
+```ts
+const PullRequests = GraphQLResolver.aliased(client.PullRequest)
+const getPullRequest = GraphQLResolver.request(PullRequests)
+```
+
+`getPullRequest` takes the operation's variables and returns what
+`client.PullRequest` returns. Concurrent calls go out as one `POST`, built
+from the document template the generator emits:
+
+```graphql
+query PullRequest($_0_owner: String!, $_0_name: String!, $_0_number: Int!, $_1_owner: String!, ...) {
+  _0_repository: repository(owner: $_0_owner, name: $_0_name) { pullRequest(number: $_0_number) { number title } }
+  _1_repository: repository(owner: $_1_owner, name: $_1_name) { pullRequest(number: $_1_number) { number title } }
+}
+```
+
+The response is split by prefix and each slice is decoded with the generated
+result Schema. A GraphQL error under `_1_repository` fails only the second
+call; an error without a `path` fails them all. Calls whose variables encode
+to the same JSON share a slice. A batch holds 10 slices unless you pipe
+`RequestResolver.batchN`, because GitHub's query cost and timeouts grow with
+its size.
+
+`getPullRequest` also accepts `{ partial: true }` and works with
+`GraphQLClient.pages`, `items`, `ordered` and `findById`. Paging the issues of
+several repositories at once sends one request per round of pages.
+
+A non-null root field fails every slice when an error happens under it, since
+the `null` reaches `data`. GitHub's `repository` and `pullRequest` are
+nullable, so they don't. Middleware that hash the query should hash
+`request.query`, which holds the batched document, and allowlists of trusted
+documents can't cover batches.
+
 ## Links
 
 - [Website](https://effect.website): documentation, guides, and news.
