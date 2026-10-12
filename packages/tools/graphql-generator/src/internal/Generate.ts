@@ -109,6 +109,14 @@ export const generate: (
     }
     cache.documents = documents
     if (diagnostics.length > 0) return failed(diagnostics.map(toPublic))
+    const collision = files.find((file) => file.outputPath === sharedPath)
+    if (collision !== undefined) {
+      return failed([toPublic(make(
+        collision.source,
+        0,
+        `The shared module path "${display(sharedPath)}" is also a document output; choose a different shared path.`
+      ))])
+    }
     const validation = Validate.validate(schema, files)
     if (validation.length > 0) return failed(validation.map(toPublic))
 
