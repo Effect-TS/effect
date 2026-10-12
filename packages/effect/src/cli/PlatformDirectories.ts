@@ -179,8 +179,8 @@ const hostPlatform = (): string => {
  *
  * **When to use**
  *
- * Provide this at the CLI boundary. Pass `platform` in tests so every host
- * convention can run on one machine. `home` comes from `USERPROFILE` then
+ * Use when a CLI should read its config directory from the environment.
+ * Pass `platform` in tests so every host convention can run on one machine. `home` comes from `USERPROFILE` then
  * `HOME` on Windows, and from `HOME` then `USERPROFILE` elsewhere. A missing
  * variable is `None`. A provider fault dies. {@link MissingHome} is the only
  * typed failure, and it is the one a CLI can act on.
