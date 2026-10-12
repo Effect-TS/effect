@@ -1926,7 +1926,38 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
   }
 }
 
-const isTransientError = (error: unknown) => Cause.isTimeoutError(error) || isTransientHttpError(error)
+/**
+ * Returns `true` for an error that `retryTransient` retries by default: a
+ * timeout, a transport error, or a status code error with a transient response.
+ *
+ * **When to use**
+ *
+ * Use to classify failures the same way `retryTransient` does, for example in a
+ * custom retry policy or a circuit breaker.
+ *
+ * **Example** (Classifying client errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause } from "effect"
+ * import { HttpClient, HttpClientError, HttpClientRequest } from "effect/http"
+ *
+ * const request = HttpClientRequest.get("https://example.com")
+ * const transportError = new HttpClientError.HttpClientError({
+ *   reason: new HttpClientError.TransportError({ request })
+ * })
+ *
+ * HttpClient.isTransientError(transportError) // => true
+ * HttpClient.isTransientError(new Cause.TimeoutError()) // => true
+ * HttpClient.isTransientError(new Error("boom")) // => false
+ * ```
+ *
+ * @see {@link isTransientResponse} for the response statuses it accepts
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientError = (error: unknown): boolean => Cause.isTimeoutError(error) || isTransientHttpError(error)
 
 const isTransientHttpError = (error: unknown) =>
   Error.isHttpClientError(error) &&
@@ -1960,7 +1991,21 @@ const isTooManyRequestsHttpClientError = (
 ): error is Error.HttpClientError & { readonly reason: Error.StatusCodeError } =>
   Error.isHttpClientError(error) && error.reason._tag === "StatusCodeError" && error.reason.response.status === 429
 
-const isTransientResponse = (response: HttpClientResponse.HttpClientResponse) =>
+/**
+ * Returns `true` for a response whose status `retryTransient` retries by
+ * default: 408, 429, 500, 502, 503 or 504.
+ *
+ * **When to use**
+ *
+ * Use to retry the same responses as `retryTransient` in a custom retry policy.
+ *
+ * @see {@link isTransientError} for the matching error predicate
+ * @see {@link retryTransient} for the retry policy that uses it
+ * @stability unstable
+ * @category predicates
+ * @since 4.1.0
+ */
+export const isTransientResponse = (response: HttpClientResponse.HttpClientResponse): boolean =>
   response.status === 408 ||
   response.status === 429 ||
   response.status === 500 ||

@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cause, Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -408,6 +408,28 @@ Missing key
         assert.strictEqual(redirected.method, "PUT")
         assert.strictEqual(redirected.body._tag, "Uint8Array")
       }))
+  })
+
+  it("classifies transient responses and errors", () => {
+    const request = HttpClientRequest.get("http://test/")
+    const responses = [200, 404, 408, 429, 500, 501, 502, 503, 504].map((status) =>
+      HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    )
+    const statusErrors = responses.map((response) =>
+      new HttpClientError.HttpClientError({ reason: new HttpClientError.StatusCodeError({ request, response }) })
+    )
+    const expected = [false, false, true, true, true, false, true, true, true]
+    assert.deepStrictEqual(responses.map(HttpClient.isTransientResponse), expected)
+    assert.deepStrictEqual(statusErrors.map(HttpClient.isTransientError), expected)
+    assert.deepStrictEqual(
+      [
+        new Cause.TimeoutError(),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.EncodeError({ request }) }),
+        new Error("boom")
+      ].map(HttpClient.isTransientError),
+      [true, true, false, false]
+    )
   })
 
   describe("retryTransient", () => {
