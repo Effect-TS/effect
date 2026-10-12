@@ -37,6 +37,12 @@ export * as Headers from "./Headers.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.4
+ */
+export * as Html from "./Html.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as HttpBody from "./HttpBody.ts"

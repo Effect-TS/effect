@@ -29,6 +29,7 @@ import * as Stream from "../Stream.ts"
 import type { Mutable } from "../Types.ts"
 import * as Cookies from "./Cookies.ts"
 import * as Headers from "./Headers.ts"
+import * as Html from "./Html.ts"
 import * as Body from "./HttpBody.ts"
 import * as HttpClientError from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
@@ -227,9 +228,10 @@ export const text = (
  *
  * **Details**
  *
- * Passing a string returns a response directly. Using it as a template tag returns
- * an effect so interpolated values can be rendered with their required services
- * and errors.
+ * Passing a string or an `Html` value returns a response directly. Using it as a
+ * template tag returns an effect so interpolated values can be rendered with their
+ * required services and errors. The tag does not escape what it interpolates; use
+ * `Html.make` for markup that includes text from a person.
  *
  * @stability unstable
  * @category constructors
@@ -244,13 +246,16 @@ export const html: {
     Template.Interpolated.Error<A[number]>,
     Template.Interpolated.Context<A[number]>
   >
-  (html: string): HttpServerResponse
+  (html: string | Html.Html): HttpServerResponse
 } = (
-  strings: TemplateStringsArray | string,
+  strings: TemplateStringsArray | string | Html.Html,
   ...args: ReadonlyArray<Template.Interpolated>
 ) => {
   if (typeof strings === "string") {
     return text(strings, { contentType: "text/html" })
+  }
+  if (Html.isHtml(strings)) {
+    return text(strings.value, { contentType: "text/html" })
   }
 
   return Effect.map(Template.make(strings, ...args), (_) => text(_, { contentType: "text/html" })) as any
