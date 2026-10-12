@@ -138,7 +138,7 @@ describe("GraphQLClient", () => {
       assert.deepStrictEqual(yield* Ref.get(requests), [])
     }))
 
-  it.effect("a response with errors fails with ResponseError carrying the raw data and top-level error fields", () =>
+  it.effect("a response with errors fails with ResponseError carrying the raw data and errors", () =>
     Effect.gen(function*() {
       const client = yield* repoIssuesClient(partialIssues)
       const reason = yield* expectReason("ResponseError")(client.RepoIssues(variables))
