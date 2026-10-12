@@ -953,9 +953,8 @@ export const retry: {
  * transient, and is ignored in "response-only" mode.
  *
  * A `Retry-After` header on a transient response, or on the response of a
- * status code error, sets the minimum delay before the next attempt. If it
- * exceeds `maxRetryAfter` (one minute by default), retrying stops and the last
- * response or error is returned.
+ * status code error, sets the minimum delay before the next attempt. A longer
+ * schedule delay is preserved.
  *
  * @stability unstable
  * @category error handling
@@ -980,7 +979,6 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<NoInfer<E | ES>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, ES, R1>
       readonly times?: number
-      readonly maxRetryAfter?: Duration.Input | undefined
     }
   ): <R>(self: HttpClient.With<E, R>) => HttpClient.With<E | ES, R1 | R>
   <
@@ -1003,7 +1001,6 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<NoInfer<E | ES>>
       readonly schedule?: Schedule.Schedule<B, NoInfer<Input>, ES, R1>
       readonly times?: number
-      readonly maxRetryAfter?: Duration.Input | undefined
     }
   ): HttpClient.With<E | ES, R1 | R>
   <B, E, ES = never, R1 = never>(
@@ -1028,14 +1025,12 @@ export const retryTransient: {
       readonly while?: Predicate.Predicate<E | ES>
       readonly schedule?: Schedule.Schedule<B, any, ES, R1>
       readonly times?: number
-      readonly maxRetryAfter?: Duration.Input | undefined
     } | Schedule.Schedule<B, any, ES, R1>
   ): HttpClient.With<E | ES, R1 | R> => {
     const isOnlySchedule = Schedule.isSchedule(options)
     const retryOn = isOnlySchedule ? "errors-and-responses" : options.retryOn ?? "errors-and-responses"
     const schedule = withRetryAfter(
-      isOnlySchedule ? options : options.schedule ?? Schedule.forever,
-      Duration.fromInputUnsafe(isOnlySchedule ? "1 minute" : options.maxRetryAfter ?? "1 minute")
+      isOnlySchedule ? options : options.schedule ?? Schedule.forever
     )
     const times = isOnlySchedule ? undefined : options.times
     return transformResponse(
@@ -1949,17 +1944,13 @@ const retryAfterOf = (input: unknown, nowMillis: number): Duration.Duration | un
 }
 
 const withRetryAfter = <ES, R1>(
-  schedule: Schedule.Schedule<unknown, any, ES, R1>,
-  maxRetryAfter: Duration.Duration
+  schedule: Schedule.Schedule<unknown, any, ES, R1>
 ): Schedule.Schedule<unknown, any, ES, R1> =>
   Schedule.fromStep(
     Effect.map(Schedule.toStep(schedule), (step) => (now: number, input: unknown) => {
       const retryAfter = retryAfterOf(input, now)
       if (retryAfter === undefined) {
         return step(now, input)
-      }
-      if (Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
-        return Cause.done()
       }
       return Effect.map(step(now, input), ([output, delay]) => [output, Duration.max(delay, retryAfter)])
     })
