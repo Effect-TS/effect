@@ -1965,8 +1965,7 @@ const isTooManyRequestsHttpClientError = (
  *
  * **When to use**
  *
- * Use to decide whether a response is worth retrying in a custom retry policy,
- * consistently with `retryTransient`.
+ * Use to retry the same responses as `retryTransient` in a custom retry policy.
  *
  * @see {@link isTransientError} for the matching error predicate
  * @see {@link retryTransient} for the retry policy that uses it
