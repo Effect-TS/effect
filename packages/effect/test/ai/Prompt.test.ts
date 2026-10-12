@@ -78,6 +78,40 @@ describe("Prompt", () => {
   })
 
   describe("fromResponseParts", () => {
+    it("keeps text before an interleaved tool call", () => {
+      assert.deepStrictEqual(
+        Prompt.fromResponseParts([
+          Response.makePart("text-start", { id: "t1" }),
+          Response.makePart("text-delta", { id: "t1", delta: "Hello" }),
+          Response.makePart("tool-call", {
+            id: "call-1",
+            name: "get_weather",
+            params: {},
+            providerExecuted: false
+          }),
+          Response.makePart("text-end", { id: "t1" })
+        ]),
+        Prompt.make([{
+          role: "assistant",
+          content: [
+            { type: "text", text: "Hello" },
+            { type: "tool-call", id: "call-1", name: "get_weather", params: {}, providerExecuted: false }
+          ]
+        }])
+      )
+    })
+
+    it("omits unended reasoning and empty unended text", () => {
+      assert.deepStrictEqual(
+        Prompt.fromResponseParts([
+          Response.makePart("text-start", { id: "t1" }),
+          Response.makePart("reasoning-start", { id: "r1" }),
+          Response.makePart("reasoning-delta", { id: "r1", delta: "Unsigned thinking" })
+        ]),
+        Prompt.empty
+      )
+    })
+
     it("preserves file-only responses as assistant messages", () => {
       const file = Response.makePart("file", {
         data: new Uint8Array([0, 127, 128, 255]),

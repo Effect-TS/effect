@@ -4,11 +4,13 @@ import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import { InMemorySpanExporter, SimpleSpanProcessor, type SpanExporter } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as HttpRouter from "effect/http/HttpRouter"
+import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as EffectTracer from "effect/Tracer"
@@ -36,6 +38,32 @@ describe("Tracer", () => {
       assert.strictEqual(scope.name, "effect")
       assert.strictEqual(scope.version, Version.getCurrentVersion())
     }).pipe(Effect.provide(layer))
+  })
+
+  it("exports the HTTP server span when disposed right after the response", async () => {
+    const exported: Array<string> = []
+    const exporter: SpanExporter = {
+      export: (spans, done) => {
+        exported.push(...spans.map((span) => span.name))
+        done({ code: 0 })
+      },
+      shutdown: () => Promise.resolve()
+    }
+    const { dispose, handler } = HttpRouter.toWebHandler(
+      HttpRouter.add("GET", "/", Effect.succeed(HttpServerResponse.text("ok"))).pipe(
+        Layer.provideMerge(NodeSdk.layer(() => ({
+          resource: { serviceName: "test" },
+          spanProcessor: new SimpleSpanProcessor(exporter)
+        })))
+      ),
+      { disableLogger: true }
+    )
+
+    const response = await handler(new Request("http://localhost/"))
+    assert.strictEqual(await response.text(), "ok")
+    await dispose()
+
+    assert.deepStrictEqual(exported, ["GET"])
   })
 
   describe("provided", () => {

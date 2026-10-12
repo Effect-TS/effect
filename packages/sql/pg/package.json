@@ -67,6 +67,7 @@
     "@types/node": "^26.6.5",
     "effect": "workspace:^",
     "postgres": "^3.4.9",
+    "testcontainers": "^12.2.0",
     "tinybench": "^6.2.1"
   },
   "peerDependencies": {

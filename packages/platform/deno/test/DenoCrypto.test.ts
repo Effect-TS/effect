@@ -2,6 +2,7 @@ import * as DenoCrypto from "@effect/platform-deno/DenoCrypto"
 import { assert, describe, it } from "@effect/vitest"
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
+import { describeCrypto } from "../../node-shared/test/Crypto.test-utils.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -35,3 +36,5 @@ describe("DenoCrypto", () => {
       assert.match(yield* crypto.randomUUIDv7(), uuidV7Regex)
     }).pipe(Effect.provide(DenoCrypto.layer)))
 })
+
+describeCrypto("DenoCrypto primitives", DenoCrypto.layer, { md5: true, native: true })

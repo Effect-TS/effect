@@ -79,6 +79,7 @@
     "@testcontainers/redis": "^12.2.0",
     "@types/node": "^26.6.5",
     "effect": "workspace:^",
-    "redis": "^6.3.0"
+    "redis": "^6.3.0",
+    "testcontainers": "^12.2.0"
   }
 }
