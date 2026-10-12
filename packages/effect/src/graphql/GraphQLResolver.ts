@@ -434,48 +434,30 @@ export const findById = <
  *
  * **Details**
  *
- * The resolver's request is the operation's variables and its result is the
- * operation's decoded result, so {@link request} turns it into
- * `(variables) => Effect`.
+ * Use {@link request} to get `(variables) => Effect`. Variables that encode
+ * to the same JSON share a slice; each slice uses the operation's result Schema.
+ * Throws if the operation has no document template.
  *
- * A batch sends one document built from the operation's
- * `GraphQL.DocumentTemplate`. Root fields are aliased and variables renamed
- * with the prefixes `_0_`, `_1_`, and so on; operation directives and
- * fragments that use no variables appear once. Lookups whose variables encode
- * to the same JSON share a slice. The response is split by prefix, and each
- * slice is decoded with the operation's result Schema.
+ * Batches use `POST` even with `queryMethod: "GET"`. The default batch size
+ * is 10; change it with `RequestResolver.batchN`. Middleware run once per
+ * batch, and `batchKey` works as in {@link ordered}. Mock and custom methods
+ * are called once per slice instead.
  *
- * A GraphQL error whose `path[0]` starts with a slice's prefix fails only that
- * slice, with a `ResponseError` holding its errors with the prefix removed.
- * An error without a `path` or matching no slice fails the batch, as do
- * transport and middleware failures.
- *
- * Batches are sent as `POST`, even with `queryMethod: "GET"`, to stay clear of
- * URL length limits. A batch holds up to 10 lookups; set another size with
- * `RequestResolver.batchN`. GitHub's query cost and timeouts grow with the
- * number of slices.
- *
- * Middleware run once per batch, and `batchKey` works as in {@link ordered}.
- * A method that isn't from `GraphQLClient.make`, such as one from
- * `GraphQLClient.makeTest`, is called once per slice instead.
- *
- * Throws when the operation has no document template. The generator emits
- * one for every query and mutation.
+ * Errors with a matching `path[0]` fail only that slice, with the alias prefix
+ * removed from the error path. Errors without a matching path, transport errors
+ * and middleware failures fail the batch.
  *
  * **Gotchas**
  *
- * A non-null root field fails every slice when any error happens under it,
- * because the `null` reaches `data` itself. GitHub's `repository` and
- * `pullRequest` are nullable, so lookups through them fail one at a time.
+ * An error under a non-null root field can null the entire response, failing
+ * every slice. GitHub's `repository` and `pullRequest` are nullable.
  *
- * Middleware see the batched document in `request.query`, while
- * `operation.document` stays the single operation's. Middleware that hash the
- * query must hash `request.query`. Allowlists of trusted documents can't cover
- * batches, but hashing still works, because a batch of N slices always has the
- * same text.
+ * Middleware that hash queries must use `request.query`, not
+ * `operation.document`. Trusted-document allowlists don't support batching;
+ * query hashing does, since the same operation and slice count produce the
+ * same document.
  *
- * Mutations are allowed, but their root fields run in slice order, which the
- * caller doesn't control.
+ * Mutations are allowed, but the caller cannot control root-field order.
  *
  * **Example** (Looking up pull requests by number)
  *
@@ -552,8 +534,7 @@ export const aliased = <Op extends GraphQL.Any>(
     throw new Error(`GraphQLResolver.aliased: operation ${operation.name} has no document template`)
   }
   const codec = internalGraphQL.makeCodec(operation)
-  // Type boundary: the hook is registered for this method, so it runs this
-  // operation's middleware.
+  // The registered hook uses this operation's middleware errors and services.
   const execute = internalGraphQL.getRawExecute(method) as
     | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
     | undefined
@@ -566,7 +547,6 @@ export const aliased = <Op extends GraphQL.Any>(
     Effect.flatMap(
       Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
       (encoded) => {
-        // Lookups whose variables encode to the same JSON share a slice.
         const slices: Array<Slice<Op>> = []
         const byJson = new Map<string, Slice<Op>>()
         for (let i = 0; i < entries.length; i++) {

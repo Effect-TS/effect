@@ -142,8 +142,7 @@ export const renderSlices = (
 }
 
 /**
- * Makes the HTTP transport POST a query even with `queryMethod: "GET"`. Alias
- * batches set it, since their documents can exceed URL length limits.
+ * Forces POST for alias batches to avoid GET URL length limits.
  *
  * @internal
  */
@@ -161,8 +160,7 @@ export const canonicalJson = (value: unknown): string =>
       : value)
 
 /**
- * Encodes an operation's variables and decodes its results, failing with the
- * same `GraphQLClientError`s as its client method.
+ * Shared variable encoding, result decoding and client error mapping.
  *
  * @internal
  */
@@ -183,10 +181,8 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
   ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
     Effect.catch(decode(data), schemaFail((description) => new DecodeError({ description })))
 
-  // Fails with the response's errors, or, without any, because GraphQL only
-  // allows a `null` or missing `data` when there are `errors`. The result
-  // codec is not consulted for `null` data: `Schema.Json` would accept it and
-  // turn an invalid response into a success.
+  // GraphQL requires errors when data is null or missing. Check before decoding,
+  // since schemas such as Schema.Json accept null.
   const failResponse = (result: ExecutionResult): Effect.Effect<never, GraphQLClientError> => {
     const errors = result.errors ?? []
     return Effect.fail(fail(
@@ -217,17 +213,12 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
   return { fail, schemaFail, encodeVariables, failResponse, decodeStrict, decodePartial } as const
 }
 
-/**
- * Runs a request through a client method's middleware and protocol, sending
- * it as `POST`.
- */
 type RawExecute = (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
 
 const rawExecutors = new WeakMap<object, RawExecute>()
 
 /**
- * Registers how `GraphQLResolver.aliased` runs a batch request through a
- * client method. Mock client methods have none.
+ * Registers a client's middleware and protocol runner for POST batches.
  *
  * @internal
  */
@@ -236,7 +227,7 @@ export const setRawExecute = (method: object, execute: RawExecute): void => {
 }
 
 /**
- * The batch runner a client method registered, if any.
+ * Returns the batch runner, or undefined for mock and custom methods.
  *
  * @internal
  */
@@ -263,12 +254,8 @@ export const prefixVariables = (
   )
 
 /**
- * Splits a response to a {@link renderSlices} document into one result per
- * prefix, with the root keys and error paths un-prefixed. An error belongs to
- * the slice whose prefix starts `path[0]`.
- *
- * Returns `undefined` when the response fails as a whole: an error matches
- * no slice, or `data` is `null` or missing.
+ * Splits a batched response, removing prefixes from root keys and error paths.
+ * Returns undefined if an error matches no slice or data is null or missing.
  *
  * @internal
  */

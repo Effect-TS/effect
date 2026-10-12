@@ -366,9 +366,8 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.catch(notGraphQL)
     )
 
-  // Like RpcMiddleware, `next` hides inner middleware errors and requirements;
-  // they still appear on the client method's type. `forcePost` reaches only
-  // the transport, not middleware or anything they call.
+  // `next` hides inner middleware errors and requirements from middleware,
+  // but not from the client method. Force POST only at the transport boundary.
   const execute = (
     index: number,
     request: GraphQLRequest,
@@ -431,7 +430,6 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.provideContext(callContext(options))
     )
   }
-  // For `GraphQLResolver.aliased`, which sends batches as `POST`.
   internalGraphQL.setRawExecute(method, (request) => execute(0, request, true))
   return Object.assign(method, { operation })
 }
