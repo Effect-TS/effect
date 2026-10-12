@@ -798,6 +798,28 @@ Missing key
       }))
   })
 
+  it("classifies transient responses and errors", () => {
+    const request = HttpClientRequest.get("http://test/")
+    const responses = [200, 404, 408, 429, 500, 501, 502, 503, 504].map((status) =>
+      HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    )
+    const statusErrors = responses.map((response) =>
+      new HttpClientError.HttpClientError({ reason: new HttpClientError.StatusCodeError({ request, response }) })
+    )
+    const expected = [false, false, true, true, true, false, true, true, true]
+    assert.deepStrictEqual(responses.map(HttpClient.isTransientResponse), expected)
+    assert.deepStrictEqual(statusErrors.map(HttpClient.isTransientError), expected)
+    assert.deepStrictEqual(
+      [
+        new Cause.TimeoutError(),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) }),
+        new HttpClientError.HttpClientError({ reason: new HttpClientError.EncodeError({ request }) }),
+        new Error("boom")
+      ].map(HttpClient.isTransientError),
+      [true, true, false, false]
+    )
+  })
+
   describe("retryTransient", () => {
     it.effect("retries transient responses with retryOn errors-and-responses", () =>
       Effect.gen(function*() {
