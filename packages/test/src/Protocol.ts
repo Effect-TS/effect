@@ -1,9 +1,9 @@
 // The coordinator <-> executor protocol. Everything that crosses a
 // process/thread boundary is defined here as Schema, so the same RpcGroup can be
 // served over worker threads, child processes or a socket.
-import { Schema } from "effect"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
+import * as Schema from "effect/Schema"
 
 const opt = Schema.optionalKey
 

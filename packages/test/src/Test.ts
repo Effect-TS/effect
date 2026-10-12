@@ -7,8 +7,11 @@
 // `Test.suite` unions its children's `R`; `Test.provide(layer)` removes what the
 // layer provides and adds what the layer itself needs. A file is runnable when
 // its default export is a `Node<never>` (see `Runnable`).
-import { Duration, Effect, type Layer, type Scope } from "effect"
-import { pipeArguments, type Pipeable } from "effect/Pipeable"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
+import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import type * as Scope from "effect/Scope"
 import { callSite } from "./CallSite.ts"
 import type { Location } from "./Protocol.ts"
 

@@ -3,7 +3,7 @@
 // all it would take to make the executor a child process or a remote machine.
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as NodeWorkerRunner from "@effect/platform-node/NodeWorkerRunner"
-import { Layer } from "effect"
+import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/rpc/RpcServer"
 import { ExecutorState, listFile, runFile } from "./Executor.ts"
 import { ExecutorRpcs } from "./Protocol.ts"

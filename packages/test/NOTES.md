@@ -28,25 +28,25 @@ finds `*.test.ts` files under the given paths.
 
 ## Layout
 
-| File | Role |
-|---|---|
-| `src/Test.ts` | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
-| `src/CallSite.ts` | Call-site capture from the V8 stack (`file:line:col`, no transform) |
-| `src/Protocol.ts` | Schema'd `TestEvent` union, the listing schema, and the `ExecutorRpcs` RpcGroup (`ListFile`, `RunFile` → `Stream`) |
-| `src/Executor.ts` | Loads a file, lists its tree, and runs the selected tests as fibers with fixtures, the test environment, timeouts, retries and Cause classification |
-| `src/executor-worker.ts` | Worker-thread entry: `RpcServer.layer(ExecutorRpcs)` over `layerProtocolWorkerRunner` |
-| `src/Coordinator.ts` | Discovery, planning (nearest-wins options, seeds, filters, only/skip), dispatch over the executor pool, bail, and the completeness guarantee |
-| `src/Reporters.ts` | `agent`, `human` and `jsonl` reporters |
-| `src/Cli.ts` | The `effect-test` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported |
-| `src/bin.ts` | Entry point: `Command.run(cli)` with `NodeServices.layer`, under `NodeRuntime.runMain` |
-| `examples/*.test.ts` | Every feature, including intentional failures (marked "(intentional failure)" in the test or suite name) |
-| `examples/userRepoContract.ts`, `examples/contract.test.ts` | A contract suite written once (`Suite<UserRepo>`) and provided with two implementations |
-| `examples/typecheck.ts` | Asserts that every test file's default export `satisfies Test.Runnable`, which is what the CLI would generate |
-| `examples/typecheck-negative.ts` | `@ts-expect-error` cases proving that a missing `Test.provide` is a compile error |
+| File                                                        | Role                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/Test.ts`                                               | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
+| `src/CallSite.ts`                                           | Call-site capture from the V8 stack (`file:line:col`, no transform)                                                                                                                                                                                                                                                          |
+| `src/Protocol.ts`                                           | Schema'd `TestEvent` union, the listing schema, and the `ExecutorRpcs` RpcGroup (`ListFile`, `RunFile` → `Stream`)                                                                                                                                                                                                           |
+| `src/Executor.ts`                                           | Loads a file, lists its tree, and runs the selected tests as fibers with fixtures, the test environment, timeouts, retries and Cause classification                                                                                                                                                                          |
+| `src/executor-worker.ts`                                    | Worker-thread entry: `RpcServer.layer(ExecutorRpcs)` over `layerProtocolWorkerRunner`                                                                                                                                                                                                                                        |
+| `src/Coordinator.ts`                                        | Discovery, planning (nearest-wins options, seeds, filters, only/skip), dispatch over the executor pool, bail, and the completeness guarantee                                                                                                                                                                                 |
+| `src/Reporters.ts`                                          | `agent`, `human` and `jsonl` reporters                                                                                                                                                                                                                                                                                       |
+| `src/Cli.ts`                                                | The `effect-test` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported                                                                                                                                    |
+| `src/bin.ts`                                                | Entry point: `Command.run(cli)` with `NodeServices.layer`, under `NodeRuntime.runMain`                                                                                                                                                                                                                                       |
+| `examples/*.test.ts`                                        | Every feature, including intentional failures (marked "(intentional failure)" in the test or suite name)                                                                                                                                                                                                                     |
+| `examples/userRepoContract.ts`, `examples/contract.test.ts` | A contract suite written once (`Suite<UserRepo>`) and provided with two implementations                                                                                                                                                                                                                                      |
+| `examples/typecheck.ts`                                     | Asserts that every test file's default export `satisfies Test.Runnable`, which is what the CLI would generate                                                                                                                                                                                                                |
+| `examples/typecheck-negative.ts`                            | `@ts-expect-error` cases proving that a missing `Test.provide` is a compile error                                                                                                                                                                                                                                            |
 
 ## Default decisions and how they were realised
 
-1. **Tests are values (syntax B, see below).** A test file's `export default` *is* its tree: a `Test.suite(...)` or a single
+1. **Tests are values (syntax B, see below).** A test file's `export default` _is_ its tree: a `Test.suite(...)` or a single
    `Test.test`. Nothing registers globally on import. If the default export is not a tree, the file fails with
    `no tests exported from <file>`, reported as a failed pseudo-test of kind `load`, or as `LOAD ERROR` under `--list`. Options (`timeout`, `retries`,
    `tags`, `skip`, `only`) are data on the node, given inline or through pipeable transformers. The coordinator
@@ -58,32 +58,32 @@ finds `*.test.ts` files under the given paths.
    - on a suite: built once, lazily, on the first test that runs, in the suite's own MemoMap and Scope. Reused by every test
      below it and released when the last of them finishes. On the root suite this means "once per file".
    - on a test: built for every **attempt**, in the attempt's MemoMap and Scope. Same as `Effect.provide` in the body.
-   Reuse follows Effect's MemoMap semantics. MemoMaps are forked down the tree (run → suite → … → test attempt), so a layer
-   value already built further out is reused, including by `Effect.provide` inside a test body. `Layer.fresh(layer)` opts out.
-   Fixtures are built outermost-first: a later `provide` in the pipe wraps the earlier ones, so it is built first and can feed
-   them. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
-   never builds its layers. A fresh fixture for every test in a suite is written per test (`tests.map(Test.provide(layer))`),
-   and a reusable suite that needs that takes its layer as a parameter (`userRepoContract(InMemoryUserRepo)`).
-   **Cross-file sharing is config, and config only optimises.** `effect-test.config.ts` (default export `Test.config({ shared })`,
-   or `--config <file>`, or `--no-config`) lists layers shared by the run. Each is built lazily, the first time any file provides
-   that same Layer value, from the run's context (not the asking file's), detached from the asking test, kept until the run ends;
-   a failed build is recorded for the run. This is a custom MemoMap at the root of the fork chain. Every file still provides
-   everything it needs, so it type-checks and runs alone; `Test.provide(Layer.fresh(layer))` opts a file out. Shared layers must
-   have no requirements (`Layer<A, E, never>`, a compile error otherwise). **In this prototype "the run" is one executor
-   (worker); the real design is coordinator-owned.** The examples give identical results with and without the config, and
-   a probe confirmed that two files in one worker share one `Database` with the config and get one each without it.
+     Reuse follows Effect's MemoMap semantics. MemoMaps are forked down the tree (run → suite → … → test attempt), so a layer
+     value already built further out is reused, including by `Effect.provide` inside a test body. `Layer.fresh(layer)` opts out.
+     Fixtures are built outermost-first: a later `provide` in the pipe wraps the earlier ones, so it is built first and can feed
+     them. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
+     never builds its layers. A fresh fixture for every test in a suite is written per test (`tests.map(Test.provide(layer))`),
+     and a reusable suite that needs that takes its layer as a parameter (`userRepoContract(InMemoryUserRepo)`).
+     **Cross-file sharing is config, and config only optimises.** `effect-test.config.ts` (default export `Test.config({ shared })`,
+     or `--config <file>`, or `--no-config`) lists layers shared by the run. Each is built lazily, the first time any file provides
+     that same Layer value, from the run's context (not the asking file's), detached from the asking test, kept until the run ends;
+     a failed build is recorded for the run. This is a custom MemoMap at the root of the fork chain. Every file still provides
+     everything it needs, so it type-checks and runs alone; `Test.provide(Layer.fresh(layer))` opts a file out. Shared layers must
+     have no requirements (`Layer<A, E, never>`, a compile error otherwise). **In this prototype "the run" is one executor
+     (worker); the real design is coordinator-owned.** The examples give identical results with and without the config, and
+     a probe confirmed that two files in one worker share one `Database` with the config and get one each without it.
 3. **Test environment by default.** Every attempt runs with a fresh `TestClock`, a `TestConsole`, and `Random.withSeed(seed)`.
    The per-test seed is `fnv1a("<runSeed>:<test id>")`, so a rerun of one test with `--seed <runSeed>` reproduces it exactly.
    The seed is in every `TestFinished` event and in the agent output. Console output is captured per test. The agent
    reporter shows it only for failing tests; the jsonl reporter always includes it. The TestClock examples are in
    `basics.test.ts`. Auto-advance is not implemented.
-4. **Real interruption.** The per-test timeout is `Effect.timeoutOption`, applied *outside* the TestClock (so it is real time)
-   but *around* the body's own `Effect.scoped`. On timeout the body fiber is interrupted, its finalizers run, and only then is the
+4. **Real interruption.** The per-test timeout is `Effect.timeoutOption`, applied _outside_ the TestClock (so it is real time)
+   but _around_ the body's own `Effect.scoped`. On timeout the body fiber is interrupted, its finalizers run, and only then is the
    console read. The sample output shows `released connection (finalizer ran on timeout)`. `--bail` races the whole
    dispatch against a `Deferred`. That interrupts every in-flight `RunFile` stream, the Rpc client sends `Interrupt` to the
    worker, and the worker interrupts the test fibers. Ctrl-C works the same way: `runMain` interrupts the program, and a
    finalizer in a worker was observed to run.
-5. **No silent greens** (what is left of it without our own assertions). If the body's *result* is an Effect, the test
+5. **No silent greens** (what is left of it without our own assertions). If the body's _result_ is an Effect, the test
    fails with `discardedEffect`: a plain function returning an Effect, an async function resolving to one, or an Effect
    producing `Effect<Effect>`. A bare `function*` type-checks as a plain function but only returns an unstarted generator,
    so that fails too, with a hint to write `Effect.gen(function*() {...})`. The "zero assertions" rule and failing a test
@@ -91,7 +91,7 @@ finds `*.test.ts` files under the given paths.
 6. **No assertions of our own (for now).** A test fails by throwing, rejecting or failing its Effect. The examples use
    `node:assert`; its `AssertionError` (name `AssertionError` or code `ERR_ASSERTION`, so most libraries match) is reported
    as kind `assertion` with its own message, which for `deepStrictEqual` already contains a diff. Assertions are a separate
-   concern, tackled later (see the *Assertions* ticket).
+   concern, tackled later (see the _Assertions_ ticket).
    **Locations without a transform:** the error's stack gives the first frame outside the framework or `effect`, reported as
    `file:line:col` (Node's type stripping keeps columns exact). Code frames (source lines plus a caret) were removed for now.
 7. **Cause-aware failures.** The exit Cause is classified as a typed `Fail` (shows `_tag` plus fields, located from
@@ -127,8 +127,8 @@ finds `*.test.ts` files under the given paths.
   `WorkerReceiveError: An error event was emitted`, and the real SyntaxError was lost in the Rpc/worker error path. Agents
   need executor crash causes surfaced verbatim. The prototype now prints the cause chain, but the underlying error object
   carries little detail.
-- **Scope placement matters for "finalizers ran".** At first the body's `acquireRelease` attached to the *attempt* scope,
-  so finalizers ran *after* the console had been captured, and the report claimed they ran when the output showed they hadn't.
+- **Scope placement matters for "finalizers ran".** At first the body's `acquireRelease` attached to the _attempt_ scope,
+  so finalizers ran _after_ the console had been captured, and the report claimed they ran when the output showed they hadn't.
   The body needs its own Scope, closed inside the timed region. The spec should state precisely which scope a test body's resources belong to.
 - **Startup cost dominates small runs.** A one-test rerun takes about 650 ms, nearly all of it spent evaluating `effect` from TS source
   (about 600 ms per isolate: once in the coordinator, once per worker). The tests themselves take milliseconds. Long-lived or warm
@@ -143,7 +143,7 @@ finds `*.test.ts` files under the given paths.
 
 - **Authoring model.** Tests-as-values with options-as-data feels natural. It makes `--list`, filtering and planning trivial and
   side-effect-free: listing happens in the executor, and the coordinator never imports user code. With syntax B, fixture requirements are
-  **type-checked**: a missing `Test.provide` is a compile error that names the missing service. The catch is *where* the
+  **type-checked**: a missing `Test.provide` is a compile error that names the missing service. The catch is _where_ the
   error appears. A default export can't constrain its own type, so the check lives in an aggregator (`examples/typecheck.ts`),
   which a real CLI would generate. The same tree value can be reused (contract tests) because nodes are just values: ids come
   from the position in the tree, not from the object. There is a single
@@ -157,7 +157,7 @@ finds `*.test.ts` files under the given paths.
 - **Runner architecture.** Coordinator ↔ executor over one `RpcGroup` holds up. Plan-first (`ListFile` → `RunPlanned`), stream
   per file, and bail/Ctrl-C as plain interruption with a coordinator-side completeness pass are a good fit. One wrinkle: on
   interruption, executor-side terminal events are lost because the stream is torn down. The coordinator therefore synthesises them and
-  can't say *what* the test was doing. A "drain" phase, where the executor emits final events for interrupted tests before the stream closes,
+  can't say _what_ the test was doing. A "drain" phase, where the executor emits final events for interrupted tests before the stream closes,
   would give better data (and hang diagnostics would live there too).
 - **Agent-first interaction.** A one-line parseable summary, failures-first blocks in plan order, the exact rerun command, the seed, and the console
   only for failures read well and stay bounded. Things to decide: whether ids should be shorter, since `file > suite > name`
@@ -188,7 +188,12 @@ Before (first iteration):
 ```ts
 export default Test.file([
   Test.suite("users", [
-    Test.test("first", Effect.gen(function*() { const db = yield* Database /* ... */ }))
+    Test.test(
+      "first",
+      Effect.gen(function*() {
+        const db = yield* Database /* ... */
+      })
+    )
   ], { layers: [Test.layer(Seeds.layer, { name: "Seeds", scope: "suite" })] })
 ], {
   tags: ["fixtures"],
@@ -206,15 +211,15 @@ const test = (name: string, suite: string) => Test.test(name, checks(suite)).pip
 // Suite<Database | Schema_ | Seeds>  ->  Suite<Database | Schema_>
 const suite = (name: string) =>
   Test.suite(name, [test("first", name), test("second", name), test("third", name)]).pipe(
-    Test.provide(Seeds.layer)     // once per suite
+    Test.provide(Seeds.layer) // once per suite
   )
 
 // The last provide is the outermost: Database is built first and feeds Schema.
 export default Test.suite("fixtures", [suite("users"), suite("orders")]).pipe(
-  Test.provide(Schema_.layer),    // root suite = once per file; Layer<Schema_, never, Database>
-  Test.provide(Database.layer),   // once per file, or the run's shared instance with the config
+  Test.provide(Schema_.layer), // root suite = once per file; Layer<Schema_, never, Database>
+  Test.provide(Database.layer), // once per file, or the run's shared instance with the config
   Test.tags("fixtures")
-)                                 // Suite<never>
+) // Suite<never>
 ```
 
 ```ts
@@ -232,7 +237,7 @@ tests, so every test gets a fresh repo. The fake-postgres implementation deliber
 export default Test.suite("UserRepo", [
   Test.suite("in-memory", [userRepoContract(InMemoryUserRepo)]),
   Test.suite("fake postgres (intentional failure: no unique index)", [userRepoContract(FakePostgresUserRepo)]).pipe(
-    Test.provide(PgPool.layer)    // one pool for the suite
+    Test.provide(PgPool.layer) // one pool for the suite
   )
 ])
 ```
@@ -266,16 +271,22 @@ const unprovided: Test.Runnable = Test.suite("UserRepo", [userRepoContract])
 // Schema_ is provided, but its own requirement (Database) is not
 // @ts-expect-error
 const halfProvided: Test.Runnable = Test.suite("db", [
-  Test.test("reads schema", Effect.gen(function*() {
-    yield* Schema_
-  }))
+  Test.test(
+    "reads schema",
+    Effect.gen(function*() {
+      yield* Schema_
+    })
+  )
 ]).pipe(Test.provide(Schema_.layer))
 
 // fully provided: compiles
 const ok: Test.Runnable = Test.suite("db", [
-  Test.test("reads schema", Effect.gen(function*() {
-    yield* Schema_
-  }))
+  Test.test(
+    "reads schema",
+    Effect.gen(function*() {
+      yield* Schema_
+    })
+  )
 ]).pipe(
   Test.provide(Schema_.layer),
   Test.provide(Database.layer)
@@ -309,14 +320,14 @@ examples/typecheck.ts(15,11): error TS1360: Type 'SuiteNode<Database>' does not 
   aggregator (or at a `const x: Test.Runnable` annotation), not on the line that forgot the `provide`. Options: generate the aggregator
   from discovery (`effect-test typecheck`), require `export default ... satisfies Test.Runnable` in every file (noisy), or use an
   effect-language-service diagnostic.
-- **The message says *what* is missing but not *which test* needs it.** `Type 'Database' is not assignable to type 'never'` names the
+- **The message says _what_ is missing but not _which test_ needs it.** `Type 'Database' is not assignable to type 'never'` names the
   service, but the requirement has been unioned up the tree. A custom message would need a branded `Missing<Database>` type.
 - **Over-providing is silent.** Providing a layer nothing needs compiles without complaint. (A config-shared layer with requirements is a compile error.)
 - **Sharing depends on object identity.** The config and the files must use one exported Layer value. A look-alike layer written
-  inline is a different value and is not shared. Layers *inside* a composed layer are still matched one by one.
+  inline is a different value and is not shared. Layers _inside_ a composed layer are still matched one by one.
 - **Fixture order is pipe order.** "Later `provide` is outer" matches the types, but it is easy to get backwards. It is correct by
   construction only because the types reject the wrong order when there is a dependency.
-- **`exactOptionalPropertyTypes` noise.** With an *optional* phantom property, every error carried the extra line "Consider adding
+- **`exactOptionalPropertyTypes` noise.** With an _optional_ phantom property, every error carried the extra line "Consider adding
   'undefined'…". Making the phantom required (type-only) removed it.
 - **No variance surprises** in the cases tried. `TestNode<any>` is not assignable to `TestNode<never>`, which is correct but means framework
   internals have to use `Node<any>` throughout. Higher-order inference through `pipe` with the generic `provide` worked without annotations.

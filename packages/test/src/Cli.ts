@@ -114,8 +114,10 @@ export const cli = Command.make("effect-test", {
     yield* useConfig(
       options.noConfig
         ? undefined
-        : Option.getOrElse(options.config, () =>
-          fs.existsSync("effect-test.config.ts") ? "effect-test.config.ts" : undefined)
+        : Option.getOrElse(
+          options.config,
+          () => fs.existsSync("effect-test.config.ts") ? "effect-test.config.ts" : undefined
+        )
     )
     const write = (s: string) => {
       process.stdout.write(s)

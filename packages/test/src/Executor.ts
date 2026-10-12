@@ -1,7 +1,20 @@
 // The executor: loads test files, lists their tree, and runs selected
 // tests as fibers. It knows nothing about filtering, seeds or reporting; the
 // coordinator sends it fully resolved per-test instructions.
-import { Cause, Console, Context, Deferred, Effect, Exit, Formatter, Layer, Option, Queue, Random, Scope, Semaphore, Stream } from "effect"
+import * as Cause from "effect/Cause"
+import * as Console from "effect/Console"
+import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Formatter from "effect/Formatter"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
+import * as Queue from "effect/Queue"
+import * as Random from "effect/Random"
+import * as Scope from "effect/Scope"
+import * as Semaphore from "effect/Semaphore"
+import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as path from "node:path"
@@ -60,7 +73,7 @@ export const listFile = (file: string) =>
         ...(o.only ? { only: true } : {}),
         ...(node.location ? { location: `${node.location.file}:${node.location.line}` } : {})
       })
-      if (node._tag === "Suite") for (const c of node.children) visit(c, id, childId(id, c))
+      if (node._tag === "Suite") { for (const c of node.children) visit(c, id, childId(id, c)) }
     }
     visit(root, undefined, rel)
     return { file: rel, nodes }
@@ -199,7 +212,11 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
             return permits.withPermits(1)(runTest(node, id, [...fixtures, ...own], parentMemo, selected.get(id)!))
           }
           return Effect.gen(function*() {
-            const sf: Frame = { memo: yield* Layer.forkMemoMap(parentMemo), scope: yield* Scope.make(), once: makeOnce() }
+            const sf: Frame = {
+              memo: yield* Layer.forkMemoMap(parentMemo),
+              scope: yield* Scope.make(),
+              once: makeOnce()
+            }
             const own = node.layers.map((f): [Fixture, Frame | undefined] => [f, sf])
             yield* Effect.forEach(node.children, (c) => walk(c, childId(id, c), [...fixtures, ...own], sf.memo), {
               concurrency: "unbounded",
@@ -278,7 +295,9 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
               console: [],
               failures: [{
                 kind: "fixture" as const,
-                message: `fixture "${f.fixture.name}"${shared.has(f.fixture.layer) ? " (shared, from the test config)" : ""} failed to build:\n${Cause.pretty(f.cause)}`
+                message: `fixture "${f.fixture.name}"${
+                  shared.has(f.fixture.layer) ? " (shared, from the test config)" : ""
+                } failed to build:\n${Cause.pretty(f.cause)}`
               }]
             }
           }
@@ -288,7 +307,9 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
             Effect.scoped, // the body's own Scope closes (finalizers run) before results are read
             // the body's own `Effect.provide`s fork from the test's MemoMap (added last: every built
             // context, TestEnv's included, carries the MemoMap it was built with)
-            Effect.provideContext(Context.add(Context.merge(fx.success.ctx, env), Layer.CurrentMemoMap, fx.success.testMemo)),
+            Effect.provideContext(
+              Context.add(Context.merge(fx.success.ctx, env), Layer.CurrentMemoMap, fx.success.testMemo)
+            ),
             Random.withSeed(plan.seed),
             Effect.timeoutOption(plan.timeoutMs), // outside the TestClock: real time
             Effect.exit

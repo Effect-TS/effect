@@ -1,6 +1,7 @@
 // Not a test file. Proves that a missing fixture is a COMPILE error: each line below is an
 // unsatisfied tree, and `tsc` fails if any `@ts-expect-error` is unused.
-import { Effect, type Layer } from "effect"
+import * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 import * as Test from "../src/Test.ts"
 import { Database, Schema_ } from "./shared.ts"
 import { type UserRepo, userRepoContract } from "./userRepoContract.ts"
@@ -13,9 +14,12 @@ const unprovided: Test.Runnable = Test.suite("UserRepo", [userRepoContract(repoO
 // Schema_ is provided, but its own requirement (Database) is not
 // @ts-expect-error
 const halfProvided: Test.Runnable = Test.suite("db", [
-  Test.test("reads schema", Effect.gen(function*() {
-    yield* Schema_
-  }))
+  Test.test(
+    "reads schema",
+    Effect.gen(function*() {
+      yield* Schema_
+    })
+  )
 ]).pipe(Test.provide(Schema_.layer))
 
 // a shared layer in the test config must be self-contained: Schema_ needs Database
@@ -27,9 +31,12 @@ const sharedWithRequirement = Test.config({
 
 // fully provided: compiles
 const ok: Test.Runnable = Test.suite("db", [
-  Test.test("reads schema", Effect.gen(function*() {
-    yield* Schema_
-  }))
+  Test.test(
+    "reads schema",
+    Effect.gen(function*() {
+      yield* Schema_
+    })
+  )
 ]).pipe(
   Test.provide(Schema_.layer),
   Test.provide(Database.layer)

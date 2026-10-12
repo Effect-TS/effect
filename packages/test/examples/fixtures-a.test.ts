@@ -5,7 +5,7 @@
 // Database is also listed as shared in effect-test.config.ts, so with the config both
 // fixtures-a and fixtures-b reuse one lazily built instance. The file doesn't depend on
 // that: it passes with and without the config. fixtures-a and fixtures-b are identical on purpose.
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 import * as assert from "node:assert"
 import * as Test from "../src/Test.ts"
 import { Database, Schema_, Seeds, Tx } from "./shared.ts"

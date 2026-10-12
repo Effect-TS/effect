@@ -3,8 +3,11 @@
 // pool, enforces bail by interrupting in-flight work, and guarantees exactly one
 // terminal event per planned test.
 import * as NodeWorker from "@effect/platform-node/NodeWorker"
-import { Deferred, Effect, Layer, Stream } from "effect"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as RpcClient from "effect/rpc/RpcClient"
+import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { Worker } from "node:worker_threads"
@@ -54,7 +57,9 @@ export const testSeed = (runSeed: number, id: string) => fnv1a(`${runSeed}:${id}
 
 const ancestry = (byId: Map<string, ListedNode>, node: ListedNode) => {
   const chain: Array<ListedNode> = []
-  for (let n: ListedNode | undefined = node; n; n = n.parent !== undefined ? byId.get(n.parent) : undefined) chain.unshift(n)
+  for (let n: ListedNode | undefined = node; n; n = n.parent !== undefined ? byId.get(n.parent) : undefined) {
+    chain.unshift(n)
+  }
   return chain
 }
 
@@ -91,7 +96,9 @@ export const plan = (
     }
   }
   const anyOnly = planned.some((t) => t.only)
-  return planned.map(({ only, ...t }) => anyOnly && !only && t.skip === undefined ? { ...t, skip: "not marked only" } : t)
+  return planned.map(({ only, ...t }) =>
+    anyOnly && !only && t.skip === undefined ? { ...t, skip: "not marked only" } : t
+  )
 }
 
 // --- the executor pool: worker threads speaking ExecutorRpcs
@@ -125,7 +132,9 @@ export const run = (opts: RunOptions) =>
 
     if (opts.list) {
       opts.write(opts.listJson ? renderListJson(listings, opts) : renderList(listings, opts))
-      for (const e of loadErrors) opts.write(`LOAD ERROR ${e._tag === "LoadError" ? `${e.path}: ${e.message}` : describe(e)}\n`)
+      for (const e of loadErrors) {
+        opts.write(`LOAD ERROR ${e._tag === "LoadError" ? `${e.path}: ${e.message}` : describe(e)}\n`)
+      }
       return loadErrors.length ? 1 : 0
     }
 
@@ -167,7 +176,9 @@ export const run = (opts: RunOptions) =>
         failures: [{ kind: "load", message: e.message }]
       }))
     }
-    for (const t of planned) if (t.skip !== undefined && !terminal.has(t.id)) emit(finished(t.id, "skipped", { skipReason: t.skip }))
+    for (const t of planned) {
+      if (t.skip !== undefined && !terminal.has(t.id)) emit(finished(t.id, "skipped", { skipReason: t.skip }))
+    }
 
     const byFile = new Map<string, Array<RunFileTest>>()
     for (const t of planned) {
@@ -197,7 +208,11 @@ export const run = (opts: RunOptions) =>
             Effect.sync(() => {
               for (const t of tests) {
                 if (!terminal.has(t.id)) {
-                  emit(finished(t.id, "failed", { failures: [{ kind: "defect", message: `executor error: ${describe(error)}` }] }))
+                  emit(
+                    finished(t.id, "failed", {
+                      failures: [{ kind: "defect", message: `executor error: ${describe(error)}` }]
+                    })
+                  )
                 }
               }
             })
@@ -212,9 +227,13 @@ export const run = (opts: RunOptions) =>
       const reason = bailed ? "--bail" : "Ctrl-C"
       for (const t of planned) {
         if (terminal.has(t.id)) continue
-        emit(started.has(t.id)
-          ? finished(t.id, "interrupted", { failures: [{ kind: "interrupted", message: `interrupted by ${reason}` }] })
-          : finished(t.id, "skipped", { skipReason: `not run: ${reason}` }))
+        emit(
+          started.has(t.id)
+            ? finished(t.id, "interrupted", {
+              failures: [{ kind: "interrupted", message: `interrupted by ${reason}` }]
+            })
+            : finished(t.id, "skipped", { skipReason: `not run: ${reason}` })
+        )
       }
       emit({
         _tag: "RunFinished",
@@ -272,7 +291,9 @@ const renderList = (
     const visible = new Set<string>()
     for (const n of nodes) {
       if (n.kind !== "test" || !selected.has(n.id)) continue
-      for (let p: ListedNode | undefined = n; p; p = p.parent !== undefined ? byId.get(p.parent) : undefined) visible.add(p.id)
+      for (let p: ListedNode | undefined = n; p; p = p.parent !== undefined ? byId.get(p.parent) : undefined) {
+        visible.add(p.id)
+      }
     }
     for (const n of nodes) {
       if (!visible.has(n.id)) continue

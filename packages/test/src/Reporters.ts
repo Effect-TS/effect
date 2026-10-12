@@ -1,6 +1,6 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
-import { Schema } from "effect"
+import * as Schema from "effect/Schema"
 import type { Failure, PlannedTest, RunFinished, TestEvent, TestFinished } from "./Protocol.ts"
 import { TestEvent as TestEventSchema } from "./Protocol.ts"
 
@@ -107,7 +107,11 @@ export const agent = (ctx: ReporterContext): Reporter => {
         lines.push("")
         for (const t of flaky) {
           const r = s.results.get(t.id)!
-          lines.push(`FLAKY ${t.id} passed on attempt ${r.attempt} (earlier: ${r.previousAttempts.map((a) => a.status).join(", ")})`)
+          lines.push(
+            `FLAKY ${t.id} passed on attempt ${r.attempt} (earlier: ${
+              r.previousAttempts.map((a) => a.status).join(", ")
+            })`
+          )
         }
       }
       const bailed = s.planned.filter((t) => byBail(s.results.get(t.id)))
@@ -167,7 +171,8 @@ export const human = (ctx: ReporterContext): Reporter => {
           : red("✗")
         const extra = r.status === "skipped"
           ? dim(` (${r.skipReason})`)
-          : dim(` ${r.durationMs}ms`) + (r.previousAttempts.length ? yellow(` flaky, passed on attempt ${r.attempt}`) : "") +
+          : dim(` ${r.durationMs}ms`) +
+            (r.previousAttempts.length ? yellow(` flaky, passed on attempt ${r.attempt}`) : "") +
             (r.status === "timedOut" ? red(" timed out") : "")
         out.push(`${"  ".repeat(parents.length)}${icon} ${segs.at(-1)}${extra}`)
       }

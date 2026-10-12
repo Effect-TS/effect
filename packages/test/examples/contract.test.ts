@@ -1,5 +1,8 @@
 // Contract tests over layers: the same contract, run against two implementations.
-import { Context, Effect, Layer, Option } from "effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Test from "../src/Test.ts"
 import { DuplicateEmail, type User, UserRepo, userRepoContract } from "./userRepoContract.ts"
 
