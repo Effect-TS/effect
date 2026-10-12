@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "effect/test: an Effect-native test runner. Work in progress, not published.",
-  "bin": { "effect-test": "./src/bin.ts" },
+  "description": "A test runner optimised for Effect",
+  "bin": { "etest": "./src/cli/bin.ts" },
   "scripts": {
-    "demo": "node src/bin.ts examples --seed 1234",
-    "demo:bun": "bun src/bin.ts examples --seed 1234",
-    "demo:deno": "deno run -A src/bin.ts examples --seed 1234"
+    "demo": "node src/cli/bin.ts examples --seed 1234",
+    "demo:bun": "bun src/cli/bin.ts examples --seed 1234",
+    "demo:deno": "deno run -A src/cli/bin.ts examples --seed 1234"
   },
   "dependencies": {
     "effect": "workspace:^",

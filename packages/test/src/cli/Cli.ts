@@ -1,4 +1,4 @@
-// The `effect-test` command, built with effect/cli. One-shot and never interactive:
+// The `etest` command, built with effect/cli. One-shot and never interactive:
 // it exits 0 when everything is green, 1 when anything is red, 130 on Ctrl-C.
 import * as Argument from "effect/cli/Argument"
 import * as Command from "effect/cli/Command"
@@ -11,10 +11,10 @@ import * as Runtime from "effect/Runtime"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { executorPool, run } from "./Coordinator.ts"
-import { detect, moduleUrl } from "./Platform.ts"
-import * as Reporters from "./Reporters.ts"
-import { isConfig } from "./Test.ts"
+import { executorPool, run } from "../Coordinator.ts"
+import { detect, moduleUrl } from "../Platform.ts"
+import * as Reporters from "../Reporters.ts"
+import { isConfig } from "../Test.ts"
 
 /** Ends the process with `code`. Whatever caused it has already been reported. */
 export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: number }> {
@@ -83,13 +83,13 @@ const useConfig = Effect.fnUntraced(function*(file: string | undefined) {
   const resolved = path.resolve(file)
   const mod = yield* Effect.tryPromise(() => import(pathToFileURL(resolved).href)).pipe(
     Effect.catch((cause) =>
-      Console.error(`effect-test: ${file}: failed to load\n${String(cause)}`).pipe(
+      Console.error(`etest: ${file}: failed to load\n${String(cause)}`).pipe(
         Effect.andThen(Effect.fail(new ExitCode({ code: 1 })))
       )
     )
   )
   if (!isConfig(mod.default)) {
-    yield* Console.error(`effect-test: ${file}: the default export is not a Test.config(...)`)
+    yield* Console.error(`etest: ${file}: the default export is not a Test.config(...)`)
     return yield* new ExitCode({ code: 1 })
   }
   return resolved
@@ -99,7 +99,7 @@ const bin = path.relative(process.cwd(), fileURLToPath(moduleUrl("./bin", import
 /** How to start the CLI again on the runtime we are on, for rerun hints. */
 const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
 
-export const cli = Command.make("effect-test", {
+export const cli = Command.make("etest", {
   paths,
   list,
   test,

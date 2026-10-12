@@ -10,18 +10,18 @@ history are kept for context.
 ## Run it
 
 ```sh
-pnpm --dir packages/test demo          # = node src/bin.ts examples --seed 1234 (exits 1: there are intentional failures)
+pnpm --dir packages/test demo          # = node src/cli/bin.ts examples --seed 1234 (exits 1: there are intentional failures)
 pnpm --dir packages/test demo:bun      # the same on Bun
 pnpm --dir packages/test demo:deno     # the same on Deno
 cd packages/test
-node src/bin.ts examples                         # agent reporter (default)
-node src/bin.ts examples --reporter human        # coloured tree
-node src/bin.ts examples --reporter jsonl        # raw event stream, one Schema-encoded event per line
-node src/bin.ts examples --list                  # inspect the tree without running anything
-node src/bin.ts examples --list --reporter jsonl # the same tree, as JSON, with resolved options per test
-node src/bin.ts examples --tag fixtures --workers 1
-node src/bin.ts examples --bail --workers 1
-node src/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > cause-aware > defect (intentional failure)" --seed 1234
+node src/cli/bin.ts examples                         # agent reporter (default)
+node src/cli/bin.ts examples --reporter human        # coloured tree
+node src/cli/bin.ts examples --reporter jsonl        # raw event stream, one Schema-encoded event per line
+node src/cli/bin.ts examples --list                  # inspect the tree without running anything
+node src/cli/bin.ts examples --list --reporter jsonl # the same tree, as JSON, with resolved options per test
+node src/cli/bin.ts examples --tag fixtures --workers 1
+node src/cli/bin.ts examples --bail --workers 1
+node src/cli/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > cause-aware > defect (intentional failure)" --seed 1234
 ```
 
 Flags: `[paths...] [--list] [--test <id|substring>] [--tag <t>] [--seed <n>] [--workers <n>] [--bail] [--reporter agent|human|jsonl] [--config <file> | --no-config]`.
@@ -39,8 +39,8 @@ finds `*.test.ts` files under the given paths.
 | `src/executor-worker.ts`                                    | Executor entry (a worker on every runtime): `RpcServer.layer(ExecutorRpcs)` over `layerProtocolWorkerRunner` and the platform's worker runner                                                                                                                                                                                                                                                                    |
 | `src/Coordinator.ts`                                        | Discovery, planning (nearest-wins options, seeds, filters, only/skip), dispatch over the executor pool, bail, and the completeness guarantee                                                                                                                                                                                                                                                                     |
 | `src/Reporters.ts`                                          | `agent`, `human` and `jsonl` reporters                                                                                                                                                                                                                                                                                                                                                                           |
-| `src/Cli.ts`                                                | The `effect-test` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported                                                                                                                                                                                                                        |
-| `src/bin.ts`                                                | Entry point: `Platform.runMain(Command.run(cli, ...))`                                                                                                                                                                                                                                                                                                                                                           |
+| `src/cli/Cli.ts`                                            | The `etest` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported                                                                                                                                                                                                                              |
+| `src/cli/bin.ts`                                            | Entry point: `Platform.runMain(Command.run(cli, ...))`                                                                                                                                                                                                                                                                                                                                                           |
 | `src/Platform.ts`, `src/platform/{node,bun,deno}.ts`        | The runtime split. A `Platform` is one layer (the CLI's services, the executor spawner and the executor's worker runner) plus `runMain`. `Platform.load` is an Effect that imports only the current runtime's module (detected from the `Bun` / `Deno` globals); `Platform.runMain(main)` provides the platform's layer to `main` and hands it to that platform's `runMain`. Everything else is runtime-agnostic |
 | `examples/*.test.ts`                                        | Every feature, including intentional failures (marked "(intentional failure)" in the test or suite name)                                                                                                                                                                                                                                                                                                         |
 | `examples/userRepoContract.ts`, `examples/contract.test.ts` | A contract suite written once (`Suite<UserRepo>`) and provided with two implementations                                                                                                                                                                                                                                                                                                                          |
@@ -322,7 +322,7 @@ examples/typecheck.ts(15,11): error TS1360: Type 'SuiteNode<Database>' does not 
 
 - **The error is far from the cause.** A default export can't constrain its own type, so the error appears in the
   aggregator (or at a `const x: Test.Runnable` annotation), not on the line that forgot the `provide`. Options: generate the aggregator
-  from discovery (`effect-test typecheck`), require `export default ... satisfies Test.Runnable` in every file (noisy), or use an
+  from discovery (`etest typecheck`), require `export default ... satisfies Test.Runnable` in every file (noisy), or use an
   effect-language-service diagnostic.
 - **The message says _what_ is missing but not _which test_ needs it.** `Type 'Database' is not assignable to type 'never'` names the
   service, but the requirement has been unioned up the tree. A custom message would need a branded `Missing<Database>` type.

@@ -1,4 +1,4 @@
-// The runtime platform (Node, Bun or Deno). Entry points (`bin.ts`, `executor-worker.ts`)
+// The runtime platform (Node, Bun or Deno). Entry points (`cli/bin.ts`, `executor-worker.ts`)
 // call `runMain`, which loads only the current runtime's platform module and hands the
 // program over to that platform's own `runMain`. Nothing else in the test runner depends
 // on a specific runtime.
