@@ -1,0 +1,70 @@
+name: npm promote
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Print what would change without moving dist-tags or touching issues
+        type: boolean
+        default: false
+
+# Promotions never overlap. A running promotion is never cancelled; a newer
+# queued run replaces an older queued one, which is safe because every run
+# re-reads the registry.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  promote:
+    name: Promote
+    # NPM_PROMOTE_PAUSED is the kill switch for a bad release still on `staging`.
+    if: >-
+      github.repository_owner == 'Effect-Ts'
+      && github.ref == 'refs/heads/main'
+      && vars.NPM_PROMOTE_PAUSED != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm-promote
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          # The overdue check reads the commit that bumped the version.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Promote staged release
+        id: promote
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+          GITHUB_TOKEN: ${{ github.token }}
+          NPM_PROMOTE_TOKEN: ${{ secrets.NPM_PROMOTE_TOKEN }}
+        run: |
+          # npm expands ${NPM_PROMOTE_TOKEN} when it reads the config, so the token is never written to disk.
+          export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npm-promote.npmrc"
+          # shellcheck disable=SC2016
+          echo '//registry.npmjs.org/:_authToken=${NPM_PROMOTE_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+          args=()
+          if [[ "$DRY_RUN" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          node packages/tools/npm-promote/src/bin.ts "${args[@]}"
+      - name: Deploy website
+        if: steps.promote.outputs.promoted == 'true'
+        uses: ./.github/actions/deploy-website
+        with:
+          channel: v4
+          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          revision: ${{ steps.promote.outputs.revision }}

@@ -903,9 +903,15 @@ importers:
 
   packages/tools/npm-promote:
     dependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
     devDependencies:
       '@effect/vitest':
         specifier: workspace:^
@@ -913,6 +919,9 @@ importers:
       '@types/node':
         specifier: ^26.6.5
         version: 26.6.5
+      '@types/semver':
+        specifier: ^7.7.1
+        version: 7.8.0
       vitest:
         specifier: ^5.0.3
         version: 5.0.3(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.3)(happy-dom@20.14.6)(jsdom@30.0.1)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
@@ -3287,6 +3296,9 @@ packages:
 
   '@types/scheduler@0.28.0':
     resolution: {integrity: sha512-WuK7EQ0YBvNbYwanHo+x3kixrg10+7Ak4rmYmy1dYo3l4FCh0XWeoq/SdqQamKA5wShXse8WRhh0Tt1czTAuTQ==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/ssh2-streams@0.1.13':
     resolution: {integrity: sha512-faHyY3brO9oLEA0QlcO8N2wT7R0+1sHWZvQ+y3rMLwdY1ZyS1z0W3t65j9PqT4HmQ6ALzNe7RZlNuCNE0wBSWA==}
@@ -8715,6 +8727,8 @@ snapshots:
   '@types/resolve@1.20.2': {}
 
   '@types/scheduler@0.28.0': {}
+
+  '@types/semver@7.8.0': {}
 
   '@types/ssh2-streams@0.1.13':
     dependencies:
