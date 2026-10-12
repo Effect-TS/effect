@@ -23,6 +23,31 @@ describe("BarrelGenerator", () => {
       assert.deepStrictEqual(files, [{ path: barrel, pattern: "*.ts", offset: 1 }])
     }).pipe(Effect.provide(MainLayer)))
 
+  it.effect("excludes modules with an extglob barrel pattern", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "codegen-" })
+      const barrel = path.join(directory, "index.ts")
+      yield* fs.writeFileString(barrel, "// @barrel(!(Excluded).ts)\n")
+      yield* fs.writeFileString(path.join(directory, "Excluded.ts"), "/**\n * @since 1.0.0\n */\n")
+      yield* fs.writeFileString(path.join(directory, "Included.ts"), "/**\n * @since 1.0.0\n */\n")
+
+      const generator = yield* Codegen.BarrelGenerator
+      const files = yield* generator.discoverFiles(barrel, directory)
+      yield* Effect.forEach(files, generator.processFile)
+
+      assert.strictEqual(
+        yield* fs.readFileString(barrel),
+        `// @barrel(!(Excluded).ts)
+
+/**
+ * @since 1.0.0
+ */
+export * as Included from "./Included.ts"
+`
+      )
+    }).pipe(Effect.provide(MainLayer)))
+
   it.effect("copies module stability tags into barrel exports", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
