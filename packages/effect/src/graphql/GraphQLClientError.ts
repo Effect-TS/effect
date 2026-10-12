@@ -86,9 +86,14 @@ export type GraphQLError = typeof GraphQLError.Type
  * `5xx`, and for any response with a valid `Retry-After`, whatever its
  * status. It is false otherwise, including when there is no status.
  *
- * Callers opt into retries with `Effect.retry`, and should wait for
- * `retryAfter` when it is set. With `GraphQLClient.pages`, retry each page's
- * call, not the stream: `Stream.retry` starts again from the first page.
+ * For queries and mutations, callers opt into retries with `Effect.retry`,
+ * and should wait for `retryAfter` when it is set. With
+ * `GraphQLClient.pages`, retry each page's call, not the stream:
+ * `Stream.retry` starts again from the first page. Subscriptions retry a
+ * retryable `ResponseError` on their own, by resubscribing. graphql-sse events
+ * carry the stream response's headers, so an event with `errors` is retried
+ * when that response had a valid `Retry-After`, and ends the stream
+ * otherwise.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -141,10 +146,11 @@ export class ResponseError
 {
   /**
    * `true` for HTTP status `429` or `5xx`, or when the response has a
-   * `Retry-After` header that parses, at any status; `false` otherwise,
-   * including when there is no status, as with subscription events. Use this
-   * as the `while` predicate of `Effect.retry` on the call, and
-   * {@link retryAfter} as the delay when it is set.
+   * `Retry-After` header that parses, at any status, including a graphql-sse
+   * event whose stream response had one; `false` otherwise, including when
+   * there is no status and no `Retry-After`. Use this as the `while` predicate
+   * of `Effect.retry` on the call, and {@link retryAfter} as the delay when it
+   * is set. Subscriptions resubscribe on it.
    *
    * @since 4.0.0
    */

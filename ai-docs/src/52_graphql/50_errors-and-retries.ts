@@ -54,9 +54,10 @@ const gitHubRetry = Schedule.exponential("1 second").pipe(
 // The client never retries queries or mutations on its own. Retry only
 // mutations that are safe to send twice, and with `GraphQLClient.pages`,
 // retry inside a middleware, because `Stream.retry` starts again from the
-// first page. Subscriptions reconnect on
-// `GraphQLClient.defaultSubscriptionRetry`, which already waits for
-// `retryAfter`.
+// first page. Subscriptions reconnect on their own after a retryable failure,
+// on `GraphQLClient.defaultSubscriptionRetry`, which waits for `retryAfter`.
+// A primary rate limit without `retry-after` isn't retryable, so it ends the
+// subscription; wait until `x-ratelimit-reset` before subscribing again.
 export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.GraphQLClientError, R>) =>
   Effect.retry(effect, {
     schedule: gitHubRetry,

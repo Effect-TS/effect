@@ -514,9 +514,11 @@ export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.Gr
 after a rate limit, and backs off exponentially after other retryable
 errors. Don't retry on `isRetryable` with a plain backoff instead: it ignores
 `retry-after`, and GitHub may ban an integration that keeps sending requests
-while rate limited. Subscriptions need nothing extra, since
-`GraphQLClient.defaultSubscriptionRetry` never reconnects sooner than
-`retryAfter`.
+while rate limited. Subscriptions reconnect on their own after a retryable
+failure, and `GraphQLClient.defaultSubscriptionRetry` never reconnects sooner
+than its `retryAfter`. A primary rate limit without `retry-after` isn't
+retryable, though, so it ends the subscription, whatever `subscriptionRetry`
+says. Wait until `x-ratelimit-reset` before subscribing again.
 
 ### Timeouts
 
@@ -530,24 +532,37 @@ body is a retryable `TransportError`. `retryGitHub` above retries both.
 retry only the page that timed out, repeat the call in a middleware. A
 timeout with a GraphQL body reaches the middleware as a result of `next`, and
 one without fails `next` with a `TransportError`, so check the `status` of
-both:
+both, and wait for a `retry-after` on either:
 
 ```ts
-import { Effect, Layer, Result, Schedule } from "effect"
+import { Duration, Effect, Layer, Result, Schedule } from "effect"
 import { type GraphQLClientError, GraphQLMiddleware, type GraphQLProtocol } from "effect/graphql"
 
-const timedOut = (
-  outcome: Result.Result<GraphQLProtocol.ExecutionResult, GraphQLClientError.GraphQLClientError>
-) => {
+type Outcome = Result.Result<GraphQLProtocol.ExecutionResult, GraphQLClientError.GraphQLClientError>
+
+const timedOut = (outcome: Outcome) => {
   const status = Result.isSuccess(outcome) ? outcome.success.status : outcome.failure.status
   return status === 502 || status === 504
 }
+
+// A result's headers are raw; this reads `retry-after` in seconds, the form
+// GitHub sends, and falls back to the backoff for an HTTP date
+const retryAfter = (outcome: Outcome) => {
+  if (Result.isFailure(outcome)) return outcome.failure.retryAfter
+  const seconds = Number(outcome.success.headers?.["retry-after"] ?? Number.NaN)
+  return Number.isFinite(seconds) ? Duration.seconds(seconds) : undefined
+}
+
+const timeoutRetry = Schedule.exponential("1 second").pipe(
+  Schedule.setInputType<Outcome>(),
+  Schedule.modifyDelay(({ duration, input }) => Effect.succeed(retryAfter(input) ?? duration))
+)
 
 export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("app/RetryTimeouts") {
   static readonly layer = Layer.succeed(RetryTimeouts, {
     execute: ({ next, request }) =>
       Effect.result(next(request)).pipe(
-        Effect.repeat({ while: timedOut, schedule: Schedule.exponential("1 second"), times: 3 }),
+        Effect.repeat({ while: timedOut, schedule: timeoutRetry, times: 3 }),
         Effect.flatMap(Effect.fromResult)
       ),
     subscribe: ({ next, request }) => next(request)
