@@ -55,7 +55,10 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
         seen = { headers: request.headers, body: JSON.parse(bodyText!), url }
         return eventStream([next(event("a")), next(event("b")), "event: complete\ndata:\n\n"])
       })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(events, [{ body: event("a") }, { body: event("b") }])
+      assert.deepStrictEqual(events, [
+        { body: event("a"), headers: { "content-type": "text/event-stream" } },
+        { body: event("b"), headers: { "content-type": "text/event-stream" } }
+      ])
       assert.include(seen!.headers["accept"], "text/event-stream")
       assert.strictEqual(seen!.headers["authorization"], "Bearer t")
       assert.strictEqual(seen!.url.searchParams.get("preview"), "t")
