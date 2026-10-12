@@ -953,8 +953,7 @@ export const retry: {
  * transient, and is ignored in "response-only" mode.
  *
  * A `Retry-After` header on a transient response, or on the response of a
- * status code error, sets the minimum delay before the next attempt. A longer
- * schedule delay is preserved.
+ * status code error, sets the minimum delay before the next attempt.
  *
  * @stability unstable
  * @category error handling
