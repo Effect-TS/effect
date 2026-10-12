@@ -386,17 +386,20 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     lineLength: number
   ) {
     if (lineLength === 0) {
-      // We reached the last line of this event
-      if (data.length > 0) {
+      // We reached the last line of this event. Clear the event state before
+      // dispatching, so a throwing `onParse` does not leak it into the next event
+      const event = eventName || "message"
+      const eventData = data
+      eventName = undefined
+      data = ""
+      if (eventData.length > 0) {
         onParse({
           _tag: "Event",
           id: lastEventId,
-          event: eventName || "message",
-          data: data.slice(0, -1) // remove trailing newline
+          event,
+          data: eventData.slice(0, -1) // remove trailing newline
         })
-        data = ""
       }
-      eventName = undefined
       return
     }
 
