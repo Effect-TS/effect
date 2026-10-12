@@ -157,6 +157,9 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
+        env:
+          # Temporary EFF-2033 diagnostics: remove this env block after capturing a failure.
+          DEBUG: ${{ matrix.runtime == 'Node' && 'testcontainers*' || '' }}
         run: ${{ matrix.command }}
 
   doctest:
