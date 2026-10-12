@@ -1,4 +1,4 @@
-import { NodeRedis } from "@effect/platform-node"
+import * as NodeRedis from "@effect/platform-node/NodeRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"

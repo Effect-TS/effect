@@ -3,7 +3,7 @@
  * @since 4.0.0
  */
 
-// @barrel(Node*.ts): Auto-generated exports. Do not edit manually.
+// @barrel(Node!(Redis).ts): Auto-generated exports. Do not edit manually.
 
 /**
  * @stability experimental
@@ -100,12 +100,6 @@ export * as NodeMultipartParser from "./NodeMultipartParser.ts"
  * @since 4.0.0
  */
 export * as NodePath from "./NodePath.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as NodeRedis from "./NodeRedis.ts"
 
 /**
  * @stability unstable

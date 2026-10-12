@@ -59,7 +59,8 @@ const findAnnotation = (content: string): { pattern: string; offset: number } | 
 }
 
 const parseAnnotation = (line: string): string | undefined => {
-  const match = line.match(/^\/\/\s*@barrel(?:\((.+?)\))?/)
+  // Allow one level of nested parentheses so extglobs like `Node!(Redis).ts` can exclude modules
+  const match = line.match(/^\/\/\s*@barrel(?:\(((?:[^()]|\([^()]*\))+)\))?/)
   if (!match) {
     return undefined
   }
