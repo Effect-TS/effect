@@ -304,32 +304,27 @@ describe("Sink", () => {
   })
 
   describe("takeUntil", () => {
-    it.effect("takeUntil keeps the input after the match as leftover", () =>
+    it.effect("takeUntil preserves leftovers and stops at the match", () =>
       Effect.gen(function*() {
-        const result = yield* Stream.make(1, 2, 3, 4, 5, 6).pipe(
+        const result = yield* Stream.make(1, 2, 3, 4).pipe(
+          Stream.concat(Stream.fail("pulled past the match")),
           Stream.transduce(Sink.takeUntil((n) => n % 2 === 0)),
+          Stream.take(2),
           Stream.runCollect
         )
-        deepStrictEqual(result, [[1, 2], [3, 4], [5, 6], []])
+        deepStrictEqual(result, [[1, 2], [3, 4]])
       }))
 
-    it.effect("takeUntilEffect keeps the input after the match as leftover", () =>
+    it.effect("takeUntilEffect preserves leftovers and stops at the match", () =>
       Effect.gen(function*() {
-        const result = yield* Stream.make(1, 2, 3, 4, 5, 6).pipe(
+        const result = yield* Stream.make(1, 2, 3, 4).pipe(
           Stream.rechunk(1),
+          Stream.concat(Stream.fail("pulled past the match")),
           Stream.transduce(Sink.takeUntilEffect((n) => Effect.succeed(n % 2 === 0))),
+          Stream.take(2),
           Stream.runCollect
         )
-        deepStrictEqual(result, [[1, 2], [3, 4], [5, 6], []])
-      }))
-
-    it.effect("takeUntil completes without pulling past the match", () =>
-      Effect.gen(function*() {
-        const result = yield* Stream.make(1, 2).pipe(
-          Stream.concat(Stream.never),
-          Stream.run(Sink.takeUntil((n) => n === 2))
-        )
-        deepStrictEqual(result, [1, 2])
+        deepStrictEqual(result, [[1, 2], [3, 4]])
       }))
   })
 
