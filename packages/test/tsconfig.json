@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src", "examples", "effect-test.config.ts"],
   "compilerOptions": {
-    "types": ["node"],
+    "types": ["node", "bun", "deno"],
     "noEmit": true,
     "rootDir": ".",
     "composite": false,

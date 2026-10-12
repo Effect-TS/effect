@@ -5,9 +5,20 @@
   "type": "module",
   "description": "effect/test: an Effect-native test runner. Work in progress, not published.",
   "bin": { "effect-test": "./src/bin.ts" },
-  "scripts": { "demo": "node src/bin.ts examples --seed 1234" },
+  "scripts": {
+    "demo": "node src/bin.ts examples --seed 1234",
+    "demo:bun": "bun src/bin.ts examples --seed 1234",
+    "demo:deno": "deno run -A src/bin.ts examples --seed 1234"
+  },
   "dependencies": {
     "effect": "workspace:^",
+    "@effect/platform-bun": "workspace:^",
+    "@effect/platform-deno": "workspace:^",
     "@effect/platform-node": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "@types/deno": "^2.7.0",
+    "@types/node": "^26.6.4"
   }
 }

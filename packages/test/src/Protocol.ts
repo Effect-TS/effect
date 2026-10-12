@@ -130,6 +130,8 @@ export class ExecutorRpcs extends RpcGroup.make(
   Rpc.make("RunFile", {
     payload: {
       path: Schema.String,
+      /** absolute path of the test config, if the run uses one */
+      config: opt(Schema.String),
       /** max concurrent tests (fibers) within this file */
       concurrency: Schema.Number,
       tests: Schema.Array(RunFileTest)

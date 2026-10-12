@@ -686,12 +686,28 @@ importers:
 
   packages/test:
     dependencies:
+      '@effect/platform-bun':
+        specifier: workspace:^
+        version: link:../platform/bun
+      '@effect/platform-deno':
+        specifier: workspace:^
+        version: link:../platform/deno
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform/node
       effect:
         specifier: workspace:^
         version: link:../effect
+    devDependencies:
+      '@types/bun':
+        specifier: ^1.4.2
+        version: 1.4.2
+      '@types/deno':
+        specifier: ^2.7.0
+        version: 2.7.0
+      '@types/node':
+        specifier: ^26.6.4
+        version: 26.6.4
 
   packages/tools/ai-codegen:
     dependencies:

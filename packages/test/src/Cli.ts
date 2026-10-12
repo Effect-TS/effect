@@ -12,6 +12,7 @@ import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { executorPool, run } from "./Coordinator.ts"
+import { detect } from "./Platform.ts"
 import * as Reporters from "./Reporters.ts"
 import { isConfig } from "./Test.ts"
 
@@ -74,12 +75,11 @@ const noConfig = Flag.Boolean("no-config").pipe(
 )
 
 /**
- * Validates the config here too: a broken config must fail the run, not leave the
- * executors with nothing to run. Executors (worker threads) inherit the environment,
- * which is how they find it.
+ * Validates the config before starting, so a broken config fails fast with a clear
+ * message. Returns its absolute path, which the coordinator sends to the executors.
  */
 const useConfig = Effect.fnUntraced(function*(file: string | undefined) {
-  if (file === undefined) return
+  if (file === undefined) return undefined
   const resolved = path.resolve(file)
   const mod = yield* Effect.tryPromise(() => import(pathToFileURL(resolved).href)).pipe(
     Effect.catch((cause) =>
@@ -92,10 +92,12 @@ const useConfig = Effect.fnUntraced(function*(file: string | undefined) {
     yield* Console.error(`effect-test: ${file}: the default export is not a Test.config(...)`)
     return yield* new ExitCode({ code: 1 })
   }
-  process.env.EFFECT_TEST_CONFIG = resolved
+  return resolved
 })
 
 const bin = path.relative(process.cwd(), fileURLToPath(new URL("./bin.ts", import.meta.url)))
+/** How to start the CLI again on the runtime we are on, for rerun hints. */
+const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
 
 export const cli = Command.make("effect-test", {
   paths,
@@ -111,7 +113,7 @@ export const cli = Command.make("effect-test", {
 }).pipe(
   Command.withDescription("Run Effect-native tests"),
   Command.withHandler(Effect.fnUntraced(function*(options) {
-    yield* useConfig(
+    const configFile = yield* useConfig(
       options.noConfig
         ? undefined
         : Option.getOrElse(
@@ -124,7 +126,7 @@ export const cli = Command.make("effect-test", {
     }
     const ctx: Reporters.ReporterContext = {
       write,
-      rerun: (t, runSeed) => `node ${bin} ${t.file} --test "${t.id}" --seed ${runSeed}`
+      rerun: (t, runSeed) => `${launcher} ${bin} ${t.file} --test "${t.id}" --seed ${runSeed}`
     }
     const code = yield* run({
       paths: options.paths,
@@ -137,6 +139,7 @@ export const cli = Command.make("effect-test", {
       filesPerExecutor: 4,
       testsPerFile: 8,
       bail: options.bail,
+      config: configFile,
       reporter: options.reporter === "human"
         ? Reporters.human(ctx)
         : options.reporter === "jsonl"

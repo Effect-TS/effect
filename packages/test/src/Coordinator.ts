@@ -2,15 +2,12 @@
 // resolves options (nearest wins) into a plan, dispatches files to the executor
 // pool, enforces bail by interrupting in-flight work, and guarantees exactly one
 // terminal event per planned test.
-import * as NodeWorker from "@effect/platform-node/NodeWorker"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as RpcClient from "effect/rpc/RpcClient"
 import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import { Worker } from "node:worker_threads"
 import type { ListedNode, PlannedTest, RunFileTest, Status, TestEvent, TestFinished } from "./Protocol.ts"
 import { ExecutorRpcs } from "./Protocol.ts"
 import type { Reporter } from "./Reporters.ts"
@@ -26,6 +23,8 @@ export interface RunOptions {
   readonly filesPerExecutor: number
   readonly testsPerFile: number
   readonly bail: boolean
+  /** absolute path of the test config, if any */
+  readonly config: string | undefined
   readonly reporter: Reporter
   readonly write: (s: string) => void
 }
@@ -101,18 +100,11 @@ export const plan = (
   )
 }
 
-// --- the executor pool: worker threads speaking ExecutorRpcs
+// --- the executor pool: executors speaking ExecutorRpcs. The platform (see Platform.ts)
+// provides the Worker spawner, so this works the same on Node, Bun and Deno.
 
 export const executorPool = (workers: number, filesPerExecutor: number) =>
-  RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor }).pipe(
-    Layer.provide(NodeWorker.layer(() => {
-      const w = new Worker(new URL("./executor-worker.ts", import.meta.url), { stdout: true, stderr: true })
-      // keep the coordinator's stdout for the reporter only
-      w.stdout.pipe(process.stderr)
-      w.stderr.pipe(process.stderr)
-      return w
-    }))
-  )
+  RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor })
 
 // --- running
 
@@ -193,7 +185,12 @@ export const run = (opts: RunOptions) =>
     const work = Effect.forEach(
       [...byFile],
       ([file, tests]) =>
-        client.RunFile({ path: path.resolve(file), concurrency: opts.testsPerFile, tests }).pipe(
+        client.RunFile({
+          path: path.resolve(file),
+          ...(opts.config !== undefined ? { config: opts.config } : {}),
+          concurrency: opts.testsPerFile,
+          tests
+        }).pipe(
           Stream.runForEach((e) =>
             Effect.suspend(() => {
               emit(e)

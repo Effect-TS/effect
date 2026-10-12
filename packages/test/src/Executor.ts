@@ -82,19 +82,36 @@ export const listFile = (file: string) =>
 // --- running
 
 /** Per-executor state: the run's MemoMap and Scope live as long as the executor. */
-export class ExecutorState extends Context.Service<ExecutorState, {
+interface RunState {
   readonly runMemo: Layer.MemoMap
   readonly shared: ReadonlySet<Layer.Layer<any, any, any>>
+}
+
+export class ExecutorState extends Context.Service<ExecutorState, {
+  /** The run's MemoMap and shared layers for a test config (or none), set up on first use. */
+  readonly forConfig: (file: string | undefined) => Effect.Effect<RunState, LoadError>
 }>()("effect/test/ExecutorState") {
   static layer = Layer.effect(ExecutorState)(Effect.gen(function*() {
-    const shared = new Set<Layer.Layer<any, any, any>>(yield* loadConfig(process.env.EFFECT_TEST_CONFIG))
     const runScope = yield* Effect.scope
     const runContext = yield* Effect.context<never>()
-    return { runMemo: makeRunMemoMap(shared, runScope, runContext), shared }
+    const lock = Semaphore.makeUnsafe(1)
+    const states = new Map<string | undefined, RunState>()
+    const forConfig = (file: string | undefined) =>
+      lock.withPermits(1)(Effect.suspend(() => {
+        const existing = states.get(file)
+        if (existing) return Effect.succeed(existing)
+        return Effect.map(loadConfig(file), (layers): RunState => {
+          const shared = new Set<Layer.Layer<any, any, any>>(layers)
+          const state = { runMemo: makeRunMemoMap(shared, runScope, runContext), shared }
+          states.set(file, state)
+          return state
+        })
+      }))
+    return { forConfig }
   }))
 }
 
-/** The config's shared layers. The path comes from the coordinator (worker threads inherit env). */
+/** The config's shared layers. The coordinator sends the config's path with every `RunFile`. */
 const loadConfig = (file: string | undefined) =>
   file === undefined ? Effect.succeed([]) : Effect.tryPromise({
     try: () => import(pathToFileURL(file).href),
@@ -104,8 +121,7 @@ const loadConfig = (file: string | undefined) =>
       isConfig(mod.default)
         ? Effect.succeed(mod.default.shared ?? [])
         : Effect.fail(new LoadError({ path: file, message: "the config's default export is not a Test.config(...)" }))
-    ),
-    Effect.orDie
+    )
   )
 
 /**
@@ -181,10 +197,15 @@ class FixtureFailure {
   }
 }
 
-export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<RunFileTest>) =>
+export const runFile = (
+  file: string,
+  config: string | undefined,
+  concurrency: number,
+  tests: ReadonlyArray<RunFileTest>
+) =>
   Stream.callback<Event, LoadError, ExecutorState>((queue) =>
     Effect.gen(function*() {
-      const { runMemo, shared } = yield* ExecutorState
+      const { runMemo, shared } = yield* (yield* ExecutorState).forConfig(config)
       const root = yield* load(file)
       const rel = path.relative(process.cwd(), file)
       const selected = new Map(tests.map((t) => [t.id, t]))
