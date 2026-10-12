@@ -934,10 +934,6 @@ export const subtractDuration: {
     mapEpochMillis(self, (millis) => millis - Duration.toMillis(Duration.fromInputUnsafe(duration)))
 )
 
-const addMillis = (date: Date, amount: number): void => {
-  date.setTime(date.getTime() + amount)
-}
-
 /** @internal */
 export const add: {
   (
@@ -949,20 +945,26 @@ export const add: {
   ): A
 } = dual(
   2,
-  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime =>
-    mutate(self, (date) => {
+  (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime => {
+    // time units move the instant, calendar units move the wall clock
+    const shifted = mutateUtc(self, (date) => {
       if (parts.milliseconds) {
-        addMillis(date, parts.milliseconds)
+        date.setTime(date.getTime() + parts.milliseconds)
       }
       if (parts.seconds) {
-        addMillis(date, parts.seconds * 1000)
+        date.setTime(date.getTime() + parts.seconds * 1000)
       }
       if (parts.minutes) {
-        addMillis(date, parts.minutes * 60 * 1000)
+        date.setTime(date.getTime() + parts.minutes * 60 * 1000)
       }
       if (parts.hours) {
-        addMillis(date, parts.hours * 60 * 60 * 1000)
+        date.setTime(date.getTime() + parts.hours * 60 * 60 * 1000)
       }
+    })
+    if (!parts.days && !parts.weeks && !parts.months && !parts.years) {
+      return shifted
+    }
+    return mutate(shifted, (date) => {
       if (parts.days) {
         date.setUTCDate(date.getUTCDate() + parts.days)
       }
@@ -989,6 +991,7 @@ export const add: {
         }
       }
     })
+  }
 )
 
 /** @internal */

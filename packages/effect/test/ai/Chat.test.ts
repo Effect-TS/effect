@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Predicate, Ref, Schema } from "effect"
+import { Effect, Layer, Predicate, Ref, Schema, Stream } from "effect"
 import { Chat, IdGenerator, Prompt, Tool, Toolkit } from "effect/ai"
 import { Persistence } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -16,6 +16,34 @@ const PersistenceLayer = Layer.provideMerge(
 )
 
 describe("Chat", () => {
+  it.effect("keeps partial assistant text when streamText is interrupted", () =>
+    Effect.gen(function*() {
+      const chat = yield* Chat.empty
+
+      yield* chat.streamText({ prompt: "hi" }).pipe(
+        Stream.take(2),
+        Stream.runDrain,
+        TestUtils.withLanguageModel({
+          streamText: () =>
+            Stream.fromIterable(
+              [
+                { type: "text-start", id: "t1" },
+                { type: "text-delta", id: "t1", delta: "Hello" },
+                { type: "text-end", id: "t1" }
+              ] as const
+            ).pipe(Stream.rechunk(1))
+        })
+      )
+
+      assert.deepStrictEqual(
+        yield* Ref.get(chat.history),
+        Prompt.make([
+          { role: "user", content: "hi" },
+          { role: "assistant", content: [{ type: "text", text: "Hello" }] }
+        ])
+      )
+    }))
+
   it.effect("does not replay a completed approved tool", () => {
     let executions = 0
     const toolkit = Toolkit.make(Tool.make("Counter", {

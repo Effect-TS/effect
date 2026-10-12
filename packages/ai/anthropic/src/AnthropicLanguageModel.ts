@@ -1160,7 +1160,7 @@ const prepareMessages = Effect.fnUntraced(
                       Predicate.hasProperty(part.params, "type") &&
                       part.params.type === "programmatic-tool-call"
                     ) {
-                      const { type, ...params } = part.params
+                      const { type: _type, ...params } = part.params
                       content.push({
                         type: "server_tool_use",
                         id: part.id,

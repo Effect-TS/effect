@@ -303,6 +303,40 @@ describe("Sink", () => {
       }))
   })
 
+  describe("takeUntil", () => {
+    it.effect("takeUntil preserves leftovers and stops at the match", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4).pipe(
+          Stream.concat(Stream.fail("pulled past the match")),
+          Stream.transduce(Sink.takeUntil((n) => n % 2 === 0)),
+          Stream.take(2),
+          Stream.runCollect
+        )
+        deepStrictEqual(result, [[1, 2], [3, 4]])
+      }))
+
+    it.effect("takeUntilEffect preserves leftovers and stops at the match", () =>
+      Effect.gen(function*() {
+        for (const chunkSize of [1, 4]) {
+          const inputs: Array<number> = []
+          const result = yield* Stream.make(1, 2, 3, 4).pipe(
+            Stream.rechunk(chunkSize),
+            Stream.concat(Stream.fail("pulled past the match")),
+            Stream.transduce(Sink.takeUntilEffect((n) =>
+              Effect.sync(() => {
+                inputs.push(n)
+                return n % 2 === 0
+              })
+            )),
+            Stream.take(2),
+            Stream.runCollect
+          )
+          deepStrictEqual(result, [[1, 2], [3, 4]])
+          deepStrictEqual(inputs, [1, 2, 3, 4])
+        }
+      }))
+  })
+
   describe("withDuration", () => {
     it.effect("uses monotonic time when wall time moves backward", () =>
       Effect.gen(function*() {

@@ -104,8 +104,19 @@ interface QueuedServerNotification {
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
-  readonly notificationDelivery: { consumers: number; listChangeRevision: number }
+  readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestEndpoints: number }
 }>()
+
+// Request-scoped HTTP servers deliver a request's own notifications through
+// that request's server instead of the shared notification queue.
+const RequestNotificationQueue = Context.Reference<Queue.Queue<QueuedServerNotification> | undefined>(
+  "effect/ai/McpServer/RequestNotificationQueue",
+  { defaultValue: () => undefined }
+)
+// Progress and logs belong to the request that emitted them.
+const isRequestNotification = (notification: McpCore.ServerNotification) =>
+  notification._tag === "Progress" || notification._tag === "LoggingMessage"
+
 type ServerExtensions = NonNullable<ServerCapabilities["extensions"]>
 type ServerNotificationRequest<
   R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
@@ -322,7 +333,10 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
-    const notificationDelivery = { consumers: 0, listChangeRevision: 0 }
+    const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestEndpoints: 0 }
+    // With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
+    const withoutSharedConsumer = () =>
+      notificationDelivery.consumers === 0 && notificationDelivery.requestEndpoints > 0
     const pendingListChanges = new Map<string, QueuedServerNotification>()
     const dispatcher = (yield* Scheduler).makeDispatcher()
     const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
@@ -344,6 +358,26 @@ export class McpServer extends Context.Service<McpServer, {
               requestContext: Context.getOrUndefined(fiber.context, McpRequestContext),
               requestHeaders: Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers
             }
+            // write resumes the caller synchronously, so defer it until delivery completes.
+            const acknowledge = Effect.suspend(() =>
+              notifications.write({
+                clientId: 0,
+                requestId: message.id,
+                _tag: "Exit",
+                exit: Exit.void
+              })
+            )
+            // A request-scoped endpoint delivers its request's own progress and logs on that request's response.
+            const requestQueue = Context.get(fiber.context, RequestNotificationQueue)
+            if (
+              requestQueue !== undefined && queued.requestContext !== undefined && isRequestNotification(notification)
+            ) {
+              Queue.offerUnsafe(requestQueue, queued)
+              return Effect.andThen(Deferred.await(delivered), acknowledge)
+            }
+            if (withoutSharedConsumer()) {
+              return acknowledge
+            }
             let enqueued = false
             if (message.tag.includes("list_changed")) {
               const revision = ++notificationDelivery.listChangeRevision
@@ -364,15 +398,6 @@ export class McpServer extends Context.Service<McpServer, {
               enqueued = true
               Queue.offerUnsafe(notificationsQueue, queued)
             }
-            // write resumes the caller synchronously, so defer it until delivery completes.
-            const acknowledge = Effect.suspend(() =>
-              notifications.write({
-                clientId: 0,
-                requestId: message.id,
-                _tag: "Exit",
-                exit: Exit.void
-              })
-            )
             return enqueued && queued.requestContext !== undefined && notificationDelivery.consumers > 0
               ? Effect.andThen(Deferred.await(delivered), acknowledge)
               : acknowledge
@@ -383,7 +408,7 @@ export class McpServer extends Context.Service<McpServer, {
     const service = McpServer.of({
       notifications: notifications.client,
       notifyElicitationComplete: ({ clientId, elicitationId }) =>
-        Deferred.make<void>().pipe(
+        withoutSharedConsumer() ? Effect.void : Deferred.make<void>().pipe(
           Effect.flatMap((delivered) =>
             Queue.offer(notificationsQueue, {
               notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
@@ -727,7 +752,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
     readonly allowSubscriptions?: boolean | undefined
   },
   runtime: McpRuntime.ServerRuntimeShape,
-  transport: "custom" | "http" | "stdio"
+  transport: "custom" | "http" | "stdio",
+  requestScoped?: {
+    readonly notifications: Queue.Dequeue<QueuedServerNotification>
+    readonly handlers: Context.Context<never>
+  }
 ) {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
@@ -817,7 +846,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   let writeFromClient!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
   const { core, notificationDelivery, notifications } = internalState.get(server)!
-  const handlers = yield* runtime.installHandlers({
+  const handlers = requestScoped?.handlers ?? (yield* runtime.installHandlers({
     core,
     subscribeServerNotifications: PubSub.subscribe(serverNotifications),
     getListChangeRevision: () => notificationDelivery.listChangeRevision,
@@ -831,7 +860,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
     }),
     defaultLogLevel,
     serverInfo: options
-  })
+  }))
 
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(key: McpClientKey) {
@@ -1252,17 +1281,19 @@ const runWithRuntime = Effect.fnUntraced(function*(
     })
   }
 
-  yield* Effect.acquireRelease(
-    Effect.sync(() => {
-      notificationDelivery.consumers++
-    }),
-    () =>
+  if (requestScoped === undefined) {
+    yield* Effect.acquireRelease(
       Effect.sync(() => {
-        notificationDelivery.consumers--
-      })
-  )
+        notificationDelivery.consumers++
+      }),
+      () =>
+        Effect.sync(() => {
+          notificationDelivery.consumers--
+        })
+    )
+  }
   const notificationTails = new Map<number, Deferred.Deferred<void>>()
-  yield* Queue.take(notifications).pipe(
+  yield* Queue.take(requestScoped?.notifications ?? notifications).pipe(
     Effect.flatMap(Effect.fnUntraced(function*(queued) {
       const { delivered, listChangeRevision, notification, targetClientId, requestContext, requestHeaders } = queued
       if (McpProtocolInternal.isSubscriptionServerNotification(notification)) {
@@ -1276,7 +1307,7 @@ const runWithRuntime = Effect.fnUntraced(function*(
           runtime.disconnect(clientId)
         }
       }
-      const requestNotification = notification._tag === "LoggingMessage" || notification._tag === "Progress"
+      const requestNotification = isRequestNotification(notification)
       const deliveryClientIds = requestNotification && requestContext !== undefined
         ? [requestContext.clientId]
         : targetClientId === undefined
@@ -1594,10 +1625,19 @@ const mcpStdioSerialization = (
  * Method not found. Request-scoped progress and logs, legacy protocols, and
  * default subscription behavior are unchanged.
  *
+ * The layer runs one long-lived MCP server that every POST shares. For
+ * serverless hosts where execution must belong to each request, use
+ * `layerHttpRequestScoped` instead.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
  * HTTP+SSE transport, GET SSE, event resumption, or session expiry.
+ *
+ * **Gotchas**
+ *
+ * This layer starts a scoped server fiber. For sharing it across Cloudflare
+ * Workers requests, see `HttpRouter.toWebHandler` for setup and limitations.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -1628,6 +1668,105 @@ export const layerHttp = (options: {
   )
 }
 
+/**
+ * Registers a request-scoped Streamable HTTP MCP endpoint at `options.path`.
+ *
+ * **When to use**
+ *
+ * Use when serving on serverless hosts such as Cloudflare Workers, where execution must
+ * belong to the HTTP request rather than a shared long-lived server.
+ *
+ * **Details**
+ *
+ * Each POST runs its own server in the request scope, with no background
+ * fiber, timer, or queue consumer left after the response body completes.
+ * Only sessionless protocols such as `v2026_07_28` are accepted. Tools,
+ * resources, prompts, completions, multi round-trip input requests, and the
+ * request's own progress and log notifications are supported. Legacy reverse
+ * requests through `McpServer.elicit` are not available.
+ *
+ * Discovery advertises `listChanged: false`, `subscriptions/listen` returns
+ * Method not found, and DELETE returns `405`. Request-scoped clients receive
+ * no broadcast notifications such as list changes. Those still reach clients
+ * of a `layerHttp` endpoint sharing the same `McpServer`, and are dropped when
+ * no such endpoint exists. Use `layerHttp` on a long-lived host for sessions,
+ * subscriptions, or legacy reverse requests.
+ *
+ * HTTP admission, origin checks, and JSON-RPC errors follow `layerHttp`.
+ * Configuring a sessionful protocol through an untyped caller fails layer
+ * construction with `IllegalArgumentError`.
+ *
+ * @see {@link layerHttp} for the long-lived HTTP transport and HTTP admission policy
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerHttpRequestScoped = (options: {
+  readonly name: string
+  readonly version: string
+  readonly instructions?: string | undefined
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
+  readonly path: HttpRouter.PathInput
+  readonly protocols: Arr.NonEmptyReadonlyArray<
+    McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
+  >
+  readonly extensions?: ServerExtensions | undefined
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> =>
+  Layer.effectDiscard(Effect.gen(function*() {
+    const runtime = yield* McpRuntime.ServerRuntime
+    const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
+    if (stateful !== undefined) {
+      return yield* new Cause.IllegalArgumentError(
+        `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
+      )
+    }
+    const server = yield* McpServer
+    const { core, notificationDelivery } = internalState.get(server)!
+    // Subscriptions are disabled, so handlers hold no per-request state and
+    // read registrations from the shared core on every call. Request services
+    // still take precedence over the layer context captured here.
+    const handlers = yield* (runtime.installHandlers({
+      core,
+      subscribeServerNotifications: Effect.die("Subscriptions are disabled for request-scoped MCP servers"),
+      getListChangeRevision: () => notificationDelivery.listChangeRevision,
+      defaultLogLevel: yield* CurrentLogLevel,
+      serverInfo: options
+    }) as Effect.Effect<Context.Context<never>>)
+    yield* Effect.acquireRelease(
+      Effect.sync(() => {
+        notificationDelivery.requestEndpoints++
+      }),
+      () =>
+        Effect.sync(() => {
+          notificationDelivery.requestEndpoints--
+        })
+    )
+    // Each POST runs its own RPC server in the request scope, so no fiber,
+    // timer, or queue consumer outlives the request that created it.
+    yield* addMcpHttpRoutes(
+      options,
+      Effect.gen(function*() {
+        const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
+          Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
+        )
+        const notifications = yield* Queue.make<QueuedServerNotification>()
+        yield* runWithRuntime(options, runtime, "http", { notifications, handlers }).pipe(
+          Effect.provideService(RpcServer.Protocol, protocol),
+          Effect.provideService(McpServer, server),
+          Effect.forkScoped({ startImmediately: true })
+        )
+        return yield* Effect.provideService(httpEffect, RequestNotificationQueue, notifications)
+      })
+    )
+  })).pipe(
+    Layer.provideMerge(McpServer.layer),
+    Layer.provide(McpRuntime.layer(options.protocols))
+  )
+
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
@@ -1638,81 +1777,96 @@ const layerMcpProtocolHttp = (options: {
   McpRuntime.ServerRuntime | HttpRouter.HttpRouter
 > =>
   Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
-    const runtime = yield* McpRuntime.ServerRuntime
     const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
       Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
     )
-    const router = yield* HttpRouter.HttpRouter
-    const allowSessionTermination = options.allowSessionTermination === true &&
-      runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
-    const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
-    const withAllowedOrigin = (
-      handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
-    ) =>
-    (request: HttpServerRequest.HttpServerRequest) =>
-      isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : forbidden
-    const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
-      status: 405,
-      headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
-    }))
-    const methodNotAllowed = withAllowedOrigin(() => methodNotAllowedResponse)
-    for (const method of ["GET", "PUT", "PATCH", "OPTIONS"] as const) {
-      yield* router.add(method, options.path, methodNotAllowed)
-    }
-    yield* router.add(
-      "DELETE",
-      options.path,
-      allowSessionTermination
-        ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
-        : methodNotAllowed
-    )
-    yield* router.add("POST", options.path, (request) => {
-      if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
-      }
-      if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
-        return Effect.succeed(HttpServerResponse.empty({ status: 415 }))
-      }
-      const accepted = mcpMediaTypes(request.headers["accept"])
-      if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
-      }
-      return Effect.gen(function*() {
-        const parsed = yield* Effect.result(
-          Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
-        )
-        const admission = runtime.admitHttp(request.headers, parsed)
-        if (admission._tag === "Rejected") {
-          return admission.response
-        }
-        const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
-          // Completed responses may already contain notifications followed by the result.
-          const hasMultipleMessages = response.body._tag === "Uint8Array" &&
-            response.body.body.subarray(0, -1).includes(10)
-          return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
-            ? toServerSentEvents(response, admission.isSubscription)
-            : response
-        }
-        if (admission.acknowledge) {
-          return yield* Effect.catchCause(
-            Effect.map(httpEffect, toResponse),
-            () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
-          )
-        }
-        return yield* Effect.flatMap(httpEffect, (response) => {
-          if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
-            return Effect.succeed(toResponse(response))
-          }
-          // Only fully cancelled request POSTs may return an empty SSE response.
-          // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
-          return httpPostResponses.get(request)?.expected === 0
-            ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
-            : Effect.die(new Error("MCP request ended without writing its response"))
-        })
-      })
-    })
+    yield* addMcpHttpRoutes(options, httpEffect)
     return protocol
   }))
+
+const addMcpHttpRoutes = Effect.fnUntraced(function*(
+  options: {
+    readonly path: HttpRouter.PathInput
+    readonly allowedOrigins?: ReadonlyArray<string> | undefined
+    readonly allowSessionTermination?: boolean | undefined
+  },
+  httpEffect: Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    never,
+    Scope.Scope | HttpServerRequest.HttpServerRequest
+  >
+) {
+  const runtime = yield* McpRuntime.ServerRuntime
+  const router = yield* HttpRouter.HttpRouter
+  const allowSessionTermination = options.allowSessionTermination === true &&
+    runtime.protocols.some((protocol) => protocol.runtime._tag === "Stateful")
+  const forbidden = Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+  const withAllowedOrigin = (
+    handler: (request: HttpServerRequest.HttpServerRequest) => Effect.Effect<HttpServerResponse.HttpServerResponse>
+  ) =>
+  (request: HttpServerRequest.HttpServerRequest) =>
+    isAllowedMcpOrigin(request, options.allowedOrigins) ? handler(request) : forbidden
+  const methodNotAllowedResponse = Effect.succeed(HttpServerResponse.empty({
+    status: 405,
+    headers: { allow: allowSessionTermination ? "POST, DELETE" : "POST" }
+  }))
+  const methodNotAllowed = withAllowedOrigin(() => methodNotAllowedResponse)
+  for (const method of ["GET", "PUT", "PATCH", "OPTIONS"] as const) {
+    yield* router.add(method, options.path, methodNotAllowed)
+  }
+  yield* router.add(
+    "DELETE",
+    options.path,
+    allowSessionTermination
+      ? withAllowedOrigin((request) => runtime.terminateHttpSession(request.headers))
+      : methodNotAllowed
+  )
+  yield* router.add("POST", options.path, (request) => {
+    if (!isAllowedMcpOrigin(request, options.allowedOrigins)) {
+      return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+    }
+    if (mcpMediaTypes(request.headers["content-type"])[0] !== "application/json") {
+      return Effect.succeed(HttpServerResponse.empty({ status: 415 }))
+    }
+    const accepted = mcpMediaTypes(request.headers["accept"])
+    if (!accepted.includes("application/json") || !accepted.includes("text/event-stream")) {
+      return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
+    }
+    return Effect.gen(function*() {
+      const parsed = yield* Effect.result(
+        Effect.flatMap(request.text, Schema.decodeEffect(Schema.UnknownFromJsonString))
+      )
+      const admission = runtime.admitHttp(request.headers, parsed)
+      if (admission._tag === "Rejected") {
+        return admission.response
+      }
+      const toResponse = (response: HttpServerResponse.HttpServerResponse) => {
+        // Completed responses may already contain notifications followed by the result.
+        const hasMultipleMessages = response.body._tag === "Uint8Array" &&
+          response.body.body.subarray(0, -1).includes(10)
+        return admission.isSubscription || response.body._tag === "Stream" || hasMultipleMessages
+          ? toServerSentEvents(response, admission.isSubscription)
+          : response
+      }
+      if (admission.acknowledge) {
+        return yield* Effect.catchCause(
+          Effect.map(httpEffect, toResponse),
+          () => Effect.succeed(HttpServerResponse.empty({ status: 202 }))
+        )
+      }
+      return yield* Effect.flatMap(httpEffect, (response) => {
+        if (response.body._tag !== "Uint8Array" || response.body.body.length > 0) {
+          return Effect.succeed(toResponse(response))
+        }
+        // Only fully cancelled request POSTs may return an empty SSE response.
+        // https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#sending-messages-to-the-server
+        return httpPostResponses.get(request)?.expected === 0
+          ? Effect.succeed(HttpServerResponse.stream(Stream.empty, { contentType: "text/event-stream" }))
+          : Effect.die(new Error("MCP request ended without writing its response"))
+      })
+    })
+  })
+})
 
 const mcpHttpSerialization: RpcSerialization.RpcSerialization["Service"] = (() => {
   const serialization = mcpJsonRpcSerialization()

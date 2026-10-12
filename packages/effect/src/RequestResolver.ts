@@ -311,16 +311,10 @@ export const makeGrouped = <A extends Request.Any, K>(options: {
   })
 
 const hashGroupKey = <A, K>(get: (entry: Request.Entry<A>) => K) => {
-  const groupKeys = MutableHashMap.empty<K, K>()
-  return (entry: Request.Entry<A>): unknown => {
-    const key = get(entry)
-    const okey = MutableHashMap.get(groupKeys, key)
-    if (okey._tag === "Some") {
-      return okey.value
-    }
-    MutableHashMap.set(groupKeys, key, key)
-    return key
-  }
+  // Pending batches match equal keys, so they share one batch.
+  const batchKey = (entry: Request.Entry<A>): unknown => get(entry)
+  internal.equalBatchKeys.add(batchKey)
+  return batchKey
 }
 
 /**

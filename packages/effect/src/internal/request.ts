@@ -4,6 +4,8 @@ import type { Effect } from "../Effect.ts"
 import type { Exit } from "../Exit.ts"
 import type { Fiber } from "../Fiber.ts"
 import { dual } from "../Function.ts"
+import * as MutableHashMap from "../MutableHashMap.ts"
+import * as Option from "../Option.ts"
 import type * as Request from "../Request.ts"
 import { makeEntry } from "../Request.ts"
 import type { RequestResolver } from "../RequestResolver.ts"
@@ -67,10 +69,36 @@ export const requestUnsafe = <A extends Request.Any>(
   return () => removeEntryUnsafe(options.resolver, entry)
 }
 
+/**
+ * Pending batches of resolvers whose `batchKey` is in this set match keys with
+ * `Equal` instead of by reference.
+ *
+ * @internal
+ */
+export const equalBatchKeys = new WeakSet<Function>()
+
+interface BatchMap {
+  get(key: unknown): Batch | undefined
+  has(key: unknown): boolean
+  set(key: unknown, batch: Batch): void
+  delete(key: unknown): void
+}
+
+const makeBatchMap = (resolver: RequestResolver<any>): BatchMap => {
+  if (!equalBatchKeys.has(resolver.batchKey)) return new Map()
+  const map = MutableHashMap.empty<unknown, Batch>()
+  return {
+    get: (key) => Option.getOrUndefined(MutableHashMap.get(map, key)),
+    has: (key) => MutableHashMap.has(map, key),
+    set: (key, batch) => MutableHashMap.set(map, key, batch),
+    delete: (key) => MutableHashMap.remove(map, key)
+  }
+}
+
 interface Batch {
   key: unknown
   resolver: RequestResolver<any>
-  map: Map<unknown, Batch>
+  map: BatchMap
   readonly entrySet: Set<Request.Entry<any>>
   readonly entries: Set<Request.Entry<any>>
   readonly delayEffect: Effect<void>
@@ -79,7 +107,7 @@ interface Batch {
 }
 
 const batchPool: Array<Batch> = []
-const pendingBatches = new WeakMap<RequestResolver<any>, Map<unknown, Batch>>()
+const pendingBatches = new WeakMap<RequestResolver<any>, BatchMap>()
 
 const addEntry = <A extends Request.Any>(
   resolver: RequestResolver<A>,
@@ -93,7 +121,7 @@ const addEntry = <A extends Request.Any>(
 ) => {
   let batchMap = pendingBatches.get(resolver)
   if (!batchMap) {
-    batchMap = new Map<object, Batch>()
+    batchMap = makeBatchMap(resolver)
     pendingBatches.set(resolver, batchMap)
   }
   let batch: Batch | undefined

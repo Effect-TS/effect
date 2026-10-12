@@ -4029,6 +4029,7 @@ export declare namespace StructWithRest {
    */
   type Objects = Constraint & {
     readonly ast: SchemaAST.Objects
+    readonly Encoded: object
   }
   /**
    * Readonly list of record schemas that provide the additional index signatures
@@ -4197,6 +4198,13 @@ export interface StructWithRest<
  * producing a schema whose decoded type intersects the struct and all records.
  *
  * **Gotchas**
+ *
+ * The base schema must have an object-shaped encoded type. Whole-object
+ * transformations are not supported, even with an empty rest array. Apply
+ * transformations such as `Schema.fromJsonString` to the completed
+ * `StructWithRest` schema instead. Object-shaped encoded types alone do not
+ * guarantee compatibility: unsupported encodings are still rejected at runtime.
+ * Transformations on individual fields remain supported.
  *
  * TypeScript index signatures also apply to fixed keys. `StructWithRest` does
  * not reject incompatible fixed fields at the call site; use

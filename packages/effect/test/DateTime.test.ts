@@ -105,6 +105,33 @@ describe("DateTime", () => {
         const future = Option.map(now, (value) => DateTime.add(value, { years: 1 }))
         assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
+
+    it("clips fractional time units separately", () => {
+      strictEqual(
+        DateTime.toEpochMillis(DateTime.add(DateTime.makeUnsafe(1000), { milliseconds: 0.5, seconds: 0.0005 })),
+        1000
+      )
+    })
+
+    it("adds and subtracts elapsed time in the repeated DST hour", () => {
+      const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(
+        DateTime.formatIso(DateTime.add(secondOneThirty, { minutes: 1, seconds: 1, milliseconds: 1 })),
+        "2025-11-02T06:31:01.001Z"
+      )
+      strictEqual(DateTime.formatIso(DateTime.subtract(secondOneThirty, { hours: 1 })), "2025-11-02T05:30:00.000Z")
+    })
+
+    it("adds elapsed hours before calendar days across DST", () => {
+      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T17:00:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { hours: 24 })), "2025-03-09T17:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1 })), "2025-03-09T16:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1, hours: 24 })), "2025-03-10T17:00:00.000Z")
+    })
   })
 
   describe("endOf", () => {
