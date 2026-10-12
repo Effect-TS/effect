@@ -2276,13 +2276,14 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     }
   }
 
+  // Keep partial text from unended blocks. Unended reasoning is dropped since it
+  // may lack the signature or encrypted content providers require for replay.
   for (const active of activeTextDeltas.values()) {
     if (active.text.length > 0) {
       assistantParts[active.index] = makePart("text", { text: active.text, options: active.options })
     }
   }
 
-  // Unended reasoning may lack the signature or encrypted content required for replay.
   const assistantContent = assistantParts.filter((part) => part !== undefined)
 
   if (assistantContent.length === 0 && toolParts.length === 0) {

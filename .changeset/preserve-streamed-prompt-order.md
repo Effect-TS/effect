@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Preserve text and reasoning start order in `Prompt.fromResponseParts`, including text interleaved with tool calls. Keep nonempty partial text in interrupted chat history while omitting unfinished reasoning blocks that may lack provider-required replay metadata.
+`Prompt.fromResponseParts` now keeps streamed text and reasoning in stream order, and keeps partial text from unended text blocks.
