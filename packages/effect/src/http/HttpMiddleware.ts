@@ -268,42 +268,41 @@ export const tracer: <E, R>(
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
-      fiber.currentDispatcher.scheduleTask(() => {
-        let response: HttpServerResponse
-        let spanExit: Exit.Exit<HttpServerResponse, unknown>
-        if (Exit.isFailure(exit)) {
-          const [failureResponse, cause] = causeResponseStripped(exit.cause)
-          response = failureResponse
-          // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
-          spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
-            ? Exit.failCause(cause.value)
-            : responseSpanExit(request, response)
-        } else {
-          response = exit.value
-          spanExit = responseSpanExit(request, response)
+      // Complete the span before the request fiber exits so shutdown can flush it.
+      let response: HttpServerResponse
+      let spanExit: Exit.Exit<HttpServerResponse, unknown>
+      if (Exit.isFailure(exit)) {
+        const [failureResponse, cause] = causeResponseStripped(exit.cause)
+        response = failureResponse
+        // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
+        spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
+          ? Exit.failCause(cause.value)
+          : responseSpanExit(request, response)
+      } else {
+        response = exit.value
+        spanExit = responseSpanExit(request, response)
+      }
+      if (span.sampled) {
+        span.attribute("http.request.method", request.method)
+        const url = Request.toURL(request)
+        if (Option.isSome(url)) {
+          if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
+            url.value.username = "REDACTED"
+            url.value.password = "REDACTED"
+          }
+          tracing.addUrlAttributes(span, url.value)
         }
-        if (span.sampled) {
-          span.attribute("http.request.method", request.method)
-          const url = Request.toURL(request)
-          if (Option.isSome(url)) {
-            if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
-              url.value.username = "REDACTED"
-              url.value.password = "REDACTED"
-            }
-            tracing.addUrlAttributes(span, url.value)
-          }
-          if (request.headers["user-agent"] !== undefined) {
-            span.attribute("user_agent.original", request.headers["user-agent"])
-          }
-          tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
-          if (Option.isSome(request.remoteAddress)) {
-            span.attribute("client.address", request.remoteAddress.value)
-          }
-          span.attribute("http.response.status_code", response.status)
-          tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+        if (request.headers["user-agent"] !== undefined) {
+          span.attribute("user_agent.original", request.headers["user-agent"])
         }
-        span.end(endTime, spanExit)
-      }, 0)
+        tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
+        if (Option.isSome(request.remoteAddress)) {
+          span.attribute("client.address", request.remoteAddress.value)
+        }
+        span.attribute("http.response.status_code", response.status)
+        tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+      }
+      span.end(endTime, spanExit)
       return undefined
     })
     return httpApp
