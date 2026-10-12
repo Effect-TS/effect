@@ -15762,6 +15762,20 @@ export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fi
   readonly fields: S["fields"]
 
   /**
+   * Creates a new instance from a fully validated, decoded struct value.
+   *
+   * **Details**
+   *
+   * **Warning**: This is unsafe. Input must already satisfy the entire struct,
+   * including defaults and tags. No validation, decoding, default application,
+   * or excess-property removal is performed. Nested references are retained.
+   * User and inherited constructors still run and may throw.
+   *
+   * @since 4.1.0
+   */
+  makeUnsafe(input: S["Type"]): Self
+
+  /**
    * Returns a new struct with the fields modified by the provided function.
    *
    * **Details**
@@ -15886,6 +15900,9 @@ function makeClass<
     static make(input: S["~type.make.in"], options?: MakeOptions): Self {
       return SchemaParser.make(getClassSchema(this) as any)(input ?? {}, options) as Self
     }
+    static makeUnsafe(input: S["Type"]): Self {
+      return makeClassInstance(this, input)
+    }
     static makeOption(input: S["~type.make.in"], options?: MakeOptions): Option_.Option<Self> {
       return SchemaParser.makeOption(getClassSchema(this) as any)(input ?? {}, options) as any
     }
@@ -15937,16 +15954,18 @@ function makeClass<
   return out
 }
 
+function makeClassInstance(self: new(...args: ReadonlyArray<any>) => any, input: unknown) {
+  return new self(input, {
+    "~payload": {
+      token: payloadToken,
+      value: input
+    }
+  })
+}
+
 function getClassTransformation(self: new(...args: ReadonlyArray<any>) => any) {
   return new SchemaTransformation.Transformation<any, any, never, never>(
-    SchemaGetter.transform((input) =>
-      new self(input, {
-        "~payload": {
-          token: payloadToken,
-          value: input
-        }
-      })
-    ),
+    SchemaGetter.transform((input) => makeClassInstance(self, input)),
     SchemaGetter.passthrough()
   )
 }
