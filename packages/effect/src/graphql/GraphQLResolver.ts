@@ -14,7 +14,7 @@
  */
 import { isReadonlyArrayNonEmpty, type NonEmptyArray, type NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
-import type * as Context from "../Context.ts"
+import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
@@ -121,7 +121,14 @@ const makeRequest = <K, A, E, R>(key: K, options?: CallOptions): KeyRequest<K, A
 
 /**
  * What {@link request} returns for an {@link aliased} resolver: a client
- * method for the operation, which can also be passed to `Effect.forEach`.
+ * method for the operation.
+ *
+ * **Details**
+ *
+ * Besides the `OperationMethod` signatures, it has one taking only variables,
+ * so that it can be passed straight to `Effect.forEach`. `Effect.forEach` calls
+ * it with the element's index as the second argument; the method ignores a
+ * second argument that isn't an options object.
  *
  * @stability experimental
  * @category models
@@ -131,9 +138,9 @@ export type AliasedMethod<Op extends GraphQL.Any> =
   & OperationMethod<Op>
   & ((variables: GraphQL.Variables<Op>) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>)
 
-// Most `RequestResolver` combinators, such as `batchN` and `setDelay`, keep a
-// resolver's `preCheck`, so it carries the operation `request` exposes.
-const aliasedOperations = new WeakMap<Function, GraphQL.Any>()
+// The operation of an `aliased` resolver, for `request`. Resolver
+// combinators keep annotations.
+const AliasedOperationAnnotation = Context.Service<GraphQL.Any>("effect/graphql/GraphQLResolver/AliasedOperation")
 
 // -----------------------------------------------------------------------------
 // Running
@@ -199,15 +206,15 @@ export const request: {
 } = function(...args: [RequestResolver.RequestResolver<any>] | [unknown, RequestResolver.RequestResolver<any>]) {
   if (args.length === 2) return Effect.request(makeRequest(args[0]), args[1])
   const resolver = args[0]
-  const operation = resolver.preCheck === undefined ? undefined : aliasedOperations.get(resolver.preCheck)
-  if (operation === undefined) return (key: unknown) => Effect.request(makeRequest(key), resolver)
+  const operation = Context.getOption(resolver.annotations, AliasedOperationAnnotation)
+  if (operation._tag === "None") return (key: unknown) => Effect.request(makeRequest(key), resolver)
   const method = (variables: unknown, options: CallOptions | number | undefined) => {
-    // `Effect.forEach` passes an index as the second argument.
+    // See `AliasedMethod`: `Effect.forEach` passes an index here.
     if (typeof options !== "object") options = undefined
     const effect = Effect.request(makeRequest(variables, options), resolver)
     return options?.context === undefined ? effect : Effect.provideContext(effect, options.context)
   }
-  return Object.assign(method, { operation })
+  return Object.assign(method, { operation: operation.value })
 } as any
 
 // -----------------------------------------------------------------------------
@@ -544,10 +551,6 @@ export const findById = <
  * Mutations are allowed, but their root fields run in slice order, which the
  * caller doesn't control.
  *
- * `RequestResolver.cache` replaces the hook `request` uses to recognise an
- * aliased resolver. On a cached resolver, `request` returns a plain lookup by
- * variables, without `operation` or call options.
- *
  * **Example** (Looking up pull requests by number)
  *
  * ```ts import.meta.vitest
@@ -658,14 +661,14 @@ export const aliased = <Op extends GraphQL.Any>(
     )
   }
   const batchKey = options?.batchKey
-  const grouped = RequestResolver.makeGrouped<AliasedRequest<Op>, unknown>({
+  return RequestResolver.makeGrouped<AliasedRequest<Op>, unknown>({
     key: (entry) =>
       batchKey === undefined ? entry.request.optionsKey : [batchKey(entry.context), entry.request.optionsKey],
     resolver: runAll
-  })
-  const preCheck = () => true
-  aliasedOperations.set(preCheck, operation)
-  return RequestResolver.makeWith({ ...grouped, preCheck }).pipe(RequestResolver.batchN(defaultAliasedBatchSize))
+  }).pipe(
+    RequestResolver.annotate(AliasedOperationAnnotation, operation),
+    RequestResolver.batchN(defaultAliasedBatchSize)
+  )
 }
 
 const defaultAliasedBatchSize = 10
