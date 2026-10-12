@@ -535,7 +535,7 @@ export const aliased = <Op extends GraphQL.Any>(
   }
   const codec = internalGraphQL.makeCodec(operation)
   // The registered hook uses this operation's middleware errors and services.
-  const execute = internalGraphQL.getRawExecute(method) as
+  const execute = internalGraphQL.rawExecutors.get(method) as
     | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
     | undefined
   // Generic conditional parameters prevent calling the strict overload directly.
@@ -584,7 +584,11 @@ export const aliased = <Op extends GraphQL.Any>(
               prefixes as NonEmptyArray<string>
             ),
             operationName: operation.name,
-            variables: internalGraphQL.prefixVariables(slices.map((slice) => slice.encoded), prefixes),
+            variables: Object.fromEntries(
+              slices.flatMap((slice, i) =>
+                Object.entries(slice.encoded ?? {}).map(([name, value]) => [prefixes[i] + name, value])
+              )
+            ),
             headers: Headers.empty,
             urlParams: UrlParams.empty
           })

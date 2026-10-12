@@ -213,45 +213,16 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
   return { fail, schemaFail, encodeVariables, failResponse, decodeStrict, decodePartial } as const
 }
 
-type RawExecute = (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
-
-const rawExecutors = new WeakMap<object, RawExecute>()
-
 /**
- * Registers a client's middleware and protocol runner for POST batches.
+ * Each real client method's runner for batches: its middleware and protocol,
+ * sending as POST. Mock and custom methods have none.
  *
  * @internal
  */
-export const setRawExecute = (method: object, execute: RawExecute): void => {
-  rawExecutors.set(method, execute)
-}
-
-/**
- * Returns the batch runner, or undefined for mock and custom methods.
- *
- * @internal
- */
-export const getRawExecute = (method: object): RawExecute | undefined => rawExecutors.get(method)
-
-const sliceIndex = (key: string, length: number): number | undefined => {
-  const match = /^_(\d+)_/.exec(key)
-  if (match === null) return undefined
-  const index = Number(match[1])
-  return index < length && match[0] === `_${index}_` ? index : undefined
-}
-
-/**
- * Prefixes each slice's encoded variables and merges them into one object.
- *
- * @internal
- */
-export const prefixVariables = (
-  slices: ReadonlyArray<unknown>,
-  prefixes: ReadonlyArray<string>
-): Record<string, unknown> =>
-  Object.fromEntries(
-    slices.flatMap((slice, i) => Object.entries(slice ?? {}).map(([name, value]) => [prefixes[i] + name, value]))
-  )
+export const rawExecutors = new WeakMap<
+  object,
+  (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
+>()
 
 /**
  * Splits a batched response, removing prefixes from root keys and error paths.
@@ -267,8 +238,9 @@ export const splitSlices = (
   const sliceErrors = prefixes.map((): Array<GraphQLError> => [])
   for (const error of result.errors ?? []) {
     const key = error.path?.[0]
-    const index = typeof key === "string" ? sliceIndex(key, prefixes.length) : undefined
-    if (index === undefined) return undefined
+    // No prefix is a prefix of another, so at most one matches.
+    const index = typeof key === "string" ? prefixes.findIndex((prefix) => key.startsWith(prefix)) : -1
+    if (index === -1) return undefined
     sliceErrors[index].push(
       { ...error, path: [(key as string).slice(prefixes[index].length), ...error.path!.slice(1)] } as GraphQLError
     )

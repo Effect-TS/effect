@@ -46,29 +46,19 @@ const PullRequest = GraphQL.query("PullRequest", {
   })
 })
 
+// `$after` is optional, so `{ name }` and `{ name, after: undefined }` encode alike.
 const RepoIssues = GraphQL.query("RepoIssues", {
   document: {
     variables: [{ name: "name", body: "String!" }, { name: "after", body: "String" }],
     selections: [{
       name: "repository",
-      body: [
-        "(owner:\"Effect-TS\",name:$",
-        "name",
-        "){issues(first:1,after:$",
-        "after",
-        "){pageInfo{hasNextPage endCursor}nodes{number}}}"
-      ]
+      body: ["(owner:\"Effect-TS\",name:$", "name", "){issues(after:$", "after", "){totalCount}}"]
     }],
     fragments: []
   },
   variables: { name: Schema.String, after: Schema.optional(Schema.NullOr(Schema.String)) },
   result: Schema.Struct({
-    repository: Schema.NullOr(Schema.Struct({
-      issues: Schema.Struct({
-        pageInfo: Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) }),
-        nodes: Schema.Array(Schema.Struct({ number: Schema.Int }))
-      })
-    }))
+    repository: Schema.NullOr(Schema.Struct({ issues: Schema.Struct({ totalCount: Schema.Int }) }))
   })
 })
 
@@ -347,9 +337,9 @@ describe("GraphQLResolver", () => {
 
     it.effect("lookups whose encoded variables are equal share one slice", () =>
       Effect.gen(function*() {
-        const page = { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ number: 1 }] }
+        const issues = { totalCount: 1 }
         const { client, requests } = yield* makeClient((variables) => ({
-          data: answerSlices(variables, () => ({ issues: page }))
+          data: answerSlices(variables, () => ({ issues }))
         }))
 
         // Not `Equal`, but both encode to `{"name":"effect"}`.
@@ -358,7 +348,7 @@ describe("GraphQLResolver", () => {
           GraphQLResolver.request(GraphQLResolver.aliased(client.RepoIssues))
         )
 
-        assert.deepStrictEqual(results, [{ repository: { issues: page } }, { repository: { issues: page } }])
+        assert.deepStrictEqual(results, [{ repository: { issues } }, { repository: { issues } }])
         const sent = yield* Ref.get(requests)
         assert.strictEqual(sent.length, 1)
         assert.deepStrictEqual(Object.keys(slices(sent[0].variables)), ["_0_"])
