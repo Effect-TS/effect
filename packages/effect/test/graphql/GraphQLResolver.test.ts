@@ -76,12 +76,16 @@ const AuthLive = Layer.succeed(
 const repo = (nameWithOwner: string) => ({ __typename: "Repository" as const, nameWithOwner })
 
 /** Answers each request with `respond(variables)` and records the requests. */
-const makeClient = (respond: (variables: any) => unknown) =>
+const makeClient = (respond: (variables: any) => unknown, headers?: Headers.Headers) =>
   Effect.gen(function*() {
     const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
     const layer = protocolLayer({
       execute: (request) =>
-        Effect.as(Ref.update(requests, (all) => [...all, request]), { body: respond(request.variables), status: 200 })
+        Effect.as(Ref.update(requests, (all) => [...all, request]), {
+          body: respond(request.variables),
+          status: 200,
+          headers
+        })
     })
     const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
       Effect.provide(layer)
@@ -167,7 +171,7 @@ describe("GraphQLResolver", () => {
         assert.instanceOf(results[2], Cause.NoSuchElementError)
       }))
 
-    it.effect("an error at [...path, i] fails only entry i", () =>
+    it.effect("an error at [...path, i] fails only entry i, keeping the response status and headers", () =>
       Effect.gen(function*() {
         const { client } = yield* makeClient((variables) => {
           const failed = variables.ids.indexOf("R_2")
@@ -175,7 +179,7 @@ describe("GraphQLResolver", () => {
             data: { nodes: variables.ids.map((id: string) => id === "R_2" ? null : repo(id)) },
             errors: [{ message: "Could not resolve", path: ["nodes", failed] }]
           }
-        })
+        }, Headers.fromInput({ "retry-after": "60" }))
 
         const [ok, failed] = yield* resolveAll(["R_1", "R_2"], byId(client))
 
@@ -185,6 +189,8 @@ describe("GraphQLResolver", () => {
         const reason = failed.reason as ResponseError
         assert.deepStrictEqual(reason.errors.map((error) => error.message), ["Could not resolve"])
         assert.strictEqual(reason.status, 200)
+        assert.strictEqual(reason.headers?.["retry-after"], "60")
+        assert.isTrue(failed.isRetryable)
       }))
 
     it.effect("an error at any other path fails the batch", () =>

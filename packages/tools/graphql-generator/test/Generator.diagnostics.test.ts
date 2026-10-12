@@ -83,6 +83,28 @@ describe("Generator diagnostics", () => {
       }])
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("eval and arguments, which strict mode can't bind, are reserved definition names", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateTasks({
+        "src/ops.graphql": "query eval { tasks { id } }\nquery arguments { tasks { id } }"
+      })
+      assert.deepStrictEqual(located(generated).map(({ line, message }) => ({ line, message })), [
+        { line: 1, message: `The name "eval" is reserved in generated code; rename this definition.` },
+        { line: 2, message: `The name "arguments" is reserved in generated code; rename this definition.` }
+      ])
+      assert.deepStrictEqual(generated.result.files, [])
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("a shared module path that is also a document's output is an error, and nothing is generated", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateTasks({ "src/ops.graphql": "query Tasks { tasks { id } }" }, {
+        ...taskConfig,
+        shared: "./src/ops.graphql.ts"
+      })
+      assert.strictEqual(generated.result.diagnostics.filter((d) => d.severity === "error").length, 1)
+      assert.deepStrictEqual(generated.result.files, [])
+    }).pipe(Effect.provide(NodeServices.layer)))
 })
 
 describe("Generator introspection JSON schema", () => {
