@@ -7,6 +7,7 @@
  * `FORCE_COLOR`, and `TERM` through `ConfigProvider`, plus the TTY state of
  * `Stdio`. Apps that never install the layer keep today's formatter behavior.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Config from "../Config.ts"
@@ -26,6 +27,7 @@ import * as Stdio from "../Stdio.ts"
  * means something. `canPrompt` is about whether a question can be asked and
  * answered. `Prompt` does not consult `canPrompt` yet.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -40,9 +42,10 @@ export interface Service {
  *
  * **When to use**
  *
- * Install {@link layer} when help, logs, and prompts should share one answer.
+ * Use when help, logs, and prompts should share one answer about the terminal.
  * Leave it out and `CliOutput` keeps its built-in TTY check.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -93,6 +96,7 @@ const isForcingColor = (value: string | undefined): boolean => {
  * caps.canPrompt // => true
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -145,6 +149,7 @@ const environment = Config.all({
  *
  * @see {@link detect} for the precedence rules
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

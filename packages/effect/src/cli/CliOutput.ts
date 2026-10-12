@@ -278,6 +278,7 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  * version.includes("\u001b[1mmy-cli") // => true
  * ```
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
