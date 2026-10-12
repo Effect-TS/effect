@@ -4029,6 +4029,7 @@ export declare namespace StructWithRest {
    */
   type Objects = Constraint & {
     readonly ast: SchemaAST.Objects
+    readonly Encoded: object
   }
   /**
    * Readonly list of record schemas that provide the additional index signatures
@@ -4229,7 +4230,7 @@ export interface StructWithRest<
  * @since 4.0.0
  */
 export function StructWithRest<
-  const S extends StructWithRest.Objects & { readonly Encoded: object },
+  const S extends StructWithRest.Objects,
   const Records extends StructWithRest.Records
 >(
   schema: S,
