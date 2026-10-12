@@ -2162,68 +2162,48 @@ export function makeTreeRecord<A>(
   // allocate sparse arrays, and are materialized once all entries are applied
   const indexed = new Map<object, { readonly parent: any; readonly key: PropertyKey; length: number }>()
 
-  function assign(self: any, key: PropertyKey, value: unknown): void {
-    const state = indexed.get(self)
-    if (state !== undefined && (key as number) >= state.length) {
-      state.length = (key as number) + 1
-    }
-    InternalRecord.assignProperty(self, key, value)
-  }
-
-  function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
-    const current = Object.hasOwn(self, key) ? self[key] : undefined
-    if (containers.has(current) && indexed.has(current) === shouldBeArray) {
-      return current
-    }
-    const container = {}
-    containers.add(container)
-    if (shouldBeArray) {
-      indexed.set(container, { parent: self, key, length: 0 })
-    }
-    assign(self, key, container)
-    return container
-  }
-
   bracketPathEntries.forEach(([key, value]) => {
     const tokens = bracketPathToTokens(key)
     let cur: any = out
-    tokens.forEach((token, i) => {
-      const isLast = i === tokens.length - 1
+    for (let i = 0; i < tokens.length; i++) {
+      const state = indexed.get(cur)
+      // Resolve "[]" to the next index before handling leaves or containers
+      const token = tokens[i] === "" && state !== undefined ? state.length : tokens[i]
+      if (state !== undefined && typeof token === "number") {
+        state.length = Math.max(state.length, token + 1)
+      }
+      const hasOwn = Object.hasOwn(cur, token)
+      const current = hasOwn ? cur[token] : undefined
 
-      // We are inside an array and see "[]" (empty token) => append
-      if (token === "" && indexed.has(cur)) {
-        const index = indexed.get(cur)!.length
-        if (isLast) {
-          assign(cur, index, value)
-        } else {
-          // bracket path: "foo[][bar]" => push a new element and descend into it
-          const next = tokens[i + 1]
-          const shouldBeArray = typeof next === "number" || next === ""
-          cur = getOrCreateContainer(cur, index, shouldBeArray)
-        }
-      } else if (isLast) {
-        // If we're setting a value at a path that already exists
-        // convert it to an array to support multiple values for the same key
-        const hasOwn = Object.hasOwn(cur, token)
-        const current = hasOwn ? cur[token] : undefined
-        if (indexed.has(current)) {
-          assign(current, indexed.get(current)!.length, value)
+      if (i === tokens.length - 1) {
+        const currentState = indexed.get(current)
+        if (currentState !== undefined) {
+          InternalRecord.assignProperty(current, currentState.length++, value)
         } else if (duplicates.has(current)) {
           current.push(value)
         } else if (hasOwn) {
           const values = [current, value]
           duplicates.add(values)
-          assign(cur, token, values)
+          InternalRecord.assignProperty(cur, token, values)
         } else {
-          assign(cur, token, value)
+          InternalRecord.assignProperty(cur, token, value)
         }
       } else {
         const next = tokens[i + 1]
-        // if next is a number OR "" (from []), we are building an array
         const shouldBeArray = typeof next === "number" || next === ""
-        cur = getOrCreateContainer(cur, token, shouldBeArray)
+        if (containers.has(current) && indexed.has(current) === shouldBeArray) {
+          cur = current
+        } else {
+          const container = {}
+          containers.add(container)
+          if (shouldBeArray) {
+            indexed.set(container, { parent: cur, key: token, length: 0 })
+          }
+          InternalRecord.assignProperty(cur, token, container)
+          cur = container
+        }
       }
-    })
+    }
   })
 
   // Children are created after their parents, so materializing in reverse
