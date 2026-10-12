@@ -4,8 +4,8 @@
  * client encodes variables, runs middleware, calls the `GraphQLProtocol` in
  * context and decodes results.
  *
- * Retryable subscription transport failures restart the middleware chain on
- * the `subscriptionRetry` schedule. {@link pages} and {@link items} provide
+ * Retryable subscription failures restart the middleware chain on the
+ * `subscriptionRetry` schedule. {@link pages} and {@link items} provide
  * cursor pagination. {@link makeTest} builds a mock client for tests, and
  * {@link layerTest} provides it as a service layer. See `GraphQLProtocol`
  * for transport options.
@@ -109,8 +109,10 @@ export interface OperationMethod<Op extends GraphQL.Any> {
 
 /**
  * The client method for a subscription. It returns a `Stream` of decoded
- * events; an event with `errors` fails the stream with a `ResponseError`.
- * `headers`, `urlParams` and `context` work as for {@link OperationMethod}.
+ * events; an event with `errors` fails the stream with a `ResponseError`,
+ * unless that error is retryable and the client resubscribes (see
+ * {@link make}). `headers`, `urlParams` and `context` work as for
+ * {@link OperationMethod}.
  *
  * @stability experimental
  * @category models
@@ -188,10 +190,13 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
  * Group middleware runs outside operation middleware. Within each level,
  * middleware run in the order attached.
  *
- * `subscriptionRetry` decides how a subscription is retried after the
- * transport fails it with a retryable `TransportError`. It defaults to
- * {@link defaultSubscriptionRetry}. Fatal errors are never retried, whatever
- * the schedule.
+ * `subscriptionRetry` decides how a subscription is retried after it fails
+ * with a retryable error: usually a `TransportError`, but also a
+ * `ResponseError` whose response carried a valid `Retry-After`, including an
+ * event with `errors` on a graphql-sse stream whose response had that header.
+ * It defaults to {@link defaultSubscriptionRetry}. Fatal errors are never
+ * retried, whatever the schedule. A retry starts a new subscription, so the
+ * server may send events again that the stream already emitted.
  *
  * **Example** (A client as a service)
  *

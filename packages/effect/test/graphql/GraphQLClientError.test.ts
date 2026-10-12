@@ -52,4 +52,19 @@ describe("GraphQLClientError", () => {
     assert.isTrue(transport({ closeCode: 1006 }))
     assert.isFalse(transport({ closeCode: 4401 }))
   })
+
+  it("a 403 with Retry-After is retryable, and its status and headers are on the error", () => {
+    const headers = Headers.fromInput({ "retry-after": "30" })
+    for (
+      const reason of [
+        new ResponseError({ errors: [{ message: "Rate limited" }], status: 403, headers }),
+        new TransportError({ description: "403", status: 403, headers, retryAfter: Duration.seconds(30) })
+      ]
+    ) {
+      const error = new GraphQLClientError({ operation: "Viewer", reason })
+      assert.isTrue(error.isRetryable)
+      assert.strictEqual(error.status, 403)
+      assert.deepStrictEqual(error.headers, headers)
+    }
+  })
 })
