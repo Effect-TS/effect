@@ -1,8 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Schema } from "effect"
-import { GraphQLClientError, TransportError } from "effect/graphql/GraphQLClientError"
+import { GraphQLClientError, GraphQLError, TransportError } from "effect/graphql/GraphQLClientError"
 
 describe("GraphQLClientError", () => {
+  it("decoding a GitHub error preserves its top-level type", () => {
+    const error = {
+      type: "NOT_FOUND",
+      path: ["repository"],
+      locations: [{ line: 1, column: 3 }],
+      message: "Could not resolve to a Repository with the name 'Effect-TS/missing'."
+    }
+    assert.deepStrictEqual(Schema.decodeUnknownSync(GraphQLError)(error), error)
+  })
+
   it.effect("round trips through its schema, encoding retryAfter as milliseconds", () =>
     Effect.gen(function*() {
       const error = new GraphQLClientError({
