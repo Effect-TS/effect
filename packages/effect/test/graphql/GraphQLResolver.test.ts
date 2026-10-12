@@ -1,8 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Ref, Schema } from "effect"
-import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLResolver } from "effect/graphql"
+import { Cause, Context, Effect, Layer, Ref, Schema } from "effect"
+import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
 import type * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
+import * as Headers from "effect/http/Headers"
 import { protocolLayer } from "./fixtures.ts"
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
@@ -27,6 +28,17 @@ const SearchRepos = GraphQL.query("SearchRepos", {
     })
   })
 })
+
+class CurrentUser extends Context.Service<CurrentUser, { readonly tenant: string }>()("test/CurrentUser") {}
+class Auth extends GraphQLMiddleware.Service<Auth, { requires: CurrentUser }>()("test/Auth") {}
+
+const AuthLive = Layer.succeed(
+  Auth,
+  GraphQLMiddleware.mapRequest(Effect.fnUntraced(function*(request) {
+    const user = yield* CurrentUser
+    return { ...request, headers: Headers.set(request.headers, "authorization", `Bearer ${user.tenant}`) }
+  }))
+)
 
 const repo = (nameWithOwner: string) => ({ __typename: "Repository" as const, nameWithOwner })
 
@@ -154,6 +166,42 @@ describe("GraphQLResolver", () => {
           assert.instanceOf(result, GraphQLClientError)
           assert.strictEqual(result.reason._tag, "DecodeError")
         }
+      }))
+  })
+
+  describe("batchKey", () => {
+    it.effect("splits a batch by key and calls each group with its own services", () =>
+      Effect.gen(function*() {
+        const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+        const layer = protocolLayer({
+          execute: (request) =>
+            Effect.as(Ref.update(requests, (all) => [...all, request]), {
+              body: { data: { nodes: (request.variables as { ids: Array<string> }).ids.map(repo) } },
+              status: 200
+            })
+        })
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(Auth)).pipe(
+          Effect.provide([layer, AuthLive])
+        )
+        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"],
+          batchKey: (context) => Context.get(context, CurrentUser).tenant
+        }))
+        const getAs = (tenant: string, id: string) => Effect.provideService(get(id), CurrentUser, { tenant })
+
+        const results = yield* Effect.all([getAs("a", "R_1"), getAs("b", "R_2"), getAs("a", "R_3")], {
+          concurrency: "unbounded"
+        })
+
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3")])
+        const sent = yield* Ref.get(requests)
+        assert.deepStrictEqual(
+          sent.map((request) =>
+            `${request.headers["authorization"]}: ${[...(request.variables as { ids: Array<string> }).ids].sort()}`
+          ).sort(),
+          ["Bearer a: R_1,R_3", "Bearer b: R_2"]
+        )
       }))
   })
 })
