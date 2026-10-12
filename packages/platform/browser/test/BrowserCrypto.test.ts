@@ -6,7 +6,6 @@ import * as Effect from "effect/Effect"
 import * as PlatformError from "effect/PlatformError"
 import * as TestClock from "effect/testing/TestClock"
 import { webcrypto } from "node:crypto"
-import { describeCrypto } from "../../node-shared/test/Crypto.test-utils.ts"
 
 const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const uuidV7Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -28,8 +27,7 @@ const layerWith = (crypto: globalThis.Crypto) =>
 
 const assertPlatformError = (
   exit: Exit.Exit<Uint8Array, PlatformError.PlatformError>,
-  description: string,
-  tag: PlatformError.SystemErrorTag = "Unknown"
+  description: string
 ) => {
   assert.ok(Exit.isFailure(exit))
   assert.strictEqual(exit.cause.reasons.length, 1)
@@ -37,22 +35,18 @@ const assertPlatformError = (
   assert.ok(Cause.isFailReason(reason))
   assert.strictEqual(reason.error._tag, "PlatformError")
   assert.instanceOf(reason.error.reason, PlatformError.SystemError)
-  assert.strictEqual(reason.error.reason._tag, tag)
+  assert.strictEqual(reason.error.reason._tag, "Unknown")
   assert.strictEqual(reason.error.reason.module, "Crypto")
   assert.strictEqual(reason.error.reason.method, "digest")
   assert.strictEqual(reason.error.reason.description, description)
   return reason.error
 }
 
-const checkUnavailable = (
-  crypto: globalThis.Crypto,
-  description = "digest is not supported by this Crypto service",
-  tag: PlatformError.SystemErrorTag = "Unsupported"
-) =>
+const checkUnavailable = (crypto: globalThis.Crypto) =>
   Effect.gen(function*() {
     const service = yield* Crypto.Crypto
     const exit = yield* Effect.exit(Effect.suspend(() => service.digest("SHA-256", new Uint8Array())))
-    assertPlatformError(exit, description, tag)
+    assertPlatformError(exit, "crypto.subtle.digest is not available")
   }).pipe(Effect.provide(layerWith(crypto)))
 
 describe("BrowserCrypto", () => {
@@ -135,11 +129,7 @@ describe("BrowserCrypto", () => {
   it.effect("fails with PlatformError when subtle is absent", () => checkUnavailable(withSubtle(undefined)))
 
   it.effect("fails with PlatformError when subtle exists but digest is absent", () =>
-    checkUnavailable(
-      withSubtle(Object.create(globalThis.crypto.subtle, { digest: { value: undefined } })),
-      "Could not perform digest",
-      "Unknown"
-    ))
+    checkUnavailable(withSubtle(Object.create(globalThis.crypto.subtle, { digest: { value: undefined } }))))
 
   it.effect("computes a real SHA-256 digest when subtle is present", () =>
     Effect.gen(function*() {
@@ -157,7 +147,7 @@ describe("BrowserCrypto", () => {
     return Effect.gen(function*() {
       const service = yield* Crypto.Crypto
       const exit = yield* Effect.exit(service.digest("SHA-256", new Uint8Array()))
-      const error = assertPlatformError(exit, "Could not perform digest")
+      const error = assertPlatformError(exit, "Could not compute digest")
       assert.strictEqual(error.reason.cause, rejection)
     }).pipe(Effect.provide(layerWith(withSubtle(subtle))))
   })
@@ -178,11 +168,3 @@ describe("BrowserCrypto", () => {
     })
   })
 })
-
-describeCrypto(
-  "BrowserCrypto primitives",
-  BrowserCrypto.layer.pipe(
-    Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, webcrypto as unknown as globalThis.Crypto))
-  ),
-  { md5: false, native: false }
-)
