@@ -3,10 +3,10 @@
 // would take to make the executor a child process or a remote machine.
 import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/rpc/RpcServer"
-import { ExecutorState, listFile, runFile } from "./Executor.ts"
-import * as Platform from "./Platform.ts"
+import { ExecutorState, listFile, runFile } from "../Executor.ts"
+import * as Platform from "../Platform.ts"
+import { ExecutorRpcs } from "../Protocol.ts"
 import { platforms } from "./platforms.ts"
-import { ExecutorRpcs } from "./Protocol.ts"
 
 const Handlers = ExecutorRpcs.toLayer({
   ListFile: ({ path }) => listFile(path),
