@@ -1028,6 +1028,32 @@ export const setStatus: {
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
 
+const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): void => {
+  for (const [key, value] of headers as any) {
+    if (key === "set-cookie") {
+      target.append(key, value)
+    } else {
+      target.set(key, value)
+    }
+  }
+}
+
+const mergeRawHeaders = (raw: Response, headers: globalThis.Headers): Response => {
+  try {
+    mergeHeaders(raw.headers, headers)
+    return raw
+  } catch (error) {
+    if (!(error instanceof TypeError)) {
+      throw error
+    }
+    // The headers are immutable (`Response.redirect`, a WebSocket upgrade a Durable Object returns): a copy of
+    // the response, which keeps its status, body and runtime-specific members such as `webSocket`, takes them.
+    const copy = new Response(raw.body, raw)
+    mergeHeaders(copy.headers, headers)
+    return copy
+  }
+}
+
 /**
  * Converts an `HttpServerResponse` to a Web `Response`.
  *
@@ -1041,7 +1067,10 @@ export const omitsBody = (response: HttpServerResponse, withoutBody = false): bo
  * cancelled without awaiting completion, and cancellation errors are ignored.
  *
  * A raw `Response` body is returned as-is after the outer headers are merged
- * into it: outer headers replace native ones, and cookies are appended. When
+ * into it: outer headers replace native ones, and cookies are appended. A raw
+ * `Response` whose headers are immutable (such as `Response.redirect` or a
+ * WebSocket upgrade) is copied, with its status, body and runtime-specific
+ * members, so that the outer headers can be merged into the copy. When
  * its body is omitted, the bodyless `Response` keeps those merged headers and
  * uses the outer status for 204, 205 and 304, or the raw `Response` status
  * otherwise.
@@ -1069,14 +1098,7 @@ export const toWeb = (
   const outerOmitsBody = omitsBody(response)
   const withoutBody = outerOmitsBody || options?.withoutBody === true
   if (body._tag === "Raw" && body.body instanceof Response) {
-    const raw = body.body
-    for (const [key, value] of headers as any) {
-      if (key === "set-cookie") {
-        raw.headers.append(key, value)
-      } else {
-        raw.headers.set(key, value)
-      }
-    }
+    const raw = mergeRawHeaders(body.body, headers)
     if (!withoutBody) {
       return raw
     }

@@ -84,6 +84,40 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(await web.text(), "body")
     })
 
+    it("merges outer headers into a raw Response whose headers are immutable", () => {
+      const native = Response.redirect("http://localhost/target", 302)
+      assert.throws(() => native.headers.set("x-probe", "native"), TypeError)
+      const web = HttpServerResponse.toWeb(
+        HttpServerResponse.raw(native, {
+          headers: { "x-outer": "outer" },
+          cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}]])
+        })
+      )
+
+      assert.strictEqual(web.status, 302)
+      assert.strictEqual(web.headers.get("location"), "http://localhost/target")
+      assert.strictEqual(web.headers.get("x-outer"), "outer")
+      assert.deepStrictEqual(web.headers.getSetCookie(), ["a=1"])
+    })
+
+    it("merges outer headers into an immutable raw Response for HEAD", () => {
+      const native = Response.redirect("http://localhost/target", 302)
+      const web = HttpServerResponse.toWeb(
+        HttpServerResponse.raw(native, { headers: { "x-outer": "outer" } }),
+        { withoutBody: true }
+      )
+
+      assert.strictEqual(web.body, null)
+      assert.strictEqual(web.status, 302)
+      assert.strictEqual(web.headers.get("location"), "http://localhost/target")
+      assert.strictEqual(web.headers.get("x-outer"), "outer")
+    })
+
+    it("leaves an immutable raw Response as it is when there is nothing to merge", () => {
+      const native = Response.redirect("http://localhost/target", 302)
+      assert.strictEqual(HttpServerResponse.toWeb(HttpServerResponse.raw(native)), native)
+    })
+
     it.each([
       { status: 200, withoutBody: true },
       { status: 304, withoutBody: false }
