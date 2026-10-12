@@ -623,13 +623,16 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       readonly config: typeof Config.Service
       readonly options: LanguageModel.ProviderOptions
       readonly toolNameMapper: Tool.NameMapper<Tools>
-    }): Effect.fn.Return<CreateResponseRequestJson, AiError.AiError> {
+    }): Effect.fn.Return<{
+      readonly request: CreateResponseRequestJson
+      readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
+    }, AiError.AiError> {
       const messages = yield* prepareMessages({
         config,
         options,
         toolNameMapper
       })
-      const { toolChoice, tools } = yield* prepareTools({
+      const { toolChoice, toolCodecs, tools } = yield* prepareTools({
         config,
         options,
         toolNameMapper
@@ -648,7 +651,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         ...(tools !== undefined ? { tools } : undefined),
         ...(toolChoice !== undefined ? { tool_choice: toolChoice } : undefined)
       }
-      return toChatCompletionsRequest(request, messages)
+      return { request: toChatCompletionsRequest(request, messages), toolCodecs }
     }
   )
 
@@ -658,7 +661,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       function*(options) {
         const config = yield* makeConfig
         const toolNameMapper = new Tool.NameMapper(options.tools)
-        const request = yield* makeRequest({ config, options, toolNameMapper })
+        const { request, toolCodecs } = yield* makeRequest({ config, options, toolNameMapper })
         annotateRequest(options.span, request)
         const [rawResponse, response] = yield* client.createResponse(request)
         annotateResponse(options.span, rawResponse)
@@ -666,7 +669,8 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
           options,
           rawResponse,
           response,
-          toolNameMapper
+          toolNameMapper,
+          toolCodecs
         })
       }
     ),
@@ -674,14 +678,15 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
       function*(options) {
         const config = yield* makeConfig
         const toolNameMapper = new Tool.NameMapper(options.tools)
-        const request = yield* makeRequest({ config, options, toolNameMapper })
+        const { request, toolCodecs } = yield* makeRequest({ config, options, toolNameMapper })
         annotateRequest(options.span, request)
         const [response, stream] = yield* client.createResponseStream(request)
         return yield* makeStreamResponse({
           options,
           stream,
           response,
-          toolNameMapper
+          toolNameMapper,
+          toolCodecs
         })
       },
       (effect, options) =>
@@ -971,12 +976,14 @@ const makeResponse = Effect.fnUntraced(
     options,
     rawResponse,
     response,
-    toolNameMapper
+    toolNameMapper,
+    toolCodecs
   }: {
     readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: CreateResponse200
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
+    readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
   }): Effect.fn.Return<
     Array<Response.PartEncoded>,
     AiError.AiError
@@ -1026,7 +1033,7 @@ const makeResponse = Effect.fnUntraced(
                 })
               })
           })
-          const params = yield* transformToolCallParams(options, toolName, toolParams)
+          const params = yield* transformToolCallParams(options, toolName, toolParams, toolCodecs)
           hasToolCalls = true
           parts.push({
             type: "tool-call",
@@ -1067,12 +1074,14 @@ const makeStreamResponse = Effect.fnUntraced(
     options,
     stream,
     response,
-    toolNameMapper
+    toolNameMapper,
+    toolCodecs
   }: {
     readonly options: LanguageModel.ProviderOptions
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
+    readonly toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
   }): Effect.fn.Return<
     Stream.Stream<Response.StreamPartEncoded, AiError.AiError>,
     AiError.AiError
@@ -1123,7 +1132,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   })
                 })
             })
-            const params = yield* transformToolCallParams(options, toolCall.name, parsedParams)
+            const params = yield* transformToolCallParams(options, toolCall.name, parsedParams, toolCodecs)
             parts.push({ type: "tool-params-end", id: toolCall.id })
             parts.push({
               type: "tool-call",
@@ -1364,16 +1373,13 @@ const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =
     catch: (error) => unsupportedSchemaError(error, method)
   })
 
-const tryToolJsonSchema = <T extends Tool.Any>(tool: T, method: string) =>
-  Effect.try({
-    try: () => Tool.getJsonSchema(tool, { transformer: toCodecOpenAI }),
-    catch: (error) => unsupportedSchemaError(error, method)
-  })
+type PreparedToolCodec = ReturnType<typeof toCodecOpenAI>["codec"]
 
 const transformToolCallParams = Effect.fnUntraced(function*(
   options: LanguageModel.ProviderOptions,
   toolName: string,
-  toolParams: unknown
+  toolParams: unknown,
+  toolCodecs: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
 ): Effect.fn.Return<unknown, AiError.AiError> {
   const tool = options.tools.find((tool) => tool.name === toolName)
 
@@ -1395,7 +1401,7 @@ const transformToolCallParams = Effect.fnUntraced(function*(
     return toolParams
   }
 
-  const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
+  const codec = toolCodecs?.get(tool) ?? (yield* tryCodecTransform(tool.parametersSchema, "makeResponse")).codec
 
   // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
@@ -1419,6 +1425,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
 }): Effect.fn.Return<{
   readonly tools: ReadonlyArray<OpenAiClientTool> | undefined
   readonly toolChoice: OpenAiToolChoice | undefined
+  readonly toolCodecs?: ReadonlyMap<Tool.Any, PreparedToolCodec> | undefined
 }, AiError.AiError> {
   // Return immediately if no tools are in the toolkit
   if (options.tools.length === 0) {
@@ -1427,6 +1434,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
 
   const tools: Array<OpenAiClientTool> = []
   let toolChoice: OpenAiToolChoice | undefined = undefined
+  let toolCodecs: Map<Tool.Any, PreparedToolCodec> | undefined
 
   // Filter the incoming tools down to the set of allowed tools as indicated by
   // the tool choice. This must be done here given that there is no tool name
@@ -1443,7 +1451,18 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
   for (const tool of allowedTools) {
     if (Tool.isUserDefined(tool) || Tool.isDynamic(tool)) {
       const strict = Tool.getStrictMode(tool) ?? config.strictJsonSchema ?? true
-      const parameters = yield* tryToolJsonSchema(tool, "prepareTools")
+      let parameters: ReturnType<typeof Tool.getJsonSchema>
+      if (Tool.isDynamic(tool) && tool.jsonSchema !== undefined) {
+        parameters = tool.jsonSchema
+      } else {
+        const prepared = yield* tryCodecTransform(tool.parametersSchema, "prepareTools")
+        parameters = prepared.jsonSchema
+        // Keep the codec paired with this request's schema.
+        if (toolCodecs === undefined) {
+          toolCodecs = new Map<Tool.Any, PreparedToolCodec>()
+        }
+        toolCodecs.set(tool, prepared.codec)
+      }
       tools.push({
         type: "function",
         name: tool.name,
@@ -1478,7 +1497,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
     }
   }
 
-  return { tools, toolChoice }
+  return { tools, toolChoice, toolCodecs }
 })
 
 const toChatCompletionsRequest = (
