@@ -1,8 +1,9 @@
 // The runtime platform (Node, Bun or Deno). Entry points (`bin.ts`, `executor-worker.ts`)
-// detect the runtime and load only that platform's module, so nothing else in the
-// test runner depends on a specific runtime.
+// call `runMain`, which loads only the current runtime's platform module and hands the
+// program over to that platform's own `runMain`. Nothing else in the test runner depends
+// on a specific runtime.
 import type * as Command from "effect/cli/Command"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import type * as Worker from "effect/workers/Worker"
 import type * as WorkerRunner from "effect/workers/WorkerRunner"
@@ -20,13 +21,30 @@ export interface Platform {
 
 export const detect = (): Runtime => "Bun" in globalThis ? "bun" : "Deno" in globalThis ? "deno" : "node"
 
-export const load = async (runtime: Runtime = detect()): Promise<Platform> => {
-  switch (runtime) {
+/** The current runtime's platform. Only its module is imported. */
+export const load: Effect.Effect<Platform> = Effect.suspend(() => {
+  switch (detect()) {
     case "bun":
-      return (await import("./platform/bun.ts")).platform
+      return Effect.promise(() => import("./platform/bun.ts"))
     case "deno":
-      return (await import("./platform/deno.ts")).platform
+      return Effect.promise(() => import("./platform/deno.ts"))
     case "node":
-      return (await import("./platform/node.ts")).platform
+      return Effect.promise(() => import("./platform/node.ts"))
   }
+}).pipe(Effect.map((module) => module.platform))
+
+/**
+ * Loads the current runtime's platform, then hands `main` over to that platform's
+ * `runMain` (signal handling, exit codes, error reporting). If loading itself fails,
+ * the cause is logged and the process exits with 1.
+ */
+export const runMain = <A, E>(main: (platform: Platform) => Effect.Effect<A, E>): void => {
+  Effect.runFork(
+    load.pipe(
+      Effect.flatMap((platform) => Effect.sync(() => platform.runMain(main(platform)))),
+      Effect.tapCause((cause) =>
+        Effect.andThen(Effect.logError(cause), Effect.sync(() => (globalThis.process.exitCode = 1)))
+      )
+    )
+  )
 }

@@ -4,10 +4,8 @@
 import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/rpc/RpcServer"
 import { ExecutorState, listFile, runFile } from "./Executor.ts"
-import { load } from "./Platform.ts"
+import * as Platform from "./Platform.ts"
 import { ExecutorRpcs } from "./Protocol.ts"
-
-const platform = await load()
 
 const Handlers = ExecutorRpcs.toLayer({
   ListFile: ({ path }) => listFile(path),
@@ -17,8 +15,7 @@ const Handlers = ExecutorRpcs.toLayer({
 const Main = RpcServer.layer(ExecutorRpcs).pipe(
   Layer.provide(Handlers),
   Layer.provide(ExecutorState.layer),
-  Layer.provide(RpcServer.layerProtocolWorkerRunner),
-  Layer.provide(platform.workerRunner)
+  Layer.provide(RpcServer.layerProtocolWorkerRunner)
 )
 
-platform.runMain(Layer.launch(Main))
+Platform.runMain((platform) => Layer.launch(Main.pipe(Layer.provide(platform.workerRunner))))
