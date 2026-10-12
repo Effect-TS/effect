@@ -2,9 +2,9 @@ import { assert, describe, it } from "@effect/vitest"
 import { Cause, Context, Effect, Layer, Ref, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
-import type * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
+import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Headers from "effect/http/Headers"
-import { protocolLayer } from "./fixtures.ts"
+import { graphqlResponse, httpClientLayer, protocolLayer } from "./fixtures.ts"
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
 const User = Schema.Struct({ __typename: Schema.Literal("User"), login: Schema.String })
@@ -29,6 +29,39 @@ const SearchRepos = GraphQL.query("SearchRepos", {
   })
 })
 
+// Generated operations carry a document template, which `aliased` repeats
+// once per slice.
+const PullRequest = GraphQL.query("PullRequest", {
+  document: {
+    variables: [{ name: "name", body: "String!" }, { name: "number", body: "Int!" }],
+    selections: [{
+      name: "repository",
+      body: ["(owner:\"Effect-TS\",name:$", "name", "){pullRequest(number:$", "number", "){title}}"]
+    }],
+    fragments: []
+  },
+  variables: { name: Schema.String, number: Schema.Int },
+  result: Schema.Struct({
+    repository: Schema.NullOr(Schema.Struct({ pullRequest: Schema.NullOr(Schema.Struct({ title: Schema.String })) }))
+  })
+})
+
+// `$after` is optional, so `{ name }` and `{ name, after: undefined }` encode alike.
+const RepoIssues = GraphQL.query("RepoIssues", {
+  document: {
+    variables: [{ name: "name", body: "String!" }, { name: "after", body: "String" }],
+    selections: [{
+      name: "repository",
+      body: ["(owner:\"Effect-TS\",name:$", "name", "){issues(after:$", "after", "){totalCount}}"]
+    }],
+    fragments: []
+  },
+  variables: { name: Schema.String, after: Schema.optional(Schema.NullOr(Schema.String)) },
+  result: Schema.Struct({
+    repository: Schema.NullOr(Schema.Struct({ issues: Schema.Struct({ totalCount: Schema.Int }) }))
+  })
+})
+
 class CurrentUser extends Context.Service<CurrentUser, { readonly tenant: string }>()("test/CurrentUser") {}
 class Auth extends GraphQLMiddleware.Service<Auth, { requires: CurrentUser }>()("test/Auth") {}
 
@@ -50,7 +83,9 @@ const makeClient = (respond: (variables: any) => unknown) =>
       execute: (request) =>
         Effect.as(Ref.update(requests, (all) => [...all, request]), { body: respond(request.variables), status: 200 })
     })
-    const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos)).pipe(Effect.provide(layer))
+    const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes, SearchRepos, PullRequest, RepoIssues)).pipe(
+      Effect.provide(layer)
+    )
     return { client, requests }
   })
 
@@ -82,6 +117,32 @@ const searchNames = (variables: { query: string }) => variables.query.split(" ")
 const searchResult = (nodes: ReadonlyArray<unknown>, hasNextPage = false) => ({
   data: { search: { pageInfo: { hasNextPage, endCursor: null }, nodes } }
 })
+
+/** Splits batched variables (`_0_name`, `_1_name`, …) into each slice's variables, keyed by prefix. */
+const slices = (variables: unknown): Record<string, Record<string, any>> => {
+  const out: Record<string, Record<string, any>> = {}
+  for (const [key, value] of Object.entries(variables as Record<string, unknown>)) {
+    const [, prefix, name] = /^(_\d+_)(.+)$/.exec(key)!
+    out[prefix] ??= {}
+    out[prefix][name] = value
+  }
+  return out
+}
+
+/** Answers every slice with `respond(variables)` under its aliased `repository` field. */
+const answerSlices = (variables: unknown, respond: (variables: any) => unknown) =>
+  Object.fromEntries(
+    Object.entries(slices(variables)).map(([prefix, slice]) => [`${prefix}repository`, respond(slice)])
+  )
+
+const pullRequest = (variables: { readonly name: string; readonly number: number }) => ({
+  pullRequest: { title: `${variables.name}#${variables.number}` }
+})
+
+const getPullRequest = (client: Effect.Success<ReturnType<typeof makeClient>>["client"]) =>
+  GraphQLResolver.request(GraphQLResolver.aliased(client.PullRequest))
+
+const lookups = [{ name: "effect", number: 1 }, { name: "effect", number: 2 }]
 
 describe("GraphQLResolver", () => {
   describe("ordered", () => {
@@ -202,6 +263,115 @@ describe("GraphQLResolver", () => {
           ).sort(),
           ["Bearer a: R_1,R_3", "Bearer b: R_2"]
         )
+      }))
+  })
+
+  describe("aliased", () => {
+    it.effect("concurrent lookups make one POST whose document repeats the operation under aliases", () =>
+      Effect.gen(function*() {
+        const sent: Array<{ readonly method: string; readonly body: any }> = []
+        // Queries go over GET, but a batch must not.
+        const layer = GraphQLProtocol.layerHttp({ url: "http://localhost/graphql", queryMethod: "GET" }).pipe(
+          Layer.provide(httpClientLayer((request, bodyText) => {
+            const body = bodyText === undefined ? undefined : JSON.parse(bodyText)
+            sent.push({ method: request.method, body })
+            return graphqlResponse({ data: answerSlices(body?.variables ?? {}, pullRequest) })
+          }))
+        )
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(PullRequest)).pipe(Effect.provide(layer))
+        const keys = [1, 2, 3].map((number) => ({ name: "effect", number }))
+
+        const results = yield* Effect.forEach(
+          keys,
+          GraphQLResolver.request(GraphQLResolver.aliased(client.PullRequest)),
+          { concurrency: "unbounded" }
+        )
+
+        assert.deepStrictEqual(results, keys.map((key) => ({ repository: pullRequest(key) })))
+        assert.strictEqual(sent.length, 1)
+        assert.strictEqual(sent[0].method, "POST")
+        assert.strictEqual(
+          sent[0].body.query,
+          "query PullRequest($_0_name:String!$_0_number:Int!$_1_name:String!$_1_number:Int!$_2_name:String!$_2_number:Int!){_0_repository:repository(owner:\"Effect-TS\",name:$_0_name){pullRequest(number:$_0_number){title}}_1_repository:repository(owner:\"Effect-TS\",name:$_1_name){pullRequest(number:$_1_number){title}}_2_repository:repository(owner:\"Effect-TS\",name:$_2_name){pullRequest(number:$_2_number){title}}}"
+        )
+        assert.deepStrictEqual(Object.values(slices(sent[0].body.variables)).map((slice) => slice.number).sort(), [
+          1,
+          2,
+          3
+        ])
+      }))
+
+    it.effect("an error at path[0] fails only its slice, with the path un-prefixed", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeClient((variables) => {
+          const prefix = Object.entries(slices(variables)).find(([, slice]) => slice.number === 2)![0]
+          return {
+            data: answerSlices(variables, (slice) => slice.number === 2 ? { pullRequest: null } : pullRequest(slice)),
+            errors: [{ message: "Could not resolve", path: [`${prefix}repository`, "pullRequest"] }]
+          }
+        })
+
+        const [ok, failed] = yield* resolveAll(lookups, getPullRequest(client))
+
+        assert.deepStrictEqual(ok, { repository: pullRequest(lookups[0]) })
+        assert.instanceOf(failed, GraphQLClientError)
+        assert.strictEqual(failed.reason._tag, "ResponseError")
+        const reason = failed.reason as ResponseError
+        assert.deepStrictEqual(reason.errors.map((error) => error.path), [["repository", "pullRequest"]])
+      }))
+
+    it.effect("an error without a path fails the batch", () =>
+      Effect.gen(function*() {
+        const { client } = yield* makeClient((variables) => ({
+          data: answerSlices(variables, pullRequest),
+          errors: [{ message: "Rate limited" }]
+        }))
+
+        const results = yield* resolveAll(lookups, getPullRequest(client))
+
+        for (const result of results) {
+          assert.instanceOf(result, GraphQLClientError)
+          assert.strictEqual(result.reason._tag, "ResponseError")
+        }
+      }))
+
+    it.effect("lookups whose encoded variables are equal share one slice", () =>
+      Effect.gen(function*() {
+        const issues = { totalCount: 1 }
+        const { client, requests } = yield* makeClient((variables) => ({
+          data: answerSlices(variables, () => ({ issues }))
+        }))
+
+        // Not `Equal`, but both encode to `{"name":"effect"}`.
+        const results = yield* resolveAll(
+          [{ name: "effect" }, { name: "effect", after: undefined }],
+          GraphQLResolver.request(GraphQLResolver.aliased(client.RepoIssues))
+        )
+
+        assert.deepStrictEqual(results, [{ repository: { issues } }, { repository: { issues } }])
+        const sent = yield* Ref.get(requests)
+        assert.strictEqual(sent.length, 1)
+        assert.deepStrictEqual(Object.keys(slices(sent[0].variables)), ["_0_"])
+      }))
+
+    it.effect("over a makeTest client, the handler is called once per slice", () =>
+      Effect.gen(function*() {
+        const received: Array<{ readonly name: string; readonly number: number }> = []
+        const client = GraphQLClient.makeTest(GraphQLGroup.make(PullRequest))({
+          PullRequest: (variables) => {
+            received.push(variables)
+            return Effect.succeed({ repository: pullRequest(variables) })
+          }
+        })
+
+        const results = yield* Effect.forEach(
+          lookups,
+          GraphQLResolver.request(GraphQLResolver.aliased(client.PullRequest)),
+          { concurrency: "unbounded" }
+        )
+
+        assert.deepStrictEqual(results, lookups.map((key) => ({ repository: pullRequest(key) })))
+        assert.deepStrictEqual(received.map((variables) => variables.number).sort(), [1, 2])
       }))
   })
 })

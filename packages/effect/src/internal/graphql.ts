@@ -1,8 +1,19 @@
-import type { NonEmptyReadonlyArray } from "../Array.ts"
+import { isReadonlyArrayNonEmpty, type NonEmptyReadonlyArray } from "../Array.ts"
+import * as Context from "../Context.ts"
+import * as Effect from "../Effect.ts"
+import type * as GraphQL from "../graphql/GraphQL.ts"
 import type { DocumentTemplate } from "../graphql/GraphQL.ts"
-import { type GraphQLError, ResponseError } from "../graphql/GraphQLClientError.ts"
-import type { ExecutionResult } from "../graphql/GraphQLProtocol.ts"
-import type * as Schema from "../Schema.ts"
+import type { PartialResult } from "../graphql/GraphQLClient.ts"
+import {
+  DecodeError,
+  EncodeError,
+  GraphQLClientError,
+  type GraphQLError,
+  type Reason,
+  ResponseError
+} from "../graphql/GraphQLClientError.ts"
+import type { ExecutionResult, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
+import * as Schema from "../Schema.ts"
 
 /**
  * Builds a response error with raw data and transport metadata.
@@ -117,7 +128,6 @@ const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<s
  *
  * @internal
  */
-// oxlint-disable-next-line effect/no-unused-internal -- groundwork for alias batching in `GraphQLResolver`
 export const renderSlices = (
   kind: string,
   name: string,
@@ -129,4 +139,120 @@ export const renderSlices = (
     throw new Error(`Cannot render slices of operation ${name}: ${reason}`)
   }
   return render(kind, name, template, prefixes)
+}
+
+/**
+ * Forces POST for alias batches to avoid GET URL length limits.
+ *
+ * @internal
+ */
+export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
+
+/**
+ * JSON with object keys sorted, so equal JSON values give equal strings.
+ *
+ * @internal
+ */
+export const canonicalJson = (value: unknown): string =>
+  JSON.stringify(value, (_, value) =>
+    value !== null && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]]))
+      : value)
+
+/**
+ * Shared variable encoding, result decoding and client error mapping.
+ *
+ * @internal
+ */
+export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
+  const fail = (reason: Reason) => new GraphQLClientError({ operation: operation.name, reason })
+  const schemaFail = (make: (description: string) => Reason) => (error: Schema.SchemaError) =>
+    Effect.fail(fail(make(error.message)))
+  const encode = Schema.encodeEffect(operation.variables)
+  const decode = Schema.decodeUnknownEffect(operation.result)
+
+  const encodeVariables = (
+    variables: GraphQL.Variables<Op> | undefined
+  ): Effect.Effect<unknown, GraphQLClientError, Op["variables"]["EncodingServices"]> =>
+    Effect.catch(encode(variables ?? {}), schemaFail((description) => new EncodeError({ description })))
+
+  const decodeData = (
+    data: unknown
+  ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
+    Effect.catch(decode(data), schemaFail((description) => new DecodeError({ description })))
+
+  // GraphQL requires errors when data is null or missing. Check before decoding,
+  // since schemas such as Schema.Json accept null.
+  const failResponse = (result: ExecutionResult): Effect.Effect<never, GraphQLClientError> => {
+    const errors = result.errors ?? []
+    return Effect.fail(fail(
+      isReadonlyArrayNonEmpty(errors)
+        ? responseError(result, errors)
+        : new DecodeError({ description: "data is null or missing without errors" })
+    ))
+  }
+
+  const decodeStrict = (
+    result: ExecutionResult
+  ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
+    isReadonlyArrayNonEmpty(result.errors ?? []) || result.data === null || result.data === undefined
+      ? failResponse(result)
+      : decodeData(result.data)
+
+  const decodePartial = (
+    result: ExecutionResult
+  ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQLClientError, Op["result"]["DecodingServices"]> => {
+    if (result.data === null || result.data === undefined) return failResponse(result)
+    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => {
+      const partial = { data, errors: result.errors ?? [] }
+      partialResponses.set(partial, result)
+      return partial
+    })
+  }
+
+  return { fail, schemaFail, encodeVariables, failResponse, decodeStrict, decodePartial } as const
+}
+
+/**
+ * Each real client method's runner for batches: its middleware and protocol,
+ * sending as POST. Mock and custom methods have none.
+ *
+ * @internal
+ */
+export const rawExecutors = new WeakMap<
+  object,
+  (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
+>()
+
+/**
+ * Splits a batched response, removing prefixes from root keys and error paths.
+ * Returns undefined if an error matches no slice or data is null or missing.
+ *
+ * @internal
+ */
+export const splitSlices = (
+  result: ExecutionResult,
+  template: DocumentTemplate,
+  prefixes: ReadonlyArray<string>
+): ReadonlyArray<ExecutionResult> | undefined => {
+  const sliceErrors = prefixes.map((): Array<GraphQLError> => [])
+  for (const error of result.errors ?? []) {
+    const key = error.path?.[0]
+    // No prefix is a prefix of another, so at most one matches.
+    const index = typeof key === "string" ? prefixes.findIndex((prefix) => key.startsWith(prefix)) : -1
+    if (index === -1) return undefined
+    sliceErrors[index].push(
+      { ...error, path: [(key as string).slice(prefixes[index].length), ...error.path!.slice(1)] } as GraphQLError
+    )
+  }
+  if (result.data === null || result.data === undefined) return undefined
+  const data = result.data as Record<string, unknown>
+  return prefixes.map((prefix, i) => {
+    const sliceData: Record<string, unknown> = {}
+    for (const selection of template.selections) {
+      const key = (selection.alias ?? selection.name)!
+      if (Object.hasOwn(data, prefix + key)) sliceData[key] = data[prefix + key]
+    }
+    return { ...result, data: sliceData, errors: sliceErrors[i] }
+  })
 }
