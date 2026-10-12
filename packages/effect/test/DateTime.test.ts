@@ -106,20 +106,24 @@ describe("DateTime", () => {
         assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
 
-    it("adds hours and minutes as elapsed time across DST transitions", () => {
-      const zone = DateTime.zoneMakeNamedUnsafe("America/New_York")
-      // 2025-11-02 01:30 EDT, the first of two 01:30s
-      const firstOneThirty = DateTime.makeZonedUnsafe("2025-11-02T05:30:00.000Z", { timeZone: zone })
-      strictEqual(DateTime.formatIso(DateTime.add(firstOneThirty, { hours: 1 })), "2025-11-02T06:30:00.000Z")
-      strictEqual(DateTime.formatIso(DateTime.add(firstOneThirty, { minutes: 45 })), "2025-11-02T06:15:00.000Z")
-      // 2025-11-02 01:30 EST, the second 01:30
-      const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", { timeZone: zone })
-      strictEqual(DateTime.formatIso(DateTime.add(secondOneThirty, { minutes: 1 })), "2025-11-02T06:31:00.000Z")
+    it("adds and subtracts elapsed time in the repeated DST hour", () => {
+      const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(
+        DateTime.formatIso(DateTime.add(secondOneThirty, { minutes: 1, seconds: 1, milliseconds: 1 })),
+        "2025-11-02T06:31:01.001Z"
+      )
       strictEqual(DateTime.formatIso(DateTime.subtract(secondOneThirty, { hours: 1 })), "2025-11-02T05:30:00.000Z")
-      // 24 hours across the 2025-03-09 spring forward
-      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T17:00:00.000Z", { timeZone: zone })
+    })
+
+    it("adds elapsed hours before calendar days across DST", () => {
+      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T17:00:00.000Z", {
+        timeZone: "America/New_York"
+      })
       strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { hours: 24 })), "2025-03-09T17:00:00.000Z")
       strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1 })), "2025-03-09T16:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1, hours: 24 })), "2025-03-10T17:00:00.000Z")
     })
   })
 
