@@ -33,8 +33,9 @@ export class NpmCli extends Context.Service<NpmCli, {
   }) => Effect.Effect<void, NpmPromoteError>
 }>()("@effect/npm-promote/NpmCli") {
   /**
-   * Runs `npm dist-tag add`. Authentication comes from the npm config, for
-   * example a user config containing `//registry.npmjs.org/:_authToken=${TOKEN}`.
+   * Runs `npm dist-tag add`. In the workflow npm authenticates over OIDC with
+   * a trusted publisher configuration that allows dist-tags, which needs npm
+   * 11.21.0 or later. Locally it uses whatever npm login is configured.
    */
   static readonly layer = Layer.effect(
     NpmCli,

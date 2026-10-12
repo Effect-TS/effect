@@ -49,9 +49,17 @@ deploys the website, or touches GitHub issues. Real runs need
 `Release` run on `main`. Setting the `NPM_PROMOTE_PAUSED` repository variable
 to `true` skips new runs, which keeps a bad release on `staging`.
 
-The job runs in the `npm-promote` environment, which holds `NPM_PROMOTE_TOKEN`:
-a granular npm token with write access to `effect` and `@effect/*` on a bot
-account. npm caps these tokens at about 90 days, so they need rotating.
+The job moves dist-tags with npm trusted publishing over OIDC, so no npm token
+is stored anywhere. It runs in the `npm-promote` environment with
+`id-token: write` and npm 11.21.0 or later. `effect` and every `@effect/*`
+package need two trusted publisher configurations:
+
+- `release.yml`: publishing allowed, "Allow npm dist-tag" off.
+- `npm-promote.yml` in environment `npm-promote`: publishing not allowed,
+  "Allow npm dist-tag" on.
+
+With no tokens involved, packages can also turn on "Require two-factor
+authentication and disallow tokens".
 
 ## Other writers of `latest`
 
