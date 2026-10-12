@@ -72,10 +72,8 @@ export interface GraphQLRequest {
  *
  * `status` and `headers` are transport metadata, not part of the GraphQL
  * response body: the client decodes the body without them and then copies
- * the values the transport reported. Headers are a plain string record with
- * lowercase names for HTTP, including graphql-sse events. Status is unset
- * for graphql-sse events; both are unset over graphql-ws. Middleware may read
- * or rewrite them, and a failed call's `ResponseError` carries the final values.
+ * what the transport reported. Middleware may read or rewrite them, and a
+ * failed call's `ResponseError` carries the final values.
  *
  * @stability experimental
  * @category schemas
@@ -90,8 +88,7 @@ export const ExecutionResult = Schema.Struct({
 })
 
 /**
- * The decoded type of {@link ExecutionResult}, including optional HTTP
- * status and response headers.
+ * The decoded type of {@link ExecutionResult}.
  *
  * @stability experimental
  * @category models
@@ -108,11 +105,8 @@ export type ExecutionResult = typeof ExecutionResult.Type
  * **Details**
  *
  * Each answer is `{ body, status?, headers? }`. The HTTP transport sets
- * `headers` to a plain string record on every response, including each
- * graphql-sse event. graphql-ws leaves headers unset. HTTP sets `status` on
- * `execute` responses and on a subscription the server rejected with a single
- * GraphQL response. graphql-sse `next` events and graphql-ws messages leave it
- * unset.
+ * `headers` on every answer, including graphql-sse events, and `status` on
+ * all but graphql-sse events. graphql-ws leaves both unset.
  *
  * **Example** (A scripted transport for tests)
  *
@@ -245,6 +239,9 @@ const readResponse = (
   )
 }
 
+const readAnswer = (response: HttpClientResponse.HttpClientResponse) =>
+  Effect.map(readResponse(response), (body) => ({ body, status: response.status, headers: { ...response.headers } }))
+
 const errorMessage = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
 
 // The graphql-sse distinct-mode events of a `text/event-stream` body. The
@@ -267,17 +264,12 @@ const sseEvents = (
     return response.stream.pipe(
       Stream.decodeText(),
       Stream.mapError((cause) =>
-        new TransportError({
-          description: `The graphql-sse stream failed: ${cause.message}`,
-          retryAfter,
-          headers,
-          cause
-        })
+        new TransportError({ description: `The graphql-sse stream failed: ${cause.message}`, retryAfter, cause })
       ),
       Stream.mapEffect((text) => {
         const error = parser.feed(text)
         if (error !== undefined) {
-          return Effect.fail(new TransportError({ description: error.message, headers, cause: error }))
+          return Effect.fail(new TransportError({ description: error.message, cause: error }))
         }
         const batch = events
         events = []
@@ -290,11 +282,7 @@ const sseEvents = (
         Effect.try({
           try: () => ({ body: JSON.parse(event.data) as unknown, headers }),
           catch: (cause) =>
-            new TransportError({
-              description: `Invalid graphql-sse next event: ${errorMessage(cause)}`,
-              headers,
-              cause
-            })
+            new TransportError({ description: `Invalid graphql-sse next event: ${errorMessage(cause)}`, cause })
         })
       )
     )
@@ -322,19 +310,14 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
           return client.execute(
             toRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
-            Effect.flatMap((response) =>
-              Effect.map(
-                readResponse(response),
-                (body) => ({ body, status: response.status, headers: { ...response.headers } })
-              )
-            ),
+            Effect.flatMap(readAnswer),
             fromHttpClientError(now)
           )
         })
       const subscribe = (
         request: GraphQLRequest
       ): Stream.Stream<
-        { readonly body: unknown; readonly headers?: Record<string, string>; readonly status?: number },
+        { readonly body: unknown; readonly status?: number; readonly headers: Record<string, string> },
         TransportError
       > =>
         Stream.unwrap(Effect.suspend(() => {
@@ -347,10 +330,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
               }
               // A server that rejects the subscription answers with a single
               // GraphQL response, which the client reads like a query's.
-              return Effect.map(
-                readResponse(response),
-                (body) => Stream.succeed({ body, status: response.status, headers: { ...response.headers } })
-              )
+              return Effect.map(readAnswer(response), Stream.succeed)
             }),
             fromHttpClientError(now)
           )
@@ -434,8 +414,8 @@ export const makeHttp: {
  *
  * Every response's HTTP `status` is passed to the client as
  * `ExecutionResult.status`, and a call that fails with GraphQL `errors`
- * reports it as `ResponseError.status`. Response headers reach middleware
- * and `ResponseError.headers` as a plain string record with lowercase names.
+ * reports it as `ResponseError.status`. Response headers are passed the
+ * same way, as `ExecutionResult.headers` and `ResponseError.headers`.
  *
  * A response is a GraphQL response when its `Content-Type` is
  * `application/graphql-response+json`, whatever the status, or when it is
@@ -444,12 +424,11 @@ export const makeHttp: {
  * `Retry-After` header (numeric or HTTP-date) becomes `retryAfter`.
  *
  * A subscription is a `POST` with `Accept: text/event-stream`. Each `next`
- * event includes the HTTP response headers but is emitted without a status.
- * The stream ends on a `complete` event or when the body ends. A body that fails is a retryable
- * `TransportError`, with a server `retry:` line as its `retryAfter`. A
- * non-stream answer, such as a `400` with `errors`, is read like a query's
- * response, status and headers included. Interrupting the stream aborts
- * the request.
+ * event is emitted with the response headers but no status, and the stream
+ * ends on a `complete` event or when the body ends. A body that fails is a
+ * retryable `TransportError`, with a server `retry:` line as its
+ * `retryAfter`. A non-stream answer, such as a `400` with `errors`, is read
+ * like a query's response. Interrupting the stream aborts the request.
  *
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.

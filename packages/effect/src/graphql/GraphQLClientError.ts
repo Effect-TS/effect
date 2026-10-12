@@ -74,13 +74,11 @@ export type GraphQLError = typeof GraphQLError.Type
  * key (or alias). Non-2xx HTTP responses with a GraphQL body also use this
  * reason rather than `TransportError`.
  *
- * `status` is the HTTP status of the response, as the transport reported it
- * and middleware left it. `headers` carries the HTTP response headers as a
- * plain string record, including for graphql-sse events. Both fields can be
- * rewritten by middleware. Status is unset for graphql-sse events, and both
- * fields are unset over graphql-ws. A `ResponseError` is never retryable,
- * whatever the status: a `429` or `503` that carries a GraphQL `errors` body
- * is not retried.
+ * `status` and `headers` are the HTTP status and response headers, as the
+ * transport reported them and middleware left them. Both are unset over
+ * graphql-ws, and `status` is unset for graphql-sse events. A `ResponseError`
+ * is never retryable, whatever the status: a `429` or `503` that carries a
+ * GraphQL `errors` body is not retried.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -159,9 +157,8 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
  *
  * **Details**
  *
- * - `status` is only set for an HTTP response that is not a GraphQL response.
- * - `headers` holds the HTTP response headers as a serializable plain string
- *   record when a response is available.
+ * - `status` and `headers` are only set for an HTTP response that is not a
+ *   GraphQL response.
  * - `retryAfter` comes from the `Retry-After` header (numeric or HTTP-date
  *   form) and is encoded as milliseconds.
  * - `closeCode` is set when a WebSocket connection closed.

@@ -360,17 +360,13 @@ const makeMethod = <Op extends GraphQL.Any>(
       }))
     )
 
-  const decodeResponse = ({ body, status, headers }: {
+  const decodeResponse = ({ body, ...metadata }: {
     readonly body: unknown
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
   }) =>
     decodeExecutionResult(body).pipe(
-      Effect.map((result): ExecutionResult => ({
-        ...result,
-        ...(status === undefined ? {} : { status }),
-        ...(headers === undefined ? {} : { headers })
-      })),
+      Effect.map((result): ExecutionResult => ({ ...result, ...metadata })),
       Effect.catch(notGraphQL)
     )
 
