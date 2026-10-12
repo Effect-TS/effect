@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import PackageJson from "../../package.json" with { type: "json" }
 import { command, Executors } from "./Cli.ts"
+import { mcpCommand } from "./Mcp.ts"
 import { Output } from "./Output.ts"
 import { makePlatforms } from "./Platform.ts"
 import { serveCommand } from "./Server.ts"
@@ -14,7 +15,7 @@ const platforms = makePlatforms({
   deno: () => import("./platform/deno.ts")
 })
 
-const cli = command.pipe(Command.withSubcommands([serveCommand(PackageJson.version)]))
+const cli = command.pipe(Command.withSubcommands([serveCommand(PackageJson.version), mcpCommand(PackageJson.version)]))
 
 // on a usage error, print the error and a hint to use --help rather than the whole help
 platforms.run(

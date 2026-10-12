@@ -12,7 +12,7 @@ import { type Response, socketPath } from "./socket.ts"
 
 /** Command lines that always run here: the server itself, and what needs no test run. */
 const runsHere = (argv: ReadonlyArray<string>) =>
-  argv[0] === "serve" ||
+  argv[0] === "serve" || argv[0] === "mcp" ||
   argv.some((arg) => ["--no-server", "--help", "-h", "--version", "-v", "--completions", "--wizard"].includes(arg))
 
 /** Forwards `argv` to a running server; resolves `false` (run here) when there is none. */

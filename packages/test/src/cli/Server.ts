@@ -31,7 +31,7 @@ import { type Request, type Response, socketPath } from "./socket.ts"
  * next one, and the taken pool is shut down when its run ends. A run asking for a
  * different number of workers gets a fresh pool.
  */
-const warmExecutors = (size: number) =>
+export const warmExecutors = (size: number) =>
   Effect.gen(function*() {
     const context = yield* Effect.context<Worker.WorkerPlatform | Worker.Spawner>()
     const serverScope = yield* Effect.scope
@@ -74,6 +74,28 @@ const exitCodeOf = (exit: Exit.Exit<unknown, unknown>): number => {
   return exit.cause.reasons.every((reason) => reason._tag === "Interrupt") ? 130 : 1
 }
 
+/**
+ * Runs an `etest` command line in this process, with its output going to `output` and its
+ * executors from `executors`, and returns the exit code. Used by `etest serve` and `etest mcp`.
+ */
+export const runCommandLine = (version: string, executors: Executors["Service"]) =>
+(
+  argv: ReadonlyArray<string>,
+  output: Output["Service"]
+) =>
+  Command.runWith(command, { version, helpOnError: false })(argv).pipe(
+    Effect.provideService(Output, output),
+    Effect.provideService(Executors, executors),
+    Effect.provideService(Console.Console, consoleFor(output)),
+    Effect.exit,
+    Effect.map((exit) => {
+      const code = exitCodeOf(exit)
+      // ExitCode and effect/cli's errors are already reported; anything else is unexpected
+      if (code === 1 && Exit.isFailure(exit) && !reported(exit.cause)) output.err(Cause.pretty(exit.cause) + "\n")
+      return code
+    })
+  )
+
 const serve = (version: string, options: { readonly workers: number }) =>
   Effect.gen(function*() {
     const cwd = process.cwd()
@@ -96,16 +118,9 @@ const serve = (version: string, options: { readonly workers: number }) =>
       }
       const output = Output.of({ out: (text) => send({ out: text }), err: (text) => send({ err: text }) })
       const started = Date.now()
-      const program = Command.runWith(command, { version, helpOnError: false })(request.argv).pipe(
-        Effect.provideService(Output, output),
-        Effect.provideService(Executors, executors),
-        Effect.provideService(Console.Console, consoleFor(output)),
-        Effect.exit,
-        Effect.flatMap((exit) =>
+      const program = runCommandLine(version, executors)(request.argv, output).pipe(
+        Effect.flatMap((code) =>
           Effect.sync(() => {
-            const code = exitCodeOf(exit)
-            // ExitCode and effect/cli's errors are already reported; anything else is unexpected
-            if (code === 1 && Exit.isFailure(exit) && !reported(exit.cause)) output.err(Cause.pretty(exit.cause) + "\n")
             send({ exit: code })
             client.end()
             process.stderr.write(
