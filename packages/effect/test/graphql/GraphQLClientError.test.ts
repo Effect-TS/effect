@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Duration, Effect, Schema } from "effect"
-import { GraphQLClientError, GraphQLError, TransportError } from "effect/graphql/GraphQLClientError"
+import { GraphQLClientError, GraphQLError, ResponseError, TransportError } from "effect/graphql/GraphQLClientError"
+import * as Headers from "effect/http/Headers"
 
 describe("GraphQLClientError", () => {
   it("decoding a GitHub error preserves its top-level type", () => {
@@ -13,16 +14,33 @@ describe("GraphQLClientError", () => {
     assert.deepStrictEqual(Schema.decodeUnknownSync(GraphQLError)(error), error)
   })
 
-  it.effect("round trips through its schema, encoding retryAfter as milliseconds", () =>
+  it.effect("round trips both error headers as JSON records, encoding retryAfter as milliseconds", () =>
     Effect.gen(function*() {
-      const error = new GraphQLClientError({
-        operation: "Viewer",
-        reason: new TransportError({ description: "503", status: 503, retryAfter: Duration.seconds(30) })
-      })
-      const encoded = yield* Schema.encodeEffect(GraphQLClientError)(error)
-      assert.strictEqual((encoded.reason as { retryAfter?: number }).retryAfter, 30_000)
-      const decoded = yield* Schema.decodeUnknownEffect(GraphQLClientError)(JSON.parse(JSON.stringify(encoded)))
-      assert.deepStrictEqual(decoded.retryAfter, Duration.seconds(30))
+      const headers = Headers.fromInput({ "X-RateLimit-Remaining": "0" })
+      for (
+        const reason of [
+          new TransportError({ description: "503", status: 503, retryAfter: Duration.seconds(30), headers }),
+          new ResponseError({ errors: [{ message: "Rate limited" }], status: 200, headers })
+        ]
+      ) {
+        const error = new GraphQLClientError({ operation: "Viewer", reason })
+        const encoded = yield* Schema.encodeEffect(GraphQLClientError)(error)
+        if (encoded.reason._tag !== "TransportError" && encoded.reason._tag !== "ResponseError") {
+          assert.fail("Expected an encoded transport or response error")
+        }
+        assert.deepStrictEqual(encoded.reason.headers, { "x-ratelimit-remaining": "0" })
+        const decoded = yield* Schema.decodeUnknownEffect(GraphQLClientError)(JSON.parse(JSON.stringify(encoded)))
+        assert.strictEqual(decoded.reason._tag, reason._tag)
+        if (decoded.reason._tag !== "TransportError" && decoded.reason._tag !== "ResponseError") {
+          assert.fail("Expected a decoded transport or response error")
+        }
+        assert.isTrue(Headers.isHeaders(decoded.reason.headers))
+        assert.deepStrictEqual(decoded.reason.headers, headers)
+        if (reason._tag === "TransportError") {
+          assert.strictEqual((encoded.reason as { retryAfter?: number }).retryAfter, 30_000)
+          assert.deepStrictEqual(decoded.retryAfter, Duration.seconds(30))
+        }
+      }
     }))
 
   it("TransportError is retryable for 429, 5xx and non-fatal close codes", () => {

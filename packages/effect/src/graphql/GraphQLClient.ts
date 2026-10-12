@@ -18,6 +18,7 @@ import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import * as Headers from "../http/Headers.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as internalGraphQL from "../internal/graphql.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "../internal/stackTraceLimit.ts"
@@ -77,7 +78,9 @@ type ArgsWithOptions<Variables, Options> = {} extends Variables ? [variables: Va
  *
  * `headers` and `urlParams` are sent by the HTTP transport, ignored over
  * graphql-ws, and visible to middleware either way as
- * `GraphQLRequest.headers` and `GraphQLRequest.urlParams`. `context` provides
+ * `GraphQLRequest.headers` and `GraphQLRequest.urlParams`. Header options
+ * accept `Headers.Input` and are normalized to `Headers.Headers` before
+ * middleware runs. `context` provides
  * services for this call only, and removes them from the method's
  * requirements.
  *
@@ -90,7 +93,7 @@ export interface OperationMethod<Op extends GraphQL.Any> {
   readonly operation: Op
   <R2 = never>(
     ...args: ArgsWithOptions<GraphQL.Variables<Op>, {
-      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly headers?: Headers.Input | undefined
       readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
       readonly partial: true
@@ -98,7 +101,7 @@ export interface OperationMethod<Op extends GraphQL.Any> {
   ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, Exclude<GraphQL.Services<Op>, R2>>
   <R2 = never>(
     ...args: Args<GraphQL.Variables<Op>, {
-      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly headers?: Headers.Input | undefined
       readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
       readonly partial?: false | undefined
@@ -120,7 +123,7 @@ export interface SubscriptionMethod<Op extends GraphQL.Any> {
   readonly operation: Op
   <R2 = never>(
     ...args: Args<GraphQL.Variables<Op>, {
-      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly headers?: Headers.Input | undefined
       readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     }>
@@ -316,11 +319,11 @@ const retryableOnly = <Output, Error, Env>(
       isGraphQLClientError(input) && input.isRetryable ? step(now, input) : Cause.done(undefined)
   ))
 
-// `status` is transport metadata, so it is never read from the body.
-const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult.mapFields(Struct.omit(["status"])))
+// `status` and `headers` are transport metadata, never read from the body.
+const decodeExecutionResult = Schema.decodeUnknownEffect(ExecutionResult.mapFields(Struct.omit(["status", "headers"])))
 
 interface CallOptions<R2 = never> {
-  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly headers?: Headers.Input | undefined
   readonly urlParams?: UrlParams.Input | undefined
   readonly context?: Context.Context<R2> | undefined
   readonly partial?: boolean | undefined
@@ -355,14 +358,18 @@ const makeMethod = <Op extends GraphQL.Any>(
         query: operation.document,
         operationName: operation.name,
         variables: encoded,
-        headers: options?.headers ?? {},
+        headers: Headers.fromInput(options?.headers),
         urlParams: options?.urlParams === undefined ? UrlParams.empty : UrlParams.fromInput(options.urlParams)
       }))
     )
 
-  const decodeResponse = ({ body, status }: { readonly body: unknown; readonly status?: number | undefined }) =>
+  const decodeResponse = ({ body, ...metadata }: {
+    readonly body: unknown
+    readonly status?: number | undefined
+    readonly headers?: Headers.Headers | undefined
+  }) =>
     decodeExecutionResult(body).pipe(
-      Effect.map((result): ExecutionResult => status === undefined ? result : { ...result, status }),
+      Effect.map((result): ExecutionResult => ({ ...result, ...metadata })),
       Effect.catch(notGraphQL)
     )
 
@@ -559,6 +566,7 @@ export type PagingVariables<Variables> = "after" extends keyof Variables
  *
  * `connection` extracts the connection from each result. `options` is
  * forwarded to every call but cannot include `partial`: errors fail the stream.
+ * Its `headers` accept `Headers.Input`, just as for operation calls.
  *
  * The stream ends after a page whose `hasNextPage` is `false`. A `null`
  * connection on the first page gives an empty stream; on a later page it
@@ -621,7 +629,7 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
     readonly variables: PagingVariables<GraphQL.Variables<Op>>
     readonly connection: (result: GraphQL.Result<Op>) => C | null | undefined
     readonly options?: {
-      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly headers?: Headers.Input | undefined
       readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     } | undefined
@@ -721,7 +729,7 @@ export const items = <Op extends GraphQL.Any, Node, R2 = never>(
     readonly variables: PagingVariables<GraphQL.Variables<Op>>
     readonly connection: (result: GraphQL.Result<Op>) => NodesConnection<Node> | null | undefined
     readonly options?: {
-      readonly headers?: Readonly<Record<string, string>> | undefined
+      readonly headers?: Headers.Input | undefined
       readonly urlParams?: UrlParams.Input | undefined
       readonly context?: Context.Context<R2> | undefined
     } | undefined
@@ -731,14 +739,15 @@ export const items = <Op extends GraphQL.Any, Node, R2 = never>(
 
 /**
  * The options a {@link makeTest} handler receives: the `headers` and
- * `urlParams` the caller passed, unchanged.
+ * `urlParams` the caller passed, unchanged. Headers accept `Headers.Input`;
+ * unlike real transport requests, test call options are not normalized.
  *
  * @stability experimental
  * @category testing
  * @since 4.0.0
  */
 export interface TestCallOptions {
-  readonly headers?: Readonly<Record<string, string>> | undefined
+  readonly headers?: Headers.Input | undefined
   readonly urlParams?: UrlParams.Input | undefined
 }
 
