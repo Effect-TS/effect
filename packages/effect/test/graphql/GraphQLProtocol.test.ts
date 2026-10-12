@@ -102,14 +102,29 @@ describe("GraphQLProtocol.layerHttp", () => {
       )
     }))
 
-  it.effect("a non-2xx with a GraphQL body is a ResponseError carrying the status, never retryable", () =>
+  for (const [status, isRetryable] of [[502, true], [400, false]] as const) {
+    it.effect(`a ${status} with a GraphQL body is a ResponseError with isRetryable: ${isRetryable}`, () =>
+      Effect.gen(function*() {
+        const reason = yield* callViewer(() =>
+          graphqlResponse({ data: null, errors: [{ message: "Query failed" }] }, { status })
+        ).pipe(expectReason("ResponseError"))
+        assert.deepStrictEqual(reason.errors, [{ message: "Query failed" }])
+        assert.strictEqual(reason.status, status)
+        assert.strictEqual(reason.isRetryable, isRetryable)
+      }))
+  }
+
+  it.effect("a 429 with a GraphQL body is a ResponseError carrying a numeric Retry-After", () =>
     Effect.gen(function*() {
       const reason = yield* callViewer(() =>
-        graphqlResponse({ errors: [{ message: "Service unavailable" }] }, { status: 503 })
+        new Response(JSON.stringify({ data: null, errors: [{ message: "Rate limited" }] }), {
+          status: 429,
+          headers: { "content-type": "application/graphql-response+json", "retry-after": "30" }
+        })
       ).pipe(expectReason("ResponseError"))
-      assert.deepStrictEqual(reason.errors, [{ message: "Service unavailable" }])
-      assert.strictEqual(reason.status, 503)
-      assert.isFalse(reason.isRetryable)
+      assert.strictEqual(reason.status, 429)
+      assert.deepStrictEqual(reason.retryAfter, Duration.seconds(30))
+      assert.isTrue(reason.isRetryable)
     }))
 
   it.effect("HTTP response headers reach middleware through next and ResponseError", () =>

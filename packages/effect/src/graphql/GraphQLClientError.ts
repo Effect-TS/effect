@@ -79,9 +79,14 @@ export type GraphQLError = typeof GraphQLError.Type
  * transport reported them and middleware left them. Headers use
  * `Headers.Headers` at runtime and encode as a plain string record.
  * Decoding restores the normalized header collection. Both are unset over
- * graphql-ws, and `status` is unset for graphql-sse events. A `ResponseError`
- * is never retryable, whatever the status: a `429` or `503` that carries a
- * GraphQL `errors` body is not retried.
+ * graphql-ws, and `status` is unset for graphql-sse events. `isRetryable` is
+ * true for HTTP status `429` or `5xx`, and false otherwise, including when
+ * there is no status. `retryAfter` parses the `Retry-After` response header
+ * as seconds or an HTTP date, measured from `Date.now()`.
+ *
+ * Callers opt into retries with `Effect.retry`. With `GraphQLClient.pages`,
+ * retry each page's call, not the stream: `Stream.retry` starts again from
+ * the first page.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -99,6 +104,26 @@ export type GraphQLError = typeof GraphQLError.Type
  * reason.errors.map((error) => error.path?.[0]) // => ["repository"]
  * ```
  *
+ * **Example** (Retrying a call on retryable errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { GraphQLClientError } from "effect/graphql"
+ *
+ * const call = Effect.fail(new GraphQLClientError.GraphQLClientError({
+ *   operation: "Viewer",
+ *   reason: new GraphQLClientError.ResponseError({
+ *     errors: [{ message: "Query timed out" }],
+ *     status: 502
+ *   })
+ * }))
+ *
+ * const retried = Effect.retry(call, {
+ *   while: (error) => error.reason.isRetryable,
+ *   times: 3
+ * })
+ * ```
+ *
  * @stability experimental
  * @category errors
  * @since 4.0.0
@@ -113,14 +138,25 @@ export class ResponseError
   })
 {
   /**
-   * A `ResponseError` is never retryable: the server executed the operation
-   * and reported errors for it. This holds for any `status`, including `429`
-   * and `5xx`.
+   * `true` for HTTP status `429` or `5xx`; `false` for other statuses or
+   * when there is no status, as with subscription events. Use this as the
+   * `while` predicate of `Effect.retry` on the call.
    *
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    return false
+    return this.status !== undefined && (this.status === 429 || (this.status >= 500 && this.status < 600))
+  }
+
+  /**
+   * The `Retry-After` response header parsed as seconds or an HTTP date
+   * measured from `Date.now()`. Missing or invalid values yield `undefined`.
+   * `Effect.retry` does not apply this delay automatically.
+   *
+   * @since 4.0.0
+   */
+  get retryAfter(): Duration.Duration | undefined {
+    return parseRetryAfter(this.headers?.["retry-after"], Date.now())
   }
 
   override get message(): string {
@@ -402,12 +438,15 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
   }
 
   /**
-   * The `Retry-After` hint of a `TransportError` reason, if any.
+   * The `Retry-After` hint of a `ResponseError` or `TransportError` reason,
+   * if any.
    *
    * @since 4.0.0
    */
   get retryAfter(): Duration.Duration | undefined {
-    return this.reason._tag === "TransportError" ? this.reason.retryAfter : undefined
+    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
+      ? this.reason.retryAfter
+      : undefined
   }
 
   override get message(): string {
