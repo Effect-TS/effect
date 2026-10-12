@@ -428,15 +428,14 @@ Missing key
       }))
 
     it.effect.each([
-      { name: "seconds at maxRetryAfter", header: "1", status: 503, delay: 1_000, maxRetryAfter: 1_000 },
-      { name: "the default one-minute cap", header: "60", status: 503, delay: 60_000 },
-      { name: "an explicit larger cap", header: "61", status: 503, delay: 61_000, maxRetryAfter: 120_000 },
+      { name: "seconds", header: "1", status: 503, delay: 1_000 },
+      { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
       { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
       { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
       { name: "no header", status: 503, delay: 0 }
     ])(
       "honors the retry delay for $name",
-      ({ delay, header, maxRetryAfter, scheduled, status }) =>
+      ({ delay, header, scheduled, status }) =>
         Effect.gen(function*() {
           const retryAfter = header === "date"
             ? new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
@@ -449,8 +448,7 @@ Missing key
             HttpClient.retryTransient({
               retryOn: header === "date" ? "errors-only" : "errors-and-responses",
               times: 1,
-              ...(scheduled ? { schedule: Schedule.spaced("1 minute") } : {}),
-              maxRetryAfter
+              ...(scheduled ? { schedule: Schedule.spaced("1 minute") } : {})
             })
           )
           const fiber = yield* retryClient.get("http://test/").pipe(
@@ -465,48 +463,6 @@ Missing key
           strictEqual((yield* Fiber.join(fiber)).status, 200)
         })
     )
-
-    it.effect("returns the response when Retry-After exceeds the default one-minute cap", () =>
-      Effect.gen(function*() {
-        const { attempts, client } = yield* makeSequenceClient([
-          { status: 429, headers: { "retry-after": "61" } },
-          { status: 200 }
-        ])
-        const fiber = yield* client.pipe(
-          HttpClient.retryTransient({ times: 1 })
-        ).get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
-        yield* TestClock.adjust("61 seconds")
-        strictEqual((yield* Fiber.join(fiber)).status, 429)
-        strictEqual(yield* Ref.get(attempts), 1)
-      }))
-
-    it.effect("returns the response when Retry-After exceeds maxRetryAfter", () =>
-      Effect.gen(function*() {
-        const { attempts, client } = yield* makeSequenceClient([
-          { status: 429, headers: { "retry-after": "30" } },
-          { status: 200 }
-        ])
-        const response = yield* client.pipe(
-          HttpClient.retryTransient({ times: 2, maxRetryAfter: "1 second" })
-        ).get("http://test/")
-        strictEqual(response.status, 429)
-        strictEqual(yield* Ref.get(attempts), 1)
-      }))
-
-    it.effect("fails with the error when Retry-After exceeds maxRetryAfter", () =>
-      Effect.gen(function*() {
-        const { attempts, client } = yield* makeSequenceClient([
-          { status: 503, headers: { "retry-after": "30" } },
-          { status: 200 }
-        ])
-        const error = yield* client.pipe(
-          HttpClient.filterStatusOk,
-          HttpClient.retryTransient({ retryOn: "errors-only", times: 2, maxRetryAfter: "1 second" })
-        ).get("http://test/").pipe(Effect.flip)
-        strictEqual(error.reason._tag, "StatusCodeError")
-        strictEqual(error.response?.status, 503)
-        strictEqual(yield* Ref.get(attempts), 1)
-      }))
   })
 
   describe("stream", () => {
