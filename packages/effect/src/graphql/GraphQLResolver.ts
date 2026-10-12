@@ -287,7 +287,7 @@ export const ordered = <
           })
         )
       }
-      const status = internalGraphQL.partialResponses.get(result)?.status
+      const response = internalGraphQL.partialResponses.get(result)
       for (let i = 0; i < targets.length; i++) {
         const errors = byIndex.get(i)
         const item = list.items[i]
@@ -296,7 +296,10 @@ export const ordered = <
             ? Exit.fail(
               new GraphQLClientError({
                 operation: method.operation.name,
-                reason: internalGraphQL.responseError(status === undefined ? undefined : { status }, errors)
+                reason: internalGraphQL.responseError(
+                  response === undefined ? undefined : { status: response.status, headers: response.headers },
+                  errors
+                )
               })
             )
             : matchesTypename(item, options.typename)

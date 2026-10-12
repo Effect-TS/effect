@@ -454,7 +454,7 @@ class Emitter {
         if (definition._tag !== "OperationDefinition" && definition._tag !== "FragmentDefinition") continue
         const name = definition.name
         if (name !== undefined) {
-          if (importedNames.has(name.value) || reservedWords.has(name.value)) {
+          if (importedNames.has(name.value) || unbindable(name.value)) {
             report(name.loc.start, `The name "${name.value}" is reserved in generated code; rename this definition.`)
           } else if (name.value === group && exportsGroup) {
             report(name.loc.start, `The name "${name.value}" is taken by the group this file exports.`)
