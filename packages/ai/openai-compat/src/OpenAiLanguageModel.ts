@@ -1459,7 +1459,7 @@ const prepareTools = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
       } else {
         const prepared = yield* tryCodecTransform(tool.parametersSchema, "prepareTools")
         parameters = prepared.jsonSchema
-        // Keep the codec paired with this request's schema.
+        // Reused to normalize this tool's calls in the response.
         toolCodecs.set(tool, prepared.codec)
       }
       tools.push({
