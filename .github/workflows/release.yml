@@ -42,5 +42,5 @@ jobs:
           # release branch.
           github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
       # Packages are published under the `staging` dist-tag. The npm promote
-      # workflow moves `latest` and deploys the website once npm serves every
-      # package.
+      # workflow moves `latest` once npm serves every package, then deploys the
+      # website.

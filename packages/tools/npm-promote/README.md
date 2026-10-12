@@ -19,26 +19,56 @@ Each run:
 2. Fetches each package's abbreviated metadata from `registry.npmjs.org`. If any
    target version is missing, nothing is promoted.
 3. Runs `npm dist-tag add <name>@<version> latest`, `effect` first, for every
-   package whose `latest` is lower than the target. A higher `latest` is never
-   moved back, so a run that failed halfway is finished by the next one.
-4. Closes the tracking issue if one is open.
+   package whose `latest` is lower than the target. The CDN caches the
+   abbreviated metadata for minutes, so the live `latest` is read from the
+   dist-tags endpoint before each write. A higher `latest` is never moved back,
+   so a run that failed halfway is finished by the next one. A failed write
+   stops the run, so no package moves ahead of `effect`.
+4. Deploys the website for the version bump commit when `effect`'s live
+   `latest` is exactly the target and no deploy is recorded for that commit.
+   Deploys are recorded as GitHub deployments in the `website-v4` environment,
+   so a failed or interrupted deploy is retried by the next run.
+5. Closes the tracking issue if one is open. A release that a newer one
+   superseded still closes it, and a failure to close never blocks the deploy.
 
 When the version bump commit is older than `--overdue-after-hours` (12 by
-default) and the release is still not visible, the tool checks each pending
-version's own registry document and opens or updates a single tracking issue.
-It lists versions missing from npm (404), versions published but not visible
-yet, and versions whose check failed. Prerelease versions are never promoted.
+default) and the release is still not visible or cannot be promoted, the tool
+opens or updates a single tracking issue. For versions that are not visible it
+checks each version's own registry document and lists versions missing from npm
+(404), versions published but not visible yet, and versions whose check failed.
+Failed `npm dist-tag add` writes are listed separately. Prerelease versions are
+never promoted.
 
-`--dry-run` reads the registry and prints the plan. It never moves dist-tags or
-touches GitHub issues.
+`--dry-run` reads the registry and prints the plan. It never moves dist-tags,
+deploys the website, or touches GitHub issues. Real runs need
+`GITHUB_REPOSITORY`, `GITHUB_TOKEN` and `WEBSITE_DISPATCH_TOKEN`.
 
 ## Workflow
 
 `.github/workflows/npm-promote.yml` runs every 10 minutes and after each
-`Release` run on `main`. It deploys the website after a promotion moved at
-least one `latest` tag. Setting the `NPM_PROMOTE_PAUSED` repository variable to
-`true` skips the job, which keeps a bad release on `staging`.
+`Release` run on `main`. Setting the `NPM_PROMOTE_PAUSED` repository variable
+to `true` skips new runs, which keeps a bad release on `staging`.
 
 The job runs in the `npm-promote` environment, which holds `NPM_PROMOTE_TOKEN`:
 a granular npm token with write access to `effect` and `@effect/*` on a bot
 account. npm caps these tokens at about 90 days, so they need rotating.
+
+## Other writers of `latest`
+
+Only this workflow is expected to move `latest`. `changeset publish` uses the
+`staging` tag; npm sets `latest` itself only on the first publish of a new
+package, which leaves it at the target. npm has no compare-and-set for
+dist-tags, so the live read narrows but cannot close the window between reading
+and writing a tag.
+
+To change `latest` by hand, set `NPM_PROMOTE_PAUSED=true`, then wait until no
+`npm promote` run is in progress: pausing only skips runs that have not started.
+Unpause once the manual change is done.
+
+## Website deploys
+
+A deploy sends the `publish-api-reference` dispatch to Effect-TS/website. The
+website builds an API reference snapshot keyed by the v3 and v4 revisions and
+reuses it when that snapshot is already published, so a repeated dispatch for
+the same revision only redeploys the site. A recorded deploy means the website
+accepted the dispatch, not that its own deploy succeeded.

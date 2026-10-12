@@ -4,3 +4,13 @@ export class NpmPromoteError extends Schema.TaggedError<NpmPromoteError>()("NpmP
   message: Schema.String,
   cause: Schema.optional(Schema.Defect())
 }) {}
+
+/**
+ * Moving `latest` failed for `pkg`. Packages after it were not promoted.
+ */
+export class PromotionError extends Schema.TaggedError<PromotionError>()("PromotionError", {
+  message: Schema.String,
+  pkg: Schema.Struct({ name: Schema.String, version: Schema.String }),
+  reason: Schema.String,
+  cause: Schema.optional(Schema.Defect())
+}) {}

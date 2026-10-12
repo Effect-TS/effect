@@ -9,10 +9,10 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Semver from "semver"
-import { NpmPromoteError } from "./NpmPromoteError.ts"
+import { NpmPromoteError, PromotionError } from "./NpmPromoteError.ts"
 import * as Process from "./Process.ts"
 
-export { NpmPromoteError } from "./NpmPromoteError.ts"
+export { NpmPromoteError, PromotionError } from "./NpmPromoteError.ts"
 
 /**
  * A public workspace package and the version it has at HEAD.
@@ -113,6 +113,25 @@ const fetchMetadata = Effect.fnUntraced(function*(name: string) {
 })
 
 /**
+ * Reads the current `latest` tag from the dist-tags endpoint. Unlike the
+ * abbreviated metadata, which the registry CDN caches for minutes, this
+ * endpoint is not cached, so it is the value to trust before a write.
+ */
+export const liveLatest = Effect.fnUntraced(function*(name: string) {
+  const client = withRetries(yield* HttpClient.HttpClient)
+  return yield* client.execute(
+    HttpClientRequest.get(`${registryUrl}/-/package/${encodePackageName(name)}/dist-tags`).pipe(
+      HttpClientRequest.acceptJson
+    )
+  ).pipe(
+    Effect.flatMap(HttpClientResponse.filterStatusOk),
+    Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Record(Schema.String, Schema.String))),
+    Effect.map((tags): string | undefined => tags.latest),
+    Effect.mapError((cause) => new NpmPromoteError({ message: `Could not read the dist-tags of ${name}`, cause }))
+  )
+})
+
+/**
  * Puts `effect` first and keeps the input order for everything else.
  */
 const promotionOrder = (packages: ReadonlyArray<ReleasePackage>): ReadonlyArray<ReleasePackage> => [
@@ -139,13 +158,16 @@ const needsPromotion = (pkg: ReleasePackage, latest: string | undefined): Effect
  * versions are visible in the registry's abbreviated metadata.
  *
  * `effect` is promoted first. Packages whose `latest` already equals the
- * target, or is higher than it, are left alone. With `dryRun` the result is
- * the same plan, but no dist-tag is changed.
+ * target, or is higher than it, are left alone. Before each write the live
+ * `latest` is read again, because the abbreviated metadata can be stale. A
+ * failed write stops promotion with a `PromotionError`, so no package moves
+ * ahead of the ones before it. With `dryRun` the result is the same plan, but
+ * no dist-tag is changed.
  */
 export const promote = Effect.fnUntraced(function*(
   packages: ReadonlyArray<ReleasePackage>,
   options?: { readonly dryRun?: boolean | undefined }
-): Effect.fn.Return<PromoteResult, NpmPromoteError, HttpClient.HttpClient | NpmCli> {
+): Effect.fn.Return<PromoteResult, NpmPromoteError | PromotionError, HttpClient.HttpClient | NpmCli> {
   for (const pkg of packages) {
     if (Semver.valid(pkg.version) === null) {
       return yield* new NpmPromoteError({ message: `${pkg.name} has an invalid target version: ${pkg.version}` })
@@ -169,12 +191,21 @@ export const promote = Effect.fnUntraced(function*(
   const promoted: Array<ReleasePackage> = []
   for (let i = 0; i < ordered.length; i++) {
     const pkg = ordered[i]
-    const latest = Option.getOrThrow(metadata[i])["dist-tags"].latest
-    if (!(yield* needsPromotion(pkg, latest))) {
+    const cachedLatest = Option.getOrThrow(metadata[i])["dist-tags"].latest
+    if (!(yield* needsPromotion(pkg, cachedLatest)) || !(yield* needsPromotion(pkg, yield* liveLatest(pkg.name)))) {
       continue
     }
     if (options?.dryRun !== true) {
-      yield* npm.addDistTag({ name: pkg.name, version: pkg.version, tag: "latest" })
+      yield* npm.addDistTag({ name: pkg.name, version: pkg.version, tag: "latest" }).pipe(
+        Effect.mapError((cause) =>
+          new PromotionError({
+            message: `Could not move latest to ${pkg.name}@${pkg.version}: ${cause.message}`,
+            pkg,
+            reason: cause.message,
+            cause
+          })
+        )
+      )
     }
     promoted.push(pkg)
   }

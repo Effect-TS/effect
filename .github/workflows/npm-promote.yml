@@ -35,6 +35,8 @@ jobs:
     environment: npm-promote
     permissions:
       contents: read
+      # Records website deploys, so a failed or interrupted deploy is retried.
+      deployments: write
       issues: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -45,12 +47,13 @@ jobs:
           persist-credentials: false
       - name: Install dependencies
         uses: ./.github/actions/setup
+      # Promotes the release, deploys the website for it and keeps the tracking issue up to date.
       - name: Promote staged release
-        id: promote
         env:
           DRY_RUN: ${{ inputs.dry-run }}
           GITHUB_TOKEN: ${{ github.token }}
           NPM_PROMOTE_TOKEN: ${{ secrets.NPM_PROMOTE_TOKEN }}
+          WEBSITE_DISPATCH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
         run: |
           # npm expands ${NPM_PROMOTE_TOKEN} when it reads the config, so the token is never written to disk.
           export NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/npm-promote.npmrc"
@@ -61,10 +64,3 @@ jobs:
             args+=(--dry-run)
           fi
           node packages/tools/npm-promote/src/bin.ts "${args[@]}"
-      - name: Deploy website
-        if: steps.promote.outputs.promoted == 'true'
-        uses: ./.github/actions/deploy-website
-        with:
-          channel: v4
-          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
-          revision: ${{ steps.promote.outputs.revision }}

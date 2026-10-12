@@ -1,10 +1,10 @@
 import * as Effect from "effect/Effect"
-import * as HttpClient from "effect/http/HttpClient"
+import type * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Option from "effect/Option"
-import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
+import { type GitHubRepository, makeClient } from "./GitHub.ts"
 import type { Diagnosis } from "./NpmPromote.ts"
 import { NpmPromoteError } from "./NpmPromoteError.ts"
 import type { VersionBump } from "./Workspace.ts"
@@ -19,32 +19,11 @@ const marker = "<!-- npm-promote:tracking-issue -->"
  */
 const creator = "github-actions[bot]"
 
-export interface GitHubRepository {
-  readonly repository: string
-  readonly token: Redacted.Redacted<string>
-}
-
 const Issue = Schema.Struct({
   number: Schema.Number,
   title: Schema.String,
   body: Schema.optional(Schema.NullOr(Schema.String)),
   pull_request: Schema.optional(Schema.Unknown)
-})
-
-const makeClient = Effect.fnUntraced(function*(github: GitHubRepository) {
-  const client = yield* HttpClient.HttpClient
-  return client.pipe(
-    HttpClient.mapRequest((request) =>
-      request.pipe(
-        HttpClientRequest.prependUrl(`https://api.github.com/repos/${github.repository}`),
-        HttpClientRequest.bearerToken(github.token),
-        HttpClientRequest.accept("application/vnd.github+json"),
-        HttpClientRequest.setHeader("x-github-api-version", "2022-11-28"),
-        HttpClientRequest.setHeader("user-agent", "effect-npm-promote")
-      )
-    ),
-    HttpClient.filterStatusOk
-  )
 })
 
 const findOpen = (client: HttpClient.HttpClient) =>
@@ -69,11 +48,16 @@ export interface OverdueRelease {
 export const render = (overdue: OverdueRelease): { readonly title: string; readonly body: string } => {
   const list = (tag: Diagnosis["_tag"]) =>
     overdue.diagnoses.filter((diagnosis) => diagnosis._tag === tag).map((diagnosis) =>
-      diagnosis._tag === "Unknown"
+      diagnosis._tag === "Unknown" || diagnosis._tag === "PromotionFailed"
         ? `- \`${diagnosis.pkg.name}@${diagnosis.pkg.version}\`: ${diagnosis.reason}`
         : `- \`${diagnosis.pkg.name}@${diagnosis.pkg.version}\``
     )
   const sections = [
+    {
+      heading: "Promotion failed",
+      note: "The version is visible, but `npm dist-tag add` failed. Check the npm token and package permissions.",
+      items: list("PromotionFailed")
+    },
     {
       heading: "Missing from npm",
       note: "The version document returns 404. `changeset publish` most likely failed for these packages.",
@@ -114,7 +98,7 @@ export const upsert = (
   HttpClient.HttpClient
 > =>
   Effect.gen(function*() {
-    const client = yield* makeClient(github)
+    const client = yield* makeClient(github.repository, github.token)
     const existing = yield* findOpen(client)
     if (Option.isNone(existing)) {
       const created = yield* client.execute(
@@ -140,7 +124,7 @@ export const close = (
   comment: string
 ): Effect.Effect<Option.Option<number>, NpmPromoteError, HttpClient.HttpClient> =>
   Effect.gen(function*() {
-    const client = yield* makeClient(github)
+    const client = yield* makeClient(github.repository, github.token)
     const existing = yield* findOpen(client)
     if (Option.isNone(existing)) {
       return Option.none()
