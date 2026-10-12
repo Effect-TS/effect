@@ -116,7 +116,8 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   }
 
   /**
-   * Check if additionalProperties should be forced to false on all object schemas.
+   * Check if object schemas that declare properties, and no `additionalProperties` of their own, should be
+   * closed with `additionalProperties: false`.
    *
    * @since 4.0.0
    */
