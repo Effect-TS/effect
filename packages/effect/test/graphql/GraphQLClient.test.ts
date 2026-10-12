@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, DateTime, Effect, Layer, Ref, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware } from "effect/graphql"
+import * as Headers from "effect/http/Headers"
 import { executeLayer, expectReason, IssuesGroup, RepoIssues, Viewer, ViewerGroup } from "./fixtures.ts"
 
 class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("test/CurrentUser") {}
@@ -15,9 +16,11 @@ class GroupB extends GraphQLMiddleware.Service<GroupB>()("test/GroupB") {}
 const AuthLive = Layer.succeed(
   Auth,
   GraphQLMiddleware.mapRequest(Effect.fnUntraced(function*(request) {
+    assert.isTrue(Headers.isHeaders(request.headers))
+    assert.notProperty(request.headers, "X-Request-Id")
     const user = yield* CurrentUser
     if (user.id === "expired") return yield* new TokenExpired({ user: user.id })
-    return { ...request, headers: { ...request.headers, authorization: `Bearer ${user.id}` } }
+    return { ...request, headers: Headers.set(request.headers, "authorization", `Bearer ${user.id}`) }
   }))
 )
 
@@ -81,12 +84,21 @@ describe("GraphQLClient", () => {
         assert.strictEqual((yield* Ref.get(requests)).length, 1)
       }))
 
-    it.effect("the per-call context option provides services to middleware", () =>
+    it.effect("per-call context provides services and headers are normalized before middleware", () =>
       Effect.gen(function*() {
         const { layer, requests } = yield* executeLayer(viewerData)
         const client = yield* GraphQLClient.make(ViewerGroup.middleware(Auth)).pipe(Effect.provide([layer, AuthLive]))
-        yield* client.Viewer(undefined, { context: Context.make(CurrentUser, { id: "ctx" }) })
-        assert.strictEqual((yield* Ref.get(requests))[0].headers["authorization"], "Bearer ctx")
+        yield* client.Viewer(undefined, {
+          context: Context.make(CurrentUser, { id: "ctx" }),
+          headers: [["X-Request-Id", "abc"]]
+        })
+        assert.deepStrictEqual(
+          (yield* Ref.get(requests))[0].headers,
+          Headers.fromInput({
+            authorization: "Bearer ctx",
+            "x-request-id": "abc"
+          })
+        )
       }))
 
     it.effect("middleware see the transport status from next and may rewrite it; ResponseError carries it", () =>

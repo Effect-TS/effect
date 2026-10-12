@@ -1,7 +1,8 @@
 /**
  * GraphQL-level middleware provided as `Context.Service` implementations.
  * Middleware can rewrite requests and inspect raw results, including response
- * extensions. Provide implementations with `Layer.succeed` or `Layer.effect`.
+ * extensions and HTTP headers. Provide implementations with `Layer.succeed`
+ * or `Layer.effect`.
  *
  * @stability experimental
  * @since 4.0.0
@@ -27,12 +28,30 @@ const TypeId = "~effect/graphql/GraphQLMiddleware"
  *
  * Both receive the operation being run, the request so far, and `next`, which
  * runs the rest of the chain with the given request and returns the raw
- * `ExecutionResult` (or, for `subscribe`, the stream of them). Its `status` is
- * the HTTP status the transport reported, if any; a middleware may rewrite it,
- * and a failed call's `ResponseError.status` is the final value.
+ * `ExecutionResult` (or, for `subscribe`, the stream of them). Its `status`
+ * and `headers` are the HTTP status and response headers the transport
+ * reported, if any; a middleware may rewrite them, and a failed call's
+ * `ResponseError` carries the final values. Request and response headers
+ * are `Headers.Headers` values; use `Headers.set` to rewrite them.
  *
  * Use {@link mapRequest} when the middleware only needs to transform the
  * request.
+ *
+ * **Example** (Reading a rate-limit header)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { GraphQLMiddleware } from "effect/graphql"
+ * import { Headers } from "effect/http"
+ *
+ * const rateLimit: GraphQLMiddleware.Implementation = {
+ *   execute: ({ next, request }) =>
+ *     Effect.tap(next(request), (result) =>
+ *       Effect.log(result.headers === undefined ? undefined : Headers.get(result.headers, "x-ratelimit-remaining"))
+ *     ),
+ *   subscribe: ({ next, request }) => next(request)
+ * }
+ * ```
  *
  * @stability experimental
  * @category models
@@ -117,6 +136,7 @@ export type Requires<M> = M extends { readonly [TypeId]: { readonly requires: in
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Schema, Stream } from "effect"
  * import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
+ * import { Headers } from "effect/http"
  *
  * class CurrentUser extends Context.Service<CurrentUser, { readonly token: string }>()("CurrentUser") {}
  * class TokenExpired extends Schema.TaggedError<TokenExpired>()("TokenExpired", {}) {}
@@ -131,7 +151,7 @@ export type Requires<M> = M extends { readonly [TypeId]: { readonly requires: in
  *   GraphQLMiddleware.mapRequest(Effect.fnUntraced(function*(request) {
  *     const user = yield* CurrentUser
  *     if (user.token === "") return yield* new TokenExpired()
- *     return { ...request, headers: { ...request.headers, authorization: `Bearer ${user.token}` } }
+ *     return { ...request, headers: Headers.set(request.headers, "authorization", `Bearer ${user.token}`) }
  *   }))
  * )
  *
@@ -186,13 +206,14 @@ export const Service = <
  * ```ts import.meta.vitest
  * import { Effect, Layer, Schema, Stream } from "effect"
  * import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
+ * import { Headers } from "effect/http"
  *
  * class RequestId extends GraphQLMiddleware.Service<RequestId>()("app/RequestId") {}
  *
  * const RequestIdLive = Layer.succeed(
  *   RequestId,
  *   GraphQLMiddleware.mapRequest((request) =>
- *     Effect.succeed({ ...request, headers: { ...request.headers, "x-request-id": "abc" } })
+ *     Effect.succeed({ ...request, headers: Headers.set(request.headers, "x-request-id", "abc") })
  *   )
  * )
  *
