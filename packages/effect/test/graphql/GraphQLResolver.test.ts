@@ -209,6 +209,35 @@ describe("GraphQLResolver", () => {
       }))
   })
 
+  describe("ordered, when an error nulls the whole list", () => {
+    const NullableNodes = GraphQL.query("NullableNodes", {
+      document: "query NullableNodes($ids:[ID!]!){nodes(ids:$ids){__typename ...on Repository{nameWithOwner}}}",
+      variables: { ids: Schema.Array(Schema.String) },
+      result: Schema.Struct({ nodes: Schema.NullOr(Schema.Array(Repository)) })
+    })
+
+    it.effect("every entry fails with the ResponseError instead of NoSuchElementError", () =>
+      Effect.gen(function*() {
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(NullableNodes)).pipe(
+          Effect.provide(protocolLayer({
+            execute: () =>
+              Effect.succeed({
+                body: { data: { nodes: null }, errors: [{ message: "boom", path: ["nodes", 1, "nameWithOwner"] }] },
+                status: 200
+              })
+          }))
+        )
+        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.NullableNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }))
+        for (const failed of yield* resolveAll(["R_1", "R_2"], get)) {
+          assert.instanceOf(failed, GraphQLClientError)
+          assert.strictEqual(failed.reason._tag, "ResponseError")
+        }
+      }))
+  })
+
   describe("findById", () => {
     it.effect("matches out-of-order results on a nested path by key; a missing key is a miss", () =>
       Effect.gen(function*() {

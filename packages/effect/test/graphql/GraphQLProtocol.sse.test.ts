@@ -71,6 +71,25 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
       })
     }))
 
+  it.effect("a body that ends without a complete event is a retryable TransportError", () =>
+    Effect.gen(function*() {
+      const error = yield* subscribe(
+        httpClientLayer(() => new Response(next(event("a")), { headers: { "content-type": "text/event-stream" } }))
+      ).pipe(Stream.runDrain, Effect.flip)
+      assert.instanceOf(error, TransportError)
+      assert.isTrue(error.isRetryable)
+    }))
+
+  it.live("a complete event without a data: line ends the stream", () =>
+    Effect.gen(function*() {
+      const events = yield* subscribe(httpClientLayer(() => eventStream([next(event("a")), "event: complete\n\n"])))
+        .pipe(
+          Stream.runCollect,
+          Effect.timeout("2 seconds")
+        )
+      assert.deepStrictEqual(events.map((answer) => answer.body), [event("a")])
+    }))
+
   it.effect("a retry: line becomes retryAfter when the stream then fails", () =>
     Effect.gen(function*() {
       const error = yield* subscribe(

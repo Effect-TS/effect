@@ -148,6 +148,18 @@ describe("GraphQLProtocol.layerHttp", () => {
       assert.deepStrictEqual(reason.headers, Headers.fromInput(headers))
     }))
 
+  it.effect("an application/json 429 whose errors is not a list is a TransportError carrying its Retry-After", () =>
+    Effect.gen(function*() {
+      const reason = yield* callViewer(() =>
+        new Response(JSON.stringify({ errors: "Throttled" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": "5" }
+        })
+      ).pipe(expectReason("TransportError"))
+      assert.strictEqual(reason.status, 429)
+      assert.deepStrictEqual(reason.retryAfter, Duration.seconds(5))
+    }))
+
   it.effect("a non-GraphQL 403 is a TransportError carrying response headers without Retry-After", () =>
     Effect.gen(function*() {
       const headers = { "content-type": "text/plain", "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1791768600" }
