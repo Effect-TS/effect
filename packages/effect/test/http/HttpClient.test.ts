@@ -1,6 +1,6 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
@@ -14,6 +14,19 @@ const makeStatusClient = Effect.fnUntraced(function*(status: number) {
       yield* Ref.update(attempts, (n) => n + 1)
       return HttpClientResponse.fromWeb(request, new Response(null, { status }))
     })
+  )
+  return { attempts, client } as const
+})
+
+const makeSequenceClient = Effect.fnUntraced(function*(
+  responses: ReadonlyArray<{ readonly status: number; readonly headers?: Record<string, string> }>
+) {
+  const attempts = yield* Ref.make(0)
+  const client = HttpClient.make((request) =>
+    Effect.map(
+      Ref.getAndUpdate(attempts, (n) => n + 1),
+      (n) => HttpClientResponse.fromWeb(request, new Response(null, responses[Math.min(n, responses.length - 1)]))
+    )
   )
   return { attempts, client } as const
 })
@@ -413,6 +426,43 @@ Missing key
         yield* retryClient.get("http://test/").pipe(Effect.ignore)
         strictEqual(yield* Ref.get(attempts), 1)
       }))
+
+    it.effect.each([
+      { name: "seconds", header: "1", status: 503, delay: 1_000 },
+      { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
+      { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
+      { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
+      { name: "no header", status: 503, delay: 0 }
+    ])(
+      "honors the retry delay for $name",
+      ({ delay, header, scheduled, status }) =>
+        Effect.gen(function*() {
+          const retryAfter = header === "date"
+            ? new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+            : header
+          const { attempts, client } = yield* makeSequenceClient([
+            { status, headers: retryAfter === undefined ? {} : { "retry-after": retryAfter } },
+            { status: 200 }
+          ])
+          const retryClient = (header === "date" ? HttpClient.filterStatusOk(client) : client).pipe(
+            HttpClient.retryTransient({
+              retryOn: header === "date" ? "errors-only" : "errors-and-responses",
+              times: 1,
+              ...(scheduled ? { schedule: Schedule.spaced("1 minute") } : {})
+            })
+          )
+          const fiber = yield* retryClient.get("http://test/").pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+
+          if (delay > 0) {
+            yield* TestClock.adjust(Duration.millis(delay - 1))
+            strictEqual(yield* Ref.get(attempts), 1)
+            yield* TestClock.adjust("1 millis")
+          }
+          strictEqual((yield* Fiber.join(fiber)).status, 200)
+        })
+    )
   })
 
   describe("stream", () => {
