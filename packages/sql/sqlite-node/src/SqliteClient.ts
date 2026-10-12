@@ -157,7 +157,7 @@ export const make = (
         }),
         (db) => Effect.sync(() => db.close())
       )
-      db.enableLoadExtension(false)
+      setLoadExtensionEnabled(db, false)
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
@@ -320,14 +320,14 @@ export const make = (
         },
         loadExtension(path) {
           return Effect.acquireUseRelease(
-            Effect.sync(() => db.enableLoadExtension(true)),
+            Effect.sync(() => setLoadExtensionEnabled(db, true)),
             () =>
               Effect.try({
                 try: () => db.loadExtension(path),
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to load extension", "loadExtension") })
               }),
-            () => Effect.sync(() => db.enableLoadExtension(false))
+            () => Effect.sync(() => setLoadExtensionEnabled(db, false))
           )
         }
       })
@@ -415,4 +415,13 @@ const sqliteCauseWithErrno = (cause: unknown): unknown => {
     return cause
   }
   return Object.assign(cause, { errno: errcode })
+}
+
+// Some node:sqlite implementations, such as Deno's, do not provide
+// `enableLoadExtension`; extension loading is then governed by `allowExtension`
+// alone.
+const setLoadExtensionEnabled = (db: DatabaseSync, enabled: boolean): void => {
+  if (typeof db.enableLoadExtension === "function") {
+    db.enableLoadExtension(enabled)
+  }
 }
