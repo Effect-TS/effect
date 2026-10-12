@@ -947,9 +947,20 @@ export const add: {
   2,
   (self: DateTime.DateTime, parts: Partial<DateTime.DateTime.PartsForMath>): DateTime.DateTime => {
     // time units move the instant, calendar units move the wall clock
-    const millis = (parts.milliseconds ?? 0) + (parts.seconds ?? 0) * 1000 + (parts.minutes ?? 0) * 60 * 1000 +
-      (parts.hours ?? 0) * 60 * 60 * 1000
-    const shifted = millis === 0 ? self : mapEpochMillis(self, (epochMillis) => epochMillis + millis)
+    const shifted = mutateUtc(self, (date) => {
+      if (parts.milliseconds) {
+        date.setTime(date.getTime() + parts.milliseconds)
+      }
+      if (parts.seconds) {
+        date.setTime(date.getTime() + parts.seconds * 1000)
+      }
+      if (parts.minutes) {
+        date.setTime(date.getTime() + parts.minutes * 60 * 1000)
+      }
+      if (parts.hours) {
+        date.setTime(date.getTime() + parts.hours * 60 * 60 * 1000)
+      }
+    })
     if (!parts.days && !parts.weeks && !parts.months && !parts.years) {
       return shifted
     }
