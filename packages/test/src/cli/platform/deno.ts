@@ -12,5 +12,5 @@ export default makePlatform({
     DenoServices.layer,
     DenoWorker.layer(() => new globalThis.Worker(executor, { type: "module" }))
   ),
-  runMain: (effect) => DenoRuntime.runMain(effect)
+  run: (effect) => DenoRuntime.runMain(effect)
 })

@@ -9,5 +9,5 @@ const executor = moduleUrl("../executor/bun", import.meta.url)
 
 export default makePlatform({
   layer: Layer.merge(BunServices.layer, BunWorker.layer(() => new globalThis.Worker(executor))),
-  runMain: (effect) => BunRuntime.runMain(effect)
+  run: (effect) => BunRuntime.runMain(effect)
 })

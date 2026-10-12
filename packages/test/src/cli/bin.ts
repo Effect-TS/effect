@@ -11,4 +11,4 @@ const platforms = makePlatforms({
   deno: () => import("./platform/deno.ts")
 })
 
-platforms.runMain(Command.run(cli, { version: PackageJson.version }))
+platforms.run(Command.run(cli, { version: PackageJson.version }))

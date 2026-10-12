@@ -1,7 +1,7 @@
 // Runtime platforms (Node, Bun or Deno), independent of any particular program. Each
-// runtime's module default-exports `makePlatform({ layer, runMain })`; the entry point
-// combines them with `makePlatforms({ node, bun, deno })`, whose `runMain` imports only the
-// current runtime's module and hands the program over to that platform's own `runMain`.
+// runtime's module default-exports `makePlatform({ layer, run })`; the entry point
+// combines them with `makePlatforms({ node, bun, deno })`, whose `run` imports only the
+// current runtime's module and hands the program over to that platform's own `run`.
 // The services a program may use are inferred: whatever every platform provides.
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
@@ -11,7 +11,8 @@ export type Runtime = "node" | "bun" | "deno"
 /** A runtime's implementation of the services `R`, plus its way of running a main program. */
 export interface Platform<R> {
   readonly layer: Layer.Layer<R>
-  readonly runMain: <A, E>(effect: Effect.Effect<A, E>) => void
+  /** Runs a main program: signal handling, exit codes, error reporting (e.g. `NodeRuntime.runMain`). */
+  readonly run: <A, E>(effect: Effect.Effect<A, E>) => void
 }
 
 /** Declares a runtime's platform; `R` is inferred from its layer. Default-export the result. */
@@ -38,10 +39,10 @@ export interface Platforms<R> {
   readonly load: Effect.Effect<Platform<R>>
   /**
    * Loads the current runtime's platform, then hands `main`, with the platform's layer
-   * provided, over to that platform's `runMain` (signal handling, exit codes, error
+   * provided, over to that platform's `run` (signal handling, exit codes, error
    * reporting). If loading itself fails, the cause is logged and the process exits with 1.
    */
-  readonly runMain: <A, E>(main: Effect.Effect<A, E, R>) => void
+  readonly run: <A, E>(main: Effect.Effect<A, E, R>) => void
 }
 
 export const detect = (): Runtime => "Bun" in globalThis ? "bun" : "Deno" in globalThis ? "deno" : "node"
@@ -50,17 +51,17 @@ export const makePlatforms = <I extends Imports>(imports: I): Platforms<Services
   const load: Effect.Effect<Platform<Services<I>>> = Effect.promise(() => imports[detect()]()).pipe(
     Effect.map((module) => module.default)
   )
-  const runMain = <A, E>(main: Effect.Effect<A, E, Services<I>>): void => {
+  const run = <A, E>(main: Effect.Effect<A, E, Services<I>>): void => {
     Effect.runFork(
       load.pipe(
-        Effect.flatMap((platform) => Effect.sync(() => platform.runMain(Effect.provide(main, platform.layer)))),
+        Effect.flatMap((platform) => Effect.sync(() => platform.run(Effect.provide(main, platform.layer)))),
         Effect.tapCause((cause) =>
           Effect.andThen(Effect.logError(cause), Effect.sync(() => (globalThis.process.exitCode = 1)))
         )
       )
     )
   }
-  return { load, runMain }
+  return { load, run }
 }
 
 /**

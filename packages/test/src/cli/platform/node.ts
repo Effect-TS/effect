@@ -19,5 +19,5 @@ export default makePlatform({
       return worker
     })
   ),
-  runMain: (effect) => NodeRuntime.runMain(effect)
+  run: (effect) => NodeRuntime.runMain(effect)
 })
