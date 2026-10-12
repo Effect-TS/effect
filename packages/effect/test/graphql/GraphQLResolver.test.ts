@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Layer, Ref, Schema, Stream } from "effect"
+import { Cause, Context, Effect, Layer, Ref, RequestResolver, Schema, Stream } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Headers from "effect/http/Headers"
+import * as UrlParams from "effect/http/UrlParams"
 import { graphqlResponse, httpClientLayer, protocolLayer } from "./fixtures.ts"
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
@@ -410,6 +411,80 @@ describe("GraphQLResolver", () => {
 
         assert.deepStrictEqual(results, lookups.map((key) => ({ repository: pullRequest(key) })))
         assert.deepStrictEqual(received.map((variables) => variables.number).sort(), [1, 2])
+      }))
+
+    it.effect("through withCache, the method keeps operation, partial results and call options", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeClient((variables) => {
+          const prefix = Object.entries(slices(variables)).find(([, slice]) => slice.number === 2)![0]
+          return {
+            data: answerSlices(variables, (slice) => slice.number === 2 ? { pullRequest: null } : pullRequest(slice)),
+            errors: [{ message: "Could not resolve", path: [`${prefix}repository`, "pullRequest"] }]
+          }
+        })
+        const cached = yield* GraphQLResolver.aliased(client.PullRequest).pipe(
+          RequestResolver.withCache({ capacity: 10 })
+        )
+        const get = GraphQLResolver.request(cached)
+
+        const [ok, failed]: ReadonlyArray<GraphQLClient.PartialResult<GraphQL.Result<typeof PullRequest>>> =
+          yield* Effect
+            .forEach(lookups, (variables) => get(variables, { partial: true, headers: { "x-trace": "t1" } }), {
+              concurrency: "unbounded"
+            })
+
+        assert.strictEqual(get.operation, PullRequest)
+        assert.deepStrictEqual(ok, { data: { repository: pullRequest(lookups[0]) }, errors: [] })
+        assert.deepStrictEqual(failed.data, { repository: { pullRequest: null } })
+        assert.deepStrictEqual(failed.errors.map((error) => error.path), [["repository", "pullRequest"]])
+        const sent = yield* Ref.get(requests)
+        assert.deepStrictEqual(sent.map((request) => request.headers["x-trace"]), ["t1"])
+      }))
+
+    it.effect("batchKey, headers and URL params each split batches on their own", () =>
+      Effect.gen(function*() {
+        const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
+        const layer = protocolLayer({
+          execute: (request) =>
+            Effect.as(Ref.update(requests, (all) => [...all, request]), {
+              body: { data: answerSlices(request.variables, pullRequest) },
+              status: 200
+            })
+        })
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(PullRequest).middleware(Auth)).pipe(
+          Effect.provide([layer, AuthLive])
+        )
+        const get = GraphQLResolver.request(GraphQLResolver.aliased(client.PullRequest, {
+          batchKey: (context) => Context.get(context, CurrentUser).tenant
+        }))
+        const lookup = (
+          tenant: string,
+          number: number,
+          options?: { readonly headers?: Headers.Input; readonly urlParams?: UrlParams.Input }
+        ) => Effect.provideService(get({ name: "effect", number }, options), CurrentUser, { tenant })
+
+        // Lookup 1 is the baseline; 2 shares its batch, and 3, 4 and 5 each
+        // differ from it in one thing only.
+        yield* Effect.all([
+          lookup("a", 1),
+          lookup("a", 2),
+          lookup("b", 3),
+          lookup("a", 4, { headers: { "x-preview": "1" } }),
+          lookup("a", 5, { urlParams: { preview: "1" } })
+        ], { concurrency: "unbounded" })
+
+        const sent = yield* Ref.get(requests)
+        assert.deepStrictEqual(
+          sent.map((request) =>
+            [
+              request.headers["authorization"],
+              request.headers["x-preview"] ?? "-",
+              UrlParams.getAll(request.urlParams, "preview").join() || "-",
+              Object.values(slices(request.variables)).map((slice) => slice.number).sort().join()
+            ].join(" ")
+          ).sort(),
+          ["Bearer a - - 1,2", "Bearer a - 1 5", "Bearer a 1 - 4", "Bearer b - - 3"]
+        )
       }))
   })
 })
