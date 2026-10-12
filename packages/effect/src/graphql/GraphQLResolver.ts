@@ -3,7 +3,9 @@
  * {@link ordered} matches results by position; {@link findById} matches by
  * key. {@link request} turns either resolver into `(key) => Effect`.
  *
- * Client middleware still run. Compose `RequestResolver.setDelay` and
+ * Client middleware still run. When a method needs services, such as a
+ * middleware's `requires`, `batchKey` keeps lookups with different services
+ * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
  * @stability experimental
@@ -11,6 +13,7 @@
  */
 import type { NonEmptyArray, NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
+import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
@@ -51,6 +54,9 @@ type Typenames<I> = Types.IsUnion<I> extends true ?
   : never
 
 type Narrow<I, T> = [T] extends [never] ? I : Extract<I, { readonly __typename: T }>
+
+type BatchKey<Op extends GraphQL.Any> = [GraphQL.Services<Op>] extends [never] ? { readonly batchKey?: never }
+  : { readonly batchKey: (context: Context.Context<GraphQL.Services<Op>>) => unknown }
 
 interface KeyRequest<K, A, E, R> extends Request.Request<A, E, R> {
   readonly key: K
@@ -161,6 +167,22 @@ export const request: {
  * `DecodeError` to avoid reporting unreturned entries as missing. Set the
  * operation's page size at least as large as `RequestResolver.batchN`.
  *
+ * A batch makes one call with the services of one of its lookups. When the
+ * method needs services, `batchKey` is required: it reads the services of each
+ * lookup, and only lookups with keys equal under `Equal` share a batch. Return
+ * the value the services vary by, such as
+ * `(context) => Context.get(context, CurrentUser).tenantId`. Methods without
+ * services don't accept `batchKey` and use one batch.
+ *
+ * **Gotchas**
+ *
+ * Don't return the whole context from `batchKey`. It also holds the caller's
+ * span, so most lookups would get a batch of their own.
+ *
+ * A middleware that reads a `Context.Reference` with a default value doesn't
+ * add it to the method's services. `batchKey` isn't required for it, and
+ * lookups with different values can share a batch.
+ *
  * **Example** (Looking up repositories in a `Node` union)
  *
  * ```ts import.meta.vitest
@@ -224,7 +246,7 @@ export const ordered = <
     readonly variables: (keys: ReadonlyArray<K>) => GraphQL.Variables<Op>
     readonly path: Path<GraphQL.Result<Op>, P>
     readonly typename?: T | undefined
-  }
+  } & BatchKey<Op>
 ): RequestResolver.RequestResolver<
   KeyRequest<
     K,
@@ -234,7 +256,7 @@ export const ordered = <
   >
 > => {
   const path = options.path as ReadonlyArray<string>
-  return RequestResolver.make((entries) =>
+  return makeResolver(options.batchKey)((entries) =>
     Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
       const fail = failWith(method)
       const byIndex = new Map<number, NonEmptyArray<GraphQLError>>()
@@ -293,7 +315,8 @@ export const ordered = <
  * `Equal` and `Hash`. `path` and `typename` work as in {@link ordered};
  * `key` receives the narrowed item type.
  *
- * Missing keys, null parents and pagination behave as in {@link ordered}.
+ * Missing keys, null parents, pagination and `batchKey` behave as in
+ * {@link ordered}.
  * Any GraphQL error fails the batch with the same `ResponseError` as a
  * non-partial call, since error paths cannot be matched to keys.
  *
@@ -361,7 +384,7 @@ export const findById = <
     readonly path: Path<GraphQL.Result<Op>, P>
     readonly key: (item: Narrow<Item<GraphQL.Result<Op>, P>, T>) => K
     readonly typename?: T | undefined
-  }
+  } & BatchKey<Op>
 ): RequestResolver.RequestResolver<
   KeyRequest<
     K,
@@ -371,7 +394,7 @@ export const findById = <
   >
 > => {
   const path = options.path as ReadonlyArray<string>
-  return RequestResolver.make((entries) =>
+  return makeResolver(options.batchKey)((entries) =>
     Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
       const fail = failWith(method)
       if (result.errors.length > 0) return batchResponseError(fail, result)
@@ -399,6 +422,18 @@ export const findById = <
 // -----------------------------------------------------------------------------
 
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
+
+/**
+ * Without `batchKey`, all entries share one batch. With it, each batch holds
+ * entries with equal keys, so the first entry's context stands for the batch.
+ */
+const makeResolver = (batchKey: ((context: Context.Context<any>) => unknown) | undefined) =>
+<A extends Request.Any>(
+  runAll: (entries: NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
+): RequestResolver.RequestResolver<A> =>
+  batchKey === undefined
+    ? RequestResolver.make(runAll)
+    : RequestResolver.makeGrouped({ key: (entry) => batchKey(entry.context), resolver: runAll })
 
 /**
  * Calls the method in the first entry's context with deduplicated keys.

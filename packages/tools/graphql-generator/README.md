@@ -266,6 +266,25 @@ error at `["nodes", i]` fails only entry `i`. Any other GraphQL error, and
 transport or decoding failures, fail the whole batch. Middleware still run,
 because the resolver calls the generated client.
 
+Each batch makes one call with the services of one of its lookups. When a
+middleware `requires` a per-request service, such as the signed-in user,
+`ordered` and `findById` require a `batchKey` that reads it. Only lookups
+with equal keys share a call, so one user's lookups never go out with another
+user's token:
+
+```ts
+const RepoById = GraphQLResolver.ordered(client.RepoNodes, {
+  variables: (ids: ReadonlyArray<string>) => ({ ids }),
+  path: ["nodes"],
+  typename: "Repository",
+  batchKey: (context) => Context.get(context, CurrentUser).id
+})
+```
+
+Without services, `batchKey` isn't accepted and all lookups share a batch.
+A middleware that reads a `Context.Reference` with a default value doesn't
+add it to the services, so `batchKey` doesn't cover it.
+
 When results come back in any order, as from a search, `findById` matches them
 by a key read from each result. Add a `SearchRepos` operation to `repos.graphql`,
 then create its resolver inside `GitHub.make`, after the client:
