@@ -82,6 +82,40 @@ describe("OpenAiLanguageModel", () => {
     )
   })
 
+  describe("web search find_in_page", () => {
+    it.effect.each(["generateText", "streamText"] as const)(
+      "preserves actions without a URL with %s",
+      (method) =>
+        Effect.gen(function*() {
+          const action = { type: "find_in_page", pattern: "og:image" } as const
+          const item = { type: "web_search_call", id: "ws_123", status: "completed", action }
+          const event = { type: "response.output_item.done", sequence_number: 1, output_index: 0, item }
+          const body = method === "generateText"
+            ? JSON.stringify({ ...makeDefaultResponse(), output: [item] })
+            : `data: ${JSON.stringify(event)}\n\n`
+          const client = makeRawResponseClient(
+            body,
+            method === "generateText" ? "application/json" : "text/event-stream"
+          )
+          const options = { prompt: "Search the page", toolkit: Toolkit.make(OpenAiTool.WebSearch({})) }
+          const parts = yield* Effect.gen(function*() {
+            if (method === "generateText") return (yield* LanguageModel.generateText(options)).content
+            return yield* LanguageModel.streamText(options).pipe(Stream.runCollect)
+          }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-5.4")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(HttpClient.HttpClient, client)
+          )
+
+          deepStrictEqual(parts.filter((part) => part.type === "tool-call").map((part) => part.params), [{ action }])
+          deepStrictEqual<unknown>(
+            parts.filter((part) => part.type === "tool-result").map((part) => part.result),
+            [{ action, status: "completed" }]
+          )
+        })
+    )
+  })
+
   describe("web search without an action", () => {
     it.effect.each(
       [
