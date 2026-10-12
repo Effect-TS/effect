@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cause, Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -395,6 +395,34 @@ Missing key
         assert.strictEqual(redirected.method, "PUT")
         assert.strictEqual(redirected.body._tag, "Uint8Array")
       }))
+  })
+
+  describe("transient predicates", () => {
+    const request = HttpClientRequest.get("http://test/")
+    const respond = (status: number) => HttpClientResponse.fromWeb(request, new Response(null, { status }))
+    const statusError = (status: number) =>
+      new HttpClientError.HttpClientError({
+        reason: new HttpClientError.StatusCodeError({ request, response: respond(status) })
+      })
+
+    it("classifies the statuses retryTransient retries", () => {
+      const transient = [400, 401, 403, 404, 408, 409, 429, 500, 501, 502, 503, 504].filter((status) =>
+        HttpClient.isTransientResponse(respond(status))
+      )
+      assert.deepStrictEqual(transient, [408, 429, 500, 502, 503, 504])
+    })
+
+    it("classifies errors the way retryTransient does", () => {
+      assert.isTrue(HttpClient.isTransientError(statusError(503)))
+      assert.isFalse(HttpClient.isTransientError(statusError(404)))
+      assert.isTrue(
+        HttpClient.isTransientError(
+          new HttpClientError.HttpClientError({ reason: new HttpClientError.TransportError({ request }) })
+        )
+      )
+      assert.isTrue(HttpClient.isTransientError(new Cause.TimeoutError()))
+      assert.isFalse(HttpClient.isTransientError(new Error("boom")))
+    })
   })
 
   describe("retryTransient", () => {
