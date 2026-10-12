@@ -124,6 +124,32 @@ describe("Generator per-file output", () => {
       }
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("colliding abstract type names have distinct typename aliases and matching references", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": [
+          "type A { id: ID! }",
+          "type B { id: ID! }",
+          "union string = A",
+          "union string_ = B",
+          "type Query { a: string! b: string_! }"
+        ].join("\n"),
+        "src/a.graphql": "query Q { a { __typename } b { __typename } }"
+      }, { schema: "./schema.graphql", documents: ["src/*.graphql"] })
+      assertNoErrors(generated)
+      const aliases = Array.from(
+        generated.file("schema.graphql.ts").matchAll(/export type (\w+) = "([AB])"/g),
+        (match) => [match[1], match[2]]
+      )
+      assert.deepStrictEqual(aliases.map((alias) => alias[1]), ["A", "B"])
+      const references = Array.from(
+        generated.file("src/a.graphql.ts").matchAll(/GraphQL.otherTypename<Shared\.Typename\.(\w+)>/g),
+        (match) => match[1]
+      )
+      assert.deepStrictEqual(references, aliases.map((alias) => alias[0]))
+      assert.notStrictEqual(aliases[0]![0], aliases[1]![0])
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("fragments are declared after the fragments they spread", () =>
     Effect.gen(function*() {
       const { fragments } = yield* generate
