@@ -19,6 +19,7 @@ import * as ShardingConfig from "effect/cluster/ShardingConfig"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import type * as Etag from "effect/http/Etag"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -30,7 +31,6 @@ import * as Option from "effect/Option"
 import * as RpcSerialization from "effect/rpc/RpcSerialization"
 import type { SqlClient } from "effect/sql/SqlClient"
 import { layerK8sHttpClient } from "./BunClusterSocket.ts"
-import * as BunCrypto from "./BunCrypto.ts"
 import * as BunFileSystem from "./BunFileSystem.ts"
 import * as BunHttpServer from "./BunHttpServer.ts"
 import type { BunServices } from "./BunServices.ts"
@@ -163,7 +163,7 @@ export const layer = <
         ? MessageStorage.layerNoop
         : options?.storage === "byo"
         ? Layer.empty
-        : Layer.orDie(SqlMessageStorage.layer).pipe(Layer.provide(BunCrypto.layer))
+        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Crypto.layerSha2)))
     ),
     Layer.provide(
       options?.storage === "local"

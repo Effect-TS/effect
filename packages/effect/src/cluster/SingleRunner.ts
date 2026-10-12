@@ -44,7 +44,7 @@ import * as SqlRunnerStorage from "./SqlRunnerStorage.ts"
  * **Gotchas**
  *
  * - Even when `runnerStorage` is `"memory"`, message storage remains
- *   SQL-backed, so callers must still provide `SqlClient` and `Crypto.Crypto`
+ *   SQL-backed, so callers must still provide `SqlClient` and `Crypto.Sha2`
  *   (used to hash over-length message deduplication keys).
  * - Runner communication and runner health are no-op services, so this layer is
  *   for single-process use rather than multi-runner coordination.
@@ -66,7 +66,7 @@ export const layer = (options?: {
   | Runners.Runners
   | MessageStorage.MessageStorage,
   ConfigError,
-  SqlClient.SqlClient | Crypto.Crypto
+  SqlClient.SqlClient | Crypto.Sha2
 > =>
   Sharding.layer.pipe(
     Layer.provideMerge(Runners.layerNoop),

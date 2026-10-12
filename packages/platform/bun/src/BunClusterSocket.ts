@@ -22,6 +22,7 @@ import * as SocketRunner from "effect/cluster/SocketRunner"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -29,7 +30,6 @@ import * as Layer from "effect/Layer"
 import * as RpcSerialization from "effect/rpc/RpcSerialization"
 import type * as SocketServer from "effect/socket/SocketServer"
 import type { SqlClient } from "effect/sql/SqlClient"
-import * as BunCrypto from "./BunCrypto.ts"
 import * as BunFileSystem from "./BunFileSystem.ts"
 
 export {
@@ -115,7 +115,7 @@ export const layer = <
         ? MessageStorage.layerNoop
         : options?.storage === "byo"
         ? Layer.empty
-        : Layer.orDie(SqlMessageStorage.layer).pipe(Layer.provide(BunCrypto.layer))
+        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Crypto.layerSha2)))
     ),
     Layer.provide(
       options?.storage === "local"

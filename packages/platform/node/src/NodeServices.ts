@@ -9,7 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type { Crypto } from "effect/Crypto"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type { Path } from "effect/Path"
@@ -31,7 +30,7 @@ import * as NodeTerminal from "./NodeTerminal.ts"
  * @category models
  * @since 4.0.0
  */
-export type NodeServices = ChildProcessSpawner | Crypto | FileSystem | Path | Stdio | Terminal
+export type NodeServices = ChildProcessSpawner | NodeCrypto.NodeCryptoServices | FileSystem | Path | Stdio | Terminal
 
 /**
  * Provides the default Node implementations for child process spawning,
