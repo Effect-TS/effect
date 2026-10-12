@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `HttpServerResponse.toWeb` for a raw `Response` with immutable headers, such as `Response.redirect` or a WebSocket upgrade from a Cloudflare Durable Object. Outer headers and cookies are now merged into a copy of the response. Previously the merge threw and `toWebHandler` never responded.
+Merge outer headers and cookies into a copy of a raw `Response` in `HttpServerResponse.toWeb`, leaving the original headers unchanged. This supports immutable headers and prevents cookies from accumulating across requests that reuse a response. Responses with nothing to merge are returned unchanged.

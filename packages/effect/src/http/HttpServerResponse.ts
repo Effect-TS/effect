@@ -1051,10 +1051,10 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
  * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
  * cancelled without awaiting completion, and cancellation errors are ignored.
  *
- * A raw `Response` body is returned as-is after the outer headers are merged
- * into it: outer headers replace native ones, and cookies are appended. If its
- * headers are immutable (e.g. `Response.redirect`), they are merged into a copy
- * instead. When its body is omitted, the bodyless `Response` keeps those merged
+ * A raw `Response` is returned as-is when there are no outer headers or cookies
+ * to merge. Otherwise, they are merged into a copy without modifying the raw
+ * response: outer headers replace native ones, and cookies are appended. When
+ * its body is omitted, the bodyless `Response` keeps those merged
  * headers and uses the outer status for 204, 205 and 304, or the raw `Response`
  * status otherwise.
  *
@@ -1083,16 +1083,12 @@ export const toWeb = (
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
     if (!withoutBody) {
-      try {
-        mergeHeaders(raw.headers, headers)
+      if (headers.keys().next().done) {
         return raw
-      } catch {
-        // Immutable headers. No `instanceof TypeError` check: it fails for errors from another realm, as under Jest.
-        // The copy keeps runtime-specific members such as workerd's `webSocket`.
-        const copy = new Response(raw.body, raw)
-        mergeHeaders(copy.headers, headers)
-        return copy
       }
+      const copy = new Response(raw.body, raw)
+      mergeHeaders(copy.headers, headers)
+      return copy
     }
     // A bodyless outer status is what the caller chose to send; otherwise the
     // body is only omitted for HEAD and the raw Response describes the resource.
