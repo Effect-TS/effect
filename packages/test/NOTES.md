@@ -22,10 +22,11 @@ node src/cli/bin.ts examples --list --reporter jsonl # the same tree, as JSON, w
 node src/cli/bin.ts examples --tag fixtures --workers 1
 node src/cli/bin.ts examples --bail --workers 1
 node src/cli/bin.ts --failed                         # re-run the tests that failed in previous runs
+node src/cli/bin.ts --changed                        # only tests affected by uncommitted changes (--since main: the branch too)
 node src/cli/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > cause-aware > defect (intentional failure)" --seed 1234
 ```
 
-Flags: `[paths...] [--list] [--test <id|substring>] [--failed] [--tag <t>] [--seed <n>] [--workers <n>] [--bail] [--reporter agent|human|jsonl] [--config <file> | --no-config]`.
+Flags: `[paths...] [--list] [--test <id|substring>] [--failed] [--changed] [--since <ref>] [--tag <t>] [--seed <n>] [--workers <n>] [--bail] [--reporter agent|human|jsonl] [--config <file> | --no-config]`.
 The CLI is built with `effect/cli`, so `--help`, `--version` and shell completions come for free, and invalid flags are reported on stderr. It is one-shot and never interactive. It exits 0 when everything is green and 1 otherwise; Ctrl-C exits with 130. Discovery
 finds `*.test.ts` files under the given paths.
 
@@ -37,6 +38,11 @@ finds `*.test.ts` files under the given paths.
   test has a short id (8 hex characters of a hash of its full id, stable across runs) that `--test` accepts and rerun
   hints use. A closed stdout (`etest | head`) stops the output but not the run, and the exit code is kept. Usage errors
   print only the error and a `--help` hint (`helpOnError: false`, added to effect/cli for this).
+- **`--changed` / `--since <ref>`** (`src/cli/Changed.ts`) run only the test files affected by uncommitted changes (staged,
+  unstaged, untracked), plus, with `--since`, what changed on the branch since it left `ref`. A test file is affected when it
+  or anything it imports changed; imports are followed statically (relative imports, and packages that resolve to source
+  inside the repo, i.e. workspace packages; never `node_modules`). A changed test config affects everything. No changes, or
+  nothing affected, says so and exits 0.
 - **`--failed`** re-runs the failures recorded in `node_modules/.cache/etest/last-run.json` (`src/cli/LastRun.ts`). The record
   is merged across runs: tests that ran replace their entry (a pass removes it), others are kept, and entries whose file no
   longer exists are dropped. A file that failed to load is recorded by its file id and re-runs as a whole. No record is an

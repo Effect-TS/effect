@@ -12,9 +12,10 @@ import * as Runtime from "effect/Runtime"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { run } from "../Coordinator.ts"
+import { discover, run } from "../Coordinator.ts"
 import * as Reporters from "../Reporters.ts"
 import { isConfig } from "../Test.ts"
+import * as Changed from "./Changed.ts"
 import * as LastRun from "./LastRun.ts"
 import { detect, moduleUrl } from "./Platform.ts"
 
@@ -44,6 +45,17 @@ const test = Flag.String("test").pipe(
 const failed = Flag.Boolean("failed").pipe(
   Flag.withDescription(`Re-run only the tests that failed in previous runs (recorded in ${LastRun.location})`),
   Flag.withDefault(false)
+)
+
+const changed = Flag.Boolean("changed").pipe(
+  Flag.withDescription("Run only the tests affected by uncommitted changes (files they import, followed statically)"),
+  Flag.withDefault(false)
+)
+
+const since = Flag.String("since").pipe(
+  Flag.withMetavar("REF"),
+  Flag.withDescription("With --changed (implied): also include what changed on this branch since it left REF"),
+  Flag.optional
 )
 
 const tag = Flag.String("tag").pipe(
@@ -119,6 +131,8 @@ export const cli = Command.make("etest", {
   list,
   test,
   failed,
+  changed,
+  since,
   tag,
   seed,
   workers,
@@ -163,6 +177,35 @@ export const cli = Command.make("etest", {
       ids = new Set(entries.map(([id]) => id))
       selectedBy.push(`--failed (${entries.length} recorded)`)
       if (paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
+    }
+    const sinceRef = Option.getOrUndefined(options.since)
+    if (options.changed || sinceRef !== undefined) {
+      const label = sinceRef === undefined ? "--changed" : `--since ${sinceRef}`
+      const changedFiles = yield* Effect.try(() => Changed.changedFiles(process.cwd(), sinceRef)).pipe(
+        Effect.catch((error) =>
+          Console.error(`${label}: could not ask git for changes: ${String(error.cause)}`).pipe(
+            Effect.andThen(Effect.fail(new ExitCode({ code: 1 })))
+          )
+        )
+      )
+      if (changedFiles.size === 0) {
+        yield* Console.log(`${label}: no changed files; nothing to run`)
+        return
+      }
+      if (configFile !== undefined && changedFiles.has(configFile)) {
+        selectedBy.push(`${label} (the test config changed: every test is affected)`)
+      } else {
+        const { files } = discover(paths)
+        const hit = Changed.affected(files, changedFiles, process.cwd())
+        if (hit.length === 0) {
+          yield* Console.log(
+            `${label}: no test file is affected by the changes (${changedFiles.size} changed, ${files.length} test files searched); nothing to run`
+          )
+          return
+        }
+        paths = hit.map((file) => path.relative(process.cwd(), file))
+        selectedBy.push(`${label} (${changedFiles.size} changed files)`)
+      }
     }
     const ctx: Reporters.ReporterContext = {
       write,

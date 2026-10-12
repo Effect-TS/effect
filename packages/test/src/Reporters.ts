@@ -49,9 +49,16 @@ const summaryLine = (r: RunFinished, runSeed: number) => {
 
 /** What ran and why, e.g. `selected 3 of 60 tests in 8 files (examples); --test "fees"`. */
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
+/** At most 3 paths; the full list is in `RunPlanned.selection` (jsonl). */
+const pathsList = (paths: ReadonlyArray<string>) =>
+  paths.length === 0
+    ? "."
+    : paths.length <= 3
+    ? paths.join(", ")
+    : `${paths.slice(0, 2).join(", ")}, +${paths.length - 2} more`
 const selectionLine = (selection: Selection, selected: number) =>
   `selected ${selected} of ${plural(selection.tests, "test")} in ${plural(selection.files, "file")} (${
-    selection.paths.length ? selection.paths.join(", ") : "."
+    pathsList(selection.paths)
   })${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}`
 
 /** Shared bookkeeping: plan order gives deterministic output regardless of scheduling. */
