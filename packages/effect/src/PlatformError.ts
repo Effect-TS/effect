@@ -67,8 +67,7 @@ export class BadArgument extends Data.TaggedError("BadArgument")<{
  * **Details**
  *
  * The tags group lower-level platform errors into a stable set such as
- * `NotFound`, `PermissionDenied`, `TimedOut`, and `Unknown`. `Unsupported`
- * means the platform does not provide the requested operation or algorithm.
+ * `NotFound`, `PermissionDenied`, `TimedOut`, and `Unknown`.
  *
  * @see {@link SystemError} for the error data that carries this tag on its `_tag` field
  * @see {@link systemError} for creating a `PlatformError` from a system failure with one of these tags
@@ -87,7 +86,6 @@ export type SystemErrorTag =
   | "TimedOut"
   | "UnexpectedEof"
   | "Unknown"
-  | "Unsupported"
   | "WouldBlock"
   | "WriteZero"
 

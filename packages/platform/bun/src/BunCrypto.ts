@@ -2,13 +2,12 @@
  * The `BunCrypto` module provides Bun's `Crypto` service layer for Effect
  * programs. Provide {@link layer} at the edge of a Bun app, CLI, script, or
  * test to satisfy `effect/Crypto` with cryptographically secure random bytes,
- * UUID generation, random values, digests, HMAC, PBKDF2, key management, encryption, and signing.
+ * UUID generation, random values, and SHA digest operations.
  *
  * This adapter reuses the shared Node-compatible implementation, so randomness
- * and cryptographic operations follow Bun's `node:crypto` compatibility layer.
- * Argon2id requires native runtime support; unavailable algorithms fail with
- * platform errors. MD5 and SHA-1 support interoperability with existing
- * protocols; use stronger algorithms for new security-sensitive designs.
+ * and digest behavior follow Bun's `node:crypto` compatibility layer. SHA-1 is
+ * present for interoperability with existing protocols, not for new
+ * security-sensitive designs.
  *
  * @stability unstable
  * @since 1.0.0

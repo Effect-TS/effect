@@ -3,11 +3,11 @@
  * Effect programs. Provide {@link layer} at the edge of a Node application,
  * CLI, script, or test to satisfy `effect/Crypto` with Node's `node:crypto`
  * implementation for secure random bytes, UUID generation, random values, and
- * digests, HMAC, PBKDF2, key management, encryption, and signing.
+ * SHA digest operations.
  *
  * This module is the public Node adapter around the shared Node-compatible
- * implementation. Cryptographic failures are reported as platform errors. MD5
- * and SHA-1 remain available for interoperability with existing protocols.
+ * implementation. Digest failures are reported as platform errors, and SHA-1
+ * remains available only for interoperability with existing protocols.
  *
  * @stability unstable
  * @since 1.0.0
