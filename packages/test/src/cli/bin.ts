@@ -9,8 +9,8 @@ import type { Stdio } from "effect/Stdio"
 import type { Terminal } from "effect/Terminal"
 import type * as Worker from "effect/workers/Worker"
 import PackageJson from "../../package.json" with { type: "json" }
-import * as Platform from "../Platform.ts"
 import { cli } from "./Cli.ts"
+import * as Platform from "./Platform.ts"
 
 /**
  * What the CLI needs from a platform (`./platform/*.ts`): the runtime's standard services

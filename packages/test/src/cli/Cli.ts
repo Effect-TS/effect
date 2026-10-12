@@ -7,14 +7,15 @@ import * as Console from "effect/Console"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
+import * as RpcClient from "effect/rpc/RpcClient"
 import * as Runtime from "effect/Runtime"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { executorPool, run } from "../Coordinator.ts"
-import { detect, moduleUrl } from "../Platform.ts"
+import { run } from "../Coordinator.ts"
 import * as Reporters from "../Reporters.ts"
 import { isConfig } from "../Test.ts"
+import { detect, moduleUrl } from "./Platform.ts"
 
 /** Ends the process with `code`. Whatever caused it has already been reported. */
 export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: number }> {
@@ -73,6 +74,14 @@ const noConfig = Flag.Boolean("no-config").pipe(
   Flag.withDescription("Ignore the test config, so every file builds its own layers"),
   Flag.withDefault(false)
 )
+
+/**
+ * The executors: a pool of workers speaking `ExecutorRpcs`, each running up to
+ * `filesPerExecutor` files at once. The platform provides the worker spawner (see
+ * `platform/*.ts`), so this is the same on Node, Bun and Deno.
+ */
+const executorPool = (workers: number, filesPerExecutor: number) =>
+  RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor })
 
 /**
  * Validates the config before starting, so a broken config fails fast with a clear

@@ -451,7 +451,7 @@ const classify = (
 
 /**
  * The executor: serves `ExecutorRpcs` over whichever `RpcServer.Protocol` it is given. It
- * knows nothing about the transport; `executor-worker/*.ts` provides the worker one, and
+ * knows nothing about the transport; the CLI (`cli/executor/*.ts`) provides the worker one, and
  * a socket or stdio protocol would make it a child process or a remote machine.
  */
 export const layer: Layer.Layer<never, never, RpcServer.Protocol> = RpcServer.layer(ExecutorRpcs).pipe(

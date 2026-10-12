@@ -100,12 +100,6 @@ export const plan = (
   )
 }
 
-// --- the executor pool: executors speaking ExecutorRpcs. The platform (see Platform.ts)
-// provides the Worker spawner, so this works the same on Node, Bun and Deno.
-
-export const executorPool = (workers: number, filesPerExecutor: number) =>
-  RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor })
-
 // --- running
 
 export const run = (opts: RunOptions) =>
