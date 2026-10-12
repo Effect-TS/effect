@@ -1,6 +1,7 @@
 import { MssqlClient } from "@effect/sql-mssql"
 import { assert, it } from "@effect/vitest"
 import { Effect } from "effect"
+import * as Digest from "effect/crypto/Digest"
 import type * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import type { StoreId } from "effect/eventlog/EventLogMessage"
@@ -114,5 +115,5 @@ for (
         written.flatMap((batch) => batch.entryIds.map((id) => Array.from(id))),
         expected.map((byte) => Array(16).fill(byte))
       )
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 }
