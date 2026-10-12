@@ -96,5 +96,5 @@ export default Test.suite("Effect.provide in a body", [
   Test.provide(OuterDatabase.layer),
   Test.provide(Tx.layer),
   Test.provide(Seeds.layer),
-  Test.provide(Database.layer) // shared via effect-test.config.ts, when the config is used
+  Test.provide(Database.layer) // shared via etest.config.ts, when the config is used
 )

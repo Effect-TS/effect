@@ -133,7 +133,7 @@ export const provide = <ROut, E, RIn>(
 // --- config
 
 /**
- * The test config: the default export of `effect-test.config.ts`. It only ever
+ * The test config: the default export of `etest.config.ts`. It only ever
  * optimises: every test file still provides everything it needs.
  */
 export interface Config {

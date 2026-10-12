@@ -2,7 +2,7 @@
 // - on the root suite (Database, Schema): once for this file
 // - on a suite (Seeds): once per suite, shared by its tests
 // - on a test (Tx): fresh for every test (and every retry attempt)
-// Database is also listed as shared in effect-test.config.ts, so with the config both
+// Database is also listed as shared in etest.config.ts, so with the config both
 // fixtures-a and fixtures-b reuse one lazily built instance. The file doesn't depend on
 // that: it passes with and without the config. fixtures-a and fixtures-b are identical on purpose.
 import * as Effect from "effect/Effect"

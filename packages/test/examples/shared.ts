@@ -13,7 +13,7 @@ const counted = (name: "schema" | "seeds" | "tx") =>
     () => Effect.sync(() => void releases[name]++)
   )
 
-/** Expensive: e.g. a database container. Listed as shared in effect-test.config.ts. */
+/** Expensive: e.g. a database container. Listed as shared in etest.config.ts. */
 export class Database
   extends Context.Service<Database, { readonly instance: number; readonly url: string }>()("Database")
 {

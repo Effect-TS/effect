@@ -67,7 +67,7 @@ finds `*.test.ts` files under the given paths.
      them. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
      never builds its layers. A fresh fixture for every test in a suite is written per test (`tests.map(Test.provide(layer))`),
      and a reusable suite that needs that takes its layer as a parameter (`userRepoContract(InMemoryUserRepo)`).
-     **Cross-file sharing is config, and config only optimises.** `effect-test.config.ts` (default export `Test.config({ shared })`,
+     **Cross-file sharing is config, and config only optimises.** `etest.config.ts` (default export `Test.config({ shared })`,
      or `--config <file>`, or `--no-config`) lists layers shared by the run. Each is built lazily, the first time any file provides
      that same Layer value, from the run's context (not the asking file's), detached from the asking test, kept until the run ends;
      a failed build is recorded for the run. This is a custom MemoMap at the root of the fork chain. Every file still provides
@@ -227,7 +227,7 @@ export default Test.suite("fixtures", [suite("users"), suite("orders")]).pipe(
 ```
 
 ```ts
-// effect-test.config.ts
+// etest.config.ts
 export default Test.config({
   shared: [Database.layer]
 })

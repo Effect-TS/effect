@@ -65,7 +65,7 @@ const reporter = Flag.Literals("reporter", ["agent", "human", "jsonl"]).pipe(
 )
 
 const config = Flag.File("config", { mustExist: true }).pipe(
-  Flag.withDescription("Test config file (default: ./effect-test.config.ts when it exists)"),
+  Flag.withDescription("Test config file (default: ./etest.config.ts when it exists)"),
   Flag.optional
 )
 
@@ -118,7 +118,7 @@ export const cli = Command.make("etest", {
         ? undefined
         : Option.getOrElse(
           options.config,
-          () => fs.existsSync("effect-test.config.ts") ? "effect-test.config.ts" : undefined
+          () => fs.existsSync("etest.config.ts") ? "etest.config.ts" : undefined
         )
     )
     const write = (s: string) => {

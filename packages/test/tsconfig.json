@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "examples", "effect-test.config.ts"],
+  "include": ["src", "examples", "etest.config.ts"],
   "compilerOptions": {
     "types": ["node", "bun", "deno"],
     "noEmit": true,
