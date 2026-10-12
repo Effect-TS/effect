@@ -286,16 +286,39 @@ const excludesObject = (js: JsonSchema.JsonSchema): boolean =>
 const isObjectSchema = (js: JsonSchema.JsonSchema): boolean =>
   js.type === "object" || (js.type === undefined && isPlainObject(js) && (js.properties ?? js.required) !== undefined)
 
-/** Both objects at once: properties are combined, and a property defined twice must satisfy both. */
+const declaredKeys = (js: JsonSchema.JsonSchema): ReadonlyArray<string> => [
+  ...Object.keys((js.properties as object | undefined) ?? {}),
+  ...(js.required as ReadonlyArray<string> | undefined ?? [])
+]
+
+/**
+ * Both objects at once: properties are combined, and a property defined twice must satisfy both.
+ *
+ * A side closed by the source spec (`additionalProperties: false`) forbids every key it does not
+ * declare, so keys only the other side declares or requires become `false` (absent) instead of being
+ * added. The generator only closes objects after composition, so every closure seen here is explicit.
+ */
 const mergeObjects = (left: JsonSchema.JsonSchema, right: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-  const properties: { [x: string]: unknown } = { ...(left.properties as object | undefined) }
-  for (const [key, schema] of Object.entries((right.properties as object | undefined) ?? {})) {
+  const leftProperties = (left.properties as { readonly [x: string]: unknown } | undefined) ?? {}
+  const rightProperties = (right.properties as { readonly [x: string]: unknown } | undefined) ?? {}
+  const properties: { [x: string]: unknown } = { ...leftProperties }
+  for (const [key, schema] of Object.entries(rightProperties)) {
     const current = properties[key]
-    properties[key] = current === undefined || JSON.stringify(current) === JSON.stringify(schema)
+    properties[key] = current === undefined
+      ? left.additionalProperties === false ? false : schema
+      : JSON.stringify(current) === JSON.stringify(schema)
       ? schema
       : current === false || schema === false
       ? false
       : { allOf: [current, schema] }
+  }
+  for (
+    const [closed, other, closedProperties] of [[left, right, leftProperties], [right, left, rightProperties]] as const
+  ) {
+    if (closed.additionalProperties !== false) continue
+    for (const key of declaredKeys(other)) {
+      if (!Object.hasOwn(closedProperties, key)) properties[key] = false
+    }
   }
   const required = [...new Set([...(left.required as Array<string> ?? []), ...(right.required as Array<string> ?? [])])]
   const additionalProperties = left.additionalProperties === false || right.additionalProperties === false
@@ -309,38 +332,87 @@ const mergeObjects = (left: JsonSchema.JsonSchema, right: JsonSchema.JsonSchema)
   }
 }
 
-type Part =
-  | { readonly _tag: "Object"; readonly schema: JsonSchema.JsonSchema }
-  | {
-    readonly _tag: "Choice"
-    readonly mode: "anyOf" | "oneOf"
-    readonly branches: ReadonlyArray<JsonSchema.JsonSchema>
-  }
+type Choice = {
+  readonly _tag: "Choice"
+  readonly mode: "anyOf" | "oneOf"
+  readonly branches: ReadonlyArray<JsonSchema.JsonSchema>
+}
 
-const mergeParts = (left: Part, right: Part): Part | undefined => {
-  if (left._tag === "Object") {
-    return right._tag === "Object"
-      ? { _tag: "Object", schema: mergeObjects(left.schema, right.schema) }
-      : mergeIntoChoice(left.schema, right)
+type Part = { readonly _tag: "Object"; readonly schema: JsonSchema.JsonSchema } | Choice
+
+/**
+ * Both branches at once, keeping the annotations of `branch`: an empty array when they cannot hold
+ * together, `undefined` when there is no exact merge.
+ */
+const mergeBranch = (
+  object: JsonSchema.JsonSchema,
+  branch: JsonSchema.JsonSchema
+): ReadonlyArray<JsonSchema.JsonSchema> | undefined => {
+  if (excludesObject(object)) {
+    return excludesObject(branch) || !isPlainObject(branch) ? undefined : branch.type === "object" ? [] : [object]
   }
-  return right._tag === "Object" ? mergeIntoChoice(right.schema, left) : undefined
+  if (excludesObject(branch)) return isPlainObject(object) ? (object.type === "object" ? [] : [branch]) : undefined
+  if (!isPlainObject(object) || !isPlainObject(branch)) return undefined
+  return [{ ...pick(branch, isAnnotation), ...mergeObjects(object, branch) }]
+}
+
+const mergeBranches = (
+  branches: ReadonlyArray<JsonSchema.JsonSchema>,
+  merge: (branch: JsonSchema.JsonSchema) => ReadonlyArray<JsonSchema.JsonSchema> | undefined
+): ReadonlyArray<JsonSchema.JsonSchema> | undefined => {
+  const out: Array<JsonSchema.JsonSchema> = []
+  for (const branch of branches) {
+    const merged = merge(branch)
+    if (merged === undefined) return undefined
+    out.push(...merged)
+  }
+  return out.length === 0 ? undefined : out
 }
 
 /**
  * Distributes object constraints into each branch. A branch that cannot be an object is unaffected by
  * them, and is dropped when the object constraints require `type: "object"`.
  */
-const mergeIntoChoice = (
-  object: JsonSchema.JsonSchema,
-  choice: Extract<Part, { readonly _tag: "Choice" }>
-): Part | undefined => {
-  const branches = choice.branches.flatMap((branch) =>
-    excludesObject(branch)
-      ? object.type === "object" ? [] : [branch]
-      : [{ ...pick(branch, isAnnotation), ...mergeObjects(object, branch) }]
-  )
-  return branches.length === 0 ? undefined : { ...choice, branches }
+const mergeIntoChoice = (object: JsonSchema.JsonSchema, choice: Choice): Part | undefined => {
+  const branches = mergeBranches(choice.branches, (branch) => mergeBranch(object, branch))
+  return branches === undefined ? undefined : { ...choice, branches }
 }
+
+/**
+ * Both alternatives at once.
+ *
+ * - A single branch is the same as its only alternative, so it is distributed into the other choice.
+ * - Two `anyOf` lists become the `anyOf` of every pair.
+ * - Otherwise each `oneOf` branch nests the other list, `oneOf: [{ anyOf: [b1 & a1, b1 & a2] }, ...]`:
+ *   with the inner list holding, exactly one outer branch holds exactly when exactly one `b` holds.
+ *   Nested branches cannot take further merges.
+ */
+const mergeChoices = (left: Choice, right: Choice): Part | undefined => {
+  if (right.branches.length === 1 && isPlainObject(right.branches[0])) return mergeIntoChoice(right.branches[0], left)
+  if (left.branches.length === 1 && isPlainObject(left.branches[0])) return mergeIntoChoice(left.branches[0], right)
+  if (left.mode === "anyOf" && right.mode === "anyOf") {
+    const branches = mergeBranches(
+      left.branches,
+      (outer) => mergeBranches(right.branches, (inner) => mergeBranch(outer, inner))
+    )
+    return branches === undefined ? undefined : { ...left, branches }
+  }
+  const [outer, inner] = left.mode === "oneOf" ? [left, right] : [right, left]
+  const branches = mergeBranches(outer.branches, (branch) => {
+    const nested = mergeBranches(inner.branches, (alternative) => mergeBranch(alternative, branch))
+    return nested === undefined ? undefined : [{ ...pick(branch, isAnnotation), [inner.mode]: nested }]
+  })
+  return branches === undefined ? undefined : { ...outer, branches }
+}
+
+const mergeParts = (left: Part, right: Part): Part | undefined =>
+  left._tag === "Object"
+    ? right._tag === "Object"
+      ? { _tag: "Object", schema: mergeObjects(left.schema, right.schema) }
+      : mergeIntoChoice(left.schema, right)
+    : right._tag === "Object"
+    ? mergeIntoChoice(right.schema, left)
+    : mergeChoices(left, right)
 
 /**
  * Normalizes object compositions the Effect JSON Schema importer cannot translate as-is.
@@ -394,13 +466,17 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
   }
 
   const compose = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
-    const mode = choiceMode(js)
     const allOf = Array.isArray(js.allOf) ? js.allOf : []
-    const { allOf: _allOf, anyOf: _anyOf, oneOf: _oneOf, ...rest } = js
+    const { allOf: _allOf, anyOf, oneOf, ...rest } = js
     if (!isPlainObject(rest)) return js
     const own = pick(rest, (key) => objectKeys.has(key))
     const hasOwn = own.properties !== undefined || own.required !== undefined
-    const members = mode === undefined ? allOf : [...allOf, { [mode]: js[mode] }]
+    // `anyOf` and `oneOf` on the same schema must both hold, so each is a separate part
+    const members = [
+      ...allOf,
+      ...(Array.isArray(anyOf) ? [{ anyOf }] : []),
+      ...(Array.isArray(oneOf) ? [{ oneOf }] : [])
+    ]
     // Leave a single source of constraints alone, so a lone `$ref` keeps its name
     if ((hasOwn ? 1 : 0) + members.length < 2) return js
     let part: Part = { _tag: "Object", schema: own }
