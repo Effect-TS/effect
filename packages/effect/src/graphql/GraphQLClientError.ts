@@ -20,6 +20,8 @@ const TypeId = "~effect/graphql/GraphQLClientError"
  *
  * `path[0]` is the response key the error belongs to, which is the alias when
  * the document used one, so callers can match an error to the field it hit.
+ * Unknown top-level fields are preserved as JSON values, including GitHub's
+ * `type` field.
  *
  * **Example** (Finding which alias an error belongs to)
  *
@@ -30,7 +32,7 @@ const TypeId = "~effect/graphql/GraphQLClientError"
  * const error = Schema.decodeUnknownSync(GraphQLClientError.GraphQLError)({
  *   message: "Could not resolve to a Repository",
  *   path: ["missing", "issues"],
- *   extensions: { type: "NOT_FOUND" }
+ *   type: "NOT_FOUND"
  * })
  *
  * error.path?.[0] // => "missing"
@@ -40,12 +42,15 @@ const TypeId = "~effect/graphql/GraphQLClientError"
  * @category schemas
  * @since 4.0.0
  */
-export const GraphQLError = Schema.Struct({
-  message: Schema.String,
-  locations: Schema.optional(Schema.Array(Schema.Struct({ line: Schema.Number, column: Schema.Number }))),
-  path: Schema.optional(Schema.Array(Schema.Union([Schema.String, Schema.Number]))),
-  extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json))
-})
+export const GraphQLError = Schema.StructWithRest(
+  Schema.Struct({
+    message: Schema.String,
+    locations: Schema.optional(Schema.Array(Schema.Struct({ line: Schema.Number, column: Schema.Number }))),
+    path: Schema.optional(Schema.Array(Schema.Union([Schema.String, Schema.Number]))),
+    extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json))
+  }),
+  [Schema.Record(Schema.String, Schema.Json)]
+)
 
 /**
  * The decoded type of {@link GraphQLError}.
