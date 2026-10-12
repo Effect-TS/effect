@@ -123,29 +123,6 @@ export interface Argon2idOptions {
 }
 
 /**
- * Inputs for XChaCha20-Poly1305 authenticated encryption and decryption.
- *
- * **Details**
- *
- * Uses a 32-byte key, a 24-byte nonce, and a 16-byte tag appended to ciphertext.
- * `data` is plaintext for encryption and ciphertext with its tag for decryption.
- *
- * **Gotchas**
- *
- * Never reuse a nonce with the same key. Backend support is runtime-dependent.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface XChaCha20Poly1305Options {
-  readonly key: Uint8Array
-  readonly nonce: Uint8Array
-  readonly data: Uint8Array
-  readonly additionalData?: Uint8Array | undefined
-}
-
-/**
  * JSON Web Key material accepted by native key parsers.
  *
  * **Details**
@@ -476,16 +453,6 @@ export interface Crypto {
    * Derives a password key using Argon2id version 19.
    */
   argon2id(options: Argon2idOptions): Effect.Effect<Uint8Array, PlatformError.PlatformError>
-
-  /**
-   * Encrypts plaintext with XChaCha20-Poly1305 and appends its authentication tag.
-   */
-  xchacha20poly1305Encrypt(options: XChaCha20Poly1305Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
-
-  /**
-   * Authenticates and decrypts XChaCha20-Poly1305 ciphertext.
-   */
-  xchacha20poly1305Decrypt(options: XChaCha20Poly1305Options): Effect.Effect<Uint8Array, PlatformError.PlatformError>
 
   /**
    * Imports JSON Web Key material into the native backend. Without explicit
@@ -980,41 +947,6 @@ export const argon2id = (options: Argon2idOptions): Effect.Effect<Uint8Array, Pl
   Effect.flatMap(Crypto, (crypto) => crypto.argon2id(options))
 
 /**
- * Encrypts plaintext with XChaCha20-Poly1305 using the Crypto service.
- *
- * **Details**
- *
- * Requires a 32-byte key and a unique 24-byte nonce. The output includes a
- * 16-byte authentication tag. Backends without native ChaCha20-Poly1305 fail
- * with a `SystemError` tagged `Unsupported`.
- *
- * @stability unstable
- * @category encryption
- * @since 4.0.0
- */
-export const xchacha20poly1305Encrypt = (
-  options: XChaCha20Poly1305Options
-): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
-  Effect.flatMap(Crypto, (crypto) => crypto.xchacha20poly1305Encrypt(options))
-
-/**
- * Authenticates and decrypts XChaCha20-Poly1305 ciphertext.
- *
- * **Details**
- *
- * The nonce and additional data must match encryption. Authentication failures
- * fail with a `SystemError` tagged `InvalidData` without returning plaintext.
- *
- * @stability unstable
- * @category encryption
- * @since 4.0.0
- */
-export const xchacha20poly1305Decrypt = (
-  options: XChaCha20Poly1305Options
-): Effect.Effect<Uint8Array, PlatformError.PlatformError, Crypto> =>
-  Effect.flatMap(Crypto, (crypto) => crypto.xchacha20poly1305Decrypt(options))
-
-/**
  * Imports JSON Web Key material using the Crypto service.
  *
  * **Details**
@@ -1318,8 +1250,6 @@ export interface Backend {
   readonly pbkdf2?: Crypto["pbkdf2"] | undefined
   readonly hkdf?: Crypto["hkdf"] | undefined
   readonly argon2id?: Crypto["argon2id"] | undefined
-  readonly xchacha20poly1305Encrypt?: Crypto["xchacha20poly1305Encrypt"] | undefined
-  readonly xchacha20poly1305Decrypt?: Crypto["xchacha20poly1305Decrypt"] | undefined
 }
 
 /**
@@ -1507,18 +1437,6 @@ export const make = (impl: Backend): Crypto => {
           ? backend.argon2id(options)
           : failArgument("argon2id", "invalid Argon2id memory, passes, parallelism, output length, or salt")
       }),
-    xchacha20poly1305Encrypt: (options) =>
-      owned(options, (options) =>
-        Effect.flatMap(
-          validateXChaCha("xchacha20poly1305Encrypt", options),
-          () => backend.xchacha20poly1305Encrypt(options)
-        )),
-    xchacha20poly1305Decrypt: (options) =>
-      owned(options, (options) =>
-        Effect.flatMap(
-          validateXChaCha("xchacha20poly1305Decrypt", options),
-          () => backend.xchacha20poly1305Decrypt(options)
-        )),
     importJwk: (jwk, algorithm, options) =>
       owned(algorithm, (algorithm) =>
         Effect.flatMap(
@@ -1634,20 +1552,6 @@ const validateSize = (method: string, size: number): Effect.Effect<number, Platf
       description: "size must be a non-negative safe integer"
     }))
 
-const validateXChaCha = (
-  method: string,
-  options: XChaCha20Poly1305Options
-): Effect.Effect<void, PlatformError.PlatformError> =>
-  options.key.length === 32 && options.nonce.length === 24
-    ? Effect.void
-    : Effect.fail(
-      PlatformError.badArgument({
-        module: "Crypto",
-        method,
-        description: "XChaCha20-Poly1305 requires a 32-byte key and a 24-byte nonce"
-      })
-    )
-
 const failArgument = (method: string, description: string): Effect.Effect<never, PlatformError.PlatformError> =>
   Effect.fail(PlatformError.badArgument({ module: "Crypto", method, description }))
 
@@ -1665,9 +1569,7 @@ const byteOperations = [
   "hmac",
   "pbkdf2",
   "hkdf",
-  "argon2id",
-  "xchacha20poly1305Encrypt",
-  "xchacha20poly1305Decrypt"
+  "argon2id"
 ] as const
 
 const keyOperations = [

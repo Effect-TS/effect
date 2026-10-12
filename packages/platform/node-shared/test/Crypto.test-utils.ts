@@ -38,8 +38,7 @@ const supportsArgon2id = (): boolean => {
 /**
  * Runs known-answer and interoperability tests against a platform `Crypto`
  * layer. `md5` states whether the runtime provides MD5 digests, and `native`
- * whether it provides Argon2id and XChaCha20-Poly1305 where the runtime's
- * `node:crypto` does. Unsupported operations must fail with a `PlatformError`.
+ * whether it provides Argon2id where the runtime's `node:crypto` does. Unsupported operations must fail with a `PlatformError`.
  */
 export const describeCrypto = (
   label: string,
@@ -180,38 +179,6 @@ export const describeCrypto = (
           assert.strictEqual(error.reason.method, "argon2id")
           assert.strictEqual(error.reason._tag, "Unsupported")
         }
-      }).pipe(Effect.provide(layer)))
-
-    it.effect("encrypts with XChaCha20-Poly1305 where the runtime supports it", () =>
-      Effect.gen(function*() {
-        // draft-irtf-cfrg-xchacha-03, Appendix A.3.1.
-        const input: Crypto.XChaCha20Poly1305Options = {
-          key: view("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"),
-          nonce: view("404142434445464748494a4b4c4d4e4f5051525354555657"),
-          additionalData: view("50515253c0c1c2c3c4c5c6c7"),
-          data: view(encode(
-            "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
-          ))
-        }
-        if (!(options.native && NodeCrypto.getCiphers().includes("chacha20-poly1305"))) {
-          const error = yield* Effect.flip(Crypto.xchacha20poly1305Encrypt(input))
-          assert.strictEqual(error.reason.method, "xchacha20poly1305Encrypt")
-          assert.strictEqual(error.reason._tag, "Unsupported")
-          return
-        }
-        const ciphertext = yield* Crypto.xchacha20poly1305Encrypt(input)
-        assert.strictEqual(
-          hex(ciphertext),
-          "bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb731c7f1b0b4aa6440bf3a82f4eda7e39" +
-            "ae64c6708c54c216cb96b72e1213b4522f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff9" +
-            "21f9664c97637da9768812f615c68b13b52ec0875924c1c7987947deafd8780acf49"
-        )
-        assert.deepStrictEqual(yield* Crypto.xchacha20poly1305Decrypt({ ...input, data: view(ciphertext) }), input.data)
-        const tampered = ciphertext.slice()
-        tampered[0] ^= 1
-        const error = yield* Effect.flip(Crypto.xchacha20poly1305Decrypt({ ...input, data: tampered }))
-        assert.strictEqual(error.reason.method, "xchacha20poly1305Decrypt")
-        assert.strictEqual(error.reason._tag, "InvalidData")
       }).pipe(Effect.provide(layer)))
 
     it.effect("encrypts with AES-GCM and rejects tampered ciphertext", () =>

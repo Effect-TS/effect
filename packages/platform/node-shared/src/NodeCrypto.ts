@@ -5,9 +5,8 @@
  * `randomBytes`, and `createHash` and `createHmac` provide digests,
  * including MD5, and HMACs. Node's native `webcrypto.subtle` provides key
  * derivation, managed keys, encryption, signing, and key agreement. Native
- * Argon2id is used when available. XChaCha20-Poly1305 uses HChaCha20 nonce
- * extension followed by native ChaCha20-Poly1305. It exports `make` as the
- * concrete service value and `layer` for providing it through Effect context.
+ * Argon2id is used when available. It exports `make` as the concrete service
+ * value and `layer` for providing it through Effect context.
  *
  * @stability unstable
  * @since 1.0.0
@@ -17,7 +16,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
 import * as NodeCrypto from "node:crypto"
-import * as XChaCha from "./internal/xchacha.ts"
 
 const toHashAlgorithm = (algorithm: EffectCrypto.DigestAlgorithm): string => {
   switch (algorithm) {
@@ -58,8 +56,6 @@ export const make: EffectCrypto.Crypto = EffectCrypto.make({
   subtle: NodeCrypto.webcrypto.subtle as unknown as SubtleCrypto,
   randomBytes: NodeCrypto.randomBytes,
   digest,
-  xchacha20poly1305Encrypt: XChaCha.encrypt,
-  xchacha20poly1305Decrypt: XChaCha.decrypt,
   argon2id: (options) =>
     Effect.callback<Uint8Array, PlatformError.PlatformError>((resume) => {
       let password: Uint8Array | undefined

@@ -3,9 +3,9 @@
  *
  * This module uses Deno's global Web Crypto API for secure randomness, HMAC,
  * HKDF, PBKDF2, key management, encryption, signing, and key agreement.
- * Digests, including legacy MD5, use `node:crypto`. Argon2id and
- * XChaCha20-Poly1305 use the Node-compatible backend and fail with
- * `PlatformError` when Deno omits the corresponding native algorithm.
+ * Digests, including legacy MD5, use `node:crypto`. Argon2id uses the
+ * Node-compatible backend and fails with `PlatformError` when Deno omits the
+ * native algorithm.
  *
  * @stability unstable
  * @since 4.0.0
@@ -52,9 +52,7 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
       subtle: crypto.subtle,
       randomBytes,
       digest: NodeCrypto.make.digest,
-      argon2id: NodeCrypto.make.argon2id,
-      xchacha20poly1305Encrypt: NodeCrypto.make.xchacha20poly1305Encrypt,
-      xchacha20poly1305Decrypt: NodeCrypto.make.xchacha20poly1305Decrypt
+      argon2id: NodeCrypto.make.argon2id
     })
   })
 )

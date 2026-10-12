@@ -266,7 +266,6 @@ describe("Crypto", () => {
           ["hkdf", crypto.hkdf({ hash: "SHA-256", key: bytes, length: 255 * 32 + 1 })],
           ["argon2id", crypto.argon2id({ ...argon2id, salt: new Uint8Array(7) })],
           ["argon2id", crypto.argon2id({ ...argon2id, memoryKiB: 7 })],
-          ["xchacha20poly1305Encrypt", crypto.xchacha20poly1305Encrypt({ key: bytes, nonce: bytes, data: bytes })],
           ["generateKeyPair", crypto.generateKeyPair({ name: "RSA-PSS", hash: "SHA-256", modulusLength: 1024 })],
           ["encrypt", crypto.encrypt({ name: "AES-GCM", iv: bytes }, key, bytes)],
           ["decrypt", crypto.decrypt({ name: "AES-CTR", counter: bytes, length: 0 }, key, bytes)],

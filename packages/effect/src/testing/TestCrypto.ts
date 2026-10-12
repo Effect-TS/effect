@@ -71,8 +71,6 @@ export const make: (
       pbkdf2: crypto.pbkdf2,
       hkdf: crypto.hkdf,
       argon2id: crypto.argon2id,
-      xchacha20poly1305Encrypt: crypto.xchacha20poly1305Encrypt,
-      xchacha20poly1305Decrypt: crypto.xchacha20poly1305Decrypt,
       generateSecretKey: crypto.generateSecretKey,
       generateKeyPair: crypto.generateKeyPair,
       importKey: crypto.importKey,
