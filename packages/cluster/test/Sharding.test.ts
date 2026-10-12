@@ -20,7 +20,6 @@ import {
   Snowflake
 } from "@effect/cluster"
 import { Headers } from "@effect/platform"
-import type { RpcGroup } from "@effect/rpc"
 import { Rpc } from "@effect/rpc"
 import { assert, describe, expect, it } from "@effect/vitest"
 import {
@@ -38,7 +37,6 @@ import {
   Mailbox,
   MutableRef,
   Option,
-  Queue,
   Scope,
   Stream,
   TestClock
@@ -757,88 +755,83 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
-  it.effect("interrupts opted-in streams on reassignment but respects Uninterruptible", () =>
+  it.effect("InterruptOnTermination interrupts requests early unless Uninterruptible", () =>
     Effect.gen(function*() {
-      const entity = Entity.make(TestEntity.type, [
-        terminationRpc("StreamWithKey").annotate(ClusterSchema.Persisted, false),
-        terminationRpc("RequestWithKey")
-          .annotate(ClusterSchema.Persisted, false)
-          .annotate(ClusterSchema.Uninterruptible, "server")
-      ]).annotateRpcs(ClusterSchema.InterruptOnTermination, true)
       const storageState = makeFailoverStorageState()
-      const started = yield* Queue.unbounded<void>()
       const finish = yield* Deferred.make<void>()
-      const entityLayer = entity.toLayer({
-        StreamWithKey: () => Stream.fromEffect(Queue.offer(started, void 0).pipe(Effect.andThen(Effect.never))),
-        RequestWithKey: () => Queue.offer(started, void 0).pipe(Effect.andThen(Deferred.await(finish)))
-      }, { concurrency: "unbounded" })
+      const layer = TerminationEntity.toLayer({
+        Stream: () => Stream.concat(Stream.succeed(void 0), Stream.never),
+        Uninterruptible: () => Deferred.await(finish),
+        Persisted: () => Effect.never
+      }, { concurrency: "unbounded" }).pipe(Layer.provideMerge(makeTerminationSharding(storageState)))
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
-        yield* waitForTerminationOwnership(sharding, true)
-        // Let the acquisition backoff finish before testing reassignment.
+        const client = (yield* TerminationEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
         yield* TestClock.adjust(1000)
-        const client = (yield* entity.client)("termination-stream")
-        const stream = yield* client.StreamWithKey({ key: "run" }).pipe(Stream.runDrain, Effect.fork)
-        const protectedRequest = yield* client.RequestWithKey({ key: "run" }).pipe(Effect.fork)
-        yield* Queue.take(started)
-        yield* Queue.take(started)
+
+        const stream = yield* client.Stream().pipe(Stream.runDrain, Effect.fork)
+        const request = yield* client.Uninterruptible().pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+
         storageState.assignSelf = false
-        yield* waitForTerminationOwnership(sharding, false)
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
         yield* TestClock.adjust(100)
-        const earlyExit = stream.unsafePoll()
-        const protectedExit = protectedRequest.unsafePoll()
-        const held = storageState.releaseCalls.length === 0
+        const streamExit = stream.unsafePoll()
+        assert(streamExit && Exit.isFailure(streamExit) && Cause.isInterrupted(streamExit.cause))
+        assert.isNull(request.unsafePoll())
+        assert.strictEqual(storageState.releaseCalls.length, 0)
+
         yield* Deferred.succeed(finish, void 0)
         yield* TestClock.adjust(100)
-        const earlyReleases = storageState.releaseCalls.slice()
-        // Finish a broken implementation's grace period before asserting.
-        yield* TestClock.adjust(1000)
-        assert(earlyExit && Exit.isFailure(earlyExit) && Cause.isInterrupted(earlyExit.cause))
-        assert.isNull(protectedExit)
-        assert.isTrue(held)
-        assert.deepStrictEqual(protectedRequest.unsafePoll(), Exit.void)
-        assert.deepStrictEqual(earlyReleases, [ShardIdModule.make("default", 1)])
-      }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
+        assert.deepStrictEqual(request.unsafePoll(), Exit.void)
+        assert.strictEqual(storageState.releaseCalls.length, 1)
+      }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
     }))
 
-  it.effect("resumes an opted-in persisted request after early shard release", () =>
+  it.effect("InterruptOnTermination resumes persisted requests on the next owner", () =>
     Effect.gen(function*() {
-      const entity = Entity.make(TestEntity.type, [terminationRpc("RequestWithKey")])
-        .annotateRpcs(ClusterSchema.InterruptOnTermination, true)
       const storageState = makeFailoverStorageState()
-      const started = yield* Queue.unbounded<Snowflake.Snowflake>()
-      const finish = yield* Deferred.make<void>()
-      const entityLayer = entity.toLayer({
-        RequestWithKey: ({ requestId }) => Queue.offer(started, requestId).pipe(Effect.andThen(Deferred.await(finish)))
-      })
+      let attempts = 0
+      const layer = TerminationEntity.toLayer({
+        Stream: () => Stream.never,
+        Uninterruptible: () => Effect.never,
+        Persisted: () => Effect.suspend(() => ++attempts === 1 ? Effect.never : Effect.void)
+      }).pipe(Layer.provideMerge(makeTerminationSharding(storageState)))
 
       yield* Effect.gen(function*() {
         const sharding = yield* Sharding.Sharding
-        yield* waitForTerminationOwnership(sharding, true)
+        const client = (yield* TerminationEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
         yield* TestClock.adjust(1000)
-        const client = (yield* entity.client)("termination-persisted")
-        const running = yield* client.RequestWithKey({ key: "run" }).pipe(Effect.fork)
-        const requestId = yield* Queue.take(started)
-        storageState.assignSelf = false
-        yield* waitForTerminationOwnership(sharding, false)
-        yield* TestClock.adjust(100)
-        const earlyReleases = storageState.releaseCalls.slice()
-        yield* TestClock.adjust(1000)
-        assert.deepStrictEqual(earlyReleases, [ShardIdModule.make("default", 1)])
-        assert.isNull(running.unsafePoll())
 
-        // A replay with the same ID and successful completion proves termination
-        // neither saved a terminal reply nor marked the request processed.
-        storageState.assignSelf = true
-        yield* waitForTerminationOwnership(sharding, true)
-        yield* sharding.pollStorage
-        yield* TestClock.adjust(10)
-        assert.deepStrictEqual(yield* Queue.poll(started), Option.some(requestId))
-        yield* Deferred.succeed(finish, void 0)
+        const request = yield* client.Persisted().pipe(Effect.fork)
+        yield* TestClock.adjust(1)
+
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
         yield* TestClock.adjust(100)
-        assert.deepStrictEqual(running.unsafePoll(), Exit.void)
-      }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
+        assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.isNull(request.unsafePoll())
+
+        storageState.assignSelf = true
+        for (let i = 0; i < 100 && request.unsafePoll() === null; i++) {
+          yield* TestClock.adjust(10)
+        }
+        assert.deepStrictEqual(request.unsafePoll(), Exit.void)
+        assert.strictEqual(attempts, 2)
+      }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
     }))
 
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
@@ -1323,20 +1316,20 @@ describe("Sharding graceful shutdown", () => {
     }).pipe(Effect.provide(TestSharding)))
 })
 
-const terminationRpc = <Tag extends RpcGroup.Rpcs<typeof TestEntity.protocol>["_tag"]>(tag: Tag) =>
-  TestEntity.protocol.requests.get(tag)! as Extract<RpcGroup.Rpcs<typeof TestEntity.protocol>, { readonly _tag: Tag }>
+const TerminationEntity = Entity.make("TerminationEntity", [
+  Rpc.make("Stream", { stream: true }),
+  Rpc.make("Uninterruptible").annotate(ClusterSchema.Uninterruptible, "server"),
+  Rpc.make("Persisted").annotate(ClusterSchema.Persisted, true)
+]).annotateRpcs(ClusterSchema.InterruptOnTermination, true)
 
-const TerminationSharding = (entityLayer: Layer.Layer<never, never, Sharding.Sharding>, state: FailoverStorageState) =>
-  entityLayer.pipe(
-    Layer.provideMerge(Sharding.layer),
+const makeTerminationSharding = (state: FailoverStorageState) =>
+  Sharding.layer.pipe(
     Layer.provide(Layer.effect(
       RunnerStorage.RunnerStorage,
       Effect.map(Effect.clock, (clock) => makeFailoverStorage(state, clock))
     )),
-    Layer.provide(RunnerHealth.layerNoop),
-    Layer.provide(Runners.layerNoop),
-    Layer.provideMerge(MessageStorage.layerMemory),
-    Layer.provide(Snowflake.layerGenerator),
+    Layer.provide([RunnerHealth.layerNoop, Runners.layerNoop]),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
     Layer.provide(ShardingConfig.layer({
       runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
       shardsPerGroup: 1,
@@ -1349,17 +1342,6 @@ const TerminationSharding = (entityLayer: Layer.Layer<never, never, Sharding.Sha
       sendRetryInterval: 10
     }))
   )
-
-const waitForTerminationOwnership = Effect.fnUntraced(
-  function*(sharding: Sharding.Sharding["Type"], owned: boolean) {
-    const shardId = ShardIdModule.make("default", 1)
-    for (let i = 0; i < 100; i++) {
-      if (sharding.hasShardId(shardId) === owned) return
-      yield* TestClock.adjust(10)
-    }
-    assert.strictEqual(sharding.hasShardId(shardId), owned)
-  }
-)
 
 interface FailoverStorageState {
   blackholed: boolean
