@@ -10,6 +10,7 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Stream from "../Stream.ts"
+import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { GraphQLClientError } from "./GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
@@ -33,6 +34,11 @@ const TypeId = "~effect/graphql/GraphQLMiddleware"
  * reported, if any; a middleware may rewrite them, and a failed call's
  * `ResponseError` carries the final values. Request and response headers
  * are `Headers.Headers` values; use `Headers.set` to rewrite them.
+ *
+ * `next` fails with `GraphQLClientError`, or with the error of a middleware
+ * further in, which is typed as `Types.unhandled`, as in `RpcMiddleware`.
+ * Narrow it, for example with `Effect.catchTag("GraphQLClientError", ...)`,
+ * before reading `reason`.
  *
  * Use {@link mapRequest} when the middleware only needs to transform the
  * request.
@@ -61,13 +67,13 @@ export interface Implementation<E = never, R = never> {
   readonly execute: (options: {
     readonly operation: GraphQL.Any
     readonly request: GraphQLRequest
-    readonly next: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQLClientError>
-  }) => Effect.Effect<ExecutionResult, GraphQLClientError | E, R>
+    readonly next: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQLClientError | Types.unhandled>
+  }) => Effect.Effect<ExecutionResult, GraphQLClientError | Types.unhandled | E, R>
   readonly subscribe: (options: {
     readonly operation: GraphQL.Any
     readonly request: GraphQLRequest
-    readonly next: (request: GraphQLRequest) => Stream.Stream<ExecutionResult, GraphQLClientError>
-  }) => Stream.Stream<ExecutionResult, GraphQLClientError | E, R>
+    readonly next: (request: GraphQLRequest) => Stream.Stream<ExecutionResult, GraphQLClientError | Types.unhandled>
+  }) => Stream.Stream<ExecutionResult, GraphQLClientError | Types.unhandled | E, R>
 }
 
 /**

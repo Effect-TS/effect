@@ -278,7 +278,10 @@ export const ordered = <
       }
       if (others.length > 0) return batchResponseError(fail, result)
       const list = findList(result.data, path)
-      if (list === undefined) return completeAll(targets, constNoSuchElement)
+      // An error in a non-null item nulls the whole list, so every entry lost its data to it.
+      if (list === undefined) {
+        return result.errors.length > 0 ? batchResponseError(fail, result) : completeAll(targets, constNoSuchElement)
+      }
       if (list.truncated) return fail(truncated(path))
       if (list.items.length !== keys.length) {
         return fail(

@@ -29,6 +29,7 @@ import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as Stream from "../Stream.ts"
 import * as Struct from "../Struct.ts"
+import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import {
   DecodeError,
@@ -371,8 +372,10 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.catch(notGraphQL)
     )
 
-  // `next` hides inner middleware errors and requirements from middleware,
-  // but not from the client method. Force POST only at the transport boundary.
+  // Type boundary: a middleware sees the errors of the middleware further in
+  // as `Types.unhandled` (as in `RpcMiddleware`), and none of their
+  // requirements. Those errors are part of `GraphQL.Error<Op>`, so the chain
+  // restates its type here. Force POST only at the transport boundary.
   const execute = (
     index: number,
     request: GraphQLRequest,
@@ -387,8 +390,12 @@ const makeMethod = <Op extends GraphQL.Any>(
       : chain[index].execute({
         operation,
         request,
-        next: (request) => execute(index + 1, request, forcePost) as Effect.Effect<ExecutionResult, GraphQLClientError>
-      })
+        next: (request) =>
+          execute(index + 1, request, forcePost) as Effect.Effect<
+            ExecutionResult,
+            GraphQLClientError | Types.unhandled
+          >
+      }) as Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
 
   const subscribe = (
     index: number,
@@ -402,8 +409,9 @@ const makeMethod = <Op extends GraphQL.Any>(
       : chain[index].subscribe({
         operation,
         request,
-        next: (request) => subscribe(index + 1, request) as Stream.Stream<ExecutionResult, GraphQLClientError>
-      })
+        next: (request) =>
+          subscribe(index + 1, request) as Stream.Stream<ExecutionResult, GraphQLClientError | Types.unhandled>
+      }) as Stream.Stream<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
 
   if (operation.kind === "subscription") {
     const subscriptionMethod = <R2 = never>(...[variables, options]: Args<GraphQL.Variables<Op>, CallOptions<R2>>) =>

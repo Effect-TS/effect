@@ -161,7 +161,12 @@ const eventStreamContentType = "text/event-stream"
 
 const isObject = (u: unknown): u is Record<string, unknown> => typeof u === "object" && u !== null && !Array.isArray(u)
 
-const isGraphQLBody = (body: unknown): boolean => isObject(body) && ("data" in body || "errors" in body)
+// A gateway's `{ "errors": "Throttled" }` is not a GraphQL response, so its
+// status and Retry-After still apply.
+const isGraphQLBody = (body: unknown): boolean =>
+  isObject(body) && ("data" in body || "errors" in body) &&
+  (!("errors" in body) || Array.isArray(body.errors)) &&
+  (!("data" in body) || body.data === null || isObject(body.data))
 
 // The JSON body of a POST and the payload of a graphql-ws `subscribe`.
 // `extensions` is dropped from the JSON when unset.
@@ -428,7 +433,8 @@ export const makeHttp: {
  *
  * A response is a GraphQL response when its `Content-Type` is
  * `application/graphql-response+json`, whatever the status, or when it is
- * `application/json` and the body has a `data` or `errors` key. Anything else
+ * `application/json` and the body has a list of `errors` or a `data` object
+ * (or `null`). Anything else
  * is a `TransportError` with the response `status` and `headers`, and a
  * `Retry-After` header (numeric or HTTP-date) becomes `retryAfter`.
  *
