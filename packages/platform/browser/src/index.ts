@@ -7,12 +7,6 @@
 
 /**
  * @stability unstable
- * @since 1.0.0
- */
-export * as BrowserCrypto from "./BrowserCrypto.ts"
-
-/**
- * @stability unstable
  * @since 4.0.0
  */
 export * as BrowserHttpClient from "./BrowserHttpClient.ts"

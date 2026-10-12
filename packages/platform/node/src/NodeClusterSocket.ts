@@ -23,6 +23,7 @@ import * as SocketRunner from "effect/cluster/SocketRunner"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type { ConfigError } from "effect/Config"
+import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -118,7 +119,9 @@ export const layer = <
         ? MessageStorage.layerNoop
         : options?.storage === "byo"
         ? Layer.empty
-        : Layer.orDie(SqlMessageStorage.layer).pipe(Layer.provide(NodeCrypto.layer))
+        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Crypto.layerSha2))).pipe(
+          Layer.provide(NodeCrypto.layerSubtleCrypto)
+        )
     ),
     Layer.provide(
       options?.storage === "local"

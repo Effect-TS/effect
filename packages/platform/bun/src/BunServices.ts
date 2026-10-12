@@ -9,7 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type { Crypto } from "effect/Crypto"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type { Path } from "effect/Path"
@@ -31,7 +30,7 @@ import * as BunTerminal from "./BunTerminal.ts"
  * @category models
  * @since 4.0.0
  */
-export type BunServices = ChildProcessSpawner | Crypto | FileSystem | Path | Terminal | Stdio
+export type BunServices = ChildProcessSpawner | BunCrypto.BunCryptoServices | FileSystem | Path | Terminal | Stdio
 
 /**
  * Provides the default Bun implementations for child process spawning,

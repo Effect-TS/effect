@@ -9,7 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type { Crypto } from "effect/Crypto"
 import type { FileSystem } from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import type { Path } from "effect/Path"
@@ -31,7 +30,7 @@ import * as DenoTerminal from "./DenoTerminal.ts"
  * @category models
  * @since 4.0.0
  */
-export type DenoServices = ChildProcessSpawner | Crypto | FileSystem | Path | Terminal | Stdio
+export type DenoServices = ChildProcessSpawner | DenoCrypto.DenoCryptoServices | FileSystem | Path | Terminal | Stdio
 
 /**
  * Provides the default Deno implementations for child process spawning,
