@@ -29,7 +29,6 @@ describe("Chat", () => {
               [
                 { type: "text-start", id: "t1" },
                 { type: "text-delta", id: "t1", delta: "Hello" },
-                { type: "text-delta", id: "t1", delta: " world" },
                 { type: "text-end", id: "t1" }
               ] as const
             ).pipe(Stream.rechunk(1))

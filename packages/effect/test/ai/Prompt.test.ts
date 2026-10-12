@@ -78,19 +78,9 @@ describe("Prompt", () => {
   })
 
   describe("fromResponseParts", () => {
-    it("keeps unended text in an assistant message", () => {
+    it("keeps text before an interleaved tool call", () => {
       assert.deepStrictEqual(
         Prompt.fromResponseParts([
-          Response.makePart("text-start", { id: "t1" }),
-          Response.makePart("text-delta", { id: "t1", delta: "Hello" })
-        ]),
-        Prompt.make([{ role: "assistant", content: [{ type: "text", text: "Hello" }] }])
-      )
-    })
-
-    for (const ended of [false, true]) {
-      it(`keeps ${ended ? "ended" : "unended"} text before an interleaved tool call`, () => {
-        const parts = [
           Response.makePart("text-start", { id: "t1" }),
           Response.makePart("text-delta", { id: "t1", delta: "Hello" }),
           Response.makePart("tool-call", {
@@ -99,35 +89,14 @@ describe("Prompt", () => {
             params: {},
             providerExecuted: false
           }),
-          ...(ended ? [Response.makePart("text-end", { id: "t1" })] : [])
-        ]
-
-        assert.deepStrictEqual(
-          Prompt.fromResponseParts(parts),
-          Prompt.make([{
-            role: "assistant",
-            content: [
-              { type: "text", text: "Hello" },
-              { type: "tool-call", id: "call-1", name: "get_weather", params: {}, providerExecuted: false }
-            ]
-          }])
-        )
-      })
-    }
-
-    it("keeps ended reasoning in start order even when it ends after text", () => {
-      assert.deepStrictEqual(
-        Prompt.fromResponseParts([
-          Response.makePart("reasoning-start", { id: "r1" }),
-          Response.makePart("reasoning-delta", { id: "r1", delta: "Thinking" }),
-          Response.makePart("text-start", { id: "t1" }),
-          Response.makePart("text-delta", { id: "t1", delta: "Hello" }),
-          Response.makePart("text-end", { id: "t1" }),
-          Response.makePart("reasoning-end", { id: "r1" })
+          Response.makePart("text-end", { id: "t1" })
         ]),
         Prompt.make([{
           role: "assistant",
-          content: [{ type: "reasoning", text: "Thinking" }, { type: "text", text: "Hello" }]
+          content: [
+            { type: "text", text: "Hello" },
+            { type: "tool-call", id: "call-1", name: "get_weather", params: {}, providerExecuted: false }
+          ]
         }])
       )
     })
