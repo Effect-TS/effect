@@ -15,6 +15,7 @@
 import * as Arr from "../Array.ts"
 import type { Brand } from "../Brand.ts"
 import * as Context from "../Context.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Data from "../Data.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
@@ -193,7 +194,7 @@ export const RemoteId = Schema.Uint8Array.pipe(Schema.brand(RemoteIdTypeId))
  * @category unsafe
  * @since 4.0.0
  */
-export const makeRemoteIdUnsafe = (): RemoteId => Uuid.v4Bytes() as RemoteId
+export const makeRemoteIdUnsafe = (): RemoteId => SecureRandom.uuidV4Unsafe({ format: "bytes" }) as RemoteId
 
 /**
  * Runtime brand identifier used for `EntryId` values.
@@ -258,6 +259,13 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * Use when generating an event-log entry id internally and the UUID v7 bytes
  * are trusted to satisfy the brand.
  *
+ * **Details**
+ *
+ * Without `msecs`, the id shares its ordering with `SecureRandom.uuidV7Unsafe`,
+ * so below the maximum timestamp each id sorts after the previous one in the JS
+ * realm. With `msecs`, the id
+ * encodes exactly that timestamp and has no ordering guarantee.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
@@ -268,7 +276,9 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * @since 4.0.0
  */
 export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
-  Uuid.v7Bytes(options.msecs ?? DateTime.nowUnsafe().epochMilliseconds) as EntryId
+  (options.msecs === undefined
+    ? Uuid.v7Monotonic(DateTime.nowUnsafe().epochMilliseconds, SecureRandom.randomBytesUnsafe(16))
+    : Uuid.v7Bytes(options.msecs, SecureRandom.randomBytesUnsafe(16))) as EntryId
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.

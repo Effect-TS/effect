@@ -1,6 +1,7 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Queue, Redacted, Stream } from "effect"
+import * as Digest from "effect/crypto/Digest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
 import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
@@ -145,7 +146,7 @@ describe("SqlEventLogServer", () => {
 
       assert.instanceOf(error, EventLogMessage.EventLogProtocolError)
       assert.strictEqual(error.code, "Forbidden")
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("forbids writing entries for another identity", () =>
     Effect.gen(function*() {
@@ -166,7 +167,7 @@ describe("SqlEventLogServer", () => {
       assert.strictEqual(error.code, "Forbidden")
       const written = yield* storage.write(identityB.publicKey, storeIdA, [makePersistedEntry(2)])
       assert.deepStrictEqual(written.map((entry) => entry.sequence), [1])
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("forbids writing chunked entries for another identity", () =>
     Effect.gen(function*() {
@@ -193,7 +194,7 @@ describe("SqlEventLogServer", () => {
       assert.strictEqual(error.code, "Forbidden")
       const written = yield* storage.write(identityB.publicKey, storeIdA, [makePersistedEntry(2)])
       assert.deepStrictEqual(written.map((entry) => entry.sequence), [1])
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("isolates authenticated identities between connections", () =>
     Effect.gen(function*() {
@@ -249,7 +250,7 @@ describe("SqlEventLogServer", () => {
       yield* assertForbidden(rpcClientA["EventLog.WriteSingle"]({ data }))
       yield* rpcClientA["EventLog.WriteChunked"](parts[0])
       yield* assertForbidden(rpcClientA["EventLog.WriteChunked"](parts[1]))
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("supports multiple authenticated identities on one connection", () =>
     Effect.gen(function*() {
@@ -281,7 +282,7 @@ describe("SqlEventLogServer", () => {
 
       assert.strictEqual(changesA.length, 1)
       assert.strictEqual(changesB.length, 1)
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("persists remote id across storage instances", () =>
     Effect.gen(function*() {
@@ -295,7 +296,7 @@ describe("SqlEventLogServer", () => {
       const idA = yield* storageA.getId
       const idB = yield* storageB.getId
       assert.deepStrictEqual(idA, idB)
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("rejects session-auth rebinding for an existing publicKey", () =>
     Effect.gen(function*() {
@@ -346,7 +347,7 @@ describe("SqlEventLogServer", () => {
       assert.instanceOf(error, EventLogMessage.EventLogProtocolError)
       assert.strictEqual(error.code, "Forbidden")
       assert.strictEqual(error.message, "Session auth signature verification failed")
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("writes entries and streams changes", () =>
     Effect.gen(function*() {
@@ -374,7 +375,7 @@ describe("SqlEventLogServer", () => {
 
       const next = yield* Queue.take(changes)
       assert.strictEqual(next.sequence, 3)
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("isolates same publicKey across storeIds", () =>
     Effect.gen(function*() {
@@ -397,7 +398,7 @@ describe("SqlEventLogServer", () => {
 
       assert.deepStrictEqual(storeAEntries.map((entry) => entry.sequence), [1])
       assert.deepStrictEqual(storeBEntries.map((entry) => entry.sequence), [1])
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("isolates same storeId across publicKeys", () =>
     Effect.gen(function*() {
@@ -420,7 +421,7 @@ describe("SqlEventLogServer", () => {
 
       assert.deepStrictEqual(clientOneEntries.map((entry) => entry.sequence), [1])
       assert.deepStrictEqual(clientTwoEntries.map((entry) => entry.sequence), [1])
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 
   it.effect("keeps deduplication isolated per encrypted scope", () =>
     Effect.gen(function*() {
@@ -456,5 +457,5 @@ describe("SqlEventLogServer", () => {
         )).map((entry) => entry.sequence),
         [1]
       )
-    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle, Digest.layerWebCrypto])))
 })
