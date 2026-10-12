@@ -66,6 +66,18 @@ describe("Sse", () => {
     assert.deepStrictEqual(events, [input])
   })
 
+  it("encodes every line break in data as a new data line", () => {
+    const input: Sse.Event = { _tag: "Event", event: "message", id: undefined, data: "10%\r50%\r\ndone\n" }
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    const encoded = Sse.encoder.write(input)
+    parser.feed(encoded)
+
+    assert.strictEqual(encoded, "data: 10%\ndata: 50%\ndata: done\ndata: \n\n")
+    assert.deepStrictEqual(events, [{ ...input, data: "10%\n50%\ndone\n" }])
+  })
+
   it("strips a UTF-8 BOM from the start of an SSE stream", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
