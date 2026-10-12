@@ -9,6 +9,8 @@ export interface Published {
   readonly cachedLatest?: string
   /** A status the live dist-tags endpoint fails with instead of answering. */
   readonly liveTagsStatus?: number
+  /** A status the abbreviated metadata endpoint fails with instead of answering. */
+  readonly metadataStatus?: number
 }
 
 /**
@@ -36,6 +38,9 @@ export const registryClient = (registry: Record<string, Published>): HttpClient.
           request,
           Response.json({ latest: published.latest, staging: published.versions.at(-1) })
         )
+      }
+      if (published.metadataStatus !== undefined) {
+        return HttpClientResponse.fromWeb(request, new Response(null, { status: published.metadataStatus }))
       }
       return HttpClientResponse.fromWeb(
         request,
