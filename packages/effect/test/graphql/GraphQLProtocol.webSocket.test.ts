@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, type Duration, Effect, Fiber, Layer, Queue, Ref, Stream } from "effect"
+import { Deferred, type Duration, Effect, Exit, Fiber, Layer, Queue, Ref, Scope, Stream } from "effect"
 
 import { GraphQLClient, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import { TransportError } from "effect/graphql/GraphQLClientError"
@@ -176,6 +176,24 @@ describe("GraphQLProtocol.makeWebSocket", () => {
       assert.deepStrictEqual(yield* Fiber.join(retried), { body: { data: { viewer: { login: "tim" } } } })
     }))
 
+  it.effect("an operation started after the scope closed fails with a non-retryable TransportError", () =>
+    Effect.gen(function*() {
+      const server = yield* wsServer
+      const scope = yield* Scope.make()
+      const protocol = yield* makeProtocol(server).pipe(Scope.provide(scope))
+      yield* Scope.close(scope, Exit.void)
+      const fiber = yield* protocol.subscribe(subscription("A")).pipe(
+        Stream.runDrain,
+        Effect.flip,
+        Effect.timeout("5 seconds"),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("5 seconds")
+      const error = yield* Fiber.join(fiber)
+      assert.instanceOf(error, TransportError)
+      assert.isFalse(error.isRetryable)
+    }))
+
   it.effect("connects on the first operation and closes idleTimeout after the last one", () =>
     Effect.gen(function*() {
       const server = yield* wsServer
@@ -218,7 +236,7 @@ describe("GraphQLProtocol.layerWebSocket with GraphQLClient", () => {
 
       const first = yield* server.accept
       yield* Queue.take(first.connection.received)
-      yield* first.connection.close(4500)
+      yield* first.connection.close(1006)
       // The client's default schedule waits 500ms before resubscribing.
       yield* TestClock.adjust("500 millis")
 

@@ -89,10 +89,12 @@ describe("GraphQLProtocol.layerHttp", () => {
       assert.strictEqual(JSON.parse(mutation.bodyText!).operationName, "AddStar")
     }))
 
-  it.effect("accepts an application/json body with GraphQL keys", () =>
+  it.effect("accepts an application/json body with GraphQL keys, matching the media type case-insensitively", () =>
     Effect.gen(function*() {
-      const result = yield* callViewer(() => graphqlResponse(viewerData, { contentType: "application/json" }))
-      assert.deepStrictEqual(result, { viewer: { login: "tim" } })
+      for (const contentType of ["application/json", "Application/JSON; charset=utf-8"]) {
+        const result = yield* callViewer(() => graphqlResponse(viewerData, { contentType }))
+        assert.deepStrictEqual(result, { viewer: { login: "tim" } })
+      }
     }))
 
   it.effect("a 200 application/json body without data or errors is a DecodeError", () =>

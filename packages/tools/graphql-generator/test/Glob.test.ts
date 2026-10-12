@@ -28,6 +28,10 @@ describe("Glob", () => {
     assertMatches("{src,lib}/*.graphql", ["src/a.graphql", "lib/a.graphql"], ["app/a.graphql"])
   })
 
+  it("an unmatched { is a literal character", () => {
+    assertMatches("src/{q,r.graphql", ["src/{q,r.graphql"], ["src/q.graphql", "src/r.graphql"])
+  })
+
   it("root is the leading segments before the first wildcard", () => {
     assert.strictEqual(Glob.make("src/app/**/*.graphql").root, "src/app")
     assert.strictEqual(Glob.make("./src/*.graphql").root, "src")

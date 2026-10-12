@@ -84,6 +84,18 @@ describe("Generator diagnostics", () => {
       assert.deepStrictEqual(generated.result.files, [])
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("a field whose type the schema never defines is an Unknown type error, not a crash", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": "type Query { a: Missing }",
+        "src/a.graphql": "query Q { a }"
+      }, { schema: "./schema.graphql", documents: ["src/*.graphql"] })
+      assert.deepStrictEqual(generated.result.diagnostics.map(({ message, severity }) => ({ severity, message })), [
+        { severity: "error", message: `Unknown type "Missing".` }
+      ])
+      assert.deepStrictEqual(generated.result.files, [])
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("eval and arguments, which strict mode can't bind, are reserved definition names", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks({

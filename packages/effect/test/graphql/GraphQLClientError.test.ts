@@ -49,8 +49,23 @@ describe("GraphQLClientError", () => {
     assert.isTrue(transport({ status: 429 }))
     assert.isTrue(transport({ status: 503 }))
     assert.isFalse(transport({ status: 400 }))
+    assert.isFalse(transport({ status: 600 }))
     assert.isTrue(transport({ closeCode: 1006 }))
     assert.isFalse(transport({ closeCode: 4401 }))
+    assert.isFalse(transport({ closeCode: 4500 }))
+    assert.isFalse(transport({ closeCode: 1011 }))
+  })
+
+  it("a Retry-After that is neither whole seconds nor an HTTP date is ignored", () => {
+    for (const retryAfter of ["1.5", "-1"]) {
+      const reason = new ResponseError({
+        errors: [{ message: "Bad request" }],
+        status: 400,
+        headers: Headers.fromInput({ "retry-after": retryAfter })
+      })
+      assert.isUndefined(reason.retryAfter, retryAfter)
+      assert.isFalse(reason.isRetryable, retryAfter)
+    }
   })
 
   it("a 403 with Retry-After is retryable, and its status and headers are on the error", () => {

@@ -178,6 +178,13 @@ describe("Validate: positions, merging, directives and values", () => {
     )
   })
 
+  it("a subscription selects exactly one root field", () => {
+    const validateSubscriptions = validateWith(readSdl(`type Query { a: Int } type Subscription { x: Int y: Int }`))
+    assert.deepStrictEqual(validateSubscriptions({ "q.graphql": `subscription S { x y }` }), [
+      `q.graphql:1:20 Subscription "S" must select only one top level field.`
+    ])
+  })
+
   it("a variable in a literal coerced to a list is checked against the list's item type, through nested lists", () => {
     const validateLists = validateWith(
       readSdl(`input I { id: ID! } type Query { many(inputs: [I!]!): Int nested(inputs: [[I!]]): Int }`)

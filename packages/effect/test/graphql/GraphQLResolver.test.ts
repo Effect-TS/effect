@@ -355,6 +355,21 @@ describe("GraphQLResolver", () => {
         assert.deepStrictEqual(reason.errors.map((error) => error.path), [["repository", "pullRequest"]])
       }))
 
+    it.effect("rejects a template it can't slice when the resolver is built, not on the first lookup", () =>
+      Effect.gen(function*() {
+        const RootSpread = GraphQL.query("RootSpread", {
+          document: { variables: [], selections: [{ body: ["...on Query{__typename}"] }], fragments: [] },
+          result: Schema.Struct({ __typename: Schema.String })
+        })
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RootSpread)).pipe(
+          Effect.provide(protocolLayer({ execute: () => Effect.die("not sent") }))
+        )
+        assert.throws(
+          () => GraphQLResolver.aliased(client.RootSpread),
+          /fragment spread or inline fragment at the root/
+        )
+      }))
+
     it.effect("an error without a path fails the batch", () =>
       Effect.gen(function*() {
         const { client } = yield* makeClient((variables) => ({

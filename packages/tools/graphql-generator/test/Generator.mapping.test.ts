@@ -92,6 +92,16 @@ describe("Generator mapping", () => {
       assert.match(generated.file("src/ops.graphql.ts"), /^import \* as Shared from "\.\.\/schema\/app\.graphql\.ts"$/m)
     }).pipe(Effect.provide(NodeServices.layer)))
 
+  it.effect("a relative scalar module with an extension other than .ts or .js is imported as written", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateTasks(
+        { "src/ops.graphql": "query Tasks { tasks { due } }" },
+        { ...taskConfig, scalars: { Timestamp: "./scalars.mjs#Timestamp" } }
+      )
+      assertNoErrors(generated)
+      assert.match(generated.file("schema/app.graphql.ts"), /^import \* as \w+ from "\.\.\/scalars\.mjs"$/m)
+    }).pipe(Effect.provide(NodeServices.layer)))
+
   it.effect("importExtension applies to generated and relative scalar modules, not bare specifiers", () =>
     Effect.gen(function*() {
       const generated = yield* generateTasks(
