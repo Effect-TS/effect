@@ -2,7 +2,7 @@
  * Node-compatible implementation of Effect's `Crypto` service.
  *
  * This module builds the service from `node:crypto`. Random data comes from
- * `randomFillSync`, and `createHash` and `createHmac` provide digests,
+ * `randomBytes`, and `createHash` and `createHmac` provide digests,
  * including MD5, and HMACs. Node's native `webcrypto.subtle` provides key
  * derivation, managed keys, encryption, signing, and key agreement. Native
  * Argon2id is used when available. XChaCha20-Poly1305 uses HChaCha20 nonce
@@ -56,7 +56,7 @@ const digest: EffectCrypto.Crypto["digest"] = (algorithm, data) =>
  */
 export const make: EffectCrypto.Crypto = EffectCrypto.make({
   subtle: NodeCrypto.webcrypto.subtle as unknown as SubtleCrypto,
-  randomBytes: (size) => NodeCrypto.randomFillSync(new Uint8Array(size)),
+  randomBytes: NodeCrypto.randomBytes,
   digest,
   xchacha20poly1305Encrypt: XChaCha.encrypt,
   xchacha20poly1305Decrypt: XChaCha.decrypt,
