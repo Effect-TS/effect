@@ -1,5 +1,6 @@
 {
   "name": "@effect/test",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "description": "effect/test: an Effect-native test runner. Work in progress, not published.",

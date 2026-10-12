@@ -23,7 +23,7 @@ node src/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > ca
 ```
 
 Flags: `[paths...] [--list] [--test <id|substring>] [--tag <t>] [--seed <n>] [--workers <n>] [--bail] [--reporter agent|human|jsonl] [--config <file> | --no-config]`.
-The CLI is one-shot and never interactive. It exits 0 when everything is green and 1 otherwise; Ctrl-C exits with 130. Discovery
+The CLI is built with `effect/cli`, so `--help`, `--version` and shell completions come for free, and invalid flags are reported on stderr. It is one-shot and never interactive. It exits 0 when everything is green and 1 otherwise; Ctrl-C exits with 130. Discovery
 finds `*.test.ts` files under the given paths.
 
 ## Layout
@@ -38,7 +38,8 @@ finds `*.test.ts` files under the given paths.
 | `src/executor-worker.ts` | Worker-thread entry: `RpcServer.layer(ExecutorRpcs)` over `layerProtocolWorkerRunner` |
 | `src/Coordinator.ts` | Discovery, planning (nearest-wins options, seeds, filters, only/skip), dispatch over the executor pool, bail, and the completeness guarantee |
 | `src/Reporters.ts` | `agent`, `human` and `jsonl` reporters |
-| `src/bin.ts` | CLI (`node:util` `parseArgs`, `NodeRuntime.runMain`) |
+| `src/Cli.ts` | The `effect-test` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported |
+| `src/bin.ts` | Entry point: `Command.run(cli)` with `NodeServices.layer`, under `NodeRuntime.runMain` |
 | `examples/*.test.ts` | Every feature, including intentional failures (marked "(intentional failure)" in the test or suite name) |
 | `examples/userRepoContract.ts`, `examples/contract.test.ts` | A contract suite written once (`Suite<UserRepo>`) and provided with two implementations |
 | `examples/typecheck.ts` | Asserts that every test file's default export `satisfies Test.Runnable`, which is what the CLI would generate |
