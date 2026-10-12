@@ -273,14 +273,12 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
 
   // Processing state
   let isFirstChunk: boolean
-  // Pieces of a line that has not been terminated yet. They are joined once
-  // the line ends, so a long line split across many chunks is only copied
-  // once instead of on every chunk.
+  // Pieces of the unterminated line, joined once when the line ends
   let pending: Array<string>
   let pendingLength: number
   let pendingFieldLength: number
   let discardTrailingNewline: boolean
-  // Bumped by `reset`, so `feed` can stop when `onParse` resets the parser
+  // Incremented by `reset`, so `feed` can stop if `onParse` resets the parser
   let generation = 0
 
   // Event state
@@ -318,11 +316,9 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     const currentGeneration = generation
     let position = 0
 
-    // Only the new chunk is scanned, pending pieces are never read again
+    // Scan only the new chunk, pending pieces are not read again
     while (position < length) {
-      // EventSource allows for carriage return + line feed, which means we
-      // need to ignore a linefeed character if the previous character was a
-      // carriage return, which may have been at the end of the previous chunk
+      // Skip the LF of a CRLF, whose CR may have ended the previous chunk
       if (discardTrailingNewline) {
         discardTrailingNewline = false
         if (chunk.charCodeAt(position) === LF) {
@@ -365,7 +361,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       }
 
       if (generation !== currentGeneration) {
-        // `onParse` reset the parser, the rest of this chunk belongs to the old stream
+        // `onParse` reset the parser, so drop the rest of this chunk
         return
       }
 
@@ -386,8 +382,8 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     lineLength: number
   ) {
     if (lineLength === 0) {
-      // We reached the last line of this event. Clear the event state before
-      // dispatching, so a throwing `onParse` does not leak it into the next event
+      // End of event. Clear the state first so a throwing `onParse` cannot
+      // leak it into the next event
       const event = eventName || "message"
       const eventData = data
       eventName = undefined
