@@ -5,6 +5,100 @@ import { type AiError, LanguageModel, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenAiLanguageModel", () => {
+  for (const mode of ["complete", "stream"] as const) {
+    it.effect(`prepares selected tool codecs once per ${mode} request and normalizes repeated calls`, () =>
+      Effect.gen(function*() {
+        let conversions = 0
+        const Env = Schema.Record(Schema.String, Schema.String).check(
+          Schema.makeFilter<object>(() => true, {
+            representation: { id: "test/compat/toolCodec", payload: null },
+            toJsonSchema: () => {
+              conversions++
+              return { minItems: 1 }
+            }
+          })
+        )
+        const ReadEnv = Tool.make("ReadEnv", { parameters: Schema.Struct({ env: Env }) })
+        const Unselected = Tool.make("Unselected", {
+          parameters: Schema.Struct({ opaque: Schema.declare((input): input is string => typeof input === "string") })
+        })
+        const toolkit = Toolkit.make(ReadEnv, Unselected)
+        const toolkitLayer = toolkit.toLayer({
+          ReadEnv: () => Effect.void,
+          Unselected: () => Effect.void
+        })
+        const calls = ["call_1", "call_2"].map((id) => ({
+          id,
+          type: "function" as const,
+          function: { name: "ReadEnv", arguments: JSON.stringify({ env: [{ 0: "PATH", 1: "/usr/bin" }] }) }
+        }))
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.gen(function*() {
+                const body = yield* getRequestBody(request)
+                assert.deepStrictEqual(body.tools.map((tool: any) => tool.function.name), ["ReadEnv"])
+                assert.strictEqual(body.tools[0].function.parameters.properties.env.type, "array")
+                return mode === "complete"
+                  ? jsonResponse(
+                    request,
+                    makeChatCompletion({
+                      choices: [{
+                        index: 0,
+                        finish_reason: "tool_calls",
+                        message: { role: "assistant", content: null, tool_calls: calls }
+                      }]
+                    })
+                  )
+                  : sseResponse(request, [{
+                    id: "chatcmpl_env",
+                    object: "chat.completion.chunk",
+                    model: "gpt-4o-mini",
+                    created: 1,
+                    choices: [{
+                      index: 0,
+                      delta: { tool_calls: calls.map((call, index) => ({ ...call, index })) },
+                      finish_reason: "tool_calls"
+                    }]
+                  }, "[DONE]"])
+              })
+            )
+          ))
+        )
+        for (let request = 1; request <= 2; request++) {
+          const options = {
+            prompt: "read the environment",
+            toolkit,
+            toolChoice: { oneOf: ["ReadEnv"] as Array<"ReadEnv"> },
+            disableToolCallResolution: true
+          }
+          const calls = yield* (mode === "complete"
+            ? LanguageModel.generateText(options).pipe(
+              Effect.map((result) => result.toolCalls.map((part) => ({ id: part.id, params: part.params })))
+            )
+            : LanguageModel.streamText(options).pipe(
+              Stream.runCollect,
+              Effect.map((parts) =>
+                parts.filter((part) => part.type === "tool-call").map((part) => ({ id: part.id, params: part.params }))
+              )
+            )).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+              Effect.provide(toolkitLayer),
+              Effect.provide(layer)
+            )
+          assert.deepStrictEqual(
+            calls,
+            [
+              { id: "call_1", params: { env: { PATH: "/usr/bin" } } },
+              { id: "call_2", params: { env: { PATH: "/usr/bin" } } }
+            ]
+          )
+          assert.strictEqual(conversions, request)
+        }
+      }))
+  }
+
   describe("generateText", () => {
     it.effect("sends model in request and decodes text output", () =>
       Effect.gen(function*() {
