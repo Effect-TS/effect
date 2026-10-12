@@ -5,10 +5,11 @@ import * as BunWorker from "@effect/platform-bun/BunWorker"
 import * as BunWorkerRunner from "@effect/platform-bun/BunWorkerRunner"
 import * as Layer from "effect/Layer"
 import { moduleUrl, type Platform } from "../Platform.ts"
+import type { Services } from "../platforms.ts"
 
 const executor = moduleUrl("../executor-worker", import.meta.url)
 
-export const platform: Platform = {
+export const platform: Platform<Services> = {
   runtime: "bun",
   layer: Layer.mergeAll(
     BunServices.layer,

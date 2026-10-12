@@ -5,10 +5,11 @@ import * as DenoWorker from "@effect/platform-deno/DenoWorker"
 import * as DenoWorkerRunner from "@effect/platform-deno/DenoWorkerRunner"
 import * as Layer from "effect/Layer"
 import { moduleUrl, type Platform } from "../Platform.ts"
+import type { Services } from "../platforms.ts"
 
 const executor = moduleUrl("../executor-worker", import.meta.url)
 
-export const platform: Platform = {
+export const platform: Platform<Services> = {
   runtime: "deno",
   layer: Layer.mergeAll(
     DenoServices.layer,

@@ -6,10 +6,11 @@ import * as NodeWorkerRunner from "@effect/platform-node/NodeWorkerRunner"
 import * as Layer from "effect/Layer"
 import { Worker } from "node:worker_threads"
 import { moduleUrl, type Platform } from "../Platform.ts"
+import type { Services } from "../platforms.ts"
 
 const executor = moduleUrl("../executor-worker", import.meta.url)
 
-export const platform: Platform = {
+export const platform: Platform<Services> = {
   runtime: "node",
   layer: Layer.mergeAll(
     NodeServices.layer,

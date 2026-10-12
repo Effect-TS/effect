@@ -5,6 +5,7 @@ import * as Layer from "effect/Layer"
 import * as RpcServer from "effect/rpc/RpcServer"
 import { ExecutorState, listFile, runFile } from "./Executor.ts"
 import * as Platform from "./Platform.ts"
+import { platforms } from "./platforms.ts"
 import { ExecutorRpcs } from "./Protocol.ts"
 
 const Handlers = ExecutorRpcs.toLayer({
@@ -18,4 +19,4 @@ const Main = RpcServer.layer(ExecutorRpcs).pipe(
   Layer.provide(RpcServer.layerProtocolWorkerRunner)
 )
 
-Platform.runMain(Layer.launch(Main))
+Platform.runMain(platforms, Layer.launch(Main))
