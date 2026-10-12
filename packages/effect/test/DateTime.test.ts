@@ -106,6 +106,13 @@ describe("DateTime", () => {
         assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
 
+    it("clips fractional time units separately", () => {
+      strictEqual(
+        DateTime.toEpochMillis(DateTime.add(DateTime.makeUnsafe(1000), { milliseconds: 0.5, seconds: 0.0005 })),
+        1000
+      )
+    })
+
     it("adds and subtracts elapsed time in the repeated DST hour", () => {
       const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", {
         timeZone: "America/New_York"
