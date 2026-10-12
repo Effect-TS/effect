@@ -1,10 +1,21 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Stream } from "effect"
-import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
+import { Cookies, Html, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/http"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
+  it.effect("html sends Html unchanged and preserves the legacy unescaped template tag", () =>
+    Effect.gen(function*() {
+      const html = yield* Html.make`<p>${"<script>"}</p>`
+      const response = HttpServerResponse.toWeb(HttpServerResponse.html(html))
+      assert.strictEqual(response.headers.get("content-type"), "text/html")
+      assert.strictEqual(yield* Effect.promise(() => response.text()), "<p>&lt;script&gt;</p>")
+
+      const legacy = HttpServerResponse.toWeb(yield* HttpServerResponse.html`<p>${"<b>trusted</b>"}</p>`)
+      assert.strictEqual(yield* Effect.promise(() => legacy.text()), "<p><b>trusted</b></p>")
+    }))
+
   describe("toWeb", () => {
     it.each([
       { status: 204, withoutBody: false },
