@@ -120,6 +120,18 @@ export const renderSlices = (
   if (reason !== undefined) {
     throw new Error(`Cannot render slices of operation ${name}: ${reason}`)
   }
+  const sharedFragmentNames = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
+  for (const fragment of template.fragments) {
+    if (isShared(fragment)) continue
+    for (const prefix of prefixes) {
+      const fragmentName = prefix + fragment.name
+      if (sharedFragmentNames.has(fragmentName)) {
+        throw new Error(
+          `Cannot render slices of operation ${name}: fragment ${fragmentName} would collide with a shared fragment`
+        )
+      }
+    }
+  }
   return renderOperation(
     kind,
     name,
