@@ -49,7 +49,7 @@ export const ScalarSpecifier = Schema.TemplateLiteral([Schema.String, "#", Schem
  *   directory, e.g. `github.graphql` or `github.json` gives
  *   `github.graphql.ts`.
  * - `importExtension`: the extension used in imports between generated files
- *   and to relative scalar modules. Defaults to `.ts`.
+ *   and to relative scalar modules. Accepts `.ts` (default) or `.js`.
  *
  * @stability experimental
  * @category schemas
@@ -60,7 +60,7 @@ export const Config = Schema.Struct({
   documents: Schema.Array(Schema.String),
   scalars: Schema.optional(Schema.Record(Schema.String, ScalarSpecifier)),
   shared: Schema.optional(Schema.String),
-  importExtension: Schema.optional(Schema.Literals([".ts", ".js", ""]))
+  importExtension: Schema.optional(Schema.Literals([".ts", ".js"]))
 })
 
 /**

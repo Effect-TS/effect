@@ -52,9 +52,10 @@ export interface Diagnostic {
  * `diagnostics` holds an error.
  *
  * `deletes` lists the absolute paths of stale generated files: every
- * `*.graphql.ts` under a `documents` glob root that starts with the generator's
- * header, has no `.graphql` source next to it and isn't among `files`. Files
- * without the header are never listed.
+ * `*.graphql.ts` under a `documents` glob root whose first line exactly matches
+ * the generator header naming its sibling `.graphql` source, where that source
+ * is missing and the output isn't among `files`. Shared modules and files without
+ * a matching document header are never listed.
  *
  * @stability experimental
  * @category models

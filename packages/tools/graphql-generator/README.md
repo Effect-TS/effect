@@ -45,7 +45,7 @@ GraphQL extension can share the file.
 | `documents`       | Glob patterns (`*`, `**`, `?`, `{a,b}`) relative to the config file. `node_modules` and dot-directories are skipped. Documents hold only operations and fragments. |
 | `scalars`         | Optional. A codec per custom scalar; can also override the built-in `Int`, `Float` and `ID`.                                                                       |
 | `shared`          | Optional. Where the shared module goes. Defaults to the schema's name next to it: `github.graphql` or `github.json` gives `github.graphql.ts`.                     |
-| `importExtension` | Optional. `".ts"` (default), `".js"` or `""`, used in imports between generated files and to relative scalar modules.                                              |
+| `importExtension` | Optional. `".ts"` (default) or `".js"`, used in imports between generated files and to relative scalar modules.                                                    |
 
 One config means one schema: for two schemas, write two config files and run
 `graphqlgen --config <file>` for each.
@@ -107,8 +107,9 @@ exclude `*.graphql.ts` from your linter and formatter: the output has one fixed
 style, and a reformatted file shows up as out of date in `graphqlgen --check`.
 
 After a successful run, `graphqlgen` deletes each `*.graphql.ts` under the
-`documents` glob roots that carries its generated header and has no `.graphql`
-source left. Files without the header are never touched.
+`documents` glob roots whose first line exactly matches the generated header
+naming its sibling `.graphql` source, if that source is missing. Shared modules
+and files without a matching document header are never touched.
 
 ## CLI
 

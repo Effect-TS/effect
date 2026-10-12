@@ -129,13 +129,14 @@ export const generate: (
       importSpecifier
     })
     if (output.errors.length > 0) return failed(output.errors.map(toPublic))
-    // Stale outputs: generated files, recognized by their header, whose source is gone.
+    // Only document headers name a source; shared modules are never stale outputs.
     const outputs = new Set(output.files.map((file) => file.path))
     const deletes = yield* Effect.filter(
       uniqueSorted(entries.filter((entry) => entry.absolute.endsWith(".graphql.ts") && !outputs.has(entry.absolute))),
       Effect.fnUntraced(function*(absolute) {
-        if (yield* fs.exists(absolute.slice(0, -".ts".length))) return false
-        return (yield* fs.readFileString(absolute)).startsWith(Emitter.headerPrefix)
+        const source = absolute.slice(0, -".ts".length)
+        if (yield* fs.exists(source)) return false
+        return (yield* fs.readFileString(absolute)).split(/\r?\n/, 1)[0] === Emitter.header(path.basename(source))
       })
     )
     return {
