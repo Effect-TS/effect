@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Schema } from "effect"
-import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol } from "effect/graphql"
+import { Duration, Effect, Layer, Ref, Schema } from "effect"
+import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import {
@@ -109,6 +109,49 @@ describe("GraphQLProtocol.layerHttp", () => {
       assert.deepStrictEqual(reason.errors, [{ message: "Service unavailable" }])
       assert.strictEqual(reason.status, 503)
       assert.isFalse(reason.isRetryable)
+    }))
+
+  it.effect("HTTP response headers reach middleware through next and ResponseError", () =>
+    Effect.gen(function*() {
+      class RateLimit extends GraphQLMiddleware.Service<RateLimit>()("test/RateLimit") {}
+      const seen = yield* Ref.make<unknown>(undefined)
+      const headers = {
+        "content-type": "application/graphql-response+json",
+        "x-ratelimit-remaining": "0",
+        "x-ratelimit-reset": "1791768600",
+        "retry-after": "30"
+      }
+      const reason = yield* GraphQLClient.make(ViewerGroup.middleware(RateLimit)).pipe(
+        Effect.flatMap((client) => client.Viewer()),
+        Effect.provide([
+          layerHttp(() =>
+            new Response(
+              JSON.stringify({ errors: [{ message: "Rate limited", extensions: { code: "RATE_LIMITED" } }] }),
+              {
+                status: 200,
+                headers
+              }
+            )
+          ),
+          Layer.succeed(RateLimit, {
+            execute: ({ next, request }) => Effect.tap(next(request), (result) => Ref.set(seen, result)),
+            subscribe: ({ next, request }) => next(request)
+          })
+        ]),
+        expectReason("ResponseError")
+      )
+      assert.deepPropertyVal(yield* Ref.get(seen), "headers", headers)
+      assert.deepPropertyVal(reason, "headers", headers)
+    }))
+
+  it.effect("a non-GraphQL 403 is a TransportError carrying response headers without Retry-After", () =>
+    Effect.gen(function*() {
+      const headers = { "content-type": "text/plain", "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1791768600" }
+      const reason = yield* callViewer(() => new Response("Secondary rate limit", { status: 403, headers })).pipe(
+        expectReason("TransportError")
+      )
+      assert.strictEqual(reason.status, 403)
+      assert.deepPropertyVal(reason, "headers", headers)
     }))
 
   it.effect("a non-GraphQL 503 is a TransportError carrying a numeric Retry-After", () =>
