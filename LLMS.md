@@ -390,6 +390,9 @@ operations from `.graphql` documents, then build a client with
   When an API has no field that takes a list of keys, `GraphQLResolver.aliased`
   repeats a generated operation under aliases, so concurrent lookups share one
   request and keep their generated types.
+- **[Handling GraphQL errors, retries and rate limits](./ai-docs/src/52_graphql/50_errors-and-retries.ts)**:
+  Read rate-limit headers in a middleware, tell GraphQL errors apart by their
+  fields, and retry timeouts and rate limits with `Effect.retry`.
 
 ## Working with child processes
 

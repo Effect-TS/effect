@@ -206,6 +206,40 @@ const issues = GraphQLClient.items(github.RepoIssues, {
 An operation without `$after` or `pageInfo`, or without `nodes` for `items`,
 doesn't compile. The generator needs nothing beyond this convention.
 
+### Paging with a cap
+
+Pages are fetched as the stream is pulled, so `Stream.take` on `pages` caps
+the number of requests. The last page's `pageInfo.hasNextPage` tells you
+whether the cap cut the read short. `Stream.runCollect` drops every row when
+the stream fails, so catch the `PaginationError` inside the stream to keep the
+rows read before it, and mark the result partial:
+
+```ts
+import { Effect, Stream } from "effect"
+import { GraphQLClient } from "effect/graphql"
+
+export const recentIssues = Effect.fn("recentIssues")(function*(maxPages: number) {
+  const github = yield* GitHub
+  const pages = yield* GraphQLClient.pages(github.RepoIssues, {
+    variables: { owner: "Effect-TS", name: "effect" },
+    connection: (result) => result.repository?.issues
+  }).pipe(
+    Stream.take(maxPages),
+    // End the stream with a `null` marker instead of failing it
+    Stream.catchReason("GraphQLClientError", "PaginationError", () => Stream.make(null)),
+    Stream.runCollect
+  )
+  const last = pages.at(-1)
+  return {
+    issues: pages.flatMap((page) => page?.nodes ?? []),
+    partial: last === null || last?.pageInfo.hasNextPage === true
+  }
+})
+```
+
+Other errors still fail the whole read. To keep rows on those as well, catch
+`GraphQLClientError` the same way.
+
 ### Batching
 
 `GraphQLResolver` from `effect/graphql` collects concurrent lookups and makes
@@ -360,6 +394,236 @@ the `null` reaches `data`. GitHub's `repository` and `pullRequest` are
 nullable, so they don't. Middleware that hash the query should hash
 `request.query`, which holds the batched document, and allowlists of trusted
 documents can't cover batches.
+
+### Partial results
+
+When a field fails, GraphQL sets it to `null`. If the field is non-null, the
+`null` moves up to the nearest nullable parent, and on to `data` if there is
+none. An error stays inside one alias or list entry only when some field from
+that alias or entry down to the failed field is nullable, so the `null` stops
+there. Otherwise it wipes out data that other aliases or entries share. This
+holds for `{ partial: true }`, `aliased` slices and `ordered` / `findById`
+entries alike. In `repository { pullRequest { title } }`, an error on `title`
+(a `String!`) nulls `pullRequest`, which GitHub declares nullable, so the rest
+of the response survives.
+
+## GitHub
+
+GitHub's API has a few behaviours worth handling from the start: rate-limit
+headers, typed errors, timeouts and per-installation tokens. The snippets
+below use the `GitHub` service and the operations from the sections above.
+
+### Rate-limit headers
+
+GitHub reports the primary rate limit on every response in
+`x-ratelimit-remaining`, `x-ratelimit-used` and `x-ratelimit-reset` (epoch
+seconds). A middleware reads them from the result `next` returns:
+
+```ts
+import { Effect, Layer } from "effect"
+import { GraphQLMiddleware } from "effect/graphql"
+
+export class RateLimit extends GraphQLMiddleware.Service<RateLimit>()("app/RateLimit") {
+  static readonly layer = Layer.succeed(RateLimit, {
+    execute: ({ next, request }) =>
+      Effect.tap(next(request), (result) => {
+        const remaining = Number(result.headers?.["x-ratelimit-remaining"])
+        return remaining < 500
+          ? Effect.logWarning(`GitHub rate limit: ${remaining} points left`)
+          : Effect.void
+      }),
+    subscribe: ({ next, request }) => next(request)
+  })
+}
+```
+
+Attach it with `GraphQLGroup.merge(...).middleware(RateLimit)` and provide
+`RateLimit.layer`. A response with GraphQL `errors` still reaches the
+middleware as a result; a transport failure fails `next` instead. Either
+way, a failed call keeps the headers on `ResponseError.headers` or
+`TransportError.headers`.
+
+### Error types
+
+GitHub adds a top-level `type` to each GraphQL error, such as `NOT_FOUND`,
+`FORBIDDEN`, `INSUFFICIENT_SCOPES` or `RATE_LIMITED`. `GraphQLError` keeps
+fields it doesn't know as JSON, so `type` can be read from
+`ResponseError.errors`:
+
+```ts
+import { Effect } from "effect"
+import type { GraphQLClientError } from "effect/graphql"
+
+const hasErrorType = (error: GraphQLClientError.GraphQLClientError, type: string) =>
+  error.reason._tag === "ResponseError" && error.reason.errors.every((entry) => entry.type === type)
+
+export const findPullRequest = Effect.fn("findPullRequest")(function*(owner: string, name: string, number: number) {
+  const github = yield* GitHub
+  return yield* github.PullRequest({ owner, name, number }).pipe(
+    Effect.map(({ repository }) => repository?.pullRequest ?? null),
+    Effect.catchIf((error) => hasErrorType(error, "NOT_FOUND"), () => Effect.succeed(null))
+  )
+})
+```
+
+`every` keeps a `NOT_FOUND` that comes with another error a failure.
+
+### Timeouts
+
+GitHub stops a query that runs too long and answers 502 or 504, usually with
+a GraphQL body such as `{"data":null,"errors":[{"message":"Something went
+wrong while executing your query..."}]}`. That is a `ResponseError`, and
+`isRetryable` is `true` for any 429 or 5xx status. A 5xx without a GraphQL
+body is a retryable `TransportError`. `GraphQLClientError.isRetryable` covers
+both:
+
+```ts
+import { Effect, Schedule } from "effect"
+
+export const firstPage = Effect.gen(function*() {
+  const github = yield* GitHub
+  return yield* github.RepoIssues({ owner: "Effect-TS", name: "effect" }).pipe(
+    Effect.retry({
+      while: (error) => error.isRetryable,
+      schedule: Schedule.exponential("1 second"),
+      times: 3
+    })
+  )
+})
+```
+
+`Stream.retry` on `pages` or `items` starts again from the first page. To
+retry only the page that timed out, repeat the call in a middleware. `next`
+returns the 502 or 504 as a result, so repeat on its `status`:
+
+```ts
+import { Effect, Layer, Schedule } from "effect"
+import { GraphQLMiddleware } from "effect/graphql"
+
+export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("app/RetryTimeouts") {
+  static readonly layer = Layer.succeed(RetryTimeouts, {
+    execute: ({ next, request }) =>
+      Effect.repeat(next(request), {
+        while: (result) => result.status === 502 || result.status === 504,
+        schedule: Schedule.exponential("1 second"),
+        times: 3
+      }),
+    subscribe: ({ next, request }) => next(request)
+  })
+}
+```
+
+Attach `RetryTimeouts` only to operations that are safe to send twice, and
+don't wrap other mutations in `Effect.retry` either. A mutation that timed
+out may still have been applied.
+
+### Secondary rate limits
+
+GitHub's secondary rate limits, on concurrent requests and points per
+minute, answer 403 or 429 with a JSON body that isn't a GraphQL response. The
+client reports them as a `TransportError` with `status` and `headers`. A 429
+is retryable, but a 403 isn't, so check the headers. GitHub asks clients to
+wait for `retry-after` when it is set, and until `x-ratelimit-reset` when
+`x-ratelimit-remaining` is `0`. The same headers come with a `RATE_LIMITED`
+error from the primary limit.
+
+```ts
+import { Duration, Effect, Schedule } from "effect"
+import type { GraphQLClientError } from "effect/graphql"
+
+// How long GitHub asked us to wait, or `undefined` for other errors
+const rateLimitWait = (error: GraphQLClientError.GraphQLClientError, now: number) => {
+  if (error.retryAfter !== undefined) return error.retryAfter
+  const reason = error.reason
+  const headers = reason._tag === "ResponseError" || reason._tag === "TransportError" ? reason.headers : undefined
+  if (headers?.["x-ratelimit-remaining"] !== "0") return undefined
+  const reset = Number(headers["x-ratelimit-reset"]) * 1000
+  return Number.isFinite(reset) ? Duration.millis(Math.max(0, reset - now)) : Duration.minutes(1)
+}
+
+const gitHubRetry = Schedule.exponential("1 second").pipe(
+  Schedule.setInputType<GraphQLClientError.GraphQLClientError>(),
+  Schedule.modifyDelay(({ duration, input, now }) => Effect.succeed(rateLimitWait(input, now) ?? duration))
+)
+
+export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.GraphQLClientError, R>) =>
+  Effect.retry(effect, {
+    schedule: gitHubRetry,
+    while: (error) => error.isRetryable || rateLimitWait(error, Date.now()) !== undefined,
+    times: 5
+  })
+```
+
+`retryGitHub(github.RepoIssues(variables))` retries timeouts with backoff and
+rate limits after the wait GitHub asked for.
+
+### Pull requests per installation
+
+A GitHub App calls the API with one token per installation. When the auth
+middleware `requires` the installation, `aliased` needs a `batchKey`, so pull
+requests for different installations never share a request:
+
+```ts
+import { Context, Effect, Layer, Redacted } from "effect"
+import { GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol, GraphQLResolver } from "effect/graphql"
+import { FetchHttpClient, Headers } from "effect/http"
+import { IssuesGraphQLGroup } from "./src/issues.graphql.ts"
+import { ReposGraphQLGroup } from "./src/repos.graphql.ts"
+
+// The installation a call runs as, with its access token
+export class Installation extends Context.Service<Installation, {
+  readonly id: number
+  readonly token: Redacted.Redacted
+}>()("app/Installation") {}
+
+export class InstallationAuth extends GraphQLMiddleware.Service<InstallationAuth, {
+  requires: Installation
+}>()("app/InstallationAuth") {
+  static readonly layer = Layer.succeed(
+    InstallationAuth,
+    GraphQLMiddleware.mapRequest(Effect.fnUntraced(function*(request) {
+      const { token } = yield* Installation
+      return { ...request, headers: Headers.set(request.headers, "authorization", `Bearer ${Redacted.value(token)}`) }
+    }))
+  )
+}
+
+export class GitHub extends Context.Service<GitHub>()("app/GitHub", {
+  make: Effect.gen(function*() {
+    const client = yield* GraphQLClient.make(
+      GraphQLGroup.merge(IssuesGraphQLGroup, ReposGraphQLGroup).middleware(InstallationAuth)
+    )
+    const PullRequests = GraphQLResolver.aliased(client.PullRequest, {
+      batchKey: (context) => Context.get(context, Installation).id
+    })
+    return { ...client, getPullRequest: GraphQLResolver.request(PullRequests) }
+  })
+}) {
+  static readonly layer = Layer.effect(GitHub, GitHub.make).pipe(
+    Layer.provide(InstallationAuth.layer),
+    Layer.provide(GraphQLProtocol.layerHttp({ url: "https://api.github.com/graphql" })),
+    Layer.provide(FetchHttpClient.layer)
+  )
+}
+
+export const pullRequestTitles = Effect.fn("pullRequestTitles")(function*(
+  installation: Installation["Service"],
+  repo: { readonly owner: string; readonly name: string },
+  numbers: ReadonlyArray<number>
+) {
+  const github = yield* GitHub
+  const results = yield* Effect.forEach(
+    numbers,
+    (number) => github.getPullRequest({ ...repo, number }),
+    { concurrency: "unbounded" }
+  ).pipe(Effect.provideService(Installation, installation))
+  return results.map((result) => result.repository?.pullRequest?.title ?? null)
+})
+```
+
+Every method of this client requires `Installation`. Concurrent
+`pullRequestTitles` calls for two installations send one request per
+installation, each with up to 10 pull requests and that installation's token.
 
 ## Links
 
