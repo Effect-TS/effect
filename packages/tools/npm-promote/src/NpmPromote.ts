@@ -189,11 +189,13 @@ export const promote = Effect.fnUntraced(function*(
  *   lagging behind.
  * - `Missing`: the registry returned 404, so the publish most likely failed.
  * - `Unknown`: the check itself failed. This is never treated as missing.
+ * - `PromotionFailed`: the version is visible, but moving `latest` to it failed.
  */
 export type Diagnosis =
   | { readonly _tag: "Published"; readonly pkg: ReleasePackage }
   | { readonly _tag: "Missing"; readonly pkg: ReleasePackage }
   | { readonly _tag: "Unknown"; readonly pkg: ReleasePackage; readonly reason: string }
+  | { readonly _tag: "PromotionFailed"; readonly pkg: ReleasePackage; readonly reason: string }
 
 const diagnose = Effect.fnUntraced(function*(pkg: ReleasePackage) {
   const client = withRetries(yield* HttpClient.HttpClient)

@@ -2,40 +2,13 @@ import { NpmCli, promote, type ReleasePackage } from "@effect/npm-promote"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
-import * as HttpClientResponse from "effect/http/HttpClientResponse"
-
-interface Published {
-  readonly latest: string
-  readonly versions: ReadonlyArray<string>
-}
+import { type Published, registryClient } from "./utils.ts"
 
 const run = (packages: ReadonlyArray<ReleasePackage>, registry: Record<string, Published>) => {
   const distTagCalls: Array<string> = []
   return promote(packages).pipe(
     Effect.map((result) => ({ result, distTagCalls })),
-    Effect.provideService(
-      HttpClient.HttpClient,
-      HttpClient.make((request) =>
-        Effect.sync(() => {
-          if (request.headers.accept !== "application/vnd.npm.install-v1+json") {
-            return HttpClientResponse.fromWeb(request, new Response(null, { status: 406 }))
-          }
-          const name = decodeURIComponent(new URL(request.url).pathname.slice(1))
-          const published = registry[name]
-          if (published === undefined) {
-            return HttpClientResponse.fromWeb(request, new Response(null, { status: 404 }))
-          }
-          return HttpClientResponse.fromWeb(
-            request,
-            Response.json({
-              name,
-              "dist-tags": { latest: published.latest, staging: published.versions.at(-1) },
-              versions: Object.fromEntries(published.versions.map((version) => [version, { name, version }]))
-            })
-          )
-        })
-      )
-    ),
+    Effect.provideService(HttpClient.HttpClient, registryClient(registry)),
     Effect.provideService(
       NpmCli,
       NpmCli.of({
@@ -118,5 +91,14 @@ describe("NpmPromote", () => {
         _tag: "Promoted",
         promoted: [{ name: "@effect/sql-pg", version: "4.0.9" }]
       })
+    }))
+
+  it.effect("reads the live latest tag before writing", () =>
+    Effect.gen(function*() {
+      const { distTagCalls, result } = yield* run([{ name: "effect", version: "4.0.4" }], {
+        "effect": { latest: "4.0.5", cachedLatest: "4.0.3", versions: ["4.0.3", "4.0.4", "4.0.5"] }
+      })
+      assert.deepStrictEqual(distTagCalls, [])
+      assert.deepStrictEqual(result, { _tag: "Promoted", promoted: [] })
     }))
 })
