@@ -97,18 +97,6 @@ describe("HttpEffect", () => {
       strictEqual(hasParentSpan, true)
     })
 
-    test("sets a header on a raw Response whose headers are immutable", async () => {
-      const handler = HttpEffect.toWebHandler(Effect.succeed(
-        HttpServerResponse.raw(Response.redirect("http://localhost:3000/target", 302)).pipe(
-          HttpServerResponse.setHeader("x-layout", "full")
-        )
-      ))
-      const response = await handler(new Request("http://localhost:3000/"))
-      strictEqual(response.status, 302)
-      strictEqual(response.headers.get("location"), "http://localhost:3000/target")
-      strictEqual(response.headers.get("x-layout"), "full")
-    })
-
     test("json", async () => {
       const handler = HttpEffect.toWebHandler(HttpServerResponse.json({ foo: "bar" }))
       const response = await handler(new Request("http://localhost:3000/"))

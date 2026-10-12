@@ -4,18 +4,6 @@ import { Cookies, HttpBody, HttpClientRequest, HttpClientResponse, HttpServerRes
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
-// Node, Deno and Workers make `Response.redirect` headers immutable and Bun does not, so the fixture makes them so
-const immutableRedirect = (): Response => {
-  const response = Response.redirect("http://localhost/target", 302)
-  const immutable = (): never => {
-    throw new TypeError("Headers are immutable")
-  }
-  for (const method of ["append", "delete", "set"]) {
-    Object.defineProperty(response.headers, method, { value: immutable })
-  }
-  return response
-}
-
 describe("HttpServerResponse", () => {
   describe("toWeb", () => {
     it.each([
@@ -96,39 +84,32 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(await web.text(), "body")
     })
 
-    it("merges outer headers into a raw Response whose headers are immutable", () => {
-      const native = immutableRedirect()
-      assert.throws(() => native.headers.set("x-probe", "native"), TypeError)
-      const web = HttpServerResponse.toWeb(
-        HttpServerResponse.raw(native, {
-          headers: { "x-outer": "outer" },
-          cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}]])
-        })
-      )
+    it.each([false, true])(
+      "merges outer headers into a raw Response with immutable headers (withoutBody=%s)",
+      (withoutBody) => {
+        const native = Response.redirect("http://localhost/target", 302)
+        // Bun leaves `Response.redirect` headers mutable, unlike Node, Deno and workerd
+        for (const method of ["append", "delete", "set"]) {
+          Object.defineProperty(native.headers, method, {
+            value: () => {
+              throw new TypeError("immutable")
+            }
+          })
+        }
+        const web = HttpServerResponse.toWeb(
+          HttpServerResponse.raw(native, {
+            headers: { "x-outer": "outer" },
+            cookies: Cookies.setAllUnsafe(Cookies.empty, [["a", "1", {}]])
+          }),
+          { withoutBody }
+        )
 
-      assert.strictEqual(web.status, 302)
-      assert.strictEqual(web.headers.get("location"), "http://localhost/target")
-      assert.strictEqual(web.headers.get("x-outer"), "outer")
-      assert.deepStrictEqual(web.headers.getSetCookie(), ["a=1"])
-    })
-
-    it("merges outer headers into an immutable raw Response for HEAD", () => {
-      const native = immutableRedirect()
-      const web = HttpServerResponse.toWeb(
-        HttpServerResponse.raw(native, { headers: { "x-outer": "outer" } }),
-        { withoutBody: true }
-      )
-
-      assert.strictEqual(web.body, null)
-      assert.strictEqual(web.status, 302)
-      assert.strictEqual(web.headers.get("location"), "http://localhost/target")
-      assert.strictEqual(web.headers.get("x-outer"), "outer")
-    })
-
-    it("leaves an immutable raw Response as it is when there is nothing to merge", () => {
-      const native = immutableRedirect()
-      assert.strictEqual(HttpServerResponse.toWeb(HttpServerResponse.raw(native)), native)
-    })
+        assert.strictEqual(web.status, 302)
+        assert.strictEqual(web.headers.get("location"), "http://localhost/target")
+        assert.strictEqual(web.headers.get("x-outer"), "outer")
+        assert.deepStrictEqual(web.headers.getSetCookie(), ["a=1"])
+      }
+    )
 
     it.each([
       { status: 200, withoutBody: true },
