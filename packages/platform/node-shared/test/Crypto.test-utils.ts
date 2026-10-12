@@ -29,7 +29,7 @@ const assertReason = (
 }
 
 /**
- * The layers a platform adds to the Web Crypto layers of `effect/crypto`. Tests
+ * The layers a platform adds to the Web Crypto layers of `effect/Crypto`. Tests
  * of services a platform does not add are skipped.
  */
 export interface CryptoLayers {
@@ -114,13 +114,8 @@ const xchachaVectors: ReadonlyArray<readonly [number, string]> = [
 ]
 
 /**
- * Runs known-answer, interoperability, and error tests against the individual
- * layers of a platform. Each test provides only the layer of the algorithm it
- * exercises.
- */
-/**
  * Runs the tests every platform shares: the Web Crypto behaviour the
- * `effect/crypto` layers rely on, and the services the platform adds.
+ * `effect/Crypto` layers rely on, and the services the platform adds.
  */
 export const describeCrypto = (label: string, layers: CryptoLayers) =>
   describe(label, () => {
