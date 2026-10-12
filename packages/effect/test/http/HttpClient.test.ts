@@ -429,6 +429,8 @@ Missing key
 
     it.effect.each([
       { name: "seconds at maxRetryAfter", header: "1", status: 503, delay: 1_000, maxRetryAfter: 1_000 },
+      { name: "the default one-minute cap", header: "60", status: 503, delay: 60_000 },
+      { name: "an explicit larger cap", header: "61", status: 503, delay: 61_000, maxRetryAfter: 120_000 },
       { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
       { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
       { name: "no header", status: 503, delay: 0 }
@@ -463,6 +465,20 @@ Missing key
           strictEqual((yield* Fiber.join(fiber)).status, 200)
         })
     )
+
+    it.effect("returns the response when Retry-After exceeds the default one-minute cap", () =>
+      Effect.gen(function*() {
+        const { attempts, client } = yield* makeSequenceClient([
+          { status: 429, headers: { "retry-after": "61" } },
+          { status: 200 }
+        ])
+        const fiber = yield* client.pipe(
+          HttpClient.retryTransient({ times: 1 })
+        ).get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust("61 seconds")
+        strictEqual((yield* Fiber.join(fiber)).status, 429)
+        strictEqual(yield* Ref.get(attempts), 1)
+      }))
 
     it.effect("returns the response when Retry-After exceeds maxRetryAfter", () =>
       Effect.gen(function*() {
