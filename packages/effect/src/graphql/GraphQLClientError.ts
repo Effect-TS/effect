@@ -7,6 +7,7 @@
  */
 import * as Duration from "../Duration.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
+import { HeadersSchema } from "../internal/graphqlHeaders.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 
@@ -75,7 +76,9 @@ export type GraphQLError = typeof GraphQLError.Type
  * reason rather than `TransportError`.
  *
  * `status` and `headers` are the HTTP status and response headers, as the
- * transport reported them and middleware left them. Both are unset over
+ * transport reported them and middleware left them. Headers use
+ * `Headers.Headers` at runtime and encode as a plain string record.
+ * Decoding restores the normalized header collection. Both are unset over
  * graphql-ws, and `status` is unset for graphql-sse events. A `ResponseError`
  * is never retryable, whatever the status: a `429` or `503` that carries a
  * GraphQL `errors` body is not retried.
@@ -106,7 +109,7 @@ export class ResponseError
     data: Schema.optional(Schema.Json),
     extensions: Schema.optional(Schema.Record(Schema.String, Schema.Json)),
     status: Schema.optional(Schema.Int),
-    headers: Schema.optional(Schema.Record(Schema.String, Schema.String))
+    headers: Schema.optional(HeadersSchema)
   })
 {
   /**
@@ -158,7 +161,8 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
  * **Details**
  *
  * - `status` and `headers` are only set for an HTTP response that is not a
- *   GraphQL response.
+ *   GraphQL response. Headers use `Headers.Headers` at runtime and encode
+ *   as a plain string record; decoding restores the header collection.
  * - `retryAfter` comes from the `Retry-After` header (numeric or HTTP-date
  *   form) and is encoded as milliseconds.
  * - `closeCode` is set when a WebSocket connection closed.
@@ -185,7 +189,7 @@ export class TransportError
   extends Schema.TaggedError<TransportError>("effect/graphql/GraphQLClientError/TransportError")("TransportError", {
     description: Schema.String,
     status: Schema.optional(Schema.Int),
-    headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+    headers: Schema.optional(HeadersSchema),
     retryAfter: Schema.optional(Schema.DurationFromMillis),
     closeCode: Schema.optional(Schema.Int),
     cause: Schema.optional(Schema.Defect())
@@ -208,7 +212,8 @@ export class TransportError
 
   /**
    * Converts an `HttpClientError` into a `TransportError`, reading `status`,
-   * `headers` and `Retry-After` from the response when there is one.
+   * `headers` (as `Headers.Headers`) and `Retry-After` from the response
+   * when there is one.
    *
    * **Details**
    *
@@ -226,7 +231,7 @@ export class TransportError
     return new TransportError({
       description: error.message,
       status: response?.status,
-      headers: response === undefined ? undefined : { ...response.headers },
+      headers: response === undefined ? undefined : response.headers,
       retryAfter: response === undefined
         ? undefined
         : parseRetryAfter(response.headers["retry-after"], options?.now ?? Date.now()),
