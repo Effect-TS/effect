@@ -1455,7 +1455,10 @@ const parseRetryAfter = (
   }
   const trimmed = value.trim()
   if (/^\d+(?:\.\d+)?$/.test(trimmed)) {
-    return Duration.max(Duration.seconds(Number(trimmed)), Duration.millis(1))
+    const numeric = Number(trimmed)
+    return Number.isFinite(numeric)
+      ? Duration.max(Duration.seconds(numeric), Duration.millis(1))
+      : undefined
   }
   const parsedDate = Date.parse(trimmed)
   if (Number.isNaN(parsedDate)) {
