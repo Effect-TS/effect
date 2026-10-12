@@ -9638,9 +9638,11 @@ Arbitrary.schema(schema)
 
 - `DateTime.Zoned` -> `DateTime.Zoned`: The model remains; rename epochMillis and adjustedEpochMillis to epochMilliseconds and adjustedEpochMilliseconds.
 
-- `DateTime.distanceDuration` -> `Duration.millis(Math.abs(DateTime.distance(self, other)))`: DateTime.distance returns signed milliseconds in v4; take the absolute value and construct a Duration to preserve v3 behavior.
+- `DateTime.distance` -> `Duration.toMillis(DateTime.distance(self, other))`: V3 returns signed milliseconds; v4 returns a signed Duration (other minus self). Convert it with Duration.toMillis when a numeric millisecond result is required.
 
-- `DateTime.distanceDurationEither` -> `DateTime.distance + Result`: Compute the signed millisecond distance, wrap its absolute Duration as Result.succeed when positive and Result.fail when non-positive; v4 uses Result instead of Either.
+- `DateTime.distanceDuration` -> `Duration.abs(DateTime.distance(self, other))`: V4 DateTime.distance already returns a signed Duration. Use Duration.abs to preserve the non-negative distance returned by v3; Math.abs and Duration.millis expect numbers, not Durations.
+
+- `DateTime.distanceDurationEither` -> `DateTime.distance + Result`: Let diff = DateTime.distance(self, other), a signed Duration. Use Duration.isPositive(diff) ? Result.succeed(Duration.abs(diff)) : Result.fail(Duration.abs(diff)) to preserve v3 behavior, including equal dates producing a failure with Duration.zero. V4 uses Result instead of Either.
 
 - `DateTime.greaterThan` -> `DateTime.isGreaterThan`: The comparison was renamed with the is prefix.
 
