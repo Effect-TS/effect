@@ -83,7 +83,7 @@ describe("HttpServerResponse", () => {
       assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc", "a=1"])
     })
 
-    it("returns the raw Response with merged headers for GET", async () => {
+    it("merges headers for GET without modifying the raw Response", async () => {
       const native = new Response("body", {
         status: 202,
         statusText: "Accepted by upstream",
@@ -96,13 +96,16 @@ describe("HttpServerResponse", () => {
         })
       )
 
-      assert.strictEqual(web, native)
       assert.strictEqual(web.status, 202)
       assert.strictEqual(web.statusText, "Accepted by upstream")
       assert.strictEqual(web.headers.get("x-probe"), "native")
       assert.strictEqual(web.headers.get("x-outer"), "outer")
       assert.strictEqual(web.headers.get("x-shared"), "outer")
       assert.deepStrictEqual(web.headers.getSetCookie(), ["sid=abc; Path=/; HttpOnly", "a=1", "b=2"])
+      assert.strictEqual(native.headers.get("x-probe"), "native")
+      assert.strictEqual(native.headers.get("x-outer"), null)
+      assert.strictEqual(native.headers.get("x-shared"), "native")
+      assert.deepStrictEqual(native.headers.getSetCookie(), ["sid=abc; Path=/; HttpOnly"])
       assert.strictEqual(await web.text(), "body")
     })
 
