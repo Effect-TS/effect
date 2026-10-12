@@ -1081,6 +1081,46 @@ Missing key
         strictEqual(yield* Ref.get(attempts), 3)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
+    it.effect("waits until a Retry-After HTTP date", () =>
+      Effect.gen(function*() {
+        yield* TestClock.adjust("1 hour")
+        const retryAt = new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                attempt === 1
+                  ? new Response(null, { status: 429, headers: { "retry-after": retryAt } })
+                  : new Response(null, { status: 200 })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "http-date-retry-after",
+            limit: 100,
+            window: "1 minute",
+            times: 1,
+            disableAdaptiveLearning: true
+          })
+        )
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild({ startImmediately: true }))
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("29 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
+        const response = yield* Fiber.join(fiber)
+
+        strictEqual(response.status, 200)
+        strictEqual(yield* Ref.get(attempts), 2)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
     it.effect("uses a custom Retry-After header", () =>
       Effect.gen(function*() {
         const attempts = yield* Ref.make(0)
