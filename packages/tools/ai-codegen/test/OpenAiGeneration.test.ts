@@ -238,18 +238,39 @@ const cases: ReadonlyArray<Case> = [
     invalid: [{ merged: { a: "a", b: "b" } }, { distributed: { b: "b" } }]
   },
   {
-    // Both alternatives keywords on one schema must hold together
+    // Both alternatives keywords on one schema must hold together, whether or not the `allOf`
+    // fragment declares properties of its own
     name: "anyOf and oneOf on the same object",
     schemas: {
-      Root: {
-        ...object({ a: string, b: string, c: string }),
-        allOf: [{ required: ["a"] }],
-        anyOf: [{ required: ["b"] }],
-        oneOf: [{ required: ["c"] }]
-      }
+      Root: object({
+        requiredOnly: {
+          ...object({ a: string, b: string, c: string }),
+          allOf: [{ required: ["a"] }],
+          anyOf: [{ required: ["b"] }],
+          oneOf: [{ required: ["c"] }]
+        },
+        declaring: {
+          ...object({ a: string, b: string, c: string }),
+          allOf: [{ ...object({ d: string }), required: ["a"] }],
+          anyOf: [{ required: ["b"] }],
+          oneOf: [{ required: ["c"] }]
+        }
+      })
     },
-    valid: [{ a: "a", b: "b", c: "c" }],
-    invalid: [{ a: "a" }, { a: "a", b: "b" }, { a: "a", c: "c" }]
+    valid: [
+      { requiredOnly: { a: "a", b: "b", c: "c" } },
+      { declaring: { a: "a", b: "b", c: "c" } },
+      { declaring: { a: "a", b: "b", c: "c", d: "d" } }
+    ],
+    invalid: [
+      { requiredOnly: { a: "a" } },
+      { requiredOnly: { a: "a", b: "b" } },
+      { requiredOnly: { a: "a", c: "c" } },
+      { declaring: { b: "b", c: "c" } },
+      { declaring: { a: "a", b: "b" } },
+      { declaring: { a: "a", c: "c" } },
+      { declaring: { a: "a", b: "b", c: "c", d: 1 } }
+    ]
   }
 ]
 
