@@ -101,4 +101,21 @@ describe("NpmPromote", () => {
       assert.deepStrictEqual(distTagCalls, [])
       assert.deepStrictEqual(result, { _tag: "Promoted", promoted: [] })
     }))
+
+  it.effect("decides from the live latest tag when the cached one is already at the target", () =>
+    Effect.gen(function*() {
+      // effect was rolled back by hand, but the cached metadata still shows the target.
+      const { distTagCalls, result } = yield* run([
+        { name: "effect", version: "4.0.4" },
+        { name: "@effect/sql-pg", version: "4.0.4" }
+      ], {
+        "effect": { latest: "4.0.3", cachedLatest: "4.0.4", versions: ["4.0.3", "4.0.4"] },
+        "@effect/sql-pg": { latest: "4.0.3", versions: ["4.0.3", "4.0.4"] }
+      })
+      assert.deepStrictEqual(distTagCalls, ["effect@4.0.4 latest", "@effect/sql-pg@4.0.4 latest"])
+      assert.deepStrictEqual(result, {
+        _tag: "Promoted",
+        promoted: [{ name: "effect", version: "4.0.4" }, { name: "@effect/sql-pg", version: "4.0.4" }]
+      })
+    }))
 })

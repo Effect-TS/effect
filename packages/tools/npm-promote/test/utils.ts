@@ -7,6 +7,8 @@ export interface Published {
   readonly versions: ReadonlyArray<string>
   /** The `latest` a stale CDN copy of the abbreviated metadata still shows. */
   readonly cachedLatest?: string
+  /** A status the live dist-tags endpoint fails with instead of answering. */
+  readonly liveTagsStatus?: number
 }
 
 /**
@@ -27,6 +29,9 @@ export const registryClient = (registry: Record<string, Published>): HttpClient.
         return HttpClientResponse.fromWeb(request, new Response(null, { status: 404 }))
       }
       if (distTags !== null) {
+        if (published.liveTagsStatus !== undefined) {
+          return HttpClientResponse.fromWeb(request, new Response(null, { status: published.liveTagsStatus }))
+        }
         return HttpClientResponse.fromWeb(
           request,
           Response.json({ latest: published.latest, staging: published.versions.at(-1) })

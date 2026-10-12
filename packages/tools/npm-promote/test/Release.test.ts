@@ -105,4 +105,30 @@ describe("Release", () => {
         }]
       }])
     }))
+
+  it.effect("alerts when an overdue release cannot read the registry", () =>
+    Effect.gen(function*() {
+      const distTagCalls: Array<string> = []
+      const alerts: Array<OverdueRelease> = []
+      const provide = services({
+        registry: {
+          "effect": { latest: "4.0.3", versions: ["4.0.3", "4.0.4"] },
+          "@effect/sql-pg": { latest: "4.0.3", versions: ["4.0.3", "4.0.4"], liveTagsStatus: 403 }
+        },
+        addDistTag: ({ name, tag, version }) => Effect.sync(() => distTagCalls.push(`${name}@${version} ${tag}`)),
+        website: Website.of({ isDeployed: () => Effect.succeed(false), deploy: () => Effect.void }),
+        alerts
+      })
+      yield* TestClock.adjust("13 hours")
+
+      const exit = yield* Effect.exit(provide(promoteRelease(release, { overdueAfterHours: 12 })))
+
+      assert.isTrue(Exit.isFailure(exit))
+      assert.deepStrictEqual(distTagCalls, ["effect@4.0.4 latest"])
+      // The read failed, so the version is reported as unchecked rather than missing.
+      assert.deepStrictEqual(
+        alerts.map((alert) => alert.diagnoses.map((diagnosis) => ({ _tag: diagnosis._tag, pkg: diagnosis.pkg }))),
+        [[{ _tag: "Unknown", pkg: { name: "@effect/sql-pg", version: "4.0.4" } }]]
+      )
+    }))
 })
