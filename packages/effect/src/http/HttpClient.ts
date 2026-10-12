@@ -954,8 +954,8 @@ export const retry: {
  *
  * A `Retry-After` header on a transient response, or on the response of a
  * status code error, sets the minimum delay before the next attempt. If it
- * exceeds `maxRetryAfter`, retrying stops and the last response or error is
- * returned.
+ * exceeds `maxRetryAfter` (one minute by default), retrying stops and the last
+ * response or error is returned. Set a larger cap to allow longer waits.
  *
  * @stability unstable
  * @category error handling
@@ -1036,7 +1036,7 @@ export const retryTransient: {
     const schedule = withRetryAfter(
       isOnlySchedule ? options : options.schedule ?? Schedule.forever,
       isOnlySchedule || options.maxRetryAfter === undefined
-        ? undefined
+        ? Duration.minutes(1)
         : Duration.fromInputUnsafe(options.maxRetryAfter)
     )
     const times = isOnlySchedule ? undefined : options.times
@@ -1952,7 +1952,7 @@ const retryAfterOf = (input: unknown, nowMillis: number): Duration.Duration | un
 
 const withRetryAfter = <ES, R1>(
   schedule: Schedule.Schedule<unknown, any, ES, R1>,
-  maxRetryAfter: Duration.Duration | undefined
+  maxRetryAfter: Duration.Duration
 ): Schedule.Schedule<unknown, any, ES, R1> =>
   Schedule.fromStep(
     Effect.map(Schedule.toStep(schedule), (step) => (now: number, input: unknown) =>
@@ -1961,7 +1961,7 @@ const withRetryAfter = <ES, R1>(
         if (retryAfter === undefined) {
           return Effect.succeed([output, delay] as [unknown, Duration.Duration])
         }
-        if (maxRetryAfter !== undefined && Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
+        if (Duration.isGreaterThan(retryAfter, maxRetryAfter)) {
           return Cause.done(output)
         }
         return Effect.succeed([output, Duration.max(delay, retryAfter)] as [unknown, Duration.Duration])
