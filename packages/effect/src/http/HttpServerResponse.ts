@@ -1028,7 +1028,7 @@ export const setStatus: {
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
 
-const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): void => {
+const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): globalThis.Headers => {
   for (const [key, value] of headers as any) {
     if (key === "set-cookie") {
       target.append(key, value)
@@ -1036,19 +1036,7 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
       target.set(key, value)
     }
   }
-}
-
-const mergeRawHeaders = (raw: Response, headers: globalThis.Headers): Response => {
-  try {
-    mergeHeaders(raw.headers, headers)
-    return raw
-  } catch (error) {
-    if (!(error instanceof TypeError)) throw error
-  }
-  // The copy keeps runtime-specific members such as workerd's `webSocket`
-  const copy = new Response(raw.body, raw)
-  mergeHeaders(copy.headers, headers)
-  return copy
+  return target
 }
 
 /**
@@ -1065,12 +1053,10 @@ const mergeRawHeaders = (raw: Response, headers: globalThis.Headers): Response =
  *
  * A raw `Response` body is returned as-is after the outer headers are merged
  * into it: outer headers replace native ones, and cookies are appended. If its
- * headers are immutable, as with `Response.redirect` or a workerd WebSocket
- * upgrade, the headers are merged into a copy that keeps the status, body and
- * runtime-specific members. Copying can throw, as it does for
- * `Response.error()` on Node. When its body is omitted, the bodyless
- * `Response` keeps those merged headers and uses the outer status for 204, 205
- * and 304, or the raw `Response` status otherwise.
+ * headers are immutable (e.g. `Response.redirect`), they are merged into a copy
+ * instead. When its body is omitted, the bodyless `Response` keeps those merged
+ * headers and uses the outer status for 204, 205 and 304, or the raw `Response`
+ * status otherwise.
  *
  * @stability unstable
  * @category converting
@@ -1097,17 +1083,23 @@ export const toWeb = (
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
     if (!withoutBody) {
-      return mergeRawHeaders(raw, headers)
+      try {
+        mergeHeaders(raw.headers, headers)
+        return raw
+      } catch {
+        // Immutable headers: the copy keeps runtime-specific members such as workerd's `webSocket`
+        const copy = new Response(raw.body, raw)
+        mergeHeaders(copy.headers, headers)
+        return copy
+      }
     }
-    const merged = new globalThis.Headers(raw.headers)
-    mergeHeaders(merged, headers)
     // A bodyless outer status is what the caller chose to send; otherwise the
     // body is only omitted for HEAD and the raw Response describes the resource.
     const source = outerOmitsBody ? response : raw
     return new Response(undefined, {
       status: source.status,
       statusText: source.statusText as string,
-      headers: merged
+      headers: mergeHeaders(new globalThis.Headers(raw.headers), headers)
     })
   }
   if (withoutBody) {
