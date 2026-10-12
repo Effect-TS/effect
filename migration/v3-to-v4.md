@@ -2,9 +2,9 @@
 
 # v3 to v4 Migration Reference
 
-Base: `origin/v3` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
+Base: `e730f59d29db5f1e312be6476a95d07bcad45788` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `7e444029d3101640ea2edbffafa882097b78bb68` (`7e444029d3101640ea2edbffafa882097b78bb68`)
+Head: `origin/main` (`7547a99f81fa6f7e651d52f3d42081f399bfbca8`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4136,9 +4136,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/ai-openai/OpenAiLanguageModel`
 
-- `OpenAiLanguageModel.Config` -> `OpenAiLanguageModel.Config`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+- `OpenAiLanguageModel.Config` -> `OpenAiLanguageModel.Config`: Still exported in v4; update imports and adapt to the revised service and schema types. Unrecognized model names now default to reasoning models, sending system prompts as developer messages and requesting reasoning.encrypted\_content when item references are disabled or WebSockets are used. Set reasoningModel: false in config for deployments that do not support these defaults.
 
-- `OpenAiLanguageModel.Config.Service` -> `OpenAiLanguageModel.Config.Service`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
+- `OpenAiLanguageModel.Config.Service` -> `OpenAiLanguageModel.Config.Service`: Still exported in v4 with revised configuration fields. Set reasoningModel: false for custom deployments that need system messages rather than developer messages and do not support automatic encrypted reasoning requests; unrecognized model names otherwise default to reasoning models. Fine-tuned ft: names follow their base model.
 
 - `OpenAiLanguageModel.Model` -> `OpenAiLanguageModel.Model`: Still exported in v4; update imports and adapt to the revised v4 service and schema types.
 
@@ -6324,6 +6324,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `BunStream.stdout` -> `stdio.stdout() from Stdio.Stdio`: Standard output is correctly modeled as a Sink in v4. Explicitly adapt process.stdout with BunStream.fromReadable only to preserve the old unusual read behavior.
 
+### `@effect/platform-bun/BunTerminal`
+
+- `BunTerminal.layer` -> `BunTerminal.layer`: The default layer now ends key input on bare Esc as well as Ctrl+C and Ctrl+D. To keep Esc as input, build a layer with Layer.effect(Terminal.Terminal, BunTerminal.make(shouldQuit)) using a custom quit predicate.
+
+- `BunTerminal.make` -> `BunTerminal.make`: V4 ends key input on bare Esc as well as Ctrl+C and Ctrl+D. Pass a custom shouldQuit predicate to make if your application needs to receive Esc; the v3 default quit only on Ctrl+C and Ctrl+D.
+
 ### `@effect/platform-bun/BunWorker`
 
 - `BunWorker.layerManager` -> `BunWorker.layerPlatform`: WorkerManager was removed. Provide WorkerPlatform directly, or use BunWorker.layer(spawn) when a Worker.Spawner is also required.
@@ -6368,6 +6374,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `NodeStream.stdout` -> `NodeStream.fromReadable({ evaluate: () => process.stdout, closeOnDone: false }).pipe(Stream.orDie)`: This preserves the unusual v3 read behavior; for normal output use the stdio.stdout() Sink from effect/Stdio.
 
+### `@effect/platform-node-shared/NodeTerminal`
+
+- `NodeTerminal.layer` -> `NodeTerminal.layer`: The default layer now ends key input on bare Esc as well as Ctrl+C and Ctrl+D. To keep Esc as input, build a layer with Layer.effect(Terminal.Terminal, NodeTerminal.make(shouldQuit)) using a custom quit predicate.
+
+- `NodeTerminal.make` -> `NodeTerminal.make`: V4 ends key input on bare Esc as well as Ctrl+C and Ctrl+D. Pass a custom shouldQuit predicate to make if your application needs to receive Esc; the v3 default quit only on Ctrl+C and Ctrl+D.
+
 ### `@effect/platform-node/NodeCommandExecutor`
 
 - `NodeCommandExecutor.layer` -> `NodeChildProcessSpawner.layer`: CommandExecutor became ChildProcessSpawner; use the @effect/platform-node/NodeChildProcessSpawner re-export.
@@ -6409,6 +6421,12 @@ effect/rpc/Utils (barrel: effect/rpc)
 ### `@effect/platform-node/NodeHttpServer`
 
 - `NodeHttpServer.layerContext` -> `NodeHttpServer.layerHttpServices`: Direct rename; it provides NodeServices, HttpPlatform, and Etag.Generator, without the removed WorkerManager.
+
+### `@effect/platform-node/NodeTerminal`
+
+- `NodeTerminal.layer` -> `NodeTerminal.layer`: The default layer now ends key input on bare Esc as well as Ctrl+C and Ctrl+D. To keep Esc as input, build a layer with Layer.effect(Terminal.Terminal, NodeTerminal.make(shouldQuit)) using a custom quit predicate.
+
+- `NodeTerminal.make` -> `NodeTerminal.make`: V4 ends key input on bare Esc as well as Ctrl+C and Ctrl+D. Pass a custom shouldQuit predicate to make if your application needs to receive Esc; the v3 default quit only on Ctrl+C and Ctrl+D.
 
 ### `@effect/platform-node/NodeWorker`
 
@@ -8041,6 +8059,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 ### `@effect/sql/SqlClient`
 
 - `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
+
+- `SqlClient.SqlClient.MakeOptions`: TODO: needs guidance
 
 - `SqlClient.TransactionConnection` -> `effect/sql/SqlClient#TransactionConnection`: Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service.
 
@@ -14109,7 +14129,7 @@ Schema.toFormatter(schema)
 
 - `Scheduler.ControlledScheduler` -> `none`: No public step-controlled scheduler remains; implement Scheduler and SchedulerDispatcher for exact controlled stepping.
 
-- `Scheduler.MixedScheduler` -> `Scheduler.MixedScheduler`: The class remains with a redesigned constructor and makeDispatcher-based task API.
+- `Scheduler.MixedScheduler` -> `Scheduler.MixedScheduler`: The class remains with a redesigned constructor and makeDispatcher-based task API. On Cloudflare Workers, request-owned scheduler timers can leave shared fibers suspended; provide new Scheduler.MixedScheduler("sync") to both layers and requests and build handlers at module scope (see HttpRouter.toWebHandler). Sync mode does not yield to the event loop and does not fix request-owned Effect.sleep timers or request-bound async contexts.
 
 - `Scheduler.PriorityBuckets` -> `none`: Priority buckets are now an internal Scheduler implementation detail.
 
