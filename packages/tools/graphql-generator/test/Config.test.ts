@@ -20,6 +20,11 @@ describe("Config", () => {
     assert.deepStrictEqual(Schema.decodeUnknownSync(Config.Config)(example), example)
   })
 
+  it("importExtension is .ts or .js; an empty extension is rejected", () => {
+    assert.isTrue(Exit.isSuccess(Schema.decodeUnknownExit(Config.Config)({ ...example, importExtension: ".js" })))
+    assert.isTrue(Exit.isFailure(Schema.decodeUnknownExit(Config.Config)({ ...example, importExtension: "" })))
+  })
+
   it("rejects a scalar specifier without a #", () => {
     const exit = Schema.decodeUnknownExit(Config.Config)({ ...example, scalars: { URI: "./scalars.ts" } })
     assert.isTrue(Exit.isFailure(exit))
