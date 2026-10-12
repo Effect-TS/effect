@@ -10,8 +10,7 @@ const opt = Schema.optionalKey
 export const Location = Schema.Struct({
   file: Schema.String,
   line: Schema.Number,
-  column: Schema.Number,
-  frame: Schema.Array(Schema.String)
+  column: Schema.Number
 })
 export type Location = typeof Location.Type
 
@@ -27,15 +26,9 @@ export const FailureKind = Schema.Literals([
 ])
 export type FailureKind = typeof FailureKind.Type
 
-export const DiffEntry = Schema.Struct({ path: Schema.String, expected: Schema.String, actual: Schema.String })
-
 export const Failure = Schema.Struct({
   kind: FailureKind,
   message: Schema.String,
-  /** the failure came from a fiber other than the test's main fiber */
-  expected: opt(Schema.String),
-  actual: opt(Schema.String),
-  diff: opt(Schema.Array(DiffEntry)),
   errorTag: opt(Schema.String),
   errorFields: opt(Schema.String),
   location: opt(Location)

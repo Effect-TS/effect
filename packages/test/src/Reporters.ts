@@ -1,5 +1,5 @@
 // Reporters turn the structured event stream into text. Failures stay
-// data until here (nothing is pre-rendered in the executor except code frames).
+// data until here (nothing is pre-rendered in the executor).
 import { Schema } from "effect"
 import type { Failure, PlannedTest, RunFinished, TestEvent, TestFinished } from "./Protocol.ts"
 import { TestEvent as TestEventSchema } from "./Protocol.ts"
@@ -24,20 +24,11 @@ const indent = (s: string, n = 2) => s.split("\n").map((l) => " ".repeat(n) + l)
 
 const renderFailure = (f: Failure): Array<string> => {
   const out: Array<string> = []
-  const label = f.kind
-  out.push(`${label}: ${f.message}`)
+  out.push(`${f.kind}: ${f.message}`)
   if (f.errorTag) out.push(`  _tag: ${f.errorTag}`)
   if (f.errorFields) out.push(`  fields: ${f.errorFields}`)
-  if (f.diff && f.diff.length > 0 && !(f.diff.length === 1 && f.diff[0].path === "(root)")) {
-    out.push(`  diff (expected → actual):`)
-    for (const d of bounded(f.diff.map((d) => `${d.path}: ${d.expected} → ${d.actual}`))) out.push(`    ${d}`)
-  } else if (f.expected !== undefined) {
-    out.push(`  expected: ${f.expected}`)
-    out.push(`  actual:   ${f.actual}`)
-  }
   if (f.location) {
     out.push(`  at ${f.location.file}:${f.location.line}:${f.location.column}`)
-    for (const l of f.location.frame) out.push(`  ${l}`)
   }
   return out
 }

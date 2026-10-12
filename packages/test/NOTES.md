@@ -31,7 +31,7 @@ finds `*.test.ts` files under the given paths.
 | File | Role |
 |---|---|
 | `src/Test.ts` | Authoring API (syntax B): `Test.suite`, `Test.test` (an Effect, or a plain sync / Promise function), pipeable `Test.provide(layer)`, `Test.config({ shared })`, and the transformers `Test.tags` / `Test.timeout` / `Test.retries` / `Test.skip` / `Test.only`. Nodes carry a phantom `R`, and `Test.Runnable = Node<never>` |
-| `src/CallSite.ts` | Call-site capture from the V8 stack, plus a code frame read from disk (no transform) |
+| `src/CallSite.ts` | Call-site capture from the V8 stack (`file:line:col`, no transform) |
 | `src/Protocol.ts` | Schema'd `TestEvent` union, the listing schema, and the `ExecutorRpcs` RpcGroup (`ListFile`, `RunFile` → `Stream`) |
 | `src/Executor.ts` | Loads a file, lists its tree, and runs the selected tests as fibers with fixtures, the test environment, timeouts, retries and Cause classification |
 | `src/executor-worker.ts` | Worker-thread entry: `RpcServer.layer(ExecutorRpcs)` over `layerProtocolWorkerRunner` |
@@ -92,8 +92,8 @@ finds `*.test.ts` files under the given paths.
    `node:assert`; its `AssertionError` (name `AssertionError` or code `ERR_ASSERTION`, so most libraries match) is reported
    as kind `assertion` with its own message, which for `deepStrictEqual` already contains a diff. Assertions are a separate
    concern, tackled later (see the *Assertions* ticket).
-   **Code frame without a transform:** the error's stack gives the first frame outside the framework or `effect`. Node's type
-   stripping keeps columns exact, and the frame is rendered as `file:line:col` plus the previous line and a caret.
+   **Locations without a transform:** the error's stack gives the first frame outside the framework or `effect`, reported as
+   `file:line:col` (Node's type stripping keeps columns exact). Code frames (source lines plus a caret) were removed for now.
 7. **Cause-aware failures.** The exit Cause is classified as a typed `Fail` (shows `_tag` plus fields, located from
    the error's construction stack), a `Die` (defect: name, message, location), an interrupt-only Cause (`interrupted`) or a timeout.
    A defect that is an `AssertionError` is reported as kind `assertion`. Fixture build failures are their own kind (`fixture`,
@@ -112,7 +112,7 @@ finds `*.test.ts` files under the given paths.
    block it synthesises `interrupted` (started) or `skipped: not run: --bail|Ctrl-C` (not started) for anything left. This was checked on
    a bail run: 37 planned, 37 terminal, 37 unique. A file that fails to load becomes a failed pseudo-test with the load error.
 10. **Reporters.** `agent` (the default) prints a one-line summary first, then failure blocks in plan order (deterministic
-    no matter how the tests were scheduled). Each block has the id, status, attempt and seed, the failure data, a code frame, the captured console
+    no matter how the tests were scheduled). Each block has the id, status, attempt and seed, the failure data, its `file:line:col`, the captured console
     (bounded to 20 lines) and an exact rerun command. FLAKY, SKIP and BAIL lines come after. No ANSI. `human` prints a coloured
     ✓/✗/○ tree plus failure blocks. `jsonl` streams Schema-encoded events as they arrive.
     `--list --reporter jsonl` prints the listed nodes as JSON, with resolved per-test options.
@@ -226,7 +226,7 @@ export default Test.config({
 
 The contract (`examples/userRepoContract.ts`) is a function of the implementation's Layer that provides it to each of its
 tests, so every test gets a fresh repo. The fake-postgres implementation deliberately has no unique index, so its
-`emails are unique` test fails, and the code frame points into the shared `userRepoContract.ts`:
+`emails are unique` test fails, and its location points into the shared `userRepoContract.ts`:
 
 ```ts
 export default Test.suite("UserRepo", [
