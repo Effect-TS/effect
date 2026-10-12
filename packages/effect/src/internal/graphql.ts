@@ -17,7 +17,8 @@ export const responseError = (
     errors,
     ...(result?.data === undefined ? {} : { data: result.data as Schema.Json }),
     ...(result?.extensions === undefined ? {} : { extensions: result.extensions }),
-    ...(result?.status === undefined ? {} : { status: result.status })
+    ...(result?.status === undefined ? {} : { status: result.status }),
+    ...(result?.headers === undefined ? {} : { headers: result.headers })
   })
 
 /**
