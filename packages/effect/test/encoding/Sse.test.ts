@@ -22,7 +22,8 @@ describe("Sse", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
 
-    parser.feed("data: first\r")
+    parser.feed("data: fir")
+    parser.feed("st\r")
     parser.feed("\ndata: second\n\n")
 
     assert.deepStrictEqual(events, [{
@@ -120,6 +121,20 @@ describe("Sse", () => {
     parser.feed("data: fresh\n\n")
 
     assert.deepStrictEqual(events, ["a", "fresh"])
+  })
+
+  it("discards the current event and remaining chunk when onParse throws", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const error = new Error("onParse failed")
+    const parser = Sse.makeParser((event) => {
+      if (event._tag === "Event" && event.data === "a") throw error
+      events.push(event)
+    })
+
+    assert.throws(() => parser.feed("event: custom\ndata: a\n\ndata: b\n\n"), Error, "onParse failed")
+    parser.feed("data: c\n\n")
+
+    assert.deepStrictEqual(events, [{ _tag: "Event", event: "message", id: undefined, data: "c" }])
   })
 
   it("ignores retry values that are not ASCII digits", () => {
