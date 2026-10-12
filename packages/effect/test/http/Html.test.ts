@@ -29,7 +29,7 @@ describe("Html", () => {
       const component = Html.make`<b>${"<"}</b>`
       const html = yield* Html.make`<section>${component}</section>`
       assert.strictEqual(
-        yield* text(Html.make`<main>${[html, Html.raw("<i>trusted</i>")]}</main>`),
+        yield* text(Html.make`<main>${[html, Html.rawUnsafe("<i>trusted</i>")]}</main>`),
         "<main><section><b>&lt;</b></section><i>trusted</i></main>"
       )
     }))
@@ -55,7 +55,7 @@ describe("Html", () => {
 
   it("exposes escaping and recognizes only Html values", () => {
     assert.strictEqual(Html.escape("&<>\"'"), "&amp;&lt;&gt;&quot;&#39;")
-    assert.isTrue(Html.isHtml(Html.raw("<b>")))
+    assert.isTrue(Html.isHtml(Html.rawUnsafe("<b>")))
     assert.isFalse(Html.isHtml("<b>"))
     assert.isFalse(Html.isHtml({ value: "<b>" }))
   })
