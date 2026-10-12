@@ -10,8 +10,8 @@ import { GitHub } from "./10_basics.ts"
 
 // Middleware see each response's HTTP `status` and `headers` on the result
 // `next` returns, including responses with GraphQL `errors`. A failed call
-// keeps them on `ResponseError` or `TransportError`. Attach it with
-// `GraphQLGroup.make(...).middleware(RateLimit)`.
+// keeps them, and `GraphQLClientError` exposes them as `headers` and
+// `status`. Attach it with `GraphQLGroup.make(...).middleware(RateLimit)`.
 export class RateLimit extends GraphQLMiddleware.Service<RateLimit>()("app/RateLimit") {
   static readonly layer = Layer.succeed(RateLimit, {
     execute: ({ next, request }) =>
@@ -30,35 +30,37 @@ export class RateLimit extends GraphQLMiddleware.Service<RateLimit>()("app/RateL
 export const hasErrorType = (error: GraphQLClientError.GraphQLClientError, type: string) =>
   error.reason._tag === "ResponseError" && error.reason.errors.every((entry) => entry.type === type)
 
-// How long GitHub asked us to wait: `retry-after`, or until
-// `x-ratelimit-reset` once `x-ratelimit-remaining` is `0`. GitHub's secondary
-// rate limits answer 403 with a body that isn't a GraphQL response, so they
-// are a `TransportError` whose `isRetryable` is false; the headers still say
-// when to retry.
-const rateLimitWait = (error: GraphQLClientError.GraphQLClientError, now: number) => {
-  if (error.retryAfter !== undefined) return error.retryAfter
-  const reason = error.reason
-  const headers = reason._tag === "ResponseError" || reason._tag === "TransportError" ? reason.headers : undefined
-  if (headers?.["x-ratelimit-remaining"] !== "0") return undefined
-  const reset = Number(headers["x-ratelimit-reset"]) * 1000
-  return Number.isFinite(reset) ? Duration.millis(Math.max(0, reset - now)) : Duration.minutes(1)
-}
+// `isRetryable` is true for network failures, for 429 or 5xx responses, and
+// for any error with a `Retry-After` header, whatever its status. That covers
+// GitHub's 502 and 504 query timeouts, even with a GraphQL `errors` body, and
+// its secondary rate limits (403 or 429 with `retry-after`). A primary rate
+// limit can come without `retry-after`, with `x-ratelimit-remaining: 0`, so
+// check that header too.
+const rateLimited = (error: GraphQLClientError.GraphQLClientError) => error.headers?.["x-ratelimit-remaining"] === "0"
 
+// Wait for `retryAfter` when it is set, and until `x-ratelimit-reset` (epoch
+// seconds) on a primary rate limit. GitHub may ban an integration that keeps
+// retrying while rate limited, so don't retry with a plain backoff.
 const gitHubRetry = Schedule.exponential("1 second").pipe(
   Schedule.setInputType<GraphQLClientError.GraphQLClientError>(),
-  Schedule.modifyDelay(({ duration, input, now }) => Effect.succeed(rateLimitWait(input, now) ?? duration))
+  Schedule.modifyDelay(({ duration, input, now }) => {
+    if (input.retryAfter !== undefined) return Effect.succeed(input.retryAfter)
+    if (!rateLimited(input)) return Effect.succeed(duration)
+    const reset = Number(input.headers?.["x-ratelimit-reset"]) * 1000
+    return Effect.succeed(Number.isFinite(reset) ? Duration.millis(Math.max(0, reset - now)) : Duration.minutes(1))
+  })
 )
 
-// `isRetryable` is true for network failures and for 429 or 5xx responses,
-// which covers GitHub's 502 and 504 query timeouts even when they come with a
-// GraphQL `errors` body. The client never retries on its own. Retry only
+// The client never retries queries or mutations on its own. Retry only
 // mutations that are safe to send twice, and with `GraphQLClient.pages`,
 // retry inside a middleware, because `Stream.retry` starts again from the
-// first page.
+// first page. Subscriptions reconnect on
+// `GraphQLClient.defaultSubscriptionRetry`, which already waits for
+// `retryAfter`.
 export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.GraphQLClientError, R>) =>
   Effect.retry(effect, {
     schedule: gitHubRetry,
-    while: (error) => error.isRetryable || rateLimitWait(error, Date.now()) !== undefined,
+    while: (error) => error.isRetryable || rateLimited(error),
     times: 5
   })
 

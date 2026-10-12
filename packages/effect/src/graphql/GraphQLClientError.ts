@@ -6,6 +6,7 @@
  * @since 4.0.0
  */
 import * as Duration from "../Duration.ts"
+import type * as Headers from "../http/Headers.ts"
 import type * as HttpClientError from "../http/HttpClientError.ts"
 import { HeadersSchema } from "../internal/graphqlHeaders.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -79,14 +80,15 @@ export type GraphQLError = typeof GraphQLError.Type
  * transport reported them and middleware left them. Headers use
  * `Headers.Headers` at runtime and encode as a plain string record.
  * Decoding restores the normalized header collection. Both are unset over
- * graphql-ws, and `status` is unset for graphql-sse events. `isRetryable` is
- * true for HTTP status `429` or `5xx`, and false otherwise, including when
- * there is no status. `retryAfter` parses the `Retry-After` response header
- * as seconds or an HTTP date, measured from `Date.now()`.
+ * graphql-ws, and `status` is unset for graphql-sse events. `retryAfter`
+ * parses the `Retry-After` response header as seconds or an HTTP date,
+ * measured from `Date.now()`. `isRetryable` is true for HTTP status `429` or
+ * `5xx`, and for any response with a valid `Retry-After`, whatever its
+ * status. It is false otherwise, including when there is no status.
  *
- * Callers opt into retries with `Effect.retry`. With `GraphQLClient.pages`,
- * retry each page's call, not the stream: `Stream.retry` starts again from
- * the first page.
+ * Callers opt into retries with `Effect.retry`, and should wait for
+ * `retryAfter` when it is set. With `GraphQLClient.pages`, retry each page's
+ * call, not the stream: `Stream.retry` starts again from the first page.
  *
  * **Example** (Inspecting the errors of a failed call)
  *
@@ -138,13 +140,16 @@ export class ResponseError
   })
 {
   /**
-   * `true` for HTTP status `429` or `5xx`; `false` for other statuses or
-   * when there is no status, as with subscription events. Use this as the
-   * `while` predicate of `Effect.retry` on the call.
+   * `true` for HTTP status `429` or `5xx`, or when the response has a
+   * `Retry-After` header that parses, at any status; `false` otherwise,
+   * including when there is no status, as with subscription events. Use this
+   * as the `while` predicate of `Effect.retry` on the call, and
+   * {@link retryAfter} as the delay when it is set.
    *
    * @since 4.0.0
    */
   get isRetryable(): boolean {
+    if (this.retryAfter !== undefined) return true
     return this.status !== undefined && (this.status === 429 || (this.status >= 500 && this.status < 600))
   }
 
@@ -200,7 +205,8 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
  *   GraphQL response. Headers use `Headers.Headers` at runtime and encode
  *   as a plain string record; decoding restores the header collection.
  * - `retryAfter` comes from the `Retry-After` header (numeric or HTTP-date
- *   form) and is encoded as milliseconds.
+ *   form) and is encoded as milliseconds. When it is set, the error is
+ *   retryable at any status, unless the close code is fatal.
  * - `closeCode` is set when a WebSocket connection closed.
  * - `cause` holds the original error, such as the `HttpClientError`. Once
  *   encoded it shrinks to `{ name, message }`, the standard `Schema.Defect`
@@ -232,13 +238,16 @@ export class TransportError
   })
 {
   /**
-   * `true` for a network failure (no `status`), a `429` or `5xx` status, and
-   * any close code that is not one of the {@link fatalCloseCodes}.
+   * `true` for a network failure (no `status`), a `429` or `5xx` status, a
+   * `retryAfter` at any status, and any close code that is not one of the
+   * {@link fatalCloseCodes}. A fatal close code is never retryable. When
+   * retrying, wait for `retryAfter` when it is set.
    *
    * @since 4.0.0
    */
   get isRetryable(): boolean {
     if (this.closeCode !== undefined && fatalCloseCodes.has(this.closeCode)) return false
+    if (this.retryAfter !== undefined) return true
     return this.status === undefined || this.status === 429 || this.status >= 500
   }
 
@@ -439,13 +448,36 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
 
   /**
    * The `Retry-After` hint of a `ResponseError` or `TransportError` reason,
-   * if any.
+   * if any. Use it as the delay when retrying on {@link isRetryable}.
    *
    * @since 4.0.0
    */
   get retryAfter(): Duration.Duration | undefined {
     return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
       ? this.reason.retryAfter
+      : undefined
+  }
+
+  /**
+   * The HTTP status of a `ResponseError` or `TransportError` reason, if any.
+   *
+   * @since 4.0.0
+   */
+  get status(): number | undefined {
+    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
+      ? this.reason.status
+      : undefined
+  }
+
+  /**
+   * The response headers of a `ResponseError` or `TransportError` reason, if
+   * any.
+   *
+   * @since 4.0.0
+   */
+  get headers(): Headers.Headers | undefined {
+    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
+      ? this.reason.headers
       : undefined
   }
 

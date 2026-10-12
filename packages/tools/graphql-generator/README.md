@@ -415,8 +415,9 @@ of the response survives.
 ## GitHub
 
 GitHub's API has a few behaviours worth handling from the start: rate-limit
-headers, typed errors, timeouts and per-installation tokens. The snippets
-below use the `GitHub` service and the operations from the sections above.
+headers, typed errors, rate limits, timeouts and per-installation tokens.
+The snippets below use the `GitHub` service and the operations from the
+sections above.
 
 ### Rate-limit headers
 
@@ -445,8 +446,8 @@ export class RateLimit extends GraphQLMiddleware.Service<RateLimit>()("app/RateL
 Attach it with `GraphQLGroup.merge(...).middleware(RateLimit)` and provide
 `RateLimit.layer`. A response with GraphQL `errors` still reaches the
 middleware as a result; a transport failure fails `next` instead. Either
-way, a failed call keeps the headers on `ResponseError.headers` or
-`TransportError.headers`.
+way, a failed call keeps the response `headers` and `status`, which
+`GraphQLClientError` exposes for both reasons.
 
 ### Error types
 
@@ -473,29 +474,57 @@ export const findPullRequest = Effect.fn("findPullRequest")(function*(owner: str
 
 `every` keeps a `NOT_FOUND` that comes with another error a failure.
 
+### Rate limits
+
+GitHub's secondary rate limits, on concurrent requests and points per
+minute, answer 403 or 429 with a JSON body that isn't a GraphQL response. The
+client reports them as a `TransportError` with `status` and `headers`. They
+usually come with `retry-after`, and an error with a `retry-after` is
+retryable at any status. A primary rate limit arrives as a `RATE_LIMITED`
+GraphQL error with `x-ratelimit-remaining: 0` and often no `retry-after`, so
+`isRetryable` can be `false` and only the headers show it. GitHub asks
+clients to wait for `retry-after` when it is set, and until
+`x-ratelimit-reset` (epoch seconds) when `x-ratelimit-remaining` is `0`:
+
+```ts
+import { Duration, Effect, Schedule } from "effect"
+import type { GraphQLClientError } from "effect/graphql"
+
+const rateLimited = (error: GraphQLClientError.GraphQLClientError) => error.headers?.["x-ratelimit-remaining"] === "0"
+
+const gitHubRetry = Schedule.exponential("1 second").pipe(
+  Schedule.setInputType<GraphQLClientError.GraphQLClientError>(),
+  Schedule.modifyDelay(({ duration, input, now }) => {
+    if (input.retryAfter !== undefined) return Effect.succeed(input.retryAfter)
+    if (!rateLimited(input)) return Effect.succeed(duration)
+    const reset = Number(input.headers?.["x-ratelimit-reset"]) * 1000
+    return Effect.succeed(Number.isFinite(reset) ? Duration.millis(Math.max(0, reset - now)) : Duration.minutes(1))
+  })
+)
+
+export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.GraphQLClientError, R>) =>
+  Effect.retry(effect, {
+    schedule: gitHubRetry,
+    while: (error) => error.isRetryable || rateLimited(error),
+    times: 5
+  })
+```
+
+`retryGitHub(github.RepoIssues(variables))` waits as long as GitHub asks
+after a rate limit, and backs off exponentially after other retryable
+errors. Don't retry on `isRetryable` with a plain backoff instead: it ignores
+`retry-after`, and GitHub may ban an integration that keeps sending requests
+while rate limited. Subscriptions need nothing extra, since
+`GraphQLClient.defaultSubscriptionRetry` never reconnects sooner than
+`retryAfter`.
+
 ### Timeouts
 
 GitHub stops a query that runs too long and answers 502 or 504, usually with
 a GraphQL body such as `{"data":null,"errors":[{"message":"Something went
 wrong while executing your query..."}]}`. That is a `ResponseError`, and
 `isRetryable` is `true` for any 429 or 5xx status. A 5xx without a GraphQL
-body is a retryable `TransportError`. `GraphQLClientError.isRetryable` covers
-both:
-
-```ts
-import { Effect, Schedule } from "effect"
-
-export const firstPage = Effect.gen(function*() {
-  const github = yield* GitHub
-  return yield* github.RepoIssues({ owner: "Effect-TS", name: "effect" }).pipe(
-    Effect.retry({
-      while: (error) => error.isRetryable,
-      schedule: Schedule.exponential("1 second"),
-      times: 3
-    })
-  )
-})
-```
+body is a retryable `TransportError`. `retryGitHub` above retries both.
 
 `Stream.retry` on `pages` or `items` starts again from the first page. To
 retry only the page that timed out, repeat the call in a middleware. A
@@ -510,10 +539,8 @@ import { type GraphQLClientError, GraphQLMiddleware, type GraphQLProtocol } from
 const timedOut = (
   outcome: Result.Result<GraphQLProtocol.ExecutionResult, GraphQLClientError.GraphQLClientError>
 ) => {
-  const isTimeout = (status: number | undefined) => status === 502 || status === 504
-  if (Result.isSuccess(outcome)) return isTimeout(outcome.success.status)
-  const reason = outcome.failure.reason
-  return reason._tag === "TransportError" && isTimeout(reason.status)
+  const status = Result.isSuccess(outcome) ? outcome.success.status : outcome.failure.status
+  return status === 502 || status === 504
 }
 
 export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("app/RetryTimeouts") {
@@ -529,48 +556,8 @@ export class RetryTimeouts extends GraphQLMiddleware.Service<RetryTimeouts>()("a
 ```
 
 Attach `RetryTimeouts` only to operations that are safe to send twice, and
-don't wrap other mutations in `Effect.retry` either. A mutation that timed
+don't wrap other mutations in `retryGitHub` either. A mutation that timed
 out may still have been applied.
-
-### Secondary rate limits
-
-GitHub's secondary rate limits, on concurrent requests and points per
-minute, answer 403 or 429 with a JSON body that isn't a GraphQL response. The
-client reports them as a `TransportError` with `status` and `headers`. A 429
-is retryable, but a 403 isn't, so check the headers. GitHub asks clients to
-wait for `retry-after` when it is set, and until `x-ratelimit-reset` when
-`x-ratelimit-remaining` is `0`. The same headers come with a `RATE_LIMITED`
-error from the primary limit.
-
-```ts
-import { Duration, Effect, Schedule } from "effect"
-import type { GraphQLClientError } from "effect/graphql"
-
-// How long GitHub asked us to wait, or `undefined` for other errors
-const rateLimitWait = (error: GraphQLClientError.GraphQLClientError, now: number) => {
-  if (error.retryAfter !== undefined) return error.retryAfter
-  const reason = error.reason
-  const headers = reason._tag === "ResponseError" || reason._tag === "TransportError" ? reason.headers : undefined
-  if (headers?.["x-ratelimit-remaining"] !== "0") return undefined
-  const reset = Number(headers["x-ratelimit-reset"]) * 1000
-  return Number.isFinite(reset) ? Duration.millis(Math.max(0, reset - now)) : Duration.minutes(1)
-}
-
-const gitHubRetry = Schedule.exponential("1 second").pipe(
-  Schedule.setInputType<GraphQLClientError.GraphQLClientError>(),
-  Schedule.modifyDelay(({ duration, input, now }) => Effect.succeed(rateLimitWait(input, now) ?? duration))
-)
-
-export const retryGitHub = <A, R>(effect: Effect.Effect<A, GraphQLClientError.GraphQLClientError, R>) =>
-  Effect.retry(effect, {
-    schedule: gitHubRetry,
-    while: (error) => error.isRetryable || rateLimitWait(error, Date.now()) !== undefined,
-    times: 5
-  })
-```
-
-`retryGitHub(github.RepoIssues(variables))` retries timeouts with backoff and
-rate limits after the wait GitHub asked for.
 
 ### Pull requests per installation
 
