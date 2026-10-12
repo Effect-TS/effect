@@ -4,11 +4,15 @@ import * as Argument from "effect/cli/Argument"
 import * as Command from "effect/cli/Command"
 import * as Flag from "effect/cli/Flag"
 import * as Console from "effect/Console"
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as RpcClient from "effect/rpc/RpcClient"
 import * as Runtime from "effect/Runtime"
+import type * as Worker from "effect/workers/Worker"
+import type { WorkerError } from "effect/workers/WorkerError"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -17,6 +21,7 @@ import * as Reporters from "../Reporters.ts"
 import { isConfig } from "../Test.ts"
 import * as Changed from "./Changed.ts"
 import * as LastRun from "./LastRun.ts"
+import { Output } from "./Output.ts"
 import { detect, moduleUrl } from "./Platform.ts"
 
 /** Ends the process with `code`. Whatever caused it has already been reported. */
@@ -93,13 +98,27 @@ const noConfig = Flag.Boolean("no-config").pipe(
   Flag.withDefault(false)
 )
 
+const noServer = Flag.Boolean("no-server").pipe(
+  Flag.withDescription("Run in this process even when `etest serve` is running for this directory"),
+  Flag.withDefault(false)
+)
+
 /**
  * The executors: a pool of workers speaking `ExecutorRpcs`, each running up to
  * `filesPerExecutor` files at once. The platform provides the worker spawner (see
  * `platform/*.ts`), so this is the same on Node, Bun and Deno.
  */
-const executorPool = (workers: number, filesPerExecutor: number) =>
+export const executorPool = (workers: number, filesPerExecutor: number) =>
   RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor })
+
+/** Where a run's executors come from: a fresh pool per run, or `etest serve`'s pre-started one. */
+export class Executors extends Context.Service<Executors, {
+  readonly layer: (
+    workers: number
+  ) => Layer.Layer<RpcClient.Protocol, WorkerError, Worker.WorkerPlatform | Worker.Spawner>
+}>()("etest/cli/Executors") {
+  static readonly fresh = Layer.succeed(Executors)({ layer: (workers) => executorPool(workers, 4) })
+}
 
 /**
  * Validates the config before starting, so a broken config fails fast with a clear
@@ -126,7 +145,8 @@ const bin = path.relative(process.cwd(), fileURLToPath(moduleUrl("./bin", import
 /** How to start the CLI again on the runtime we are on, for rerun hints. */
 const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
 
-export const cli = Command.make("etest", {
+/** The `etest` command itself: run the tests. `etest serve` runs this on forwarded arguments. */
+export const command = Command.make("etest", {
   paths,
   list,
   test,
@@ -139,7 +159,8 @@ export const cli = Command.make("etest", {
   bail,
   reporter,
   config,
-  noConfig
+  noConfig,
+  noServer
 }).pipe(
   Command.withDescription("Run Effect-native tests"),
   Command.withHandler(Effect.fnUntraced(function*(options) {
@@ -151,15 +172,8 @@ export const cli = Command.make("etest", {
           () => fs.existsSync("etest.config.ts") ? "etest.config.ts" : undefined
         )
     )
-    // stdout may be closed early (e.g. `etest | head`): stop writing, but finish the run
-    let stdoutClosed = false
-    process.stdout.on("error", (error: NodeJS.ErrnoException) => {
-      if (error.code === "EPIPE") stdoutClosed = true
-      else throw error
-    })
-    const write = (s: string) => {
-      if (!stdoutClosed) process.stdout.write(s)
-    }
+    const output = yield* Output
+    const write = output.out
     let paths = options.paths
     let ids: ReadonlySet<string> | undefined
     const selectedBy: Array<string> = []
@@ -232,7 +246,7 @@ export const cli = Command.make("etest", {
       config: configFile,
       reporter: options.list ? reporter : LastRun.recording(reporter),
       write
-    }).pipe(Effect.scoped, Effect.provide(executorPool(options.workers, 4)))
+    }).pipe(Effect.scoped, Effect.provide((yield* Executors).layer(options.workers)))
     if (code !== 0) return yield* new ExitCode({ code })
   }))
 )

@@ -1,0 +1,24 @@
+// Where `etest serve` listens for a working directory, and the line-delimited JSON spoken
+// over it. Dependency-free on purpose: the launcher (bin.ts) checks for a server before
+// loading anything heavy.
+import { createHash } from "node:crypto"
+import * as os from "node:os"
+import * as path from "node:path"
+
+/** The socket (a named pipe on Windows) of the server for `cwd`. */
+export const socketPath = (cwd: string): string => {
+  const id = createHash("sha256").update(cwd).digest("hex").slice(0, 16)
+  return process.platform === "win32" ? `\\\\?\\pipe\\etest-${id}` : path.join(os.tmpdir(), `etest-${id}.sock`)
+}
+
+/** Client → server, the first and only line: a command line to run in `cwd`. */
+export interface Request {
+  readonly argv: ReadonlyArray<string>
+  readonly cwd: string
+}
+
+/** Server → client, one per line: output as it is produced, then the exit code. */
+export type Response =
+  | { readonly out: string }
+  | { readonly err: string }
+  | { readonly exit: number }
