@@ -1833,7 +1833,7 @@ export const takeUntil = <In>(predicate: Predicate<In>): Sink<Array<In>, In, In>
           out.push(arr[i])
           if (predicate(arr[i])) {
             const leftover: NonEmptyReadonlyArray<In> | undefined = (i + 1) < arr.length
-              ? arr.slice(i + 1) as any
+              ? arr.slice(i + 1) as Arr.NonEmptyArray<In>
               : undefined
             return Cause.done([out, leftover] as const)
           }
@@ -1868,22 +1868,19 @@ export const takeUntilEffect = <In, E, R>(
         let i = 0
         return Effect.whileLoop({
           while: () => i < arr.length,
-          body: constant(Effect.flatMap(
-            Effect.suspend(() => {
-              const input = arr[i++]
+          body: () => {
+            const input = arr[i++]
+            return Effect.flatMap(predicate(input), (matched) => {
               out.push(input)
-              return predicate(input)
-            }),
-            (matched) => {
               if (!matched) {
                 return Effect.void
               }
               if (i < arr.length) {
-                leftover = arr.slice(i) as any
+                leftover = arr.slice(i) as Arr.NonEmptyArray<In>
               }
               return Cause.done()
-            }
-          )),
+            })
+          },
           step: constVoid
         })
       }),
