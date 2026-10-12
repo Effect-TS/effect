@@ -4056,3 +4056,53 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
       }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
     }))
 })
+
+const PendingLockSharding = (storageState: FailoverStorageState) =>
+  TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+
+describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: false }, () => {
+  it.effect("persists a discard send and delivers it once the shard lock is acquired", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const client = (yield* TestEntity.client)("1")
+        const send = yield* client.GetUser({ id: 1 }, { discard: true }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(100)
+        assert.deepStrictEqual(send.pollUnsafe(), Exit.void, "a discard send returns once persisted")
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0, "delivery must wait for the shard lock")
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(10)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
+    }))
+})
