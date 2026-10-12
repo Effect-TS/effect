@@ -2,14 +2,14 @@
 //
 // The sink is a Context.Reference, so every fiber forked by a test inherits it:
 // an assertion failing in a forked (even detached) fiber still fails the owning
-// test. Promise tests have no fiber after the first `await`, so the sink is also
-// published through AsyncLocalStorage.
+// test. Plain (sync / Promise) tests have no fiber after the first `await`, so the
+// executor runs them one at a time and publishes the running one's sink in
+// `plainSink`. No AsyncLocalStorage: it is Node-specific and not needed.
 //
 // Assertions are plain synchronous calls (they throw), not Effects. That makes
 // them usable in sync, Promise and Effect tests alike, and it means an assertion
 // can never be "built but not yielded".
 import { Context, Equal, Fiber, Formatter } from "effect"
-import { AsyncLocalStorage } from "node:async_hooks"
 import { callSite } from "./CallSite.ts"
 import type { Failure } from "./Protocol.ts"
 
@@ -21,9 +21,13 @@ export class Sink {
 export const CurrentSink = Context.Reference<Sink | undefined>("effect/test/CurrentSink", {
   defaultValue: () => undefined
 })
-export const sinkStorage = new AsyncLocalStorage<Sink>()
+/** The sink of the plain test that is running, if any. Executors run at most one at a time. */
+let plainSink: Sink | undefined
+export const setPlainSink = (sink: Sink | undefined) => {
+  plainSink = sink
+}
 
-const currentSink = (): Sink | undefined => Fiber.getCurrent()?.getRef(CurrentSink) ?? sinkStorage.getStore()
+const currentSink = (): Sink | undefined => Fiber.getCurrent()?.getRef(CurrentSink) ?? plainSink
 
 export class AssertionError extends Error {
   readonly failure: Failure

@@ -6,7 +6,7 @@ import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as path from "node:path"
 import { pathToFileURL } from "node:url"
-import { AssertionError, CurrentSink, show, Sink, sinkStorage } from "./Assert.ts"
+import { AssertionError, CurrentSink, setPlainSink, show, Sink } from "./Assert.ts"
 import { locationFromStack } from "./CallSite.ts"
 import type { Failure, ListedNode, RunFileTest, Status, TestFinished } from "./Protocol.ts"
 import { LoadError } from "./Protocol.ts"
@@ -73,13 +73,15 @@ export const listFile = (file: string) =>
 /** Per-executor state: the run's MemoMap and Scope live as long as the executor. */
 export class ExecutorState extends Context.Service<ExecutorState, {
   readonly runMemo: Layer.MemoMap
+  /** Plain tests run one at a time per executor: see `setPlainSink` */
+  readonly plainLock: Semaphore.Semaphore
   readonly shared: ReadonlySet<Layer.Layer<any, any, any>>
 }>()("effect/test/ExecutorState") {
   static layer = Layer.effect(ExecutorState)(Effect.gen(function*() {
     const shared = new Set<Layer.Layer<any, any, any>>(yield* loadConfig(process.env.EFFECT_TEST_CONFIG))
     const runScope = yield* Effect.scope
     const runContext = yield* Effect.context<never>()
-    return { runMemo: makeRunMemoMap(shared, runScope, runContext), shared }
+    return { runMemo: makeRunMemoMap(shared, runScope, runContext), shared, plainLock: Semaphore.makeUnsafe(1) }
   }))
 }
 
@@ -173,7 +175,7 @@ class FixtureFailure {
 export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<RunFileTest>) =>
   Stream.callback<Event, LoadError, ExecutorState>((queue) =>
     Effect.gen(function*() {
-      const { runMemo, shared } = yield* ExecutorState
+      const { plainLock, runMemo, shared } = yield* ExecutorState
       const root = yield* load(file)
       const rel = path.relative(process.cwd(), file)
       const selected = new Map(tests.map((t) => [t.id, t]))
@@ -245,7 +247,8 @@ export const runFile = (file: string, concurrency: number, tests: ReadonlyArray<
           for (let attempt = 1;; attempt++) {
             yield* emit({ _tag: "TestStarted", id, attempt })
             const start = Date.now()
-            const r = yield* runAttempt(node, fixtures, memo, plan)
+            const run = runAttempt(node, fixtures, memo, plan)
+            const r = yield* (node.body._tag === "Plain" ? plainLock.withPermits(1)(run) : run)
             const done = r.status === "passed" || attempt > plan.retries
             if (done) {
               return yield* emit({
@@ -321,14 +324,16 @@ const isGenerator = (u: unknown): u is Generator =>
 const bodyEffect = (node: TestNode<any>, sink: Sink): Effect.Effect<unknown, unknown> => {
   if (node.body._tag === "Effect") return node.body.effect as Effect.Effect<unknown, unknown>
   const run = node.body.run
+  // The caller holds the executor's plain-test lock, so `plainSink` is ours until we clear it.
   return Effect.flatMap(
-    Effect.sync(() => sinkStorage.run(sink, run)),
-    (result) => {
+    Effect.sync(() => {
+      setPlainSink(sink)
+      return run()
+    }),
+    (result) =>
       // an Effect or a generator in the result is reported by `classify`: it never ran
-      if (result instanceof Promise) return Effect.promise(() => sinkStorage.run(sink, () => result))
-      return Effect.succeed(result)
-    }
-  )
+      result instanceof Promise ? Effect.promise(() => result) : Effect.succeed(result)
+  ).pipe(Effect.ensuring(Effect.sync(() => setPlainSink(undefined))))
 }
 
 // --- Cause-aware classification

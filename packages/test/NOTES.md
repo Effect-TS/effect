@@ -87,8 +87,11 @@ finds `*.test.ts` files under the given paths.
 5. **No silent greens.**
    - (a) The assertion `Sink` lives in a `Context.Reference`. Forked fibers, even with `forkDetach`, inherit it, so a
      failed assertion in a forked fiber fails the owning test and is labelled `assertion (forked fiber)`. Assertions find the sink through
-     `Fiber.getCurrent()`. Promise bodies lose the fiber after the first `await`, so the sink is also published
-     through `AsyncLocalStorage`.
+     `Fiber.getCurrent()`. Promise bodies lose the fiber after the first `await`, so **plain tests run one at a time
+     per executor** and the running one's sink is kept in a module variable (`setPlainSink`). There is no
+     AsyncLocalStorage. Effect tests stay concurrent. `examples/plain.test.ts` checks it (it fails without the lock).
+     Known gap: an assertion in a promise a plain test left floating, running after that test ended, lands in no sink
+     or in the next plain test's.
    - (b) A test that passes with `sink.count === 0` fails with `noAssertions`. The opt-out is the `noAssertions: true` option.
    - (c) If the body's *result* is an Effect, the test fails with `discardedEffect`: a plain function returning an Effect,
      an async function resolving to one, or an Effect producing `Effect<Effect>`. A bare `function*` type-checks as a plain
