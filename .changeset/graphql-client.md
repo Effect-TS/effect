@@ -6,4 +6,6 @@ Add experimental `effect/graphql` with typed operations, middleware, HTTP and su
 
 GraphQL errors keep unknown top-level fields, such as GitHub's `type`.
 
+An operation's document can be given as a `GraphQL.DocumentTemplate`, which is joined into the same text and keeps the variable and fragment names a batch would rename.
+
 GraphQL header options accept `Headers.Input`; middleware requests, transport responses and errors use normalized `Headers.Headers`. Error schemas encode headers as string records and restore header collections on decode.

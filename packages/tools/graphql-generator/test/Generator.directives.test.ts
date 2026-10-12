@@ -8,7 +8,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
-import { assertNoErrors, documentOf, generateTasks, importGenerated, member, members } from "./utils/generator.ts"
+import { assertNoErrors, generateTasks, importGenerated, member, members } from "./utils/generator.ts"
 
 // In its own file, so the fields it declares don't repeat in `src/ops.graphql.ts`.
 // Only written for operations that spread it, since an unused fragment is an error.
@@ -45,11 +45,11 @@ query One($show: Boolean!, $taskId: ID!) {
       assert.strictEqual(member(ops, "id"), "Shared.ID")
       assert.strictEqual(member(ops, "title"), "Schema.optionalKey(Schema.String)")
       assert.strictEqual(member(ops, "estimate"), "Schema.optionalKey(Schema.NullOr(Shared.Float))")
+      const module = yield* importGenerated(generated, "src/ops.graphql.ts")
       assert.strictEqual(
-        documentOf(ops, "One"),
+        module.One.document,
         "query One($show:Boolean!$taskId:ID!){task(id:$taskId){id title@include(if:$show)estimate@skip(if:$show)}}"
       )
-      const module = yield* importGenerated(generated, "src/ops.graphql.ts")
       assert.deepStrictEqual(Schema.decodeUnknownSync(module.One.result)({ task: { id: "1" } }), { task: { id: "1" } })
     }).pipe(Effect.provide(NodeServices.layer)))
 

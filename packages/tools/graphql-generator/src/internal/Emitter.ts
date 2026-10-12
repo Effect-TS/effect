@@ -7,10 +7,11 @@
  * @internal
  */
 import * as Arr from "effect/Array"
+import type { GraphQL } from "effect/graphql"
 import type { GeneratedFile } from "../Generator.ts"
 import type * as Ast from "./Ast.ts"
 import { type Diagnostic, make } from "./Diagnostic.ts"
-import { print } from "./Printer.ts"
+import { print, template } from "./Printer.ts"
 import * as SchemaModel from "./SchemaModel.ts"
 import { type File, fragmentSpreads } from "./Validate.ts"
 
@@ -1287,7 +1288,7 @@ class Emitter {
       [`\`${definition.operation} ${name}\``],
       descriptionLines(definition.description?.value)
     )
-    const lines = [`  document: ${JSON.stringify(this.document(definition))},`]
+    const lines = [`  document: ${this.document(definition)},`]
     if (definition.variableDefinitions.length > 0) {
       const members = definition.variableDefinitions.map((variable) => {
         const defaultValue = variable.defaultValue === undefined
@@ -1314,27 +1315,29 @@ class Emitter {
   }
 
   /**
-   * The operation printed compactly, followed by every fragment it uses in
-   * order of first use, with `__typename` added to every
-   * selection on an interface or union that doesn't already select it.
+   * The `document` expression: the operation printed compactly, followed by
+   * every fragment it uses in order of first use, with `__typename` added to
+   * every selection on an interface or union that doesn't already select it.
+   * Queries and mutations get a `DocumentTemplate` of that text, subscriptions
+   * the text itself.
    */
   document(operation: Ast.OperationDefinition): string {
     const names = new Set(fragmentSpreads(operation.selectionSet).map((spread) => spread.name.value))
     for (const name of names) {
       for (const spread of fragmentSpreads(this.fragment(name).definition.selectionSet)) names.add(spread.name.value)
     }
-    const used = Array.from(names, (name) => this.fragment(name).definition)
-    return print({
-      _tag: "Document",
-      definitions: [
-        { ...operation, selectionSet: this.withTypename(operation.selectionSet, this.rootType(operation)) },
-        ...used.map((fragment) => ({
-          ...fragment,
-          selectionSet: this.withTypename(fragment.selectionSet, fragment.typeCondition.name.value)
-        }))
-      ],
-      loc: operation.loc
+    const root = {
+      ...operation,
+      selectionSet: this.withTypename(operation.selectionSet, this.rootType(operation))
+    }
+    const fragments = Array.from(names, (name) => {
+      const fragment = this.fragment(name).definition
+      return { ...fragment, selectionSet: this.withTypename(fragment.selectionSet, fragment.typeCondition.name.value) }
     })
+    if (operation.operation === "subscription") {
+      return JSON.stringify(print({ _tag: "Document", definitions: [root, ...fragments], loc: operation.loc }))
+    }
+    return emitTemplate(template(root, fragments))
   }
 
   /**
@@ -1586,3 +1589,26 @@ const inputTypeText = (type: SchemaModel.TypeRef, ref: (name: string) => string)
     (element) => `ReadonlyArray<${element}>`,
     (inner) => `${inner} | null`
   )
+
+/** A string or string array literal. */
+const literal = (value: string | ReadonlyArray<string>): string =>
+  typeof value === "string" ? JSON.stringify(value) : `[${value.map((item) => JSON.stringify(item)).join(", ")}]`
+
+/** A `DocumentTemplate` literal with one line per entry, keys in the order `Printer.template` builds them. */
+const emitTemplate = ({ directives, fragments, selections, variables }: GraphQL.DocumentTemplate): string => {
+  const list = (key: string, entries: ReadonlyArray<object>) =>
+    entries.length === 0 ?
+      `    ${key}: []` :
+      `    ${key}: [\n${
+        entries.map((entry) =>
+          `      { ${Object.entries(entry).map(([name, value]) => `${name}: ${literal(value)}`).join(", ")} }`
+        ).join(",\n")
+      }\n    ]`
+  const fields = [
+    list("variables", variables),
+    ...(directives === undefined ? [] : [`    directives: ${literal(directives)}`]),
+    list("selections", selections),
+    list("fragments", fragments)
+  ]
+  return `{\n${fields.join(",\n")}\n  }`
+}
