@@ -9,6 +9,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type * as FileSystem from "effect/FileSystem"
+import * as JsonPointer from "effect/JsonPointer"
 import * as JsonSchema from "effect/JsonSchema"
 import * as Layer from "effect/Layer"
 import * as Path_ from "effect/Path"
@@ -233,6 +234,12 @@ const rewriteConditional = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema =>
   return { ...rest, anyOf: [condition, otherwise] }
 }
 
+/** The definition key of a `#/$defs/Name` reference. */
+const definitionKey = ($ref: string): string | undefined => {
+  const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
+  return path !== undefined && path.length === 2 && path[0] === "$defs" ? path[1] : undefined
+}
+
 const isNullableMarker = (member: unknown): boolean =>
   isRecord(member) && member.nullable === true && Object.keys(member).length === 1
 
@@ -438,7 +445,7 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
     if (!isRecord(member)) return undefined
     if (!Predicate.isString(member.$ref)) return compose(prepare(member))
     const { $ref, ...siblings } = member
-    const key = JsonSchema.getReferenceKey($ref)
+    const key = definitionKey($ref)
     if (key === undefined || resolving.has(key) || !Object.keys(siblings).every(isAnnotation)) return undefined
     const definition = resolve(key)
     if (definition === undefined) return undefined
