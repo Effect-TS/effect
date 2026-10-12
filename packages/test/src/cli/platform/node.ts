@@ -4,13 +4,11 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import * as NodeWorker from "@effect/platform-node/NodeWorker"
 import * as Layer from "effect/Layer"
 import { Worker } from "node:worker_threads"
-import type { Services } from "../bin.ts"
-import { moduleUrl, type Platform } from "../Platform.ts"
+import { makePlatform, moduleUrl } from "../Platform.ts"
 
 const executor = moduleUrl("../executor/node", import.meta.url)
 
-export const platform: Platform<Services> = {
-  runtime: "node",
+export default makePlatform({
   layer: Layer.merge(
     NodeServices.layer,
     NodeWorker.layer(() => {
@@ -22,4 +20,4 @@ export const platform: Platform<Services> = {
     })
   ),
   runMain: (effect) => NodeRuntime.runMain(effect)
-}
+})
