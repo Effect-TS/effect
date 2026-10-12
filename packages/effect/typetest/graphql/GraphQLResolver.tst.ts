@@ -1,6 +1,9 @@
-import { type Effect, hole, Schema } from "effect"
-import { GraphQL, type GraphQLClient, GraphQLResolver } from "effect/graphql"
+import { Context, type Effect, hole, Schema } from "effect"
+import { GraphQL, type GraphQLClient, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { describe, expect, it } from "tstyche"
+
+class CurrentUser extends Context.Service<CurrentUser, { readonly tenant: string }>()("CurrentUser") {}
+class Auth extends GraphQLMiddleware.Service<Auth, { requires: CurrentUser }>()("Auth") {}
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
 const User = Schema.Struct({ __typename: Schema.Literal("User"), login: Schema.String })
@@ -14,6 +17,7 @@ const SearchRepos = GraphQL.query("SearchRepos", {
 })
 
 const method = hole<GraphQLClient.OperationMethod<typeof SearchRepos>>()
+const authed = hole<GraphQLClient.OperationMethod<GraphQL.AddMiddleware<typeof SearchRepos, Auth>>>()
 const variables = (keys: ReadonlyArray<string>) => ({ query: keys.join(" ") })
 
 describe("GraphQLResolver", () => {
@@ -44,5 +48,18 @@ describe("GraphQLResolver", () => {
 
     const all = GraphQLResolver.request(GraphQLResolver.ordered(method, { variables, path: ["search", "nodes"] }))
     expect<Effect.Success<ReturnType<typeof all>>>().type.toBe<typeof Repository.Type | typeof User.Type>()
+  })
+
+  it("batchKey is required when the method needs services and rejected when it does not", () => {
+    const path = ["search", "nodes"] as const
+    const batchKey = (context: Context.Context<CurrentUser>) => Context.get(context, CurrentUser).tenant
+    expect(GraphQLResolver.ordered).type.toBeCallableWith(authed, { variables, path, batchKey })
+    expect(GraphQLResolver.ordered).type.not.toBeCallableWith(authed, { variables, path })
+    expect(GraphQLResolver.findById).type.not.toBeCallableWith(authed, {
+      variables,
+      path,
+      key: (node: { readonly __typename: string }) => node.__typename
+    })
+    expect(GraphQLResolver.ordered).type.not.toBeCallableWith(method, { variables, path, batchKey: () => "tenant" })
   })
 })
