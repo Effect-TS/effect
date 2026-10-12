@@ -12,6 +12,8 @@ export class NpmPromoteError extends Schema.TaggedError<NpmPromoteError>()("NpmP
 export class RegistryError extends Schema.TaggedError<RegistryError>()("RegistryError", {
   message: Schema.String,
   pkg: Schema.Struct({ name: Schema.String, version: Schema.String }),
+  /** An earlier package needed its latest tag moved during this run. */
+  promotionPending: Schema.Boolean,
   cause: Schema.optional(Schema.Defect())
 }) {}
 

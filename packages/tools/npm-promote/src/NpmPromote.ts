@@ -132,8 +132,13 @@ export const liveLatest = Effect.fnUntraced(function*(name: string) {
   )
 })
 
-const registryError = (pkg: ReleasePackage, cause: NpmPromoteError) =>
-  new RegistryError({ message: `${cause.message} while promoting ${pkg.name}@${pkg.version}`, pkg, cause })
+const registryError = (pkg: ReleasePackage, cause: NpmPromoteError, promotionPending: boolean) =>
+  new RegistryError({
+    message: `${cause.message} while promoting ${pkg.name}@${pkg.version}`,
+    pkg,
+    promotionPending,
+    cause
+  })
 
 /**
  * Puts `effect` first and keeps the input order for everything else.
@@ -186,7 +191,7 @@ export const promote = Effect.fnUntraced(function*(
   const ordered = promotionOrder(packages)
   const metadata = yield* Effect.forEach(
     ordered,
-    (pkg) => fetchMetadata(pkg.name).pipe(Effect.mapError((cause) => registryError(pkg, cause))),
+    (pkg) => fetchMetadata(pkg.name).pipe(Effect.mapError((cause) => registryError(pkg, cause, false))),
     { concurrency: 8 }
   )
 
@@ -204,7 +209,9 @@ export const promote = Effect.fnUntraced(function*(
   const promoted: Array<ReleasePackage> = []
   for (let i = 0; i < ordered.length; i++) {
     const pkg = ordered[i]
-    const latest = yield* liveLatest(pkg.name).pipe(Effect.mapError((cause) => registryError(pkg, cause)))
+    const latest = yield* liveLatest(pkg.name).pipe(
+      Effect.mapError((cause) => registryError(pkg, cause, promoted.length > 0))
+    )
     if (!(yield* needsPromotion(pkg, latest))) {
       continue
     }

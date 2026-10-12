@@ -169,8 +169,8 @@ const onPromoted = Effect.fnUntraced(function*(
  * commit once `effect`'s `latest` is the target and no deployment is recorded,
  * and opens or resolves the tracking issue.
  *
- * Fails when promotion or the deploy fails, after alerting if the release is
- * overdue.
+ * Fails when promotion or the deploy fails. Promotion failures alert when the
+ * release is overdue and promotion is known to be pending.
  */
 export const promoteRelease = Effect.fnUntraced(function*(
   release: Release,
@@ -189,18 +189,30 @@ export const promoteRelease = Effect.fnUntraced(function*(
         options,
         Effect.succeed([{ _tag: "PromotionFailed", pkg: error.pkg, reason: error.reason }])
       ).pipe(
+        Effect.catch((alertError) =>
+          Console.warn(`Could not open or update the tracking issue: ${alertError.message}`)
+        ),
         Effect.andThen(Effect.fail(new NpmPromoteError({ message: error.message, cause: error })))
       )),
-    // A registry read that keeps failing is reported as unchecked, never as missing.
-    Effect.catchTag("RegistryError", (error) =>
-      alertIfOverdue(
+    // A read outage alone is not evidence of an overdue promotion.
+    Effect.catchTag("RegistryError", (error) => {
+      const original = new NpmPromoteError({ message: error.message, cause: error })
+      if (!error.promotionPending) {
+        return Effect.fail(original)
+      }
+      // Known-pending read failures are reported as unchecked, never as missing.
+      return alertIfOverdue(
         release,
         effect,
         options,
         Effect.succeed([{ _tag: "Unknown", pkg: error.pkg, reason: error.message }])
       ).pipe(
-        Effect.andThen(Effect.fail(new NpmPromoteError({ message: error.message, cause: error })))
-      ))
+        Effect.catch((alertError) =>
+          Console.warn(`Could not open or update the tracking issue: ${alertError.message}`)
+        ),
+        Effect.andThen(Effect.fail(original))
+      )
+    })
   )
 
   if (result._tag === "Promoted") {

@@ -55,7 +55,8 @@ export const render = (overdue: OverdueRelease): { readonly title: string; reado
   const sections = [
     {
       heading: "Promotion failed",
-      note: "The version is visible, but `npm dist-tag add` failed. Check the npm token and package permissions.",
+      note:
+        "The version is visible, but `npm dist-tag add` failed. Check each package's trusted publisher configuration for `npm-promote.yml`, the workflow and environment match, expiry, and the \"Allow npm dist-tag\" permission.",
       items: list("PromotionFailed")
     },
     {
