@@ -9,8 +9,8 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import type { ListedNode, PlannedTest, RunFileTest, Status, TestEvent, TestFinished } from "./Protocol.ts"
-import { ExecutorRpcs } from "./Protocol.ts"
+import type { ListedNode, PlannedTest, RunFileTest, Selection, Status, TestEvent, TestFinished } from "./Protocol.ts"
+import { ExecutorRpcs, schemaVersion } from "./Protocol.ts"
 import type { Reporter } from "./Reporters.ts"
 
 export interface RunOptions {
@@ -21,6 +21,8 @@ export interface RunOptions {
   readonly tag: string | undefined
   /** only these test ids (a file's id selects the whole file), e.g. the failures from the last run */
   readonly ids: ReadonlySet<string> | undefined
+  /** how the caller narrowed the selection beyond `test` / `tag`, for reporting, e.g. `--failed (11 recorded)` */
+  readonly selectedBy: ReadonlyArray<string>
   readonly seed: number
   readonly workers: number
   readonly filesPerExecutor: number
@@ -54,21 +56,19 @@ export const discover = (paths: ReadonlyArray<string>): { files: Array<string>; 
 }
 
 /** Why a run selected no tests, for the error message. */
-const whyEmpty = (
-  paths: ReadonlyArray<string>,
-  files: ReadonlyArray<string>,
-  tests: number,
-  opts: Pick<RunOptions, "test" | "tag" | "ids">
-): string => {
-  const where = paths.length ? paths.join(", ") : "."
-  if (files.length === 0) return `no test files (*.test.ts) found in ${where}`
-  if (tests === 0) return `${files.length} test file(s) in ${where}, but none defines a test`
-  const filters = [
-    ...(opts.test !== undefined ? [`--test ${JSON.stringify(opts.test)}`] : []),
-    ...(opts.tag !== undefined ? [`--tag ${JSON.stringify(opts.tag)}`] : []),
-    ...(opts.ids !== undefined ? [`the ${opts.ids.size} test(s) given (e.g. --failed)`] : [])
-  ]
-  return `${tests} test(s) in ${files.length} file(s), but none matched ${filters.join(" and ")}`
+/** What narrowed the selection, in the words of the command line. */
+const filtersOf = (opts: Pick<RunOptions, "test" | "tag" | "selectedBy">): Array<string> => [
+  ...opts.selectedBy,
+  ...(opts.test !== undefined ? [`--test ${JSON.stringify(opts.test)}`] : []),
+  ...(opts.tag !== undefined ? [`--tag ${JSON.stringify(opts.tag)}`] : [])
+]
+
+/** Why a run selected no tests, for the error message. */
+const whyEmpty = (selection: Selection): string => {
+  const where = selection.paths.length ? selection.paths.join(", ") : "."
+  if (selection.files === 0) return `no test files (*.test.ts) found in ${where}`
+  if (selection.tests === 0) return `${selection.files} test file(s) in ${where}, but none defines a test`
+  return `${selection.tests} test(s) in ${selection.files} file(s), but none matched ${selection.filters.join(" and ")}`
 }
 
 // --- planning
@@ -167,9 +167,14 @@ export const run = (opts: RunOptions) =>
       planned.push({ id, file: id, tags: [], timeoutMs: 0, retries: 0, seed: 0 })
     }
     // a run that selects nothing is red: an agent must never read "nothing ran" as "all green"
+    const selection: Selection = {
+      paths: opts.paths,
+      files: files.length,
+      tests: listings.reduce((n, l) => n + l.nodes.filter((node) => node.kind === "test").length, 0),
+      filters: filtersOf(opts)
+    }
     if (planned.length === 0) {
-      const tests = listings.reduce((n, l) => n + l.nodes.filter((node) => node.kind === "test").length, 0)
-      yield* Console.error(`No tests selected: ${whyEmpty(opts.paths, files, tests, opts)}`)
+      yield* Console.error(`No tests selected: ${whyEmpty(selection)}`)
       return 1
     }
 
@@ -196,7 +201,13 @@ export const run = (opts: RunOptions) =>
       ...extra
     })
 
-    emit({ _tag: "RunPlanned", runSeed: opts.seed, tests: planned.map(({ skip, ...t }) => skip ? { ...t, skip } : t) })
+    emit({
+      _tag: "RunPlanned",
+      schemaVersion,
+      runSeed: opts.seed,
+      selection,
+      tests: planned.map(({ skip, ...t }) => skip ? { ...t, skip } : t)
+    })
     for (const { error, file } of loadErrors) {
       emit(finished(path.relative(process.cwd(), file), "failed", {
         failures: [{

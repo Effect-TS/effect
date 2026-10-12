@@ -10,4 +10,5 @@ const platforms = makePlatforms({
   deno: () => import("./platform/deno.ts")
 })
 
-platforms.run(Command.run(cli, { version: PackageJson.version }))
+// on a usage error, print the error and a hint to use --help rather than the whole help
+platforms.run(Command.run(cli, { version: PackageJson.version, helpOnError: false }))

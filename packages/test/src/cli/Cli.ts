@@ -137,11 +137,18 @@ export const cli = Command.make("etest", {
           () => fs.existsSync("etest.config.ts") ? "etest.config.ts" : undefined
         )
     )
+    // stdout may be closed early (e.g. `etest | head`): stop writing, but finish the run
+    let stdoutClosed = false
+    process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code === "EPIPE") stdoutClosed = true
+      else throw error
+    })
     const write = (s: string) => {
-      process.stdout.write(s)
+      if (!stdoutClosed) process.stdout.write(s)
     }
     let paths = options.paths
     let ids: ReadonlySet<string> | undefined
+    const selectedBy: Array<string> = []
     if (options.failed) {
       const last = LastRun.read()
       if (last === undefined) {
@@ -154,6 +161,7 @@ export const cli = Command.make("etest", {
         return
       }
       ids = new Set(entries.map(([id]) => id))
+      selectedBy.push(`--failed (${entries.length} recorded)`)
       if (paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
     }
     const ctx: Reporters.ReporterContext = {
@@ -172,6 +180,7 @@ export const cli = Command.make("etest", {
       test: Option.getOrUndefined(options.test),
       tag: Option.getOrUndefined(options.tag),
       ids,
+      selectedBy,
       seed: Option.getOrElse(options.seed, () => Math.floor(Math.random() * 100_000)),
       workers: options.workers,
       filesPerExecutor: 4,

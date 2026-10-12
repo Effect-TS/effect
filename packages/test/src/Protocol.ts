@@ -49,8 +49,26 @@ export const PlannedTest = Schema.Struct({
 })
 export type PlannedTest = typeof PlannedTest.Type
 
+/** What a run selected, and how. */
+export const Selection = Schema.Struct({
+  /** the paths searched, as given (empty: the working directory) */
+  paths: Schema.Array(Schema.String),
+  /** test files found under them */
+  files: Schema.Number,
+  /** tests defined in those files */
+  tests: Schema.Number,
+  /** what narrowed the selection, e.g. `--test "x"` or `--failed (11 recorded)` */
+  filters: Schema.Array(Schema.String)
+})
+export type Selection = typeof Selection.Type
+
+/** The version of the event stream (`--reporter jsonl`), bumped on incompatible changes. See EVENTS.md. */
+export const schemaVersion = 1
+
 export const RunPlanned = Schema.TaggedStruct("RunPlanned", {
+  schemaVersion: Schema.Literal(schemaVersion),
   runSeed: Schema.Number,
+  selection: Selection,
   tests: Schema.Array(PlannedTest)
 })
 export const TestStarted = Schema.TaggedStruct("TestStarted", {

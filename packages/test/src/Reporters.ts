@@ -1,7 +1,7 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
 import * as Schema from "effect/Schema"
-import type { Failure, PlannedTest, RunFinished, TestEvent, TestFinished } from "./Protocol.ts"
+import type { Failure, PlannedTest, RunFinished, Selection, TestEvent, TestFinished } from "./Protocol.ts"
 import { TestEvent as TestEventSchema } from "./Protocol.ts"
 
 export interface Reporter {
@@ -47,10 +47,18 @@ const summaryLine = (r: RunFinished, runSeed: number) => {
   }${r.cancelled ? " cancelled" : ""}`
 }
 
+/** What ran and why, e.g. `selected 3 of 60 tests in 8 files (examples); --test "fees"`. */
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
+const selectionLine = (selection: Selection, selected: number) =>
+  `selected ${selected} of ${plural(selection.tests, "test")} in ${plural(selection.files, "file")} (${
+    selection.paths.length ? selection.paths.join(", ") : "."
+  })${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}`
+
 /** Shared bookkeeping: plan order gives deterministic output regardless of scheduling. */
 const collect = () => {
   let planned: Array<PlannedTest> = []
   let runSeed = 0
+  let selection: Selection = { paths: [], files: 0, tests: 0, filters: [] }
   const results = new Map<string, TestFinished>()
   let finished: RunFinished | undefined
   return {
@@ -58,6 +66,7 @@ const collect = () => {
       if (e._tag === "RunPlanned") {
         planned = [...e.tests]
         runSeed = e.runSeed
+        selection = e.selection
       } else if (e._tag === "TestFinished") results.set(e.id, e)
       else if (e._tag === "RunFinished") finished = e
     },
@@ -66,6 +75,9 @@ const collect = () => {
     },
     get runSeed() {
       return runSeed
+    },
+    get selection() {
+      return selection
     },
     results,
     get finished() {
@@ -83,7 +95,7 @@ export const agent = (ctx: ReporterContext): Reporter => {
   return {
     onEvent: s.on,
     onEnd() {
-      const lines: Array<string> = [summaryLine(s.finished, s.runSeed)]
+      const lines: Array<string> = [summaryLine(s.finished, s.runSeed), selectionLine(s.selection, s.planned.length)]
       const byBail = (r: TestFinished | undefined) =>
         r?.skipReason?.startsWith("not run: ") || r?.failures[0]?.message.startsWith("interrupted by ")
       for (const t of s.planned) {
@@ -190,6 +202,7 @@ export const human = (ctx: ReporterContext): Reporter => {
         out.push(dim(`  rerun: ${ctx.rerun(t, s.runSeed)}`))
       }
       out.push("")
+      out.push(dim(selectionLine(s.selection, s.planned.length)))
       const line = summaryLine(s.finished, s.runSeed)
       out.push(line.startsWith("PASS") ? green(bold(line)) : red(bold(line)))
       ctx.write(out.join("\n") + "\n")
