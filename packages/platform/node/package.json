@@ -73,6 +73,11 @@
     "effect": "workspace:^",
     "redis": ">=5.0.0 <7.0.0"
   },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@testcontainers/mysql": "^12.2.0",
     "@testcontainers/postgresql": "^12.2.0",
