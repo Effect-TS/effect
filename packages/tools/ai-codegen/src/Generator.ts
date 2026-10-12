@@ -132,7 +132,6 @@ const normalizeOpenEnum = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => 
 
 const isStringArray = (u: unknown): u is ReadonlyArray<string> => Array.isArray(u) && u.every(Predicate.isString)
 
-/** A `{ "required": ["key"] }` branch that only requires a single key. */
 const requiredKey = (branch: unknown): string | undefined =>
   isRecord(branch) && Object.keys(branch).length === 1 && isStringArray(branch.required) &&
     branch.required.length === 1
@@ -146,14 +145,13 @@ const choiceMode = (js: JsonSchema.JsonSchema): "anyOf" | "oneOf" | undefined =>
     ? "anyOf"
     : undefined
 
-/** Requires every listed key to be absent. */
 const absent = (keys: ReadonlyArray<string>): JsonSchema.JsonSchema => ({
   properties: Object.fromEntries(keys.map((key) => [key, false]))
 })
 
 const jsonTypes = ["null", "boolean", "object", "array", "number", "string"]
 
-/** The types left over by `not: { type: [...] }`, or `undefined` when there is no exact complement. */
+/** Returns the exact type complement, or `undefined` if it cannot be expressed. */
 const typeComplement = (not: { readonly [x: string]: unknown }, current: unknown): unknown => {
   if (Object.keys(not).length !== 1) return undefined
   const excluded = Predicate.isString(not.type) ? [not.type] : not.type
@@ -165,27 +163,14 @@ const typeComplement = (not: { readonly [x: string]: unknown }, current: unknown
   return remaining.length === 0 ? undefined : remaining.length === 1 ? remaining[0] : remaining
 }
 
-/** `not: { pattern: "[^...]" }` - no character outside a class - as a positive pattern. */
+/** Rewrites a negated character class as an anchored positive pattern. */
 const negatedClassPattern = (not: { readonly [x: string]: unknown }): string | undefined => {
   if (Object.keys(not).length !== 1 || !Predicate.isString(not.pattern)) return undefined
   const match = /^\[\^((?:[^\\[\]]|\\.)+)\]$/.exec(not.pattern)
   return match === null ? undefined : `^[${match[1]}]*$`
 }
 
-/**
- * Rewrite the `not` forms found in provider specs as equivalent positive constraints.
- *
- * Effect has no negation, but these forms have exact positive equivalents:
- *
- * - `not: { type }` keeps the complementary types.
- * - `not: { pattern: "[^...]" }` requires every character to be in the class.
- * - `anyOf: [{ required: [a] }, { required: [b] }]` with `not: { required: [a, b] }` is exactly one of
- *   them: `oneOf`.
- * - `not: { required: [...] }`, optionally with `anyOf` single-key branches, requires some of those keys
- *   to be absent, which is expressed with `false` property schemas.
- *
- * Any other `not` is left for the importer to reject.
- */
+/** Rewrites supported negations as positive constraints; leaves other forms for the importer to reject. */
 const rewriteNot = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   const not = js.not
   if (!isRecord(not)) return js
@@ -222,19 +207,13 @@ const rewriteNot = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   return js
 }
 
-/**
- * Rewrite `if`/`else` without `then` as `anyOf: [if, else]`.
- *
- * `(if and then) or (not if and else)` with an always-valid `then` reduces to `if or else`, so the
- * rewrite is exact and needs no negation.
- */
+/** Without `then`, `if`/`else` reduces to `if or else`. */
 const rewriteConditional = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   if (js.if === undefined || js.else === undefined || js.then !== undefined || js.anyOf !== undefined) return js
   const { else: otherwise, if: condition, ...rest } = js
   return { ...rest, anyOf: [condition, otherwise] }
 }
 
-/** The definition key of a `#/$defs/Name` reference. */
 const definitionKey = ($ref: string): string | undefined => {
   const path = $ref.startsWith("#") ? JsonPointer.parseUriFragment($ref) : undefined
   return path !== undefined && path.length === 2 && path[0] === "$defs" ? path[1] : undefined
@@ -243,11 +222,7 @@ const definitionKey = ($ref: string): string | undefined => {
 const isNullableMarker = (member: unknown): boolean =>
   isRecord(member) && member.nullable === true && Object.keys(member).length === 1
 
-/**
- * Honour OpenAPI 3.0 `nullable: true` markers left in an OpenAPI 3.1 spec, where the keyword has no
- * meaning. They appear on a schema, or as an `allOf: [{ $ref }, { nullable: true }]` member, and are
- * rewritten as `anyOf: [schema, { type: "null" }]`.
- */
+/** Converts legacy `nullable: true` markers, including standalone `allOf` members, to null unions. */
 const rewriteNullable = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   const allOf = Array.isArray(js.allOf) ? js.allOf : undefined
   if (js.nullable !== true && !allOf?.some(isNullableMarker)) return js
@@ -278,7 +253,7 @@ const isAnnotation = (key: string): boolean => annotationKeys.has(key) || key.st
 const pick = (js: JsonSchema.JsonSchema, predicate: (key: string) => boolean): JsonSchema.JsonSchema =>
   Object.fromEntries(Object.entries(js).filter(([key]) => predicate(key)))
 
-/** An object schema made only of `properties`, `required`, `additionalProperties` and annotations. */
+/** Object constraints and annotations only; no typed `additionalProperties`. */
 const isPlainObject = (js: JsonSchema.JsonSchema): boolean =>
   (js.type === undefined || js.type === "object") &&
   (js.additionalProperties === undefined || Predicate.isBoolean(js.additionalProperties)) &&
@@ -286,7 +261,6 @@ const isPlainObject = (js: JsonSchema.JsonSchema): boolean =>
   (js.required === undefined || isStringArray(js.required)) &&
   Object.keys(js).every((key) => objectKeys.has(key) || isAnnotation(key))
 
-/** A schema whose `type` rules out objects, so object constraints never apply to it. */
 const excludesObject = (js: JsonSchema.JsonSchema): boolean =>
   Predicate.isString(js.type) ? js.type !== "object" : isStringArray(js.type) && !js.type.includes("object")
 
@@ -299,11 +273,8 @@ const declaredKeys = (js: JsonSchema.JsonSchema): ReadonlyArray<string> => [
 ]
 
 /**
- * Both objects at once: properties are combined, and a property defined twice must satisfy both.
- *
- * A side closed by the source spec (`additionalProperties: false`) forbids every key it does not
- * declare, so keys only the other side declares or requires become `false` (absent) instead of being
- * added. The generator only closes objects after composition, so every closure seen here is explicit.
+ * Intersects object constraints. Explicit closures forbid keys declared only by the other member.
+ * Generator-added closures come later, so every closure here is from the spec.
  */
 const mergeObjects = (left: JsonSchema.JsonSchema, right: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
   const leftProperties = (left.properties as { readonly [x: string]: unknown } | undefined) ?? {}
@@ -347,10 +318,7 @@ type Choice = {
 
 type Part = { readonly _tag: "Object"; readonly schema: JsonSchema.JsonSchema } | Choice
 
-/**
- * Both branches at once, keeping the annotations of `branch`: an empty array when they cannot hold
- * together, `undefined` when there is no exact merge.
- */
+/** Intersects branches: `[]` for incompatible types, `undefined` if an exact merge is unsupported. */
 const mergeBranch = (
   object: JsonSchema.JsonSchema,
   branch: JsonSchema.JsonSchema
@@ -376,23 +344,15 @@ const mergeBranches = (
   return out.length === 0 ? undefined : out
 }
 
-/**
- * Distributes object constraints into each branch. A branch that cannot be an object is unaffected by
- * them, and is dropped when the object constraints require `type: "object"`.
- */
+/** Applies object constraints to each branch, dropping non-objects only when an object is required. */
 const mergeIntoChoice = (object: JsonSchema.JsonSchema, choice: Choice): Part | undefined => {
   const branches = mergeBranches(choice.branches, (branch) => mergeBranch(object, branch))
   return branches === undefined ? undefined : { ...choice, branches }
 }
 
 /**
- * Both alternatives at once.
- *
- * - A single branch is the same as its only alternative, so it is distributed into the other choice.
- * - Two `anyOf` lists become the `anyOf` of every pair.
- * - Otherwise each `oneOf` branch nests the other list, `oneOf: [{ anyOf: [b1 & a1, b1 & a2] }, ...]`:
- *   with the inner list holding, exactly one outer branch holds exactly when exactly one `b` holds.
- *   Nested branches cannot take further merges.
+ * Intersects choices. Two `anyOf` lists form all branch pairs; `oneOf` nests the other choice
+ * inside each branch to preserve exclusivity. Nested choices cannot be merged further.
  */
 const mergeChoices = (left: Choice, right: Choice): Part | undefined => {
   if (right.branches.length === 1 && isPlainObject(right.branches[0])) return mergeIntoChoice(right.branches[0], left)
@@ -422,17 +382,8 @@ const mergeParts = (left: Part, right: Part): Part | undefined =>
     : mergeChoices(left, right)
 
 /**
- * Normalizes object compositions the Effect JSON Schema importer cannot translate as-is.
- *
- * - `allOf` members that are plain objects are merged into one object. Each member is closed
- *   separately when `additionalProperties` is disabled, and the intersection of two closed objects
- *   with different properties is `Never`.
- * - Object constraints next to `anyOf`/`oneOf` are distributed into each branch. The importer cannot
- *   intersect an object with nested choices with several branches without expanding them.
- * - `type: "object"` next to branches that are all objects is redundant and dropped, so the union keeps
- *   its references and the wrapper is not closed into an empty object.
- *
- * Every rewrite is exact. Anything else is returned unchanged for the importer to handle.
+ * Merges object compositions before automatic closing, distributes constraints into choices,
+ * and removes redundant object wrappers. Unsupported compositions are left for the importer.
  */
 const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefined) => {
   const resolving = new Set<string>()
@@ -440,7 +391,6 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
   const prepare = (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema =>
     rewriteNot(rewriteConditional(rewriteNullable(js)))
 
-  /** The normalized schema, with a `$ref` replaced by its definition. */
   const dereference = (member: unknown): JsonSchema.JsonSchema | undefined => {
     if (!isRecord(member)) return undefined
     if (!Predicate.isString(member.$ref)) return compose(prepare(member))
@@ -478,13 +428,13 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
     if (!isPlainObject(rest)) return js
     const own = pick(rest, (key) => objectKeys.has(key))
     const hasOwn = own.properties !== undefined || own.required !== undefined
-    // `anyOf` and `oneOf` on the same schema must both hold, so each is a separate part
+    // Sibling choices must both hold.
     const members = [
       ...allOf,
       ...(Array.isArray(anyOf) ? [{ anyOf }] : []),
       ...(Array.isArray(oneOf) ? [{ oneOf }] : [])
     ]
-    // Leave a single source of constraints alone, so a lone `$ref` keeps its name
+    // Preserve references when no intersection is needed.
     if ((hasOwn ? 1 : 0) + members.length < 2) return js
     let part: Part = { _tag: "Object", schema: own }
     for (const member of members) {
@@ -516,10 +466,7 @@ const makeNormalizer = (resolve: (key: string) => JsonSchema.JsonSchema | undefi
   return (js: JsonSchema.JsonSchema): JsonSchema.JsonSchema => dropRedundantObjectType(compose(prepare(js)))
 }
 
-/**
- * Resolves `#/$defs` keys against the spec's component schemas, converted to Draft 2020-12 the same
- * way the OpenAPI generator converts them.
- */
+/** Resolves component schemas using the same dialect conversion as the OpenAPI generator. */
 const makeResolver = (spec: Schema.Json) => {
   const components = isRecord(spec) && isRecord(spec.components) && isRecord(spec.components.schemas)
     ? spec.components.schemas
@@ -536,7 +483,7 @@ const makeResolver = (spec: Schema.Json) => {
   }
 }
 
-/** A closed object without properties would drop every key, so only objects with properties are closed. */
+/** Keep free-form objects open and close compositions only after normalization. */
 const shouldClose = (js: JsonSchema.JsonSchema): boolean =>
   js.type === "object" &&
   isRecord(js.properties) && Object.keys(js.properties).length > 0 &&
@@ -605,7 +552,7 @@ export const layer: Layer.Layer<
       }
       if (disableAdditionalProperties && shouldClose(out)) {
         out.additionalProperties = false
-        // Specs sometimes require keys they never declare; closing must not make those keys impossible
+        // Keep undeclared required keys valid when closing the object.
         const properties = out.properties as { readonly [x: string]: unknown }
         const undeclared = isStringArray(out.required)
           ? out.required.filter((key) => !Object.hasOwn(properties, key))

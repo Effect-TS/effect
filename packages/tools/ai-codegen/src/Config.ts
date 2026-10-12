@@ -116,8 +116,7 @@ export class CodegenConfig extends Schema.Class<CodegenConfig>("CodegenConfig")(
   }
 
   /**
-   * Check if object schemas that declare properties, and no `additionalProperties` of their own, should be
-   * closed with `additionalProperties: false`.
+   * Whether to close objects with declared properties and no explicit `additionalProperties`.
    *
    * @since 4.0.0
    */
