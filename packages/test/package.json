@@ -1,0 +1,12 @@
+{
+  "name": "@effect/test",
+  "private": true,
+  "type": "module",
+  "description": "effect/test: an Effect-native test runner. Work in progress, not published.",
+  "bin": { "effect-test": "./src/bin.ts" },
+  "scripts": { "demo": "node src/bin.ts examples --seed 1234" },
+  "dependencies": {
+    "effect": "workspace:^",
+    "@effect/platform-node": "workspace:^"
+  }
+}

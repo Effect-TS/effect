@@ -684,6 +684,15 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/test:
+    dependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+
   packages/tools/ai-codegen:
     dependencies:
       '@effect/openapi-generator':

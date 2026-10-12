@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src", "examples", "effect-test.config.ts"],
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "rootDir": ".",
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false
+  }
+}
