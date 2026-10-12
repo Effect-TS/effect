@@ -6,6 +6,7 @@ import * as Headers from "effect/http/Headers"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as UrlParams from "effect/http/UrlParams"
+import { TestClock } from "effect/testing"
 import { expectReason, graphqlResponse, httpClientLayer, IssuesGroup, IssueUpdated } from "./fixtures.ts"
 
 const url = "http://localhost/graphql"
@@ -94,6 +95,33 @@ describe("GraphQLProtocol.layerHttp subscriptions (graphql-sse distinct mode)", 
       )
       assert.deepStrictEqual(reason.errors, [{ message: "denied" }])
       assert.strictEqual(reason.status, 400)
+    }))
+
+  it.effect("a client stream refused with 403 and Retry-After reconnects after the delay", () =>
+    Effect.gen(function*() {
+      let attempts = 0
+      const layer = GraphQLProtocol.layerHttp({ url }).pipe(
+        Layer.provide(httpClientLayer(() =>
+          ++attempts === 1
+            ? new Response(JSON.stringify({ message: "You have exceeded a secondary rate limit" }), {
+              status: 403,
+              headers: { "content-type": "application/json", "retry-after": "2" }
+            })
+            : eventStream([next(event("a")), "event: complete\ndata:\n\n"])
+        ))
+      )
+      const fiber = yield* GraphQLClient.make(IssuesGroup).pipe(
+        Effect.map((client) => client.IssueUpdated({ id: "I_1" })),
+        Effect.provide(layer),
+        Stream.unwrap,
+        Stream.runCollect,
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("1999 millis")
+      assert.strictEqual(attempts, 1)
+      yield* TestClock.adjust("1 millis")
+      assert.deepStrictEqual(yield* Fiber.join(fiber), [{ issueUpdated: { title: "a" } }])
+      assert.strictEqual(attempts, 2)
     }))
 
   it.effect("interrupting the stream aborts the request", () =>
