@@ -18,4 +18,4 @@ const Main = RpcServer.layer(ExecutorRpcs).pipe(
   Layer.provide(RpcServer.layerProtocolWorkerRunner)
 )
 
-Platform.runMain((platform) => Layer.launch(Main.pipe(Layer.provide(platform.workerRunner))))
+Platform.runMain(Layer.launch(Main))

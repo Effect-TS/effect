@@ -11,8 +11,9 @@ const executor = moduleUrl("../executor-worker", import.meta.url)
 
 export const platform: Platform = {
   runtime: "node",
-  layer: Layer.merge(
+  layer: Layer.mergeAll(
     NodeServices.layer,
+    NodeWorkerRunner.layer,
     NodeWorker.layer(() => {
       const worker = new Worker(executor, { stdout: true, stderr: true })
       // keep the coordinator's stdout for the reporter only
@@ -21,6 +22,5 @@ export const platform: Platform = {
       return worker
     })
   ),
-  workerRunner: NodeWorkerRunner.layer,
   runMain: (effect) => NodeRuntime.runMain(effect)
 }

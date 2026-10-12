@@ -10,7 +10,10 @@ const executor = moduleUrl("../executor-worker", import.meta.url)
 
 export const platform: Platform = {
   runtime: "bun",
-  layer: Layer.merge(BunServices.layer, BunWorker.layer(() => new globalThis.Worker(executor))),
-  workerRunner: BunWorkerRunner.layer,
+  layer: Layer.mergeAll(
+    BunServices.layer,
+    BunWorker.layer(() => new globalThis.Worker(executor)),
+    BunWorkerRunner.layer
+  ),
   runMain: (effect) => BunRuntime.runMain(effect)
 }

@@ -10,12 +10,16 @@ import type * as WorkerRunner from "effect/workers/WorkerRunner"
 
 export type Runtime = "node" | "bun" | "deno"
 
+/**
+ * What a platform provides to every entry point: the CLI's services, the spawner the
+ * coordinator uses to start executors, and the worker runner an executor serves its
+ * protocol through. Each entry point uses what it needs; the rest is never started.
+ */
+export type Services = Command.Environment | Worker.WorkerPlatform | Worker.Spawner | WorkerRunner.WorkerRunnerPlatform
+
 export interface Platform {
   readonly runtime: Runtime
-  /** Services the CLI needs, plus the spawner the coordinator uses to start executors. */
-  readonly layer: Layer.Layer<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>
-  /** For an executor: serves the executor protocol to the coordinator that spawned it. */
-  readonly workerRunner: Layer.Layer<WorkerRunner.WorkerRunnerPlatform>
+  readonly layer: Layer.Layer<Services>
   readonly runMain: <E, A>(effect: Effect.Effect<A, E>) => void
 }
 
@@ -42,14 +46,14 @@ export const load: Effect.Effect<Platform> = Effect.suspend(() => {
 }).pipe(Effect.map((module) => module.platform))
 
 /**
- * Loads the current runtime's platform, then hands `main` over to that platform's
- * `runMain` (signal handling, exit codes, error reporting). If loading itself fails,
- * the cause is logged and the process exits with 1.
+ * Loads the current runtime's platform, then hands `main`, with the platform's layer
+ * provided, over to that platform's `runMain` (signal handling, exit codes, error
+ * reporting). If loading itself fails, the cause is logged and the process exits with 1.
  */
-export const runMain = <A, E>(main: (platform: Platform) => Effect.Effect<A, E>): void => {
+export const runMain = <A, E>(main: Effect.Effect<A, E, Services>): void => {
   Effect.runFork(
     load.pipe(
-      Effect.flatMap((platform) => Effect.sync(() => platform.runMain(main(platform)))),
+      Effect.flatMap((platform) => Effect.sync(() => platform.runMain(Effect.provide(main, platform.layer)))),
       Effect.tapCause((cause) =>
         Effect.andThen(Effect.logError(cause), Effect.sync(() => (globalThis.process.exitCode = 1)))
       )

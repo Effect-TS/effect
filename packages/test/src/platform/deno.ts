@@ -10,7 +10,10 @@ const executor = moduleUrl("../executor-worker", import.meta.url)
 
 export const platform: Platform = {
   runtime: "deno",
-  layer: Layer.merge(DenoServices.layer, DenoWorker.layer(() => new globalThis.Worker(executor, { type: "module" }))),
-  workerRunner: DenoWorkerRunner.layer,
+  layer: Layer.mergeAll(
+    DenoServices.layer,
+    DenoWorker.layer(() => new globalThis.Worker(executor, { type: "module" })),
+    DenoWorkerRunner.layer
+  ),
   runMain: (effect) => DenoRuntime.runMain(effect)
 }
