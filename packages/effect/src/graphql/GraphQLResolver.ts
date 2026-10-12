@@ -1,8 +1,8 @@
 /**
  * Batch lookups through a GraphQL client method with `RequestResolver`.
  * {@link ordered} matches results by position; {@link findById} matches by
- * key. {@link aliased} repeats an operation under aliases in one request.
- * {@link request} turns a resolver into a function that looks up one key.
+ * key; {@link aliased} repeats an operation under aliases in one request.
+ * {@link request} turns any of them into `(key) => Effect`.
  *
  * Client middleware still run. When a method needs services, such as a
  * middleware's `requires`, `batchKey` keeps lookups with different services
@@ -14,10 +14,11 @@
  */
 import { isReadonlyArrayNonEmpty, type NonEmptyArray, type NonEmptyReadonlyArray } from "../Array.ts"
 import * as Cause from "../Cause.ts"
-import * as Context from "../Context.ts"
+import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
+import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import * as Headers from "../http/Headers.ts"
 import * as UrlParams from "../http/UrlParams.ts"
@@ -29,6 +30,7 @@ import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { OperationMethod, PartialResult } from "./GraphQLClient.ts"
 import { DecodeError, GraphQLClientError, type GraphQLError, type Reason } from "./GraphQLClientError.ts"
+import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
 
 // -----------------------------------------------------------------------------
 // Types
@@ -60,103 +62,39 @@ type Narrow<I, T> = [T] extends [never] ? I : Extract<I, { readonly __typename: 
 type BatchKey<Op extends GraphQL.Any> = [GraphQL.Services<Op>] extends [never] ? { readonly batchKey?: never }
   : { readonly batchKey: (context: Context.Context<GraphQL.Services<Op>>) => unknown }
 
-// One lookup. `partial`, `headers` and `urlParams` are set only through the
-// method `request` returns for an `aliased` resolver.
 interface KeyRequest<K, A, E, R> extends Request.Request<A, E, R> {
   readonly key: K
-  readonly partial: boolean
-  readonly headers: Headers.Input | undefined
-  readonly urlParams: UrlParams.Input | undefined
-  /** Calls with different headers or URL params go in different batches. */
-  readonly optionsKey: string
-}
-
-declare const AliasedOperation: unique symbol
-
-interface AliasedRequest<Op extends GraphQL.Any> extends
-  KeyRequest<
-    GraphQL.Variables<Op> | undefined,
-    GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
-    GraphQL.Error<Op>,
-    GraphQL.Services<Op>
-  >
-{
-  // Type-only, so that `request` picks its overload for `aliased` resolvers.
-  readonly [AliasedOperation]: Op
 }
 
 const KeyRequestProto = {
   ...Request.Class.prototype,
   [Equal.symbol](this: KeyRequest<any, any, any, any>, that: KeyRequest<any, any, any, any>): boolean {
-    return this.partial === that.partial && this.optionsKey === that.optionsKey && Equal.equals(this.key, that.key)
+    return Equal.equals(this.key, that.key)
   },
   [Hash.symbol](this: KeyRequest<any, any, any, any>): number {
-    return Hash.combine(Hash.hash(this.key))(Hash.string(this.optionsKey))
+    return Hash.hash(this.key)
   }
 }
 
-interface CallOptions {
-  readonly headers?: Headers.Input | undefined
-  readonly urlParams?: UrlParams.Input | undefined
-  readonly context?: Context.Context<never> | undefined
-  readonly partial?: boolean | undefined
-}
-
-// Keyed by the raw strings: `Headers` redact sensitive values in JSON.
-const optionsKey = (options: CallOptions | undefined): string =>
-  options?.headers === undefined && options?.urlParams === undefined ? "" : JSON.stringify([
-    Object.entries(Headers.fromInput(options.headers)).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0),
-    options.urlParams === undefined ? [] : UrlParams.fromInput(options.urlParams)
-  ])
-
-const makeRequest = <K, A, E, R>(key: K, options?: CallOptions): KeyRequest<K, A, E, R> => {
+const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => {
   const self = Object.create(KeyRequestProto)
   self.key = key
-  self.partial = options?.partial === true
-  self.headers = options?.headers
-  self.urlParams = options?.urlParams
-  self.optionsKey = optionsKey(options)
   return self
 }
-
-/**
- * What {@link request} returns for an {@link aliased} resolver: a client
- * method for the operation.
- *
- * **Details**
- *
- * Besides the `OperationMethod` signatures, it has one taking only variables,
- * so that it can be passed straight to `Effect.forEach`. `Effect.forEach` calls
- * it with the element's index as the second argument; the method ignores a
- * second argument that isn't an options object.
- *
- * @stability experimental
- * @category models
- * @since 4.0.0
- */
-export type AliasedMethod<Op extends GraphQL.Any> =
-  & OperationMethod<Op>
-  & ((variables: GraphQL.Variables<Op>) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>)
-
-// The operation of an `aliased` resolver, for `request`. Resolver
-// combinators keep annotations.
-const AliasedOperationAnnotation = Context.Service<GraphQL.Any>("effect/graphql/GraphQLResolver/AliasedOperation")
 
 // -----------------------------------------------------------------------------
 // Running
 // -----------------------------------------------------------------------------
 
 /**
- * Looks up a key with an {@link ordered} or {@link findById} resolver.
+ * Looks up a key with an {@link ordered}, {@link findById} or {@link aliased}
+ * resolver.
  * Supports `request(resolver)(key)` and `request(key, resolver)`.
  *
  * **Details**
  *
  * Concurrent lookups are batched. Keys equal under `Equal` and `Hash`
  * are sent once per batch and share the result.
- *
- * For an {@link aliased} resolver, `request(resolver)` returns a client method
- * for the operation, called with variables and options like the original.
  *
  * **Example** (Looking up repositories by id)
  *
@@ -202,20 +140,11 @@ export const request: {
     resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>
   ): (key: K) => Effect.Effect<A, E, R>
   <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R>
-  <Op extends GraphQL.Any>(resolver: RequestResolver.RequestResolver<AliasedRequest<Op>>): AliasedMethod<Op>
-} = function(...args: [RequestResolver.RequestResolver<any>] | [unknown, RequestResolver.RequestResolver<any>]) {
-  if (args.length === 2) return Effect.request(makeRequest(args[0]), args[1])
-  const resolver = args[0]
-  const operation = Context.getOption(resolver.annotations, AliasedOperationAnnotation)
-  if (operation._tag === "None") return (key: unknown) => Effect.request(makeRequest(key), resolver)
-  const method = (variables: unknown, options: CallOptions | number | undefined) => {
-    // See `AliasedMethod`: `Effect.forEach` passes an index here.
-    if (typeof options !== "object") options = undefined
-    const effect = Effect.request(makeRequest(variables, options), resolver)
-    return options?.context === undefined ? effect : Effect.provideContext(effect, options.context)
-  }
-  return Object.assign(method, { operation: operation.value })
-} as any
+} = dual(
+  2,
+  <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R> =>
+    Effect.request(makeRequest<K, A, E, R>(key), resolver)
+)
 
 // -----------------------------------------------------------------------------
 // Resolvers
@@ -505,11 +434,9 @@ export const findById = <
  *
  * **Details**
  *
- * The resolver's request is the operation's variables. {@link request} turns
- * it into a method with the same arguments and result as `method`, including
- * `{ partial: true }`, so `GraphQLClient.pages`, `GraphQLClient.items`,
- * {@link ordered} and {@link findById} work on top of it. Paging several
- * connections at once batches each round of pages.
+ * The resolver's request is the operation's variables and its result is the
+ * operation's decoded result, so {@link request} turns it into
+ * `(variables) => Effect`.
  *
  * A batch sends one document built from the operation's
  * `GraphQL.DocumentTemplate`. Root fields are aliased and variables renamed
@@ -519,22 +446,21 @@ export const findById = <
  * slice is decoded with the operation's result Schema.
  *
  * A GraphQL error whose `path[0]` starts with a slice's prefix fails only that
- * slice, or comes back in its `errors` with `partial: true`, with the prefix
- * removed. An error without a `path` or matching no slice fails the batch, as
- * do transport, middleware and decoding failures of the whole response.
+ * slice, with a `ResponseError` holding its errors with the prefix removed.
+ * An error without a `path` or matching no slice fails the batch, as do
+ * transport and middleware failures.
  *
  * Batches are sent as `POST`, even with `queryMethod: "GET"`, to stay clear of
  * URL length limits. A batch holds up to 10 lookups; set another size with
  * `RequestResolver.batchN`. GitHub's query cost and timeouts grow with the
  * number of slices.
  *
- * Middleware run once per batch. Calls with different `headers` or
- * `urlParams` go in different batches, and `batchKey` works as in
- * {@link ordered}. With a `GraphQLClient.makeTest` client, the handler is
- * called once per slice.
+ * Middleware run once per batch, and `batchKey` works as in {@link ordered}.
+ * A method that isn't from `GraphQLClient.make`, such as one from
+ * `GraphQLClient.makeTest`, is called once per slice instead.
  *
- * Throws when `method` isn't a client method for an operation with a document
- * template. The generator emits one for every query and mutation.
+ * Throws when the operation has no document template. The generator emits
+ * one for every query and mutation.
  *
  * **Gotchas**
  *
@@ -621,57 +547,92 @@ export const aliased = <Op extends GraphQL.Any>(
   ...[options]: {} extends BatchKey<Op> ? [options?: BatchKey<Op>] : [options: BatchKey<Op>]
 ): RequestResolver.RequestResolver<AliasedRequest<Op>> => {
   const operation = method.operation
-  // Type boundary: client methods carry their batch capability untyped.
-  const batch = (method as unknown as Record<string, internalGraphQL.Batch | undefined>)[internalGraphQL.batchId]
-  if (batch === undefined) {
-    throw new Error(
-      `GraphQLResolver.aliased: ${operation.name} cannot be batched. Pass a client method for a query or mutation generated with a document template`
-    )
+  const template = operation.template
+  if (template === undefined) {
+    throw new Error(`GraphQLResolver.aliased: operation ${operation.name} has no document template`)
   }
-  const complete = (
-    request: AliasedRequest<Op>,
-    exit: Exit.Exit<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>>
-  ): Exit.Exit<GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>> => {
-    if (exit._tag === "Failure" || request.partial) return exit
-    const { data, errors } = exit.value
-    return isReadonlyArrayNonEmpty(errors)
-      ? Exit.fail(
-        new GraphQLClientError({
-          operation: operation.name,
-          reason: internalGraphQL.responseError(internalGraphQL.partialResponses.get(exit.value), errors)
-        })
-      )
-      : Exit.succeed(data)
-  }
-  const runAll = (entries: NonEmptyArray<Request.Entry<AliasedRequest<Op>>>) => {
-    const { headers, urlParams } = entries[0].request
-    // Type boundary: `batch` is erased; it runs `method`'s operation.
-    return (batch(entries.map((entry) => entry.request.key) as NonEmptyArray<unknown>, {
-      headers,
-      urlParams
-    }) as Effect.Effect<
-      ReadonlyArray<Exit.Exit<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>>>,
-      GraphQL.Error<Op>,
-      GraphQL.Services<Op>
-    >).pipe(
-      Effect.map((exits) => {
-        for (let i = 0; i < entries.length; i++) entries[i].completeUnsafe(complete(entries[i].request, exits[i]))
-      }),
-      Effect.provideContext(entries[0].context)
-    )
-  }
-  const batchKey = options?.batchKey
-  return RequestResolver.makeGrouped<AliasedRequest<Op>, unknown>({
-    key: (entry) =>
-      batchKey === undefined ? entry.request.optionsKey : [batchKey(entry.context), entry.request.optionsKey],
-    resolver: runAll
-  }).pipe(
-    RequestResolver.annotate(AliasedOperationAnnotation, operation),
-    RequestResolver.batchN(defaultAliasedBatchSize)
-  )
+  const codec = internalGraphQL.makeCodec(operation)
+  // Type boundary: the hook is registered for this method, so it runs this
+  // operation's middleware.
+  const execute = internalGraphQL.getRawExecute(method) as
+    | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
+    | undefined
+  // Generic conditional parameters prevent calling the strict overload directly.
+  const call = method as unknown as (
+    variables: GraphQL.Variables<Op>
+  ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
+
+  return makeResolver(options?.batchKey)<AliasedRequest<Op>>((entries) =>
+    Effect.flatMap(
+      Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
+      (encoded) => {
+        // Lookups whose variables encode to the same JSON share a slice.
+        const slices: Array<Slice<Op>> = []
+        const byJson = new Map<string, Slice<Op>>()
+        for (let i = 0; i < entries.length; i++) {
+          const exit = encoded[i]
+          if (exit._tag === "Failure") {
+            entries[i].completeUnsafe(exit)
+            continue
+          }
+          const json = internalGraphQL.canonicalJson(exit.value)
+          const slice = byJson.get(json)
+          if (slice !== undefined) {
+            slice.entries.push(entries[i])
+            continue
+          }
+          const created = { variables: entries[i].request.key, encoded: exit.value, entries: [entries[i]] }
+          byJson.set(json, created)
+          slices.push(created)
+        }
+        const complete = <R>(slice: Slice<Op>, effect: Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, R>) =>
+          Effect.map(Effect.exit(effect), (exit) => {
+            for (const entry of slice.entries) entry.completeUnsafe(exit)
+          })
+        if (execute === undefined) {
+          return Effect.forEach(slices, (slice) => complete(slice, call(slice.variables)), { discard: true })
+        }
+        if (!isReadonlyArrayNonEmpty(slices)) return Effect.void
+        const prefixes = slices.map((_, i) => `_${i}_`)
+        return Effect.suspend(() =>
+          execute({
+            kind: operation.kind,
+            query: internalGraphQL.renderSlices(
+              operation.kind,
+              operation.name,
+              template,
+              prefixes as NonEmptyArray<string>
+            ),
+            operationName: operation.name,
+            variables: internalGraphQL.prefixVariables(slices.map((slice) => slice.encoded), prefixes),
+            headers: Headers.empty,
+            urlParams: UrlParams.empty
+          })
+        ).pipe(
+          Effect.flatMap((result) => {
+            const results = internalGraphQL.splitSlices(result, template, prefixes)
+            return results === undefined
+              ? codec.failResponse(result)
+              : Effect.forEach(slices, (slice, i) => complete(slice, codec.decodeStrict(results[i])), { discard: true })
+          })
+        )
+      }
+    ).pipe(Effect.provideContext(entries[0].context))
+  ).pipe(RequestResolver.batchN(10))
 }
 
-const defaultAliasedBatchSize = 10
+type AliasedRequest<Op extends GraphQL.Any> = KeyRequest<
+  GraphQL.Variables<Op>,
+  GraphQL.Result<Op>,
+  GraphQL.Error<Op>,
+  GraphQL.Services<Op>
+>
+
+interface Slice<Op extends GraphQL.Any> {
+  readonly variables: GraphQL.Variables<Op>
+  readonly encoded: unknown
+  readonly entries: Array<Request.Entry<AliasedRequest<Op>>>
+}
 
 // -----------------------------------------------------------------------------
 // Internals

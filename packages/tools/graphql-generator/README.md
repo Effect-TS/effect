@@ -337,8 +337,8 @@ const PullRequests = GraphQLResolver.aliased(client.PullRequest)
 const getPullRequest = GraphQLResolver.request(PullRequests)
 ```
 
-`getPullRequest` takes the operation's variables and returns what
-`client.PullRequest` returns. Concurrent calls go out as one `POST`, built
+`getPullRequest` takes the operation's variables and returns the decoded
+result, like `getRepo` above. Concurrent calls go out as one `POST`, built
 from the document template the generator emits:
 
 ```graphql
@@ -354,10 +354,6 @@ call; an error without a `path` fails them all. Calls whose variables encode
 to the same JSON share a slice. A batch holds 10 slices unless you pipe
 `RequestResolver.batchN`, because GitHub's query cost and timeouts grow with
 its size.
-
-`getPullRequest` also accepts `{ partial: true }` and works with
-`GraphQLClient.pages`, `items`, `ordered` and `findById`. Paging the issues of
-several repositories at once sends one request per round of pages.
 
 A non-null root field fails every slice when an error happens under it, since
 the `null` reaches `data`. GitHub's `repository` and `pullRequest` are

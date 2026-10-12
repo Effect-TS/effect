@@ -105,12 +105,6 @@ export interface RequestResolver<in A extends Request.Any> extends RequestResolv
    * Execute a collection of requests.
    */
   runAll(entries: NonEmptyArray<Request.Entry<A>>, key: unknown): Effect.Effect<void, Request.Error<A>>
-
-  /**
-   * Metadata attached with {@link annotate}. Combinators keep it, so code that
-   * receives a resolver can read what its constructor recorded.
-   */
-  readonly annotations: Context.Context<never>
 }
 
 /**
@@ -178,7 +172,7 @@ export const isRequestResolver = (u: unknown): u is RequestResolver<any> => hasP
  *
  * `batchKey` groups request entries, `delay` schedules batch execution,
  * `collectWhile` can end collection early, and `runAll` receives a non-empty
- * batch for one key. `annotations` defaults to an empty context.
+ * batch for one key.
  *
  * **Gotchas**
  *
@@ -199,7 +193,6 @@ export const makeWith = <A extends Request.Any>(options: {
   readonly delay: Effect.Effect<void>
   readonly collectWhile: (requests: ReadonlySet<Request.Entry<A>>) => boolean
   readonly runAll: (entries: NonEmptyArray<Request.Entry<A>>, key: unknown) => Effect.Effect<void, Request.Error<A>>
-  readonly annotations?: Context.Context<never> | undefined
 }): RequestResolver<A> => {
   const self = Object.create(RequestResolverProto)
   self.batchKey = options.batchKey
@@ -207,7 +200,6 @@ export const makeWith = <A extends Request.Any>(options: {
   self.delay = options.delay
   self.collectWhile = options.collectWhile
   self.runAll = options.runAll
-  self.annotations = options.annotations ?? Context.empty()
   return self
 }
 
@@ -654,61 +646,6 @@ export const setDelay: {
     makeWith({
       ...self,
       delay: Effect.sleep(duration)
-    })
-)
-
-/**
- * Returns a resolver that carries `value` under `key` in its `annotations`.
- *
- * **When to use**
- *
- * Use when a function that builds a resolver needs to record something that
- * code receiving the resolver later reads back, such as what the resolver
- * looks up.
- *
- * **Details**
- *
- * Annotations don't change how requests are batched or run. Combinators such
- * as `batchN`, `setDelay`, `grouped`, `around`, `withSpan` and `withCache`
- * keep them. Read one with `Context.getOption(resolver.annotations, key)`.
- *
- * **Example** (Reading an annotation through combinators)
- *
- * ```ts import.meta.vitest
- * import { Context, Effect, Exit, Option, Request, RequestResolver } from "effect"
- *
- * interface GetUser extends Request.Request<string> {
- *   readonly _tag: "GetUser"
- *   readonly id: number
- * }
- *
- * const Source = Context.Service<string>("app/Source")
- *
- * const resolver = RequestResolver.make<GetUser>((entries) =>
- *   Effect.sync(() => {
- *     for (const entry of entries) entry.completeUnsafe(Exit.succeed(`User ${entry.request.id}`))
- *   })
- * ).pipe(
- *   RequestResolver.annotate(Source, "users-db"),
- *   RequestResolver.batchN(10)
- * )
- *
- * Context.getOption(resolver.annotations, Source) // => Option.some("users-db")
- * ```
- *
- * @stability experimental
- * @category combinators
- * @since 4.0.0
- */
-export const annotate: {
-  <I, S>(key: Context.Key<I, S>, value: S): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A>
-  <A extends Request.Any, I, S>(self: RequestResolver<A>, key: Context.Key<I, S>, value: S): RequestResolver<A>
-} = dual(
-  3,
-  <A extends Request.Any, I, S>(self: RequestResolver<A>, key: Context.Key<I, S>, value: S): RequestResolver<A> =>
-    makeWith({
-      ...self,
-      annotations: Context.add(self.annotations, key, value)
     })
 )
 

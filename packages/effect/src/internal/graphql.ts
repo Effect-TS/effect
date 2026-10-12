@@ -1,14 +1,19 @@
-import type { NonEmptyReadonlyArray } from "../Array.ts"
+import { isReadonlyArrayNonEmpty, type NonEmptyReadonlyArray } from "../Array.ts"
 import * as Context from "../Context.ts"
-import type * as Effect from "../Effect.ts"
-import type * as Exit from "../Exit.ts"
+import * as Effect from "../Effect.ts"
+import type * as GraphQL from "../graphql/GraphQL.ts"
 import type { DocumentTemplate } from "../graphql/GraphQL.ts"
 import type { PartialResult } from "../graphql/GraphQLClient.ts"
-import { type GraphQLError, ResponseError } from "../graphql/GraphQLClientError.ts"
-import type { ExecutionResult } from "../graphql/GraphQLProtocol.ts"
-import type * as Headers from "../http/Headers.ts"
-import type * as UrlParams from "../http/UrlParams.ts"
-import type * as Schema from "../Schema.ts"
+import {
+  DecodeError,
+  EncodeError,
+  GraphQLClientError,
+  type GraphQLError,
+  type Reason,
+  ResponseError
+} from "../graphql/GraphQLClientError.ts"
+import type { ExecutionResult, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
+import * as Schema from "../Schema.ts"
 
 /**
  * Builds a response error with raw data and transport metadata.
@@ -145,29 +150,6 @@ export const renderSlices = (
 export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
 
 /**
- * The property under which client methods for queries and mutations carry
- * their {@link Batch} capability.
- *
- * @internal
- */
-export const batchId = "~effect/graphql/batch"
-
-/**
- * Runs one call per entry of `variables`, as one aliased request where the
- * client can. Returns each entry's result in order, with errors matched to
- * it; fails as a whole when the batch itself fails.
- *
- * @internal
- */
-export type Batch = (
-  variables: NonEmptyReadonlyArray<unknown>,
-  options: {
-    readonly headers?: Headers.Input | undefined
-    readonly urlParams?: UrlParams.Input | undefined
-  }
-) => Effect.Effect<ReadonlyArray<Exit.Exit<PartialResult<unknown>, unknown>>, unknown, unknown>
-
-/**
  * JSON with object keys sorted, so equal JSON values give equal strings.
  *
  * @internal
@@ -177,3 +159,141 @@ export const canonicalJson = (value: unknown): string =>
     value !== null && typeof value === "object" && !Array.isArray(value)
       ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]]))
       : value)
+
+/**
+ * Encodes an operation's variables and decodes its results, failing with the
+ * same `GraphQLClientError`s as its client method.
+ *
+ * @internal
+ */
+export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
+  const fail = (reason: Reason) => new GraphQLClientError({ operation: operation.name, reason })
+  const schemaFail = (make: (description: string) => Reason) => (error: Schema.SchemaError) =>
+    Effect.fail(fail(make(error.message)))
+  const encode = Schema.encodeEffect(operation.variables)
+  const decode = Schema.decodeUnknownEffect(operation.result)
+
+  const encodeVariables = (
+    variables: GraphQL.Variables<Op> | undefined
+  ): Effect.Effect<unknown, GraphQLClientError, Op["variables"]["EncodingServices"]> =>
+    Effect.catch(encode(variables ?? {}), schemaFail((description) => new EncodeError({ description })))
+
+  const decodeData = (
+    data: unknown
+  ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
+    Effect.catch(decode(data), schemaFail((description) => new DecodeError({ description })))
+
+  // Fails with the response's errors, or, without any, because GraphQL only
+  // allows a `null` or missing `data` when there are `errors`. The result
+  // codec is not consulted for `null` data: `Schema.Json` would accept it and
+  // turn an invalid response into a success.
+  const failResponse = (result: ExecutionResult): Effect.Effect<never, GraphQLClientError> => {
+    const errors = result.errors ?? []
+    return Effect.fail(fail(
+      isReadonlyArrayNonEmpty(errors)
+        ? responseError(result, errors)
+        : new DecodeError({ description: "data is null or missing without errors" })
+    ))
+  }
+
+  const decodeStrict = (
+    result: ExecutionResult
+  ): Effect.Effect<GraphQL.Result<Op>, GraphQLClientError, Op["result"]["DecodingServices"]> =>
+    isReadonlyArrayNonEmpty(result.errors ?? []) || result.data === null || result.data === undefined
+      ? failResponse(result)
+      : decodeData(result.data)
+
+  const decodePartial = (
+    result: ExecutionResult
+  ): Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQLClientError, Op["result"]["DecodingServices"]> => {
+    if (result.data === null || result.data === undefined) return failResponse(result)
+    return Effect.map(decodeData(result.data), (data): PartialResult<GraphQL.Result<Op>> => {
+      const partial = { data, errors: result.errors ?? [] }
+      partialResponses.set(partial, result)
+      return partial
+    })
+  }
+
+  return { fail, schemaFail, encodeVariables, failResponse, decodeStrict, decodePartial } as const
+}
+
+/**
+ * Runs a request through a client method's middleware and protocol, sending
+ * it as `POST`.
+ */
+type RawExecute = (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
+
+const rawExecutors = new WeakMap<object, RawExecute>()
+
+/**
+ * Registers how `GraphQLResolver.aliased` runs a batch request through a
+ * client method. Mock client methods have none.
+ *
+ * @internal
+ */
+export const setRawExecute = (method: object, execute: RawExecute): void => {
+  rawExecutors.set(method, execute)
+}
+
+/**
+ * The batch runner a client method registered, if any.
+ *
+ * @internal
+ */
+export const getRawExecute = (method: object): RawExecute | undefined => rawExecutors.get(method)
+
+const sliceIndex = (key: string, length: number): number | undefined => {
+  const match = /^_(\d+)_/.exec(key)
+  if (match === null) return undefined
+  const index = Number(match[1])
+  return index < length && match[0] === `_${index}_` ? index : undefined
+}
+
+/**
+ * Prefixes each slice's encoded variables and merges them into one object.
+ *
+ * @internal
+ */
+export const prefixVariables = (
+  slices: ReadonlyArray<unknown>,
+  prefixes: ReadonlyArray<string>
+): Record<string, unknown> =>
+  Object.fromEntries(
+    slices.flatMap((slice, i) => Object.entries(slice ?? {}).map(([name, value]) => [prefixes[i] + name, value]))
+  )
+
+/**
+ * Splits a response to a {@link renderSlices} document into one result per
+ * prefix, with the root keys and error paths un-prefixed. An error belongs to
+ * the slice whose prefix starts `path[0]`.
+ *
+ * Returns `undefined` when the response fails as a whole: an error matches
+ * no slice, or `data` is `null` or missing.
+ *
+ * @internal
+ */
+export const splitSlices = (
+  result: ExecutionResult,
+  template: DocumentTemplate,
+  prefixes: ReadonlyArray<string>
+): ReadonlyArray<ExecutionResult> | undefined => {
+  const sliceErrors = prefixes.map((): Array<GraphQLError> => [])
+  for (const error of result.errors ?? []) {
+    const key = error.path?.[0]
+    const index = typeof key === "string" ? sliceIndex(key, prefixes.length) : undefined
+    if (index === undefined) return undefined
+    sliceErrors[index].push(
+      { ...error, path: [(key as string).slice(prefixes[index].length), ...error.path!.slice(1)] } as GraphQLError
+    )
+  }
+  if (result.data === null || result.data === undefined) return undefined
+  const data = result.data as Record<string, unknown>
+  return prefixes.map((prefix, i) => {
+    const sliceData: Record<string, unknown> = {}
+    for (const selection of template.selections) {
+      const key = (selection.alias ?? selection.name)!
+      if (Object.hasOwn(data, prefix + key)) sliceData[key] = data[prefix + key]
+    }
+    return { ...result, data: sliceData, errors: sliceErrors[i] }
+  })
+}

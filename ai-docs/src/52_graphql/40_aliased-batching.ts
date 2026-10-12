@@ -71,8 +71,8 @@ export class GitHub extends Context.Service<
       // `RequestResolver.batchN` to change it.
       const PullRequests = GraphQLResolver.aliased(client.PullRequest)
 
-      // `request` returns a method with the same arguments and result as
-      // `client.PullRequest`, so it also works with `GraphQLClient.pages`.
+      // `request` turns the resolver into a lookup by the operation's
+      // variables, as for `ordered` and `findById`.
       return { ...client, getPullRequest: GraphQLResolver.request(PullRequests) }
     })
   ).pipe(
