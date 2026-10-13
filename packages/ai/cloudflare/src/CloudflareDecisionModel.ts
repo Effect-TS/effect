@@ -74,31 +74,20 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        const encodedImages: Array<typeof CloudflareSchema.Image.Encoded> = []
-        for (const image of images ?? []) {
-          if (image.data instanceof URL) {
-            if (image.data.protocol !== "data:") {
-              return yield* Effect.fail(AiError.make({
-                module: "CloudflareDecisionModel",
-                method: "decide",
-                reason: new AiError.InvalidUserInputError({
-                  description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
-                })
-              }))
-            }
-            encodedImages.push(image.data.href)
-          } else {
-            encodedImages.push({
-              content_type: image.mediaType,
-              base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
+        if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
+          return yield* Effect.fail(AiError.make({
+            module: "CloudflareDecisionModel",
+            method: "decide",
+            reason: new AiError.InvalidUserInputError({
+              description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
             })
-          }
+          }))
         }
         const response = yield* client.createDecisions({
           model: options.model,
           state,
           questions,
-          ...(encodedImages.length === 0 ? undefined : { images: encodedImages })
+          ...(images === undefined ? undefined : { images: images.map(encodeImage) })
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
@@ -135,6 +124,12 @@ export const make = Effect.fnUntraced(
     })
   }
 )
+
+const encodeImage = (image: DecisionModel.Image): typeof CloudflareSchema.Image.Encoded =>
+  image.data instanceof URL ? image.data.href : {
+    content_type: image.mediaType,
+    base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
+  }
 
 /**
  * Provides DecisionModel using an existing CloudflareClient.

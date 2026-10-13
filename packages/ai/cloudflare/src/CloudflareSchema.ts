@@ -55,21 +55,6 @@ export const NoulQuestion = Schema.Struct({
 export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestion])
 
 /**
- * An image as base64 data with its media type.
- *
- * @stability unstable
- * @category schemas
- * @since 4.0.5
- */
-export const Base64Image = Schema.Struct({
-  content_type: Schema.Union([
-    Schema.Literals(["image/png", "image/jpeg", "image/webp"]),
-    Schema.StringForLiteralAutocomplete
-  ]),
-  base64: Schema.String
-})
-
-/**
  * An image as a `data:` URL or as base64 data with its media type. Clef
  * rejects remote URLs.
  *
@@ -77,7 +62,16 @@ export const Base64Image = Schema.Struct({
  * @category schemas
  * @since 4.0.5
  */
-export const Image = Schema.Union([Schema.String, Base64Image])
+export const Image = Schema.Union([
+  Schema.String,
+  Schema.Struct({
+    content_type: Schema.Union([
+      Schema.Literals(["image/png", "image/jpeg", "image/webp"]),
+      Schema.StringForLiteralAutocomplete
+    ]),
+    base64: Schema.String
+  })
+])
 
 /**
  * A batch of questions about text or JSON state, with optional images shown
