@@ -83,38 +83,6 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("web search find_in_page", () => {
-    it.effect.each([false, true])(
-      "preserves omitted patterns with disableToolCallResolution=%s",
-      (disableToolCallResolution) =>
-        Effect.gen(function*() {
-          // Sanitized reproduction of EFF-2051, not a raw provider capture.
-          const action = { type: "find_in_page", url: "https://example.com" } as const
-          const event = {
-            type: "response.output_item.done",
-            sequence_number: 1,
-            output_index: 0,
-            item: { type: "web_search_call", id: "ws_123", status: "completed", action }
-          }
-          const client = makeRawResponseClient(`data: ${JSON.stringify(event)}\n\n`, "text/event-stream")
-          const parts = yield* LanguageModel.streamText({
-            prompt: "Search the page",
-            toolkit: Toolkit.make(OpenAiTool.WebSearch({})),
-            disableToolCallResolution
-          }).pipe(
-            Stream.runCollect,
-            Effect.provide(OpenAiLanguageModel.model("gpt-5.4")),
-            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-            Effect.provideService(HttpClient.HttpClient, client)
-          )
-
-          deepStrictEqual(parts.filter((part) => part.type === "tool-call").map((part) => part.params), [{ action }])
-          deepStrictEqual<unknown>(
-            parts.filter((part) => part.type === "tool-result").map((part) => part.result),
-            [{ action, status: "completed" }]
-          )
-        })
-    )
-
     it.effect.each(["generateText", "streamText"] as const)(
       "preserves actions without a URL with %s",
       (method) =>
@@ -191,7 +159,7 @@ describe("OpenAiLanguageModel", () => {
       }))
 
     it.effect("rejects null and malformed actions when present", () =>
-      Effect.forEach([null, { type: "find_in_page", url: "https://example.com", pattern: null }], (action) => {
+      Effect.forEach([null, { type: "find_in_page", url: "https://example.com" }], (action) => {
         const event = {
           type: "response.output_item.done",
           sequence_number: 1,
