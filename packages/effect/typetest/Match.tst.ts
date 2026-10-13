@@ -228,6 +228,31 @@ describe("Match", () => {
     ).type.toBe<"a" | "other">()
   })
 
+  it("accepts object patterns on broad inputs", () => {
+    expect(
+      Match.type<unknown>().pipe(
+        Match.when({ _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: unknown) => string>()
+
+    expect(
+      Match.type<object>().pipe(
+        Match.when({ _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: object) => string>()
+  })
+
+  it("accepts numeric pattern keys covered by a string index signature", () => {
+    expect(
+      Match.type<Record<string, string>>().pipe(
+        Match.when({ 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: Record<string, string>) => string>()
+  })
+
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
     Match.value(taggedInput).pipe(
       Match.tagsExhaustive({
