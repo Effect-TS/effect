@@ -204,11 +204,9 @@ export interface PgConnection {
    * ownership queue, while calls through the original connection wait.
    *
    * Once the scope closes, statements through the returned connection fail
-   * and its `interrupt` does nothing, so work that outlives the pin cannot
-   * reach the next owner. A session released with a statement still on the
-   * wire, or with a listener registered through the returned connection whose
-   * scope is still open, is closed rather than handed on; such a listener's
-   * queue fails with the resulting `SqlError`.
+   * and its `interrupt` does nothing. If a statement through it is still on
+   * the wire, or a listener registered through it is still open, the session
+   * is closed instead of handed on, and that listener's queue fails.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -762,21 +760,16 @@ class PgConnectionImpl implements PgConnection {
           return this.wire.takeIfAvailable(1)
         }),
         (idle) => {
-          // Work through the released view may still hold the wire, or a
-          // listener it registered may still be open. Waiting could take as
-          // long as the caller keeps it, and lending the session would hand its
-          // results or subscriptions to the next owner. `UNLISTEN` cannot run
-          // here either, since the view no longer owns the session.
-          const leftover = !idle
-            ? "a statement in flight"
-            : view.listeners > 0
-            ? "a listener still registered"
-            : undefined
-          if (leftover === undefined) return Effect.andThen(this.wire.release(1), this.owner.release(1))
-          this.fatal(connectionQueryError(
-            new Error(`Pinned connection released with ${leftover}`),
-            `PgConnection: Pinned connection released with ${leftover}`
-          ))
+          // A statement still on the wire or a listener still open would reach
+          // the next owner, and waiting for either could take as long as the
+          // caller keeps them. `UNLISTEN` cannot run either: the view no longer
+          // owns the session.
+          if (!idle || view.listeners > 0) {
+            this.fatal(connectionQueryError(
+              new Error("Pinned connection released with work outstanding"),
+              "PgConnection: Pinned connection released with work outstanding"
+            ))
+          }
           return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
         }
       )
@@ -839,23 +832,10 @@ class PinnedPgConnection implements PgConnection {
   }
 
   /**
-   * The error for work through this view once its pin has ended. Callers check
-   * it while holding the wire permit, so a statement queued before the release
-   * cannot run after it.
-   */
-  releasedError(): SqlError | undefined {
-    return this.released
-      ? connectionQueryError(
-        new Error("Pinned connection was released"),
-        "PgConnection: Pinned connection was released"
-      )
-      : undefined
-  }
-
-  /**
    * One extended-query cycle for a caller that shares the session with others:
    * the fibers inside a transaction, and a stream running beside them. The
-   * wire permit is what serializes them.
+   * wire permit is what serializes them, and checking `released` under it
+   * keeps a statement queued before the release from running after it.
    */
   private cycle(
     sql: string,
@@ -863,12 +843,11 @@ class PinnedPgConnection implements PgConnection {
     wantRows: boolean,
     prepare: boolean
   ): Effect.Effect<QueryOutput, SqlError> {
-    return this.base.wire.withPermit(Effect.suspend(() => {
-      const released = this.releasedError()
-      return released !== undefined
-        ? Effect.fail(released)
+    return this.base.wire.withPermit(Effect.suspend(() =>
+      this.released
+        ? Effect.fail(pinReleasedError())
         : this.base.cycleOwned(sql, params, wantRows, prepare ? this.base.prepared : undefined)
-    }))
+    ))
   }
 
   readonly interrupt: Effect.Effect<void> = Effect.suspend(() => this.released ? Effect.void : this.base.cancel)
@@ -1312,6 +1291,9 @@ const retryStale = (
 const connectionQueryError = (cause: unknown, message: string): SqlError =>
   new SqlError({ reason: new ConnectionError({ cause, message, operation: "query" }) })
 
+const pinReleasedError = (): SqlError =>
+  connectionQueryError(new Error("Pinned connection was released"), "PgConnection: Pinned connection was released")
+
 const escapeIdentifier = (identifier: string): string => `"${identifier.replaceAll("\"", "\"\"")}"`
 
 type QueryPhase = "close" | "parse" | "bind" | "describe" | "rows" | "complete" | "error"
@@ -1703,8 +1685,7 @@ const streamRows = (
       scope
     )
     if (conn.deadWith !== undefined) return yield* conn.deadWith
-    const released = pinned.releasedError()
-    if (released !== undefined) return yield* released
+    if (pinned.released) return yield* pinReleasedError()
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
     // stale-plan retry to unwind rows already delivered.
@@ -1913,8 +1894,7 @@ const listenChannel = (
         const pinned = yield* Scope.provide(pin, scope)
         if (conn.deadWith !== undefined) return yield* conn.deadWith
         // Registering the queue first would hand it the next owner's notifications.
-        const released = pinned.releasedError()
-        if (released !== undefined) return yield* released
+        if (pinned.released) return yield* pinReleasedError()
         const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)
         let queues = conn.channels.get(channel)
