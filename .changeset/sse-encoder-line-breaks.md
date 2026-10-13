@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix the `Sse` encoder splitting event data only on `\n`. A `\r` or `\r\n` in the data now starts a new `data:` line, so a lone `\r` no longer cuts off the rest of the event for parsers and `EventSource`.
+Fix `Sse.encoder` dropping event data after a lone `\r`. CR and CRLF line endings in event data now start a new `data:` line, like LF.
