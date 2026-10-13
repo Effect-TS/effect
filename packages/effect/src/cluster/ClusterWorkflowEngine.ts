@@ -307,8 +307,8 @@ export const make = Effect.gen(function*() {
     yield* sharding.pollStorage
   })
 
-  // Reads only this activation's received signals, so the check adds no
-  // storage read to activity calls without a pending interrupt.
+  // Activations load a persisted interrupt when they start, so the per-call
+  // check reads only memory.
   const interruptPending = (instance: WorkflowEngine.WorkflowInstance["Service"]) =>
     Effect.map(Effect.serviceOption(CurrentActivationScope), (activation) => {
       const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
@@ -449,6 +449,21 @@ export const make = Effect.gen(function*() {
             if (!pending) {
               pending = { workflowName: workflow._tag, executionId, results: new Map() }
               pendingByActivation.set(activation, pending)
+              // A new owner must see an interrupt persisted before it took over.
+              const interrupt = yield* Effect.orDie(requestReply({
+                workflow,
+                entityType: `Workflow/${workflow._tag}`,
+                executionId,
+                tag: "deferred",
+                id: InterruptSignal.name
+              }))
+              if (Option.isSome(interrupt)) {
+                const decoded = decodeDeferredWithExit(interrupt.value as any)
+                pending.results.set(
+                  InterruptSignal.name,
+                  decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
+                )
+              }
             }
             // Retain awaited names through reply persistence, including suspension.
             // Replays reuse the request id but track a fresh set of awaits.
@@ -686,8 +701,9 @@ export const make = Effect.gen(function*() {
             tag: "activity",
             id: activityPrimaryKey(activity.name, attempt)
           }))
+          // Suspend so `onExit` applies the interrupt to the run.
           if (Option.isNone(reply) || isSuspendedReply(reply.value)) {
-            return yield* Effect.interrupt
+            return new Workflow.Suspended({})
           }
         }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)

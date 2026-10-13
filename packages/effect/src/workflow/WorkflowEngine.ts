@@ -881,7 +881,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         // A pending interrupt replays only to rebuild compensations, so it must
         // not run new activities. Finalizers run once `interrupted` is set.
         if (executions.get(instance.executionId)?.interrupted && !instance.interrupted) {
-          return yield* Effect.interrupt
+          return new Workflow.Suspended({})
         }
         const activityInstance = WorkflowInstance.initial(instance.workflow, instance.executionId)
         activityInstance.interrupted = instance.interrupted
