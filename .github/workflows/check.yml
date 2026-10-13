@@ -157,7 +157,36 @@ jobs:
           deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
       - name: Test
+        if: matrix.runtime != 'Node'
         run: ${{ matrix.command }}
+      - name: Test with Docker lifecycle capture
+        if: matrix.runtime == 'Node'
+        run: |
+          mkdir -p pg-diagnostics
+          date -u +%Y-%m-%dT%H:%M:%SZ > pg-diagnostics/started-at.txt
+          docker version > pg-diagnostics/docker-version.txt
+          docker info > pg-diagnostics/docker-info.txt
+          docker events --since "$(cat pg-diagnostics/started-at.txt)" --format '{{json .}}' > pg-diagnostics/docker-events.jsonl 2> pg-diagnostics/docker-events.stderr &
+          events_pid=$!
+          trap 'kill "$events_pid"; wait "$events_pid" || test "$?" -eq 143' EXIT
+          set -o pipefail
+          ${{ matrix.command }} 2>&1 | tee pg-diagnostics/node-tests.log
+      - name: Capture final Docker state
+        if: always() && matrix.runtime == 'Node'
+        run: |
+          mkdir -p pg-diagnostics
+          docker ps -a --no-trunc > pg-diagnostics/docker-ps.txt
+          docker ps -aq | xargs -r docker inspect > pg-diagnostics/docker-inspect.json
+          if test -f pg-diagnostics/started-at.txt; then
+            sudo journalctl -u docker --since "$(cat pg-diagnostics/started-at.txt)" --no-pager > pg-diagnostics/docker-journal.txt 2>&1
+          fi
+      - name: Upload Docker lifecycle capture
+        if: always() && matrix.runtime == 'Node'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: pg-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: pg-diagnostics/
+          if-no-files-found: error
 
   doctest:
     name: Test (Documentation)
