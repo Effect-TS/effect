@@ -1125,56 +1125,29 @@ function dotEnvExpand(parsed: Record<string, string>): Record<string, string> {
 function interpolate(
   envValue: string,
   parsed: Record<string, string>,
-  seen: ReadonlySet<string>,
-  // text from this index on is already expanded and is not scanned again
-  end = envValue.length
+  seen: ReadonlySet<string>
 ): string {
-  // find the last unescaped dollar sign in the
-  // value so that we can evaluate it
-  const lastUnescapedDollarSignIndex = searchLast(envValue.slice(0, end), /(?!(?<=\\))\$/g)
+  // Only scan the unexpanded prefix; substitutions are literal data.
+  let end = envValue.length
+  while (end > 0) {
+    const index = envValue.lastIndexOf("$", end - 1)
+    if (index === -1) break
+    const name = envValue.slice(index, end).match(/^\${?([\w]+)/)
+    end = index
+    if (envValue[index - 1] === "\\" || name === null) continue
 
-  // If we couldn't match any unescaped dollar sign
-  // let's return the string as is
-  if (lastUnescapedDollarSignIndex === -1) return envValue
-
-  /**
-   * This finds the inner most variable/group divided
-   * by variable name and default value (if present)
-   * (
-   *   \$                   // the unescaped dollar sign found above
-   *   {?                   // optional opening curly brace
-   *     ([\w]+)            // match the variable name (not running into expanded text)
-   *     (?::-([^}\\]*))?   // match an optional default value
-   *   }?                   // optional closing curly brace
-   * )
-   */
-  const name = envValue.slice(lastUnescapedDollarSignIndex, end).match(/^\${?([\w]+)/)
-  const rest = name && envValue.slice(lastUnescapedDollarSignIndex + name[0].length).match(/^(?::-([^}\\]*))?}?/)
-
-  if (name !== null && rest !== null) {
+    const rest = envValue.slice(index + name[0].length).match(/^(?::-([^}\\]*))?}?/)!
     const [, variableName] = name
     const [, defaultValue] = rest
-    // references to a variable that is already being expanded resolve like unset ones
+    // A reference on the current expansion path is treated as unset.
     const expanded = Object.hasOwn(parsed, variableName) && !seen.has(variableName)
       ? interpolate(parsed[variableName], parsed, new Set([...seen, variableName]))
       : ""
     const value = expanded !== "" ? expanded : defaultValue ?? ""
-
-    return interpolate(
-      envValue.slice(0, lastUnescapedDollarSignIndex) + value +
-        envValue.slice(lastUnescapedDollarSignIndex + name[0].length + rest[0].length),
-      parsed,
-      seen,
-      lastUnescapedDollarSignIndex
-    )
+    envValue = envValue.slice(0, index) + value +
+      envValue.slice(index + name[0].length + rest[0].length)
   }
-
   return envValue
-}
-
-function searchLast(str: string, rgx: RegExp): number {
-  const matches = Array.from(str.matchAll(rgx))
-  return matches.length > 0 ? matches.slice(-1)[0].index : -1
 }
 
 /**
