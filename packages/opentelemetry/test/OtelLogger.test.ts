@@ -12,6 +12,7 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as References from "effect/References"
 import { TestClock } from "effect/testing"
+import * as Tracer from "effect/Tracer"
 import * as Version from "effect/Version"
 
 describe("Logger", () => {
@@ -181,6 +182,9 @@ describe("Logger", () => {
         assert.deepStrictEqual(log.hrTimeObserved, span.startTime)
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
+        assert.strictEqual(log.spanContext?.traceId, span.spanContext().traceId)
+        assert.strictEqual(log.spanContext?.spanId, span.spanContext().spanId)
+        assert.strictEqual(log.spanContext?.traceFlags, span.spanContext().traceFlags)
       }).pipe(
         Effect.provide(TracingLayer),
         Effect.provideService(Clock.Clock, skewedClock)
@@ -206,6 +210,45 @@ describe("Logger", () => {
         const span = spanExporter.getFinishedSpans()[0]!
         assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
         assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
+        assert.strictEqual(log.spanContext?.traceId, span.spanContext().traceId)
+        assert.strictEqual(log.spanContext?.spanId, span.spanContext().spanId)
+      }).pipe(Effect.provide(TracingLayer))
+    })
+
+    it.effect("leaves span context empty when the log has no span", () => {
+      const logExporter = new InMemoryLogRecordExporter()
+      const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
+        resource: { serviceName: "test" },
+        logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
+      })))
+
+      return Effect.gen(function*() {
+        yield* Effect.log("test")
+        const log = logExporter.getFinishedLogRecords()[0]!
+        assert.isUndefined(log.spanContext)
+        assert.isUndefined(log.attributes.traceId)
+        assert.isUndefined(log.attributes.spanId)
+      }).pipe(Effect.provide(TracingLayer))
+    })
+
+    it.effect("correlates a log with an external parent span", () => {
+      const logExporter = new InMemoryLogRecordExporter()
+      const TracingLayer = NodeSdk.layer(Effect.sync(() => ({
+        resource: { serviceName: "test" },
+        logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
+      })))
+      const traceId = "ab".repeat(16)
+      const spanId = "cd".repeat(8)
+
+      return Effect.gen(function*() {
+        yield* Effect.log("test").pipe(
+          Effect.withParentSpan(Tracer.externalSpan({ traceId, spanId, sampled: false }))
+        )
+        const log = logExporter.getFinishedLogRecords()[0]!
+        assert.strictEqual(log.spanContext?.traceId, traceId)
+        assert.strictEqual(log.spanContext?.spanId, spanId)
+        assert.strictEqual(log.spanContext?.traceFlags, 0)
+        assert.isTrue(log.spanContext?.isRemote)
       }).pipe(Effect.provide(TracingLayer))
     })
   })

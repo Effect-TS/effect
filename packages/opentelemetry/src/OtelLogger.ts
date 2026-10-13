@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as OtelApi from "@opentelemetry/api"
 import { SeverityNumber } from "@opentelemetry/api-logs"
 import * as Otel from "@opentelemetry/sdk-logs"
 import type { NonEmptyReadonlyArray } from "effect/Array"
@@ -28,6 +29,7 @@ import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
 import * as Version from "effect/Version"
 import { nanosToHrTime, unknownToAttributeValue } from "./internal/attributes.ts"
+import { OtelSpan } from "./OtelTracer.ts"
 import { Resource } from "./Resource.ts"
 
 /**
@@ -76,6 +78,19 @@ export const logLevelToSeverityNumber = (level: LogLevel.LogLevel): SeverityNumb
   }
 }
 
+const contextWithSpan = (span: Tracer.AnySpan): OtelApi.Context => {
+  const active = OtelApi.context.active()
+  if (span instanceof OtelSpan) {
+    return OtelApi.trace.setSpan(active, span.span)
+  }
+  return OtelApi.trace.setSpanContext(active, {
+    traceId: span.traceId,
+    spanId: span.spanId,
+    traceFlags: span.sampled ? OtelApi.TraceFlags.SAMPLED : OtelApi.TraceFlags.NONE,
+    isRemote: span._tag === "ExternalSpan"
+  })
+}
+
 /**
  * Creates an Effect logger that emits log records through the configured OpenTelemetry logger provider.
  *
@@ -102,6 +117,7 @@ export const make: Effect.Effect<
     attributes["effect.fiberId"] = options.fiber.id
 
     const span = Context.getOrUndefined(options.fiber.context, Tracer.ParentSpan)
+    const logContext = Predicate.isNotUndefined(span) ? contextWithSpan(span) : undefined
 
     if (Predicate.isNotUndefined(span)) {
       attributes.spanId = span.spanId
@@ -128,7 +144,8 @@ export const make: Effect.Effect<
       severityNumber: logLevelToSeverityNumber(options.logLevel),
       timestamp: options.date,
       observedTimestamp: nanosToHrTime(clock.currentTimeNanosUnsafe()),
-      attributes
+      attributes,
+      ...(logContext === undefined ? undefined : { context: logContext })
     })
   })
 })
