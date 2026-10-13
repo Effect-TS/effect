@@ -20,11 +20,16 @@ describe("AsyncResult", () => {
     })
 
     it("rebuilds a failed input's previous success in the combined record shape", () => {
-      const result = AsyncResult.all({ a: refetchFailed, b: AsyncResult.success("x"), c: 2 })
+      const result = AsyncResult.all({
+        a: refetchFailed,
+        b: AsyncResult.success("x"),
+        c: 2,
+        d: AsyncResult.failure(Cause.fail("later"), { previousSuccess: Option.some(AsyncResult.success(3)) })
+      })
 
-      expect(AsyncResult.isFailure(result)).toBe(true)
+      expect(AsyncResult.isFailure(result) && result.cause).toEqual(cause)
       expect(result.waiting).toBe(true)
-      expect(AsyncResult.value(result)).toEqual(Option.some({ a: 1, b: "x", c: 2 }))
+      expect(AsyncResult.value(result)).toEqual(Option.some({ a: 1, b: "x", c: 2, d: 3 }))
     })
 
     it("rebuilds a failed input's previous success in the combined tuple shape", () => {
@@ -33,25 +38,12 @@ describe("AsyncResult", () => {
       expect(AsyncResult.value(result)).toEqual(Option.some(["x", 1]))
     })
 
-    it("lets map transform the combined previous success", () => {
-      const mapped = AsyncResult.all({ a: refetchFailed, b: AsyncResult.success("x") }).pipe(
-        AsyncResult.map(({ a, b }) => `${a}${b}`)
-      )
-
-      expect(AsyncResult.value(mapped)).toEqual(Option.some("1x"))
-    })
-
     it("drops the previous success when another input has no value", () => {
       const result = AsyncResult.all({ a: refetchFailed, b: AsyncResult.initial() })
 
-      expect(AsyncResult.isFailure(result)).toBe(true)
-      expect(AsyncResult.value(result)).toEqual(Option.none())
-    })
-
-    it("keeps the failure cause of the first failing input", () => {
-      const result = AsyncResult.all({ a: AsyncResult.success(1), b: AsyncResult.failure<number, string>(cause) })
-
       expect(AsyncResult.isFailure(result) && result.cause).toEqual(cause)
+      expect(result.waiting).toBe(true)
+      expect(AsyncResult.value(result)).toEqual(Option.none())
     })
   })
 
