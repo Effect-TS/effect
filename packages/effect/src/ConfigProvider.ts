@@ -1145,7 +1145,7 @@ function interpolate(
       const start = end + 2
       end = start
       let depth = 0
-      // Find the default boundary in source text, never in substituted data.
+      // Match default braces in the source, not in substituted values.
       while (end < envValue.length) {
         if (envValue[end] === "$" && envValue[end + 1] === "{") {
           depth++
@@ -1163,7 +1163,7 @@ function interpolate(
     if (envValue[end] === "}") end++
 
     const [, variableName] = name
-    // A reference on the current expansion path is treated as unset.
+    // References already being expanded resolve as unset.
     const expanded = Object.hasOwn(parsed, variableName) && !seen.has(variableName)
       ? interpolate(parsed[variableName], parsed, new Set([...seen, variableName]))
       : ""
