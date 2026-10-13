@@ -215,6 +215,7 @@ export class Transport extends Context.Service<Transport, {
   readonly servers: Arr.NonEmptyReadonlyArray<{
     /**
      * Sends a query to the name server and returns the matching response.
+     * Exchanges run with `Exchange.limit` get the client's timeout.
      */
     readonly send: (exchange: Exchange) => Effect.Effect<Uint8Array, Dns.DnsError>
   }>

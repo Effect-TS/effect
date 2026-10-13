@@ -177,7 +177,7 @@ export const layerTransportTcp = (
  * @category constructors
  * @since 4.0.0
  */
-export const make = Effect.fnUntraced(function*(options: Options) {
+export const make = Effect.fnUntraced(function*(options: Options = {}) {
   const config = yield* normalizeOptions(options)
   return yield* DnsClient.make(config).pipe(
     Effect.provideServiceEffect(
@@ -196,7 +196,7 @@ export const make = Effect.fnUntraced(function*(options: Options) {
  * @since 4.0.0
  */
 export const layer = (
-  options: Options
+  options?: Options
 ): Layer.Layer<DnsClient.DnsClient, NetAddress.NetAddressError> => Layer.effect(DnsClient.DnsClient, make(options))
 
 /**
