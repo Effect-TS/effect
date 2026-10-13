@@ -352,6 +352,17 @@ describe("Match", () => {
     )
   })
 
+  it("variadic tuple patterns narrow the required head and preserve the tail", () => {
+    Match.type<readonly [string, ...Array<number>]>().pipe(
+      Match.when([Match.number], (value) => {
+        expect(value).type.toBe<never>()
+      }),
+      Match.when(["A"], (value) => {
+        expect(value).type.toBe<readonly ["A", ...Array<number>]>()
+      })
+    )
+  })
+
   it("array prefix patterns keep the unmatched tail", () => {
     // https://github.com/Effect-TS/effect/issues/4901
     type Item = string | number | null
