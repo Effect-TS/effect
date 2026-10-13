@@ -851,10 +851,12 @@ DB_PASS=\${PASSWORD}
         `
 SOURCE=a$&b$'c$\`d
 TARGET=\${SOURCE}
+ESCAPED=\\$SOURCE/$SOURCE
 `,
         { expandVariables: true }
       )
       await assertSuccess(provider, ["TARGET"], ConfigProvider.makeValue("a$&b$'c$`d"))
+      await assertSuccess(provider, ["ESCAPED"], ConfigProvider.makeValue("$SOURCE/a$&b$'c$`d"))
     })
 
     it("expansion defaults are used only for empty or unset variables", async () => {
@@ -862,15 +864,20 @@ TARGET=\${SOURCE}
         `
 SET=actual
 EMPTY=
+EXPANDS_EMPTY=$EMPTY
 FROM_SET=\${SET:-fallback}
 FROM_EMPTY=\${EMPTY:-fallback}
 FROM_UNSET=\${UNSET:-fallback}
+FROM_EXPANDS_EMPTY=\${EXPANDS_EMPTY:-fallback}
+NESTED=\${UNSET:-\${SET}}
 `,
         { expandVariables: true }
       )
       await assertSuccess(provider, ["FROM_SET"], ConfigProvider.makeValue("actual"))
       await assertSuccess(provider, ["FROM_EMPTY"], ConfigProvider.makeValue("fallback"))
       await assertSuccess(provider, ["FROM_UNSET"], ConfigProvider.makeValue("fallback"))
+      await assertSuccess(provider, ["FROM_EXPANDS_EMPTY"], ConfigProvider.makeValue("fallback"))
+      await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("actual"))
     })
 
     it("does not expand missing inherited variables", async () => {
@@ -884,15 +891,14 @@ FROM_UNSET=\${UNSET:-fallback}
       const provider = ConfigProvider.fromDotEnvContents(
         `
 PATH=$PATH:/opt/bin
-A=a$B
-B=b$A
+A=$B
+B=$A
 SELF_DEFAULT=\${SELF_DEFAULT:-fallback}
 `,
         { expandVariables: true }
       )
       await assertSuccess(provider, ["PATH"], ConfigProvider.makeValue(":/opt/bin"))
-      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("ab"))
-      await assertSuccess(provider, ["B"], ConfigProvider.makeValue("ba"))
+      await assertMissing(provider, ["A"])
       await assertSuccess(provider, ["SELF_DEFAULT"], ConfigProvider.makeValue("fallback"))
     })
 
@@ -903,19 +909,11 @@ USER=app
 HOME_DIR=/home/$USER
 LOG_DIR=\${HOME_DIR}_logs
 NAME=$USER\${SUFFIX:-_v1}
-ESCAPED=\\$USER/$USER
-EMPTY=
-EXPANDS_EMPTY=$EMPTY
-FROM_EXPANDS_EMPTY=\${EXPANDS_EMPTY:-fallback}
-NESTED=\${UNSET:-\${USER}}
 `,
         { expandVariables: true }
       )
       await assertSuccess(provider, ["LOG_DIR"], ConfigProvider.makeValue("/home/app_logs"))
       await assertSuccess(provider, ["NAME"], ConfigProvider.makeValue("app_v1"))
-      await assertSuccess(provider, ["ESCAPED"], ConfigProvider.makeValue("$USER/app"))
-      await assertSuccess(provider, ["FROM_EXPANDS_EMPTY"], ConfigProvider.makeValue("fallback"))
-      await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("app"))
     })
   })
 
