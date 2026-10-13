@@ -2692,12 +2692,11 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  // A tuple pattern on an open array matches a prefix. Mapping `keyof` would
-  // widen every element through `P[number]`, so the unmatched tail would be
-  // typed as the prefix union. Tuple inputs stay on the mapped branch.
+  // Tuple patterns match a prefix at runtime, so inputs with a variadic part
+  // are narrowed element by element and keep their unmatched tail.
   type NarrowArrayPattern<I extends ReadonlyArray<any>, P extends ReadonlyArray<any>> = number extends I["length"]
     ? number extends P["length"] ? MapArrayPattern<I, P>
-    : NarrowArrayPrefix<I extends ReadonlyArray<infer E> ? E : never, P>
+    : NarrowArrayPrefix<I, P>
     : MapArrayPattern<I, P>
 
   type MapArrayPattern<I, P> = {
@@ -2706,14 +2705,19 @@ export declare namespace Types {
     : R
     : never
 
-  type ConsArrayPrefix<N, Rest> = [N] extends [never] ? never
-    : [Rest] extends [never] ? never
-    : Rest extends ReadonlyArray<any> ? readonly [N, ...Rest]
+  type NarrowArrayPrefix<
+    I extends ReadonlyArray<any>,
+    P extends ReadonlyArray<any>,
+    Out extends ReadonlyArray<any> = readonly []
+  > = P extends readonly [infer PH, ...infer PT] ?
+    I extends readonly [infer IH, ...infer IT] ?
+      [ExtractAndNarrow<IH, PH>] extends [infer N] ? [N] extends [never] ? never
+        : NarrowArrayPrefix<IT, PT, readonly [...Out, N]>
+      : never
+    : [ExtractAndNarrow<I[number], PH>] extends [infer N] ? [N] extends [never] ? never
+      : NarrowArrayPrefix<ReadonlyArray<I[number]>, PT, readonly [...Out, N]>
     : never
-
-  type NarrowArrayPrefix<E, P> = P extends readonly [infer H, ...infer T]
-    ? ConsArrayPrefix<ExtractAndNarrow<E, H>, NarrowArrayPrefix<E, T>>
-    : readonly E[]
+    : readonly [...Out, ...I]
 
   type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ?
     _Out extends Input ? Extract<_Out, Input>
