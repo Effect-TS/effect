@@ -203,10 +203,12 @@ export interface PgConnection {
    * reentrant. Calls through the returned connection skip the
    * ownership queue, while calls through the original connection wait.
    *
-   * Once the scope closes, statements through the returned connection fail
-   * and its `interrupt` does nothing. If a statement through it is still on
-   * the wire, or a listener registered through it is still open, the session
-   * is closed instead of handed on, and that listener's queue fails.
+   * **Details**
+   *
+   * After release, queries, streams and listeners through the returned
+   * connection fail, and its `interrupt` does nothing. Releasing a pin with
+   * an in-flight statement or an open listener closes the session and fails
+   * any listener queues.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -737,10 +739,6 @@ class PgConnectionImpl implements PgConnection {
     return reserve === undefined ? this.pinExclusive : Effect.andThen(reserve, this.pinExclusive)
   })
 
-  /**
-   * Each pin gets its own view, released for good when the pin is, so a view
-   * that outlives its scope cannot act on the next owner's session.
-   */
   private readonly pinExclusive: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.acquireRelease(
     Effect.flatMap(this.owner.take(1), () =>
       // Holding `owner` stops new submissions; a pipeline already on the wire
@@ -760,10 +758,7 @@ class PgConnectionImpl implements PgConnection {
           return this.wire.takeIfAvailable(1)
         }),
         (idle) => {
-          // A statement still on the wire or a listener still open would reach
-          // the next owner, and waiting for either could take as long as the
-          // caller keeps them. `UNLISTEN` cannot run either: the view no longer
-          // owns the session.
+          // Retire rather than wait indefinitely for leaked work to finish.
           if (!idle || view.listeners > 0) {
             this.fatal(connectionQueryError(
               new Error("Pinned connection released with work outstanding"),
@@ -820,9 +815,7 @@ class PinnedPgConnection implements PgConnection {
   readonly base: PgConnectionImpl
   readonly [internalsKey]: ConnectionInternals
   readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>
-  /** Set when the pin that issued this view ends; never cleared. */
   released = false
-  /** Listeners registered through this view whose scopes are still open. */
   listeners = 0
 
   constructor(base: PgConnectionImpl) {
@@ -831,12 +824,7 @@ class PinnedPgConnection implements PgConnection {
     this.pin = Effect.succeed(this)
   }
 
-  /**
-   * One extended-query cycle for a caller that shares the session with others:
-   * the fibers inside a transaction, and a stream running beside them. The
-   * wire permit is what serializes them, and checking `released` under it
-   * keeps a statement queued before the release from running after it.
-   */
+  // Check the lease under the wire permit so queued work cannot run after release.
   private cycle(
     sql: string,
     params: ReadonlyArray<unknown>,
@@ -1893,7 +1881,6 @@ const listenChannel = (
       return yield* restore(Effect.gen(function*() {
         const pinned = yield* Scope.provide(pin, scope)
         if (conn.deadWith !== undefined) return yield* conn.deadWith
-        // Registering the queue first would hand it the next owner's notifications.
         if (pinned.released) return yield* pinReleasedError()
         const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)

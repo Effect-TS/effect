@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Invalidate a `PgConnection` pin when its scope closes. Statements, streams and listeners started through a released pin, including from a fiber that outlives `withTransaction`, now fail instead of running on the next borrower's session, and `interrupt` on a released pin does nothing. If a statement through the pin is still on the wire, or a listener registered through it is still open, the session is closed instead of handed on.
+Reject queries, streams and listeners on released `PgConnection` pins, and ignore their `interrupt` calls. Close the session if a pin is released with an in-flight statement or an open listener, so neither can affect the next borrower.
