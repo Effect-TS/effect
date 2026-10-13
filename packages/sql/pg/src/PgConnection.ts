@@ -101,10 +101,13 @@ export interface Config {
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
   /**
-   * Enables TCP keepalive on native TCP connections after this idle time,
-   * truncated to whole seconds (minimum 1 second). With Node's defaults, the
-   * connection errors after 10 unanswered probes sent 1 second apart. Disabled
-   * when omitted; Unix sockets and custom streams are unaffected.
+   * Enables TCP keepalive on native TCP connections after this idle time.
+   *
+   * **Details**
+   *
+   * The duration is truncated to whole seconds (minimum 1 second). With Node's
+   * defaults, the connection errors after 10 unanswered probes sent 1 second
+   * apart. Disabled when omitted; Unix sockets and custom streams are unaffected.
    *
    * This is not a query timeout. Probes only run while no sent data is awaiting
    * acknowledgement, so use `Effect.timeout` to bound a write to a dead peer.
