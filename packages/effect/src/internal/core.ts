@@ -321,6 +321,29 @@ export const causeCombine: {
   }
 )
 
+const isSameInterrupt = <E>(self: Cause.Reason<E>, that: Cause.Interrupt): boolean =>
+  self === that ||
+  (isInterruptReason(self) && self.fiberId === that.fiberId && self.annotations === that.annotations)
+
+/**
+ * Appends the interrupts from `interrupts` that `self` does not contain yet.
+ * Unlike `causeCombine`, it never calls hash or equality methods, which can be
+ * user-defined, random, or throwing.
+ *
+ * @internal
+ */
+export const causeAddInterrupts = <E>(self: Cause.Cause<E>, interrupts: Cause.Cause<never>): Cause.Cause<E> => {
+  let reasons: Array<Cause.Reason<E>> | undefined
+  for (const reason of interrupts.reasons) {
+    if (!isInterruptReason(reason) || (reasons ?? self.reasons).some((r) => isSameInterrupt(r, reason))) {
+      continue
+    }
+    reasons ??= self.reasons.slice()
+    reasons.push(reason)
+  }
+  return reasons === undefined ? self : new CauseImpl(reasons)
+}
+
 /** @internal */
 export const causeEmpty: Cause.Cause<never> = new CauseImpl([])
 
@@ -600,7 +623,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
       if (skippedHandler) {
         cause = causeFromReasons(cause.reasons.filter((reason) => reason._tag !== "Fail"))
       }
-      cause = causeCombine(cause, interruptedCause)
+      cause = causeAddInterrupts(cause, interruptedCause)
       annotated = true
     }
     return cont
