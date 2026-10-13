@@ -253,16 +253,16 @@ const openProxy = Effect.fnUntraced(function*(
  *
  * `connect` starts `ssh` from the `PATH` as a connection master with a
  * private control socket, and succeeds once the master accepts connections
- * on it. The destination's settings become `ssh` arguments: `username` is
- * `-l`, and of its `openSsh` settings, `configFile` is `-F`, `identityFile`
- * is `-i`, and `options` are `-o Name=value` with the value in `ssh_config`
- * syntax. `BatchMode=yes` applies unless `options` set `BatchMode`, so `ssh`
- * fails instead of prompting for passwords or host keys. Likewise `ClearAllForwardings=yes` applies, so
- * the master does not open the port forwardings of the user's configuration.
- * Authentication or host key failures fail with a
- * `Connection` error describing the `ssh` diagnostics. Closing the scope
- * stops the master, and the connection's `closed` completes when the scope
- * closes or the master exits, for example because the server went away.
+ * on it. `username` becomes `-l`; the destination's `openSsh.configFile`,
+ * `openSsh.identityFile`, and `openSsh.options` become `-F`, `-i`, and
+ * `-o Name=value`, respectively. Option values use `ssh_config` syntax.
+ * `BatchMode=yes` applies unless `openSsh.options` sets `BatchMode`, so
+ * `ssh` fails instead of prompting for passwords or host keys.
+ * `ClearAllForwardings=yes` prevents the master from opening port
+ * forwardings from the user's configuration. Authentication or host key
+ * failures produce a `Connection` error with the `ssh` diagnostics. Closing
+ * the scope stops the master. The connection's `closed` completes when the
+ * scope closes or the master exits, for example because the server went away.
  *
  * Commands, subsystems, and tunnels are SSH channels over the control socket,
  * run with `SshConnectionProtocol.toSshConnection`. With the destination's
