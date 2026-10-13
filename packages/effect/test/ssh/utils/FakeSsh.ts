@@ -10,7 +10,6 @@ import * as Queue from "effect/Queue"
 import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Ssh from "effect/ssh/Ssh"
-import { SshChannelError, SshError } from "effect/ssh/SshError"
 import * as Stream from "effect/Stream"
 
 /**
@@ -40,7 +39,7 @@ export type Handler = (channel: ServerChannel, start: SessionStart) => Effect.Ef
 const encoder = new TextEncoder()
 const toBytes = (data: Uint8Array | string) => typeof data === "string" ? encoder.encode(data) : data
 
-const channelError = (description: string) => new SshError({ reason: new SshChannelError({ description }) })
+const channelError = (description: string) => new Ssh.SshError({ reason: "Channel", description })
 
 const open = Effect.fnUntraced(function*(
   handler: Handler,
@@ -50,7 +49,7 @@ const open = Effect.fnUntraced(function*(
   const stdout = yield* Queue.unbounded<Uint8Array, Cause.Done>()
   const stderr = yield* Queue.unbounded<Uint8Array, Cause.Done>()
   const signals = yield* Queue.unbounded<string>()
-  const exit = yield* Deferred.make<Ssh.SessionExit, SshError>()
+  const exit = yield* Deferred.make<Ssh.SessionExit, Ssh.SshError>()
   let closed = false
   const endOutput = Effect.andThen(Queue.end(stdout), Queue.end(stderr))
   const close = Effect.suspend(() => {

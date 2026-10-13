@@ -211,7 +211,7 @@ describe("OpenSsh", () => {
     Effect.gen(function*() {
       const fake = makeFakeSsh()
       const error = yield* Effect.flip(openConnection({ host: "-oProxyCommand=touch /tmp/pwned" }).pipe(provide(fake)))
-      assert.strictEqual(error.reason._tag, "SshConnectionError")
+      assert.strictEqual(error.reason, "Connection")
       assert.strictEqual(fake.invocations.length, 0)
     }).pipe(Effect.scoped))
 
@@ -251,7 +251,7 @@ describe("OpenSsh", () => {
       yield* Effect.scoped(ssh.forwardOut({ host: "::1", port: 5432 }))
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-W", "[::1]:5432", "h"])
       const error = yield* Effect.flip(Effect.scoped(ssh.forwardOut({ host: "bad host", port: 5432 })))
-      assert.strictEqual(error.reason._tag, "SshChannelError")
+      assert.strictEqual(error.reason, "Channel")
       yield* Effect.scoped(ssh.forwardOut({ path: "/run/app.sock" }))
       assert.deepStrictEqual(lastArgs(fake).slice(-4), ["-T", "-W", "/run/app.sock", "h"])
     }))
@@ -262,7 +262,7 @@ describe("OpenSsh", () => {
       const ssh = yield* openConnection({ host: "h" }).pipe(provide(fake))
       const process = yield* ssh.exec("echo x")
       const error = yield* Effect.flip(process.signal("SIGTERM"))
-      assert.strictEqual(error.reason._tag, "SshChannelError")
+      assert.strictEqual(error.reason, "Channel")
     }).pipe(Effect.scoped))
 
   it.effect("skips the master connection without multiplexing", () =>
@@ -279,8 +279,8 @@ describe("OpenSsh", () => {
     Effect.gen(function*() {
       const fake = makeFakeSsh({ masterFails: "deploy@example.com: Permission denied (publickey)." })
       const error = yield* Effect.flip(openConnection(baseOptions).pipe(provide(fake)))
-      assert.strictEqual(error.reason._tag, "SshConnectionError")
-      assert.include(String((error.reason as { readonly cause: unknown }).cause), "Permission denied")
+      assert.strictEqual(error.reason, "Connection")
+      assert.include(error.description, "Permission denied")
     }))
 
   it.live("times out when the master never becomes ready", () =>
@@ -289,7 +289,7 @@ describe("OpenSsh", () => {
       const error = yield* Effect.flip(
         openConnection({ host: "h", connectTimeout: Duration.millis(100) }).pipe(provide(fake))
       )
-      assert.strictEqual(error.reason._tag, "SshTimeoutError")
+      assert.strictEqual(error.reason, "Timeout")
     }))
 
   it.effect("lets the remote spawner kill commands by closing the session", () =>

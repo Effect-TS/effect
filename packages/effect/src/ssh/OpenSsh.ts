@@ -48,7 +48,6 @@ import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
 import * as Ssh from "./Ssh.ts"
-import { SshChannelError, SshConnectionError, SshError, SshTimeoutError } from "./SshError.ts"
 
 /**
  * Defaults for every connection opened by the OpenSSH backend.
@@ -90,9 +89,10 @@ export interface Options {
 
 const encoder = new TextEncoder()
 
-const connectionError = (cause: unknown) => new SshError({ reason: new SshConnectionError({ cause }) })
+const connectionError = (description: string, cause?: unknown) =>
+  new Ssh.SshError({ reason: "Connection", description, cause })
 
-const channelError = (description: string) => new SshError({ reason: new SshChannelError({ description }) })
+const channelError = (description: string) => new Ssh.SshError({ reason: "Channel", description })
 
 const closedError = () => channelError("the ssh process has exited")
 
@@ -100,7 +100,7 @@ const invalidTarget = (error: NetAddress.NetAddressError) => channelError(`inval
 
 const targetFromInput = (
   target: Ssh.ForwardTarget
-): Result.Result<Host.HostPort | NetAddress.UnixPathAddress, SshError> =>
+): Result.Result<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
   typeof target === "object" && "path" in target
     ? Result.succeed(NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(target.path))
     : Result.mapError(Host.hostPortFromInput(target), invalidTarget)
@@ -145,7 +145,7 @@ const baseArguments = (options: Options): Array<string> => {
  *
  * With multiplexing, `connect` establishes the shared connection before it
  * succeeds and closes it with the scope; authentication or host key failures
- * fail with an `SshConnectionError` carrying the `ssh` diagnostics.
+ * fail with a `Connection` error describing the `ssh` diagnostics.
  *
  * - `exec` runs `ssh -T` (or `-tt` with `pty`). Environment variables are
  *   sent with `SetEnv`, so the server must accept them through `AcceptEnv`.
@@ -159,7 +159,7 @@ const baseArguments = (options: Options): Array<string> => {
  * **Gotchas**
  *
  * - Commands behave like `ssh host command`. `ssh` cannot deliver signals,
- *   so `signal` fails with an `SshChannelError`, and closing a command stops
+ *   so `signal` fails with a `Channel` error, and closing a command stops
  *   the local `ssh` process. Without a pty, the remote command then keeps
  *   running until it reads its closed input or writes to its closed output;
  *   a command that does neither, such as one writing only to a file, runs to
@@ -188,15 +188,19 @@ export const make = Effect.fnUntraced(function*(
     executable: string,
     args: ReadonlyArray<string>,
     env?: Record<string, string> | undefined
-  ): Effect.fn.Return<Ssh.SshStream & { readonly exitCode: Effect.Effect<number, SshError> }, SshError, Scope.Scope> {
+  ): Effect.fn.Return<
+    Ssh.SshStream & { readonly exitCode: Effect.Effect<number, Ssh.SshError> },
+    Ssh.SshError,
+    Scope.Scope
+  > {
     const input = yield* Queue.bounded<Uint8Array, Cause.Done>(16)
     const handle = yield* spawner.spawn(
       ChildProcess.make(executable, args, {
         stdin: Stream.fromQueue(input),
         ...(env === undefined ? {} : { env, extendEnv: true })
       })
-    ).pipe(Effect.mapError(connectionError))
-    const lift = (error: PlatformError.PlatformError) => connectionError(error)
+    ).pipe(Effect.mapError((cause) => connectionError("could not start ssh", cause)))
+    const lift = (error: PlatformError.PlatformError) => connectionError("the ssh process failed", error)
     const write = (data: Uint8Array | string) =>
       Effect.flatMap(
         Queue.offer(input, typeof data === "string" ? encoder.encode(data) : data),
@@ -225,7 +229,7 @@ export const make = Effect.fnUntraced(function*(
     timeout: Duration.Input
   ) {
     const directory = yield* fs.makeTempDirectoryScoped({ prefix: "effect-ssh-" }).pipe(
-      Effect.mapError(connectionError)
+      Effect.mapError((cause) => connectionError("could not create the control socket directory", cause))
     )
     const controlPath = `${directory}/control`
     const master = yield* spawner.spawn(
@@ -241,7 +245,7 @@ export const make = Effect.fnUntraced(function*(
         "-T",
         host
       ], { stdin: "ignore", stdout: "ignore" })
-    ).pipe(Effect.mapError(connectionError))
+    ).pipe(Effect.mapError((cause) => connectionError("could not start ssh", cause)))
 
     // Keep the last part of the master's diagnostics for error reports.
     let diagnostics = ""
@@ -269,18 +273,14 @@ export const make = Effect.fnUntraced(function*(
       Effect.ignore,
       // The master's stderr ends with the process; collect all of it.
       Effect.andThen(Fiber.await(collector)),
-      Effect.andThen(() =>
-        Effect.fail(connectionError(new Error(diagnostics.trim() || "ssh exited before connecting")))
-      )
+      Effect.andThen(() => Effect.fail(connectionError(diagnostics.trim() || "ssh exited before connecting")))
     )
     yield* Effect.raceFirst(accepting, exited).pipe(
       Effect.timeoutOrElse({
         duration: timeout,
         orElse: () =>
           Effect.fail(
-            new SshError({
-              reason: new SshTimeoutError({ description: "the OpenSSH connection did not start in time" })
-            })
+            new Ssh.SshError({ reason: "Timeout", description: "the OpenSSH connection did not start in time" })
           )
       })
     )
@@ -289,12 +289,12 @@ export const make = Effect.fnUntraced(function*(
 
   const connect = Effect.fnUntraced(function*(
     destination: Ssh.Destination
-  ): Effect.fn.Return<Ssh.SshConnection, SshError, Scope.Scope> {
+  ): Effect.fn.Return<Ssh.SshConnection, Ssh.SshError, Scope.Scope> {
     // Host names cannot start with `-`, which `ssh` would read as an option
     // even in the destination position.
     const address = yield* Effect.mapError(
       Effect.fromResult(destinationFromInput(destination.host)),
-      (error) => connectionError(new Error(`invalid destination host: ${error.message}`, { cause: error }))
+      (error) => connectionError(`invalid destination host: ${error.message}`, error)
     )
     const host = Host.formatHost(address.host)
     const options: Options = {

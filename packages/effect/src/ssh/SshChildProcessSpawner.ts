@@ -27,7 +27,6 @@ import type * as Scope from "../Scope.ts"
 import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
 import type * as Ssh from "./Ssh.ts"
-import type { SshError } from "./SshError.ts"
 
 /**
  * Quotes a string for POSIX shells.
@@ -94,7 +93,7 @@ const describe = (command: ChildProcess.Command): string => {
   }
 }
 
-const toPlatformError = (method: string, command: ChildProcess.Command) => (error: SshError) =>
+const toPlatformError = (method: string, command: ChildProcess.Command) => (error: Ssh.SshError) =>
   PlatformError.systemError({
     _tag: "Unknown",
     module: "ChildProcess",
@@ -184,11 +183,11 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
     const session = yield* connection.exec(commandLine(command)).pipe(
       Effect.mapError(toPlatformError("spawn", command))
     )
-    const exited = Deferred.makeUnsafe<Ssh.SessionExit, SshError>()
+    const exited = Deferred.makeUnsafe<Ssh.SessionExit, Ssh.SshError>()
     yield* Effect.forkScoped(Deferred.into(session.exit, exited))
     const isRunning = Effect.map(Deferred.isDone(exited), (done) => !done)
 
-    const lift = (method: string) => <A, R>(effect: Effect.Effect<A, SshError, R>) =>
+    const lift = (method: string) => <A, R>(effect: Effect.Effect<A, Ssh.SshError, R>) =>
       Effect.mapError(effect, toPlatformError(method, command))
 
     // Standard input
@@ -206,7 +205,7 @@ export const make = (connection: Ssh.SshConnection): ChildProcessSpawner["Servic
 
     // Output
     const output = (
-      stream: Stream.Stream<Uint8Array, SshError>,
+      stream: Stream.Stream<Uint8Array, Ssh.SshError>,
       option: ChildProcess.CommandOutput,
       method: string
     ) =>

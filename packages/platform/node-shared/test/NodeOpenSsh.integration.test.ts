@@ -16,7 +16,6 @@ import * as Socket from "effect/socket/Socket"
 import * as OpenSsh from "effect/ssh/OpenSsh"
 import * as Ssh from "effect/ssh/Ssh"
 import * as SshChildProcessSpawner from "effect/ssh/SshChildProcessSpawner"
-import type * as SshError from "effect/ssh/SshError"
 import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
 import * as NodeCrypto from "node:crypto"
@@ -142,9 +141,6 @@ const OpenSshLayer = (overrides: Partial<OpenSsh.Options> = {}) =>
 const connection = Effect.flatMap(Ssh.Ssh, (ssh) => ssh.connect({ host: getFixture().host }))
 
 const remoteSpawner = Layer.effect(ChildProcessSpawner, Effect.map(connection, SshChildProcessSpawner.make))
-
-const connectionErrorCause = (error: SshError.SshError) =>
-  error.reason._tag === "SshConnectionError" ? String(error.reason.cause) : undefined
 
 // -----------------------------------------------------------------------------
 // Tests
@@ -306,8 +302,8 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
       const error = yield* Effect.flip(
         connection.pipe(Effect.provide(OpenSshLayer({ identityFile: keyFile, connectTimeout: "10 seconds" })))
       )
-      assert.strictEqual(error._tag, "SshError")
-      assert.include(connectionErrorCause(error) ?? "", "Permission denied")
+      assert.strictEqual(error.reason, "Connection")
+      assert.include(error.description, "Permission denied")
     }).pipe(Effect.scoped))
 
   it.live("rejects unknown host keys", () =>
@@ -320,6 +316,6 @@ describe.skipIf(bin.ssh === undefined || bin.sshKeygen === undefined)("OpenSsh (
           Layer.provide(NodeLayer)
         )
       )))
-      assert.strictEqual(error.reason._tag, "SshConnectionError")
+      assert.strictEqual(error.reason, "Connection")
     }).pipe(Effect.scoped))
 })

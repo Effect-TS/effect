@@ -22,9 +22,3 @@ export * as Ssh from "./Ssh.ts"
  * @since 4.0.0
  */
 export * as SshChildProcessSpawner from "./SshChildProcessSpawner.ts"
-
-/**
- * @stability experimental
- * @since 4.0.0
- */
-export * as SshError from "./SshError.ts"

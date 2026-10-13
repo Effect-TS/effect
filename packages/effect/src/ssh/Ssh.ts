@@ -34,6 +34,7 @@
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
+import * as Data from "../Data.ts"
 import type * as Effect from "../Effect.ts"
 import type * as Host from "../net/Host.ts"
 import type * as NetAddress from "../net/NetAddress.ts"
@@ -42,7 +43,6 @@ import type * as Sink from "../Sink.ts"
 import type * as Socket from "../socket/Socket.ts"
 import type * as Stream from "../Stream.ts"
 import * as Streams from "./internal/streams.ts"
-import type { SshError } from "./SshError.ts"
 
 /**
  * How a remote command terminated.
@@ -162,8 +162,8 @@ export interface SshStream {
  * **Details**
  *
  * `exit` waits for the command to finish. `signal` delivers a signal such as
- * `SIGTERM`, and fails with an `SshChannelError` when the backend cannot
- * deliver signals.
+ * `SIGTERM`, and fails with a `Channel` error when the backend cannot deliver
+ * signals.
  *
  * @stability experimental
  * @category models
@@ -229,6 +229,46 @@ export interface SshConnection {
 export interface Destination {
   readonly host: Host.HostInput | Host.HostPortInput
   readonly username?: string | undefined
+}
+
+/**
+ * The normalized reason for a failed SSH operation.
+ *
+ * **Details**
+ *
+ * - `Connection`: the connection could not be established or was lost, for
+ *   example because authentication or host key verification failed.
+ * - `Protocol`: the server sent a malformed or unexpected message.
+ * - `Channel`: an operation on a command, subsystem, or tunnel failed, for
+ *   example because it has closed or the backend does not support it.
+ * - `Timeout`: the connection did not start in time.
+ *
+ * @stability experimental
+ * @category errors
+ * @since 4.0.0
+ */
+export type SshErrorReason = "Connection" | "Protocol" | "Channel" | "Timeout"
+
+/**
+ * A failed SSH operation.
+ *
+ * @stability experimental
+ * @category errors
+ * @since 4.0.0
+ */
+export class SshError extends Data.TaggedError("SshError")<{
+  readonly reason: SshErrorReason
+  readonly description: string
+  readonly cause?: unknown
+}> {
+  /**
+   * Formats the reason and description of the failure.
+   *
+   * @since 4.0.0
+   */
+  override get message(): string {
+    return `${this.reason}: ${this.description}`
+  }
 }
 
 /**
