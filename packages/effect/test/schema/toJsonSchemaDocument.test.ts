@@ -1646,7 +1646,33 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
-      it("keeps allOf for collisions other than inclusive bounds", () => {
+      it.each([
+        { checks: [Schema.isGreaterThan(0), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
+        { checks: [Schema.isLessThan(10), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } }
+      ])("merges colliding exclusive bounds into $bounds", ({ checks, bounds }) => {
+        for (const ordered of [checks, [...checks].reverse()]) {
+          assertJsonSchemaDocument(Schema.Finite.check(ordered[0], ordered[1]), {
+            schema: { type: "number", ...bounds }
+          })
+        }
+      })
+
+      it.each([
+        { checks: [Schema.isGreaterThanOrEqualTo(0), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
+        { checks: [Schema.isGreaterThanOrEqualTo(1), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
+        { checks: [Schema.isGreaterThanOrEqualTo(2), Schema.isGreaterThan(1)], bounds: { minimum: 2 } },
+        { checks: [Schema.isLessThanOrEqualTo(10), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
+        { checks: [Schema.isLessThanOrEqualTo(9), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
+        { checks: [Schema.isLessThanOrEqualTo(8), Schema.isLessThan(9)], bounds: { maximum: 8 } }
+      ])("keeps only the dominant inclusive/exclusive bound $bounds", ({ checks, bounds }) => {
+        for (const ordered of [checks, [...checks].reverse()]) {
+          assertJsonSchemaDocument(Schema.Finite.check(ordered[0], ordered[1]), {
+            schema: { type: "number", ...bounds }
+          })
+        }
+      })
+
+      it("keeps allOf for annotation collisions", () => {
         assertJsonSchemaDocument(
           Schema.Int.annotate({ description: "a" }).check(Schema.isGreaterThanOrEqualTo(1, { description: "b" })),
           {
@@ -1656,16 +1682,6 @@ describe("toJsonSchemaDocument", () => {
               "maximum": globalThis.Number.MAX_SAFE_INTEGER,
               "description": "a",
               "allOf": [{ "minimum": 1, "description": "b" }]
-            }
-          }
-        )
-        assertJsonSchemaDocument(
-          Schema.Finite.check(Schema.isGreaterThan(0), Schema.isGreaterThan(1)),
-          {
-            schema: {
-              "type": "number",
-              "exclusiveMinimum": 0,
-              "allOf": [{ "exclusiveMinimum": 1 }]
             }
           }
         )
