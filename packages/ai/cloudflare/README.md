@@ -37,7 +37,7 @@ const program = DecisionModel.decide(Triage, {
 }).pipe(Effect.provide(Clef))
 ```
 
-Pass `images` to decide about pictures alongside the input. Clef shows them to the model before the state:
+Pass `images` to include pictures with the input. Clef shows them to the model before the state:
 
 ```ts
 declare const screenshotBytes: Uint8Array
@@ -48,7 +48,7 @@ const withScreenshot = DecisionModel.decide(Triage, {
 })
 ```
 
-Image `data` may be a `Uint8Array`, a base64 string, or a `data:` URL. Remote URLs fail with `AiError.InvalidUserInputError` because Clef does not fetch them; download the image first. Clef accepts up to 4 PNG, JPEG, or WebP images of at most 4 MiB and 16 megapixels each, 8 MiB of decoded images in total, and a 13 MiB request body. These limits are enforced by the API.
+Image `data` may be a `Uint8Array`, a base64 string, or a `data:` URL. Remote URLs fail with `AiError.InvalidUserInputError` because Clef does not fetch them, so download the image first. The API accepts up to 4 PNG, JPEG, or WebP images, each at most 4 MiB and 16 megapixels, with 8 MiB of decoded images in total and a 13 MiB request body.
 
 Use `"clef"` for the larger model. `CloudflareDecisionModel.model` provides a model descriptor with Cloudflare provider metadata. `CloudflareClient.layer` accepts an explicit account ID and redacted API token; `apiUrl` and `transformClient` customize HTTP access.
 

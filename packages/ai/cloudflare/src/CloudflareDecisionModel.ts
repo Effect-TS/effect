@@ -39,16 +39,13 @@ export const model = (
  *
  * **Details**
  *
- * Images are sent with their media type as base64. Byte arrays are encoded,
- * strings are sent as base64, and `data:` URLs are sent as is.
+ * Byte arrays and base64 strings are sent as base64 with their media type.
+ * `data:` URLs are sent unchanged. The API enforces image limits.
  *
  * **Gotchas**
  *
- * - Other URLs fail with `AiError.InvalidUserInputError` because Clef does not
- *   fetch remote images.
- * - Clef rejects more than 4 images, media types other than PNG, JPEG, or
- *   WebP, images over 4 MiB or 16 megapixels, and more than 8 MiB of decoded
- *   images in total.
+ * - Remote URLs fail with `AiError.InvalidUserInputError` because Clef does
+ *   not fetch them.
  *
  * @stability unstable
  * @category constructors

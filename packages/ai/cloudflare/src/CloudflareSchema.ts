@@ -70,8 +70,8 @@ export const Base64Image = Schema.Struct({
 })
 
 /**
- * An image as a base64 data URL or base64 data with its media type.
- * Clef accepts PNG, JPEG, and WebP images and rejects remote URLs.
+ * An image as a `data:` URL or as base64 data with its media type. Clef
+ * rejects remote URLs.
  *
  * @stability unstable
  * @category schemas
