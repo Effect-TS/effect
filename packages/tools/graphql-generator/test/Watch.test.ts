@@ -5,6 +5,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import { CliOutput } from "effect/cli"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
@@ -15,7 +16,7 @@ import * as PubSub from "effect/PubSub"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import { TestClock, TestConsole } from "effect/testing"
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 const schemaSdl = `type User {
@@ -156,6 +157,54 @@ const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched
 })
 
 describe("graphqlgen --watch", () => {
+  it.effect(
+    "a document replaced during the installation gap is regenerated without another edit",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const p = yield* project({ "src/a.graphql": query("A", "id") })
+        const installing = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const installed = yield* Deferred.make<void>()
+        const events = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> =>
+          watched === p.file("src")
+            ? Stream.unwrap(Effect.gen(function*() {
+              yield* Deferred.succeed(installing, undefined)
+              yield* Deferred.await(release)
+              // Acquiring the subscription, not constructing the stream, installs this watcher.
+              const subscription = yield* PubSub.subscribe(events)
+              yield* Deferred.succeed(installed, undefined)
+              return Stream.fromSubscription(subscription)
+            }))
+            : Stream.never
+        const fiber = yield* Watch.run({ configPath: p.configPath, watch }).pipe(Effect.forkScoped)
+        yield* Deferred.await(installing)
+        yield* waitFor(
+          fiber,
+          "the initial output before document watcher installation",
+          (out) => cycles(out).length > 0
+        )
+        const initial = yield* read(p.file("src/a.graphql.ts"))
+
+        // An editor saves while no document subscription exists. No event is replayed on installation.
+        yield* write(p.dir, { "src/a.tmp": query("A", "id", "name") })
+        yield* fs.rename(p.file("src/a.tmp"), p.file("src/a.graphql"))
+        const expected = yield* generated(p.dir, p.file("src/a.graphql.ts"))
+        assert.notStrictEqual(initial, expected)
+        yield* Deferred.succeed(release, undefined)
+        yield* Deferred.await(installed)
+
+        yield* waitFor(
+          fiber,
+          "the installation-gap replacement output without another edit",
+          () => readFileSync(p.file("src/a.graphql.ts"), "utf8") === expected
+        )
+        assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), expected)
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    15_000
+  )
+
   it.effect("a document root created during watch installation stays watched", () =>
     Effect.gen(function*() {
       const p = yield* project({})
