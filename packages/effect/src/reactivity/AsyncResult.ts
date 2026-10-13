@@ -720,8 +720,11 @@ export const matchWithWaiting: {
 /**
  * Combines an iterable or record of `AsyncResult` and plain values into one `AsyncResult`, returning the first non-success result or a success of the collected values marked waiting when any input success is waiting.
  *
- * When the first non-success result is a failure, its previous success is rebuilt in the combined shape from every
- * input's current or previous value, and dropped when any input has no value.
+ * **Details**
+ *
+ * When the first non-success result is a failure, its previous success is
+ * rebuilt in the combined shape from every input's current or previous value,
+ * and dropped when any input has no value.
  *
  * @stability unstable
  * @category combinators
