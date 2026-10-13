@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest"
-import { Cause } from "effect"
+import { Cause, Option } from "effect"
 import { AsyncResult } from "effect/reactivity"
 
 describe("AsyncResult", () => {
@@ -10,6 +10,49 @@ describe("AsyncResult", () => {
     expect(AsyncResult.waiting(result, { touch: false }).waiting).toBe(true)
     expect(AsyncResult.waiting()(result).waiting).toBe(true)
     expect(AsyncResult.waiting({ touch: false })(result).waiting).toBe(true)
+  })
+
+  describe("all", () => {
+    const cause = Cause.fail("offline")
+    const refetchFailed = AsyncResult.failure<number, string>(cause, {
+      previousSuccess: Option.some(AsyncResult.success(1)),
+      waiting: true
+    })
+
+    it("rebuilds a failed input's previous success in the combined record shape", () => {
+      const result = AsyncResult.all({ a: refetchFailed, b: AsyncResult.success("x"), c: 2 })
+
+      expect(AsyncResult.isFailure(result)).toBe(true)
+      expect(result.waiting).toBe(true)
+      expect(AsyncResult.value(result)).toEqual(Option.some({ a: 1, b: "x", c: 2 }))
+    })
+
+    it("rebuilds a failed input's previous success in the combined tuple shape", () => {
+      const result = AsyncResult.all([AsyncResult.success("x"), refetchFailed])
+
+      expect(AsyncResult.value(result)).toEqual(Option.some(["x", 1]))
+    })
+
+    it("lets map transform the combined previous success", () => {
+      const mapped = AsyncResult.all({ a: refetchFailed, b: AsyncResult.success("x") }).pipe(
+        AsyncResult.map(({ a, b }) => `${a}${b}`)
+      )
+
+      expect(AsyncResult.value(mapped)).toEqual(Option.some("1x"))
+    })
+
+    it("drops the previous success when another input has no value", () => {
+      const result = AsyncResult.all({ a: refetchFailed, b: AsyncResult.initial() })
+
+      expect(AsyncResult.isFailure(result)).toBe(true)
+      expect(AsyncResult.value(result)).toEqual(Option.none())
+    })
+
+    it("keeps the failure cause of the first failing input", () => {
+      const result = AsyncResult.all({ a: AsyncResult.success(1), b: AsyncResult.failure<number, string>(cause) })
+
+      expect(AsyncResult.isFailure(result) && result.cause).toEqual(cause)
+    })
   })
 
   describe("builder", () => {
