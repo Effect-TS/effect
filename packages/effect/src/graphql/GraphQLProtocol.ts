@@ -223,11 +223,14 @@ const fromHttpClientError =
           : error
       ))
 
+// Media types are case-insensitive.
+const contentTypeOf = (response: HttpClientResponse.HttpClientResponse): string =>
+  (response.headers["content-type"] ?? "").toLowerCase()
+
 const readResponse = (
   response: HttpClientResponse.HttpClientResponse
 ): Effect.Effect<unknown, TransportError | HttpClientError.HttpClientError> => {
-  // Media types are case-insensitive.
-  const contentType = (response.headers["content-type"] ?? "").toLowerCase()
+  const contentType = contentTypeOf(response)
   // The GraphQL-over-HTTP media type is authoritative, whatever the status.
   if (contentType.includes(graphqlResponseContentType)) {
     return response.json
@@ -342,16 +345,11 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
             fromHttpClientError(clock)
           )
         })
-      const subscribe = (
-        request: GraphQLRequest
-      ): Stream.Stream<
-        { readonly body: unknown; readonly status?: number; readonly headers: Headers.Headers },
-        TransportError
-      > =>
+      const subscribe = (request: GraphQLRequest) =>
         Stream.unwrap(Effect.suspend(() =>
           client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
             Effect.flatMap((response) => {
-              const contentType = (response.headers["content-type"] ?? "").toLowerCase()
+              const contentType = contentTypeOf(response)
               if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
                 return Effect.succeed(sseEvents(response))
               }
@@ -690,15 +688,6 @@ export const makeWebSocket = <R = never>(
     let nextId = 0
     let active = 0
     let idleGeneration = 0
-    let closed = false
-
-    // Once the scope closes, a forked connection would be interrupted before
-    // it starts, so new operations fail instead of waiting for an ack.
-    yield* Effect.addFinalizer(() =>
-      Effect.sync(() => {
-        closed = true
-      })
-    )
 
     const send = (message: WsMessage) =>
       writer.write(JSON.stringify(message)).pipe(
@@ -849,7 +838,9 @@ export const makeWebSocket = <R = never>(
     })
 
     const register = Effect.suspend(() => {
-      if (closed) {
+      // A connection forked into a closed scope is interrupted before it
+      // starts, so new operations fail instead of waiting for an ack.
+      if (scope.state._tag === "Closed") {
         return Effect.fail(
           new TransportError({ description: "The graphql-ws transport's scope is closed", fatal: true })
         )

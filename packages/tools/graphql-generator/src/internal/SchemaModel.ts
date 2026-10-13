@@ -175,6 +175,18 @@ export const fromAstType = (type: Ast.Type): TypeRef => {
   }
 }
 
+/** The root type an operation of `operation` kind selects from, if the schema configures one. */
+export const rootTypeName = (schema: Schema, operation: Ast.OperationType): string | undefined => {
+  switch (operation) {
+    case "query":
+      return schema.queryType
+    case "mutation":
+      return schema.mutationType
+    case "subscription":
+      return schema.subscriptionType
+  }
+}
+
 /** The name at the bottom of a type reference. */
 export const namedTypeOf = (type: TypeRef): string =>
   type._tag === "NamedTypeRef" ? type.name : namedTypeOf(type.ofType)

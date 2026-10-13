@@ -89,17 +89,17 @@ const printOperation = (operation: Ast.OperationDefinition): string => {
     operation.name === undefined ? "" : operation.name.value,
     operation.variableDefinitions.length === 0
       ? ""
-      : `(${concatAll(operation.variableDefinitions.map(printVariableDefinition))})`,
+      : `(${
+        concatAll(
+          operation.variableDefinitions.map((definition) =>
+            `$${definition.variable.name.value}:${printVariableBody(definition)}`
+          )
+        )
+      })`,
     printDirectives(operation.directives, unmarked),
     selectionSet
   ])
 }
-
-const printVariableDefinition = (definition: Ast.VariableDefinition): string =>
-  concatAll([
-    `$${definition.variable.name.value}:`,
-    printVariableBody(definition)
-  ])
 
 /** A variable definition after `$name:`. Default values and these directives are constant. */
 const printVariableBody = (definition: Ast.VariableDefinition): string =>
@@ -220,20 +220,17 @@ export const template = (
   fragments: ReadonlyArray<Ast.FragmentDefinition>
 ): GraphQL.DocumentTemplate => {
   const perSlice = new Set<string>()
+  const marks: Marks = { variables: true, fragments: perSlice }
   let changed = true
   while (changed) {
     changed = false
     for (const fragment of fragments) {
-      if (
-        !perSlice.has(fragment.name.value) &&
-        printFragmentBody(fragment, { variables: true, fragments: perSlice }).includes(marker)
-      ) {
+      if (!perSlice.has(fragment.name.value) && printFragmentBody(fragment, marks).includes(marker)) {
         perSlice.add(fragment.name.value)
         changed = true
       }
     }
   }
-  const marks: Marks = { variables: true, fragments: perSlice }
   const directives = printDirectives(operation.directives, marks)
   return {
     variables: operation.variableDefinitions.map((definition) => ({
@@ -252,7 +249,7 @@ export const template = (
     ),
     fragments: fragments.map((fragment) => ({
       name: fragment.name.value,
-      body: parts(printFragmentBody(fragment, perSlice.has(fragment.name.value) ? marks : unmarked))
+      body: parts(printFragmentBody(fragment, marks))
     }))
   }
 }

@@ -12,14 +12,12 @@
  * @stability experimental
  * @since 4.0.0
  */
-import { isReadonlyArrayNonEmpty, type NonEmptyArray, type NonEmptyReadonlyArray } from "../Array.ts"
+import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import * as Exit from "../Exit.ts"
 import { dual } from "../Function.ts"
-import * as Hash from "../Hash.ts"
 import * as Headers from "../http/Headers.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as internalGraphQL from "../internal/graphql.ts"
@@ -29,7 +27,7 @@ import * as RequestResolver from "../RequestResolver.ts"
 import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { OperationMethod, PartialResult } from "./GraphQLClient.ts"
-import { DecodeError, GraphQLClientError, type GraphQLError, type Reason } from "./GraphQLClientError.ts"
+import { DecodeError, type GraphQLClientError, type GraphQLError } from "./GraphQLClientError.ts"
 import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
 
 // -----------------------------------------------------------------------------
@@ -66,21 +64,8 @@ interface KeyRequest<K, A, E, R> extends Request.Request<A, E, R> {
   readonly key: K
 }
 
-const KeyRequestProto = {
-  ...Request.Class.prototype,
-  [Equal.symbol](this: KeyRequest<any, any, any, any>, that: KeyRequest<any, any, any, any>): boolean {
-    return Equal.equals(this.key, that.key)
-  },
-  [Hash.symbol](this: KeyRequest<any, any, any, any>): number {
-    return Hash.hash(this.key)
-  }
-}
-
-const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => {
-  const self = Object.create(KeyRequestProto)
-  self.key = key
-  return self
-}
+// Requests are structural, so two requests with equal keys are one request.
+const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => Request.of<KeyRequest<K, A, E, R>>()({ key })
 
 // -----------------------------------------------------------------------------
 // Running
@@ -261,57 +246,46 @@ export const ordered = <
   >
 > => {
   const path = options.path as ReadonlyArray<string>
-  return makeResolver(options.batchKey)((entries) =>
-    Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
-      const fail = failWith(method)
-      const byIndex = new Map<number, NonEmptyArray<GraphQLError>>()
-      const others: Array<GraphQLError> = []
-      for (const error of result.errors) {
-        const index = entryIndex(error, path, keys.length)
-        if (index === undefined) {
-          others.push(error)
-        } else {
+  const codec = internalGraphQL.makeCodec(method.operation)
+  return makeResolver(
+    options.batchKey,
+    (entries) =>
+      Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
+        const byIndex = new Map<number, Arr.NonEmptyArray<GraphQLError>>()
+        for (const error of result.errors) {
+          const index = entryIndex(error, path, keys.length)
+          if (index === undefined) return batchError(codec, result)
           const errors = byIndex.get(index)
           if (errors === undefined) byIndex.set(index, [error])
           else errors.push(error)
         }
-      }
-      if (others.length > 0) return batchResponseError(fail, result)
-      const list = findList(result.data, path)
-      // An error in a non-null item nulls the whole list, so every entry lost its data to it.
-      if (list === undefined) {
-        return result.errors.length > 0 ? batchResponseError(fail, result) : completeAll(targets, constNoSuchElement)
-      }
-      if (list.truncated) return fail(truncated(path))
-      if (list.items.length !== keys.length) {
-        return fail(
-          new DecodeError({
-            description: `Expected ${keys.length} entries at ${path.join(".")}, received ${list.items.length}`
-          })
-        )
-      }
-      const response = internalGraphQL.partialResponses.get(result)
-      for (let i = 0; i < targets.length; i++) {
-        const errors = byIndex.get(i)
-        const item = list.items[i]
-        targets[i].completeUnsafe(
-          errors !== undefined
-            ? Exit.fail(
-              new GraphQLClientError({
-                operation: method.operation.name,
-                reason: internalGraphQL.responseError(
-                  response === undefined ? undefined : { status: response.status, headers: response.headers },
-                  errors
-                )
-              })
-            )
-            : matchesTypename(item, options.typename)
-            ? Exit.succeed(item)
-            : constNoSuchElement
-        )
-      }
-      return Effect.void
-    })
+        const list = findList(result.data, path)
+        // An error in a non-null item nulls the whole list, so every entry lost its data to it.
+        if (list === undefined) return result.errors.length > 0 ? batchError(codec, result) : completeAll(targets)
+        if (list.truncated) return Effect.fail(codec.fail(truncated(path)))
+        if (list.items.length !== keys.length) {
+          return Effect.fail(codec.fail(
+            new DecodeError({
+              description: `Expected ${keys.length} entries at ${path.join(".")}, received ${list.items.length}`
+            })
+          ))
+        }
+        const response = internalGraphQL.partialResponses.get(result)
+        for (let i = 0; i < targets.length; i++) {
+          const errors = byIndex.get(i)
+          const item = list.items[i]
+          targets[i].completeUnsafe(
+            errors !== undefined
+              ? Exit.fail(codec.fail(
+                internalGraphQL.responseError({ status: response?.status, headers: response?.headers }, errors)
+              ))
+              : matchesTypename(item, options.typename)
+              ? Exit.succeed(item)
+              : constNoSuchElement
+          )
+        }
+        return Effect.void
+      })
   )
 }
 
@@ -405,26 +379,28 @@ export const findById = <
   >
 > => {
   const path = options.path as ReadonlyArray<string>
-  return makeResolver(options.batchKey)((entries) =>
-    Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
-      const fail = failWith(method)
-      if (result.errors.length > 0) return batchResponseError(fail, result)
-      const list = findList(result.data, path)
-      if (list === undefined) return completeAll(targets, constNoSuchElement)
-      if (list.truncated) return fail(truncated(path))
-      const pending = MutableHashMap.empty<K, Request.Entry<any>>()
-      for (let i = 0; i < keys.length; i++) MutableHashMap.set(pending, keys[i], targets[i])
-      for (const item of list.items) {
-        if (!matchesTypename(item, options.typename)) continue
-        const key = options.key(item as Narrow<Item<GraphQL.Result<Op>, P>, T>)
-        const target = MutableHashMap.get(pending, key)
-        if (target._tag === "None") continue
-        MutableHashMap.remove(pending, key)
-        target.value.completeUnsafe(Exit.succeed(item))
-      }
-      MutableHashMap.forEach(pending, (target) => target.completeUnsafe(constNoSuchElement))
-      return Effect.void
-    })
+  const codec = internalGraphQL.makeCodec(method.operation)
+  return makeResolver(
+    options.batchKey,
+    (entries) =>
+      Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
+        if (result.errors.length > 0) return batchError(codec, result)
+        const list = findList(result.data, path)
+        if (list === undefined) return completeAll(targets)
+        if (list.truncated) return Effect.fail(codec.fail(truncated(path)))
+        const pending = MutableHashMap.empty<K, Request.Entry<any>>()
+        for (let i = 0; i < keys.length; i++) MutableHashMap.set(pending, keys[i], targets[i])
+        for (const item of list.items) {
+          if (!matchesTypename(item, options.typename)) continue
+          const key = options.key(item as Narrow<Item<GraphQL.Result<Op>, P>, T>)
+          const target = MutableHashMap.get(pending, key)
+          if (target._tag === "None") continue
+          MutableHashMap.remove(pending, key)
+          target.value.completeUnsafe(Exit.succeed(item))
+        }
+        MutableHashMap.forEach(pending, (target) => target.completeUnsafe(constNoSuchElement))
+        return Effect.void
+      })
   )
 }
 
@@ -556,7 +532,7 @@ export const aliased = <Op extends GraphQL.Any>(
     variables: GraphQL.Variables<Op>
   ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
 
-  return makeResolver(options?.batchKey)<AliasedRequest<Op>>((entries) =>
+  return makeResolver<AliasedRequest<Op>>(options?.batchKey, (entries) =>
     Effect.flatMap(
       Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
       (encoded) => {
@@ -585,27 +561,20 @@ export const aliased = <Op extends GraphQL.Any>(
         if (execute === undefined) {
           return Effect.forEach(slices, (slice) => complete(slice, call(slice.variables)), { discard: true })
         }
-        if (!isReadonlyArrayNonEmpty(slices)) return Effect.void
-        const prefixes = slices.map((_, i) => `_${i}_`)
-        return Effect.suspend(() =>
-          execute({
-            kind: operation.kind,
-            query: internalGraphQL.renderSlices(
-              operation.kind,
-              operation.name,
-              template,
-              prefixes as NonEmptyArray<string>
-            ),
-            operationName: operation.name,
-            variables: Object.fromEntries(
-              slices.flatMap((slice, i) =>
-                Object.entries(slice.encoded ?? {}).map(([name, value]) => [prefixes[i] + name, value])
-              )
-            ),
-            headers: Headers.empty,
-            urlParams: UrlParams.empty
-          })
-        ).pipe(
+        if (!Arr.isReadonlyArrayNonEmpty(slices)) return Effect.void
+        const prefixes = Arr.map(slices, (_, i) => `_${i}_`)
+        return execute({
+          kind: operation.kind,
+          query: internalGraphQL.renderSlices(operation.kind, operation.name, template, prefixes),
+          operationName: operation.name,
+          variables: Object.fromEntries(
+            slices.flatMap((slice, i) =>
+              Object.entries(slice.encoded ?? {}).map(([name, value]) => [prefixes[i] + name, value])
+            )
+          ),
+          headers: Headers.empty,
+          urlParams: UrlParams.empty
+        }).pipe(
           Effect.flatMap((result) => {
             const results = internalGraphQL.splitSlices(result, template, prefixes)
             return results === undefined
@@ -614,8 +583,7 @@ export const aliased = <Op extends GraphQL.Any>(
           })
         )
       }
-    ).pipe(Effect.provideContext(entries[0].context))
-  ).pipe(RequestResolver.batchN(10))
+    ).pipe(Effect.provideContext(entries[0].context))).pipe(RequestResolver.batchN(10))
 }
 
 type AliasedRequest<Op extends GraphQL.Any> = KeyRequest<
@@ -641,9 +609,9 @@ const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
  * Without `batchKey`, all entries share one batch. With it, each batch holds
  * entries with equal keys, so the first entry's context stands for the batch.
  */
-const makeResolver = (batchKey: ((context: Context.Context<any>) => unknown) | undefined) =>
-<A extends Request.Any>(
-  runAll: (entries: NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
+const makeResolver = <A extends Request.Any>(
+  batchKey: ((context: Context.Context<any>) => unknown) | undefined,
+  runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
 ): RequestResolver.RequestResolver<A> =>
   batchKey === undefined
     ? RequestResolver.make(runAll)
@@ -655,7 +623,7 @@ const makeResolver = (batchKey: ((context: Context.Context<any>) => unknown) | u
  */
 const callBatch = <Op extends GraphQL.Any, K>(
   method: OperationMethod<Op>,
-  entries: NonEmptyArray<Request.Entry<KeyRequest<K, any, any, any>>>,
+  entries: Arr.NonEmptyArray<Request.Entry<KeyRequest<K, any, any, any>>>,
   variables: (keys: ReadonlyArray<K>) => GraphQL.Variables<Op>
 ) => {
   const keys: Array<K> = []
@@ -689,20 +657,11 @@ const callBatch = <Op extends GraphQL.Any, K>(
   )
 }
 
-const failWith = <Op extends GraphQL.Any>(method: OperationMethod<Op>) => (reason: Reason) =>
-  Effect.fail(new GraphQLClientError({ operation: method.operation.name, reason }))
-
-// Called only when result.errors is non-empty.
-const batchResponseError = (
-  fail: (reason: Reason) => Effect.Effect<never, GraphQLClientError>,
+// Fails the batch with the response's errors and transport metadata.
+const batchError = (
+  codec: { readonly failResponse: (result: ExecutionResult) => Effect.Effect<never, GraphQLClientError> },
   result: PartialResult<unknown>
-) =>
-  fail(
-    internalGraphQL.responseError(
-      internalGraphQL.partialResponses.get(result),
-      result.errors as NonEmptyReadonlyArray<GraphQLError>
-    )
-  )
+) => codec.failResponse(internalGraphQL.partialResponses.get(result) ?? { errors: result.errors })
 
 const truncated = (path: ReadonlyArray<string>) =>
   new DecodeError({
@@ -711,8 +670,8 @@ const truncated = (path: ReadonlyArray<string>) =>
     }, so results beyond the page would be reported missing. Make the page size at least the RequestResolver.batchN size`
   })
 
-const completeAll = (targets: ReadonlyArray<Request.Entry<any>>, exit: Exit.Exit<never, Cause.NoSuchElementError>) => {
-  for (const target of targets) target.completeUnsafe(exit)
+const completeAll = (targets: ReadonlyArray<Request.Entry<any>>) => {
+  for (const target of targets) target.completeUnsafe(constNoSuchElement)
   return Effect.void
 }
 
@@ -731,16 +690,11 @@ const findList = (
   path: ReadonlyArray<string>
 ): { readonly items: ReadonlyArray<unknown>; readonly truncated: boolean } | undefined => {
   // Path guarantees object fields leading to a list.
-  let parent = data as Record<string, unknown> | null | undefined
-  for (let i = 0; i < path.length - 1; i++) {
-    if (parent === null || parent === undefined) return undefined
-    parent = parent[path[i]] as Record<string, unknown> | null | undefined
-  }
-  if (parent === null || parent === undefined) return undefined
-  const items = parent[path[path.length - 1]] as ReadonlyArray<unknown> | null | undefined
+  let parent = data as Record<string, any> | null | undefined
+  for (let i = 0; i < path.length - 1; i++) parent = parent?.[path[i]]
+  const items = parent?.[path[path.length - 1]] as ReadonlyArray<unknown> | null | undefined
   if (items === null || items === undefined) return undefined
-  const pageInfo = parent.pageInfo as { readonly hasNextPage?: unknown } | null | undefined
-  return { items, truncated: pageInfo?.hasNextPage === true }
+  return { items, truncated: parent!.pageInfo?.hasNextPage === true }
 }
 
 const matchesTypename = (item: unknown, typename: string | undefined): boolean =>

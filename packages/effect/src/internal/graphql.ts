@@ -118,26 +118,15 @@ export const templateUnsliceableReason = (template: DocumentTemplate): string | 
   return undefined
 }
 
-/** Why the template can't be rendered for these prefixes, if it can't. */
-const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<string>): string | undefined => {
-  const reason = templateUnsliceableReason(template)
-  if (reason !== undefined) return reason
-  const shared = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
-  const collision = template.fragments
-    .flatMap((fragment) => isShared(fragment) ? [] : prefixes.map((prefix) => prefix + fragment.name))
-    .find((renamed) => shared.has(renamed))
-  return collision === undefined ? undefined : `fragment ${collision} would collide with a shared fragment`
-}
-
 /**
  * Renders one operation that repeats the template once per prefix. Each
  * slice's variables, root response keys and per-slice fragments are renamed
  * with its prefix; operation directives and shared fragments appear once.
  * Prefixes must start a GraphQL name, and none may be a prefix of another.
  *
- * Throws rather than producing an invalid document when an operation
- * directive references a variable, a root selection is a fragment spread or
- * inline fragment, or a renamed fragment would take a shared fragment's name.
+ * Throws rather than producing an invalid document when the template is
+ * unsliceable (see {@link templateUnsliceableReason}) or a renamed fragment
+ * would take a shared fragment's name.
  *
  * @internal
  */
@@ -147,10 +136,13 @@ export const renderSlices = (
   template: DocumentTemplate,
   prefixes: NonEmptyReadonlyArray<string>
 ): string => {
-  const reason = unsliceableReason(template, prefixes)
-  if (reason !== undefined) {
-    throw new Error(`Cannot render slices of operation ${name}: ${reason}`)
-  }
+  const shared = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
+  const collision = template.fragments
+    .flatMap((fragment) => isShared(fragment) ? [] : prefixes.map((prefix) => prefix + fragment.name))
+    .find((renamed) => shared.has(renamed))
+  const reason = templateUnsliceableReason(template) ??
+    (collision === undefined ? undefined : `fragment ${collision} would collide with a shared fragment`)
+  if (reason !== undefined) throw new Error(`Cannot render slices of operation ${name}: ${reason}`)
   return render(kind, name, template, prefixes)
 }
 

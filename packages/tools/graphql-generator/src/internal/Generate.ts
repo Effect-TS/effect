@@ -7,7 +7,6 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
-import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import type { PlatformError } from "effect/PlatformError"
 import * as Result from "effect/Result"
@@ -115,22 +114,16 @@ export const generate: (
     }
     cache.documents = documents
     if (diagnostics.length > 0) return failed(diagnostics.map(toPublic))
+    const sharedClash = (source: Source, what: string): GenerateResult =>
+      failed([toPublic(make(
+        source,
+        0,
+        `The shared module path "${display(sharedPath)}" is also ${what}; choose a different shared path.`
+      ))])
     const overwritten = sharedPath === schemaPath ? schemaSource : documents.get(sharedPath)?.source
-    if (overwritten !== undefined) {
-      return failed([toPublic(make(
-        overwritten,
-        0,
-        `The shared module path "${display(sharedPath)}" is also an input file; choose a different shared path.`
-      ))])
-    }
+    if (overwritten !== undefined) return sharedClash(overwritten, "an input file")
     const collision = files.find((file) => file.outputPath === sharedPath)
-    if (collision !== undefined) {
-      return failed([toPublic(make(
-        collision.source,
-        0,
-        `The shared module path "${display(sharedPath)}" is also a document output; choose a different shared path.`
-      ))])
-    }
+    if (collision !== undefined) return sharedClash(collision.source, "a document output")
     const validation = Validate.validate(schema, files)
     if (validation.length > 0) return failed(validation.map(toPublic))
 
@@ -270,10 +263,9 @@ const listFiles = Effect.fnUntraced(function*(
         if (Glob.isSkipped(entry)) continue
         const absolute = path.join(directory, entry)
         const entryRelative = relative === "" ? entry : `${relative}/${entry}`
-        const info = yield* fs.stat(absolute).pipe(Effect.option)
-        if (Option.isNone(info)) continue
-        if (info.value.type === "Directory") yield* walk(glob, absolute, entryRelative)
-        else if (info.value.type === "File") entries.push({ absolute, relative: entryRelative, glob })
+        const info = yield* fs.stat(absolute).pipe(Effect.orElseSucceed(() => undefined))
+        if (info?.type === "Directory") yield* walk(glob, absolute, entryRelative)
+        else if (info?.type === "File") entries.push({ absolute, relative: entryRelative, glob })
       }
       ancestors.delete(real)
     })

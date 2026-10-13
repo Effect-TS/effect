@@ -160,7 +160,6 @@ export class ResponseError
     return this.status !== undefined && isRetryableStatus(this.status)
   }
 
-  // Parsed once, so every read returns the same delay.
   readonly #retryAfter = parseRetryAfter(this.headers?.["retry-after"], Date.now())
 
   /**
@@ -181,13 +180,8 @@ export class ResponseError
   }
 }
 
-// Standard close codes that a reconnect can recover from: normal closure,
-// going away, no status, abnormal closure, service restart, try again later
-// and bad gateway.
 const retryableStandardCloseCodes: ReadonlySet<number> = new Set([1000, 1001, 1005, 1006, 1012, 1013, 1014])
 
-// graphql-ws close codes for bad requests, authentication, authorization,
-// subprotocol, duplicate-operation, too-many-init and internal server errors.
 const fatalGraphQLWsCloseCodes: ReadonlySet<number> = new Set([4400, 4401, 4403, 4406, 4409, 4429, 4500])
 
 /**
@@ -223,7 +217,6 @@ const fatalGraphQLWsCloseCodes: ReadonlySet<number> = new Set([4400, 4401, 4403,
 export const isFatalCloseCode = (code: number): boolean =>
   code >= 1000 && code < 2000 ? !retryableStandardCloseCodes.has(code) : fatalGraphQLWsCloseCodes.has(code)
 
-// HTTP 429 and 5xx responses are worth retrying.
 const isRetryableStatus = (status: number): boolean => status === 429 || (status >= 500 && status < 600)
 
 /**
@@ -335,10 +328,8 @@ export class TransportError
     return new TransportError({
       description: error.message,
       status: response?.status,
-      headers: response === undefined ? undefined : response.headers,
-      retryAfter: response === undefined
-        ? undefined
-        : parseRetryAfter(response.headers["retry-after"], options?.now ?? Date.now()),
+      headers: response?.headers,
+      retryAfter: parseRetryAfter(response?.headers["retry-after"], options?.now ?? Date.now()),
       cause: error
     })
   }
@@ -446,6 +437,9 @@ export class PaginationError
  */
 export type Reason = ResponseError | TransportError | EncodeError | DecodeError | PaginationError
 
+const httpReason = (reason: Reason): ResponseError | TransportError | undefined =>
+  reason._tag === "ResponseError" || reason._tag === "TransportError" ? reason : undefined
+
 /**
  * The error every `GraphQLClient` method fails with. It names the operation
  * and carries one of the five reasons; `cause` is the reason itself.
@@ -512,9 +506,7 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
    * @since 4.0.0
    */
   get retryAfter(): Duration.Duration | undefined {
-    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
-      ? this.reason.retryAfter
-      : undefined
+    return httpReason(this.reason)?.retryAfter
   }
 
   /**
@@ -523,9 +515,7 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
    * @since 4.0.0
    */
   get status(): number | undefined {
-    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
-      ? this.reason.status
-      : undefined
+    return httpReason(this.reason)?.status
   }
 
   /**
@@ -535,9 +525,7 @@ export class GraphQLClientError extends Schema.TaggedError<GraphQLClientError>(T
    * @since 4.0.0
    */
   get headers(): Headers.Headers | undefined {
-    return this.reason._tag === "ResponseError" || this.reason._tag === "TransportError"
-      ? this.reason.headers
-      : undefined
+    return httpReason(this.reason)?.headers
   }
 
   override get message(): string {

@@ -284,13 +284,17 @@ export const make = <Ops extends GraphQL.Any>(
     const protocol = yield* GraphQLProtocol
     const context = yield* Effect.context<never>()
     const retryPolicy = retryableOnly(options?.subscriptionRetry ?? defaultSubscriptionRetry)
-    const client: Record<string, OperationMethod<Ops> | SubscriptionMethod<Ops>> = {}
-    for (const operation of group.operations) {
-      client[operation.name] = makeMethod(operation, middlewareChain(context, group, operation), protocol, retryPolicy)
-    }
-    // The loop cannot prove the mapped type's name/kind relationship.
-    return client as GraphQLClient<Ops>
+    return fromGroup(group, (operation) =>
+      makeMethod(operation, middlewareChain(context, group, operation), protocol, retryPolicy))
   })
+
+// Type boundary: a mapping over the operations cannot prove the mapped type's
+// name/kind relationship.
+const fromGroup = <Ops extends GraphQL.Any>(
+  group: GraphQLGroup.GraphQLGroup<Ops>,
+  f: (operation: Ops) => unknown
+): GraphQLClient<Ops> =>
+  Object.fromEntries(group.operations.map((operation) => [operation.name, f(operation)])) as GraphQLClient<Ops>
 
 /**
  * The middleware implementations an operation runs through, outermost first,
@@ -439,13 +443,7 @@ const makeMethod = <Op extends GraphQL.Any>(
   > {
     return buildRequest(variables, options).pipe(
       Effect.flatMap((request) => execute(0, request, false)),
-      Effect.flatMap(
-        (result): Effect.Effect<
-          GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
-          GraphQLClientError,
-          Op["result"]["DecodingServices"]
-        > => options?.partial === true ? decodePartial(result) : decodeStrict(result)
-      ),
+      Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
       Effect.provideContext(callContext(options))
     )
   }
@@ -828,15 +826,11 @@ export const makeTest =
     // Type boundary: the mapped type keys handlers by name, which a lookup by a
     // runtime name cannot follow.
     const byName = handlers as Record<string, TestHandler<Ops> | undefined>
-    const client: Record<string, unknown> = {}
-    for (const operation of group.operations) {
-      client[operation.name] = makeTestMethod(
-        operation,
-        Object.hasOwn(byName, operation.name) ? byName[operation.name] : undefined
-      )
-    }
-    // The loop cannot prove the mapped type's name/kind relationship.
-    return client as GraphQLClient<Ops>
+    return fromGroup(
+      group,
+      (operation) =>
+        makeTestMethod(operation, Object.hasOwn(byName, operation.name) ? byName[operation.name] : undefined)
+    )
   }
 
 /**

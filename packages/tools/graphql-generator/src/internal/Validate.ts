@@ -210,8 +210,9 @@ type DirectiveLocation =
 
 const conditionLocations: ReadonlySet<DirectiveLocation> = new Set(["FIELD", "FRAGMENT_SPREAD", "INLINE_FRAGMENT"])
 
-/** A variable in an argument or input field of a known type. */
+/** A variable in an argument, input field or condition of a known type. */
 interface VariableUsage {
+  readonly file: number
   readonly node: Ast.Variable
   readonly type: SchemaModel.TypeRef
   /** Whether the argument or input field has a default value. */
@@ -257,7 +258,10 @@ class Validator {
   /** The first fragment with each name in any file; duplicates are reported by `checkUniqueNames`. */
   readonly fragments = new Map<string, Located<Ast.FragmentDefinition>>()
   readonly collected = new Map<Ast.SelectionSet, CollectedFields>()
-  readonly usages = new Map<Ast.OperationDefinition | Ast.FragmentDefinition, ReadonlyArray<Located<VariableUsage>>>()
+  /** The variable positions in each operation's or fragment's own selections, once validated. */
+  readonly usages = new Map<Ast.OperationDefinition | Ast.FragmentDefinition, ReadonlyArray<VariableUsage>>()
+  /** Where `checkValue` records variables while a definition's selections are validated. */
+  positions: Array<VariableUsage> | undefined = undefined
   /** Fragment pairs already compared for conflicts, keyed by the sorted names, to whether they were mutually exclusive. */
   readonly comparedFragments = new Map<string, boolean>()
   /** Field maps already compared with a fragment, by fragment name, to whether they were mutually exclusive. */
@@ -280,7 +284,7 @@ class Validator {
   }
 
   validate(): void {
-    for (const operation of this.operations) this.validateOperation(operation)
+    const defined = this.operations.map((operation) => this.validateOperation(operation))
     for (const { file, node: fragment } of this.fragmentList) {
       const type = this.typeCondition(
         file,
@@ -288,8 +292,10 @@ class Validator {
         (name) => `Fragment "${fragment.name.value}" cannot condition on non composite type "${name}".`
       )
       this.checkDirectives(file, fragment.directives, "FRAGMENT_DEFINITION")
-      if (type !== undefined) this.validateSelectionSet(file, fragment.selectionSet, type)
+      if (type !== undefined) this.validateDefinition(file, fragment, type)
     }
+    // Variables reach fragments in any file, so they are checked once every definition is validated.
+    this.operations.forEach((operation, i) => this.checkVariables(operation, defined[i]!))
     this.checkUnusedFragments()
     this.checkFragmentCycles()
     this.checkUniqueNames()
@@ -297,7 +303,10 @@ class Validator {
 
   // Operations and variables
 
-  validateOperation({ file, node: operation }: Located<Ast.OperationDefinition>): void {
+  /** Returns the first definition of each variable, when its type is a known input type. */
+  validateOperation(
+    { file, node: operation }: Located<Ast.OperationDefinition>
+  ): ReadonlyMap<string, Ast.VariableDefinition | undefined> {
     const name = operation.name?.value
     if (name === undefined) {
       this.report(file, operation.loc.start, "Anonymous operations are not supported, name this operation.")
@@ -309,7 +318,6 @@ class Validator {
     ) {
       this.report(file, variable.loc.start, `There can be only one variable named "$${variable.name.value}".`)
     }
-    /** The first definition of each variable, when its type is a known input type. */
     const defined = new Map<string, Ast.VariableDefinition | undefined>()
     for (const definition of operation.variableDefinitions) {
       this.checkDirectives(file, definition.directives, "VARIABLE_DEFINITION")
@@ -332,12 +340,45 @@ class Validator {
       }
     }
 
-    for (const definition of [operation, ...this.reachableFragments([operation.selectionSet]).map((f) => f.node)]) {
-      for (const { file: usageFile, node: usage } of this.typedVariableUsages(definition)) {
+    const root = this.composite(SchemaModel.rootTypeName(this.schema, operation.operation))
+    if (root === undefined) {
+      this.report(file, operation.loc.start, `Schema is not configured to execute ${operation.operation} operation.`)
+      return defined
+    }
+    if (operation.operation === "subscription") this.checkSingleRootField(file, operation)
+    this.validateDefinition(file, operation, root)
+    return defined
+  }
+
+  /** Validates a definition's selections, recording the variable positions in them for `checkVariables`. */
+  validateDefinition(
+    file: number,
+    definition: Ast.OperationDefinition | Ast.FragmentDefinition,
+    root: Composite
+  ): void {
+    this.positions = []
+    this.validateSelectionSet(file, definition.selectionSet, root)
+    this.usages.set(definition, this.positions)
+    this.positions = undefined
+  }
+
+  /**
+   * Checks the variables an operation uses, directly or through every fragment
+   * it spreads, transitively and across files: each fits its position, is
+   * defined, and each definition is used.
+   */
+  checkVariables(
+    { file, node: operation }: Located<Ast.OperationDefinition>,
+    defined: ReadonlyMap<string, Ast.VariableDefinition | undefined>
+  ): void {
+    const name = operation.name?.value
+    const definitions = [{ node: operation, file }, ...this.reachableFragments([operation.selectionSet])]
+    for (const definition of definitions) {
+      for (const usage of this.usages.get(definition.node) ?? []) {
         const variable = defined.get(usage.node.name.value)
         if (variable === undefined || this.allowedPosition(variable, usage)) continue
         this.report(
-          usageFile,
+          usage.file,
           usage.node.loc.start,
           `Variable "$${usage.node.name.value}" of type "${
             printAstType(variable.type)
@@ -346,7 +387,13 @@ class Validator {
       }
     }
 
-    const usages = this.recursiveVariableUsages(file, operation)
+    const usages: Array<Located<Ast.Variable>> = []
+    for (const { file: at, node: definition } of definitions) {
+      const found: Array<Ast.Variable> = []
+      variablesInDirectives(definition.directives, found)
+      variablesInSelectionSet(definition.selectionSet, found)
+      for (const variable of found) usages.push({ node: variable, file: at })
+    }
     const used = new Set(usages.map((usage) => usage.node.name.value))
     for (const { file: usageFile, node: usage } of usages) {
       if (defined.has(usage.name.value)) continue
@@ -369,19 +416,6 @@ class Validator {
           : `Variable "$${variable}" is never used in operation "${name}".`
       )
     }
-
-    const rootName = operation.operation === "query"
-      ? this.schema.queryType
-      : operation.operation === "mutation"
-      ? this.schema.mutationType
-      : this.schema.subscriptionType
-    const root = rootName === undefined ? undefined : this.schema.types.get(rootName)
-    if (root === undefined || !isComposite(root)) {
-      this.report(file, operation.loc.start, `Schema is not configured to execute ${operation.operation} operation.`)
-      return
-    }
-    if (operation.operation === "subscription") this.checkSingleRootField(file, operation)
-    this.validateSelectionSet(file, operation.selectionSet, root)
   }
 
   /**
@@ -395,7 +429,7 @@ class Validator {
     const visited = new Set<string>()
     const collect = (at: number, selectionSet: Ast.SelectionSet): void => {
       for (const selection of selectionSet.selections) {
-        if (excludedByLiteral(selection.directives)) continue
+        if (inclusion(selection.directives) === "exclude") continue
         if (selection._tag === "Field") {
           const key = (selection.alias ?? selection.name).value
           if (!keys.has(key)) keys.set(key, { node: selection, file: at })
@@ -419,23 +453,6 @@ class Validator {
         ? "Anonymous Subscription must select only one top level field."
         : `Subscription "${name}" must select only one top level field.`
     )
-  }
-
-  /**
-   * Variables used by an operation, including through every fragment it
-   * spreads, transitively and across files. Each usage keeps the file it is in.
-   */
-  recursiveVariableUsages(file: number, operation: Ast.OperationDefinition): ReadonlyArray<Located<Ast.Variable>> {
-    const usages: Array<Located<Ast.Variable>> = []
-    const collect = (at: number, definition: Ast.OperationDefinition | Ast.FragmentDefinition): void => {
-      const found: Array<Ast.Variable> = []
-      variablesInDirectives(definition.directives, found)
-      variablesInSelectionSet(definition.selectionSet, found)
-      for (const variable of found) usages.push({ node: variable, file: at })
-    }
-    collect(file, operation)
-    for (const fragment of this.reachableFragments([operation.selectionSet])) collect(fragment.file, fragment.node)
-    return usages
   }
 
   /** The defined fragments spread from `selectionSets`, transitively and across files, each once. */
@@ -503,9 +520,9 @@ class Validator {
             this.report(file, selection.name.loc.start, `Unknown fragment "${selection.name.value}".`)
             break
           }
-          const type = this.schema.types.get(fragment.typeCondition.name.value)
           // Unknown and non-composite type conditions are reported on the fragment definition.
-          if (type !== undefined && isComposite(type) && !this.overlaps(parent, type)) {
+          const type = this.composite(fragment.typeCondition.name.value)
+          if (type !== undefined && !this.overlaps(parent, type)) {
             this.report(
               file,
               selection.loc.start,
@@ -536,7 +553,7 @@ class Validator {
           `Unknown argument "${argument.name.value}" on field "${parent.name}.${name}".`
         )
       } else {
-        this.checkValue(file, argument.value, argumentDefinition.type)
+        this.checkValue(file, argument.value, argumentDefinition.type, argumentDefinition.defaultValue !== undefined)
       }
     }
     for (const argument of definition.arguments) {
@@ -580,6 +597,12 @@ class Validator {
     } else {
       this.validateSelectionSet(file, field.selectionSet, type)
     }
+  }
+
+  /** The composite type named `name`, if there is one. */
+  composite(name: string | undefined): Composite | undefined {
+    const type = name === undefined ? undefined : this.schema.types.get(name)
+    return type !== undefined && isComposite(type) ? type : undefined
   }
 
   /** Resolves a type condition, reporting unknown and non-composite types. */
@@ -657,11 +680,16 @@ class Validator {
 
   /**
    * Checks a literal against an input type, as graphql-js's ValuesOfCorrectType
-   * does without its suggestions. Variables are checked by position instead.
-   * Custom scalars accept any literal, and `Int` literals are not range checked.
+   * does without its suggestions. Variables are recorded in `positions` and
+   * checked by `checkVariables` instead; `hasDefault` is whether the argument
+   * or input field has a default value. Custom scalars accept any literal, and
+   * `Int` literals are not range checked.
    */
-  checkValue(file: number, value: Ast.Value | Ast.ConstValue, type: SchemaModel.TypeRef): void {
-    if (value._tag === "Variable") return
+  checkValue(file: number, value: Ast.Value | Ast.ConstValue, type: SchemaModel.TypeRef, hasDefault = false): void {
+    if (value._tag === "Variable") {
+      this.positions?.push({ file, node: value, type, hasDefault })
+      return
+    }
     if (value._tag === "NullValue") {
       if (type._tag === "NonNullTypeRef") {
         this.report(
@@ -697,7 +725,7 @@ class Validator {
           if (definition === undefined) {
             this.report(file, field.loc.start, `Field "${field.name.value}" is not defined by type "${named.name}".`)
           } else {
-            this.checkValue(file, field.value, definition.type)
+            this.checkValue(file, field.value, definition.type, definition.defaultValue !== undefined)
           }
         }
         if (named.oneOf) {
@@ -760,89 +788,6 @@ class Validator {
   }
 
   // Variable positions
-
-  /**
-   * Variables in the arguments, input fields and `@skip`/`@include`
-   * conditions of an operation or fragment, with the type each position
-   * expects. Fragment spreads are not followed; positions under unknown fields
-   * or arguments are left out.
-   */
-  typedVariableUsages(
-    definition: Ast.OperationDefinition | Ast.FragmentDefinition
-  ): ReadonlyArray<Located<VariableUsage>> {
-    const cached = this.usages.get(definition)
-    if (cached !== undefined) return cached
-    const file = definition._tag === "OperationDefinition"
-      ? this.operations.find((operation) => operation.node === definition)!.file
-      : this.fragments.get(definition.name.value)!.file
-    const usages: Array<Located<VariableUsage>> = []
-    const inValue = (value: Ast.Value, type: SchemaModel.TypeRef, hasDefault: boolean): void => {
-      if (value._tag === "Variable") {
-        usages.push({ file, node: { node: value, type, hasDefault } })
-        return
-      }
-      const nullable = type._tag === "NonNullTypeRef" ? type.ofType : type
-      if (nullable._tag === "ListTypeRef") {
-        if (value._tag === "ListValue") {
-          for (const item of value.values) inValue(item, nullable.ofType, false)
-        } else {
-          inValue(value, nullable.ofType, false)
-        }
-      } else if (value._tag === "ObjectValue" && nullable._tag === "NamedTypeRef") {
-        const named = this.schema.types.get(nullable.name)
-        if (named?._tag !== "InputObjectType") return
-        for (const field of value.fields) {
-          const fieldDefinition = named.fields.find((candidate) => candidate.name === field.name.value)
-          if (fieldDefinition === undefined) continue
-          inValue(field.value, fieldDefinition.type, fieldDefinition.defaultValue !== undefined)
-        }
-      }
-    }
-    const inDirectives = (directives: ReadonlyArray<Ast.Directive>): void => {
-      for (const directive of directives) {
-        if (!conditionDirectives.has(directive.name.value)) continue
-        for (const argument of directive.arguments) {
-          if (argument.name.value === "if") inValue(argument.value, booleanNonNull, false)
-        }
-      }
-    }
-    const inSelectionSet = (selectionSet: Ast.SelectionSet, parent: Composite): void => {
-      for (const selection of selectionSet.selections) {
-        inDirectives(selection.directives)
-        if (selection._tag === "FragmentSpread") continue
-        if (selection._tag === "InlineFragment") {
-          const type = selection.typeCondition === undefined
-            ? parent
-            : this.schema.types.get(selection.typeCondition.name.value)
-          if (type !== undefined && isComposite(type)) inSelectionSet(selection.selectionSet, type)
-          continue
-        }
-        const field = fieldOf(parent, selection.name.value)
-        if (field === undefined) continue
-        for (const argument of selection.arguments) {
-          const argumentDefinition = field.arguments.find((candidate) => candidate.name === argument.name.value)
-          if (argumentDefinition !== undefined) {
-            inValue(argument.value, argumentDefinition.type, argumentDefinition.defaultValue !== undefined)
-          }
-        }
-        const type = this.schema.types.get(SchemaModel.namedTypeOf(field.type))
-        if (selection.selectionSet !== undefined && type !== undefined && isComposite(type)) {
-          inSelectionSet(selection.selectionSet, type)
-        }
-      }
-    }
-    const rootName = definition._tag === "FragmentDefinition"
-      ? definition.typeCondition.name.value
-      : definition.operation === "query"
-      ? this.schema.queryType
-      : definition.operation === "mutation"
-      ? this.schema.mutationType
-      : this.schema.subscriptionType
-    const root = rootName === undefined ? undefined : this.schema.types.get(rootName)
-    if (root !== undefined && isComposite(root)) inSelectionSet(definition.selectionSet, root)
-    this.usages.set(definition, usages)
-    return usages
-  }
 
   /**
    * graphql-js's allowed-variable-usage rule: a nullable variable may fill a
@@ -909,10 +854,10 @@ class Validator {
         } else if (selection._tag === "FragmentSpread") {
           if (!fragments.includes(selection.name.value)) fragments.push(selection.name.value)
         } else {
-          const type = selection.typeCondition === undefined
-            ? parent
-            : this.schema.types.get(selection.typeCondition.name.value)
-          visit(selection.selectionSet, type !== undefined && isComposite(type) ? type : undefined)
+          visit(
+            selection.selectionSet,
+            selection.typeCondition === undefined ? parent : this.composite(selection.typeCondition.name.value)
+          )
         }
       }
     }
@@ -925,11 +870,10 @@ class Validator {
   fragmentFields(name: string): CollectedFields | undefined {
     const fragment = this.fragments.get(name)
     if (fragment === undefined) return undefined
-    const type = this.schema.types.get(fragment.node.typeCondition.name.value)
     return this.collectFields(
       fragment.file,
       fragment.node.selectionSet,
-      type !== undefined && isComposite(type) ? type : undefined
+      this.composite(fragment.node.typeCondition.name.value)
     )
   }
 
@@ -962,10 +906,7 @@ class Validator {
       compared = new Map()
       this.comparedFieldsAndFragments.set(fields, compared)
     }
-    const previous = compared.get(fragmentName)
-    // A comparison that wasn't mutually exclusive covers both cases.
-    if (previous === false || previous === exclusive) return
-    compared.set(fragmentName, exclusive)
+    if (!firstComparison(compared, fragmentName, exclusive)) return
     const fragment = this.fragmentFields(fragmentName)
     if (fragment === undefined || fragment.fields === fields) return
     this.conflictsBetween(conflicts, exclusive, fields, fragment.fields)
@@ -975,10 +916,7 @@ class Validator {
   conflictsBetweenFragments(conflicts: Array<Conflict>, exclusive: boolean, name1: string, name2: string): void {
     if (name1 === name2) return
     const key = name1 < name2 ? `${name1}\u0000${name2}` : `${name2}\u0000${name1}`
-    const compared = this.comparedFragments.get(key)
-    // A comparison that wasn't mutually exclusive covers both cases.
-    if (compared === false || compared === exclusive) return
-    this.comparedFragments.set(key, exclusive)
+    if (!firstComparison(this.comparedFragments, key, exclusive)) return
     const fragment1 = this.fragmentFields(name1)
     const fragment2 = this.fragmentFields(name2)
     if (fragment1 === undefined || fragment2 === undefined) return
@@ -1075,9 +1013,7 @@ class Validator {
   }
 
   compositeOf(type: SchemaModel.TypeRef | undefined): Composite | undefined {
-    if (type === undefined) return undefined
-    const named = this.schema.types.get(SchemaModel.namedTypeOf(type))
-    return named !== undefined && isComposite(named) ? named : undefined
+    return type === undefined ? undefined : this.composite(SchemaModel.namedTypeOf(type))
   }
 
   // Fragments
@@ -1156,13 +1092,36 @@ class Validator {
   }
 }
 
-/** Whether a `@skip(if: true)` or `@include(if: false)` literal leaves a selection out. */
-const excludedByLiteral = (directives: ReadonlyArray<Ast.Directive>): boolean =>
-  directives.some((directive) => {
-    const condition = directive.arguments.find((argument) => argument.name.value === "if")?.value
-    if (condition?._tag !== "BooleanValue") return false
-    return directive.name.value === "skip" ? condition.value : directive.name.value === "include" && !condition.value
-  })
+/**
+ * How `@skip` / `@include` decide a selection: a literal condition is folded,
+ * so the selection is dropped or the directive ignored, and a variable
+ * condition makes it conditional.
+ */
+export const inclusion = (directives: ReadonlyArray<Ast.Directive>): "exclude" | "include" | "conditional" => {
+  let result: "include" | "conditional" = "include"
+  for (const directive of directives) {
+    const name = directive.name.value
+    if (name !== "skip" && name !== "include") continue
+    const value = directive.arguments.find((argument) => argument.name.value === "if")?.value
+    if (value?._tag === "BooleanValue") {
+      if (value.value === (name === "skip")) return "exclude"
+    } else {
+      result = "conditional"
+    }
+  }
+  return result
+}
+
+/**
+ * Whether `key` is still to be compared as `exclusive`, recording that it now
+ * is. A comparison that wasn't mutually exclusive covers both cases.
+ */
+const firstComparison = <K>(compared: Map<K, boolean>, key: K, exclusive: boolean): boolean => {
+  const previous = compared.get(key)
+  if (previous === false || previous === exclusive) return false
+  compared.set(key, exclusive)
+  return true
+}
 
 /** Whether a value of input type `sub` can be used where `sup` is expected. */
 const isSubType = (sub: SchemaModel.TypeRef, sup: SchemaModel.TypeRef): boolean => {
