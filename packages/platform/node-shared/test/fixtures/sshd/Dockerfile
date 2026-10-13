@@ -1,4 +1,4 @@
-# OpenSSH server for the OpenSsh backend integration tests. socat runs echo
+# OpenSSH server for the NodeOpenSsh integration tests. socat runs echo
 # servers on 127.0.0.1:7000 and /tmp/echo.sock inside the container so
 # forwarding can be tested, and the `echo` subsystem runs `cat`.
 FROM alpine:3.22
