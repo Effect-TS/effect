@@ -1,7 +1,7 @@
 /**
  * Storage glue for the durable queue Durable Object. The constructor must stay
  * cheap: open SQLite, ensure the queue table, and re-arm the single alarm from
- * the earliest pending lease expiry.
+ * the earliest pending lease expiry or initial visibility deadline.
  *
  * Completed rows are retained (not deleted) so custom-id deduplication
  * survives completion, matching the SQL-backed store. A failed item moves to
@@ -55,12 +55,15 @@ type LeaseExpiryRow = {
 }
 
 /** @internal */
-export const offerItem = (sql: SqlStorage, id: string, element: string): void => {
+export const offerItem = (sql: SqlStorage, id: string, element: string, visibleAt: number | null): void => {
+  // Reuse lease_until for initial visibility; INSERT OR IGNORE preserves the
+  // original deadline and payload when an id is offered again.
   sql.exec(
-    `INSERT OR IGNORE INTO queue_items (id, element, position)
-     VALUES (?, ?, (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items))`,
+    `INSERT OR IGNORE INTO queue_items (id, element, position, lease_until)
+     VALUES (?, ?, (SELECT IFNULL(MAX(position), 0) + 1 FROM queue_items), ?)`,
     id,
-    element
+    element,
+    visibleAt
   )
 }
 
