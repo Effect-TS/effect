@@ -125,6 +125,9 @@ again).
     - `origin`: where an assertion was raised, when that is elsewhere (a helper in another file).
     - `note`: context, e.g. that a failed assertion's error was caught but still fails the test.
     - `source[]`: the lines up to `location` (`line`, `text`), at most 3.
+    - `counterexample`: for a property (`Test.property`) that failed: the smallest failing `input` found
+      (formatted), the `initialInput` that failed first (when shrinking changed it), `runs`, `shrinks`, and a
+      `replay` token that re-runs exactly this failure.
 - `previousAttempts[]`: the statuses of earlier attempts. A `passed` test with earlier failures is flaky.
 - `console[]`: the test's captured Effect `Console` output.
 - `assertions` (optional): how many `Assert.*` calls the test's last attempt made.

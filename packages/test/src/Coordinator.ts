@@ -1,8 +1,11 @@
-// The coordinator: discovers files and the projects they belong to, asks executors for their
-// trees, resolves options (nearest wins) into a plan, dispatches files to the executor pool,
-// enforces bail by interrupting in-flight work, and guarantees exactly one terminal event per
-// planned test.
-import * as Console from "effect/Console"
+// The coordinator: the test runner itself, headless. It is given everything as data (a
+// `RunConfig`: the test files, the project each belongs to with its resolved defaults, the
+// selection, the seed), asks executors for the files' trees, resolves options (nearest wins)
+// into a plan, dispatches files to the executor pool, enforces bail by interrupting in-flight
+// work, and guarantees exactly one terminal event per planned test. It reads no config file,
+// searches no directory, and knows nothing of the command line or the working directory: the
+// host (the CLI, `src/cli/`) does that, and provides the executors (any `RpcClient.Protocol`).
+import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as RpcClient from "effect/rpc/RpcClient"
@@ -15,6 +18,7 @@ import type {
   Location,
   PlannedTest,
   RunFileTest,
+  RunFinished,
   SelectedProject,
   Selection,
   SourceLine,
@@ -26,63 +30,74 @@ import { ExecutorRpcs, schemaVersion } from "./Protocol.ts"
 import type { Reporter } from "./Reporters.ts"
 
 /**
- * A project: a directory with its own config (or the workspace root, with or without one). A
- * test file belongs to the nearest project above it; its ids are relative to the project's root.
+ * A project: the root a test file's ids are relative to, the defaults its tests start from, and
+ * the configs its shared layers come from. How projects are found (config files, nested
+ * directories) is up to the host.
  */
 export interface Project {
   /** the project's root relative to the workspace root (`.`: the workspace root itself) */
   readonly key: string
   /** the project's root (absolute) */
   readonly dir: string
-  /** the project's own config file (absolute), if any */
-  readonly config: string | undefined
-  /** the configs whose `shared` layers its files use (absolute), the workspace root's first */
-  readonly configs: ReadonlyArray<string>
-  /** where its tests are when it is searched without paths (relative to `dir`; default: all of it) */
-  readonly paths: ReadonlyArray<string> | undefined
-  /** glob patterns skipped while searching its directories (relative to `dir`) */
-  readonly exclude: ReadonlyArray<string>
-  /** defaults for test options that no node on the tree sets */
-  readonly defaults: Defaults
+  /** the project's own config file (absolute), if any, named in the selection */
+  readonly config?: string | undefined
+  /**
+   * modules (absolute) whose default export's `shared` layers its files use, the workspace
+   * root's first; executors import them (default: none)
+   */
+  readonly configs?: ReadonlyArray<string> | undefined
+  /** defaults for test options that no node on the tree sets (default: `builtinDefaults`) */
+  readonly defaults?: Defaults | undefined
 }
 
-/** The workspace's projects, as discovery asks for them. */
-export interface Projects<E> {
-  /** the project whose root is exactly `dir`, if it is one (a nested config) */
-  readonly at: (dir: string) => Effect.Effect<Project | undefined, E>
-  /** the project a path belongs to: the nearest one at or above it */
-  readonly of: (p: string) => Effect.Effect<Project, E>
+/** A test file (absolute) and the project it belongs to. */
+export interface TestFile {
+  readonly file: string
+  readonly project: Project
 }
 
-/** What a test file's previous runs say about it, for ordering (see `RunOptions.history`). */
+/** Which of the files' tests to run; all of them when nothing is set. */
+export interface Filter {
+  /** an exact id, key or short id; otherwise text the test's key must contain */
+  readonly test?: string | undefined
+  readonly tag?: string | undefined
+  /** only these tests, by key (`testKey`; a file's key selects the whole file), e.g. the last failures */
+  readonly keys?: ReadonlySet<string> | undefined
+}
+
+/** What a test file's previous runs say about it, for ordering (see `RunConfig.history`). */
 export interface History {
   readonly status: Status
   readonly durationMs: number
 }
 
-export interface RunOptions<E> {
-  /** where to search, relative to the workspace root (the working directory) */
-  readonly paths: ReadonlyArray<string>
-  readonly list: boolean
-  readonly listJson: boolean
-  readonly test: string | undefined
-  readonly tag: string | undefined
-  /** only these tests, by key (`testKey`; a file's key selects the whole file), e.g. the last failures */
-  readonly ids: ReadonlySet<string> | undefined
-  /** how the caller narrowed the selection beyond `test` / `tag`, for reporting, e.g. `--failed (11 recorded)` */
-  readonly selectedBy: ReadonlyArray<string>
-  readonly seed: number
-  readonly testsPerFile: number
-  readonly bail: boolean
-  /** the workspace root (absolute; the working directory) */
+/** Everything a run (or a listing) needs, resolved by the host. */
+export interface RunConfig {
+  /** the workspace root (absolute): files and keys are relative to it */
   readonly root: string
-  /** the workspace's config (absolute), if any, for the selection */
-  readonly config: string | undefined
-  readonly projects: Projects<E>
+  /** the workspace's config file (absolute), if any, named in the selection */
+  readonly config?: string | undefined
+  /** the test files, each with its project */
+  readonly files: ReadonlyArray<TestFile>
+  /** the projects searched, in order; listed in the selection even when they have no file (default: the files') */
+  readonly projects?: ReadonlyArray<Project> | undefined
+  readonly filter?: Filter | undefined
+  /**
+   * How the host describes the selection, echoed in `RunPlanned.selection`: the paths searched
+   * (relative to the root) and what narrowed it, in the host's own words (e.g. `--test "x"`)
+   */
+  readonly description?: {
+    readonly paths?: ReadonlyArray<string> | undefined
+    readonly filters?: ReadonlyArray<string> | undefined
+  } | undefined
+  /** the run's seed; each test's seed derives from it and the test's id */
+  readonly seed: number
+  /** how many tests of a file run at once (default: `TESTS_PER_FILE`) */
+  readonly testsPerFile?: number | undefined
+  /** stop at the first failure, interrupting running tests */
+  readonly bail?: boolean | undefined
   /** previous outcomes by test key: files with no history run first, then failed ones, then the slowest */
-  readonly history: (key: string) => History | undefined
-  readonly reporter: Reporter
-  readonly write: (s: string) => void
+  readonly history?: ((key: string) => History | undefined) | undefined
 }
 
 /** Defaults for test options that no node on the tree sets. */
@@ -97,19 +112,40 @@ export const builtinDefaults: Defaults = { timeoutMs: 60_000, retries: 0 }
 /** A test that takes longer than this is reported as slow (it still passes). */
 export const SLOW_MS = 5_000
 
+/** How many tests of a file run at once, unless `RunConfig.testsPerFile` says otherwise. */
+export const TESTS_PER_FILE = 8
+
 /** A test's key, unique in a run: its id, prefixed with its project unless that is the workspace root. */
 export const testKey = (project: string, id: string) => project === "." ? id : `${project}/${id}`
+
+/** Whether a run is green: nothing failed, timed out or was interrupted. */
+export const passed = (summary: RunFinished): boolean =>
+  summary.failed + summary.timedOut + summary.interrupted === 0
+
+/** A run selected no tests. A run that selects nothing is red: "nothing ran" must never read as green. */
+export class NoTestsSelected extends Data.TaggedError("NoTestsSelected")<{ readonly selection: Selection }> {
+  override get message() {
+    const selection = this.selection
+    const where = selection.paths.length ? selection.paths.join(", ") : "."
+    if (selection.files === 0) return `no test files found in ${where}`
+    if (selection.tests === 0) return `${selection.files} test file(s) in ${where}, but none defines a test`
+    return `${selection.tests} test(s) in ${selection.files} file(s), but none matched ${
+      selection.filters.join(" and ")
+    }`
+  }
+}
 
 // --- code frames: the source at a failure's location, read here (executors send none)
 
 const CONTEXT_LINES = 2
 
-const makeSources = () => {
+/** Reads the source at failures' locations (relative to `root`, the executors' working directory). */
+const makeSources = (root: string) => {
   const files = new Map<string, ReadonlyArray<string> | undefined>()
   const linesOf = (file: string) => {
     if (!files.has(file)) {
       try {
-        files.set(file, fs.readFileSync(path.resolve(file), "utf8").split("\n"))
+        files.set(file, fs.readFileSync(path.resolve(root, file), "utf8").split("\n"))
       } catch {
         files.set(file, undefined)
       }
@@ -129,141 +165,9 @@ const makeSources = () => {
   return { withSource }
 }
 
-// --- discovery
-
-/** Directories that are never searched. */
-const skipped = (name: string) => name === "node_modules" || name.startsWith(".")
-
-/** A glob as a RegExp: `*` within a path segment, `**` across segments, `?` one character. */
-export const globToRegExp = (glob: string): RegExp => {
-  let out = ""
-  for (let i = 0; i < glob.length; i++) {
-    const c = glob[i]
-    if (c === "*" && glob[i + 1] === "*") {
-      i++
-      if (glob[i + 1] === "/") {
-        i++
-        out += "(?:.*/)?"
-      } else out += ".*"
-    } else if (c === "*") out += "[^/]*"
-    else if (c === "?") out += "[^/]"
-    else out += /[\\^$.|+()[\]{}]/.test(c) ? `\\${c}` : c
-  }
-  return new RegExp(`^${out}$`)
-}
+// --- planning
 
 const posix = (p: string) => p.split(path.sep).join("/")
-
-export interface Discovered {
-  /** the test files found (absolute), sorted, each with its project */
-  readonly files: ReadonlyArray<{ readonly file: string; readonly project: Project }>
-  /** the projects searched, in the order they were reached */
-  readonly projects: ReadonlyArray<Project>
-  /** paths that don't exist */
-  readonly missing: ReadonlyArray<string>
-  /** paths that yield no test file (a file that isn't a test file, or a directory without any) */
-  readonly empty: ReadonlyArray<string>
-}
-
-/**
- * The `*.test.ts` files under `paths` (relative to the working directory, the workspace root),
- * each in the project it belongs to: the nearest one above it.
- *
- * Directories are searched, skipping `node_modules`, dot-directories and what the project's
- * `exclude` matches (relative to the project's root). A search that reaches a nested project
- * continues there with that project's rules: its `exclude`, and its own `paths` (it wasn't
- * named). A directory an outer project excludes is never entered, nested projects included.
- *
- * Naming a path opts it in: a file named directly is never excluded, and a directory that is
- * itself excluded is searched in full when it is named (`etest test/fixtures` despite
- * `**` + `/fixtures/**`). Paths that don't exist, and those that yield no test file, are
- * returned too: asking for something that can't run is an error, never silently ignored.
- */
-export const discover = <E>(paths: ReadonlyArray<string>, projects: Projects<E>): Effect.Effect<Discovered, E> =>
-  Effect.gen(function*() {
-    const patterns = new Map<Project, Array<RegExp>>()
-    const excluded = (project: Project, p: string) => {
-      let res = patterns.get(project)
-      if (res === undefined) patterns.set(project, res = project.exclude.map(globToRegExp))
-      const rel = posix(path.relative(project.dir, path.resolve(p)))
-      return res.some((re) => re.test(rel) || re.test(`${rel}/`))
-    }
-    const files = new Map<string, Project>()
-    const searched = new Map<string, Project>()
-    const missing: Array<string> = []
-    const empty: Array<string> = []
-    const reached = (project: Project) => {
-      if (!searched.has(project.key)) searched.set(project.key, project)
-    }
-
-    const visit = (p: string, project: Project, exclusions: boolean): Effect.Effect<void, E> =>
-      Effect.gen(function*() {
-        if (exclusions && excluded(project, p)) return
-        if (fs.statSync(p).isDirectory()) {
-          const nested = path.resolve(p) !== project.dir ? yield* projects.at(p) : undefined
-          if (nested !== undefined) return yield* enter(nested)
-          for (const e of fs.readdirSync(p).sort()) {
-            if (!skipped(e)) yield* visit(path.join(p, e), project, exclusions)
-          }
-        } else if (p.endsWith(".test.ts")) files.set(path.resolve(p), project)
-      })
-    // a path given to search (on the command line, or a project's `paths`): opted in
-    const named = (p: string, project: Project): Effect.Effect<void, E> =>
-      Effect.gen(function*() {
-        // what is below a named directory is excluded only if the directory itself isn't
-        if (!excluded(project, p) && fs.statSync(p).isDirectory()) {
-          for (const e of fs.readdirSync(p).sort()) {
-            if (!skipped(e)) yield* visit(path.join(p, e), project, true)
-          }
-        } else yield* visit(p, project, false)
-      })
-    // a nested project reached by a search: its own `paths`, else all of it
-    const enter = (project: Project): Effect.Effect<void, E> =>
-      Effect.gen(function*() {
-        reached(project)
-        for (const rel of project.paths ?? ["."]) {
-          const p = path.relative(process.cwd(), path.resolve(project.dir, rel)) || "."
-          if (!fs.existsSync(p)) missing.push(p)
-          else yield* named(p, project)
-        }
-      })
-
-    for (const p of paths.length ? paths : ["."]) {
-      if (!fs.existsSync(p)) {
-        missing.push(p)
-        continue
-      }
-      const project = yield* projects.of(p)
-      reached(project)
-      const before = files.size
-      yield* named(p, project)
-      if (files.size === before) empty.push(p)
-    }
-    // overlapping paths (`examples examples/a.test.ts`) find a file more than once: a Map keeps one
-    return {
-      files: [...files].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([file, project]) => ({ file, project })),
-      projects: [...searched.values()],
-      missing,
-      empty
-    }
-  })
-
-/** What narrowed the selection, in the words of the command line. */
-const filtersOf = (opts: Pick<RunOptions<unknown>, "test" | "tag" | "selectedBy">): Array<string> => [
-  ...opts.selectedBy,
-  ...(opts.test !== undefined ? [`--test ${JSON.stringify(opts.test)}`] : []),
-  ...(opts.tag !== undefined ? [`--tag ${JSON.stringify(opts.tag)}`] : [])
-]
-
-/** Why a run selected no tests, for the error message. */
-const whyEmpty = (selection: Selection): string => {
-  const where = selection.paths.length ? selection.paths.join(", ") : "."
-  if (selection.files === 0) return `no test files (*.test.ts) found in ${where}`
-  if (selection.tests === 0) return `${selection.files} test file(s) in ${where}, but none defines a test`
-  return `${selection.tests} test(s) in ${selection.files} file(s), but none matched ${selection.filters.join(" and ")}`
-}
-
-// --- planning
 
 const fnv1a = (s: string) => {
   let h = 0x811c9dc5
@@ -292,17 +196,19 @@ export interface Listing {
   readonly nodes: ReadonlyArray<ListedNode>
 }
 
+/** The selected tests of the listed files, with their options resolved (nearest wins) and their seeds. */
 export const plan = (
   listings: ReadonlyArray<Listing>,
-  opts: Pick<RunOptions<unknown>, "test" | "tag" | "ids" | "seed" | "root">
+  opts: { readonly root: string; readonly seed: number; readonly filter?: Filter | undefined }
 ): Array<PlannedTest> => {
   const planned: Array<PlannedTest & { only: boolean }> = []
+  const filter = opts.filter ?? {}
   // an exact id, key or short id selects exactly that test; anything else is a substring of the key
-  const exact = opts.test !== undefined &&
+  const exact = filter.test !== undefined &&
     listings.some((l) =>
       l.nodes.some((n) => {
         const key = testKey(l.project.key, n.id)
-        return n.id === opts.test || key === opts.test || (n.kind === "test" && shortId(key) === opts.test)
+        return n.id === filter.test || key === filter.test || (n.kind === "test" && shortId(key) === filter.test)
       })
     )
   for (const { nodes, path: file, project } of listings) {
@@ -319,13 +225,15 @@ export const plan = (
       const key = testKey(project.key, node.id)
       const sid = shortId(key)
       if (
-        opts.test !== undefined &&
-        (exact ? node.id !== opts.test && key !== opts.test && sid !== opts.test : !key.includes(opts.test))
+        filter.test !== undefined &&
+        (exact ? node.id !== filter.test && key !== filter.test && sid !== filter.test : !key.includes(filter.test))
       ) {
         continue
       }
-      if (opts.tag !== undefined && !tags.includes(opts.tag)) continue
-      if (opts.ids !== undefined && !opts.ids.has(key) && !opts.ids.has(testKey(project.key, chain[0].id))) continue
+      if (filter.tag !== undefined && !tags.includes(filter.tag)) continue
+      if (filter.keys !== undefined && !filter.keys.has(key) && !filter.keys.has(testKey(project.key, chain[0].id))) {
+        continue
+      }
       const skip = nearest("skip")
       planned.push({
         project: project.key,
@@ -333,8 +241,8 @@ export const plan = (
         shortId: sid,
         file: fileKey,
         tags,
-        timeoutMs: nearest("timeoutMs") ?? project.defaults.timeoutMs,
-        retries: nearest("retries") ?? project.defaults.retries,
+        timeoutMs: nearest("timeoutMs") ?? (project.defaults ?? builtinDefaults).timeoutMs,
+        retries: nearest("retries") ?? (project.defaults ?? builtinDefaults).retries,
         ...(nearest("noAssertions") ? { noAssertions: true } : {}),
         seed: testSeed(opts.seed, node.id),
         only: chain.some((n) => n.only),
@@ -372,56 +280,75 @@ export const dispatchOrder = <A>(
   return ranked.map((r) => r.file)
 }
 
-// --- running
 
-export const run = <E>(opts: RunOptions<E>) =>
-  Effect.gen(function*() {
-    const startedAt = Date.now()
-    const client = yield* RpcClient.make(ExecutorRpcs)
-    const { empty, files, missing, projects } = yield* discover(opts.paths, opts.projects)
-    if (missing.length > 0) {
-      yield* Console.error(`No such file or directory: ${missing.join(", ")}`)
-      return 1
-    }
-    if (empty.length > 0) {
-      for (const p of empty) {
-        yield* Console.error(
-          fs.statSync(p).isDirectory()
-            ? `${p}: no test files (*.test.ts) in it${
-              projects.some((project) => project.exclude.length) ? " (after excluding config `exclude` patterns)" : ""
-            }`
-            : `${p}: not a test file (*.test.ts)`
-        )
-      }
-      return 1
-    }
+// --- listing
 
-    const listed = yield* Effect.forEach(
+/** A file whose listing failed (a load error, or an executor that died): kept, so it can't vanish. */
+export interface LoadFailure extends TestFile {
+  readonly message: string
+}
+
+/** What `list` found: the files' trees, the files that failed to list, and the tests selected. */
+export interface Listed {
+  readonly listings: ReadonlyArray<Listing>
+  readonly failures: ReadonlyArray<LoadFailure>
+  readonly planned: ReadonlyArray<PlannedTest>
+}
+
+const describe = (e: unknown): string => {
+  const cause = (e as any)?.reason?.cause ?? (e as any)?.cause
+  return `${String(e)}${cause ? `\n  caused by: ${cause instanceof Error ? cause.stack : String(cause)}` : ""}`
+}
+
+const listFiles = (
+  client: RpcClient.FromGroup<typeof ExecutorRpcs>,
+  files: ReadonlyArray<TestFile>
+) =>
+  Effect.map(
+    Effect.forEach(
       files,
       ({ file, project }) => Effect.result(client.ListFile({ path: file, root: project.dir })),
       { concurrency: "unbounded" }
-    )
-    const listings = listed.flatMap((r, i): Array<Listing> =>
-      r._tag === "Success" ? [{ project: files[i].project, path: files[i].file, nodes: r.success.nodes }] : []
-    )
-    // any file whose listing failed (a load error, or an executor that died) is kept, so it can't vanish
-    const loadErrors = listed.flatMap((r, i) => r._tag === "Failure" ? [{ ...files[i], error: r.failure }] : [])
+    ),
+    (listed) => ({
+      listings: listed.flatMap((r, i): Array<Listing> =>
+        r._tag === "Success" ? [{ project: files[i].project, path: files[i].file, nodes: r.success.nodes }] : []
+      ),
+      failures: listed.flatMap((r, i): Array<LoadFailure> =>
+        r._tag === "Failure"
+          ? [{
+            ...files[i],
+            message: r.failure._tag === "LoadError" ? r.failure.message : `could not list the file: ${describe(r.failure)}`
+          }]
+          : []
+      )
+    })
+  )
 
-    if (opts.list) {
-      opts.write(opts.listJson ? renderListJson(listings, opts) : renderList(listings, opts))
-      for (const { error, file } of loadErrors) {
-        opts.write(
-          `LOAD ERROR ${
-            error._tag === "LoadError"
-              ? `${path.relative(opts.root, error.path)}: ${error.message}`
-              : `${path.relative(opts.root, file)}: ${describe(error)}`
-          }\n`
-        )
-      }
-      return loadErrors.length ? 1 : 0
-    }
+/** The files' trees and the tests selected, without running anything or acquiring any fixture. */
+export const list = (config: RunConfig) =>
+  Effect.gen(function*() {
+    const client = yield* RpcClient.make(ExecutorRpcs)
+    const { failures, listings } = yield* listFiles(client, config.files)
+    return { listings, failures, planned: plan(listings, config) } satisfies Listed
+  })
 
-    const planned = plan(listings, opts)
+// --- running
+
+/**
+ * Runs the selected tests of `config.files`, sending every event to `reporter`, and returns the
+ * summary (also the last event). Fails with `NoTestsSelected` when the selection is empty.
+ */
+export const run = (config: RunConfig, reporter: Reporter) =>
+  Effect.gen(function*() {
+    const startedAt = Date.now()
+    const root = config.root
+    const client = yield* RpcClient.make(ExecutorRpcs)
+    const files = config.files
+    const projects = config.projects ?? [...new Set(files.map((f) => f.project))]
+    const { failures: loadErrors, listings } = yield* listFiles(client, files)
+
+    const planned = plan(listings, config)
     // a file that fails to list becomes a single failed planned test, so it can't vanish silently
     for (const { file, project } of loadErrors) {
       const id = posix(path.relative(project.dir, file))
@@ -429,7 +356,7 @@ export const run = <E>(opts: RunOptions<E>) =>
         project: project.key,
         id,
         shortId: shortId(testKey(project.key, id)),
-        file: posix(path.relative(opts.root, file)),
+        file: posix(path.relative(root, file)),
         tags: [],
         timeoutMs: 0,
         retries: 0,
@@ -437,31 +364,28 @@ export const run = <E>(opts: RunOptions<E>) =>
       })
     }
     const testsIn = (l: Listing) => l.nodes.filter((node) => node.kind === "test").length
-    // a run that selects nothing is red: an agent must never read "nothing ran" as "all green"
+    const relative = (file: string | undefined) => file !== undefined ? posix(path.relative(root, file)) : undefined
     const selection: Selection = {
-      root: opts.root,
-      ...(opts.config !== undefined ? { config: posix(path.relative(opts.root, opts.config)) } : {}),
+      root,
+      ...(config.config !== undefined ? { config: relative(config.config) } : {}),
       projects: projects.map((project): SelectedProject => ({
         project: project.key,
-        ...(project.config !== undefined ? { config: posix(path.relative(opts.root, project.config)) } : {}),
+        ...(project.config !== undefined ? { config: relative(project.config) } : {}),
         files: files.filter((f) => f.project === project).length,
         tests: listings.filter((l) => l.project === project).reduce((n, l) => n + testsIn(l), 0)
       })),
-      paths: opts.paths,
+      paths: config.description?.paths ?? [],
       files: files.length,
       tests: listings.reduce((n, l) => n + testsIn(l), 0),
-      filters: filtersOf(opts)
+      filters: config.description?.filters ?? []
     }
-    if (planned.length === 0) {
-      yield* Console.error(`No tests selected: ${whyEmpty(selection)}`)
-      return 1
-    }
+    if (planned.length === 0) return yield* new NoTestsSelected({ selection })
 
     const keyOf = (e: { readonly project: string; readonly id: string }) => testKey(e.project, e.id)
     const byKey = new Map(planned.map((t) => [keyOf(t), t]))
     const terminal = new Map<string, TestFinished>()
     const started = new Set<string>()
-    const sources = makeSources()
+    const sources = makeSources(root)
     const emit = (event: TestEvent) => {
       let e = event
       if (e._tag === "TestFinished") {
@@ -470,7 +394,7 @@ export const run = <E>(opts: RunOptions<E>) =>
         terminal.set(keyOf(e), e)
       }
       if (e._tag === "TestStarted") started.add(keyOf(e))
-      opts.reporter.onEvent(e)
+      reporter.onEvent(e)
     }
     const finished = (t: PlannedTest, status: Status, extra: Partial<TestFinished> = {}): TestFinished => ({
       _tag: "TestFinished",
@@ -489,19 +413,14 @@ export const run = <E>(opts: RunOptions<E>) =>
     emit({
       _tag: "RunPlanned",
       schemaVersion,
-      runSeed: opts.seed,
+      runSeed: config.seed,
       selection,
       tests: planned.map(({ skip, ...t }) => skip ? { ...t, skip } : t)
     })
-    for (const { error, file, project } of loadErrors) {
+    for (const { file, message, project } of loadErrors) {
       const t = byKey.get(testKey(project.key, posix(path.relative(project.dir, file))))
       if (t === undefined) continue
-      emit(finished(t, "failed", {
-        failures: [{
-          kind: "load",
-          message: error._tag === "LoadError" ? error.message : `could not list the file: ${describe(error)}`
-        }]
-      }))
+      emit(finished(t, "failed", { failures: [{ kind: "load", message }] }))
     }
     for (const t of planned) {
       if (t.skip !== undefined && !terminal.has(keyOf(t))) emit(finished(t, "skipped", { skipReason: t.skip }))
@@ -511,7 +430,7 @@ export const run = <E>(opts: RunOptions<E>) =>
     const projectOf = new Map(listings.map((l) => [l.path, l.project]))
     for (const t of planned) {
       if (t.skip !== undefined || terminal.has(keyOf(t))) continue
-      const file = path.resolve(opts.root, t.file)
+      const file = path.resolve(root, t.file)
       let entry = byFile.get(file)
       if (entry === undefined) byFile.set(file, entry = { project: projectOf.get(file)!, tests: [], keys: [] })
       entry.tests.push({
@@ -523,7 +442,10 @@ export const run = <E>(opts: RunOptions<E>) =>
       })
       entry.keys.push(keyOf(t))
     }
-    const order = dispatchOrder([...byFile].map(([file, { keys }]) => [file, keys] as const), opts.history)
+    const order = dispatchOrder(
+      [...byFile].map(([file, { keys }]) => [file, keys] as const),
+      config.history ?? (() => undefined)
+    )
 
     const bail = yield* Deferred.make<void>()
     let bailed = false
@@ -535,14 +457,14 @@ export const run = <E>(opts: RunOptions<E>) =>
           path: file,
           root: project.dir,
           project: project.key,
-          configs: project.configs,
-          concurrency: opts.testsPerFile,
+          configs: project.configs ?? [],
+          concurrency: config.testsPerFile ?? TESTS_PER_FILE,
           tests
         }).pipe(
           Stream.runForEach((e) =>
             Effect.suspend(() => {
               emit(e)
-              if (opts.bail && e._tag === "TestFinished" && (e.status === "failed" || e.status === "timedOut")) {
+              if (config.bail && e._tag === "TestFinished" && (e.status === "failed" || e.status === "timedOut")) {
                 bailed = true
                 return Deferred.succeed(bail, void 0)
               }
@@ -568,10 +490,12 @@ export const run = <E>(opts: RunOptions<E>) =>
       { concurrency: "unbounded", discard: true }
     )
     // completeness guarantee: every planned test ends in exactly one terminal event,
-    // whether the run completed, bailed, or was interrupted (Ctrl-C)
+    // whether the run completed, bailed, or was interrupted (Ctrl-C, a cancelled request)
     let cancelled = false
+    let summary: RunFinished | undefined
+    const count = (s: Status) => [...terminal.values()].filter((e) => e.status === s).length
     const finalize = Effect.sync(() => {
-      const reason = bailed ? "--bail" : "Ctrl-C"
+      const reason = bailed ? "bail" : "cancellation"
       for (const t of planned) {
         if (terminal.has(keyOf(t))) continue
         emit(
@@ -582,7 +506,7 @@ export const run = <E>(opts: RunOptions<E>) =>
             : finished(t, "skipped", { skipReason: `not run: ${reason}` })
         )
       }
-      emit({
+      summary = {
         _tag: "RunFinished",
         passed: count("passed"),
         failed: count("failed"),
@@ -593,76 +517,15 @@ export const run = <E>(opts: RunOptions<E>) =>
         durationMs: Date.now() - startedAt,
         bailed,
         cancelled
-      })
-      opts.reporter.onEnd()
+      }
+      emit(summary)
+      reporter.onEnd()
     })
-    const count = (s: Status) => [...terminal.values()].filter((e) => e.status === s).length
 
     // bail = interrupt every in-flight RunFile; executors interrupt the test fibers, finalizers run
     yield* Effect.raceFirst(work, Deferred.await(bail)).pipe(
       Effect.onInterrupt(() => Effect.sync(() => void (cancelled = true))),
       Effect.ensuring(finalize)
     )
-
-    return count("failed") + count("timedOut") + count("interrupted") > 0 ? 1 : 0
+    return summary!
   })
-
-const describe = (e: unknown): string => {
-  const cause = (e as any)?.reason?.cause ?? (e as any)?.cause
-  return `${String(e)}${cause ? `\n  caused by: ${cause instanceof Error ? cause.stack : String(cause)}` : ""}`
-}
-
-const renderListJson = (
-  listings: ReadonlyArray<Listing>,
-  opts: Pick<RunOptions<unknown>, "test" | "tag" | "ids" | "seed" | "root">
-) => {
-  const planned = new Map(plan(listings, opts).map((t) => [testKey(t.project, t.id), t]))
-  const keys = [...planned.keys()]
-  return listings.flatMap((l) =>
-    l.nodes.map((n) => ({ project: l.project.key, node: n, key: testKey(l.project.key, n.id) }))
-  )
-    .filter(({ key, node }) => node.kind === "suite" ? keys.some((k) => k.startsWith(key)) : planned.has(key))
-    .map(({ key, node, project }) =>
-      JSON.stringify({ project, ...node, ...(node.kind === "test" ? { resolved: planned.get(key) } : {}) }) + "\n"
-    )
-    .join("")
-}
-
-// --- --list: the tree, with resolved data, without running or acquiring anything
-
-const renderList = (
-  listings: ReadonlyArray<Listing>,
-  opts: Pick<RunOptions<unknown>, "test" | "tag" | "ids" | "seed" | "root">
-) => {
-  const selected = new Set(plan(listings, opts).map((t) => testKey(t.project, t.id)))
-  let out = ""
-  for (const { nodes, project } of listings) {
-    const byId = new Map(nodes.map((n) => [n.id, n]))
-    const depth = (n: ListedNode): number => n.parent === undefined ? 0 : 1 + depth(byId.get(n.parent)!)
-    const visible = new Set<string>()
-    for (const n of nodes) {
-      if (n.kind !== "test" || !selected.has(testKey(project.key, n.id))) continue
-      for (let p: ListedNode | undefined = n; p; p = p.parent !== undefined ? byId.get(p.parent) : undefined) {
-        visible.add(p.id)
-      }
-    }
-    for (const n of nodes) {
-      if (!visible.has(n.id)) continue
-      const bits: Array<string> = []
-      if (n.tags.length) bits.push(`tags=${n.tags.join(",")}`)
-      if (n.timeoutMs !== undefined) bits.push(`timeout=${n.timeoutMs}ms`)
-      if (n.retries !== undefined) bits.push(`retries=${n.retries}`)
-      if (n.skip) bits.push(`skip="${n.skip}"`)
-      if (n.only) bits.push("only")
-      if (n.noAssertions) bits.push("noAssertions")
-      for (const f of n.fixtures) bits.push(`provide=${f.name}`)
-      const label = n.kind === "suite"
-        ? (n.parent === undefined ? testKey(project.key, n.name) : `${n.name}/`)
-        : `[${shortId(testKey(project.key, n.id))}] ${n.name}`
-      out += `${"  ".repeat(depth(n))}${label}${bits.length ? `  [${bits.join(" ")}]` : ""}${
-        n.kind === "test" ? `  at=${n.location ?? "?"}` : ""
-      }\n`
-    }
-  }
-  return out + `${selected.size} tests selected\n`
-}

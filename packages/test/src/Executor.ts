@@ -26,7 +26,7 @@ import { locationFromStack } from "./CallSite.ts"
 import type { Failure, ListedNode, RunFileTest, Status, TestFinished } from "./Protocol.ts"
 import { ExecutorRpcs, LoadError } from "./Protocol.ts"
 import type { Fixture, Node, SuiteNode, TestNode } from "./Test.ts"
-import { isConfig, isNode, toMillis } from "./Test.ts"
+import { decodeConfig, isNode, toMillis } from "./Test.ts"
 
 Error.stackTraceLimit = 50
 
@@ -134,11 +134,10 @@ const loadConfig = (file: string) =>
     try: () => import(pathToFileURL(file).href),
     catch: (e) => new LoadError({ path: file, message: e instanceof Error ? e.stack ?? e.message : String(e) })
   }).pipe(
-    Effect.flatMap((mod) =>
-      isConfig(mod.default)
-        ? Effect.succeed(mod.default.shared ?? [])
-        : Effect.fail(new LoadError({ path: file, message: "the config's default export is not a Test.config(...)" }))
-    )
+    // decoding keeps each Layer value as it is: a shared layer is matched by identity
+    Effect.flatMap((mod) => decodeConfig(mod.default)),
+    Effect.mapError((e) => e._tag === "SchemaError" ? new LoadError({ path: file, message: e.message }) : e),
+    Effect.map((config) => config.shared ?? [])
   )
 
 /**
@@ -461,7 +460,18 @@ const assertionFailures = (e: AssertionError, file: string, note?: string): Arra
       : {}),
     ...(location ? { location } : {}),
     ...(origin && location && (origin.file !== location.file || origin.line !== location.line) ? { origin } : {}),
-    ...(note !== undefined ? { note } : {})
+    ...(note !== undefined ? { note } : {}),
+    ...(e.counterexample !== undefined
+      ? {
+        counterexample: {
+          input: e.counterexample.input,
+          ...(e.counterexample.initialInput !== undefined ? { initialInput: e.counterexample.initialInput } : {}),
+          runs: e.counterexample.runs,
+          shrinks: e.counterexample.shrinks,
+          replay: e.counterexample.replay
+        }
+      }
+      : {})
   }]
 }
 

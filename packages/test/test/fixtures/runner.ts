@@ -1,5 +1,6 @@
 // Tests the runner runs in Runner.test.ts (not a *.test.ts file, so it is not discovered).
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import * as Assert from "../../src/Assert.ts"
 import * as Test from "../../src/Test.ts"
 import { helper } from "./helper.ts"
@@ -54,6 +55,9 @@ export default Test.suite("runner", [
     Assert.isTrue(true)
     await tick()
     Assert.isTrue(true)
+  }),
+  Test.property("property", Schema.Int, (n) => {
+    Assert.isTrue(n < 10, "small")
   }),
   Test.test("async b", async () => {
     await tick()

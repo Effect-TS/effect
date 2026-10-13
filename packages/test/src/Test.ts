@@ -9,10 +9,12 @@
 // its default export is a `Node<never>` (see `Runnable`).
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
-import type * as Layer from "effect/Layer"
+import * as Layer from "effect/Layer"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
+import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import { callSite } from "./CallSite.ts"
+import * as Property from "./internal/property.ts"
 import type { Location } from "./Protocol.ts"
 
 /**
@@ -97,6 +99,37 @@ export function test(name: string, body: any, options: Options = {}): TestNode<a
   return make({ _tag: "Test", name, body: node, options, layers: [], location: callSite() })
 }
 
+export type { PropertyGenerator, PropertyInput, PropertyOptions, PropertyValue } from "./internal/property.ts"
+
+/**
+ * A property test: `body` must pass for every value generated from `input`, an Arbitrary
+ * (`effect/Arbitrary`), a Schema, or a tuple or struct of those.
+ *
+ *   Test.property("a user survives a JSON round trip", User, (user) => {
+ *     Assert.equal(decode(encode(user)), user)
+ *   })
+ *
+ * - The body makes assertions, or returns `false`, fails, dies or rejects: every way of failing
+ *   falsifies the property, and the failing value is shrunk to a smallest one.
+ * - The test fails once, located at the failing assertion, with the counterexample as data (the
+ *   shrunk input, the first failing input, runs, shrinks, and a replay token).
+ * - Values come from the test's seeded `Random`, so `--seed` reproduces a failing run; the
+ *   `replay` option re-runs exactly the shrunk case. Each value gets a fresh TestClock.
+ * - Options: `runs`, `size`, `maxDiscards`, `maxShrinks`, `replay`, `label`, and the usual test
+ *   options. A fixture per value is `Effect.provide(Layer.fresh(layer))` inside the body.
+ */
+export const property = <const I extends Property.PropertyInput, E = never, R = never>(
+  name: string,
+  input: I,
+  body: (
+    value: Property.PropertyValue<I>
+  ) => void | boolean | PromiseLike<void | boolean> | Effect.Effect<void | boolean, E, R>,
+  options?: Property.PropertyOptions & Options
+): TestNode<Exclude<R, Scope.Scope>> => {
+  const { label, maxDiscards, maxShrinks, replay, runs, size, ...rest } = options ?? {}
+  return test(name, Property.check(input, body, { label, maxDiscards, maxShrinks, replay, runs, size }), rest)
+}
+
 export const suite = <const Children extends ReadonlyArray<Node<any>>>(
   name: string,
   children: Children,
@@ -138,19 +171,30 @@ export const provide = <ROut, E, RIn>(
 
 // --- config
 
+/** A whole number, at least `minimum`. */
+const Count = (minimum: number) => Schema.Int.check(Schema.isGreaterThanOrEqualTo(minimum))
+
+/** A duration as written in a config: a `Duration`, milliseconds, or a string such as `"30 seconds"`. */
+const DurationInput = Schema.Union([Schema.Duration, Schema.DurationFromMillis, Schema.DurationFromString])
+
+const SharedLayer = Schema.declare(
+  (u): u is Layer.Layer<never, unknown, never> => Layer.isLayer(u),
+  { expected: "a Layer" }
+)
+
 /**
- * The test config: the default export of `etest.config.ts`. Its directory is a project's root,
- * and a test file belongs to the nearest one above it (its ids are relative to that root). The
- * outermost one, up to the repository root, is the workspace root: it alone sets `workers`, and
- * its `defaults` and `shared` layers apply to every project. Every key is optional, and an
- * unknown key is an error.
+ * The test config: the default export of `etest.config.ts`, decoded with this Schema wherever
+ * it is loaded (`decodeConfig`). Its directory is a project's root, and a test file belongs to
+ * the nearest one above it (its ids are relative to that root). The outermost one, up to the
+ * repository root, is the workspace root: it alone sets `workers`, and its `defaults` and
+ * `shared` layers apply to every project. Every key is optional, and an unknown key is an error.
  */
-export interface Config {
+export const Config = Schema.Struct({
   /**
    * Where this project's `*.test.ts` files are when it is searched without paths (default: all of
    * it), relative to its root. Paths given on the command line replace these.
    */
-  readonly paths?: ReadonlyArray<string>
+  paths: Schema.optionalKey(Schema.Array(Schema.String)),
   /**
    * Glob patterns of files and directories to skip while searching this project's directories.
    * They are matched against paths relative to its root: `*` matches within a path segment, `**`
@@ -158,18 +202,22 @@ export interface Config {
    * `node_modules` and dot-directories are always skipped. A file named on the command line
    * is never excluded.
    */
-  readonly exclude?: ReadonlyArray<string>
+  exclude: Schema.optionalKey(Schema.Array(Schema.String)),
   /**
-   * How many executors (worker threads) a run uses, unless `--workers` says otherwise (default 2).
-   * Only in the workspace root's config: a nested project's config that sets it is an error.
+   * How many executors (worker threads) a run uses, unless the run says otherwise (`etest
+   * --workers`; default 2). Only in the workspace root's config: a nested project's config that
+   * sets it is an error.
    */
-  readonly workers?: number
+  workers: Schema.optionalKey(Count(1)),
   /**
    * Defaults for test options, for every test in the project. An option set on a suite or
    * test wins (the nearest one); then this config's value, then the workspace root's config's
    * (one key at a time), then the built-in default (timeout 60 seconds, no retries).
    */
-  readonly defaults?: Pick<Options, "timeout" | "retries">
+  defaults: Schema.optionalKey(Schema.Struct({
+    timeout: Schema.optionalKey(DurationInput),
+    retries: Schema.optionalKey(Count(0))
+  })),
   /**
    * Layers shared by the run: in the workspace root's config by every project, in a nested
    * project's config by that project's files. Each is built lazily, the first time any file provides
@@ -179,13 +227,16 @@ export interface Config {
    * requirements): they are built from the run's context, never from the file that happened
    * to ask first.
    */
-  readonly shared?: ReadonlyArray<Layer.Layer<never, unknown, never>>
-}
+  shared: Schema.optionalKey(Schema.Array(SharedLayer))
+})
+
+/** A test config as written: the argument of `Test.config`. */
+export type Config = typeof Config.Encoded
 
 export const config = (config: Config): Config => config
 
-export const isConfig = (u: unknown): u is Config =>
-  typeof u === "object" && u !== null && (!("shared" in u) || Array.isArray((u as Config).shared))
+/** Decodes a config module's default export. Every problem is reported, an unknown key included. */
+export const decodeConfig = Schema.decodeUnknownEffect(Config, { onExcessProperty: "error", errors: "all" })
 
 // --- options transformers (pipeable, type-preserving)
 

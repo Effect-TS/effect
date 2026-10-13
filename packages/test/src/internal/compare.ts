@@ -7,6 +7,7 @@ import * as HashSet from "effect/HashSet"
 import type * as SchemaIssue from "effect/SchemaIssue"
 import { makeFormatterStandardSchemaV1 } from "effect/SchemaIssue"
 import { type Mismatch, show } from "../AssertionError.ts"
+import { stringMismatch } from "./diff.ts"
 
 export const MatcherTypeId: unique symbol = Symbol.for("@effect/test/Matcher") as any
 
@@ -51,6 +52,8 @@ type Path = ReadonlyArray<PropertyKey>
 
 const isObjectLike = (u: unknown): u is object => typeof u === "object" && u !== null
 
+const isPlainPrototype = (proto: unknown) => proto === Object.prototype || proto === null
+
 const walk = (
   a: unknown,
   e: unknown,
@@ -64,6 +67,10 @@ const walk = (
     return
   }
   if (a === e || (typeof a === "number" && typeof e === "number" && a !== a && e !== e)) return
+  if (typeof a === "string" && typeof e === "string") {
+    out.push(stringMismatch(path, a, e))
+    return
+  }
   if (!isObjectLike(a) || !isObjectLike(e)) {
     out.push({ path, expected: show(e), actual: show(a) })
     return
@@ -88,7 +95,8 @@ const walkObjects = (
 ): void => {
   const pa = Object.getPrototypeOf(a)
   const pe = Object.getPrototypeOf(e)
-  if (pa !== pe) {
+  // a plain object and one without a prototype are both plain records (generators make the latter on purpose)
+  if (pa !== pe && !(isPlainPrototype(pa) && isPlainPrototype(pe))) {
     const [sa, se] = [show(a), show(e)]
     out.push(
       sa === se

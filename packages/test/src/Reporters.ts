@@ -1,9 +1,11 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
 import * as Schema from "effect/Schema"
-import { SLOW_MS, testKey } from "./Coordinator.ts"
+import * as path from "node:path"
+import { type Listed, shortId, SLOW_MS, testKey } from "./Coordinator.ts"
 import type {
   Failure,
+  ListedNode,
   Location,
   Mismatch,
   PlannedTest,
@@ -71,6 +73,16 @@ const renderFailure = (f: Failure): Array<string> => {
     for (const l of more) out.push(`      ${l}`)
   }
   if (mismatches.length > MAX_MISMATCHES) out.push(`    ... (+${mismatches.length - MAX_MISMATCHES} more)`)
+  if (f.counterexample) {
+    const c = f.counterexample
+    out.push(`  counterexample: ${c.input}`)
+    if (c.initialInput !== undefined) out.push(`  first failing input: ${c.initialInput}`)
+    out.push(
+      `  after ${c.runs} run${c.runs === 1 ? "" : "s"} and ${c.shrinks} shrink${
+        c.shrinks === 1 ? "" : "s"
+      }; replay: ${c.replay}`
+    )
+  }
   if (f.errorTag) out.push(`  _tag: ${f.errorTag}`)
   if (f.errorFields) out.push(`  fields: ${f.errorFields}`)
   if (f.note) out.push(`  note: ${f.note}`)
@@ -298,4 +310,58 @@ export const human = (ctx: ReporterContext): Reporter => {
       ctx.write(out.join("\n") + "\n")
     }
   }
+}
+
+// --- listings (`etest --list`): the tree, with resolved data, without running or acquiring anything
+
+/** The selected tests' trees as text, with each test's short id; files that failed to list as `LOAD ERROR`. */
+export const listTree = (listed: Listed, root: string): string => {
+  const selected = new Set(listed.planned.map((t) => testKey(t.project, t.id)))
+  let out = ""
+  for (const { nodes, project } of listed.listings) {
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+    const depth = (n: ListedNode): number => n.parent === undefined ? 0 : 1 + depth(byId.get(n.parent)!)
+    const visible = new Set<string>()
+    for (const n of nodes) {
+      if (n.kind !== "test" || !selected.has(testKey(project.key, n.id))) continue
+      for (let p: ListedNode | undefined = n; p; p = p.parent !== undefined ? byId.get(p.parent) : undefined) {
+        visible.add(p.id)
+      }
+    }
+    for (const n of nodes) {
+      if (!visible.has(n.id)) continue
+      const bits: Array<string> = []
+      if (n.tags.length) bits.push(`tags=${n.tags.join(",")}`)
+      if (n.timeoutMs !== undefined) bits.push(`timeout=${n.timeoutMs}ms`)
+      if (n.retries !== undefined) bits.push(`retries=${n.retries}`)
+      if (n.skip) bits.push(`skip="${n.skip}"`)
+      if (n.only) bits.push("only")
+      if (n.noAssertions) bits.push("noAssertions")
+      for (const f of n.fixtures) bits.push(`provide=${f.name}`)
+      const label = n.kind === "suite"
+        ? (n.parent === undefined ? testKey(project.key, n.name) : `${n.name}/`)
+        : `[${shortId(testKey(project.key, n.id))}] ${n.name}`
+      out += `${"  ".repeat(depth(n))}${label}${bits.length ? `  [${bits.join(" ")}]` : ""}${
+        n.kind === "test" ? `  at=${n.location ?? "?"}` : ""
+      }\n`
+    }
+  }
+  return out + `${selected.size} tests selected\n` + loadErrors(listed, root)
+}
+
+const loadErrors = (listed: Listed, root: string) =>
+  listed.failures.map(({ file, message }) => `LOAD ERROR ${path.relative(root, file)}: ${message}\n`).join("")
+
+/** The selected tests' trees as JSON lines: every node with its project, each test with its resolved options. */
+export const listJsonl = (listed: Listed, root: string): string => {
+  const planned = new Map(listed.planned.map((t) => [testKey(t.project, t.id), t]))
+  const keys = [...planned.keys()]
+  return listed.listings.flatMap((l) =>
+    l.nodes.map((n) => ({ project: l.project.key, node: n, key: testKey(l.project.key, n.id) }))
+  )
+    .filter(({ key, node }) => node.kind === "suite" ? keys.some((k) => k.startsWith(key)) : planned.has(key))
+    .map(({ key, node, project }) =>
+      JSON.stringify({ project, ...node, ...(node.kind === "test" ? { resolved: planned.get(key) } : {}) }) + "\n"
+    )
+    .join("") + loadErrors(listed, root)
 }

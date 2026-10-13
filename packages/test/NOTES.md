@@ -223,13 +223,46 @@ wires both sides together.
    - **Narrow and return.** Assertions that prove something return it, and are always fatal: `some`, `success`,
      `failure` (exactly one typed failure in an Exit's Cause; annotations don't matter), `defect`, `tag`, `instanceOf`,
      `defined`, `single`, `includes` (on an iterable), `match`, `throws`, `rejects`, `decodes`. `isTrue` is the only
-     `asserts` function.
+     `asserts` function. `cause(exit)` returns what a failed Exit's Cause holds as plain data (`{ failures, defects,
+     interrupted }`), for Causes with more than one reason, where `failure` and `defect` expect exactly one.
    - **Equality.** `equal` follows `Equal.equals` (structural, `Equal` implementations decide for themselves) and also
-     requires a shared prototype for objects. `expected` may contain matchers; partial matching is explicit
-     (`Matcher.partial`). A failure lists every differing path (`["a"]["b"]: expected 1, got 2`). An Effect or Promise as the
-     actual value fails with a "forgot `yield*` / `await`?" hint. The expected value's type is checked against the actual
+     requires a shared prototype for objects (a plain object and one without a prototype count as the same kind: both
+     are plain records, and `effect/Arbitrary` generates the latter on purpose). `expected` may contain matchers; partial matching is explicit
+     (`Matcher.partial`). A failure lists every differing path (`["a"]["b"]: expected 1, got 2`). Strings: a short one is
+     shown whole; a one-line string over 60 characters shows where it first differs (an excerpt of each, with a caret); a
+     string that spans lines shows which lines differ (`-` expected, `+` actual), with one line of context and tabs
+     visible. An Effect or Promise as the actual value fails with a "forgot `yield*` / `await`?" hint (not an `Exit`, and
+     not an error: a tagged error is yieldable, but it is a value). The expected value's type is checked against the actual
      value's (`[A] extends [infer B] ? Expected<B> : never`, which works like `NoInfer` without breaking the inference of
      calls like `Option.none()`).
+   - **Matchers for Effect's data types**, typed (`partial` only goes into plain objects and arrays): `Matcher.some(x)`
+     (an `Option`), `Matcher.success(x)` / `Matcher.failure(x)` (an `Exit` or a `Result`; `failure` of an Exit needs
+     exactly one typed failure, like `Assert.failure`), `Matcher.tag("NotFound", { id: 1 })` (the case, and only the fields
+     named; a field the case doesn't have is a compile error when the matcher's type is known from where it is used).
+     Collections: `Matcher.every(x, { allowEmpty? })` (empty fails unless allowed, like `Assert.every`), and
+     `Matcher.includes(x)` for "some element".
+   - **Properties** (`effect/Arbitrary`). `Test.property(name, input, body, options?)` is a test whose `body` must pass
+     for every value generated from `input`: an Arbitrary, a Schema (`Arbitrary.schema`), or a tuple or struct of those.
+     `body` makes assertions (or returns `false`, or fails, or dies, or rejects). It is the only way to write a property
+     (decided: one way); the implementation is `src/internal/property.ts`.
+     - Every way of failing falsifies the property, so every one is shrunk; `effect/Arbitrary` alone treats a thrown
+       exception as a defect and wouldn't shrink it.
+     - The property owns the failures inside it (as `eventually` does), so the test fails once, and counts it as one
+       assertion. The failure is located at the failing assertion inside the property; its headline is `property
+       falsified: <the assertion's>`, and it carries a `counterexample` as data (`input`, `initialInput` when shrinking
+       changed it, `runs`, `shrinks`, `replay`). Reporters print it under the failure.
+     - Values are drawn from the test's seeded `Random`, so `--seed` reproduces a failing run; `{ replay }` re-runs
+       exactly the shrunk case. Each value gets a fresh TestClock (a live clock stays live). Options: `runs`, `size`,
+       `maxDiscards`, `maxShrinks`, `replay`, `label`. A filter that discards too much fails ("property gave up").
+     - A fixture per value is `Effect.provide(Layer.fresh(layer))` inside `body`; `Test.provide` shares one across all
+       values, like everything else on the test.
+   - **Optics** (`effect/Optic`). `Matcher.focus(optic, expected, label?)` matches a value whose focus through any optic
+     (Lens, Prism, Optional, Traversal) matches `expected`, so a matcher can look through an `Option`, a `Result`, a tagged
+     union's case, an array index or a Schema check, where plain shapes and `partial` can't. An optic doesn't record where
+     it looks, so its mismatches are reported at the matcher's place, as the label (default `focus`) plus the path inside
+     the focus (`pet["name"]: expected "max", got "rex"`). The focused value itself, narrowed, is
+     `Assert.success(Optic.getResult(value, optic))`: `success` lists a Schema issue (an optic that can't focus, a failed
+     decode) by its reasons rather than dumping it.
    - **The record.** Each test attempt gets an `AssertionRecord`: a `Context.Reference` for Effect tests (forked fibers
      inherit it), a module variable for plain tests, which therefore run one at a time per executor (no
      AsyncLocalStorage). Every call is counted (`assertions` in `TestFinished`), and every failure is recorded before it is
@@ -333,7 +366,9 @@ wires both sides together.
 - Only `Assert.*` calls count as assertions. A test that only uses `node:assert` (or `effect/testing/TestSchema`) fails the
   zero-assertion check unless it is marked `Test.noAssertions`.
 - Retries reuse the same seed for every attempt. Retries are meant for environmental flakes, not random ones.
-- No watch mode, snapshots, result cache, remote executors, property tests, general TestClock auto-advance (only
+- `effect/Arbitrary` is marked unstable. A replay token is passed back through the `replay` option only (no
+  `--replay` flag yet), and a property's runs and shrinking share the test's timeout.
+- No watch mode, snapshots, result cache, remote executors, general TestClock auto-advance (only
   `Assert.eventually` / `always` advance it), hang dumps or leak detection.
 - The K=4 files per executor and T=8 tests per file are hard-coded (`Cli.ts`); the slow threshold (5 s) too.
 - Projects share one executor pool: there are no per-project executor settings yet (preload, conditions, execArgv,
@@ -502,4 +537,5 @@ examples/typecheck.ts(15,11): error TS1360: Type 'SuiteNode<Database>' does not 
 ## Sample output
 
 Run `pnpm --dir packages/test demo` (agent reporter), add `--reporter human`, or `--list`, to see current output.
-The demo exits 1 on purpose: `examples/failures.test.ts` and parts of `examples/options.test.ts` fail intentionally.
+The demo exits 1 on purpose: `examples/failures.test.ts` and parts of `examples/options.test.ts` and
+`examples/properties.test.ts` fail intentionally.

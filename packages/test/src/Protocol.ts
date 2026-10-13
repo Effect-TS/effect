@@ -59,7 +59,18 @@ export const Failure = Schema.Struct({
   /** context, e.g. why a caught failure still fails the test */
   note: opt(Schema.String),
   /** the source at `location` */
-  source: opt(Schema.Array(SourceLine))
+  source: opt(Schema.Array(SourceLine)),
+  /** a property's smallest failing input (`Test.property`), and how to replay it */
+  counterexample: opt(Schema.Struct({
+    /** the shrunk input, formatted */
+    input: Schema.String,
+    /** the input that failed first, formatted, when shrinking changed it */
+    initialInput: opt(Schema.String),
+    runs: Schema.Number,
+    shrinks: Schema.Number,
+    /** pass it back as `replay` to re-run exactly this failure */
+    replay: Schema.String
+  }))
 })
 export type Failure = typeof Failure.Type
 

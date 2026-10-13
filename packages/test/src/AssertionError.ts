@@ -14,6 +14,18 @@ export interface Mismatch {
   readonly reason?: string | undefined
 }
 
+/** A property's failure: the smallest failing input found, and how to replay it. */
+export interface Counterexample {
+  /** the shrunk input, formatted */
+  readonly input: string
+  /** the input that failed first, formatted, when shrinking changed it */
+  readonly initialInput?: string | undefined
+  readonly runs: number
+  readonly shrinks: number
+  /** pass it back as `replay` to re-run exactly this failure */
+  readonly replay: string
+}
+
 export class AssertionError extends Error {
   readonly [TypeId] = TypeId
   /** the assertion that failed, e.g. `equal` */
@@ -25,6 +37,8 @@ export class AssertionError extends Error {
   readonly mismatches: ReadonlyArray<Mismatch>
   /** the failures this one stands for (`soft`) or that led to it (`eventually`) */
   readonly failures: ReadonlyArray<AssertionError>
+  /** a property's smallest failing input (`Test.property`) */
+  readonly counterexample: Counterexample | undefined
 
   constructor(options: {
     readonly assertion: string
@@ -32,6 +46,7 @@ export class AssertionError extends Error {
     readonly label?: string | undefined
     readonly mismatches?: ReadonlyArray<Mismatch> | undefined
     readonly failures?: ReadonlyArray<AssertionError> | undefined
+    readonly counterexample?: Counterexample | undefined
     /**
      * Where the assertion was called, for assertions that fail later (in another fiber, or
      * after an `await`), where the error's own stack no longer leads back to the test.
@@ -50,6 +65,7 @@ export class AssertionError extends Error {
     this.label = options.label
     this.mismatches = mismatches
     this.failures = options.failures ?? []
+    this.counterexample = options.counterexample
     if (options.site?.stack !== undefined) {
       this.stack = `${this.name}: ${this.message}\n${options.site.stack.split("\n").slice(1).join("\n")}`
     }

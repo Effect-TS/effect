@@ -28,8 +28,9 @@ import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import type * as TestClock from "effect/testing/TestClock"
-import { AssertionError, isAssertionError, type Mismatch, show } from "./AssertionError.ts"
+import { AssertionError, isAssertionError, show } from "./AssertionError.ts"
 import { type AssertionRecord, current, CurrentSoft, currentSoft } from "./AssertionRecord.ts"
+import { assertionErrorsIn, plural, reasonsOf, schemaIssueOf, shapeOf } from "./internal/cause.ts"
 import { compare, issueMismatches } from "./internal/compare.ts"
 import { describeTolerance, type Expected, isClose, type Tolerance } from "./Matcher.ts"
 
@@ -115,7 +116,8 @@ const isPromiseLike = (u: unknown): u is PromiseLike<unknown> =>
   typeof u === "object" && u !== null && typeof (u as any).then === "function"
 
 const notRunHint = (actual: unknown, expected: unknown): string | undefined => {
-  if (Effect.isEffect(actual) && !Exit.isExit(actual) && !Effect.isEffect(expected)) {
+  // an Exit is a result, and an error (a tagged error is yieldable) is a value: neither is a program that didn't run
+  if (Effect.isEffect(actual) && !Exit.isExit(actual) && !(actual instanceof Error) && !Effect.isEffect(expected)) {
     return "the actual value is an Effect, which has not run: did you forget `yield*`?"
   }
   if (isPromiseLike(actual) && !isPromiseLike(expected)) {
@@ -129,8 +131,6 @@ const notRunHint = (actual: unknown, expected: unknown): string | undefined => {
  * which makes TypeScript infer generic calls such as `Option.none()` badly in a union).
  */
 type ExpectedFor<A> = [A] extends [infer B] ? Expected<B> : never
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`
 
 // ----------------------------------------------------------------------------
 // equality
@@ -213,32 +213,10 @@ export function none<A>(option: Option.Option<A>, label?: string, ..._: Array<ne
   report(record, new AssertionError({ assertion: "none", headline: `expected None, got ${show(option)}`, label }))
 }
 
-/** One line per reason in a Cause, for failure messages. */
-const reasonsOf = (cause: Cause.Cause<unknown>): Array<Mismatch> =>
-  cause.reasons.map((r): Mismatch => ({
-    path: [],
-    reason: Cause.isFailReason(r)
-      ? `Fail(${show(r.error)})`
-      : Cause.isDieReason(r)
-      ? `Die(${r.defect instanceof Error ? `${r.defect.name}: ${r.defect.message}` : show(r.defect)})`
-      : `Interrupt(${r.fiberId === undefined ? "" : `fiber #${r.fiberId}`})`
-  }))
-
-const shapeOf = (cause: Cause.Cause<unknown>): string => {
-  const count = (pred: (r: Cause.Reason<unknown>) => boolean, word: string) => {
-    const n = cause.reasons.filter(pred).length
-    return n > 0 ? [plural(n, word)] : []
-  }
-  return [
-    ...count(Cause.isFailReason, "typed failure"),
-    ...count(Cause.isDieReason, "defect"),
-    ...count(Cause.isInterruptReason, "interruption")
-  ].join(", ") || "no reasons"
-}
-
 /**
  * Asserts that an `Exit` or a `Result` is a success, and returns its value. A failed
- * `Exit` is shown with every reason in its Cause.
+ * `Exit` is shown with every reason in its Cause, and a Schema issue (a failed decode, or an
+ * optic that couldn't focus: `Assert.success(Optic.getResult(value, optic))`) by its reasons.
  */
 export function success<A, E>(self: Exit.Exit<A, E> | Result.Result<A, E>, label?: string, ..._: Array<never>): A {
   const record = counted()
@@ -256,12 +234,17 @@ export function success<A, E>(self: Exit.Exit<A, E> | Result.Result<A, E>, label
   }
   if (Result.isResult(self)) {
     if (Result.isSuccess(self)) return self.success
+    const issue = schemaIssueOf(self.failure)
+    const mismatches = issue !== undefined ? issueMismatches(issue) : undefined
     return fatal(
       record,
       new AssertionError({
         assertion: "success",
-        headline: `expected a Success, got Failure(${show(self.failure)})`,
-        label
+        headline: mismatches !== undefined
+          ? `expected a Success, got a Failure with ${plural(mismatches.length, "Schema issue")}`
+          : `expected a Success, got Failure(${show(self.failure)})`,
+        label,
+        mismatches
       })
     )
   }
@@ -364,6 +347,53 @@ export function interrupted<A, E>(exit: Exit.Exit<A, E>, label?: string, ..._: A
       mismatches: Exit.isExit(exit) && Exit.isFailure(exit) ? reasonsOf(exit.cause) : []
     })
   )
+}
+
+/** What a failed `Exit`'s Cause holds, as plain data (see `Assert.cause`). */
+export interface CauseContents<E> {
+  /** the typed failures, in the Cause's order */
+  readonly failures: ReadonlyArray<E>
+  /** the defects, in the Cause's order */
+  readonly defects: ReadonlyArray<unknown>
+  /** whether it holds an interruption */
+  readonly interrupted: boolean
+}
+
+/**
+ * Asserts that an `Exit` failed, and returns what its Cause holds as plain data, to compare
+ * with `Assert.equal` and matchers. For Causes with more than one reason (parallel failures,
+ * a failure and a defect), where `Assert.failure` and `Assert.defect` expect exactly one:
+ *
+ *   Assert.equal(Assert.cause(exit), {
+ *     failures: Matcher.unordered([new NotFound({ id: 1 }), new NotFound({ id: 2 })]),
+ *     defects: [],
+ *     interrupted: false
+ *   })
+ */
+export function cause<A, E>(
+  exit: Exit.Exit<A, E> | Cause.Cause<E>,
+  label?: string,
+  ..._: Array<never>
+): CauseContents<E> {
+  const record = counted()
+  const c = Cause.isCause(exit) ? exit : Exit.isExit(exit) && Exit.isFailure(exit) ? exit.cause : undefined
+  if (c === undefined) {
+    return fatal(
+      record,
+      new AssertionError({
+        assertion: "cause",
+        headline: Exit.isExit(exit) && Exit.isSuccess(exit)
+          ? `expected a failure, got Success(${show(exit.value)})`
+          : `expected an Exit or a Cause, got ${show(exit)}`,
+        label
+      })
+    )
+  }
+  return {
+    failures: c.reasons.flatMap((r) => Cause.isFailReason(r) ? [r.error] : []),
+    defects: c.reasons.flatMap((r) => Cause.isDieReason(r) ? [r.defect] : []),
+    interrupted: c.reasons.some(Cause.isInterruptReason)
+  }
 }
 
 /** Asserts that a tagged value (`_tag`) has this tag, and returns it narrowed to that member. */
@@ -741,16 +771,6 @@ export function decodes<S extends Schema.Codec<any, any, never, any>>(
 // ----------------------------------------------------------------------------
 
 /** The assertion errors a failed check died or failed with, if that is all it failed with. */
-const assertionErrorsIn = (cause: Cause.Cause<unknown>): Array<AssertionError> | undefined => {
-  const errors: Array<AssertionError> = []
-  for (const r of cause.reasons) {
-    if (Cause.isInterruptReason(r)) continue
-    const value = Cause.isFailReason(r) ? r.error : r.defect
-    if (!isAssertionError(value)) return undefined
-    errors.push(value)
-  }
-  return errors.length > 0 ? errors : undefined
-}
 
 const isTestClock = (clock: Clock.Clock): clock is TestClock.TestClock =>
   typeof (clock as Partial<TestClock.TestClock>).adjust === "function"

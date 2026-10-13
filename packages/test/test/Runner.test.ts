@@ -80,6 +80,16 @@ export default Test.suite("Runner", [
     Assert.equal(r.status, "passed")
     Assert.equal(r.assertions, 3)
   }),
+  check("property", (r) => {
+    // one failure: the shrunk counterexample, at the assertion inside the property
+    const failure = Assert.single(r.failures)
+    Assert.equal(
+      failure,
+      Matcher.partial({ kind: "assertion", message: "property falsified: expected true, got false", label: "small" })
+    )
+    Assert.equal(Assert.defined(failure.counterexample).input, "10")
+    Assert.equal(Assert.defined(failure.location), Matcher.partial({ file: "test/fixtures/runner.ts" }))
+  }),
   check("async b", (r) => {
     Assert.equal(r.assertions, 1)
   })

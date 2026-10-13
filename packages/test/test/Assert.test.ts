@@ -1,3 +1,4 @@
+import * as Cause from "effect/Cause"
 import * as Chunk from "effect/Chunk"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
@@ -5,6 +6,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
+import * as Optic from "effect/Optic"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Result from "effect/Result"
@@ -52,9 +54,11 @@ export default Test.suite("Assert", [
     Test.test("objects must share a prototype", () => {
       const error = fails(() => Assert.equal<object>(new User("ann"), { name: "ann" }))
       Assert.equal(error.headline, "expected {\"name\":\"ann\"}, got User({\"name\":\"ann\"})")
+      // an object without a prototype is a plain record too (Arbitrary generates them on purpose)
       const bare = Object.assign(Object.create(null), { name: "ann" })
-      Assert.equal(fails(() => Assert.equal<object>(bare, { name: "ann" })).mismatches, [
-        { path: [], reason: "expected a plain object, got an object without a prototype: {\"name\":\"ann\"}" }
+      Assert.equal<object>(bare, { name: "ann" })
+      Assert.equal(fails(() => Assert.equal<object>(bare, { name: "bob" })).mismatches, [
+        { path: ["name"], expected: "\"bob\"", actual: "\"ann\"" }
       ])
       Assert.equal(new User("ann"), new User("ann"))
     }),
@@ -158,6 +162,21 @@ export default Test.suite("Assert", [
       Assert.equal(fails(() => Assert.success(Result.fail("e"))).headline, "expected a Success, got Failure(\"e\")")
     }),
     Test.test(
+      "a Schema issue in a Failure or a Cause is listed by its reasons (an optic that can't focus, a decode)",
+      Effect.gen(function*() {
+        type Owner = { readonly pet: Option.Option<{ readonly name: string }> }
+        const petName = Optic.id<Owner>().key("pet").compose(Optic.some()).key("name")
+        Assert.equal(Assert.success(Optic.getResult({ pet: Option.some({ name: "rex" }) }, petName)), "rex")
+        const error = fails(() => Assert.success(Optic.getResult({ pet: Option.none() }, petName)))
+        Assert.equal(error.headline, "expected a Success, got a Failure with 1 Schema issue")
+        Assert.equal(error.mismatches, [{ path: [], reason: "Expected a Some value" }])
+        const decoded = yield* Effect.exit(
+          Schema.decodeUnknownEffect(Schema.Struct({ id: Schema.Number }))({ id: "1" })
+        )
+        Assert.equal(fails(() => Assert.success(decoded)).mismatches, [{ path: ["id"], reason: "Expected number" }])
+      })
+    ),
+    Test.test(
       "failure of an Exit: exactly one typed failure, annotations don't matter",
       Effect.gen(function*() {
         const find = Effect.fn("find")(function*(id: number) {
@@ -177,6 +196,24 @@ export default Test.suite("Assert", [
         const exit = yield* Effect.exit(Effect.fail(new Forbidden()))
         const error = fails(() => Assert.success(exit))
         Assert.equal(error.headline, "expected a successful Exit, got a failure with 1 typed failure")
+      })
+    ),
+    Test.test(
+      "cause: what a Cause holds, as data (for more than one reason)",
+      Effect.gen(function*() {
+        const both = Exit.failCause(
+          Cause.combine(Cause.fail(new NotFound({ id: 1 })), Cause.fail(new NotFound({ id: 2 })))
+        )
+        Assert.equal(Assert.cause(both), {
+          failures: Matcher.unordered([new NotFound({ id: 2 }), new NotFound({ id: 1 })]),
+          defects: [],
+          interrupted: false
+        })
+        const mixed = Exit.failCause(Cause.combine(Cause.die("boom"), Cause.interrupt()))
+        Assert.equal(Assert.cause(mixed), { failures: [], defects: ["boom"], interrupted: true })
+        Assert.equal(fails(() => Assert.cause(Exit.succeed(1))).headline, "expected a failure, got Success(1)")
+        // a tagged error is yieldable, but it is a value, not a program that didn't run
+        Assert.equal(new NotFound({ id: 1 }), Matcher.tag("NotFound", { id: 1 }))
       })
     ),
     Test.test(
