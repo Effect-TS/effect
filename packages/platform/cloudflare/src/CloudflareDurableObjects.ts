@@ -277,8 +277,8 @@ export class ClusterDurableQueue extends DurableObject<unknown> {
   }
 
   /** @internal Same-Worker RPC transport used by `CloudflarePersistedQueue.layer`. */
-  offer(id: string, element: string): Promise<void> {
-    return Effect.runPromise(this.#program.offer(id, element))
+  offer(id: string, element: string, delayMillis?: number): Promise<void> {
+    return Effect.runPromise(this.#program.offer(id, element, delayMillis))
   }
 
   /** @internal Waits until an item is available, then leases it to the caller. */
