@@ -1660,11 +1660,20 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
   it.effect("interrupts a failure-suspended workflow", () =>
     Effect.gen(function*() {
+      let attempts = 0
       const Failing = Workflow.make("FailureInterrupted", {
         payload: {},
         idempotencyKey: () => "failing"
       }).annotate(Workflow.SuspendOnFailure, true)
-      const FailingLayer = Failing.toLayer(() => Activity.make({ name: "fail", execute: Effect.die("boom") }))
+      const FailingLayer = Failing.toLayer(() =>
+        Activity.make({
+          name: "fail",
+          execute: Effect.suspend(() => {
+            attempts++
+            return Effect.die("boom")
+          })
+        })
+      )
       yield* Effect.gen(function*() {
         yield* TestClock.adjust(1)
         const executionId = yield* Failing.execute({}, { discard: true })
@@ -1672,6 +1681,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         yield* Failing.interrupt(executionId)
         const result = yield* pollUntil(Failing, executionId, "Complete")
         assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+        assert.strictEqual(attempts, 1, "interrupt must not re-run the failed activity")
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
