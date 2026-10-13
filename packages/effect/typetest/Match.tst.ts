@@ -292,6 +292,22 @@ describe("Match", () => {
     ).type.toBe<(input: Record<string, string>) => string>()
   })
 
+  it("accepts equivalent numeric and string property keys", () => {
+    expect(
+      Match.type<{ "0": string }>().pipe(
+        Match.when({ 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { "0": string }) => string>()
+
+    expect(
+      Match.type<{ 0: string }>().pipe(
+        Match.when({ "0": "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { 0: string }) => string>()
+  })
+
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
     Match.value(taggedInput).pipe(
       Match.tagsExhaustive({
