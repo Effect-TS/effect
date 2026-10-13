@@ -35,17 +35,31 @@ export interface RunOptions {
   /** how the caller narrowed the selection beyond `test` / `tag`, for reporting, e.g. `--failed (11 recorded)` */
   readonly selectedBy: ReadonlyArray<string>
   readonly seed: number
-  readonly workers: number
-  readonly filesPerExecutor: number
   readonly testsPerFile: number
   readonly bail: boolean
   /** absolute path of the test config, if any */
   readonly config: string | undefined
+  /** the project root (the config's directory, else the working directory), for the selection */
+  readonly root: string
+  /** glob patterns skipped while searching directories (relative to the root) */
+  readonly exclude: ReadonlyArray<string>
+  /** defaults for test options not set on the tree */
+  readonly defaults: Defaults
   readonly reporter: Reporter
   readonly write: (s: string) => void
 }
 
-const DEFAULT_TIMEOUT_MS = 5_000
+/** Defaults for test options that no node on the tree sets. */
+export interface Defaults {
+  readonly timeoutMs: number
+  readonly retries: number
+}
+
+/** The built-in defaults: a test fails after 60 seconds (it is reported as slow after 5), and isn't retried. */
+export const builtinDefaults: Defaults = { timeoutMs: 60_000, retries: 0 }
+
+/** A test that takes longer than this is reported as slow (it still passes). */
+export const SLOW_MS = 5_000
 
 // --- code frames: the source at a failure's location, read here (executors send none)
 
@@ -78,24 +92,75 @@ const makeSources = () => {
 
 // --- discovery
 
-/** The `*.test.ts` files under `paths`, plus the given paths that don't exist. */
-export const discover = (paths: ReadonlyArray<string>): { files: Array<string>; missing: Array<string> } => {
+/** Directories that are never searched. */
+const skipped = (name: string) => name === "node_modules" || name.startsWith(".")
+
+/** A glob as a RegExp: `*` within a path segment, `**` across segments, `?` one character. */
+export const globToRegExp = (glob: string): RegExp => {
+  let out = ""
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i]
+    if (c === "*" && glob[i + 1] === "*") {
+      i++
+      if (glob[i + 1] === "/") {
+        i++
+        out += "(?:.*/)?"
+      } else out += ".*"
+    } else if (c === "*") out += "[^/]*"
+    else if (c === "?") out += "[^/]"
+    else out += /[\\^$.|+()[\]{}]/.test(c) ? `\\${c}` : c
+  }
+  return new RegExp(`^${out}$`)
+}
+
+/**
+ * The `*.test.ts` files under `paths` (relative to the working directory, which is the root).
+ * Directories are searched, skipping `node_modules`, dot-directories and what `exclude`
+ * matches (paths relative to the root). Naming a path opts it in: a file named directly is
+ * never excluded, and a directory that is itself excluded is searched in full when it is
+ * named (`etest test/fixtures` despite `**` + `/fixtures/**`). Also returns the paths that don't exist,
+ * and those that yield no test file (a file that isn't a test file, or a directory without
+ * any): asking for something that can't run is an error, never silently ignored.
+ */
+export const discover = (
+  paths: ReadonlyArray<string>,
+  exclude: ReadonlyArray<string> = []
+): { files: Array<string>; missing: Array<string>; empty: Array<string> } => {
+  const patterns = exclude.map(globToRegExp)
+  const excluded = (p: string) => {
+    const rel = path.relative(process.cwd(), p).split(path.sep).join("/")
+    return patterns.some((re) => re.test(rel) || re.test(`${rel}/`))
+  }
   const files: Array<string> = []
   const missing: Array<string> = []
-  const visit = (p: string) => {
-    const st = fs.statSync(p)
-    if (st.isDirectory()) {
-      for (const e of fs.readdirSync(p)) if (e !== "node_modules") visit(path.join(p, e))
+  const empty: Array<string> = []
+  const visit = (p: string, exclusions: boolean) => {
+    if (exclusions && excluded(p)) return
+    if (fs.statSync(p).isDirectory()) {
+      for (const e of fs.readdirSync(p)) if (!skipped(e)) visit(path.join(p, e), exclusions)
     } else if (p.endsWith(".test.ts")) files.push(path.resolve(p))
   }
   for (const p of paths.length ? paths : ["."]) {
-    if (fs.existsSync(p)) visit(p)
-    else missing.push(p)
+    if (!fs.existsSync(p)) {
+      missing.push(p)
+      continue
+    }
+    const before = files.length
+    // a named path is opted in: what is below it is excluded only if the path itself isn't
+    const exclusions = !excluded(p) && fs.statSync(p).isDirectory()
+    if (exclusions) {
+      for (const e of fs.readdirSync(p)) {
+        if (!skipped(e)) visit(path.join(p, e), true)
+      }
+    } else {
+      visit(p, false)
+    }
+    if (files.length === before) empty.push(p)
   }
-  return { files: files.sort(), missing }
+  // overlapping paths (`examples examples/a.test.ts`) find a file more than once
+  return { files: [...new Set(files)].sort(), missing, empty }
 }
 
-/** Why a run selected no tests, for the error message. */
 /** What narrowed the selection, in the words of the command line. */
 const filtersOf = (opts: Pick<RunOptions, "test" | "tag" | "selectedBy">): Array<string> => [
   ...opts.selectedBy,
@@ -133,7 +198,7 @@ const ancestry = (byId: Map<string, ListedNode>, node: ListedNode) => {
 
 export const plan = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed" | "defaults">
 ): Array<PlannedTest> => {
   const planned: Array<PlannedTest & { only: boolean }> = []
   // an exact id or short id selects exactly that test; anything else is a substring match
@@ -163,8 +228,8 @@ export const plan = (
         shortId: sid,
         file,
         tags,
-        timeoutMs: nearest("timeoutMs") ?? DEFAULT_TIMEOUT_MS,
-        retries: nearest("retries") ?? 0,
+        timeoutMs: nearest("timeoutMs") ?? opts.defaults.timeoutMs,
+        retries: nearest("retries") ?? opts.defaults.retries,
         ...(nearest("noAssertions") ? { noAssertions: true } : {}),
         seed: testSeed(opts.seed, node.id),
         only: chain.some((n) => n.only),
@@ -184,9 +249,21 @@ export const run = (opts: RunOptions) =>
   Effect.gen(function*() {
     const startedAt = Date.now()
     const client = yield* RpcClient.make(ExecutorRpcs)
-    const { files, missing } = discover(opts.paths)
+    const { empty, files, missing } = discover(opts.paths, opts.exclude)
     if (missing.length > 0) {
       yield* Console.error(`No such file or directory: ${missing.join(", ")}`)
+      return 1
+    }
+    if (empty.length > 0) {
+      for (const p of empty) {
+        yield* Console.error(
+          fs.statSync(p).isDirectory()
+            ? `${p}: no test files (*.test.ts) in it${
+              opts.exclude.length ? " (after excluding config `exclude` patterns)" : ""
+            }`
+            : `${p}: not a test file (*.test.ts)`
+        )
+      }
       return 1
     }
 
@@ -219,6 +296,8 @@ export const run = (opts: RunOptions) =>
     }
     // a run that selects nothing is red: an agent must never read "nothing ran" as "all green"
     const selection: Selection = {
+      root: opts.root,
+      ...(opts.config !== undefined ? { config: path.relative(opts.root, opts.config) } : {}),
       paths: opts.paths,
       files: files.length,
       tests: listings.reduce((n, l) => n + l.nodes.filter((node) => node.kind === "test").length, 0),
@@ -372,7 +451,7 @@ const describe = (e: unknown): string => {
 
 const renderListJson = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed" | "defaults">
 ) => {
   const planned = new Map(plan(listings, opts).map((t) => [t.id, t]))
   const ids = [...planned.keys()]
@@ -386,7 +465,7 @@ const renderListJson = (
 
 const renderList = (
   listings: ReadonlyArray<{ readonly file: string; readonly nodes: ReadonlyArray<ListedNode> }>,
-  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed">
+  opts: Pick<RunOptions, "test" | "tag" | "ids" | "seed" | "defaults">
 ) => {
   const selected = new Set(plan(listings, opts).map((t) => t.id))
   let out = ""

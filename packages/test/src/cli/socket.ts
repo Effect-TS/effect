@@ -14,7 +14,12 @@ export const socketPath = (cwd: string): string => {
 /** Client → server, the first and only line: a command line to run in `cwd`. */
 export interface Request {
   readonly argv: ReadonlyArray<string>
+  /** where the client was started: paths on its command line are relative to it */
   readonly cwd: string
+  /** the project root the client resolved (see root.ts); the server must be serving it */
+  readonly root: string
+  /** the package script the client was started with, for rerun hints (see invocation.ts) */
+  readonly script?: string | undefined
 }
 
 /** Server → client, one per line: output as it is produced, then the exit code. */

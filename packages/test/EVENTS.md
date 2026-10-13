@@ -15,7 +15,14 @@ the reason to stderr and exits 1.
   "_tag": "RunPlanned",
   "schemaVersion": 1,
   "runSeed": 1234,
-  "selection": { "paths": ["examples"], "files": 8, "tests": 60, "filters": ["--test \"fees\""] },
+  "selection": {
+    "root": "/home/me/project",
+    "config": "etest.config.ts",
+    "paths": ["examples"],
+    "files": 8,
+    "tests": 60,
+    "filters": ["--test \"fees\""]
+  },
   "tests": [
     {
       "id": "examples/accounts.test.ts > fees: … > one test can replace the shared layer",
@@ -30,7 +37,9 @@ the reason to stderr and exits 1.
 }
 ```
 
-- `selection`: what was searched (`paths`, empty meaning the working directory), how many test `files` and
+- `selection`: the project `root` (absolute: the config's directory, else the working directory; every path in the
+  stream is relative to it), the `config` file (relative to the root; absent when there is none), what was searched
+  (`paths`, empty meaning the root), how many test `files` and
   `tests` were found, and the `filters` that narrowed it, in command-line words (`--test "…"`, `--tag "…"`,
   `--failed (N recorded)`, …).
 - `tests[]`: the plan, in a deterministic order.

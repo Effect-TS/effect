@@ -8,17 +8,26 @@
 import * as fs from "node:fs"
 import * as Module from "node:module"
 import * as net from "node:net"
-import { type Response, socketPath } from "./socket.ts"
+import { scriptCommand } from "./invocation.ts"
+import { findConfig, rootOf } from "./root.ts"
+import { type Request, type Response, socketPath } from "./socket.ts"
 
-/** Command lines that always run here: the server itself, and what needs no test run. */
+/**
+ * Command lines that always run here: the server itself, what needs no test run, and a run
+ * with a config of its own choosing (a server serves the config it found).
+ */
 const runsHere = (argv: ReadonlyArray<string>) =>
-  argv[0] === "serve" || argv[0] === "mcp" ||
-  argv.some((arg) => ["--no-server", "--help", "-h", "--version", "-v", "--completions", "--wizard"].includes(arg))
+  argv[0] === "serve" || argv[0] === "mcp" || argv[0] === "config" ||
+  argv.some((arg) =>
+    ["--no-server", "--help", "-h", "--version", "-v", "--completions", "--wizard", "--no-config"].includes(arg) ||
+    arg === "--config" || arg.startsWith("--config=")
+  )
 
 /** Forwards `argv` to a running server; resolves `false` (run here) when there is none. */
 const forward = (argv: ReadonlyArray<string>): Promise<boolean> =>
   new Promise((resolve) => {
-    const location = socketPath(process.cwd())
+    const root = rootOf(findConfig(process.cwd()), process.cwd())
+    const location = socketPath(root)
     if (runsHere(argv) || (process.platform !== "win32" && !fs.existsSync(location))) return resolve(false)
     const socket = net.connect(location)
     let connected = false
@@ -34,7 +43,8 @@ const forward = (argv: ReadonlyArray<string>): Promise<boolean> =>
     socket.on("connect", () => {
       connected = true
       process.once("SIGINT", interrupt)
-      socket.write(JSON.stringify({ argv, cwd: process.cwd() }) + "\n")
+      const request: Request = { argv, cwd: process.cwd(), root, script: scriptCommand() }
+      socket.write(JSON.stringify(request) + "\n")
     })
     socket.on("data", (chunk: string) => {
       buffered += chunk

@@ -10,11 +10,13 @@ import * as Command from "effect/cli/Command"
 import * as Flag from "effect/cli/Flag"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
 import * as Semaphore from "effect/Semaphore"
 import type * as Worker from "effect/workers/Worker"
+import * as Config from "./Config.ts"
 import { Output } from "./Output.ts"
-import { runCommandLine, warmExecutors } from "./Server.ts"
+import { enterProject, runCommandLine, warmExecutors } from "./Server.ts"
 
 const Selection = {
   paths: Schema.optional(Schema.Array(Schema.String)).annotate({
@@ -59,7 +61,15 @@ const ListTests = Tool.make("list_tests", {
   success: Outcome
 })
 
-const Tools = Toolkit.make(RunTests, ListTests)
+const ShowConfig = Tool.make("show_config", {
+  description:
+    "Show the test config the runs use: the project root, paths, excludes, workers, default timeout and retries, " +
+    "with where each value comes from (etest.config.ts or built-in).",
+  parameters: Tool.EmptyParams,
+  success: Schema.Struct({ output: Schema.String })
+})
+
+const Tools = Toolkit.make(RunTests, ListTests, ShowConfig)
 
 const selectionArgs = (params: {
   readonly paths?: ReadonlyArray<string> | undefined
@@ -71,9 +81,11 @@ const selectionArgs = (params: {
   ...(params.tag !== undefined ? ["--tag", params.tag] : [])
 ]
 
-const serveMcp = (version: string, options: { readonly workers: number }) =>
+const serveMcp = (version: string, options: { readonly workers: Option.Option<number> }) =>
   Effect.gen(function*() {
-    const run = runCommandLine(version, yield* warmExecutors(options.workers))
+    const config = yield* enterProject
+    const workers = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
+    const run = runCommandLine(version, yield* warmExecutors(workers))
     // tool handlers can't require anything: they run with the services this command started with
     const services = yield* Effect.context<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>()
     const oneAtATime = Semaphore.makeUnsafe(1)
@@ -82,7 +94,10 @@ const serveMcp = (version: string, options: { readonly workers: number }) =>
       oneAtATime.withPermits(1)(Effect.suspend(() => {
         let text = ""
         const output = Output.of({ out: (chunk) => text += chunk, err: (chunk) => text += chunk })
-        return Effect.map(run(argv, output), (exitCode) => ({ exitCode, passed: exitCode === 0, output: text }))
+        return Effect.map(
+          run(argv, output, { cwd: config.root, script: undefined }),
+          (exitCode) => ({ exitCode, passed: exitCode === 0, output: text })
+        )
       })).pipe(Effect.provideContext(services))
     const handlers = Tools.of({
       run_tests: (params) =>
@@ -94,7 +109,12 @@ const serveMcp = (version: string, options: { readonly workers: number }) =>
           ...(params.seed !== undefined ? ["--seed", String(params.seed)] : []),
           ...(params.bail ? ["--bail"] : [])
         ]),
-      list_tests: (params) => capture([...selectionArgs(params), "--list"])
+      list_tests: (params) => capture([...selectionArgs(params), "--list"]),
+      show_config: () =>
+        Config.resolve(config.root, { config: Option.none(), noConfig: false }).pipe(
+          Effect.map((resolved) => ({ output: Config.describe(resolved).join("\n") })),
+          Effect.catchTag("ConfigError", (error) => Effect.succeed({ output: `etest: ${error.message}` }))
+        )
     })
     return yield* Layer.launch(
       McpServer.toolkit(Tools).pipe(
@@ -113,10 +133,12 @@ const serveMcp = (version: string, options: { readonly workers: number }) =>
 export const mcpCommand = (version: string) =>
   Command.make("mcp", {
     workers: Flag.Int("workers").pipe(
-      Flag.withDescription("Executors per run (worker threads)"),
-      Flag.withDefault(2)
+      Flag.withDescription("Executors per run (worker threads; default: the config's `workers`, else 2)"),
+      Flag.optional
     )
   }).pipe(
-    Command.withDescription("Serve the test runner as an MCP server over stdio (tools: run_tests, list_tests)"),
+    Command.withDescription(
+      "Serve the test runner as an MCP server over stdio (tools: run_tests, list_tests, show_config)"
+    ),
     Command.withHandler((options) => Effect.scoped(serveMcp(version, options)))
   )

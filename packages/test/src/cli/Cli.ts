@@ -13,13 +13,13 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import * as Runtime from "effect/Runtime"
 import type * as Worker from "effect/workers/Worker"
 import type { WorkerError } from "effect/workers/WorkerError"
-import * as fs from "node:fs"
 import * as path from "node:path"
-import { fileURLToPath, pathToFileURL } from "node:url"
-import { discover, run } from "../Coordinator.ts"
+import { fileURLToPath } from "node:url"
+import { builtinDefaults, discover, run } from "../Coordinator.ts"
 import * as Reporters from "../Reporters.ts"
-import { isConfig } from "../Test.ts"
 import * as Changed from "./Changed.ts"
+import * as Config from "./Config.ts"
+import { scriptCommand } from "./invocation.ts"
 import * as LastRun from "./LastRun.ts"
 import { Output } from "./Output.ts"
 import { detect, moduleUrl } from "./Platform.ts"
@@ -33,7 +33,9 @@ export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: numb
 }
 
 const paths = Argument.String("paths").pipe(
-  Argument.withDescription("Files or directories to search for *.test.ts files (default: the current directory)"),
+  Argument.withDescription(
+    "Files or directories to search for *.test.ts files (default: the config's `paths`, else the project root)"
+  ),
   Argument.variadic()
 )
 
@@ -74,8 +76,8 @@ const seed = Flag.Int("seed").pipe(
 )
 
 const workers = Flag.Int("workers").pipe(
-  Flag.withDescription("Number of executors (worker threads)"),
-  Flag.withDefault(2)
+  Flag.withDescription("Number of executors (worker threads; default: the config's `workers`, else 2)"),
+  Flag.optional
 )
 
 const bail = Flag.Boolean("bail").pipe(
@@ -88,8 +90,9 @@ const reporter = Flag.Literals("reporter", ["agent", "human", "jsonl"]).pipe(
   Flag.withDefault("agent")
 )
 
-const config = Flag.File("config", { mustExist: true }).pipe(
-  Flag.withDescription("Test config file (default: ./etest.config.ts when it exists)"),
+const config = Flag.String("config").pipe(
+  Flag.withMetavar("FILE"),
+  Flag.withDescription("Test config file (default: the nearest etest.config.ts, up to the repository root)"),
   Flag.optional
 )
 
@@ -103,13 +106,19 @@ const noServer = Flag.Boolean("no-server").pipe(
   Flag.withDefault(false)
 )
 
+/** How many files an executor runs at once. */
+const FILES_PER_EXECUTOR = 4
+
+/** How many tests of a file run at once. */
+const TESTS_PER_FILE = 8
+
 /**
  * The executors: a pool of workers speaking `ExecutorRpcs`, each running up to
- * `filesPerExecutor` files at once. The platform provides the worker spawner (see
+ * `FILES_PER_EXECUTOR` files at once. The platform provides the worker spawner (see
  * `platform/*.ts`), so this is the same on Node, Bun and Deno.
  */
-export const executorPool = (workers: number, filesPerExecutor: number) =>
-  RpcClient.layerProtocolWorker({ size: workers, concurrency: filesPerExecutor })
+export const executorPool = (workers: number) =>
+  RpcClient.layerProtocolWorker({ size: workers, concurrency: FILES_PER_EXECUTOR })
 
 /** Where a run's executors come from: a fresh pool per run, or `etest serve`'s pre-started one. */
 export class Executors extends Context.Service<Executors, {
@@ -117,33 +126,37 @@ export class Executors extends Context.Service<Executors, {
     workers: number
   ) => Layer.Layer<RpcClient.Protocol, WorkerError, Worker.WorkerPlatform | Worker.Spawner>
 }>()("etest/cli/Executors") {
-  static readonly fresh = Layer.succeed(Executors)({ layer: (workers) => executorPool(workers, 4) })
+  static readonly fresh = Layer.succeed(Executors)({ layer: executorPool })
 }
 
-/**
- * Validates the config before starting, so a broken config fails fast with a clear
- * message. Returns its absolute path, which the coordinator sends to the executors.
- */
-const useConfig = Effect.fnUntraced(function*(file: string | undefined) {
-  if (file === undefined) return undefined
-  const resolved = path.resolve(file)
-  const mod = yield* Effect.tryPromise(() => import(pathToFileURL(resolved).href)).pipe(
-    Effect.catch((cause) =>
-      Console.error(`etest: ${file}: failed to load\n${String(cause)}`).pipe(
-        Effect.andThen(Effect.fail(new ExitCode({ code: 1 })))
-      )
-    )
-  )
-  if (!isConfig(mod.default)) {
-    yield* Console.error(`etest: ${file}: the default export is not a Test.config(...)`)
-    return yield* new ExitCode({ code: 1 })
-  }
-  return resolved
-})
-
-const bin = path.relative(process.cwd(), fileURLToPath(moduleUrl("./bin", import.meta.url)))
+const bin = fileURLToPath(moduleUrl("./bin", import.meta.url))
 /** How to start the CLI again on the runtime we are on, for rerun hints. */
 const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
+
+/** The working directory this process started in (a run then moves to the project root). */
+const startedIn = process.cwd()
+
+/**
+ * Where and how this run was started: the directory the paths given on the command line are
+ * relative to, and the package script (`pnpm run test`), if any, that rerun hints repeat. A
+ * run forwarded to `etest serve` gets its client's.
+ */
+export interface Invocation {
+  readonly cwd: string
+  readonly script: string | undefined
+}
+export const Invocation = Context.Reference<Invocation>("etest/cli/Invocation", {
+  defaultValue: () => ({ cwd: startedIn, script: scriptCommand() })
+})
+
+const configFailure = (error: Config.ConfigError) =>
+  Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
+
+/** Changes to these files can affect any test: `--changed` then runs everything. */
+const affectsEverything = (file: string, configFile: string | undefined) =>
+  file === configFile ||
+  /^(package\.json|tsconfig.*\.json|pnpm-lock\.yaml|package-lock\.json|yarn\.lock|bun\.lockb?|deno\.lock)$/
+    .test(path.basename(file))
 
 /** The `etest` command itself: run the tests. `etest serve` runs this on forwarded arguments. */
 export const command = Command.make("etest", {
@@ -164,17 +177,16 @@ export const command = Command.make("etest", {
 }).pipe(
   Command.withDescription("Run Effect-native tests"),
   Command.withHandler(Effect.fnUntraced(function*(options) {
-    const configFile = yield* useConfig(
-      options.noConfig
-        ? undefined
-        : Option.getOrElse(
-          options.config,
-          () => fs.existsSync("etest.config.ts") ? "etest.config.ts" : undefined
-        )
-    )
+    const invocation = yield* Invocation
+    const config = yield* Config.resolve(invocation.cwd, options).pipe(Effect.catchTag("ConfigError", configFailure))
+    const configFile = config.file
+    // everything is relative to the project root: test ids, seeds, the --failed record
+    if (process.cwd() !== config.root) process.chdir(config.root)
+    const fromRoot = (p: string) => path.relative(config.root, path.resolve(invocation.cwd, p)) || "."
     const output = yield* Output
     const write = output.out
-    let paths = options.paths
+    // paths given on the command line replace the config's
+    let paths = options.paths.length > 0 ? options.paths.map(fromRoot) : [...(config.paths ?? [])]
     let ids: ReadonlySet<string> | undefined
     const selectedBy: Array<string> = []
     if (options.failed) {
@@ -190,7 +202,7 @@ export const command = Command.make("etest", {
       }
       ids = new Set(entries.map(([id]) => id))
       selectedBy.push(`--failed (${entries.length} recorded)`)
-      if (paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
+      if (options.paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
     }
     const sinceRef = Option.getOrUndefined(options.since)
     if (options.changed || sinceRef !== undefined) {
@@ -206,10 +218,11 @@ export const command = Command.make("etest", {
         yield* Console.log(`${label}: no changed files; nothing to run`)
         return
       }
-      if (configFile !== undefined && changedFiles.has(configFile)) {
-        selectedBy.push(`${label} (the test config changed: every test is affected)`)
+      const everything = [...changedFiles].find((file) => affectsEverything(file, configFile))
+      if (everything !== undefined) {
+        selectedBy.push(`${label} (${path.relative(config.root, everything)} changed: every test is affected)`)
       } else {
-        const { files } = discover(paths)
+        const { files } = discover(paths, config.exclude)
         const hit = Changed.affected(files, changedFiles, process.cwd())
         if (hit.length === 0) {
           yield* Console.log(
@@ -221,10 +234,17 @@ export const command = Command.make("etest", {
         selectedBy.push(`${label} (${changedFiles.size} changed files)`)
       }
     }
+    // a rerun hint repeats how this run was started, with paths relative to where it was
+    const relativeBin = path.relative(invocation.cwd, bin)
+    const start = invocation.script ?? `${launcher} ${relativeBin.length < bin.length ? relativeBin : bin}`
     const ctx: Reporters.ReporterContext = {
       write,
-      rerun: (t, runSeed) => `${launcher} ${bin} ${t.file} --test ${t.shortId} --seed ${runSeed}`
+      rerun: (t, runSeed) =>
+        `${start} ${
+          path.relative(invocation.cwd, path.resolve(config.root, t.file))
+        } --test ${t.shortId} --seed ${runSeed}`
     }
+    const workerCount = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
     const reporter = options.reporter === "human"
       ? Reporters.human(ctx)
       : options.reporter === "jsonl"
@@ -239,14 +259,18 @@ export const command = Command.make("etest", {
       ids,
       selectedBy,
       seed: Option.getOrElse(options.seed, () => Math.floor(Math.random() * 100_000)),
-      workers: options.workers,
-      filesPerExecutor: 4,
-      testsPerFile: 8,
+      testsPerFile: TESTS_PER_FILE,
       bail: options.bail,
       config: configFile,
+      root: config.root,
+      exclude: config.exclude,
+      defaults: {
+        timeoutMs: config.defaults.timeoutMs ?? builtinDefaults.timeoutMs,
+        retries: config.defaults.retries ?? builtinDefaults.retries
+      },
       reporter: options.list ? reporter : LastRun.recording(reporter),
       write
-    }).pipe(Effect.scoped, Effect.provide((yield* Executors).layer(options.workers)))
+    }).pipe(Effect.scoped, Effect.provide((yield* Executors).layer(workerCount)))
     if (code !== 0) return yield* new ExitCode({ code })
   }))
 )

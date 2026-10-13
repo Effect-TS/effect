@@ -83,7 +83,11 @@ export type PlannedTest = typeof PlannedTest.Type
 
 /** What a run selected, and how. */
 export const Selection = Schema.Struct({
-  /** the paths searched, as given (empty: the working directory) */
+  /** the project root (absolute): the config's directory, else the working directory. Paths are relative to it */
+  root: Schema.String,
+  /** the test config, relative to the root (absent: none) */
+  config: opt(Schema.String),
+  /** the paths searched, relative to the root (empty: the root) */
   paths: Schema.Array(Schema.String),
   /** test files found under them */
   files: Schema.Number,

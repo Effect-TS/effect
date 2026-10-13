@@ -13,7 +13,9 @@ history are kept for context.
 pnpm --dir packages/test demo          # = node src/cli/bin.ts examples --seed 1234 (exits 1: there are intentional failures)
 pnpm --dir packages/test demo:bun      # the same on Bun
 pnpm --dir packages/test demo:deno     # the same on Deno
+pnpm --dir packages/test test          # the self-tests: `etest` alone runs the config's `paths` (test/)
 cd packages/test
+node src/cli/bin.ts config                           # the resolved config, and where each value comes from
 node src/cli/bin.ts examples                         # agent reporter (default)
 node src/cli/bin.ts examples --reporter human        # coloured tree
 node src/cli/bin.ts examples --reporter jsonl        # raw event stream, one Schema-encoded event per line
@@ -24,8 +26,8 @@ node src/cli/bin.ts examples --bail --workers 1
 node src/cli/bin.ts --failed                         # re-run the tests that failed in previous runs
 node src/cli/bin.ts --changed                        # only tests affected by uncommitted changes (--since main: the branch too)
 node src/cli/bin.ts serve &                          # keep a warm test runner; `etest` here then forwards to it
-node src/cli/bin.ts mcp                              # MCP server over stdio: run_tests, list_tests
-node src/cli/bin.ts test                             # the self-tests (etest testing itself)
+node src/cli/bin.ts mcp                              # MCP server over stdio: run_tests, list_tests, show_config
+node src/cli/bin.ts                                  # the self-tests (etest testing itself: the config's `paths`)
 node src/cli/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > cause-aware > defect (intentional failure)" --seed 1234
 ```
 
@@ -39,7 +41,9 @@ finds `*.test.ts` files under the given paths.
 - **Output contract.** `--reporter jsonl` is versioned (`schemaVersion` in `RunPlanned`) and documented in `EVENTS.md`.
   Every reporter prints what was selected and how (`selected 3 of 60 tests in 8 files (examples); --test "fees"`). Each
   test has a short id (8 hex characters of a hash of its full id, stable across runs) that `--test` accepts and rerun
-  hints use. A closed stdout (`etest | head`) stops the output but not the run, and the exit code is kept. Usage errors
+  hints use. A rerun hint repeats how the run was started: the package script for `pnpm run <script>` /
+  `npm run <script>` (from the directory it was run in), else `node src/cli/bin.ts` (`src/cli/invocation.ts`; a client
+  forwarded to `etest serve` sends its own). Overlapping paths find a file once. A closed stdout (`etest | head`) stops the output but not the run, and the exit code is kept. Usage errors
   print only the error and a `--help` hint (`helpOnError: false`, added to effect/cli for this).
 - **`--changed` / `--since <ref>`** (`src/cli/Changed.ts`) run only the test files affected by uncommitted changes (staged,
   unstaged, untracked), plus, with `--since`, what changed on the branch since it left `ref`. A test file is affected when it
@@ -67,6 +71,29 @@ finds `*.test.ts` files under the given paths.
   shared stdout, which in MCP mode is the protocol channel (Node pipes worker output to stderr).
 - **Startup.** `bin.ts` turns on Node's on-disk compile cache before anything heavy is loaded, then imports `main.ts`; the
   Node platform passes the cache directory to its executor workers (`NODE_COMPILE_CACHE`). This roughly halves startup.
+- **Config** (`etest.config.ts`, `src/cli/Config.ts`, `src/cli/root.ts`; decided in the _Config surface_ ticket). Found by
+  walking up from the working directory to the nearest `etest.config.ts`, stopping at the repository root (`.git`); or
+  `--config <file>`; none with `--no-config` (both together are an error). **Its directory is the project root**: a run moves
+  there, so test ids, seeds, short ids, the `--failed` record and the server socket are the same from any subdirectory
+  (without a config the working directory is the root). Paths given on the command line are relative to where you are, and
+  rerun hints are written relative to it too. The keys, all optional, unknown ones an error (compile time and load time):
+  - `paths`: where to look when no paths are given (default `.`); **paths on the command line replace them**.
+  - `exclude`: globs (relative to the root; `*` within a segment, `**` across) skipped while searching directories, on top
+    of the built-in `node_modules` and dot-directories. Naming a path opts it in: a file named directly is never excluded,
+    and a directory that is itself excluded is searched in full when named.
+  - `workers`: the default for `--workers` (built-in 2).
+  - `defaults: { timeout, retries }`: defaults for test options. The nearest suite or test that sets one wins, then the
+    config, then the built-in default (timeout 60 s, no retries). A test that passes in over 5 s is reported as `SLOW`.
+  - `shared`: layers shared by the run (below). They only optimise: a file passes without them.
+
+  A config that doesn't load or isn't valid fails the run with the reason (`etest: etest.config.ts: unknown key "timeout"
+  (did you mean ...)`). Every report's selection line names the config (`...; config etest.config.ts` / `no config`), and
+  `RunPlanned.selection` carries `root` and `config`. `etest config` (and the MCP tool `show_config`) prints each resolved
+  value and where it comes from. The coordinator imports the config for its plain values (re-imported when the file
+  changes, so `etest serve` sees edits; modules it imports are not re-read); the executors import it for `shared`, fresh
+  every run. A path that yields no test file (a file that isn't a `*.test.ts`, a directory without any) is an error, and
+  overlapping paths find a file once. `--changed` runs everything when the config, a `package.json`, a `tsconfig*.json` or a
+  lockfile changed.
 
 ## Layout
 
@@ -92,6 +119,8 @@ wires both sides together.
 | `src/cli/Cli.ts`                                            | The `etest` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported                                                                                                                                                                                                                                                                                                                    |
 | `src/cli/bin.ts`                                            | Launcher: forwards to `etest serve` when one is running for this directory; otherwise turns on Node's compile cache and imports `main.ts`                                                                                                                                                                                                                                                                                                                                                              |
 | `src/cli/Server.ts`, `src/cli/socket.ts`                    | `etest serve`: the warm server, its executors one run ahead, and the socket protocol (line-delimited JSON)                                                                                                                                                                                                                                                                                                                                                                                             |
+| `src/cli/Config.ts`, `src/cli/root.ts`                      | The test config: found (walking up to `.git`), validated (unknown keys are errors), shown (`etest config`); the project root                                                                                                                                                                                                                                                                                                                                                                           |
+| `src/cli/invocation.ts`                                     | The package script a run was started with (`pnpm run test`), for rerun hints                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `src/cli/Output.ts`                                         | Where the CLI's output goes: this process's stdout/stderr, or a server request's client                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `src/cli/Mcp.ts`                                            | `etest mcp`: the `run_tests` and `list_tests` tools over stdio                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `src/cli/main.ts`                                           | The CLI program: `makePlatforms({ node, bun, deno })` (lazy imports of `platform/*.ts`), then `platforms.run(Command.run(cli, ...))`                                                                                                                                                                                                                                                                                                                                                                   |
@@ -125,8 +154,8 @@ wires both sides together.
      level's fixtures are built first and can feed inner ones. `--list` labels a fixture by where it was attached (`file:line`) unless given `{ name }`. A suite with no selected tests
      never builds its layers. A fresh fixture for every test in a suite is written per test (`tests.map(Test.provide(layer))`),
      and a reusable suite that needs that takes its layer as a parameter (`userRepoContract(InMemoryUserRepo)`).
-     **Cross-file sharing is config, and config only optimises.** `etest.config.ts` (default export `Test.config({ shared })`,
-     or `--config <file>`, or `--no-config`) lists layers shared by the run. Each is built lazily, the first time any file provides
+     **Cross-file sharing is config, and shared layers only optimise.** The config's `shared` (see **Config** above) lists
+     layers shared by the run. Each is built lazily, the first time any file provides
      that same Layer value, from the run's context (not the asking file's), detached from the asking test, kept until the run ends;
      a failed build is recorded for the run. This is a custom MemoMap at the root of the fork chain. Every file still provides
      everything it needs, so it type-checks and runs alone; `Test.provide(Layer.fresh(layer))` opts a file out. Shared layers must
@@ -272,7 +301,8 @@ wires both sides together.
 - Retries reuse the same seed for every attempt. Retries are meant for environmental flakes, not random ones.
 - No watch mode, snapshots, result cache, remote executors, property tests, general TestClock auto-advance (only
   `Assert.eventually` / `always` advance it), hang dumps or leak detection.
-- No config file; the K=4 and T=8 concurrency limits are hard-coded and the default timeout is 5 s.
+- The K=4 files per executor and T=8 tests per file are hard-coded (`Cli.ts`); the slow threshold (5 s) too.
+- No projects: one config per directory tree, run per package. Project discovery is researched in its own ticket.
 - `--test` is an exact-id match when the id exists and a substring match otherwise. Duplicate test names in one suite produce
   duplicate ids, which are not detected.
 - `--list` prints node definition sites, but plain ids only in `--list --reporter jsonl`.

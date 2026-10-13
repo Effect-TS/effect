@@ -6,6 +6,7 @@
   "description": "A test runner optimised for Effect",
   "bin": { "etest": "./src/cli/bin.ts" },
   "scripts": {
+    "test": "node src/cli/bin.ts",
     "demo": "node src/cli/bin.ts examples --seed 1234",
     "demo:bun": "bun src/cli/bin.ts examples --seed 1234",
     "demo:deno": "deno run -A src/cli/bin.ts examples --seed 1234"

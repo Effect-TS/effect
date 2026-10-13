@@ -1,6 +1,7 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
 import * as Schema from "effect/Schema"
+import { SLOW_MS } from "./Coordinator.ts"
 import type {
   Failure,
   Location,
@@ -106,13 +107,24 @@ const pathsList = (paths: ReadonlyArray<string>) =>
 const selectionLine = (selection: Selection, selected: number) =>
   `selected ${selected} of ${plural(selection.tests, "test")} in ${plural(selection.files, "file")} (${
     pathsList(selection.paths)
-  })${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}`
+  })${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}; ${
+    selection.config !== undefined ? `config ${selection.config}` : "no config"
+  }`
+
+/** Tests that passed (or were skipped) but took longer than `SLOW_MS`; the failing ones are shown anyway. */
+const slowTests = (planned: ReadonlyArray<PlannedTest>, results: ReadonlyMap<string, TestFinished>) =>
+  planned.flatMap((t) => {
+    const r = results.get(t.id)
+    return r && r.status === "passed" && r.durationMs > SLOW_MS ? [{ test: t, result: r }] : []
+  })
+
+const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
 
 /** Shared bookkeeping: plan order gives deterministic output regardless of scheduling. */
 const collect = () => {
   let planned: Array<PlannedTest> = []
   let runSeed = 0
-  let selection: Selection = { paths: [], files: 0, tests: 0, filters: [] }
+  let selection: Selection = { root: "", paths: [], files: 0, tests: 0, filters: [] }
   const results = new Map<string, TestFinished>()
   let finished: RunFinished | undefined
   return {
@@ -180,6 +192,13 @@ export const agent = (ctx: ReporterContext): Reporter => {
           )
         }
       }
+      const slow = slowTests(s.planned, s.results)
+      if (slow.length) {
+        lines.push("")
+        for (const { result, test } of slow) {
+          lines.push(`SLOW [${test.shortId}] ${test.id} took ${seconds(result.durationMs)} (over ${seconds(SLOW_MS)})`)
+        }
+      }
       const bailed = s.planned.filter((t) => byBail(s.results.get(t.id)))
       if (bailed.length) {
         const interrupted = bailed.filter((t) => s.results.get(t.id)!.status === "interrupted").length
@@ -239,7 +258,9 @@ export const human = (ctx: ReporterContext): Reporter => {
           : red("✗")
         const extra = r.status === "skipped"
           ? dim(` (${r.skipReason})`)
-          : dim(` ${r.durationMs}ms`) +
+          : (r.status === "passed" && r.durationMs > SLOW_MS
+            ? yellow(` ${r.durationMs}ms slow`)
+            : dim(` ${r.durationMs}ms`)) +
             (r.previousAttempts.length ? yellow(` flaky, passed on attempt ${r.attempt}`) : "") +
             (r.status === "timedOut" ? red(" timed out") : "")
         out.push(`${"  ".repeat(parents.length)}${icon} ${segs.at(-1)}${extra}`)

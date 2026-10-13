@@ -139,21 +139,41 @@ export const provide = <ROut, E, RIn>(
 // --- config
 
 /**
- * The test config: the default export of `etest.config.ts`. It only ever
- * optimises: every test file still provides everything it needs.
+ * The test config: the default export of `etest.config.ts`. Its directory is the project
+ * root (test ids, seeds and the `--failed` record are relative to it). Every key is optional,
+ * and an unknown key is an error.
  */
 export interface Config {
+  /** Where to look for `*.test.ts` files when no paths are given (default `["."]`). Paths given on the command line replace these. */
+  readonly paths?: ReadonlyArray<string>
   /**
-   * Layers shared by the whole run. Each is built lazily, the first time any file
-   * provides that same Layer value, and kept until the run ends. A file that must
-   * not share provides `Layer.fresh(layer)` instead. Shared layers must be
-   * self-contained (no requirements): they are built from the run's context, never
-   * from the file that happened to ask first.
+   * Glob patterns of files and directories to skip while searching directories. They are
+   * matched against paths relative to the root: `*` matches within a path segment, `**`
+   * across segments (so a pattern of `**`, `/fixtures/`, `**` skips every `fixtures` directory).
+   * `node_modules` and dot-directories are always skipped. A file named on the command line
+   * is never excluded.
    */
-  readonly shared?: ReadonlyArray<Layer.Layer<any, any, never>>
+  readonly exclude?: ReadonlyArray<string>
+  /** How many executors (worker threads) a run uses, unless `--workers` says otherwise (default 2). */
+  readonly workers?: number
+  /**
+   * Defaults for test options, for every test in the project. An option set on a suite or
+   * test wins (the nearest one); without either, the built-in default applies (timeout
+   * 60 seconds, no retries).
+   */
+  readonly defaults?: Pick<Options, "timeout" | "retries">
+  /**
+   * Layers shared by the whole run. Each is built lazily, the first time any file provides
+   * that same Layer value, and kept until the run ends. A file that must not share provides
+   * `Layer.fresh(layer)` instead. Shared layers only optimise: every test file still provides
+   * everything it needs, and passes without the config. They must be self-contained (no
+   * requirements): they are built from the run's context, never from the file that happened
+   * to ask first.
+   */
+  readonly shared?: ReadonlyArray<Layer.Layer<never, unknown, never>>
 }
 
-export const config = <const C extends Config>(config: C): C => config
+export const config = (config: Config): Config => config
 
 export const isConfig = (u: unknown): u is Config =>
   typeof u === "object" && u !== null && (!("shared" in u) || Array.isArray((u as Config).shared))

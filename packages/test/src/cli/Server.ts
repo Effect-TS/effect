@@ -17,12 +17,14 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import type * as Worker from "effect/workers/Worker"
 import * as fs from "node:fs"
 import * as net from "node:net"
-import { command, executorPool, Executors, ExitCode } from "./Cli.ts"
+import { command, executorPool, Executors, ExitCode, Invocation } from "./Cli.ts"
+import * as Config from "./Config.ts"
 import { consoleFor, Output } from "./Output.ts"
 import { type Request, type Response, socketPath } from "./socket.ts"
 
@@ -37,7 +39,7 @@ export const warmExecutors = (size: number) =>
     const serverScope = yield* Effect.scope
     const prepare = Effect.gen(function*() {
       const scope = yield* Scope.make()
-      const pool = yield* Layer.buildWithScope(executorPool(size, 4), scope)
+      const pool = yield* Layer.buildWithScope(executorPool(size), scope)
       return { scope, pool }
     }).pipe(Effect.provideContext(context))
     let next = yield* Effect.forkIn(prepare, serverScope)
@@ -57,7 +59,7 @@ export const warmExecutors = (size: number) =>
               Effect.map(({ pool }) => pool)
             )
           )
-          : executorPool(workers, 4)
+          : executorPool(workers)
     })
   })
 
@@ -77,14 +79,17 @@ const exitCodeOf = (exit: Exit.Exit<unknown, unknown>): number => {
 /**
  * Runs an `etest` command line in this process, with its output going to `output` and its
  * executors from `executors`, and returns the exit code. Used by `etest serve` and `etest mcp`.
+ * `invocation` says where the command line came from (see `Invocation`).
  */
 export const runCommandLine = (version: string, executors: Executors["Service"]) =>
 (
   argv: ReadonlyArray<string>,
-  output: Output["Service"]
+  output: Output["Service"],
+  invocation: Invocation
 ) =>
   Command.runWith(command, { version, helpOnError: false })(argv).pipe(
     Effect.provideService(Output, output),
+    Effect.provideService(Invocation, invocation),
     Effect.provideService(Executors, executors),
     Effect.provideService(Console.Console, consoleFor(output)),
     Effect.exit,
@@ -96,11 +101,28 @@ export const runCommandLine = (version: string, executors: Executors["Service"])
     })
   )
 
-const serve = (version: string, options: { readonly workers: number }) =>
+/**
+ * For a long-running process (`etest serve`, `etest mcp`): finds the project from the working
+ * directory, moves to its root, and returns its config. Runs it serves resolve the same root.
+ */
+export const enterProject = Effect.gen(function*() {
+  const config = yield* Config.resolve(process.cwd(), { config: Option.none(), noConfig: false }).pipe(
+    Effect.catchTag(
+      "ConfigError",
+      (error) => Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
+    )
+  )
+  if (process.cwd() !== config.root) process.chdir(config.root)
+  return config
+})
+
+const serve = (version: string, options: { readonly workers: Option.Option<number> }) =>
   Effect.gen(function*() {
-    const cwd = process.cwd()
+    const config = yield* enterProject
+    const cwd = config.root
     const location = socketPath(cwd)
-    const executors = yield* warmExecutors(options.workers)
+    const workers = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
+    const executors = yield* warmExecutors(workers)
     const runFork = Effect.runForkWith(
       yield* Effect.context<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>()
     )
@@ -110,15 +132,18 @@ const serve = (version: string, options: { readonly workers: number }) =>
       const send = (response: Response) => {
         if (!client.destroyed) client.write(JSON.stringify(response) + "\n")
       }
-      if (request.cwd !== cwd) {
-        send({ err: `etest serve: this server is for ${cwd}, not ${request.cwd}\n` })
+      if (request.root !== cwd) {
+        send({ err: `etest serve: this server is for ${cwd}, not ${request.root}\n` })
         send({ exit: 2 })
         client.end()
         return
       }
       const output = Output.of({ out: (text) => send({ out: text }), err: (text) => send({ err: text }) })
       const started = Date.now()
-      const program = runCommandLine(version, executors)(request.argv, output).pipe(
+      const program = runCommandLine(version, executors)(request.argv, output, {
+        cwd: request.cwd,
+        script: request.script
+      }).pipe(
         Effect.flatMap((code) =>
           Effect.sync(() => {
             send({ exit: code })
@@ -186,7 +211,7 @@ const serve = (version: string, options: { readonly workers: number }) =>
         if (process.platform !== "win32") fs.rmSync(location, { force: true })
       })
     )
-    yield* Console.error(`etest serve: ready for ${cwd} (workers=${options.workers}); stop with Ctrl-C`)
+    yield* Console.error(`etest serve: ready for ${cwd} (workers=${workers}); stop with Ctrl-C`)
     return yield* Effect.never
   })
 
@@ -194,8 +219,8 @@ const serve = (version: string, options: { readonly workers: number }) =>
 export const serveCommand = (version: string) =>
   Command.make("serve", {
     workers: Flag.Int("workers").pipe(
-      Flag.withDescription("Executors per run (worker threads)"),
-      Flag.withDefault(2)
+      Flag.withDescription("Executors per run (worker threads; default: the config's `workers`, else 2)"),
+      Flag.optional
     )
   }).pipe(
     Command.withDescription(

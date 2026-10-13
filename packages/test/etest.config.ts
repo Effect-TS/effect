@@ -6,5 +6,9 @@ import { Database } from "./examples/shared.ts"
 import * as Test from "./src/Test.ts"
 
 export default Test.config({
+  // `etest` alone runs the self-tests; the examples (with their intentional failures) run with `etest examples`
+  paths: ["test"],
+  // files that the self-tests load or search themselves
+  exclude: ["**/fixtures/**"],
   shared: [Database.layer]
 })
