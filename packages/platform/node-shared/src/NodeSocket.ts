@@ -447,8 +447,7 @@ export const fromDuplex = <RO>(
         return Effect.sync(cleanup)
       })
 
-    // An ended or destroyed stream emits no further `drain` or `close`, so
-    // writes to it fail instead of waiting for one.
+    // Closed streams may never emit the `drain` event a write would await.
     const isWriteClosed = (conn: Duplex) => conn.destroyed || conn.writableEnded
     const writeClosedError = () =>
       Effect.fail(

@@ -2,9 +2,8 @@
  * An `Ssh` connection factory backed by an OpenSSH `ControlMaster`.
  *
  * Each connection starts the host's `ssh` executable once, as a connection
- * master, so authentication, host key verification, proxies, and algorithms
- * are left to OpenSSH: the user's `~/.ssh/config`, agent, `known_hosts`,
- * certificates, security keys, and passphrase-protected keys all work.
+ * master. OpenSSH handles authentication, host key verification, proxies,
+ * and algorithms using the user's configuration, agent, and `known_hosts`.
  * Commands, subsystems, and tunnels are then opened as SSH channels over the
  * master's control socket in multiplexing proxy mode (OpenSSH 7.4 or later),
  * without further `ssh` processes.
@@ -325,9 +324,8 @@ export const make: Effect.Effect<Ssh.Ssh["Service"], never, ChildProcessSpawner 
           diagnostics = (diagnostics + decoder.decode(chunk, { stream: true })).slice(-4096)
         })).pipe(Effect.ignore, Effect.forkScoped)
 
-      // Each attempt owns a child scope, so failed attempts release their
-      // socket. The control socket appears once the master has
-      // authenticated, so attempts are repeated until it accepts connections.
+      // Retry until the master authenticates and opens its control socket.
+      // A child scope releases each failed attempt's socket.
       const socket = yield* NodeSocket.makeNet({ path: controlPath })
       const connected = inChildScope(connectControl(socket)).pipe(
         Effect.retry({
@@ -359,8 +357,6 @@ export const make: Effect.Effect<Ssh.Ssh["Service"], never, ChildProcessSpawner 
             )
         })
       )
-      // The master closes the connection when it exits, for example when the
-      // server goes away.
       const closed = Effect.andThen(
         awaitDiagnostics,
         () => Effect.fail(connectionError(withDiagnostics("the OpenSSH master closed the connection")))

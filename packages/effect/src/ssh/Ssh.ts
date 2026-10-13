@@ -3,9 +3,7 @@
  *
  * The `Ssh` service is a connection factory: `connect` opens a scoped
  * `SshConnection` to a destination, which runs commands, starts subsystems,
- * and opens tunnels. Connections are values owned by the code
- * that opens them and close with their scope, so programs decide when, where,
- * and how often to connect.
+ * and opens tunnels. Each connection closes with its scope.
  *
  * Backends provide the factory. `NodeOpenSsh.layer` from
  * `@effect/platform-node` (`BunOpenSsh` on Bun) connects through an OpenSSH
@@ -14,7 +12,6 @@
  * Backends whose transport carries SSH connection-protocol messages build
  * their connections with `SshConnectionProtocol.toSshConnection`, and others
  * from their own operations with `makeConnection`.
- * Code that depends only on `Ssh` works with any backend.
  *
  * **Example** (Connecting to several hosts)
  *
@@ -433,7 +430,6 @@ const pipeSocket = (
         (error): error is Socket.SocketError => Socket.isSocketError(error) && isCleanClose(error),
         () => stream.eof
       ),
-      // Writes fail with a `Channel` error once the stream is closed.
       Effect.catchIf((error) => error._tag === "SshError" && error.reason === "Channel", () => Effect.void),
       // A local peer that neither sends nor closes would otherwise keep a
       // closed stream's forwarding alive.
