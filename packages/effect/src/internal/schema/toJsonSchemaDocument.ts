@@ -121,13 +121,12 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
-// Two values of one of these keywords on the same schema object are equivalent to the tighter one: the larger lower
-// bound or the smaller upper bound.
+// Every bound on one schema object applies, so a repeated bound reduces to its tighter value.
 const lowerBoundKeywords = "|minimum|exclusiveMinimum|minLength|minItems|minProperties|"
 const upperBoundKeywords = "|maximum|exclusiveMaximum|maxLength|maxItems|maxProperties|"
 
-// Merges an inlineable check into the schema it applies to. A colliding bound is tightened in place. Any other
-// collision returns `undefined`, and the caller keeps the check in `allOf`.
+// Tightens repeated bounds and drops an inclusive or exclusive bound implied by the other on the same side. Returns
+// `undefined` for a `$ref` schema or a non-bound collision, so the caller falls back to `allOf`.
 function mergeInlineCheck(
   left: JsonSchema.JsonSchema,
   right: JsonSchema.JsonSchema,

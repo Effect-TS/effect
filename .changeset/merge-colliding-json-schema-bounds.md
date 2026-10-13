@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Merge colliding bounds when exporting JSON Schema. A lower bound (`minimum`, `exclusiveMinimum`, `minLength`, `minItems`, `minProperties`) or upper bound (`maximum`, `exclusiveMaximum`, `maxLength`, `maxItems`, `maxProperties`) that collides with one already on the schema is now tightened in place instead of being moved into `allOf`, and annotations on that check stay at the top level. For example, `Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))` exports `minimum: 1, maximum: 100`, `Schema.Natural` exports `minimum: 0`, and `Schema.NonEmptyArray(Schema.String).check(Schema.isMinLength(2))` exports `minItems: 2`. Other collisions, such as two `pattern` or `multipleOf` checks, still use `allOf`.
+Tighten colliding bounds in place when exporting JSON Schema, instead of moving them into `allOf`. This applies to numeric, length, item-count and property-count bounds, and an inclusive or exclusive bound implied by the other on the same side is dropped. For example, `Schema.Natural` now exports `minimum: 0`, and `Schema.Int.check(Schema.isGreaterThan(0))` exports `exclusiveMinimum: 0` without the safe-integer `minimum`.
