@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Add an optional `keepAlive` setting for TCP connections, so queries on a connection that silently stops responding fail with a socket error instead of hanging.
+Add an optional `keepAlive` idle duration that enables TCP keepalive, so a connection that silently stops responding errors instead of leaving queries hanging.

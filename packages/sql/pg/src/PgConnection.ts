@@ -57,31 +57,6 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * TCP keepalive settings for native TCP connections. Unix sockets and custom
- * streams are left unchanged. This is not a query timeout: a live server
- * answers probes while a query runs.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface KeepAliveOptions {
-  /** Idle time before the first probe. Truncated to whole seconds, minimum 1 second. */
-  readonly initialDelay: Duration.Input
-  /**
-   * Time between unanswered probes. Truncated to whole seconds, minimum 1
-   * second. Requires Node >= 24.19.0; omit to use Node's default.
-   */
-  readonly interval?: Duration.Input | undefined
-  /**
-   * Unanswered probes before the connection is dropped, from 1 to 4294967295.
-   * The OS may cap it lower. Requires Node >= 24.19.0; omit to use Node's
-   * default.
-   */
-  readonly count?: number | undefined
-}
-
-/**
  * Connection settings for a PostgreSQL session.
  *
  * **Details**
@@ -125,8 +100,16 @@ export interface Config {
    */
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
-  /** TCP keepalive for native TCP connections. Disabled when omitted. */
-  readonly keepAlive?: KeepAliveOptions | undefined
+  /**
+   * Enables TCP keepalive on native TCP connections after this idle time,
+   * truncated to whole seconds (minimum 1 second). With Node's defaults, the
+   * connection errors after 10 unanswered probes sent 1 second apart. Disabled
+   * when omitted; Unix sockets and custom streams are unaffected.
+   *
+   * This is not a query timeout. Probes only run while no sent data is awaiting
+   * acknowledgement, so use `Effect.timeout` to bound a write to a dead peer.
+   */
+  readonly keepAlive?: Duration.Input | undefined
   /**
    * Overrides `startupParameters.application_name`, the URL's `application_name`,
    * and the default `"@effect/sql-pg"`, in that order.
@@ -1988,7 +1971,7 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
         ? config.stream()
         : config.path !== undefined
         ? Net.connect({ path: config.path })
-        : connectTcp(config)
+        : Net.connect({ host: config.host, port: config.port, noDelay: true })
     } catch {
       resume(Effect.void)
       return
@@ -2000,18 +1983,6 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
     else socket.once("connect", begin)
     return Effect.sync(finish)
   })
-
-const connectTcp = (config: ResolvedConfig): Net.Socket => {
-  const socket = Net.connect({ host: config.host, port: config.port, noDelay: true })
-  const keepAlive = config.keepAlive
-  if (keepAlive !== undefined) {
-    // Runs before any TLS upgrade. Values are validated in `resolveConfig`.
-    socket.once("connect", () => {
-      socket.setKeepAlive(true, keepAlive.initialDelay, keepAlive.interval, keepAlive.count)
-    })
-  }
-  return socket
-}
 
 const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
@@ -2234,7 +2205,12 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
         ? Net.connect({ path: config.path })
         // A statement is one write and then a wait for its answer, so Nagle has
         // nothing to coalesce and only holds the write back.
-        : connectTcp(config)
+        : Net.connect({
+          host: config.host,
+          port: config.port,
+          noDelay: true,
+          ...(config.keepAlive !== undefined && { keepAlive: true, keepAliveInitialDelay: config.keepAlive })
+        })
     } catch (cause) {
       resume(Effect.fail(
         new SqlError({
@@ -2269,11 +2245,7 @@ interface ResolvedConfig {
   readonly username: string
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
-  readonly keepAlive: {
-    readonly initialDelay: number
-    readonly interval: number | undefined
-    readonly count: number | undefined
-  } | undefined
+  readonly keepAlive: number | undefined
   readonly startupParameters: PgProtocol.StartupParameters
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
@@ -2287,8 +2259,6 @@ const configError = (message: string, cause?: unknown): SqlError =>
       operation: "connect"
     })
   })
-
-const keepAliveDurationRange = "must be between 1 and 2147483647 seconds"
 
 // Node truncates to whole seconds and libuv silently ignores zero, which would
 // leave the OS defaults in place.
@@ -2312,24 +2282,9 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
     }
-    let keepAlive: ResolvedConfig["keepAlive"]
-    if (options.keepAlive !== undefined) {
-      const { count } = options.keepAlive
-      const initialDelay = keepAliveMillis(options.keepAlive.initialDelay)
-      if (initialDelay === undefined) {
-        return Effect.fail(configError(`keepAlive.initialDelay ${keepAliveDurationRange}`))
-      }
-      let interval: number | undefined
-      if (options.keepAlive.interval !== undefined) {
-        interval = keepAliveMillis(options.keepAlive.interval)
-        if (interval === undefined) {
-          return Effect.fail(configError(`keepAlive.interval ${keepAliveDurationRange}`))
-        }
-      }
-      if (count !== undefined && (!Number.isInteger(count) || count < 1 || count > 0xffffffff)) {
-        return Effect.fail(configError("keepAlive.count must be an integer between 1 and 4294967295"))
-      }
-      keepAlive = { initialDelay, interval, count }
+    const keepAlive = options.keepAlive === undefined ? undefined : keepAliveMillis(options.keepAlive)
+    if (options.keepAlive !== undefined && keepAlive === undefined) {
+      return Effect.fail(configError("keepAlive must be between 1 and 2147483647 seconds"))
     }
     const named: Record<string, string> = Object.create(null)
     for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
