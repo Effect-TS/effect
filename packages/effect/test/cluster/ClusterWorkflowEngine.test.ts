@@ -1755,11 +1755,24 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         assert(Option.isNone(result), "the interrupt must reset the run")
       }).pipe(Effect.provide(layer(crashingStorage)))
 
+      // The fresh owner's first read of the persisted interrupt fails once.
+      let lookupFailed = false
+      const flakyStorage = Layer.succeed(MessageStorage.MessageStorage, {
+        ...storage,
+        requestIdForPrimaryKey: (options) => {
+          if (!lookupFailed && options.tag === "deferred" && options.id === "Workflow/InterruptSignal") {
+            lookupFailed = true
+            return Effect.fail(new ClusterError.PersistenceError({ cause: "transient interrupt lookup failure" }))
+          }
+          return storage.requestIdForPrimaryKey(options)
+        }
+      })
       yield* Effect.gen(function*() {
         const result = yield* pollUntil(Failing, executionId, "Complete")
+        assert(lookupFailed, "the interrupt lookup must fail once")
         assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit), "the replay must complete as interrupted")
         assert.strictEqual(attempts, 1, "a fresh owner must not re-run the failed activity")
-      }).pipe(Effect.provide(layer(Layer.succeed(MessageStorage.MessageStorage, storage))))
+      }).pipe(Effect.provide(layer(flakyStorage)))
     }))
 
   it.effect("coalesces parked child wakeups while parent cleanup is pending", () =>
