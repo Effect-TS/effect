@@ -211,18 +211,23 @@ const getRequest = (url: string, request: GraphQLRequest, accept: string) => {
   )
 }
 
+// Reads the clock when the error arrives, so an HTTP-date `Retry-After` is
+// measured from when the response was received.
 const fromHttpClientError =
-  (now: number) =>
+  (clock: Clock.Clock) =>
   <A>(effect: Effect.Effect<A, TransportError | HttpClientError.HttpClientError>): Effect.Effect<A, TransportError> =>
     Effect.catch(effect, (error) =>
       Effect.fail(
-        HttpClientError.isHttpClientError(error) ? TransportError.fromHttpClientError(error, { now }) : error
+        HttpClientError.isHttpClientError(error)
+          ? TransportError.fromHttpClientError(error, { now: clock.currentTimeMillisUnsafe() })
+          : error
       ))
 
 const readResponse = (
   response: HttpClientResponse.HttpClientResponse
 ): Effect.Effect<unknown, TransportError | HttpClientError.HttpClientError> => {
-  const contentType = response.headers["content-type"] ?? ""
+  // Media types are case-insensitive.
+  const contentType = (response.headers["content-type"] ?? "").toLowerCase()
   // The GraphQL-over-HTTP media type is authoritative, whatever the status.
   if (contentType.includes(graphqlResponseContentType)) {
     return response.json
@@ -316,7 +321,6 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
     HttpClient.HttpClient.useSync((client) => {
       const execute = (request: GraphQLRequest) =>
         Effect.flatMap(Effect.service(internalGraphQL.ForcePost), (forcePost) => {
-          const now = clock.currentTimeMillisUnsafe()
           const toRequest = options.queryMethod === "GET" && request.kind === "query" && !forcePost
             ? getRequest
             : postRequest
@@ -324,7 +328,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
             toRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
             Effect.flatMap(readAnswer),
-            fromHttpClientError(now)
+            fromHttpClientError(clock)
           )
         })
       const subscribe = (
@@ -333,11 +337,10 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
         { readonly body: unknown; readonly status?: number; readonly headers: Headers.Headers },
         TransportError
       > =>
-        Stream.unwrap(Effect.suspend(() => {
-          const now = clock.currentTimeMillisUnsafe()
-          return client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
+        Stream.unwrap(Effect.suspend(() =>
+          client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
             Effect.flatMap((response) => {
-              const contentType = response.headers["content-type"] ?? ""
+              const contentType = (response.headers["content-type"] ?? "").toLowerCase()
               if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
                 return Effect.succeed(sseEvents(response))
               }
@@ -345,9 +348,9 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
               // GraphQL response, which the client reads like a query's.
               return Effect.map(readAnswer(response), Stream.succeed)
             }),
-            fromHttpClientError(now)
+            fromHttpClientError(clock)
           )
-        }))
+        ))
       return GraphQLProtocol.of({ execute, subscribe })
     })
   )
@@ -434,9 +437,10 @@ export const makeHttp: {
  * A response is a GraphQL response when its `Content-Type` is
  * `application/graphql-response+json`, whatever the status, or when it is
  * `application/json` and the body has a list of `errors` or a `data` object
- * (or `null`). Anything else
+ * (or `null`). Media types match case-insensitively. Anything else
  * is a `TransportError` with the response `status` and `headers`, and a
- * `Retry-After` header (numeric or HTTP-date) becomes `retryAfter`.
+ * `Retry-After` header (whole seconds or an HTTP date, measured from when the
+ * response arrived) becomes `retryAfter`.
  *
  * A subscription is a `POST` with `Accept: text/event-stream`. Each `next`
  * event is emitted with the response headers but no status, and the stream
@@ -673,6 +677,15 @@ export const makeWebSocket = <R = never>(
     let nextId = 0
     let active = 0
     let idleGeneration = 0
+    let closed = false
+
+    // Once the scope closes, a forked connection would be interrupted before
+    // it starts, so new operations fail instead of waiting for an ack.
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        closed = true
+      })
+    )
 
     const send = (message: WsMessage) =>
       writer.write(JSON.stringify(message)).pipe(
@@ -823,6 +836,11 @@ export const makeWebSocket = <R = never>(
     })
 
     const register = Effect.suspend(() => {
+      if (closed) {
+        return Effect.fail(
+          new TransportError({ description: "The graphql-ws transport's scope is closed", fatal: true })
+        )
+      }
       active++
       idleGeneration++
       return Effect.map(acquireConnection, (conn) => [String(++nextId), conn] as const)
@@ -897,9 +915,11 @@ export const makeWebSocket = <R = never>(
  *   No server frame in the following interval causes a retryable failure.
  *   Server `ping` receives `pong`.
  * - Lost connections fail every active operation with a `TransportError`
- *   carrying the close code. See `GraphQLClientError.fatalCloseCodes` for
+ *   carrying the close code. See `GraphQLClientError.isFatalCloseCode` for
  *   non-retryable codes. The transport never replays operations; the client
  *   retries subscriptions and the next operation reconnects.
+ * - Once the layer's scope has closed, every new operation fails at once
+ *   with a non-retryable `TransportError` marked `fatal`.
  * - Messages follow graphql-ws validation. Invalid messages close the socket
  *   with fatal code `4400`; valid messages for unknown ids are ignored.
  * - Server `error` messages become `ResponseError` values. Interrupting a

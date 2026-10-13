@@ -9,30 +9,64 @@ import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol, GraphQLResolver 
 import { FetchHttpClient } from "effect/http"
 import { GitHubAuth } from "./10_basics.ts"
 
-// Generated from:
+// The generator's output for `repo-nodes.graphql`:
 //
 //   query RepoNodes($ids: [ID!]!) {
 //     nodes(ids: $ids) { __typename ... on Repository { nameWithOwner } }
 //   }
 //
+// Generated modules import shared codecs and the possible `__typename`s of
+// each interface from the module the generator writes next to the schema
+// (`import * as Shared from "../schema.graphql.ts"`); here `Shared` is
+// declared inline.
+const Shared = { ID: Schema.String }
+declare namespace Shared {
+  export namespace Typename {
+    export type Node = "Issue" | "PullRequest" | "Repository" | "User"
+  }
+}
+
+export class Repository extends Schema.Opaque<Repository>()(Schema.Struct({
+  __typename: Schema.Literal("Repository"),
+  nameWithOwner: Schema.String
+})) {}
+
 // Unselected node types are represented by `otherTypename`.
-export class Repository extends Schema.Opaque<Repository>()(
-  Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
-) {}
+export class NodeOther extends Schema.Opaque<NodeOther>()(Schema.Struct({
+  __typename: GraphQL.otherTypename<Shared.Typename.Node>()(["Repository"])
+})) {}
 
-export class NodeOther extends Schema.Opaque<NodeOther>()(
-  Schema.Struct({ __typename: GraphQL.otherTypename<"Issue" | "Repository" | "User">()(["Repository"]) })
-) {}
-
+/** `query RepoNodes` */
 export const RepoNodes = GraphQL.query("RepoNodes", {
-  document: "query RepoNodes($ids:[ID!]!){nodes(ids:$ids){__typename ...on Repository{nameWithOwner}}}",
-  variables: { ids: Schema.Array(Schema.String) },
+  document: {
+    variables: [
+      { name: "ids", body: "[ID!]!" }
+    ],
+    selections: [
+      { name: "nodes", body: ["(ids:$", "ids", "){__typename...on Repository{nameWithOwner}}"] }
+    ],
+    fragments: []
+  },
+  variables: {
+    ids: Schema.Array(Shared.ID)
+  },
   result: Schema.Struct({
-    nodes: Schema.Array(Schema.NullOr(Schema.Union([Repository, NodeOther])))
+    nodes: Schema.Array(Schema.NullOr(Schema.Union([
+      Repository,
+      NodeOther
+    ])))
   })
 })
+export declare namespace RepoNodes {
+  export type Variables = typeof RepoNodes.variables.Type
+  export type Result = typeof RepoNodes.result.Type
+}
 
-export const GitHubGraphQLGroup = GraphQLGroup.make(RepoNodes).middleware(GitHubAuth)
+/** Every operation in repo-nodes.graphql. */
+export const RepoNodesGraphQLGroup = GraphQLGroup.make(RepoNodes)
+
+// Your code: attach the middleware to the generated group.
+export const GitHubGraphQLGroup = RepoNodesGraphQLGroup.middleware(GitHubAuth)
 
 export class GitHub extends Context.Service<
   GitHub,

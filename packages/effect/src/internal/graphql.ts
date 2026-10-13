@@ -101,14 +101,27 @@ const render = (
 export const joinTemplate = (kind: string, name: string, template: DocumentTemplate): string =>
   render(kind, name, template, [""])
 
-/** Why the template can't be rendered for these prefixes, if it can't. */
-const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<string>): string | undefined => {
+/**
+ * Why the template can't be sliced for any prefixes, if it can't: an operation
+ * directive references a variable, or a root selection is a fragment spread or
+ * inline fragment.
+ *
+ * @internal
+ */
+export const templateUnsliceableReason = (template: DocumentTemplate): string | undefined => {
   if (template.directives !== undefined && template.directives.length > 1) {
     return "its operation directives reference variables"
   }
   if (template.selections.some((selection) => selection.name === undefined)) {
     return "it has a fragment spread or inline fragment at the root"
   }
+  return undefined
+}
+
+/** Why the template can't be rendered for these prefixes, if it can't. */
+const unsliceableReason = (template: DocumentTemplate, prefixes: ReadonlyArray<string>): string | undefined => {
+  const reason = templateUnsliceableReason(template)
+  if (reason !== undefined) return reason
   const shared = new Set(template.fragments.filter(isShared).map((fragment) => fragment.name))
   const collision = template.fragments
     .flatMap((fragment) => isShared(fragment) ? [] : prefixes.map((prefix) => prefix + fragment.name))

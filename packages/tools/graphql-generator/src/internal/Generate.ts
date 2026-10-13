@@ -7,6 +7,7 @@
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import type { PlatformError } from "effect/PlatformError"
 import * as Result from "effect/Result"
@@ -76,9 +77,14 @@ export const generate: (
     const sharedPath = config.shared === undefined
       ? schemaPath.replace(/\.(?:graphql|gql|json)$/, "") + ".graphql.ts"
       : path.resolve(cwd, config.shared)
+    // A `.ts`, `.js` or missing extension becomes `importExtension`; any other extension is kept.
     const importSpecifier = (from: string, to: string): string => {
       const relative = path.relative(path.dirname(from), to).split(path.sep).join("/")
-      return (relative.startsWith(".") ? relative : `./${relative}`).replace(/\.[jt]s$/, "") + importExtension
+      const specifier = relative.startsWith(".") ? relative : `./${relative}`
+      const extension = path.extname(specifier)
+      return extension === "" || extension === ".ts" || extension === ".js"
+        ? specifier.slice(0, specifier.length - extension.length) + importExtension
+        : specifier
     }
     const scalars = yield* resolveScalars(
       config,
@@ -109,6 +115,14 @@ export const generate: (
     }
     cache.documents = documents
     if (diagnostics.length > 0) return failed(diagnostics.map(toPublic))
+    const overwritten = sharedPath === schemaPath ? schemaSource : documents.get(sharedPath)?.source
+    if (overwritten !== undefined) {
+      return failed([toPublic(make(
+        overwritten,
+        0,
+        `The shared module path "${display(sharedPath)}" is also an input file; choose a different shared path.`
+      ))])
+    }
     const collision = files.find((file) => file.outputPath === sharedPath)
     if (collision !== undefined) {
       return failed([toPublic(make(
@@ -132,7 +146,9 @@ export const generate: (
     // Only document headers name a source; shared modules are never stale outputs.
     const outputs = new Set(output.files.map((file) => file.path))
     const deletes = yield* Effect.filter(
-      uniqueSorted(entries.filter((entry) => entry.absolute.endsWith(".graphql.ts") && !outputs.has(entry.absolute))),
+      uniqueSorted(
+        entries.filter((entry) => /\.(?:graphql|gql)\.ts$/.test(entry.absolute) && !outputs.has(entry.absolute))
+      ),
       Effect.fnUntraced(function*(absolute) {
         const source = absolute.slice(0, -".ts".length)
         if (yield* fs.exists(source)) return false
@@ -232,7 +248,9 @@ interface FileEntry {
 
 /**
  * Every file under the `documents` glob roots, once per glob whose root holds
- * it, skipping `node_modules` and dot-directories.
+ * it, skipping `node_modules` and dot-directories. Entries that can't be
+ * stat'ed, such as dangling symlinks, are skipped, and a directory symlinked
+ * inside itself is walked once. An absolute pattern is a `ConfigError`.
  */
 const listFiles = Effect.fnUntraced(function*(
   fs: FileSystem.FileSystem,
@@ -241,18 +259,30 @@ const listFiles = Effect.fnUntraced(function*(
   patterns: ReadonlyArray<string>
 ) {
   const entries: Array<FileEntry> = []
+  /** The real paths of the directories being walked, to stop at symlink loops. */
+  const ancestors = new Set<string>()
   const walk = (glob: Glob.Glob, directory: string, relative: string): Effect.Effect<void, PlatformError> =>
     Effect.gen(function*() {
+      const real = yield* fs.realPath(directory)
+      if (ancestors.has(real)) return
+      ancestors.add(real)
       for (const entry of (yield* fs.readDirectory(directory)).sort()) {
         if (Glob.isSkipped(entry)) continue
         const absolute = path.join(directory, entry)
         const entryRelative = relative === "" ? entry : `${relative}/${entry}`
-        const info = yield* fs.stat(absolute)
-        if (info.type === "Directory") yield* walk(glob, absolute, entryRelative)
-        else if (info.type === "File") entries.push({ absolute, relative: entryRelative, glob })
+        const info = yield* fs.stat(absolute).pipe(Effect.option)
+        if (Option.isNone(info)) continue
+        if (info.value.type === "Directory") yield* walk(glob, absolute, entryRelative)
+        else if (info.value.type === "File") entries.push({ absolute, relative: entryRelative, glob })
       }
+      ancestors.delete(real)
     })
   for (const pattern of patterns) {
+    if (path.isAbsolute(pattern)) {
+      return yield* new ConfigError({
+        message: `documents: "${pattern}" is an absolute path; write patterns relative to the config file.`
+      })
+    }
     const glob = Glob.make(pattern)
     const directory = path.join(cwd, glob.root)
     if (!glob.skipped && (yield* fs.exists(directory))) yield* walk(glob, directory, glob.root)

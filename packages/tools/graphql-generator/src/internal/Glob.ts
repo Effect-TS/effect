@@ -1,7 +1,7 @@
 /**
  * The small glob matcher the `documents` patterns use:
  * `*`, `**`, `?` and `{a,b}`, matched against `/`-separated paths relative
- * to the config file.
+ * to the config file. A `{` without a closing `}` is a literal character.
  *
  * @internal
  */
@@ -19,7 +19,22 @@ export const isSkipped = (name: string): boolean => name.startsWith(".") || name
 
 const wildcard = /[*?{]/
 
-const escapeRegExp = (char: string): string => /[.+^$()|[\]\\]/.test(char) ? `\\${char}` : char
+const escapeRegExp = (char: string): string => /[.+^$()|[\]\\{}]/.test(char) ? `\\${char}` : char
+
+/** The indices of the `{` that have a closing `}`, and of those `}`. */
+const matchedBraces = (pattern: string): Set<number> => {
+  const matched = new Set<number>()
+  const open: Array<number> = []
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === "{") {
+      open.push(i)
+    } else if (pattern[i] === "}" && open.length > 0) {
+      matched.add(open.pop()!)
+      matched.add(i)
+    }
+  }
+  return matched
+}
 
 const normalize = (pattern: string): string => pattern.replace(/^(?:\.\/)+/, "")
 
@@ -27,6 +42,7 @@ const toRegExpSource = (pattern: string): string => {
   let out = ""
   let i = 0
   let braces = 0
+  const matched = matchedBraces(pattern)
   while (i < pattern.length) {
     const char = pattern[i]!
     if (char === "*") {
@@ -44,10 +60,10 @@ const toRegExpSource = (pattern: string): string => {
       out += "[^/]*"
     } else if (char === "?") {
       out += "[^/]"
-    } else if (char === "{") {
+    } else if (char === "{" && matched.has(i)) {
       braces++
       out += "(?:"
-    } else if (char === "}" && braces > 0) {
+    } else if (char === "}" && matched.has(i)) {
       braces--
       out += ")"
     } else if (char === "," && braces > 0) {

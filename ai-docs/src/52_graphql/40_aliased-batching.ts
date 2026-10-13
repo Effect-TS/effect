@@ -10,7 +10,7 @@ import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol, GraphQLResolver 
 import { FetchHttpClient } from "effect/http"
 import { GitHubAuth } from "./10_basics.ts"
 
-// Generated from:
+// The generator's output for `pr.graphql`:
 //
 //   query PullRequest($owner: String!, $name: String!, $number: Int!) {
 //     repository(owner: $owner, name: $name) {
@@ -18,17 +18,24 @@ import { GitHubAuth } from "./10_basics.ts"
 //     }
 //   }
 //
+// Generated modules import shared codecs, such as `Int`, from the module the
+// generator writes next to the schema (`import * as Shared from
+// "../schema.graphql.ts"`); here `Shared` is declared inline.
+const Shared = { Int: Schema.Number.check(Schema.isInt32()) }
+
+export class PullRequestPullRequest extends Schema.Opaque<PullRequestPullRequest>()(Schema.Struct({
+  number: Shared.Int,
+  title: Schema.String
+})) {}
+
+export class Repository extends Schema.Opaque<Repository>()(Schema.Struct({
+  pullRequest: Schema.NullOr(PullRequestPullRequest)
+})) {}
+
 // The generator gives queries and mutations their document as a
 // `GraphQL.DocumentTemplate`. The odd entries of each `body` are the names
 // `aliased` renames per slice; joined together they are the printed document.
-export class PullRequestItem extends Schema.Opaque<PullRequestItem>()(
-  Schema.Struct({ number: Schema.Int, title: Schema.String })
-) {}
-
-export class Repository extends Schema.Opaque<Repository>()(
-  Schema.Struct({ pullRequest: Schema.NullOr(PullRequestItem) })
-) {}
-
+/** `query PullRequest` */
 export const PullRequest = GraphQL.query("PullRequest", {
   document: {
     variables: [
@@ -36,17 +43,33 @@ export const PullRequest = GraphQL.query("PullRequest", {
       { name: "name", body: "String!" },
       { name: "number", body: "Int!" }
     ],
-    selections: [{
-      name: "repository",
-      body: ["(owner:$", "owner", ",name:$", "name", "){pullRequest(number:$", "number", "){number title}}"]
-    }],
+    selections: [
+      {
+        name: "repository",
+        body: ["(owner:$", "owner", " name:$", "name", "){pullRequest(number:$", "number", "){number title}}"]
+      }
+    ],
     fragments: []
   },
-  variables: { owner: Schema.String, name: Schema.String, number: Schema.Int },
-  result: Schema.Struct({ repository: Schema.NullOr(Repository) })
+  variables: {
+    owner: Schema.String,
+    name: Schema.String,
+    number: Shared.Int
+  },
+  result: Schema.Struct({
+    repository: Schema.NullOr(Repository)
+  })
 })
+export declare namespace PullRequest {
+  export type Variables = typeof PullRequest.variables.Type
+  export type Result = typeof PullRequest.result.Type
+}
 
-export const GitHubGraphQLGroup = GraphQLGroup.make(PullRequest).middleware(GitHubAuth)
+/** Every operation in pr.graphql. */
+export const PrGraphQLGroup = GraphQLGroup.make(PullRequest)
+
+// Your code: attach the middleware to the generated group.
+export const GitHubGraphQLGroup = PrGraphQLGroup.middleware(GitHubAuth)
 
 export class GitHub extends Context.Service<
   GitHub,

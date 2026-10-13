@@ -442,7 +442,10 @@ export const findById = <
  *
  * Use {@link request} to get `(variables) => Effect`. Variables that encode
  * to the same JSON share a slice; each slice uses the operation's result Schema.
- * Throws if the operation has no document template.
+ * Throws when the resolver is built if the operation has no document
+ * template, if an operation directive references a variable, or if a root
+ * selection is a fragment spread or inline fragment, since none of these can
+ * be repeated under aliases.
  *
  * Batches use `POST` even with `queryMethod: "GET"`. The default batch size
  * is 10; change it with `RequestResolver.batchN`. Middleware run once per
@@ -538,6 +541,10 @@ export const aliased = <Op extends GraphQL.Any>(
   const template = operation.template
   if (template === undefined) {
     throw new Error(`GraphQLResolver.aliased: operation ${operation.name} has no document template`)
+  }
+  const unsliceable = internalGraphQL.templateUnsliceableReason(template)
+  if (unsliceable !== undefined) {
+    throw new Error(`GraphQLResolver.aliased: cannot batch operation ${operation.name}: ${unsliceable}`)
   }
   const codec = internalGraphQL.makeCodec(operation)
   // The registered hook uses this operation's middleware errors and services.

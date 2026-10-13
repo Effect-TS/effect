@@ -24,7 +24,7 @@ export interface File {
  * without its "Did you mean" suggestion lists.
  *
  * - Fields exist on their parent type (`__typename` exists on every composite
- *   type).
+ *   type), and their types are defined by the schema.
  * - Arguments exist and are unique; required arguments (non-null, no default)
  *   are provided.
  * - Variables are unique, defined, used (directly or through spread fragments,
@@ -34,6 +34,8 @@ export interface File {
  * - Fragments are defined in some input file, used by some operation, acyclic,
  *   and spread onto a possible type (a composite type always overlaps
  *   itself); type conditions name known types.
+ * - Subscriptions select exactly one root field, counted by response key
+ *   through inline fragments and fragment spreads.
  * - Operations are named. Operations and fragments share one namespace across
  *   all files; every definition sharing a name gets one diagnostic at its
  *   name, worded for its kind or as "operation or fragment" when kinds mix.
@@ -258,6 +260,8 @@ class Validator {
   readonly usages = new Map<Ast.OperationDefinition | Ast.FragmentDefinition, ReadonlyArray<Located<VariableUsage>>>()
   /** Fragment pairs already compared for conflicts, keyed by the sorted names, to whether they were mutually exclusive. */
   readonly comparedFragments = new Map<string, boolean>()
+  /** Field maps already compared with a fragment, by fragment name, to whether they were mutually exclusive. */
+  readonly comparedFieldsAndFragments = new WeakMap<CollectedFields["fields"], Map<string, boolean>>()
 
   constructor(schema: SchemaModel.Schema, files: ReadonlyArray<File>, report: Reporter) {
     this.schema = schema
@@ -376,7 +380,45 @@ class Validator {
       this.report(file, operation.loc.start, `Schema is not configured to execute ${operation.operation} operation.`)
       return
     }
+    if (operation.operation === "subscription") this.checkSingleRootField(file, operation)
     this.validateSelectionSet(file, operation.selectionSet, root)
+  }
+
+  /**
+   * graphql-js's SingleFieldSubscriptions rule: a subscription selects one
+   * root response key, counted through inline fragments and fragment spreads.
+   * Selections a literal `@skip` or `@include` condition leaves out don't
+   * count. Reported at the first field of the second key.
+   */
+  checkSingleRootField(file: number, operation: Ast.OperationDefinition): void {
+    const keys = new Map<string, Located<Ast.Field>>()
+    const visited = new Set<string>()
+    const collect = (at: number, selectionSet: Ast.SelectionSet): void => {
+      for (const selection of selectionSet.selections) {
+        if (excludedByLiteral(selection.directives)) continue
+        if (selection._tag === "Field") {
+          const key = (selection.alias ?? selection.name).value
+          if (!keys.has(key)) keys.set(key, { node: selection, file: at })
+        } else if (selection._tag === "InlineFragment") {
+          collect(at, selection.selectionSet)
+        } else if (!visited.has(selection.name.value)) {
+          visited.add(selection.name.value)
+          const fragment = this.fragments.get(selection.name.value)
+          if (fragment !== undefined) collect(fragment.file, fragment.node.selectionSet)
+        }
+      }
+    }
+    collect(file, operation.selectionSet)
+    const extra = Array.from(keys.values())[1]
+    if (extra === undefined) return
+    const name = operation.name?.value
+    this.report(
+      extra.file,
+      extra.node.loc.start,
+      name === undefined
+        ? "Anonymous Subscription must select only one top level field."
+        : `Subscription "${name}" must select only one top level field.`
+    )
   }
 
   /**
@@ -513,8 +555,13 @@ class Validator {
       }
     }
 
-    const type = this.schema.types.get(SchemaModel.namedTypeOf(definition.type))
-    if (type === undefined) return
+    const typeName = SchemaModel.namedTypeOf(definition.type)
+    const type = this.schema.types.get(typeName)
+    if (type === undefined) {
+      // The schema reader accepts references to undefined types; the emitter can't type such a field.
+      this.report(file, field.loc.start, `Unknown type "${typeName}".`)
+      return
+    }
     const printed = SchemaModel.printTypeRef(definition.type)
     if (!isComposite(type)) {
       if (field.selectionSet !== undefined) {
@@ -833,7 +880,7 @@ class Validator {
       }
     }
     for (let i = 0; i < fragments.length; i++) {
-      this.conflictsWithFragment(conflicts, false, fields, fragments[i]!, new Set())
+      this.conflictsWithFragment(conflicts, false, fields, fragments[i]!)
       for (let j = i + 1; j < fragments.length; j++) {
         this.conflictsBetweenFragments(conflicts, false, fragments[i]!, fragments[j]!)
       }
@@ -908,15 +955,21 @@ class Validator {
     conflicts: Array<Conflict>,
     exclusive: boolean,
     fields: CollectedFields["fields"],
-    fragmentName: string,
-    visited: Set<string>
+    fragmentName: string
   ): void {
-    if (visited.has(fragmentName)) return
-    visited.add(fragmentName)
+    let compared = this.comparedFieldsAndFragments.get(fields)
+    if (compared === undefined) {
+      compared = new Map()
+      this.comparedFieldsAndFragments.set(fields, compared)
+    }
+    const previous = compared.get(fragmentName)
+    // A comparison that wasn't mutually exclusive covers both cases.
+    if (previous === false || previous === exclusive) return
+    compared.set(fragmentName, exclusive)
     const fragment = this.fragmentFields(fragmentName)
     if (fragment === undefined || fragment.fields === fields) return
     this.conflictsBetween(conflicts, exclusive, fields, fragment.fields)
-    for (const nested of fragment.fragments) this.conflictsWithFragment(conflicts, exclusive, fields, nested, visited)
+    for (const nested of fragment.fragments) this.conflictsWithFragment(conflicts, exclusive, fields, nested)
   }
 
   conflictsBetweenFragments(conflicts: Array<Conflict>, exclusive: boolean, name1: string, name2: string): void {
@@ -993,10 +1046,10 @@ class Validator {
     const collected2 = this.collectFields(file2, set2, parent2)
     this.conflictsBetween(conflicts, exclusive, collected1.fields, collected2.fields)
     for (const name of collected2.fragments) {
-      this.conflictsWithFragment(conflicts, exclusive, collected1.fields, name, new Set())
+      this.conflictsWithFragment(conflicts, exclusive, collected1.fields, name)
     }
     for (const name of collected1.fragments) {
-      this.conflictsWithFragment(conflicts, exclusive, collected2.fields, name, new Set())
+      this.conflictsWithFragment(conflicts, exclusive, collected2.fields, name)
     }
     for (const name1 of collected1.fragments) {
       for (const name2 of collected2.fragments) this.conflictsBetweenFragments(conflicts, exclusive, name1, name2)
@@ -1102,6 +1155,14 @@ class Validator {
     }
   }
 }
+
+/** Whether a `@skip(if: true)` or `@include(if: false)` literal leaves a selection out. */
+const excludedByLiteral = (directives: ReadonlyArray<Ast.Directive>): boolean =>
+  directives.some((directive) => {
+    const condition = directive.arguments.find((argument) => argument.name.value === "if")?.value
+    if (condition?._tag !== "BooleanValue") return false
+    return directive.name.value === "skip" ? condition.value : directive.name.value === "include" && !condition.value
+  })
 
 /** Whether a value of input type `sub` can be used where `sup` is expected. */
 const isSubType = (sub: SchemaModel.TypeRef, sup: SchemaModel.TypeRef): boolean => {

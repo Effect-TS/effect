@@ -81,10 +81,11 @@ export type GraphQLError = typeof GraphQLError.Type
  * `Headers.Headers` at runtime and encode as a plain string record.
  * Decoding restores the normalized header collection. Both are unset over
  * graphql-ws, and `status` is unset for graphql-sse events. `retryAfter`
- * parses the `Retry-After` response header as seconds or an HTTP date,
- * measured from `Date.now()`. `isRetryable` is true for HTTP status `429` or
- * `5xx`, and for any response with a valid `Retry-After`, whatever its
- * status. It is false otherwise, including when there is no status.
+ * parses the `Retry-After` response header as whole seconds or an HTTP date,
+ * measured from `Date.now()` when the error is constructed. `isRetryable` is
+ * true for HTTP status `429` or `500`–`599`, and for any response with a
+ * valid `Retry-After`, whatever its status. It is false otherwise, including
+ * when there is no status.
  *
  * For queries and mutations, callers opt into retries with `Effect.retry`,
  * and should wait for `retryAfter` when it is set. With
@@ -145,7 +146,7 @@ export class ResponseError
   })
 {
   /**
-   * `true` for HTTP status `429` or `5xx`, or when the response has a
+   * `true` for HTTP status `429` or `500`–`599`, or when the response has a
    * `Retry-After` header that parses, at any status, including a graphql-sse
    * event whose stream response had one; `false` otherwise, including when
    * there is no status and no `Retry-After`. Use this as the `while` predicate
@@ -156,18 +157,23 @@ export class ResponseError
    */
   get isRetryable(): boolean {
     if (this.retryAfter !== undefined) return true
-    return this.status !== undefined && (this.status === 429 || (this.status >= 500 && this.status < 600))
+    return this.status !== undefined && isRetryableStatus(this.status)
   }
 
+  // Parsed once, so every read returns the same delay.
+  readonly #retryAfter = parseRetryAfter(this.headers?.["retry-after"], Date.now())
+
   /**
-   * The `Retry-After` response header parsed as seconds or an HTTP date
-   * measured from `Date.now()`. Missing or invalid values yield `undefined`.
-   * `Effect.retry` does not apply this delay automatically.
+   * The `Retry-After` response header parsed as whole seconds or an HTTP
+   * date. An HTTP date is measured from `Date.now()` when the error is
+   * constructed, so every read returns the same delay. Missing or invalid
+   * values yield `undefined`. `Effect.retry` does not apply this delay
+   * automatically.
    *
    * @since 4.0.0
    */
   get retryAfter(): Duration.Duration | undefined {
-    return parseRetryAfter(this.headers?.["retry-after"], Date.now())
+    return this.#retryAfter
   }
 
   override get message(): string {
@@ -175,19 +181,55 @@ export class ResponseError
   }
 }
 
-/**
- * WebSocket close codes that are not retryable: protocol, request,
- * authentication, authorization, subprotocol and duplicate-operation errors.
- *
- * @stability experimental
- * @category constants
- * @since 4.0.0
- */
-export const fatalCloseCodes: ReadonlySet<number> = new Set([1002, 4400, 4401, 4403, 4406, 4409, 4429])
+// Standard close codes that a reconnect can recover from: normal closure,
+// going away, no status, abnormal closure, service restart, try again later
+// and bad gateway.
+const retryableStandardCloseCodes: ReadonlySet<number> = new Set([1000, 1001, 1005, 1006, 1012, 1013, 1014])
+
+// graphql-ws close codes for bad requests, authentication, authorization,
+// subprotocol, duplicate-operation, too-many-init and internal server errors.
+const fatalGraphQLWsCloseCodes: ReadonlySet<number> = new Set([4400, 4401, 4403, 4406, 4409, 4429, 4500])
 
 /**
- * Parses a `Retry-After` header value, either a number of seconds or an HTTP
- * date, into a `Duration` measured from `now` (epoch milliseconds).
+ * Tests whether a WebSocket close code is fatal, meaning a `TransportError`
+ * carrying it is not retryable.
+ *
+ * **Details**
+ *
+ * Fatal codes are every standard `1xxx` code except `1000`, `1001`, `1005`,
+ * `1006`, `1012`, `1013` and `1014`, plus the graphql-ws codes `4400` (bad
+ * request), `4401` (unauthorized), `4403` (forbidden), `4406` (subprotocol
+ * not acceptable), `4409` (subscriber already exists), `4429` (too many
+ * initialisation requests) and `4500` (internal server error). Any other code
+ * is retryable.
+ *
+ * `4403` is fatal on purpose, unlike in the graphql-ws reference client:
+ * reconnecting with the same credentials is refused again.
+ *
+ * **Example** (Checking close codes)
+ *
+ * ```ts import.meta.vitest
+ * import { GraphQLClientError } from "effect/graphql"
+ *
+ * GraphQLClientError.isFatalCloseCode(1006) // => false
+ * GraphQLClientError.isFatalCloseCode(1011) // => true
+ * GraphQLClientError.isFatalCloseCode(4401) // => true
+ * ```
+ *
+ * @stability experimental
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isFatalCloseCode = (code: number): boolean =>
+  code >= 1000 && code < 2000 ? !retryableStandardCloseCodes.has(code) : fatalGraphQLWsCloseCodes.has(code)
+
+// HTTP 429 and 5xx responses are worth retrying.
+const isRetryableStatus = (status: number): boolean => status === 429 || (status >= 500 && status < 600)
+
+/**
+ * Parses a `Retry-After` header value, either whole seconds or an HTTP date,
+ * into a `Duration` measured from `now` (epoch milliseconds). Anything else,
+ * such as `1.5` or `-1`, yields `undefined`.
  */
 const parseRetryAfter = (value: string | undefined, now: number): Duration.Duration | undefined => {
   if (value === undefined) return undefined
@@ -195,6 +237,9 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
   if (/^\d+$/.test(trimmed)) {
     return Duration.seconds(Number(trimmed))
   }
+  // Every HTTP date names a day or month; `Date.parse` alone also accepts
+  // bare numbers such as `1.5` or `-1`.
+  if (!/[a-z]/i.test(trimmed)) return undefined
   const date = Date.parse(trimmed)
   if (Number.isNaN(date)) return undefined
   return Duration.millis(Math.max(0, date - now))
@@ -210,10 +255,13 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
  * - `status` and `headers` are only set for an HTTP response that is not a
  *   GraphQL response. Headers use `Headers.Headers` at runtime and encode
  *   as a plain string record; decoding restores the header collection.
- * - `retryAfter` comes from the `Retry-After` header (numeric or HTTP-date
- *   form) and is encoded as milliseconds. When it is set, the error is
+ * - `retryAfter` comes from the `Retry-After` header (whole seconds or an
+ *   HTTP date) and is encoded as milliseconds. When it is set, the error is
  *   retryable at any status, unless the close code is fatal.
- * - `closeCode` is set when a WebSocket connection closed.
+ * - `closeCode` is set when a WebSocket connection closed. See
+ *   {@link isFatalCloseCode} for the codes that are not retryable.
+ * - `fatal: true` marks a failure that retrying cannot fix, such as an
+ *   operation on a graphql-ws transport whose scope has closed.
  * - `cause` holds the original error, such as the `HttpClientError`. Once
  *   encoded it shrinks to `{ name, message }`, the standard `Schema.Defect`
  *   behaviour.
@@ -227,6 +275,7 @@ const parseRetryAfter = (value: string | undefined, now: number): Duration.Durat
  * new GraphQLClientError.TransportError({ description: "503", status: 503 }).isRetryable // => true
  * new GraphQLClientError.TransportError({ description: "404", status: 404 }).isRetryable // => false
  * new GraphQLClientError.TransportError({ description: "closed", closeCode: 4401 }).isRetryable // => false
+ * new GraphQLClientError.TransportError({ description: "shut down", fatal: true }).isRetryable // => false
  * ```
  *
  * @stability experimental
@@ -240,21 +289,24 @@ export class TransportError
     headers: Schema.optional(HeadersSchema),
     retryAfter: Schema.optional(Schema.DurationFromMillis),
     closeCode: Schema.optional(Schema.Int),
+    fatal: Schema.optional(Schema.Boolean),
     cause: Schema.optional(Schema.Defect())
   })
 {
   /**
-   * `true` for a network failure (no `status`), a `429` or `5xx` status, a
-   * `retryAfter` at any status, and any close code that is not one of the
-   * {@link fatalCloseCodes}. A fatal close code is never retryable. When
-   * retrying, wait for `retryAfter` when it is set.
+   * `true` for a network failure (no `status`), a `429` or `500`–`599`
+   * status, a `retryAfter` at any status, and any close code that is not
+   * fatal (see {@link isFatalCloseCode}). An error marked `fatal` or with a
+   * fatal close code is never retryable. When retrying, wait for
+   * `retryAfter` when it is set.
    *
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    if (this.closeCode !== undefined && fatalCloseCodes.has(this.closeCode)) return false
+    if (this.fatal === true) return false
+    if (this.closeCode !== undefined && isFatalCloseCode(this.closeCode)) return false
     if (this.retryAfter !== undefined) return true
-    return this.status === undefined || this.status === 429 || this.status >= 500
+    return this.status === undefined || isRetryableStatus(this.status)
   }
 
   override get message(): string {
@@ -268,9 +320,10 @@ export class TransportError
    *
    * **Details**
    *
-   * An HTTP-date `Retry-After` is measured from `options.now` (epoch
+   * `Retry-After` is read as whole seconds or an HTTP date; any other value
+   * is ignored. An HTTP date is measured from `options.now` (epoch
    * milliseconds), which defaults to `Date.now()`. Transports pass the Effect
-   * clock's current time.
+   * clock's time when the response arrives.
    *
    * @since 4.0.0
    */

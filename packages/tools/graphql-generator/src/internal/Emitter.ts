@@ -174,9 +174,9 @@ const propertyKey = (key: string): string => key === "__proto__" ? `["__proto__"
 const pascalCase = (text: string): string =>
   text.split(/[^A-Za-z0-9]+/).map((word) => word.slice(0, 1).toUpperCase() + word.slice(1)).join("")
 
-/** `issue-timeline.graphql` → `IssueTimelineGraphQLGroup`. */
+/** `issue-timeline.graphql` or `issue-timeline.gql` → `IssueTimelineGraphQLGroup`. */
 const groupName = (sourceName: string): string => {
-  const name = pascalCase(sourceName.replace(/\.graphql$/, ""))
+  const name = pascalCase(sourceName.replace(/\.(?:graphql|gql)$/, ""))
   return `${/^[0-9]/.test(name) ? `_${name}` : name}GraphQLGroup`
 }
 

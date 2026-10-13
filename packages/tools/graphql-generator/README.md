@@ -39,13 +39,15 @@ export default defineConfig({
 `schema` and `documents` are the keys graphql-config reads, so the VS Code
 GraphQL extension can share the file.
 
-| Key               | Description                                                                                                                                                        |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `schema`          | The schema file, relative to the config file. It is never treated as a document.                                                                                   |
-| `documents`       | Glob patterns (`*`, `**`, `?`, `{a,b}`) relative to the config file. `node_modules` and dot-directories are skipped. Documents hold only operations and fragments. |
-| `scalars`         | Optional. A codec per custom scalar; can also override the built-in `Int`, `Float` and `ID`.                                                                       |
-| `shared`          | Optional. Where the shared module goes. Defaults to the schema's name next to it: `github.graphql` or `github.json` gives `github.graphql.ts`.                     |
-| `importExtension` | Optional. `".ts"` (default) or `".js"`, used in imports between generated files and to relative scalar modules.                                                    |
+| Key               | Description                                                                                                                                                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`          | The schema file, relative to the config file. It is never treated as a document.                                                                                                                                                             |
+| `documents`       | Glob patterns (`*`, `**`, `?`, `{a,b}`) relative to the config file; absolute patterns are rejected. `node_modules`, dot-directories and dangling symlinks are skipped. Documents (`.graphql` or `.gql`) hold only operations and fragments. |
+| `scalars`         | Optional. A codec per custom scalar; can also override the built-in `Int`, `Float` and `ID`.                                                                                                                                                 |
+| `shared`          | Optional. Where the shared module goes. Defaults to the schema's name next to it: `github.graphql` or `github.json` gives `github.graphql.ts`. It can't be the schema, a document or a document's output.                                    |
+| `importExtension` | Optional. `".ts"` (default) or `".js"`, used in imports between generated files and to relative scalar modules.                                                                                                                              |
+
+In a pattern, a `{` without a closing `}` matches itself.
 
 One config means one schema: for two schemas, write two config files and run
 `graphqlgen --config <file>` for each.
@@ -55,7 +57,9 @@ One config means one schema: for two schemas, write two config files and run
 Each scalar maps to a `Schema` codec, used for variables and results alike. The
 value is a `"<module>#<export>"` string because the generator emits an
 `import` for it. A relative module resolves against the config file and is
-rewritten relative to the shared module; a bare module is imported as written.
+rewritten relative to the shared module, with a `.ts`, `.js` or missing
+extension replaced by `importExtension` and any other extension, such as
+`.mjs`, kept; a bare module is imported as written.
 The generator doesn't check the target; `tsc` does.
 
 Unless overridden, `Int` is a 32-bit integer, `Float` a finite number and `ID`
@@ -67,7 +71,8 @@ reach. Defaulted scalars are not included in that warning.
 
 ## Generated files
 
-`foo.graphql` generates `foo.graphql.ts` next to it, exporting:
+`foo.graphql` generates `foo.graphql.ts` next to it (`foo.gql` generates
+`foo.gql.ts`), exporting:
 
 - a `GraphQL.query`, `GraphQL.mutation` or `GraphQL.subscription` per
   operation, carrying the compact document and the variables and result
@@ -106,10 +111,11 @@ The shared module holds only the scalars, enums, input objects and
 exclude `*.graphql.ts` from your linter and formatter: the output has one fixed
 style, and a reformatted file shows up as out of date in `graphqlgen --check`.
 
-After a successful run, `graphqlgen` deletes each `*.graphql.ts` under the
-`documents` glob roots whose first line exactly matches the generated header
-naming its sibling `.graphql` source, if that source is missing. Shared modules
-and files without a matching document header are never touched.
+After a successful run, `graphqlgen` deletes each `*.graphql.ts` or `*.gql.ts`
+under the `documents` glob roots whose first line exactly matches the generated
+header naming its sibling `.graphql` or `.gql` source, if that source is
+missing. Shared modules and files without a matching document header are never
+touched.
 
 ## CLI
 

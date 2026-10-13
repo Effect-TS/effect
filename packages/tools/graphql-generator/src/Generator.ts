@@ -52,9 +52,9 @@ export interface Diagnostic {
  * `diagnostics` holds an error.
  *
  * `deletes` lists the absolute paths of stale generated files: every
- * `*.graphql.ts` under a `documents` glob root whose first line exactly matches
- * the generator header naming its sibling `.graphql` source, where that source
- * is missing and the output isn't among `files`. Shared modules and files without
+ * `*.graphql.ts` or `*.gql.ts` under a `documents` glob root whose first line
+ * exactly matches the generator header naming its sibling `.graphql` or `.gql`
+ * source, where that source is missing and the output isn't among `files`. Shared modules and files without
  * a matching document header are never listed.
  *
  * @stability experimental
@@ -69,7 +69,8 @@ export interface GenerateResult {
 
 /**
  * The config cannot be used with this schema, e.g. a `scalars` key that
- * isn't a custom scalar or a built-in `Int`, `Float` or `ID`.
+ * isn't a custom scalar or a built-in `Int`, `Float` or `ID`, or an absolute
+ * `documents` pattern.
  *
  * @stability experimental
  * @category errors
@@ -85,10 +86,15 @@ export { ConfigError } from "./internal/Generate.ts"
  *
  * - Relative paths in the config, and the `documents` globs, resolve against
  *   `options.cwd`, which is normally the config file's directory.
- * - `foo.graphql` generates `foo.graphql.ts` next to it.
+ * - `foo.graphql` generates `foo.graphql.ts` next to it, and `foo.gql`
+ *   generates `foo.gql.ts`.
  * - The shared module goes to `config.shared`, or next to the schema as
  *   `<schema name>.graphql.ts`, and holds only the scalars, enums, input
- *   objects and possible `__typename` unions the operations reach.
+ *   objects and possible `__typename` unions the operations reach. A `shared`
+ *   path equal to the schema, a document or a document's output is an error
+ *   diagnostic.
+ * - Entries under a glob root that can't be read, such as dangling symlinks,
+ *   are skipped.
  * - Custom scalars named `DateTime` and `URI` default to
  *   `Schema.DateTimeUtcFromString` and `Schema.String`. Configured `scalars`
  *   override these defaults. Other unmapped custom scalars decode as
