@@ -757,8 +757,13 @@ export const all = <const Arg extends Iterable<any> | Record<string, any>>(
     if (!isAsyncResult(result)) {
       InternalRecord.assignProperty(successes, key, result)
       continue
+    } else if (isFailure(result)) {
+      return failure(result.cause, {
+        previousSuccess: combinedPreviousSuccess(entries, isIter),
+        waiting: result.waiting
+      }) as any
     } else if (!isSuccess(result)) {
-      return (isFailure(result) ? failureWithCombinedPrevious(entries, isIter, result) : result) as any
+      return result as any
     }
     InternalRecord.assignProperty(successes, key, result.value)
     if (result.waiting) {
@@ -768,28 +773,24 @@ export const all = <const Arg extends Iterable<any> | Record<string, any>>(
   return success(successes, { waiting }) as any
 }
 
-const failureWithCombinedPrevious = (
+const combinedPreviousSuccess = (
   entries: ReadonlyArray<readonly [PropertyKey, unknown]>,
-  isIter: boolean,
-  result: Failure<unknown, unknown>
-): Failure<unknown, unknown> => {
-  const previous: any = isIter ? [] : {}
+  isIter: boolean
+): Option.Option<Success<unknown, never>> => {
+  const values: any = isIter ? [] : {}
   for (let i = 0; i < entries.length; i++) {
     const [key, entry] = entries[i]
     if (!isAsyncResult(entry)) {
-      InternalRecord.assignProperty(previous, key, entry)
+      InternalRecord.assignProperty(values, key, entry)
       continue
     }
     const entryValue = value(entry)
     if (Option.isNone(entryValue)) {
-      return failure(result.cause, { waiting: result.waiting })
+      return Option.none()
     }
-    InternalRecord.assignProperty(previous, key, entryValue.value)
+    InternalRecord.assignProperty(values, key, entryValue.value)
   }
-  return failure(result.cause, {
-    previousSuccess: Option.some(success(previous)),
-    waiting: result.waiting
-  })
+  return Option.some(success(values))
 }
 
 /**
