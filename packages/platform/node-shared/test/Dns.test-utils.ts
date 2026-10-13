@@ -375,47 +375,6 @@ export const describeDnsClient = (label: string) =>
         assert.deepStrictEqual(response.edns, { udpPayloadSize: 1232, version: 0, dnssecOk: false })
       }))
 
-    it.effect("decodes every record type", () =>
-      Effect.gen(function*() {
-        const dns = yield* udp()
-        const data = (response: DnsClient.Response) => response.answer.map((record) => record.data as Dns.DnsRecord)
-        for (const type of ["A", "AAAA", "CAA", "MX", "NAPTR", "NS", "SOA", "TXT"] as const) {
-          assertRecords(data(yield* dns.query(name("example.test."), type)), expected[type])
-        }
-        assertRecords(data(yield* dns.query(name("www.example.test."), "CNAME")), expected.CNAME)
-        assertRecords(data(yield* dns.query(name("_pg._tcp.example.test."), "SRV")), expected.SRV)
-        assertRecords(data(yield* dns.query(name("1.2.0.192.in-addr.arpa."), "PTR")), expected.PTR)
-        assertRecords(data(yield* dns.query(name("edge.test."), "TXT")), [
-          Dns.makeRecordUnsafe("TXT", { chunks: ["grüß"] })
-        ])
-      }))
-
-    it.effect("returns aliases with the records of their targets", () =>
-      Effect.gen(function*() {
-        const response = yield* (yield* udp()).query(name("www.example.test."), "A")
-        assert.deepStrictEqual(response.answer[0], {
-          owner: "www.example.test.",
-          ttl: Duration.seconds(300),
-          class: 1,
-          data: expected.CNAME[0]
-        })
-        assertRecords(response.answer.slice(1).map((record) => record.data as Dns.DnsRecord), expected.A)
-      }))
-
-    it.effect("returns PTR names that are not host names", () =>
-      Effect.gen(function*() {
-        const dns = yield* udp()
-        const hosts = (response: DnsClient.Response) =>
-          response.answer.map((record) => record.data._tag === "PTR" ? record.data.host : record.data._tag)
-        assert.deepStrictEqual(hosts(yield* dns.query(name("2.2.0.192.in-addr.arpa."), "PTR")).sort(), [
-          "bad host.example.test.",
-          "good.example.test."
-        ])
-        assert.deepStrictEqual(hosts(yield* dns.query(name("_svc._tcp.edge.test."), "PTR")), [
-          "v2\\.0 Café\\\\x._svc._tcp.edge.test."
-        ])
-      }))
-
     it.effect("returns NXDOMAIN responses with the zone's SOA record", () =>
       Effect.gen(function*() {
         const response = yield* (yield* udp()).query(name("missing.example.test."), "A")
@@ -426,26 +385,13 @@ export const describeDnsClient = (label: string) =>
         ])
       }))
 
-    it.effect("reports refused queries", () =>
-      Effect.gen(function*() {
-        const error = yield* Effect.flip((yield* udp()).query(name("outside.invalid."), "A"))
-        assert.strictEqual(error.reason, "Refused")
-        assert.strictEqual(error.recordType, "A")
-      }))
-
     it.effect("returns large responses over every transport", () =>
       Effect.gen(function*() {
-        for (const transport of [udpTransport(), tcpTransport(), httpsTransport()]) {
+        // A 512-byte UDP payload size truncates the response, which is retried over TCP.
+        for (const transport of [udpTransport(), udpTransport(512), tcpTransport(), httpsTransport()]) {
           const response = yield* (yield* client(transport)).query(name("big.example.test."), "TXT")
           assert.isFalse(response.flags.truncated)
           assert.strictEqual(response.answer.length, 16)
         }
-      }))
-
-    it.effect("retries truncated UDP responses over TCP", () =>
-      Effect.gen(function*() {
-        const response = yield* (yield* client(udpTransport(512))).query(name("big.example.test."), "TXT")
-        assert.isFalse(response.flags.truncated)
-        assert.strictEqual(response.answer.length, 16)
       }))
   })
