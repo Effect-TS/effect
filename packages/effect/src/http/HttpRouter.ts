@@ -24,6 +24,7 @@ import * as Scope from "../Scope.ts"
 import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import * as FindMyWay from "./FindMyWay.ts"
+import { getClosingParenthensePosition } from "./FindMyWay/internal/router.ts"
 import * as HttpEffect from "./HttpEffect.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type * as HttpMethod from "./HttpMethod.ts"
@@ -260,42 +261,37 @@ function sliceRequestUrl(
 ) {
   const url = request.url
   let index = 0
-  let inParamName = false
-  for (let i = 0; i < prefix.length; i++) {
-    const code = prefix.charCodeAt(i)
-    if (inParamName && code === 40) {
-      // Slashes inside parameter regexes are not path segment boundaries.
-      let depth = 1
-      while (depth > 0 && ++i < prefix.length) {
-        const code = prefix.charCodeAt(i)
-        if (code === 92) i++
-        else if (code === 40) depth++
-        else if (code === 41) depth--
-      }
-      inParamName = false
-      continue
-    }
-    if (!inParamName && code === 58) {
-      if (prefix.charCodeAt(i + 1) === 58) i++
-      else inParamName = true
-    } else if (code === 45 || code === 46) {
-      inParamName = false
-    }
-    if (code !== 47) continue
-    inParamName = false
+  for (let segments = countSegments(prefix, ignoreDuplicateSlashes); segments > 0; segments--) {
     if (ignoreDuplicateSlashes) {
-      if (prefix.charCodeAt(i - 1) === 47) continue
-      while (url.charCodeAt(index) === 47) index++
-    } else if (url.charCodeAt(index) === 47) {
+      while (url[index] === "/") index++
+    } else if (url[index] === "/") {
       index++
     }
-    while (index < url.length) {
-      const code = url.charCodeAt(index)
-      if (code === 47 || code === 63 || code === 59 || code === 35) break
-      index++
-    }
+    while (index < url.length && !"/?;#".includes(url[index])) index++
   }
   return request.modify({ url: index < url.length ? url.slice(index) : "/" })
+}
+
+function countSegments(prefix: string, ignoreDuplicateSlashes: boolean) {
+  let count = 0
+  let inParamName = false
+  for (let i = 0; i < prefix.length; i++) {
+    const char = prefix[i]
+    if (char === "/") {
+      if (!ignoreDuplicateSlashes || prefix[i - 1] !== "/") count++
+      inParamName = false
+    } else if (char === ":") {
+      if (prefix[i + 1] === ":") i++
+      else inParamName = true
+    } else if (char === "-" || char === ".") {
+      inParamName = false
+    } else if (char === "(" && inParamName) {
+      // Slashes inside parameter regexes are not segment boundaries.
+      i = getClosingParenthensePosition(prefix, i)
+      inParamName = false
+    }
+  }
+  return count
 }
 
 /**

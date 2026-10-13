@@ -857,7 +857,8 @@ function makeCreateParams(
   }
 }
 
-function getClosingParenthensePosition(path: string, idx: number) {
+/** @internal */
+export function getClosingParenthensePosition(path: string, idx: number) {
   // `path.indexOf()` will always return the first position of the closing parenthese,
   // but it's inefficient for grouped or wrong regexp expressions.
   // see issues #62 and #63 for more info
