@@ -11,9 +11,9 @@
  * `@effect/platform-node` (`BunOpenSsh` on Bun) connects through an OpenSSH
  * connection master started with the host's `ssh` executable, and so uses
  * the user's OpenSSH configuration, agent, and `known_hosts`.
- * `makeConnection` builds connections from a backend's operations, and
- * `SshConnectionProtocol` provides the SSH channels such operations run on for
- * backends whose transport carries SSH connection-protocol messages.
+ * Backends whose transport carries SSH connection-protocol messages build
+ * their connections with `SshConnectionProtocol.toSshConnection`, and others
+ * from their own operations with `makeConnection`.
  * Code that depends only on `Ssh` works with any backend.
  *
  * **Example** (Connecting to several hosts)
@@ -453,9 +453,9 @@ const collect = (stream: Stream.Stream<Uint8Array, SshError>) => Stream.mkString
  *
  * **When to use**
  *
- * Use to implement a backend. Backends whose transport carries SSH
- * connection-protocol messages can run their operations on channels opened
- * with `SshConnectionProtocol.make`.
+ * Use to implement a backend whose transport does not carry SSH
+ * connection-protocol messages; otherwise use
+ * `SshConnectionProtocol.toSshConnection`.
  *
  * **Details**
  *

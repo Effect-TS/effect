@@ -45,13 +45,12 @@ import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Host from "effect/net/Host"
-import * as NetAddress from "effect/net/NetAddress"
+import type * as NetAddress from "effect/net/NetAddress"
 import * as ChildProcess from "effect/process/ChildProcess"
 import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
 import * as Result from "effect/Result"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
-import * as Sink from "effect/Sink"
 import * as Socket from "effect/socket/Socket"
 import * as Ssh from "effect/ssh/Ssh"
 import * as SshConnectionProtocol from "effect/ssh/SshConnectionProtocol"
@@ -247,128 +246,6 @@ const openProxy = Effect.fnUntraced(function*(
   }
 })
 
-// -----------------------------------------------------------------------------
-// Commands, subsystems, and tunnels (RFC 4254 sections 6 and 7)
-// -----------------------------------------------------------------------------
-
-const encoder = new TextEncoder()
-
-/** Encodes SSH strings (RFC 4251 section 5). */
-const sshString = (value: string | Uint8Array) => {
-  const bytes = typeof value === "string" ? encoder.encode(value) : value
-  return concat(uint32(bytes.length), bytes)
-}
-
-/**
- * Rejects text with NUL characters, on which OpenSSH servers drop the whole
- * connection.
- */
-const withoutNul = (value: string, name: string): Effect.Effect<string, Ssh.SshError> =>
-  value.includes("\0")
-    ? Effect.fail(new Ssh.SshError({ reason: "Channel", description: `${name} contains a NUL character` }))
-    : Effect.succeed(value)
-
-const empty = new Uint8Array(0)
-
-/** Terminal modes (RFC 4254 section 8): none, so the server's defaults apply. */
-const TERMINAL_MODES_END = Uint8Array.of(0)
-
-const invalidTarget = (error: NetAddress.NetAddressError) =>
-  new Ssh.SshError({ reason: "Channel", description: `invalid forward target: ${error.message}` })
-
-const targetFromInput = (
-  target: Ssh.ForwardTarget
-): Effect.Effect<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
-  typeof target === "object" && "path" in target
-    ? Effect.map(
-      withoutNul(target.path, "the socket path"),
-      (path) => NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(path)
-    )
-    : Effect.fromResult(Result.mapError(Host.hostPortFromInput(target), invalidTarget))
-
-const toStream = (channel: SshConnectionProtocol.SshChannel): Ssh.SshStream => ({
-  stdout: channel.stdout,
-  stderr: channel.stderr,
-  stdin: Sink.forEach(channel.write).pipe(Sink.mapEffect(() => channel.eof)),
-  write: channel.write,
-  eof: channel.eof,
-  close: channel.close,
-  closed: channel.closed
-})
-
-/** Runs commands, subsystems, and tunnels as channels opened with `open`. */
-const makeConnection = (
-  open: SshConnectionProtocol.SshConnectionProtocol["open"],
-  destination: Ssh.Destination
-): Ssh.SshConnection => {
-  /** Opens a session and sends its requests, closing it when they fail. */
-  const session = Effect.fnUntraced(function*(
-    requests: (channel: SshConnectionProtocol.SshChannel) => Effect.Effect<void, Ssh.SshError>
-  ) {
-    const channel = yield* open("session", empty)
-    yield* Effect.onError(requests(channel), () => channel.close)
-    return channel
-  })
-
-  const exec = Effect.fnUntraced(function*(
-    command: string,
-    options: { readonly pty?: boolean | Ssh.PtyOptions | undefined }
-  ) {
-    const term = yield* withoutNul(
-      (typeof options.pty === "object" ? options.pty.term : undefined) ?? "xterm",
-      "pty.term"
-    )
-    const channel = yield* session(Effect.fnUntraced(function*(channel) {
-      // Like OpenSSH's client, commands run without the agent when the
-      // server refuses it.
-      if (destination.forwardAgent === true) yield* channel.request("auth-agent-req@openssh.com", empty, false)
-      if (options.pty !== undefined && options.pty !== false) {
-        yield* channel.request(
-          "pty-req",
-          concat(
-            sshString(term),
-            uint32(80),
-            uint32(24),
-            uint32(0),
-            uint32(0),
-            sshString(TERMINAL_MODES_END)
-          ),
-          true
-        )
-      }
-      yield* channel.request("exec", sshString(command), true)
-    }))
-    return {
-      ...toStream(channel),
-      exit: channel.exit,
-      signal: (signal: string) =>
-        Effect.flatMap(
-          withoutNul(signal.startsWith("SIG") ? signal.slice(3) : signal, "the signal name"),
-          (name) => channel.request("signal", sshString(name), false)
-        )
-    } satisfies Ssh.SshProcess
-  })
-
-  const subsystem = Effect.fnUntraced(function*(name: string) {
-    yield* withoutNul(name, "the subsystem name")
-    const channel = yield* session((channel) => channel.request("subsystem", sshString(name), true))
-    return toStream(channel)
-  })
-
-  const forwardOut = Effect.fnUntraced(function*(target: Ssh.ForwardTarget) {
-    const address = yield* targetFromInput(target)
-    const channel = NetAddress.isUnixPathAddress(address)
-      ? yield* open("direct-streamlocal@openssh.com", concat(sshString(address.path), sshString(""), uint32(0)))
-      : yield* open(
-        "direct-tcpip",
-        concat(sshString(Host.formatHost(address.host)), uint32(address.port), sshString("127.0.0.1"), uint32(0))
-      )
-    return toStream(channel)
-  })
-
-  return Ssh.makeConnection({ exec, subsystem, forwardOut })
-}
-
 /**
  * An `Ssh` connection factory backed by the host's `ssh` executable.
  *
@@ -386,24 +263,11 @@ const makeConnection = (
  * `Connection` error describing the `ssh` diagnostics. Closing the scope
  * stops the master.
  *
- * Commands, subsystems, and tunnels are SSH channels over the control socket
- * (see `SshConnectionProtocol`).
- *
- * - Each command runs in a `session` channel. With `pty`, it requests an
- *   80x24 terminal of type `pty.term` (default `xterm`) with the server's
- *   default modes, and with the destination's `forwardAgent`, the master
- *   forwards the agent (`ForwardAgent=yes`) and each command requests it;
- *   like with OpenSSH's own client, commands run without the agent when the
- *   server refuses it.
- * - `signal` sends a `signal` request and accepts names with or without the
- *   `SIG` prefix. OpenSSH servers deliver it to the command's process group
- *   unless the command is forced by their configuration, and do not confirm
- *   it. Commands terminated by a signal report an `ExitSignal`.
- * - `subsystem` starts a subsystem in a `session` channel, and `forwardOut`
- *   opens a `direct-tcpip` or `direct-streamlocal@openssh.com` channel. The
- *   origin of TCP tunnels is reported as `127.0.0.1` port 0.
- * - Requests the server refuses, and channels it cannot open, fail with a
- *   `Channel` error.
+ * Commands, subsystems, and tunnels are SSH channels over the control socket,
+ * run with `SshConnectionProtocol.toSshConnection`. With the destination's
+ * `forwardAgent`, the master forwards the agent (`ForwardAgent=yes`) and each
+ * command requests it. OpenSSH servers deliver signals to the command's
+ * process group unless the command is forced by their configuration.
  *
  * **Gotchas**
  *
@@ -543,7 +407,7 @@ export const make: Effect.Effect<Ssh.Ssh["Service"], never, ChildProcessSpawner 
           Effect.ignore,
           Effect.forkScoped
         )
-        return makeConnection(protocol.open, destination)
+        return SshConnectionProtocol.toSshConnection(protocol, { forwardAgent: destination.forwardAgent })
       }))
 
     return Ssh.Ssh.of({ connect })
