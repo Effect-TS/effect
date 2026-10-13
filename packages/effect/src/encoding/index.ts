@@ -55,6 +55,12 @@ export * as Sse from "./Sse.ts"
 
 /**
  * @stability unstable
+ * @since 4.1.0
+ */
+export * as Tar from "./Tar.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Toml from "./Toml.ts"
