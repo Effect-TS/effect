@@ -67,6 +67,7 @@ describe("HttpRouter", () => {
   for (
     const { prefix, requestUrl, expected } of [
       { prefix: "/tenants/:tenant", requestUrl: "/tenants/a/users?x=1", expected: "/users?x=1" },
+      { prefix: "/tenants/:tenant([^/]+)", requestUrl: "/tenants/acme/users?x=1", expected: "/users?x=1" },
       { prefix: "/café", requestUrl: "/caf%C3%A9/users", expected: "/users" }
     ]
   ) {
@@ -77,6 +78,21 @@ describe("HttpRouter", () => {
         const body = yield* fetchText(routes, requestUrl)
 
         assert.strictEqual(body, expected)
+      }))
+  }
+
+  for (const ignoreDuplicateSlashes of [true, false]) {
+    it.effect(`preserves the local URL with ignoreDuplicateSlashes=${ignoreDuplicateSlashes}`, () =>
+      Effect.gen(function*() {
+        const routes = HttpRouter.use((router) => router.prefixed("/api//v1").add("GET", "/users", echoUrl)).pipe(
+          Layer.provide(
+            Layer.succeed(HttpRouter.RouterConfig)(ignoreDuplicateSlashes ? {} : { ignoreDuplicateSlashes })
+          )
+        )
+
+        const body = yield* fetchText(routes, ignoreDuplicateSlashes ? "/api/v1/users?x=1" : "/api//v1/users?x=1")
+
+        assert.strictEqual(body, "/users?x=1")
       }))
   }
 
