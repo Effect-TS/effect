@@ -447,9 +447,10 @@ export const make = Effect.gen(function*() {
             const activation = yield* CurrentActivationScope
             let pending = pendingByActivation.get(activation)
             if (!pending) {
-              pending = { workflowName: workflow._tag, executionId, results: new Map() }
-              pendingByActivation.set(activation, pending)
+              const results = new Map<string, Exit.Exit<unknown, unknown>>()
               // A new owner must see an interrupt persisted before it took over.
+              // Publish the cache only once loaded, so a retried build repeats
+              // a failed lookup.
               const interrupt = yield* Effect.orDie(requestReply({
                 workflow,
                 entityType: `Workflow/${workflow._tag}`,
@@ -459,11 +460,13 @@ export const make = Effect.gen(function*() {
               }))
               if (Option.isSome(interrupt)) {
                 const decoded = decodeDeferredWithExit(interrupt.value as any)
-                pending.results.set(
+                results.set(
                   InterruptSignal.name,
-                  decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit
+                  (decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit) as Exit.Exit<unknown, unknown>
                 )
               }
+              pending = { workflowName: workflow._tag, executionId, results }
+              pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
             // Replays reuse the request id but track a fresh set of awaits.
