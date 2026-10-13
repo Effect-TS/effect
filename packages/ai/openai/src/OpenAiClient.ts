@@ -276,7 +276,7 @@ export const make = Effect.fnUntraced(
       const stream = response.stream.pipe(
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.decode()),
-        // Some OpenAI-compatible servers end the stream with the Chat Completions sentinel, which is not an event.
+        // Some OpenAI-compatible servers end the stream with `data: [DONE]`
         Stream.takeWhile((event) => event.data !== "[DONE]"),
         Stream.mapEffect((event) => decodeResponseStreamEvent(event.data)),
         Stream.takeUntil((event) =>

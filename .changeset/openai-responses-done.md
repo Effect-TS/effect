@@ -2,4 +2,4 @@
 "@effect/ai-openai": patch
 ---
 
-End a Responses event stream at the Chat Completions sentinel `data: [DONE]`, which some OpenAI-compatible servers send, instead of failing to decode it.
+Stop Responses streams at the `data: [DONE]` sentinel sent by some OpenAI-compatible servers instead of failing to decode it.
