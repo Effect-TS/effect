@@ -325,6 +325,7 @@ describe("makeTransportHttps", () => {
     handle: (request: HttpRequest) => {
       readonly status?: number | undefined
       readonly contentType?: string | undefined
+      readonly headers?: Record<string, string> | undefined
       readonly payload: Uint8Array
     },
     options?: Partial<DnsClient.TransportHttpsOptions>
@@ -350,7 +351,7 @@ describe("makeTransportHttps", () => {
           request,
           new Response(reply.payload as Uint8Array<ArrayBuffer>, {
             status: reply.status ?? 200,
-            headers: { "content-type": reply.contentType ?? "application/dns-message" }
+            headers: { "content-type": reply.contentType ?? "application/dns-message", ...reply.headers }
           })
         )
       })
@@ -410,6 +411,16 @@ describe("makeTransportHttps", () => {
         contentType: "Application/DNS-Message; charset=binary"
       }))
       yield* query(yield* transport)
+    }))
+
+  // RFC 8484 section 5.1
+  it.effect("subtracts the HTTP Age from TTLs", () =>
+    Effect.gen(function*() {
+      for (const [age, ttl] of [["250", 3350], ["4000", 0]] as const) {
+        const { transport } = fakeHttp((request) => ({ payload: reply(request.query), headers: { age } }))
+        const response = yield* query(yield* transport)
+        assert.deepStrictEqual(response.answer.map((record) => Duration.toSeconds(record.ttl)), [ttl], `Age: ${age}`)
+      }
     }))
 
   it.effect("does not let fetch follow redirects", () =>
