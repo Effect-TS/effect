@@ -345,7 +345,7 @@ export interface DurableQueueItem {
  * @since 4.0.0
  */
 export type ClusterDurableQueueProgram = {
-  readonly offer: (id: string, element: string) => Effect.Effect<void>
+  readonly offer: (id: string, element: string, delayMillis?: number) => Effect.Effect<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Effect.Effect<DurableQueueItem>
   readonly cancelTake: (takerId: string) => Effect.Effect<void>
   readonly complete: (id: string) => Effect.Effect<void>
@@ -389,7 +389,7 @@ export const makeClusterDurableQueueProgram = Effect.fnUntraced(function*(state:
     yield* armAlarm(state.storage, expiry)
   }
   const program: ClusterDurableQueueProgram = {
-    offer: (id, element) => Effect.promise(() => runtime.offer(id, element)),
+    offer: (id, element, delayMillis) => Effect.promise(() => runtime.offer(id, element, delayMillis)),
     take: (takerId, maxAttempts, leaseMillis) => Effect.promise(() => runtime.take(takerId, maxAttempts, leaseMillis)),
     cancelTake: (takerId) => Effect.promise(() => runtime.cancelTake(takerId)),
     complete: (id) => Effect.promise(() => runtime.complete(id)),

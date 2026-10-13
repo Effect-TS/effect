@@ -11,6 +11,8 @@
  * Delivery is at-least-once: a taken item is leased for a bounded time and the
  * lease is refreshed while the handler runs, so an item whose worker died is
  * redelivered once the alarm watchdog expires the lease.
+ * Offer delays use the object's clock and persist an initial visibility
+ * deadline; the alarm wakes waiting takers when that deadline expires.
  *
  * This backs the `DurableQueue` user API; `CloudflareCluster.layer` already
  * includes this layer.
@@ -26,6 +28,7 @@
  * @since 4.0.0
  */
 import * as Cause from "effect/Cause"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
@@ -46,7 +49,7 @@ export interface LayerOptions {
 }
 
 interface QueueStub {
-  readonly offer: (id: string, element: string) => Promise<void>
+  readonly offer: (id: string, element: string, delayMillis?: number) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string) => Promise<void>
@@ -86,9 +89,9 @@ export const make = (options: LayerOptions): PersistedQueue.PersistedQueueStore[
             "Cloudflare persisted queue cleanup is unsupported: the namespace binding cannot enumerate queue objects"
         })
       ),
-    offer: ({ element, id, name }) =>
+    offer: ({ delay, element, id, name }) =>
       Effect.tryPromise({
-        try: () => stubFor(name).offer(id, JSON.stringify(element)),
+        try: () => stubFor(name).offer(id, JSON.stringify(element), delay === undefined ? 0 : Duration.toMillis(delay)),
         catch: (cause) =>
           new PersistedQueue.PersistedQueueError({
             message: "Failed to offer element to persisted queue",
