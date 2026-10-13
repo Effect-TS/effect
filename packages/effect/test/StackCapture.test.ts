@@ -94,14 +94,20 @@ describe("stack capture", { concurrent: false }, () => {
     }
   })
 
-  it.each([10, 2, 1, 0])("preserves continuation stack detection at limit %s", async (limit) => {
+  it.each([10, 2, 1, 0])("preserves internal call and continuation stack detection at limit %s", async (limit) => {
     const previous = Error.stackTraceLimit
     vi.resetModules()
     Error.stackTraceLimit = limit
     try {
       const fresh = await import("effect/Effect")
+      const utils = await import("effect/Utils")
       // Inspect callback frames at normal depth after the import-time detection.
       Error.stackTraceLimit = 10
+      const internalStack = utils.internalCall(function callback() {
+        return new Error().stack!
+      })
+      assert.match(internalStack, /callback/)
+      assert.strictEqual(internalStack.includes("~effect/Utils/internal"), true)
       const stack = fresh.runSync(fresh.map(fresh.succeed(0), function callback() {
         return new Error().stack!
       }))
