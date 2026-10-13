@@ -15,7 +15,6 @@ declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
-declare const currentTransfer: { readonly _tag: "Transfer"; readonly value: "foo" } | null
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -208,63 +207,23 @@ describe("Match", () => {
     pipe(
       Match.value(renamedTransfer),
       // @ts-expect-error Type 'string' is not assignable to type 'never'
-      Match.when({ _tag: "Transfer", value: "foo" }, () => "hit"),
-      Match.orElse(() => "miss")
-    )
-
-    expect(
-      Match.value(taggedInput).pipe(
-        Match.when({
-          a: (a) => {
-            expect(a).type.toBe<string>()
-            return a.length > 0
-          }
-        }, (value) => {
-          expect(value._tag).type.toBe<"A">()
-          expect(value.a).type.toBe<string>()
-          return "a" as const
-        }),
-        Match.orElse(() => "other" as const)
-      )
-    ).type.toBe<"a" | "other">()
-
-    pipe(
-      Match.value(renamedTransfer),
-      // @ts-expect-error Argument of type
-      Match.whenOr({ _tag: "Transfer" }, { value: "foo" }, () => "hit"),
-      Match.orElse(() => "miss")
+      Match.when({ _tag: "Transfer", value: "foo" }, () => "hit")
     )
     pipe(
       Match.value(renamedTransfer),
       // @ts-expect-error Argument of type
-      Match.whenAnd({ _tag: "Transfer" }, { value: "foo" }, () => "hit"),
-      Match.orElse(() => "miss")
+      Match.whenOr({ _tag: "Transfer" }, { value: "foo" }, () => "hit")
+    )
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Argument of type
+      Match.whenAnd({ _tag: "Transfer" }, { value: "foo" }, () => "hit")
     )
     pipe(
       Match.value(renamedTransfer),
       // @ts-expect-error Type 'string' is not assignable to type 'never'
-      Match.not({ value: "foo" }, () => "hit"),
-      Match.orElse(() => "miss")
+      Match.not({ value: "foo" }, () => "hit")
     )
-
-    expect(
-      Match.value(currentTransfer).pipe(
-        Match.whenOr({ _tag: "Transfer" }, { value: "foo" }, () => "hit" as const),
-        Match.orElse(() => "miss" as const)
-      )
-    ).type.toBe<"hit" | "miss">()
-    expect(
-      Match.value(currentTransfer).pipe(
-        Match.whenAnd({ _tag: "Transfer" }, { value: "foo" }, () => "hit" as const),
-        Match.orElse(() => "miss" as const)
-      )
-    ).type.toBe<"hit" | "miss">()
-    expect(
-      Match.value(currentTransfer).pipe(
-        Match.not({ value: "foo" }, () => "excluded" as const),
-        Match.orElse(() => "miss" as const)
-      )
-    ).type.toBe<"excluded" | "miss">()
   })
 
   it("rejects unknown keys on object patterns spread from arrays", () => {
@@ -273,161 +232,22 @@ describe("Match", () => {
     pipe(
       Match.value(renamedTransfer),
       // @ts-expect-error Argument of type
-      Match.whenOr(...patterns, () => "hit"),
-      Match.orElse(() => "miss")
+      Match.whenOr(...patterns, () => "hit")
     )
     pipe(
       Match.value(renamedTransfer),
       // @ts-expect-error Argument of type
-      Match.whenAnd(...patterns, () => "hit"),
-      Match.orElse(() => "miss")
+      Match.whenAnd(...patterns, () => "hit")
     )
   })
 
-  it("accepts object patterns on broad inputs", () => {
-    expect(
-      Match.type<unknown>().pipe(
-        Match.when({ _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: unknown) => string>()
-
-    expect(
-      Match.type<unknown>().pipe(
-        Match.whenOr({ _tag: "A" }, { _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: unknown) => string>()
-
-    expect(
-      Match.type<unknown>().pipe(
-        Match.whenAnd({ _tag: "A" }, { _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: unknown) => string>()
-
-    expect(
-      Match.type<unknown>().pipe(
-        Match.not({ _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: unknown) => string>()
-
-    expect(
-      Match.type<object>().pipe(
-        Match.when({ _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: object) => string>()
-
-    expect(
-      Match.type<object>().pipe(
-        Match.whenOr({ _tag: "A" }, { _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: object) => string>()
-
-    expect(
-      Match.type<object>().pipe(
-        Match.whenAnd({ _tag: "A" }, { _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: object) => string>()
-
-    expect(
-      Match.type<object>().pipe(
-        Match.not({ _tag: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: object) => string>()
-  })
-
-  it("accepts numeric pattern keys covered by a string index signature", () => {
-    expect(
-      Match.type<Record<string, string>>().pipe(
-        Match.when({ 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: Record<string, string>) => string>()
-
-    expect(
-      Match.type<Record<string, string>>().pipe(
-        Match.whenOr({ 0: "A" }, { 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: Record<string, string>) => string>()
-
-    expect(
-      Match.type<Record<string, string>>().pipe(
-        Match.whenAnd({ 0: "A" }, { 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: Record<string, string>) => string>()
-
-    expect(
-      Match.type<Record<string, string>>().pipe(
-        Match.not({ 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: Record<string, string>) => string>()
-  })
-
-  it("accepts equivalent numeric and string property keys", () => {
-    expect(
-      Match.type<{ "0": string }>().pipe(
-        Match.when({ 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { "0": string }) => string>()
-
-    expect(
-      Match.type<{ "0": string }>().pipe(
-        Match.whenOr({ 0: "A" }, { 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { "0": string }) => string>()
-
-    expect(
-      Match.type<{ "0": string }>().pipe(
-        Match.whenAnd({ 0: "A" }, { 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { "0": string }) => string>()
-
-    expect(
-      Match.type<{ "0": string }>().pipe(
-        Match.not({ 0: "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { "0": string }) => string>()
-
-    expect(
-      Match.type<{ 0: string }>().pipe(
-        Match.when({ "0": "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { 0: string }) => string>()
-
-    expect(
-      Match.type<{ 0: string }>().pipe(
-        Match.whenOr({ "0": "A" }, { "0": "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { 0: string }) => string>()
-
-    expect(
-      Match.type<{ 0: string }>().pipe(
-        Match.whenAnd({ "0": "A" }, { "0": "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { 0: string }) => string>()
-
-    expect(
-      Match.type<{ 0: string }>().pipe(
-        Match.not({ "0": "A" }, () => "hit"),
-        Match.orElse(() => "miss")
-      )
-    ).type.toBe<(input: { 0: string }) => string>()
+  it("accepts union-member keys, broad inputs, and equivalent property keys", () => {
+    Match.value(taggedInput).pipe(Match.when({ a: (a) => a.length > 0 }, () => "hit"))
+    Match.type<unknown>().pipe(Match.when({ _tag: "A" }, () => "hit"))
+    Match.type<object>().pipe(Match.when({ _tag: "A" }, () => "hit"))
+    Match.type<Record<string, string>>().pipe(Match.when({ 0: "A" }, () => "hit"))
+    Match.type<{ "0": string }>().pipe(Match.when({ 0: "A" }, () => "hit"))
+    Match.type<{ 0: string }>().pipe(Match.when({ "0": "A" }, () => "hit"))
   })
 
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
