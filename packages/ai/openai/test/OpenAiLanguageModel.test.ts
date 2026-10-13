@@ -1320,34 +1320,31 @@ describe("OpenAiLanguageModel", () => {
     })
 
     describe("response handling", () => {
-      it.effect.each(["priority", "ultrafast"] as const)(
-        "preserves prompt cache diagnostics alongside %s",
-        (serviceTier) =>
-          Effect.gen(function*() {
-            const diagnostics = {
-              type: "cache_miss",
-              reason: "tools_changed",
-              cache_missed_tokens: 1024,
-              comparison_reusable_tokens: 2048
-            } as const
-            const body = JSON.stringify({
-              ...makeDefaultResponse({ service_tier: serviceTier }),
-              prompt_cache_diagnostics: diagnostics
-            })
-            const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
-              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-              Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-              Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "application/json"))
-            )
-
-            const finish = result.content.find((part) => part.type === "finish")
-            assert.isDefined(finish)
-            deepStrictEqual(finish.metadata.openai, {
-              serviceTier,
-              promptCacheDiagnostics: diagnostics
-            })
+      it.effect("preserves ultrafast service tier alongside prompt cache diagnostics", () =>
+        Effect.gen(function*() {
+          const diagnostics = {
+            type: "cache_miss",
+            reason: "tools_changed",
+            cache_missed_tokens: 1024,
+            comparison_reusable_tokens: 2048
+          } as const
+          const body = JSON.stringify({
+            ...makeDefaultResponse({ service_tier: "ultrafast" }),
+            prompt_cache_diagnostics: diagnostics
           })
-      )
+          const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+            Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "application/json"))
+          )
+
+          const finish = result.content.find((part) => part.type === "finish")
+          assert.isDefined(finish)
+          deepStrictEqual(finish.metadata.openai, {
+            serviceTier: "ultrafast",
+            promptCacheDiagnostics: diagnostics
+          })
+        }))
 
       it.effect("extracts text from output_text", () =>
         Effect.gen(function*() {
@@ -1837,14 +1834,25 @@ describe("OpenAiLanguageModel", () => {
   describe("streamText", () => {
     it.effect.each(
       [
-        { status: "completed", serviceTier: "fast" },
-        { status: "failed", serviceTier: "fast" },
-        { status: "completed", serviceTier: "ultrafast" },
-        { status: "failed", serviceTier: "ultrafast" }
+        {
+          status: "completed",
+          serviceTier: "fast",
+          expectedMetadata: { promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "completed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "failed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        }
       ] as const
     )(
-      "preserves prompt cache diagnostics in response.$status with $serviceTier",
-      ({ status, serviceTier }) =>
+      "preserves supported tiers and prompt cache diagnostics in response.$status with $serviceTier",
+      ({ status, serviceTier, expectedMetadata }) =>
         Effect.gen(function*() {
           const event = {
             type: `response.${status}`,
@@ -1873,10 +1881,7 @@ describe("OpenAiLanguageModel", () => {
 
           const finish = parts.find((part) => part.type === "finish")
           assert.isDefined(finish)
-          deepStrictEqual(finish.metadata.openai, {
-            ...(serviceTier === "ultrafast" ? { serviceTier } : {}),
-            promptCacheDiagnostics: { type: "cache_hit" }
-          })
+          deepStrictEqual(finish.metadata.openai, expectedMetadata)
         })
     )
 
