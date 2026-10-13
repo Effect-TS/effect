@@ -444,6 +444,8 @@ export const make = Effect.gen(function*() {
             let currentRun: {
               readonly request: Entity.Request<any>
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
+              // Activity awaits must wake the run after suspension without preempting it.
+              readonly activityAwaits: Map<string, number>
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
@@ -460,7 +462,7 @@ export const make = Effect.gen(function*() {
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
-                currentRun = { request, instance }
+                currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string }
                   | undefined
@@ -506,7 +508,10 @@ export const make = Effect.gen(function*() {
               activity(request: Entity.Request<any>) {
                 const payload = request.payload as { name: string; attempt: number }
                 const activityId = `${executionId}/${payload.name}`
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                const instance = WorkflowEngine.WorkflowInstance.of({
+                  ...WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
+                  awaitedDeferreds: currentRun?.activityAwaits ?? new Map()
+                })
                 interruptedActivities.delete(activityId)
                 const entry = activities.get(activityId)
                 if (!entry) {
@@ -551,10 +556,13 @@ export const make = Effect.gen(function*() {
                 // Check when the wake runs and skip preemption too: interrupting
                 // a later await would require waiting for its reply before reset.
                 // A run completing its own deferred also reads it from the cache
-                // when it awaits later, so that completion never wakes the run.
+                // when it awaits later, unless an activity is already parked on it.
                 const wake = Effect.suspend(() =>
                   currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
-                    ? currentRun.instance.completedDeferreds.has(payload.name)
+                    ? currentRun.activityAwaits.has(payload.name)
+                      // Hold an activity wake until the run has published its reply.
+                      ? resumeCurrentRun
+                      : currentRun.instance.completedDeferreds.has(payload.name)
                       ? Effect.void
                       : ensureSuccess(resume(workflow, executionId))
                     : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
