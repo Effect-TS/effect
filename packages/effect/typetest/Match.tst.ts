@@ -400,4 +400,47 @@ describe("Match", () => {
       })
     )
   })
+
+  it("variadic tuple patterns narrow the required head and preserve the tail", () => {
+    Match.type<readonly [string, ...Array<number>]>().pipe(
+      Match.when([Match.number], (value) => {
+        expect(value).type.toBe<never>()
+      }),
+      Match.when(["A"], (value) => {
+        expect(value).type.toBe<readonly ["A", ...Array<number>]>()
+      })
+    )
+  })
+
+  it("array prefix patterns keep the unmatched tail", () => {
+    // https://github.com/Effect-TS/effect/issues/4901
+    type Item = string | number | null
+    Match.type<Array<Item>>().pipe(
+      Match.when(["A", Match.null], (value) => {
+        expect(value).type.toBe<readonly ["A", null, ...Array<Item>]>()
+      }),
+      Match.orElse((value) => {
+        expect(value).type.toBe<Array<Item>>()
+      })
+    )
+
+    Match.type<readonly [string, number]>().pipe(
+      Match.when(["A", Match.number], (value) => {
+        expect(value).type.toBe<readonly ["A", number]>()
+      })
+    )
+
+    Match.type<Array<Item>>().pipe(
+      Match.when([], (value) => {
+        expect(value).type.toBe<ReadonlyArray<Item>>()
+      })
+    )
+
+    const optionalPattern: readonly ["A"?] = ["A"]
+    Match.type<ReadonlyArray<string>>().pipe(
+      Match.not(optionalPattern, (value) => {
+        expect(value).type.toBe<ReadonlyArray<string>>()
+      })
+    )
+  })
 })

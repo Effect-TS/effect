@@ -2724,6 +2724,32 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
+  // Tuple patterns match a prefix at runtime. For inputs with a variadic part,
+  // narrow each position the pattern requires and keep the rest of the input.
+  type NarrowArrayPattern<I extends ReadonlyArray<any>, P extends ReadonlyArray<any>> = number extends I["length"]
+    ? number extends P["length"] ? MapArrayPattern<I, P>
+    : P["length"] extends Required<P>["length"] ? NarrowArrayPrefix<I, P>
+    : MapArrayPattern<I, P>
+    : MapArrayPattern<I, P>
+
+  type MapArrayPattern<I, P> = {
+    readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]> : I[K]
+  } extends infer R ? Fail extends R[keyof R] ? never
+    : R
+    : never
+
+  type NarrowArrayPrefix<
+    I extends ReadonlyArray<any>,
+    P extends ReadonlyArray<any>,
+    Out extends ReadonlyArray<any> = readonly []
+  > = P extends readonly [infer PH, ...infer PT] ?
+    I extends readonly [infer IH, ...infer IT] ?
+      [ExtractAndNarrow<IH, PH>] extends [infer N] ? [N] extends [never] ? never
+        : NarrowArrayPrefix<IT, PT, readonly [...Out, N]>
+      : never
+    : NarrowArrayPrefix<readonly [I[number], ...Array<I[number]>], P, Out>
+    : readonly [...Out, ...I]
+
   type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ?
     _Out extends Input ? Extract<_Out, Input>
     : Extract<Input, _Out> :
@@ -2732,12 +2758,7 @@ export declare namespace Types {
       : Extract<Input, _In>
     : P extends Predicate.Predicate<infer _In> ? Extract<Input, _In>
     : Input extends infer I ? Exclude<
-        I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
-              readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
-                : I[K]
-            } extends infer R ? Fail extends R[keyof R] ? never
-              : R
-            : never
+        I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? NarrowArrayPattern<I, P>
           : never
           : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
               : never
