@@ -569,10 +569,9 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _, Args extends Array<a
 ) => [Ret] extends [[A] extends [never] ? any : A] ? Matcher<I, F, R, A, Pr, Ret, Args>
   : "withReturnType constraint does not extend Result type" = internal.withReturnType
 
-// `P` is a const type parameter, so a fresh object skips excess-property checks.
-// Reject keys absent from every object variant on `when`, `whenOr`, `whenAnd`, and
-// `not`. Predicates, refinements, and arrays stay unchecked: their own properties
-// are not pattern keys. The runtime matcher still tests each own key.
+// `P` is a const type parameter, so object literals skip excess-property checks.
+// Reject pattern keys that no object variant of the input has. Functions,
+// refinements, and array patterns are not checked.
 type PatternKey<K> = K extends number ? `${K}` : K
 
 type PatternKeys<A> = object extends A ? PropertyKey
