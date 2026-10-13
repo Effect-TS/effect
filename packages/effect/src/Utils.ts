@@ -211,14 +211,11 @@ const pickInternalCall = (): <A>(body: () => A) => A => {
 
   const limit = getStackTraceLimit()
   if (limit === 0) return forced[InternalTypeId]
-  try {
-    // Only the callback and internal call frames are needed for detection.
-    if (typeof limit === "number") setStackTraceLimit(Math.min(limit, 2))
-    const isNotOptimizedAway = standard[InternalTypeId](() => new Error().stack)?.includes(InternalTypeId) === true
-    return isNotOptimizedAway ? standard[InternalTypeId] : forced[InternalTypeId]
-  } finally {
-    if (typeof limit === "number") setStackTraceLimit(limit)
-  }
+  // Only the callback and internal call frames are needed for detection.
+  setStackTraceLimit(2)
+  const error = standard[InternalTypeId](() => new Error())
+  setStackTraceLimit(limit)
+  return error.stack?.includes(InternalTypeId) === true ? standard[InternalTypeId] : forced[InternalTypeId]
 }
 
 /** @internal */

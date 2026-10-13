@@ -1512,16 +1512,14 @@ const continuationMarksStack = (() => {
   const marker = "~effect/Effect/stackProbe"
   const probe = {
     [marker]: function stackProbe() {
-      return new Error().stack
+      return new Error()
     }
   }
-  try {
-    // Only the probe frame is needed to detect the continuation property name.
-    if (typeof limit === "number") setStackTraceLimit(Math.min(limit, 1))
-    return probe[marker]()?.includes("[as " + marker + "]") === true
-  } finally {
-    if (typeof limit === "number") setStackTraceLimit(limit)
-  }
+  // Only the probe frame is needed to detect the continuation property name.
+  setStackTraceLimit(1)
+  const error = probe[marker]()
+  setStackTraceLimit(limit)
+  return error.stack?.includes("[as " + marker + "]") === true
 })()
 const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
