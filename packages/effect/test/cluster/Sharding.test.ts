@@ -20,7 +20,8 @@ import {
   Schedule,
   Schema,
   Scope,
-  Stream
+  Stream,
+  Tracer
 } from "effect"
 import {
   ClusterError,
@@ -429,6 +430,40 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
 })
 
 describe.concurrent("Sharding", () => {
+  it.effect("keeps entity RPC span names stable across IDs while preserving entity attributes", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.NativeSpan> = []
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (span.kind === "server") spans.push(span)
+          return span
+        }
+      })
+      const entity = Entity.make("WorkflowEntity", [Rpc.make("Run")])
+      const layer = entity.toLayer({ Run: () => Effect.void }).pipe(
+        Layer.provideMerge(UnregisteredSharding({}))
+      )
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const client = yield* entity.client
+        yield* client("one").Run()
+        yield* client("two").Run()
+        assert.deepStrictEqual(
+          spans.map((span) => ({
+            name: span.name,
+            type: span.attributes.get("entity.type"),
+            id: span.attributes.get("entity.id")
+          })),
+          [
+            { name: "WorkflowEntity.Run", type: "WorkflowEntity", id: "one" },
+            { name: "WorkflowEntity.Run", type: "WorkflowEntity", id: "two" }
+          ]
+        )
+      }).pipe(Effect.provide(layer), Effect.provideService(Tracer.Tracer, tracer))
+    }))
+
   for (const pauseReply of [false, true]) {
     it.effect(
       pauseReply
