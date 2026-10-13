@@ -121,8 +121,22 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
-// Two inclusive bounds on one schema object are equivalent to the tighter bound, so a colliding `minimum` or
-// `maximum` is tightened in place. Any other collision returns `undefined` and the caller falls back to `allOf`.
+function tightenBound(key: string): ((a: number, b: number) => number) | undefined {
+  switch (key) {
+    case "minimum":
+    case "exclusiveMinimum":
+      return Math.max
+    case "maximum":
+    case "exclusiveMaximum":
+      return Math.min
+    default:
+      return undefined
+  }
+}
+
+// Bounds on one schema object are conjunctive, so two bounds of the same kind are equivalent to the tighter one, and
+// an inclusive and an exclusive bound on the same side are equivalent to whichever implies the other. Any other
+// collision returns `undefined` and the caller falls back to `allOf`.
 function mergeInlineCheck(
   left: JsonSchema.JsonSchema,
   right: JsonSchema.JsonSchema,
@@ -132,12 +146,18 @@ function mergeInlineCheck(
   const out: JsonSchema.JsonSchema = { ...left, ...right }
   for (const key of rightKeys) {
     if (!Object.hasOwn(left, key)) continue
+    const tighten = tightenBound(key)
     const a = left[key]
     const b = right[key]
-    if (typeof a !== "number" || typeof b !== "number") return undefined
-    if (key === "minimum") out.minimum = Math.max(a, b)
-    else if (key === "maximum") out.maximum = Math.min(a, b)
-    else return undefined
+    if (tighten === undefined || typeof a !== "number" || typeof b !== "number") return undefined
+    out[key] = tighten(a, b)
+  }
+  const { exclusiveMaximum, exclusiveMinimum, maximum, minimum } = out
+  if (typeof minimum === "number" && typeof exclusiveMinimum === "number") {
+    delete out[exclusiveMinimum >= minimum ? "minimum" : "exclusiveMinimum"]
+  }
+  if (typeof maximum === "number" && typeof exclusiveMaximum === "number") {
+    delete out[exclusiveMaximum <= maximum ? "maximum" : "exclusiveMaximum"]
   }
   return out
 }
