@@ -70,6 +70,34 @@ describe("LanguageModel", () => {
   }
 
   describe("generateText", () => {
+    it.effect("records resolved request options on a client span", () =>
+      LanguageModel.generateText({ prompt: "hi" }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.kind, "client")
+            strictEqual(span.attributes.get("gen_ai.output.type"), "text")
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), "auto")
+            strictEqual(span.attributes.get("effect.ai.concurrency"), "unbounded")
+            return []
+          }
+        })
+      ))
+
+    it.effect("JSON-encodes object tool choices", () =>
+      LanguageModel.generateText({
+        prompt: "hi",
+        toolkit: MyToolkit,
+        toolChoice: { oneOf: ["MyTool"] }
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.attributes.get("effect.ai.tool_choice"), JSON.stringify({ oneOf: ["MyTool"] }))
+            return []
+          }
+        }),
+        Effect.provide(MyToolkitLayer)
+      ))
+
     it.effect("does not resolve tool calls after an incomplete finish", () =>
       Effect.gen(function*() {
         const calls = yield* Ref.make(0)
@@ -382,6 +410,40 @@ describe("LanguageModel", () => {
         strictEqual(response.toolCalls.length, 1)
         deepStrictEqual(response.toolCalls[0]!.params, { testParam: "test-param" })
         strictEqual(yield* Ref.get(calls), 0)
+      }))
+
+    it.effect("ignores deferred tool call validation when tool call resolution is enabled", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.generateText({
+          prompt: [],
+          toolkit: MyToolkit,
+          toolCallValidation: "deferred"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{ type: "tool-call", id: "call_1", name: "Write", params: { path: "a" } }]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
+
+    it.effect("returns tool calls without a toolkit when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const response = yield* LanguageModel.generateText({
+          prompt: [],
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          TestUtils.withLanguageModel({
+            generateText: [{ type: "tool-call", id: "call_1", name: "Write", params: { path: "a" } }]
+          })
+        )
+
+        deepStrictEqual(response.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "Write", params: { path: "a" } }
+        ])
       }))
   })
 
@@ -1259,9 +1321,47 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(active), 0)
         strictEqual(yield* Ref.get(maxActive), 1)
       }))
+
+    it.effect("validates provider-executed tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const error = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [{
+              type: "tool-call",
+              id: "call_1",
+              name: "MyTool",
+              params: { testParam: 42 },
+              providerExecuted: true
+            }]
+          }),
+          Effect.provide(MyToolkitLayer),
+          Effect.flip
+        )
+
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }))
   })
 
   describe("generateObject", () => {
+    it.effect("records json output type on the span", () =>
+      LanguageModel.generateObject({
+        prompt: "hi",
+        schema: Schema.Struct({ count: Schema.Number })
+      }).pipe(
+        TestUtils.withLanguageModel({
+          generateText: ({ span }) => {
+            strictEqual(span.attributes.get("gen_ai.output.type"), "json")
+            return [{ type: "text", text: "{\"count\":1}" }]
+          }
+        })
+      ))
+
     it.effect("includes full generated text in StructuredOutputError", () =>
       Effect.gen(function*() {
         const error = yield* LanguageModel.generateObject({

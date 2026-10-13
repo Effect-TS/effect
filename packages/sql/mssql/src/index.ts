@@ -1,10 +1,12 @@
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 
 export {
   /**
    * @stability unstable
+   * @category re-exports
    * @since 4.0.0
    */
   TYPES as MssqlTypes
@@ -13,11 +15,13 @@ export {
 // @barrel: Auto-generated exports. Do not edit manually.
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as MssqlClient from "./MssqlClient.ts"
 
 /**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as MssqlMigrator from "./MssqlMigrator.ts"

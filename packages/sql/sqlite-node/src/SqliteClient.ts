@@ -12,6 +12,7 @@
  * and extension loading are supported; streaming queries and `updateValues`
  * are not.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Cache from "effect/Cache"
@@ -42,6 +43,7 @@ const NANOS_PER_MILLI = BigInt(1_000_000)
 /**
  * Runtime type identifier used to mark Node `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -50,6 +52,7 @@ export const TypeId: TypeId = "~@effect/sql-sqlite-node/SqliteClient"
 /**
  * Type-level identifier used to mark Node `SqliteClient` values.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -58,6 +61,7 @@ export type TypeId = "~@effect/sql-sqlite-node/SqliteClient"
 /**
  * Node SQLite client service, extending `SqlClient` with database export, backup, and extension loading helpers. `updateValues` is not supported.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -74,6 +78,7 @@ export interface SqliteClient extends Client.SqlClient {
 /**
  * Metadata returned from a Node SQLite backup operation, reporting total and remaining page counts.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -85,6 +90,7 @@ export interface BackupMetadata {
 /**
  * Service tag for the node SQLite client implementation.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -93,6 +99,7 @@ export const SqliteClient = Context.Service<SqliteClient>("@effect/sql-sqlite-no
 /**
  * Configuration for a node SQLite client backed by `node:sqlite`, including the database filename, read-only mode, statement cache settings, WAL and busy timeout behavior, span attributes, and query/result name transforms.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -123,6 +130,7 @@ interface SqliteConnection extends Connection {
 /**
  * Creates a scoped node SQLite client from the supplied configuration, using a single serialized connection with WAL and a 5-second busy timeout enabled by default. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -149,7 +157,7 @@ export const make = (
         }),
         (db) => Effect.sync(() => db.close())
       )
-      db.enableLoadExtension(false)
+      setLoadExtensionEnabled(db, false)
       const busyTimeout = Math.min(
         MAX_BUSY_TIMEOUT,
         Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
@@ -312,14 +320,14 @@ export const make = (
         },
         loadExtension(path) {
           return Effect.acquireUseRelease(
-            Effect.sync(() => db.enableLoadExtension(true)),
+            Effect.sync(() => setLoadExtensionEnabled(db, true)),
             () =>
               Effect.try({
                 try: () => db.loadExtension(path),
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to load extension", "loadExtension") })
               }),
-            () => Effect.sync(() => db.enableLoadExtension(false))
+            () => Effect.sync(() => setLoadExtensionEnabled(db, false))
           )
         }
       })
@@ -349,8 +357,8 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        backup: (destination: string) => Effect.flatMap(acquirer, (_) => _.backup(destination)),
-        loadExtension: (path: string) => Effect.flatMap(acquirer, (_) => _.loadExtension(path))
+        backup: (destination: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.backup(destination))),
+        loadExtension: (path: string) => Effect.scoped(Effect.flatMap(acquirer, (_) => _.loadExtension(path)))
       }
     )
   })
@@ -358,6 +366,7 @@ export const make = (
 /**
  * Builds a layer from an Effect `Config` value, providing both the node `SqliteClient` service and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -378,6 +387,7 @@ export const layerConfig = (
 /**
  * Builds a layer from a node SQLite client configuration, providing both `SqliteClient` and the generic `SqlClient` service.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -405,4 +415,12 @@ const sqliteCauseWithErrno = (cause: unknown): unknown => {
     return cause
   }
   return Object.assign(cause, { errno: errcode })
+}
+
+// Deno's node:sqlite has no `enableLoadExtension`, so `allowExtension` alone
+// controls extension loading there.
+const setLoadExtensionEnabled = (db: DatabaseSync, enabled: boolean): void => {
+  if (typeof db.enableLoadExtension === "function") {
+    db.enableLoadExtension(enabled)
+  }
 }

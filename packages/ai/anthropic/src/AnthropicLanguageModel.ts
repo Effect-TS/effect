@@ -659,6 +659,24 @@ declare module "effect/ai/Response" {
       requestId?: string | null
     } | null
   }
+
+  /**
+   * Anthropic metadata attached to response metadata parts.
+   *
+   * **Details**
+   *
+   * Fallback blocks are stored in `anthropic.fallback`; the part's `modelId`
+   * identifies the fallback model.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.3
+   */
+  export interface ResponseMetadataPartMetadata extends ProviderMetadata {
+    readonly anthropic?: {
+      readonly fallback?: typeof Generated.BetaResponseFallbackBlock.Encoded
+    } | null
+  }
 }
 
 // =============================================================================
@@ -1044,7 +1062,7 @@ const prepareMessages = Effect.fnUntraced(
             pendingSystem = []
           }
 
-          const content: Array<typeof Generated.BetaContentBlock.Encoded> = []
+          const content: Array<typeof Generated.BetaInputContentBlock.Encoded> = []
           const mcpToolIds = new Set<string>()
 
           for (let j = 0; j < group.messages.length; j++) {
@@ -1142,7 +1160,7 @@ const prepareMessages = Effect.fnUntraced(
                       Predicate.hasProperty(part.params, "type") &&
                       part.params.type === "programmatic-tool-call"
                     ) {
-                      const { type, ...params } = part.params
+                      const { type: _type, ...params } = part.params
                       content.push({
                         type: "server_tool_use",
                         id: part.id,
@@ -1651,6 +1669,15 @@ const makeResponse = Effect.fnUntraced(
 
     for (const part of rawResponse.content) {
       switch (part.type) {
+        case "fallback": {
+          parts.push({
+            type: "response-metadata",
+            modelId: part.to.model,
+            timestamp: DateTime.formatIso(yield* DateTime.now),
+            metadata: { anthropic: { fallback: part } }
+          })
+          break
+        }
         case "text": {
           // The response tool supplies the JSON payload. Accompanying prose
           // must not be concatenated with it during structured output decoding.
@@ -1722,7 +1749,7 @@ const makeResponse = Effect.fnUntraced(
             // Map the provider wire name (e.g. "memory") back to the tool's
             // custom name (e.g. "AnthropicMemory") that the toolkit is keyed by
             const toolName = toolNameMapper.getCustomName(part.name)
-            const params = yield* transformToolCallParams(options.tools, toolName, part.input)
+            const params = yield* transformToolCallParams(options, toolName, part.input)
 
             parts.push({
               type: "tool-call",
@@ -2162,7 +2189,7 @@ const makeStreamResponse = Effect.fnUntraced(
                     id: part.id
                   })
 
-                  const params = yield* transformToolCallParams(options.tools, toolName, part.input)
+                  const params = yield* transformToolCallParams(options, toolName, part.input)
 
                   parts.push({
                     type: "tool-call",
@@ -2602,6 +2629,17 @@ const makeStreamResponse = Effect.fnUntraced(
 
                 break
               }
+
+              case "fallback": {
+                parts.push({
+                  type: "response-metadata",
+                  modelId: event.content_block.to.model,
+                  timestamp: DateTime.formatIso(yield* DateTime.now),
+                  metadata: { anthropic: { fallback: event.content_block } }
+                })
+
+                break
+              }
             }
 
             break
@@ -2765,7 +2803,7 @@ const makeStreamResponse = Effect.fnUntraced(
 
                   const params = contentBlock.providerExecuted === true
                     ? toolParams
-                    : yield* transformToolCallParams(options.tools, contentBlock.name, toolParams)
+                    : yield* transformToolCallParams(options, contentBlock.name, toolParams)
 
                   parts.push({
                     type: "tool-call",
@@ -2817,7 +2855,7 @@ const annotateRequest = (
   request: typeof Generated.BetaCreateMessageParams.Encoded
 ): void => {
   addGenAIAnnotations(span, {
-    system: "anthropic",
+    provider: { name: "anthropic" },
     operation: { name: "chat" },
     request: {
       model: request.model,
@@ -2833,6 +2871,8 @@ const annotateRequest = (
 }
 
 const annotateResponse = (span: Span, response: Generated.BetaMessage): void => {
+  const cacheRead = response.usage.cache_read_input_tokens ?? 0
+  const cacheWrite = response.usage.cache_creation_input_tokens ?? 0
   addGenAIAnnotations(span, {
     response: {
       id: response.id,
@@ -2840,10 +2880,11 @@ const annotateResponse = (span: Span, response: Generated.BetaMessage): void => 
       finishReasons: response.stop_reason ? [response.stop_reason] : undefined
     },
     usage: {
-      inputTokens: response.usage.input_tokens,
+      inputTokens: response.usage.input_tokens + cacheRead + cacheWrite,
       outputTokens: response.usage.output_tokens
     }
   })
+  annotateCacheUsage(span, cacheRead, cacheWrite)
 }
 
 const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) => {
@@ -2861,11 +2902,18 @@ const annotateStreamResponse = (span: Span, part: Response.StreamPartEncoded) =>
         finishReasons: [part.reason]
       },
       usage: {
-        inputTokens: part.usage.inputTokens.uncached,
+        inputTokens: part.usage.inputTokens.total,
         outputTokens: part.usage.outputTokens.total
       }
     })
+    annotateCacheUsage(span, part.usage.inputTokens.cacheRead, part.usage.inputTokens.cacheWrite)
   }
+}
+
+// Cache counts are included in `gen_ai.usage.input_tokens`.
+const annotateCacheUsage = (span: Span, cacheRead: number | undefined, cacheWrite: number | undefined): void => {
+  if (Predicate.isNotNullish(cacheRead)) span.attribute("gen_ai.usage.cache_read.input_tokens", cacheRead)
+  if (Predicate.isNotNullish(cacheWrite)) span.attribute("gen_ai.usage.cache_write.input_tokens", cacheWrite)
 }
 
 // =============================================================================
@@ -3195,20 +3243,23 @@ const getOutputFormat = Effect.fnUntraced(function*({ capabilities, options }: {
   return undefined
 })
 
-const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
-  tools: Tools,
+const transformToolCallParams = Effect.fnUntraced(function*(
+  options: LanguageModel.ProviderOptions,
   toolName: string,
   toolParams: unknown
 ): Effect.fn.Return<unknown, AiError.AiError> {
-  const tool = tools.find((tool) => tool.name === toolName)
+  const tool = options.tools.find((tool) => tool.name === toolName)
 
   if (Predicate.isUndefined(tool)) {
+    if (options.toolCallValidation === "deferred") {
+      return toolParams
+    }
     return yield* AiError.make({
       module: "AnthropicLanguageModel",
       method: "makeResponse",
       reason: new AiError.ToolNotFoundError({
         toolName,
-        availableTools: tools.map((tool) => tool.name)
+        availableTools: options.tools.map((tool) => tool.name)
       })
     })
   }

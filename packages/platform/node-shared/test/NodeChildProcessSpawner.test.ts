@@ -13,7 +13,10 @@ import * as Layer from "effect/Layer"
 import * as ChildProcess from "effect/process/ChildProcess"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import NodeChildProcess, { spawnSync } from "node:child_process"
+import { syncBuiltinESMExports } from "node:module"
 import { join } from "node:path"
+import { vi } from "vitest"
 
 const NodeServices = NodeChildProcessSpawner.layer.pipe(
   Layer.provideMerge(Layer.mergeAll(
@@ -24,6 +27,63 @@ const NodeServices = NodeChildProcessSpawner.layer.pipe(
 
 ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
+})
+
+describe("Windows cleanup", { concurrent: false }, () => {
+  for (const signal of [false, true]) {
+    it.skipIf(signal && process.platform === "win32")(
+      `does not taskkill a ${signal ? "signal-terminated" : "failed"} child during exit, kill or scope release`,
+      async () => {
+        const platform = Object.getOwnPropertyDescriptor(process, "platform")!
+        const taskkill = vi.spyOn(NodeChildProcess, "execFile").mockImplementation((...args) => {
+          const callback = args.at(-1)
+          if (typeof callback === "function") callback(null, "", "")
+          return new NodeChildProcess.ChildProcess()
+        })
+        syncBuiltinESMExports()
+        try {
+          await Effect.runPromise(
+            Effect.scoped(Effect.gen(function*() {
+              const handle = yield* ChildProcess.make(process.execPath, [
+                "-e",
+                signal ? "process.kill(process.pid, 'SIGTERM')" : "process.exit(1)"
+              ])
+              // Spawn natively, then exercise the Windows exit and cleanup paths.
+              Object.defineProperty(process, "platform", { value: "win32" })
+              if (signal) {
+                assert.isTrue(Exit.isFailure(yield* Effect.exit(handle.exitCode)))
+              } else {
+                assert.strictEqual(yield* handle.exitCode, 1)
+              }
+              yield* handle.kill()
+            })).pipe(Effect.provide(NodeServices))
+          )
+          assert.strictEqual(taskkill.mock.calls.length, 0)
+        } finally {
+          Object.defineProperty(process, "platform", platform)
+          taskkill.mockRestore()
+          syncBuiltinESMExports()
+        }
+      }
+    )
+  }
+})
+
+// Synchronous fixture runs must not block other tests with active timeout budgets.
+describe("interrupted buffered input", { concurrent: false, timeout: 15_000 }, () => {
+  for (const input of ["stdin", "fd3"] as const) {
+    it(`does not crash the host when ${input} is interrupted`, () => {
+      // Isolate the host so an unhandled writable error becomes an assertion
+      // failure rather than an uncaught exception in the test runner.
+      const result = spawnSync(process.execPath, [join(__dirname, "fixtures", "buffered-input.ts"), input], {
+        encoding: "utf8",
+        timeout: 10_000
+      })
+      assert.strictEqual(result.error, undefined)
+      assert.strictEqual(result.status, 0, result.stderr)
+      assert.strictEqual(result.stdout, "program finished: Failure\nstill alive after 500ms\n")
+    })
+  }
 })
 
 describe("buildSpawnOptions", () => {

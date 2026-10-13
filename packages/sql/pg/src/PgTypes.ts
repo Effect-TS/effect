@@ -30,6 +30,7 @@
  * and signed bigint microseconds independently. No units are normalized.
  * Convert microseconds explicitly before JSON serialization.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Data from "effect/Data"
@@ -43,6 +44,7 @@ import type { ValueSink } from "./PgProtocol.ts"
 /**
  * Failure returned when a value cannot be encoded or decoded for its OID.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -292,6 +294,7 @@ const TZDISP_LIMIT_SECONDS = 57_600
 /**
  * Type OIDs implemented by version 1 of this codec.
  *
+ * @stability unstable
  * @category constants
  * @since 4.0.0
  */
@@ -383,6 +386,7 @@ const elementToArray = new Map<number, number>(
 /**
  * Options for registering a codec.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -398,6 +402,7 @@ export interface RegisterOptions {
  * A client-specific set of PostgreSQL binary codecs. Each registry starts with
  * the built-in codecs and does not affect the module-level registry.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -409,6 +414,7 @@ export interface Registry {
  * Returns the array OID whose elements have the given OID, or `undefined`
  * when there is no array type registered for it.
  *
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
@@ -892,6 +898,7 @@ const decodeUuid = (bytes: Uint8Array, offset: number, size: number): string => 
 /**
  * A binary codec for a single OID.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1191,6 +1198,7 @@ const oidCodec: UnsafeCodec<any> = codecOf(
  * A PostgreSQL interval with independent signed calendar and time components.
  * Months and days are int32 values; microseconds is an int64 value.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1442,6 +1450,7 @@ const registerInState = <A>(
 /**
  * Creates a client-specific registry containing the built-in codecs.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1476,6 +1485,7 @@ const lookupFor = (registry: Registry | undefined): Lookup =>
  * reading rows. For arrays, use `makeRegistry().register` with
  * `RegisterOptions.arrayOid` and pass the registry as the client's `types` option.
  *
+ * @stability unstable
  * @category registry
  * @since 4.0.0
  */
@@ -1488,6 +1498,7 @@ export const register = <A>(oid: number, codec: Codec<A>): void => {
 /**
  * Removes a previously registered codec.
  *
+ * @stability unstable
  * @category registry
  * @since 4.0.0
  */
@@ -1655,6 +1666,7 @@ const decodeArray = (
 /**
  * A result column, as `RowDescription` describes one.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1683,6 +1695,7 @@ export interface Column {
  * parser.readField = Result.getOrThrow(PgTypes.makeFieldReader(description.fields))
  * ```
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -1715,6 +1728,7 @@ export const makeFieldReader = (
  * Returns a `CodecError` failure when the value has the wrong JavaScript type,
  * or when the OID is neither built in nor registered.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1734,6 +1748,7 @@ export const encode = (value: unknown, oid: number, registry?: Registry): Result
  * text; invalid UTF-8 fails with `CodecError`. See `register` for binary
  * user-defined types, including arrays.
  *
+ * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
@@ -1758,6 +1773,7 @@ export const decode = (
 /**
  * The runtime type identifier for PostgreSQL parameters.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1766,6 +1782,7 @@ export const ParameterTypeId: ParameterTypeId = "~@effect/sql-pg/PgTypes/Paramet
 /**
  * The type-level identifier for PostgreSQL parameters.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -1774,6 +1791,7 @@ export type ParameterTypeId = "~@effect/sql-pg/PgTypes/Parameter"
 /**
  * A value paired with the OID it should be encoded as.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1786,6 +1804,7 @@ export interface Parameter {
 /**
  * Returns whether a value is a parameter created by this module.
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -1795,6 +1814,7 @@ export const isParameter = (value: unknown): value is Parameter =>
 /**
  * Encodes a parameter for a `Bind` message. SQL NULL stays `null`.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1816,6 +1836,7 @@ const writeValue = (sink: ValueSink, value: unknown, oid: number, lookup: Lookup
  * Untyped parameters (OID `0`) use text so PostgreSQL can infer their type;
  * typed parameters use the binary format.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1841,6 +1862,7 @@ const writeParameterUnsafe = (sink: ValueSink, parameter: Parameter, lookup: Loo
 /**
  * Writes a parameter into a `Bind` frame.
  *
+ * @stability unstable
  * @category encoding
  * @since 4.0.0
  */
@@ -1874,6 +1896,7 @@ const parameter = (oid: number) => (value: unknown): Parameter => makeParameter(
 /**
  * A `bool` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1882,6 +1905,7 @@ export const bool: (value: boolean | null) => Parameter = parameter(OID.bool)
 /**
  * An `int2` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1890,6 +1914,7 @@ export const int2: (value: number | null) => Parameter = parameter(OID.int2)
 /**
  * An `int4` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1898,6 +1923,7 @@ export const int4: (value: number | null) => Parameter = parameter(OID.int4)
 /**
  * An `int8` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1906,6 +1932,7 @@ export const int8: (value: bigint | null) => Parameter = parameter(OID.int8)
 /**
  * An `oid` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1914,6 +1941,7 @@ export const oid: (value: number | null) => Parameter = parameter(OID.oid)
 /**
  * A `float4` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1922,6 +1950,7 @@ export const float4: (value: number | null) => Parameter = parameter(OID.float4)
 /**
  * A `float8` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1930,6 +1959,7 @@ export const float8: (value: number | null) => Parameter = parameter(OID.float8)
 /**
  * A `numeric` parameter, given as a decimal string or `"NaN"`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1938,6 +1968,7 @@ export const numeric: (value: string | null) => Parameter = parameter(OID.numeri
 /**
  * A `text` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1946,6 +1977,7 @@ export const text: (value: string | null) => Parameter = parameter(OID.text)
 /**
  * A `varchar` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1954,6 +1986,7 @@ export const varchar: (value: string | null) => Parameter = parameter(OID.varcha
 /**
  * A `bpchar` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1962,6 +1995,7 @@ export const bpchar: (value: string | null) => Parameter = parameter(OID.bpchar)
 /**
  * A `name` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1970,6 +2004,7 @@ export const name: (value: string | null) => Parameter = parameter(OID.name)
 /**
  * A `bytea` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1978,6 +2013,7 @@ export const bytea: (value: Uint8Array | null) => Parameter = parameter(OID.byte
 /**
  * A `json` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1986,6 +2022,7 @@ export const json: (value: unknown) => Parameter = parameter(OID.json)
 /**
  * A `jsonb` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -1994,6 +2031,7 @@ export const jsonb: (value: unknown) => Parameter = parameter(OID.jsonb)
 /**
  * A `uuid` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2002,6 +2040,7 @@ export const uuid: (value: string | null) => Parameter = parameter(OID.uuid)
 /**
  * An `inet` parameter, such as `"10.0.0.1"` or `"10.0.0.0/8"`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2010,6 +2049,7 @@ export const inet: (value: string | null) => Parameter = parameter(OID.inet)
 /**
  * A `cidr` parameter.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2018,6 +2058,7 @@ export const cidr: (value: string | null) => Parameter = parameter(OID.cidr)
 /**
  * A `date` parameter, given as `YYYY-MM-DD`, `"infinity"`, or `"-infinity"`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2026,6 +2067,7 @@ export const date: (value: string | null) => Parameter = parameter(OID.date)
 /**
  * A `time` parameter, given as microseconds since midnight.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2034,6 +2076,7 @@ export const time: (value: bigint | null) => Parameter = parameter(OID.time)
 /**
  * A `timetz` parameter, such as `"12:34:56+02:00"`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2043,6 +2086,7 @@ export const timetz: (value: string | null) => Parameter = parameter(OID.timetz)
  * A `timestamp` parameter from a `Date` or epoch milliseconds. UTC fields
  * become the stored wall-clock fields, regardless of session `TimeZone`.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2051,6 +2095,7 @@ export const timestamp: (value: Date | number | null) => Parameter = parameter(O
 /**
  * A `timestamptz` parameter, given as a `Date` or Unix epoch milliseconds.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2059,6 +2104,7 @@ export const timestamptz: (value: Date | number | null) => Parameter = parameter
 /**
  * An `interval` parameter with independent months, days, and microseconds.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -2067,6 +2113,7 @@ export const interval: (value: Interval | null) => Parameter = parameter(OID.int
 /**
  * A one-dimensional array parameter whose elements have the given OID.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */

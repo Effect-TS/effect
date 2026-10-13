@@ -8,6 +8,7 @@
  * cases, throwing when a value is missing, adapting throwing functions, and
  * building reducers or combiners.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Combiner from "./Combiner.ts"
@@ -25,6 +26,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * @see {@link match} when you need to handle the `undefined` case explicitly
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -45,6 +47,7 @@ export const map: {
  * @see {@link map} for transforming defined values while preserving `undefined`
  * @see {@link getOrThrowWith} for throwing when the value is `undefined` instead of returning a fallback branch
  *
+ * @stability stable
  * @category pattern matching
  * @since 4.0.0
  */
@@ -82,6 +85,7 @@ export const match: {
  * @see {@link getOrThrow} for the default-error sibling
  * @see {@link match} for handling defined and undefined cases without throwing
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -112,6 +116,7 @@ export const getOrThrowWith: {
  * @see {@link getOrThrowWith} for the sibling that lets callers choose the thrown value
  * @see {@link match} for handling defined and undefined cases without throwing
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -133,6 +138,7 @@ export const getOrThrow: <A>(self: A | undefined) => A = getOrThrowWith(() =>
  * Thrown values are discarded. If the wrapped function can successfully return
  * `undefined`, that success is indistinguishable from a thrown failure.
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -165,6 +171,7 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  * are combined with `combiner.combine`. The reducer's initial value is
  * `undefined`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -194,6 +201,7 @@ export function makeReducer<A>(combiner: Combiner.Combiner<A>): Reducer.Reducer<
  * @see {@link makeReducerFailFast} if you have a `Reducer` and want to lift it
  * to `UndefinedOr` values.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -222,6 +230,7 @@ export function makeCombinerFailFast<A>(combiner: Combiner.Combiner<A>): Combine
  * @see {@link makeCombinerFailFast} if you only have a `Combiner` and want to
  * lift it to `UndefinedOr` values.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */

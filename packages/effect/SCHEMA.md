@@ -1049,6 +1049,20 @@ An index signature lets a struct accept any string key in addition to its fixed 
 
 Filters applied to either the struct or the record are preserved when combined.
 
+The base schema must have an object-shaped encoded type. Whole-object transformations are not supported, even when the rest array is empty. For JSON-string encoding, wrap the completed schema with `Schema.fromJsonString` rather than passing a JSON-string schema to `Schema.StructWithRest`:
+
+```ts
+import { Schema } from "effect"
+
+const base = Schema.Record(Schema.Literals(["bash", "sh"]), Schema.NonEmptyString)
+const records = [Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)] as const
+const schema = Schema.fromJsonString(Schema.StructWithRest(base, records), { space: 2 })
+
+type Encoded = typeof schema.Encoded // string
+```
+
+Object-shaped encoded types alone do not guarantee compatibility: unsupported whole-object encodings are still rejected at runtime. Transformations on individual fields remain supported.
+
 **Example** (Combining fixed properties with an index signature)
 
 ```ts
@@ -4392,6 +4406,8 @@ console.log(A.ast.annotations?.title)
 #### extend
 
 Use `extend` to create a subclass that adds fields to the base schema. Instance fields declared on the base class are also available on the subclass.
+
+Fields with the same name replace inherited fields. Use this to refine validation or change encoding. Effect does not check compatibility; the caller must ensure the replacement preserves the base class contract.
 
 **Example** (Extending a class with new fields)
 

@@ -192,6 +192,53 @@ describe("Atom", { concurrent: false }, () => {
     }
   })
 
+  it("windowFocusSignal works when window is undefined", () => {
+    const r = AtomRegistry.make()
+    try {
+      expect(r.get(Atom.windowFocusSignal)).toEqual(0)
+    } finally {
+      r.dispose()
+    }
+  })
+
+  it("refreshOnWindowFocus works when window is undefined", () => {
+    const r = AtomRegistry.make()
+    try {
+      expect(r.get(Atom.refreshOnWindowFocus(Atom.make(1)))).toEqual(1)
+    } finally {
+      r.dispose()
+    }
+  })
+
+  it("searchParam keeps the hash and omits an empty query", async () => {
+    const r = AtomRegistry.make()
+    const location = new URL("http://localhost/path?q=1#section")
+    const urls: Array<string> = []
+    vitest.stubGlobal("window", {
+      location,
+      history: {
+        pushState: (_state: unknown, _title: string, url: string) => {
+          urls.push(url)
+          location.href = new URL(url, location).href
+        }
+      },
+      addEventListener: () => {},
+      removeEventListener: () => {}
+    })
+
+    try {
+      const q = Atom.searchParam("q")
+      r.set(q, "2")
+      await vitest.advanceTimersByTimeAsync(500)
+      r.set(q, "")
+      await vitest.advanceTimersByTimeAsync(500)
+      expect(urls).toEqual(["/path?q=2#section", "/path#section"])
+    } finally {
+      r.dispose()
+      vitest.unstubAllGlobals()
+    }
+  })
+
   it("runtime", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
       Atom.withLabel("count")

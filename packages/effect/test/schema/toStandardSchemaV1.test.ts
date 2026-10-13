@@ -102,6 +102,17 @@ const AsyncString = Schema.String.pipe(Schema.decode({
 const AsyncNonEmptyString = AsyncString.check(Schema.isNonEmpty())
 
 describe("toStandardSchemaV1", () => {
+  it("validates subclass fields when the parent already has a Standard Schema adapter", () => {
+    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
+    const parent = Schema.toStandardSchemaV1(Parent)
+    class Child extends Parent.extend<Child>("Child")({ b: Schema.Number }) {}
+    const child = Schema.toStandardSchemaV1(Child)
+
+    expectSyncSuccess(parent, { a: "a" }, new Parent({ a: "a" }))
+    expectSyncFailure(child, { a: "a" }, [{ path: ["b"], message: "Missing key" }])
+    expectSyncSuccess(child, { a: "a", b: 1 }, new Child({ a: "a", b: 1 }))
+  })
+
   it("should return a Standard Schema V1 schema", () => {
     const schema = Schema.FiniteFromString
     const standardSchema = Schema.toStandardSchemaV1(schema)

@@ -228,7 +228,7 @@ export interface Chat {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Effect.Effect<
-      LanguageModel.GenerateTextResponse<{}>,
+      LanguageModel.GenerateTextResponse<{}, LanguageModel.ExtractToolParametersModeWithoutToolkit<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -310,7 +310,7 @@ export interface Chat {
     <Options extends NoExcessProperties<LanguageModel.GenerateTextOptions<{}>, Options>>(
       options: Options & { readonly toolkit?: undefined } & LanguageModel.GenerateTextOptions<{}>
     ): Stream.Stream<
-      Response.StreamPart<{}>,
+      Response.StreamPart<{}, LanguageModel.ExtractToolParametersModeWithoutToolkit<Options>>,
       LanguageModel.ExtractError<Options>,
       LanguageModel.LanguageModel | LanguageModel.ExtractServices<Options>
     >
@@ -509,7 +509,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
       (effect, options) =>
         Effect.withSpan(effect, "Chat.generateObject", {
           attributes: {
-            objectName: LanguageModel.getObjectName(options.objectName, options.schema)
+            "effect.ai.object_name": LanguageModel.getObjectName(options.objectName, options.schema)
           },
           captureStackTrace: false
         })

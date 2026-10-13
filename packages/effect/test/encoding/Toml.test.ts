@@ -77,6 +77,18 @@ local = 2026-08-05 01:02:03
     )
   })
 
+  it.each([
+    ["LF", "\nvalue", "value"],
+    ["CRLF", "\r\nvalue", "value"],
+    ["additional newlines", "\r\n\r\nfirst\r\nsecond", "\r\nfirst\r\nsecond"],
+    ["leading whitespace", " \r\nvalue", " \r\nvalue"]
+  ])("trims only an immediate opening newline in multiline strings (%s)", (_, content, expected) => {
+    assert.deepStrictEqual(
+      Toml.parse(`basic = """${content}"""\nliteral = '''${content}'''\n`),
+      { basic: expected, literal: expected }
+    )
+  })
+
   it("rejects duplicate keys", () => {
     assert.throws(() => Toml.parse("key = 1\nkey = 2\n"))
     assert.throws(() => Toml.parse("key = 1__000\n"))

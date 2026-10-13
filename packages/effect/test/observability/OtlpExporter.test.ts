@@ -1,9 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Clock, ConfigProvider, Deferred, type Duration, Effect, Exit, Fiber, Layer, Metric, Ref, Scope } from "effect"
-import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
-import type { HttpClientError } from "effect/http"
+import { type Headers, HttpBody, HttpClient, type HttpClientError, HttpClientResponse } from "effect/http"
 import { OtlpExporter, OtlpLogger, OtlpMetrics, OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
+import * as Version from "effect/Version"
 
 const makeHttpClient = Effect.fnUntraced(function*(retryAfter: string | undefined) {
   const attempts = yield* Ref.make(0)
@@ -35,12 +35,13 @@ const makeExporter = (
     readonly maxBatchSize?: number | "disabled"
     readonly shutdownTimeout?: Duration.Input
     readonly body?: (data: Array<any>) => HttpBody.HttpBody
+    readonly headers?: Headers.Input | undefined
   }
 ) =>
   OtlpExporter.make({
     label: "OtlpExporterTest",
     url: "http://localhost:4318/v1/logs",
-    headers: undefined,
+    headers: options?.headers,
     exportInterval: options?.exportInterval ?? "1 hour",
     maxBatchSize: options?.maxBatchSize ?? 1,
     body: (data) => [options?.body?.(data) ?? HttpBody.empty, Effect.void],
@@ -107,6 +108,26 @@ const makeControlledHttpClient = Effect.fnUntraced(function*(requestCount: numbe
 })
 
 describe("OtlpExporter", () => {
+  it.effect("appends the versioned exporter User-Agent to a user-supplied value", () =>
+    Effect.gen(function*() {
+      const userAgents: Array<string> = []
+      const httpClient = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          userAgents.push(request.headers["user-agent"])
+          return HttpClientResponse.fromWeb(request, new Response())
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      yield* Effect.scoped(Effect.gen(function*() {
+        const exporter = yield* makeExporter(httpClient, { headers: { "UsEr-AgEnT": "my-app/1.0" }, maxBatchSize: 10 })
+        exporter.push({ value: 1 })
+      }))
+      assert.deepStrictEqual(userAgents, [
+        `my-app/1.0 OTel-OTLP-Exporter-JavaScript-Effect-OtlpExporterTest/${Version.getCurrentVersion()}`
+      ])
+    }))
+
   it.effect("allows an in-flight timer export to finish during shutdown", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()

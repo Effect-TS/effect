@@ -550,6 +550,38 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder array payloads", (it) => {
+  const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
+  const Api = HttpApi.make("Api").add(
+    HttpApiGroup.make("test")
+      .add(HttpApiEndpoint.post("create", "/create", {
+        payload: Tags.pipe(HttpApiSchema.asFormUrlEncoded()),
+        success: Tags
+      }))
+      .add(HttpApiEndpoint.get("list", "/list", { payload: Tags.fields, success: Tags }))
+  )
+  const GroupLayer = HttpApiBuilder.group(Api, "test", (handlers) =>
+    handlers
+      .handle("create", ({ payload }) => Effect.succeed(payload))
+      .handle("list", ({ payload }) => Effect.succeed(payload)))
+
+  it.effect("round trips form-urlencoded array payloads with one or more values", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.create({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
+    }))
+
+  it.effect("round trips GET array payloads with one or more values", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLayer))
+
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a"] } }), { tags: ["a"] })
+      assert.deepStrictEqual(yield* client.test.list({ payload: { tags: ["a", "b"] } }), { tags: ["a", "b"] })
+    }))
+})
+
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
   it.effect("encodes WithHeaders using the schema for the response status", () =>
     Effect.gen(function*() {

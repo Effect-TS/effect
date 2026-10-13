@@ -7,6 +7,7 @@
  * pools, pools that resize with a time-to-live policy, custom strategy pools,
  * per-item concurrency limits, and runtime state types used by pool strategies.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -54,6 +55,7 @@ interface PoolImpl<A, E> extends Pool<A, E> {
  * @see {@link get} for acquiring an item from a pool
  * @see {@link invalidate} for removing a broken item from the pool
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -80,6 +82,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  * @see {@link State} for mutable runtime state instead of static configuration
  * @see {@link Strategy} for the resizing and reclamation contract stored on the config
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -112,6 +115,7 @@ export interface Config<A, E> {
  * @see {@link get} for acquiring items through the high-level API
  * @see {@link invalidate} for invalidating items through the high-level API
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -145,6 +149,7 @@ export interface State<A, E> {
  * @see {@link Strategy} for the custom strategy callbacks that receive and return pool items
  * @see {@link State} for the runtime sets that store active, available, and invalidated pool items
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -178,6 +183,7 @@ export interface PoolItem<A, E> {
  *
  * @see {@link makeWithStrategy} for constructing a pool from a custom `Strategy`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -199,6 +205,7 @@ export interface Strategy<A, E> {
  *
  * This predicate narrows the input to `Pool<unknown, unknown>`.
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -229,6 +236,7 @@ export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u
  *
  * @see {@link makeWithTTL} for pools with min/max sizes and a TTL-based shrinking policy
  * @see {@link makeWithStrategy} for pools with a custom resizing and reclamation strategy
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -298,6 +306,7 @@ export const make = <A, E, R>(options: {
  * await Effect.runPromise(program) // => ["executed: select 1"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -334,6 +343,7 @@ export const makeWithTTL = <A, E, R>(options: {
  * @see {@link makeWithTTL} for min/max pools that shrink excess items with a TTL policy
  * @see {@link Strategy} for the custom strategy contract consumed by this constructor
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -418,7 +428,6 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       yield* item.finalizer
     }
   }
-  yield* semaphore.releaseAll
   if (self.state.waiters.size > 0) {
     const waiters = Array.from(self.state.waiters)
     self.state.waiters.clear()
@@ -446,6 +455,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  *
  * @see {@link invalidate} for removing an unhealthy item from future reuse
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -488,6 +498,7 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
  *
  * @see {@link get} for borrowing an item for the lifetime of a scope
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -768,6 +779,7 @@ const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => 
  *
  * @see {@link get} for retrieving scoped items from the pool
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -794,6 +806,7 @@ export const invalidate: {
  *
  * @see {@link get} for acquiring an item
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */

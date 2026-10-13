@@ -7,6 +7,7 @@
  * re-exports the shared socket client and server protocol layers and provides
  * `layerK8sHttpClient` for Kubernetes runner health checks.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import { layerClientProtocol, layerSocketServer } from "@effect/platform-node-shared/NodeClusterSocket"
@@ -36,6 +37,7 @@ export {
    * Provides the cluster `RpcClientProtocol` using the shared socket client
    * implementation.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -44,6 +46,7 @@ export {
    * Provides the socket server used by Bun cluster runners through the shared
    * socket server implementation.
    *
+   * @stability unstable
    * @category re-exports
    * @since 4.0.0
    */
@@ -53,6 +56,7 @@ export {
 /**
  * Creates Bun socket cluster layers, configuring serialization, storage, runner health, and optional client-only mode.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -134,6 +138,7 @@ export const layer = <
 /**
  * Layer that provides `K8sHttpClient`, using the Kubernetes service-account CA certificate when it is available.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

@@ -6,6 +6,7 @@ import {
   Context,
   Deferred,
   Effect,
+  Equal,
   Exit,
   Fiber,
   Latch,
@@ -18,6 +19,7 @@ import {
   Result,
   Schedule,
   Schema,
+  Scope,
   Stream
 } from "effect"
 import {
@@ -46,7 +48,7 @@ import * as EntityManager from "effect/cluster/internal/entityManager"
 import { EntityReaper } from "effect/cluster/internal/entityReaper"
 import * as ActiveTeardown from "effect/cluster/internal/interruptors"
 import { Headers } from "effect/http"
-import { Rpc, type RpcGroup } from "effect/rpc"
+import { Rpc, type RpcGroup, type RpcSerialization } from "effect/rpc"
 import { TestClock } from "effect/testing"
 import {
   CallerId,
@@ -59,6 +61,8 @@ import {
 } from "./TestEntity.ts"
 
 // Isolate the long-lived stream from concurrent shard-metric tests.
+// Use a nonzero assignment refresh interval when advancing through claim expiry
+// so the runner-storage sync loop does not busy-poll between clock ticks.
 describe("Sharding claim release regressions", { concurrent: false }, () => {
   it.effect("keeps the claim of an active request replayed after an entity defect", () =>
     Effect.gen(function*() {
@@ -94,7 +98,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           })
         }),
         { defectRetryPolicy: Schedule.forever }
-      ).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+      ).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         resetRequests: (ids) =>
           Effect.gen(function*() {
@@ -173,7 +177,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
             yield* Queue.offer(started, starts)
             return yield* Effect.never
           }).pipe(Effect.ensuring(Effect.sync(() => active--)))
-      }).pipe(Layer.provideMerge(CappedSharding({}, (storage) => ({
+      }).pipe(Layer.provideMerge(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         resetRequests: (ids) =>
           Effect.gen(function*() {
@@ -273,7 +277,7 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
         expect(values).toEqual([0])
         assert.strictEqual(released.length, 0, "active stream claim must not be released after a chunk")
         assert.strictEqual(claimed.length, 1, "active stream must not be reclaimed on every poll")
-      }).pipe(Effect.provide(CappedSharding({}, (storage) => ({
+      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         saveEnvelope: (message) =>
           storage.saveEnvelope(message).pipe(
@@ -362,9 +366,8 @@ describe("Sharding claim release regressions", { concurrent: false }, () => {
           })
       }))))
     }))
-})
 
-describe.concurrent("Sharding", () => {
+  // Keep the ten-minute clock advance out of the concurrent Sharding batch.
   it.effect("redelivers a request reset while an asynchronous storage read is pending", () =>
     Effect.gen(function*() {
       const readStarted = yield* Deferred.make<void>()
@@ -408,7 +411,7 @@ describe.concurrent("Sharding", () => {
           1,
           "reset request was claimed but not redelivered before claim expiry"
         )
-      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 1000 }, (storage) => ({
+      }).pipe(Effect.provide(CappedSharding({ refreshAssignmentsInterval: 60_000 }, (storage) => ({
         ...storage,
         unprocessedMessages: (shardIds, options) =>
           Effect.gen(function*() {
@@ -423,7 +426,9 @@ describe.concurrent("Sharding", () => {
           })
       }))))
     }))
+})
 
+describe.concurrent("Sharding", () => {
   for (const pauseReply of [false, true]) {
     it.effect(
       pauseReply
@@ -1711,7 +1716,167 @@ describe.concurrent("Sharding", () => {
         Layer.provide(TestShardingConfig)
       )))
     }))
+
+  it.effect("WithTransaction persists a failure reply after rollback", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+      const client = makeClient("1")
+
+      const first = yield* Effect.flip(client.FailWithTransaction({ id: 1 }))
+      assert.strictEqual(first._tag, "BoomError")
+
+      // The retry must be answered from storage without rerunning the handler.
+      const retry = yield* client.FailWithTransaction({ id: 1 }).pipe(
+        Effect.flip,
+        Effect.timeout(5000),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      const second = yield* Fiber.join(retry)
+      assert.strictEqual(second._tag, "BoomError")
+      assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      // Replies saved inside a failed transaction are discarded, like a SQL
+      // rollback.
+      Layer.updateService(MessageStorage.MessageStorage, (storage) => {
+        let saved: Array<Snowflake.Snowflake> = []
+        return {
+          ...storage,
+          withTransaction: (effect) =>
+            storage.withTransaction(effect).pipe(
+              Effect.onExit((exit) => {
+                const rolledBack = saved
+                saved = []
+                return Exit.isFailure(exit)
+                  ? Effect.forEach(rolledBack, (id) => Effect.orDie(storage.clearReplies(id)), { discard: true })
+                  : Effect.void
+              })
+            ),
+          saveReply: (reply) =>
+            MessageStorage.MemoryTransaction.use((inTransaction) => {
+              if (inTransaction) saved.push(reply.reply.requestId)
+              return storage.saveReply(reply)
+            })
+        }
+      }),
+      Layer.provide(MessageStorage.layerMemory),
+      Layer.provide(TestShardingConfig)
+    ))))
+
+  it.effect("WithTransaction persists a client interrupt instead of replaying the request", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+
+      const fiber = yield* makeClient("1").NeverWithTransaction().pipe(Effect.forkChild({ startImmediately: true }))
+      yield* TestClock.adjust(1)
+      yield* Fiber.interrupt(fiber)
+
+      yield* TestClock.adjust(1)
+      expect(driver.replyIds.size).toEqual(1)
+      expect(Queue.sizeUnsafe(state.envelopes)).toEqual(1)
+    }).pipe(Effect.provide(TestSharding)))
+
+  it.effect("WithTransaction delivers a success only after commit", () =>
+    Effect.gen(function*() {
+      const committing = Latch.makeUnsafe()
+      const commit = Latch.makeUnsafe()
+      yield* Effect.gen(function*() {
+        const makeClient = yield* TestEntity.client
+        yield* TestClock.adjust(1)
+        const result = yield* makeClient("1").WithTransaction({ id: 1 }).pipe(Effect.forkChild)
+
+        yield* committing.await
+        yield* TestClock.adjust(1000)
+        assert.isUndefined(result.pollUnsafe())
+
+        yield* commit.open
+        assert.isTrue(yield* Fiber.join(result))
+      }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+        Layer.provide(RollbackMemoryStorage((transaction) =>
+          Effect.tap(transaction, () => Effect.andThen(committing.open, commit.await))
+        )),
+        Layer.provide(TestShardingConfig)
+      )))
+    }))
+
+  it.effect("WithTransaction replays the request without replying when COMMIT dies", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+
+      // Count handler runs when the reply arrives: only the replay may reply.
+      const result = yield* makeClient("1").WithTransaction({ id: 1 }).pipe(
+        Effect.map((value) => [value, Queue.sizeUnsafe(state.envelopes)] as const),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(result), [true, 2])
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      Layer.provide(RollbackMemoryStorage((transaction, attempt) =>
+        attempt === 1 ? Effect.andThen(transaction, Effect.die("COMMIT failed")) : transaction
+      )),
+      Layer.provide(TestShardingConfig)
+    ))))
+
+  it.effect("WithTransaction replays the request without replying when ROLLBACK dies", () =>
+    Effect.gen(function*() {
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      yield* TestClock.adjust(1)
+
+      // Count handler runs when the reply arrives: only the replay may reply.
+      const result = yield* makeClient("1").FailWithTransaction({ id: 1 }).pipe(
+        Effect.flip,
+        Effect.map((error) => [error._tag, Queue.sizeUnsafe(state.envelopes)] as const),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust(5000)
+      assert.deepStrictEqual(yield* Fiber.join(result), ["BoomError", 2])
+    }).pipe(Effect.provide(TestShardingWithoutStorage.pipe(
+      Layer.provide(RollbackMemoryStorage((transaction, attempt) =>
+        attempt === 1 ? Effect.catchCause(transaction, () => Effect.die("ROLLBACK failed")) : transaction
+      )),
+      Layer.provide(TestShardingConfig)
+    ))))
 })
+
+// Memory storage that discards replies saved inside a failed transaction, like
+// a SQL rollback. `wrap` runs around each transaction with its 1-based attempt.
+const RollbackMemoryStorage = (
+  wrap: <A, E, R>(transaction: Effect.Effect<A, E, R>, attempt: number) => Effect.Effect<A, E, R>
+) =>
+  Layer.effect(
+    MessageStorage.MessageStorage,
+    Effect.gen(function*() {
+      const { encoded } = yield* MessageStorage.MemoryDriver
+      let attempts = 0
+      let saved: Array<Snowflake.Snowflake> = []
+      return yield* MessageStorage.makeEncoded({
+        ...encoded,
+        withTransaction: (effect) =>
+          Effect.suspend(() => wrap(encoded.withTransaction(effect), ++attempts)).pipe(
+            Effect.onExit((exit) => {
+              const rolledBack = saved
+              saved = []
+              return Exit.isFailure(exit)
+                ? Effect.forEach(rolledBack, (id) => Effect.orDie(encoded.clearReplies(id)), { discard: true })
+                : Effect.void
+            })
+          ),
+        saveReply: (reply) =>
+          MessageStorage.MemoryTransaction.use((inTransaction) => {
+            if (inTransaction) saved.push(Snowflake.Snowflake(reply.requestId))
+            return encoded.saveReply(reply)
+          })
+      })
+    })
+  ).pipe(Layer.provide([MessageStorage.MemoryDriver.layer, Snowflake.layerGenerator]))
 
 const DefectRecoveryRun = Rpc.make("run", {
   payload: { id: Schema.String },
@@ -1920,6 +2085,61 @@ describe.concurrent("Sharding defect recovery", () => {
       assert.isDefined(exit, "queued arrival must not wait for replacement acquisition")
       assert.isTrue(Exit.hasInterrupts(exit), "queued arrival must be interrupted")
       yield* Deferred.succeed(acquired, undefined)
+    }).pipe(Effect.provide(BlockedRebuildSharding)))
+
+  it.effect("interrupts an entity whose id is also active on a shard that was interrupted first", () =>
+    Effect.gen(function*() {
+      const run = Rpc.make("run")
+      const entity = Entity.make("DuplicateEntityId", [run])
+      const sharding = yield* Sharding.Sharding
+      let stopped = 0
+      const manager = yield* EntityManager.make(
+        entity,
+        Effect.as(
+          Effect.addFinalizer(() => Effect.sync(() => stopped++)),
+          entity.of({ run: () => Effect.void })
+        ),
+        {
+          // both shards belong to this runner
+          sharding: { ...sharding, hasShardId: () => true },
+          storage: MessageStorage.noop,
+          runnerAddress: RunnerAddress.make("localhost", 1234),
+          residency: { admitUnsafe: () => true, releaseUnsafe: () => {} },
+          maxIdleTime: Infinity
+        }
+      )
+      const entityId = EntityId.make("duplicate")
+      const activate = Effect.fnUntraced(function*(shardId: ShardId.ShardId) {
+        yield* manager.sendLocal(
+          new Message.IncomingRequestLocal<typeof run>({
+            envelope: Envelope.makeRequest<typeof run>({
+              requestId: yield* sharding.getSnowflake,
+              address: EntityAddress.make({ shardId, entityType: EntityType.make(entity.type), entityId }),
+              tag: "run",
+              payload: undefined,
+              headers: Headers.empty
+            }),
+            lastSentReply: Option.none(),
+            annotations: Context.empty(),
+            respond: () => Effect.void
+          })
+        )
+      })
+      const defaultShard = ShardId.make("default", 1)
+      const workflowShard = ShardId.make("workflow", 1)
+      yield* TestClock.adjust(1)
+      yield* activate(defaultShard)
+      yield* activate(workflowShard)
+      yield* TestClock.adjust(1)
+
+      const interruptWorkflow = yield* manager.interruptShard(workflowShard).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(interruptWorkflow.pollUnsafe(), Exit.void)
+      assert.strictEqual(stopped, 1)
+      const interruptDefault = yield* manager.interruptShard(defaultShard).pipe(Effect.forkChild)
+      yield* TestClock.adjust(1000)
+      assert.deepStrictEqual(interruptDefault.pollUnsafe(), Exit.void)
+      assert.strictEqual(stopped, 2)
     }).pipe(Effect.provide(BlockedRebuildSharding)))
 })
 
@@ -2698,6 +2918,97 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
+  it.effect("interrupts opted-in streams on reassignment but respects Uninterruptible", () =>
+    Effect.gen(function*() {
+      const entity = Entity.make(TestEntity.type, [
+        terminationRpc("StreamWithKey").annotate(ClusterSchema.Persisted, false),
+        terminationRpc("RequestWithKey")
+          .annotate(ClusterSchema.Persisted, false)
+          .annotate(ClusterSchema.Uninterruptible, "server")
+      ]).annotateRpcs(ClusterSchema.InterruptOnTermination, true)
+      const storageState = makeFailoverStorageState()
+      const started = yield* Queue.make<void>()
+      const finish = yield* Deferred.make<void>()
+      const entityLayer = entity.toLayer({
+        StreamWithKey: () => Stream.fromEffect(Queue.offer(started, void 0).pipe(Effect.andThen(Effect.never))),
+        RequestWithKey: () => Queue.offer(started, void 0).pipe(Effect.andThen(Deferred.await(finish)))
+      }, { concurrency: "unbounded" })
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitForTerminationOwnership(sharding, true)
+        // Let the acquisition backoff finish before testing reassignment.
+        yield* TestClock.adjust(1000)
+        const client = (yield* entity.client)("termination-stream")
+        const stream = yield* client.StreamWithKey({ key: "run" }).pipe(
+          Stream.runDrain,
+          Effect.forkChild({ startImmediately: true })
+        )
+        const protectedRequest = yield* client.RequestWithKey({ key: "run" }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Queue.take(started)
+        yield* Queue.take(started)
+        storageState.assignSelf = false
+        yield* waitForTerminationOwnership(sharding, false)
+        yield* TestClock.adjust(100)
+        const earlyExit = stream.pollUnsafe()
+        const protectedExit = protectedRequest.pollUnsafe()
+        const held = storageState.releaseCalls.length === 0
+        yield* Deferred.succeed(finish, void 0)
+        yield* TestClock.adjust(100)
+        const earlyReleases = storageState.releaseCalls.slice()
+        // Finish a broken implementation's grace period before asserting.
+        yield* TestClock.adjust(1000)
+        assert(earlyExit && Exit.hasInterrupts(earlyExit))
+        assert.isUndefined(protectedExit)
+        assert.isTrue(held)
+        assert.deepStrictEqual(protectedRequest.pollUnsafe(), Exit.void)
+        assert.deepStrictEqual(earlyReleases, [ShardId.make("default", 1)])
+      }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
+    }))
+
+  it.effect("resumes an opted-in persisted request after early shard release", () =>
+    Effect.gen(function*() {
+      const entity = Entity.make(TestEntity.type, [terminationRpc("RequestWithKey")])
+        .annotateRpcs(ClusterSchema.InterruptOnTermination, true)
+      const storageState = makeFailoverStorageState()
+      const started = yield* Queue.make<Snowflake.Snowflake>()
+      const finish = yield* Deferred.make<void>()
+      const entityLayer = entity.toLayer({
+        RequestWithKey: ({ requestId }) => Queue.offer(started, requestId).pipe(Effect.andThen(Deferred.await(finish)))
+      })
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        yield* waitForTerminationOwnership(sharding, true)
+        yield* TestClock.adjust(1000)
+        const client = (yield* entity.client)("termination-persisted")
+        const running = yield* client.RequestWithKey({ key: "run" }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        const requestId = yield* Queue.take(started)
+        storageState.assignSelf = false
+        yield* waitForTerminationOwnership(sharding, false)
+        yield* TestClock.adjust(100)
+        const earlyReleases = storageState.releaseCalls.slice()
+        yield* TestClock.adjust(1000)
+        assert.deepStrictEqual(earlyReleases, [ShardId.make("default", 1)])
+        assert.isUndefined(running.pollUnsafe())
+
+        // A replay with the same ID and successful completion proves termination
+        // neither saved a terminal reply nor marked the request processed.
+        storageState.assignSelf = true
+        yield* waitForTerminationOwnership(sharding, true)
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(10)
+        assert.deepStrictEqual(Queue.takeUnsafe(started), Exit.succeed(requestId))
+        yield* Deferred.succeed(finish, void 0)
+        yield* TestClock.adjust(100)
+        assert.deepStrictEqual(running.pollUnsafe(), Exit.void)
+      }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
+    }))
+
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
@@ -2771,6 +3082,95 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         assert.strictEqual(storageState.releaseCalls.length, 1)
         assert.deepStrictEqual(unregisterInterrupts, [false])
       }).pipe(Effect.provide(layer), Effect.scoped)
+    }))
+
+  it.effect("delivers a client interrupt to a request still draining on the lock holder", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* TestEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        const request = yield* client.NeverVolatile().pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Queue.take(state.envelopes)
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        assert.strictEqual(storageState.releaseCalls.length, 0, "the shard lock must still be held")
+
+        yield* Fiber.interrupt(request).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(100)
+        assert.strictEqual(Queue.sizeUnsafe(state.interrupts), 1)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
+    }))
+
+  it.effect("acknowledges stream chunks from a request still draining on the lock holder", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const client = (yield* TestEntity.client)("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        // With one buffered chunk, the second is acknowledged only once the first is consumed.
+        const users = yield* client.GetAllUsersVolatile({ ids: [1, 2] }, { asQueue: true, streamBufferSize: 1 })
+        yield* TestClock.adjust(1)
+        storageState.assignSelf = false
+        while (sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+
+        const consumed = yield* Stream.fromQueue(users).pipe(
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(100)
+        const exit = consumed.pollUnsafe()
+        assert.deepStrictEqual(exit && Exit.map(exit, (users) => users.map((user) => user.id)), Exit.succeed([1, 2]))
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
+    }))
+
+  it.effect("holds a remote request on the new owner until it acquires the shard lock", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityId = EntityId.make("1")
+        const shardId = sharding.getShardId(entityId, "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const delivery = yield* sharding.send(
+          new Message.IncomingRequest({
+            envelope: {
+              _tag: "Request",
+              requestId: Snowflake.Snowflake(BigInt(1)),
+              address: EntityAddress.make({ shardId, entityType: EntityType.make(TestEntity.type), entityId }),
+              tag: "GetUserVolatile",
+              payload: { id: 1 },
+              headers: Headers.empty
+            },
+            lastSentReply: Option.none(),
+            respond: () => Effect.void,
+            codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* TestClock.adjust(10)
+        assert.isUndefined(delivery.pollUnsafe(), "delivery must wait for the shard lock")
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        assert.deepStrictEqual(yield* Fiber.await(delivery), Exit.void)
+      }).pipe(Effect.provide(GracefulHandoffSharding(storageState)), Effect.scoped)
     }))
 
   it.effect("does not wait for entity construction before a forced shard release", () =>
@@ -2992,15 +3392,210 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
     }))
 })
 
+const terminationRpc = <Tag extends RpcGroup.Rpcs<typeof TestEntity.protocol>["_tag"]>(tag: Tag) =>
+  TestEntity.protocol.requests.get(tag)! as Extract<RpcGroup.Rpcs<typeof TestEntity.protocol>, { readonly _tag: Tag }>
+
+const TerminationSharding = (entityLayer: Layer.Layer<never, never, Sharding.Sharding>, state: FailoverStorageState) =>
+  entityLayer.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(state, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provide(Runners.layerNoop),
+    Layer.provideMerge(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      shardLockExpiration: 3000,
+      shardLockRefreshInterval: 100,
+      entityTerminationTimeout: 1000,
+      entityMessagePollInterval: 10,
+      entityReplyPollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+
+const waitForTerminationOwnership = Effect.fnUntraced(
+  function*(sharding: Sharding.Sharding["Service"], owned: boolean) {
+    const shardId = ShardId.make("default", 1)
+    for (let i = 0; i < 100; i++) {
+      if (sharding.hasShardId(shardId) === owned) return
+      yield* TestClock.adjust(10)
+    }
+    assert.strictEqual(sharding.hasShardId(shardId), owned)
+  }
+)
+const GatedTeardownEntity = Entity.make("GatedTeardownEntity", [
+  Rpc.make("Activate").annotate(ClusterSchema.Persisted, false)
+])
+
+describe("Sharding shard handoff", { concurrent: false }, () => {
+  const allShards = [ShardId.make("default", 1), ShardId.make("default", 2)]
+  const makeOwnedScope = Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+  // Open teardown gates before closing scopes, including on assertion failure.
+  const makeGate = Effect.acquireRelease(Effect.sync(() => Latch.makeUnsafe()), (gate) => gate.open)
+  const advanceUntil = (done: () => boolean) =>
+    Effect.gen(function*() {
+      for (let i = 0; i < 100 && !done(); i++) {
+        yield* TestClock.adjust(10)
+      }
+      assert.isTrue(done())
+    })
+  const buildSharding = Effect.fnUntraced(function*(
+    storageState: FailoverStorageState,
+    config?: Partial<ShardingConfig.ShardingConfig["Service"]>,
+    existingScope?: Scope.Closeable
+  ) {
+    const scope = existingScope ?? (yield* makeOwnedScope)
+    const context = yield* Layer.buildWithScope(
+      Sharding.layer.pipe(
+        Layer.provide(Layer.effect(
+          RunnerStorage.RunnerStorage,
+          Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+        )),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 2,
+          entityTerminationTimeout: 0,
+          entityMessagePollInterval: 10,
+          refreshAssignmentsInterval: 10,
+          ...config
+        }))
+      ),
+      scope
+    )
+    return { context, scope, sharding: Context.get(context, Sharding.Sharding) }
+  })
+
+  it.effect("waits for entity teardown before handing off without acquiring newly freed shards", () =>
+    Effect.gen(function*() {
+      const [heldShard, freedShard] = allShards
+      const storageState = makeFailoverStorageState({ acquireDenied: [freedShard] })
+      const registrationScope = yield* makeOwnedScope
+      // Keep assignments unchanged while a peer's lock becomes available.
+      const { context, scope, sharding } = yield* buildSharding(storageState, { refreshAssignmentsInterval: 60_000 })
+      const gate = yield* makeGate
+      yield* advanceUntil(() => sharding.hasShardId(heldShard))
+      yield* sharding.registerEntity(
+        GatedTeardownEntity,
+        Effect.as(Effect.addFinalizer(() => gate.await), GatedTeardownEntity.of({ Activate: () => Effect.void }))
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      let entityId = 0
+      while (!Equal.equals(sharding.getShardId(EntityId.make(String(entityId)), "default"), heldShard)) {
+        entityId++
+      }
+      const makeClient = yield* GatedTeardownEntity.client.pipe(Effect.provideContext(context))
+      yield* makeClient(String(entityId)).Activate()
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* advanceUntil(() => storageState.runner === undefined)
+      const acquires = storageState.acquireCalls.length
+      storageState.acquireDenied.length = 0
+      yield* TestClock.adjust(3000)
+      assert.isUndefined(closing.pollUnsafe())
+      assert.isUndefined(storageState.runner)
+      assert.deepStrictEqual(storageState.acquireCalls.slice(acquires), [])
+      assert.deepStrictEqual(storageState.releaseCalls, [])
+      assert.deepStrictEqual(storageState.releaseAllCalls, [])
+
+      yield* gate.open
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+      assert.deepStrictEqual(storageState.releaseCalls, [heldShard])
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
+    }).pipe(Effect.scoped))
+
+  it.effect("waits for singleton teardown before handing off their shards", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const registrationScope = yield* makeOwnedScope
+      const runningRegistrationScope = yield* makeOwnedScope
+      const { scope, sharding } = yield* buildSharding(storageState)
+      const gate = yield* makeGate
+      yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
+      const started = Latch.makeUnsafe()
+      const stopping = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        "ClosingSingleton",
+        Effect.andThen(started.open, Effect.addFinalizer(() => Effect.andThen(stopping.open, gate.await)))
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* started.await
+      // a singleton on the other shard that is still running at shutdown
+      const closingShard = sharding.getShardId(EntityId.make("ClosingSingleton"), "default")
+      let runningName = 0
+      while (Equal.equals(sharding.getShardId(EntityId.make(`Running${runningName}`), "default"), closingShard)) {
+        runningName++
+      }
+      const runningStarted = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        `Running${runningName}`,
+        Effect.andThen(runningStarted.open, Effect.addFinalizer(() => gate.await))
+      ).pipe(Effect.provideService(Scope.Scope, runningRegistrationScope))
+      yield* runningStarted.await
+      yield* Effect.forkChild(Scope.close(registrationScope, Exit.void))
+      yield* stopping.await
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* TestClock.adjust(100)
+      assert.isUndefined(closing.pollUnsafe())
+      assert.deepStrictEqual(storageState.releaseCalls, [])
+      assert.deepStrictEqual(storageState.releaseAllCalls, [])
+
+      yield* gate.open
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+      assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [2])
+    }).pipe(Effect.scoped))
+
+  it.effect("closes a singleton registration whose singleton registered another singleton", () =>
+    Effect.gen(function*() {
+      // Await cleanup, but keep a regressed uninterruptible teardown bounded.
+      const makeDetachedScope = Effect.acquireRelease(
+        Scope.make(),
+        (scope) =>
+          Effect.gen(function*() {
+            const closing = yield* Effect.forkDetach(Scope.close(scope, Exit.void))
+            yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+            assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+          })
+      )
+      const storageState = makeFailoverStorageState()
+      const shardingScope = yield* makeDetachedScope
+      const registrationScope = yield* makeDetachedScope
+      const { sharding } = yield* buildSharding(storageState, undefined, shardingScope)
+      yield* advanceUntil(() => allShards.every((shardId) => sharding.hasShardId(shardId)))
+      const childRegistered = Latch.makeUnsafe()
+      yield* sharding.registerSingleton(
+        "ParentSingleton",
+        Effect.andThen(sharding.registerSingleton("ChildSingleton", Effect.never), childRegistered.open)
+      ).pipe(Effect.provideService(Scope.Scope, registrationScope))
+      yield* childRegistered.await
+
+      const closing = yield* Effect.forkDetach(Scope.close(registrationScope, Exit.void))
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+    }).pipe(Effect.scoped))
+})
+
 interface FailoverStorageState {
   blackholed: boolean
   /** Hang only non-empty refreshes, so the empty liveness probe can succeed. */
   blackholeNonEmptyRefresh: boolean
   assignSelf: boolean
+  /** Fail lock acquisition, as when another runner still holds the locks. */
+  lockHeldElsewhere: boolean
   otherRunnerHealthy: boolean
   /** Test clock duration `releaseAll` stays in flight for. */
   releaseAllDuration: number
   runner: Runner.Runner | undefined
+  /** Shards `acquire` does not grant, as if another runner holds them. */
+  readonly acquireDenied: Array<ShardId.ShardId>
   readonly acquireCalls: Array<{
     readonly shards: Array<ShardId.ShardId>
     readonly completedReleaseAlls: number
@@ -3010,7 +3605,7 @@ interface FailoverStorageState {
     readonly shards: Array<ShardId.ShardId>
   }>
   readonly releaseCalls: Array<ShardId.ShardId>
-  readonly releaseAllCalls: Array<{ completed: boolean }>
+  readonly releaseAllCalls: Array<{ completed: boolean; readonly releases: number }>
 }
 
 const makeFailoverStorageState = (
@@ -3019,9 +3614,11 @@ const makeFailoverStorageState = (
   blackholed: false,
   blackholeNonEmptyRefresh: false,
   assignSelf: true,
+  lockHeldElsewhere: false,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
   runner: undefined,
+  acquireDenied: [],
   acquireCalls: [],
   refreshCalls: [],
   releaseCalls: [],
@@ -3041,7 +3638,10 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         state.runner = runner
         return MachineId.make(1)
       }),
-    unregister: () => Effect.void,
+    unregister: () =>
+      Effect.sync(() => {
+        state.runner = undefined
+      }),
     setRunnerHealth: () => Effect.void,
     acquire: (_address, shardIds) =>
       Effect.sync(() => {
@@ -3050,7 +3650,9 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
           shards,
           completedReleaseAlls: state.releaseAllCalls.filter((call) => call.completed).length
         })
-        return shards
+        return state.lockHeldElsewhere ?
+          [] :
+          shards.filter((shardId) => !state.acquireDenied.some((denied) => Equal.equals(denied, shardId)))
       }),
     refresh: (_address, shardIds) =>
       Effect.suspend(() => {
@@ -3069,7 +3671,7 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       }),
     releaseAll: () =>
       Effect.suspend(() => {
-        const call = { completed: false }
+        const call = { completed: false, releases: state.releaseCalls.length }
         state.releaseAllCalls.push(call)
         return Effect.andThen(
           Effect.sleep(state.releaseAllDuration),
@@ -3085,6 +3687,27 @@ const otherRunner = Runner.make({
   groups: ["default"],
   weight: 1
 })
+
+const GracefulHandoffSharding = (storageState: FailoverStorageState) =>
+  TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      entityTerminationTimeout: 1000,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
 
 class RegistrationContext extends Context.Service<RegistrationContext, string>()(
   "effect/test/cluster/RegistrationContext"
@@ -3432,5 +4055,55 @@ describe("Sharding singleton cancellation", { concurrent: false }, () => {
         assert.isTrue(sharding.hasShardId(destinationShard))
         assert.strictEqual(duringFinalization, 0, "teardown must include singleton finalizers")
       }).pipe(Effect.provide(SingletonReassignmentSharding(storageState)), Effect.scoped)
+    }))
+})
+
+const PendingLockSharding = (storageState: FailoverStorageState) =>
+  TestEntityNoState.pipe(
+    Layer.provideMerge(Sharding.layer),
+    Layer.provide(Layer.effect(
+      RunnerStorage.RunnerStorage,
+      Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+    )),
+    Layer.provide(RunnerHealth.layerNoop),
+    Layer.provideMerge(TestEntityState.layer),
+    Layer.provide(Runners.layerNoop),
+    Layer.provide(MessageStorage.layerMemory),
+    Layer.provide(ShardingConfig.layer({
+      runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+      shardsPerGroup: 1,
+      entityMessagePollInterval: 10,
+      refreshAssignmentsInterval: 10,
+      sendRetryInterval: 10
+    }))
+  )
+
+describe("Sharding persisted sends to a shard awaiting its lock", { concurrent: false }, () => {
+  it.effect("persists a discard send and delivers it once the shard lock is acquired", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ lockHeldElsewhere: true })
+      yield* Effect.gen(function*() {
+        const state = yield* TestEntityState
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (storageState.acquireCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        const client = (yield* TestEntity.client)("1")
+        const send = yield* client.GetUser({ id: 1 }, { discard: true }).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust(100)
+        assert.deepStrictEqual(send.pollUnsafe(), Exit.void, "a discard send returns once persisted")
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 0, "delivery must wait for the shard lock")
+
+        storageState.lockHeldElsewhere = false
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        yield* sharding.pollStorage
+        yield* TestClock.adjust(10)
+        assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
+      }).pipe(Effect.provide(PendingLockSharding(storageState)), Effect.scoped)
     }))
 })

@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Cause, Context, Duration, Effect, Exit, Fiber, Layer, Scheduler, Tracer } from "effect"
-import { HttpClient, HttpClientResponse } from "effect/http"
+import { HttpBody, HttpClient, HttpClientResponse } from "effect/http"
 import { OtlpSerialization, OtlpTracer } from "effect/observability"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
@@ -13,18 +13,21 @@ const getParent = (span: Tracer.Span): Tracer.AnySpan => {
   return span.parent.value
 }
 
-const otlpTracerLayer = OtlpTracer.layer({
-  url: "http://localhost:4318/v1/traces",
-  resource: {
-    serviceName: "test-service"
-  }
-}).pipe(
-  Layer.provide(OtlpSerialization.layerJson),
-  Layer.provide(Layer.succeed(
-    HttpClient.HttpClient,
-    HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, new Response())))
-  ))
-)
+const makeOtlpTracerLayer = (serialization: Layer.Layer<OtlpSerialization.OtlpSerialization>) =>
+  OtlpTracer.layer({
+    url: "http://localhost:4318/v1/traces",
+    resource: {
+      serviceName: "test-service"
+    }
+  }).pipe(
+    Layer.provide(serialization),
+    Layer.provide(Layer.succeed(
+      HttpClient.HttpClient,
+      HttpClient.make((request) => Effect.succeed(HttpClientResponse.fromWeb(request, new Response())))
+    ))
+  )
+
+const otlpTracerLayer = makeOtlpTracerLayer(OtlpSerialization.layerJson)
 
 const makeRootAndChildSpans = Effect.gen(function*() {
   const root = yield* Effect.withSpan(Effect.currentSpan, "root")
@@ -57,6 +60,19 @@ describe("Tracer", () => {
   })
 
   describe("Effect.withSpan", () => {
+    it.effect("should capture only the span frame for a string failure", () =>
+      Effect.gen(function*() {
+        const cause = yield* Effect.fail("boom").pipe(
+          Effect.withSpan("test"),
+          Effect.sandbox,
+          Effect.flip
+        )
+
+        const errors = Cause.prettyErrors(cause)
+        assert.lengthOf(errors, 1)
+        assert.match(errors[0].stack!, /^Error: boom\n    at test \(.*Tracer\.test\.ts:\d+:\d+\)$/)
+      }))
+
     it.effect("should capture the stack trace", () =>
       Effect.gen(function*() {
         const error = new Error("boom")
@@ -322,6 +338,49 @@ describe("Tracer", () => {
         }
       }).pipe(Effect.tap(() => Effect.sync(() => assert.isAbove(checked, 0, "the outer finalizer never ran"))))
     })
+  })
+
+  describe("OtlpTracer span status", () => {
+    const exportSpan = (exit: Exit.Exit<unknown, unknown>) => {
+      const exported: Array<OtlpTracer.TraceData> = []
+      const layer = makeOtlpTracerLayer(Layer.succeed(OtlpSerialization.OtlpSerialization, {
+        traces: (data) => {
+          exported.push(data)
+          return HttpBody.empty
+        },
+        metrics: () => HttpBody.empty,
+        logs: () => HttpBody.empty
+      }))
+      return Effect.gen(function*() {
+        const span = yield* Effect.makeSpan("test")
+        span.end(span.status.startTime + 1n, exit)
+      }).pipe(
+        Effect.provide(layer),
+        Effect.map(() => {
+          const spans = exported.flatMap((data) =>
+            data.resourceSpans.flatMap((resource) => resource.scopeSpans.flatMap((scope) => scope.spans))
+          )
+          assert.lengthOf(spans, 1)
+          return spans[0]
+        })
+      )
+    }
+
+    it.effect("marks an empty cause Ok without a description", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.failCause(Cause.empty))
+        deepStrictEqual(span.status, { code: 1 })
+        deepStrictEqual(span.events, [])
+        deepStrictEqual(span.attributes, [])
+      }))
+
+    it.effect("leaves interruption Unset with effect.fiber.interrupted", () =>
+      Effect.gen(function*() {
+        const span = yield* exportSpan(Exit.interrupt())
+        deepStrictEqual(span.status, { code: 0 })
+        deepStrictEqual(span.events, [])
+        deepStrictEqual(span.attributes, [{ key: "effect.fiber.interrupted", value: { boolValue: true } }])
+      }))
   })
 
   describe("Effect.useSpanScoped", () => {

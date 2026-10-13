@@ -9,6 +9,7 @@
  * and ready-made conversions for common string, number, binary, date, form, and
  * URL-related values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
@@ -31,6 +32,7 @@ import * as Str from "./String.ts"
 /**
  * A transformation that returns its input unchanged.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -41,6 +43,7 @@ export interface Passthrough extends Pipeable.Pipeable {
 /**
  * A synchronous transformation of present values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -52,6 +55,7 @@ export interface Transform<out T, in E> extends Pipeable.Pipeable {
 /**
  * A synchronous transformation of optional values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -63,6 +67,7 @@ export interface TransformOptional<out T, in E> extends Pipeable.Pipeable {
 /**
  * An effectful transformation of present values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -77,6 +82,7 @@ export interface TransformEffect<out T, in E, R> extends Pipeable.Pipeable {
 /**
  * An effectful transformation of optional values.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -122,6 +128,7 @@ export interface TransformOptionalEffect<out T, in E, R> extends Pipeable.Pipeab
  * @see {@link transform} to create a getter from a pure function
  * @see {@link transformEffect} for effectful transformation
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -175,6 +182,7 @@ const runGetter = <T, E, R>(
  * result // => Option.some(42)
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -228,6 +236,7 @@ const composeOptionalEffect = <T, E, R, T2, R2>(
  * Effect.runSync(SchemaGetter.run(getter, Option.some("-1"), {})) // => Option.some(0)
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -308,6 +317,7 @@ export const compose: {
  * Effect.runSync(SchemaGetter.run(getter, Option.some("21"), {})) // => Option.some(42)
  * ```
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -341,6 +351,7 @@ export const map: {
  * @see {@link transform} when you need to use the input value
  * @see {@link passthrough} when you want to keep the input as-is
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -379,6 +390,7 @@ export function succeed<const T, E>(t: T): Getter<T, E> {
  * @see {@link forbidden} for a convenience helper for `Forbidden` issues
  * @see {@link checkEffect} to fail conditionally based on input value
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -418,6 +430,7 @@ export function fail<T, E>(
  *
  * @see {@link fail} to fail with a custom issue type
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -455,6 +468,7 @@ export function forbidden<T, E>(message: (oe: Option.Option<E>) => string): Gett
  *
  * @see {@link forbidden} for a forbidden getter with a custom message
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -496,6 +510,7 @@ const passthrough_: Passthrough = makeGetter({ _tag: "Passthrough" })
  * @see {@link passthroughSubtype} when `E extends T`
  * @see {@link transform} when you need to change the value
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -530,6 +545,7 @@ export function passthrough<T>(): Getter<T, T> {
  * @see {@link passthrough} when types are identical
  * @see {@link passthroughSubtype} when `E extends T`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -563,6 +579,7 @@ export function passthroughSupertype<T>(): Getter<T, T> {
  * @see {@link passthrough} when types are identical
  * @see {@link passthroughSupertype} when `T extends E`
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -599,6 +616,7 @@ export function passthroughSubtype<T>(): Getter<T, T> {
  *
  * @see {@link withDefault} to substitute a default for undefined values
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -642,6 +660,7 @@ export function required<T, E extends T = T>(annotations?: Schema.Annotations.Ke
  * @see {@link transform} when you need to change the value, not just validate
  * @see {@link fail} for unconditional failure
  *
+ * @stability stable
  * @category validation
  * @since 4.0.0
  */
@@ -696,6 +715,7 @@ export function checkEffect<T, R = never>(
  * @see {@link transformOptional} when you need to handle `None` inputs
  * @see {@link passthrough} when no transformation is needed
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -736,6 +756,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  * @see {@link transform} when transformation cannot fail
  * @see {@link transformOptionalEffect} when you need full `Option` control over the output
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -772,6 +793,7 @@ export function transformEffect<T, E, R = never>(
  * @see {@link transform} when you only need to transform present values
  * @see {@link omit} when you always want `None`
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -782,6 +804,7 @@ export function transformOptional<T, E>(f: (oe: Option.Option<E>) => Option.Opti
 /**
  * Creates a getter that effectfully transforms the full `Option`.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -819,6 +842,7 @@ export function transformOptionalEffect<T, E, R = never>(
  * @see {@link transformOptional} when you want conditional omission
  * @see {@link forbidden} when you want to fail instead of silently omit
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -852,6 +876,7 @@ export function omit<T>(): Getter<never, T> {
  * @see {@link transformOptionalEffect} for custom effectful missing-key handling
  * @see {@link required} when absent input should fail instead of using a default
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -887,6 +912,7 @@ export function withDefault<T, R = never>(
  *
  * @see {@link transform} for custom string conversions
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -918,6 +944,7 @@ export function String<E>(): Getter<string, E> {
  *
  * @see {@link transformEffect} for effectful or validated number parsing
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -946,6 +973,7 @@ export function Number<E>(): Getter<number, E> {
  * Effect.runSync(SchemaGetter.run(toBool, Option.some("true"), {})) // => Option.some(true)
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -975,6 +1003,7 @@ export function Boolean<E>(): Getter<boolean, E> {
  * Effect.runSync(SchemaGetter.run(toBigInt, Option.some("42"), {})) // => Option.some(42n)
  * ```
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1007,6 +1036,7 @@ export function BigInt<E extends string | number | bigint | boolean>(): Getter<b
  *
  * @see {@link dateTimeUtcFromInput} for validated DateTime parsing
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1030,6 +1060,7 @@ export function Date<E extends string | number | Date>(): Getter<Date, E> {
  * Effect.runSync(SchemaGetter.run(trimmed, Option.some("  hello  "), {})) // => Option.some("hello")
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1053,6 +1084,7 @@ export function trim<E extends string>(): Getter<string, E> {
  * Effect.runSync(SchemaGetter.run(cap, Option.some("hello"), {})) // => Option.some("Hello")
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1076,6 +1108,7 @@ export function capitalize<E extends string>(): Getter<string, E> {
  * Effect.runSync(SchemaGetter.run(uncap, Option.some("Hello"), {})) // => Option.some("hello")
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1101,6 +1134,7 @@ export function uncapitalize<E extends string>(): Getter<string, E> {
  *
  * @see {@link camelToSnake} for the inverse operation
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1126,6 +1160,7 @@ export function snakeToCamel<E extends string>(): Getter<string, E> {
  *
  * @see {@link snakeToCamel} for the inverse operation
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1151,6 +1186,7 @@ export function camelToSnake<E extends string>(): Getter<string, E> {
  *
  * @see {@link toUpperCase} for the inverse operation
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1176,6 +1212,7 @@ export function toLowerCase<E extends string>(): Getter<string, E> {
  *
  * @see {@link toLowerCase} for the inverse operation
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -1216,6 +1253,7 @@ type ParseJsonOptions = {
  *
  * @see {@link stringifyJson} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1238,6 +1276,7 @@ export function parseJson<E extends string>(options?: ParseJsonOptions | undefin
 /**
  * Replacer function or property allowlist accepted by `JSON.stringify`.
  *
+ * @stability stable
  * @category utility types
  * @since 4.0.0
  */
@@ -1279,6 +1318,7 @@ type StringifyJsonOptions = {
  *
  * @see {@link parseJson} for the inverse operation
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1313,8 +1353,9 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * **Details**
  *
  * The getter is pure and never fails. It splits the string by `separator`
- * (default `,`) and then each pair by `keyValueSeparator` (default `=`). Pairs
- * missing a key or value are silently skipped.
+ * (default `,`) and then each pair at the first `keyValueSeparator` (default `=`),
+ * preserving the rest of the value. An empty `keyValueSeparator` uses the first
+ * two characters as the key and value. Pairs missing a key or value are skipped.
  *
  * **Example** (Parsing a key-value string)
  *
@@ -1329,6 +1370,7 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * @see {@link joinKeyValue} for the inverse operation
  * @see {@link split} to split into an array of strings
  *
+ * @stability stable
  * @category splitting
  * @since 4.0.0
  */
@@ -1340,8 +1382,16 @@ export function splitKeyValue<E extends string>(options?: {
   const keyValueSeparator = options?.keyValueSeparator ?? "="
   return transform((input) =>
     input.split(separator).reduce((acc, pair) => {
-      const [key, value] = pair.split(keyValueSeparator)
-      if (key && value) {
+      if (keyValueSeparator === "") {
+        const [key, value] = pair.split("")
+        if (key && value) InternalRecord.assignProperty(acc, key, value)
+        return acc
+      }
+      const index = pair.indexOf(keyValueSeparator)
+      if (index <= 0) return acc
+      const key = pair.slice(0, index)
+      const value = pair.slice(index + keyValueSeparator.length)
+      if (value) {
         InternalRecord.assignProperty(acc, key, value)
       }
       return acc
@@ -1375,6 +1425,7 @@ export function splitKeyValue<E extends string>(options?: {
  *
  * @see {@link splitKeyValue} for the inverse operation
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -1414,6 +1465,7 @@ export function joinKeyValue<E extends Record<PropertyKey, string>>(options?: {
  *
  * @see {@link splitKeyValue} when values are key-value pairs
  *
+ * @stability stable
  * @category splitting
  * @since 4.0.0
  */
@@ -1445,6 +1497,7 @@ export function split<E extends string>(options?: {
  * @see {@link decodeBase64String} for the inverse operation to `string`
  * @see {@link encodeBase64Url} for the URL-safe variant
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1473,6 +1526,7 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  * @see {@link decodeBase64UrlString} for the inverse operation to `string`
  * @see {@link encodeBase64} for the standard Base64 variant
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1500,6 +1554,7 @@ export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string,
  * @see {@link decodeHex} for the inverse operation to `Uint8Array`
  * @see {@link decodeHexString} for the inverse operation to `string`
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1527,6 +1582,7 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
  * @see {@link decodeBase64String} to decode to `string` instead
  * @see {@link encodeBase64} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1564,6 +1620,7 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeBase64} to decode to `Uint8Array` instead
  * @see {@link encodeBase64} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1603,6 +1660,7 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  * @see {@link decodeBase64UrlString} to decode to `string` instead
  * @see {@link encodeBase64Url} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1642,6 +1700,7 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeBase64Url} to decode to `Uint8Array` instead
  * @see {@link encodeBase64Url} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1681,6 +1740,7 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  * @see {@link decodeHexString} to decode to `string` instead
  * @see {@link encodeHex} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1720,6 +1780,7 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeHex} to decode to `Uint8Array` instead
  * @see {@link encodeHex} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1760,6 +1821,7 @@ export function decodeHexString<E extends string>(): Getter<string, E> {
  *
  * @see {@link decodeUriComponent} for the inverse operation
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1786,6 +1848,7 @@ export function encodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * @see {@link encodeUriComponent} for the inverse operation
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1836,6 +1899,7 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * @see {@link Date} for a simpler coercion to `Date` (no validation)
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -1881,6 +1945,7 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeURLSearchParams} for the URLSearchParams variant
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -1920,6 +1985,7 @@ const collectFormDataEntries = collectBracketPathEntries((value): value is strin
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeURLSearchParams} for the URLSearchParams variant
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -1965,6 +2031,7 @@ export function encodeFormData(): Getter<FormData, unknown> {
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeFormData} for the FormData variant
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -2001,6 +2068,7 @@ const collectURLSearchParamsEntries = collectBracketPathEntries(Predicate.isStri
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeFormData} for the FormData variant
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -2029,6 +2097,8 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     .map((part) => (Arr.isCanonicalArrayIndex(part) ? globalThis.Number(part) : part))
 }
 
+const MAX_ARRAY_HOLES = 20
+
 /**
  * Builds a nested tree object from a list of bracket-path entries.
  *
@@ -2052,6 +2122,10 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  *   - `""` → real empty key
  * - Numeric bracket segments become array indices only when they are valid
  *   JavaScript array-index strings; otherwise they remain object keys.
+ * - An indexed container becomes an array only when it has at most 20 holes
+ *   (missing indices below its highest index). Otherwise it is returned as an
+ *   object keyed by the index strings, so untrusted input such as
+ *   `a[4294967294]` cannot produce huge sparse arrays.
  * - Duplicate keys for the same path are merged into arrays.
  * - If a structural path conflicts with a previous leaf or a different container
  *   type, the later structural path replaces the conflicting value.
@@ -2074,6 +2148,7 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  * @see {@link decodeFormData} for a higher-level FormData decoder
  * @see {@link decodeURLSearchParams} for a higher-level URLSearchParams decoder
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -2083,43 +2158,31 @@ export function makeTreeRecord<A>(
   const out: any = {}
   const containers = new WeakSet<object>()
   const duplicates = new WeakSet<object>()
-
-  function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
-    const current = Object.hasOwn(self, key) ? self[key] : undefined
-    if (containers.has(current) && Array.isArray(current) === shouldBeArray) {
-      return current
-    }
-    const container = shouldBeArray ? [] : {}
-    containers.add(container)
-    InternalRecord.assignProperty(self, key, container)
-    return container
-  }
+  // Indexed containers are built as plain objects so that large indices never
+  // allocate sparse arrays, and are materialized once all entries are applied
+  const indexed = new Map<object, { readonly parent: any; readonly key: PropertyKey; length: number }>()
 
   bracketPathEntries.forEach(([key, value]) => {
     const tokens = bracketPathToTokens(key)
     let cur: any = out
-    tokens.forEach((token, i) => {
-      const isLast = i === tokens.length - 1
+    for (let i = 0; i < tokens.length; i++) {
+      const state = indexed.get(cur)
+      // Resolve "[]" to the next index before handling leaves or containers
+      const token = tokens[i] === "" && state !== undefined ? state.length : tokens[i]
+      if (state !== undefined && typeof token === "number") {
+        state.length = Math.max(state.length, token + 1)
+      }
+      const hasOwn = Object.hasOwn(cur, token)
+      const current = hasOwn ? cur[token] : undefined
 
-      // We are inside an array and see "[]" (empty token) => append
-      if (Array.isArray(cur) && token === "") {
-        if (isLast) {
-          cur.push(value)
-        } else {
-          // bracket path: "foo[][bar]" => push a new element and descend into it
-          const next = tokens[i + 1]
-          const shouldBeArray = typeof next === "number" || next === ""
-          const index = cur.length
-          cur = getOrCreateContainer(cur, index, shouldBeArray)
-        }
-      } else if (isLast) {
-        // If we're setting a value at a path that already exists
-        // convert it to an array to support multiple values for the same key
-        const hasOwn = Object.hasOwn(cur, token)
-        if (hasOwn && Array.isArray(cur[token]) && (containers.has(cur[token]) || duplicates.has(cur[token]))) {
-          cur[token].push(value)
+      if (i === tokens.length - 1) {
+        const currentState = indexed.get(current)
+        if (currentState !== undefined) {
+          InternalRecord.assignProperty(current, currentState.length++, value)
+        } else if (duplicates.has(current)) {
+          current.push(value)
         } else if (hasOwn) {
-          const values = [cur[token], value]
+          const values = [current, value]
           duplicates.add(values)
           InternalRecord.assignProperty(cur, token, values)
         } else {
@@ -2127,12 +2190,30 @@ export function makeTreeRecord<A>(
         }
       } else {
         const next = tokens[i + 1]
-        // if next is a number OR "" (from []), we are building an array
         const shouldBeArray = typeof next === "number" || next === ""
-        cur = getOrCreateContainer(cur, token, shouldBeArray)
+        if (containers.has(current) && indexed.has(current) === shouldBeArray) {
+          cur = current
+        } else {
+          const container = {}
+          containers.add(container)
+          if (shouldBeArray) {
+            indexed.set(container, { parent: cur, key: token, length: 0 })
+          }
+          InternalRecord.assignProperty(cur, token, container)
+          cur = container
+        }
       }
-    })
+    }
   })
+
+  // Children are created after their parents, so materializing in reverse
+  // creation order replaces every nested container before its parent is copied
+  for (const [builder, { key, length, parent }] of Array.from(indexed).reverse()) {
+    // A later conflicting path may have replaced the container in its parent
+    if (parent[key] === builder && length - Object.keys(builder).length <= MAX_ARRAY_HOLES) {
+      InternalRecord.assignProperty(parent, key, Object.assign(new Array(length), builder))
+    }
+  }
   return out
 }
 
@@ -2172,6 +2253,7 @@ export function makeTreeRecord<A>(
  * @see {@link encodeFormData} for a higher-level FormData encoder
  * @see {@link encodeURLSearchParams} for a higher-level URLSearchParams encoder
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */

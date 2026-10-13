@@ -6,6 +6,7 @@
  * Sessions support queries, streaming, `LISTEN`/`NOTIFY`, cancellation, and
  * exclusive ownership for transactions.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Arr from "effect/Array"
@@ -39,6 +40,7 @@ import * as PgTypes from "./PgTypes.ts"
 /**
  * The runtime type identifier for `PgConnection`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -47,6 +49,7 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 /**
  * The type-level identifier for `PgConnection`.
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -77,6 +80,7 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * unpinned multiplexed connection cannot be interrupted because cancellation
  * could affect another fiber's query.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -135,6 +139,7 @@ const preparedCacheFor = (config: Config): PreparedCache | undefined => {
 /**
  * An object result row keyed by column name.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -145,6 +150,7 @@ export interface Row {
 /**
  * Metadata for one result column.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -156,6 +162,7 @@ export interface Field {
 /**
  * The result of a query.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -170,6 +177,7 @@ export interface Result {
 /**
  * A `NOTIFY` message received while listening on a channel.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -182,6 +190,7 @@ export interface Notification {
 /**
  * A connected and authenticated PostgreSQL session.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -253,6 +262,7 @@ export interface PgConnection {
 /**
  * The service tag for `PgConnection`.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -271,6 +281,7 @@ export const PgConnection = Context.Service<PgConnection>("@effect/sql-pg/PgConn
  * Use `sslmode=require` or explicit `ssl: true` to require encryption.
  * Unix sockets and custom streams should set `ssl.servername` explicitly.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -499,6 +510,11 @@ class PgConnectionImpl implements PgConnection {
       }),
       destroySocket
     )
+    const socket = this.session.socket
+    socket.off("data", this.onData)
+    socket.off("error", this.onSocketError)
+    socket.off("close", this.onSocketClose)
+    this.retireHooks.clear()
   }
 
   /** Plans one execution. `cache` is `undefined` to force the unnamed path. */
@@ -1368,7 +1384,14 @@ class QueryMachine implements Consumer {
       return
     }
     if (this.phase === "error") {
-      if (message._tag === "ReadyForQuery") return this.complete(Effect.fail(this.failure!))
+      if (message._tag === "ReadyForQuery") {
+        // Retrying in an aborted transaction would mask the original error with 25P02.
+        if (this.plan.stale && !this.plan.parses && message.status === "E") {
+          this.conn.prepared?.evict(this.plan.prepared!)
+          this.plan.stale = false
+        }
+        return this.complete(Effect.fail(this.failure!))
+      }
       return this.failDesync(`Unexpected ${message._tag} after ErrorResponse`)
     }
     switch (message._tag) {

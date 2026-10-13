@@ -523,6 +523,12 @@ class YamlParser {
     }
     this.index = end
 
+    let contentEnd = content.length
+    while (contentEnd > 0 && content[contentEnd - 1].length === 0) contentEnd--
+    const trailingBreaks = Math.max(0, content.length - contentEnd - (end === this.lines.length ? 1 : 0)) +
+      (contentEnd > 0 && start + contentEnd < this.lines.length ? 1 : 0)
+    content.length = contentEnd
+
     let output = ""
     if (style === "|") {
       output = content.join("\n")
@@ -543,11 +549,9 @@ class YamlParser {
           previousMoreIndented = moreIndented
         }
       }
-      output += "\n".repeat(blankLines)
     }
-    if (chomp === "keep") return output.endsWith("\n") ? output : `${output}\n`
-    output = output.replace(/\n+$/, "")
-    return chomp === "strip" ? output : `${output}\n`
+    if (chomp === "keep") return output + "\n".repeat(trailingBreaks)
+    return chomp === "clip" && contentEnd > 0 && trailingBreaks > 0 ? `${output}\n` : output
   }
 
   private skipBlankLines(): number {

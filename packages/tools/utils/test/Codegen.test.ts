@@ -41,6 +41,17 @@ export const experimental = 1
 `
       )
       yield* fs.writeFileString(
+        path.join(directory, "ExplicitStable.ts"),
+        `/**
+ * Explicitly stable module.
+ *
+ * @stability stable
+ * @since 1.0.0
+ */
+export const explicitStable = 1
+`
+      )
+      yield* fs.writeFileString(
         path.join(directory, "Stable.ts"),
         `/**
  * Stable module.
@@ -74,6 +85,12 @@ export const unstable = 1
  * @since 3.0.0
  */
 export * as Experimental from "./Experimental.ts"
+
+/**
+ * @stability stable
+ * @since 1.0.0
+ */
+export * as ExplicitStable from "./ExplicitStable.ts"
 
 /**
  * @since 1.0.0

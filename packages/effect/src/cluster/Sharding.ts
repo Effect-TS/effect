@@ -277,6 +277,13 @@ const make = Effect.gen(function*() {
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
   const activeShardsLatch = yield* Latch.make(false)
+  // open once shutdown starts handing every shard off
+  const handoffLatch = Latch.makeUnsafe(false)
+  // open once the handoff has released every shard lock
+  const handedOffLatch = Latch.makeUnsafe(false)
+  // serializes runner registration with unregistration, so a registration
+  // in flight cannot re-advertise a runner that is shutting down
+  const withRegistrationLock = Semaphore.makeUnsafe(1).withPermits(1)
 
   const events = yield* PubSub.unbounded<ShardingRegistrationEvent>()
   const getRegistrationEvents: Stream.Stream<ShardingRegistrationEvent> = Stream.fromPubSub(events)
@@ -295,6 +302,33 @@ const make = Effect.gen(function*() {
     return MutableHashSet.has(acquiredShards, address.shardId)
   }
 
+  function isAwaitingShardLock(shardId: ShardId): boolean {
+    return !MutableRef.get(isShutdown) &&
+      MutableHashSet.has(selfShards, shardId) &&
+      !MutableHashSet.has(acquiredShards, shardId)
+  }
+
+  // Requests for a shard assigned to this runner wait for its lock, for at most
+  // `shardLockExpiration`, instead of bouncing while the previous owner drains.
+  // Each notification opens the current latch and replaces it, so a waiter that
+  // checked its shard before a notification cannot miss it.
+  let shardLocksChanged = Latch.makeUnsafe(false)
+  const notifyShardLockWaiters = Effect.suspend(() => {
+    const latch = shardLocksChanged
+    shardLocksChanged = Latch.makeUnsafe(false)
+    return latch.open
+  })
+  const awaitShardLock = (shardId: ShardId): Effect.Effect<void> => {
+    const loop: Effect.Effect<void> = Effect.suspend(() =>
+      isAwaitingShardLock(shardId) ? Effect.andThen(shardLocksChanged.await, loop) : Effect.void
+    )
+    return Effect.suspend(() =>
+      isAwaitingShardLock(shardId)
+        ? Effect.asVoid(Effect.timeoutOption(loop, config.shardLockExpiration))
+        : Effect.void
+    )
+  }
+
   yield* Scope.addFinalizer(
     shardingScope,
     Effect.logDebug("Shutdown complete").pipe(Effect.annotateLogs({
@@ -310,6 +344,8 @@ const make = Effect.gen(function*() {
   // allow them to move to another runner.
 
   const releasingShards = MutableHashSet.empty<ShardId>()
+  // Hands every held shard off on shutdown, set when this is a runner
+  let handoff: Effect.Effect<void> = Effect.void
   // Shards whose entities must be force interrupted and locks fully released
   // before normal reacquisition.
   const forceReleasingShards = MutableHashSet.empty<ShardId>()
@@ -321,8 +357,37 @@ const make = Effect.gen(function*() {
       return Effect.ignore(runnerStorage.releaseAll(selfAddress))
     })
 
+    // Shard releases fork into a child scope that closes after the shutdown
+    // handoff, as forks into the closing sharding scope never run.
+    const releaseScope = yield* Scope.fork(shardingScope)
+    // Interrupt the shards' entities on every entity manager that is open
+    const forkInterruptShards = Effect.fnUntraced(function*(shardIds: Iterable<ShardId>, force: boolean) {
+      const fibers = Arr.empty<Fiber.Fiber<void>>()
+      for (const shardId of shardIds) {
+        for (const state of entityManagers.values()) {
+          if (state.status === "closed") continue
+          fibers.push(
+            yield* Effect.forkIn(state.manager.interruptShard(shardId, { force }), releaseScope, {
+              startImmediately: true
+            })
+          )
+        }
+      }
+      return fibers
+    })
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
     let forcedShardReleaseRunning = false
+    // Called from the acquisition loop only, so no `acquire` is in flight
+    const checkHandedOff = () => {
+      if (
+        handoffLatch.isOpen() &&
+        MutableHashSet.size(acquiredShards) === 0 &&
+        MutableHashSet.size(releasingShards) === 0 &&
+        !forcedShardReleasePending()
+      ) {
+        handedOffLatch.openUnsafe()
+      }
+    }
     // Interrupt the shards' entities, wait for lock health, run the storage
     // release, then clear the shards' bookkeeping.
     const runShardRelease = Effect.fnUntraced(function*<E>(
@@ -330,14 +395,11 @@ const make = Effect.gen(function*() {
       force: boolean,
       release: Effect.Effect<void, E>
     ) {
-      const fibers = Arr.empty<Fiber.Fiber<void>>()
-      for (const shardId of shardIds) {
-        for (const state of entityManagers.values()) {
-          if (state.status === "closed") continue
-          fibers.push(yield* Effect.forkScoped(state.manager.interruptShard(shardId, { force })))
-        }
-      }
-      yield* Fiber.joinAll(fibers)
+      yield* Fiber.joinAll(yield* forkInterruptShards(shardIds, force))
+      // stop the singletons of shards that are no longer acquired, and wait
+      // for those on the released shards
+      yield* startSyncSingletons
+      yield* awaitStoppingSingletons(shardIds)
       yield* shardLocksHealthyLatch.await
       yield* release
       for (const shardId of shardIds) {
@@ -351,6 +413,8 @@ const make = Effect.gen(function*() {
           interrupt: MutableRef.get(isShutdown)
         })
       }
+      // let the acquisition loop check whether the handoff has finished
+      if (handoffLatch.isOpen()) activeShardsLatch.openUnsafe()
     })
     const retryShardRelease =
       (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
@@ -402,7 +466,7 @@ const make = Effect.gen(function*() {
           forcedShardReleaseRunning = false
           activeShardsLatch.openUnsafe()
         })),
-        Effect.forkIn(shardingScope),
+        Effect.forkIn(releaseScope),
         Effect.asVoid
       )
     })
@@ -422,9 +486,11 @@ const make = Effect.gen(function*() {
         yield* activeShardsLatch.await
         activeShardsLatch.closeUnsafe()
 
-        // if a shard is no longer assigned to this runner, we release it
+        // if a shard is no longer assigned to this runner, or the runner is
+        // handing every shard off, we release it
+        const handingOff = handoffLatch.isOpen()
         for (const shardId of acquiredShards) {
-          if (MutableHashSet.has(selfShards, shardId)) continue
+          if (!handingOff && MutableHashSet.has(selfShards, shardId)) continue
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
@@ -433,6 +499,7 @@ const make = Effect.gen(function*() {
           yield* Effect.forkIn(syncSingletons, shardingScope)
           yield* releaseShards
         }
+        checkHandedOff()
 
         if (!shardLocksHealthyLatch.isOpen()) {
           continue
@@ -441,6 +508,11 @@ const make = Effect.gen(function*() {
         // Wait for the pending bulk release before reacquiring, so it cannot
         // drop a lock acquired here. `releaseForcedShards` reopens the latch.
         if (forcedShardReleasePending()) {
+          continue
+        }
+
+        // a runner that is shutting down takes no new shards
+        if (isShutdown.current) {
           continue
         }
 
@@ -484,13 +556,15 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
+          yield* notifyShardLockWaiters
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
 
           // update metrics
           ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
         }
-        yield* Effect.sleep(1000)
+        // the shutdown handoff releases the shards acquired here without waiting
+        yield* Effect.raceFirst(Effect.sleep(1000), handoffLatch.await)
         activeShardsLatch.openUnsafe()
       }
     }).pipe(
@@ -519,19 +593,11 @@ const make = Effect.gen(function*() {
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
+          yield* notifyShardLockWaiters
           yield* Effect.logError("Shard lock storage is unhealthy", cause)
           yield* Effect.forkIn(syncSingletons, shardingScope, { startImmediately: true })
 
-          for (const shardId of affectedShards) {
-            for (const state of entityManagers.values()) {
-              if (state.status === "closed") continue
-              yield* Effect.forkIn(
-                state.manager.interruptShard(shardId, { force: true }),
-                shardingScope,
-                { startImmediately: true }
-              )
-            }
-          }
+          yield* forkInterruptShards(affectedShards, true)
           activeShardsLatch.openUnsafe()
         })
       })
@@ -598,6 +664,18 @@ const make = Effect.gen(function*() {
       Effect.forever,
       Effect.forkIn(shardingScope)
     )
+
+    // Release every held shard through the per-shard path. Their entities are
+    // forced to stop, so the handoff does not wait out graceful termination.
+    // This is best effort: the wait is bounded, and if it times out, the final
+    // `releaseAll` attempts to release the remaining locks.
+    handoff = Effect.suspend(() => {
+      if (handoffLatch.openUnsafe()) activeShardsLatch.openUnsafe()
+      return forkInterruptShards([...acquiredShards, ...releasingShards], true)
+    }).pipe(
+      Effect.andThen(Effect.timeoutOption(handedOffLatch.await, shardLockInterval)),
+      Effect.asVoid
+    )
   }
 
   // --- Storage inbox ---
@@ -613,6 +691,12 @@ const make = Effect.gen(function*() {
 
   const storageReadLatch = yield* Latch.make(true)
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
+
+  type PendingNotification = {
+    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
+    readonly message: Message.IncomingRequest<any>
+  }
+  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
 
   const storageReadLock = Semaphore.makeUnsafe(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
@@ -647,7 +731,7 @@ const make = Effect.gen(function*() {
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
 
-    yield* Effect.gen(function*() {
+    const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
@@ -904,8 +988,7 @@ const make = Effect.gen(function*() {
         module: "effect/cluster/Sharding",
         fiber: "Storage read loop",
         runner: selfAddress
-      }),
-      Effect.forkIn(shardingScope)
+      })
     )
 
     // open the storage latch every poll interval
@@ -1032,20 +1115,28 @@ const make = Effect.gen(function*() {
         ),
       Effect.forkIn(shardingScope)
     )
+
+    // fork after the state the loop reads has been initialized
+    yield* Effect.forkIn(storageReadLoop, shardingScope)
   }
 
   // --- Sending messages ---
 
-  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) =>
-    Effect.suspend(function loop(): Effect.Effect<
+  const sendLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(message: M) => {
+    const address = message.envelope.address
+    const isRequest = message._tag === "IncomingRequest" || message._tag === "OutgoingRequest"
+    const send = Effect.suspend(function loop(): Effect.Effect<
       void,
       | EntityNotAssignedToRunner
       | MailboxFull
       | AlreadyProcessingMessage
       | (M extends Message.Incoming<any> ? never : PersistenceError)
     > {
-      const address = message.envelope.address
-      if (!isEntityOnLocalShards(address)) {
+      if (
+        !isEntityOnLocalShards(address) &&
+        // Entities draining from a released shard still accept interrupts and acks
+        (isRequest || !MutableHashSet.has(releasingShards, address.shardId))
+      ) {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
       const state = entityManagers.get(address.entityType)
@@ -1064,12 +1155,9 @@ const make = Effect.gen(function*() {
           simulateRemoteSerialization: config.simulateRemoteSerialization
         }) as any
     })
-
-  type PendingNotification = {
-    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
-    readonly message: Message.IncomingRequest<any>
+    return isRequest ? Effect.andThen(awaitShardLock(address.shardId), send) : send
   }
-  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
+
   const notifyLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
     message: M,
     discard: boolean,
@@ -1087,7 +1175,7 @@ const make = Effect.gen(function*() {
       const state = entityManagers.get(address.entityType)
       if (!state) {
         return Effect.flatMap(waitForEntityManager(address.entityType), loop)
-      } else if (state.status === "closed" || !isEntityOnLocalShards(address)) {
+      } else if (state.status === "closed") {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
 
@@ -1129,7 +1217,10 @@ const make = Effect.gen(function*() {
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
-    retries?: number
+    retries?: number,
+    // The runner serving the request, for its interrupts and acks. Later
+    // attempts fall back to the current shard assignment.
+    runner?: RunnerAddress
   ): Effect.Effect<
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
@@ -1172,7 +1263,9 @@ const make = Effect.gen(function*() {
         if (shouldFail && MutableRef.get(isShutdown)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
-        const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
+        const maybeRunner = runner !== undefined
+          ? Option.some(runner)
+          : MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
         if (isPersisted) {
           return runnerIsLocal
@@ -1180,6 +1273,9 @@ const make = Effect.gen(function*() {
             : runnersService.notify({ address: maybeRunner, message, discard })
         } else if (Option.isNone(maybeRunner)) {
           return Effect.fail(new EntityNotAssignedToRunner({ address }))
+        } else if (message._tag === "OutgoingRequest") {
+          const entry = clientRequests.get(message.envelope.requestId)
+          if (entry) entry.runner = maybeRunner.value
         }
         return runnerIsLocal
           ? sendLocal(message)
@@ -1250,9 +1346,12 @@ const make = Effect.gen(function*() {
     while (true) {
       // Ensure the current runner is registered
       if (selfRunner && !isShutdown.current && !MutableHashMap.has(allRunners, selfRunner)) {
-        yield* Effect.logDebug("Registering runner", selfRunner)
-        const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
-        yield* snowflakeGen.setMachineId(machineId)
+        yield* withRegistrationLock(Effect.gen(function*() {
+          if (isShutdown.current) return
+          yield* Effect.logDebug("Registering runner", selfRunner)
+          const machineId = yield* withTimeout(runnerStorage.register(selfRunner, true))
+          yield* snowflakeGen.setMachineId(machineId)
+        }))
       }
 
       const runners = yield* withTimeout(runnerStorage.getRunners)
@@ -1324,6 +1423,7 @@ const make = Effect.gen(function*() {
         })
         yield* Effect.logDebug("New shard assignments", selfShards)
         activeShardsLatch.openUnsafe()
+        yield* notifyShardLockWaiters
 
         // update metrics
         if (selfRunner) {
@@ -1361,6 +1461,8 @@ const make = Effect.gen(function*() {
     readonly context: Context.Context<never>
     readonly message: Message.OutgoingRequest<any>
     lastChunkId?: Snowflake.Snowflake
+    // the runner a volatile request was last sent to
+    runner?: RunnerAddress
   }
   const clientRequests = new Map<Snowflake.Snowflake, ClientRequestEntry>()
 
@@ -1445,7 +1547,9 @@ const make = Effect.gen(function*() {
                   }),
                   rpc: entry.rpc
                 }),
-                false
+                false,
+                undefined,
+                entry.runner
               )
             }
             case "Interrupt": {
@@ -1476,7 +1580,8 @@ const make = Effect.gen(function*() {
                   rpc: entry.rpc
                 }),
                 false,
-                3
+                3,
+                entry.runner
               ))
             }
           }
@@ -1569,6 +1674,47 @@ const make = Effect.gen(function*() {
   const singletonFibers = yield* FiberMap.make<SingletonAddress>()
   const withSingletonLock = Semaphore.makeUnsafe(1).withPermits(1)
 
+  // Singletons that are stopping. They count as running, so they are not
+  // restarted, and shard releases wait for them. Their teardown is awaited
+  // without the singleton lock, as it can register or stop other singletons.
+  const stoppingSingletons = MutableHashMap.empty<SingletonAddress, Fiber.Fiber<void>>()
+  const isSingletonRegistered = (address: SingletonAddress) => {
+    const map = singletons.get(address.shardId)
+    return map !== undefined && MutableHashMap.has(map, address)
+  }
+
+  // Called with the singleton lock held. Starts stopping the singleton and
+  // returns the wait for its teardown, to run without the lock.
+  const stopSingletonUnsafe = (address: SingletonAddress, activeTeardown: boolean): Effect.Effect<void> => {
+    const stopping = MutableHashMap.get(stoppingSingletons, address)
+    if (Option.isSome(stopping)) return Fiber.join(stopping.value)
+    const fiber = FiberMap.getUnsafe(singletonFibers, address)
+    if (Option.isNone(fiber)) return Effect.void
+    const interrupt = Fiber.interrupt(fiber.value)
+    const stop = Effect.runForkWith(services)(
+      activeTeardown ? ActiveTeardown.aroundShard(address.shardId, interrupt) : interrupt
+    )
+    MutableHashMap.set(stoppingSingletons, address, stop)
+    stop.addObserver(() => {
+      MutableHashMap.remove(stoppingSingletons, address)
+      // a registration made while the previous singleton was stopping
+      if (isSingletonRegistered(address)) runFork(syncSingletons)
+    })
+    return Fiber.join(stop)
+  }
+
+  // Waits for the singletons of the given shards that are still stopping
+  const awaitStoppingSingletons = (shardIds: ReadonlyArray<ShardId>) =>
+    Effect.suspend(() => {
+      const stops = Arr.empty<Fiber.Fiber<void>>()
+      MutableHashMap.forEach(stoppingSingletons, (stop, address) => {
+        if (shardIds.some((shardId) => Equal.equals(shardId, address.shardId))) {
+          stops.push(stop)
+        }
+      })
+      return Fiber.joinAll(stops)
+    })
+
   const registerSingleton: Sharding["Service"]["registerSingleton"] = Effect.fnUntraced(
     function*(name, run, options) {
       const shardGroup = options?.shardGroup ?? "default"
@@ -1599,32 +1745,38 @@ const make = Effect.gen(function*() {
 
       yield* PubSub.publish(events, SingletonRegistered({ address }))
 
-      // start if we are on the right shard
-      if (MutableHashSet.has(acquiredShards, address.shardId)) {
+      // start if we are on the right shard, unless a previous registration of
+      // this singleton is still stopping
+      if (
+        MutableHashSet.has(acquiredShards, address.shardId) &&
+        !MutableHashMap.has(stoppingSingletons, address)
+      ) {
         yield* Effect.logDebug("Starting singleton", address)
         yield* FiberMap.run(singletonFibers, address, wrappedRun)
       }
 
-      yield* Effect.addFinalizer(() => {
-        const map = singletons.get(address.shardId)!
-        MutableHashMap.remove(map, address)
-        return FiberMap.remove(singletonFibers, address)
-      })
+      yield* Effect.addFinalizer(() =>
+        withSingletonLock(Effect.sync(() => {
+          MutableHashMap.remove(singletons.get(address.shardId)!, address)
+          return stopSingletonUnsafe(address, false)
+        })).pipe(Effect.flatten)
+      )
     },
     withSingletonLock
   )
 
-  const syncSingletons = withSingletonLock(Effect.gen(function*() {
+  // Starts and stops singletons to match the acquired shards, returning the
+  // waits for the stopped singletons
+  const startSyncSingletons = withSingletonLock(Effect.gen(function*() {
+    const stops = Arr.empty<Effect.Effect<void>>()
     for (const [shardId, map] of singletons) {
       for (const [address, run] of map) {
-        const running = FiberMap.hasUnsafe(singletonFibers, address)
+        const stopping = MutableHashMap.has(stoppingSingletons, address)
+        const running = stopping || FiberMap.hasUnsafe(singletonFibers, address)
         const shouldBeRunning = MutableHashSet.has(acquiredShards, shardId)
         if (running && !shouldBeRunning) {
-          yield* Effect.logDebug("Stopping singleton", address)
-          yield* ActiveTeardown.aroundShard(
-            address.shardId,
-            FiberMap.remove(singletonFibers, address)
-          )
+          if (!stopping) yield* Effect.logDebug("Stopping singleton", address)
+          stops.push(stopSingletonUnsafe(address, true))
         } else if (!running && shouldBeRunning) {
           yield* Effect.logDebug("Starting singleton", address)
           yield* FiberMap.run(singletonFibers, address, run)
@@ -1635,7 +1787,14 @@ const make = Effect.gen(function*() {
       BigInt(yield* FiberMap.size(singletonFibers)),
       Context.empty()
     )
+    return stops
   }))
+
+  const syncSingletons: Effect.Effect<void> = Effect.flatMap(
+    startSyncSingletons,
+    // wait for the stopped singletons without the lock
+    (stops) => Effect.all(stops, { discard: true })
+  )
 
   // --- Entities ---
 
@@ -1777,12 +1936,14 @@ const make = Effect.gen(function*() {
 
     if (isShutdown.current) return
     MutableRef.set(isShutdown, true)
+    yield* notifyShardLockWaiters
     if (selfRunner) {
-      yield* Effect.ignore(runnerStorage.unregister(selfRunner.address))
+      yield* Effect.ignore(withRegistrationLock(runnerStorage.unregister(selfRunner.address)))
     }
   })
 
-  yield* Scope.addFinalizerExit(shardingScope, shutdown)
+  // hand the shards off before the loops stop
+  yield* Scope.addFinalizerExit(shardingScope, (exit) => Effect.andThen(shutdown(exit), handoff))
 
   const activeEntityCount = Effect.gen(function*() {
     let count = 0

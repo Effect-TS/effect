@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Option, Order, TxPriorityQueue } from "effect"
+import { Effect, Fiber, Option, Order, TxPriorityQueue, TxRef } from "effect"
 
 describe("TxPriorityQueue", () => {
   describe("constructors", () => {
@@ -77,6 +77,29 @@ describe("TxPriorityQueue", () => {
   })
 
   describe("mutations", () => {
+    it.effect("offerAll preserves a one-shot iterable across transaction retries", () =>
+      Effect.gen(function*() {
+        const queue = yield* TxPriorityQueue.empty<number>(Order.Number)
+        const gate = yield* TxRef.make(false)
+        const offer = TxPriorityQueue.offerAll(
+          queue,
+          (function*() {
+            yield 2
+            yield 1
+          })()
+        )
+        const fiber = yield* Effect.forkChild(
+          Effect.tx(Effect.gen(function*() {
+            yield* offer
+            if (!(yield* TxRef.get(gate))) return yield* Effect.txRetry
+          })),
+          { startImmediately: true }
+        )
+        yield* TxRef.set(gate, true)
+        yield* Fiber.join(fiber)
+        assert.deepStrictEqual(yield* TxPriorityQueue.toArray(queue), [1, 2])
+      }))
+
     it.effect("offer + take returns elements in priority order", () =>
       Effect.tx(Effect.gen(function*() {
         const pq = yield* TxPriorityQueue.empty<number>(Order.Number)

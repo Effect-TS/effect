@@ -1,6 +1,7 @@
 import { assert, it } from "@effect/vitest"
 import { Duration, Effect, Fiber, Latch, Layer, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
+import * as PersistedQueueSqlTest from "effect-test/persistence/PersistedQueueSqlTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as SqlCleanupTest from "effect-test/persistence/SqlCleanupTest"
 import { PersistedQueue, Persistence } from "effect/persistence"
@@ -22,6 +23,8 @@ PersistedQueueTest.suite(
   "sql-pg",
   PersistedQueue.layerStoreSql().pipe(Layer.provide(PgContainer.layerClient))
 )
+
+it.layer(PgContainer.layerClient, { timeout: "30 seconds" })((it) => PersistedQueueSqlTest.suiteWith(it))
 
 it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PersistedQueue SQL locks", (it) => {
   it.effect("refreshes locks for acquired elements", () =>

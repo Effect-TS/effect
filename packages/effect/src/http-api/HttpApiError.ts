@@ -467,8 +467,9 @@ export const HttpApiSchemaErrorTypeId: HttpApiSchemaErrorTypeId = "~effect/http-
 
 /**
  * Error raised when an HTTP API request or response component fails schema
- * decoding or encoding. It records which component failed and responds as an
- * empty `400 Bad Request` when rendered as a server response.
+ * decoding or encoding. Request decoding failures respond with an empty
+ * `400 Bad Request` and are ignored by error reporters. Response encoding
+ * failures respond with an empty `500 Internal Server Error` and are reported.
  *
  * @stability unstable
  * @category errors
@@ -479,7 +480,10 @@ export class HttpApiSchemaError extends Data.TaggedClass("HttpApiSchemaError")<{
   readonly cause: Schema.SchemaError
 }> {
   readonly [HttpApiSchemaErrorTypeId]: HttpApiSchemaErrorTypeId = HttpApiSchemaErrorTypeId
-  readonly [ErrorReporter.ignore] = true
+
+  get [ErrorReporter.ignore](): boolean {
+    return this.kind !== "Body" && this.kind !== "ResponseHeaders"
+  }
 
   static is(u: unknown): u is HttpApiSchemaError {
     return hasProperty(u, HttpApiSchemaErrorTypeId)
@@ -498,6 +502,6 @@ export class HttpApiSchemaError extends Data.TaggedClass("HttpApiSchemaError")<{
   readonly message = this.kind;
 
   [HttpServerRespondable.symbol]() {
-    return Effect.succeed(badRequestResponse)
+    return Effect.succeed(this[ErrorReporter.ignore] ? badRequestResponse : internalServerErrorResponse)
   }
 }

@@ -21,19 +21,22 @@ describe("Otlp.layerFromConfig", () => {
       assert.isDefined(logRequest)
       assert.strictEqual(logRequest!.headers["x-signal"], "logs")
       assert.strictEqual(logRequest!.headers["x-shared"], undefined)
+      assert.strictEqual(logRequest!.headers.authorization, undefined)
 
       assert.isDefined(metricRequest)
       assert.strictEqual(metricRequest!.headers["x-shared"], "shared")
+      assert.strictEqual(metricRequest!.headers.authorization, "Basic dXNlcjpwYXNzd29yZA==")
       const metric = findMetric(metricRequest!.body as OtlpMetricsBody, "otel_config_counter")
       assert.strictEqual(metric?.sum?.aggregationTemporality, 1)
 
       assert.isDefined(traceRequest)
       assert.strictEqual(traceRequest!.headers["x-shared"], "shared")
+      assert.strictEqual(traceRequest!.headers.authorization, "Basic dXNlcjpwYXNzd29yZA==")
     }).pipe(
       Effect.provide(testLayer({
         OTEL_SERVICE_NAME: "otel-config-test",
         OTEL_EXPORTER_OTLP_ENDPOINT: "http://collector.example",
-        OTEL_EXPORTER_OTLP_HEADERS: "x-shared=shared",
+        OTEL_EXPORTER_OTLP_HEADERS: "x-shared=shared,authorization=Basic%20dXNlcjpwYXNzd29yZA==",
         OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: "http://logs.example/custom",
         OTEL_EXPORTER_OTLP_LOGS_HEADERS: "x-signal=logs",
         OTEL_LOGS_EXPORTER: "console, OTLP",

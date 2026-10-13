@@ -1425,6 +1425,28 @@ describe("Stream", () => {
           ["even", [2, 4]]
         ])
       }))
+
+    it.effect("groupByKey - a group that stops early does not block the others", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.range(1, 8).pipe(
+          Stream.rechunk(1),
+          Stream.groupByKey((n) => n % 2, { bufferSize: 1 }),
+          Stream.flatMap(([key, group]) => key === 0 ? group : Stream.take(group, 1), { concurrency: "unbounded" }),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
+      }))
+
+    it.effect("groupBy - a group that stops early does not block the others", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.range(1, 8).pipe(
+          Stream.rechunk(1),
+          Stream.groupBy((n) => Effect.succeed([n % 2, n] as const), { bufferSize: 1 }),
+          Stream.flatMap(([key, group]) => key === 0 ? group : Stream.take(group, 1), { concurrency: "unbounded" }),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result.sort((a, b) => a - b), [1, 2, 4, 6, 8])
+      }))
   })
 
   describe("concat", () => {
@@ -3937,6 +3959,17 @@ describe("Stream", () => {
     })
 
     describe("zipLatest", () => {
+      for (const emptySide of ["left", "right"] as const) {
+        it.effect(`completes with no pairs when the ${emptySide} stream is empty`, () =>
+          Effect.gen(function*() {
+            const result = yield* Stream.zipLatest(
+              emptySide === "left" ? Stream.empty : Stream.succeed(1),
+              emptySide === "right" ? Stream.empty : Stream.succeed(1)
+            ).pipe(Stream.runCollect)
+            assert.deepStrictEqual(result, [])
+          }))
+      }
+
       it.effect("combines streams with latest values", () =>
         Effect.gen(function*() {
           const result = yield* Stream.zipLatest(
@@ -4179,6 +4212,22 @@ describe("Stream", () => {
         deepStrictEqual(result, [1, 1, 2, 3, 5, 8])
       }))
 
+    it.live("sink finishing during an upstream pull still lets the stream complete", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finished = yield* Deferred.make<void>()
+        const source = Stream.fromEffect(Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(finished)
+          // Let the sink finish before the suspended upstream pull returns.
+          yield* Effect.yieldNow
+          return 1
+        }))
+        const sink = Sink.fromEffect(Effect.andThen(Deferred.await(started), Deferred.succeed(finished, undefined)))
+        const result = yield* source.pipe(Stream.tapSink(sink), Stream.runCollect, Effect.timeoutOption("1 second"))
+        deepStrictEqual(result, Option.some([1]))
+      }))
+
     it.effect("sink that fails before stream", () =>
       Effect.gen(function*() {
         const sink = Sink.fail("error")
@@ -4189,6 +4238,13 @@ describe("Stream", () => {
           Effect.flip
         )
         strictEqual(result, "error")
+      }))
+
+    it.effect("sink that fails after end-of-stream", () =>
+      Effect.gen(function*() {
+        const sink = Sink.collect<number>().pipe(Sink.mapEffect(() => Effect.fail("sink-end-failure")))
+        const exit = yield* Stream.make(1).pipe(Stream.tapSink(sink), Stream.runCollect, Effect.exit)
+        deepStrictEqual(exit, Exit.fail("sink-end-failure"))
       }))
 
     it.effect("does not read ahead", () =>
@@ -4581,6 +4637,18 @@ describe("Stream", () => {
         deepStrictEqual(result2, [1, 3, 5])
       }))
 
+    it.effect("one side stopping early does not block the other", () =>
+      Effect.gen(function*() {
+        const [evens, odds] = yield* Stream.range(1, 8).pipe(
+          Stream.partition((n) => n % 2 === 0 ? Result.succeed(n) : Result.fail(n), { capacity: 1 })
+        )
+        const result = yield* Effect.all([
+          Stream.runCollect(evens),
+          Stream.runCollect(Stream.take(odds, 1))
+        ], { concurrency: 2 })
+        deepStrictEqual(result, [[2, 4, 6, 8], [1]])
+      }).pipe(Effect.scoped))
+
     it.effect("errors", () =>
       Effect.gen(function*() {
         const { result1, result2 } = yield* pipe(
@@ -4673,6 +4741,20 @@ describe("Stream", () => {
         deepStrictEqual(result1, [10, 12, 14])
         deepStrictEqual(result2, ["odd:1", "odd:3", "odd:5"])
       }))
+
+    it.effect("partitionEffect - one side stopping early does not block the other", () =>
+      Effect.gen(function*() {
+        const [evens, odds] = yield* Stream.range(1, 8).pipe(
+          Stream.partitionEffect((n) => Effect.succeed(n % 2 === 0 ? Result.succeed(n) : Result.fail(n)), {
+            capacity: 1
+          })
+        )
+        const result = yield* Effect.all([
+          Stream.runCollect(evens),
+          Stream.runCollect(Stream.take(odds, 1))
+        ], { concurrency: 2 })
+        deepStrictEqual(result, [[2, 4, 6, 8], [1]])
+      }).pipe(Effect.scoped))
 
     it.effect("partitionQueue - values", () =>
       Effect.gen(function*() {
@@ -4802,6 +4884,13 @@ describe("Stream", () => {
         deepStrictEqual(peeled, [1, 2, 3])
         deepStrictEqual(rest, [4, 5, 6])
       }))
+
+    it.effect("keeps the sink's leftovers in the remaining stream", () =>
+      Effect.gen(function*() {
+        const [peeled, rest] = yield* Stream.peel(Stream.make(1, 2, 3, 4), Sink.take<number>(2))
+        deepStrictEqual(peeled, [1, 2])
+        deepStrictEqual(yield* Stream.runCollect(rest), [3, 4])
+      }).pipe(Effect.scoped))
 
     it.effect("peel - propagates errors", () =>
       Effect.gen(function*() {
@@ -5284,6 +5373,16 @@ describe("Stream", () => {
           [[1, 2], [4, 5]],
           [[1, 2], [4]]
         ])
+      }))
+
+    it.effect("slidingSize keeps all elements of the final partial window", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4, 5, 6).pipe(
+          Stream.slidingSize(3, 2),
+          Stream.runCollect
+        )
+
+        deepStrictEqual(result, [[1, 2, 3], [3, 4, 5], [5, 6]])
       }))
 
     it.effect("sliding - fails if upstream produces an error", () =>

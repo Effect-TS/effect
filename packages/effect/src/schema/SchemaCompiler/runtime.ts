@@ -65,12 +65,15 @@ const makeObjectBase = (
   const runFallback: SchemaIssueParser = (input, options) =>
     (fallback ??= ast.getParser(compile, compileField))(input, options)
   const resume = (
-    state: ObjectParserState,
+    snapshot: ObjectParserState,
     index: number,
     pending: Effect.Effect<unknown, SchemaIssue.Issue, any>
   ): Effect.Effect<unknown, SchemaIssue.Issue, any> => {
     const property = properties![index]
     return Effect.flatMap(Effect.exit(pending), (exit) => {
+      // Each execution gets its own output; `issues` is still undefined here
+      // because `errors: "all"` is routed to the fallback before suspending.
+      const state: ObjectParserState = { ...snapshot, out: { ...snapshot.out } }
       const terminal = SchemaAST.stepProperty(state, property, exit)
       if (terminal) return terminal
       const done = () => InternalParser.succeed(state.out)

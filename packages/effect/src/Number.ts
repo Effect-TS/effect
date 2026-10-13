@@ -5,6 +5,7 @@
  * checking, parsing, arithmetic, safe division, comparison, range checks,
  * clamping, rounding, ordering, equivalence, and numeric aggregation.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import * as Equ from "./Equivalence.ts"
@@ -39,6 +40,7 @@ import * as Reducer from "./Reducer.ts"
  * N.Number("3.14") // => 3.14
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -60,6 +62,7 @@ export const Number = globalThis.Number
  * Number.isNumber("2") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -82,6 +85,7 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  *
  * @see {@link sumAll} for summing an iterable of numbers
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -107,6 +111,7 @@ export const sum: {
  *
  * @see {@link multiplyAll} for multiplying an iterable of numbers
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -130,6 +135,7 @@ export const multiply: {
  * Number.subtract(2, 3) // => -1
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -157,6 +163,7 @@ export const subtract: {
  * @see {@link divideUnsafe} for division that throws when the divisor is zero
  * @see {@link remainder} for the numeric remainder operation
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -196,6 +203,7 @@ export const divide: {
  *
  * @see {@link divide} for division that returns `Option.none` when the divisor is zero
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -223,6 +231,7 @@ export const divideUnsafe: {
  * Number.increment(2) // => 3
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -243,6 +252,7 @@ export const increment = (n: number): number => n + 1
  * Number.decrement(3) // => 2
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -266,6 +276,7 @@ export const decrement = (n: number): number => n - 1
  * Number.Order(1, 1) // => 0
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -289,6 +300,7 @@ export const Order: order.Order<number> = order.Number
  * Number.Equivalence(NaN, NaN) // => true
  * ```
  *
+ * @stability stable
  * @category instances
  * @since 2.0.0
  */
@@ -311,6 +323,7 @@ export const Equivalence: Equ.Equivalence<number> = Equ.Number
  * Number.isLessThan(4, 3) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -336,6 +349,7 @@ export const isLessThan: {
  * Number.isLessThanOrEqualTo(4, 3) // => false
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -361,6 +375,7 @@ export const isLessThanOrEqualTo: {
  * Number.isGreaterThan(4, 3) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -386,6 +401,7 @@ export const isGreaterThan: {
  * Number.isGreaterThanOrEqualTo(4, 3) // => true
  * ```
  *
+ * @stability stable
  * @category predicates
  * @since 4.0.0
  */
@@ -415,6 +431,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * @see {@link clamp} for forcing a number into an inclusive range
  *
+ * @stability stable
  * @category predicates
  * @since 2.0.0
  */
@@ -458,6 +475,7 @@ export const between: {
  *
  * @see {@link between} for checking whether a number is already inside a range
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -489,6 +507,7 @@ export const clamp: {
  *
  * @see {@link max} for selecting the larger value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -514,6 +533,7 @@ export const min: {
  *
  * @see {@link min} for selecting the smaller value
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -539,6 +559,7 @@ export const max: {
  * Number.sign(5) // => 1
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -562,6 +583,7 @@ export const sign = (n: number): Ordering => Order(n, 0)
  * @see {@link sum} for adding two numbers
  * @see {@link ReducerSum} for summing through APIs that consume a `Reducer`
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -591,6 +613,7 @@ export const sumAll = (collection: Iterable<number>): number => {
  * @see {@link multiply} for multiplying two numbers
  * @see {@link ReducerMultiply} for multiplying through APIs that consume a `Reducer`
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -625,6 +648,7 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  *
  * @see {@link divide} for quotient calculation with division-by-zero represented as `Option.none`
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -679,6 +703,7 @@ function toScientificInteger(n: number): readonly [coefficient: bigint, exponent
  * Number.nextPow2(17) // => 32
  * ```
  *
+ * @stability stable
  * @category math
  * @since 2.0.0
  */
@@ -710,6 +735,7 @@ export const nextPow2 = (n: number): number => {
  *
  * @see {@link Number} for native constructor coercion
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -746,6 +772,7 @@ export const parse = (s: string): Option.Option<number> => {
  * Number.round(1.567, 2) // => 1.57
  * ```
  *
+ * @stability stable
  * @category math
  * @since 3.8.0
  */
@@ -771,6 +798,7 @@ export const round: {
  * @see {@link sumAll} for summing an iterable directly
  * @see {@link ReducerMultiply} for multiplying number values
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -794,6 +822,7 @@ export const ReducerSum: Reducer.Reducer<number> = Reducer.make((a, b) => a + b,
  *
  * @see {@link multiplyAll} for multiplying an iterable directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -825,6 +854,7 @@ export const ReducerMultiply: Reducer.Reducer<number> = Reducer.make((a, b) => a
  * @see {@link ReducerMin} for keeping the smallest number
  * @see {@link max} for comparing two numbers directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */
@@ -849,6 +879,7 @@ export const ReducerMax: Reducer.Reducer<number> = Reducer.make((a, b) => Math.m
  * @see {@link ReducerMax} for keeping the largest number
  * @see {@link min} for comparing two numbers directly
  *
+ * @stability stable
  * @category math
  * @since 4.0.0
  */

@@ -34,3 +34,13 @@ overrides:
   # Remove after a later jsdom release passes the Atom React and Solid suites under Bun.
   # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
   jsdom: ~30.0.1
+
+minimumReleaseAgeExclude:
+  - '@effect/tsgo-darwin-arm64@0.51.0'
+  - '@effect/tsgo-darwin-x64@0.51.0'
+  - '@effect/tsgo-linux-arm64@0.51.0'
+  - '@effect/tsgo-linux-arm@0.51.0'
+  - '@effect/tsgo-linux-x64@0.51.0'
+  - '@effect/tsgo-win32-arm64@0.51.0'
+  - '@effect/tsgo-win32-x64@0.51.0'
+  - '@effect/tsgo@0.51.0'

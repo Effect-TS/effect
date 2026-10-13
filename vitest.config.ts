@@ -214,6 +214,7 @@ export default defineConfig({
       ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
+      ...project("@effect/npm-promote", "packages/tools/npm-promote"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),
       ...project("@effect/utils", "packages/tools/utils", isNode),
       ...project("@effect/oxc", "packages/tools/oxc")

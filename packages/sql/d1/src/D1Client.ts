@@ -29,6 +29,7 @@ import * as Stream from "effect/Stream"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
 const ATTR_DB_OPERATION_NAME = "db.operation.name"
+const ATTR_DB_OPERATION_BATCH_SIZE = "db.operation.batch.size"
 const ATTR_DB_QUERY_TEXT = "db.query.text"
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
@@ -133,6 +134,11 @@ interface StatementWithTransformRows extends Statement.Statement<any> {
   readonly transformRows: TransformRows | undefined
 }
 
+const batchSpanName = (spanAttributes: ReadonlyArray<readonly [string, unknown]>): string => {
+  const target = Statement.spanTarget(spanAttributes)
+  return target === undefined ? "BATCH" : `BATCH ${target}`
+}
+
 const makeBatch = (options: {
   readonly db: D1Database
   readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
@@ -145,8 +151,9 @@ const makeBatch = (options: {
   if (statements.length === 0) {
     return Effect.succeed([] as unknown as BatchResults<Statements>)
   }
+  const isBatch = statements.length > 1
   return Effect.useSpan(
-    "sql.execute",
+    isBatch ? batchSpanName(options.spanAttributes) : Statement.spanName(options.spanAttributes),
     { kind: "client" },
     (span) =>
       Effect.withFiber(Effect.fnUntraced(function*(fiber) {
@@ -168,7 +175,10 @@ const makeBatch = (options: {
         for (const [key, value] of options.spanAttributes) {
           span.attribute(key, value)
         }
-        span.attribute(ATTR_DB_OPERATION_NAME, "batch")
+        if (isBatch) {
+          span.attribute(ATTR_DB_OPERATION_NAME, "BATCH")
+          span.attribute(ATTR_DB_OPERATION_BATCH_SIZE, statements.length)
+        }
         span.attribute(ATTR_DB_QUERY_TEXT, queryTexts.join("; "))
 
         // D1 batches execute on the binding directly and intentionally cannot participate in SqlClient transactions.

@@ -8,6 +8,7 @@
  * `PlatformError`. The module also includes file handles, open flags, watch
  * events, and the watch backend service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
@@ -72,6 +73,7 @@ const TypeId = "~effect/FileSystem"
  * result.content // => "{\"env\": \"development\"}"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -218,12 +220,17 @@ export interface FileSystem {
    * **Details**
    *
    * The file handle will be automatically closed when the scope is closed.
+   *
+   * `noFollow` rejects symlinks at the final path component, not in parent
+   * directories. Node and Bun support it on POSIX; unsupported platforms,
+   * including Windows and Deno, fail with `BadArgument`.
    */
   readonly open: (
     path: string,
     options?: {
       readonly flag?: OpenFlag | undefined
       readonly mode?: number | undefined
+      readonly noFollow?: boolean | undefined
     }
   ) => Effect.Effect<File, PlatformError, Scope>
   /**
@@ -411,6 +418,7 @@ export interface FileSystem {
  * flags // => ["r", "w", "a", "r+"]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -464,6 +472,7 @@ export type OpenFlag =
  * Effect.runSync(withCustomFs) // => "contents"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -487,6 +496,7 @@ export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Servi
  * @see {@link makeNoop} for a testing stub that accepts method overrides without requiring a complete implementation
  * @see {@link layerNoop} for providing a no-op `FileSystem` as a `Layer` in tests
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -630,6 +640,7 @@ const notFound = (method: string, path: string) =>
  * Effect.runSync(testProgram) // => "{\"test\": true}"
  * ```
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -759,6 +770,7 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
  * Effect.runSync(testProgram) // => "mocked content"
  * ```
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */
@@ -777,6 +789,7 @@ export const layerNoop = (fileSystem: Partial<FileSystem>): Layer.Layer<FileSyst
  * @see {@link File} for the open file handle shape that carries this marker
  * @see {@link isFile} for the public guard that checks this marker
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -799,6 +812,7 @@ export const FileTypeId = "~effect/FileSystem/File"
  * @see {@link File} for the file-handle interface narrowed by this guard
  * @see {@link FileTypeId} for the runtime marker checked by this guard
  *
+ * @stability unstable
  * @category guards
  * @since 4.0.0
  */
@@ -817,6 +831,10 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * offset. In append mode, writes go to the end of the file without moving the
  * cursor. Outside append mode, `truncate` clamps a cursor past the new length
  * to that length.
+ *
+ * Positional reads leave the cursor unchanged and may run concurrently on
+ * one handle. Cursor operations (`seek`, reads without a position, and writes)
+ * must not run concurrently with each other.
  *
  * **Example** (Working with file handles)
  *
@@ -853,6 +871,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * result.buffer // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -867,8 +886,20 @@ export interface File {
    */
   readonly seek: (offset: bigint, from: SeekMode) => Effect.Effect<bigint, PlatformError>
   readonly sync: Effect.Effect<void, PlatformError>
-  readonly read: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
-  readonly readAlloc: (size: number) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
+  /**
+   * Reads into `buffer`, returning the byte count or `0` at EOF. Advances the
+   * cursor unless `options.position` is set (see `File.ReadOptions`).
+   */
+  readonly read: (buffer: Uint8Array, options?: File.ReadOptions) => Effect.Effect<number, PlatformError>
+  /**
+   * Reads up to `size` bytes into a new buffer, returning `Option.none()` at
+   * EOF. Advances the cursor unless `options.position` is set (see
+   * `File.ReadOptions`).
+   */
+  readonly readAlloc: (
+    size: number,
+    options?: File.ReadOptions
+  ) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>
   readonly truncate: (length?: number) => Effect.Effect<void, PlatformError>
   readonly write: (buffer: Uint8Array) => Effect.Effect<number, PlatformError>
   readonly writeAll: (buffer: Uint8Array) => Effect.Effect<void, PlatformError>
@@ -878,9 +909,35 @@ export interface File {
  * Namespace containing types associated with open file handles, including file
  * descriptors, entry kinds, and stat information.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace File {
+  /**
+   * Options for `File.read` and `File.readAlloc`.
+   *
+   * **Details**
+   *
+   * `position` is a byte offset from the start of the file. It leaves the
+   * cursor unchanged, fails with `BadArgument` if negative, and reads nothing
+   * at or past EOF.
+   *
+   * **Example** (Reading a byte range without moving the cursor)
+   *
+   * ```ts import.meta.vitest
+   * import type { FileSystem } from "effect"
+   *
+   * const options: FileSystem.File.ReadOptions = { position: BigInt(1024) }
+   * options.position // => 1024n
+   * ```
+   *
+   * @category models
+   * @since 4.1.0
+   */
+  export interface ReadOptions {
+    readonly position?: bigint | undefined
+  }
+
   /**
    * Enumeration of possible file system entry types.
    *
@@ -986,6 +1043,7 @@ export declare namespace File {
  *
  * @see {@link File} for the open file handle API whose `seek` method consumes this mode
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -994,6 +1052,7 @@ export type SeekMode = "start" | "current"
 /**
  * Options for watching files or directories.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1019,6 +1078,7 @@ export interface WatchOptions {
  *
  * @see {@link FileSystem} for the service interface whose `watch` operation emits these events
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -1027,6 +1087,7 @@ export type WatchEvent = WatchEvent.Create | WatchEvent.Update | WatchEvent.Remo
 /**
  * Namespace containing the concrete event shapes emitted by `FileSystem.watch`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace WatchEvent {
@@ -1116,6 +1177,7 @@ export declare namespace WatchEvent {
  * Effect.runSync(withCustomBackend) // => true
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */

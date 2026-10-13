@@ -9,6 +9,7 @@
  * typed headers, remote address lookup, stream access, and text, JSON,
  * URL-encoded, and array-buffer body readers.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -21,6 +22,8 @@ import type * as Schema from "effect/Schema"
 import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 import * as NodeStream from "./NodeStream.ts"
+
+const textDecoder = new TextDecoder()
 
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
@@ -35,6 +38,7 @@ import * as NodeStream from "./NodeStream.ts"
  * The adapter exposes headers, remote address, stream access, and cached body
  * decoders. Subclasses provide the error mapping for unknown Node errors.
  *
+ * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
@@ -76,7 +80,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.map(this.arrayBuffer, (_) => Buffer.from(_).toString("utf8"))
+    this.textEffect = Effect.map(this.arrayBuffer, (_) => textDecoder.decode(_))
     return this.textEffect
   }
 
@@ -125,7 +129,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       Effect.cached,
       Effect.runSync
     )
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
+    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => textDecoder.decode(_))
     return this.arrayBufferEffect
   }
 }

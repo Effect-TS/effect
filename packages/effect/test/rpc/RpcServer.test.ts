@@ -1,8 +1,25 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Exit, Fiber, Layer, Queue, Ref, Schema, Scope, Sink, Stdio, Stream } from "effect"
-import { Headers, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
+import {
+  Cause,
+  Context,
+  Deferred,
+  Effect,
+  ErrorReporter,
+  Exit,
+  Fiber,
+  Layer,
+  Queue,
+  Ref,
+  Schema,
+  Scope,
+  Sink,
+  Stdio,
+  Stream,
+  Tracer
+} from "effect"
+import { Headers, HttpEffect, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import * as NetAddress from "effect/net/NetAddress"
-import { Rpc, RpcGroup, RpcSerialization, RpcServer } from "effect/rpc"
+import { Rpc, RpcGroup, RpcMiddleware, RpcSchema, RpcSerialization, RpcServer } from "effect/rpc"
 import * as RpcMessage from "effect/rpc/RpcMessage"
 import { Socket, SocketServer } from "effect/socket"
 
@@ -48,6 +65,126 @@ const producedWithoutReadingFramedBody = Effect.fnUntraced(function*(
 })
 
 describe("RpcServer", () => {
+  for (
+    const [name, serialization] of [
+      ["ndjson", RpcSerialization.layerNdjson],
+      ["ndJsonRpc", RpcSerialization.layerNdJsonRpc()],
+      ["schemaBinary", RpcSerialization.layerSchemaBinary()]
+    ] as const
+  ) {
+    it.effect(`returns HTTP 200 with an empty body for an empty ${name} POST`, () =>
+      Effect.gen(function*() {
+        const group = RpcGroup.make(Rpc.make("ping", { success: Schema.String }))
+        const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ ping: () => Effect.succeed("pong") }),
+            serialization
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const response = yield* Effect.promise(() =>
+          handler(new Request("http://test/rpc", { method: "POST", body: "" }))
+        )
+        const body = yield* Effect.promise(() => response.text())
+
+        assert.strictEqual(response.status, 200)
+        assert.strictEqual(body, "")
+      }))
+  }
+
+  it.effect("reports success encode failures with the rpc tag", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }))
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({ getUserAge: () => Effect.succeed("not a number" as unknown as number) }),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      const body = yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n`
+          })
+        ).then((response) => response.text())
+      )
+
+      const message = `Failed to encode response for RPC "getUserAge": Expected number\n  at ["value"]`
+      const response: RpcMessage.ResponseExitEncoded = JSON.parse(body)
+      assert.deepStrictEqual(response.exit, { _tag: "Failure", cause: [{ _tag: "Die", defect: message }] })
+      assert.deepStrictEqual(reports, [message])
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
+
+  it.effect("records effect and stream encode defects on server spans, even when middleware swallows them", () =>
+    Effect.gen(function*() {
+      const ended = yield* Queue.unbounded<Tracer.NativeSpan>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (span.kind === "server") {
+            const end = span.end.bind(span)
+            span.end = (endTime, exit) => {
+              end(endTime, exit)
+              Queue.offerUnsafe(ended, span)
+            }
+          }
+          return span
+        }
+      })
+      class Swallow extends RpcMiddleware.Service<Swallow>()("Swallow") {}
+      const group = RpcGroup.make(
+        Rpc.make("getUserAge", { payload: Schema.Struct({}), success: Schema.Number }),
+        Rpc.make("ages", { payload: Schema.Struct({}), success: Schema.Number, stream: true }).middleware(Swallow)
+      )
+      const handler = HttpEffect.toWebHandler(
+        yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({
+              getUserAge: () => Effect.succeed("not a number" as unknown as number),
+              ages: () => Stream.make("not a number" as unknown as number)
+            }),
+            Layer.succeed(
+              Swallow,
+              (effect) => Effect.catchDefect(effect, () => Effect.succeed({} as RpcMiddleware.SuccessValue))
+            ),
+            RpcSerialization.layerNdjson
+          ))
+        )
+      )
+      yield* Effect.promise(() =>
+        handler(
+          new Request("http://test/rpc", {
+            method: "POST",
+            body: `{"_tag":"Request","id":1,"tag":"getUserAge","payload":{},"headers":[]}\n` +
+              `{"_tag":"Request","id":2,"tag":"ages","payload":{},"headers":[]}\n`
+          }),
+          Context.make(Tracer.Tracer, tracer)
+        ).then((response) => response.text())
+      )
+
+      const exits = Object.fromEntries((yield* Queue.takeN(ended, 2)).map((span) => {
+        const exit = span.status._tag === "Ended" ? span.status.exit : undefined
+        if (exit && Exit.isFailure(exit)) {
+          assert.strictEqual(Context.getOrUndefined(Cause.annotations(exit.cause), RpcSchema.ClientAbort), undefined)
+        }
+        return [
+          span.name,
+          exit && Exit.isFailure(exit)
+            ? exit.cause.reasons.map((reason) => Cause.isDieReason(reason) ? reason.defect : reason._tag)
+            : exit?._tag
+        ]
+      }))
+      assert.deepStrictEqual(exits, {
+        getUserAge: [`Failed to encode response for RPC "getUserAge": Expected number\n  at ["value"]`],
+        ages: [`Failed to encode response for RPC "ages": Expected number\n  at [0]`]
+      })
+    }))
+
   it.effect("should drain the response when stdin ends during request startup", () =>
     Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
@@ -144,7 +281,7 @@ describe("RpcServer", () => {
       }])
     }))
 
-  it.effect("should accept only cancellation of an active request when client input has ended", () =>
+  it.effect("should accept cancellation of an active request and reject new requests when client input has ended", () =>
     Effect.gen(function*() {
       const entered = yield* Deferred.make<void>()
       const interrupted = yield* Deferred.make<void>()
@@ -178,7 +315,7 @@ describe("RpcServer", () => {
       for (
         const message of [
           { ...request, id: RpcMessage.RequestId("new") },
-          { _tag: "Ack" as const, requestId: request.id },
+          { _tag: "Ack" as const, requestId: RpcMessage.RequestId("unknown") },
           RpcMessage.constEof,
           { _tag: "Interrupt" as const, requestId: RpcMessage.RequestId("unknown"), interruptors: [] }
         ]

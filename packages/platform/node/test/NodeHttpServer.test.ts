@@ -2,7 +2,7 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Option } from "effect"
+import { ByteSize, Effect, Exit, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -489,7 +489,7 @@ describe("HttpServer", () => {
           Tracer.Tracer,
           Tracer.make({
             span(options) {
-              assert.strictEqual(options.name, "http.client GET")
+              assert.strictEqual(options.name, "GET")
               assert.strictEqual(options.kind, "client")
               assert(options.parent._tag === "Some")
               if (options.parent.value._tag !== "Span") {
@@ -748,6 +748,76 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
+  it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
+    const requestStarted = Latch.makeUnsafe()
+    const releaseResponse = Latch.makeUnsafe()
+    const firstResponse = Latch.makeUnsafe()
+    const secondResponse = Latch.makeUnsafe()
+    const server = Http.createServer()
+    server.keepAliveTimeout = 5000
+    const runtime = ManagedRuntime.make(
+      HttpServer.serve(Effect.gen(function*() {
+        yield* requestStarted.open
+        yield* releaseResponse.await
+        return HttpServerResponse.text("ok")
+      })).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server, {
+          host: "127.0.0.1",
+          port: 0,
+          gracefulShutdownTimeout: "10 seconds"
+        }))
+      )
+    )
+    let socket: Net.Socket | undefined
+    let responseData = ""
+
+    return Effect.gen(function*() {
+      yield* Effect.promise(() => runtime.context())
+      const connection = Net.connect(tcpPort(server), "127.0.0.1")
+      socket = connection
+      connection.on("data", (chunk) => {
+        responseData += chunk.toString()
+        if (responseData.includes("\r\n\r\nok")) firstResponse.openUnsafe()
+        if ((responseData.match(/HTTP\/1\.1 \d{3}/g) ?? []).length >= 2) secondResponse.openUnsafe()
+      })
+      yield* Effect.callback<void, Error>((resume) => {
+        connection.once("connect", () => resume(Effect.void))
+        connection.on("error", (error) => resume(Effect.fail(error)))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      connection.write("GET /first HTTP/1.1\r\nHost: localhost\r\n\r\n")
+      yield* requestStarted.await.pipe(Effect.timeout("2 seconds"))
+      const disposed = runtime.dispose()
+      // Wait for server.close() to stop listening, without letting the first request finish.
+      yield* Effect.callback<void>((resume) => {
+        const timer = setInterval(() => {
+          if (!server.listening) resume(Effect.void)
+        }, 1)
+        return Effect.sync(() => clearInterval(timer))
+      }).pipe(Effect.timeout("2 seconds"))
+
+      releaseResponse.openUnsafe()
+      yield* firstResponse.await.pipe(Effect.timeout("2 seconds"))
+      assert.include(responseData, "HTTP/1.1 200")
+      connection.write("GET /second HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+      const answered = yield* secondResponse.await.pipe(Effect.timeoutOption("1 second"))
+      assert.strictEqual(
+        answered._tag,
+        "Some",
+        "the second keep-alive request must receive a response before the shutdown timeout"
+      )
+      yield* Effect.promise(() => disposed).pipe(Effect.timeout("2 seconds"))
+    }).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          releaseResponse.openUnsafe()
+          socket?.destroy()
+          server.closeAllConnections()
+        }).pipe(Effect.andThen(Effect.promise(() => runtime.dispose())))
+      )
+    )
+  })
+
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
     const upstream = Http.createServer(() => {
@@ -913,6 +983,97 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("logs and traces status 101 after an upgraded WebSocket closes", () =>
+    Effect.gen(function*() {
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") {
+          Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+        }
+      })
+      const traced = yield* Deferred.make<unknown>()
+      const tracer = Tracer.make({
+        span(options) {
+          const span = new Tracer.NativeSpan(options)
+          if (options.kind === "server") {
+            span.end = (endTime, exit) => {
+              Tracer.NativeSpan.prototype.end.call(span, endTime, exit)
+              Deferred.doneUnsafe(traced, Effect.succeed(span.attributes.get("http.response.status_code")))
+            }
+          }
+          return span
+        }
+      })
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* request.upgrade
+          yield* Stream.runDrain(Socket.toStream(socket)).pipe(Effect.ignore)
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+        Layer.provide(Logger.layer([logger])),
+        Layer.provide(Layer.succeed(Tracer.Tracer)(tracer)),
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const handshakeStatus = yield* Effect.callback<number | undefined, Error>((resume) => {
+        const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`)
+        let status: number | undefined
+        ws.on("upgrade", (response) => {
+          status = response.statusCode
+        })
+        ws.on("open", () => ws.close(1000))
+        ws.on("close", () => resume(Effect.succeed(status)))
+        ws.on("error", (error) => resume(Effect.fail(error)))
+        return Effect.sync(() => ws.close())
+      })
+      assert.strictEqual(handshakeStatus, 101)
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+      assert.strictEqual(yield* Deferred.await(traced), 101)
+    }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)), 10000)
+
+  for (const failHandler of [false, true]) {
+    it.effect(
+      `logs the fallback status when an upgrade fails and the handler ${failHandler ? "fails" : "recovers"}`,
+      () =>
+        Effect.gen(function*() {
+          const logged = yield* Deferred.make<unknown>()
+          const logger = Logger.make((options) => {
+            const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+            if (annotations["http.url"] === "/ws") {
+              Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+            }
+          })
+          yield* HttpRouter.add(
+            "GET",
+            "/ws",
+            Effect.gen(function*() {
+              const request = yield* HttpServerRequest.HttpServerRequest
+              const result = yield* Effect.exit(request.upgrade)
+              assert.isTrue(Exit.isFailure(result))
+              if (failHandler) return yield* Effect.fail(new Error("upgrade failed"))
+              return HttpServerResponse.empty({ status: 426 })
+            })
+          ).pipe(
+            (layer) => HttpRouter.serve(layer, { disableListenLog: true }),
+            Layer.provide(Logger.layer([logger])),
+            Layer.build
+          )
+          // An ordinary HTTP request has no upgrade transport, so acquisition fails.
+          const response = yield* HttpClient.get("/ws")
+          assert.strictEqual(response.status, failHandler ? 500 : 426)
+          assert.strictEqual(yield* Deferred.await(logged), response.status)
+        }).pipe(Effect.timeout("5 seconds"), Effect.provide(layerTestWebsocket)),
+      10000
+    )
+  }
 
   it.effect("websocket options are forwarded to the WebSocketServer", () =>
     Effect.gen(function*() {

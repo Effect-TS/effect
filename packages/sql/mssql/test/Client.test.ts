@@ -317,6 +317,25 @@ const makeClient = MssqlClient.make({
 const bounded = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect.pipe(Effect.timeout("2 seconds"))
 
 describe("MssqlClient connection lifecycle", { concurrent: false }, () => {
+  it.live("handles a late error after an ended connection is discarded and recovers", () =>
+    Effect.gen(function*() {
+      reset()
+      const client = yield* bounded(makeClient)
+      const connection = state.connections[0]
+
+      // Model a dropped socket: tedious enters its Final state and emits end
+      // before delivering the queued socket error. Wait for pool cleanup, not time.
+      connection.closed = true
+      connection.emit("end")
+      yield* bounded(Deferred.await(connection.closedSignal))
+      assert.doesNotThrow(() =>
+        connection.emit("error", Object.assign(new Error("Connection lost - read ECONNRESET"), { code: "ESOCKET" }))
+      )
+
+      const rows = yield* bounded(client.unsafe("SELECT recovered"))
+      assert.deepStrictEqual(rows, [{ value: 42 }])
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)))
+
   it.live("replaces a connection that ends without error after query cancellation", () =>
     Effect.gen(function*() {
       reset()

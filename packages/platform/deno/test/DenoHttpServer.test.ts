@@ -1,6 +1,7 @@
 import * as DenoHttpServer from "@effect/platform-deno/DenoHttpServer"
 import { assert, describe, it } from "@effect/vitest"
 import * as ByteSize from "effect/ByteSize"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
@@ -22,9 +23,11 @@ import * as Multipart from "effect/http/Multipart"
 import * as UrlParams from "effect/http/UrlParams"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as NetAddress from "effect/net/NetAddress"
 import * as Queue from "effect/Queue"
+import * as References from "effect/References"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
@@ -429,7 +432,7 @@ describe("DenoHttpServer", () => {
           Tracer.Tracer,
           Tracer.make({
             span(options) {
-              assert.strictEqual(options.name, "http.client GET")
+              assert.strictEqual(options.name, "GET")
               assert.strictEqual(options.kind, "client")
               assert(options.parent._tag === "Some")
               if (options.parent.value._tag !== "Span") throw new Error("Expected span parent")
@@ -715,11 +718,42 @@ describe("DenoHttpServer", () => {
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
-      yield* serveWebSocket(echoWebSocket)
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+      })
+      yield* serveWebSocket(echoWebSocket).pipe(Effect.provide(Logger.layer([logger])))
       const server = yield* HttpServer.HttpServer
       const port = (server.address as NetAddress.InetAddress).port
       const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/`, (socket) => socket.send("hello"), 1)
       assert.deepStrictEqual(messages, ["hello"])
+      assert.strictEqual(yield* Deferred.await(logged), 101)
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("logs status 101 for a WebSocket upgraded through a prefixed route", () =>
+    Effect.gen(function*() {
+      const logged = yield* Deferred.make<unknown>()
+      const logger = Logger.make((options) => {
+        const annotations = options.fiber.getRef(References.CurrentLogAnnotations)
+        if (annotations["http.url"] === "/ws") Deferred.doneUnsafe(logged, Effect.succeed(annotations["http.status"]))
+      })
+      yield* HttpRouter.use((router) =>
+        router.prefixed("/ws").add(
+          "GET",
+          "/",
+          Effect.gen(function*() {
+            const request = yield* HttpServerRequest.HttpServerRequest
+            yield* echoWebSocket(yield* request.upgrade)
+            return HttpServerResponse.empty()
+          })
+        )
+      ).pipe(HttpRouter.serve, Layer.provide(Logger.layer([logger])), Layer.build)
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const messages = yield* connectWebSocket(`ws://127.0.0.1:${port}/ws`, (socket) => socket.send("hello"), 1)
+      assert.deepStrictEqual(messages, ["hello"])
+      assert.strictEqual(yield* Deferred.await(logged), 101)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("preserves eager WebSocket frames across an async boundary", () =>

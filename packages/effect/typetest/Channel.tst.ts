@@ -1,10 +1,15 @@
-import { Channel, Data, type Effect, pipe, Result } from "effect"
+import { Channel, Data, type Effect, pipe, type PubSub, Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 class ErrorA extends Data.TaggedError("ErrorA")<{ readonly message: string }> {}
 class ErrorB extends Data.TaggedError("ErrorB")<{ readonly code: number }> {}
 
 declare const channel: Channel.Channel<number, ErrorA | ErrorB>
+declare const pubsub: PubSub.PubSub<number>
+interface Dependency {
+  readonly Dependency: unique symbol
+}
+declare const pubsubChannel: Channel.Channel<number, ErrorA | ErrorB, void, unknown, unknown, unknown, Dependency>
 
 class RateLimit extends Data.TaggedError("RateLimit")<{ readonly retryAfter: number }> {}
 class Quota extends Data.TaggedError("Quota")<{ readonly limit: number }> {}
@@ -126,5 +131,42 @@ describe("Channel.catchReasons", () => {
 describe("Channel.runCount", () => {
   it("returns the output count", () => {
     expect(Channel.runCount(Channel.fromIterable([1, 2, 3]))).type.toBe<Effect.Effect<number>>()
+  })
+})
+
+interface Config {
+  readonly _: unique symbol
+}
+interface Db {
+  readonly _: unique symbol
+}
+declare const dbChannel: Channel.Channel<number, never, void, number, never, void, Db>
+declare const serviceFreeChannel: Channel.Channel<number, never, void, number, never, void>
+declare const parseWithConfig: (s: string) => Effect.Effect<number, never, Config>
+
+describe("Channel.mapInput", () => {
+  it("adds mapper requirements and preserves channel requirements in data-last usage", () => {
+    const serviceFreeResult = pipe(serviceFreeChannel, Channel.mapInput(parseWithConfig))
+    expect(serviceFreeResult).type.toBe<Channel.Channel<number, never, void, string, never, void, Config>>()
+
+    const result = pipe(dbChannel, Channel.mapInput(parseWithConfig))
+    expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
+  })
+
+  it("adds mapper requirements and preserves channel requirements in data-first usage", () => {
+    const serviceFreeResult = Channel.mapInput(serviceFreeChannel, parseWithConfig)
+    expect(serviceFreeResult).type.toBe<Channel.Channel<number, never, void, string, never, void, Config>>()
+
+    const result = Channel.mapInput(dbChannel, parseWithConfig)
+    expect(result).type.toBe<Channel.Channel<number, never, void, string, never, void, Db | Config>>()
+  })
+})
+
+describe("Channel.runIntoPubSub", () => {
+  it("preserves the channel error and environment in both overloads", () => {
+    expect(Channel.runIntoPubSub(pubsubChannel, pubsub)).type.toBe<Effect.Effect<void, ErrorA | ErrorB, Dependency>>()
+    expect(pipe(pubsubChannel, Channel.runIntoPubSub(pubsub))).type.toBe<
+      Effect.Effect<void, ErrorA | ErrorB, Dependency>
+    >()
   })
 })

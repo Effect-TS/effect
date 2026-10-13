@@ -207,7 +207,12 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   ) => Effect.Effect<void, PersistenceError>
 
   /**
-   * Used to wrap requests with transactions.
+   * Wraps requests in storage transactions.
+   *
+   * `WithExit` replies saved in a transaction notify callers after the outermost
+   * commit; stream chunks notify immediately. Replies saved in a failed
+   * transaction must be discarded. The wrapper may fail only with the wrapped
+   * effect's own failure or a defect.
    */
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
@@ -513,6 +518,10 @@ export type EncodedRepliesOptions<A> = {
   readonly cursor: Option.Option<A>
 }
 
+const TransactionNotifications = Context.Reference<
+  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
+>("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
+
 /**
  * Wraps a concrete message storage implementation with reply-handler management.
  *
@@ -555,6 +564,20 @@ export const make = (
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     return MessageStorage.of({
       ...storage,
+      // Nested transactions defer notifications to the outermost commit.
+      withTransaction: (effect) =>
+        TransactionNotifications.use((outer) => {
+          const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
+          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
+            Effect.tap(() =>
+              outer
+                ? Effect.sync(() => {
+                  outer.push(...notifications)
+                })
+                : Effect.orDie(Effect.forEach(notifications, identity, { discard: true }))
+            )
+          )
+        }),
       registerReplyHandler: (message) => {
         const requestId = message.envelope.requestId
         return Effect.callback<void, EntityNotAssignedToRunner>((resume) => {
@@ -619,20 +642,28 @@ export const make = (
       saveReply(reply) {
         const requestId = reply.reply.requestId
         return Effect.flatMap(storage.saveReply(reply), (persisted) => {
-          const handlers = replyHandlers.get(requestId)
-          if (!handlers) {
-            return Effect.void
-          } else if (persisted.reply._tag === "WithExit") {
-            replyHandlers.delete(requestId)
-            for (let i = 0; i < handlers.length; i++) {
-              const handler = handlers[i]
-              handler.shardSet.delete(handler)
-              handler.resume(Effect.void)
+          const notify = Effect.suspend(() => {
+            const handlers = replyHandlers.get(requestId)
+            if (!handlers) {
+              return Effect.void
+            } else if (persisted.reply._tag === "WithExit") {
+              replyHandlers.delete(requestId)
+              for (let i = 0; i < handlers.length; i++) {
+                const handler = handlers[i]
+                handler.shardSet.delete(handler)
+                handler.resume(Effect.void)
+              }
             }
-          }
-          return handlers.length === 1
-            ? handlers[0].respond(persisted)
-            : Effect.forEach(handlers, (handler) => handler.respond(persisted))
+            return handlers.length === 1
+              ? handlers[0].respond(persisted)
+              : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
+          })
+          if (persisted.reply._tag !== "WithExit") return notify
+          return TransactionNotifications.use((notifications) =>
+            notifications === undefined ? notify : Effect.sync(() => {
+              notifications.push(notify)
+            })
+          )
         })
       }
     })
