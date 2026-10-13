@@ -9619,7 +9619,10 @@ pointed message
                 Schema.Struct({ event: Schema.Literal("B"), b: Schema.String }),
                 Schema.Struct({ event: Schema.Literal("A"), c: Schema.String })
               ])
-            ]).pipe(Schema.toTaggedUnion("event")),
+            ]).pipe(
+              // @ts-expect-error Duplicate discriminants are also rejected at compile time.
+              Schema.toTaggedUnion("event")
+            ),
           "Duplicate discriminant: A"
         )
         throws(
@@ -9627,7 +9630,10 @@ pointed message
             Schema.Union([
               Schema.Struct({ event: Schema.Literal(1) }),
               Schema.Struct({ event: Schema.Literal("1") })
-            ]).pipe(Schema.toTaggedUnion("event")),
+            ]).pipe(
+              // @ts-expect-error Numeric and string discriminants share the same property key.
+              Schema.toTaggedUnion("event")
+            ),
           "Duplicate discriminant: 1"
         )
       })
