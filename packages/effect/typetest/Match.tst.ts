@@ -276,8 +276,50 @@ describe("Match", () => {
     ).type.toBe<(input: unknown) => string>()
 
     expect(
+      Match.type<unknown>().pipe(
+        Match.whenOr({ _tag: "A" }, { _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: unknown) => string>()
+
+    expect(
+      Match.type<unknown>().pipe(
+        Match.whenAnd({ _tag: "A" }, { _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: unknown) => string>()
+
+    expect(
+      Match.type<unknown>().pipe(
+        Match.not({ _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: unknown) => string>()
+
+    expect(
       Match.type<object>().pipe(
         Match.when({ _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: object) => string>()
+
+    expect(
+      Match.type<object>().pipe(
+        Match.whenOr({ _tag: "A" }, { _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: object) => string>()
+
+    expect(
+      Match.type<object>().pipe(
+        Match.whenAnd({ _tag: "A" }, { _tag: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: object) => string>()
+
+    expect(
+      Match.type<object>().pipe(
+        Match.not({ _tag: "A" }, () => "hit"),
         Match.orElse(() => "miss")
       )
     ).type.toBe<(input: object) => string>()
@@ -287,6 +329,27 @@ describe("Match", () => {
     expect(
       Match.type<Record<string, string>>().pipe(
         Match.when({ 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: Record<string, string>) => string>()
+
+    expect(
+      Match.type<Record<string, string>>().pipe(
+        Match.whenOr({ 0: "A" }, { 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: Record<string, string>) => string>()
+
+    expect(
+      Match.type<Record<string, string>>().pipe(
+        Match.whenAnd({ 0: "A" }, { 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: Record<string, string>) => string>()
+
+    expect(
+      Match.type<Record<string, string>>().pipe(
+        Match.not({ 0: "A" }, () => "hit"),
         Match.orElse(() => "miss")
       )
     ).type.toBe<(input: Record<string, string>) => string>()
@@ -301,8 +364,50 @@ describe("Match", () => {
     ).type.toBe<(input: { "0": string }) => string>()
 
     expect(
+      Match.type<{ "0": string }>().pipe(
+        Match.whenOr({ 0: "A" }, { 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { "0": string }) => string>()
+
+    expect(
+      Match.type<{ "0": string }>().pipe(
+        Match.whenAnd({ 0: "A" }, { 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { "0": string }) => string>()
+
+    expect(
+      Match.type<{ "0": string }>().pipe(
+        Match.not({ 0: "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { "0": string }) => string>()
+
+    expect(
       Match.type<{ 0: string }>().pipe(
         Match.when({ "0": "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { 0: string }) => string>()
+
+    expect(
+      Match.type<{ 0: string }>().pipe(
+        Match.whenOr({ "0": "A" }, { "0": "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { 0: string }) => string>()
+
+    expect(
+      Match.type<{ 0: string }>().pipe(
+        Match.whenAnd({ "0": "A" }, { "0": "A" }, () => "hit"),
+        Match.orElse(() => "miss")
+      )
+    ).type.toBe<(input: { 0: string }) => string>()
+
+    expect(
+      Match.type<{ 0: string }>().pipe(
+        Match.not({ "0": "A" }, () => "hit"),
         Match.orElse(() => "miss")
       )
     ).type.toBe<(input: { 0: string }) => string>()
