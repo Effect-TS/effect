@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as Option from "effect/Option"
 import { afterEach } from "vitest"
 import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
@@ -12,6 +13,19 @@ describe("FileSystem", () =>
     tempFileScopedRemovesDirectory: false,
     noFollow: false
   }))
+
+describe("stat", () => {
+  it.effect("returns device and inode metadata as bigint", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* fs.makeTempFileScoped()
+      const native = Deno.statSync(path)
+      const info = yield* fs.stat(path)
+
+      assert.strictEqual(info.dev, BigInt(native.dev))
+      assert.deepStrictEqual(info.ino, Option.map(Option.fromNullishOr(native.ino), BigInt))
+    }).pipe(Effect.provide(DenoFileSystem.layer)))
+})
 
 describe("truncate", () => {
   it.effect.each([1.5, NaN])(

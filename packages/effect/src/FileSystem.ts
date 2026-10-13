@@ -968,9 +968,17 @@ export declare namespace File {
    * permissions, and size information. This structure is returned by file
    * stat operations.
    *
-   * Node and Bun preserve `size` and `blksize` exactly. Optional `number`
-   * metadata is `Option.none()` when absent or outside the safe integer range.
-   * Unsafe `dev` or `mode` values fail the stat operation with `BadArgument`.
+   * `dev`, `ino`, `rdev`, `nlink`, and `blocks` are `bigint` values, so
+   * 64-bit device identifiers, inode numbers, and counts are not limited to
+   * the safe integer range. `mode`, `uid`, and `gid` are 32-bit values and
+   * remain `number`. Optional metadata is `Option.none()` only when the
+   * platform does not report it.
+   *
+   * Node and Bun report all fields exactly, with `dev`, `ino`, `rdev`, and
+   * `nlink` interpreted as unsigned 64-bit integers. Unsafe `mode` values fail
+   * the stat operation with `BadArgument`. Deno reports these fields as
+   * `number`, so on Deno values above `Number.MAX_SAFE_INTEGER` are already
+   * rounded before they are converted to `bigint`.
    *
    * **Example** (Inspecting file information)
    *
@@ -982,7 +990,7 @@ export declare namespace File {
    *   mtime: Option.none(),
    *   atime: Option.none(),
    *   birthtime: Option.none(),
-   *   dev: 1,
+   *   dev: 1n,
    *   ino: Option.none(),
    *   mode: 0o644,
    *   nlink: Option.none(),
@@ -1014,16 +1022,16 @@ export declare namespace File {
     readonly mtime: Option.Option<Date>
     readonly atime: Option.Option<Date>
     readonly birthtime: Option.Option<Date>
-    readonly dev: number
-    readonly ino: Option.Option<number>
+    readonly dev: bigint
+    readonly ino: Option.Option<bigint>
     readonly mode: number
-    readonly nlink: Option.Option<number>
+    readonly nlink: Option.Option<bigint>
     readonly uid: Option.Option<number>
     readonly gid: Option.Option<number>
-    readonly rdev: Option.Option<number>
+    readonly rdev: Option.Option<bigint>
     readonly size: ByteSize.ByteSize
     readonly blksize: Option.Option<ByteSize.ByteSize>
-    readonly blocks: Option.Option<number>
+    readonly blocks: Option.Option<bigint>
   }
 }
 

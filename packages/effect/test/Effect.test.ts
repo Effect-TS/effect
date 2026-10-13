@@ -8,9 +8,11 @@ import {
   Duration,
   Effect,
   Effectable,
+  Equal,
   Exit,
   Fiber,
   type Filter,
+  Hash,
   Latch,
   Layer,
   Logger,
@@ -2148,6 +2150,74 @@ describe("Effect", () => {
   })
 
   describe("interruption", () => {
+    it("interrupting a fiber does not call Math.random", async () => {
+      // The bug made the runtime retry forever while Math.random kept throwing,
+      // so stop throwing after a while to keep a regression bounded.
+      let calls = 0
+      const random = Math.random
+      const spy = vi.spyOn(Math, "random").mockImplementation(() => {
+        calls++
+        if (calls > 1_000) return random()
+        throw new Error("Math.random is not allowed")
+      })
+      // Fresh objects, so no earlier test has cached a random reference hash.
+      class DefectError extends Error {
+        override toString() {
+          return "DefectError"
+        }
+      }
+      try {
+        const exit = await Effect.runPromise(Effect.gen(function*() {
+          const latch = yield* Latch.make()
+          const child = yield* latch.await.pipe(
+            Effect.andThen(Effect.die(new DefectError())),
+            Effect.uninterruptible,
+            Effect.forkChild({ startImmediately: true })
+          )
+          // The child resumes after these synchronous interrupts.
+          yield* latch.open
+          child.interruptUnsafe(undefined, Context.make(ATag, "A"))
+          child.interruptUnsafe(undefined, Context.make(ATag, "A"))
+          return yield* Fiber.await(child)
+        }))
+        assert.strictEqual(calls, 0)
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause) && Cause.hasInterrupts(exit.cause))
+      } finally {
+        spy.mockRestore()
+      }
+    })
+
+    it.effect("a defect that throws when hashed still terminates an interrupted fiber", () =>
+      Effect.gen(function*() {
+        // Throw a bounded number of times so a retrying runtime still finishes.
+        const limit = 1_000
+        let hashCalls = 0
+        const defect = {
+          [Hash.symbol]() {
+            if (++hashCalls <= limit) throw defect
+            return 0
+          },
+          [Equal.symbol](that: unknown) {
+            return that === defect
+          }
+        }
+        let finalized = 0
+        const child = yield* Effect.never.pipe(
+          Effect.onInterrupt(() => Effect.die(defect)),
+          Effect.ensuring(Effect.sync(() => finalized++)),
+          Effect.forkChild
+        )
+        yield* Effect.yieldNow
+        const exit = yield* Fiber.interrupt(child).pipe(Effect.andThen(Fiber.await(child)))
+        assert.isBelow(hashCalls, limit)
+        assert.strictEqual(finalized, 1)
+        assert.isTrue(
+          Exit.isFailure(exit) &&
+            exit.cause.reasons.some((reason) => reason._tag === "Die" && reason.defect === defect) &&
+            Cause.hasInterrupts(exit.cause)
+        )
+      }))
+
     it.effect("skipped handlers drop failures and keep defects when interrupted", () =>
       Effect.gen(function*() {
         const latch = yield* Latch.make()

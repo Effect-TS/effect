@@ -49,6 +49,7 @@ import { internalCall } from "../Utils.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
+  causeAddInterrupts,
   causeAnnotate,
   causeCombine,
   causeEmpty,
@@ -130,9 +131,9 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
+    // Equality compares annotations by reference, so leave them out instead of
+    // hashing them randomly.
+    return Hash.string(`${this._tag}:${this.fiberId}`)
   }
 }
 
@@ -566,7 +567,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       cause = causeAnnotate(cause, annotations)
     }
     this._interruptedCause = this._interruptedCause
-      ? causeCombine(this._interruptedCause, cause)
+      ? causeAddInterrupts(this._interruptedCause, cause)
       : cause
     if (this.interruptible) {
       if (this._running) {
