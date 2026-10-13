@@ -107,7 +107,7 @@ export interface Config<A, E> {
  *
  * @see {@link stats} for reading a snapshot
  *
- * @stability stable
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -900,7 +900,7 @@ export const reserve: {
  *
  * @see {@link Stats} for the snapshot fields
  *
- * @stability stable
+ * @stability unstable
  * @category getters
  * @since 4.0.0
  */
