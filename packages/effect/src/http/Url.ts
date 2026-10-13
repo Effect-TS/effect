@@ -47,7 +47,8 @@ export const make = (
   Result.try({
     try: () => {
       const urlInstance = new URL(url, baseUrl())
-      for (const [key, value] of params) {
+      for (let i = 0; i < params.params.length; i++) {
+        const [key, value] = params.params[i]
         urlInstance.searchParams.append(key, stringOrRedacted(value))
       }
       if (hash !== undefined) {

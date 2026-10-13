@@ -747,9 +747,7 @@ export const make = (
                       endSpanWithStatusError(fiber, span, request, response)
                     }
 
-                    if (scopedController) {
-                      return Effect.succeed(response)
-                    }
+                    if (scopedController) return Effect.succeed(response)
                     responseRegistry.register(response, controller)
                     return Effect.succeed(new InterruptibleResponse(response, controller))
                   },
@@ -769,23 +767,27 @@ export const make = (
 const redactUrlForTracing = (
   request: HttpClientRequest.HttpClientRequest,
   url: URL
-): { readonly full: string; readonly query: string } => {
+): { readonly full: string; readonly query: string } | undefined => {
   const params = request.urlParams.params
   if (params.every(([, value]) => typeof value === "string")) {
-    return { full: url.href, query: url.search.slice(1) }
+    return undefined
   }
   // `Url.make` appends `request.urlParams` after any query already present in
-  // `request.url`, so the last `params.length` entries map to `params` in order.
-  const offset = url.searchParams.size - params.length
-  const query = Array.from(url.searchParams, ([key, value], index) => {
-    const redacted = index >= offset && typeof params[index - offset][1] !== "string"
-    const entry = new URLSearchParams([[key, redacted ? "" : value]]).toString()
-    return redacted ? `${entry}<redacted>` : entry
-  }).join("&")
+  // `request.url`, which reserializes the whole query with `&` and `=` escaped
+  // inside names and values. The last `params.length` segments therefore map to
+  // `params` in order.
+  const segments = url.search.slice(1).split("&")
+  const offset = segments.length - params.length
+  for (let i = 0; i < params.length; i++) {
+    if (typeof params[i][1] !== "string") {
+      const segment = segments[offset + i]
+      segments[offset + i] = `${segment.slice(0, segment.indexOf("=") + 1)}<redacted>`
+    }
+  }
+  const query = segments.join("&")
   const href = url.href
-  const hashIndex = href.indexOf("#")
-  const hash = hashIndex === -1 ? "" : href.slice(hashIndex)
-  return { full: `${href.slice(0, href.indexOf("?"))}?${query}${hash}`, query }
+  const start = href.indexOf("?") + 1
+  return { full: href.slice(0, start) + query + href.slice(start + url.search.length - 1), query }
 }
 
 const endSpanWithStatusError = (
