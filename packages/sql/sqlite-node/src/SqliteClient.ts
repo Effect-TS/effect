@@ -173,8 +173,8 @@ export const make = (
         // Switching to WAL can fail with SQLITE_BUSY without invoking the busy
         // handler, so retry it until busyTimeout has elapsed. Each attempt's
         // native busy wait is limited to the remaining time.
-        // A prepared statement is used because Deno's `DatabaseSync.exec`
-        // errors omit `errcode`, which would hide SQLITE_BUSY from the retry.
+        // Deno's `exec` errors omit `errcode`, so run the pragma as a prepared
+        // statement to keep SQLITE_BUSY retryable.
         const enableWAL = Effect.try({
           try: () => db.prepare("PRAGMA journal_mode = WAL").get(),
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to configure database", "connect") })
