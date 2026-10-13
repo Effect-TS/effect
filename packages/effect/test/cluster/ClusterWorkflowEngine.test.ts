@@ -1215,6 +1215,84 @@ describe.concurrent("ClusterWorkflowEngine", () => {
     }).pipe(Effect.provide(TestWorkflowLayer)), 20_000)
 
   it.effect(
+    "DurableDeferred resumes a discarded execution when an activity awaits it beside an active sibling",
+    () =>
+      Effect.gen(function*() {
+        const activitySuspended = yield* Latch.make()
+        const siblingStarted = yield* Latch.make()
+        const releaseSibling = yield* Latch.make()
+        const savedDeferred = yield* Latch.make()
+        const gate = DurableDeferred.make("ParallelActivityDeferred/Gate", { success: Schema.String })
+        const workflow = Workflow.make("ParallelActivityDeferred", {
+          payload: {},
+          success: Schema.Array(Schema.String),
+          idempotencyKey: () => "one"
+        })
+        const awaitingActivity = Activity.make({
+          name: "await-callback",
+          success: Schema.String,
+          execute: DurableDeferred.await(gate)
+        })
+        const sibling = Activity.make({
+          name: "active-sibling",
+          success: Schema.String,
+          execute: siblingStarted.open.pipe(Effect.andThen(releaseSibling.await), Effect.as("sibling"))
+        })
+        const storageLayer = Layer.effect(
+          MessageStorage.MessageStorage,
+          Effect.map(MessageStorage.MessageStorage, (storage) => ({
+            ...storage,
+            saveReply: (reply) =>
+              storage.saveReply(reply).pipe(
+                Effect.tap(() => {
+                  if (reply.rpc._tag === "deferred") return savedDeferred.open
+                  if (
+                    reply.rpc._tag === "activity" && reply.reply._tag === "WithExit" &&
+                    reply.reply.exit._tag === "Success" && Schema.is(Workflow.Suspended)(reply.reply.exit.value)
+                  ) {
+                    return activitySuspended.open
+                  }
+                  return Effect.void
+                })
+              )
+          }))
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
+        const context = yield* Layer.build(
+          workflow.toLayer(() => Effect.all([awaitingActivity, sibling], { concurrency: "unbounded" })).pipe(
+            Layer.provideMerge(makeTestWorkflowEngine({ storageLayer }))
+          )
+        )
+        yield* Effect.addFinalizer(() => releaseSibling.open)
+        yield* Effect.gen(function*() {
+          // An execute waiter could retry Suspended and mask the lost wake-up.
+          const executionId = yield* workflow.execute({}, { discard: true })
+          yield* advanceUntil(
+            () => activitySuspended.isOpen() && siblingStarted.isOpen(),
+            "the deferred activity must have a stored Suspended reply while its sibling is active"
+          )
+          assert.deepStrictEqual(yield* workflow.poll(executionId), Option.none())
+          yield* DurableDeferred.succeed(gate, {
+            token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+            value: "callback"
+          })
+          yield* advanceUntil(
+            () => savedDeferred.isOpen(),
+            "the callback reply must be persisted before releasing the sibling"
+          )
+          assert.isFalse(releaseSibling.isOpen())
+          // The parent still has no reply for an immediate resume to reset.
+          assert.deepStrictEqual(yield* workflow.poll(executionId), Option.none())
+          yield* releaseSibling.open
+          assert.deepStrictEqual(
+            yield* pollUntil(workflow, executionId, "Complete"),
+            new Workflow.Complete({ exit: Exit.succeed(["callback", "sibling"]) })
+          )
+        }).pipe(Effect.provide(context))
+      }),
+    20_000
+  )
+
+  it.effect(
     "DurableDeferred resumes a discarded execution when completion precedes the suspension commit",
     () =>
       Effect.gen(function*() {
