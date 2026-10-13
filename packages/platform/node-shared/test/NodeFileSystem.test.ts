@@ -247,12 +247,24 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
         assert.strictEqual(Option.getOrThrow(info.blksize), ByteSize.bytes(oversized))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
-    for (const field of ["dev", "mode"] as const) {
-      it.effect(`${method} rejects unsafe ${field} metadata`, () =>
+    it.effect(`${method} rejects unsafe mode metadata`, () =>
+      Effect.gen(function*() {
+        state.values.mode = maxSafe + 1n
+        const error = yield* Effect.flip(getInfo)
+        assert.strictEqual(error.reason._tag, "BadArgument")
+      }).pipe(Effect.provide(NodeFileSystem.layer)))
+
+    for (
+      const { dev, expected, name } of [
+        { name: "accepts dev above MAX_SAFE_INTEGER", dev: maxSafe + 1n, expected: 9007199254740992 },
+        { name: "interprets signed dev as unsigned 64-bit", dev: -2n, expected: 18446744073709551616 }
+      ]
+    ) {
+      it.effect(`${method} ${name}`, () =>
         Effect.gen(function*() {
-          state.values[field] = maxSafe + 1n
-          const error = yield* Effect.flip(getInfo)
-          assert.strictEqual(error.reason._tag, "BadArgument")
+          state.values.dev = dev
+          const info = yield* getInfo
+          assert.strictEqual(info.dev, expected)
         }).pipe(Effect.provide(NodeFileSystem.layer)))
     }
 
