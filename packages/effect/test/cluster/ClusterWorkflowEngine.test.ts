@@ -1688,7 +1688,10 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         success: Schema.Number,
         idempotencyKey: () => "child"
       }).annotate(Workflow.SuspendOnFailure, true)
-      const ParentLayer = Parent.toLayer(() => Child.execute({}))
+      // Await from an activity, so its own result must not inherit the failure.
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({ name: "child", success: Schema.Number, execute: Child.execute({}) })
+      )
       const ChildLayer = Child.toLayer(() =>
         Activity.make({
           name: "flaky",

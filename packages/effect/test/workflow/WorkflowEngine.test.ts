@@ -421,7 +421,10 @@ describe("WorkflowEngine", () => {
         success: Schema.Number,
         idempotencyKey: () => "child"
       }).annotate(Workflow.SuspendOnFailure, true)
-      const ParentLayer = Parent.toLayer(() => Child.execute({}))
+      // Await from an activity, so its own result must not inherit the failure.
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({ name: "child", success: Schema.Number, execute: Child.execute({}) })
+      )
       const ChildLayer = Child.toLayer(() =>
         Activity.make({
           name: "flaky",
@@ -477,6 +480,40 @@ describe("WorkflowEngine", () => {
         }
         assert(Option.isSome(result) && result.value._tag === "Complete", "interrupt must complete the workflow")
         assert(Exit.hasInterrupts(result.value.exit))
+      }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
+    }))
+
+  it.effect("layerMemory keeps an explicit resume queued behind an automatic wake", () =>
+    Effect.gen(function*() {
+      let failures = 0
+      const cleaningUp = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Gate = DurableDeferred.make("WorkflowEngine/QueuedWakeGate")
+      const Failing = Workflow.make("WorkflowEngine/QueuedWake", {
+        payload: {},
+        idempotencyKey: () => "failing"
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const FailingLayer = Failing.toLayer(() =>
+        Activity.make({
+          name: "fail",
+          execute: Effect.suspend(() => {
+            failures++
+            return Effect.die("boom")
+          })
+        }).pipe(Effect.ensuring(Effect.andThen(cleaningUp.open, release.await)))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Failing.execute({}, { discard: true })
+        yield* cleaningUp.await
+        // The run is still cleaning up, so both wakes wait for it to finish.
+        yield* DurableDeferred.succeed(Gate, {
+          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Failing, executionId }),
+          value: void 0
+        })
+        yield* Failing.resume(executionId)
+        yield* release.open
+        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
+        assert.strictEqual(failures, 2, "the explicit resume must replay the failed activity")
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
     }))
 
