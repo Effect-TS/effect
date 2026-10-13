@@ -1127,53 +1127,41 @@ function interpolate(
   parsed: Record<string, string>,
   seen: ReadonlySet<string>
 ): string {
-  const parts: Array<string> = []
-  const reference = /\${?(\w+)/y
+  const reference = /(?<!\\)\${?(\w+)/g
+  let result = ""
   let cursor = 0
-  let index = envValue.indexOf("$")
-  while (index !== -1) {
-    reference.lastIndex = index
-    const name = reference.exec(envValue)
-    if (envValue[index - 1] === "\\" || name === null) {
-      index = envValue.indexOf("$", index + 1)
-      continue
-    }
-
+  let match: RegExpExecArray | null
+  while ((match = reference.exec(envValue)) != null) {
+    const [, name] = match
     let end = reference.lastIndex
     let defaultValue = ""
-    if (envValue.slice(end, end + 2) === ":-") {
-      const start = end + 2
-      end = start
+    if (envValue.startsWith(":-", end)) {
+      end += 2
+      const start = end
       let depth = 0
       // Match default braces in the source, not in substituted values.
-      while (end < envValue.length) {
-        if (envValue[end] === "$" && envValue[end + 1] === "{") {
+      for (; end < envValue.length; end++) {
+        if (envValue.startsWith("${", end)) {
           depth++
-          end += 2
-          continue
-        }
-        if (envValue[end] === "}") {
+          end++
+        } else if (envValue[end] === "}") {
           if (depth === 0) break
           depth--
         }
-        end++
       }
       defaultValue = envValue.slice(start, end)
     }
     if (envValue[end] === "}") end++
 
-    const [, variableName] = name
     // References already being expanded resolve as unset.
-    const expanded = Object.hasOwn(parsed, variableName) && !seen.has(variableName)
-      ? interpolate(parsed[variableName], parsed, new Set([...seen, variableName]))
+    const expanded = Object.hasOwn(parsed, name) && !seen.has(name)
+      ? interpolate(parsed[name], parsed, new Set([...seen, name]))
       : ""
-    const value = expanded !== "" ? expanded : interpolate(defaultValue, parsed, seen)
-    parts.push(envValue.slice(cursor, index), value)
+    result += envValue.slice(cursor, match.index) + (expanded || interpolate(defaultValue, parsed, seen))
     cursor = end
-    index = envValue.indexOf("$", cursor)
+    reference.lastIndex = end
   }
-  parts.push(envValue.slice(cursor))
-  return parts.join("")
+  return result + envValue.slice(cursor)
 }
 
 /**

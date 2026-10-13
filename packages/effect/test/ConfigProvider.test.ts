@@ -865,11 +865,12 @@ ESCAPED=\\$SOURCE/$SOURCE
 SET=actual
 EMPTY=
 EXPANDS_EMPTY=$EMPTY
+BRACED=a}b
 FROM_SET=\${SET:-fallback}
 FROM_EMPTY=\${EMPTY:-fallback}
 FROM_UNSET=\${UNSET:-fallback}
 FROM_EXPANDS_EMPTY=\${EXPANDS_EMPTY:-fallback}
-NESTED=\${UNSET:-\${SET}}
+NESTED=\${UNSET:-\${BRACED}}
 `,
         { expandVariables: true }
       )
@@ -877,18 +878,7 @@ NESTED=\${UNSET:-\${SET}}
       await assertSuccess(provider, ["FROM_EMPTY"], ConfigProvider.makeValue("fallback"))
       await assertSuccess(provider, ["FROM_UNSET"], ConfigProvider.makeValue("fallback"))
       await assertSuccess(provider, ["FROM_EXPANDS_EMPTY"], ConfigProvider.makeValue("fallback"))
-      await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("actual"))
-    })
-
-    it("preserves delimiters in values used by nested defaults", async () => {
-      const provider = ConfigProvider.fromDotEnvContents(
-        `
-SET=a}b
-VALUE=\${UNSET:-\${SET}}
-`,
-        { expandVariables: true }
-      )
-      await assertSuccess(provider, ["VALUE"], ConfigProvider.makeValue("a}b"))
+      await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("a}b"))
     })
 
     it("does not expand missing inherited variables", async () => {
