@@ -380,12 +380,14 @@ describe("WorkflowEngine", () => {
           yield* Effect.yieldNow
           child = yield* Child.poll(childId)
         }
+        assert.deepStrictEqual(child.value, new Workflow.Complete({ exit: Exit.void }))
         for (let i = 0; i < 100; i++) yield* Effect.yieldNow
         assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
 
         yield* Parent.resume(executionId)
         // eslint-disable-next-line no-unmodified-loop-condition
         while (failures < 2) yield* Effect.yieldNow
+        assert.strictEqual(failures, 2)
       }).pipe(
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
@@ -466,6 +468,7 @@ describe("WorkflowEngine", () => {
         yield* release.open
         // eslint-disable-next-line no-unmodified-loop-condition
         while (failures < 2) yield* Effect.yieldNow
+        assert.strictEqual(failures, 2, "the explicit resume must replay the failed activity")
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
     }))
 
