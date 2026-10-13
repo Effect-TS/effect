@@ -1,6 +1,6 @@
 import { PgConnection, PgPool, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Queue, Redacted, Result, Stream } from "effect"
+import { Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
 import { PgContainer } from "./utils.ts"
@@ -279,6 +279,37 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
 
       const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
       assert.strictEqual(second, first)
+    }), cancellationTestTimeout)
+
+  it.effect("replaces a session whose pin is released with a statement in flight", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
+      const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
+      const scope = yield* Scope.make()
+      const pinned = yield* Scope.provide(pool.reserve, scope)
+
+      yield* Effect.gen(function*() {
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [pinned.processId])
+        const leaked = yield* Effect.forkScoped(
+          pinned.query("SELECT pg_advisory_xact_lock($1::int4)", [pinned.processId])
+        )
+        yield* waitUntilAdvisoryLock(observer, pinned.processId)
+        yield* Scope.close(scope, Exit.void)
+        // Freeing the lock lets the leaked statement finish if it still has a session.
+        yield* blocker.query("ROLLBACK")
+        assert.isTrue(Exit.isFailure(yield* Fiber.await(leaked)))
+      }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+
+      const next = yield* Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.reserve
+        const result = yield* connection.query("SELECT 1 AS ok")
+        return { processId: connection.processId, rows: result.rows }
+      }))
+      assert.notStrictEqual(next.processId, pinned.processId)
+      assert.deepStrictEqual(next.rows, [{ ok: 1 }])
     }), cancellationTestTimeout)
 
   it.effect("replaces a pooled session after an unconfirmed query cancel", () =>

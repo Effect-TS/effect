@@ -476,6 +476,20 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       }))
     }))
 
+  it.effect("fails a statement that was queued on a pin before its release", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const scope = yield* Scope.make()
+      const pinned = yield* Scope.provide(connection.pin, scope)
+      const queued = yield* Effect.forkScoped(Effect.andThen(Effect.yieldNow, pinned.query("SELECT 1 AS queued")))
+      // `queued` waits for the wire behind this statement, and the pin is
+      // released before it wakes, so the session is idle and handed on.
+      yield* pinned.query("SELECT 1 AS holder")
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.isFailure(yield* Fiber.await(queued)))
+      assert.deepStrictEqual((yield* connection.query("SELECT 1 AS ok")).rows, [{ ok: 1 }])
+    }))
+
   it.effect("ignores interrupt on a released pin", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
