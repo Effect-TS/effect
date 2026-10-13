@@ -251,9 +251,20 @@ export const make = Effect.gen(function*() {
   })
 })
 
+// Skips one URL path segment per prefix segment, as params and percent-encoding change the matched length.
 function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: string) {
-  const prefexLen = prefix.length
-  return request.modify({ url: request.url.length <= prefexLen ? "/" : request.url.slice(prefexLen) })
+  const url = request.url
+  let index = 0
+  for (let i = 0; i < prefix.length; i++) {
+    if (prefix.charCodeAt(i) !== 47) continue
+    while (url.charCodeAt(index) === 47) index++
+    while (index < url.length) {
+      const code = url.charCodeAt(index)
+      if (code === 47 || code === 63 || code === 35) break
+      index++
+    }
+  }
+  return request.modify({ url: index < url.length ? url.slice(index) : "/" })
 }
 
 /**

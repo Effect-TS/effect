@@ -64,6 +64,23 @@ describe("HttpRouter", () => {
       }))
   }
 
+  for (
+    const { prefix, requestUrl, expected } of [
+      { prefix: "/tenants/:tenant", requestUrl: "/tenants/acme-corporation/users?x=1", expected: "/users?x=1" },
+      { prefix: "/tenants/:tenant", requestUrl: "/tenants/a/users", expected: "/users" },
+      { prefix: "/café", requestUrl: "/caf%C3%A9/users", expected: "/users" }
+    ]
+  ) {
+    it.effect(`removes the matched ${prefix} prefix from ${requestUrl}`, () =>
+      Effect.gen(function*() {
+        const routes = HttpRouter.use((router) => router.prefixed(prefix).add("GET", "/users", echoUrl))
+
+        const body = yield* fetchText(routes, requestUrl)
+
+        assert.strictEqual(body, expected)
+      }))
+  }
+
   it.effect("nests a prefixed sub-router beneath a prefixed parent router", () =>
     Effect.gen(function*() {
       const routes = HttpRouter.use((router) => router.prefixed("/app").add("GET", "/users", echoUrl)).pipe(
