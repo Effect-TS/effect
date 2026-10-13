@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, strictEqual } from "@effect/vitest/utils"
-import { Option } from "effect"
+import { Effect, Option, Tracer } from "effect"
 import { Headers, HttpTraceContext } from "effect/http"
 
 const traceId = "80f198ee56343ba864fe8b2a57d3eff7"
@@ -71,5 +71,18 @@ describe("HttpTraceContext", () => {
         true
       )
     })
+  })
+
+  describe("toHeaders", () => {
+    it.effect("pads a 64-bit trace-id in traceparent and keeps it in b3", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.currentSpan.pipe(
+          Effect.withSpan("child"),
+          Effect.withParentSpan(Tracer.externalSpan({ traceId: traceId.slice(16), spanId }))
+        )
+        const headers = HttpTraceContext.toHeaders(span)
+        strictEqual(headers.traceparent, `00-0000000000000000${traceId.slice(16)}-${span.spanId}-01`)
+        strictEqual(headers.b3, `${traceId.slice(16)}-${span.spanId}-1-${spanId}`)
+      }))
   })
 })
