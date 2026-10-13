@@ -307,6 +307,15 @@ export const make = Effect.gen(function*() {
     yield* sharding.pollStorage
   })
 
+  // Reads only this activation's received signals, so the check adds no
+  // storage read to activity calls without a pending interrupt.
+  const interruptPending = (instance: WorkflowEngine.WorkflowInstance["Service"]) =>
+    Effect.map(Effect.serviceOption(CurrentActivationScope), (activation) => {
+      const pending = Option.isSome(activation) ? pendingByActivation.get(activation.value) : undefined
+      return pending?.workflowName === instance.workflow._tag && pending.executionId === instance.executionId &&
+        pending.results.has(InterruptSignal.name)
+    })
+
   const sendResumeParent = Effect.fnUntraced(function*(options: {
     readonly workflowName: string
     readonly executionId: string
@@ -667,6 +676,20 @@ export const make = Effect.gen(function*() {
         const instance = Context.get(services, WorkflowEngine.WorkflowInstance)
         yield* Effect.annotateCurrentSpan("executionId", instance.executionId)
         const activityId = `${instance.executionId}/${activity.name}`
+        // A pending interrupt replays only to rebuild compensations, so it must
+        // not run new activities. Finalizers run once `interrupted` is set.
+        if (!instance.interrupted && (yield* interruptPending(instance))) {
+          const reply = yield* Effect.orDie(requestReply({
+            workflow: instance.workflow,
+            entityType: `Workflow/${instance.workflow._tag}`,
+            executionId: instance.executionId,
+            tag: "activity",
+            id: activityPrimaryKey(activity.name, attempt)
+          }))
+          if (Option.isNone(reply) || isSuspendedReply(reply.value)) {
+            return yield* Effect.interrupt
+          }
+        }
         const client = (yield* RcMap.get(clientsPartial, instance.workflow._tag))(instance.executionId)
         while (true) {
           if (!activities.has(activityId)) {
