@@ -242,10 +242,11 @@ export const toFlagDoc = (
   metadata: ReturnType<typeof Param.getParamMetadata>
 ): FlagDoc => {
   const formattedAliases = single.aliases.map((alias) => alias.length === 1 ? `-${alias}` : `--${alias}`)
+  const type = single.typeName ?? Primitive.getTypeName(single.primitiveType)
   return {
     name: single.name,
     aliases: formattedAliases,
-    type: single.typeName ?? Primitive.getTypeName(single.primitiveType),
+    type: single.optionalValue === undefined ? type : `[=${type}]`,
     description: appendChoiceKeys(single.description, Primitive.getChoiceKeys(single.primitiveType)),
     required: single.primitiveType._tag !== "Boolean" && !metadata.isOptional
   }

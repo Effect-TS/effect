@@ -61,6 +61,26 @@ describe("Command help output", () => {
     assert.deepStrictEqual(help.flags.map((flag) => flag.required), [true, false, false])
   })
 
+  it.effect("renders flags with an optional value", () =>
+    Effect.gen(function*() {
+      const command = Command.make("app", {
+        watch: Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+          Flag.withAlias("w"),
+          Flag.withOptionalValue("first-failure"),
+          Flag.optional
+        ),
+        level: Flag.Int("level").pipe(Flag.withMetavar("N"), Flag.withOptionalValue("1"))
+      }, () => Effect.void)
+      const help = toImpl(command).buildHelpDoc(["app"])
+
+      assert.deepStrictEqual(help.flags.map((flag) => flag.type), ["[=choice]", "[=N]"])
+
+      yield* Command.runWith(command, { version: "1.0.0" })(["--help"])
+      const output = (yield* TestConsole.logLines).join("\n")
+      assert.include(output, "--watch, -w [=choice]")
+      assert.include(output, "--level [=N]")
+    }).pipe(Effect.provide(TestLayer)))
+
   it("marks omittable arguments as not required in structured help", () => {
     const requiredVariadic = Command.make("app", {
       files: Argument.String("files").pipe(Argument.variadic({ min: 1 }))

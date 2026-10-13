@@ -425,8 +425,9 @@ const asBooleanLiteral = (token: Token | undefined): string | undefined =>
  *
  * Value resolution order:
  * 1. Inline value: --flag=value or -f=value
- * 2. Boolean special case: implicit "true" or explicit boolean literal
- * 3. Next token: consume following Value token if present
+ * 2. Optional value: the flag's configured value, without consuming a token
+ * 3. Boolean special case: implicit "true" or explicit boolean literal
+ * 4. Next token: consume following Value token if present
  */
 const consumeFlagValue = (
   cursor: TokenCursor,
@@ -486,6 +487,16 @@ const consumeFlagValueWithTokens = (
     return {
       _tag: "Value",
       value: token.value,
+      tokens: []
+    }
+  }
+
+  // Optional value (GNU-style): a bare flag uses its configured value and
+  // never consumes the next token
+  if (spec.optionalValue !== undefined) {
+    return {
+      _tag: "Value",
+      value: spec.optionalValue,
       tokens: []
     }
   }

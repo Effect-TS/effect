@@ -48,7 +48,8 @@ const valueFields = (type: Completions.FlagType | Completions.ArgumentType): str
 
 const flagEntry = (flag: Completions.FlagDescriptor): string =>
   `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
-  `takesValue = $${flag.type._tag !== "Boolean"}; ${valueFields(flag.type)}; ` +
+  `takesValue = $${flag.type._tag !== "Boolean"}; ${flag.optionalValue === true ? "optionalValue = $true; " : ""}` +
+  `${valueFields(flag.type)}; ` +
   `description = ${psOptional(flag.description)} }`
 
 const argumentEntry = (argument: Completions.ArgumentDescriptor): string =>
@@ -235,7 +236,8 @@ const completer = (dataName: string): string =>
           continue
         }
         $used[$flag.name] = $true
-        if (-not $hasValue) { $pending = $flag }
+        # A flag with an optional value only takes a value attached with '='.
+        if (-not $hasValue -and -not $flag.optionalValue) { $pending = $flag }
       }
       continue
     }

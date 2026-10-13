@@ -48,6 +48,11 @@ export interface FlagDescriptor {
   readonly aliases: ReadonlyArray<string>
   readonly description: string | undefined
   readonly type: FlagType
+  /**
+   * Whether the flag's value is optional. Such a flag only takes a value
+   * attached with `=` (`--name=value`), never from the next word.
+   */
+  readonly optionalValue?: boolean | undefined
 }
 
 /**

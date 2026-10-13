@@ -95,7 +95,8 @@ export const fromCommand = (
         name: single.name,
         aliases: single.aliases,
         description: Option.getOrUndefined(single.description),
-        type: toFlagType(single as Param.Single<"flag", unknown>)
+        type: toFlagType(single as Param.Single<"flag", unknown>),
+        ...(single.optionalValue !== undefined && { optionalValue: true })
       })
     }
   }

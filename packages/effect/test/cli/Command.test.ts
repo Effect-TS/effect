@@ -433,6 +433,142 @@ describe("Command", () => {
         )
       }).pipe(Effect.provide(TestLayer)))
 
+    describe("withOptionalValue", () => {
+      const watchFlag = Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+        Flag.withAlias("w"),
+        Flag.withOptionalValue("first-failure")
+      )
+
+      const runWatch = Effect.fnUntraced(function*(args: ReadonlyArray<string>) {
+        const captured: Array<readonly [Option.Option<string>, ReadonlyArray<string>]> = []
+        const command = Command.make("app", {
+          watch: watchFlag.pipe(Flag.optional),
+          files: Argument.String("file").pipe(Argument.variadic())
+        }, ({ files, watch }) => Effect.sync(() => captured.push([watch, files])))
+        yield* Command.runWith(command, { version: "1.0.0" })(args)
+        return captured
+      })
+
+      it.effect("uses the optional value for a bare flag and the inline value otherwise", () =>
+        Effect.gen(function*() {
+          assert.deepStrictEqual(yield* runWatch(["--watch"]), [[Option.some("first-failure"), []]])
+          assert.deepStrictEqual(yield* runWatch(["-w"]), [[Option.some("first-failure"), []]])
+          assert.deepStrictEqual(yield* runWatch(["--watch=until-done"]), [[Option.some("until-done"), []]])
+          assert.deepStrictEqual(yield* runWatch(["-w=until-done"]), [[Option.some("until-done"), []]])
+          assert.deepStrictEqual(yield* runWatch([]), [[Option.none(), []]])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("does not consume the next token as the value", () =>
+        Effect.gen(function*() {
+          assert.deepStrictEqual(yield* runWatch(["--watch", "until-done"]), [[Option.some("first-failure"), [
+            "until-done"
+          ]]])
+          assert.deepStrictEqual(yield* runWatch(["a.ts", "--watch", "b.ts"]), [[Option.some("first-failure"), [
+            "a.ts",
+            "b.ts"
+          ]]])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("is followed by another flag", () =>
+        Effect.gen(function*() {
+          const captured: Array<readonly [string, boolean]> = []
+          const command = Command.make("app", {
+            watch: watchFlag,
+            verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false))
+          }, ({ verbose, watch }) => Effect.sync(() => captured.push([watch, verbose])))
+
+          yield* Command.runWith(command, { version: "1.0.0" })(["--watch", "--verbose"])
+
+          assert.deepStrictEqual(captured, [["first-failure", true]])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("leaves a following subcommand name alone", () =>
+        Effect.gen(function*() {
+          const captured: Array<Option.Option<string>> = []
+          const root = Command.make("app").pipe(Command.withSharedFlags({ watch: watchFlag.pipe(Flag.optional) }))
+          const build = Command.make("build", {}, () =>
+            Effect.gen(function*() {
+              const { watch } = yield* root
+              captured.push(watch)
+            }))
+          const command = root.pipe(Command.withSubcommands([build]))
+
+          yield* Command.runWith(command, { version: "1.0.0" })(["--watch", "build"])
+          yield* Command.runWith(command, { version: "1.0.0" })(["build", "--watch"])
+          yield* Command.runWith(command, { version: "1.0.0" })(["--watch=until-done", "build"])
+
+          assert.deepStrictEqual(captured, [
+            Option.some("first-failure"),
+            Option.some("first-failure"),
+            Option.some("until-done")
+          ])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("parses the optional value like an inline value", () =>
+        Effect.gen(function*() {
+          const captured: Array<number> = []
+          const command = Command.make("app", {
+            level: Flag.Int("level").pipe(
+              Flag.withOptionalValue("3"),
+              Flag.map((n) => n * 10),
+              Flag.withDefault(0)
+            )
+          }, ({ level }) => Effect.sync(() => captured.push(level)))
+
+          yield* Command.runWith(command, { version: "1.0.0" })(["--level"])
+          yield* Command.runWith(command, { version: "1.0.0" })(["--level=5"])
+          yield* Command.runWith(command, { version: "1.0.0" })([])
+
+          assert.deepStrictEqual(captured, [30, 50, 0])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("rejects an invalid inline value", () =>
+        Effect.gen(function*() {
+          const captured = yield* runWatch(["--watch=bogus"]).pipe(Effect.orElseSucceed(() => []))
+
+          const stderr = yield* TestConsole.errorLines
+          assert.deepStrictEqual(captured, [])
+          assert.isTrue(
+            stderr.some((line) =>
+              String(line).includes(`Invalid value for flag --watch: "bogus". Expected: "first-failure" | "until-done"`)
+            )
+          )
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("is still required unless made optional", () =>
+        Effect.gen(function*() {
+          let invoked = false
+          const command = Command.make("app", { watch: watchFlag }, () =>
+            Effect.sync(() => {
+              invoked = true
+            }))
+
+          yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(Effect.ignore)
+
+          const stderr = yield* TestConsole.errorLines
+          assert.isFalse(invoked)
+          assert.isTrue(stderr.some((line) => String(line).includes("--watch")))
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("emits the wizard value inline", () =>
+        Effect.gen(function*() {
+          const captured: Array<ReadonlyArray<string>> = []
+          const target = Command.make("app", { watch: watchFlag })
+          const command = Command.make("launcher", {}, () =>
+            Effect.flatMap(Command.wizard(target), (args) =>
+              Effect.sync(() => {
+                captured.push(args)
+              })))
+
+          const fiber = yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(Effect.forkChild)
+          yield* MockTerminal.inputKey("down")
+          yield* MockTerminal.inputKey("enter")
+          yield* Fiber.join(fiber)
+
+          assert.deepStrictEqual(captured, [["app", "--watch=until-done"]])
+        }).pipe(Effect.provide(TestLayer)))
+    })
+
     it.effect("should execute handler with parsed config", () =>
       Effect.gen(function*() {
         const path = yield* Path.Path

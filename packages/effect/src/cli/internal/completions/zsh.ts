@@ -72,16 +72,20 @@ const argAction = (type: Completions.ArgumentType): string => {
 const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
   const specs: Array<string> = []
   const desc = flag.description ? `[${escapeZshExplanation(flag.description)}]` : ""
-  const action = valueAction(flag.type)
+  // A flag with an optional value only takes it after `=` in the same word
+  // (`--name=-`), and the value is optional (`::`).
+  const optional = flag.optionalValue === true && flag.type._tag !== "Boolean"
+  const valueSuffix = optional ? "=-" : ""
+  const action = optional ? `:${valueAction(flag.type)}` : valueAction(flag.type)
   const excl = `(${allForms(flag).join(" ")})`
 
   // Primary long name
-  specs.push(`'${excl}--${flag.name}${desc}${action}'`)
+  specs.push(`'${excl}--${flag.name}${valueSuffix}${desc}${action}'`)
 
   // Aliases
   for (const alias of flag.aliases) {
     const prefix = alias.length === 1 ? "-" : "--"
-    specs.push(`'${excl}${prefix}${alias}${desc}${action}'`)
+    specs.push(`'${excl}${prefix}${alias}${valueSuffix}${desc}${action}'`)
   }
 
   // Boolean negation

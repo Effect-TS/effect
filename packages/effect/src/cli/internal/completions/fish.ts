@@ -88,7 +88,8 @@ const flagCompletionArgs = (flag: Completions.FlagDescriptor): Array<string> => 
   if (flag.description) {
     args.push(`-d '${escapeFishString(flag.description)}'`)
   }
-  const valueArgs = flagValueArgs(flag.type)
+  // A flag with an optional value never takes the next word as its value.
+  const valueArgs = flag.optionalValue === true ? undefined : flagValueArgs(flag.type)
   if (valueArgs) {
     args.push(valueArgs)
   }
@@ -160,7 +161,9 @@ const generateCompletions = (
   // Flag completions
   for (const flag of descriptor.flags) {
     const isBoolean = flag.type._tag === "Boolean"
-    const dedup = isBoolean ? flagContainsOptCondition(flag) : valueFlagDedupCondition(flag)
+    const dedup = isBoolean || flag.optionalValue === true
+      ? flagContainsOptCondition(flag)
+      : valueFlagDedupCondition(flag)
     const flagCondition = condition ? `${condition}; and ${dedup}` : dedup
     const flagCondArg = flagCondition ? `-n '${flagCondition}'` : ``
 
