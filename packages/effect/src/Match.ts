@@ -573,12 +573,14 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _, Args extends Array<a
 // Reject keys absent from every object variant on `when`, `whenOr`, `whenAnd`, and
 // `not`. Predicates, refinements, and arrays stay unchecked: their own properties
 // are not pattern keys. The runtime matcher still tests each own key.
+type PatternKey<K> = K extends number ? `${K}` : K
+
 type PatternKeys<A> = object extends A ? PropertyKey
-  : A extends object ? keyof A | (string extends keyof A ? number : never)
+  : A extends object ? PatternKey<keyof A>
   : never
 
 type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | SafeRefinement<never, any>] ? unknown
-  : [P] extends [object] ? { readonly [K in Exclude<keyof P, PatternKeys<A>>]: never }
+  : [P] extends [object] ? { readonly [K in Exclude<PatternKey<keyof P>, PatternKeys<A>>]: never }
   : unknown
 
 type ExactPattern<R, P> = (Types.PatternPrimitive<R> | Types.PatternBase<R>) & ObjectPatternGuard<R, P>
