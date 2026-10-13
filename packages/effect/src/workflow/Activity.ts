@@ -336,6 +336,8 @@ const makeExecute = Effect.fnUntraced(function*<
     (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
+    // The activity ran against its own instance, so carry its failure over.
+    if (result.failed) instance.failed = true
     return yield* Workflow.suspend(instance)
   }
   return yield* result.exit

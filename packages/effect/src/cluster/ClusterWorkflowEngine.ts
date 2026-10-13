@@ -282,7 +282,7 @@ export const make = Effect.gen(function*() {
     yield* storage.clearAddress(clockAddress)
   })
 
-  const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string) {
+  const resume = Effect.fnUntraced(function*(workflow: Workflow.Any, executionId: string, mode: WakeMode) {
     const maybeReply = yield* requestReply({
       workflow,
       entityType: `Workflow/${workflow._tag}`,
@@ -294,6 +294,9 @@ export const make = Effect.gen(function*() {
     const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
     if (Option.isNone(maybeSuspended)) return
+    // A run suspended by its own `SuspendOnFailure` waits for `resume` or
+    // `interrupt`. Replies persisted before `failed` existed stay wakeable.
+    if (mode === "automatic" && isFailedReply(maybeSuspended.value)) return
     if (
       !(yield* sharding.reset(
         Snowflake.Snowflake(maybeSuspended.value.requestId),
@@ -447,16 +450,26 @@ export const make = Effect.gen(function*() {
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
             const resumeGate = Semaphore.makeUnsafe(1)
-            const resumeCurrentRun = Effect.suspend(() =>
-              resumeGate.withPermitsIfAvailable(1)(
-                currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+            // An explicit wake coalesced into the holder's wait must not be
+            // downgraded to the holder's automatic mode.
+            let explicitWake = false
+            const resumeCurrentRun = (mode: WakeMode) =>
+              Effect.suspend(() => {
+                if (mode === "explicit") explicitWake = true
+                return resumeGate.withPermitsIfAvailable(1)(
+                  currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
+                )
+              }).pipe(
+                // Release the gate before reset can start another run, so later
+                // completions can wake that replay.
+                Effect.flatMap((waited) => {
+                  if (Option.isNone(waited)) return Effect.void
+                  const wakeMode: WakeMode = explicitWake ? "explicit" : "automatic"
+                  explicitWake = false
+                  return resume(workflow, executionId, wakeMode)
+                }),
+                ensureSuccess
               )
-            ).pipe(
-              // Release the gate before reset can start another run, so later
-              // completions can wake that replay.
-              Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId) : Effect.void),
-              ensureSuccess
-            )
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
@@ -546,6 +559,7 @@ export const make = Effect.gen(function*() {
               deferred: (request: Entity.Request<any>) => {
                 const payload = request.payload as any
                 pending.results.set(payload.name, payload.exit)
+                const mode: WakeMode = payload.name === InterruptSignal.name ? "explicit" : "automatic"
                 // Await registers before reading the cache. If this run has not
                 // registered yet, a later await will see the result just stored.
                 // Check when the wake runs and skip preemption too: interrupting
@@ -556,8 +570,10 @@ export const make = Effect.gen(function*() {
                   currentRun && !currentRun.instance.awaitedDeferreds.has(payload.name)
                     ? currentRun.instance.completedDeferreds.has(payload.name)
                       ? Effect.void
-                      : ensureSuccess(resume(workflow, executionId))
-                    : deferredState.deferredDone(executionId, payload.name).pipe(Effect.andThen(resumeCurrentRun))
+                      : ensureSuccess(resume(workflow, executionId, mode))
+                    : deferredState.deferredDone(executionId, payload.name).pipe(
+                      Effect.andThen(resumeCurrentRun(mode))
+                    )
                 )
                 // An asynchronous reply releases the RPC concurrency permit while
                 // the wake waits; the pending request still occupies mailbox capacity.
@@ -572,7 +588,7 @@ export const make = Effect.gen(function*() {
                 )
               },
 
-              resume: () => resumeCurrentRun.pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
+              resume: () => resumeCurrentRun("automatic").pipe(Rpc.wrap({ fork: true, uninterruptible: true }))
             }
           }),
           // Alongside the run, let deferred handlers briefly acquire a permit to
@@ -649,7 +665,7 @@ export const make = Effect.gen(function*() {
       ))
     }),
 
-    resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId)),
+    resume: (workflow, executionId) => ensureSuccess(resume(workflow, executionId, "explicit")),
 
     awaitComplete,
 
@@ -845,8 +861,15 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
+// Explicit wakes are `resume` and `interrupt`. Automatic wakes are child,
+// deferred, and clock completions.
+type WakeMode = "explicit" | "automatic"
+
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
   reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended"
+
+const isFailedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
+  reply.exit._tag === "Success" && reply.exit.value._tag === "Suspended" && reply.exit.value.failed === true
 
 const decodeDeferredWithExit = Schema.decodeSync(Schema.toCodecJson(Reply.WithExit.schema(DeferredRpc)))
 

@@ -617,6 +617,13 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
  * Represents a suspended workflow execution, optionally carrying the cause that
  * triggered suspension.
  *
+ * **Details**
+ *
+ * `failed` is `true` when the execution's own `SuspendOnFailure` fired. Such an
+ * execution is only resumed by `resume` or `interrupt`, never by a child,
+ * deferred, or clock completion. A `cause` inherited from a suspended child
+ * does not set it.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -625,7 +632,8 @@ export class Suspended extends Schema.Class<Suspended>(
   "effect/workflow/Workflow/Suspended"
 )({
   _tag: Schema.tag("Suspended"),
-  cause: Schema.optional(Schema.Cause(Schema.Never, Schema.Defect()))
+  cause: Schema.optional(Schema.Cause(Schema.Never, Schema.Defect())),
+  failed: Schema.optional(Schema.Boolean)
 }) {
   /**
    * Marks this value as a workflow result for runtime guards.
@@ -697,11 +705,14 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure
         ? Effect.catchCause((cause) => {
-          if (instance.abandoned) {
+          // An interrupted run must finish as interrupted, not suspend again.
+          if (instance.abandoned || instance.interrupted) {
             return Effect.failCause(cause)
           }
           instance.suspended = true
+          // Ordinary suspension is a self-interrupt and also reaches here.
           if (!Cause.hasInterruptsOnly(cause)) {
+            instance.failed = true
             instance.cause = Cause.die(Cause.squash(cause))
           }
           return Effect.interrupt
@@ -720,7 +731,9 @@ export const intoResult = <A, E, R>(
           const abandoned = instance.abandoned && !instance.interrupted && hasInterruptsOnly
           instance.abandoned = abandoned
           if (instance.suspended && hasInterruptsOnly && !abandoned) {
-            return Effect.succeed(new Suspended({ cause: instance.cause }))
+            return Effect.succeed(
+              new Suspended(instance.failed ? { cause: instance.cause, failed: true } : { cause: instance.cause })
+            )
           }
           if (!instance.interrupted && hasInterruptsOnly) {
             // External interrupts exit without a result. When the cluster has
