@@ -261,8 +261,28 @@ function sliceRequestUrl(
 ) {
   const url = request.url
   let index = 0
+  let inParamName = false
   for (let i = 0; i < prefix.length; i++) {
-    if (prefix.charCodeAt(i) !== 47) continue
+    const code = prefix.charCodeAt(i)
+    if (inParamName && code === 40) {
+      let depth = 1
+      while (depth > 0 && ++i < prefix.length) {
+        const code = prefix.charCodeAt(i)
+        if (code === 92) i++
+        else if (code === 40) depth++
+        else if (code === 41) depth--
+      }
+      inParamName = false
+      continue
+    }
+    if (!inParamName && code === 58) {
+      if (prefix.charCodeAt(i + 1) === 58) i++
+      else inParamName = true
+    } else if (code === 45 || code === 46) {
+      inParamName = false
+    }
+    if (code !== 47) continue
+    inParamName = false
     if (ignoreDuplicateSlashes) {
       if (prefix.charCodeAt(i - 1) === 47) continue
       while (url.charCodeAt(index) === 47) index++
