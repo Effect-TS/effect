@@ -1685,6 +1685,30 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("interrupts a workflow parked inside an activity", () =>
+    Effect.gen(function*() {
+      const Gate = DurableDeferred.make("ActivityParkedGate")
+      const Parent = Workflow.make("ActivityParkedParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("ActivityParkedChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      // The activity's stored reply is `Suspended` while it awaits the child.
+      const ParentLayer = Parent.toLayer(() => Activity.make({ name: "await-child", execute: Child.execute({}) }))
+      const ChildLayer = Child.toLayer(() => DurableDeferred.await(Gate))
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const executionId = yield* Parent.execute({}, { discard: true })
+        yield* pollUntil(Parent, executionId, "Suspended")
+        yield* Parent.interrupt(executionId)
+        const result = yield* pollUntil(Parent, executionId, "Complete")
+        assert(result._tag === "Complete" && Exit.hasInterrupts(result.exit))
+      }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
+    }))
+
   it.effect("applies a persisted interrupt when a fresh owner replays a failure-suspended workflow", () =>
     Effect.gen(function*() {
       let attempts = 0
