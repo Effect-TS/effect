@@ -159,7 +159,7 @@ describe("OpenAiLanguageModel", () => {
       }))
 
     it.effect("rejects null and malformed actions when present", () =>
-      Effect.forEach([null, { type: "find_in_page", url: "https://example.com" }], (action) => {
+      Effect.forEach([null, { type: "find_in_page", url: "https://example.com", pattern: null }], (action) => {
         const event = {
           type: "response.output_item.done",
           sequence_number: 1,

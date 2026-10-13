@@ -1773,14 +1773,16 @@ export const WebSearchActionOpenPage = Schema.Struct({
 export type WebSearchActionFind = {
   readonly "type": "find_in_page"
   readonly "url"?: string
-  readonly "pattern": string
+  readonly "pattern"?: string
 }
 export const WebSearchActionFind = Schema.Struct({
   "type": Schema.Literal("find_in_page").annotate({ "description": "The action type.\n" }),
   "url": Schema.optionalKey(
     Schema.String.annotate({ "description": "The URL of the page searched for the pattern.\n", "format": "uri" })
   ),
-  "pattern": Schema.String.annotate({ "description": "The pattern or text to search for within the page.\n" })
+  "pattern": Schema.optionalKey(
+    Schema.String.annotate({ "description": "The pattern or text to search for within the page.\n" })
+  )
 }).annotate({
   "title": "Find action",
   "description": "Action type \"find_in_page\": Searches for a pattern within a loaded page.\n",
