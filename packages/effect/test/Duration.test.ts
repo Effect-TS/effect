@@ -245,6 +245,7 @@ describe("Duration", () => {
     assertFalse(Equal.equals(Duration.infinity, Duration.negativeInfinity))
 
     assertTrue(HashSet.has(HashSet.make(millisTagged), nanosTagged))
+    assertTrue(Equal.equals(Duration.millis(1e303), Duration.nanos(BigInt(1e303) * 1_000_000n)))
   })
 
   it("Hash.symbol handles finite millis too large to convert to nanos", () => {
@@ -564,6 +565,7 @@ describe("Duration", () => {
     strictEqual(Duration.millis(0.0000015).pipe(Duration.toNanosUnsafe), 2n)
     strictEqual(Duration.millis(-0.0000015).pipe(Duration.toNanosUnsafe), -2n)
     strictEqual(Duration.millis(100).pipe(Duration.toNanosUnsafe), 100_000_000n)
+    strictEqual(Duration.millis(1e303).pipe(Duration.toNanosUnsafe), BigInt(1e303) * 1_000_000n)
   })
 
   it("toHrTime", () => {
