@@ -117,15 +117,19 @@ const timeout = 60_000
 const destination = (sshd: Sshd["Service"], overrides: Partial<Ssh.Destination> = {}): Ssh.Destination => ({
   host: { host: sshd.host, port: sshd.port },
   username: "effect",
-  identityFile: sshd.identityFile,
-  // Ignore the developer's own configuration for deterministic tests.
-  configFile: "/dev/null",
-  options: {
-    StrictHostKeyChecking: "yes",
-    UserKnownHostsFile: sshd.knownHostsFile,
-    IdentitiesOnly: true
-  },
-  ...overrides
+  ...overrides,
+  openSsh: {
+    identityFile: sshd.identityFile,
+    // Ignore the developer's own configuration for deterministic tests.
+    configFile: "/dev/null",
+    ...overrides.openSsh,
+    options: {
+      StrictHostKeyChecking: "yes",
+      UserKnownHostsFile: sshd.knownHostsFile,
+      IdentitiesOnly: true,
+      ...overrides.openSsh?.options
+    }
+  }
 })
 
 /** Opens a connection to the fixture sshd through the `Ssh` factory. */
@@ -291,10 +295,10 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       // Echo servers inside the container (see fixtures/sshd).
       const tunnel = yield* ssh.forwardOut("127.0.0.1:7000")
       yield* tunnel.write("over tcp")
-      const head = yield* Stream.runHead(tunnel.stdout)
+      const head = yield* Stream.runHead(tunnel.data)
       assert.strictEqual(decoder.decode(Option.getOrThrow(head)), "over tcp")
 
-      const socket = ssh.forwardOutSocket({ path: "/tmp/echo.sock" })
+      const socket = Ssh.forwardOutSocket(ssh, { path: "/tmp/echo.sock" })
       const pull = yield* Socket.readerBytes(socket)
       const writer = yield* socket.writer
       yield* writer.write(encoder.encode("over unix"))
@@ -334,26 +338,26 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       assert.strictEqual(received, "over forwardSocket")
     }).pipe(Effect.scoped), timeout)
 
-  it.effect("fails commands when the master exits", () =>
+  it.effect("closes the connection and fails its commands when the master exits", () =>
     Effect.gen(function*() {
-      const sshd = yield* Sshd
       const spawner = yield* ChildProcessSpawner
       // A setting that identifies this connection's master.
       const marker = `EFFECT_MASTER=${yield* Random.nextInt}`
-      const ssh = yield* connectTo({ options: { ...destination(sshd).options, SetEnv: marker } })
+      const ssh = yield* connectTo({ openSsh: { options: { SetEnv: marker } } })
       const process = yield* Effect.tap(ssh.exec(sh("echo ready; exec sleep 30")), firstOutput)
+      assert.isTrue(Option.isNone(yield* Effect.timeoutOption(ssh.closed, "50 millis")))
       yield* spawner.exitCode(ChildProcess.make("pkill", ["-f", `SetEnv=${marker}`]))
-      const error = yield* Effect.flip(process.exit)
-      assert.strictEqual(error.reason, "Connection")
+      yield* ssh.closed
+      assert.strictEqual((yield* Effect.flip(process.exit)).reason, "Connection")
+      assert.strictEqual((yield* Effect.flip(ssh.run(SshCommand.make`true`))).reason, "Connection")
     }).pipe(Effect.scoped), timeout)
 
   it.effect("stops the master when connecting fails", () =>
     Effect.gen(function*() {
-      const sshd = yield* Sshd
       // A proxy that never answers keeps the master waiting.
       const proxy = `sleep ${1000 + (yield* Random.nextIntBetween(0, 999))}`
       const error = yield* Effect.flip(
-        connectTo({ options: { ...destination(sshd).options, ProxyCommand: proxy }, connectTimeout: "1 second" })
+        connectTo({ openSsh: { options: { ProxyCommand: proxy } }, connectTimeout: "1 second" })
       )
       assert.strictEqual(error.reason, "Timeout")
       // The master is gone before the surrounding scope closes.
@@ -373,7 +377,7 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       const path = yield* Path.Path
       const keyFile = path.join(sshd.dir, `unauthorized-${yield* Random.nextInt}`)
       yield* generateKey(keyFile)
-      const error = yield* Effect.flip(connectTo({ identityFile: keyFile, connectTimeout: "10 seconds" }))
+      const error = yield* Effect.flip(connectTo({ openSsh: { identityFile: keyFile }, connectTimeout: "10 seconds" }))
       assert.strictEqual(error.reason, "Connection")
       assert.include(error.description, "Permission denied")
     }).pipe(Effect.scoped), timeout)
