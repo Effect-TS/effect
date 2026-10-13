@@ -14,6 +14,8 @@ declare const taggedInput:
 declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
+declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
+declare const currentTransfer: { readonly _tag: "Transfer"; readonly value: "foo" } | null
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -199,6 +201,40 @@ describe("Match", () => {
     // @ts-expect-error Argument of type
     Match.exhaustive(incomplete)
     expect(Match.exhaustive(complete)).type.toBe<string | number>()
+  })
+
+  it("rejects unknown keys on object patterns", () => {
+    // https://github.com/Effect-TS/effect/issues/6230
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Type 'string' is not assignable to type 'never'
+      Match.when({ _tag: "Transfer", value: "foo" }, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+
+    expect(
+      Match.value(currentTransfer).pipe(
+        Match.when({ _tag: "Transfer", value: "foo" }, () => "hit" as const),
+        Match.orElse(() => "miss" as const)
+      )
+    ).type.toBe<"hit" | "miss">()
+
+    expect(
+      Match.value(taggedInput).pipe(
+        Match.when({ a: "x" }, (value) => {
+          expect(value.a).type.toBe<"x">()
+          return "a" as const
+        }),
+        Match.orElse(() => "other" as const)
+      )
+    ).type.toBe<"a" | "other">()
+
+    expect(
+      Match.type<{ readonly age: number }>().pipe(
+        Match.when({ age: (age) => age > 18 }, (user) => user.age),
+        Match.orElse((user) => user.age)
+      )
+    ).type.toBe<(input: { readonly age: number }) => number>()
   })
 
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
