@@ -838,7 +838,9 @@ class NodeImpl<A> {
     this._value = value
     let failure: unknown = noFailure
     try {
-      this.invalidateChildren()
+      // A first value cannot replace one held by a dependent. Recovery still
+      // retries dependents whose reads failed before this node had a value.
+      if (initialized || recovered) this.invalidateChildren()
     } catch (error) {
       failure = error
     }

@@ -50,6 +50,26 @@ describe("Atom", { concurrent: false }, () => {
     expect(r.get(counter)).toEqual(1)
   })
 
+  it("late reads of uninitialized dependencies do not rebuild the reader", async () => {
+    const dependency = Atom.make(0)
+    let builds = 0
+    const reader = Atom.make((get) => {
+      const timer = setTimeout(() => get(dependency), 1)
+      get.addFinalizer(() => clearTimeout(timer))
+      return ++builds
+    })
+    const r = AtomRegistry.make()
+    r.subscribe(reader, () => {})
+
+    try {
+      r.get(reader)
+      await vitest.advanceTimersByTimeAsync(10)
+      expect(r.get(reader)).toEqual(1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("keepAlive false", async () => {
     const counter = Atom.make(0)
     const r = AtomRegistry.make()
@@ -667,6 +687,29 @@ describe("Atom", { concurrent: false }, () => {
     r.subscribe(derived, (value) => seen.push(value))
     r.set(a, 0)
     assert.deepStrictEqual(seen, [5])
+  })
+
+  it("recovers an observed dependent when its parent first succeeds after throwing", () => {
+    let failing = true
+    const parent = Atom.make(() => {
+      if (failing) throw new Error("build failed")
+      return 2
+    })
+    const dependent = Atom.make((get) => get(parent) + 1)
+    const r = AtomRegistry.make()
+    const seen: Array<number> = []
+    r.subscribe(dependent, (value) => seen.push(value))
+
+    try {
+      assert.throws(() => r.get(dependent), /build failed/)
+      assert.deepStrictEqual(seen, [])
+
+      failing = false
+      assert.strictEqual(r.get(parent), 2)
+      assert.deepStrictEqual(seen, [3])
+    } finally {
+      r.dispose()
+    }
   })
 
   it("recovers an observed derived atom after its build throws", () => {
