@@ -919,7 +919,8 @@ const inferScalar = (value: unknown): PgTypes.Parameter => {
 const inferParameter = (value: unknown, registry: PgTypes.Registry | undefined): PgTypes.Parameter => {
   if (!Array.isArray(value)) return inferScalar(value)
   if (value.length === 0) {
-    throw new PgTypes.CodecError({ message: "Cannot infer the type of an empty array; use PgTypes.array" })
+    // Let the backend infer the array type from the statement, as for scalar strings.
+    return inferredParameter(0, "{}")
   }
   let elementOid: number | undefined
   const values: Array<unknown> = new Array(value.length)
