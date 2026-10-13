@@ -73,8 +73,7 @@ const makeRequest = <K, A, E, R>(key: K): KeyRequest<K, A, E, R> => Request.of<K
 
 /**
  * Looks up a key with an {@link ordered}, {@link findById} or {@link aliased}
- * resolver.
- * Supports `request(resolver)(key)` and `request(key, resolver)`.
+ * resolver, using `request(resolver)(key)` or `request(key, resolver)`.
  *
  * **Details**
  *
@@ -136,8 +135,8 @@ export const request: {
 // -----------------------------------------------------------------------------
 
 /**
- * Batches lookups by position for fields such as `nodes(ids:)` that return
- * one entry per key, in order.
+ * Batches lookups for fields such as `nodes(ids:)` that return one entry per
+ * key in input order.
  *
  * **Details**
  *
@@ -157,12 +156,11 @@ export const request: {
  * `DecodeError` to avoid reporting unreturned entries as missing. Set the
  * operation's page size at least as large as `RequestResolver.batchN`.
  *
- * A batch makes one call with the services of one of its lookups. When the
- * method needs services, `batchKey` is required: it reads the services of each
- * lookup, and only lookups with keys equal under `Equal` share a batch. Return
- * the value the services vary by, such as
+ * A batch uses one lookup's services. Methods requiring services also require
+ * `batchKey`; only lookups with keys equal under `Equal` share a batch. Return
+ * the value that distinguishes those services, for example
  * `(context) => Context.get(context, CurrentUser).tenantId`. Methods without
- * services don't accept `batchKey` and use one batch.
+ * services use one batch and do not accept `batchKey`.
  *
  * **Gotchas**
  *
@@ -410,9 +408,9 @@ export const findById = <
  *
  * **When to use**
  *
- * Use when the API has no field that takes a list of keys, such as GitHub's
- * pull requests by repository and number. When one exists, {@link ordered}
- * or {@link findById} send a smaller query.
+ * Use when the API has no list-key field, such as GitHub's pull requests by
+ * repository and number. Otherwise, {@link ordered} or {@link findById} send
+ * a smaller query.
  *
  * **Details**
  *

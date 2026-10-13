@@ -18,8 +18,8 @@ import type { ExecutionResult, GraphQLRequest } from "./GraphQLProtocol.ts"
 const TypeId = "~effect/graphql/GraphQLMiddleware"
 
 /**
- * A middleware implementation. Both members are required, so a middleware can
- * never silently skip subscriptions.
+ * Middleware handlers for queries, mutations and subscriptions. Both
+ * `execute` and `subscribe` are required.
  *
  * **Details**
  *
@@ -203,9 +203,8 @@ export const Service = <
 }
 
 /**
- * Builds a full {@link Implementation} from one request transform, applied to
- * queries, mutations and subscriptions alike. This is the one-liner for
- * headers, auth and extensions.
+ * Builds an {@link Implementation} that transforms requests for queries,
+ * mutations and subscriptions. Use it to set headers, auth or extensions.
  *
  * **Example** (Adding a header to every request)
  *

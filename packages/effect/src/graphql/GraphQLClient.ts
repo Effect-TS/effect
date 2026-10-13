@@ -43,8 +43,8 @@ import type * as GraphQLMiddleware from "./GraphQLMiddleware.ts"
 import { ExecutionResult, GraphQLProtocol, type GraphQLRequest } from "./GraphQLProtocol.ts"
 
 /**
- * What a query or mutation returns when called with `{ partial: true }`:
- * the decoded `data` together with the response `errors`, which may be empty.
+ * Decoded `data` and response `errors` for a `{ partial: true }` call.
+ * The errors array may be empty.
  *
  * @stability experimental
  * @category models
@@ -69,8 +69,8 @@ type ArgsWithOptions<Variables, Options> = {} extends Variables ? [variables: Va
  * Called as `(variables?, options?)`. Without `partial`, or with
  * `partial: false`, it returns the decoded result and fails with a
  * `ResponseError` on any `errors`. With `partial: true` it returns
- * `{ data, errors }`. The two overloads are explicit so that a `boolean`
- * `partial` does not compile.
+ * `{ data, errors }`. `partial` must be a literal `true` or `false`, not
+ * an arbitrary `boolean`.
  *
  * An operation without variables is called as `client.Viewer()` or, with
  * options, `client.Viewer(undefined, { headers })`.
@@ -182,9 +182,8 @@ export const defaultSubscriptionRetry: Schedule.Schedule<Duration.Duration, Grap
 )
 
 /**
- * Builds a client from a group. The effect requires the `GraphQLProtocol` and
- * every middleware tag attached to the group or its operations, so a missing
- * middleware layer is a type error where the client is built.
+ * Builds a client from a group, requiring `GraphQLProtocol` and every
+ * middleware service attached to the group or its operations.
  *
  * **Details**
  *
@@ -660,11 +659,10 @@ export const pages = <Op extends GraphQL.Any, C extends Connection, R2 = never>(
 }
 
 /**
- * Like {@link pages}, but emits each entry of the connection's `nodes` with
- * its decoded type. `null` entries are kept, because `nodes` on a nullable
- * list type such as GitHub's `[Issue]` can contain them; pipe through
- * `Stream.filter(Predicate.isNotNull)` to drop them. A connection that only
- * selects `edges` is paged with {@link pages} plus `Stream.flatMap`.
+ * Like {@link pages}, but emits decoded entries from `nodes`, including
+ * `null` entries. Use `Stream.filter(Predicate.isNotNull)` to drop them.
+ * For connections selecting only `edges`, use {@link pages} with
+ * `Stream.flatMap`.
  *
  * **Example** (Flattening issue numbers across pages)
  *
@@ -784,9 +782,9 @@ export type TestHandlers<Ops extends GraphQL.Any> = {
  * Calling an operation without a handler dies with an `UnimplementedError`
  * defect, so `catchTag` in the code under test cannot swallow a missing stub.
  *
- * The client's methods keep the types of the real client's, including the
- * services every attached middleware requires. Code under test still has to
- * provide them, even though the mock never uses them.
+ * Methods keep the real client's types, including middleware service
+ * requirements. Tests must provide those services even though mocks do not
+ * use them.
  *
  * To test partial data together with `errors`, or the encode and decode path,
  * provide a scripted `GraphQLProtocol` layer to {@link make} instead.

@@ -51,11 +51,10 @@ export interface Diagnostic {
  * The result of {@link generate}. `files` and `deletes` are empty when
  * `diagnostics` holds an error.
  *
- * `deletes` lists the absolute paths of stale generated files: every
- * `*.graphql.ts` or `*.gql.ts` under a `documents` glob root whose first line
- * exactly matches the generator header naming its sibling `.graphql` or `.gql`
- * source, where that source is missing and the output isn't among `files`. Shared modules and files without
- * a matching document header are never listed.
+ * `deletes` lists stale `*.graphql.ts` and `*.gql.ts` files by absolute path.
+ * A file qualifies only under a `documents` glob root, with a generator
+ * header naming a missing sibling source, and when absent from `files`.
+ * Shared modules and files without a matching document header are excluded.
  *
  * @stability experimental
  * @category models
@@ -105,8 +104,7 @@ export { ConfigError } from "./internal/Generate.ts"
  *   a last member built with `GraphQL.otherTypename`.
  * - `@skip` / `@include` with a variable condition make the fields they cover
  *   optional keys; literal conditions are folded.
- * - Recursive input objects are not supported yet and are reported as
- *   errors.
+ * - Recursive input objects produce error diagnostics.
  *
  * @stability experimental
  * @category generation

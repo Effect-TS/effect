@@ -1,9 +1,8 @@
 /**
- * Validation of executable documents against the schema model: the rules that
- * decide whether generated types are correct, and the checks on values written
- * into a document, which never pass through the runtime variables `Schema`.
- * All input files are validated together: fragments resolve across files and
- * operations and fragments share one namespace.
+ * Validates executable documents against the schema, including literal
+ * values that bypass the runtime variables Schema. Validation spans all
+ * input files: fragments resolve across files, and operations and fragments
+ * share one namespace.
  *
  * @internal
  */

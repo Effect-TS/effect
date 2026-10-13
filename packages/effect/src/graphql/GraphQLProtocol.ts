@@ -1,7 +1,7 @@
 /**
- * Raw transports for `GraphQLClient`, accepting encoded requests and returning
- * raw response bodies, with HTTP status and headers where available, without
- * schema decoding or middleware.
+ * Transports for `GraphQLClient`. They accept encoded requests and return raw
+ * response bodies with available HTTP status and headers, without schema
+ * decoding or middleware.
  *
  * - {@link layerHttp} uses HTTP POST (or GET for queries) and graphql-sse
  *   subscriptions, with an optional graphql-ws subscription transport.
@@ -68,9 +68,8 @@ export interface GraphQLRequest {
 }
 
 /**
- * The raw result of executing a GraphQL operation, before `data` is decoded
- * with the result Schema. Middleware receive this from `next`, which is how
- * they read response `extensions` such as a rate-limit cost.
+ * A raw GraphQL result before schema decoding. Middleware receive it from
+ * `next` and can read response `extensions`, such as rate-limit costs.
  *
  * **Details**
  *

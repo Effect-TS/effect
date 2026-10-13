@@ -1,10 +1,7 @@
 /**
- * The generator configuration.
- *
- * A project describes its generator setup in a `graphql.config.ts` whose
- * default export is wrapped in {@link defineConfig}. The top-level `schema`
- * and `documents` keys are the ones graphql-config reads, so editor tooling
- * such as the VS Code GraphQL extension can share the same file.
+ * Configuration for `graphql.config.ts`, exported with {@link defineConfig}.
+ * The `schema` and `documents` keys are compatible with graphql-config, so
+ * GraphQL editor extensions can share the file.
  *
  * ```ts
  * import { defineConfig } from "@effect/graphql-generator/Config"

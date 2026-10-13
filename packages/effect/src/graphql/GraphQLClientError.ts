@@ -197,8 +197,8 @@ const fatalGraphQLWsCloseCodes: ReadonlySet<number> = new Set([4400, 4401, 4403,
  * initialisation requests) and `4500` (internal server error). Any other code
  * is retryable.
  *
- * `4403` is fatal on purpose, unlike in the graphql-ws reference client:
- * reconnecting with the same credentials is refused again.
+ * `4403` is fatal because reconnecting with the same credentials is refused
+ * again.
  *
  * **Example** (Checking close codes)
  *
@@ -367,9 +367,8 @@ export class EncodeError
  *
  * **Details**
  *
- * A `data: null` without `errors` is also a `DecodeError`: it breaks the
- * GraphQL specification but happens in practice, and `ResponseError.errors`
- * cannot hold an empty array.
+ * `data: null` without `errors` also produces a `DecodeError`, since
+ * `ResponseError` requires a non-empty errors array.
  *
  * @stability experimental
  * @category errors
