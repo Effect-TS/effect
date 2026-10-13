@@ -689,6 +689,29 @@ describe("Atom", { concurrent: false }, () => {
     assert.deepStrictEqual(seen, [5])
   })
 
+  it("recovers an observed dependent when its parent first succeeds after throwing", () => {
+    let failing = true
+    const parent = Atom.make(() => {
+      if (failing) throw new Error("build failed")
+      return 2
+    })
+    const dependent = Atom.make((get) => get(parent) + 1)
+    const r = AtomRegistry.make()
+    const seen: Array<number> = []
+    r.subscribe(dependent, (value) => seen.push(value))
+
+    try {
+      assert.throws(() => r.get(dependent), /build failed/)
+      assert.deepStrictEqual(seen, [])
+
+      failing = false
+      assert.strictEqual(r.get(parent), 2)
+      assert.deepStrictEqual(seen, [3])
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("recovers an observed derived atom after its build throws", () => {
     const source = Atom.make(0)
     const derived = Atom.make((get) => {
