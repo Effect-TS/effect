@@ -526,5 +526,6 @@ const close = (conn: Deno.Conn): Effect.Effect<void> =>
 
 const closeWrite = (conn: Deno.Conn): Effect.Effect<void> =>
   Effect.tryPromise(() => conn.closeWrite()).pipe(
-    Effect.catch((error) => isBadResource(error) ? Effect.void : Effect.die(error))
+    // the connection may already be closed, for example after the peer ended it
+    Effect.catch(({ cause }) => isBadResource(cause) ? Effect.void : Effect.die(cause))
   )
