@@ -1127,27 +1127,53 @@ function interpolate(
   parsed: Record<string, string>,
   seen: ReadonlySet<string>
 ): string {
-  // Only scan the unexpanded prefix; substitutions are literal data.
-  let end = envValue.length
-  while (end > 0) {
-    const index = envValue.lastIndexOf("$", end - 1)
-    if (index === -1) break
-    const name = envValue.slice(index, end).match(/^\${?([\w]+)/)
-    end = index
-    if (envValue[index - 1] === "\\" || name === null) continue
+  const parts: Array<string> = []
+  const reference = /\${?(\w+)/y
+  let cursor = 0
+  let index = envValue.indexOf("$")
+  while (index !== -1) {
+    reference.lastIndex = index
+    const name = reference.exec(envValue)
+    if (envValue[index - 1] === "\\" || name === null) {
+      index = envValue.indexOf("$", index + 1)
+      continue
+    }
 
-    const rest = envValue.slice(index + name[0].length).match(/^(?::-([^}\\]*))?}?/)!
+    let end = reference.lastIndex
+    let defaultValue = ""
+    if (envValue.slice(end, end + 2) === ":-") {
+      const start = end + 2
+      end = start
+      let depth = 0
+      // Find the default boundary in source text, never in substituted data.
+      while (end < envValue.length) {
+        if (envValue[end] === "$" && envValue[end + 1] === "{") {
+          depth++
+          end += 2
+          continue
+        }
+        if (envValue[end] === "}") {
+          if (depth === 0) break
+          depth--
+        }
+        end++
+      }
+      defaultValue = envValue.slice(start, end)
+    }
+    if (envValue[end] === "}") end++
+
     const [, variableName] = name
-    const [, defaultValue] = rest
     // A reference on the current expansion path is treated as unset.
     const expanded = Object.hasOwn(parsed, variableName) && !seen.has(variableName)
       ? interpolate(parsed[variableName], parsed, new Set([...seen, variableName]))
       : ""
-    const value = expanded !== "" ? expanded : defaultValue ?? ""
-    envValue = envValue.slice(0, index) + value +
-      envValue.slice(index + name[0].length + rest[0].length)
+    const value = expanded !== "" ? expanded : interpolate(defaultValue, parsed, seen)
+    parts.push(envValue.slice(cursor, index), value)
+    cursor = end
+    index = envValue.indexOf("$", cursor)
   }
-  return envValue
+  parts.push(envValue.slice(cursor))
+  return parts.join("")
 }
 
 /**
