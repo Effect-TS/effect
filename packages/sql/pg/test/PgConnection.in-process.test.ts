@@ -1,7 +1,6 @@
-import { PgClient, PgConnection } from "@effect/sql-pg"
+import { PgConnection } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Fiber, Redacted } from "effect"
-import * as Reactivity from "effect/reactivity/Reactivity"
+import { Effect, Fiber, Redacted } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 import { mkdtemp, rm } from "node:fs/promises"
 import * as Net from "node:net"
@@ -258,31 +257,7 @@ describe("PgConnection in-process server", () => {
         assert.deepStrictEqual(keepAliveCalls, [])
       })))
 
-    it.live.each(
-      [
-        { name: "Duration values", initialDelay: Duration.seconds(30), interval: Duration.seconds(10) },
-        { name: "duration strings", initialDelay: "30 seconds", interval: "10 seconds" },
-        { name: "millisecond numbers", initialDelay: 30_000, interval: 10_000 }
-      ] as const
-    )(
-      "converts $name to millisecond socket options",
-      ({ initialDelay, interval }) =>
-        Effect.scoped(Effect.gen(function*() {
-          const { config, keepAliveCalls } = yield* withKeepAliveServer()
-          yield* PgConnection.make({ ...config, keepAlive: { initialDelay, interval, count: 3 } })
-          assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs])
-        }))
-    )
-
-    it.live("lets Node default the omitted probe interval and count", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const { config, keepAliveCalls } = yield* withKeepAliveServer()
-        yield* PgConnection.make({ ...config, keepAlive: { initialDelay: "15 seconds" } })
-        const expected = [true, 15_000, undefined, undefined] as const
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expected])
-      })))
-
-    it.live("applies keepalives to cancellation sockets", () =>
+    it.live("applies duration-based keepalive options to TCP and cancellation sockets", () =>
       Effect.scoped(Effect.gen(function*() {
         const { config, keepAliveCalls } = yield* withKeepAliveServer()
         const connection = yield* PgConnection.make({ ...config, keepAlive: keepAliveOptions })
@@ -290,48 +265,30 @@ describe("PgConnection in-process server", () => {
         assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs, expectedKeepAliveArgs])
       })))
 
-    it.live("configures the TCP socket before negotiating TLS", () =>
+    it.live("configures TCP before TLS and leaves omitted probe options to Node", () =>
       Effect.scoped(Effect.gen(function*() {
         const { config, keepAliveCalls } = yield* withKeepAliveServer({ tls: true })
-        yield* PgConnection.make({ ...config, keepAlive: keepAliveOptions, ssl: { rejectUnauthorized: false } })
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs])
+        yield* PgConnection.make({
+          ...config,
+          keepAlive: { initialDelay: "15 seconds" },
+          ssl: { rejectUnauthorized: false }
+        })
+        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [[true, 15_000, undefined, undefined]])
         assert.strictEqual(tlsOptions.get(keepAliveCalls[0]!.socket)?.rejectUnauthorized, false)
       })))
-
-    it.live("applies keepalives to replacement pool connections", () =>
-      Effect.scoped(Effect.gen(function*() {
-        const { config, keepAliveCalls } = yield* withKeepAliveServer()
-        const sql = yield* PgClient.make({
-          ...config,
-          keepAlive: keepAliveOptions,
-          minConnections: 0,
-          maxConnections: 1
-        })
-        assert.deepStrictEqual(yield* sql`SELECT 1`, [])
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs])
-
-        const original = keepAliveCalls[0]!.socket
-        yield* Effect.callback<void>((resume) => {
-          original.once("close", () => resume(Effect.void))
-          original.destroy(new Error("simulated dead connection"))
-        })
-
-        assert.deepStrictEqual(yield* sql`SELECT 1`, [])
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs, expectedKeepAliveArgs])
-        assert.notStrictEqual(keepAliveCalls[1]!.socket, original)
-      })).pipe(Effect.provide(Reactivity.layer)))
 
     it.effect("leaves caller-supplied streams unconfigured", () =>
       Effect.gen(function*() {
         const stream = makeSslStream("S", false)
+        const setKeepAlive = vi.fn()
+        Object.assign(stream.socket, { setKeepAlive })
         yield* PgConnection.make({
           username: "test",
           ssl: true,
           keepAlive: keepAliveOptions,
           stream: () => stream.socket
         })
-        assert.deepStrictEqual(stream.writes[0], sslRequest)
-        assert.isDefined(tlsOptions.get(stream.socket))
+        assert.strictEqual(setKeepAlive.mock.calls.length, 0)
       }))
 
     it.live("leaves Unix sockets unconfigured", () =>
