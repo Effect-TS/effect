@@ -2692,8 +2692,8 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
-  // Tuple patterns match a prefix at runtime, so inputs with a variadic part
-  // are narrowed element by element and keep their unmatched tail.
+  // Tuple patterns match a prefix at runtime. For inputs with a variadic part,
+  // narrow each position the pattern requires and keep the rest of the input.
   type NarrowArrayPattern<I extends ReadonlyArray<any>, P extends ReadonlyArray<any>> = number extends I["length"]
     ? number extends P["length"] ? MapArrayPattern<I, P>
     : P["length"] extends Required<P>["length"] ? NarrowArrayPrefix<I, P>
