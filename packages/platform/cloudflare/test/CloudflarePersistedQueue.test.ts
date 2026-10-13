@@ -29,7 +29,9 @@ class FakeSql {
   exec(query: string, ...bindings: Array<unknown>) {
     if (query.startsWith("CREATE")) return this.rows([])
     if (query.includes("INSERT OR IGNORE INTO queue_items")) {
-      const [id, element] = bindings as [string, string]
+      // A delayed offer stores its initial visibility deadline in lease_until.
+      // The old two-binding insert remains immediately visible.
+      const [id, element, leaseUntil = null] = bindings as [string, string, (number | null)?]
       if (!this.items.has(id)) {
         this.items.set(id, {
           id,
@@ -37,7 +39,7 @@ class FakeSql {
           position: this.#nextPosition(),
           attempts: 0,
           completed: 0,
-          lease_until: null,
+          lease_until: leaseUntil,
           last_failure: null
         })
       }
