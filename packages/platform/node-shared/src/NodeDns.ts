@@ -139,7 +139,7 @@ const nameParts = /\\(\d{3})|\\(.)|[^\\]+|\\/gsu
 
 /**
  * Converts a name returned by a resolver to fully qualified text, for names
- * that need not be host names, such as PTR targets and SOA mailboxes.
+ * that need not be host names, such as CNAME and PTR targets and SOA mailboxes.
  *
  * **Details**
  *
@@ -266,7 +266,7 @@ const queries: {
     }),
   CNAME: async (resolver, name) =>
     recordsFromResolver(name, "CNAME", await resolver.resolveCname(name), (target) => ({
-      target: domainNameFromResolverUnsafe(target)
+      target: nameTextFromResolver(target)
     })),
   MX: async (resolver, name) =>
     recordsFromResolver(name, "MX", await resolver.resolveMx(name), (mx) => ({

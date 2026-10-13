@@ -93,7 +93,7 @@ const queries: {
     })),
   CNAME: async (name, options) =>
     NodeDns.recordsFromResolver(name, "CNAME", await Deno.resolveDns(name, "CNAME", options), (target) => ({
-      target: NodeDns.domainNameFromResolverUnsafe(target)
+      target: NodeDns.nameTextFromResolver(target, 8)
     })),
   MX: async (name, options) =>
     NodeDns.recordsFromResolver(name, "MX", await Deno.resolveDns(name, "MX", options), (mx) => ({

@@ -48,6 +48,12 @@ export * as DenoDatagramSocket from "./DenoDatagramSocket.ts"
 export * as DenoDns from "./DenoDns.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as DenoDnsClient from "./DenoDnsClient.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */

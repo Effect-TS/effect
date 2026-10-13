@@ -48,6 +48,12 @@ export * as BunDatagramSocket from "./BunDatagramSocket.ts"
 export * as BunDns from "./BunDns.ts"
 
 /**
+ * @stability experimental
+ * @since 4.0.0
+ */
+export * as BunDnsClient from "./BunDnsClient.ts"
+
+/**
  * @stability unstable
  * @since 4.0.0
  */
