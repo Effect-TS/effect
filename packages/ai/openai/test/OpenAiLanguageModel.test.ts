@@ -1320,31 +1320,34 @@ describe("OpenAiLanguageModel", () => {
     })
 
     describe("response handling", () => {
-      it.effect("preserves prompt cache diagnostics alongside the service tier", () =>
-        Effect.gen(function*() {
-          const diagnostics = {
-            type: "cache_miss",
-            reason: "tools_changed",
-            cache_missed_tokens: 1024,
-            comparison_reusable_tokens: 2048
-          } as const
-          const body = JSON.stringify({
-            ...makeDefaultResponse({ service_tier: "priority" }),
-            prompt_cache_diagnostics: diagnostics
-          })
-          const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
-            Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
-            Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
-            Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "application/json"))
-          )
+      it.effect.each(["priority", "ultrafast"] as const)(
+        "preserves prompt cache diagnostics alongside %s",
+        (serviceTier) =>
+          Effect.gen(function*() {
+            const diagnostics = {
+              type: "cache_miss",
+              reason: "tools_changed",
+              cache_missed_tokens: 1024,
+              comparison_reusable_tokens: 2048
+            } as const
+            const body = JSON.stringify({
+              ...makeDefaultResponse({ service_tier: serviceTier }),
+              prompt_cache_diagnostics: diagnostics
+            })
+            const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+              Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+              Effect.provideService(HttpClient.HttpClient, makeRawResponseClient(body, "application/json"))
+            )
 
-          const finish = result.content.find((part) => part.type === "finish")
-          assert.isDefined(finish)
-          deepStrictEqual(finish.metadata.openai, {
-            serviceTier: "priority",
-            promptCacheDiagnostics: diagnostics
+            const finish = result.content.find((part) => part.type === "finish")
+            assert.isDefined(finish)
+            deepStrictEqual(finish.metadata.openai, {
+              serviceTier,
+              promptCacheDiagnostics: diagnostics
+            })
           })
-        }))
+      )
 
       it.effect("extracts text from output_text", () =>
         Effect.gen(function*() {
@@ -1832,9 +1835,16 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect.each(["completed", "failed"] as const)(
-      "preserves prompt cache diagnostics in response.%s",
-      (status) =>
+    it.effect.each(
+      [
+        { status: "completed", serviceTier: "fast" },
+        { status: "failed", serviceTier: "fast" },
+        { status: "completed", serviceTier: "ultrafast" },
+        { status: "failed", serviceTier: "ultrafast" }
+      ] as const
+    )(
+      "preserves prompt cache diagnostics in response.$status with $serviceTier",
+      ({ status, serviceTier }) =>
         Effect.gen(function*() {
           const event = {
             type: `response.${status}`,
@@ -1844,7 +1854,7 @@ describe("OpenAiLanguageModel", () => {
                 status,
                 error: status === "failed" ? { code: "server_error", message: "generation failed" } : null
               }),
-              service_tier: "fast",
+              service_tier: serviceTier,
               prompt_cache_diagnostics: { type: "cache_hit" }
             }
           }
@@ -1863,7 +1873,10 @@ describe("OpenAiLanguageModel", () => {
 
           const finish = parts.find((part) => part.type === "finish")
           assert.isDefined(finish)
-          deepStrictEqual(finish.metadata.openai, { promptCacheDiagnostics: { type: "cache_hit" } })
+          deepStrictEqual(finish.metadata.openai, {
+            ...(serviceTier === "ultrafast" ? { serviceTier } : {}),
+            promptCacheDiagnostics: { type: "cache_hit" }
+          })
         })
     )
 
