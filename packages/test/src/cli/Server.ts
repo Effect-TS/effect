@@ -1,6 +1,6 @@
-// `etest serve`: a long-running test runner for one working directory, so repeated runs
-// (the edit-run loop of a coding agent) skip startup. While it runs, `etest` in the same
-// directory forwards its command line here (see bin.ts) and streams back the output and
+// `etest serve`: a long-running test runner for one workspace, so repeated runs (the edit-run
+// loop of a coding agent) skip startup. While it runs, `etest` anywhere in the workspace (any of
+// its projects) forwards its command line here (see bin.ts) and streams back the output and
 // exit code; `--no-server` runs locally instead.
 //
 // Correctness first: executors cache every module they load, so a set of executors is
@@ -102,26 +102,26 @@ export const runCommandLine = (version: string, executors: Executors["Service"])
   )
 
 /**
- * For a long-running process (`etest serve`, `etest mcp`): finds the project from the working
- * directory, moves to its root, and returns its config. Runs it serves resolve the same root.
+ * For a long-running process (`etest serve`, `etest mcp`): finds the workspace from the working
+ * directory, moves to its root, and returns it. Runs it serves resolve the same root.
  */
-export const enterProject = Effect.gen(function*() {
-  const config = yield* Config.resolve(process.cwd(), { config: Option.none(), noConfig: false }).pipe(
+export const enterWorkspace = Effect.gen(function*() {
+  const ws = yield* Config.workspace(process.cwd(), { config: Option.none(), noConfig: false }).pipe(
     Effect.catchTag(
       "ConfigError",
       (error) => Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
     )
   )
-  if (process.cwd() !== config.root) process.chdir(config.root)
-  return config
+  if (process.cwd() !== ws.root.dir) process.chdir(ws.root.dir)
+  return ws
 })
 
 const serve = (version: string, options: { readonly workers: Option.Option<number> }) =>
   Effect.gen(function*() {
-    const config = yield* enterProject
-    const cwd = config.root
+    const ws = yield* enterWorkspace
+    const cwd = ws.root.dir
     const location = socketPath(cwd)
-    const workers = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
+    const workers = Option.getOrElse(options.workers, () => ws.config.workers ?? Config.BUILTIN_WORKERS)
     const executors = yield* warmExecutors(workers)
     const runFork = Effect.runForkWith(
       yield* Effect.context<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>()
@@ -224,7 +224,7 @@ export const serveCommand = (version: string) =>
     )
   }).pipe(
     Command.withDescription(
-      "Keep a test runner running for this directory: `etest` here then forwards to it and skips startup"
+      "Keep a test runner running for this workspace: `etest` anywhere in it then forwards to it and skips startup"
     ),
     Command.withHandler((options) => Effect.scoped(serve(version, options)))
   )

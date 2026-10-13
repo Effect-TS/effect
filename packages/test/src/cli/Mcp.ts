@@ -16,14 +16,16 @@ import * as Semaphore from "effect/Semaphore"
 import type * as Worker from "effect/workers/Worker"
 import * as Config from "./Config.ts"
 import { Output } from "./Output.ts"
-import { enterProject, runCommandLine, warmExecutors } from "./Server.ts"
+import { enterWorkspace, runCommandLine, warmExecutors } from "./Server.ts"
 
 const Selection = {
   paths: Schema.optional(Schema.Array(Schema.String)).annotate({
-    description: "Files or directories to search for *.test.ts files (default: the working directory)"
+    description:
+      "Files or directories to search for *.test.ts files, relative to the workspace root; each runs with its own " +
+      "project's config (the nearest etest.config.ts). Default: the workspace config's `paths`"
   }),
   test: Schema.optional(Schema.String).annotate({
-    description: "A test's full id or 8-character short id, or text its id must contain"
+    description: "A test's full id or 8-character short id, or text its id (with its project) must contain"
   }),
   tag: Schema.optional(Schema.String).annotate({ description: "Only tests with this tag" })
 }
@@ -63,8 +65,9 @@ const ListTests = Tool.make("list_tests", {
 
 const ShowConfig = Tool.make("show_config", {
   description:
-    "Show the test config the runs use: the project root, paths, excludes, workers, default timeout and retries, " +
-    "with where each value comes from (etest.config.ts or built-in).",
+    "Show the test config the runs use: the workspace root, paths, excludes, workers, default timeout and retries, " +
+    "with where each value comes from (etest.config.ts or built-in). Nested projects (directories with their own " +
+    "etest.config.ts) override the defaults for their tests.",
   parameters: Tool.EmptyParams,
   success: Schema.Struct({ output: Schema.String })
 })
@@ -83,8 +86,9 @@ const selectionArgs = (params: {
 
 const serveMcp = (version: string, options: { readonly workers: Option.Option<number> }) =>
   Effect.gen(function*() {
-    const config = yield* enterProject
-    const workers = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
+    const ws = yield* enterWorkspace
+    const root = ws.root.dir
+    const workers = Option.getOrElse(options.workers, () => ws.config.workers ?? Config.BUILTIN_WORKERS)
     const run = runCommandLine(version, yield* warmExecutors(workers))
     // tool handlers can't require anything: they run with the services this command started with
     const services = yield* Effect.context<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>()
@@ -95,7 +99,7 @@ const serveMcp = (version: string, options: { readonly workers: Option.Option<nu
         let text = ""
         const output = Output.of({ out: (chunk) => text += chunk, err: (chunk) => text += chunk })
         return Effect.map(
-          run(argv, output, { cwd: config.root, script: undefined }),
+          run(argv, output, { cwd: root, script: undefined }),
           (exitCode) => ({ exitCode, passed: exitCode === 0, output: text })
         )
       })).pipe(Effect.provideContext(services))
@@ -111,7 +115,7 @@ const serveMcp = (version: string, options: { readonly workers: Option.Option<nu
         ]),
       list_tests: (params) => capture([...selectionArgs(params), "--list"]),
       show_config: () =>
-        Config.resolve(config.root, { config: Option.none(), noConfig: false }).pipe(
+        Config.workspace(root, { config: Option.none(), noConfig: false }).pipe(
           Effect.map((resolved) => ({ output: Config.describe(resolved).join("\n") })),
           Effect.catchTag("ConfigError", (error) => Effect.succeed({ output: `etest: ${error.message}` }))
         )
@@ -122,7 +126,7 @@ const serveMcp = (version: string, options: { readonly workers: Option.Option<nu
         Layer.provide(McpServer.layerStdio({
           name: "etest",
           version,
-          instructions: "Runs and lists Effect-native tests (etest) in the working directory.",
+          instructions: "Runs and lists Effect-native tests (etest) in the workspace this server was started in.",
           protocols: [McpProtocol.v2025_11_25, McpProtocol.v2025_06_18, McpProtocol.v2025_03_26]
         }))
       )

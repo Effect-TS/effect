@@ -15,14 +15,15 @@ import type * as Worker from "effect/workers/Worker"
 import type { WorkerError } from "effect/workers/WorkerError"
 import * as path from "node:path"
 import { fileURLToPath } from "node:url"
-import { builtinDefaults, discover, run } from "../Coordinator.ts"
+import { discover, run } from "../Coordinator.ts"
 import * as Reporters from "../Reporters.ts"
 import * as Changed from "./Changed.ts"
 import * as Config from "./Config.ts"
 import { scriptCommand } from "./invocation.ts"
-import * as LastRun from "./LastRun.ts"
 import { Output } from "./Output.ts"
 import { detect, moduleUrl } from "./Platform.ts"
+import * as Results from "./Results.ts"
+import { isWithin } from "./root.ts"
 
 /** Ends the process with `code`. Whatever caused it has already been reported. */
 export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: number }> {
@@ -34,7 +35,7 @@ export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: numb
 
 const paths = Argument.String("paths").pipe(
   Argument.withDescription(
-    "Files or directories to search for *.test.ts files (default: the config's `paths`, else the project root)"
+    "Files or directories to search for *.test.ts files (default: the config's `paths` at a project's root, else the working directory)"
   ),
   Argument.variadic()
 )
@@ -50,7 +51,7 @@ const test = Flag.String("test").pipe(
 )
 
 const failed = Flag.Boolean("failed").pipe(
-  Flag.withDescription(`Re-run only the tests that failed in previous runs (recorded in ${LastRun.location})`),
+  Flag.withDescription(`Re-run only the tests that failed in previous runs (recorded in ${Results.location})`),
   Flag.withDefault(false)
 )
 
@@ -76,7 +77,7 @@ const seed = Flag.Int("seed").pipe(
 )
 
 const workers = Flag.Int("workers").pipe(
-  Flag.withDescription("Number of executors (worker threads; default: the config's `workers`, else 2)"),
+  Flag.withDescription("Number of executors (worker threads; default: the workspace config's `workers`, else 2)"),
   Flag.optional
 )
 
@@ -92,17 +93,19 @@ const reporter = Flag.Literals("reporter", ["agent", "human", "jsonl"]).pipe(
 
 const config = Flag.String("config").pipe(
   Flag.withMetavar("FILE"),
-  Flag.withDescription("Test config file (default: the nearest etest.config.ts, up to the repository root)"),
+  Flag.withDescription(
+    "Workspace config file (default: the outermost etest.config.ts, up to the repository root); nested projects keep theirs"
+  ),
   Flag.optional
 )
 
 const noConfig = Flag.Boolean("no-config").pipe(
-  Flag.withDescription("Ignore the test config, so every file builds its own layers"),
+  Flag.withDescription("Ignore every test config (nested ones too), so every file builds its own layers"),
   Flag.withDefault(false)
 )
 
 const noServer = Flag.Boolean("no-server").pipe(
-  Flag.withDescription("Run in this process even when `etest serve` is running for this directory"),
+  Flag.withDescription("Run in this process even when `etest serve` is running for this workspace"),
   Flag.withDefault(false)
 )
 
@@ -133,7 +136,7 @@ const bin = fileURLToPath(moduleUrl("./bin", import.meta.url))
 /** How to start the CLI again on the runtime we are on, for rerun hints. */
 const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
 
-/** The working directory this process started in (a run then moves to the project root). */
+/** The working directory this process started in (a run then moves to the workspace root). */
 const startedIn = process.cwd()
 
 /**
@@ -153,8 +156,8 @@ const configFailure = (error: Config.ConfigError) =>
   Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
 
 /** Changes to these files can affect any test: `--changed` then runs everything. */
-const affectsEverything = (file: string, configFile: string | undefined) =>
-  file === configFile ||
+const affectsEverything = (file: string, rootConfig: string | undefined) =>
+  file === rootConfig ||
   /^(package\.json|tsconfig.*\.json|pnpm-lock\.yaml|package-lock\.json|yarn\.lock|bun\.lockb?|deno\.lock)$/
     .test(path.basename(file))
 
@@ -178,29 +181,42 @@ export const command = Command.make("etest", {
   Command.withDescription("Run Effect-native tests"),
   Command.withHandler(Effect.fnUntraced(function*(options) {
     const invocation = yield* Invocation
-    const config = yield* Config.resolve(invocation.cwd, options).pipe(Effect.catchTag("ConfigError", configFailure))
-    const configFile = config.file
-    // everything is relative to the project root: test ids, seeds, the --failed record
-    if (process.cwd() !== config.root) process.chdir(config.root)
-    const fromRoot = (p: string) => path.relative(config.root, path.resolve(invocation.cwd, p)) || "."
+    const ws = yield* Config.workspace(invocation.cwd, options).pipe(Effect.catchTag("ConfigError", configFailure))
+    const root = ws.root.dir
+    // a run anchors at the workspace root: the working directory, and what paths are relative to
+    if (process.cwd() !== root) process.chdir(root)
+    const here = path.resolve(invocation.cwd)
+    const fromRoot = (p: string) => path.relative(root, path.resolve(invocation.cwd, p)) || "."
     const output = yield* Output
     const write = output.out
-    // paths given on the command line replace the config's
-    let paths = options.paths.length > 0 ? options.paths.map(fromRoot) : [...(config.paths ?? [])]
+    // paths given on the command line replace the config's. Without any: at a project's root, its
+    // `paths`; anywhere below one (or above the workspace), the working directory
+    const projectHere = here === root || !isWithin(here, root)
+      ? ws.root
+      : yield* ws.at(here).pipe(Effect.catchTag("ConfigError", configFailure))
+    let paths = options.paths.length > 0
+      ? options.paths.map(fromRoot)
+      : projectHere === undefined
+      ? [fromRoot(".")]
+      : (projectHere.paths ?? (projectHere === ws.root ? [] : ["."])).map((p) =>
+        path.relative(root, path.resolve(projectHere.dir, p)) || "."
+      )
     let ids: ReadonlySet<string> | undefined
     const selectedBy: Array<string> = []
+    const results = Results.read()
     if (options.failed) {
-      const last = LastRun.read()
-      if (last === undefined) {
-        yield* Console.error(`--failed: no previous run recorded (${LastRun.location})`)
+      if (results === undefined) {
+        yield* Console.error(`--failed: no previous run recorded (${Results.location})`)
         return yield* new ExitCode({ code: 1 })
       }
-      const entries = Object.entries(last.failed)
+      // without paths: the failures recorded under the working directory (all of them at the workspace root)
+      const scope = options.paths.length > 0 || here === root || !isWithin(here, root) ? root : here
+      const entries = [...results].filter(([, e]) => Results.failing(e.status) && isWithin(path.resolve(e.file), scope))
       if (entries.length === 0) {
         yield* Console.log("--failed: no failing tests recorded; nothing to re-run")
         return
       }
-      ids = new Set(entries.map(([id]) => id))
+      ids = new Set(entries.map(([key]) => key))
       selectedBy.push(`--failed (${entries.length} recorded)`)
       if (options.paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
     }
@@ -218,19 +234,25 @@ export const command = Command.make("etest", {
         yield* Console.log(`${label}: no changed files; nothing to run`)
         return
       }
-      const everything = [...changedFiles].find((file) => affectsEverything(file, configFile))
+      const everything = [...changedFiles].find((file) => affectsEverything(file, ws.config.file))
       if (everything !== undefined) {
-        selectedBy.push(`${label} (${path.relative(config.root, everything)} changed: every test is affected)`)
+        selectedBy.push(`${label} (${path.relative(root, everything)} changed: every test is affected)`)
       } else {
-        const { files } = discover(paths, config.exclude)
-        const hit = Changed.affected(files, changedFiles, process.cwd())
-        if (hit.length === 0) {
+        const { files } = yield* discover(paths, ws).pipe(Effect.catchTag("ConfigError", configFailure))
+        // a nested project's own config affects that project's tests (the workspace's affects all, above)
+        const hit = new Set(
+          files.flatMap(({ file, project }) =>
+            project.config !== undefined && changedFiles.has(project.config) ? [file] : []
+          )
+        )
+        for (const file of Changed.affected(files.map((f) => f.file), changedFiles, root)) hit.add(file)
+        if (hit.size === 0) {
           yield* Console.log(
             `${label}: no test file is affected by the changes (${changedFiles.size} changed, ${files.length} test files searched); nothing to run`
           )
           return
         }
-        paths = hit.map((file) => path.relative(process.cwd(), file))
+        paths = [...hit].sort().map((file) => path.relative(root, file))
         selectedBy.push(`${label} (${changedFiles.size} changed files)`)
       }
     }
@@ -240,11 +262,9 @@ export const command = Command.make("etest", {
     const ctx: Reporters.ReporterContext = {
       write,
       rerun: (t, runSeed) =>
-        `${start} ${
-          path.relative(invocation.cwd, path.resolve(config.root, t.file))
-        } --test ${t.shortId} --seed ${runSeed}`
+        `${start} ${path.relative(invocation.cwd, path.resolve(root, t.file))} --test ${t.shortId} --seed ${runSeed}`
     }
-    const workerCount = Option.getOrElse(options.workers, () => config.workers ?? Config.BUILTIN_WORKERS)
+    const workerCount = Option.getOrElse(options.workers, () => ws.config.workers ?? Config.BUILTIN_WORKERS)
     const reporter = options.reporter === "human"
       ? Reporters.human(ctx)
       : options.reporter === "jsonl"
@@ -261,16 +281,17 @@ export const command = Command.make("etest", {
       seed: Option.getOrElse(options.seed, () => Math.floor(Math.random() * 100_000)),
       testsPerFile: TESTS_PER_FILE,
       bail: options.bail,
-      config: configFile,
-      root: config.root,
-      exclude: config.exclude,
-      defaults: {
-        timeoutMs: config.defaults.timeoutMs ?? builtinDefaults.timeoutMs,
-        retries: config.defaults.retries ?? builtinDefaults.retries
-      },
-      reporter: options.list ? reporter : LastRun.recording(reporter),
+      root,
+      config: ws.config.file,
+      projects: ws,
+      history: (key) => results?.get(key),
+      reporter: options.list ? reporter : Results.recording(reporter, results),
       write
-    }).pipe(Effect.scoped, Effect.provide((yield* Executors).layer(workerCount)))
+    }).pipe(
+      Effect.scoped,
+      Effect.provide((yield* Executors).layer(workerCount)),
+      Effect.catchTag("ConfigError", configFailure)
+    )
     if (code !== 0) return yield* new ExitCode({ code })
   }))
 )

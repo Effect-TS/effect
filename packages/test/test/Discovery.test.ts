@@ -3,17 +3,33 @@ import * as Exit from "effect/Exit"
 import * as path from "node:path"
 import * as Assert from "../src/Assert.ts"
 import * as Config from "../src/cli/Config.ts"
-import { discover, globToRegExp } from "../src/Coordinator.ts"
+import { builtinDefaults, discover, globToRegExp, type Project } from "../src/Coordinator.ts"
 import * as Matcher from "../src/Matcher.ts"
 import * as Test from "../src/Test.ts"
 
 const tree = "test/fixtures/tree"
-const found = (paths: ReadonlyArray<string>, exclude?: ReadonlyArray<string>) => {
-  const { empty, files, missing } = discover(paths, exclude)
-  return { files: files.map((f) => path.relative(process.cwd(), f)), missing, empty }
+/** A workspace of one project, the working directory, with these excludes. */
+const workspace = (exclude: ReadonlyArray<string> = []) => {
+  const project: Project = {
+    key: ".",
+    dir: process.cwd(),
+    config: undefined,
+    configs: [],
+    paths: undefined,
+    exclude,
+    defaults: builtinDefaults
+  }
+  return { at: () => Effect.succeed(undefined), of: () => Effect.succeed(project) }
 }
+const found = (paths: ReadonlyArray<string>, exclude?: ReadonlyArray<string>) =>
+  Effect.map(discover(paths, workspace(exclude)), ({ empty, files, missing }) => ({
+    files: files.map((f) => path.relative(process.cwd(), f.file)),
+    missing,
+    empty
+  }))
 const configs = path.join(import.meta.dirname, "fixtures/configs")
 const load = (name: string) => Effect.exit(Config.load(path.join(configs, name), configs))
+const workspaceOf = (name: string) => Config.workspaceAt(path.join(configs, name), configs)
 
 export default Test.suite("discovery and config", [
   Test.test("globs: * within a segment, ** across segments", () => {
@@ -25,35 +41,57 @@ export default Test.suite("discovery and config", [
     Assert.isTrue(globToRegExp("a.b?").test("a.bc"))
     Assert.isFalse(globToRegExp("a.b").test("axb"))
   }),
-  Test.test("directories are searched, skipping node_modules and dot-directories", () => {
-    Assert.equal(found([tree]).files, [`${tree}/a.test.ts`, `${tree}/sub/b.test.ts`, `${tree}/sub/fixtures/c.test.ts`])
-  }),
-  Test.test("exclude skips what it matches while searching", () => {
-    Assert.equal(found([tree], ["**/sub/fixtures/**"]).files, [`${tree}/a.test.ts`, `${tree}/sub/b.test.ts`])
-    Assert.equal(found(["test"], ["**/fixtures/**"]).files.filter((f) => f.includes("fixtures")), [])
-  }),
-  Test.test("a directory that is itself excluded is searched in full when named", () => {
-    Assert.equal(found([tree], ["**/fixtures/**"]).files, [
-      `${tree}/a.test.ts`,
-      `${tree}/sub/b.test.ts`,
-      `${tree}/sub/fixtures/c.test.ts`
-    ])
-  }),
-  Test.test("a file named directly is never excluded", () => {
-    Assert.equal(found([`${tree}/sub/fixtures/c.test.ts`], ["**/fixtures/**"]).files, [
-      `${tree}/sub/fixtures/c.test.ts`
-    ])
-  }),
-  Test.test("overlapping paths find a file once", () => {
-    Assert.equal(found([tree, `${tree}/a.test.ts`]).files.filter((f) => f.endsWith("a.test.ts")).length, 1)
-  }),
-  Test.test("a path that yields no test file is reported, never ignored", () => {
-    Assert.equal(found([`${tree}/notes.ts`, `${tree}/empty`, `${tree}/a.test.ts`, "nope"]), {
-      files: [`${tree}/a.test.ts`],
-      missing: ["nope"],
-      empty: [`${tree}/notes.ts`, `${tree}/empty`]
+  Test.test(
+    "directories are searched, skipping node_modules and dot-directories",
+    Effect.gen(function*() {
+      Assert.equal((yield* found([tree])).files, [
+        `${tree}/a.test.ts`,
+        `${tree}/sub/b.test.ts`,
+        `${tree}/sub/fixtures/c.test.ts`
+      ])
     })
-  }),
+  ),
+  Test.test(
+    "exclude skips what it matches while searching",
+    Effect.gen(function*() {
+      Assert.equal((yield* found([tree], ["**/sub/fixtures/**"])).files, [`${tree}/a.test.ts`, `${tree}/sub/b.test.ts`])
+      Assert.equal((yield* found(["test"], ["**/fixtures/**"])).files.filter((f) => f.includes("fixtures")), [])
+    })
+  ),
+  Test.test(
+    "a directory that is itself excluded is searched in full when named",
+    Effect.gen(function*() {
+      Assert.equal((yield* found([tree], ["**/fixtures/**"])).files, [
+        `${tree}/a.test.ts`,
+        `${tree}/sub/b.test.ts`,
+        `${tree}/sub/fixtures/c.test.ts`
+      ])
+    })
+  ),
+  Test.test(
+    "a file named directly is never excluded",
+    Effect.gen(function*() {
+      Assert.equal((yield* found([`${tree}/sub/fixtures/c.test.ts`], ["**/fixtures/**"])).files, [
+        `${tree}/sub/fixtures/c.test.ts`
+      ])
+    })
+  ),
+  Test.test(
+    "overlapping paths find a file once",
+    Effect.gen(function*() {
+      Assert.equal((yield* found([tree, `${tree}/a.test.ts`])).files.filter((f) => f.endsWith("a.test.ts")).length, 1)
+    })
+  ),
+  Test.test(
+    "a path that yields no test file is reported, never ignored",
+    Effect.gen(function*() {
+      Assert.equal(yield* found([`${tree}/notes.ts`, `${tree}/empty`, `${tree}/a.test.ts`, "nope"]), {
+        files: [`${tree}/a.test.ts`],
+        missing: ["nope"],
+        empty: [`${tree}/notes.ts`, `${tree}/empty`]
+      })
+    })
+  ),
   Test.test(
     "a valid config",
     Effect.gen(function*() {
@@ -68,7 +106,7 @@ export default Test.suite("discovery and config", [
           shared: 1
         })
       )
-      Assert.includes(Config.describe(config), "workers: 3 (valid.ts; --workers overrides)")
+      Assert.includes(Config.describe(yield* workspaceOf("valid.ts")), "workers: 3 (valid.ts; --workers overrides)")
     })
   ),
   Test.test(

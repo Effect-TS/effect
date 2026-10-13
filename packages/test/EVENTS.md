@@ -1,4 +1,4 @@
-# The `etest` event stream (schema version 1)
+# The `etest` event stream (schema version 2)
 
 `etest --reporter jsonl` writes one JSON object per line, as the run happens. This is the machine-readable
 contract for tools and coding agents: fields are only added within a schema version. Removing or changing a
@@ -8,28 +8,43 @@ Every run emits, in order: one `RunPlanned`, then a `TestStarted` (per attempt) 
 for every planned test, then one `RunFinished`. A run that selects no tests emits nothing on stdout: it writes
 the reason to stderr and exits 1.
 
+**Projects.** A test file belongs to the nearest `etest.config.ts` above it, its _project_; the outermost one
+is the workspace root, where every run anchors. A test is identified by its `project` (the project's root
+relative to the workspace root, `.` for the workspace root itself) and its `id` (relative to the project). The
+two together, `project/id` (just `id` in the `.` project), are unique in a run: that is how reporters show a
+test, and what `--test` matches.
+
+Version 2 (projects) added `project` to every test and event, and `selection.projects`; `id` became relative to
+the test's project, and `shortId` is derived from `project/id`. In a workspace of one project (`.`), ids and
+short ids are unchanged from version 1.
+
 ## `RunPlanned`
 
 ```json
 {
   "_tag": "RunPlanned",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "runSeed": 1234,
   "selection": {
-    "root": "/home/me/project",
+    "root": "/home/me/repo",
     "config": "etest.config.ts",
-    "paths": ["examples"],
+    "projects": [
+      { "project": ".", "config": "etest.config.ts", "files": 7, "tests": 52 },
+      { "project": "packages/accounts", "config": "packages/accounts/etest.config.ts", "files": 1, "tests": 8 }
+    ],
+    "paths": [],
     "files": 8,
     "tests": 60,
     "filters": ["--test \"fees\""]
   },
   "tests": [
     {
-      "id": "examples/accounts.test.ts > fees: … > one test can replace the shared layer",
+      "project": "packages/accounts",
+      "id": "test/accounts.test.ts > fees: … > one test can replace the shared layer",
       "shortId": "1a2b3c4d",
-      "file": "examples/accounts.test.ts",
+      "file": "packages/accounts/test/accounts.test.ts",
       "tags": [],
-      "timeoutMs": 5000,
+      "timeoutMs": 60000,
       "retries": 0,
       "seed": 3743281946
     }
@@ -37,27 +52,40 @@ the reason to stderr and exits 1.
 }
 ```
 
-- `selection`: the project `root` (absolute: the config's directory, else the working directory; every path in the
-  stream is relative to it), the `config` file (relative to the root; absent when there is none), what was searched
-  (`paths`, empty meaning the root), how many test `files` and
-  `tests` were found, and the `filters` that narrowed it, in command-line words (`--test "…"`, `--tag "…"`,
-  `--failed (N recorded)`, …).
+- `selection`:
+  - `root`: the workspace root (absolute: the outermost config's directory, else the working directory). Every
+    path in the stream is relative to it.
+  - `config`: the workspace's config, relative to the root (absent when there is none).
+  - `projects[]`: the projects searched, in the order they were reached, each with its own `config` (absent for
+    a workspace root without one) and the test `files` and `tests` found in it. A project the search reached that
+    has no test file is listed with zero files.
+  - `paths`: what was searched, relative to the root (empty meaning the root).
+  - `files`, `tests`: how many test files and tests were found in total.
+  - `filters`: what narrowed the selection, in command-line words (`--test "…"`, `--tag "…"`,
+    `--failed (N recorded)`, …).
 - `tests[]`: the plan, in a deterministic order.
-  - `id` is the full id: the file, then suite names, then the test name, joined by `" > "`.
-  - `shortId` is 8 hex characters derived from `id`. It is stable across runs and accepted by `--test`.
-  - `seed` is the test's own seed, derived from `runSeed` and `id`.
-  - `skip` (optional) is the reason the test won't run.
-  - A file that failed to load or list appears as one entry whose `id` and `file` are the file path.
+  - `project`: the test's project (see above).
+  - `id`: the file (relative to the project's root), then suite names, then the test name, joined by `" > "`.
+  - `shortId`: 8 hex characters derived from `project/id`. It is stable across runs and accepted by `--test`.
+  - `file`: the test file, relative to the workspace root.
+  - `timeoutMs`, `retries`: resolved: the nearest suite or test that sets them, else the project config's
+    `defaults`, else the workspace config's, else built-in.
+  - `seed`: the test's own seed, derived from `runSeed` and `id`.
+  - `skip` (optional): the reason the test won't run.
+  - A file that failed to load or list appears as one entry whose `id` is the file's path (relative to its
+    project) and `file` its path relative to the root.
 
 ## `TestStarted`
 
-`{ "_tag": "TestStarted", "id": "…", "attempt": 1 }`, emitted once per attempt (retries start again).
+`{ "_tag": "TestStarted", "project": "…", "id": "…", "attempt": 1 }`, emitted once per attempt (retries start
+again).
 
 ## `TestFinished`
 
 ```json
 {
   "_tag": "TestFinished",
+  "project": "…",
   "id": "…",
   "status": "failed",
   "durationMs": 5,

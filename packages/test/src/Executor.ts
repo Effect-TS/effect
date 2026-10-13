@@ -32,7 +32,7 @@ Error.stackTraceLimit = 50
 
 // --- loading
 
-const load = (file: string) =>
+const load = (file: string, projectRoot: string) =>
   Effect.tryPromise({
     try: () => import(pathToFileURL(file).href),
     catch: (e) => new LoadError({ path: file, message: e instanceof Error ? e.stack ?? e.message : String(e) })
@@ -41,7 +41,7 @@ const load = (file: string) =>
       const root = mod.default
       if (!isNode(root)) {
         return Effect.fail(
-          new LoadError({ path: file, message: `no tests exported from ${path.relative(process.cwd(), file)}` })
+          new LoadError({ path: file, message: `no tests exported from ${path.relative(projectRoot, file)}` })
         )
       }
       // a single exported Test gets an anonymous root (omitted from ids)
@@ -57,9 +57,10 @@ const childId = (parent: string, node: Node<any>) => node.name === "" ? parent :
 
 // --- listing (no fixture is acquired, no test body runs)
 
-export const listFile = (file: string) =>
-  Effect.map(load(file), (root) => {
-    const rel = path.relative(process.cwd(), file)
+/** The file's tree; ids start with the file's path relative to `root` (its project's root). */
+export const listFile = (file: string, root: string = process.cwd()) =>
+  Effect.map(load(file, root), (tree) => {
+    const rel = path.relative(root, file).split(path.sep).join("/")
     const nodes: Array<ListedNode> = []
     const visit = (node: Node<any>, parentId: string | undefined, id: string) => {
       const o = node.options
@@ -79,7 +80,7 @@ export const listFile = (file: string) =>
       })
       if (node._tag === "Suite") { for (const c of node.children) visit(c, id, childId(id, c)) }
     }
-    visit(root, undefined, rel)
+    visit(tree, undefined, rel)
     return { file: rel, nodes }
   })
 
@@ -88,36 +89,48 @@ export const listFile = (file: string) =>
 /** Per-executor state: the run's MemoMap and Scope live as long as the executor. */
 interface RunState {
   readonly runMemo: Layer.MemoMap
+  /** the shared layers of every config in the chain (for reporting a fixture as shared) */
   readonly shared: ReadonlySet<Layer.Layer<any, any, any>>
 }
 
 export class ExecutorState extends Context.Service<ExecutorState, {
-  /** The run's MemoMap and shared layers for a test config (or none), set up on first use. */
-  readonly forConfig: (file: string | undefined) => Effect.Effect<RunState, LoadError>
+  /**
+   * The run's MemoMap and shared layers for a chain of configs (the workspace root's first, then
+   * the project's), set up on first use. Each config's MemoMap forks from the one before it, so a
+   * layer shared by the workspace is shared by every project, and a project's only by its files.
+   */
+  readonly forConfigs: (files: ReadonlyArray<string>) => Effect.Effect<RunState, LoadError>
 }>()("effect/test/ExecutorState") {
   static layer = Layer.effect(ExecutorState)(Effect.gen(function*() {
     const runScope = yield* Effect.scope
     const runContext = yield* Effect.context<never>()
     const lock = Semaphore.makeUnsafe(1)
-    const states = new Map<string | undefined, RunState>()
-    const forConfig = (file: string | undefined) =>
-      lock.withPermits(1)(Effect.suspend(() => {
-        const existing = states.get(file)
+    const states = new Map<string, RunState>()
+    const empty: RunState = { runMemo: makeRunMemoMap(new Set(), runScope, runContext, undefined), shared: new Set() }
+    const chain = (files: ReadonlyArray<string>): Effect.Effect<RunState, LoadError> =>
+      Effect.suspend(() => {
+        if (files.length === 0) return Effect.succeed(empty)
+        const key = files.join("\n")
+        const existing = states.get(key)
         if (existing) return Effect.succeed(existing)
-        return Effect.map(loadConfig(file), (layers): RunState => {
-          const shared = new Set<Layer.Layer<any, any, any>>(layers)
-          const state = { runMemo: makeRunMemoMap(shared, runScope, runContext), shared }
-          states.set(file, state)
-          return state
-        })
-      }))
-    return { forConfig }
+        return Effect.flatMap(chain(files.slice(0, -1)), (parent) =>
+          Effect.map(loadConfig(files[files.length - 1]), (layers): RunState => {
+            const own = new Set<Layer.Layer<any, any, any>>(layers)
+            const state = {
+              runMemo: makeRunMemoMap(own, runScope, runContext, files.length > 1 ? parent.runMemo : undefined),
+              shared: new Set([...parent.shared, ...own])
+            }
+            states.set(key, state)
+            return state
+          }))
+      })
+    return { forConfigs: (files) => lock.withPermits(1)(chain(files)) }
   }))
 }
 
-/** The config's shared layers. The coordinator sends the config's path with every `RunFile`. */
-const loadConfig = (file: string | undefined) =>
-  file === undefined ? Effect.succeed([]) : Effect.tryPromise({
+/** A config's shared layers. The coordinator sends the config chain with every `RunFile`. */
+const loadConfig = (file: string) =>
+  Effect.tryPromise({
     try: () => import(pathToFileURL(file).href),
     catch: (e) => new LoadError({ path: file, message: e instanceof Error ? e.stack ?? e.message : String(e) })
   }).pipe(
@@ -139,9 +152,11 @@ const loadConfig = (file: string | undefined) =>
 const makeRunMemoMap = (
   shared: ReadonlySet<Layer.Layer<any, any, any>>,
   runScope: Scope.Scope,
-  runContext: Context.Context<never>
+  runContext: Context.Context<never>,
+  /** the MemoMap of the config before this one in the chain (a project's parent is the workspace's) */
+  parent: Layer.MemoMap | undefined
 ): Layer.MemoMap => {
-  const inner = Layer.makeMemoMapUnsafe()
+  const inner = parent === undefined ? Layer.makeMemoMapUnsafe() : Layer.forkMemoMapUnsafe(parent)
   const builds = new Map<Layer.Layer<any, any, any>, Deferred.Deferred<Context.Context<any>, unknown>>()
   return {
     "~effect/Layer/MemoMap": "~effect/Layer/MemoMap",
@@ -188,7 +203,9 @@ interface Frame {
   readonly once: Once<Fixture>
 }
 
-type Event = { readonly _tag: "TestStarted"; readonly id: string; readonly attempt: number } | TestFinished
+type Event =
+  | { readonly _tag: "TestStarted"; readonly project: string; readonly id: string; readonly attempt: number }
+  | TestFinished
 
 const TestEnv = Layer.mergeAll(TestConsole.layer, TestClock.layer())
 
@@ -210,15 +227,25 @@ class FixtureFailure {
 
 export const runFile = (
   file: string,
-  config: string | undefined,
-  concurrency: number,
+  options: {
+    /** the project root: ids are relative to it */
+    readonly root?: string | undefined
+    /** the project's key, echoed in every event */
+    readonly project?: string | undefined
+    /** the configs whose `shared` layers the tests use, the workspace root's first */
+    readonly configs?: ReadonlyArray<string> | undefined
+    readonly concurrency: number
+  },
   tests: ReadonlyArray<RunFileTest>
 ) =>
   Stream.callback<Event, LoadError, ExecutorState>((queue) =>
     Effect.gen(function*() {
-      const { runMemo, shared } = yield* (yield* ExecutorState).forConfig(config)
-      const root = yield* load(file)
-      const rel = path.relative(process.cwd(), file)
+      const { runMemo, shared } = yield* (yield* ExecutorState).forConfigs(options.configs ?? [])
+      const projectRoot = options.root ?? process.cwd()
+      const project = options.project ?? "."
+      const concurrency = options.concurrency
+      const tree = yield* load(file, projectRoot)
+      const rel = path.relative(projectRoot, file).split(path.sep).join("/")
       const selected = new Map(tests.map((t) => [t.id, t]))
       const permits = yield* Semaphore.make(concurrency)
       const emit = (e: Event) => Queue.offer(queue, e)
@@ -290,13 +317,14 @@ export const runFile = (
         Effect.gen(function*() {
           const previousAttempts: Array<{ attempt: number; status: Status }> = []
           for (let attempt = 1;; attempt++) {
-            yield* emit({ _tag: "TestStarted", id, attempt })
+            yield* emit({ _tag: "TestStarted", project, id, attempt })
             const start = Date.now()
             const r = yield* runAttempt(node, fixtures, memo, plan)
             const done = r.status === "passed" || attempt > plan.retries
             if (done) {
               return yield* emit({
                 _tag: "TestFinished",
+                project,
                 id,
                 status: r.status,
                 durationMs: Date.now() - start,
@@ -367,7 +395,7 @@ export const runFile = (
           return { ...classify(exit, plan, node, file, record), console: consoleLines, assertions: record.count }
         }))
 
-      yield* walk(root, rel, [], runMemo)
+      yield* walk(tree, rel, [], runMemo)
       yield* Queue.end(queue)
     })
   )
@@ -548,8 +576,9 @@ const classify = (
  */
 export const layer: Layer.Layer<never, never, RpcServer.Protocol> = RpcServer.layer(ExecutorRpcs).pipe(
   Layer.provide(ExecutorRpcs.toLayer({
-    ListFile: ({ path }) => listFile(path),
-    RunFile: ({ concurrency, config, path, tests }) => runFile(path, config, concurrency, tests)
+    ListFile: ({ path, root }) => listFile(path, root),
+    RunFile: ({ concurrency, configs, path, project, root, tests }) =>
+      runFile(path, { root, project, configs, concurrency }, tests)
   })),
   Layer.provide(ExecutorState.layer)
 )

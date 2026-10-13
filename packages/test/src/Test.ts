@@ -139,31 +139,40 @@ export const provide = <ROut, E, RIn>(
 // --- config
 
 /**
- * The test config: the default export of `etest.config.ts`. Its directory is the project
- * root (test ids, seeds and the `--failed` record are relative to it). Every key is optional,
- * and an unknown key is an error.
+ * The test config: the default export of `etest.config.ts`. Its directory is a project's root,
+ * and a test file belongs to the nearest one above it (its ids are relative to that root). The
+ * outermost one, up to the repository root, is the workspace root: it alone sets `workers`, and
+ * its `defaults` and `shared` layers apply to every project. Every key is optional, and an
+ * unknown key is an error.
  */
 export interface Config {
-  /** Where to look for `*.test.ts` files when no paths are given (default `["."]`). Paths given on the command line replace these. */
+  /**
+   * Where this project's `*.test.ts` files are when it is searched without paths (default: all of
+   * it), relative to its root. Paths given on the command line replace these.
+   */
   readonly paths?: ReadonlyArray<string>
   /**
-   * Glob patterns of files and directories to skip while searching directories. They are
-   * matched against paths relative to the root: `*` matches within a path segment, `**`
+   * Glob patterns of files and directories to skip while searching this project's directories.
+   * They are matched against paths relative to its root: `*` matches within a path segment, `**`
    * across segments (so a pattern of `**`, `/fixtures/`, `**` skips every `fixtures` directory).
    * `node_modules` and dot-directories are always skipped. A file named on the command line
    * is never excluded.
    */
   readonly exclude?: ReadonlyArray<string>
-  /** How many executors (worker threads) a run uses, unless `--workers` says otherwise (default 2). */
+  /**
+   * How many executors (worker threads) a run uses, unless `--workers` says otherwise (default 2).
+   * Only in the workspace root's config: a nested project's config that sets it is an error.
+   */
   readonly workers?: number
   /**
    * Defaults for test options, for every test in the project. An option set on a suite or
-   * test wins (the nearest one); without either, the built-in default applies (timeout
-   * 60 seconds, no retries).
+   * test wins (the nearest one); then this config's value, then the workspace root's config's
+   * (one key at a time), then the built-in default (timeout 60 seconds, no retries).
    */
   readonly defaults?: Pick<Options, "timeout" | "retries">
   /**
-   * Layers shared by the whole run. Each is built lazily, the first time any file provides
+   * Layers shared by the run: in the workspace root's config by every project, in a nested
+   * project's config by that project's files. Each is built lazily, the first time any file provides
    * that same Layer value, and kept until the run ends. A file that must not share provides
    * `Layer.fresh(layer)` instead. Shared layers only optimise: every test file still provides
    * everything it needs, and passes without the config. They must be self-contained (no

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The `etest` launcher. Before loading anything heavy:
-// 1. If `etest serve` is running for this directory, forward the command line to it and
+// 1. If `etest serve` is running for this workspace, forward the command line to it and
 //    relay its output and exit code (see Server.ts). `--no-server` skips this.
 // 2. Otherwise run here: turn on Node's on-disk compile cache, so repeat runs skip compiling
 //    (and type-stripping) every module again, then start the CLI. The cache roughly halves

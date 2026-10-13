@@ -67,9 +67,13 @@ export const Status = Schema.Literals(["passed", "failed", "skipped", "timedOut"
 export type Status = typeof Status.Type
 
 export const PlannedTest = Schema.Struct({
+  /** the project's root, relative to the workspace root (`.`: the workspace root itself) */
+  project: Schema.String,
+  /** the file (relative to the project root), then suite names, then the test name, joined by `" > "` */
   id: Schema.String,
-  /** 8 hex characters derived from `id`: stable across runs, accepted by `--test` */
+  /** 8 hex characters derived from the project and `id`: stable across runs, accepted by `--test` */
   shortId: Schema.String,
+  /** the file, relative to the workspace root */
   file: Schema.String,
   tags: Schema.Array(Schema.String),
   timeoutMs: Schema.Number,
@@ -81,12 +85,25 @@ export const PlannedTest = Schema.Struct({
 })
 export type PlannedTest = typeof PlannedTest.Type
 
+/** A project a run searched, with what was found in it. */
+export const SelectedProject = Schema.Struct({
+  /** the project's root, relative to the workspace root (`.`: the workspace root itself) */
+  project: Schema.String,
+  /** its own config, relative to the workspace root (absent for the workspace root without one) */
+  config: opt(Schema.String),
+  files: Schema.Number,
+  tests: Schema.Number
+})
+export type SelectedProject = typeof SelectedProject.Type
+
 /** What a run selected, and how. */
 export const Selection = Schema.Struct({
-  /** the project root (absolute): the config's directory, else the working directory. Paths are relative to it */
+  /** the workspace root (absolute): the outermost config's directory, else the working directory. Paths are relative to it */
   root: Schema.String,
-  /** the test config, relative to the root (absent: none) */
+  /** the workspace's config, relative to the root (absent: none) */
   config: opt(Schema.String),
+  /** the projects searched, in order; a project reached while searching that has no test file is listed too */
+  projects: Schema.Array(SelectedProject),
   /** the paths searched, relative to the root (empty: the root) */
   paths: Schema.Array(Schema.String),
   /** test files found under them */
@@ -99,7 +116,7 @@ export const Selection = Schema.Struct({
 export type Selection = typeof Selection.Type
 
 /** The version of the event stream (`--reporter jsonl`), bumped on incompatible changes. See EVENTS.md. */
-export const schemaVersion = 1
+export const schemaVersion = 2
 
 export const RunPlanned = Schema.TaggedStruct("RunPlanned", {
   schemaVersion: Schema.Literal(schemaVersion),
@@ -108,10 +125,12 @@ export const RunPlanned = Schema.TaggedStruct("RunPlanned", {
   tests: Schema.Array(PlannedTest)
 })
 export const TestStarted = Schema.TaggedStruct("TestStarted", {
+  project: Schema.String,
   id: Schema.String,
   attempt: Schema.Number
 })
 export const TestFinished = Schema.TaggedStruct("TestFinished", {
+  project: Schema.String,
   id: Schema.String,
   status: Status,
   durationMs: Schema.Number,
@@ -181,15 +200,23 @@ export type RunFileTest = typeof RunFileTest.Type
 
 export class ExecutorRpcs extends RpcGroup.make(
   Rpc.make("ListFile", {
-    payload: { path: Schema.String },
+    payload: {
+      path: Schema.String,
+      /** the project root (absolute): ids are relative to it */
+      root: Schema.String
+    },
     success: Schema.Struct({ file: Schema.String, nodes: Schema.Array(ListedNode) }),
     error: LoadError
   }),
   Rpc.make("RunFile", {
     payload: {
       path: Schema.String,
-      /** absolute path of the test config, if the run uses one */
-      config: opt(Schema.String),
+      /** the project root (absolute): ids are relative to it */
+      root: Schema.String,
+      /** the project's key, echoed in every event */
+      project: Schema.String,
+      /** the configs whose `shared` layers the file's tests use (absolute), the workspace root's first */
+      configs: Schema.Array(Schema.String),
       /** max concurrent tests (fibers) within this file */
       concurrency: Schema.Number,
       tests: Schema.Array(RunFileTest)

@@ -20,7 +20,7 @@ const results = Effect.gen(function*() {
     retries: 0,
     ...(n.noAssertions ? { noAssertions: true } : {})
   }))
-  const events = yield* Stream.runCollect(Executor.runFile(fixture, undefined, 4, tests))
+  const events = yield* Stream.runCollect(Executor.runFile(fixture, { concurrency: 4 }, tests))
   const finished = new Map<string, TestFinished>()
   for (const e of events) if (e._tag === "TestFinished") finished.set(e.id.split(" > ").at(-1)!, e)
   return finished

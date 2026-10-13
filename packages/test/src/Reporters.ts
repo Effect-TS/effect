@@ -1,7 +1,7 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
 import * as Schema from "effect/Schema"
-import { SLOW_MS } from "./Coordinator.ts"
+import { SLOW_MS, testKey } from "./Coordinator.ts"
 import type {
   Failure,
   Location,
@@ -105,16 +105,19 @@ const pathsList = (paths: ReadonlyArray<string>) =>
     ? paths.join(", ")
     : `${paths.slice(0, 2).join(", ")}, +${paths.length - 2} more`
 const selectionLine = (selection: Selection, selected: number) =>
-  `selected ${selected} of ${plural(selection.tests, "test")} in ${plural(selection.files, "file")} (${
-    pathsList(selection.paths)
-  })${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}; ${
+  `selected ${selected} of ${plural(selection.tests, "test")} in ${plural(selection.files, "file")}${
+    selection.projects.length > 1 ? ` across ${selection.projects.length} projects` : ""
+  } (${pathsList(selection.paths)})${selection.filters.length ? `; ${selection.filters.join(", ")}` : ""}; ${
     selection.config !== undefined ? `config ${selection.config}` : "no config"
-  }`
+  }${selection.projects.length > 1 ? `; projects ${pathsList(selection.projects.map((p) => p.project))}` : ""}`
+
+/** How a test is shown: its key, i.e. its id prefixed with its project (unless that is the workspace root). */
+const shown = (t: { readonly project: string; readonly id: string }) => testKey(t.project, t.id)
 
 /** Tests that passed (or were skipped) but took longer than `SLOW_MS`; the failing ones are shown anyway. */
 const slowTests = (planned: ReadonlyArray<PlannedTest>, results: ReadonlyMap<string, TestFinished>) =>
   planned.flatMap((t) => {
-    const r = results.get(t.id)
+    const r = results.get(shown(t))
     return r && r.status === "passed" && r.durationMs > SLOW_MS ? [{ test: t, result: r }] : []
   })
 
@@ -124,7 +127,7 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}s`
 const collect = () => {
   let planned: Array<PlannedTest> = []
   let runSeed = 0
-  let selection: Selection = { root: "", paths: [], files: 0, tests: 0, filters: [] }
+  let selection: Selection = { root: "", projects: [], paths: [], files: 0, tests: 0, filters: [] }
   const results = new Map<string, TestFinished>()
   let finished: RunFinished | undefined
   return {
@@ -133,7 +136,7 @@ const collect = () => {
         planned = [...e.tests]
         runSeed = e.runSeed
         selection = e.selection
-      } else if (e._tag === "TestFinished") results.set(e.id, e)
+      } else if (e._tag === "TestFinished") results.set(shown(e), e)
       else if (e._tag === "RunFinished") finished = e
     },
     get planned() {
@@ -165,10 +168,10 @@ export const agent = (ctx: ReporterContext): Reporter => {
       const byBail = (r: TestFinished | undefined) =>
         r?.skipReason?.startsWith("not run: ") || r?.failures[0]?.message.startsWith("interrupted by ")
       for (const t of s.planned) {
-        const r = s.results.get(t.id)
+        const r = s.results.get(shown(t))
         if (!r || !isBad(r) || byBail(r)) continue
         lines.push("")
-        lines.push(`--- ${r.status.toUpperCase()} [${t.shortId}] ${t.id}`)
+        lines.push(`--- ${r.status.toUpperCase()} [${t.shortId}] ${shown(t)}`)
         lines.push(`attempt=${r.attempt}/${t.retries + 1} seed=${r.seed} duration=${r.durationMs}ms`)
         for (const f of r.failures) lines.push(...renderFailure(f))
         if (r.console.length > 0) {
@@ -178,15 +181,15 @@ export const agent = (ctx: ReporterContext): Reporter => {
         lines.push(`rerun: ${ctx.rerun(t, s.runSeed)}`)
       }
       const flaky = s.planned.filter((t) => {
-        const r = s.results.get(t.id)
+        const r = s.results.get(shown(t))
         return r?.status === "passed" && r.previousAttempts.length > 0
       })
       if (flaky.length) {
         lines.push("")
         for (const t of flaky) {
-          const r = s.results.get(t.id)!
+          const r = s.results.get(shown(t))!
           lines.push(
-            `FLAKY [${t.shortId}] ${t.id} passed on attempt ${r.attempt} (earlier: ${
+            `FLAKY [${t.shortId}] ${shown(t)} passed on attempt ${r.attempt} (earlier: ${
               r.previousAttempts.map((a) => a.status).join(", ")
             })`
           )
@@ -196,12 +199,14 @@ export const agent = (ctx: ReporterContext): Reporter => {
       if (slow.length) {
         lines.push("")
         for (const { result, test } of slow) {
-          lines.push(`SLOW [${test.shortId}] ${test.id} took ${seconds(result.durationMs)} (over ${seconds(SLOW_MS)})`)
+          lines.push(
+            `SLOW [${test.shortId}] ${shown(test)} took ${seconds(result.durationMs)} (over ${seconds(SLOW_MS)})`
+          )
         }
       }
-      const bailed = s.planned.filter((t) => byBail(s.results.get(t.id)))
+      const bailed = s.planned.filter((t) => byBail(s.results.get(shown(t))))
       if (bailed.length) {
-        const interrupted = bailed.filter((t) => s.results.get(t.id)!.status === "interrupted").length
+        const interrupted = bailed.filter((t) => s.results.get(shown(t))!.status === "interrupted").length
         lines.push("")
         lines.push(
           `${s.finished.bailed ? "BAIL" : "CANCELLED"} ${interrupted} interrupted in flight, ${
@@ -209,11 +214,13 @@ export const agent = (ctx: ReporterContext): Reporter => {
           } not started (ids in --reporter jsonl)`
         )
       }
-      const skipped = s.planned.filter((t) => s.results.get(t.id)?.status === "skipped" && !byBail(s.results.get(t.id)))
+      const skipped = s.planned.filter((t) =>
+        s.results.get(shown(t))?.status === "skipped" && !byBail(s.results.get(shown(t)))
+      )
       if (skipped.length) {
         lines.push("")
         for (const t of skipped) {
-          lines.push(`SKIP [${t.shortId}] ${t.id} (${s.results.get(t.id)!.skipReason ?? "skipped"})`)
+          lines.push(`SKIP [${t.shortId}] ${shown(t)} (${s.results.get(shown(t))!.skipReason ?? "skipped"})`)
         }
       }
       ctx.write(lines.join("\n") + "\n")
@@ -244,8 +251,8 @@ export const human = (ctx: ReporterContext): Reporter => {
       const out: Array<string> = []
       let lastPath: Array<string> = []
       for (const t of s.planned) {
-        const r = s.results.get(t.id)!
-        const segs = t.id.split(" > ")
+        const r = s.results.get(shown(t))!
+        const segs = shown(t).split(" > ")
         const parents = segs.slice(0, -1)
         let common = 0
         while (common < parents.length && parents[common] === lastPath[common]) common++
@@ -266,10 +273,10 @@ export const human = (ctx: ReporterContext): Reporter => {
         out.push(`${"  ".repeat(parents.length)}${icon} ${segs.at(-1)}${extra}`)
       }
       for (const t of s.planned) {
-        const r = s.results.get(t.id)!
+        const r = s.results.get(shown(t))!
         if (!isBad(r)) continue
         out.push("")
-        out.push(red(bold(` ${r.status.toUpperCase()} `)) + " " + dim(`[${t.shortId}]`) + " " + bold(t.id))
+        out.push(red(bold(` ${r.status.toUpperCase()} `)) + " " + dim(`[${t.shortId}]`) + " " + bold(shown(t)))
         for (const f of r.failures) {
           for (const l of renderFailure(f)) {
             out.push(
