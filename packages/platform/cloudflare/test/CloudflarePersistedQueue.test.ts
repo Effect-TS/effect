@@ -5,7 +5,7 @@ import { armAlarm, type EntityAlarm } from "@effect/platform-cloudflare/internal
 import { makeQueueRuntime, type QueueRuntime } from "@effect/platform-cloudflare/internal/queueRuntime"
 import { earliestLeaseExpiry } from "@effect/platform-cloudflare/internal/queueStorage"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, Schema } from "effect"
+import { Clock, Effect, Fiber, Layer, Schema } from "effect"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import { PersistedQueue } from "effect/persistence"
 
@@ -116,11 +116,14 @@ class FakeSql {
 class FakeAlarm {
   current: number | null = null
 
+  constructor(readonly onSchedule?: (scheduledTime: number) => void) {}
+
   getAlarm() {
     return Promise.resolve(this.current)
   }
   setAlarm(scheduledTime: number) {
     this.current = scheduledTime
+    this.onSchedule?.(scheduledTime)
     return Promise.resolve()
   }
 
@@ -134,10 +137,15 @@ class FakeQueueNamespace {
   readonly runtimes = new Map<string, QueueRuntime>()
   now = 0
 
+  constructor(
+    readonly clockNow?: () => number,
+    readonly onSchedule?: (name: string, scheduledTime: number) => void
+  ) {}
+
   store(name: string) {
     let store = this.stores.get(name)
     if (store === undefined) {
-      store = { sql: new FakeSql(), alarm: new FakeAlarm() }
+      store = { sql: new FakeSql(), alarm: new FakeAlarm((time) => this.onSchedule?.(name, time)) }
       this.stores.set(name, store)
     }
     return store
@@ -152,7 +160,7 @@ class FakeQueueNamespace {
       runtime = makeQueueRuntime({
         sql: store.sql.sql,
         alarm: store.alarm.alarm,
-        now: () => this.now
+        now: () => this.clockNow?.() ?? this.now
       })
       const expiry = earliestLeaseExpiry(store.sql.sql)
       if (expiry !== undefined) {
@@ -171,7 +179,7 @@ class FakeQueueNamespace {
   fireDueAlarms(): Promise<void> {
     const fired: Array<Promise<void>> = []
     for (const [name, store] of this.stores) {
-      if (store.alarm.current !== null && store.alarm.current <= this.now) {
+      if (store.alarm.current !== null && store.alarm.current <= (this.clockNow?.() ?? this.now)) {
         store.alarm.current = null
         fired.push(this.getByName(name).runAlarm())
       }
@@ -280,6 +288,40 @@ describe("CloudflarePersistedQueue", () => {
     })
   })
 
+  it.effect("arms a delayed offer without a taker and restores its deadline after a crash", () => {
+    const namespace = new FakeQueueNamespace()
+    const name = objectName("delayed-crash")
+    return Effect.gen(function*() {
+      namespace.now = 1000
+      yield* Effect.promise(() => namespace.getByName(name).offer("a", "\"delayed\"", 500))
+      const store = namespace.stores.get(name)!
+      assert.strictEqual(store.alarm.current, 1500)
+
+      namespace.crash()
+      store.alarm.current = null
+      const runtime = namespace.getByName(name)
+      yield* settle()
+      assert.strictEqual(store.alarm.current, 1500)
+
+      let delivered: string | undefined
+      const pending = runtime.take("taker", 10, 500).then((item) => {
+        delivered = item.element
+        return item
+      })
+      namespace.now = 1499
+      yield* Effect.promise(() => namespace.fireDueAlarms())
+      yield* settle()
+      assert.isUndefined(delivered)
+
+      namespace.now = 1500
+      yield* Effect.promise(() => namespace.fireDueAlarms())
+      const item = yield* Effect.promise(() => pending)
+      assert.strictEqual(item.id, "a")
+      assert.strictEqual(item.element, "\"delayed\"")
+      assert.strictEqual(item.attempts, 0)
+    })
+  })
+
   it.effect("an extended lease survives the original expiry", () => {
     const namespace = new FakeQueueNamespace()
     const name = objectName("extended")
@@ -339,11 +381,28 @@ describe("CloudflarePersistedQueue", () => {
 
 // The store-agnostic PersistedQueueStore contract suite the memory, Redis,
 // and SQL stores also run against.
-const contractNamespace = new FakeQueueNamespace()
 PersistedQueueTest.suite(
   "cloudflare",
-  Layer.succeed(PersistedQueue.PersistedQueueStore)(
-    CloudflarePersistedQueue.make({ queueNamespace: contractNamespace as never })
-  ),
+  Layer.effect(PersistedQueue.PersistedQueueStore)(Effect.gen(function*() {
+    const clock = yield* Clock.Clock
+    const scope = yield* Effect.scope
+    const runFork = Effect.runForkWith(yield* Effect.context())
+    const namespace = new FakeQueueNamespace(
+      () => clock.currentTimeMillisUnsafe(),
+      (name, scheduledTime) => {
+        // Cloudflare dispatches alarms independently of queue RPCs. Use the
+        // suite clock for both the runtime timestamp and that dispatch.
+        runFork(
+          Effect.gen(function*() {
+            yield* Effect.sleep(Math.max(0, scheduledTime - clock.currentTimeMillisUnsafe()))
+            if (namespace.store(name).alarm.current === scheduledTime) {
+              yield* Effect.promise(() => namespace.fireDueAlarms())
+            }
+          }).pipe(Effect.forkIn(scope))
+        )
+      }
+    )
+    return CloudflarePersistedQueue.make({ queueNamespace: namespace as never })
+  })),
   { cleanup: "unsupported" }
 )
