@@ -2715,9 +2715,7 @@ export declare namespace Types {
       [ExtractAndNarrow<IH, PH>] extends [infer N] ? [N] extends [never] ? never
         : NarrowArrayPrefix<IT, PT, readonly [...Out, N]>
       : never
-    : [ExtractAndNarrow<I[number], PH>] extends [infer N] ? [N] extends [never] ? never
-      : NarrowArrayPrefix<ReadonlyArray<I[number]>, PT, readonly [...Out, N]>
-    : never
+    : NarrowArrayPrefix<readonly [I[number], ...Array<I[number]>], P, Out>
     : readonly [...Out, ...I]
 
   type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ?
