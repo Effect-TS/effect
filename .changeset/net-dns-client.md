@@ -6,4 +6,6 @@
 "@effect/platform-deno": patch
 ---
 
-Add an experimental `DnsClient` module to `effect/net` with UDP, TCP, and DNS over HTTPS transports, plus `NodeDnsClient`, `BunDnsClient`, and `DenoDnsClient`. `Dns.Cname` targets are now `string` instead of `Host.DomainName`.
+Add experimental `effect/net/DnsClient` with UDP, TCP, and DNS over HTTPS transports, plus `NodeDnsClient`, `BunDnsClient`, and `DenoDnsClient`.
+
+`Dns.Cname.target` is now `string` rather than `Host.DomainName` to support non-host DNS names. Resolver results are fully qualified and may preserve case. Consumers that need a `Host.DomainName` must parse the target and handle failure.

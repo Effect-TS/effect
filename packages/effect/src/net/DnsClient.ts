@@ -31,12 +31,12 @@ import * as Host from "./Host.ts"
 import * as NetAddress from "./NetAddress.ts"
 
 /**
- * A resource record of a DNS response section.
+ * A resource record in a DNS response.
  *
  * **Details**
  *
- * `owner` is a fully qualified name written like `Dns.Ptr` hosts, keeping the
- * letter case of the response.
+ * `owner` is fully qualified, uses the same text format as `Dns.Ptr.host`,
+ * and preserves the response's letter case.
  *
  * @stability experimental
  * @category models
@@ -92,8 +92,8 @@ export interface Response {
  */
 export class DnsClient extends Context.Service<DnsClient, {
   /**
-   * Queries the records of one type, given by name or numeric code, for a
-   * name, without search domains. NXDOMAIN responses succeed; other errors
+   * Queries a name for one record type, given by name or numeric code,
+   * without search domains. NXDOMAIN responses succeed; other errors
    * fail once every name server has been tried. Invalid types, OPT, and zone
    * transfers fail with `Unsupported`.
    */
@@ -109,8 +109,7 @@ export class DnsClient extends Context.Service<DnsClient, {
   readonly search: ReadonlyArray<Host.DomainName>
 
   /**
-   * The number of dots from which a relative name is tried as given before
-   * the search domains.
+   * The minimum dot count for trying a relative name before search domains.
    */
   readonly ndots: number
 
@@ -215,7 +214,8 @@ export class Transport extends Context.Service<Transport, {
   readonly servers: Arr.NonEmptyReadonlyArray<{
     /**
      * Sends a query to the name server and returns the matching response.
-     * Exchanges run with `Exchange.limit` get the client's timeout.
+     * Custom transports must wrap exchanges in `Exchange.limit` to apply
+     * the client's timeout and scope.
      */
     readonly send: (exchange: Exchange) => Effect.Effect<Uint8Array, Dns.DnsError>
   }>
@@ -411,9 +411,8 @@ export interface TransportHttpsOptions {
 const maxMessageSize = 0xffff
 
 /**
- * Creates a `Transport` that sends queries with the `HttpClient` service, as
- * DNS over HTTPS (RFC 8484). The `Age` of cached HTTP responses is subtracted
- * from the TTLs of their records.
+ * Creates a DNS over HTTPS transport using `HttpClient` (RFC 8484).
+ * Subtracts HTTP `Age` from resource-record TTLs, clamping at zero.
  *
  * @see {@link TransportHttpsOptions} for the options and their defaults
  * @see {@link layerTransportHttps} for a layer
@@ -479,7 +478,6 @@ export const makeTransportHttps = (
               chunks.push(chunk)
               return Effect.void
             })
-            // Seconds the response spent in HTTP caches (RFC 9111 section 5.1).
             const age = /^\d+$/.test(response.headers["age"] ?? "") ? Number(response.headers["age"]) : 0
             return { message: concat(new Uint8Array(0), chunks), age }
           }))
@@ -601,7 +599,6 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
       const question = { name: Host.toFullyQualified(name), type: code }
       const recursionDesired = queryOptions?.recursionDesired ?? true
 
-      // Without `edns`, queries leave out the OPT record.
       const exchange = (edns: boolean): Exchange => ({
         encode: ({ id, padding, udpPayloadSize }) =>
           DnsMessage.encodeQuery({
@@ -864,7 +861,6 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
             record.data._tag === type ? [record.data as Dns.RecordFor<T>] : []
           )
           if (records.length > 0) return Effect.succeed(records)
-          // Records of the type whose data `Dns` cannot represent.
           if (
             atOwner.some((record) => record.data._tag === "UNKNOWN" && record.data.type === DnsMessage.typeCodes[type])
           ) {
@@ -882,7 +878,6 @@ export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
           if (alias === undefined) {
             // NXDOMAIN, or NODATA with the SOA record of the target's zone (RFC 2308).
             const negative = response.rcode !== 0 || response.authority.some((record) => record.data._tag === "SOA")
-            // Query the target if it is a host name.
             const target = hops === 0 || negative || !/^[\w.-]+$/.test(owner)
               ? undefined
               : Result.getOrUndefined(Host.domainNameFromString(owner))

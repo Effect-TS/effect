@@ -26,7 +26,7 @@ const OPT = 41
 const PADDING = 12
 const CLASS_IN = 1
 const MAX_NAME_LENGTH = 255
-// Like miekg/dns: enough for any name of at most 255 bytes.
+// Bound compression chains, matching miekg/dns.
 const MAX_POINTERS = 126
 
 // =============================================================================
@@ -65,7 +65,6 @@ export const encodeQuery = (options: {
   view.setUint16(offset, options.type)
   view.setUint16(offset + 2, CLASS_IN)
   if (udpPayloadSize !== undefined) {
-    // OPT record
     view.setUint16(offset + 5, OPT)
     view.setUint16(offset + 7, udpPayloadSize)
     if (padding !== undefined) {
@@ -109,8 +108,7 @@ const ascii = (bytes: Uint8Array): string | undefined => {
   return out
 }
 
-// Writes a name as text, like `Dns.Ptr` hosts and `Dns.Cname` targets: each label is decoded as
-// UTF-8, with dots and backslashes inside a label escaped as `\.` and `\\`.
+// Fully qualified UTF-8 text, escaping dots and backslashes within labels.
 const textName = (labels: ReadonlyArray<Uint8Array>): string =>
   labels.length === 0 ? "." : `${labels.map((label) => utf8.decode(label).replace(/[.\\]/g, "\\$&")).join(".")}.`
 
@@ -391,9 +389,9 @@ export const decodeResponse = (bytes: Uint8Array): Result.Result<DnsClient.Respo
   })
 
 /**
- * Returns a copy of a message with `seconds` subtracted from the TTLs of its
- * resource records, floored at zero, or the message itself when it cannot be
- * decoded. OPT records are left as they are.
+ * Copies the message and subtracts `seconds` from resource-record TTLs,
+ * clamping at zero. Leaves OPT metadata and SOA timers unchanged.
+ * Returns the original bytes if traversal fails, for validation by the decoder.
  *
  * @internal
  */

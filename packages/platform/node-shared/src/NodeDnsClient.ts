@@ -63,8 +63,7 @@ const checkNameServers = Effect.fnUntraced(function*(
   }
 })
 
-// Clamps numeric options to their valid ranges, like `NodeDns`; NaN becomes
-// the minimum.
+// Like `NodeDns`, clamp numeric options; NaN becomes the minimum.
 const clamp = (value: number | undefined, min: number, max: number): number | undefined =>
   value === undefined ? undefined : value >= min ? Math.min(Math.floor(value), max) : min
 
@@ -76,8 +75,6 @@ const clampTimeout = (input: Duration.Input | undefined): Duration.Duration | un
 
 const localNameServers = Arr.map(NetAddress.loopbackAddresses, (address) => NetAddress.inetAddressUnsafe(address, 53))
 
-// Validates options and fills in their defaults. Numeric options are clamped
-// to their valid ranges, and `ndots` to 15 like in `resolv.conf`.
 const normalizeOptions = Effect.fnUntraced(function*(options: Options) {
   const nameServers = options.nameServers ?? []
   yield* checkNameServers(nameServers)

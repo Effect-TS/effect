@@ -79,9 +79,9 @@ export interface Caa extends RecordProto<"CAA"> {
  *
  * **Details**
  *
- * `target` is a fully qualified name, written like `Ptr` host names. It need
- * not be a host name, such as `1.0/25.2.0.192.in-addr.arpa.` in classless
- * reverse delegations.
+ * `target` uses the same fully qualified text format as `Ptr.host`. It need
+ * not be a host name; classless reverse delegations use names such as
+ * `1.0/25.2.0.192.in-addr.arpa.`.
  *
  * @stability experimental
  * @category models
@@ -238,8 +238,8 @@ export interface Txt extends RecordProto<"TXT"> {
 }
 
 /**
- * A record with its numeric type and undecoded data, for types without their
- * own record value and for data that its type cannot represent.
+ * A record with its numeric type and raw data, for unsupported types or
+ * data that the corresponding record model cannot represent.
  *
  * @stability experimental
  * @category models
