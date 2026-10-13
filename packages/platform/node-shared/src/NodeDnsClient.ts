@@ -81,18 +81,14 @@ const localNameServers = Arr.map(NetAddress.loopbackAddresses, (address) => NetA
 
 // The system name servers of `node:dns`, without duplicates (Deno reports
 // each one twice) and without IPv6 addresses with a scope ID.
-const systemNameServers = (): ReadonlyArray<NetAddress.InetAddress> => {
-  let servers: ReadonlyArray<string>
-  try {
-    servers = NodeDnsApi.getServers()
-  } catch {
-    return []
-  }
-  return Arr.dedupe(servers.flatMap((input) => {
-    const server = Result.getOrUndefined(Dns.nameServerFromString(input))
-    return server === undefined || isScoped(server) ? [] : [server]
-  }))
-}
+const systemNameServers: Effect.Effect<ReadonlyArray<NetAddress.InetAddress>> = Effect.sync(() =>
+  Arr.dedupe(
+    NodeDnsApi.getServers().flatMap((input) => {
+      const server = Result.getOrUndefined(Dns.nameServerFromString(input))
+      return server === undefined || isScoped(server) ? [] : [server]
+    })
+  )
+)
 
 interface NormalizedOptions {
   readonly transport: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
@@ -107,7 +103,7 @@ const normalizeOptions = Effect.fnUntraced(function*(options: Options) {
   const search = options.search === undefined
     ? undefined
     : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
-  const system = Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : systemNameServers()
+  const system = Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : yield* systemNameServers
   const normalized: NormalizedOptions = {
     transport: {
       nameServers: Arr.isReadonlyArrayNonEmpty(system) ? system : localNameServers,
