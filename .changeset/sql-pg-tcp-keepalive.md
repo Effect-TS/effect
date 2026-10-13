@@ -2,4 +2,4 @@
 "@effect/sql-pg": patch
 ---
 
-Add optional client-side TCP keepalive settings to detect silently broken PostgreSQL connections that receive neither responses nor a close/reset, leaving queries waiting indefinitely.
+Add an optional `keepAlive` setting for TCP connections, so queries on a connection that silently stops responding fail with a socket error instead of hanging.

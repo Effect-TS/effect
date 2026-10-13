@@ -57,29 +57,26 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
- * TCP keepalive settings for native PostgreSQL connections. A responsive peer
- * can answer probes while a query is running, so these settings do not impose a
- * query timeout. Unix sockets and custom streams are not configured.
+ * TCP keepalive settings for native TCP connections. Unix sockets and custom
+ * streams are left unchanged. This is not a query timeout: a live server
+ * answers probes while a query runs.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
 export interface KeepAliveOptions {
-  /**
-   * Idle time before the first probe. Timings are truncated to whole seconds
-   * and must be at least one second.
-   */
+  /** Idle time before the first probe. Truncated to whole seconds, minimum 1 second. */
   readonly initialDelay: Duration.Input
   /**
-   * Time between unanswered probes, at least one second. Requires the extended
-   * `Socket.setKeepAlive` API (Node >= 24.19.0). Omit to use Node's default.
+   * Time between unanswered probes. Truncated to whole seconds, minimum 1
+   * second. Requires Node >= 24.19.0; omit to use Node's default.
    */
   readonly interval?: Duration.Input | undefined
   /**
-   * Positive integer count of unanswered probes before closing the connection,
-   * at most 4,294,967,295. The OS may impose a smaller limit. Requires the extended
-   * `Socket.setKeepAlive` API (Node >= 24.19.0). Omit to use Node's default.
+   * Unanswered probes before the connection is dropped, from 1 to 4294967295.
+   * The OS may cap it lower. Requires Node >= 24.19.0; omit to use Node's
+   * default.
    */
   readonly count?: number | undefined
 }
@@ -128,7 +125,7 @@ export interface Config {
    */
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
-  /** Enables TCP keepalive on each native TCP connection when configured. */
+  /** TCP keepalive for native TCP connections. Disabled when omitted. */
   readonly keepAlive?: KeepAliveOptions | undefined
   /**
    * Overrides `startupParameters.application_name`, the URL's `application_name`,
@@ -2008,8 +2005,7 @@ const connectTcp = (config: ResolvedConfig): Net.Socket => {
   const socket = Net.connect({ host: config.host, port: config.port, noDelay: true })
   const keepAlive = config.keepAlive
   if (keepAlive !== undefined) {
-    // Applied once the TCP handle is connected, before any TLS upgrade. The
-    // values are validated in `resolveConfig`; Node does not throw here.
+    // Runs before any TLS upgrade. Values are validated in `resolveConfig`.
     socket.once("connect", () => {
       socket.setKeepAlive(true, keepAlive.initialDelay, keepAlive.interval, keepAlive.count)
     })
@@ -2294,8 +2290,8 @@ const configError = (message: string, cause?: unknown): SqlError =>
 
 const keepAliveDurationRange = "must be between 1 and 2147483647 seconds"
 
-// Node truncates keepalive timings to whole seconds and libuv silently rejects
-// zero, which would leave the OS defaults in place without any error.
+// Node truncates to whole seconds and libuv silently ignores zero, which would
+// leave the OS defaults in place.
 const keepAliveMillis = (input: Duration.Input): number | undefined => {
   const duration = Duration.fromInput(input)
   if (Option.isNone(duration)) return undefined
