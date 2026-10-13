@@ -569,6 +569,16 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _, Args extends Array<a
 ) => [Ret] extends [[A] extends [never] ? any : A] ? Matcher<I, F, R, A, Pr, Ret, Args>
   : "withReturnType constraint does not extend Result type" = internal.withReturnType
 
+// `P` is a const type parameter, so a fresh object skips excess-property checks.
+// Reject keys absent from every object variant. Predicates, refinements, and arrays
+// stay unchecked: their own properties are not pattern keys. The runtime matcher
+// still tests each own key of an object pattern.
+type PatternKeys<A> = A extends object ? keyof A : never
+
+type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | SafeRefinement<never, any>] ? unknown
+  : [P] extends [object] ? { readonly [K in Exclude<keyof P, PatternKeys<A>>]: never }
+  : unknown
+
 /**
  * Defines a condition for matching values.
  *
@@ -618,17 +628,6 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _, Args extends Array<a
  * @category defining patterns
  * @since 4.0.0
  */
-
-// `P` is a const type parameter, so a fresh object skips excess-property checks.
-// Reject keys absent from every object variant. Predicates, refinements, and arrays
-// stay unchecked: their own properties are not pattern keys. The runtime matcher
-// still tests each own key of an object pattern.
-type PatternKeys<A> = A extends object ? keyof A : never
-
-type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | SafeRefinement<never, any>] ? unknown
-  : [P] extends [object] ? { readonly [K in Exclude<keyof P, PatternKeys<A>>]: never }
-  : unknown
-
 export const when = <
   R,
   const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
