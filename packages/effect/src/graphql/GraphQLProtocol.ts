@@ -261,14 +261,17 @@ const readAnswer = (response: HttpClientResponse.HttpClientResponse) =>
 const errorMessage = (cause: unknown): string => cause instanceof Error ? cause.message : String(cause)
 
 // The graphql-sse distinct-mode events of a `text/event-stream` body. The
-// stream ends on a `complete` event or at EOF. A `retry:` line is kept and
-// reported as `retryAfter` if the body later fails.
+// stream ends on a `complete` event, with or without a `data:` line. A body
+// that ends without one means the connection was lost, so it fails with a
+// retryable `TransportError`. A `retry:` line is kept and reported as
+// `retryAfter` if the body fails or ends early.
 const sseEvents = (
   response: HttpClientResponse.HttpClientResponse
 ): Stream.Stream<{ readonly body: unknown; readonly headers: Headers.Headers }, TransportError> =>
   Stream.suspend(() => {
     const headers = response.headers
     let retryAfter: Duration.Duration | undefined
+    let complete = false
     let events: Array<Sse.Event> = []
     const parser = Sse.makeParser((event) => {
       if (event._tag === "Retry") {
@@ -276,7 +279,7 @@ const sseEvents = (
       } else {
         events.push(event)
       }
-    })
+    }, { dispatchEmptyNamedEvents: true })
     return response.stream.pipe(
       Stream.decodeText(),
       Stream.mapError((cause) =>
@@ -292,7 +295,10 @@ const sseEvents = (
         return Effect.succeed(batch)
       }),
       Stream.flattenIterable,
-      Stream.takeWhile((event) => event.event !== "complete"),
+      Stream.takeWhile((event) => {
+        if (event.event === "complete") complete = true
+        return !complete
+      }),
       Stream.filter((event) => event.event === "next"),
       Stream.mapEffect((event) =>
         Effect.try({
@@ -300,7 +306,12 @@ const sseEvents = (
           catch: (cause) =>
             new TransportError({ description: `Invalid graphql-sse next event: ${errorMessage(cause)}`, cause })
         })
-      )
+      ),
+      Stream.concat(Stream.suspend(() =>
+        complete ? Stream.empty : Stream.fail(
+          new TransportError({ description: "The graphql-sse stream ended without a complete event", retryAfter })
+        )
+      ))
     )
   })
 
@@ -444,9 +455,11 @@ export const makeHttp: {
  *
  * A subscription is a `POST` with `Accept: text/event-stream`. Each `next`
  * event is emitted with the response headers but no status, and the stream
- * ends on a `complete` event or when the body ends. A body that fails is a
- * retryable `TransportError`, with a server `retry:` line as its
- * `retryAfter`. A non-stream answer, such as a `400` with `errors`, is read
+ * ends on a `complete` event, with or without a `data:` line. A body that
+ * fails, or ends without a `complete` event, is a retryable `TransportError`
+ * with a server `retry:` line as its `retryAfter`, so the client's
+ * `subscriptionRetry` resubscribes. A non-stream answer, such as a `400` with
+ * `errors`, is read
  * like a query's response. Interrupting the stream aborts the request.
  *
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in

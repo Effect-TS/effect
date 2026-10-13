@@ -92,6 +92,12 @@ export interface DecodeOptions {
    * Maximum number of string code units retained for a pending event. The default is 10 MiB.
    */
   readonly maxEventSize?: number | undefined
+  /**
+   * Also dispatch an event that sets an `event:` name but has no `data:`
+   * line, with empty `data`. The WHATWG algorithm drops such events, but some
+   * protocols use them, such as graphql-sse's `complete`. Defaults to `false`.
+   */
+  readonly dispatchEmptyNamedEvents?: boolean | undefined
 }
 
 const defaultMaxEventSize = 10 * 1024 * 1024
@@ -270,6 +276,7 @@ export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
  */
 export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeOptions): Parser {
   const maxEventSize = options?.maxEventSize ?? defaultMaxEventSize
+  const dispatchEmptyNamedEvents = options?.dispatchEmptyNamedEvents === true
 
   // Processing state
   let isFirstChunk: boolean
@@ -367,11 +374,12 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     if (line.length === 0) {
       // End of event. Clear the state first so a throwing `onParse` cannot
       // leak it into the next event
+      const named = eventName !== undefined && eventName !== ""
       const event = eventName || "message"
       const eventData = data
       eventName = undefined
       data = ""
-      if (eventData.length > 0) {
+      if (eventData.length > 0 || (dispatchEmptyNamedEvents && named)) {
         onParse({
           _tag: "Event",
           id: lastEventId,
