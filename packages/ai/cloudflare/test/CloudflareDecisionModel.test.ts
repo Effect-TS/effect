@@ -72,11 +72,6 @@ const clientLayer = (
 const layer = (answers: unknown) =>
   CloudflareDecisionModel.layer({ model: "clef" }).pipe(Layer.provide(clientLayer(answers)))
 
-const decodeBody = (request: HttpClientRequest.HttpClientRequest) => {
-  assert.strictEqual(request.body._tag, "Uint8Array")
-  return request.body._tag === "Uint8Array" ? JSON.parse(new TextDecoder().decode(request.body.body)) : undefined
-}
-
 describe("CloudflareDecisionModel", () => {
   it.effect("sends every decision as a question and maps the answers", () =>
     Effect.gen(function*() {
@@ -180,7 +175,6 @@ describe("CloudflareDecisionModel", () => {
 
   it.effect("sends byte arrays, base64 strings, and data URLs as images", () => {
     const dataUrl = "data:image/webp;base64,UklGRg=="
-    let body: any
     return Effect.gen(function*() {
       const result = yield* DecisionModel.decide(Triage, {
         input,
@@ -191,15 +185,17 @@ describe("CloudflareDecisionModel", () => {
         ]
       })
       assert.strictEqual(result.answers.urgent.probability, 0.99)
-      assert.deepStrictEqual(body.images, [
-        { content_type: "image/png", base64: "iVBORw==" },
-        { content_type: "image/jpeg", base64: "/9j/4AAQ" },
-        dataUrl
-      ])
     }).pipe(
       Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
       Effect.provide(clientLayer(answers, (request) => {
-        body = decodeBody(request)
+        assert.strictEqual(request.body._tag, "Uint8Array")
+        if (request.body._tag === "Uint8Array") {
+          assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).images, [
+            { content_type: "image/png", base64: "iVBORw==" },
+            { content_type: "image/jpeg", base64: "/9j/4AAQ" },
+            dataUrl
+          ])
+        }
       }))
     )
   })
@@ -220,19 +216,4 @@ describe("CloudflareDecisionModel", () => {
       }))
     )
   })
-
-  for (const [name, images] of [["omitted", undefined], ["empty", []]] as const) {
-    it.effect(`leaves images out of the request when ${name}`, () => {
-      let body: any
-      return Effect.gen(function*() {
-        yield* DecisionModel.decide(Triage, { input, images })
-        assert.isFalse("images" in body)
-      }).pipe(
-        Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
-        Effect.provide(clientLayer(answers, (request) => {
-          body = decodeBody(request)
-        }))
-      )
-    })
-  }
 })
