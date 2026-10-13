@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Merge colliding inclusive bounds when exporting JSON Schema. A `minimum` or `maximum` that collides with one already on the schema is now tightened in place instead of being moved into `allOf`, so `Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))` exports `minimum: 1, maximum: 100` and `Schema.Natural` exports `minimum: 0`. Annotations on those checks stay at the top level too. Other collisions still use `allOf`.
+Tighten a colliding inclusive `minimum` or `maximum` in place when exporting JSON Schema, instead of moving it into `allOf`. Declared bounds on `Schema.Int`, such as the `minimum: 0` of `Schema.Natural`, now appear at the top level along with the check's annotations.

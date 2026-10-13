@@ -121,9 +121,8 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
-// Merges an inlineable check into the schema it applies to. Two inclusive bounds on the same schema object are
-// equivalent to the tighter one, so a colliding `minimum` or `maximum` is tightened in place. Any other collision
-// returns `undefined`, and the caller keeps the check in `allOf`.
+// Two inclusive bounds on one schema object are equivalent to the tighter bound, so a colliding `minimum` or
+// `maximum` is tightened in place. Any other collision returns `undefined` and the caller falls back to `allOf`.
 function mergeInlineCheck(
   left: JsonSchema.JsonSchema,
   right: JsonSchema.JsonSchema,
