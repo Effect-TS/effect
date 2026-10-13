@@ -412,7 +412,8 @@ const maxMessageSize = 0xffff
 
 /**
  * Creates a `Transport` that sends queries with the `HttpClient` service, as
- * DNS over HTTPS (RFC 8484).
+ * DNS over HTTPS (RFC 8484). The `Age` of cached HTTP responses is subtracted
+ * from the TTLs of their records.
  *
  * @see {@link TransportHttpsOptions} for the options and their defaults
  * @see {@link layerTransportHttps} for a layer
@@ -478,12 +479,14 @@ export const makeTransportHttps = (
               chunks.push(chunk)
               return Effect.void
             })
-            return concat(new Uint8Array(0), chunks)
+            // Seconds the response spent in HTTP caches (RFC 9111 section 5.1).
+            const age = /^\d+$/.test(response.headers["age"] ?? "") ? Number(response.headers["age"]) : 0
+            return { message: concat(new Uint8Array(0), chunks), age }
           }))
-          if (!matches(payload, 0)) {
+          if (!matches(payload.message, 0)) {
             return yield* fail("InvalidResponse", new Error("the response does not match the query"))
           }
-          return payload
+          return payload.age > 0 ? DnsMessage.subtractTtl(payload.message, payload.age) : payload.message
         })
       }))
     })

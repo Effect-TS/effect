@@ -389,3 +389,29 @@ export const decodeResponse = (bytes: Uint8Array): Result.Result<DnsClient.Respo
       edns
     }
   })
+
+/**
+ * Returns a copy of a message with `seconds` subtracted from the TTLs of its
+ * resource records, floored at zero, or the message itself when it cannot be
+ * decoded. OPT records are left as they are.
+ *
+ * @internal
+ */
+export const subtractTtl = (bytes: Uint8Array, seconds: number): Uint8Array => {
+  const copy = new Uint8Array(bytes)
+  const result = decode(copy, (reader) => {
+    const { counts } = readHeader(reader)
+    for (let i = counts[1] + counts[2] + counts[3]; i > 0; i--) {
+      reader.name("record owner")
+      const type = reader.u16("record type")
+      reader.u16("record class")
+      const ttl = reader.u32("record TTL")
+      if (type !== OPT) {
+        // TTLs of 2^31 seconds or more count as zero, like in `decodeResponse`.
+        reader.view.setUint32(reader.offset - 4, ttl > 0x7fffffff ? 0 : Math.max(ttl - seconds, 0))
+      }
+      reader.take(reader.u16("record data length"), "record data")
+    }
+  })
+  return Result.isSuccess(result) ? copy : bytes
+}
