@@ -98,6 +98,14 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       expect(result[1]).toEqual(["Tim"])
     }))
 
+  it.effect("binds an empty array using the type inferred by PostgreSQL", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const ids: ReadonlyArray<string> = []
+      const rows = yield* sql`SELECT 1 WHERE 'a' = ANY(${ids})`
+      assert.deepStrictEqual(rows, [])
+    }))
+
   it.effect("array helper", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
@@ -364,12 +372,12 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         yield* Effect.ignore(sql`SELECT 1 / 0`)
       })).pipe(Effect.sandbox, Effect.flip)
 
-      assert.isTrue(Cause.hasDies(cause))
-      assert.isFalse(Cause.hasFails(cause))
-      const defect = Cause.squash(cause)
-      assert.instanceOf(defect, SqlError.SqlError)
-      assert.strictEqual(defect.reason._tag, "UnknownError")
-      assert.strictEqual(defect.reason.operation, "commit")
+      assert.isFalse(Cause.hasDies(cause))
+      assert.isTrue(Cause.hasFails(cause))
+      const error = Cause.squash(cause)
+      assert.instanceOf(error, SqlError.SqlError)
+      assert.strictEqual(error.reason._tag, "UnknownError")
+      assert.strictEqual(error.reason.operation, "commit")
     }))
 })
 
@@ -383,12 +391,12 @@ it.layer(PgContainer.layerMakeClientUnprepared, { timeout: "30 seconds" })(
           yield* Effect.ignore(sql`SELECT 1 / 0`)
         })).pipe(Effect.sandbox, Effect.flip)
 
-        assert.isTrue(Cause.hasDies(cause))
-        assert.isFalse(Cause.hasFails(cause))
-        const defect = Cause.squash(cause)
-        assert.instanceOf(defect, SqlError.SqlError)
-        assert.strictEqual(defect.reason._tag, "UnknownError")
-        assert.strictEqual(defect.reason.operation, "commit")
+        assert.isFalse(Cause.hasDies(cause))
+        assert.isTrue(Cause.hasFails(cause))
+        const error = Cause.squash(cause)
+        assert.instanceOf(error, SqlError.SqlError)
+        assert.strictEqual(error.reason._tag, "UnknownError")
+        assert.strictEqual(error.reason.operation, "commit")
 
         const rows = yield* sql.withTransaction(sql<{ value: number }>`SELECT 1 AS value`)
         assert.deepStrictEqual(rows, [{ value: 1 }])

@@ -11,6 +11,8 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "type": "string",
           },
           "length": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer",
           },
         },
@@ -24,6 +26,8 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
         "additionalProperties": false,
         "properties": {
           "id": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer",
           },
           "name": {
@@ -58,6 +62,8 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "type": "string",
           },
           "id": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
             "type": "integer",
           },
           "name": {
@@ -547,6 +553,8 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
                       "type": "string",
                     },
                     "length": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
                       "type": "integer",
                     },
                   },
@@ -606,6 +614,8 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
                       "type": "string",
                     },
                     "length": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
                       "type": "integer",
                     },
                   },

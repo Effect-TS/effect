@@ -7,6 +7,7 @@
  * Effect results need to be inspected, transformed, filtered, or matched
  * synchronously as data.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -53,6 +54,7 @@ const TypeId = core.ExitTypeId
  * @see {@link Failure} for the failure case
  * @see {@link match} for pattern matching
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -66,6 +68,7 @@ export type Exit<A, E = never> = Success<A, E> | Failure<A, E>
  * Use to reference helper types that describe the shared structure of `Exit`
  * values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 export declare namespace Exit {
@@ -112,6 +115,7 @@ export declare namespace Exit {
  * @see {@link isSuccess} to narrow an Exit to Success
  * @see {@link Failure} for the failure counterpart
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -148,6 +152,7 @@ export interface Success<out A, out E = never> extends Exit.Proto<A, E> {
  * @see {@link isFailure} to narrow an Exit to Failure
  * @see {@link Success} for the success counterpart
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -182,6 +187,7 @@ export interface Failure<out A, out E> extends Exit.Proto<A, E> {
  * @see {@link isSuccess} to check for a successful Exit
  * @see {@link isFailure} to check for a failed Exit
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -210,6 +216,7 @@ export const isExit: (u: unknown) => u is Exit<unknown, unknown> = core.isExit
  * @see {@link fail} to create a failed Exit
  * @see {@link void_ void} for a pre-allocated success with no value
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -240,6 +247,7 @@ export const succeed: <A>(a: A) => Exit<A> = core.exitSucceed
  * @see {@link fail} to create a Failure from a plain error value
  * @see {@link die} to create a Failure from a defect
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -270,6 +278,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Exit<never, E> = core.exit
  * @see {@link die} to create a Failure from an unexpected defect
  * @see {@link failCause} to create a Failure from a full Cause
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -301,6 +310,7 @@ export const fail: <E>(e: E) => Exit<never, E> = core.exitFail
  * @see {@link fail} to create a Failure from a typed error
  * @see {@link hasDies} to check whether an Exit contains defects
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -328,6 +338,7 @@ export const die: (defect: unknown) => Exit<never> = core.exitDie
  *
  * @see {@link hasInterrupts} to check whether an Exit contains interruptions
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -358,6 +369,7 @@ export {
    * @see {@link succeed} to create a success with a specific value
    * @see {@link asVoid} to discard the value of an existing Exit
    *
+   * @stability stable
    * @category constructors
    * @since 2.0.0
    */
@@ -387,6 +399,7 @@ export {
  * @see {@link isFailure} for the opposite check
  * @see {@link match} for exhaustive pattern matching
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -415,6 +428,7 @@ export const isSuccess: <A, E>(self: Exit<A, E>) => self is Success<A, E> = effe
  * @see {@link isSuccess} for the opposite check
  * @see {@link match} for exhaustive pattern matching
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -445,6 +459,7 @@ export const isFailure: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effe
  * @see {@link hasDies} to check for defects
  * @see {@link hasInterrupts} to check for interruptions
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -475,6 +490,7 @@ export const hasFails: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effec
  * @see {@link hasFails} to check for typed errors
  * @see {@link hasInterrupts} to check for interruptions
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -505,6 +521,7 @@ export const hasDies: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effect
  * @see {@link hasFails} to check for typed errors
  * @see {@link hasDies} to check for defects
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -539,6 +556,7 @@ export const hasInterrupts: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = 
  * @see {@link filterFailure} for the inverse
  * @see {@link filterValue} to extract the raw value instead of the Success object
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -576,6 +594,7 @@ export const filterSuccess: <A, E>(
  * @see {@link filterSuccess} to get the full Success object
  * @see {@link getSuccess} to get the value as an Option instead
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -610,6 +629,7 @@ export const filterValue: <A, E>(self: Exit<A, E>) => Result.Result<A, Failure<n
  * @see {@link filterSuccess} for the inverse
  * @see {@link filterCause} to extract the Cause directly
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -645,6 +665,7 @@ export const filterFailure: <A, E>(self: Exit<A, E>) => Result.Result<Failure<ne
  * @see {@link filterFailure} to get the full Failure object
  * @see {@link getCause} to get the Cause as an Option instead
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -680,6 +701,7 @@ export const filterCause: <A, E>(self: Exit<A, E>) => Result.Result<Cause.Cause<
  * @see {@link findErrorOption} to get the error as an Option instead
  * @see {@link findDefect} to find defects instead
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -715,6 +737,7 @@ export const findError: <A, E>(input: Exit<A, E>) => Result.Result<E, Exit<A, E>
  * @see {@link findError} to find typed errors instead
  * @see {@link hasDies} to check for defects without extracting them
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -746,6 +769,7 @@ export const findDefect: <A, E>(input: Exit<A, E>) => Result.Result<unknown, Exi
  *
  * @see {@link isSuccess} and {@link isFailure} for simple boolean checks
  *
+ * @stability stable
  * @category pattern matching
  * @since 2.0.0
  */
@@ -787,6 +811,7 @@ export const match: {
  * @see {@link mapError} to transform the error
  * @see {@link mapBoth} to transform both success and error
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -824,6 +849,7 @@ export const map: {
  * @see {@link map} to transform the success value
  * @see {@link mapBoth} to transform both success and error
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -864,6 +890,7 @@ export const mapError: {
  * @see {@link map} to transform only the success value
  * @see {@link mapError} to transform only the error
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -902,6 +929,7 @@ export const mapBoth: {
  * @see {@link void_ void} for a pre-allocated void success
  * @see {@link asVoidAll} to combine multiple exits into a single void Exit
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -933,6 +961,7 @@ export const asVoid: <A, E>(self: Exit<A, E>) => Exit<void, E> = effect.exitAsVo
  *
  * @see {@link asVoid} to discard the value of a single Exit
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -964,6 +993,7 @@ export const asVoidAll: <I extends Iterable<Exit<any, any>>>(
  * @see {@link getCause} to extract the Cause of a failure
  * @see {@link filterValue} for filter-pipeline usage
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -993,6 +1023,7 @@ export const getSuccess: <A, E>(self: Exit<A, E>) => Option<A> = effect.exitGetS
  * @see {@link getSuccess} to extract the success value
  * @see {@link filterCause} for filter-pipeline usage
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */
@@ -1029,6 +1060,7 @@ export const getCause: <A, E>(self: Exit<A, E>) => Option<Cause.Cause<E>> = effe
  * @see {@link findError} for filter-pipeline usage
  * @see {@link getCause} to get the full Cause as an Option
  *
+ * @stability stable
  * @category getters
  * @since 4.0.0
  */

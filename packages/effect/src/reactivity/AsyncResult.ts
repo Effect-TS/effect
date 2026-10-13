@@ -573,7 +573,7 @@ export const map: {
  */
 export const flatMap: {
   <A, E, B, E2>(
-    f: (a: A, prev: Success<A, E>) => AsyncResult<A, E2>
+    f: (a: A, prev: Success<A, E>) => AsyncResult<B, E2>
   ): (self: AsyncResult<A, E>) => AsyncResult<B, E | E2>
   <E, A, B, E2>(self: AsyncResult<A, E>, f: (a: A, prev: Success<A, E>) => AsyncResult<B, E2>): AsyncResult<B, E | E2>
 } = dual(

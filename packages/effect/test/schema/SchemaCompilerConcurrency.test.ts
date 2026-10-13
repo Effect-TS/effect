@@ -3,6 +3,44 @@ import { Deferred, Effect, Fiber, Schema, SchemaParser } from "effect"
 import { SchemaJITCompiler } from "effect/schema"
 
 describe("compiled construction concurrency", () => {
+  it.effect("isolates concurrent executions without replaying the eager prefix", () =>
+    Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      let prefixReads = 0
+      let ids = 0
+      let tails = 0
+      const schema = Schema.Struct({
+        prefix: Schema.String,
+        id: Schema.Number.pipe(Schema.withConstructorDefault(Effect.gen(function*() {
+          const id = ++ids
+          if (id === 2) yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(started)
+          return id
+        }))),
+        tail: Schema.String.pipe(Schema.withConstructorDefault(Effect.sync(() => {
+          tails++
+          return "tail"
+        })))
+      })
+      SchemaJITCompiler.enable(schema.ast)
+      const program = SchemaParser.makeEffect(schema)({
+        get prefix() {
+          prefixReads++
+          return "prefix"
+        }
+      })
+      assert.strictEqual(prefixReads, 1)
+      const results = yield* Effect.all([program, program], { concurrency: "unbounded" })
+      assert.deepStrictEqual(results, [
+        { prefix: "prefix", id: 1, tail: "tail" },
+        { prefix: "prefix", id: 2, tail: "tail" }
+      ])
+      assert.notStrictEqual(results[0], results[1])
+      assert.strictEqual(prefixReads, 1)
+      assert.strictEqual(ids, 2)
+      assert.strictEqual(tails, 2)
+    }))
+
   for (const product of ["Struct", "Tuple"] as const) {
     it.effect(`${product} preserves bounded concurrency and runs defaults once`, () =>
       Effect.gen(function*() {

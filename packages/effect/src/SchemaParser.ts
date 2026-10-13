@@ -8,6 +8,7 @@
  * synchronous functions that throw. It also contains the lower-level runner that
  * walks a schema AST and reports schema failures as `SchemaIssue.Issue` values.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import * as Cause from "./Cause.ts"
@@ -37,6 +38,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  * runs type-side validation unless checks are disabled, and fails with a
  * `SchemaIssue.Issue` when construction fails.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -68,6 +70,7 @@ export function makeEffect<S extends Schema.Constraint>(schema: S) {
  * Causes that contain defects, interruptions, or asynchronous work at this
  * synchronous boundary throw an `Error` whose cause is the underlying `Cause`.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -105,6 +108,7 @@ export function makeOption<S extends Schema.Constraint>(schema: S) {
  * synchronous boundary throw an `Error` whose cause is the underlying `Cause`,
  * instead of being converted to a schema validation error.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -132,6 +136,7 @@ export function make<S extends Schema.Constraint>(schema: S) {
  * that contain defects, interruptions, or asynchronous work at this synchronous
  * boundary throw an `Error` whose cause is the underlying `Cause`.
  *
+ * @stability stable
  * @category guards
  * @since 3.10.0
  */
@@ -223,6 +228,7 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * synchronous boundary throw an `Error` whose cause is the underlying `Cause`,
  * instead of being converted to a schema validation error.
  *
+ * @stability stable
  * @category guards
  * @since 4.0.0
  */
@@ -257,6 +263,7 @@ export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): as
  *
  * @see {@link decodeEffect} for input already typed as the schema's `Encoded` type
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -292,6 +299,7 @@ export function decodeUnknownEffect<S extends Schema.Constraint>(
  * @see {@link decodeUnknownEffect} for untyped boundary input
  * @see {@link encodeEffect} for the opposite direction
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -327,6 +335,7 @@ export const decodeEffect: <S extends Schema.Constraint>(
  * @see {@link decodePromise} for input already typed as the schema's `Encoded` type
  * @see {@link decodeUnknownEffect} for schemas that require decoding services or when failures should remain in `Effect`
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -362,6 +371,7 @@ export function decodeUnknownPromise<S extends Schema.ConstraintDecoder<unknown>
  * @see {@link decodeUnknownPromise} for untyped input returning a JavaScript `Promise`
  * @see {@link decodeEffect} for preserving decoding services and failures in `Effect`
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -398,6 +408,7 @@ export function decodePromise<S extends Schema.ConstraintDecoder<unknown>>(
  * @see {@link decodeUnknownResult} for returning schema issues as data
  * @see {@link decodeUnknownSync} for throwing on decoding failure
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -431,6 +442,7 @@ export function decodeUnknownExit<S extends Schema.ConstraintDecoder<unknown>>(
  * @see {@link decodeUnknownExit} for untyped input with the same `Exit` result shape
  * @see {@link decodeEffect} for preserving decoding services and failures in `Effect`
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -477,6 +489,7 @@ export const decodeOption: <S extends Schema.ConstraintDecoder<unknown>>(
  * @see {@link decodeResult} for input already typed as the schema's `Encoded` type
  * @see {@link decodeUnknownEffect} for effectful or service-requiring decoding
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -510,6 +523,7 @@ export function decodeUnknownResult<S extends Schema.ConstraintDecoder<unknown>>
  * @see {@link decodeUnknownResult} for untyped input with the same `Result` shape
  * @see {@link decodeEffect} for effectful or service-requiring decoding
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
@@ -545,6 +559,7 @@ export const decodeResult: <S extends Schema.ConstraintDecoder<unknown>>(
  * @see {@link decodeUnknownEffect} for preserving decoding failures in `Effect`
  * @see {@link decodeUnknownResult} for returning schema issues as data
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -584,6 +599,7 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
  * @see {@link decodeResult} for returning schema issues as data
  * @see {@link decodeEffect} for preserving decoding failures in `Effect`
  *
+ * @stability stable
  * @category decoding
  * @since 3.10.0
  */
@@ -610,6 +626,7 @@ export const decodeSync: <S extends Schema.ConstraintDecoder<unknown>>(
  *
  * @see {@link encodeEffect} for the typed-input variant when the value is already typed as the schema's decoded `Type`
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -644,6 +661,7 @@ export function encodeUnknownEffect<S extends Schema.Constraint>(
  *
  * @see {@link encodeUnknownEffect} for encoding unknown input before the value is statically typed as the schema's `Type`
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -679,6 +697,7 @@ export const encodeEffect: <S extends Schema.Constraint>(
  * @see {@link encodePromise} for input already typed as the schema's decoded `Type`
  * @see {@link encodeUnknownEffect} for schemas that require encoding services or when failures should remain in `Effect`
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -713,6 +732,7 @@ export const encodeUnknownPromise = <S extends Schema.ConstraintEncoder<unknown>
  * @see {@link encodeUnknownPromise} for encoding untyped input
  * @see {@link encodeEffect} for effectful encoding or schemas with encoding service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -744,6 +764,7 @@ export const encodePromise: <S extends Schema.ConstraintEncoder<unknown>>(
  * @see {@link encodeExit} for input already typed as the schema's decoded `Type`
  * @see {@link encodeUnknownEffect} for effectful encoding that preserves service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -777,6 +798,7 @@ export function encodeUnknownExit<S extends Schema.ConstraintEncoder<unknown>>(
  * @see {@link encodeUnknownExit} for unknown input with the same `Exit` result shape
  * @see {@link encodeEffect} for effectful encoding that preserves service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -825,6 +847,7 @@ export const encodeOption: <S extends Schema.ConstraintEncoder<unknown>>(
  * @see {@link encodeResult} for input already typed as the schema's decoded `Type`
  * @see {@link encodeUnknownEffect} for effectful encoding, including schemas with encoding service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -858,6 +881,7 @@ export function encodeUnknownResult<S extends Schema.ConstraintEncoder<unknown>>
  *
  * @see {@link encodeUnknownResult} for the same `Result` shape when the input is not already typed
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -892,6 +916,7 @@ export const encodeResult: <S extends Schema.ConstraintEncoder<unknown>>(
  * @see {@link encodeSync} for input already typed as the schema's decoded `Type`
  * @see {@link encodeUnknownEffect} for effectful encoding that preserves service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */
@@ -931,6 +956,7 @@ export function encodeUnknownSync<S extends Schema.ConstraintEncoder<unknown>>(
  * @see {@link encodeResult} for returning schema issues as data
  * @see {@link encodeEffect} for effectful encoding that preserves service requirements
  *
+ * @stability stable
  * @category encoding
  * @since 3.10.0
  */

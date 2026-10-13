@@ -462,7 +462,8 @@ const ContextCompletionPrompt = McpServer.prompt({
 
 export const makeFeaturesServerLayer = (
   protocol: McpProtocol.ProtocolAdapter,
-  observations: Ref.Ref<Observations>
+  observations: Ref.Ref<Observations>,
+  mode?: "server" | "request"
 ) =>
   Layer.mergeAll(
     makeTestToolkitLayer(observations, protocol.protocolVersion),
@@ -549,6 +550,7 @@ export const makeFeaturesServerLayer = (
       name: "McpConformance",
       instructions: "Follow the test server instructions.",
       protocols: [protocol],
-      extensions: { "example/lifecycle": { enabled: true } }
+      extensions: { "example/lifecycle": { enabled: true } },
+      mode
     }))
   )

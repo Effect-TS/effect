@@ -4,6 +4,7 @@
  * `AnthropicClient` when request helpers run, so code can add middleware,
  * logging, or other client changes without rebuilding the client layer.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -21,6 +22,7 @@ import type { HttpClient } from "effect/http/HttpClient"
  *
  * @see {@link withClientTransform} for scoping an HTTP client transformation
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -42,6 +44,7 @@ export class AnthropicConfig extends Context.Service<
 /**
  * Namespace containing types associated with the `AnthropicConfig` service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace AnthropicConfig {
@@ -68,6 +71,7 @@ export declare namespace AnthropicConfig {
  * Use when you need to apply a temporary `HttpClient` transformation, such as adding middleware or logging, to a
  * specific scope of an effectful program.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

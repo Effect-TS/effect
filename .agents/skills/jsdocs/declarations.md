@@ -53,7 +53,7 @@ Declaration tags appear in this order:
 1. `@deprecated`
 2. `@default`
 3. `@see`
-4. `@stability unstable` or `@stability experimental` (when applicable)
+4. `@stability`
 5. `@category`
 6. `@since`
 
@@ -65,9 +65,10 @@ Declaration tags appear in this order:
   non-empty `@default`, rejects `@category`, and follows the prose contract.
 - Any declaration permits one non-empty `@deprecated` and repeated non-empty
   `@see` tags.
-- Use `@stability unstable` when an API may receive breaking changes in minor
-  releases, or `@stability experimental` when it may receive breaking changes
-  across patch versions. Leave the tag out for APIs that follow strict semver.
+- Roots, export specifiers, and root namespaces require `@stability stable`,
+  `@stability unstable`, or `@stability experimental`. Use `unstable` when an
+  API may receive breaking changes in minor releases, `experimental` when it may
+  receive breaking changes across patch versions, and `stable` otherwise.
 - Tag any API that exposes a third-party dependency `@stability unstable`: an
   accessor to the underlying client or instance, options typed as the
   dependency's options, constructors that accept its instances, re-exports of
@@ -84,9 +85,9 @@ fences.
 When present, the first top-level JSDoc is the module block unless TypeScript
 attaches it to a non-import first declaration. An `@internal` module is omitted.
 Module prose does not use the declaration template. Its tags are optional
-non-empty `@deprecated`, repeated non-empty `@see`, optional `@stability unstable`
-or `@stability experimental`, then required stable-semver `@since`. Its examples
-and links follow the declaration contracts.
+non-empty `@deprecated`, repeated non-empty `@see`, required `@stability`, then
+required stable-semver `@since`. Its examples and links follow the declaration
+contracts.
 
 Inline `{@link Symbol}` targets must resolve to TypeScript symbols; use normal
 Markdown links for URLs. Prefer code formatting when navigation does not help a

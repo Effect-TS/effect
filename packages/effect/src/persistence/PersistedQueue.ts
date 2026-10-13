@@ -34,6 +34,7 @@ import * as Scope from "../Scope.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
+import type { Fragment } from "../sql/Statement.ts"
 import * as Redis from "./Redis.ts"
 
 /**
@@ -80,11 +81,27 @@ export interface PersistedQueue<in out A, out R = never> {
    * **Details**
    *
    * If an element with the same id already exists in the queue, it will not be
-   * added again. De-duplication survives completion until the id is removed by
+   * added again, and the `delay` of the duplicate offer is ignored.
+   * De-duplication survives completion until the id is removed by
    * `layerCleanup`.
+   *
+   * `delay` postpones the first delivery. Measured by the store's clock, the
+   * element is never delivered before the delay elapses, and is typically
+   * delivered within the store's `pollInterval` after. The SQL store uses the
+   * database clock and rounds delays up to whole seconds. The Redis store
+   * compares the offering process's clock with the polling worker's, so it
+   * relies on those clocks agreeing.
+   * Retries still use the queue's `retrySchedule`, and the delay does not
+   * count an attempt. A zero, negative or omitted delay enqueues the element
+   * immediately.
+   *
+   * An infinite delay does nothing: the id is returned, but nothing is stored
+   * and no de-duplication record is written, so the same id can be offered
+   * again later.
    */
   readonly offer: (value: A, options?: {
-    readonly id: string | undefined
+    readonly id?: string | undefined
+    readonly delay?: Duration.Input | undefined
   }) => Effect.Effect<string, PersistedQueueError | Schema.SchemaError, R>
 
   /**
@@ -232,21 +249,27 @@ export const makeFactory = Effect.gen(function*() {
       return Effect.succeed<PersistedQueue<S["Type"], S["EncodingServices"] | S["DecodingServices"]>>({
         [TypeId]: TypeId,
         offer: (value, opts) =>
-          Effect.flatMap(
-            encodeUnknown(value),
-            (element) => {
-              const id = opts?.id ?? crypto.randomUUID()
-              return Effect.as(
-                store.offer({
-                  name: options.name,
-                  id,
-                  element,
-                  isCustomId: opts?.id !== undefined
-                }),
-                id
-              )
+          Effect.suspend(() => {
+            const id = opts?.id ?? crypto.randomUUID()
+            const delay = positiveDelay(opts?.delay)
+            if (delay !== undefined && !Duration.isFinite(delay)) {
+              return Effect.succeed(id)
             }
-          ),
+            return Effect.flatMap(
+              encodeUnknown(value),
+              (element) =>
+                Effect.as(
+                  store.offer({
+                    name: options.name,
+                    id,
+                    element,
+                    isCustomId: opts?.id !== undefined,
+                    delay
+                  }),
+                  id
+                )
+            )
+          }),
         take: <XA, XE, XR>(
           f: (value: S["Type"], metadata: {
             readonly id: string
@@ -430,6 +453,13 @@ class DeadLetter {
 const isDeadLetter = (u: unknown): u is DeadLetter =>
   Predicate.isTagged(u, "~effect/persistence/PersistedQueue/DeadLetter")
 
+// stores only see a positive delay, so a zero or negative one is dropped here
+const positiveDelay = (input: Duration.Input | undefined): Duration.Duration | undefined => {
+  if (input === undefined) return undefined
+  const delay = Duration.fromInputUnsafe(input)
+  return Duration.isPositive(delay) ? delay : undefined
+}
+
 const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefined => {
   for (const reason of cause.reasons) {
     if (Cause.isFailReason(reason) && isDeadLetter(reason.error)) {
@@ -452,6 +482,9 @@ const deadLetterFromCause = (cause: Cause.Cause<unknown>): DeadLetter | undefine
  * The store persists offered elements and returns taken elements in a scope so
  * the finalizer can complete or retry them based on the processing exit.
  *
+ * An offered `delay` is always finite and positive, and the element must not
+ * be taken before it elapses. It is `undefined` for immediate elements.
+ *
  * Claiming an element counts an attempt, so the `attempts` returned by `take`
  * is 1-based. When the take scope closes with a success the element is marked
  * completed; a failure retries it according to `retryDelay` or marks it failed
@@ -471,6 +504,7 @@ export class PersistedQueueStore extends Context.Service<
         readonly id: string
         readonly element: unknown
         readonly isCustomId: boolean
+        readonly delay?: Duration.Duration | undefined
       }
     ) => Effect.Effect<void, PersistedQueueError>
 
@@ -508,6 +542,9 @@ export class PersistedQueueStore extends Context.Service<
  * The store is process-local and volatile; failed takes are requeued with the
  * queue's retry schedule until the configured maximum attempts is reached,
  * after which the element is marked as failed.
+ *
+ * Delayed elements are scanned on every take loop, so the store is meant for
+ * development and tests rather than large delayed backlogs.
  *
  * @stability unstable
  * @category layers
@@ -558,7 +595,7 @@ export const layerStoreMemory: Layer.Layer<
             element: options.element,
             attempts: 0,
             state: "pending",
-            visibleAt: now,
+            visibleAt: options.delay === undefined ? now : now + Duration.toMillis(options.delay),
             stateChangedAt: now
           }
           queue.entries.set(options.id, entry)
@@ -655,7 +692,9 @@ export const layerStoreMemory: Layer.Layer<
  * The store uses Redis lists, hashes, and sorted sets with worker locks,
  * periodically refreshes locks while items are being processed, delays retried
  * items with the queue's retry schedule, and moves exhausted items to a failed
- * queue.
+ * queue. Delayed offers share the retry sorted set: they are scored with the
+ * offering process's clock and released by the polling worker's clock, so
+ * clock skew between hosts shifts their delivery.
  *
  * @stability unstable
  * @category constructors
@@ -716,6 +755,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const retry = redis.eval(retryRedis)
   const resetQueue = redis.eval(resetQueueRedis)
   const offer = redis.eval(offerRedis)
+  const offerDelayed = redis.eval(offerDelayedRedis)
   const take = redis.eval(takeRedis)
   const expireAll = redis.eval(expireAllRedis)
   const trimFailed = redis.eval(trimFailedRedis)
@@ -856,24 +896,33 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     })
 
   return PersistedQueueStore.of({
-    offer: ({ element, id, isCustomId, name }) => {
+    offer: ({ delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
       const payload = JSON.stringify({ id, element })
-      return (isCustomId
-        ? offer(keys.queue, keys.ids, id, payload)
-        : redis.send("RPUSH", keys.queue, payload)).pipe(
-          Effect.mapError(({ cause }) =>
-            new PersistedQueueError({
-              message: "Failed to offer element to persisted queue",
-              cause
-            })
-          ),
-          Effect.tap(() =>
-            Effect.sync(() => {
-              queueStates.peek(name)?.nudge.openUnsafe()
-            })
-          )
+      const send = Effect.suspend(() => {
+        if (delay === undefined) {
+          return isCustomId
+            ? offer(keys.queue, keys.ids, id, payload)
+            : redis.send("RPUSH", keys.queue, payload)
+        }
+        const visibleAt = clock.currentTimeMillisUnsafe() + Duration.toMillis(delay)
+        return isCustomId
+          ? offerDelayed(keys.delayed, keys.ids, id, payload, visibleAt)
+          : redis.send("ZADD", keys.delayed, visibleAt.toString(), payload)
+      })
+      return send.pipe(
+        Effect.mapError(({ cause }) =>
+          new PersistedQueueError({
+            message: "Failed to offer element to persisted queue",
+            cause
+          })
+        ),
+        Effect.tap(() =>
+          Effect.sync(() => {
+            queueStates.peek(name)?.nudge.openUnsafe()
+          })
         )
+      )
     },
     take: (options) =>
       Effect.uninterruptibleMask((restore) => {
@@ -1003,6 +1052,25 @@ local payload = ARGV[2]
 local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
 if result == 1 then
   redis.call("RPUSH", key_queue, payload)
+end
+`,
+    numberOfKeys: 2
+  }
+)
+
+const offerDelayedRedis = Redis.script(
+  (...args: [keyDelayed: string, keyIds: string, id: string, payload: string, visibleAt: number]) => args,
+  {
+    lua: `
+local key_delayed = KEYS[1]
+local key_ids = KEYS[2]
+local id = ARGV[1]
+local payload = ARGV[2]
+local visible_at = ARGV[3]
+
+local result = redis.call("ZADD", key_ids, "NX", "+inf", id)
+if result == 1 then
+  redis.call("ZADD", key_delayed, visible_at, payload)
 end
 `,
     numberOfKeys: 2
@@ -1296,6 +1364,9 @@ export const layerStoreRedis: (
  * per-worker locks, refreshes active locks while scoped takes are running, and
  * retries or completes rows according to the processing exit.
  *
+ * Offer and retry delays are measured with the database clock and rounded up
+ * to whole seconds.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -1360,34 +1431,46 @@ export const makeStoreSql: (
   }
   const secondsAgo = (seconds: number) => secondsOffset(-Math.max(Math.ceil(seconds), 0))
   const secondsFromNow = (seconds: number) => secondsOffset(Math.max(Math.ceil(seconds), 0))
+  // Deadline for a delayed offer, which must never land before the delay
+  // elapses. pg reads clock_timestamp() since NOW() is fixed at transaction
+  // start. mysql and sqlite clocks drop the fraction of the current second, so
+  // they get a whole extra second to cover it.
+  const delayedVisibleAt = (delay: Duration.Duration) => {
+    const seconds = Math.ceil(Duration.toSeconds(delay))
+    return sql.onDialectOrElse({
+      pg: () => sql`clock_timestamp() + INTERVAL '${sql.literal(seconds.toString())} seconds'`,
+      mssql: () => secondsOffset(seconds),
+      orElse: () => secondsOffset(seconds + 1)
+    })
+  }
   const expiresAt = secondsAgo(Duration.toSeconds(lockExpiration))
 
   const offer = sql.onDialectOrElse({
-    pg: () => (id: string, name: string, element: string) =>
+    pg: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
         ON CONFLICT (id, queue_name) DO NOTHING
       `,
-    mysql: () => (id: string, name: string, element: string) =>
+    mysql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `,
-    mssql: () => (id: string, name: string, element: string) =>
+    mssql: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         MERGE ${tableNameSql} WITH (HOLDLOCK) AS target
         USING (SELECT ${id} AS id, ${name} AS queue_name) AS source
         ON target.id = source.id AND target.queue_name = source.queue_name
         WHEN NOT MATCHED THEN
           INSERT (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow});
+          VALUES (source.id, source.queue_name, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow});
       `,
     // sqlite
-    orElse: () => (id: string, name: string, element: string) =>
+    orElse: () => (id: string, name: string, element: string, visibleAt: Fragment) =>
       sql`
         INSERT OR IGNORE INTO ${tableNameSql} (id, queue_name, element, state, attempts, visible_at, created_at, updated_at)
-        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${sqlNow}, ${sqlNow}, ${sqlNow})
+        VALUES (${id}, ${name}, ${element}, 'pending', 0, ${visibleAt}, ${sqlNow}, ${sqlNow})
       `
   })
 
@@ -1696,20 +1779,30 @@ export const makeStoreSql: (
     )
 
   return PersistedQueueStore.of({
-    offer: ({ element, id, name }) =>
-      Effect.catchCause(Effect.suspend(() => offer(id, name, JSON.stringify(element))), (cause) =>
-        Effect.fail(
-          new PersistedQueueError({
-            message: "Failed to offer element to persisted queue",
-            cause
-          })
-        )).pipe(
-          Effect.tap(() =>
-            Effect.sync(() => {
-              queueStates.peek(name)?.nudge.openUnsafe()
-            })
+    offer: ({ delay, element, id, name }) =>
+      Effect.catchCause(
+        Effect.suspend(() =>
+          offer(
+            id,
+            name,
+            JSON.stringify(element),
+            delay === undefined ? sqlNow : delayedVisibleAt(delay)
           )
         ),
+        (cause) =>
+          Effect.fail(
+            new PersistedQueueError({
+              message: "Failed to offer element to persisted queue",
+              cause
+            })
+          )
+      ).pipe(
+        Effect.tap(() =>
+          Effect.sync(() => {
+            queueStates.peek(name)?.nudge.openUnsafe()
+          })
+        )
+      ),
     take: (options) => {
       queueStates.get(options.name).maxAttempts = options.maxAttempts
       const loop: Effect.Effect<

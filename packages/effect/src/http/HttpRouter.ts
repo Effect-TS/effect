@@ -1360,6 +1360,41 @@ export const serve = <A, E, R, HE, HR = Request.Only<"Requires", R> | Request.On
  * request arrives, in which case that request waits for the build to finish.
  * If the build fails, every request rejects with the build error.
  *
+ * **Gotchas**
+ *
+ * On Cloudflare Workers, build the handler at module scope: fibers started
+ * inside `fetch` capture that request's async context. Layer construction
+ * must not require request-time I/O; bindings are available from
+ * `cloudflare:workers` via its `env` export.
+ * Prefer request-local work or a Durable Object's supported lifecycle APIs,
+ * not indefinite background execution. For shared fibers, provide a sync
+ * scheduler to both layers and requests as below; see `Scheduler.MixedScheduler`
+ * for its limitations. Bound waits for shared work with request-local timeouts.
+ *
+ * **Example** (Opting in to the sync scheduler on Workers)
+ *
+ * ```ts
+ * import { Effect, Layer, Scheduler } from "effect"
+ * import { HttpRouter, HttpServer, HttpServerResponse } from "effect/http"
+ *
+ * const SyncScheduler = Layer.succeed(
+ *   Scheduler.Scheduler,
+ *   new Scheduler.MixedScheduler("sync")
+ * )
+ * const AppLive = HttpRouter.add(
+ *   "GET",
+ *   "/ping",
+ *   Effect.succeed(HttpServerResponse.text("pong"))
+ * ).pipe(Layer.provide(HttpServer.layerServices))
+ *
+ * // Build once at module scope. The scheduler is also retained for requests.
+ * const app = HttpRouter.toWebHandler(
+ *   AppLive.pipe(Layer.provideMerge(SyncScheduler))
+ * )
+ *
+ * export default { fetch: (request: Request) => app.handler(request) }
+ * ```
+ *
  * @stability unstable
  * @category converting
  * @since 4.0.0

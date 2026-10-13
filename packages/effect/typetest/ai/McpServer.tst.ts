@@ -1,7 +1,9 @@
-import { McpProtocol, McpSchema, McpServer } from "effect/ai"
+import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
-import type * as Effect from "effect/Effect"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/http/HttpClient"
 import type * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
@@ -46,6 +48,33 @@ describe("McpServer", () => {
   })
 
   describe("protocol configuration", () => {
+    it("should restrict request-scoped HTTP to stateless protocols without session options", () => {
+      const options = {
+        name: "TestServer",
+        version: "1.0.0",
+        path: "/mcp",
+        protocols: [McpProtocol.v2026_07_28]
+      } as const
+
+      expect(McpServer.layerHttpRequestScoped).type.toBeCallableWith(options)
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        protocols: [McpProtocol.v2025_11_25] as const
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        allowSubscriptions: true
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        allowSessionTermination: true
+      })
+    })
+
     it("should accept a non-empty protocol declaration when constructing any server", () => {
       expect(McpServer.run).type.toBeCallableWith(serverOptions)
       expect(McpServer.layer).type.toBeCallableWith(serverOptions)
@@ -138,6 +167,50 @@ describe("McpServer", () => {
 
       expect<Effect.Error<typeof run>>().type.toBe<Cause.IllegalArgumentError>()
       expect<Layer.Error<typeof layer>>().type.toBe<Cause.IllegalArgumentError>()
+    })
+  })
+
+  it("should retain toolkit handler services in both registration APIs", () => {
+    const toolkit = Toolkit.make(Tool.make("http", { dependencies: [HttpClient.HttpClient] }))
+    const registered = McpServer.registerToolkit(toolkit)
+    const layer = McpServer.toolkit(toolkit)
+    type Requirements = Tool.HandlersFor<typeof toolkit.tools> | HttpClient.HttpClient
+
+    expect<Effect.Services<typeof registered>>().type.toBe<McpServer.McpServer | Requirements>()
+    expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
+  })
+
+  describe("prompts", () => {
+    class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+    const name = () => Effect.map(Lookup, (lookup) => lookup.values)
+
+    it("should require services used by completion handlers", () => {
+      const options = {
+        name: "lookup",
+        parameters: { name: Schema.String },
+        completion: { name },
+        content: () => Effect.succeed("content")
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
+
+    it("should require services used by optional completion handlers", () => {
+      const completion: { readonly name?: typeof name } = { name }
+      const options = {
+        name: "lookup",
+        parameters: { name: Schema.String },
+        completion,
+        content: () => Effect.succeed("content")
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
     })
   })
 

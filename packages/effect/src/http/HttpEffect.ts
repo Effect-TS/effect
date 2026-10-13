@@ -33,6 +33,9 @@ import * as preResponseHandler from "./internal/preResponseHandler.ts"
 /**
  * Runs an HTTP server effect, sends the produced response with the supplied handler, and converts failures into HTTP responses.
  * On handler failure, the request scope closes with the original cause.
+ * If the send handler returns an `HttpServerResponse`, such as the `101`
+ * response of an upgraded request, middleware observes it in place of the
+ * handler's response.
  *
  * @stability unstable
  * @category combinators
@@ -81,11 +84,17 @@ export const toHandled = <E, R, EH, RH>(
     const handler = preResponseHandler.requestPreResponseHandlers.get(request.source)
     if (handler === undefined) {
       ;(request as any)[handledSymbol] = true
-      return Effect.mapEager(handleResponse(request, response), () => response)
+      return Effect.mapEager(
+        handleResponse(request, response),
+        (sent) => Response.isHttpServerResponse(sent) ? sent : response
+      )
     }
     return Effect.flatMapEager(handler(request, response), (sentResponse) => {
       ;(request as any)[handledSymbol] = true
-      return Effect.mapEager(handleResponse(request, sentResponse), () => response)
+      return Effect.mapEager(
+        handleResponse(request, sentResponse),
+        (sent) => Response.isHttpServerResponse(sent) ? sent : response
+      )
     })
   }
 
@@ -312,10 +321,11 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
   const httpApp = toHandled(self, (request, response) => {
     const withoutBody = request.method === "HEAD"
     if (!Response.omitsBody(response, withoutBody)) {
+      // The transferred request scope closes when an abort interrupts the body, even if it is no longer read.
       response = scopeTransferToStream(response)
     }
     ;(request as any)[resolveSymbol](
-      Response.toWeb(response, { withoutBody, context })
+      Response.toWeb(response, { withoutBody, context, signal: (request.source as globalThis.Request).signal })
     )
     return Effect.void
   }, middleware)
@@ -331,10 +341,15 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
-      if (fiber.pollUnsafe() === undefined) {
-        request.signal?.addEventListener("abort", () => {
-          fiber.interruptUnsafe(undefined, ClientAbort.annotation)
-        }, { once: true })
+      const signal = request.signal
+      if (fiber.pollUnsafe() === undefined && signal) {
+        const onAbort = () => fiber.interruptUnsafe(undefined, ClientAbort.annotation)
+        if (signal.aborted) {
+          onAbort()
+        } else {
+          signal.addEventListener("abort", onAbort, { once: true })
+          fiber.addObserver(() => signal.removeEventListener("abort", onAbort))
+        }
       }
     })
 }

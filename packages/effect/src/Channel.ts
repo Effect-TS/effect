@@ -7,6 +7,7 @@
  * higher-level modules instead. This module is useful when implementing stream
  * operators or specialized streaming workflows.
  *
+ * @stability stable
  * @since 2.0.0
  */
 // @effect-diagnostics returnEffectInGen:off
@@ -50,6 +51,7 @@ import type * as Unify from "./Unify.ts"
 /**
  * String literal type used as the unique brand for `Channel` values.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -59,6 +61,7 @@ export type TypeId = "~effect/Channel"
  * Runtime identifier stored on `Channel` values and used by `isChannel` to
  * recognize them.
  *
+ * @stability stable
  * @category type IDs
  * @since 4.0.0
  */
@@ -77,6 +80,7 @@ export const TypeId: TypeId = "~effect/Channel"
  * Channel.isChannel("not a channel") // => false
  * ```
  *
+ * @stability stable
  * @category guards
  * @since 3.5.4
  */
@@ -135,6 +139,7 @@ export const isChannel = (
  * Effect.runSync(Channel.runCollect(channel)) // => [1]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -161,6 +166,7 @@ export interface Channel<
  * or generic return types that include channels. Users normally do not need to
  * reference this interface directly.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -181,6 +187,7 @@ export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Ef
  * environment type parameters. Users normally do not need to reference this
  * interface directly.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -202,6 +209,7 @@ type TagsWithReason<E> = {
  * contravariant. This is type-level machinery and is not used directly at
  * runtime.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -226,6 +234,7 @@ export interface Variance<
  * `_InElem`, `_InErr`, and `_InDone` fields are contravariant. Users normally
  * do not need to reference this interface directly.
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -278,6 +287,7 @@ const ChannelProto = {
  * await Effect.runPromise(Channel.runCollect(channel)) // => []
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -322,6 +332,7 @@ export const fromTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, E
  * await Effect.runPromise(Channel.runCollect(transformedChannel)) // => [2, 4, 6]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -374,6 +385,7 @@ export const transformPull = <
  * await Effect.runPromise(Channel.runCollect(channel)) // => [42]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -394,6 +406,7 @@ export const fromPull = <OutElem, OutErr, OutDone, EX, EnvX, Env>(
  * when the channel completes.
  *
  * @see {@link fromTransform} for a simpler transformation without a forked scope
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -431,6 +444,7 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
  * Effect.runSync(Channel.runCollect(channel)) // => [42]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -452,6 +466,7 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
  * Channel.DefaultChunkSize // => 4096
  * ```
  *
+ * @stability stable
  * @category constants
  * @since 4.0.0
  */
@@ -470,7 +485,12 @@ const asyncQueue = <A, E = never, R = never>(
     strategy: options?.strategy
   }).pipe(
     Effect.tap((queue) => Scope.addFinalizer(scope, Queue.shutdown(queue))),
-    Effect.tap((queue) => Effect.forkIn(Scope.provide(f(queue), scope), scope))
+    Effect.tap((queue) =>
+      Scope.provide(f(queue), scope).pipe(
+        Effect.catchCause((cause) => Queue.failCause(queue, cause)),
+        Effect.forkIn(scope)
+      )
+    )
   )
 
 /**
@@ -492,6 +512,7 @@ const asyncQueue = <A, E = never, R = never>(
  * await Effect.runPromise(Channel.runCollect(channel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -520,6 +541,7 @@ export const callback = <A, E = never, R = never>(
  * await Effect.runPromise(Channel.runCollect(channel)) // => [[1, 2]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -544,6 +566,7 @@ export const callbackArray = <A, E = never, R = never>(
  * Effect.runSync(Channel.runCollect(channel)) // => [42]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -576,6 +599,7 @@ export const suspend = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  * const observed = [await Effect.runPromise(Channel.runCollect(channel)), released] // => [["RESOURCE"], ["resource"]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -591,8 +615,10 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
         Option.isSome(option)
           ? release(option.value, exit as any)
           : Effect.void)
-      const value = yield* Effect.uninterruptible(acquire)
-      option = Option.some(value)
+      const value = yield* Effect.uninterruptible(Effect.map(acquire, (value) => {
+        option = Option.some(value)
+        return value
+      }))
       return yield* toTransform(use(value))(upstream, scope)
     })
   )
@@ -620,6 +646,7 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
  * const observed = [await Effect.runPromise(Channel.runCollect(channel)), released] // => [["resource"], ["resource"]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -653,6 +680,7 @@ export const acquireRelease: {
  * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -679,6 +707,7 @@ export const fromIterator = <A, L>(iterator: LazyArg<Iterator<A, L>>): Channel<A
  * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -701,6 +730,7 @@ export const fromArray = <A>(array: ReadonlyArray<A>): Channel<A> =>
  * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -754,6 +784,7 @@ export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Channel<A> => fromArray(Chu
  * Effect.runSync(Channel.runCollect(fibChannel)) // => [[0, 1, 1], [2, 3]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -799,6 +830,7 @@ export const fromIteratorArray = <A, L>(
  * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -823,6 +855,7 @@ export const fromIterable = <A, L>(iterable: Iterable<A, L>): Channel<A, never, 
  * Effect.runSync(Channel.runCollect(channel)) // => [[1, 2, 3, 4], [5]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -843,6 +876,7 @@ export const fromIterableArray = <A, L>(
  * Effect.runSync(Channel.runCollect(channel)) // => [42]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -860,6 +894,7 @@ export const succeed = <A>(value: A): Channel<A> => fromEffect(Effect.succeed(va
  * Effect.runSync(Channel.runCollect(channel)) // => []
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -868,6 +903,7 @@ export const end = <A>(value: A): Channel<never, never, A> => fromPull(Effect.su
 /**
  * Creates a `Channel` that immediately ends with the lazily evaluated value.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -891,6 +927,7 @@ export const endSync = <A>(evaluate: LazyArg<A>): Channel<never, never, A> =>
  * Effect.runSync(Channel.runCollect(channel)) // => ["request-1"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -918,6 +955,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Channel<A> => fromEffect(Effect.s
  * Effect.runSync(Channel.runCollect(conditionalChannel(true))) // => ["data"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -947,6 +985,7 @@ export const empty: Channel<never> = fromPull(Effect.succeed(Cause.done()))
  * Channel.isChannel(conditionalChannel(false)) // => true
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -964,6 +1003,7 @@ export const never: Channel<never, never, never> = fromPull(Effect.succeed(Effec
  * Effect.runSync(Effect.exit(Channel.runCollect(failedChannel))) // => Exit.fail("Something went wrong")
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -994,6 +1034,7 @@ export const fail = <E>(error: E): Channel<never, E, never> => fromPull(Effect.s
  * ] // => [Exit.fail("Error after attempt 1"), 1]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1017,6 +1058,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Channel<never, E, never> => f
  * Effect.runSync(Effect.exit(Channel.runCollect(failedChannel))) // => Exit.failCause(simpleCause)
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1044,6 +1086,7 @@ export const failCause = <E>(cause: Cause.Cause<E>): Channel<never, E, never> =>
  * ] // => [Exit.fail("Runtime error after attempt 1"), 1]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1064,6 +1107,7 @@ export const failCauseSync = <E>(
  * Effect.runSync(Effect.exit(Channel.runCollect(diedChannel))) // => Exit.failCause(Cause.die(defect))
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1083,6 +1127,7 @@ export const die = (defect: unknown): Channel<never, never, never> => failCause(
  * Effect.runSync(Channel.runCollect(successChannel)) // => ["Hello from effect!"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1108,6 +1153,7 @@ export const fromEffect = <A, E, R>(
  *
  * If the effect fails, the channel fails with the effect's error.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1119,6 +1165,7 @@ export const fromEffectDone = <A, E, R>(
 /**
  * Uses an effect and discards its result.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1135,6 +1182,7 @@ export const fromEffectDrain = <A, E, R>(
  * `Take` fails the channel. A done `Take` completes the channel with its done
  * value.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1161,6 +1209,7 @@ export const fromEffectTake = <A, E, Done, E2, R>(
  * await Effect.runPromise(program) // => ["item1", "item2", "item3"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1186,6 +1235,7 @@ export const fromQueue = <A, E>(
  * await Effect.runPromise(program) // => [[1, 2, 3, 4]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1197,6 +1247,7 @@ export const fromQueueArray = <A, E>(
  * Creates a channel that forwards upstream input elements, input errors, and
  * the upstream done value unchanged.
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1246,6 +1297,7 @@ export const identity = <Elem, Err, Done>(): Channel<Elem, Err, Done, Elem, Err,
  * })
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1360,6 +1412,7 @@ export const fromSubscription = <A>(
  * Option.map(result, ({ count, sum, average, min, max }) => ({ count, sum, average, min, max })) // => Option.some({ count: 1, sum: 10, average: 10, min: 10, max: 10 })
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1466,6 +1519,7 @@ export const fromSubscriptionArray = <A>(
  * const result = await Effect.runPromise(event) // => Option.some({ type: "user.created", payload: {}, timestamp: 1, processed: true, processedAt: 2 })
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -1608,6 +1662,7 @@ export const fromPubSub = <A>(
  * Option.map(result, (batch) => [batch.batchId, batch.totalEntries, batch.infoCount]) // => Option.some(["1-1", 1, 1])
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1622,6 +1677,7 @@ export const fromPubSubArray = <A>(pubsub: PubSub.PubSub<A>): Channel<Arr.NonEmp
  * Output `Take` values are emitted as non-empty arrays. Failed `Take` values
  * fail the channel. Done `Take` values complete the channel.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1633,6 +1689,7 @@ export const fromPubSubTake = <A, E, Done>(
 /**
  * Creates a Channel from a Schedule.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1662,6 +1719,7 @@ export const fromSchedule = <O, E, R>(
  * await Effect.runPromise(Channel.runCollect(channel)) // => [[1]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1752,6 +1810,7 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
  * written // => [1, 2]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1791,6 +1850,7 @@ export const fromWritableStream = <IE, E, A>(options: {
  * await Effect.runPromise(program) // => [[2], [4]]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1874,6 +1934,7 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
  * are converted with `onError`. If the channel scope closes early and the
  * iterator has a `return` method, that method is called.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1905,6 +1966,7 @@ export const fromAsyncIterable = <A, D, E>(
  * rejected iterator errors are converted with `onError`. If the channel scope
  * closes early and the iterator has a `return` method, that method is called.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -1950,6 +2012,7 @@ export const fromAsyncIterableArray = <A, D, E>(
  * Effect.runSync(Channel.runCollect(displayChannel)) // => [{ displayName: "User: Alice", isActive: true }, { displayName: "User: Bob", isActive: true }]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -1979,6 +2042,7 @@ export const map: {
 /**
  * Maps the done value of this channel using the specified function.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2008,6 +2072,7 @@ export const mapDone: {
  * Use when the terminal done value transformation needs services or can fail,
  * while emitted elements should pass through unchanged.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2067,6 +2132,7 @@ const concurrencyIsSequential = (
  * await Effect.runPromise(Channel.runCollect(processedChannel)) // => [1, 4, 9, 16, 25]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -2228,6 +2294,7 @@ const mapEffectConcurrent = <
  * Returns a new channel which is the same as this one but applies the given
  * function to the input channel’s input elements.
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -2235,8 +2302,8 @@ export const mapInput: {
   <InElem, InElem2, InErr, R = never>(
     f: (i: InElem2) => Effect.Effect<InElem, InErr, R>
   ): <OutElem, OutErr, OutDone, InErr, InDone, Env>(
-    self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env | R>
-  ) => Channel<OutElem, OutErr, OutDone, InElem2, InErr, InDone, Env>
+    self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
+  ) => Channel<OutElem, OutErr, OutDone, InElem2, InErr, InDone, Env | R>
   <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, InElem2, R = never>(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
     f: (i: InElem2) => Effect.Effect<InElem, InErr, R>
@@ -2256,6 +2323,7 @@ export const mapInput: {
  * Returns a new channel which is the same as this one but applies the given
  * function to the input errors.
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -2315,6 +2383,7 @@ export const mapInputError: {
  * const observed = [await Effect.runPromise(Channel.runCollect(tappedChannel)), processed] // => [[1, 2, 3], [1, 2, 3]]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2379,6 +2448,7 @@ export const tap: {
  * Effect.runSync(Channel.runCollect(flatMappedChannel)) // => ["item-1-0", "item-2-0", "item-2-1", "item-3-0", "item-3-1", "item-3-2"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -2579,6 +2649,7 @@ const flatMapConcurrent = <
  * Effect.runSync(Channel.runCollect(numberChannel)) // => [1, 2, 3, "Completed processing"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2693,6 +2764,7 @@ export const concatWith: {
  * Effect.runSync(Channel.runCollect(concatenatedChannel)) // => [1, 2, 3, "a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2779,6 +2851,7 @@ export const concat: {
  * left and right channels. It returns the next output element together with the
  * next state.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -2897,6 +2970,7 @@ export const combine: {
  * the source completes before emitting an element, the fallback function
  * receives the source done value and returns the replacement channel.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -3020,6 +3094,7 @@ export const orElseIfEmpty: {
  * Effect.runSync(Channel.runCollect(flattenedChannel)) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -3075,6 +3150,7 @@ export const flatten = <
  * Effect.runSync(Channel.runCollect(flattenedChannel)) // => [1, 2, 3, 4, 5, 6, 7, 8, 9]
  * ```
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -3126,6 +3202,7 @@ export const flattenArray = <
  * Output `Take` values are emitted as non-empty arrays. Failed `Take` values
  * fail the returned channel. Done `Take` values complete the returned channel.
  *
+ * @stability stable
  * @category transforming
  * @since 4.0.0
  */
@@ -3162,6 +3239,7 @@ export const flattenTake = <
  * Effect.runSync(Channel.runCollect(drainedChannel)) // => []
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -3189,6 +3267,7 @@ export const drain = <
 /**
  * Repeats this channel according to the provided schedule.
  *
+ * @stability stable
  * @category repetition
  * @since 4.0.0
  */
@@ -3260,6 +3339,7 @@ const repeatLoop = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, E, Out
 /**
  * Repeats this channel forever.
  *
+ * @stability stable
  * @category repetition
  * @since 4.0.0
  */
@@ -3278,6 +3358,7 @@ export const forever = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  * fails. If the schedule finishes, the returned channel completes with the
  * schedule output.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -3337,6 +3418,7 @@ export const schedule: {
  * Effect.runSync(Channel.runCollect(numbersOnlyChannel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3393,6 +3475,7 @@ export const filter: {
  * @see {@link filterMapEffect} for using an effectful `Filter`
  * @see {@link filterMapArray} for filtering arrays of output elements
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3437,6 +3520,7 @@ export const filterMap: {
  * for which the predicate succeeds with `false` are discarded. Predicate
  * failures fail the returned channel.
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3489,6 +3573,7 @@ export const filterEffect: {
  * @see {@link mapEffect} for effectfully transforming every output element
  * @see {@link filterMapArrayEffect} for effectful filtering of array outputs
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3555,6 +3640,7 @@ export const filterMapEffect: {
  * Effect.runSync(Channel.runCollect(filteredOddChannel)) // => [[2, 4]]
  * ```
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3606,6 +3692,7 @@ export const filterArray: {
  * Successful filter results are kept as mapped values. Failed filter results
  * are removed from the array. Arrays that become empty are discarded.
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3655,6 +3742,7 @@ export const filterMapArray: {
  * for which the predicate succeeds with `true` are kept. Arrays that become
  * empty are discarded. Predicate failures fail the returned channel.
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3697,6 +3785,7 @@ export const filterArrayEffect: {
  * are removed from the array. Arrays that become empty are discarded. Failures
  * from the effectful filter fail the returned channel.
  *
+ * @stability stable
  * @category filtering
  * @since 4.0.0
  */
@@ -3763,6 +3852,7 @@ export const filterMapArrayEffect: {
  * Effect.runSync(Channel.runCollect(asyncMapAccum)) // => ["1-processed", "1", "2-processed", "12", "3-processed", "123", "4-processed", "1234"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -3896,6 +3986,7 @@ export const mapAccum: {
  * Effect.runSync(Channel.runCollect(sentenceChannel)) // => ["", "hello", "hello world", "hello world from", "hello world from effect"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -3974,6 +4065,7 @@ export const scan: {
  * await Effect.runPromise(Channel.runCollect(errorHandlingScan)) // => [0, 1, 3, 6, 10]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -4057,6 +4149,7 @@ export const scanEffect: {
  * Effect.runSync(Channel.runCollect(recoveredChannel)) // => ["Recovered from failure"]
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 2.0.0
  */
@@ -4175,6 +4268,7 @@ export const catchCause: {
  * Effect.runSync(Channel.runCollect(channel)) // => ["recovered: boom"]
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -4261,6 +4355,7 @@ export const catchDefect: {
  * Use this for observing failures, such as logging or metrics. If the observer
  * effect fails, that failure can fail the returned channel.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -4349,6 +4444,7 @@ export const tapCause: {
  * @see {@link catchCause} for recovering from every cause
  * @see {@link catchIf} for recovering from typed channel errors
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -4475,6 +4571,7 @@ export const catchCauseIf: {
  * @see {@link catchFilter} for selecting typed errors with a `Filter`
  * @see {@link catchCause} for recovering from every cause
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -4676,6 +4773,7 @@ export {
   /**
    * Recovers from typed channel errors by running a fallback channel.
    *
+   * @stability stable
    * @category error handling
    * @since 4.0.0
    */
@@ -4691,6 +4789,7 @@ export {
  * The effect is not run for normal channel completion. If the observer effect
  * fails, that failure can fail the returned channel.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -4787,6 +4886,7 @@ export const tapError: {
  * @see {@link catchTag} for selecting tagged typed errors
  * @see {@link catchCauseFilter} for selecting full causes with a `Filter`
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5030,6 +5130,7 @@ export const catchIf: {
  * @see {@link catchTag} for selecting tagged typed errors
  * @see {@link catchCauseFilter} for selecting full causes with a `Filter`
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5189,6 +5290,7 @@ export const catchFilter: {
  * errors are handled by `orElse` when provided. Without `orElse`,
  * non-matching errors are re-failed.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5367,6 +5469,7 @@ export const catchTag: {
  * Effect.runSync(Channel.runCollect(recovered)) // => ["retry: 60"]
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5548,6 +5651,7 @@ export const catchReason: {
 /**
  * Catches multiple reasons within a tagged error using an object of handlers.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5748,6 +5852,7 @@ export const catchReasons: {
  * Effect.runSync(Effect.exit(Channel.runCollect(unwrapped))) // => Exit.fail(reason)
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5822,6 +5927,7 @@ export const unwrapReason: {
  * value of the returned channel is created by applying the specified function
  * to the failure value of this channel.
  *
+ * @stability stable
  * @category error handling
  * @since 2.0.0
  */
@@ -5863,6 +5969,7 @@ export const mapError: {
  * Effect.runSync(Effect.exit(Channel.runCollect(fatalChannel))) // => Exit.failCause(Cause.die(error))
  * ```
  *
+ * @stability stable
  * @category error handling
  * @since 2.0.0
  */
@@ -5885,6 +5992,7 @@ export const orDie = <
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5947,6 +6055,7 @@ const ignoreCause_ = <
  *
  * Use the `log` option to emit the full {@link Cause} when the channel fails.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -5982,6 +6091,7 @@ export const ignoreCause: <
  * Returns a new channel that retries this channel according to the specified
  * schedule whenever it fails.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -6080,6 +6190,7 @@ export const retry: {
  * await Effect.runPromise(Channel.runCollect(switchedChannel)) // => ["value-3"]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -6208,6 +6319,7 @@ export const switchMap: {
  * await Effect.runPromise(Channel.runCollect(mergedChannel)) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 2.0.0
  */
@@ -6333,17 +6445,17 @@ export const mergeAll: {
               Effect.flatMap((value) => Queue.offer(queue, value)),
               Effect.forever({ disableYield: true }),
               Effect.onError(Effect.fnUntraced(function*(cause) {
-                const halt = Pull.filterDone(cause)
-                yield* Effect.exit(Scope.close(
-                  childScope,
-                  !Result.isFailure(halt) ? Exit.succeed(halt.success.value) : Exit.failCause(halt.failure)
-                ))
+                const exit = Pull.doneExitFromCause(cause)
+                const closeExit = yield* Effect.exit(Scope.close(childScope, exit))
                 if (!fibers.has(fiber)) return
+                // Publish usage and finalizer failures before releasing the
+                // permit or opening the latch, so the outer channel cannot
+                // complete ahead of them.
+                const failure = Exit.asVoidAll([exit, closeExit])
+                if (Exit.isFailure(failure)) yield* Queue.failCause(queue, failure.cause)
                 fibers.delete(fiber)
                 if (semaphore) yield* semaphore.release(1)
                 if (fibers.size === 0) yield* doneLatch.open
-                if (Result.isSuccess(halt)) return
-                return yield* Queue.failCause(queue, cause as any)
               })),
               Effect.forkChild
             )
@@ -6379,6 +6491,7 @@ export const mergeAll: {
  * const strategies: Array<Channel.HaltStrategy> = ["left", "right", "both", "either"] // => ["left", "right", "both", "either"]
  * ```
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -6404,6 +6517,7 @@ export type HaltStrategy = "left" | "right" | "both" | "either"
  * values.map(String).sort() // => ["1", "2", "3", "a", "b", "c"]
  * ```
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -6531,9 +6645,11 @@ export const merge: {
           )
         ),
         Effect.onError((cause) =>
-          Effect.andThen(
-            Scope.close(scope, Pull.doneExitFromCause(cause)),
-            onExit(side, cause)
+          Effect.onExitPrimitive(Pull.doneExitFromCause(cause), (exit) => Scope.close(scope, exit)).pipe(
+            Effect.matchCauseEffect({
+              onFailure: (cause) => onExit(side, cause),
+              onSuccess: () => onExit(side, cause)
+            })
           )
         ),
         Effect.forkIn(forkedScope)
@@ -6557,6 +6673,7 @@ export const merge: {
  * The effect's successful value is ignored. If the effect fails while the
  * channel is running, the returned channel fails with that error.
  *
+ * @stability stable
  * @category combining
  * @since 4.0.0
  */
@@ -6603,6 +6720,7 @@ export const mergeEffect: {
  * result // => ["hello", "world"]
  * ```
  *
+ * @stability stable
  * @category splitting
  * @since 2.0.0
  */
@@ -6714,10 +6832,14 @@ export const splitLines = <Err, Done>(): Channel<
  * span `Uint8Array` boundaries. The optional `encoding` and `options` are
  * passed to `TextDecoder`.
  *
+ * @stability stable
  * @category decoding
  * @since 4.0.0
  */
-export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOptions): Channel<
+export const decodeText = <Err, Done>(
+  encoding?: string,
+  options?: ConstructorParameters<typeof TextDecoder>[1]
+): Channel<
   Arr.NonEmptyReadonlyArray<string>,
   Err,
   Done,
@@ -6740,6 +6862,7 @@ export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOp
  *
  * Each string inside an emitted array is encoded independently.
  *
+ * @stability stable
  * @category encoding
  * @since 4.0.0
  */
@@ -6783,6 +6906,7 @@ export const encodeText = <Err, Done>(): Channel<
  * Effect.runSync(Channel.runCollect(pipedChannel)) // => [2, 4, 6]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -6832,6 +6956,7 @@ export const pipeTo: {
  * Effect.runSync(Effect.exit(Channel.runCollect(safePipedChannel))) // => Exit.fail(error)
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -6895,6 +7020,7 @@ export const pipeToOrFail: {
  * Effect.runSync(Channel.runCollect(unwrappedChannel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -6917,6 +7043,7 @@ export const unwrap = <OutElem, OutErr, OutDone, InElem, InErr, InDone, R2, E, R
  * Runs a channel with a scope provided for the duration of the channel
  * execution, removing the channel's `Scope` requirement.
  *
+ * @stability stable
  * @category resource management
  * @since 2.0.0
  */
@@ -6959,6 +7086,7 @@ export const scoped = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  * await Effect.runPromise(Channel.runCollect(embeddedChannel)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category sequencing
  * @since 2.0.0
  */
@@ -7014,6 +7142,7 @@ export const embedInput: {
  *
  * @see {@link bufferArray} for buffering elements from array outputs
  *
+ * @stability stable
  * @category buffering
  * @since 2.0.0
  */
@@ -7080,6 +7209,7 @@ export const buffer: {
  *
  * @see {@link buffer} for buffering output elements without flattening arrays
  *
+ * @stability stable
  * @category buffering
  * @since 4.0.0
  */
@@ -7136,6 +7266,7 @@ export const bufferArray: {
  * channel's done value. If the channel completes first, the original channel's
  * done value is preserved.
  *
+ * @stability stable
  * @category interruption
  * @since 2.0.0
  */
@@ -7169,6 +7300,7 @@ export const interruptWhen: {
  * fails with that error. If the channel completes first, the channel's done
  * value is preserved.
  *
+ * @stability stable
  * @category interruption
  * @since 4.0.0
  */
@@ -7208,6 +7340,7 @@ export const haltWhen: {
  * The finalizer receives the failure `Cause`. The original channel failure is
  * preserved. The finalizer itself must not fail.
  *
+ * @stability stable
  * @category error handling
  * @since 4.0.0
  */
@@ -7252,6 +7385,7 @@ export const onError: {
  * const observed = [await Effect.runPromise(Channel.runCollect(channelWithExit)), exits] // => [[1, 2, 3], [Exit.void]]
  * ```
  *
+ * @stability stable
  * @category resource management
  * @since 4.0.0
  */
@@ -7283,6 +7417,7 @@ export const onExit: {
  * The effect's successful value is ignored. If the effect fails, the returned
  * channel fails before running the source channel.
  *
+ * @stability stable
  * @category hooks
  * @since 4.0.0
  */
@@ -7315,6 +7450,7 @@ export const onStart: {
  * emitted unchanged. The effect is not run if the channel completes without
  * emitting an element.
  *
+ * @stability stable
  * @category hooks
  * @since 4.0.0
  */
@@ -7351,6 +7487,7 @@ export const onFirst: {
  * not run when the channel fails. If the effect fails, the returned channel
  * fails with that error.
  *
+ * @stability stable
  * @category hooks
  * @since 4.0.0
  */
@@ -7399,6 +7536,7 @@ export const onEnd: {
  * const observed = [await Effect.runPromise(Channel.runCollect(channelWithCleanup)), events] // => [[1, 2, 3], ["cleanup"]]
  * ```
  *
+ * @stability stable
  * @category resource management
  * @since 2.0.0
  */
@@ -7443,6 +7581,7 @@ const runWith = <
 /**
  * Creates a channel from the specified services.
  *
+ * @stability stable
  * @category accessors
  * @since 2.0.0
  */
@@ -7457,6 +7596,7 @@ export const contextWith = <Env, OutElem, OutErr, OutDone, InElem, InErr, InDone
  * Provides a `Context` to the channel, removing the corresponding service
  * requirements from the returned channel.
  *
+ * @stability stable
  * @category providing services
  * @since 2.0.0
  */
@@ -7485,6 +7625,7 @@ export const provideContext: {
  * Provides a concrete service for a context key, removing that service
  * requirement from the returned channel.
  *
+ * @stability stable
  * @category providing services
  * @since 2.0.0
  */
@@ -7525,6 +7666,7 @@ export const provideService: {
  * If the service effect fails, the returned channel fails. The provided service
  * removes the corresponding service requirement from the returned channel.
  *
+ * @stability stable
  * @category providing services
  * @since 4.0.0
  */
@@ -7562,6 +7704,7 @@ export const provideServiceEffect: {
  * builds the layer in the channel scope. Use `options.local` to build a fresh
  * layer instance for this provision.
  *
+ * @stability stable
  * @category providing services
  * @since 4.0.0
  */
@@ -7610,6 +7753,7 @@ export const provide: {
  * provide to the channel. The returned channel requires the services needed to
  * build that context.
  *
+ * @stability stable
  * @category providing services
  * @since 4.0.0
  */
@@ -7642,6 +7786,7 @@ export const updateContext: {
  * The existing service is read from the context. The updated service is
  * provided to the channel under the same key.
  *
+ * @stability stable
  * @category providing services
  * @since 2.0.0
  */
@@ -7677,6 +7822,7 @@ export const updateService: {
  * The created span is provided as the current parent span while the channel
  * runs. The span is ended with the channel's exit value.
  *
+ * @stability stable
  * @category tracing
  * @since 2.0.0
  */
@@ -7722,6 +7868,7 @@ const withSpanImpl = <OutElem, OutErr, OutDone, InElem, InErr, InDone, R>(
 /**
  * The starting channel for Do notation, emitting an empty object.
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -7776,6 +7923,7 @@ export {
   /**
    * Adds a computed field to each object emitted by a channel.
    *
+   * @stability stable
    * @category mapping
    * @since 4.0.0
    */
@@ -7792,6 +7940,7 @@ export {
  * channel's output becomes the value of the new field. `options.concurrency`
  * and `options.bufferSize` control how derived channels are flattened.
  *
+ * @stability stable
  * @category sequencing
  * @since 4.0.0
  */
@@ -7898,6 +8047,7 @@ export const bind: {
  * @see {@link bind} for adding a field produced by another channel
  * @see {@link let_ let} for adding a computed field
  *
+ * @stability stable
  * @category mapping
  * @since 4.0.0
  */
@@ -7959,6 +8109,7 @@ export const bindTo: {
  * Effect.runSync(countEffect) // => 5
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -7988,6 +8139,7 @@ export const runCount = <OutElem, OutErr, OutDone, Env>(
  * Effect.runSync(drainEffect) // => "completed"
  * ```
  *
+ * @stability stable
  * @category running
  * @since 2.0.0
  */
@@ -8021,6 +8173,7 @@ export const runDrain = <OutElem, OutErr, OutDone, Env>(
  * processed // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8052,6 +8205,7 @@ export const runForEach: {
  * Returning `true` continues consuming the channel. Returning `false` stops
  * consumption early. The returned effect completes with `void`.
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8101,6 +8255,7 @@ export const runForEachWhile: {
  * Array.from(bytes) // => [1, 2, 3, 4]
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8158,6 +8313,7 @@ export const mkUint8Array = <OutErr, OutDone, Env>(
  * Effect.runSync(collectEffect) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category running
  * @since 2.0.0
  */
@@ -8178,6 +8334,7 @@ export const runCollect = <OutElem, OutErr, OutDone, Env>(
  * Returns `Option.some` with the first output element, or `Option.none` if the
  * channel completes without emitting output.
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8205,6 +8362,7 @@ export const runHead = <OutElem, OutErr, OutDone, Env>(
  * Returns `Option.some` with the last emitted element, or `Option.none` if the
  * channel completes without emitting output.
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8249,6 +8407,7 @@ export const runLast = <OutElem, OutErr, OutDone, Env>(
  * Effect.runSync(sumEffect) // => 15
  * ```
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8299,6 +8458,7 @@ export const runFold: {
  * the effectful accumulator function. The returned effect succeeds with the
  * final accumulator value.
  *
+ * @stability stable
  * @category running
  * @since 4.0.0
  */
@@ -8366,6 +8526,7 @@ export const runFoldEffect: {
  * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -8416,6 +8577,7 @@ export const toPull: <OutElem, OutErr, OutDone, Env>(
  * await Effect.runPromise(Effect.scoped(scopedPullEffect)) // => [1, 2, 3]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8433,6 +8595,7 @@ export const toPullScoped = <OutElem, OutErr, OutDone, Env>(
  * queue is failed with the channel's cause. The returned effect itself
  * completes with `void`.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8476,6 +8639,7 @@ export const runIntoQueue: {
  * queue is failed with the channel's cause. The returned effect itself
  * completes with `void`.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8539,6 +8703,7 @@ export const runIntoQueueArray: {
  * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
  * ```
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -8593,6 +8758,7 @@ export const toQueue: {
  * completion and failure are signaled through the queue. The queue is shut down
  * when the surrounding scope closes.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8646,6 +8812,7 @@ export const toQueueArray: {
  * `shutdownOnEnd` indicates whether the PubSub should be shut down when the
  * channel ends. By default this is `true`.
  *
+ * @stability stable
  * @category destructors
  * @since 2.0.0
  */
@@ -8708,6 +8875,7 @@ export const toPubSub: {
  * The channel's output values are published as individual PubSub messages. Use
  * `options.shutdownOnEnd` to shut down the PubSub when channel execution ends.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8719,14 +8887,14 @@ export const runIntoPubSub: {
     } | undefined
   ): <OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-  ) => Effect.Effect<void, never, Env>
+  ) => Effect.Effect<void, OutErr, Env>
   <OutElem, OutErr, OutDone, Env>(
     self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>,
     pubsub: PubSub.PubSub<OutElem>,
     options?: {
       readonly shutdownOnEnd?: boolean | undefined
     } | undefined
-  ): Effect.Effect<void, never, Env>
+  ): Effect.Effect<void, OutErr, Env>
 } = dual(
   (args) => isChannel(args[0]),
   <OutElem, OutErr, OutDone, Env>(
@@ -8772,6 +8940,7 @@ const makePubSub = <A>(
  * PubSub message. `shutdownOnEnd` indicates whether the PubSub should be shut
  * down when the channel ends. By default this is `true`.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8836,6 +9005,7 @@ export const toPubSubArray: {
  * PubSub message. Use `options.shutdownOnEnd` to shut down the PubSub when
  * channel execution ends.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */
@@ -8879,6 +9049,7 @@ export const runIntoPubSubArray: {
  * subscriber, including one that subscribes later, observes completion or
  * failure once it has consumed its buffered values.
  *
+ * @stability stable
  * @category destructors
  * @since 4.0.0
  */

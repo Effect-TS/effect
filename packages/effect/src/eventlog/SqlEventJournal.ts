@@ -56,7 +56,7 @@ export const make = (options?: {
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${entryTableSql} (
-            id UUID PRIMARY KEY,
+            id BYTEA PRIMARY KEY,
             event TEXT NOT NULL,
             primary_key TEXT NOT NULL,
             payload BYTEA NOT NULL,
@@ -95,8 +95,8 @@ export const make = (options?: {
       pg: () =>
         sql`
           CREATE TABLE IF NOT EXISTS ${remotesTableSql} (
-            remote_id UUID NOT NULL,
-            entry_id UUID NOT NULL,
+            remote_id BYTEA NOT NULL,
+            entry_id BYTEA NOT NULL,
             sequence INT NOT NULL,
             PRIMARY KEY (remote_id, entry_id)
           )`,
@@ -343,12 +343,26 @@ const SqlUint8Array = Schema.Union([Schema.Uint8Array, ArrayBuffer]).pipe(
 
 const SqlEntryId = SqlUint8Array.pipe(Schema.decodeTo(EventJournal.EntryId))
 
+const SqlNatural = Schema.Union([
+  Schema.Natural,
+  Schema.FiniteFromString.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0)),
+  Schema.BigInt.pipe(
+    Schema.decodeTo(
+      Schema.Natural,
+      SchemaTransformation.transform({
+        decode: Number,
+        encode: BigInt
+      })
+    )
+  )
+])
+
 const EntryRow = Schema.Struct({
   id: SqlEntryId,
   event: Schema.String,
   primary_key: Schema.String,
   payload: SqlUint8Array,
-  timestamp: Schema.Int
+  timestamp: SqlNatural
 })
 
 const EntryRowArray = Schema.Array(EntryRow)

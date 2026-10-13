@@ -93,13 +93,13 @@ export const b3: FromHeaders = (headers) => {
     return Option.none()
   }
   const parts = headers["b3"].split("-")
-  if (parts.length < 2) {
+  if (parts.length < 2 || isB3Ids(parts[0], parts[1]) === false) {
     return Option.none()
   }
   return Option.some(Tracer.externalSpan({
     traceId: parts[0],
     spanId: parts[1],
-    sampled: parts[2] ? parts[2] === "1" : true
+    sampled: parts[2] ? parts[2] === "1" || parts[2] === "d" : true
   }))
 }
 
@@ -109,25 +109,32 @@ export const b3: FromHeaders = (headers) => {
  * **Details**
  *
  * The decoder reads `x-b3-traceid`, `x-b3-spanid`, and optional `x-b3-sampled`
- * headers.
+ * and `x-b3-flags` headers. Debug flags override the sampling decision.
  *
  * @stability unstable
  * @category decoding
  * @since 4.0.0
  */
 export const xb3: FromHeaders = (headers) => {
-  if (!(headers["x-b3-traceid"]) || !(headers["x-b3-spanid"])) {
+  if (
+    !(headers["x-b3-traceid"]) || !(headers["x-b3-spanid"]) ||
+    isB3Ids(headers["x-b3-traceid"], headers["x-b3-spanid"]) === false
+  ) {
     return Option.none()
   }
   return Option.some(Tracer.externalSpan({
     traceId: headers["x-b3-traceid"],
     spanId: headers["x-b3-spanid"],
-    sampled: headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" : true
+    sampled: headers["x-b3-flags"] === "1" ||
+      (headers["x-b3-sampled"] ? headers["x-b3-sampled"] === "1" || headers["x-b3-sampled"] === "true" : true)
   }))
 }
 
 const w3cTraceId = /^[0-9a-f]{32}$/i
 const w3cSpanId = /^[0-9a-f]{16}$/i
+
+const b3TraceId = /^(?:[0-9a-f]{16}|[0-9a-f]{32})$/i
+const isB3Ids = (traceId: string, spanId: string): boolean => b3TraceId.test(traceId) && w3cSpanId.test(spanId)
 
 /**
  * Decodes an external span safely from the W3C `traceparent` header.
@@ -151,7 +158,10 @@ export const w3c: FromHeaders = (headers) => {
   const [version, traceId, spanId, flags] = parts
   switch (version) {
     case "00": {
-      if (w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false) {
+      if (
+        w3cTraceId.test(traceId) === false || w3cSpanId.test(spanId) === false ||
+        traceId === "00000000000000000000000000000000" || spanId === "0000000000000000"
+      ) {
         return Option.none()
       }
       return Option.some(Tracer.externalSpan({

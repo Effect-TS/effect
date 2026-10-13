@@ -26,6 +26,7 @@ import * as Num from "../Number.ts"
 import * as Option from "../Option.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Scope from "../Scope.ts"
+import * as Version from "../Version.ts"
 
 const retryAfterDelay = (value: string | undefined): Effect.Effect<Duration.Duration> => {
   const seconds = Option.fromUndefinedOr(value).pipe(Option.flatMap(Num.parse))
@@ -194,12 +195,14 @@ export const make: (
     HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
-  let headers = Headers.fromRecordUnsafe({
-    "user-agent": `effect-opentelemetry-${options.label}/0.0.0`
-  })
-  if (options.headers) {
-    headers = Headers.merge(Headers.fromInput(options.headers), headers)
-  }
+  const exporterUserAgent = `OTel-OTLP-Exporter-JavaScript-Effect-${options.label}/${Version.getCurrentVersion()}`
+  const userHeaders = Headers.fromInput(options.headers)
+  const userAgent = userHeaders["user-agent"]
+  const headers = Headers.set(
+    userHeaders,
+    "user-agent",
+    userAgent ? `${userAgent} ${exporterUserAgent}` : exporterUserAgent
+  )
 
   const request = HttpClientRequest.post(options.url, { headers })
   let buffer: Array<any> = []

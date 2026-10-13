@@ -38,6 +38,8 @@ import * as Errors from "./internal/errors.ts"
 import { OpenAiConfig } from "./OpenAiConfig.ts"
 import * as OpenAiSchema from "./OpenAiSchema.ts"
 
+const decodeResponseStreamEvent = Schema.decodeUnknownEffect(Schema.fromJsonString(OpenAiSchema.ResponseStreamEvent))
+
 // =============================================================================
 // Service Interface
 // =============================================================================
@@ -273,13 +275,15 @@ export const make = Effect.fnUntraced(
     ] => {
       const stream = response.stream.pipe(
         Stream.decodeText(),
-        Stream.pipeThroughChannel(Sse.decodeDataSchema(OpenAiSchema.ResponseStreamEvent)),
+        Stream.pipeThroughChannel(Sse.decode()),
+        // Some OpenAI-compatible servers end the stream with `data: [DONE]`
+        Stream.takeWhile((event) => event.data !== "[DONE]"),
+        Stream.mapEffect((event) => decodeResponseStreamEvent(event.data)),
         Stream.takeUntil((event) =>
-          event.data.type === "response.completed" ||
-          event.data.type === "response.incomplete" ||
-          event.data.type === "response.failed"
+          event.type === "response.completed" ||
+          event.type === "response.incomplete" ||
+          event.type === "response.failed"
         ),
-        Stream.map((event) => event.data),
         Stream.catchTags({
           // TODO: handle SSE retries
           Retry: (error) => Stream.die(error),

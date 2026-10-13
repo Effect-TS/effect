@@ -1,33 +1,16 @@
-import { PgConnection, PgPool } from "@effect/sql-pg"
+import { PgConnection, PgPool, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Queue, Redacted, Stream } from "effect"
+import { Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
-import { PgContainer } from "./utils.ts"
+import { PgContainer, realSleep, waitUntilActive, waitUntilAdvisoryLock } from "./utils.ts"
 
-// `it.effect` runs under the TestClock, so poll loops sleep in real time.
-const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
-const activeTimeoutMs = 10_000
 const cancellationTestTimeout = 20_000
 
 const poolConfig = Effect.gen(function*() {
   const container = yield* PgContainer
   return { url: Redacted.make(container.getConnectionUri()) }
 })
-
-const waitUntilActive = (observer: PgConnection.PgConnection, pid: number) =>
-  Effect.gen(function*() {
-    const startedAt = Date.now()
-    while (Date.now() - startedAt < activeTimeoutMs) {
-      const active = yield* observer.query(
-        "SELECT count(*)::int4 AS active FROM pg_stat_activity WHERE pid = $1 AND state = 'active'",
-        [pid]
-      )
-      if (active.rows[0].active === 1) return
-      yield* realSleep
-    }
-    return yield* Effect.fail(new Error(`PostgreSQL backend ${pid} did not become active within 10 seconds`))
-  })
 
 const cancelRequestCode = 80877102
 
@@ -198,6 +181,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       assert.strictEqual(notification.processId, notifier.processId)
     }))
 
+  it.effect("does not hand on a listener registered through a released pin", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const pinScope = yield* Scope.make()
+      const listenScope = yield* Scope.make()
+      const pinned = yield* Scope.provide(pool.reserve, pinScope)
+      yield* Scope.provide(pinned.listen("released_pin_listener"), listenScope)
+      yield* Scope.close(pinScope, Exit.void)
+      yield* Scope.close(listenScope, Exit.void)
+
+      const channels = yield* Effect.scoped(
+        Effect.flatMap(pool.reserve, (connection) => connection.query("SELECT pg_listening_channels() AS channel"))
+      )
+      assert.deepStrictEqual(channels.rows, [])
+    }))
+
   it.effect("reports listener registration failure during acquisition", () =>
     Effect.gen(function*() {
       const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
@@ -248,24 +247,57 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
       const blocker = yield* PgConnection.make(config)
       const observer = yield* PgConnection.make(config)
-      const first = yield* Effect.scoped(Effect.gen(function*() {
-        const connection = yield* pool.get
-        yield* blocker.query("BEGIN")
-        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-        const fiber = yield* Effect.forkScoped(
-          connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-        )
-        yield* waitUntilActive(observer, connection.processId)
-        yield* connection.interrupt
-        const error = yield* Effect.flip(Fiber.join(fiber))
-        assert.strictEqual(error._tag, "SqlError")
-        assert.strictEqual(error.reason._tag, "StatementTimeoutError")
-        yield* blocker.query("ROLLBACK")
-        return connection.processId
-      }))
+      // Roll back inside the scope, before it interrupts/joins the query fiber on failure.
+      const first = yield* Effect.scoped(
+        Effect.gen(function*() {
+          const connection = yield* pool.get
+          yield* blocker.query("BEGIN")
+          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          const fiber = yield* Effect.forkScoped(
+            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+          )
+          yield* waitUntilAdvisoryLock(observer, connection.processId)
+          yield* connection.interrupt
+          const error = yield* Effect.flip(Fiber.join(fiber))
+          assert.strictEqual(error._tag, "SqlError")
+          assert.strictEqual(error.reason._tag, "StatementTimeoutError")
+          return connection.processId
+        }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+      )
 
       const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
       assert.strictEqual(second, first)
+    }), cancellationTestTimeout)
+
+  it.effect("replaces a session whose pin is released with a statement in flight", () =>
+    Effect.gen(function*() {
+      const config = yield* poolConfig
+      const pool = yield* PgPool.make({ ...config, maxConnections: 1 })
+      const blocker = yield* PgConnection.make(config)
+      const observer = yield* PgConnection.make(config)
+      const scope = yield* Scope.make()
+      const pinned = yield* Scope.provide(pool.reserve, scope)
+
+      yield* Effect.gen(function*() {
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [pinned.processId])
+        const leaked = yield* Effect.forkScoped(
+          pinned.query("SELECT pg_advisory_xact_lock($1::int4)", [pinned.processId])
+        )
+        yield* waitUntilAdvisoryLock(observer, pinned.processId)
+        yield* Scope.close(scope, Exit.void)
+        // Freeing the lock lets the leaked statement finish if it still has a session.
+        yield* blocker.query("ROLLBACK")
+        assert.isTrue(Exit.isFailure(yield* Fiber.await(leaked)))
+      }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+
+      const next = yield* Effect.scoped(Effect.gen(function*() {
+        const connection = yield* pool.reserve
+        const result = yield* connection.query("SELECT 1 AS ok")
+        return { processId: connection.processId, rows: result.rows }
+      }))
+      assert.notStrictEqual(next.processId, pinned.processId)
+      assert.deepStrictEqual(next.rows, [{ ok: 1 }])
     }), cancellationTestTimeout)
 
   it.effect("replaces a pooled session after an unconfirmed query cancel", () =>
@@ -277,20 +309,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const observer = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
-        const first = yield* Effect.scoped(Effect.gen(function*() {
-          const connection = yield* pool.get
-          yield* blocker.query("BEGIN")
-          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          const query = yield* Effect.forkScoped(
-            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          )
-          yield* waitUntilActive(observer, connection.processId)
-          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
-          yield* gate.intercepted
-          yield* blocker.query("COMMIT")
-          yield* Fiber.join(interruption)
-          return connection.processId
-        }))
+        const first = yield* Effect.scoped(
+          Effect.gen(function*() {
+            const connection = yield* pool.get
+            yield* blocker.query("BEGIN")
+            yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            const query = yield* Effect.forkScoped(
+              connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            )
+            yield* waitUntilAdvisoryLock(observer, connection.processId)
+            const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+            yield* gate.intercepted
+            yield* blocker.query("COMMIT")
+            yield* Fiber.join(interruption)
+            return connection.processId
+          }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+        )
 
         const second = yield* Effect.scoped(Effect.map(pool.get, (connection) => connection.processId))
         assert.notStrictEqual(second, first)
@@ -308,20 +342,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const observer = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
-        const first = yield* Effect.scoped(Effect.gen(function*() {
-          const connection = yield* pool.get
-          yield* blocker.query("BEGIN")
-          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          const query = yield* Effect.forkScoped(
-            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          )
-          yield* waitUntilActive(observer, connection.processId)
-          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
-          yield* gate.intercepted
-          yield* blocker.query("COMMIT")
-          yield* Fiber.join(interruption)
-          return connection.processId
-        }))
+        const first = yield* Effect.scoped(
+          Effect.gen(function*() {
+            const connection = yield* pool.get
+            yield* blocker.query("BEGIN")
+            yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            const query = yield* Effect.forkScoped(
+              connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            )
+            yield* waitUntilAdvisoryLock(observer, connection.processId)
+            const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+            yield* gate.intercepted
+            yield* blocker.query("COMMIT")
+            yield* Fiber.join(interruption)
+            return connection.processId
+          }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+        )
 
         const second = yield* pool.use((connection) => Effect.succeed(connection.processId))
         assert.notStrictEqual(second, first)
@@ -341,19 +377,21 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const lockAcquired = yield* Queue.unbounded<void>()
 
       yield* Effect.gen(function*() {
-        yield* Effect.scoped(Effect.gen(function*() {
-          const connection = yield* pool.get
-          yield* blocker.query("BEGIN")
-          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          const query = yield* Effect.forkScoped(
-            connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          )
-          yield* waitUntilActive(observer, connection.processId)
-          const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
-          yield* gate.intercepted
-          yield* blocker.query("COMMIT")
-          yield* Fiber.join(interruption)
-        }))
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            const connection = yield* pool.get
+            yield* blocker.query("BEGIN")
+            yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            const query = yield* Effect.forkScoped(
+              connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            )
+            yield* waitUntilAdvisoryLock(observer, connection.processId)
+            const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
+            yield* gate.intercepted
+            yield* blocker.query("COMMIT")
+            yield* Fiber.join(interruption)
+          }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+        )
 
         const followUp = yield* Effect.forkScoped(
           pool.use((connection) =>
@@ -371,7 +409,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         yield* blocker.query("BEGIN")
         yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [followUpPid])
         yield* Queue.offer(lockAcquired, undefined)
-        yield* waitUntilActive(observer, followUpPid)
+        yield* waitUntilAdvisoryLock(observer, followUpPid)
         gate.release()
         yield* gate.delivered
         yield* blocker.query("COMMIT")
@@ -429,19 +467,21 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       const blocker = yield* PgConnection.make(config)
 
       yield* Effect.gen(function*() {
-        const first = yield* Effect.scoped(Effect.gen(function*() {
-          const connection = yield* pool.get
-          yield* blocker.query("BEGIN")
-          yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
-          const stream = yield* Effect.forkScoped(
-            connection.stream(blockedStream, [connection.processId]).pipe(Stream.take(1), Stream.runCollect)
-          )
-          yield* gate.intercepted
-          yield* blocker.query("COMMIT")
-          const rows = yield* Fiber.join(stream)
-          assert.deepStrictEqual(rows, [{ n: 1 }])
-          return connection.processId
-        }))
+        const first = yield* Effect.scoped(
+          Effect.gen(function*() {
+            const connection = yield* pool.get
+            yield* blocker.query("BEGIN")
+            yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+            const stream = yield* Effect.forkScoped(
+              connection.stream(blockedStream, [connection.processId]).pipe(Stream.take(1), Stream.runCollect)
+            )
+            yield* gate.intercepted
+            yield* blocker.query("COMMIT")
+            const rows = yield* Fiber.join(stream)
+            assert.deepStrictEqual(rows, [{ n: 1 }])
+            return connection.processId
+          }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+        )
 
         yield* Effect.scoped(Effect.gen(function*() {
           const replacement = yield* pool.get
@@ -490,7 +530,7 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         const query = yield* Effect.forkScoped(
           connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
         )
-        yield* waitUntilActive(observer, connection.processId)
+        yield* waitUntilAdvisoryLock(observer, connection.processId)
         const interruption = yield* Effect.forkScoped(Fiber.interrupt(query))
         yield* gate.intercepted
         yield* blocker.query("COMMIT")
@@ -502,7 +542,14 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
         yield* gate.delivered
         const afterDelivery = yield* connection.query("SELECT pg_backend_pid()::int4 AS pid")
         assert.deepStrictEqual(afterDelivery.rows, [{ pid: connection.processId }])
-      }).pipe(Effect.ensuring(Effect.sync(() => gate.release())))
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => gate.release()).pipe(
+            Effect.andThen(blocker.query("ROLLBACK")),
+            Effect.ignore
+          )
+        )
+      )
     }), cancellationTestTimeout)
 
   it.effect("replaces connections that die", () =>
@@ -608,10 +655,13 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
 
   it.effect("replaces a fatal session before the next pool.use query", () =>
     Effect.gen(function*() {
-      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const failure = Result.fail(new PgTypes.CodecError({ message: "Intentional decode failure" }))
+      const types = PgTypes.makeRegistry()
+      types.register(PgTypes.OID.interval, { encode: () => failure, decode: () => failure })
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1, types })
       const first = yield* pool.use((connection) => Effect.succeed(connection.processId))
 
-      // Decoding this interval fails fatally in the connection's data handler.
+      // The failing codec errors fatally in the connection's data handler.
       // The next borrow must not see the dead session, even in the same fiber.
       const error = yield* Effect.flip(pool.use((connection) => connection.query("SELECT interval '-1 day' AS v")))
       assert.strictEqual(error._tag, "SqlError")

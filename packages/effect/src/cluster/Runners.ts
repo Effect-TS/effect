@@ -282,6 +282,10 @@ export const make: (
           const reply = entry.replies[i]
           // we have reached the end
           if (reply._tag === "WithExit") {
+            // A reply can immediately reset and resend the same request. Do not
+            // let that sender attach to this completed reply loop.
+            storageRequests.delete(message.envelope.requestId)
+            waitingStorageRequests.delete(message.envelope.requestId)
             for (const message of entry.messages) {
               yield* message.respond(reply)
             }
@@ -304,8 +308,10 @@ export const make: (
         effect,
         Effect.sync(() => {
           const entry = storageRequests.get(message.envelope.requestId)
-          if (!entry || entry.messages.size > 1) {
-            entry?.messages.delete(message)
+          // An old waiter must not clean up a reset request's new reply loop.
+          if (!entry?.messages.has(message)) return
+          if (entry.messages.size > 1) {
+            entry.messages.delete(message)
             return
           }
           storageRequests.delete(message.envelope.requestId)

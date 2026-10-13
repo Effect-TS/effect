@@ -7,6 +7,7 @@
  * file URLs. This module includes the service interface, parsed path type,
  * service tag, runtime marker, and built-in POSIX path layer.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "./Context.ts"
@@ -26,6 +27,7 @@ import { BadArgument } from "./PlatformError.ts"
  *
  * @see {@link layer} for the built-in POSIX `Path` service layer
  *
+ * @stability unstable
  * @category type IDs
  * @since 4.0.0
  */
@@ -78,6 +80,7 @@ export const TypeId = "~effect/Path"
  * result.resolved // => "/base/relative/path"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -133,6 +136,7 @@ export interface Path {
  * Effect.runSync(Effect.provide(program, Path.layer)) // => ["file.txt", "file.txt"]
  * ```
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace Path {
@@ -249,6 +253,7 @@ export declare namespace Path {
  * Effect.runSync(Effect.provide(program, customPathLayer)) // => "home/user/file.txt"
  * ```
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -861,6 +866,7 @@ const posixImpl = Path.of({
  *
  * @see {@link Path} for accessing the `Path` service from an effect
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

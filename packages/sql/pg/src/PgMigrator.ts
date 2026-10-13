@@ -7,6 +7,7 @@
  * dumps are requested, it uses `pg_dump` and the usual process and filesystem
  * services.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Effect from "effect/Effect"
@@ -29,6 +30,7 @@ export * from "effect/sql/Migrator"
 /**
  * Runs PostgreSQL SQL migrations using the configured clients. Schema dumps use `pg_dump` and require child process, filesystem, and path services.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */
@@ -102,6 +104,7 @@ export const run: <R2 = never>(
 /**
  * Creates a layer that runs PostgreSQL migrations during layer construction, including `pg_dump`-based schema dump support when requested.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

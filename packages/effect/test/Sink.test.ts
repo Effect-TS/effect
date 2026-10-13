@@ -13,6 +13,13 @@ import { TestClock } from "effect/testing"
 
 describe("Sink", () => {
   describe("constructors", () => {
+    it.effect("make uses the pipeline success value as the sink result", () =>
+      Effect.gen(function*() {
+        const sink = Sink.make<number>()(Stream.runSum)
+        const exit = yield* Effect.exit(Stream.run(Stream.make(1, 2, 3), sink))
+        assertExitSuccess(exit, 6)
+      }))
+
     it.effect("fromWritableStream - aborts instead of closing on upstream failure", () =>
       Effect.gen(function*() {
         const error = new Error("upstream failed")
@@ -293,6 +300,40 @@ describe("Sink", () => {
           Stream.runCollect
         )
         deepStrictEqual(result, [[1, 2], [], []])
+      }))
+  })
+
+  describe("takeUntil", () => {
+    it.effect("takeUntil preserves leftovers and stops at the match", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(1, 2, 3, 4).pipe(
+          Stream.concat(Stream.fail("pulled past the match")),
+          Stream.transduce(Sink.takeUntil((n) => n % 2 === 0)),
+          Stream.take(2),
+          Stream.runCollect
+        )
+        deepStrictEqual(result, [[1, 2], [3, 4]])
+      }))
+
+    it.effect("takeUntilEffect preserves leftovers and stops at the match", () =>
+      Effect.gen(function*() {
+        for (const chunkSize of [1, 4]) {
+          const inputs: Array<number> = []
+          const result = yield* Stream.make(1, 2, 3, 4).pipe(
+            Stream.rechunk(chunkSize),
+            Stream.concat(Stream.fail("pulled past the match")),
+            Stream.transduce(Sink.takeUntilEffect((n) =>
+              Effect.sync(() => {
+                inputs.push(n)
+                return n % 2 === 0
+              })
+            )),
+            Stream.take(2),
+            Stream.runCollect
+          )
+          deepStrictEqual(result, [[1, 2], [3, 4]])
+          deepStrictEqual(inputs, [1, 2, 3, 4])
+        }
       }))
   })
 

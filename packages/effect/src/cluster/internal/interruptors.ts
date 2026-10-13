@@ -51,6 +51,14 @@ export const releaseEntityType = (entityType: string): void => release(entityTyp
 /**
  * @internal
  */
+export const aroundEntity = <A, E, R>(
+  address: EntityAddress,
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> => around(entityKey(address), effect)
+
+/**
+ * @internal
+ */
 export const aroundShard = <A, E, R>(
   shardId: ShardId,
   effect: Effect.Effect<A, E, R>
@@ -71,3 +79,8 @@ export const isActive = (address: EntityAddress): boolean =>
   counts.has(entityKey(address)) ||
   counts.has(shardKey(address.shardId)) ||
   counts.has(entityTypeKey(address.entityType))
+
+/**
+ * @internal
+ */
+export const isShardActive = (shardId: ShardId): boolean => counts.has(shardKey(shardId))

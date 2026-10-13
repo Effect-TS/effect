@@ -9,6 +9,7 @@
  * providing a new value changes behavior for the provided effect and the fibers
  * it starts.
  *
+ * @stability stable
  * @since 4.0.0
  */
 import type * as Context from "./Context.ts"
@@ -31,6 +32,7 @@ export {
    *
    * @see {@link MinimumTraceLevel} for configuring the threshold that decides whether spans at a given level are sampled or exported
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -50,6 +52,7 @@ export {
    *
    * @see {@link TracerEnabled} for disabling span registration instead of only propagation
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -68,6 +71,7 @@ export {
    *
    * @see {@link PreventSchedulerYield} for bypassing scheduler yield checks instead of changing the operation budget
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -82,6 +86,7 @@ export {
    *
    * @see {@link CurrentTraceLevel} for setting the level assigned to spans before this threshold is applied
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -106,6 +111,7 @@ export {
    *
    * @see {@link MaxOpsBeforeYield} for tuning the operation budget while keeping scheduler yield checks enabled
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -118,6 +124,7 @@ export {
    * Use to access or override the active tracer service through the references
    * module when working directly with Effect runtime references.
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */
@@ -179,6 +186,7 @@ export {
  * await Effect.runPromise(logAnnotationExample) // => [0, ["req-123", "user-456", "1.0.0"], ["data-sync", 1234567890]]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -219,6 +227,7 @@ export const CurrentLogAnnotations: Context.Reference<ReadonlyRecord<string, unk
  * levels // => ["Info", "Error"]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -284,6 +293,7 @@ export const CurrentLogLevel: Context.Reference<Severity> = references.CurrentLo
  * await Effect.runPromise(logSpanExample) // => [0, ["database-connection"], ["database-connection", "data-processing"], 0]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -307,6 +317,7 @@ export const CurrentLogSpans: Context.Reference<ReadonlyArray<[label: string, ti
  *
  * @see {@link StackFrame} for the frame node stored in this reference
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -343,6 +354,7 @@ export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = refe
  * levels // => ["Warn", "Error"]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -385,6 +397,7 @@ export const MinimumLogLevel: Context.Reference<LogLevel> = references.MinimumLo
  * await Effect.runPromise(tracingControl) // => [true, false, true]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -439,6 +452,7 @@ export const TracerEnabled: Context.Reference<boolean> = references.TracerEnable
  * await Effect.runPromise(spanAnnotationExample) // => [0, ["user-service", "1.2.3", "production"], 0]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -498,6 +512,7 @@ export const TracerSpanAnnotations: Context.Reference<ReadonlyRecord<string, unk
  * await Effect.runPromise(spanLinksExample) // => [0, 1, 0]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -541,6 +556,7 @@ export const TracerSpanLinks: Context.Reference<ReadonlyArray<SpanLink>> = refer
  * await Effect.runPromise(tracingControl) // => [true, false, true]
  * ```
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -567,6 +583,7 @@ export const TracerTimingEnabled: Context.Reference<boolean> = references.Tracer
  * @see {@link CurrentLogLevel} for the default severity used by ordinary `Effect.log` calls
  * @see {@link MinimumLogLevel} for filtering emitted log entries by threshold
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -587,6 +604,7 @@ export const UnhandledLogLevel: Context.Reference<Severity | undefined> = refere
  *
  * @see {@link CurrentStackFrame} for the fiber reference carrying the active stack-frame chain
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -611,6 +629,7 @@ export interface StackFrame {
  * Providing this reference changes which `Logger` instances receive log entries
  * in the current context.
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -629,6 +648,7 @@ export const CurrentLoggers: Context.Reference<ReadonlySet<Logger<unknown, any>>
  * The default value is `false`. When set to `true`, the built-in default logger
  * and TTY pretty console logger call `console.error` instead of `console.log`.
  *
+ * @stability stable
  * @category references
  * @since 4.0.0
  */
@@ -667,6 +687,7 @@ export {
    * await Effect.runPromise(customScheduling) // => [true, true]
    * ```
    *
+   * @stability stable
    * @category references
    * @since 4.0.0
    */

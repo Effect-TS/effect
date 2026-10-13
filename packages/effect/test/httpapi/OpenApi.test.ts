@@ -589,7 +589,11 @@ describe("OpenApi", () => {
     )
     assert.deepStrictEqual(
       spec.paths["/unencoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
-      { type: "integer" }
+      {
+        type: "integer",
+        minimum: globalThis.Number.MIN_SAFE_INTEGER,
+        maximum: globalThis.Number.MAX_SAFE_INTEGER
+      }
     )
   })
 

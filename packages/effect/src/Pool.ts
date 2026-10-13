@@ -7,6 +7,7 @@
  * pools, pools that resize with a time-to-live policy, custom strategy pools,
  * per-item concurrency limits, and runtime state types used by pool strategies.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import type * as Cause from "./Cause.ts"
@@ -19,7 +20,6 @@ import * as Fiber from "./Fiber.ts"
 import { constant, dual, identity } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
-import * as Iterable from "./Iterable.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Queue from "./Queue.ts"
@@ -31,10 +31,12 @@ const TypeId = "~effect/Pool"
 
 const Acquire = Symbol()
 const AcquireContext = Symbol()
+const PoolClock = Symbol()
 
 interface PoolImpl<A, E> extends Pool<A, E> {
   readonly [Acquire]: Effect.Effect<A, E, Scope.Scope>
   readonly [AcquireContext]: Context.Context<Scope.Scope>
+  readonly [PoolClock]: Clock
 }
 
 /**
@@ -53,6 +55,7 @@ interface PoolImpl<A, E> extends Pool<A, E> {
  * @see {@link get} for acquiring an item from a pool
  * @see {@link invalidate} for removing a broken item from the pool
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -79,6 +82,7 @@ export interface Pool<in out A, in out E = never> extends Pipeable {
  * @see {@link State} for mutable runtime state instead of static configuration
  * @see {@link Strategy} for the resizing and reclamation contract stored on the config
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -111,6 +115,7 @@ export interface Config<A, E> {
  * @see {@link get} for acquiring items through the high-level API
  * @see {@link invalidate} for invalidating items through the high-level API
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -119,7 +124,6 @@ export interface State<A, E> {
   isShuttingDown: boolean
   usage: number
   readonly resizeSemaphore: Semaphore.Semaphore
-  // Insertion order determines usage-TTL retirement order; reclaimed items move to the back.
   readonly items: Set<PoolItem<A, E>>
   availableHead: PoolItem<A, E> | undefined
   availableTail: PoolItem<A, E> | undefined
@@ -139,12 +143,13 @@ export interface State<A, E> {
  * **Details**
  *
  * Each item stores the acquisition `Exit`, its finalizer, the current
- * reference count, and whether automatic reclaiming has been disabled because
- * the item was invalidated.
+ * reference count, when it last became idle, and whether automatic reclaiming
+ * has been disabled because the item was invalidated.
  *
  * @see {@link Strategy} for the custom strategy callbacks that receive and return pool items
  * @see {@link State} for the runtime sets that store active, available, and invalidated pool items
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -152,6 +157,8 @@ export interface PoolItem<A, E> {
   readonly exit: Exit.Exit<A, E>
   finalizer: Effect.Effect<void>
   refCount: number
+  /** Clock time at which the item was acquired or its last borrower released it. */
+  idleSince: number
   disableReclaim: boolean
   isAvailable: boolean
   availablePrevious: PoolItem<A, E> | undefined
@@ -176,6 +183,7 @@ export interface PoolItem<A, E> {
  *
  * @see {@link makeWithStrategy} for constructing a pool from a custom `Strategy`
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -197,6 +205,7 @@ export interface Strategy<A, E> {
  *
  * This predicate narrows the input to `Pool<unknown, unknown>`.
  *
+ * @stability stable
  * @category guards
  * @since 2.0.0
  */
@@ -227,6 +236,7 @@ export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u
  *
  * @see {@link makeWithTTL} for pools with min/max sizes and a TTL-based shrinking policy
  * @see {@link makeWithStrategy} for pools with a custom resizing and reclamation strategy
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -257,9 +267,11 @@ export const make = <A, E, R>(options: {
  * pool implementation. A value of `1` waits until existing items are fully
  * utilized before creating more items.
  *
- * `timeToLiveStrategy` controls when excess items expire: `"creation"` measures
- * from item creation, while `"usage"` measures from pool usage. The default is
- * `"usage"`.
+ * `timeToLiveStrategy` defaults to `"usage"`, which expires idle, unreserved
+ * excess items after `timeToLive` since their last borrower released them
+ * (or acquisition if never borrowed). It checks once per `timeToLive`, so
+ * retirement can take up to twice that duration. `"creation"` measures from
+ * item creation instead.
  *
  * **Example** (Creating a connection pool)
  *
@@ -294,6 +306,7 @@ export const make = <A, E, R>(options: {
  * await Effect.runPromise(program) // => ["executed: select 1"]
  * ```
  *
+ * @stability stable
  * @category constructors
  * @since 2.0.0
  */
@@ -330,6 +343,7 @@ export const makeWithTTL = <A, E, R>(options: {
  * @see {@link makeWithTTL} for min/max pools that shrink excess items with a TTL policy
  * @see {@link Strategy} for the custom strategy contract consumed by this constructor
  *
+ * @stability stable
  * @category constructors
  * @since 4.0.0
  */
@@ -374,6 +388,7 @@ export const makeWithStrategy = <A, E, R>(options: {
       [TypeId]: TypeId,
       [Acquire]: options.acquire as Effect.Effect<A, E, Scope.Scope>,
       [AcquireContext]: services as Context.Context<Scope.Scope>,
+      [PoolClock]: yield* Clock,
       config,
       state,
       pipe() {
@@ -413,7 +428,6 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
       yield* item.finalizer
     }
   }
-  yield* semaphore.releaseAll
   if (self.state.waiters.size > 0) {
     const waiters = Array.from(self.state.waiters)
     self.state.waiters.clear()
@@ -441,6 +455,7 @@ const shutdown = Effect.fnUntraced(function*<A, E>(self: Pool<A, E>) {
  *
  * @see {@link invalidate} for removing an unhealthy item from future reuse
  *
+ * @stability stable
  * @category getters
  * @since 2.0.0
  */
@@ -483,6 +498,7 @@ export const get = <A, E>(self: Pool<A, E>): Effect.Effect<A, E, Scope.Scope> =>
  *
  * @see {@link get} for borrowing an item for the lifetime of a scope
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -625,6 +641,9 @@ const releaseItem = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): Effect.Effec
     const state = self.state
     item.refCount--
     state.usage--
+    if (item.refCount === 0) {
+      item.idleSince = (self as PoolImpl<A, E>)[PoolClock].currentTimeMillisUnsafe()
+    }
     if (state.invalidated.has(item)) {
       return invalidatePoolItem(self, item)
     }
@@ -760,6 +779,7 @@ const removeAvailable = <A, E>(self: Pool<A, E>, item: PoolItem<A, E>): void => 
  *
  * @see {@link get} for retrieving scoped items from the pool
  *
+ * @stability stable
  * @category combinators
  * @since 2.0.0
  */
@@ -786,6 +806,7 @@ export const invalidate: {
  *
  * @see {@link get} for acquiring an item
  *
+ * @stability stable
  * @category combinators
  * @since 4.0.0
  */
@@ -903,6 +924,7 @@ const allocate = <A, E>(self: Pool<A, E>): Effect.Effect<PoolItem<A, E>> =>
           exit,
           finalizer: Effect.catchCause(Scope.close(scope, exit), reportUnhandledError),
           refCount: 0,
+          idleSince: impl[PoolClock].currentTimeMillisUnsafe(),
           disableReclaim: false,
           isAvailable: false,
           availablePrevious: undefined,
@@ -999,19 +1021,21 @@ const strategyCreationTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Inpu
   })
 })
 
-const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, E>> =>
-  Effect.succeed<Strategy<A, E>>({
+const strategyUsageTTL = Effect.fnUntraced(function*<A, E>(ttl: Duration.Input) {
+  const clock = yield* Clock
+  const ttlMillis = Duration.toMillis(Duration.fromInputUnsafe(ttl))
+  return identity<Strategy<A, E>>({
     run: (pool) => {
-      // `state.items` iterates in insertion order, so its oldest live entry is
-      // the next to retire. Using it directly means an item stops being
-      // referenced by this strategy as soon as it leaves the pool.
       const process: Effect.Effect<void> = Effect.suspend(() => {
         if (activeSize(pool) <= targetSize(pool)) return Effect.void
+        const expired = clock.currentTimeMillisUnsafe() - ttlMillis
+        let oldest: PoolItem<A, E> | undefined
         for (const item of pool.state.items) {
-          if (pool.state.invalidated.has(item)) continue
-          return Effect.flatMap(invalidatePoolItem(pool, item), () => process)
+          if (item.refCount > 0 || item.idleSince > expired) continue
+          if (pool.state.invalidated.has(item) || reservations.has(item)) continue
+          if (oldest === undefined || item.idleSince < oldest.idleSince) oldest = item
         }
-        return Effect.void
+        return oldest === undefined ? Effect.void : Effect.flatMap(invalidatePoolItem(pool, oldest), () => process)
       })
       return process.pipe(
         Effect.delay(ttl),
@@ -1019,28 +1043,9 @@ const strategyUsageTTL = <A, E>(ttl: Duration.Input): Effect.Effect<Strategy<A, 
       )
     },
     onAcquire: (_) => Effect.void,
-    reclaim(pool) {
-      return Effect.suspend((): Effect.Effect<PoolItem<A, E> | undefined> => {
-        if (pool.state.invalidated.size === 0) {
-          return Effect.undefined
-        }
-        const item = Iterable.head(
-          Iterable.filter(pool.state.invalidated, (item) => !item.disableReclaim && !reservations.has(item))
-        )
-        if (item._tag === "None") {
-          return Effect.undefined
-        }
-        pool.state.invalidated.delete(item.value)
-        // Re-adding moves the reclaimed item to the back of the retirement order.
-        pool.state.items.delete(item.value)
-        pool.state.items.add(item.value)
-        if (item.value.refCount < pool.config.concurrency) {
-          addAvailable(pool, item.value)
-        }
-        return Effect.succeed(item.value)
-      })
-    }
+    reclaim: (_) => Effect.undefined
   })
+})
 
 const reportUnhandledError = <E>(cause: Cause.Cause<E>) =>
   Effect.withFiber<void>((fiber) => {

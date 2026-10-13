@@ -10,6 +10,8 @@ export interface TestLayerOptions {
   readonly accessOnDirectory?: boolean
   /** Whether a scoped temporary file removes its containing directory. Deno removes only the file. Defaults to `true`. */
   readonly tempFileScopedRemovesDirectory?: boolean
+  /** Whether `open` can refuse to follow a symlink at the final path component. Defaults to `true`. */
+  readonly noFollow?: boolean
 }
 
 export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: TestLayerOptions = {}) => {
@@ -562,4 +564,65 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         Effect.scoped
       )
     })))
+
+  it("noFollow rejects symlinks or fails explicitly when unsupported", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const directory = yield* fs.makeTempDirectoryScoped()
+        const path = `${directory}/target`
+        yield* fs.writeFileString(path, "target")
+        if (options.noFollow !== false) {
+          yield* fs.open(path, { noFollow: true })
+          yield* fs.symlink(path, `${directory}/link`)
+        }
+        const result = yield* Effect.result(fs.open(
+          options.noFollow === false ? path : `${directory}/link`,
+          { noFollow: true }
+        ))
+        expect(result).toMatchObject({
+          _tag: "Failure",
+          failure: { reason: { _tag: options.noFollow === false ? "BadArgument" : "BadResource" } }
+        })
+      }).pipe(Effect.scoped)
+    ))
+
+  it("concurrent positional reads preserve the cursor", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+        yield* file.seek(BigInt(6), "start")
+        const buffer = new Uint8Array(5)
+        const [count, allocated] = yield* Effect.all([
+          file.read(buffer, { position: BigInt(12) }),
+          file.readAlloc(4, { position: BigInt(18) }).pipe(Effect.flatMap(Effect.fromOption))
+        ], { concurrency: "unbounded" })
+        assert.strictEqual(count, 5)
+        assert.strictEqual(new TextDecoder().decode(buffer), "dolar")
+        assert.strictEqual(new TextDecoder().decode(allocated), "sit ")
+        const next = yield* file.readAlloc(5).pipe(Effect.flatMap(Effect.fromOption))
+        assert.strictEqual(new TextDecoder().decode(next), "ipsum")
+      }).pipe(Effect.scoped)
+    ))
+
+  it.each(["read", "readAlloc"] as const)(
+    "%s rejects a negative position",
+    (method) =>
+      runPromise(
+        Effect.gen(function*() {
+          const fs = yield* Fs.FileSystem
+          const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+          const result = yield* Effect.result(
+            method === "read"
+              ? Effect.asVoid(file.read(new Uint8Array(1), { position: BigInt(-1) }))
+              : Effect.asVoid(file.readAlloc(1, { position: BigInt(-1) }))
+          )
+          expect(result).toMatchObject({
+            _tag: "Failure",
+            failure: { reason: { _tag: "BadArgument", method } }
+          })
+        }).pipe(Effect.scoped)
+      )
+  )
 }

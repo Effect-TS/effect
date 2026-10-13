@@ -792,7 +792,7 @@ effect/Schema#Number:
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#NumberFromString:
   replacement: Schema.NumberFromString
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  note: "Decoding now uses JavaScript number coercion: unlike v3, `\"abc\"` decodes to `NaN`, while `\"\"` and whitespace-only strings decode to `0`. `FiniteFromString` rejects non-finite results, so it rejects invalid strings but also the `\"NaN\"` and infinity spellings accepted by v3; it still decodes blank strings to `0`. Use a custom codec to preserve the v3 acceptance rules exactly."
 effect/Schema#Object:
   replacement: Schema.ObjectKeyword
   note: Rename the object keyword schema.
@@ -839,14 +839,14 @@ effect/Schema#OptionFromUndefinedOr:
   replacement: Schema.OptionFromUndefinedOr
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#parseJson:
-  replacement: Schema.UnknownFromJsonString / Schema.fromJsonString(schema)
-  note: Use `UnknownFromJsonString` without an inner schema or `fromJsonString(schema)` with one.
+  replacement: Schema.fromJsonString(Schema.Unknown) / Schema.fromJsonString(schema)
+  note: Use `fromJsonString(Schema.Unknown)` without an inner schema or `fromJsonString(schema)` with one.
 effect/Schema#ParseJsonOptions:
   replacement: none
   note: The old parse-json options type was removed; configure `fromJsonString` and its underlying getter directly.
 effect/Schema#parseNumber:
   replacement: Schema.NumberFromString
-  note: Use the built-in string-to-number codec.
+  note: "Use the built-in string-to-number codec. Unlike v3 `parseNumber`, invalid strings decode to `NaN`, while blank strings decode to `0`. `FiniteFromString` rejects non-finite results but also the `\"NaN\"` and infinity spellings accepted by v3; exact compatibility requires a custom codec."
 effect/Schema#partial:
   replacement: schema.mapFields(Struct.map(Schema.optional))
   note: Map struct fields with `Schema.optional`.

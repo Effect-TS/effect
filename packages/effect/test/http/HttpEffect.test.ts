@@ -160,6 +160,75 @@ describe("HttpEffect", () => {
       strictEqual(response.headers.get("content-length"), "9007199254740993")
     })
 
+    test.each(["before the request", "while the handler starts"] as const)(
+      "an abort %s interrupts the handler as a client abort",
+      async (when) => {
+        const controller = new AbortController()
+        if (when === "before the request") controller.abort()
+        let interrupted = false
+        const handler = HttpEffect.toWebHandler(
+          Effect.sync(() => {
+            if (when === "while the handler starts") controller.abort()
+          }).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            ),
+            // Handlers are uninterruptible unless they opt in, as router routes do.
+            Effect.interruptible
+          )
+        )
+        const response = await handler(new Request("http://localhost:3000/", { signal: controller.signal }))
+        strictEqual(response.status, 499)
+        strictEqual(interrupted, true)
+      }
+    )
+
+    test.each(["after reading a chunk", "while the unread body is full"] as const)(
+      "an abort %s releases the request scope owned by a streamed body",
+      async (when) => {
+        const controller = new AbortController()
+        let finalized = false
+        let pulledSecond = false
+        const handler = HttpEffect.toWebHandler(Effect.gen(function*() {
+          yield* Effect.addFinalizer(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          )
+          return HttpServerResponse.stream(
+            Stream.make("first").pipe(
+              Stream.concat(Stream.fromEffect(Effect.sync(() => {
+                pulledSecond = true
+                return "second"
+              }))),
+              Stream.concat(Stream.never),
+              Stream.encodeText
+            )
+          )
+        }))
+        const waitFor = (predicate: () => boolean) =>
+          new Promise<void>((resolve) => {
+            const deadline = Date.now() + 1000
+            const poll = () => predicate() || Date.now() > deadline ? resolve() : setImmediate(poll)
+            poll()
+          })
+        const response = await handler(new Request("http://localhost:3000/", { signal: controller.signal }))
+        if (when === "after reading a chunk") {
+          await response.body!.getReader().read()
+        } else {
+          // The body has taken its second chunk and now waits for a read that never comes.
+          await waitFor(() => pulledSecond)
+        }
+
+        controller.abort()
+        await waitFor(() => finalized)
+        strictEqual(finalized, true)
+      }
+    )
+
     test("stream scope", async () => {
       let order = 0
       let streamFinalized = 0

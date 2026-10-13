@@ -7,6 +7,7 @@
  * are represented as `PermissionsError` values with `InvalidStateError` or
  * `TypeError` reasons, and `layer` provides the browser-backed service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -21,6 +22,7 @@ const ErrorTypeId = "~@effect/platform-browser/Permissions/PermissionsError"
  * Wrapper on the Permission API (`navigator.permissions`) with methods for
  * querying status of permissions.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -43,6 +45,7 @@ export interface Permissions {
 /**
  * Error reason for an `InvalidStateError` raised by the browser Permissions API.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -57,6 +60,7 @@ export class PermissionsInvalidStateError extends Data.TaggedError("InvalidState
 /**
  * Error reason for a `TypeError` raised by the browser Permissions API.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -71,6 +75,7 @@ export class PermissionsTypeError extends Data.TaggedError("TypeError")<{
 /**
  * Union of browser Permissions API error reasons represented by the service.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -79,6 +84,7 @@ export type PermissionsErrorReason = PermissionsInvalidStateError | PermissionsT
 /**
  * Tagged error wrapping a browser Permissions API failure reason.
  *
+ * @stability unstable
  * @category errors
  * @since 4.0.0
  */
@@ -107,6 +113,7 @@ export class PermissionsError extends Data.TaggedError("PermissionsError")<{
  * Use when you need to require or provide browser permission querying through
  * Effect's context.
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -125,6 +132,7 @@ export const Permissions: Context.Service<Permissions, Permissions> = Context.Se
  * `query` delegates to `navigator.permissions.query({ name })` and wraps
  * rejected browser operations in `PermissionsError`.
  *
+ * @stability unstable
  * @category layers
  * @since 4.0.0
  */

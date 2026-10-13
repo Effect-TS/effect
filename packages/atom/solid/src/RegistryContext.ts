@@ -4,6 +4,7 @@
  * atoms. Sharing one registry through Solid context lets components and
  * computations in the same owner tree read and write the same atom state.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import type * as Atom from "effect/reactivity/Atom"
@@ -26,6 +27,7 @@ import { createComponent, createContext, onCleanup } from "solid-js"
  *
  * @see {@link RegistryProvider} for creating and providing a registry for a Solid subtree
  *
+ * @stability unstable
  * @category context
  * @since 4.0.0
  */
@@ -54,6 +56,7 @@ export const RegistryContext = createContext<AtomRegistry.AtomRegistry>(AtomRegi
  *
  * @see {@link RegistryContext} for the context supplied by this provider
  *
+ * @stability unstable
  * @category context
  * @since 4.0.0
  */

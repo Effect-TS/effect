@@ -152,6 +152,24 @@ export type AllPartsEncoded =
   | FinishPartEncoded
   | ErrorPartEncoded
 
+// Tools are immutable, so response schemas can share their per-tool parts.
+const toolPartSchemaCache = new WeakMap<Tool.Any, {
+  readonly toolCall: Schema.Top
+  readonly toolResult: Schema.Top
+}>()
+
+const toolPartSchemas = (tool: Tool.Any) => {
+  let parts = toolPartSchemaCache.get(tool)
+  if (parts === undefined) {
+    parts = {
+      toolCall: ToolCallPart(tool.name, tool.parametersSchema),
+      toolResult: ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
+    }
+    toolPartSchemaCache.set(tool, parts)
+  }
+  return parts
+}
+
 /**
  * Creates a Schema for all response parts based on a toolkit.
  *
@@ -192,10 +210,9 @@ export const AllParts = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolCalls: Array<Schema.Top> = []
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
+    const parts = toolPartSchemas(tool)
+    toolCalls.push(parts.toolCall)
+    toolResults.push(parts.toolResult)
   }
   return Schema.Union([
     TextPart,
@@ -287,10 +304,9 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolCalls: Array<Schema.Top> = []
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
+    const parts = toolPartSchemas(tool)
+    toolCalls.push(parts.toolCall)
+    toolResults.push(parts.toolResult)
   }
   return Schema.Union([
     TextPart,
@@ -385,10 +401,9 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolCalls: Array<Schema.Top> = []
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
-    const toolResult = ToolResultPart(tool.name, tool.successSchema, Tool.failureResultSchema(tool))
-    toolCalls.push(toolCall)
-    toolResults.push(toolResult)
+    const parts = toolPartSchemas(tool)
+    toolCalls.push(parts.toolCall)
+    toolResults.push(parts.toolResult)
   }
   return Schema.Union([
     TextStartPart,
@@ -426,16 +441,19 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
 export type ToolCallParts<
   Tools extends Record<string, Tool.Any>,
   ParametersMode extends ToolParametersMode = "decoded"
-> = ToolCallPartForName<Tools, ParametersMode, keyof Tools>
+> = ParametersMode extends "deferred" ?
+  ToolCallPartForName<Tools, "opaque", keyof Tools> | ToolCallPart<string, unknown>
+  : ToolCallPartForName<Tools, ParametersMode, keyof Tools>
 
 /**
- * Controls whether tool parameters are decoded, encoded, or opaque.
+ * Controls tool parameter decoding. `"deferred"` allows undeclared tool names
+ * with opaque parameters, leaving validation to the caller.
  *
  * @stability unstable
  * @category utility types
  * @since 4.0.0
  */
-export type ToolParametersMode = "decoded" | "encoded" | "opaque"
+export type ToolParametersMode = "decoded" | "encoded" | "opaque" | "deferred"
 
 type ToolCallPartForName<
   Tools extends Record<string, Tool.Any>,

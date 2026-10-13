@@ -7,6 +7,7 @@
  * the `Inspectable` interface, safe conversion helpers, and shared prototype or
  * class implementations for custom values.
  *
+ * @stability stable
  * @since 2.0.0
  */
 import { format, formatJson } from "./Formatter.ts"
@@ -43,6 +44,7 @@ import { redact } from "./Redactable.ts"
  * obj[Inspectable.NodeInspectSymbol]() // => "CustomObject(hello)"
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -74,6 +76,7 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
  * obj[Inspectable.NodeInspectSymbol]() // => "CustomObject(test)"
  * ```
  *
+ * @stability stable
  * @category symbols
  * @since 2.0.0
  */
@@ -120,6 +123,7 @@ export type NodeInspectSymbol = typeof NodeInspectSymbol
  * success.toString() // => "{\"_tag\":\"Success\",\"value\":42}"
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */
@@ -147,6 +151,7 @@ export interface Inspectable {
  *
  * @see {@link toStringUnknown} for converting unknown values to strings
  *
+ * @stability stable
  * @category converting
  * @since 4.0.0
  */
@@ -181,6 +186,7 @@ export const toJson = (input: unknown): unknown => {
  * provided whitespace setting when possible, and values that cannot be
  * formatted are converted with `String`.
  *
+ * @stability stable
  * @category converting
  * @since 2.0.0
  */
@@ -228,6 +234,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
  * MyClass.prototype.constructor = MyClass
  * ```
  *
+ * @stability stable
  * @category prototypes
  * @since 2.0.0
  */
@@ -285,6 +292,7 @@ export const BaseProto: Inspectable = {
  * user[Inspectable.NodeInspectSymbol]() // => { _tag: "User", id: 1, name: "Alice", email: "alice@example.com" }
  * ```
  *
+ * @stability stable
  * @category models
  * @since 2.0.0
  */

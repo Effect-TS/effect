@@ -19,7 +19,7 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 | `compose(schemaB)`                              | `decodeTo(schemaB)`                                                           | rename            |
 | `annotations(ann)`                              | `annotate(ann)`                                                               | rename            |
 | `decodingFallback` annotation                   | `catchDecoding(...)`                                                          | rename            |
-| `parseJson()`                                   | `UnknownFromJsonString`                                                       | rename            |
+| `parseJson()`                                   | `fromJsonString(Unknown)`                                                     | rename            |
 | `parseJson(schema)`                             | `fromJsonString(schema)`                                                      | rename            |
 | `pattern(regex)`                                | `check(isPattern(regex))`                                                     | rename            |
 | `nonEmptyString`                                | `isNonEmpty`                                                                  | rename            |

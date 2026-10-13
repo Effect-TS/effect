@@ -467,6 +467,38 @@ describe("Multipart", () => {
       deepStrictEqual(writes, [first.path, second.path])
     }))
 
+  it.effect("persists dot and long multi-byte file names inside the temporary directory", () =>
+    Effect.gen(function*() {
+      const names = [".", "..", "文".repeat(90) + ".pdf"]
+      const formData = new FormData()
+      for (const name of names) {
+        formData.append("file", new File(["content"], name))
+      }
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.bodyFormData(HttpClientRequest.post("https://example.com"), formData)
+      )
+      const persisted = yield* Multipart.toPersisted(
+        request.multipartStream,
+        () => Effect.void
+      ).pipe(
+        Effect.provideService(
+          FileSystem.FileSystem,
+          FileSystem.makeNoop({
+            makeTempDirectoryScoped: () => Effect.succeed("/tmp/audit")
+          })
+        ),
+        Effect.provide(Path.layer)
+      )
+      const files = persisted.file as Array<Multipart.PersistedFile>
+      const path = yield* Path.Path.pipe(Effect.provide(Path.layer))
+      deepStrictEqual(files.map((file) => file.name), names)
+      strictEqual(files[2].path.endsWith(".pdf"), true)
+      for (const file of files) {
+        strictEqual(path.dirname(file.path), "/tmp/audit")
+        strictEqual(new TextEncoder().encode(path.basename(file.path)).length <= 128, true)
+      }
+    }))
+
   it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
     Effect.gen(function*() {
       const cases = [

@@ -19,6 +19,23 @@ describe("Scope", () => {
 
   describe("interrupted close", () => {
     for (const strategy of ["sequential", "parallel"] as const) {
+      it(strategy + ": completes a single finalizer when its callback interrupts close", async () => {
+        const controller = new AbortController()
+        const scope = Scope.makeUnsafe(strategy)
+        let cleaned = false
+        Effect.runSync(Scope.addFinalizerExit(scope, () => {
+          controller.abort()
+          return Effect.sync(() => {
+            cleaned = true
+          })
+        }))
+        // Yield so the runner installs its abort listener before the callback runs.
+        await Effect.runPromiseExit(Effect.andThen(Effect.yieldNow, Scope.close(scope, Exit.void)), {
+          signal: controller.signal
+        })
+        expect(cleaned).toBe(true)
+      })
+
       it.effect(strategy + ": completes direct close after interruption", () =>
         Effect.gen(function*() {
           const scope = Scope.makeUnsafe(strategy)

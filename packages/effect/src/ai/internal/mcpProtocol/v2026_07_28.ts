@@ -386,6 +386,8 @@ export const makeHandlers = (
       }
       const presence = yield* context.registrationPresence
       const eventsScope = yield* Scope.fork(yield* Effect.scope)
+      // Ignore changes emitted before this subscription, even if delivery was deferred.
+      const listChangeRevision = context.getListChangeRevision?.() ?? 0
       const events = yield* Scope.provide(context.subscribeServerNotifications, eventsScope)
       const honored = {
         ...(presence.tools && request.notifications.toolsListChanged === true
@@ -410,6 +412,9 @@ export const makeHandlers = (
       yield* Effect.gen(function*() {
         while (true) {
           const event = yield* PubSub.take(events)
+          if (event.listChangeRevision !== undefined && event.listChangeRevision <= listChangeRevision) {
+            continue
+          }
           if (event.targetClientId !== undefined && event.targetClientId !== client.id) {
             continue
           }

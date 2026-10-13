@@ -7,6 +7,7 @@ import * as Fiber from "effect/Fiber"
 import * as Headers from "effect/http/Headers"
 import * as HttpEffect from "effect/http/HttpEffect"
 import * as HttpMiddleware from "effect/http/HttpMiddleware"
+import * as HttpServerError from "effect/http/HttpServerError"
 import * as HttpServerRequest from "effect/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/http/HttpServerResponse"
 import * as Logger from "effect/Logger"
@@ -116,6 +117,74 @@ describe("HttpMiddleware", () => {
   })
 
   describe("logger", () => {
+    it.effect("preserves failures mixed with client aborts even with status 499", () =>
+      Effect.gen(function*() {
+        const cause = Cause.combine(
+          Cause.annotate(Cause.interrupt(2), Context.make(HttpServerError.ClientAbort, true)),
+          Cause.fail("handler failed")
+        )
+        const logs: Array<{ message: unknown; cause: Cause.Cause<unknown>; status: unknown }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            status: options.fiber.getRef(References.CurrentLogAnnotations)["http.status"]
+          })
+        })
+        // The server attaches the response to the failed handler cause.
+        const handlerCause = Cause.combine(cause, Cause.die(HttpServerResponse.empty({ status: 499 })))
+        const exit = yield* HttpMiddleware.logger(Effect.failCause(handlerCause)).pipe(
+          Effect.provideService(
+            HttpServerRequest.HttpServerRequest,
+            HttpServerRequest.fromWeb(new Request("http://localhost/slow"))
+          ),
+          Effect.provide(Logger.layer([logger])),
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(exit, Exit.failCause(handlerCause))
+        assert.deepStrictEqual(logs, [{ message: [], cause, status: 499 }])
+      }))
+
+    it.effect("logs client aborts as sent responses with status 499", () =>
+      Effect.gen(function*() {
+        const logs: Array<{
+          message: unknown
+          cause: Cause.Cause<unknown>
+          level: string
+          annotations: Record<string, unknown>
+        }> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logs.push({
+            message: options.message,
+            cause: options.cause,
+            level: options.logLevel,
+            annotations: { ...options.fiber.getRef(References.CurrentLogAnnotations) }
+          })
+        })
+        const started = Promise.withResolvers<void>()
+        const handler = HttpEffect.toWebHandler(
+          Effect.interruptible(Effect.andThen(Effect.sync(() => started.resolve()), Effect.never)),
+          (app) => HttpMiddleware.logger(app).pipe(Effect.provide(Logger.layer([logger])))
+        )
+        const controller = new AbortController()
+        const pending = handler(new Request("http://localhost/slow", { signal: controller.signal }))
+        yield* Effect.promise(() => started.promise)
+        controller.abort()
+        const response = yield* Effect.promise(() => pending)
+
+        assert.strictEqual(response.status, 499)
+        assert.strictEqual(logs.length, 1)
+        assert.deepStrictEqual(logs[0].annotations, {
+          "http.method": "GET",
+          "http.url": "/slow",
+          "http.status": 499
+        })
+        assert.strictEqual(logs[0].level, "Info")
+        assert.deepStrictEqual(logs[0].message, ["Sent HTTP response"])
+        assert.deepStrictEqual(logs[0].cause, Cause.empty)
+      }))
+
     it.effect("annotates method, path, and status without query or hash", () =>
       Effect.gen(function*() {
         const annotations: Array<Record<string, unknown>> = []
@@ -281,11 +350,11 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("url.path"), "/todos/1")
         assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
         assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
-        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
-        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), "<redacted>")
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), undefined)
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request-secret"), undefined)
         assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
-        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
-        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), "<redacted>")
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), undefined)
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), undefined)
       }))
 
     it.effect("skips attributes for unsampled spans", () =>
@@ -345,7 +414,68 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(parentInFinalizer, undefined)
       }))
 
-    it.effect("excludes the sent response from a failed stream span", () =>
+    it.effect("fails the span for a rendered 599 without changing the response", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.Span | undefined
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/error"))
+        const response = HttpServerResponse.empty({ status: 599 })
+        const app = Effect.gen(function*() {
+          serverSpan = yield* Effect.currentSpan
+          return yield* Effect.fail("handler failed")
+        }).pipe(Effect.catch(() => Effect.succeed(response)))
+
+        const result = yield* HttpMiddleware.tracer(app).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, Tracer.make({ span: (options) => new Tracer.NativeSpan(options) }))
+        )
+        yield* Effect.yieldNow
+
+        assert.strictEqual(result, response)
+        assert(serverSpan !== undefined && serverSpan.status._tag === "Ended")
+        assert.deepStrictEqual(
+          serverSpan.status.exit,
+          Exit.fail(
+            new HttpServerError.HttpServerError({
+              reason: new HttpServerError.ResponseError({ request, response })
+            })
+          )
+        )
+      }))
+
+    it("fails a native span without changing a returned 500 response", async () => {
+      const stackTraceLimit = Error.stackTraceLimit
+      try {
+        Error.stackTraceLimit = 37
+        await Effect.runPromise(Effect.gen(function*() {
+          let serverSpan: Tracer.Span | undefined
+          const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/native"))
+          const response = HttpServerResponse.empty({ status: 500 })
+
+          const exit = yield* Effect.exit(
+            HttpMiddleware.tracer(Effect.gen(function*() {
+              serverSpan = yield* Effect.currentSpan
+              return response
+            })).pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+          )
+          assert.deepStrictEqual(exit, Exit.succeed(response))
+          assert(serverSpan !== undefined)
+          assert(serverSpan.status._tag === "Ended")
+          assert.deepStrictEqual(
+            serverSpan.status.exit,
+            Exit.fail(
+              new HttpServerError.HttpServerError({
+                reason: new HttpServerError.ResponseError({ request, response })
+              })
+            )
+          )
+        }))
+        assert.strictEqual(Error.stackTraceLimit, 37)
+      } finally {
+        Error.stackTraceLimit = stackTraceLimit
+      }
+    })
+
+    it.effect("preserves the stream failure when the sent response is 500", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined
         const tracer = Tracer.make({
@@ -356,7 +486,7 @@ describe("HttpMiddleware", () => {
         })
         const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/stream"))
         const response = HttpServerResponse.empty({
-          status: 200,
+          status: 500,
           headers: { "content-type": "text/event-stream" }
         })
         const streamError = new Error("stream failed")
@@ -365,7 +495,7 @@ describe("HttpMiddleware", () => {
         // the stream failure so the server can finish the request correctly.
         const app = Effect.failCause(Cause.combine(Cause.fail(streamError), Cause.die(response)))
 
-        yield* Effect.exit(
+        const exit = yield* Effect.exit(
           HttpMiddleware.tracer(app).pipe(
             Effect.provideService(HttpServerRequest.HttpServerRequest, request),
             Effect.provideService(Tracer.Tracer, tracer)
@@ -373,8 +503,9 @@ describe("HttpMiddleware", () => {
         )
         yield* Effect.yieldNow
 
+        assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(Cause.fail(streamError), Cause.die(response))))
         assert(serverSpan !== undefined)
-        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 200)
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 500)
         assert.strictEqual(serverSpan.status._tag, "Ended")
         if (serverSpan.status._tag === "Ended") {
           assert.deepStrictEqual(serverSpan.status.exit, Exit.fail(streamError))

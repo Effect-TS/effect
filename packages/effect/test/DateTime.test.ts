@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option } from "effect"
 import { TestClock } from "effect/testing"
+import { vi } from "vitest"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
 const assertSomeIso = (value: Option.Option<DateTime.DateTime>, expected: string) => {
@@ -11,6 +12,25 @@ const assertSomeIso = (value: Option.Option<DateTime.DateTime>, expected: string
 const isDeno = "Deno" in globalThis
 
 describe("DateTime", () => {
+  it("preserves pre-epoch milliseconds when Intl omits fractionalSecond", () => {
+    const formatToParts = Intl.DateTimeFormat.prototype.formatToParts
+    const mock = vi.spyOn(Intl.DateTimeFormat.prototype, "formatToParts").mockImplementation(function(
+      this: Intl.DateTimeFormat,
+      date
+    ) {
+      return formatToParts.call(this, date).filter((part) => part.type !== "fractionalSecond")
+    })
+    try {
+      const dt = DateTime.makeZonedUnsafe("1969-12-31T23:59:59.999Z", {
+        timeZone: "Australia/Brisbane"
+      })
+      strictEqual(DateTime.toDate(dt).toISOString(), "1970-01-01T09:59:59.999Z")
+      strictEqual(DateTime.formatIsoDate(dt), "1970-01-01")
+    } finally {
+      mock.mockRestore()
+    }
+  })
+
   describe("mutate", () => {
     it.effect("should mutate the date", () =>
       Effect.gen(function*() {
@@ -85,6 +105,33 @@ describe("DateTime", () => {
         const future = Option.map(now, (value) => DateTime.add(value, { years: 1 }))
         assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
+
+    it("clips fractional time units separately", () => {
+      strictEqual(
+        DateTime.toEpochMillis(DateTime.add(DateTime.makeUnsafe(1000), { milliseconds: 0.5, seconds: 0.0005 })),
+        1000
+      )
+    })
+
+    it("adds and subtracts elapsed time in the repeated DST hour", () => {
+      const secondOneThirty = DateTime.makeZonedUnsafe("2025-11-02T06:30:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(
+        DateTime.formatIso(DateTime.add(secondOneThirty, { minutes: 1, seconds: 1, milliseconds: 1 })),
+        "2025-11-02T06:31:01.001Z"
+      )
+      strictEqual(DateTime.formatIso(DateTime.subtract(secondOneThirty, { hours: 1 })), "2025-11-02T05:30:00.000Z")
+    })
+
+    it("adds elapsed hours before calendar days across DST", () => {
+      const beforeGap = DateTime.makeZonedUnsafe("2025-03-08T17:00:00.000Z", {
+        timeZone: "America/New_York"
+      })
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { hours: 24 })), "2025-03-09T17:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1 })), "2025-03-09T16:00:00.000Z")
+      strictEqual(DateTime.formatIso(DateTime.add(beforeGap, { days: 1, hours: 24 })), "2025-03-10T17:00:00.000Z")
+    })
   })
 
   describe("endOf", () => {
@@ -476,6 +523,17 @@ describe("DateTime", () => {
         })
         strictEqual(dt.toJSON(), "2023-12-31T12:00:00.000Z")
       }))
+  })
+
+  describe("toDate", () => {
+    it("stores zoned wall-clock time in UTC fields", () => {
+      const zoned = DateTime.makeZonedUnsafe("2024-07-01T12:00:00Z", {
+        timeZone: "Europe/London"
+      })
+
+      strictEqual(DateTime.toDate(zoned).toISOString(), "2024-07-01T13:00:00.000Z")
+      strictEqual(DateTime.toDateUtc(zoned).toISOString(), "2024-07-01T12:00:00.000Z")
+    })
   })
 
   describe("nowAsDate", () => {

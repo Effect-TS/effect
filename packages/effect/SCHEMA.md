@@ -1049,6 +1049,20 @@ An index signature lets a struct accept any string key in addition to its fixed 
 
 Filters applied to either the struct or the record are preserved when combined.
 
+The base schema must have an object-shaped encoded type. Whole-object transformations are not supported, even when the rest array is empty. For JSON-string encoding, wrap the completed schema with `Schema.fromJsonString` rather than passing a JSON-string schema to `Schema.StructWithRest`:
+
+```ts
+import { Schema } from "effect"
+
+const base = Schema.Record(Schema.Literals(["bash", "sh"]), Schema.NonEmptyString)
+const records = [Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)] as const
+const schema = Schema.fromJsonString(Schema.StructWithRest(base, records), { space: 2 })
+
+type Encoded = typeof schema.Encoded // string
+```
+
+Object-shaped encoded types alone do not guarantee compatibility: unsupported whole-object encodings are still rejected at runtime. Transformations on individual fields remain supported.
+
 **Example** (Combining fixed properties with an index signature)
 
 ```ts
@@ -2160,7 +2174,7 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
-Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+Each member must have a unique discriminant property key. `toTaggedUnion` rejects overlapping discriminant types in known member tuples at compile time, including nested unions. It also throws when it encounters a duplicate at runtime. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
 
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 
@@ -4393,6 +4407,8 @@ console.log(A.ast.annotations?.title)
 
 Use `extend` to create a subclass that adds fields to the base schema. Instance fields declared on the base class are also available on the subclass.
 
+Fields with the same name replace inherited fields. Use this to refine validation or change encoding. Effect does not check compatibility; the caller must ensure the replacement preserves the base class contract.
+
 **Example** (Extending a class with new fields)
 
 ```ts
@@ -4669,32 +4685,26 @@ Serialization converts typed values into a format suitable for storage or transm
 
 ## JSON Support
 
-#### UnknownFromJsonString
-
-A schema that decodes a JSON-encoded string into an unknown value.
-
-This schema takes a string as input and attempts to parse it as JSON during decoding. If parsing succeeds, the result is passed along as an unknown value. If the string is not valid JSON, decoding fails.
-
-When encoding, any value is converted back into a JSON string using JSON.stringify. If the value is not a valid JSON value, encoding fails.
-
-**Example**
-
-```ts
-import { Schema } from "effect"
-
-Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(`{"a":1,"b":2}`)
-// => { a: 1, b: 2 }
-```
-
 #### fromJsonString
 
 Returns a schema that decodes a JSON string and then decodes the parsed value using the given schema.
 
-This is useful when working with JSON-encoded strings where the actual structure of the value is known and described by an existing schema.
+Use `Schema.Unknown` to parse the JSON string without validating its structure, or provide a more specific schema to validate the parsed value.
 
-The resulting schema first parses the input string as JSON, and then runs the provided schema on the parsed result.
+Decoding fails if the input is not valid JSON or the parsed value does not satisfy the provided schema.
 
-**Example**
+During encoding, the schema encodes the value with the provided schema and then converts the result to a JSON string.
+
+**Example** (Parsing without validation)
+
+```ts
+import { Schema } from "effect"
+
+Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))(`{"a":1,"b":2}`)
+// => { a: 1, b: 2 }
+```
+
+**Example** (Parsing and validating a known structure)
 
 ```ts
 import { Schema } from "effect"

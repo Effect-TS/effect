@@ -8,6 +8,7 @@
  * exports database bytes, forwards update-hook notifications, and closes when
  * requested. It is meant to run in a dedicated worker or a `SharedWorker`.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 /// <reference lib="webworker" />
@@ -25,6 +26,7 @@ const classifyError = (cause: unknown, message: string, operation: string) =>
 /**
  * Configuration for the SQLite OPFS worker, including the message port used for the client protocol and the OPFS database name to open.
  *
+ * @stability unstable
  * @category models
  * @since 4.0.0
  */
@@ -36,6 +38,7 @@ export interface OpfsWorkerConfig {
 /**
  * Runs the SQLite OPFS worker loop, opening the configured database, posting a ready message, handling query/import/export/update-hook messages, and closing when a close message is received.
  *
+ * @stability unstable
  * @category running
  * @since 4.0.0
  */

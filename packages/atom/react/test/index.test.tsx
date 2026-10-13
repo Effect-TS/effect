@@ -9,6 +9,7 @@ import * as Hydration from "effect/reactivity/Hydration"
 import * as Schema from "effect/Schema"
 import * as React from "react"
 import { Suspense } from "react"
+import * as ReactDOMClient from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { ErrorBoundary } from "react-error-boundary"
 import { beforeEach, describe, expect, it, test, vi } from "vitest"
@@ -687,6 +688,129 @@ describe("atom-react", { concurrent: false }, () => {
 
       expect(getCount).toHaveBeenCalled()
       expect(screen.getByText("0")).toBeInTheDocument()
+    })
+
+    it("hydrates a delayed Suspense boundary after the atom changes", async () => {
+      const userAtom = Atom.make("loading")
+
+      // Reading through a selector also covers the selector's server snapshot.
+      // It is inline and returns a new object, so its result must be memoized.
+      function Name({ id }: { id: string }) {
+        const user = useAtomValue(userAtom, (name) => ({ name: name.toUpperCase() }))
+        return <span id={id}>{user.name}</span>
+      }
+
+      const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>
+
+      function App({ Panel }: { Panel: React.ComponentType<{ children?: React.ReactNode }> }) {
+        return (
+          <div>
+            <Name id="header" />
+            <Suspense fallback={<span>...</span>}>
+              <Panel>
+                <Name id="panel" />
+              </Panel>
+            </Suspense>
+          </div>
+        )
+      }
+
+      const container = document.createElement("div")
+      container.innerHTML = renderToString(
+        <RegistryContext.Provider value={AtomRegistry.make()}>
+          <App Panel={Passthrough} />
+        </RegistryContext.Provider>
+      )
+      document.body.append(container)
+
+      // The panel stays dehydrated until its lazy chunk loads.
+      let loadPanel!: (mod: { default: typeof Passthrough }) => void
+      const LazyPanel = React.lazy(() =>
+        new Promise<{ default: typeof Passthrough }>((resolve) => {
+          loadPanel = resolve
+        })
+      )
+      const recoverableErrors: Array<unknown> = []
+
+      let root!: ReactDOMClient.Root
+      await act(async () => {
+        root = ReactDOMClient.hydrateRoot(
+          container,
+          <RegistryContext.Provider value={registry}>
+            <App Panel={LazyPanel} />
+          </RegistryContext.Provider>,
+          { onRecoverableError: (error) => recoverableErrors.push(error) }
+        )
+      })
+      await act(async () => {
+        registry.set(userAtom, "Alice")
+      })
+      await act(async () => {
+        loadPanel({ default: Passthrough })
+      })
+
+      expect(recoverableErrors).toEqual([])
+      expect(container.innerHTML).toBe(
+        `<div><span id="header">ALICE</span><!--$--><span id="panel">ALICE</span><!--/$--></div>`
+      )
+
+      act(() => root.unmount())
+      container.remove()
+    })
+
+    it("keeps the hydrated value until the last reader unmounts", async () => {
+      const userAtom = Atom.make("loading").pipe(Atom.keepAlive)
+
+      function Name() {
+        return <span>{useAtomValue(userAtom)}</span>
+      }
+
+      const app = (
+        <RegistryContext.Provider value={registry}>
+          <Name />
+        </RegistryContext.Provider>
+      )
+      const html = renderToString(app)
+      const containers = [0, 1, 2].map(() => {
+        const container = document.createElement("div")
+        container.innerHTML = html
+        document.body.append(container)
+        return container
+      })
+      const recoverableErrors: Array<unknown> = []
+      const hydrate = (container: HTMLElement) =>
+        ReactDOMClient.hydrateRoot(container, app, {
+          onRecoverableError: (error) => recoverableErrors.push(error)
+        })
+
+      let first!: ReactDOMClient.Root
+      let second!: ReactDOMClient.Root
+      await act(async () => {
+        first = hydrate(containers[0])
+        second = hydrate(containers[1])
+      })
+      await act(async () => {
+        registry.set(userAtom, "Alice")
+      })
+
+      // The second reader keeps the snapshot locked after the first unmounts.
+      act(() => first.unmount())
+      let third!: ReactDOMClient.Root
+      await act(async () => {
+        third = hydrate(containers[2])
+      })
+
+      expect(recoverableErrors).toEqual([])
+      expect(containers[2].innerHTML).toBe("<span>Alice</span>")
+
+      // Once no reader is subscribed, server renders read the registry again.
+      act(() => {
+        second.unmount()
+        third.unmount()
+      })
+      containers.forEach((container) => container.remove())
+
+      expect(renderToString(app)).toBe("<span>Alice</span>")
     })
   })
 

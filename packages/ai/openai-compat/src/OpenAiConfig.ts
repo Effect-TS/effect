@@ -4,6 +4,7 @@
  * tool-calling code can use this scoped configuration to add middleware,
  * instrumentation, or routing without rebuilding the client layer.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "effect/Context"
@@ -22,6 +23,7 @@ import type { HttpClient } from "effect/http/HttpClient"
  *
  * @see {@link withClientTransform} for scoping an HTTP client transformation
  *
+ * @stability unstable
  * @category services
  * @since 4.0.0
  */
@@ -43,6 +45,7 @@ export class OpenAiConfig extends Context.Service<
 /**
  * Types associated with the `OpenAiConfig` context service.
  *
+ * @stability unstable
  * @since 4.0.0
  */
 export declare namespace OpenAiConfig {
@@ -71,6 +74,7 @@ export declare namespace OpenAiConfig {
  * OpenAI-compatible provider services read the transform from the
  * `OpenAiConfig` context.
  *
+ * @stability unstable
  * @category configuration
  * @since 4.0.0
  */

@@ -46,7 +46,7 @@ const startWatch = <E, R>(
   })
 
 describe("FileSystem", { concurrent: false }, () => {
-  testLayer(NodeFileSystem.layer)
+  testLayer(NodeFileSystem.layer, { noFollow: process.platform !== "win32" })
 
   it.effect("writeAll accepts an empty buffer", () =>
     Effect.gen(function*() {
