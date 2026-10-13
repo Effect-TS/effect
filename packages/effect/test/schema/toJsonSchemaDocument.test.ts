@@ -1641,6 +1641,21 @@ describe("toJsonSchemaDocument", () => {
         )
       })
 
+      it.each([
+        { checks: [Schema.isGreaterThanOrEqualTo(0), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
+        { checks: [Schema.isGreaterThanOrEqualTo(1), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
+        { checks: [Schema.isGreaterThanOrEqualTo(2), Schema.isGreaterThan(1)], bounds: { minimum: 2 } },
+        { checks: [Schema.isLessThanOrEqualTo(10), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
+        { checks: [Schema.isLessThanOrEqualTo(9), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
+        { checks: [Schema.isLessThanOrEqualTo(8), Schema.isLessThan(9)], bounds: { maximum: 8 } }
+      ])("keeps only the dominant inclusive/exclusive bound $bounds", ({ checks, bounds }) => {
+        for (const ordered of [checks, [...checks].reverse()]) {
+          assertJsonSchemaDocument(Schema.Finite.check(ordered[0], ordered[1]), {
+            schema: { type: "number", ...bounds }
+          })
+        }
+      })
+
       it("keeps allOf for collisions other than bounds", () => {
         assertJsonSchemaDocument(
           Schema.Int.annotate({ description: "a" }).check(Schema.isGreaterThanOrEqualTo(1, { description: "b" })),
