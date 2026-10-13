@@ -267,6 +267,23 @@ describe("Match", () => {
     ).type.toBe<"excluded" | "miss">()
   })
 
+  it("rejects unknown keys on object patterns spread from arrays", () => {
+    const patterns: Array<{ _tag: "Transfer"; value: "foo" }> = [{ _tag: "Transfer", value: "foo" }]
+
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Argument of type
+      Match.whenOr(...patterns, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Argument of type
+      Match.whenAnd(...patterns, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+  })
+
   it("accepts object patterns on broad inputs", () => {
     expect(
       Match.type<unknown>().pipe(
