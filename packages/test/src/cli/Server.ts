@@ -18,15 +18,18 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import type * as Worker from "effect/workers/Worker"
 import * as fs from "node:fs"
 import * as net from "node:net"
-import { command, executorPool, Executors, ExitCode, Invocation } from "./Cli.ts"
+import { command } from "./Cli.ts"
 import * as Config from "./Config.ts"
 import { consoleFor, Output } from "./Output.ts"
+import { executorPool, Executors, ExitCode, Invocation } from "./Run.ts"
 import { type Request, type Response, socketPath } from "./socket.ts"
+import * as Workspace from "./Workspace.ts"
 
 /**
  * Executors that are always one run ahead: taking a pool for a run immediately starts the
@@ -63,6 +66,16 @@ export const warmExecutors = (size: number) =>
     })
   })
 
+/** A forwarded request (see socket.ts), decoded from its line of JSON; a client that sends anything else is dropped. */
+const decodeForwarded = Schema.decodeUnknownOption(Schema.fromJsonString(
+  Schema.Struct({
+    argv: Schema.Array(Schema.String),
+    cwd: Schema.String,
+    root: Schema.String,
+    script: Schema.optional(Schema.String)
+  }) satisfies Schema.Codec<Request>
+))
+
 /** Failures that were already reported to the client: an `ExitCode`, or one of effect/cli's own errors. */
 const reported = (cause: Cause.Cause<unknown>) =>
   cause.reasons.some((reason) =>
@@ -77,17 +90,17 @@ const exitCodeOf = (exit: Exit.Exit<unknown, unknown>): number => {
 }
 
 /**
- * Runs an `etest` command line in this process, with its output going to `output` and its
- * executors from `executors`, and returns the exit code. Used by `etest serve` and `etest mcp`.
- * `invocation` says where the command line came from (see `Invocation`).
+ * Runs `program` (an `etest` command line, or a `Run.execute`) in this process, with its output
+ * going to `output` and its executors from `executors`, and returns the exit code. Used by
+ * `etest serve` and `etest mcp`. `invocation` says where the request came from (see `Invocation`).
  */
-export const runCommandLine = (version: string, executors: Executors["Service"]) =>
-(
-  argv: ReadonlyArray<string>,
+export const runWithOutput = <E, R>(
+  program: Effect.Effect<void, E, R>,
+  executors: Executors["Service"],
   output: Output["Service"],
   invocation: Invocation
 ) =>
-  Command.runWith(command, { version, helpOnError: false })(argv).pipe(
+  program.pipe(
     Effect.provideService(Output, output),
     Effect.provideService(Invocation, invocation),
     Effect.provideService(Executors, executors),
@@ -106,7 +119,7 @@ export const runCommandLine = (version: string, executors: Executors["Service"])
  * directory, moves to its root, and returns it. Runs it serves resolve the same root.
  */
 export const enterWorkspace = Effect.gen(function*() {
-  const ws = yield* Config.workspace(process.cwd(), { config: Option.none(), noConfig: false }).pipe(
+  const ws = yield* Workspace.workspace(process.cwd()).pipe(
     Effect.catchTag(
       "ConfigError",
       (error) => Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
@@ -140,10 +153,12 @@ const serve = (version: string, options: { readonly workers: Option.Option<numbe
       }
       const output = Output.of({ out: (text) => send({ out: text }), err: (text) => send({ err: text }) })
       const started = Date.now()
-      const program = runCommandLine(version, executors)(request.argv, output, {
-        cwd: request.cwd,
-        script: request.script
-      }).pipe(
+      const program = runWithOutput(
+        Command.runWith(command, { version, helpOnError: false })(request.argv),
+        executors,
+        output,
+        { cwd: request.cwd, script: request.script }
+      ).pipe(
         Effect.flatMap((code) =>
           Effect.sync(() => {
             send({ exit: code })
@@ -177,11 +192,9 @@ const serve = (version: string, options: { readonly workers: Option.Option<numbe
         const newline = buffered.indexOf("\n")
         if (newline === -1) return
         client.removeAllListeners("data")
-        try {
-          handle(client, JSON.parse(buffered.slice(0, newline)) as Request)
-        } catch {
-          client.destroy()
-        }
+        const request = decodeForwarded(buffered.slice(0, newline))
+        if (request._tag === "Some") handle(client, request.value)
+        else client.destroy()
       })
       client.on("error", () => {})
     })

@@ -39,7 +39,14 @@ const loaded = (file: string, config: typeof Test.Config.Type): Loaded => ({
 })
 
 /** No config: every value unset. */
-export const none: Loaded = { file: undefined, paths: undefined, exclude: [], workers: undefined, defaults: {}, shared: 0 }
+export const none: Loaded = {
+  file: undefined,
+  paths: undefined,
+  exclude: [],
+  workers: undefined,
+  defaults: {},
+  shared: 0
+}
 
 /**
  * Loads one config file (absolute) and decodes its default export with `Test.Config`, naming it

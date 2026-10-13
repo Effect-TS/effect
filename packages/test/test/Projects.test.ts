@@ -5,9 +5,9 @@ import * as Effect from "effect/Effect"
 import * as Stream from "effect/Stream"
 import * as path from "node:path"
 import * as Assert from "../src/Assert.ts"
-import * as Config from "../src/cli/Config.ts"
 import { findConfig } from "../src/cli/root.ts"
-import { discover, dispatchOrder, shortId, testKey } from "../src/Coordinator.ts"
+import * as Workspace from "../src/cli/Workspace.ts"
+import { dispatchOrder, shortId, testKey } from "../src/Coordinator.ts"
 import * as Executor from "../src/Executor.ts"
 import * as Matcher from "../src/Matcher.ts"
 import type { TestFinished } from "../src/Protocol.ts"
@@ -16,14 +16,13 @@ import { seen } from "./fixtures/workspace/shared.ts"
 
 const fixtures = path.join(import.meta.dirname, "fixtures")
 const root = path.join(fixtures, "workspace")
-const rel = (p: string) => path.relative(process.cwd(), p)
 /** The fixture workspace, as `etest --config test/fixtures/workspace/etest.config.ts` would see it. */
-const workspace = Config.workspaceAt(path.join(root, "etest.config.ts"), root)
+const workspace = Workspace.workspaceAt(path.join(root, "etest.config.ts"), root)
 
-/** Where each test file was found, and in which project. */
+/** Where each test file was found (paths relative to the fixture workspace's root), and in which project. */
 const found = (paths: ReadonlyArray<string>) =>
   Effect.gen(function*() {
-    const discovered = yield* discover(paths, yield* workspace)
+    const discovered = yield* Workspace.discover(yield* workspace, paths)
     return {
       files: discovered.files.map((f) => [path.relative(root, f.file), f.project.key]),
       projects: discovered.projects.map((p) => p.key),
@@ -40,7 +39,7 @@ export default Test.suite("projects", [
   Test.test(
     "a search crosses into nested projects; each file belongs to the nearest project above it",
     Effect.gen(function*() {
-      Assert.equal(yield* found([rel(root)]), {
+      Assert.equal(yield* found([]), {
         // pkg is searched with its own `paths` (test/), so pkg/src is not; ignored/ is excluded by the
         // workspace, so its config (which throws) is never loaded
         files: [["a.test.ts", "."], ["pkg/test/c.test.ts", "pkg"], ["pkg/test/d.test.ts", "pkg"], [
@@ -56,10 +55,10 @@ export default Test.suite("projects", [
   Test.test(
     "a path inside a project runs with that project, whatever its `paths` say",
     Effect.gen(function*() {
-      const { files, projects } = yield* found([rel(path.join(root, "pkg"))])
+      const { files, projects } = yield* found(["pkg"])
       Assert.equal(files, [["pkg/src/e.test.ts", "pkg"], ["pkg/test/c.test.ts", "pkg"], ["pkg/test/d.test.ts", "pkg"]])
       Assert.equal(projects, ["pkg"])
-      Assert.equal((yield* found([rel(path.join(root, "pkg/src/e.test.ts"))])).files, [["pkg/src/e.test.ts", "pkg"]])
+      Assert.equal((yield* found(["pkg/src/e.test.ts"])).files, [["pkg/src/e.test.ts", "pkg"]])
     })
   ),
   Test.test(
@@ -70,7 +69,7 @@ export default Test.suite("projects", [
       const pkg = Assert.defined(yield* ws.at(path.join(root, "pkg")))
       Assert.equal(pkg.defaults, { timeoutMs: 30_000, retries: 2 })
       Assert.equal(pkg.configs, [path.join(root, "etest.config.ts"), path.join(root, "pkg", "etest.config.ts")])
-      const described = Config.describe(ws, pkg)
+      const described = Workspace.describe(ws, pkg)
       Assert.includes(described, "timeout: 30s (etest.config.ts; a suite or test can set its own)")
       Assert.includes(described, "retries: 2 (pkg/etest.config.ts; a suite or test can set its own)")
       Assert.includes(
@@ -83,7 +82,7 @@ export default Test.suite("projects", [
     "`workers` in a nested config is an error: a run has one set of executors",
     Effect.gen(function*() {
       const dir = path.join(fixtures, "workspace-workers")
-      const ws = yield* Config.workspaceAt(path.join(dir, "etest.config.ts"), dir)
+      const ws = yield* Workspace.workspaceAt(path.join(dir, "etest.config.ts"), dir)
       const error = Assert.failure(yield* Effect.exit(ws.at(path.join(dir, "sub"))))
       Assert.match(error.message, /^sub\/etest\.config\.ts: `workers` can only be set in the workspace root's config/)
     })

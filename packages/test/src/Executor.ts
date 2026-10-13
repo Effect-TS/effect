@@ -137,7 +137,8 @@ const loadConfig = (file: string) =>
     // decoding keeps each Layer value as it is: a shared layer is matched by identity
     Effect.flatMap((mod) => decodeConfig(mod.default)),
     Effect.mapError((e) => e._tag === "SchemaError" ? new LoadError({ path: file, message: e.message }) : e),
-    Effect.map((config) => config.shared ?? [])
+    // typed as providing nothing they need (`Layer<never, ...>`); here they are only compared by identity
+    Effect.map((config): ReadonlyArray<Layer.Layer<any, any, any>> => (config.shared ?? []) as ReadonlyArray<any>)
   )
 
 /**

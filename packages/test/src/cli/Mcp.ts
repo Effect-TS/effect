@@ -1,7 +1,7 @@
 // `etest mcp`: the test runner as an MCP server over stdio, so a coding agent can call tools
-// instead of shelling out and parsing text. Each tool call runs an `etest` command line in this
-// process (the same command `etest serve` runs) with its output captured, executors kept one
-// run ahead as in `etest serve`, and calls handled one at a time.
+// instead of shelling out and parsing text. Each tool call's parameters are a `Run.Request`,
+// executed in this process (as the `etest` command executes its flags) with its output
+// captured, executors kept one run ahead as in `etest serve`, and calls handled one at a time.
 import * as McpProtocol from "effect/ai/McpProtocol"
 import * as McpServer from "effect/ai/McpServer"
 import * as Tool from "effect/ai/Tool"
@@ -16,7 +16,9 @@ import * as Semaphore from "effect/Semaphore"
 import type * as Worker from "effect/workers/Worker"
 import * as Config from "./Config.ts"
 import { Output } from "./Output.ts"
-import { enterWorkspace, runCommandLine, warmExecutors } from "./Server.ts"
+import * as Run from "./Run.ts"
+import { enterWorkspace, runWithOutput, warmExecutors } from "./Server.ts"
+import * as Workspace from "./Workspace.ts"
 
 const Selection = {
   paths: Schema.optional(Schema.Array(Schema.String)).annotate({
@@ -74,49 +76,31 @@ const ShowConfig = Tool.make("show_config", {
 
 const Tools = Toolkit.make(RunTests, ListTests, ShowConfig)
 
-const selectionArgs = (params: {
-  readonly paths?: ReadonlyArray<string> | undefined
-  readonly test?: string | undefined
-  readonly tag?: string | undefined
-}) => [
-  ...(params.paths ?? []),
-  ...(params.test !== undefined ? ["--test", params.test] : []),
-  ...(params.tag !== undefined ? ["--tag", params.tag] : [])
-]
-
 const serveMcp = (version: string, options: { readonly workers: Option.Option<number> }) =>
   Effect.gen(function*() {
     const ws = yield* enterWorkspace
     const root = ws.root.dir
     const workers = Option.getOrElse(options.workers, () => ws.config.workers ?? Config.BUILTIN_WORKERS)
-    const run = runCommandLine(version, yield* warmExecutors(workers))
+    const executors = yield* warmExecutors(workers)
     // tool handlers can't require anything: they run with the services this command started with
-    const services = yield* Effect.context<Command.Environment | Worker.WorkerPlatform | Worker.Spawner>()
+    const services = yield* Effect.context<Worker.WorkerPlatform | Worker.Spawner>()
     const oneAtATime = Semaphore.makeUnsafe(1)
-    /** Runs a command line, capturing everything it writes (stdout and stderr, in order). */
-    const capture = (argv: ReadonlyArray<string>) =>
+    /** Runs a request, capturing everything it writes (stdout and stderr, in order). */
+    const capture = (request: Run.Request) =>
       oneAtATime.withPermits(1)(Effect.suspend(() => {
         let text = ""
         const output = Output.of({ out: (chunk) => text += chunk, err: (chunk) => text += chunk })
         return Effect.map(
-          run(argv, output, { cwd: root, script: undefined }),
+          runWithOutput(Run.execute({ workers, ...request }), executors, output, { cwd: root, script: undefined }),
           (exitCode) => ({ exitCode, passed: exitCode === 0, output: text })
         )
       })).pipe(Effect.provideContext(services))
     const handlers = Tools.of({
-      run_tests: (params) =>
-        capture([
-          ...selectionArgs(params),
-          ...(params.failed ? ["--failed"] : []),
-          ...(params.changed ? ["--changed"] : []),
-          ...(params.since !== undefined ? ["--since", params.since] : []),
-          ...(params.seed !== undefined ? ["--seed", String(params.seed)] : []),
-          ...(params.bail ? ["--bail"] : [])
-        ]),
-      list_tests: (params) => capture([...selectionArgs(params), "--list"]),
+      run_tests: (params) => capture(params),
+      list_tests: (params) => capture({ ...params, list: true }),
       show_config: () =>
-        Config.workspace(root, { config: Option.none(), noConfig: false }).pipe(
-          Effect.map((resolved) => ({ output: Config.describe(resolved).join("\n") })),
+        Workspace.workspace(root).pipe(
+          Effect.map((resolved) => ({ output: Workspace.describe(resolved).join("\n") })),
           Effect.catchTag("ConfigError", (error) => Effect.succeed({ output: `etest: ${error.message}` }))
         )
     })

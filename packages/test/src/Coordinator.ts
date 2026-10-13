@@ -9,6 +9,8 @@ import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as RpcClient from "effect/rpc/RpcClient"
+import type { RpcClientError } from "effect/rpc/RpcClientError"
+import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 import * as path from "node:path"
@@ -22,92 +24,14 @@ import type {
   SelectedProject,
   Selection,
   SourceLine,
-  Status,
   TestEvent,
   TestFinished
 } from "./Protocol.ts"
-import { ExecutorRpcs, schemaVersion } from "./Protocol.ts"
+import { ExecutorRpcs, schemaVersion, Status } from "./Protocol.ts"
 import type { Reporter } from "./Reporters.ts"
 
-/**
- * A project: the root a test file's ids are relative to, the defaults its tests start from, and
- * the configs its shared layers come from. How projects are found (config files, nested
- * directories) is up to the host.
- */
-export interface Project {
-  /** the project's root relative to the workspace root (`.`: the workspace root itself) */
-  readonly key: string
-  /** the project's root (absolute) */
-  readonly dir: string
-  /** the project's own config file (absolute), if any, named in the selection */
-  readonly config?: string | undefined
-  /**
-   * modules (absolute) whose default export's `shared` layers its files use, the workspace
-   * root's first; executors import them (default: none)
-   */
-  readonly configs?: ReadonlyArray<string> | undefined
-  /** defaults for test options that no node on the tree sets (default: `builtinDefaults`) */
-  readonly defaults?: Defaults | undefined
-}
-
-/** A test file (absolute) and the project it belongs to. */
-export interface TestFile {
-  readonly file: string
-  readonly project: Project
-}
-
-/** Which of the files' tests to run; all of them when nothing is set. */
-export interface Filter {
-  /** an exact id, key or short id; otherwise text the test's key must contain */
-  readonly test?: string | undefined
-  readonly tag?: string | undefined
-  /** only these tests, by key (`testKey`; a file's key selects the whole file), e.g. the last failures */
-  readonly keys?: ReadonlySet<string> | undefined
-}
-
-/** What a test file's previous runs say about it, for ordering (see `RunConfig.history`). */
-export interface History {
-  readonly status: Status
-  readonly durationMs: number
-}
-
-/** Everything a run (or a listing) needs, resolved by the host. */
-export interface RunConfig {
-  /** the workspace root (absolute): files and keys are relative to it */
-  readonly root: string
-  /** the workspace's config file (absolute), if any, named in the selection */
-  readonly config?: string | undefined
-  /** the test files, each with its project */
-  readonly files: ReadonlyArray<TestFile>
-  /** the projects searched, in order; listed in the selection even when they have no file (default: the files') */
-  readonly projects?: ReadonlyArray<Project> | undefined
-  readonly filter?: Filter | undefined
-  /**
-   * How the host describes the selection, echoed in `RunPlanned.selection`: the paths searched
-   * (relative to the root) and what narrowed it, in the host's own words (e.g. `--test "x"`)
-   */
-  readonly description?: {
-    readonly paths?: ReadonlyArray<string> | undefined
-    readonly filters?: ReadonlyArray<string> | undefined
-  } | undefined
-  /** the run's seed; each test's seed derives from it and the test's id */
-  readonly seed: number
-  /** how many tests of a file run at once (default: `TESTS_PER_FILE`) */
-  readonly testsPerFile?: number | undefined
-  /** stop at the first failure, interrupting running tests */
-  readonly bail?: boolean | undefined
-  /** previous outcomes by test key: files with no history run first, then failed ones, then the slowest */
-  readonly history?: ((key: string) => History | undefined) | undefined
-}
-
-/** Defaults for test options that no node on the tree sets. */
-export interface Defaults {
-  readonly timeoutMs: number
-  readonly retries: number
-}
-
 /** The built-in defaults: a test fails after 60 seconds (it is reported as slow after 5), and isn't retried. */
-export const builtinDefaults: Defaults = { timeoutMs: 60_000, retries: 0 }
+export const builtinDefaults = { timeoutMs: 60_000, retries: 0 }
 
 /** A test that takes longer than this is reported as slow (it still passes). */
 export const SLOW_MS = 5_000
@@ -115,12 +39,104 @@ export const SLOW_MS = 5_000
 /** How many tests of a file run at once, unless `RunConfig.testsPerFile` says otherwise. */
 export const TESTS_PER_FILE = 8
 
+const Count = (minimum: number) => Schema.Int.check(Schema.isGreaterThanOrEqualTo(minimum))
+const AbsolutePath = Schema.String.check(
+  Schema.makeFilter((p: string) => path.isAbsolute(p), { expected: "an absolute path" })
+)
+/** An optional field that decodes to `value` when it is absent (or `undefined`). */
+const orElse = <S extends Schema.Top>(schema: S, value: S["Encoded"]) =>
+  schema.pipe(Schema.withDecodingDefault(Effect.succeed(value)))
+
+/** Defaults for test options that no node on the tree sets. */
+export const Defaults = Schema.Struct({
+  timeoutMs: Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)),
+  retries: Count(0)
+})
+export type Defaults = typeof Defaults.Type
+
+/**
+ * A project: the root a test file's ids are relative to, the defaults its tests start from, and
+ * the configs its shared layers come from. How projects are found (config files, nested
+ * directories) is up to the host.
+ */
+export const Project = Schema.Struct({
+  /** the project's root relative to the workspace root (`.`: the workspace root itself); files name their project by it */
+  key: Schema.String,
+  /** the project's root */
+  dir: AbsolutePath,
+  /** the project's own config file, if any, named in the selection */
+  config: Schema.optional(AbsolutePath),
+  /** modules whose default export's `shared` layers its files use, the workspace root's first; executors import them */
+  configs: orElse(Schema.Array(AbsolutePath), []),
+  /** defaults for test options that no node on the tree sets */
+  defaults: orElse(Defaults, builtinDefaults)
+})
+export type Project = typeof Project.Type
+
+/** A test file and the project (by key) it belongs to. */
+export const TestFile = Schema.Struct({ file: AbsolutePath, project: Schema.String })
+export type TestFile = typeof TestFile.Type
+
+/** Which of the files' tests to run; all of them when nothing is set. */
+export const Filter = Schema.Struct({
+  /** an exact id, key or short id; otherwise text the test's key must contain */
+  test: Schema.optional(Schema.String),
+  tag: Schema.optional(Schema.String),
+  /** only these tests, by key (`testKey`; a file's key selects the whole file), e.g. the last failures */
+  keys: Schema.optional(Schema.Array(Schema.String))
+})
+export type Filter = typeof Filter.Type
+
+/** What a test's previous runs say about it, for ordering (see `RunConfig.history`). */
+export const History = Schema.Struct({ status: Status, durationMs: Schema.Number })
+export type History = typeof History.Type
+
+/**
+ * Everything a run (or a listing) needs, as data, resolved by the host. `run` and `list` decode
+ * it with this Schema: what isn't set gets its default, and anything invalid (an unknown key, a
+ * relative path, a file in a project that isn't listed) fails before anything is loaded.
+ */
+export const RunConfig = Schema.Struct({
+  /** the workspace root: files and keys are relative to it */
+  root: AbsolutePath,
+  /** the workspace's config file, if any, named in the selection */
+  config: Schema.optional(AbsolutePath),
+  /** the projects searched, in order; listed in the selection even when they have no file */
+  projects: Schema.Array(Project),
+  /** the test files, each in one of `projects` */
+  files: Schema.Array(TestFile),
+  filter: orElse(Filter, {}),
+  /**
+   * How the host describes the selection, echoed in `RunPlanned.selection`: the paths searched
+   * (relative to the root) and what narrowed it, in the host's own words (e.g. `--test "x"`)
+   */
+  description: orElse(
+    Schema.Struct({ paths: orElse(Schema.Array(Schema.String), []), filters: orElse(Schema.Array(Schema.String), []) }),
+    {}
+  ),
+  /** the run's seed; each test's seed derives from it and the test's id */
+  seed: Schema.Int,
+  /** how many tests of a file run at once */
+  testsPerFile: orElse(Count(1), TESTS_PER_FILE),
+  /** stop at the first failure, interrupting running tests */
+  bail: orElse(Schema.Boolean, false),
+  /** previous outcomes by test key: files with no history run first, then failed ones, then the slowest */
+  history: orElse(Schema.Record(Schema.String, History), {})
+}).check(Schema.makeFilter((config) => {
+  const keys = new Set(config.projects.map((p) => p.key))
+  const stray = config.files.find((f) => !keys.has(f.project))
+  return stray === undefined || `${stray.file} is in project "${stray.project}", which is not in \`projects\``
+}))
+/** A run's config as given to `run` and `list` (optional fields may be left out). */
+export type RunConfig = typeof RunConfig.Encoded
+
+const decodeRunConfig = Schema.decodeUnknownEffect(RunConfig, { onExcessProperty: "error", errors: "all" })
+
 /** A test's key, unique in a run: its id, prefixed with its project unless that is the workspace root. */
 export const testKey = (project: string, id: string) => project === "." ? id : `${project}/${id}`
 
 /** Whether a run is green: nothing failed, timed out or was interrupted. */
-export const passed = (summary: RunFinished): boolean =>
-  summary.failed + summary.timedOut + summary.interrupted === 0
+export const passed = (summary: RunFinished): boolean => summary.failed + summary.timedOut + summary.interrupted === 0
 
 /** A run selected no tests. A run that selects nothing is red: "nothing ran" must never read as green. */
 export class NoTestsSelected extends Data.TaggedError("NoTestsSelected")<{ readonly selection: Selection }> {
@@ -199,10 +215,11 @@ export interface Listing {
 /** The selected tests of the listed files, with their options resolved (nearest wins) and their seeds. */
 export const plan = (
   listings: ReadonlyArray<Listing>,
-  opts: { readonly root: string; readonly seed: number; readonly filter?: Filter | undefined }
+  opts: { readonly root: string; readonly seed: number; readonly filter: Filter }
 ): Array<PlannedTest> => {
   const planned: Array<PlannedTest & { only: boolean }> = []
-  const filter = opts.filter ?? {}
+  const filter = opts.filter
+  const keys = filter.keys !== undefined ? new Set(filter.keys) : undefined
   // an exact id, key or short id selects exactly that test; anything else is a substring of the key
   const exact = filter.test !== undefined &&
     listings.some((l) =>
@@ -231,9 +248,7 @@ export const plan = (
         continue
       }
       if (filter.tag !== undefined && !tags.includes(filter.tag)) continue
-      if (filter.keys !== undefined && !filter.keys.has(key) && !filter.keys.has(testKey(project.key, chain[0].id))) {
-        continue
-      }
+      if (keys !== undefined && !keys.has(key) && !keys.has(testKey(project.key, chain[0].id))) continue
       const skip = nearest("skip")
       planned.push({
         project: project.key,
@@ -241,8 +256,8 @@ export const plan = (
         shortId: sid,
         file: fileKey,
         tags,
-        timeoutMs: nearest("timeoutMs") ?? (project.defaults ?? builtinDefaults).timeoutMs,
-        retries: nearest("retries") ?? (project.defaults ?? builtinDefaults).retries,
+        timeoutMs: nearest("timeoutMs") ?? project.defaults.timeoutMs,
+        retries: nearest("retries") ?? project.defaults.retries,
         ...(nearest("noAssertions") ? { noAssertions: true } : {}),
         seed: testSeed(opts.seed, node.id),
         only: chain.some((n) => n.only),
@@ -280,11 +295,17 @@ export const dispatchOrder = <A>(
   return ranked.map((r) => r.file)
 }
 
-
 // --- listing
 
+/** A test file with its project. */
+export interface ProjectFile {
+  /** the file (absolute) */
+  readonly file: string
+  readonly project: Project
+}
+
 /** A file whose listing failed (a load error, or an executor that died): kept, so it can't vanish. */
-export interface LoadFailure extends TestFile {
+export interface LoadFailure extends ProjectFile {
   readonly message: string
 }
 
@@ -300,9 +321,17 @@ const describe = (e: unknown): string => {
   return `${String(e)}${cause ? `\n  caused by: ${cause instanceof Error ? cause.stack : String(cause)}` : ""}`
 }
 
+/** Decodes a `RunConfig`, and pairs each file with its project. */
+const resolve = (input: RunConfig) =>
+  Effect.map(decodeRunConfig(input), (config) => {
+    const projects = new Map(config.projects.map((p) => [p.key, p]))
+    const files = config.files.map((f): ProjectFile => ({ file: f.file, project: projects.get(f.project)! }))
+    return { config, files }
+  })
+
 const listFiles = (
-  client: RpcClient.FromGroup<typeof ExecutorRpcs>,
-  files: ReadonlyArray<TestFile>
+  client: RpcClient.FromGroup<typeof ExecutorRpcs, RpcClientError>,
+  files: ReadonlyArray<ProjectFile>
 ) =>
   Effect.map(
     Effect.forEach(
@@ -318,34 +347,40 @@ const listFiles = (
         r._tag === "Failure"
           ? [{
             ...files[i],
-            message: r.failure._tag === "LoadError" ? r.failure.message : `could not list the file: ${describe(r.failure)}`
+            message: r.failure._tag === "LoadError"
+              ? r.failure.message
+              : `could not list the file: ${describe(r.failure)}`
           }]
           : []
       )
     })
   )
 
-/** The files' trees and the tests selected, without running anything or acquiring any fixture. */
-export const list = (config: RunConfig) =>
+/**
+ * The files' trees and the tests selected, without running anything or acquiring any fixture.
+ * Fails with a `SchemaError` when the config doesn't decode.
+ */
+export const list = (input: RunConfig) =>
   Effect.gen(function*() {
+    const { config, files } = yield* resolve(input)
     const client = yield* RpcClient.make(ExecutorRpcs)
-    const { failures, listings } = yield* listFiles(client, config.files)
+    const { failures, listings } = yield* listFiles(client, files)
     return { listings, failures, planned: plan(listings, config) } satisfies Listed
   })
 
 // --- running
 
 /**
- * Runs the selected tests of `config.files`, sending every event to `reporter`, and returns the
- * summary (also the last event). Fails with `NoTestsSelected` when the selection is empty.
+ * Runs the selected tests of the config's files, sending every event to `reporter`, and returns
+ * the summary (also the last event). Fails with a `SchemaError` when the config doesn't decode,
+ * and with `NoTestsSelected` when the selection is empty.
  */
-export const run = (config: RunConfig, reporter: Reporter) =>
+export const run = (input: RunConfig, reporter: Reporter) =>
   Effect.gen(function*() {
     const startedAt = Date.now()
+    const { config, files } = yield* resolve(input)
     const root = config.root
     const client = yield* RpcClient.make(ExecutorRpcs)
-    const files = config.files
-    const projects = config.projects ?? [...new Set(files.map((f) => f.project))]
     const { failures: loadErrors, listings } = yield* listFiles(client, files)
 
     const planned = plan(listings, config)
@@ -364,20 +399,20 @@ export const run = (config: RunConfig, reporter: Reporter) =>
       })
     }
     const testsIn = (l: Listing) => l.nodes.filter((node) => node.kind === "test").length
-    const relative = (file: string | undefined) => file !== undefined ? posix(path.relative(root, file)) : undefined
+    const relative = (file: string) => posix(path.relative(root, file))
     const selection: Selection = {
       root,
       ...(config.config !== undefined ? { config: relative(config.config) } : {}),
-      projects: projects.map((project): SelectedProject => ({
+      projects: config.projects.map((project): SelectedProject => ({
         project: project.key,
         ...(project.config !== undefined ? { config: relative(project.config) } : {}),
         files: files.filter((f) => f.project === project).length,
         tests: listings.filter((l) => l.project === project).reduce((n, l) => n + testsIn(l), 0)
       })),
-      paths: config.description?.paths ?? [],
+      paths: config.description.paths,
       files: files.length,
       tests: listings.reduce((n, l) => n + testsIn(l), 0),
-      filters: config.description?.filters ?? []
+      filters: config.description.filters
     }
     if (planned.length === 0) return yield* new NoTestsSelected({ selection })
 
@@ -444,7 +479,7 @@ export const run = (config: RunConfig, reporter: Reporter) =>
     }
     const order = dispatchOrder(
       [...byFile].map(([file, { keys }]) => [file, keys] as const),
-      config.history ?? (() => undefined)
+      (key) => config.history[key]
     )
 
     const bail = yield* Deferred.make<void>()
@@ -457,8 +492,8 @@ export const run = (config: RunConfig, reporter: Reporter) =>
           path: file,
           root: project.dir,
           project: project.key,
-          configs: project.configs ?? [],
-          concurrency: config.testsPerFile ?? TESTS_PER_FILE,
+          configs: project.configs,
+          concurrency: config.testsPerFile,
           tests
         }).pipe(
           Stream.runForEach((e) =>

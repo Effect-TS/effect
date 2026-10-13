@@ -1,37 +1,15 @@
-// The `etest` command, built with effect/cli. One-shot and never interactive:
-// it exits 0 when everything is green, 1 when anything is red, 130 on Ctrl-C.
+// The `etest` command, built with effect/cli: its flags become a `Run.Request`, which Run.ts
+// resolves and hands to the coordinator. One-shot and never interactive: it exits 0 when
+// everything is green, 1 when anything is red, 130 on Ctrl-C.
 import * as Argument from "effect/cli/Argument"
 import * as Command from "effect/cli/Command"
 import * as Flag from "effect/cli/Flag"
 import * as Console from "effect/Console"
-import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import * as RpcClient from "effect/rpc/RpcClient"
-import * as Runtime from "effect/Runtime"
-import type * as Worker from "effect/workers/Worker"
-import type { WorkerError } from "effect/workers/WorkerError"
-import * as path from "node:path"
-import { fileURLToPath } from "node:url"
-import { discover, run } from "../Coordinator.ts"
-import * as Reporters from "../Reporters.ts"
-import * as Changed from "./Changed.ts"
-import * as Config from "./Config.ts"
-import { scriptCommand } from "./invocation.ts"
-import { Output } from "./Output.ts"
-import { detect, moduleUrl } from "./Platform.ts"
 import * as Results from "./Results.ts"
-import { isWithin } from "./root.ts"
-
-/** Ends the process with `code`. Whatever caused it has already been reported. */
-export class ExitCode extends Data.TaggedError("ExitCode")<{ readonly code: number }> {
-  override get [Runtime.errorExitCode]() {
-    return this.code
-  }
-  override readonly [Runtime.errorReported] = false
-}
+import * as Run from "./Run.ts"
+import * as Workspace from "./Workspace.ts"
 
 const paths = Argument.String("paths").pipe(
   Argument.withDescription(
@@ -109,58 +87,6 @@ const noServer = Flag.Boolean("no-server").pipe(
   Flag.withDefault(false)
 )
 
-/** How many files an executor runs at once. */
-const FILES_PER_EXECUTOR = 4
-
-/** How many tests of a file run at once. */
-const TESTS_PER_FILE = 8
-
-/**
- * The executors: a pool of workers speaking `ExecutorRpcs`, each running up to
- * `FILES_PER_EXECUTOR` files at once. The platform provides the worker spawner (see
- * `platform/*.ts`), so this is the same on Node, Bun and Deno.
- */
-export const executorPool = (workers: number) =>
-  RpcClient.layerProtocolWorker({ size: workers, concurrency: FILES_PER_EXECUTOR })
-
-/** Where a run's executors come from: a fresh pool per run, or `etest serve`'s pre-started one. */
-export class Executors extends Context.Service<Executors, {
-  readonly layer: (
-    workers: number
-  ) => Layer.Layer<RpcClient.Protocol, WorkerError, Worker.WorkerPlatform | Worker.Spawner>
-}>()("etest/cli/Executors") {
-  static readonly fresh = Layer.succeed(Executors)({ layer: executorPool })
-}
-
-const bin = fileURLToPath(moduleUrl("./bin", import.meta.url))
-/** How to start the CLI again on the runtime we are on, for rerun hints. */
-const launcher = { node: "node", bun: "bun", deno: "deno run -A" }[detect()]
-
-/** The working directory this process started in (a run then moves to the workspace root). */
-const startedIn = process.cwd()
-
-/**
- * Where and how this run was started: the directory the paths given on the command line are
- * relative to, and the package script (`pnpm run test`), if any, that rerun hints repeat. A
- * run forwarded to `etest serve` gets its client's.
- */
-export interface Invocation {
-  readonly cwd: string
-  readonly script: string | undefined
-}
-export const Invocation = Context.Reference<Invocation>("etest/cli/Invocation", {
-  defaultValue: () => ({ cwd: startedIn, script: scriptCommand() })
-})
-
-const configFailure = (error: Config.ConfigError) =>
-  Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new ExitCode({ code: 1 }))))
-
-/** Changes to these files can affect any test: `--changed` then runs everything. */
-const affectsEverything = (file: string, rootConfig: string | undefined) =>
-  file === rootConfig ||
-  /^(package\.json|tsconfig.*\.json|pnpm-lock\.yaml|package-lock\.json|yarn\.lock|bun\.lockb?|deno\.lock)$/
-    .test(path.basename(file))
-
 /** The `etest` command itself: run the tests. `etest serve` runs this on forwarded arguments. */
 export const command = Command.make("etest", {
   paths,
@@ -179,119 +105,35 @@ export const command = Command.make("etest", {
   noServer
 }).pipe(
   Command.withDescription("Run Effect-native tests"),
-  Command.withHandler(Effect.fnUntraced(function*(options) {
-    const invocation = yield* Invocation
-    const ws = yield* Config.workspace(invocation.cwd, options).pipe(Effect.catchTag("ConfigError", configFailure))
-    const root = ws.root.dir
-    // a run anchors at the workspace root: the working directory, and what paths are relative to
-    if (process.cwd() !== root) process.chdir(root)
-    const here = path.resolve(invocation.cwd)
-    const fromRoot = (p: string) => path.relative(root, path.resolve(invocation.cwd, p)) || "."
-    const output = yield* Output
-    const write = output.out
-    // paths given on the command line replace the config's. Without any: at a project's root, its
-    // `paths`; anywhere below one (or above the workspace), the working directory
-    const projectHere = here === root || !isWithin(here, root)
-      ? ws.root
-      : yield* ws.at(here).pipe(Effect.catchTag("ConfigError", configFailure))
-    let paths = options.paths.length > 0
-      ? options.paths.map(fromRoot)
-      : projectHere === undefined
-      ? [fromRoot(".")]
-      : (projectHere.paths ?? (projectHere === ws.root ? [] : ["."])).map((p) =>
-        path.relative(root, path.resolve(projectHere.dir, p)) || "."
-      )
-    let ids: ReadonlySet<string> | undefined
-    const selectedBy: Array<string> = []
-    const results = Results.read()
-    if (options.failed) {
-      if (results === undefined) {
-        yield* Console.error(`--failed: no previous run recorded (${Results.location})`)
-        return yield* new ExitCode({ code: 1 })
-      }
-      // without paths: the failures recorded under the working directory (all of them at the workspace root)
-      const scope = options.paths.length > 0 || here === root || !isWithin(here, root) ? root : here
-      const entries = [...results].filter(([, e]) => Results.failing(e.status) && isWithin(path.resolve(e.file), scope))
-      if (entries.length === 0) {
-        yield* Console.log("--failed: no failing tests recorded; nothing to re-run")
-        return
-      }
-      ids = new Set(entries.map(([key]) => key))
-      selectedBy.push(`--failed (${entries.length} recorded)`)
-      if (options.paths.length === 0) paths = [...new Set(entries.map(([, { file }]) => file))]
-    }
-    const sinceRef = Option.getOrUndefined(options.since)
-    if (options.changed || sinceRef !== undefined) {
-      const label = sinceRef === undefined ? "--changed" : `--since ${sinceRef}`
-      const changedFiles = yield* Effect.try(() => Changed.changedFiles(process.cwd(), sinceRef)).pipe(
-        Effect.catch((error) =>
-          Console.error(`${label}: could not ask git for changes: ${String(error.cause)}`).pipe(
-            Effect.andThen(Effect.fail(new ExitCode({ code: 1 })))
-          )
-        )
-      )
-      if (changedFiles.size === 0) {
-        yield* Console.log(`${label}: no changed files; nothing to run`)
-        return
-      }
-      const everything = [...changedFiles].find((file) => affectsEverything(file, ws.config.file))
-      if (everything !== undefined) {
-        selectedBy.push(`${label} (${path.relative(root, everything)} changed: every test is affected)`)
-      } else {
-        const { files } = yield* discover(paths, ws).pipe(Effect.catchTag("ConfigError", configFailure))
-        // a nested project's own config affects that project's tests (the workspace's affects all, above)
-        const hit = new Set(
-          files.flatMap(({ file, project }) =>
-            project.config !== undefined && changedFiles.has(project.config) ? [file] : []
-          )
-        )
-        for (const file of Changed.affected(files.map((f) => f.file), changedFiles, root)) hit.add(file)
-        if (hit.size === 0) {
-          yield* Console.log(
-            `${label}: no test file is affected by the changes (${changedFiles.size} changed, ${files.length} test files searched); nothing to run`
-          )
-          return
-        }
-        paths = [...hit].sort().map((file) => path.relative(root, file))
-        selectedBy.push(`${label} (${changedFiles.size} changed files)`)
-      }
-    }
-    // a rerun hint repeats how this run was started, with paths relative to where it was
-    const relativeBin = path.relative(invocation.cwd, bin)
-    const start = invocation.script ?? `${launcher} ${relativeBin.length < bin.length ? relativeBin : bin}`
-    const ctx: Reporters.ReporterContext = {
-      write,
-      rerun: (t, runSeed) =>
-        `${start} ${path.relative(invocation.cwd, path.resolve(root, t.file))} --test ${t.shortId} --seed ${runSeed}`
-    }
-    const workerCount = Option.getOrElse(options.workers, () => ws.config.workers ?? Config.BUILTIN_WORKERS)
-    const reporter = options.reporter === "human"
-      ? Reporters.human(ctx)
-      : options.reporter === "jsonl"
-      ? Reporters.jsonl(ctx)
-      : Reporters.agent(ctx)
-    const code = yield* run({
-      paths,
-      list: options.list,
-      listJson: options.reporter === "jsonl",
+  Command.withHandler(({ noServer: _, ...options }) =>
+    Run.execute({
+      ...options,
       test: Option.getOrUndefined(options.test),
+      since: Option.getOrUndefined(options.since),
       tag: Option.getOrUndefined(options.tag),
-      ids,
-      selectedBy,
-      seed: Option.getOrElse(options.seed, () => Math.floor(Math.random() * 100_000)),
-      testsPerFile: TESTS_PER_FILE,
-      bail: options.bail,
-      root,
-      config: ws.config.file,
-      projects: ws,
-      history: (key) => results?.get(key),
-      reporter: options.list ? reporter : Results.recording(reporter, results),
-      write
+      seed: Option.getOrUndefined(options.seed),
+      workers: Option.getOrUndefined(options.workers),
+      config: Option.getOrUndefined(options.config)
+    })
+  )
+)
+
+/** `etest config`: print the resolved config of the project here, with where each value comes from. */
+export const configCommand = Command.make("config", {}).pipe(
+  Command.withDescription(
+    "Show the test config this directory resolves to (workspace and project), and where each value comes from"
+  ),
+  Command.withHandler(() =>
+    Effect.gen(function*() {
+      const cwd = process.cwd()
+      const ws = yield* Workspace.workspace(cwd)
+      yield* Console.log(Workspace.describe(ws, yield* ws.of(cwd)).join("\n"))
     }).pipe(
-      Effect.scoped,
-      Effect.provide((yield* Executors).layer(workerCount)),
-      Effect.catchTag("ConfigError", configFailure)
+      Effect.catchTag(
+        "ConfigError",
+        (error) =>
+          Console.error(`etest: ${error.message}`).pipe(Effect.andThen(Effect.fail(new Run.ExitCode({ code: 1 }))))
+      )
     )
-    if (code !== 0) return yield* new ExitCode({ code })
-  }))
+  )
 )

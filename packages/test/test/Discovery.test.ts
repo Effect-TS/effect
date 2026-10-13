@@ -3,43 +3,44 @@ import * as Exit from "effect/Exit"
 import * as path from "node:path"
 import * as Assert from "../src/Assert.ts"
 import * as Config from "../src/cli/Config.ts"
-import { builtinDefaults, discover, globToRegExp, type Project } from "../src/Coordinator.ts"
+import * as Workspace from "../src/cli/Workspace.ts"
+import { builtinDefaults } from "../src/Coordinator.ts"
 import * as Matcher from "../src/Matcher.ts"
 import * as Test from "../src/Test.ts"
 
 const tree = "test/fixtures/tree"
 /** A workspace of one project, the working directory, with these excludes. */
-const workspace = (exclude: ReadonlyArray<string> = []) => {
-  const project: Project = {
+const workspace = (exclude: ReadonlyArray<string> = []): Workspace.Workspace => {
+  const project: Workspace.Project = {
     key: ".",
     dir: process.cwd(),
-    config: undefined,
     configs: [],
     paths: undefined,
     exclude,
-    defaults: builtinDefaults
+    defaults: builtinDefaults,
+    own: Config.none
   }
-  return { at: () => Effect.succeed(undefined), of: () => Effect.succeed(project) }
+  return { root: project, config: Config.none, at: () => Effect.succeed(undefined), of: () => Effect.succeed(project) }
 }
 const found = (paths: ReadonlyArray<string>, exclude?: ReadonlyArray<string>) =>
-  Effect.map(discover(paths, workspace(exclude)), ({ empty, files, missing }) => ({
+  Effect.map(Workspace.discover(workspace(exclude), paths), ({ empty, files, missing }) => ({
     files: files.map((f) => path.relative(process.cwd(), f.file)),
     missing,
     empty
   }))
 const configs = path.join(import.meta.dirname, "fixtures/configs")
 const load = (name: string) => Effect.exit(Config.load(path.join(configs, name), configs))
-const workspaceOf = (name: string) => Config.workspaceAt(path.join(configs, name), configs)
+const workspaceOf = (name: string) => Workspace.workspaceAt(path.join(configs, name), configs)
 
 export default Test.suite("discovery and config", [
   Test.test("globs: * within a segment, ** across segments", () => {
-    Assert.isTrue(globToRegExp("**/fixtures/**").test("test/fixtures/a.test.ts"))
-    Assert.isTrue(globToRegExp("**/fixtures/**").test("fixtures/a.test.ts"))
-    Assert.isFalse(globToRegExp("**/fixtures/**").test("test/myfixtures/a.test.ts"))
-    Assert.isTrue(globToRegExp("test/*.test.ts").test("test/a.test.ts"))
-    Assert.isFalse(globToRegExp("test/*.test.ts").test("test/sub/a.test.ts"))
-    Assert.isTrue(globToRegExp("a.b?").test("a.bc"))
-    Assert.isFalse(globToRegExp("a.b").test("axb"))
+    Assert.isTrue(Workspace.globToRegExp("**/fixtures/**").test("test/fixtures/a.test.ts"))
+    Assert.isTrue(Workspace.globToRegExp("**/fixtures/**").test("fixtures/a.test.ts"))
+    Assert.isFalse(Workspace.globToRegExp("**/fixtures/**").test("test/myfixtures/a.test.ts"))
+    Assert.isTrue(Workspace.globToRegExp("test/*.test.ts").test("test/a.test.ts"))
+    Assert.isFalse(Workspace.globToRegExp("test/*.test.ts").test("test/sub/a.test.ts"))
+    Assert.isTrue(Workspace.globToRegExp("a.b?").test("a.bc"))
+    Assert.isFalse(Workspace.globToRegExp("a.b").test("axb"))
   }),
   Test.test(
     "directories are searched, skipping node_modules and dot-directories",
@@ -106,24 +107,24 @@ export default Test.suite("discovery and config", [
           shared: 1
         })
       )
-      Assert.includes(Config.describe(yield* workspaceOf("valid.ts")), "workers: 3 (valid.ts; --workers overrides)")
+      Assert.includes(Workspace.describe(yield* workspaceOf("valid.ts")), "workers: 3 (valid.ts; --workers overrides)")
     })
   ),
   Test.test(
-    "an unknown key is an error, with a hint",
+    "an unknown key is an error (the config is decoded with the Test.Config Schema)",
     Effect.gen(function*() {
       const error = Assert.failure(yield* load("unknown-key.ts"))
-      Assert.match(
-        error.message,
-        /^unknown-key\.ts: unknown key "timeout" \(did you mean `defaults: \{ timeout: \.\.\. \}`\?\)/
-      )
+      Assert.equal(error.message, "unknown-key.ts: Expected no excess property\n  at [\"timeout\"]")
     })
   ),
   Test.test(
-    "a bad value is an error",
+    "a bad value is an error, at its path",
     Effect.gen(function*() {
       const error = Assert.failure(yield* load("bad-retries.ts"))
-      Assert.equal(error.message, "bad-retries.ts: `defaults.retries` must be a whole number, at least 0")
+      Assert.equal(
+        error.message,
+        "bad-retries.ts: Expected a value greater than or equal to 0\n  at [\"defaults\"][\"retries\"]"
+      )
     })
   ),
   Test.test(
@@ -136,9 +137,7 @@ export default Test.suite("discovery and config", [
   Test.test(
     "--config and --no-config together are an error",
     Effect.gen(function*() {
-      const exit = yield* Effect.exit(
-        Config.locate(".", { config: { _tag: "Some", value: "x" } as any, noConfig: true })
-      )
+      const exit = yield* Effect.exit(Workspace.locate(".", { config: "x", noConfig: true }))
       Assert.match(Assert.failure(exit).message, /contradict/)
       Assert.isTrue(Exit.isFailure(exit))
     })

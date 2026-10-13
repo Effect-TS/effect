@@ -131,7 +131,9 @@ again).
 - `previousAttempts[]`: the statuses of earlier attempts. A `passed` test with earlier failures is flaky.
 - `console[]`: the test's captured Effect `Console` output.
 - `assertions` (optional): how many `Assert.*` calls the test's last attempt made.
-- `skipReason`: why the test was skipped. `not run: --bail` / `not run: Ctrl-C` means it never started.
+- `skipReason`: why the test was skipped. `not run: bail` / `not run: cancellation` (Ctrl-C, or a cancelled
+  request) means it never started; a test that had started is `interrupted` with `interrupted by bail` /
+  `interrupted by cancellation`.
 
 ## `RunFinished`
 
