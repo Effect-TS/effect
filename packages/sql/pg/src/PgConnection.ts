@@ -206,7 +206,9 @@ export interface PgConnection {
    * Once the scope closes, statements through the returned connection fail
    * and its `interrupt` does nothing, so work that outlives the pin cannot
    * reach the next owner. A session released with a statement still on the
-   * wire is closed rather than handed on.
+   * wire, or with a listener registered through the returned connection whose
+   * scope is still open, is closed rather than handed on; such a listener's
+   * queue fails with the resulting `SqlError`.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -760,15 +762,22 @@ class PgConnectionImpl implements PgConnection {
           return this.wire.takeIfAvailable(1)
         }),
         (idle) => {
-          if (idle) return Effect.andThen(this.wire.release(1), this.owner.release(1))
-          // Work through the released view still holds the wire. Waiting could
-          // take as long as the caller keeps it, and lending the session would
-          // let its results land in the next owner's statements.
+          // Work through the released view may still hold the wire, or a
+          // listener it registered may still be open. Waiting could take as
+          // long as the caller keeps it, and lending the session would hand its
+          // results or subscriptions to the next owner. `UNLISTEN` cannot run
+          // here either, since the view no longer owns the session.
+          const leftover = !idle
+            ? "a statement in flight"
+            : view.listeners > 0
+            ? "a listener still registered"
+            : undefined
+          if (leftover === undefined) return Effect.andThen(this.wire.release(1), this.owner.release(1))
           this.fatal(connectionQueryError(
-            new Error("Pinned connection released with a statement in flight"),
-            "PgConnection: Pinned connection released with a statement in flight"
+            new Error(`Pinned connection released with ${leftover}`),
+            `PgConnection: Pinned connection released with ${leftover}`
           ))
-          return this.owner.release(1)
+          return idle ? Effect.andThen(this.wire.release(1), this.owner.release(1)) : this.owner.release(1)
         }
       )
   )
@@ -820,6 +829,8 @@ class PinnedPgConnection implements PgConnection {
   readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>
   /** Set when the pin that issued this view ends; never cleared. */
   released = false
+  /** Listeners registered through this view whose scopes are still open. */
+  listeners = 0
 
   constructor(base: PgConnectionImpl) {
     this.base = base
@@ -1912,9 +1923,11 @@ const listenChannel = (
           conn.channels.set(channel, queues)
         }
         queues.add(queue)
+        pinned.listeners++
         yield* Scope.addFinalizer(
           scope,
           Effect.suspend(() => {
+            pinned.listeners--
             const current = conn.channels.get(channel)
             if (current === undefined) return Queue.shutdown(queue)
             current.delete(queue)
