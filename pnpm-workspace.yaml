@@ -59,4 +59,4 @@ overrides:
   # alchemy's dependency tree pulls @types/ssh2, whose @types/node@18 would
   # otherwise join the shared tests compilation and clash with the workspace
   # @types/node globals.
-  '@types/ssh2>@types/node': ^26.6.3
+  '@types/ssh2>@types/node': ^26.6.5
