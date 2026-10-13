@@ -255,63 +255,44 @@ describe("NodeFileSystem precision", { concurrent: false }, () => {
       }).pipe(Effect.provide(NodeFileSystem.layer)))
 
     for (
-      const { dev, expected, name } of [
-        { name: "accepts dev above MAX_SAFE_INTEGER", dev: maxSafe + 1n, expected: 9007199254740992 },
-        { name: "interprets signed dev as unsigned 64-bit", dev: -2n, expected: 18446744073709551616 }
+      const { expected, name, value } of [
+        { name: "preserves metadata above MAX_SAFE_INTEGER", value: maxSafe + 1n, expected: 9007199254740992n },
+        { name: "interprets signed identifiers as unsigned 64-bit", value: -2n, expected: 18446744073709551614n }
       ]
     ) {
       it.effect(`${method} ${name}`, () =>
         Effect.gen(function*() {
-          state.values.dev = dev
+          Object.assign(state.values, { dev: value, ino: value, rdev: value, nlink: value, blocks: value })
           const info = yield* getInfo
           assert.strictEqual(info.dev, expected)
+          for (const field of ["ino", "rdev", "nlink"] as const) {
+            assert.deepStrictEqual(info[field], Option.some(expected), field)
+          }
+          assert.deepStrictEqual(info.blocks, Option.some(value))
         }).pipe(Effect.provide(NodeFileSystem.layer)))
     }
 
-    it.effect(`${method} omits only the overflowing optional field`, () =>
+    it.effect(`${method} preserves numeric ownership metadata`, () =>
       Effect.gen(function*() {
-        Object.assign(state.values, { ino: maxSafe + 1n, nlink: 3n, uid: 1000n, gid: 1001n, rdev: 0n, blocks: 8n })
+        Object.assign(state.values, { uid: 1000n, gid: 1001n })
         const info = yield* getInfo
-        assert.deepStrictEqual(info.ino, Option.none())
-        assert.deepStrictEqual(info.nlink, Option.some(3))
         assert.deepStrictEqual(info.uid, Option.some(1000))
         assert.deepStrictEqual(info.gid, Option.some(1001))
-        assert.deepStrictEqual(info.rdev, Option.some(0))
-        assert.deepStrictEqual(info.blocks, Option.some(8))
+      }).pipe(Effect.provide(NodeFileSystem.layer)))
+
+    it.effect(`${method} omits missing optional metadata`, () =>
+      Effect.gen(function*() {
+        const fields = ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const
+        for (const field of fields) {
+          delete state.values[field]
+        }
+        const info = yield* getInfo
+        for (const field of fields) {
+          assert.deepStrictEqual(info[field], Option.none(), field)
+        }
         assert.strictEqual(info.type, "File")
         assert.strictEqual(info.size, ByteSize.bytes(4n))
         assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
       }).pipe(Effect.provide(NodeFileSystem.layer)))
-
-    for (
-      const { expected, name, value } of [
-        {
-          name: "preserves optional metadata at MAX_SAFE_INTEGER",
-          value: maxSafe,
-          expected: Option.some(Number.MAX_SAFE_INTEGER)
-        },
-        { name: "omits optional metadata above MAX_SAFE_INTEGER", value: maxSafe + 1n, expected: Option.none() },
-        { name: "omits missing optional metadata", value: undefined, expected: Option.none() }
-      ]
-    ) {
-      it.effect(`${method} ${name}`, () =>
-        Effect.gen(function*() {
-          const fields = ["ino", "nlink", "uid", "gid", "rdev", "blocks"] as const
-          for (const field of fields) {
-            if (value === undefined) {
-              delete state.values[field]
-            } else {
-              state.values[field] = value
-            }
-          }
-          const info = yield* getInfo
-          for (const field of fields) {
-            assert.deepStrictEqual(info[field], expected, field)
-          }
-          assert.strictEqual(info.type, "File")
-          assert.strictEqual(info.size, ByteSize.bytes(4n))
-          assert.deepStrictEqual(info.mtime, Option.some(new Date(0)))
-        }).pipe(Effect.provide(NodeFileSystem.layer)))
-    }
   }
 })
