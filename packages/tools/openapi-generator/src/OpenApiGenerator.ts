@@ -295,7 +295,11 @@ const parseOpenApi = (
           in: parameter.in,
           required: parameter.required === true,
           description: Utils.nonEmptyString(parameter.description),
-          schema: parameter.schema
+          schema: parameter.schema,
+          ...effectiveParameterSerialization(parameter)
+        }
+        if (isNonExplodedFormQueryParameter(parameter)) {
+          op.urlParamsCsv.push(parameter.name)
         }
         switch (parameter.in) {
           case "path": {
@@ -697,6 +701,8 @@ interface OpenApiParameter {
   readonly required: boolean
   readonly schema: {}
   readonly description?: string | undefined
+  readonly style?: ParsedOperation.OpenApiParameterStyle | undefined
+  readonly explode?: boolean | undefined
 }
 
 const isOpenApiParameter = (parameter: unknown): parameter is OpenApiParameter => {
@@ -737,6 +743,37 @@ const resolveOperationParameters = (
   }
 
   return [...resolved.values()]
+}
+
+/**
+ * Applies the OpenAPI serialization defaults recorded for a parameter.
+ *
+ * Query parameters default to `style: "form"`, which in turn defaults `explode`
+ * to `true`. Other locations keep the declared values untouched.
+ */
+const effectiveParameterSerialization = (parameter: OpenApiParameter): {
+  readonly style: ParsedOperation.OpenApiParameterStyle | undefined
+  readonly explode: boolean | undefined
+} => {
+  if (parameter.in !== "query") {
+    return { style: parameter.style, explode: parameter.explode }
+  }
+  const style = parameter.style ?? "form"
+  return { style, explode: parameter.explode ?? style === "form" }
+}
+
+/**
+ * Records parameters whose scalar array values use comma-separated serialization.
+ *
+ * The generated serializer checks the value rather than the schema syntax. This
+ * also handles arrays described by references, unions, intersections and nullable
+ * schemas without duplicating the schema importer's normalization logic.
+ */
+const isNonExplodedFormQueryParameter = (parameter: OpenApiParameter): boolean => {
+  const serialization = effectiveParameterSerialization(parameter)
+  return parameter.in === "query" &&
+    serialization.style === "form" &&
+    serialization.explode === false
 }
 
 const buildParameterSchema = <

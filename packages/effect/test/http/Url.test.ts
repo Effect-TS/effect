@@ -38,6 +38,19 @@ describe("Url", () => {
       assertTrue(Result.isFailure(result))
       assertInstanceOf(result.failure, Url.UrlError)
     })
+
+    it("preserves existing query delimiters and escapes when appending parameters", () => {
+      const result = Url.make(
+        "https://example.com/test?tags=a%2Cb,c&space=a%20b&escaped=%252C#original",
+        UrlParams.fromInput({ token: "x+y", tags: "d,e" }),
+        undefined
+      )
+      assertTrue(Result.isSuccess(result))
+      strictEqual(
+        result.success.href,
+        "https://example.com/test?tags=a%2Cb,c&space=a%20b&escaped=%252C&token=x%2By&tags=d%2Ce#original"
+      )
+    })
   })
 
   describe("fromString", () => {
