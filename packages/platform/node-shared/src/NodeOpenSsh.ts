@@ -98,8 +98,10 @@ const baseArguments = (
   }
   // Commands only receive the agent when the master forwards it.
   if (destination.forwardAgent === true) args.push("-o", "ForwardAgent=yes")
-  // `ssh` must fail instead of prompting for passwords or host keys.
-  args.push("-o", "BatchMode=yes", "-o", "LogLevel=ERROR")
+  // `ssh` must fail instead of prompting for passwords or host keys, and
+  // the forwardings of the user's configuration are left to their own `ssh`,
+  // so concurrent masters do not compete for the same ports.
+  args.push("-o", "BatchMode=yes", "-o", "ClearAllForwardings=yes", "-o", "LogLevel=ERROR")
   return Result.succeed(args)
 }
 
@@ -257,6 +259,15 @@ const sshString = (value: string | Uint8Array) => {
   return concat(uint32(bytes.length), bytes)
 }
 
+/**
+ * Rejects text with NUL characters, on which OpenSSH servers drop the whole
+ * connection.
+ */
+const withoutNul = (value: string, name: string): Effect.Effect<string, Ssh.SshError> =>
+  value.includes("\0")
+    ? Effect.fail(new Ssh.SshError({ reason: "Channel", description: `${name} contains a NUL character` }))
+    : Effect.succeed(value)
+
 const empty = new Uint8Array(0)
 
 /** Terminal modes (RFC 4254 section 8): none, so the server's defaults apply. */
@@ -267,10 +278,13 @@ const invalidTarget = (error: NetAddress.NetAddressError) =>
 
 const targetFromInput = (
   target: Ssh.ForwardTarget
-): Result.Result<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
+): Effect.Effect<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
   typeof target === "object" && "path" in target
-    ? Result.succeed(NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(target.path))
-    : Result.mapError(Host.hostPortFromInput(target), invalidTarget)
+    ? Effect.map(
+      withoutNul(target.path, "the socket path"),
+      (path) => NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(path)
+    )
+    : Effect.fromResult(Result.mapError(Host.hostPortFromInput(target), invalidTarget))
 
 const toStream = (channel: SshConnectionProtocol.SshChannel): Ssh.SshStream => ({
   stdout: channel.stdout,
@@ -278,7 +292,8 @@ const toStream = (channel: SshConnectionProtocol.SshChannel): Ssh.SshStream => (
   stdin: Sink.forEach(channel.write).pipe(Sink.mapEffect(() => channel.eof)),
   write: channel.write,
   eof: channel.eof,
-  close: channel.close
+  close: channel.close,
+  closed: channel.closed
 })
 
 /** Runs commands, subsystems, and tunnels as channels opened with `open`. */
@@ -299,16 +314,19 @@ const makeConnection = (
     command: string,
     options: { readonly pty?: boolean | Ssh.PtyOptions | undefined }
   ) {
+    const term = yield* withoutNul(
+      (typeof options.pty === "object" ? options.pty.term : undefined) ?? "xterm",
+      "pty.term"
+    )
     const channel = yield* session(Effect.fnUntraced(function*(channel) {
       // Like OpenSSH's client, commands run without the agent when the
       // server refuses it.
       if (destination.forwardAgent === true) yield* channel.request("auth-agent-req@openssh.com", empty, false)
       if (options.pty !== undefined && options.pty !== false) {
-        const term = typeof options.pty === "object" ? options.pty.term : undefined
         yield* channel.request(
           "pty-req",
           concat(
-            sshString(term ?? "xterm"),
+            sshString(term),
             uint32(80),
             uint32(24),
             uint32(0),
@@ -324,17 +342,21 @@ const makeConnection = (
       ...toStream(channel),
       exit: channel.exit,
       signal: (signal: string) =>
-        channel.request("signal", sshString(signal.startsWith("SIG") ? signal.slice(3) : signal), false)
+        Effect.flatMap(
+          withoutNul(signal.startsWith("SIG") ? signal.slice(3) : signal, "the signal name"),
+          (name) => channel.request("signal", sshString(name), false)
+        )
     } satisfies Ssh.SshProcess
   })
 
   const subsystem = Effect.fnUntraced(function*(name: string) {
+    yield* withoutNul(name, "the subsystem name")
     const channel = yield* session((channel) => channel.request("subsystem", sshString(name), true))
     return toStream(channel)
   })
 
   const forwardOut = Effect.fnUntraced(function*(target: Ssh.ForwardTarget) {
-    const address = yield* Effect.fromResult(targetFromInput(target))
+    const address = yield* targetFromInput(target)
     const channel = NetAddress.isUnixPathAddress(address)
       ? yield* open("direct-streamlocal@openssh.com", concat(sshString(address.path), sshString(""), uint32(0)))
       : yield* open(
@@ -358,7 +380,9 @@ const makeConnection = (
  * `-F`, `options` are `-o Name=value` with the value in `ssh_config` syntax,
  * and `BatchMode=yes` applies unless
  * `options` set `BatchMode`, so `ssh` fails instead of prompting for
- * passwords or host keys. Authentication or host key failures fail with a
+ * passwords or host keys. Likewise `ClearAllForwardings=yes` applies, so
+ * the master does not open the port forwardings of the user's configuration.
+ * Authentication or host key failures fail with a
  * `Connection` error describing the `ssh` diagnostics. Closing the scope
  * stops the master.
  *
@@ -386,6 +410,11 @@ const makeConnection = (
  * - Output that is not consumed stops the command once the channel's
  *   window, two megabytes, is full, like a full pipe. Standard output and
  *   standard error share the window, so both must be consumed.
+ * - All commands, subsystems, and tunnels of a connection share it, and
+ *   OpenSSH servers limit the sessions of a connection (`MaxSessions`,
+ *   default 10); further sessions fail with a `Channel` error. A closed
+ *   session whose command keeps running still counts until the command
+ *   exits.
  *
  * @stability experimental
  * @category constructors
@@ -443,30 +472,48 @@ export const make: Effect.Effect<Ssh.Ssh["Service"], never, ChildProcessSpawner 
         }),
         Effect.flatMap(openProxy)
       )
+      // The master's stderr ends with the process; collect all of it,
+      // unless a process the master started keeps it open.
+      const awaitDiagnostics = Effect.timeoutOption(Fiber.await(collector), Duration.seconds(1))
+      const withDiagnostics = (description: string) => [description, diagnostics.trim()].filter(Boolean).join(": ")
       const exited = master.exitCode.pipe(
         Effect.ignore,
-        // The master's stderr ends with the process; collect all of it,
-        // unless a process the master started keeps it open.
-        Effect.andThen(Effect.timeoutOption(Fiber.await(collector), Duration.seconds(1))),
+        Effect.andThen(awaitDiagnostics),
         Effect.andThen(() => Effect.fail(connectionError(diagnostics.trim() || "ssh exited before connecting")))
       )
       const proxy = yield* Effect.raceFirst(connected, exited).pipe(
         Effect.timeoutOrElse({
           duration: timeout,
+          // The master may have reported why, for example that it could not
+          // create the control socket.
           orElse: () =>
             Effect.fail(
-              new Ssh.SshError({ reason: "Timeout", description: "the OpenSSH connection did not start in time" })
+              new Ssh.SshError({
+                reason: "Timeout",
+                description: withDiagnostics("the OpenSSH connection did not start in time")
+              })
             )
         })
       )
       // The master closes the connection when it exits, for example when the
       // server goes away.
-      const closed = Effect.suspend(() =>
-        Effect.fail(
-          connectionError(["the OpenSSH master closed the connection", diagnostics.trim()].filter(Boolean).join(": "))
-        )
+      const closed = Effect.andThen(
+        awaitDiagnostics,
+        () => Effect.fail(connectionError(withDiagnostics("the OpenSSH master closed the connection")))
       )
-      return { send: proxy.send, messages: Stream.concat(proxy.messages, Stream.fromEffect(closed)) }
+      const messages = proxy.messages.pipe(
+        Stream.catch((error) =>
+          Stream.fromEffect(Effect.andThen(
+            awaitDiagnostics,
+            () =>
+              Effect.fail(
+                error.reason === "Connection" ? connectionError(withDiagnostics(error.description), error.cause) : error
+              )
+          ))
+        ),
+        Stream.concat(Stream.fromEffect(closed))
+      )
+      return { send: proxy.send, messages }
     })
 
     const connect = (destination: Ssh.Destination): Effect.Effect<Ssh.SshConnection, Ssh.SshError, Scope.Scope> =>

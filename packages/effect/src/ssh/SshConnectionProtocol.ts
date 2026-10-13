@@ -89,7 +89,10 @@ export type ProtocolChannel = Channel.Channel<
  *   which both share, so data that is not consumed, on either of them,
  *   eventually stops the server from sending.
  * - `write` sends data, waiting while the server's window is full, and `eof`
- *   ends the client's data. Concurrent writes are sent one after another.
+ *   ends the client's data once pending writes are sent. Concurrent writes
+ *   are sent one after another, and an interrupted write may have sent part
+ *   of its data. Both fail with a `Channel` error once the channel is
+ *   closed, and writes also once `eof` was sent.
  * - `request` sends a channel request, such as `exec`, with its
  *   type-specific fields encoded as SSH wire types (RFC 4251). With
  *   `wantReply`, it waits for the reply and fails with a `Channel` error when
@@ -99,6 +102,8 @@ export type ProtocolChannel = Channel.Channel<
  *   prefix, such as `SIGTERM`.
  * - `close` closes the channel; afterwards writes and requests fail with a
  *   `Channel` error.
+ * - `closed` waits until the channel is closed, by either side or with the
+ *   connection.
  *
  * @stability experimental
  * @category models
@@ -112,6 +117,7 @@ export interface SshChannel {
   readonly close: Effect.Effect<void>
   readonly request: (name: string, data: Uint8Array, wantReply: boolean) => Effect.Effect<void, SshError>
   readonly exit: Effect.Effect<SessionExit, SshError>
+  readonly closed: Effect.Effect<void>
 }
 
 /**
@@ -324,6 +330,8 @@ interface ChannelState {
   abandoned: boolean
   eofSent: boolean
   closeSent: boolean
+  /** The data the server may still send. */
+  localWindow: number
   /** Consumed data not yet returned to the server's window. */
   consumed: number
   /** Requests sent with `wantReply` and not yet answered. */
@@ -365,13 +373,16 @@ export interface Options {
  * - `request` sends a channel request; with `wantReply`, a `Reply` event
  *   answers it.
  * - `eof` ends the client's data.
- * - `close` closes a channel. Its messages are ignored afterwards, and it is
- *   forgotten once the server closes it too. A channel the server has not
+ * - `close` closes a channel. Its messages are ignored afterwards, except
+ *   that requests wanting a reply are refused until the server closes it
+ *   too, after which it is forgotten. A channel the server has not
  *   confirmed yet is closed as soon as it is, without events.
  * - `consume` records data the caller has consumed, returning it to the
  *   server's window once half of the window is used.
  * - `receive` handles a message from the server. Global requests are refused
- *   and channels opened by the server are rejected.
+ *   and channels opened by the server are rejected. Data beyond the window
+ *   or larger than the maximum packet size is a violation, so unconsumed
+ *   data stays bounded.
  *
  * @internal
  */
@@ -384,6 +395,12 @@ export class ConnectionState {
   constructor(options?: Options) {
     this.window = options?.window ?? 2 * 1024 * 1024
     this.maxPacket = options?.maxPacket ?? 32 * 1024
+    // Windows and packets are uint32 values, and no data fits in empty packets.
+    for (const value of [this.window, this.maxPacket]) {
+      if (!Number.isInteger(value) || value < 1 || value > 0xffffffff) {
+        throw new RangeError(`invalid window or maximum packet size: ${value}`)
+      }
+    }
   }
 
   open(
@@ -400,6 +417,7 @@ export class ConnectionState {
       abandoned: false,
       eofSent: false,
       closeSent: false,
+      localWindow: this.window,
       consumed: 0,
       pendingReplies: 0
     })
@@ -478,6 +496,7 @@ export class ConnectionState {
     if (state.consumed < this.window / 2) return []
     const consumed = state.consumed
     state.consumed = 0
+    state.localWindow += consumed
     return [new MessageWriter(MSG_CHANNEL_WINDOW_ADJUST).uint32(state.remote).uint32(consumed).finish()]
   }
 
@@ -492,6 +511,13 @@ export class ConnectionState {
       throw cause
     }
     return { _tag: "Handled", messages, events }
+  }
+
+  /** Takes received data from the window, which bounds unconsumed data. */
+  private receiveData(state: ChannelState, data: Uint8Array): string | undefined {
+    if (data.length > this.maxPacket) return "data larger than the maximum packet size"
+    if (data.length > state.localWindow) return "data beyond the window"
+    state.localWindow -= data.length
   }
 
   private handle(reader: MessageReader, messages: Array<Uint8Array>, events: Array<Event>): string | undefined {
@@ -520,8 +546,12 @@ export class ConnectionState {
     if (!state.confirmed && type !== MSG_CHANNEL_OPEN_CONFIRMATION && type !== MSG_CHANNEL_OPEN_FAILURE) {
       return "message for an unconfirmed channel"
     }
-    // After closing, only the server's confirmation and close matter.
-    if (state.closeSent && type !== MSG_CHANNEL_CLOSE && type !== MSG_CHANNEL_OPEN_CONFIRMATION) return
+    // After closing, only the server's confirmation, close, and requests
+    // matter.
+    if (
+      state.closeSent && type !== MSG_CHANNEL_CLOSE && type !== MSG_CHANNEL_OPEN_CONFIRMATION &&
+      type !== MSG_CHANNEL_REQUEST
+    ) return
     switch (type) {
       case MSG_CHANNEL_OPEN_CONFIRMATION: {
         if (state.confirmed) return "duplicate channel confirmation"
@@ -554,12 +584,17 @@ export class ConnectionState {
         return
       }
       case MSG_CHANNEL_DATA: {
-        events.push({ _tag: "Data", channel, stream: "stdout", data: reader.bytesField() })
+        const data = reader.bytesField()
+        const violation = this.receiveData(state, data)
+        if (violation !== undefined) return violation
+        events.push({ _tag: "Data", channel, stream: "stdout", data })
         return
       }
       case MSG_CHANNEL_EXTENDED_DATA: {
         const code = reader.uint32()
         const data = reader.bytesField()
+        const violation = this.receiveData(state, data)
+        if (violation !== undefined) return violation
         if (code === EXTENDED_DATA_STDERR) events.push({ _tag: "Data", channel, stream: "stderr", data })
         else messages.push(...this.consume(channel, data.length))
         return
@@ -580,6 +615,14 @@ export class ConnectionState {
       case MSG_CHANNEL_REQUEST: {
         const name = reader.string()
         const wantReply = reader.bool()
+        if (state.closeSent) {
+          // OpenSSH servers keep a closed session's channel until its command
+          // exits, and probe it with `keepalive@openssh.com`; they drop the
+          // connection when the probes go unanswered. The channel exists
+          // until the server's close, so the refusal is safe to send.
+          if (wantReply) messages.push(new MessageWriter(MSG_CHANNEL_FAILURE).uint32(state.remote).finish())
+          return
+        }
         if (name === "exit-status") {
           events.push({ _tag: "Exit", channel, exit: { _tag: "ExitStatus", code: reader.uint32() } })
         } else if (name === "exit-signal") {
@@ -621,11 +664,14 @@ interface Handle {
   /** Requests waiting for a reply, oldest first. */
   readonly replies: Array<Deferred.Deferred<boolean, SshError>>
   readonly exit: Deferred.Deferred<SessionExit, SshError>
+  readonly closed: Deferred.Deferred<void>
 }
 
 const channelError = (description: string) => new SshError({ reason: "Channel", description })
 
 const closedError = () => channelError("the channel is closed")
+
+const endedError = () => channelError("the end of data was already sent")
 
 const connectionClosed = () => new SshError({ reason: "Connection", description: "the connection closed" })
 
@@ -664,6 +710,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
     for (const reply of handle.replies.splice(0)) Deferred.doneUnsafe(reply, Exit.fail(replyError))
     Deferred.doneUnsafe(handle.opened, Exit.fail(replyError))
     Deferred.doneUnsafe(handle.exit, Exit.fail(error ?? channelError("the channel closed before the command exited")))
+    Deferred.doneUnsafe(handle.closed, Exit.void)
     handle.writable.openUnsafe()
   }
 
@@ -769,11 +816,11 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
       writeLock.withPermit(Effect.suspend(() => {
         let bytes = typeof data === "string" ? encoder.encode(data) : data
         const loop: Effect.Effect<void, SshError> = Effect.suspend(() => {
-          if (bytes.length === 0) return Effect.void
           if (failure !== undefined) return Effect.fail(failure)
-          switch (connection.writeState(id)) {
-            case "Closed":
-              return Effect.fail(closedError())
+          const state = connection.writeState(id)
+          if (state === "Closed") return Effect.fail(connection.isOpen(id) ? endedError() : closedError())
+          if (bytes.length === 0) return Effect.void
+          switch (state) {
             case "Opening":
             case "Blocked": {
               handle.writable.closeUnsafe()
@@ -793,7 +840,12 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
       stdout: consume(handle.stdout),
       stderr: consume(handle.stderr),
       write,
-      eof: Effect.sync(() => emit(connection.eof(id))),
+      // After pending writes, so their data is not cut off.
+      eof: writeLock.withPermit(Effect.suspend(() => {
+        if (failure !== undefined) return Effect.fail(failure)
+        if (!connection.isOpen(id)) return Effect.fail(closedError())
+        return Effect.sync(() => emit(connection.eof(id)))
+      })),
       close: close(id, handle),
       request: (name, data, wantReply) =>
         Effect.suspend(() => {
@@ -808,7 +860,8 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
             (accepted) => accepted ? Effect.void : Effect.fail(channelError(`the server refused the "${name}" request`))
           )
         }),
-      exit: Deferred.await(handle.exit)
+      exit: Deferred.await(handle.exit),
+      closed: Deferred.await(handle.closed)
     }
   }
 
@@ -829,7 +882,8 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
           stdout: yield* Queue.unbounded<Uint8Array, SshError | Cause.Done>(),
           stderr: yield* Queue.unbounded<Uint8Array, SshError | Cause.Done>(),
           replies: [],
-          exit: Deferred.makeUnsafe()
+          exit: Deferred.makeUnsafe(),
+          closed: Deferred.makeUnsafe()
         }
         const { channel: id, messages } = connection.open(type, data)
         handles.set(id, handle)

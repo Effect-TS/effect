@@ -7,11 +7,16 @@ import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChild
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodeOpenSsh from "@effect/platform-node-shared/NodeOpenSsh"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
+import * as NodeSocket from "@effect/platform-node-shared/NodeSocket"
+import * as NodeSocketServer from "@effect/platform-node-shared/NodeSocketServer"
 import { assert, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -216,6 +221,49 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       assert.strictEqual((yield* ssh.run(pipeline)).stdout, `${dir.toUpperCase()}\nEND\n`)
     }).pipe(Effect.scoped), timeout)
 
+  it.effect("keeps shell code as written", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      const name = "a    b"
+      const script = SshCommand.make({ shell: true })`if true; then
+        echo "${name}"   # spaces and newlines survive
+      fi`
+      assert.strictEqual((yield* ssh.run(script)).stdout, "a    b\n")
+      // A trailing comment does not swallow the rest of a pipeline.
+      const commented = SshCommand.make("echo piped # comment", { shell: true }).pipe(
+        SshCommand.pipeTo(SshCommand.make`tr a-z A-Z`)
+      )
+      assert.strictEqual((yield* ssh.run(commented)).stdout, "PIPED\n")
+      const dir = `dir-${yield* Random.nextInt}`
+      yield* ssh.run(SshCommand.make`mkdir ${dir}`)
+      assert.strictEqual((yield* ssh.run(SshCommand.make({ cwd: `~/${dir}` })`pwd`)).stdout, `/home/effect/${dir}\n`)
+    }).pipe(Effect.scoped), timeout)
+
+  it.effect("rejects NUL characters without disturbing the connection", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      // OpenSSH servers drop the whole connection on NUL characters.
+      const running = yield* Effect.tap(ssh.exec(sh("echo ready; exec sleep 30")), firstOutput)
+      const failures = [
+        ssh.run(SshCommand.make("echo", ["a\0b"])),
+        ssh.run(SshCommand.make("echo", { env: { EFFECT_A: "a\0b" } })),
+        ssh.run(SshCommand.make`true`, { pty: { term: "vt100\0" } }),
+        ssh.subsystem("echo\0"),
+        ssh.forwardOut({ path: "/tmp/echo.sock\0" }),
+        running.signal("TERM\0")
+      ]
+      for (const failure of failures) {
+        assert.strictEqual((yield* Effect.flip(Effect.scoped(failure))).reason, "Channel")
+      }
+      yield* running.signal("TERM")
+      assert.deepStrictEqual(yield* running.exit, {
+        _tag: "ExitSignal",
+        signal: "SIGTERM",
+        coreDumped: false,
+        message: ""
+      })
+    }).pipe(Effect.scoped), timeout)
+
   it.effect("runs many commands concurrently", () =>
     Effect.gen(function*() {
       const ssh = yield* connection
@@ -266,9 +314,43 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       const ssh = yield* connection
       const process = yield* Effect.tap(ssh.exec(sh("echo ready; exec sleep 30")), firstOutput)
       yield* process.close
+      yield* process.closed
       assert.strictEqual((yield* Effect.flip(process.exit)).reason, "Channel")
       assert.strictEqual((yield* Effect.flip(process.write("late"))).reason, "Channel")
+      assert.strictEqual((yield* Effect.flip(process.write(""))).reason, "Channel")
+      assert.strictEqual((yield* Effect.flip(process.eof)).reason, "Channel")
+      // Commands that exit are closed by the server.
+      yield* (yield* ssh.exec(SshCommand.make`true`)).closed
       // The connection stays usable.
+      assert.strictEqual((yield* ssh.run(SshCommand.make`echo still`)).stdout, "still\n")
+    }).pipe(Effect.scoped), timeout)
+
+  it.effect("orders the end of data after writes and unblocks writes on close", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      // The write fills the window and waits; the end of data waits for it.
+      const counter = yield* ssh.exec(SshCommand.make`wc -c`)
+      const writing = yield* Effect.forkChild(counter.write(new Uint8Array(3_000_000)), { startImmediately: true })
+      yield* counter.eof
+      assert.strictEqual((yield* Effect.flip(counter.write("x"))).reason, "Channel")
+      yield* Fiber.join(writing)
+      assert.strictEqual((yield* Stream.mkString(Stream.decodeText(counter.stdout))).trim(), "3000000")
+
+      // `sleep` never reads its input, so the write waits until the close.
+      const idle = yield* ssh.exec(sh("exec sleep 30"))
+      const blocked = yield* Effect.forkChild(idle.write(new Uint8Array(8_000_000)), { startImmediately: true })
+      yield* idle.close
+      assert.strictEqual((yield* Effect.flip(Fiber.join(blocked))).reason, "Channel")
+    }).pipe(Effect.scoped), timeout)
+
+  it.effect("keeps connections idle while closed commands still run", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      // The server keeps the session of a closed command until it exits,
+      // and probes it every second, dropping the connection after three
+      // unanswered probes (see fixtures/sshd).
+      yield* Effect.scoped(Effect.tap(ssh.exec(sh("echo ready; exec sleep 30")), firstOutput))
+      yield* Effect.sleep("5 seconds")
       assert.strictEqual((yield* ssh.run(SshCommand.make`echo still`)).stdout, "still\n")
     }).pipe(Effect.scoped), timeout)
 
@@ -394,6 +476,69 @@ it.layer(TestLayer, { excludeTestServices: true, timeout: "5 minutes" })("NodeOp
       const writer = yield* socket.writer
       yield* writer.write(encoder.encode("over unix"))
       assert.strictEqual(decoder.decode((yield* pull)[0]), "over unix")
+    }).pipe(Effect.scoped), timeout)
+
+  it.effect("forwards local connections until both sides end their data", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      const sshd = yield* Sshd
+      const path = `${sshd.dir}/forward-${yield* Random.nextInt}.sock`
+      // A local listener whose connections are forwarded, like `ssh -L`, to
+      // the echo server in the container.
+      const server = yield* NodeSocketServer.make({ path, allowHalfOpen: true })
+      yield* server.run((socket) => ssh.forwardSocket(socket, "127.0.0.1:7000")).pipe(Effect.forkScoped)
+      const client = yield* NodeSocket.makeNet({ path, allowHalfOpen: true })
+      const pull = yield* Socket.readerBytes(client)
+      // The client ends its data at once; the echo arrives afterwards, and
+      // then the forward ends the client's input too.
+      yield* Effect.scoped(
+        Effect.flatMap(client.writer, (writer) => writer.write(encoder.encode("over forwardSocket")))
+      )
+      let received = ""
+      yield* Effect.forever(
+        Effect.flatMap(
+          pull,
+          (chunks) => Effect.sync(() => chunks.forEach((chunk) => received += decoder.decode(chunk)))
+        )
+      ).pipe(
+        Effect.catchIf(
+          (error) => error.reason._tag === "SocketCloseError" && error.reason.code === 1000,
+          () => Effect.void
+        )
+      )
+      assert.strictEqual(received, "over forwardSocket")
+    }).pipe(Effect.scoped), timeout)
+
+  it.effect("ends forwards whose local connection ends or cannot be forwarded", () =>
+    Effect.gen(function*() {
+      const ssh = yield* connection
+      const sshd = yield* Sshd
+      const listen = Effect.fnUntraced(function*(target: string) {
+        const path = `${sshd.dir}/forward-${yield* Random.nextInt}.sock`
+        const ended = yield* Deferred.make<Exit.Exit<void, Ssh.SshError | Socket.SocketError>>()
+        // Sockets are not half-open by default: the end of the client's data
+        // ends the whole local connection.
+        const server = yield* NodeSocketServer.make({ path })
+        yield* server.run((socket) =>
+          Effect.flatMap(Effect.exit(ssh.forwardSocket(socket, target)), (exit) => Deferred.succeed(ended, exit))
+        ).pipe(Effect.forkScoped)
+        return { path, ended }
+      })
+
+      // The echo may arrive after the local connection has ended; the
+      // forward ends either way.
+      const echo = yield* listen("127.0.0.1:7000")
+      const client = yield* NodeSocket.makeNet({ path: echo.path })
+      // Acquiring the reader connects.
+      yield* Effect.asVoid(Socket.readerBytes(client))
+      yield* Effect.scoped(Effect.flatMap(client.writer, (writer) => writer.write(encoder.encode("too late"))))
+      yield* Deferred.await(echo.ended)
+
+      // A tunnel that cannot be opened closes the local connection.
+      const refused = yield* listen("127.0.0.1:7001")
+      const pull = yield* Socket.readerBytes(yield* NodeSocket.makeNet({ path: refused.path }))
+      assert.strictEqual((yield* Effect.flip(pull)).reason._tag, "SocketCloseError")
+      assert.isTrue(Exit.isFailure(yield* Deferred.await(refused.ended)))
     }).pipe(Effect.scoped), timeout)
 
   it.effect("rejects destination hosts that ssh would read as options", () =>
