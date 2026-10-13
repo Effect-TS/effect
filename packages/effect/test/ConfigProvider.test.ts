@@ -880,6 +880,17 @@ NESTED=\${UNSET:-\${SET}}
       await assertSuccess(provider, ["NESTED"], ConfigProvider.makeValue("actual"))
     })
 
+    it("preserves delimiters in values used by nested defaults", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+SET=a}b
+VALUE=\${UNSET:-\${SET}}
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["VALUE"], ConfigProvider.makeValue("a}b"))
+    })
+
     it("does not expand missing inherited variables", async () => {
       const provider = ConfigProvider.fromDotEnvContents("VALUE=$constructor", {
         expandVariables: true
@@ -909,11 +920,21 @@ USER=app
 HOME_DIR=/home/$USER
 LOG_DIR=\${HOME_DIR}_logs
 NAME=$USER\${SUFFIX:-_v1}
+LITERAL=$USER/$
 `,
         { expandVariables: true }
       )
       await assertSuccess(provider, ["LOG_DIR"], ConfigProvider.makeValue("/home/app_logs"))
       await assertSuccess(provider, ["NAME"], ConfigProvider.makeValue("app_v1"))
+      await assertSuccess(provider, ["LITERAL"], ConfigProvider.makeValue("app/$"))
+    })
+
+    it("expands long sequences of adjacent references without overflowing", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `A=a\nVALUE=${"$A".repeat(20_000)}`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["VALUE"], ConfigProvider.makeValue("a".repeat(20_000)))
     })
   })
 
