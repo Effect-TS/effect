@@ -42,6 +42,7 @@ import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
+import { dual } from "../Function.ts"
 import * as Latch from "../Latch.ts"
 import type * as Host from "../net/Host.ts"
 import type * as NetAddress from "../net/NetAddress.ts"
@@ -157,8 +158,7 @@ export type ForwardTarget =
   | NetAddress.UnixPathAddressParts
 
 /**
- * A bidirectional byte stream carried over SSH, such as a subsystem or a
- * forwarded connection.
+ * The byte streams of a session, such as a subsystem.
  *
  * **Details**
  *
@@ -179,6 +179,30 @@ export interface SshStream {
   readonly stdout: Stream.Stream<Uint8Array, SshError>
   readonly stderr: Stream.Stream<Uint8Array, SshError>
   readonly stdin: Sink.Sink<void, Uint8Array, never, SshError>
+  readonly write: (data: Uint8Array | string) => Effect.Effect<void, SshError>
+  readonly eof: Effect.Effect<void, SshError>
+  readonly close: Effect.Effect<void>
+  readonly closed: Effect.Effect<void>
+}
+
+/**
+ * A tunnel opened with `SshConnection.forwardOut`.
+ *
+ * **Details**
+ *
+ * `data` carries what the target sends and can be consumed once; data that is
+ * not consumed eventually stops the target from sending. `write` sends data,
+ * `eof` ends the data sent to the target once pending writes are sent,
+ * `close` tears the tunnel down, and `closed` waits until it is torn down, by
+ * either side or with the connection. Concurrent writes are sent one after
+ * another, and an interrupted write may have sent part of its data.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface SshTunnel {
+  readonly data: Stream.Stream<Uint8Array, SshError>
   readonly write: (data: Uint8Array | string) => Effect.Effect<void, SshError>
   readonly eof: Effect.Effect<void, SshError>
   readonly close: Effect.Effect<void>
@@ -212,11 +236,16 @@ export interface SshProcess extends SshStream {
  *   its output, writing `stdin` first.
  * - `subsystem` starts a subsystem such as `sftp`.
  * - `forwardOut` opens a tunnel to a TCP target or Unix socket reachable from
- *   the server; `forwardOutSocket` exposes such tunnels as a
- *   `Socket.Socket`, and `forwardSocket` pipes a local socket through one,
- *   in both directions, until both sides have ended their data or the tunnel
+ *   the server, and `forwardSocket` pipes a local socket through one, in
+ *   both directions, until both sides have ended their data or the tunnel
  *   closes. Each side's end of data is passed on to the other, like a
- *   half-closed TCP connection.
+ *   half-closed TCP connection. The `forwardOutSocket` function exposes
+ *   tunnels as a `Socket.Socket`.
+ * - `closed` waits until the connection has closed: when its scope closes,
+ *   when the transport ends or fails, for example because the server went
+ *   away, or when the server violates the protocol. It never fails. By the
+ *   time it completes, every command, subsystem, and tunnel of the
+ *   connection has closed or failed, and further operations fail.
  *
  * **Gotchas**
  *
@@ -240,12 +269,40 @@ export interface SshConnection {
   ) => Effect.Effect<SshProcess, SshError, Scope.Scope>
   readonly run: (command: SshCommand.SshCommand, options?: RunOptions) => Effect.Effect<RunResult, SshError>
   readonly subsystem: (name: string) => Effect.Effect<SshStream, SshError, Scope.Scope>
-  readonly forwardOut: (target: ForwardTarget) => Effect.Effect<SshStream, SshError, Scope.Scope>
-  readonly forwardOutSocket: (target: ForwardTarget) => Socket.Socket
+  readonly forwardOut: (target: ForwardTarget) => Effect.Effect<SshTunnel, SshError, Scope.Scope>
   readonly forwardSocket: (
     socket: Socket.Socket,
     target: ForwardTarget
   ) => Effect.Effect<void, SshError | Socket.SocketError>
+  readonly closed: Effect.Effect<void>
+}
+
+/**
+ * Settings for OpenSSH-based backends, such as `NodeOpenSsh`.
+ *
+ * **Details**
+ *
+ * - `options` are settings in the form of `ssh_config` keywords, such as
+ *   `{ StrictHostKeyChecking: "yes", UserKnownHostsFile: "/path" }`;
+ *   booleans mean `yes` / `no`. Values use `ssh_config` syntax, so
+ *   whitespace separates the values of keywords such as `SendEnv`, and
+ *   double quotes keep a value with spaces together. They take precedence
+ *   over `configFile` and the backend's defaults.
+ * - `configFile` is an `ssh_config` file read instead of the user's
+ *   configuration, such as `/dev/null` to ignore it.
+ * - `identityFile` is the private key to authenticate with.
+ *
+ * These settings often depend on the host, so they belong to each
+ * destination rather than to the backend's layer.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface OpenSshSettings {
+  readonly options?: Readonly<Record<string, string | number | boolean>> | undefined
+  readonly configFile?: string | undefined
+  readonly identityFile?: string | undefined
 }
 
 /**
@@ -257,25 +314,20 @@ export interface SshConnection {
  *   `{ host, port }` parts, or a `host:port` string is converted like
  *   `Host.hostPortFromInput`; any other value is a host alone, converted
  *   like `Host.hostFromInput`.
- * - `username` and `identityFile` choose the user and the private key.
- * - `options` are settings in the form of `ssh_config` keywords, such as
- *   `{ StrictHostKeyChecking: "yes", UserKnownHostsFile: "/path" }`;
- *   booleans mean `yes` / `no`. Values use `ssh_config` syntax, so
- *   whitespace separates the values of keywords such as `SendEnv`, and
- *   double quotes keep a value with spaces together. They take precedence
- *   over `configFile` and the backend's defaults.
- * - `configFile` is an `ssh_config` file read instead of the user's
- *   configuration, such as `/dev/null` to ignore it.
+ * - `username` is the user to log in as.
  * - `connectTimeout` (default 30 seconds) bounds establishing the
  *   connection.
  * - `forwardAgent` forwards the local SSH agent to every command. Servers
  *   may offer it to later commands on the connection as well, and commands
  *   run without it when the server refuses it.
  *
+ * - `openSsh` holds settings only OpenSSH-based backends understand (see
+ *   `OpenSshSettings`). Other backends cannot apply them, so they fail with
+ *   a `Connection` error rather than connect without them.
+ *
  * Settings that are not given fall back to the backend's configuration; for
  * OpenSSH, the user's configuration, so `host` may be a `Host` alias from it
  * that is also a valid host name.
- * Backends may support only some `options`.
  *
  * @stability experimental
  * @category models
@@ -284,11 +336,9 @@ export interface SshConnection {
 export interface Destination {
   readonly host: Host.HostInput | Host.HostPortInput
   readonly username?: string | undefined
-  readonly identityFile?: string | undefined
-  readonly options?: Readonly<Record<string, string | number | boolean>> | undefined
-  readonly configFile?: string | undefined
   readonly connectTimeout?: Duration.Input | undefined
   readonly forwardAgent?: boolean | undefined
+  readonly openSsh?: OpenSshSettings | undefined
 }
 
 /**
@@ -349,11 +399,24 @@ export class Ssh extends Context.Service<Ssh, {
 }>()("effect/ssh/Ssh") {}
 
 /**
- * Exposes streams opened on demand as a `Socket.Socket`. Every reader
- * acquisition opens a new stream.
+ * Exposes tunnels to a target as a `Socket.Socket`.
+ *
+ * **Details**
+ *
+ * Every reader acquisition opens a new tunnel, which closes with the reader's
+ * scope. Writes go to the tunnel of the current reader and wait until one is
+ * acquired. Closing the writer's scope ends the data sent to the target.
+ *
+ * @stability experimental
+ * @category utility
+ * @since 4.0.0
  */
-const toSocket = (open: Effect.Effect<SshStream, SshError, Scope.Scope>): Socket.Socket => {
-  let current: SshStream | undefined
+export const forwardOutSocket: {
+  (target: ForwardTarget): (self: SshConnection) => Socket.Socket
+  (self: SshConnection, target: ForwardTarget): Socket.Socket
+} = dual(2, (self: SshConnection, target: ForwardTarget): Socket.Socket => {
+  const open = self.forwardOut(target)
+  let current: SshTunnel | undefined
   const latch = Latch.makeUnsafe(false)
   const toSocketError = <E>(cause: E) =>
     Cause.isDone(cause) ? cause : new Socket.SocketError({ reason: new Socket.SocketReadError({ cause }) })
@@ -372,7 +435,7 @@ const toSocket = (open: Effect.Effect<SshStream, SshError, Scope.Scope>): Socket
         latch.closeUnsafe()
       })
     )
-    const pull = yield* Stream.toPull(stream.stdout)
+    const pull = yield* Stream.toPull(stream.data)
     return {
       pull: pull.pipe(
         Effect.mapError(toSocketError),
@@ -401,22 +464,22 @@ const toSocket = (open: Effect.Effect<SshStream, SshError, Scope.Scope>): Socket
     }
   )
   return Socket.make({ reader, writer })
-}
+})
 
 /** Whether a socket error is the peer's normal end of data. */
 const isCleanClose = (error: Socket.SocketError) =>
   error.reason._tag === "SocketCloseError" && error.reason.code === 1000
 
 /**
- * Pipes a local socket to a stream in both directions. Each direction ends
+ * Pipes a local socket to a tunnel in both directions. Each direction ends
  * on its own, like a half-closed TCP connection: the local end of data
- * becomes the stream's `eof`, and the stream's end of data closes the
- * socket's writer. Closing the stream ends both, and local data that
+ * becomes the tunnel's `eof`, and the tunnel's end of data closes the
+ * socket's writer. Closing the tunnel ends both, and local data that
  * arrives afterwards is discarded.
  */
 const pipeSocket = (
   local: Socket.Socket,
-  open: Effect.Effect<SshStream, SshError, Scope.Scope>
+  open: Effect.Effect<SshTunnel, SshError, Scope.Scope>
 ): Effect.Effect<void, SshError | Socket.SocketError> =>
   Effect.scoped(Effect.gen(function*() {
     // The local connection is acquired first, so it closes with the scope
@@ -436,7 +499,7 @@ const pipeSocket = (
       Effect.raceFirst(stream.closed)
     )
     const download = Effect.scoped(
-      Effect.flatMap(local.writer, (writer) => Stream.runForEach(stream.stdout, (chunk) => writer.write(chunk)))
+      Effect.flatMap(local.writer, (writer) => Stream.runForEach(stream.data, (chunk) => writer.write(chunk)))
     )
     yield* Effect.all([upload, download], { concurrency: 2, discard: true })
   }))
@@ -445,7 +508,7 @@ const collect = (stream: Stream.Stream<Uint8Array, SshError>) => Stream.mkString
 
 /**
  * Creates an `SshConnection` from a backend's primitive operations, deriving
- * `run`, `forwardOutSocket`, and `forwardSocket`.
+ * `run` and `forwardSocket`.
  *
  * **When to use**
  *
@@ -457,7 +520,9 @@ const collect = (stream: Stream.Stream<Uint8Array, SshError>) => Stream.mkString
  *
  * The backend's `exec` receives the command line to run, built with
  * `SshCommand.render`, and allocates a pseudo-terminal when `pty` is
- * set.
+ * set. `closed` must complete once the connection has closed for any reason,
+ * after its commands, subsystems, and tunnels have closed or failed, and must
+ * not fail.
  *
  * @stability experimental
  * @category constructors
@@ -470,6 +535,7 @@ export const makeConnection = (impl: {
   ) => Effect.Effect<SshProcess, SshError, Scope.Scope>
   readonly subsystem: SshConnection["subsystem"]
   readonly forwardOut: SshConnection["forwardOut"]
+  readonly closed: Effect.Effect<void>
 }): SshConnection => {
   const exec: SshConnection["exec"] = (command, options) =>
     Effect.flatMap(
@@ -499,7 +565,7 @@ export const makeConnection = (impl: {
       })),
     subsystem: impl.subsystem,
     forwardOut: impl.forwardOut,
-    forwardOutSocket: (target) => toSocket(impl.forwardOut(target)),
-    forwardSocket: (socket, target) => pipeSocket(socket, impl.forwardOut(target))
+    forwardSocket: (socket, target) => pipeSocket(socket, impl.forwardOut(target)),
+    closed: impl.closed
   }
 }

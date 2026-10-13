@@ -79,13 +79,14 @@ export type ProtocolChannel = Channel.Channel<
 >
 
 /**
- * An open SSH channel: an `Ssh.SshStream` that also sends channel requests
- * and reports the exit of a session.
+ * An open SSH channel: an `Ssh.SshTunnel` that also carries standard error,
+ * sends channel requests, and reports the exit of a session.
  *
  * **Details**
  *
- * - `stdout` and `stderr` carry the channel's data and extended data, and
- *   consuming them refills the server's window.
+ * - `data` and `stderr` carry the channel's data and its extended data of
+ *   type stderr. Consuming them refills the server's window, which both
+ *   share.
  * - `write` waits while the server's window is full. Writes and `eof` fail
  *   with a `Channel` error once the channel is closed, and writes also once
  *   `eof` was sent.
@@ -101,7 +102,8 @@ export type ProtocolChannel = Channel.Channel<
  * @category models
  * @since 4.0.0
  */
-export interface SshChannel extends Ssh.SshStream {
+export interface SshChannel extends Ssh.SshTunnel {
+  readonly stderr: Stream.Stream<Uint8Array, Ssh.SshError>
   readonly request: (name: string, data: Uint8Array, wantReply: boolean) => Effect.Effect<void, Ssh.SshError>
   readonly exit: Effect.Effect<Ssh.SessionExit, Ssh.SshError>
 }
@@ -116,12 +118,15 @@ export interface SshChannel extends Ssh.SshStream {
  *   `direct-tcpip`, with its type-specific fields encoded as SSH wire types.
  *   It fails with a `Channel` error when the server refuses the channel, and
  *   the channel closes with the scope.
+ * - `closed` waits until the connection has closed, and never fails.
  *
  * `channel` must run, once, for `open` and the channels it opens to make
- * progress; until then they wait. When the channel's input ends, the
- * connection closes, and when its input fails, the connection fails; either
- * way every open SSH channel fails. The server's global requests are
- * answered with a failure, and channels opened by the server are refused.
+ * progress; until then they wait. The connection closes when the channel's
+ * input ends or fails, when the consumer of its output fails, when the
+ * server violates the protocol, or when the scope of `make` closes. Every
+ * open SSH channel then fails, `open` fails, and `closed` completes. The
+ * server's global requests are answered with a failure, and channels opened
+ * by the server are refused.
  *
  * @stability experimental
  * @category models
@@ -130,6 +135,7 @@ export interface SshChannel extends Ssh.SshStream {
 export interface SshConnectionProtocol {
   readonly channel: ProtocolChannel
   readonly open: (type: string, data: Uint8Array) => Effect.Effect<SshChannel, Ssh.SshError, Scope.Scope>
+  readonly closed: Effect.Effect<void>
 }
 
 const MSG_GLOBAL_REQUEST = 80
@@ -678,6 +684,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
   const handles = new Map<number, Handle>()
   const outgoing = yield* Queue.unbounded<Uint8Array, Ssh.SshError | Cause.Done>()
   let failure: Ssh.SshError | undefined
+  const closed = Deferred.makeUnsafe<void>()
   let running = false
 
   const emit = (messages: ReadonlyArray<Uint8Array>) => {
@@ -707,6 +714,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
     for (const handle of handles.values()) settle(handle, error)
     handles.clear()
     Queue.failCauseUnsafe(outgoing, Cause.fail(output))
+    Deferred.doneUnsafe(closed, Exit.void)
   }
 
   yield* Effect.addFinalizer(() => Effect.sync(() => fail(connectionClosed(), Cause.Done())))
@@ -825,9 +833,8 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
       return Effect.sync(() => emit(connection.eof(id)))
     }))
     return {
-      stdout: consume(handle.stdout),
+      data: consume(handle.stdout),
       stderr: consume(handle.stderr),
-      stdin: Sink.forEach(write).pipe(Sink.mapEffect(() => eof)),
       write,
       eof,
       close: close(id, handle),
@@ -879,7 +886,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
       })
     )
 
-  return { channel, open }
+  return { channel, open, closed: Deferred.await(closed) }
 })
 
 // -----------------------------------------------------------------------------
@@ -912,6 +919,24 @@ const empty = new Uint8Array(0)
 const withoutNul = (value: string, name: string): Effect.Effect<string, Ssh.SshError> =>
   value.includes("\0") ? Effect.fail(channelError(`${name} contains a NUL character`)) : Effect.succeed(value)
 
+const toStream = (channel: SshChannel): Ssh.SshStream => ({
+  stdout: channel.data,
+  stderr: channel.stderr,
+  stdin: Sink.forEach(channel.write).pipe(Sink.mapEffect(() => channel.eof)),
+  write: channel.write,
+  eof: channel.eof,
+  close: channel.close,
+  closed: channel.closed
+})
+
+const toTunnel = (channel: SshChannel): Ssh.SshTunnel => ({
+  data: channel.data,
+  write: channel.write,
+  eof: channel.eof,
+  close: channel.close,
+  closed: channel.closed
+})
+
 const targetFromInput = (
   target: Ssh.ForwardTarget
 ): Effect.Effect<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
@@ -943,6 +968,7 @@ const targetFromInput = (
  *   origin of TCP tunnels is reported as `127.0.0.1` port 0.
  * - Requests the server refuses, channels it cannot open, and names or paths
  *   with NUL characters fail with a `Channel` error.
+ * - The connection's `closed` is the protocol's `closed`.
  *
  * @stability experimental
  * @category constructors
@@ -975,13 +1001,7 @@ export const toSshConnection = (
       yield* channel.request("exec", new MessageWriter().string(command).finish(), true)
     }))
     const process: Ssh.SshProcess = {
-      stdout: channel.stdout,
-      stderr: channel.stderr,
-      stdin: channel.stdin,
-      write: channel.write,
-      eof: channel.eof,
-      close: channel.close,
-      closed: channel.closed,
+      ...toStream(channel),
       exit: channel.exit,
       signal: (signal) =>
         Effect.flatMap(
@@ -994,19 +1014,20 @@ export const toSshConnection = (
 
   const subsystem = Effect.fnUntraced(function*(name: string) {
     yield* withoutNul(name, "the subsystem name")
-    return yield* session((channel) => channel.request("subsystem", new MessageWriter().string(name).finish(), true))
+    const fields = new MessageWriter().string(name).finish()
+    return toStream(yield* session((channel) => channel.request("subsystem", fields, true)))
   })
 
   const forwardOut = Effect.fnUntraced(function*(target: Ssh.ForwardTarget) {
     const address = yield* targetFromInput(target)
     if (NetAddress.isUnixPathAddress(address)) {
       const fields = new MessageWriter().string(address.path).string("").uint32(0)
-      return yield* protocol.open("direct-streamlocal@openssh.com", fields.finish())
+      return toTunnel(yield* protocol.open("direct-streamlocal@openssh.com", fields.finish()))
     }
     const fields = new MessageWriter().string(Host.formatHost(address.host)).uint32(address.port)
       .string("127.0.0.1").uint32(0)
-    return yield* protocol.open("direct-tcpip", fields.finish())
+    return toTunnel(yield* protocol.open("direct-tcpip", fields.finish()))
   })
 
-  return Ssh.makeConnection({ exec, subsystem, forwardOut })
+  return Ssh.makeConnection({ exec, subsystem, forwardOut, closed: protocol.closed })
 }

@@ -26,7 +26,7 @@
  *   const connection = yield* ssh.connect({
  *     host: "example.com",
  *     username: "deploy",
- *     options: { StrictHostKeyChecking: "yes" }
+ *     openSsh: { options: { StrictHostKeyChecking: "yes" } }
  *   })
  *   const result = yield* connection.run(SshCommand.make`uptime`)
  *   yield* Effect.log(result.stdout)
@@ -82,11 +82,12 @@ const baseArguments = (
   port: number | undefined
 ): Result.Result<Array<string>, Ssh.SshError> => {
   const args: Array<string> = []
-  if (destination.configFile !== undefined) args.push("-F", destination.configFile)
+  const settings = destination.openSsh ?? {}
+  if (settings.configFile !== undefined) args.push("-F", settings.configFile)
   if (port !== undefined) args.push("-p", String(port))
   if (destination.username !== undefined) args.push("-l", destination.username)
-  if (destination.identityFile !== undefined) args.push("-i", destination.identityFile)
-  for (const [name, value] of Object.entries(destination.options ?? {})) {
+  if (settings.identityFile !== undefined) args.push("-i", settings.identityFile)
+  for (const [name, value] of Object.entries(settings.options ?? {})) {
     const text = typeof value === "boolean" ? (value ? "yes" : "no") : String(value)
     // An option is a single `ssh_config` line, with a keyword as its name.
     if (!/^[A-Za-z][A-Za-z0-9]*$/.test(name) || /[\0\r\n]/.test(text)) {
@@ -252,15 +253,16 @@ const openProxy = Effect.fnUntraced(function*(
  *
  * `connect` starts `ssh` from the `PATH` as a connection master with a
  * private control socket, and succeeds once the master accepts connections
- * on it. The destination's settings become `ssh` arguments: `configFile` is
- * `-F`, `options` are `-o Name=value` with the value in `ssh_config` syntax,
- * and `BatchMode=yes` applies unless
- * `options` set `BatchMode`, so `ssh` fails instead of prompting for
- * passwords or host keys. Likewise `ClearAllForwardings=yes` applies, so
+ * on it. The destination's settings become `ssh` arguments: `username` is
+ * `-l`, and of its `openSsh` settings, `configFile` is `-F`, `identityFile`
+ * is `-i`, and `options` are `-o Name=value` with the value in `ssh_config`
+ * syntax. `BatchMode=yes` applies unless `options` set `BatchMode`, so `ssh`
+ * fails instead of prompting for passwords or host keys. Likewise `ClearAllForwardings=yes` applies, so
  * the master does not open the port forwardings of the user's configuration.
  * Authentication or host key failures fail with a
  * `Connection` error describing the `ssh` diagnostics. Closing the scope
- * stops the master.
+ * stops the master, and the connection's `closed` completes when the scope
+ * closes or the master exits, for example because the server went away.
  *
  * Commands, subsystems, and tunnels are SSH channels over the control socket,
  * run with `SshConnectionProtocol.toSshConnection`. With the destination's
