@@ -17,6 +17,7 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
@@ -65,11 +66,14 @@ export type TypeId = "~@effect/sql-pg/PgConnection"
  * @since 4.0.0
  */
 export interface KeepAliveOptions {
-  /** Idle time before the first probe. Node rounds timings down to whole seconds. */
+  /**
+   * Idle time before the first probe. Timings are truncated to whole seconds
+   * and must be at least one second.
+   */
   readonly initialDelay: Duration.Input
   /**
-   * Time between unanswered probes. Requires the extended `Socket.setKeepAlive`
-   * API (Node >= 24.19.0). Omit to use Node's default.
+   * Time between unanswered probes, at least one second. Requires the extended
+   * `Socket.setKeepAlive` API (Node >= 24.19.0). Omit to use Node's default.
    */
   readonly interval?: Duration.Input | undefined
   /**
@@ -2002,15 +2006,13 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
 
 const connectTcp = (config: ResolvedConfig): Net.Socket => {
   const socket = Net.connect({ host: config.host, port: config.port, noDelay: true })
-  if (config.keepAlive !== undefined) {
-    const { initialDelay, interval, count } = config.keepAlive
-    socket.once("connect", () =>
-      socket.setKeepAlive(
-        true,
-        Duration.toMillis(initialDelay),
-        interval === undefined ? undefined : Duration.toMillis(interval),
-        count
-      ))
+  const keepAlive = config.keepAlive
+  if (keepAlive !== undefined) {
+    // Applied once the TCP handle is connected, before any TLS upgrade. The
+    // values are validated in `resolveConfig`; Node does not throw here.
+    socket.once("connect", () => {
+      socket.setKeepAlive(true, keepAlive.initialDelay, keepAlive.interval, keepAlive.count)
+    })
   }
   return socket
 }
@@ -2272,8 +2274,8 @@ interface ResolvedConfig {
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
   readonly keepAlive: {
-    readonly initialDelay: Duration.Duration
-    readonly interval: Duration.Duration | undefined
+    readonly initialDelay: number
+    readonly interval: number | undefined
     readonly count: number | undefined
   } | undefined
   readonly startupParameters: PgProtocol.StartupParameters
@@ -2290,6 +2292,17 @@ const configError = (message: string, cause?: unknown): SqlError =>
     })
   })
 
+const keepAliveDurationRange = "must be between 1 and 2147483647 seconds"
+
+// Node truncates keepalive timings to whole seconds and libuv silently rejects
+// zero, which would leave the OS defaults in place without any error.
+const keepAliveMillis = (input: Duration.Input): number | undefined => {
+  const duration = Duration.fromInput(input)
+  if (Option.isNone(duration)) return undefined
+  const seconds = Math.floor(Duration.toSeconds(duration.value))
+  return seconds >= 1 && seconds <= 0x7fffffff ? seconds * 1000 : undefined
+}
+
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
@@ -2303,12 +2316,24 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
     }
-    const keepAliveCount = options.keepAlive?.count
-    if (
-      keepAliveCount !== undefined &&
-      (!Number.isInteger(keepAliveCount) || keepAliveCount < 1 || keepAliveCount > 0xffffffff)
-    ) {
-      return Effect.fail(configError("keepAlive.count must be an integer between 1 and 4294967295"))
+    let keepAlive: ResolvedConfig["keepAlive"]
+    if (options.keepAlive !== undefined) {
+      const { count } = options.keepAlive
+      const initialDelay = keepAliveMillis(options.keepAlive.initialDelay)
+      if (initialDelay === undefined) {
+        return Effect.fail(configError(`keepAlive.initialDelay ${keepAliveDurationRange}`))
+      }
+      let interval: number | undefined
+      if (options.keepAlive.interval !== undefined) {
+        interval = keepAliveMillis(options.keepAlive.interval)
+        if (interval === undefined) {
+          return Effect.fail(configError(`keepAlive.interval ${keepAliveDurationRange}`))
+        }
+      }
+      if (count !== undefined && (!Number.isInteger(count) || count < 1 || count > 0xffffffff)) {
+        return Effect.fail(configError("keepAlive.count must be an integer between 1 and 4294967295"))
+      }
+      keepAlive = { initialDelay, interval, count }
     }
     const named: Record<string, string> = Object.create(null)
     for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
@@ -2352,13 +2377,7 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       username,
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
-      keepAlive: options.keepAlive === undefined ? undefined : {
-        initialDelay: Duration.fromInputUnsafe(options.keepAlive.initialDelay),
-        interval: options.keepAlive.interval === undefined
-          ? undefined
-          : Duration.fromInputUnsafe(options.keepAlive.interval),
-        count: keepAliveCount
-      },
+      keepAlive,
       startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize
