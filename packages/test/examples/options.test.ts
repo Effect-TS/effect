@@ -2,7 +2,7 @@
 // Inline `{ timeout, retries, tags, skip }` and pipeable transformers are equivalent.
 import * as Effect from "effect/Effect"
 import * as TestClock from "effect/testing/TestClock"
-import * as assert from "node:assert"
+import * as Assert from "../src/Assert.ts"
 import * as Test from "../src/Test.ts"
 
 let flakyCalls = 0
@@ -14,7 +14,7 @@ export default Test.suite("options", [
     "flaky: fails on the first attempt, retried",
     Effect.gen(function*() {
       flakyCalls++
-      assert.ok(flakyCalls >= 2, `environment not ready yet (call ${flakyCalls})`)
+      Assert.atLeast(flakyCalls, 2, "environment not ready yet")
     })
   ).pipe(Test.retries(2)),
 
@@ -23,14 +23,12 @@ export default Test.suite("options", [
       "inherits 100ms and finishes in 20ms",
       Effect.gen(function*() {
         yield* realSleep(20)
-        assert.ok(true)
       })
     ),
     Test.test(
       "overrides to 1s (nearest wins) and takes 300ms",
       Effect.gen(function*() {
         yield* realSleep(300)
-        assert.ok(true)
       }),
       { timeout: "1 second", tags: ["slow"] }
     ),
@@ -38,18 +36,18 @@ export default Test.suite("options", [
       "inherits 100ms but takes 300ms (intentional failure)",
       Effect.gen(function*() {
         yield* realSleep(300)
-        assert.ok(true)
       })
     )
-  ]).pipe(Test.timeout("100 millis"), Test.tags("timing")),
+    // these tests only take time: they check nothing on purpose
+  ]).pipe(Test.timeout("100 millis"), Test.tags("timing"), Test.noAssertions),
 
   Test.test("skipped with a reason", () => {
-    assert.deepStrictEqual(1, 2)
+    Assert.equal(1, 2)
   }, { skip: "waiting on upstream fix" }),
 
   Test.suite("legacy", [
-    Test.test("never runs", () => assert.deepStrictEqual(1, 2))
+    Test.test("never runs", () => Assert.equal(1, 2))
   ]).pipe(Test.skip("whole suite skipped via a transformer")),
 
-  Test.test("tagged via a transformer", () => assert.deepStrictEqual("ok", "ok")).pipe(Test.tags("smoke"))
+  Test.test("tagged via a transformer", () => Assert.equal("ok", "ok")).pipe(Test.tags("smoke"))
 ])

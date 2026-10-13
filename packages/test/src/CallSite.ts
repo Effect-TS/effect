@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url"
 import type { Location } from "./Protocol.ts"
 
 const SRC_DIR = path.dirname(fileURLToPath(import.meta.url))
-const FRAME = /\(?((?:file:\/\/)?\/[^():]+):(\d+):(\d+)\)?$/
+const FRAME = /(?:\(|^at )((?:file:\/\/)?\/[^():]+):(\d+):(\d+)\)?$/
 
 /** A frame is "user code" unless it is inside this framework, effect itself, or node internals. */
 const isUserFrame = (file: string) =>

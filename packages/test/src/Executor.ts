@@ -20,6 +20,8 @@ import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as path from "node:path"
 import { pathToFileURL } from "node:url"
+import { type AssertionError, formatPath, isAssertionError } from "./AssertionError.ts"
+import { AssertionRecord, CurrentRecord, setPlainRecord } from "./AssertionRecord.ts"
 import { locationFromStack } from "./CallSite.ts"
 import type { Failure, ListedNode, RunFileTest, Status, TestFinished } from "./Protocol.ts"
 import { ExecutorRpcs, LoadError } from "./Protocol.ts"
@@ -72,6 +74,7 @@ export const listFile = (file: string) =>
         ...(o.retries !== undefined ? { retries: o.retries } : {}),
         ...(o.skip ? { skip: typeof o.skip === "string" ? o.skip : "skipped" } : {}),
         ...(o.only ? { only: true } : {}),
+        ...(o.noAssertions ? { noAssertions: true } : {}),
         ...(node.location ? { location: `${node.location.file}:${node.location.line}` } : {})
       })
       if (node._tag === "Suite") { for (const c of node.children) visit(c, id, childId(id, c)) }
@@ -189,6 +192,13 @@ type Event = { readonly _tag: "TestStarted"; readonly id: string; readonly attem
 
 const TestEnv = Layer.mergeAll(TestConsole.layer, TestClock.layer())
 
+/**
+ * Plain (sync / Promise) tests run one at a time per executor: after an `await` they have
+ * no fiber, so their assertions find the running test's record in a module variable
+ * (AssertionRecord.ts). Effect tests are unaffected and stay concurrent.
+ */
+const plainLock = Semaphore.makeUnsafe(1)
+
 class FixtureFailure {
   readonly fixture: Fixture
   readonly cause: Cause.Cause<unknown>
@@ -294,7 +304,8 @@ export const runFile = (
                 attempt,
                 previousAttempts,
                 failures: r.failures,
-                console: r.console
+                console: r.console,
+                assertions: r.assertions
               })
             }
             previousAttempts.push({ attempt, status: r.status })
@@ -315,6 +326,7 @@ export const runFile = (
             return {
               status: "failed" as Status,
               console: [],
+              assertions: 0,
               failures: [{
                 kind: "fixture" as const,
                 message: `fixture "${f.fixture.name}"${
@@ -325,22 +337,34 @@ export const runFile = (
           }
           const env = yield* Layer.buildWithScope(TestEnv, scope)
           const testConsole = Context.get(env, Console.Console) as unknown as TestConsole.TestConsole
-          const exit = yield* bodyEffect(node).pipe(
+          const record = new AssertionRecord()
+          const body = bodyEffect(node).pipe(
             Effect.scoped, // the body's own Scope closes (finalizers run) before results are read
             // the body's own `Effect.provide`s fork from the test's MemoMap (added last: every built
             // context, TestEnv's included, carries the MemoMap it was built with)
             Effect.provideContext(
-              Context.add(Context.merge(fx.success.ctx, env), Layer.CurrentMemoMap, fx.success.testMemo)
+              Context.add(
+                Context.add(Context.merge(fx.success.ctx, env), Layer.CurrentMemoMap, fx.success.testMemo),
+                CurrentRecord,
+                record
+              )
             ),
             Random.withSeed(plan.seed),
             Effect.timeoutOption(plan.timeoutMs), // outside the TestClock: real time
             Effect.exit
           )
+          const exit = yield* (node.body._tag === "Plain"
+            ? plainLock.withPermits(1)(Effect.acquireUseRelease(
+              Effect.sync(() => setPlainRecord(record)),
+              () => body,
+              () => Effect.sync(() => setPlainRecord(undefined))
+            ))
+            : body)
           const consoleLines = [
             ...(yield* testConsole.logLines).map(line),
             ...(yield* testConsole.errorLines).map((l) => `[error] ${line(l)}`)
           ]
-          return { ...classify(exit, plan, node), console: consoleLines }
+          return { ...classify(exit, plan, node, file, record), console: consoleLines, assertions: record.count }
         }))
 
       yield* walk(root, rel, [], runMemo)
@@ -374,16 +398,55 @@ const show = (u: unknown): string => typeof u === "string" ? JSON.stringify(u) :
 
 const userFrameOf = (u: unknown) => u instanceof Error ? locationFromStack(u.stack) : undefined
 
-/** `node:assert` (and most assertion libraries) throw an `AssertionError`. */
-const isAssertionError = (u: unknown): u is Error =>
+/** `node:assert` (and most assertion libraries) throw an `AssertionError` too. */
+const isForeignAssertionError = (u: unknown): u is Error =>
   u instanceof Error && (u.name === "AssertionError" || (u as { code?: unknown }).code === "ERR_ASSERTION")
+
+/**
+ * A failed `Assert.*` as data. Its location is the deepest frame in the test file (so a
+ * helper elsewhere still points at the test's line), and `origin` the frame that raised it
+ * when that is somewhere else. A soft scope's failure stands for the failures it collected.
+ */
+const assertionFailures = (e: AssertionError, file: string, note?: string): Array<Failure> => {
+  if (e.assertion === "soft") {
+    return e.failures.flatMap((child) =>
+      assertionFailures(child, file, note).map((f) =>
+        e.label === undefined ? f : { ...f, label: f.label ? `${e.label} › ${f.label}` : e.label }
+      )
+    )
+  }
+  const location = locationFromStack(e.stack, file)
+  const origin = locationFromStack(e.stack)
+  return [{
+    kind: "assertion",
+    message: e.headline,
+    ...(e.label !== undefined ? { label: e.label } : {}),
+    ...(e.mismatches.length > 0
+      ? {
+        mismatches: e.mismatches.map((m) => ({
+          path: formatPath(m.path),
+          ...(m.expected !== undefined ? { expected: m.expected } : {}),
+          ...(m.actual !== undefined ? { actual: m.actual } : {}),
+          ...(m.reason !== undefined ? { reason: m.reason } : {})
+        }))
+      }
+      : {}),
+    ...(location ? { location } : {}),
+    ...(origin && location && (origin.file !== location.file || origin.line !== location.line) ? { origin } : {}),
+    ...(note !== undefined ? { note } : {})
+  }]
+}
 
 const classify = (
   exit: Exit.Exit<Option.Option<unknown>, unknown>,
   plan: RunFileTest,
-  node: TestNode<any>
+  node: TestNode<any>,
+  file: string,
+  record: AssertionRecord
 ): { status: Status; failures: Array<Failure> } => {
   const failures: Array<Failure> = []
+  /** the assertion errors the body failed with: the record's others were caught, or lost in a fiber */
+  const thrown = new Set<unknown>()
   if (Exit.isSuccess(exit) && Option.isNone(exit.value)) {
     return {
       status: "timedOut",
@@ -399,7 +462,11 @@ const classify = (
       return { status: "interrupted", failures: [{ kind: "interrupted", message: "test fiber was interrupted" }] }
     }
     for (const reason of exit.cause.reasons) {
-      if (Cause.isFailReason(reason)) {
+      const value = Cause.isFailReason(reason) ? reason.error : Cause.isDieReason(reason) ? reason.defect : undefined
+      if (isAssertionError(value)) {
+        thrown.add(value)
+        failures.push(...assertionFailures(value, file))
+      } else if (Cause.isFailReason(reason)) {
         const e = reason.error as any
         const tag = typeof e === "object" && e !== null && typeof e._tag === "string" ? e._tag : undefined
         const fields = typeof e === "object" && e !== null
@@ -417,7 +484,7 @@ const classify = (
         const d = reason.defect as any
         const loc = userFrameOf(d)
         failures.push(
-          isAssertionError(d)
+          isForeignAssertionError(d)
             ? { kind: "assertion", message: d.message, ...(loc ? { location: loc } : {}) }
             : {
               kind: "defect",
@@ -443,6 +510,31 @@ const classify = (
         ...(node.location ? { location: node.location } : {})
       })
     }
+  }
+  for (const { assertion, site } of record.pending.values()) {
+    const location = locationFromStack(site.stack, file)
+    failures.push({
+      kind: "discardedEffect",
+      message: `${assertion} was built but never run: did you forget \`yield*\` (or \`await\`)?`,
+      ...(location ? { location } : {})
+    })
+  }
+  for (const e of record.failures) {
+    if (thrown.has(e)) continue
+    failures.push(...assertionFailures(
+      e,
+      file,
+      "this assertion failed, but its error was caught (or thrown in a fiber the test didn't join); a failed " +
+        "assertion fails the test. To retry assertions, use `Assert.eventually`"
+    ))
+  }
+  if (failures.length === 0 && record.count === 0 && !plan.noAssertions) {
+    failures.push({
+      kind: "noAssertions",
+      message: "the test made no assertions (only `Assert.*` calls count, not node:assert or other libraries): add " +
+        "one, or mark the test `Test.noAssertions` if it checks nothing on purpose",
+      ...(node.location ? { location: node.location } : {})
+    })
   }
   return { status: failures.length > 0 ? "failed" : "passed", failures }
 }

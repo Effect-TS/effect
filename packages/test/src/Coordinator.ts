@@ -9,7 +9,18 @@ import * as RpcClient from "effect/rpc/RpcClient"
 import * as Stream from "effect/Stream"
 import * as fs from "node:fs"
 import * as path from "node:path"
-import type { ListedNode, PlannedTest, RunFileTest, Selection, Status, TestEvent, TestFinished } from "./Protocol.ts"
+import type {
+  Failure,
+  ListedNode,
+  Location,
+  PlannedTest,
+  RunFileTest,
+  Selection,
+  SourceLine,
+  Status,
+  TestEvent,
+  TestFinished
+} from "./Protocol.ts"
 import { ExecutorRpcs, schemaVersion } from "./Protocol.ts"
 import type { Reporter } from "./Reporters.ts"
 
@@ -35,6 +46,35 @@ export interface RunOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 5_000
+
+// --- code frames: the source at a failure's location, read here (executors send none)
+
+const CONTEXT_LINES = 2
+
+const makeSources = () => {
+  const files = new Map<string, ReadonlyArray<string> | undefined>()
+  const linesOf = (file: string) => {
+    if (!files.has(file)) {
+      try {
+        files.set(file, fs.readFileSync(path.resolve(file), "utf8").split("\n"))
+      } catch {
+        files.set(file, undefined)
+      }
+    }
+    return files.get(file)
+  }
+  const at = (location: Location): Array<SourceLine> | undefined => {
+    const lines = linesOf(location.file)
+    if (!lines || location.line < 1 || location.line > lines.length) return undefined
+    const from = Math.max(1, location.line - CONTEXT_LINES)
+    return lines.slice(from - 1, location.line).map((text, i) => ({ line: from + i, text }))
+  }
+  const withSource = (f: Failure): Failure => {
+    const source = f.location ? at(f.location) : undefined
+    return source ? { ...f, source } : f
+  }
+  return { withSource }
+}
 
 // --- discovery
 
@@ -125,6 +165,7 @@ export const plan = (
         tags,
         timeoutMs: nearest("timeoutMs") ?? DEFAULT_TIMEOUT_MS,
         retries: nearest("retries") ?? 0,
+        ...(nearest("noAssertions") ? { noAssertions: true } : {}),
         seed: testSeed(opts.seed, node.id),
         only: chain.some((n) => n.only),
         ...(skip !== undefined ? { skip } : {})
@@ -190,9 +231,12 @@ export const run = (opts: RunOptions) =>
 
     const terminal = new Map<string, TestFinished>()
     const started = new Set<string>()
-    const emit = (e: TestEvent) => {
+    const sources = makeSources()
+    const emit = (event: TestEvent) => {
+      let e = event
       if (e._tag === "TestFinished") {
         if (terminal.has(e.id)) return
+        if (e.failures.some((f) => f.location)) e = { ...e, failures: e.failures.map(sources.withSource) }
         terminal.set(e.id, e)
       }
       if (e._tag === "TestStarted") started.add(e.id)
@@ -234,7 +278,13 @@ export const run = (opts: RunOptions) =>
     for (const t of planned) {
       if (t.skip !== undefined || terminal.has(t.id)) continue
       const list = byFile.get(t.file) ?? []
-      list.push({ id: t.id, seed: t.seed, timeoutMs: t.timeoutMs, retries: t.retries })
+      list.push({
+        id: t.id,
+        seed: t.seed,
+        timeoutMs: t.timeoutMs,
+        retries: t.retries,
+        ...(t.noAssertions ? { noAssertions: true } : {})
+      })
       byFile.set(t.file, list)
     }
 
@@ -358,6 +408,7 @@ const renderList = (
       if (n.retries !== undefined) bits.push(`retries=${n.retries}`)
       if (n.skip) bits.push(`skip="${n.skip}"`)
       if (n.only) bits.push("only")
+      if (n.noAssertions) bits.push("noAssertions")
       for (const f of n.fixtures) bits.push(`provide=${f.name}`)
       const label = n.kind === "suite"
         ? (n.parent === undefined ? n.name : `${n.name}/`)

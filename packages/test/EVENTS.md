@@ -56,17 +56,41 @@ the reason to stderr and exits 1.
   "attempt": 1,
   "previousAttempts": [],
   "console": ["…"],
-  "failures": [{ "kind": "assertion", "message": "…", "location": { "file": "…", "line": 20, "column": 14 } }]
+  "assertions": 1,
+  "failures": [
+    {
+      "kind": "assertion",
+      "message": "not equal: 2 differences",
+      "mismatches": [
+        { "path": "[\"roles\"][1]", "reason": "missing, expected \"dev\"" },
+        { "path": "[\"address\"][\"zip\"]", "expected": "\"N1\"", "actual": "\"N2\"" }
+      ],
+      "location": { "file": "examples/failures.test.ts", "line": 29, "column": 16 },
+      "source": [{ "line": 29, "text": "        Assert.equal(updated, user)" }]
+    }
+  ]
 }
 ```
 
 - `status`: `passed`, `failed`, `skipped`, `timedOut` or `interrupted`. Only `passed` and `skipped` are green.
 - `failures[]`: empty when the test passed. Each failure has:
-  - `kind`: `assertion`, `typedError`, `defect`, `timeout`, `interrupted`, `discardedEffect`, `fixture` or `load`.
-  - `message`.
-  - Optionally: `errorTag` and `errorFields` for a typed error, and `location` (`file`, `line`, `column`).
+  - `kind`: `assertion`, `typedError`, `defect`, `timeout`, `interrupted`, `discardedEffect` (an Effect, or an
+    assertion's Effect / Promise, that was never run), `noAssertions` (the test made no `Assert.*` calls),
+    `fixture` or `load`.
+  - `message`: one line for assertions (what went wrong); the details are in `mismatches`.
+  - Optionally:
+    - `label`: the assertion's label.
+    - `mismatches[]`: for assertions, every path at which the actual value differs. `path` is formatted like
+      `["user"]["tags"][1]` (`""` for the value itself), with either `expected` and `actual` (formatted values)
+      or a `reason`.
+    - `errorTag` and `errorFields` for a typed error.
+    - `location` (`file`, `line`, `column`): in the test file when the failure's stack goes through it.
+    - `origin`: where an assertion was raised, when that is elsewhere (a helper in another file).
+    - `note`: context, e.g. that a failed assertion's error was caught but still fails the test.
+    - `source[]`: the lines up to `location` (`line`, `text`), at most 3.
 - `previousAttempts[]`: the statuses of earlier attempts. A `passed` test with earlier failures is flaky.
 - `console[]`: the test's captured Effect `Console` output.
+- `assertions` (optional): how many `Assert.*` calls the test's last attempt made.
 - `skipReason`: why the test was skipped. `not run: --bail` / `not run: Ctrl-C` means it never started.
 
 ## `RunFinished`

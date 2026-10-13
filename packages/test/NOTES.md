@@ -25,6 +25,7 @@ node src/cli/bin.ts --failed                         # re-run the tests that fai
 node src/cli/bin.ts --changed                        # only tests affected by uncommitted changes (--since main: the branch too)
 node src/cli/bin.ts serve &                          # keep a warm test runner; `etest` here then forwards to it
 node src/cli/bin.ts mcp                              # MCP server over stdio: run_tests, list_tests
+node src/cli/bin.ts test                             # the self-tests (etest testing itself)
 node src/cli/bin.ts examples/failures.test.ts --test "examples/failures.test.ts > cause-aware > defect (intentional failure)" --seed 1234
 ```
 
@@ -83,6 +84,11 @@ wires both sides together.
 | `src/cli/executor/{node,bun,deno}.ts`                       | One executor entry per runtime: `Executor.layer` over the worker protocol (`RpcServer.layerProtocolWorkerRunner` plus that runtime's worker runner), under its `runMain`. The CLI's platform for a runtime spawns that runtime's entry, so executors never detect their runtime                                                                                                                                                                                                                        |
 | `src/Coordinator.ts`                                        | Discovery, planning (nearest-wins options, seeds, filters, only/skip), dispatch over the executor pool, bail, and the completeness guarantee                                                                                                                                                                                                                                                                                                                                                           |
 | `src/Reporters.ts`                                          | `agent`, `human` and `jsonl` reporters                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/Assert.ts`                                             | Assertions: plain functions that throw (`equal`, `some`, `failure`, `tag`, `includes`, `every`, `closeTo`, `decodes`, ...), plus `eventually` / `always` (Effects, on the TestClock) and `soft`. See "Assertions" below                                                                                                                                                                                                                                                                                |
+| `src/Matcher.ts`                                            | Matcher values for inside an expected value (`any`, `partial`, `unordered`, `schema`, `where`, `make`, ...) and the `Expected<A>` type                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/AssertionError.ts`, `src/AssertionRecord.ts`           | The failure as data (headline, label, mismatches by path), and each test attempt's record (count, failures, pending assertion Effects)                                                                                                                                                                                                                                                                                                                                                                 |
+| `src/internal/compare.ts`                                   | The comparison behind `equal` and the matchers: `Equal.equals` semantics plus a prototype check, as a walk that reports every differing path                                                                                                                                                                                                                                                                                                                                                           |
+| `test/*.test.ts`                                            | Self-tests, run with etest itself: `node src/cli/bin.ts test` (`test/fixtures/` holds files the runner tests run)                                                                                                                                                                                                                                                                                                                                                                                      |
 | `src/cli/Cli.ts`                                            | The `etest` command, built with `effect/cli` (`Command`, `Flag`, `Argument`). A red run fails with an `ExitCode` error carrying `Runtime.errorExitCode`, marked as already reported                                                                                                                                                                                                                                                                                                                    |
 | `src/cli/bin.ts`                                            | Launcher: forwards to `etest serve` when one is running for this directory; otherwise turns on Node's compile cache and imports `main.ts`                                                                                                                                                                                                                                                                                                                                                              |
 | `src/cli/Server.ts`, `src/cli/socket.ts`                    | `etest serve`: the warm server, its executors one run ahead, and the socket protocol (line-delimited JSON)                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -92,6 +98,7 @@ wires both sides together.
 | `src/cli/LastRun.ts`                                        | The merged record of failing tests behind `--failed`, kept by wrapping the active reporter                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `src/cli/Platform.ts`                                       | Generic runtime platforms (imports nothing from the CLI or the test runner). A platform module default-exports `makePlatform({ layer, run })`, its services inferred from the layer. `makePlatforms({ node, bun, deno })` infers the services every platform provides (`Services<I>`, the common members) and returns `load` and `run`, which imports only the current runtime's module (detected from the `Bun` / `Deno` globals), provides its layer to `main` and hands it to that platform's `run` |
 | `src/cli/platform/{node,bun,deno}.ts`                       | The CLI's platform per runtime, e.g. `NodeServices.layer` plus `NodeWorker.layer(spawn)`                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `examples/helpers.ts`                                       | A custom assertion: a plain function made of other assertions                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `examples/*.test.ts`                                        | Every feature, including intentional failures (marked "(intentional failure)" in the test or suite name)                                                                                                                                                                                                                                                                                                                                                                                               |
 | `examples/userRepoContract.ts`, `examples/contract.test.ts` | A contract suite written once (`Suite<UserRepo>`) and provided with two implementations                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `examples/typecheck.ts`                                     | Asserts that every test file's default export `satisfies Test.Runnable`, which is what the CLI would generate                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -137,17 +144,47 @@ wires both sides together.
    dispatch against a `Deferred`. That interrupts every in-flight `RunFile` stream, the Rpc client sends `Interrupt` to the
    worker, and the worker interrupts the test fibers. Ctrl-C works the same way: `runMain` interrupts the program, and a
    finalizer in a worker was observed to run.
-5. **No silent greens** (what is left of it without our own assertions). If the body's _result_ is an Effect, the test
-   fails with `discardedEffect`: a plain function returning an Effect, an async function resolving to one, or an Effect
-   producing `Effect<Effect>`. A bare `function*` type-checks as a plain function but only returns an unstarted generator,
-   so that fails too, with a hint to write `Effect.gen(function*() {...})`. The "zero assertions" rule and failing a test
-   from an assertion in an un-joined forked fiber needed our own assertion record; both return with the assertions work.
-6. **No assertions of our own (for now).** A test fails by throwing, rejecting or failing its Effect. The examples use
-   `node:assert`; its `AssertionError` (name `AssertionError` or code `ERR_ASSERTION`, so most libraries match) is reported
-   as kind `assertion` with its own message, which for `deepStrictEqual` already contains a diff. Assertions are a separate
-   concern, tackled later (see the _Assertions_ ticket).
-   **Locations without a transform:** the error's stack gives the first frame outside the framework or `effect`, reported as
-   `file:line:col` (Node's type stripping keeps columns exact). Code frames (source lines plus a caret) were removed for now.
+5. **No silent greens.** If the body's _result_ is an Effect, the test fails with `discardedEffect`: a plain function
+   returning an Effect, an async function resolving to one, or an Effect producing `Effect<Effect>`. A bare `function*`
+   type-checks as a plain function but only returns an unstarted generator, so that fails too, with a hint to write
+   `Effect.gen(function*() {...})`. With the assertion record (point 6) a test also fails when:
+   - it made no `Assert.*` call (`noAssertions`; opt out with `Test.noAssertions` on the test or a suite);
+   - a failed assertion's error was caught, or thrown in a fiber the test never joined (reported with a `note`);
+   - an assertion Effect or Promise (`eventually`, `always`, `soft` of an Effect, `rejects`) was built but never run
+     (`discardedEffect`, at the line that built it).
+6. **Assertions** (`src/Assert.ts`, `src/Matcher.ts`; decided in the _Assertions_ ticket, proposal R3).
+   - **Shape.** Plain synchronous functions that throw an `AssertionError` (ours, carrying the failure as data). Only the
+     assertions that wait return an Effect (`eventually`, `always`, `soft(effect)`) or a Promise (`rejects`,
+     `soft(async)`). Matchers are values for inside an expected value; a custom assertion is a function of assertions, a
+     custom matcher `Matcher.make` / `Matcher.where`. No chains, no registry.
+   - **Narrow and return.** Assertions that prove something return it, and are always fatal: `some`, `success`,
+     `failure` (exactly one typed failure in an Exit's Cause; annotations don't matter), `defect`, `tag`, `instanceOf`,
+     `defined`, `single`, `includes` (on an iterable), `match`, `throws`, `rejects`, `decodes`. `isTrue` is the only
+     `asserts` function.
+   - **Equality.** `equal` follows `Equal.equals` (structural, `Equal` implementations decide for themselves) and also
+     requires a shared prototype for objects. `expected` may contain matchers; partial matching is explicit
+     (`Matcher.partial`). A failure lists every differing path (`["a"]["b"]: expected 1, got 2`). An Effect or Promise as the
+     actual value fails with a "forgot `yield*` / `await`?" hint. The expected value's type is checked against the actual
+     value's (`[A] extends [infer B] ? Expected<B> : never`, which works like `NoInfer` without breaking the inference of
+     calls like `Option.none()`).
+   - **The record.** Each test attempt gets an `AssertionRecord`: a `Context.Reference` for Effect tests (forked fibers
+     inherit it), a module variable for plain tests, which therefore run one at a time per executor (no
+     AsyncLocalStorage). Every call is counted (`assertions` in `TestFinished`), and every failure is recorded before it is
+     thrown. Only `throws` / `rejects` (failures inside are expected), `eventually` (retried) and `soft` (collected)
+     handle failures inside them.
+   - **eventually / always** advance the TestClock by `interval` between attempts (so sleeping code makes progress and
+     nothing waits for real), or sleep on a live clock (inside `TestClock.withLive`). Only assertion failures are retried.
+     This does not need general TestClock auto-advance.
+   - **soft** collects failed value checks; narrowing assertions still end the body. One failure stands for all, and the
+     executor reports each collected failure on its own.
+   - **Failures reach reporters as data**: `message` (one line), `label`, `mismatches[]`, `location` (the deepest frame in
+     the test file, so a helper's failure points at the test's line), `origin` (the helper's frame) and `note`. The
+     coordinator adds `source` (the lines up to the location) and reporters print a code frame with a caret.
+   - Other libraries' `AssertionError`s (`node:assert`: name `AssertionError` or code `ERR_ASSERTION`) are still reported
+     as kind `assertion` with their own message, but they are not counted.
+     **Locations without a transform:** the stack's frames outside the framework or `effect`, `file:line:col` (Node's type
+     stripping keeps columns exact). On Bun (JavaScriptCore) a tail call (`() => helper()`) leaves no frame of its own, so
+     such a failure is located in the helper.
 7. **Cause-aware failures.** The exit Cause is classified as a typed `Fail` (shows `_tag` plus fields, located from
    the error's construction stack), a `Die` (defect: name, message, location), an interrupt-only Cause (`interrupted`) or a timeout.
    A defect that is an `AssertionError` is reported as kind `assertion`. Fixture build failures are their own kind (`fixture`,
@@ -226,9 +263,15 @@ wires both sides together.
 - No module reloading or isolation between files in a worker. Plain `console.log` from tests goes to the worker's stdout,
   which is piped to the coordinator's **stderr** (not attributed to a test). Only Effect `Console` output is captured per test.
 - Promise tests can't be cancelled. Timing out a Promise test interrupts the fiber, but the promise keeps running.
-- A failure in a forked fiber the test never joins is not attributed to the test (it needs the assertions work).
+- Plain (sync / Promise) tests run one at a time per executor, so their assertions find the right record without
+  AsyncLocalStorage. An assertion in a Promise callback of an _Effect_ test (`Effect.promise(() => p.then(() => Assert...))`)
+  has no fiber either, and is attributed to the plain test running at the time, if any. So is one made by a timed-out plain
+  test whose promise kept running.
+- Only `Assert.*` calls count as assertions. A test that only uses `node:assert` (or `effect/testing/TestSchema`) fails the
+  zero-assertion check unless it is marked `Test.noAssertions`.
 - Retries reuse the same seed for every attempt. Retries are meant for environmental flakes, not random ones.
-- No watch mode, snapshots, result cache, remote executors, property tests, auto-advance, hang dumps or leak detection.
+- No watch mode, snapshots, result cache, remote executors, property tests, general TestClock auto-advance (only
+  `Assert.eventually` / `always` advance it), hang dumps or leak detection.
 - No config file; the K=4 and T=8 concurrency limits are hard-coded and the default timeout is 5 s.
 - `--test` is an exact-id match when the id exists and a substring match otherwise. Duplicate test names in one suite produce
   duplicate ids, which are not detected.

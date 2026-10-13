@@ -22,16 +22,44 @@ export const FailureKind = Schema.Literals([
   "interrupted",
   "discardedEffect",
   "fixture",
+  "noAssertions",
   "load"
 ])
 export type FailureKind = typeof FailureKind.Type
 
+/** One reason an assertion failed, at a path into the actual value (`""`: the value itself). */
+export const Mismatch = Schema.Struct({
+  path: Schema.String,
+  expected: opt(Schema.String),
+  actual: opt(Schema.String),
+  reason: opt(Schema.String)
+})
+export type Mismatch = typeof Mismatch.Type
+
+/** Source lines around a failure's location; the coordinator adds them (the executor sends none). */
+export const SourceLine = Schema.Struct({
+  line: Schema.Number,
+  text: Schema.String
+})
+export type SourceLine = typeof SourceLine.Type
+
 export const Failure = Schema.Struct({
   kind: FailureKind,
   message: Schema.String,
+  /** the assertion's label */
+  label: opt(Schema.String),
+  /** every path at which the actual value differs (assertions) */
+  mismatches: opt(Schema.Array(Mismatch)),
   errorTag: opt(Schema.String),
   errorFields: opt(Schema.String),
-  location: opt(Location)
+  /** where it failed, in the test file when the stack goes through it */
+  location: opt(Location),
+  /** where the assertion was raised, when that is elsewhere (a helper in another file) */
+  origin: opt(Location),
+  /** context, e.g. why a caught failure still fails the test */
+  note: opt(Schema.String),
+  /** the source at `location` */
+  source: opt(Schema.Array(SourceLine))
 })
 export type Failure = typeof Failure.Type
 
@@ -47,6 +75,8 @@ export const PlannedTest = Schema.Struct({
   timeoutMs: Schema.Number,
   retries: Schema.Number,
   seed: Schema.Number,
+  /** opted out of the "a test must make at least one assertion" rule */
+  noAssertions: opt(Schema.Boolean),
   skip: opt(Schema.String)
 })
 export type PlannedTest = typeof PlannedTest.Type
@@ -87,6 +117,8 @@ export const TestFinished = Schema.TaggedStruct("TestFinished", {
   previousAttempts: Schema.Array(Schema.Struct({ attempt: Schema.Number, status: Status })),
   failures: Schema.Array(Failure),
   console: Schema.Array(Schema.String),
+  /** assertions the test made (`Assert.*` calls) in its last attempt */
+  assertions: opt(Schema.Number),
   skipReason: opt(Schema.String)
 })
 export type TestFinished = typeof TestFinished.Type
@@ -123,6 +155,7 @@ export const ListedNode = Schema.Struct({
   tags: Schema.Array(Schema.String),
   skip: opt(Schema.String),
   only: opt(Schema.Boolean),
+  noAssertions: opt(Schema.Boolean),
   fixtures: Schema.Array(FixtureInfo),
   location: opt(Schema.String)
 })
@@ -137,7 +170,8 @@ export const RunFileTest = Schema.Struct({
   id: Schema.String,
   seed: Schema.Number,
   timeoutMs: Schema.Number,
-  retries: Schema.Number
+  retries: Schema.Number,
+  noAssertions: opt(Schema.Boolean)
 })
 export type RunFileTest = typeof RunFileTest.Type
 

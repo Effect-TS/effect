@@ -5,10 +5,9 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as TestClock from "effect/testing/TestClock"
-import * as assert from "node:assert"
+import * as Assert from "../src/Assert.ts"
 import * as Test from "../src/Test.ts"
 
 // --- the code under test
@@ -63,7 +62,7 @@ export default Test.suite("Account", [
         const account = yield* Account
         yield* account.deposit(50)
         yield* account.withdraw(30)
-        assert.strictEqual(yield* account.balance, 119)
+        Assert.equal(yield* account.balance, 119)
       })
     ).pipe(Test.provide(Account.layer(100))),
 
@@ -71,9 +70,9 @@ export default Test.suite("Account", [
       "overdrawing fails with a typed error and leaves the balance alone",
       Effect.gen(function*() {
         const account = yield* Account
-        const error = yield* Effect.flip(account.withdraw(500))
-        assert.deepStrictEqual(error, new InsufficientFunds({ balance: 100, amount: 500 }))
-        assert.strictEqual(yield* account.balance, 100)
+        const error = Assert.failure(yield* Effect.exit(account.withdraw(500)))
+        Assert.equal(error, new InsufficientFunds({ balance: 100, amount: 500 }))
+        Assert.equal(yield* account.balance, 100)
       })
     ).pipe(Test.provide(Account.layer(100))),
 
@@ -87,8 +86,8 @@ export default Test.suite("Account", [
           (withdrawal) => Effect.exit(withdrawal),
           { concurrency: "unbounded" }
         )
-        assert.strictEqual(results.filter((exit) => exit._tag === "Success").length, 50)
-        assert.strictEqual(yield* account.balance, 0)
+        Assert.equal(results.filter((exit) => exit._tag === "Success").length, 50)
+        Assert.equal(yield* account.balance, 0)
       })
     ).pipe(Test.provide(Account.layer(500)))
   ]),
@@ -98,8 +97,8 @@ export default Test.suite("Account", [
       "the fee table is loaded once and shared by every test in the file",
       Effect.gen(function*() {
         const fees = yield* Fees
-        assert.strictEqual(fees.withdrawal, 1)
-        assert.strictEqual(feeTableLoads, 1)
+        Assert.equal(fees.withdrawal, 1)
+        Assert.equal(feeTableLoads, 1)
       })
     ),
 
@@ -108,7 +107,7 @@ export default Test.suite("Account", [
       Effect.gen(function*() {
         const account = yield* Account
         yield* account.withdraw(30)
-        assert.strictEqual(yield* account.balance, 70)
+        Assert.equal(yield* account.balance, 70)
       })
       // compose the layers, then provide once: this account is built with free fees
     ).pipe(Test.provide(Account.layer(100).pipe(Layer.provide(Fees.free)))),
@@ -118,8 +117,8 @@ export default Test.suite("Account", [
       Effect.gen(function*() {
         const standard = yield* Fees
         const promotion = yield* Fees.pipe(Effect.provide(Fees.free))
-        assert.strictEqual(standard.withdrawal, 1)
-        assert.strictEqual(promotion.withdrawal, 0)
+        Assert.equal(standard.withdrawal, 1)
+        Assert.equal(promotion.withdrawal, 0)
       })
     )
   ]),
@@ -133,7 +132,7 @@ export default Test.suite("Account", [
         yield* Effect.forkChild(payInterest)
         // time only moves when the test says so: 90 days pass instantly
         yield* TestClock.adjust("90 days")
-        assert.strictEqual(yield* account.balance, 115)
+        Assert.equal(yield* account.balance, 115)
       })
     ).pipe(Test.provide(Account.layer(100))),
 
@@ -143,7 +142,7 @@ export default Test.suite("Account", [
         const slowCall = Effect.sleep("1 minute").pipe(Effect.as("response"))
         const fiber = yield* Effect.forkChild(Effect.timeoutOption(slowCall, "10 seconds"))
         yield* TestClock.adjust("10 seconds")
-        assert.deepStrictEqual(yield* Fiber.join(fiber), Option.none())
+        Assert.none(yield* Fiber.join(fiber))
       })
     ),
 
@@ -156,8 +155,8 @@ export default Test.suite("Account", [
           () => Effect.sync(() => events.push("close"))
         )
         const exportStatement = Effect.scoped(file.pipe(Effect.andThen(Effect.fail("disk full"))))
-        assert.strictEqual(yield* Effect.flip(exportStatement), "disk full")
-        assert.deepStrictEqual(events, ["open", "close"])
+        Assert.equal(Assert.failure(yield* Effect.exit(exportStatement)), "disk full")
+        Assert.equal(events, ["open", "close"])
       })
     )
   ])

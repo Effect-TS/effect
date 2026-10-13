@@ -5,8 +5,8 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
-import * as assert from "node:assert"
+import type * as Option from "effect/Option"
+import * as Assert from "../src/Assert.ts"
 import * as Test from "../src/Test.ts"
 
 export interface User {
@@ -30,14 +30,14 @@ export const userRepoContract = <E, R>(implementation: Layer.Layer<UserRepo, E, 
           const repo = yield* UserRepo
           const created = yield* repo.create("ada@example.com")
           const found = yield* repo.findByEmail("ada@example.com")
-          assert.deepStrictEqual(found, Option.some(created))
+          Assert.equal(Assert.some(found), created)
         })
       ),
       Test.test(
         "unknown email is None",
         Effect.gen(function*() {
           const repo = yield* UserRepo
-          assert.ok(Option.isNone(yield* repo.findByEmail("nobody@example.com")))
+          Assert.none(yield* repo.findByEmail("nobody@example.com"))
         })
       ),
       Test.test(
@@ -45,11 +45,8 @@ export const userRepoContract = <E, R>(implementation: Layer.Layer<UserRepo, E, 
         Effect.gen(function*() {
           const repo = yield* UserRepo
           yield* repo.create("grace@example.com")
-          const second = yield* repo.create("grace@example.com").pipe(
-            Effect.map((user) => `created user #${user.id}`),
-            Effect.catchTag("DuplicateEmail", (e) => Effect.succeed(`DuplicateEmail(${e.email})`))
-          )
-          assert.deepStrictEqual(second, "DuplicateEmail(grace@example.com)")
+          const second = yield* Effect.exit(repo.create("grace@example.com"))
+          Assert.equal(Assert.failure(second), new DuplicateEmail({ email: "grace@example.com" }))
         })
       )
     ].map(Test.provide(implementation))

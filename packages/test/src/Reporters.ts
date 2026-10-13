@@ -1,7 +1,17 @@
 // Reporters turn the structured event stream into text. Failures stay
 // data until here (nothing is pre-rendered in the executor).
 import * as Schema from "effect/Schema"
-import type { Failure, PlannedTest, RunFinished, Selection, TestEvent, TestFinished } from "./Protocol.ts"
+import type {
+  Failure,
+  Location,
+  Mismatch,
+  PlannedTest,
+  RunFinished,
+  Selection,
+  SourceLine,
+  TestEvent,
+  TestFinished
+} from "./Protocol.ts"
 import { TestEvent as TestEventSchema } from "./Protocol.ts"
 
 export interface Reporter {
@@ -22,13 +32,50 @@ const bounded = (lines: ReadonlyArray<string>, max = MAX_LINES) =>
 
 const indent = (s: string, n = 2) => s.split("\n").map((l) => " ".repeat(n) + l).join("\n")
 
+const MAX_MISMATCHES = 10
+
+const renderMismatch = (m: Mismatch): string => {
+  const at = m.path ? `${m.path}: ` : ""
+  return m.reason !== undefined ? at + m.reason : `${at}expected ${m.expected}, got ${m.actual}`
+}
+
+const at = (l: Location) => `${l.file}:${l.line}:${l.column}`
+
+/** The failing line marked with `>`, the lines before it for context, and a caret at the column. */
+const renderSource = (source: ReadonlyArray<SourceLine>, location: Location): Array<string> => {
+  const width = String(location.line).length
+  const out = source.map((s) =>
+    `${s.line === location.line ? ">" : " "} ${String(s.line).padStart(width)} | ${s.text.replace(/\t/g, "  ")}`
+  )
+  const failing = source.find((s) => s.line === location.line)
+  if (failing) {
+    const col = failing.text.slice(0, Math.max(0, location.column - 1)).replace(/\t/g, "  ").length
+    out.push(`  ${" ".repeat(width)} | ${" ".repeat(col)}^`)
+  }
+  return out
+}
+
 const renderFailure = (f: Failure): Array<string> => {
   const out: Array<string> = []
-  out.push(`${f.kind}: ${f.message}`)
+  const [first, ...rest] = f.message.split("\n")
+  if (f.label !== undefined) {
+    out.push(`${f.kind}: ${f.label}`)
+    out.push(`  ${first}`)
+  } else out.push(`${f.kind}: ${first}`)
+  for (const l of rest) out.push(`  ${l}`)
+  const mismatches = f.mismatches ?? []
+  for (const m of mismatches.slice(0, MAX_MISMATCHES)) {
+    const [line, ...more] = renderMismatch(m).split("\n")
+    out.push(`    ${line}`)
+    for (const l of more) out.push(`      ${l}`)
+  }
+  if (mismatches.length > MAX_MISMATCHES) out.push(`    ... (+${mismatches.length - MAX_MISMATCHES} more)`)
   if (f.errorTag) out.push(`  _tag: ${f.errorTag}`)
   if (f.errorFields) out.push(`  fields: ${f.errorFields}`)
+  if (f.note) out.push(`  note: ${f.note}`)
   if (f.location) {
-    out.push(`  at ${f.location.file}:${f.location.line}:${f.location.column}`)
+    out.push(`  at ${at(f.location)}${f.origin ? ` (raised at ${at(f.origin)})` : ""}`)
+    if (f.source) { for (const l of renderSource(f.source, f.location)) out.push(`    ${l}`) }
   }
   return out
 }
@@ -204,7 +251,13 @@ export const human = (ctx: ReporterContext): Reporter => {
         out.push(red(bold(` ${r.status.toUpperCase()} `)) + " " + dim(`[${t.shortId}]`) + " " + bold(t.id))
         for (const f of r.failures) {
           for (const l of renderFailure(f)) {
-            out.push("  " + (l.trimStart().startsWith(">") ? red(l) : l.includes("→") ? yellow(l) : l))
+            out.push(
+              "  " + (l.trimStart().startsWith(">")
+                ? red(l)
+                : l.includes(": expected ") || l.includes(": missing") || l.includes(": unexpected")
+                ? yellow(l)
+                : l)
+            )
           }
         }
         if (r.console.length) out.push(dim("  console:\n" + indent(bounded(r.console).join("\n"), 4)))
