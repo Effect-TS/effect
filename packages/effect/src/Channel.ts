@@ -1933,6 +1933,9 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
  * value becomes the channel's done value. Thrown or rejected iterator errors
  * are converted with `onError`. If the channel scope closes early and the
  * iterator has a `return` method, that method is called.
+ * Cleanup is awaited only when no `next()` call is pending. Otherwise,
+ * `return()` is requested without waiting and any rejection is ignored. An
+ * async generator may not run its cleanup until the pending pull settles.
  *
  * @stability stable
  * @category constructors
@@ -1987,8 +1990,9 @@ export const fromAsyncIterable = <A, D, E>(
  * The iterator's return value becomes the channel's done value. Thrown or
  * rejected iterator errors are converted with `onError`. If the channel scope
  * closes early and the iterator has a `return` method, that method is called.
- * The close does not wait for `return` to settle: a pending `next` would
- * otherwise keep the channel open.
+ * Cleanup is awaited only when no `next()` call is pending. Otherwise,
+ * `return()` is requested without waiting and any rejection is ignored. An
+ * async generator may not run its cleanup until the pending pull settles.
  *
  * @stability stable
  * @category constructors
