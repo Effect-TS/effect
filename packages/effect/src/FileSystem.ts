@@ -970,7 +970,10 @@ export declare namespace File {
    *
    * Node and Bun preserve `size` and `blksize` exactly. Optional `number`
    * metadata is `Option.none()` when absent or outside the safe integer range.
-   * Unsafe `dev` or `mode` values fail the stat operation with `BadArgument`.
+   * `dev` is interpreted as an unsigned 64-bit integer and converted to a
+   * `number`, matching Node's non-bigint stats. Values outside the safe integer
+   * range may lose precision. Unsafe `mode` values fail the stat operation
+   * with `BadArgument`.
    *
    * **Example** (Inspecting file information)
    *

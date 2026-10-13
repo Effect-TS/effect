@@ -592,7 +592,7 @@ const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info
       mtime: Option.fromNullishOr(stat.mtime),
       atime: Option.fromNullishOr(stat.atime),
       birthtime: Option.fromNullishOr(stat.birthtime),
-      dev: bigintToNumber(stat.dev, "dev"),
+      dev: Number(BigInt.asUintN(64, stat.dev)),
       rdev: bigintToNumberOption(stat.rdev),
       ino: bigintToNumberOption(stat.ino),
       mode: bigintToNumber(stat.mode, "mode"),
