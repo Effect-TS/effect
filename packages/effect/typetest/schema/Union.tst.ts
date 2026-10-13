@@ -108,7 +108,7 @@ describe("Union", () => {
   })
 
   describe("Tagged unions", () => {
-    describe("asTaggedUnion", () => {
+    describe("toTaggedUnion", () => {
       it("should not be callable if the tag field is invalid", () => {
         const original = Schema.Union([
           Schema.TaggedStruct("A", { a: Schema.String }),
@@ -145,6 +145,44 @@ describe("Union", () => {
         expect(A).type.toBe<Schema.TaggedStruct<"A", { readonly a: Schema.String }>>()
         expect(B).type.toBe<Schema.TaggedStruct<"B", { readonly b: Schema.FiniteFromString }>>()
         expect(C).type.toBe<Schema.TaggedStruct<"C", { readonly c: Schema.Boolean }>>()
+      })
+
+      it("should reject duplicates only on the selected tag", () => {
+        const original = Schema.Union([
+          Schema.Struct({ _tag: Schema.tag("A"), kind: Schema.tag("shared") }),
+          Schema.Struct({ _tag: Schema.tag("B"), kind: Schema.tag("shared") })
+        ])
+
+        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("kind"))
+
+        const schema = original.pipe(Schema.toTaggedUnion("_tag"))
+        expect(schema.discriminants).type.toBe<readonly ["A", "B"]>()
+      })
+
+      it("should reject duplicate nested discriminants", () => {
+        const original = Schema.Union([
+          Schema.Struct({ event: Schema.Literal("A") }),
+          Schema.Union([
+            Schema.Struct({ event: Schema.Literal("B") }),
+            Schema.Struct({ event: Schema.Literal("A") })
+          ])
+        ])
+
+        expect(original.pipe).type.not.toBeCallableWith(Schema.toTaggedUnion("event"))
+      })
+
+      it("should reject numeric and string discriminants with the same property key", () => {
+        const original = Schema.Union([
+          Schema.Struct({ event: Schema.Literal(1) }),
+          Schema.Struct({ event: Schema.Literal("1") })
+        ])
+        expect(Schema.toTaggedUnion("event")).type.not.toBeCallableWith(original)
+
+        const schema = Schema.Union([
+          Schema.Struct({ event: Schema.Literal(1) }),
+          Schema.Struct({ event: Schema.Literal("2") })
+        ]).pipe(Schema.toTaggedUnion("event"))
+        expect(schema.discriminants).type.toBe<readonly [1, "2"]>()
       })
 
       it("isAnyOf should narrow custom tags", () => {
