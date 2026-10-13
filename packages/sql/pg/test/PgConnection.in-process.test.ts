@@ -12,6 +12,10 @@ import { vi } from "vitest"
 
 const tlsOptions = new WeakMap<Duplex, Tls.ConnectionOptions | undefined>()
 
+vi.mock("node:net", async (importOriginal) => ({
+  ...await importOriginal<typeof Net>()
+}))
+
 // Only simulate TLS for registered streams; other connections use native TLS.
 vi.mock("node:tls", async (importOriginal) => {
   const original = await importOriginal<typeof Tls>()
@@ -209,16 +213,9 @@ const withUnixServer = (
       })
   )
 
-const keepAliveOptions: PgConnection.KeepAliveOptions = {
-  initialDelay: "30 seconds",
-  interval: "10 seconds",
-  count: 3
-}
-const expectedKeepAliveArgs = [true, 30_000, 10_000, 3] as const
-
-interface KeepAliveCall {
+interface KeepAliveConnection {
   readonly socket: Net.Socket
-  readonly args: Readonly<Parameters<Net.Socket["setKeepAlive"]>>
+  readonly options: Net.NetConnectOpts
 }
 
 const withKeepAliveServer = Effect.fnUntraced(function*(options?: { readonly tls?: boolean }) {
@@ -230,51 +227,59 @@ const withKeepAliveServer = Effect.fnUntraced(function*(options?: { readonly tls
       else if (tag === "S") socket.write(emptyQueryResult)
     })
   })
-  const keepAliveCalls: Array<KeepAliveCall> = []
-  const original = Net.Socket.prototype.setKeepAlive
+  const connections: Array<KeepAliveConnection> = []
+  const original = Net.connect
   yield* Effect.acquireRelease(
     Effect.sync(() =>
-      vi.spyOn(Net.Socket.prototype, "setKeepAlive").mockImplementation(function(this: Net.Socket, ...args) {
-        if (this.remotePort === port) {
-          keepAliveCalls.push({ socket: this, args })
-          if (options?.tls) tlsOptions.set(this, undefined)
-        }
-        return original.apply(this, args)
-      })
+      vi.spyOn(Net, "connect").mockImplementation(
+        ((connectOptions: Net.NetConnectOpts) => {
+          const socket = original(connectOptions)
+          if ("port" in connectOptions && connectOptions.port === port) {
+            connections.push({ socket, options: connectOptions })
+            if (options?.tls) tlsOptions.set(socket, undefined)
+          }
+          return socket
+        }) as typeof Net.connect
+      )
     ),
     (spy) => Effect.sync(() => spy.mockRestore())
   )
-  return { config: { host: "127.0.0.1", port, username: "test" }, keepAliveCalls }
+  return { config: { host: "127.0.0.1", port, username: "test" }, connections }
 })
 
 describe("PgConnection in-process server", () => {
   describe("TCP keepalive", { concurrent: false }, () => {
     it.live("leaves keepalives disabled by default", () =>
       Effect.scoped(Effect.gen(function*() {
-        const { config, keepAliveCalls } = yield* withKeepAliveServer()
+        const { config, connections } = yield* withKeepAliveServer()
         const connection = yield* PgConnection.make(config)
         yield* connection.interrupt
-        assert.deepStrictEqual(keepAliveCalls, [])
+        assert.deepStrictEqual(connections.map(({ options }) => options.keepAlive), [undefined, undefined])
       })))
 
-    it.live("applies duration-based keepalive options to TCP and cancellation sockets", () =>
+    it.live("enables keepalive at TCP connect time but not for cancellation", () =>
       Effect.scoped(Effect.gen(function*() {
-        const { config, keepAliveCalls } = yield* withKeepAliveServer()
-        const connection = yield* PgConnection.make({ ...config, keepAlive: keepAliveOptions })
+        const { config, connections } = yield* withKeepAliveServer()
+        const connection = yield* PgConnection.make({ ...config, keepAlive: "30 seconds" })
         yield* connection.interrupt
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [expectedKeepAliveArgs, expectedKeepAliveArgs])
+        assert.deepStrictEqual(connections.map(({ options }) => [options.keepAlive, options.keepAliveInitialDelay]), [
+          [true, 30_000],
+          [undefined, undefined]
+        ])
       })))
 
-    it.live("configures TCP before TLS and leaves omitted probe options to Node", () =>
+    it.live("configures keepalive before TLS", () =>
       Effect.scoped(Effect.gen(function*() {
-        const { config, keepAliveCalls } = yield* withKeepAliveServer({ tls: true })
+        const { config, connections } = yield* withKeepAliveServer({ tls: true })
         yield* PgConnection.make({
           ...config,
-          keepAlive: { initialDelay: "15 seconds" },
+          keepAlive: "15 seconds",
           ssl: { rejectUnauthorized: false }
         })
-        assert.deepStrictEqual(keepAliveCalls.map((call) => call.args), [[true, 15_000, undefined, undefined]])
-        assert.strictEqual(tlsOptions.get(keepAliveCalls[0]!.socket)?.rejectUnauthorized, false)
+        assert.deepStrictEqual(connections.map(({ options }) => [options.keepAlive, options.keepAliveInitialDelay]), [
+          [true, 15_000]
+        ])
+        assert.strictEqual(tlsOptions.get(connections[0]!.socket)?.rejectUnauthorized, false)
       })))
 
     it.effect("leaves caller-supplied streams unconfigured", () =>
@@ -285,7 +290,7 @@ describe("PgConnection in-process server", () => {
         yield* PgConnection.make({
           username: "test",
           ssl: true,
-          keepAlive: keepAliveOptions,
+          keepAlive: "30 seconds",
           stream: () => stream.socket
         })
         assert.strictEqual(setKeepAlive.mock.calls.length, 0)
@@ -302,7 +307,7 @@ describe("PgConnection in-process server", () => {
           Effect.sync(() => vi.spyOn(Net.Socket.prototype, "setKeepAlive")),
           (spy) => Effect.sync(() => spy.mockRestore())
         )
-        yield* PgConnection.make({ host: directory, username: "test", keepAlive: keepAliveOptions })
+        yield* PgConnection.make({ host: directory, username: "test", keepAlive: "30 seconds" })
         assert.deepStrictEqual(spy.mock.calls, [])
       })))
   })

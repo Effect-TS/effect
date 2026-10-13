@@ -4,44 +4,19 @@ import { Effect, Fiber, Redacted } from "effect"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("PgConnection config", () => {
-  it.effect.each([0, 1.5, 2 ** 32])(
-    "rejects invalid keepalive count %i before connecting",
-    (count) =>
-      Effect.gen(function*() {
-        let connected = false
-        const error = yield* Effect.flip(PgConnection.make({
-          username: "test",
-          keepAlive: { initialDelay: "30 seconds", count },
-          stream: () => {
-            connected = true
-            throw new Error("unexpected connection")
-          }
-        }))
-        assert.isFalse(connected)
-        assert.strictEqual(error.reason._tag, "ConnectionError")
-      })
-  )
-
-  it.effect("rejects sub-second keepalive durations before connecting", () =>
+  it.effect("rejects sub-second keepalive before connecting", () =>
     Effect.gen(function*() {
-      for (
-        const keepAlive of [
-          { initialDelay: "999 millis" },
-          { initialDelay: "30 seconds", interval: "999 millis" }
-        ] as const
-      ) {
-        let connected = false
-        const error = yield* Effect.flip(PgConnection.make({
-          username: "test",
-          keepAlive,
-          stream: () => {
-            connected = true
-            throw new Error("unexpected connection")
-          }
-        }))
-        assert.isFalse(connected)
-        assert.strictEqual(error.reason._tag, "ConnectionError")
-      }
+      let connected = false
+      const error = yield* Effect.flip(PgConnection.make({
+        username: "test",
+        keepAlive: "999 millis",
+        stream: () => {
+          connected = true
+          throw new Error("unexpected connection")
+        }
+      }))
+      assert.isFalse(connected)
+      assert.strictEqual(error.reason._tag, "ConnectionError")
     }))
 
   it.effect.each([
