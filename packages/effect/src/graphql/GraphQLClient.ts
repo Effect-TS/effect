@@ -443,7 +443,13 @@ const makeMethod = <Op extends GraphQL.Any>(
   > {
     return buildRequest(variables, options).pipe(
       Effect.flatMap((request) => execute(0, request, false)),
-      Effect.flatMap(options?.partial === true ? decodePartial : decodeStrict),
+      Effect.flatMap(
+        (result): Effect.Effect<
+          GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
+          GraphQLClientError,
+          Op["result"]["DecodingServices"]
+        > => options?.partial === true ? decodePartial(result) : decodeStrict(result)
+      ),
       Effect.provideContext(callContext(options))
     )
   }
