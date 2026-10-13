@@ -158,7 +158,7 @@ export type ForwardTarget =
   | NetAddress.UnixPathAddressParts
 
 /**
- * The byte streams of a session, such as a subsystem.
+ * A session's standard input, output, and error streams.
  *
  * **Details**
  *
@@ -190,9 +190,9 @@ export interface SshStream {
  *
  * **Details**
  *
- * `data` carries what the target sends and can be consumed once; data that is
- * not consumed eventually stops the target from sending. `write` sends data,
- * `eof` ends the data sent to the target once pending writes are sent,
+ * `data` carries the target's output and can be consumed once. Unconsumed
+ * output eventually stops the target from sending. `write` sends data,
+ * `eof` ends input to the target once pending writes are sent,
  * `close` tears the tunnel down, and `closed` waits until it is torn down, by
  * either side or with the connection. Concurrent writes are sent one after
  * another, and an interrupted write may have sent part of its data.
@@ -241,11 +241,10 @@ export interface SshProcess extends SshStream {
  *   closes. Each side's end of data is passed on to the other, like a
  *   half-closed TCP connection. The `forwardOutSocket` function exposes
  *   tunnels as a `Socket.Socket`.
- * - `closed` waits until the connection has closed: when its scope closes,
- *   when the transport ends or fails, for example because the server went
- *   away, or when the server violates the protocol. It never fails. By the
- *   time it completes, every command, subsystem, and tunnel of the
- *   connection has closed or failed, and further operations fail.
+ * - `closed` waits for scope closure, transport termination or failure, or
+ *   a protocol violation. It never fails. Before it completes, every
+ *   command, subsystem, and tunnel has closed or failed; further operations
+ *   fail.
  *
  * **Gotchas**
  *
@@ -320,7 +319,6 @@ export interface OpenSshSettings {
  * - `forwardAgent` forwards the local SSH agent to every command. Servers
  *   may offer it to later commands on the connection as well, and commands
  *   run without it when the server refuses it.
- *
  * - `openSsh` holds settings only OpenSSH-based backends understand (see
  *   `OpenSshSettings`). Other backends cannot apply them, so they fail with
  *   a `Connection` error rather than connect without them.
