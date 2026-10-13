@@ -1,6 +1,10 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
-import * as Crypto from "effect/Crypto"
+import * as ChaCha20Poly1305 from "effect/crypto/ChaCha20Poly1305"
+import * as Ed25519 from "effect/crypto/Ed25519"
+import * as Md5 from "effect/crypto/Md5"
+import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as TestClock from "effect/testing/TestClock"
@@ -12,16 +16,16 @@ describe("NodeCrypto", () => {
   it.effect("provides every service except Argon2id from the aggregate layer", () =>
     Effect.gen(function*() {
       yield* TestClock.setTime(0x0123456789ab)
-      const uuid = yield* Crypto.randomUUIDv7()
+      const uuid = yield* SecureRandom.randomUUIDv7()
       assert.match(uuid, uuidV7Regex)
       assert.strictEqual(uuid.slice(0, 13), "01234567-89ab")
-      const sha2 = yield* Crypto.Sha2
+      const sha2 = yield* Sha2.Sha2
       const digest = yield* sha2.digest("SHA-256", new TextEncoder().encode("hello"))
       assert.strictEqual(Hex.encode(digest), "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
-      yield* Crypto.Md5
-      yield* Crypto.XChaCha20Poly1305
-      yield* Crypto.ChaCha20Poly1305
-      yield* Crypto.Ed25519
+      yield* Md5.Md5
+      yield* ChaCha20Poly1305.XChaCha20Poly1305
+      yield* ChaCha20Poly1305.ChaCha20Poly1305
+      yield* Ed25519.Ed25519
     }).pipe(Effect.provide(NodeCrypto.layer)))
 })
 

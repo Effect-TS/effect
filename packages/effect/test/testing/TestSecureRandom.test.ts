@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Crypto from "effect/Crypto"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import { TestSecureRandom } from "effect/testing"
 
@@ -7,10 +7,10 @@ describe("TestSecureRandom", () => {
   it.effect("provides deterministic random operations from a seed", () => {
     const generate = (seed: string) =>
       Effect.gen(function*() {
-        const bytes = yield* Crypto.randomBytes(8)
-        const random = yield* Crypto.random
-        const uuid1 = yield* Crypto.randomUUIDv4()
-        const uuid2 = yield* Crypto.randomUUIDv4()
+        const bytes = yield* SecureRandom.randomBytes(8)
+        const random = yield* SecureRandom.random
+        const uuid1 = yield* SecureRandom.randomUUIDv4()
+        const uuid2 = yield* SecureRandom.randomUUIDv4()
         return { bytes, random, uuid1, uuid2 }
       }).pipe(Effect.provide(TestSecureRandom.layer(seed)))
 

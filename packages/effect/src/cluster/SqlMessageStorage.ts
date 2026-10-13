@@ -14,7 +14,7 @@
  * `layerStorage` in the runtime.
  *
  * Request deduplication keys that exceed the 255-character `message_id`
- * column are hashed with the `Crypto.Sha2` service before they are written, so
+ * column are hashed with the `Sha2.Sha2` service before they are written, so
  * composed keys of any length are supported; shorter keys are stored as
  * plaintext, byte-compatible with rows written by previous versions.
  *
@@ -23,7 +23,8 @@
  */
 // eslint-disable effect/no-bigint-literals
 import * as Arr from "../Array.ts"
-import * as Crypto from "../Crypto.ts"
+import type * as CryptoError from "../crypto/CryptoError.ts"
+import * as Sha2 from "../crypto/Sha2.ts"
 import * as Effect from "../Effect.ts"
 import * as Hex from "../encoding/Hex.ts"
 import * as Layer from "../Layer.ts"
@@ -75,7 +76,7 @@ export const makeEncoded: (options?: {
 }) => Effect.Effect<
   MessageStorage.Encoded,
   never,
-  SqlClient.SqlClient | Crypto.Sha2
+  SqlClient.SqlClient | Sha2.Sha2
 > = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
 
 const makeEncodedStorage = Effect.fnUntraced(function*(
@@ -84,7 +85,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   } | undefined
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-  const sha2 = yield* Crypto.Sha2
+  const sha2 = yield* Sha2.Sha2
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
@@ -107,7 +108,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   // birthday bound). Digests never contain "/" while composed keys always do,
   // so the two encodings cannot collide.
   const encoder = new TextEncoder()
-  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, Crypto.CryptoError> =>
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, CryptoError.CryptoError> =>
     primaryKey.length <= 255
       ? Effect.succeed(primaryKey)
       : Effect.map(sha2.digest("SHA-256", encoder.encode(primaryKey)), Hex.encode)
@@ -522,7 +523,7 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
   const encoded: MessageStorage.Encoded = {
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | Crypto.CryptoError>
+        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | CryptoError.CryptoError>
         if (primaryKey !== null) {
           insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
             const row = envelopeToRow(envelope, messageId, deliverAt)
@@ -808,7 +809,7 @@ export const make: (options?: {
 }) => Effect.Effect<
   MessageStorage.MessageStorage["Service"],
   never,
-  SqlClient.SqlClient | Snowflake.Generator | Crypto.Sha2
+  SqlClient.SqlClient | Snowflake.Generator | Sha2.Sha2
 > = (options) => Effect.flatMap(makeEncoded(options), MessageStorage.makeEncoded)
 
 /**
@@ -1161,7 +1162,7 @@ export const layerMigrations = (options: {
  */
 export const layerStorage = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Sha2> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Sha2.Sha2> =>
   Layer.effect(
     MessageStorage.MessageStorage,
     Effect.flatMap(makeEncodedStorage(options), MessageStorage.makeEncoded)
@@ -1184,7 +1185,7 @@ export const layerStorage = (options: {
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Sha2> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Sha2.Sha2> =>
   layerStorage(options).pipe(
     Layer.provide(layerMigrations(options))
   )
@@ -1206,7 +1207,7 @@ export const layerWith = (options: {
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
   never,
-  SqlClient.SqlClient | ShardingConfig | Crypto.Sha2
+  SqlClient.SqlClient | ShardingConfig | Sha2.Sha2
 > = layerWith({})
 
 // -------------------------------------------------------------------------------------------------

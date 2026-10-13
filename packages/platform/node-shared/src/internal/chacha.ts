@@ -1,7 +1,8 @@
 /**
  * @internal
  */
-import * as Crypto from "effect/Crypto"
+import type * as Aead from "effect/crypto/Aead"
+import * as CryptoError from "effect/crypto/CryptoError"
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as NodeCrypto from "node:crypto"
@@ -59,23 +60,23 @@ const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
   return output
 }
 
-const makeAead = (label: string, nonceLength: 12 | 24): Crypto.Aead => {
-  const fail = (method: string, reason: Crypto.CryptoErrorReason) =>
-    Effect.fail(new Crypto.CryptoError({ algorithm: label, method, reason }))
+const makeAead = (label: string, nonceLength: 12 | 24): Aead.Aead => {
+  const fail = (method: string, reason: CryptoError.CryptoErrorReason) =>
+    Effect.fail(new CryptoError.CryptoError({ algorithm: label, method, reason }))
 
-  const cipher = (method: "encrypt" | "decrypt") => ({ additionalData, data, key, nonce }: Crypto.AeadOptions) => {
+  const cipher = (method: "encrypt" | "decrypt") => ({ additionalData, data, key, nonce }: Aead.Options) => {
     if (nonce.length !== nonceLength) {
       return fail(
         method,
-        new Crypto.BadArgument({ description: `${label} nonce must contain exactly ${nonceLength} bytes` })
+        new CryptoError.BadArgument({ description: `${label} nonce must contain exactly ${nonceLength} bytes` })
       )
-    }
-    if (method === "decrypt" && data.length < 16) {
-      return fail(method, new Crypto.AuthenticationFailed({ description: "Ciphertext is shorter than the tag" }))
     }
     const material = Redacted.value(key)
     if (material.length !== 32) {
-      return fail(method, new Crypto.InvalidKey({ description: `${label} keys must contain exactly 32 bytes` }))
+      return fail(method, new CryptoError.InvalidKey({ description: `${label} keys must contain exactly 32 bytes` }))
+    }
+    if (method === "decrypt" && data.length < 16) {
+      return fail(method, new CryptoError.AuthenticationFailed({ description: "Ciphertext is shorter than the tag" }))
     }
     return Effect.try({
       try: () => {
@@ -101,10 +102,10 @@ const makeAead = (label: string, nonceLength: 12 | 24): Crypto.Aead => {
               suffix = decipher.final()
             } catch (cause) {
               // `final` throws only when the tag does not match.
-              throw new Crypto.CryptoError({
+              throw new CryptoError.CryptoError({
                 algorithm: label,
                 method,
-                reason: new Crypto.AuthenticationFailed({ description: "Could not authenticate data", cause })
+                reason: new CryptoError.AuthenticationFailed({ description: "Could not authenticate data", cause })
               })
             }
             return concat([prefix, suffix])
@@ -119,23 +120,23 @@ const makeAead = (label: string, nonceLength: 12 | 24): Crypto.Aead => {
         }
       },
       catch: (cause) =>
-        Crypto.isCryptoError(cause) ? cause : new Crypto.CryptoError({
+        CryptoError.isCryptoError(cause) ? cause : new CryptoError.CryptoError({
           algorithm: label,
           method,
-          reason: new Crypto.Unknown({ description: `Could not perform ${method}`, cause })
+          reason: new CryptoError.Unknown({ description: `Could not perform ${method}`, cause })
         })
     })
   }
 
   return {
-    generateKey: () => Effect.sync(() => Redacted.make(Uint8Array.from(NodeCrypto.randomBytes(32)))),
+    generateKey: () => Effect.sync(() => Redacted.make(NodeCrypto.randomFillSync(new Uint8Array(32)))),
     encrypt: cipher("encrypt"),
     decrypt: cipher("decrypt")
   }
 }
 
 /** @internal */
-export const makeChaCha20Poly1305 = (): Crypto.Aead => makeAead("ChaCha20-Poly1305", 12)
+export const makeChaCha20Poly1305 = (): Aead.Aead => makeAead("ChaCha20-Poly1305", 12)
 
 /** @internal */
-export const makeXChaCha20Poly1305 = (): Crypto.Aead => makeAead("XChaCha20-Poly1305", 24)
+export const makeXChaCha20Poly1305 = (): Aead.Aead => makeAead("XChaCha20-Poly1305", 24)

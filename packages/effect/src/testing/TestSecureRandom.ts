@@ -11,7 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Crypto from "../Crypto.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Random from "../Random.ts"
@@ -44,10 +44,10 @@ import * as Random from "../Random.ts"
  * @category constructors
  * @since 4.0.0
  */
-export const make: (seed: string | number) => Effect.Effect<Crypto.SecureRandom> = Effect.fnUntraced(
+export const make: (seed: string | number) => Effect.Effect<SecureRandom.SecureRandom> = Effect.fnUntraced(
   function*(_seed: string | number) {
     const seededRandom = yield* Random.Random
-    return Crypto.makeSecureRandom((size) => {
+    return SecureRandom.make((size) => {
       const bytes = new Uint8Array(size)
       for (let i = 0; i < size; i++) {
         bytes[i] = Math.floor(seededRandom.nextDoubleUnsafe() * 256)
@@ -82,5 +82,5 @@ export const make: (seed: string | number) => Effect.Effect<Crypto.SecureRandom>
  * @category layers
  * @since 4.0.0
  */
-export const layer = (seed: string | number): Layer.Layer<Crypto.SecureRandom> =>
-  Layer.effect(Crypto.SecureRandom, make(seed))
+export const layer = (seed: string | number): Layer.Layer<SecureRandom.SecureRandom> =>
+  Layer.effect(SecureRandom.SecureRandom, make(seed))

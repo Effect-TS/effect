@@ -1,6 +1,6 @@
 /**
  * The `NodeCrypto` module provides Node.js layers for Effect's cryptographic
- * services. The `effect/Crypto` module implements most algorithms with Web
+ * services. The `effect/crypto` modules implement most algorithms with Web
  * Crypto; this module runs them on `node:crypto`, so they also work on Node.js
  * 18, which has no `globalThis.crypto`, and adds MD5, ChaCha20-Poly1305,
  * XChaCha20-Poly1305, and Argon2id.

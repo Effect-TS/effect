@@ -1,5 +1,13 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Crypto from "effect/Crypto"
+import * as Aes from "effect/crypto/Aes"
+import * as Argon2 from "effect/crypto/Argon2"
+import * as ChaCha20Poly1305 from "effect/crypto/ChaCha20Poly1305"
+import type * as CryptoError from "effect/crypto/CryptoError"
+import * as Ecdh from "effect/crypto/Ecdh"
+import * as Ecdsa from "effect/crypto/Ecdsa"
+import * as Ed25519 from "effect/crypto/Ed25519"
+import * as Md5 from "effect/crypto/Md5"
+import * as Rsa from "effect/crypto/Rsa"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Layer from "effect/Layer"
@@ -19,9 +27,9 @@ const view = (bytes: Uint8Array | string): Uint8Array => {
 }
 
 const assertReason = (
-  error: Crypto.CryptoError,
+  error: CryptoError.CryptoError,
   method: string,
-  reason: Crypto.CryptoErrorReason["_tag"]
+  reason: CryptoError.CryptoErrorReason["_tag"]
 ) => {
   assert.strictEqual(error._tag, "CryptoError")
   assert.strictEqual(error.method, method)
@@ -29,14 +37,14 @@ const assertReason = (
 }
 
 /**
- * The layers a platform adds to the Web Crypto layers of `effect/Crypto`. Tests
+ * The layers a platform adds to the Web Crypto layers of `effect/crypto`. Tests
  * of services a platform does not add are skipped.
  */
 export interface CryptoLayers {
-  readonly md5?: Layer.Layer<Crypto.Md5> | undefined
-  readonly chaCha20Poly1305?: Layer.Layer<Crypto.ChaCha20Poly1305> | undefined
-  readonly xChaCha20Poly1305?: Layer.Layer<Crypto.XChaCha20Poly1305> | undefined
-  readonly argon2id?: Layer.Layer<Crypto.Argon2id, Crypto.CryptoError> | undefined
+  readonly md5?: Layer.Layer<Md5.Md5> | undefined
+  readonly chaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.ChaCha20Poly1305> | undefined
+  readonly xChaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1305> | undefined
+  readonly argon2id?: Layer.Layer<Argon2.Argon2id, CryptoError.CryptoError> | undefined
 }
 
 // RFC 8439, section 2.8.2, and draft-irtf-cfrg-xchacha-03, Appendix A.3.1.
@@ -115,56 +123,59 @@ const xchachaVectors: ReadonlyArray<readonly [number, string]> = [
 
 /**
  * Runs the tests every platform shares: the Web Crypto behaviour the
- * `effect/Crypto` layers rely on, and the services the platform adds.
+ * `effect/crypto` layers rely on, and the services the platform adds.
  */
 export const describeCrypto = (label: string, layers: CryptoLayers) =>
   describe(label, () => {
     // The Web Crypto layers themselves are tested in `effect`. These check the
     // runtime behaviour those layers rely on.
     describe("Web Crypto behaviour the layers rely on", () => {
-      it.effect("exports Ed25519 private keys in the PKCS8 form ed25519PrivateKeyToRaw reads", () =>
+      it.effect("exports Ed25519 private keys in the PKCS8 form Ed25519.privateKeyToRaw reads", () =>
         Effect.gen(function*() {
-          const { privateKey } = yield* (yield* Crypto.Ed25519).generateKeyPair()
+          const { privateKey } = yield* (yield* Ed25519.Ed25519).generateKeyPair()
           assert.strictEqual(Redacted.value(privateKey).length, 48)
-          const seed = yield* Crypto.ed25519PrivateKeyToRaw(privateKey)
-          assert.deepStrictEqual(yield* Crypto.ed25519PrivateKeyFromRaw(seed), privateKey)
-        }).pipe(Effect.provide(Crypto.layerEd25519)))
+          const seed = yield* Ed25519.privateKeyToRaw(privateKey)
+          assert.deepStrictEqual(yield* Ed25519.privateKeyFromRaw(seed), privateKey)
+        }).pipe(Effect.provide(Ed25519.layer)))
 
       it.effect("derives public keys from the private key's JWK export", () =>
         Effect.gen(function*() {
-          const ed25519 = yield* Crypto.Ed25519
-          const ecdsa = yield* Crypto.Ecdsa
-          const rsa = yield* Crypto.Rsa
-          const ecdh = yield* Crypto.Ecdh
+          const ed25519 = yield* Ed25519.Ed25519
+          const ecdsa = yield* Ecdsa.Ecdsa
+          const rsa = yield* Rsa.Rsa
+          const ecdh = yield* Ecdh.Ecdh
           const edPair = yield* ed25519.generateKeyPair()
-          assert.deepStrictEqual(yield* ed25519.publicKey(edPair.privateKey), edPair.publicKey)
+          assert.deepStrictEqual(yield* Ed25519.publicKeyFromPrivateKey(edPair.privateKey), edPair.publicKey)
           const ecdsaPair = yield* ecdsa.generateKeyPair({ curve: "P-384" })
-          assert.deepStrictEqual(yield* ecdsa.publicKey("P-384", ecdsaPair.privateKey), ecdsaPair.publicKey)
+          assert.deepStrictEqual(
+            yield* Ecdsa.publicKeyFromPrivateKey("P-384", ecdsaPair.privateKey),
+            ecdsaPair.publicKey
+          )
           const rsaPair = yield* rsa.generateKeyPair()
-          assert.deepStrictEqual(yield* rsa.publicKey(rsaPair.privateKey), rsaPair.publicKey)
+          assert.deepStrictEqual(yield* Rsa.publicKeyFromPrivateKey(rsaPair.privateKey), rsaPair.publicKey)
           for (const curve of ["X25519", "P-256"] as const) {
             const pair = yield* ecdh.generateKeyPair({ curve })
-            assert.deepStrictEqual(yield* ecdh.publicKey(curve, pair.privateKey), pair.publicKey)
+            assert.deepStrictEqual(yield* Ecdh.publicKeyFromPrivateKey(curve, pair.privateKey), pair.publicKey)
           }
         }).pipe(
-          Effect.provide(Layer.mergeAll(Crypto.layerEd25519, Crypto.layerEcdsa, Crypto.layerRsa, Crypto.layerEcdh))
+          Effect.provide(Layer.mergeAll(Ed25519.layer, Ecdsa.layer, Rsa.layer, Ecdh.layer))
         ))
 
       it.effect("converts keys to and from JSON Web Keys", () =>
         Effect.gen(function*() {
-          const ed25519 = yield* (yield* Crypto.Ed25519).generateKeyPair()
-          const edJwk = yield* Crypto.ed25519PublicKeyToJwk(ed25519.publicKey)
-          assert.deepStrictEqual(yield* Crypto.ed25519PublicKeyFromJwk(edJwk), ed25519.publicKey)
-          const ecdsa = yield* (yield* Crypto.Ecdsa).generateKeyPair({ curve: "P-256" })
-          const ecJwk = yield* Crypto.ecdsaPublicKeyToJwk("P-256", ecdsa.publicKey)
-          assert.deepStrictEqual(yield* Crypto.ecdsaPublicKeyFromJwk("P-256", ecJwk), ecdsa.publicKey)
-          const key = yield* Crypto.aesKeyFromJwk({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" })
+          const ed25519 = yield* (yield* Ed25519.Ed25519).generateKeyPair()
+          const edJwk = yield* Ed25519.publicKeyToJwk(ed25519.publicKey)
+          assert.deepStrictEqual(yield* Ed25519.publicKeyFromJwk(edJwk), ed25519.publicKey)
+          const ecdsa = yield* (yield* Ecdsa.Ecdsa).generateKeyPair({ curve: "P-256" })
+          const ecJwk = yield* Ecdsa.publicKeyToJwk("P-256", ecdsa.publicKey)
+          assert.deepStrictEqual(yield* Ecdsa.publicKeyFromJwk("P-256", ecJwk), ecdsa.publicKey)
+          const key = yield* Aes.keyFromJwk({ kty: "oct", k: "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc" })
           assert.deepStrictEqual(Redacted.value(key), new Uint8Array(32).fill(7))
-        }).pipe(Effect.provide(Layer.mergeAll(Crypto.layerEd25519, Crypto.layerEcdsa))))
+        }).pipe(Effect.provide(Layer.mergeAll(Ed25519.layer, Ecdsa.layer))))
 
       it.effect("reports a failed AES-GCM authentication as an OperationError", () =>
         Effect.gen(function*() {
-          const aes = yield* Crypto.Aes
+          const aes = yield* Aes.Aes
           const key = yield* aes.generateKey()
           const nonce = new Uint8Array(12)
           const sealed = yield* aes.encryptGcm({ key, nonce, data: encode("data") })
@@ -174,43 +185,65 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
             "decryptGcm",
             "AuthenticationFailed"
           )
-        }).pipe(Effect.provide(Crypto.layerAes)))
+        }).pipe(Effect.provide(Aes.layer)))
 
       it.effect("rejects AES-CTR data that would repeat a counter block", () =>
         Effect.gen(function*() {
-          const aes = yield* Crypto.Aes
+          const aes = yield* Aes.Aes
           const key = yield* aes.generateKey()
           // Three blocks need more than the two values of a 1-bit counter.
           const options = { key, counter: new Uint8Array(16), counterLength: 1, data: new Uint8Array(33) }
-          assert.strictEqual((yield* Effect.flip(aes.encryptCtr(options))).method, "encryptCtr")
-        }).pipe(Effect.provide(Crypto.layerAes)))
+          assertReason(yield* Effect.flip(aes.encryptCtr(options)), "encryptCtr", "BadArgument")
+        }).pipe(Effect.provide(Aes.layer)))
+
+      it.effect("derives full-length P-521 shared secrets", () =>
+        Effect.gen(function*() {
+          const ecdh = yield* Ecdh.Ecdh
+          const first = yield* ecdh.generateKeyPair({ curve: "P-521" })
+          const second = yield* ecdh.generateKeyPair({ curve: "P-521" })
+          const shared = yield* ecdh.deriveSharedSecret({
+            curve: "P-521",
+            privateKey: first.privateKey,
+            publicKey: second.publicKey
+          })
+          // 66 bytes: the 521-bit coordinate padded to whole bytes.
+          assert.strictEqual(Redacted.value(shared).length, 66)
+          assert.deepStrictEqual(
+            yield* ecdh.deriveSharedSecret({
+              curve: "P-521",
+              privateKey: second.privateKey,
+              publicKey: first.publicKey
+            }),
+            shared
+          )
+        }).pipe(Effect.provide(Ecdh.layer)))
 
       it.effect("rejects a small-order X25519 peer key", () =>
         Effect.gen(function*() {
-          const ecdh = yield* Crypto.Ecdh
+          const ecdh = yield* Ecdh.Ecdh
           const { privateKey } = yield* ecdh.generateKeyPair({ curve: "X25519" })
           // Some runtimes reject the point; others return zeros, which the layer rejects.
           const error = yield* Effect.flip(
             ecdh.deriveSharedSecret({
               curve: "X25519",
               privateKey,
-              publicKey: yield* Crypto.ecdhPublicKey("X25519", new Uint8Array(32))
+              publicKey: yield* Ecdh.publicKeyFromRaw("X25519", new Uint8Array(32))
             })
           )
           assertReason(error, "deriveSharedSecret", "InvalidKey")
-        }).pipe(Effect.provide(Crypto.layerEcdh)))
+        }).pipe(Effect.provide(Ecdh.layer)))
     })
 
     it.effect.skipIf(layers.md5 === undefined)("computes MD5 digests", () =>
       Effect.gen(function*() {
-        const md5 = yield* Crypto.Md5
+        const md5 = yield* Md5.Md5
         // RFC 1321 "abc" vector.
         assert.strictEqual(Hex.encode(yield* md5.digest(view(encode("abc")))), "900150983cd24fb0d6963f7d28e17f72")
       }).pipe(Effect.provide(layers.md5!)))
 
     it.effect.skipIf(layers.chaCha20Poly1305 === undefined)("encrypts with ChaCha20-Poly1305", () =>
       Effect.gen(function*() {
-        const chacha = yield* Crypto.ChaCha20Poly1305
+        const chacha = yield* ChaCha20Poly1305.ChaCha20Poly1305
         const options = {
           key: Redacted.make(view(chachaKey)),
           nonce: view("070000004041424344454647"),
@@ -254,13 +287,12 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           "encrypt",
           "BadArgument"
         )
-        // A key that bypassed the constructor is a key error, not a failed authentication.
+        // A key of the wrong length is a key error, not a failed authentication,
+        // even when the ciphertext is also too short.
         const shortKey = Redacted.make(new Uint8Array(16))
-        assertReason(
-          yield* Effect.flip(chacha.decrypt({ ...options, key: shortKey, data: sealed })),
-          "decrypt",
-          "InvalidKey"
-        )
+        for (const data of [sealed, new Uint8Array(15)]) {
+          assertReason(yield* Effect.flip(chacha.decrypt({ ...options, key: shortKey, data })), "decrypt", "InvalidKey")
+        }
 
         const generated = yield* chacha.generateKey()
         assert.strictEqual(Redacted.value(generated).length, 32)
@@ -276,7 +308,7 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
 
     it.effect.skipIf(layers.xChaCha20Poly1305 === undefined)("encrypts with XChaCha20-Poly1305", () =>
       Effect.gen(function*() {
-        const xchacha = yield* Crypto.XChaCha20Poly1305
+        const xchacha = yield* ChaCha20Poly1305.XChaCha20Poly1305
         const options = {
           key: Redacted.make(view(chachaKey)),
           nonce: view("404142434445464748494a4b4c4d4e4f5051525354555657"),
@@ -346,9 +378,9 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
         }
         // RFC 9106, section 5.3.
         const options = {
-          password: view(new Uint8Array(32).fill(1)),
+          password: Redacted.make(view(new Uint8Array(32).fill(1))),
           salt: view(new Uint8Array(16).fill(2)),
-          secret: view(new Uint8Array(8).fill(3)),
+          secret: Redacted.make(view(new Uint8Array(8).fill(3))),
           associatedData: view(new Uint8Array(12).fill(4)),
           memoryKiB: 32,
           passes: 3,
@@ -356,11 +388,11 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
         }
         const expected = "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659"
         const program = Effect.gen(function*() {
-          const argon2id = yield* Crypto.Argon2id
-          assert.strictEqual(Hex.encode(yield* argon2id.derive({ ...options, length: 32 })), expected)
+          const argon2id = yield* Argon2.Argon2id
+          assert.strictEqual(Hex.encode(Redacted.value(yield* argon2id.derive({ ...options, length: 32 }))), expected)
           assert.isTrue(yield* argon2id.verify({ ...options, expected: view(expected) }))
           assert.isFalse(
-            yield* argon2id.verify({ ...options, password: encode("wrong"), expected: view(expected) })
+            yield* argon2id.verify({ ...options, password: Redacted.make(encode("wrong")), expected: view(expected) })
           )
           // A stored hash shorter than the 4-byte minimum output never matches.
           assert.isFalse(yield* argon2id.verify({ ...options, expected: new Uint8Array(3) }))

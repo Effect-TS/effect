@@ -21,7 +21,7 @@ import * as ShardingConfig from "effect/cluster/ShardingConfig"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
-import * as Crypto from "effect/Crypto"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import type * as Etag from "effect/http/Etag"
 import type { HttpPlatform } from "effect/http/HttpPlatform"
@@ -121,7 +121,7 @@ export const layer = <
         ? MessageStorage.layerNoop
         : options?.storage === "byo"
         ? Layer.empty
-        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Crypto.layerSha2))).pipe(
+        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Sha2.layer))).pipe(
           Layer.provide(NodeCrypto.layerSubtleCrypto)
         )
     ),
