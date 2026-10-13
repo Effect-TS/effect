@@ -1,6 +1,7 @@
-import { PgPool } from "@effect/sql-pg"
+import { PgClient, PgPool } from "@effect/sql-pg"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import { Duplex } from "node:stream"
 
 const backendMessage = (tag: string, payload: Buffer): Buffer => {
@@ -91,4 +92,50 @@ describe("PgPool failed startup", () => {
       })),
     10_000
   )
+})
+
+const readyStream = () => {
+  const socket = new Duplex({
+    read() {},
+    write(_chunk: Buffer, _encoding, callback) {
+      queueMicrotask(() => socket.push(ready))
+      callback()
+    }
+  })
+  return socket
+}
+
+describe("pool stats", () => {
+  it.effect("counts a multiplexed session once however many fibers share it", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const pool = yield* PgPool.make({ username: "test", multiplex: true, maxConnections: 2, stream: readyStream })
+      yield* pool.get
+      yield* pool.get
+      yield* pool.get
+      assert.deepStrictEqual(yield* pool.stats, { idle: 0, used: 1, pending: 0, min: 0, max: 2 })
+    })))
+
+  it.effect("PgClient.make reports the occupancy of its pool", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const sql = yield* PgClient.make({ username: "test", maxConnections: 3, stream: readyStream })
+      assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 0, pending: 0, min: 0, max: 3 })
+      yield* Effect.scoped(Effect.gen(function*() {
+        yield* sql.reserve
+        assert.deepStrictEqual(yield* sql.poolStats, { idle: 0, used: 1, pending: 0, min: 0, max: 3 })
+      }))
+      assert.deepStrictEqual(yield* sql.poolStats, { idle: 1, used: 0, pending: 0, min: 0, max: 3 })
+    })).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("PgClient.makeClient reports its one session as permanently leased", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const sql = yield* PgClient.makeClient({ username: "test", stream: readyStream })
+      // The snapshot describes the session, not statement activity, so it does
+      // not change while work runs on it.
+      const leased = { idle: 0, used: 1, pending: 0, min: 1, max: 1 }
+      assert.deepStrictEqual(yield* sql.poolStats, leased)
+      yield* Effect.scoped(Effect.gen(function*() {
+        yield* sql.reserve
+        assert.deepStrictEqual(yield* sql.poolStats, leased)
+      }))
+    })).pipe(Effect.provide(Reactivity.layer)))
 })
