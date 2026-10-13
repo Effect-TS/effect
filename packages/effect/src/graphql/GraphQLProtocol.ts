@@ -459,8 +459,8 @@ export const makeHttp: {
  * fails, or ends without a `complete` event, is a retryable `TransportError`
  * with a server `retry:` line as its `retryAfter`, so the client's
  * `subscriptionRetry` resubscribes. A non-stream answer, such as a `400` with
- * `errors`, is read
- * like a query's response. Interrupting the stream aborts the request.
+ * `errors`, is read like a query's response. Interrupting the stream aborts
+ * the request.
  *
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.
