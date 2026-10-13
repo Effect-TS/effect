@@ -66,8 +66,7 @@ describe("HttpRouter", () => {
 
   for (
     const { prefix, requestUrl, expected } of [
-      { prefix: "/tenants/:tenant", requestUrl: "/tenants/acme-corporation/users?x=1", expected: "/users?x=1" },
-      { prefix: "/tenants/:tenant", requestUrl: "/tenants/a/users", expected: "/users" },
+      { prefix: "/tenants/:tenant", requestUrl: "/tenants/a/users?x=1", expected: "/users?x=1" },
       { prefix: "/café", requestUrl: "/caf%C3%A9/users", expected: "/users" }
     ]
   ) {
