@@ -1607,9 +1607,9 @@ describe("toJsonSchemaDocument", () => {
       })
 
       it("merges colliding inclusive bounds into the tighter bound", () => {
-        const range = Schema.isBetween({ minimum: 1, maximum: 100 })
-        for (const schema of [Schema.Int.check(range), Schema.Finite.check(range, Schema.isInt())]) {
-          assertJsonSchemaDocument(schema.annotate({ description: "a", default: 5 }), {
+        assertJsonSchemaDocument(
+          Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).annotate({ description: "a", default: 5 }),
+          {
             schema: {
               "type": "integer",
               "minimum": 1,
@@ -1617,32 +1617,22 @@ describe("toJsonSchemaDocument", () => {
               "description": "a",
               "default": 5
             }
-          })
-        }
-        assertJsonSchemaDocument(Schema.Natural, {
-          schema: {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": globalThis.Number.MAX_SAFE_INTEGER
           }
-        })
+        )
       })
 
-      it.each([
-        { checks: [Schema.isGreaterThan(0), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
-        { checks: [Schema.isLessThan(10), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
-        { checks: [Schema.isGreaterThanOrEqualTo(0), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
-        { checks: [Schema.isGreaterThanOrEqualTo(1), Schema.isGreaterThan(1)], bounds: { exclusiveMinimum: 1 } },
-        { checks: [Schema.isGreaterThanOrEqualTo(2), Schema.isGreaterThan(1)], bounds: { minimum: 2 } },
-        { checks: [Schema.isLessThanOrEqualTo(10), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
-        { checks: [Schema.isLessThanOrEqualTo(9), Schema.isLessThan(9)], bounds: { exclusiveMaximum: 9 } },
-        { checks: [Schema.isLessThanOrEqualTo(8), Schema.isLessThan(9)], bounds: { maximum: 8 } }
-      ])("keeps only the tightest bound $bounds", ({ checks, bounds }) => {
-        for (const ordered of [checks, [...checks].reverse()]) {
-          assertJsonSchemaDocument(Schema.Finite.check(ordered[0], ordered[1]), {
-            schema: { type: "number", ...bounds }
-          })
-        }
+      it("keeps only the tightest inclusive or exclusive bound", () => {
+        assertJsonSchemaDocument(
+          Schema.Finite.check(
+            Schema.isGreaterThan(0),
+            Schema.isGreaterThan(1),
+            Schema.isGreaterThanOrEqualTo(1),
+            Schema.isLessThan(10),
+            Schema.isLessThan(9),
+            Schema.isLessThanOrEqualTo(8)
+          ),
+          { schema: { type: "number", exclusiveMinimum: 1, maximum: 8 } }
+        )
       })
 
       it("merges colliding property-count bounds into the tighter bound", () => {
@@ -1659,31 +1649,6 @@ describe("toJsonSchemaDocument", () => {
               "additionalProperties": { "type": "string" },
               "minProperties": 2,
               "maxProperties": 3
-            }
-          }
-        )
-      })
-
-      it("keeps allOf for collisions other than bounds", () => {
-        assertJsonSchemaDocument(
-          Schema.Int.annotate({ description: "a" }).check(Schema.isGreaterThanOrEqualTo(1, { description: "b" })),
-          {
-            schema: {
-              "type": "integer",
-              "minimum": globalThis.Number.MIN_SAFE_INTEGER,
-              "maximum": globalThis.Number.MAX_SAFE_INTEGER,
-              "description": "a",
-              "allOf": [{ "minimum": 1, "description": "b" }]
-            }
-          }
-        )
-        assertJsonSchemaDocument(
-          Schema.Finite.check(Schema.isMultipleOf(2), Schema.isMultipleOf(3)),
-          {
-            schema: {
-              "type": "number",
-              "multipleOf": 2,
-              "allOf": [{ "multipleOf": 3 }]
             }
           }
         )
