@@ -386,5 +386,12 @@ describe("Match", () => {
         expect(value).type.toBe<readonly Item[]>()
       })
     )
+
+    const optionalPattern: readonly ["A"?] = ["A"]
+    Match.type<ReadonlyArray<string>>().pipe(
+      Match.not(optionalPattern, (value) => {
+        expect(value).type.toBe<ReadonlyArray<string>>()
+      })
+    )
   })
 })
