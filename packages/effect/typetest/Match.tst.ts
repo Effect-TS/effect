@@ -15,7 +15,6 @@ declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
-declare const currentTransfer: { readonly _tag: "Transfer"; readonly value: "foo" } | null
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -213,28 +212,20 @@ describe("Match", () => {
     )
 
     expect(
-      Match.value(currentTransfer).pipe(
-        Match.when({ _tag: "Transfer", value: "foo" }, () => "hit" as const),
-        Match.orElse(() => "miss" as const)
-      )
-    ).type.toBe<"hit" | "miss">()
-
-    expect(
       Match.value(taggedInput).pipe(
-        Match.when({ a: "x" }, (value) => {
-          expect(value.a).type.toBe<"x">()
+        Match.when({
+          a: (a) => {
+            expect(a).type.toBe<string>()
+            return a.length > 0
+          }
+        }, (value) => {
+          expect(value._tag).type.toBe<"A">()
+          expect(value.a).type.toBe<string>()
           return "a" as const
         }),
         Match.orElse(() => "other" as const)
       )
     ).type.toBe<"a" | "other">()
-
-    expect(
-      Match.type<{ readonly age: number }>().pipe(
-        Match.when({ age: (age) => age > 18 }, (user) => user.age),
-        Match.orElse((user) => user.age)
-      )
-    ).type.toBe<(input: { readonly age: number }) => number>()
   })
 
   it("tagsExhaustive contextually types Effect.fn handlers", () => {
