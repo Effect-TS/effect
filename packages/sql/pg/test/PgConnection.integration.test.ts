@@ -2,8 +2,7 @@ import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
 import type { SqlError } from "effect/sql/SqlError"
-import { TestClock } from "effect/testing"
-import { PgContainer } from "./utils.ts"
+import { PgContainer, waitUntilAdvisoryLock } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
   Effect.gen(function*() {
@@ -493,10 +492,20 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
   it.effect("ignores interrupt on a released pin", () =>
     Effect.gen(function*() {
       const connection = yield* makeConnection()
+      const blocker = yield* makeConnection()
+      const observer = yield* makeConnection()
       const released = yield* Effect.scoped(connection.pin)
-      const sleeping = yield* connection.query("SELECT pg_sleep(0.5)").pipe(Effect.forkScoped)
-      yield* Effect.sleep("100 millis").pipe(TestClock.withLive)
-      yield* released.interrupt
-      assert.isTrue(Exit.isSuccess(yield* Fiber.await(sleeping)))
+      const waiting = yield* Effect.gen(function*() {
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        const waiting = yield* Effect.forkScoped(
+          connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        )
+        // A cancel only lands while the backend is executing, so wait for the lock.
+        yield* waitUntilAdvisoryLock(observer, connection.processId)
+        yield* released.interrupt
+        return waiting
+      }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+      assert.isTrue(Exit.isSuccess(yield* Fiber.await(waiting)))
     }))
 })

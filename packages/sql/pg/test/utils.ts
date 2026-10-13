@@ -1,4 +1,4 @@
-import { PgClient } from "@effect/sql-pg"
+import { PgClient, type PgConnection } from "@effect/sql-pg"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
 import { Context, Data, Effect, Layer, Redacted, String } from "effect"
 import { getContainerRuntimeClient } from "testcontainers"
@@ -87,3 +87,33 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
     })
   ).pipe(Layer.provide(this.layer))
 }
+
+// `it.effect` runs under the TestClock, so poll loops sleep in real time.
+export const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
+const activeTimeoutMs = 10_000
+
+export const waitUntilActive = (observer: PgConnection.PgConnection, pid: number, advisoryLock = false) =>
+  Effect.gen(function*() {
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < activeTimeoutMs) {
+      const active = yield* observer.query(
+        `SELECT count(*)::int4 AS active FROM pg_stat_activity
+         WHERE pid = $1 AND state = 'active'
+           AND (NOT $2::boolean OR (wait_event_type = 'Lock' AND wait_event = 'advisory'))`,
+        [pid, advisoryLock]
+      )
+      if (active.rows[0].active === 1) return
+      yield* realSleep
+    }
+    return yield* Effect.fail(
+      new Error(
+        `PostgreSQL backend ${pid} did not become ${
+          advisoryLock ? "blocked on an advisory lock" : "active"
+        } within 10 seconds`
+      )
+    )
+  })
+
+// Parse can report active before Execute starts. Cancellation needs the query to be waiting on the lock.
+export const waitUntilAdvisoryLock = (observer: PgConnection.PgConnection, pid: number) =>
+  waitUntilActive(observer, pid, true)

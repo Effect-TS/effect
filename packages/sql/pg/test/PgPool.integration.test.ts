@@ -3,42 +3,14 @@ import { assert, it } from "@effect/vitest"
 import { Effect, Exit, Fiber, Queue, Redacted, Result, Scope, Stream } from "effect"
 import * as Net from "node:net"
 import { Duplex } from "node:stream"
-import { PgContainer } from "./utils.ts"
+import { PgContainer, realSleep, waitUntilActive, waitUntilAdvisoryLock } from "./utils.ts"
 
-// `it.effect` runs under the TestClock, so poll loops sleep in real time.
-const realSleep = Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 10)))
-const activeTimeoutMs = 10_000
 const cancellationTestTimeout = 20_000
 
 const poolConfig = Effect.gen(function*() {
   const container = yield* PgContainer
   return { url: Redacted.make(container.getConnectionUri()) }
 })
-
-const waitUntilActive = (observer: PgConnection.PgConnection, pid: number, advisoryLock = false) =>
-  Effect.gen(function*() {
-    const startedAt = Date.now()
-    while (Date.now() - startedAt < activeTimeoutMs) {
-      const active = yield* observer.query(
-        `SELECT count(*)::int4 AS active FROM pg_stat_activity
-         WHERE pid = $1 AND state = 'active'
-           AND (NOT $2::boolean OR (wait_event_type = 'Lock' AND wait_event = 'advisory'))`,
-        [pid, advisoryLock]
-      )
-      if (active.rows[0].active === 1) return
-      yield* realSleep
-    }
-    return yield* Effect.fail(
-      new Error(
-        `PostgreSQL backend ${pid} did not become ${
-          advisoryLock ? "blocked on an advisory lock" : "active"
-        } within 10 seconds`
-      )
-    )
-  })
-
-// Parse can report active before Execute starts. Cancellation needs the query to be waiting on the lock.
-const waitUntilAdvisoryLock = (observer: PgConnection.PgConnection, pid: number) => waitUntilActive(observer, pid, true)
 
 const cancelRequestCode = 80877102
 
@@ -207,6 +179,22 @@ it.layer(PgContainer.layer, { timeout: "30 seconds", concurrent: false })("PgPoo
       assert.strictEqual(notification.channel, "test_channel")
       assert.strictEqual(notification.payload, "hello")
       assert.strictEqual(notification.processId, notifier.processId)
+    }))
+
+  it.effect("does not hand on a listener registered through a released pin", () =>
+    Effect.gen(function*() {
+      const pool = yield* PgPool.make({ ...(yield* poolConfig), maxConnections: 1 })
+      const pinScope = yield* Scope.make()
+      const listenScope = yield* Scope.make()
+      const pinned = yield* Scope.provide(pool.reserve, pinScope)
+      yield* Scope.provide(pinned.listen("released_pin_listener"), listenScope)
+      yield* Scope.close(pinScope, Exit.void)
+      yield* Scope.close(listenScope, Exit.void)
+
+      const channels = yield* Effect.scoped(
+        Effect.flatMap(pool.reserve, (connection) => connection.query("SELECT pg_listening_channels() AS channel"))
+      )
+      assert.deepStrictEqual(channels.rows, [])
     }))
 
   it.effect("reports listener registration failure during acquisition", () =>
