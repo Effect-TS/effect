@@ -35,7 +35,7 @@ export interface QueueRuntimeOptions {
 
 /** @internal */
 export interface QueueRuntime {
-  readonly offer: (id: string, element: string) => Promise<void>
+  readonly offer: (id: string, element: string, delayMillis?: number) => Promise<void>
   readonly take: (takerId: string, maxAttempts: number, leaseMillis: number) => Promise<QueueItem>
   readonly cancelTake: (takerId: string) => Promise<void>
   readonly complete: (id: string) => Promise<void>
@@ -70,7 +70,6 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
   // list; only the final alarm arm is asynchronous.
   const wakeWaiters = Effect.suspend(() => {
     const now = options.now()
-    let earliest: number | undefined
     let index = 0
     while (index < waiters.length) {
       const waiter = waiters[index]
@@ -81,10 +80,10 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
       }
       waiters.splice(index, 1)
       setWithEviction(delivered, waiter.takerId, item.id, deliveredCapacity)
-      const expiry = now + waiter.leaseMillis
-      if (earliest === undefined || expiry < earliest) earliest = expiry
       waiter.resolve(item)
     }
+    // Include initial visibility deadlines even when no taker is waiting.
+    const earliest = earliestLeaseExpiry(sql)
     return earliest === undefined ? Effect.void : armAlarm(options.alarm, earliest)
   })
 
@@ -95,9 +94,9 @@ export const makeQueueRuntime = (options: QueueRuntimeOptions): QueueRuntime => 
     }))
 
   return {
-    offer: (id, element) =>
+    offer: (id, element, delayMillis = 0) =>
       mutateAndWake(() => {
-        offerItem(sql, id, element)
+        offerItem(sql, id, element, delayMillis > 0 ? options.now() + delayMillis : null)
       }),
 
     // The taker joins the waiter list and the shared wake pass leases to it,
