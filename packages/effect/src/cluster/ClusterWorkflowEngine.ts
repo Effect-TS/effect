@@ -449,25 +449,20 @@ export const make = Effect.gen(function*() {
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
+            // A dropped wake cannot be explicit: operator `resume` bypasses the
+            // gate, and `InterruptSignal` (never awaited) only reaches it on a
+            // fresh entity, where the gated effect is `Effect.void` and the
+            // permit is never held across a wait.
             const resumeGate = Semaphore.makeUnsafe(1)
-            // An explicit wake coalesced into the holder's wait must not be
-            // downgraded to the holder's automatic mode.
-            let explicitWake = false
             const resumeCurrentRun = (mode: WakeMode) =>
-              Effect.suspend(() => {
-                if (mode === "explicit") explicitWake = true
-                return resumeGate.withPermitsIfAvailable(1)(
+              Effect.suspend(() =>
+                resumeGate.withPermitsIfAvailable(1)(
                   currentRun ? waitForRunReply(workflow, currentRun.request) : Effect.void
                 )
-              }).pipe(
+              ).pipe(
                 // Release the gate before reset can start another run, so later
                 // completions can wake that replay.
-                Effect.flatMap((waited) => {
-                  if (Option.isNone(waited)) return Effect.void
-                  const wakeMode: WakeMode = explicitWake ? "explicit" : "automatic"
-                  explicitWake = false
-                  return resume(workflow, executionId, wakeMode)
-                }),
+                Effect.flatMap((waited) => Option.isSome(waited) ? resume(workflow, executionId, mode) : Effect.void),
                 ensureSuccess
               )
             return {
