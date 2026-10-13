@@ -76,13 +76,13 @@ describe("HttpTraceContext", () => {
   describe("toHeaders", () => {
     it.effect("pads a 64-bit trace-id in traceparent and keeps it in b3", () =>
       Effect.gen(function*() {
-        const span = yield* Effect.currentSpan.pipe(
-          Effect.withSpan("child"),
-          Effect.withParentSpan(Tracer.externalSpan({ traceId: traceId.slice(16), spanId }))
-        )
+        const span = yield* Effect.makeSpan("test", {
+          parent: Tracer.externalSpan({ traceId: "463ac35c9f6413ad", spanId })
+        })
         const headers = HttpTraceContext.toHeaders(span)
-        strictEqual(headers.traceparent, `00-0000000000000000${traceId.slice(16)}-${span.spanId}-01`)
-        strictEqual(headers.b3, `${traceId.slice(16)}-${span.spanId}-1-${spanId}`)
+        strictEqual(headers.traceparent, `00-0000000000000000463ac35c9f6413ad-${span.spanId}-01`)
+        strictEqual(headers.b3, `463ac35c9f6413ad-${span.spanId}-1-${spanId}`)
+        strictEqual(span.traceId, "463ac35c9f6413ad")
       }))
   })
 })
