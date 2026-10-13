@@ -202,6 +202,11 @@ export interface PgConnection {
    * Reserves the session for exclusive use until the scope closes. Pinning is
    * reentrant. Calls through the returned connection skip the
    * ownership queue, while calls through the original connection wait.
+   *
+   * Once the scope closes, statements through the returned connection fail
+   * and its `interrupt` does nothing, so work that outlives the pin cannot
+   * reach the next owner. A session released with a statement still on the
+   * wire is closed rather than handed on.
    */
   readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
   /**
@@ -376,7 +381,6 @@ class PgConnectionImpl implements PgConnection {
   pipelineHead = 0
   pipelineFlushScheduled = false
   readonly pipelineIdleWaiters = new Set<() => void>()
-  readonly pinnedView: PgConnection
   readonly [internalsKey]: ConnectionInternals
 
   constructor(config: Config, resolved: ResolvedConfig, session: Session, registry: PgTypes.Registry | undefined) {
@@ -388,13 +392,11 @@ class PgConnectionImpl implements PgConnection {
     this.bindEncoder = makeBindEncoder(registry)
     this.prepared = preparedCacheFor(config)
     this.multiplex = config.multiplex ?? false
-    // Before the pinned view, which copies it.
     this[internalsKey] = {
       base: this,
       deadError: () => this.deadWith,
       retireHooks: this.retireHooks
     }
-    this.pinnedView = new PinnedPgConnection(this)
     session.socket.on("data", this.onData)
     session.socket.on("error", this.onSocketError)
     session.socket.on("close", this.onSocketClose)
@@ -689,18 +691,6 @@ class PgConnectionImpl implements PgConnection {
     )
 
   /**
-   * One extended-query cycle for a caller that shares the session with others:
-   * the fibers inside a transaction, and a stream running beside them. The
-   * wire permit is what serializes them.
-   */
-  readonly cycle = (
-    sql: string,
-    params: ReadonlyArray<unknown>,
-    wantRows: boolean,
-    cache: PreparedCache | undefined
-  ): Effect.Effect<QueryOutput, SqlError> => this.wire.withPermit(this.cycleOwned(sql, params, wantRows, cache))
-
-  /**
    * Runs one cycle for a caller that owns the session. No wire permit is needed
    * because competing pinned work and streams must acquire `owner` first.
    */
@@ -742,30 +732,45 @@ class PgConnectionImpl implements PgConnection {
     return sendCancelRequest(this.resolved, this.session)
   })
 
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.suspend(() => {
+  readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.suspend(() => {
     const reserve = this[internalsKey].reserve
     return reserve === undefined ? this.pinExclusive : Effect.andThen(reserve, this.pinExclusive)
   })
 
-  private readonly pinExclusive: Effect.Effect<PgConnection, never, Scope.Scope> = Effect.acquireRelease(
+  /**
+   * Each pin gets its own view, released for good when the pin is, so a view
+   * that outlives its scope cannot act on the next owner's session.
+   */
+  private readonly pinExclusive: Effect.Effect<PinnedPgConnection, never, Scope.Scope> = Effect.acquireRelease(
     Effect.flatMap(this.owner.take(1), () =>
       // Holding `owner` stops new submissions; a pipeline already on the wire
       // still has to drain before this fiber owns the connection.
-      Effect.as(
-        Effect.tap(
-          Effect.onInterrupt(this.waitPipelineIdle, () => this.owner.release(1)),
-          () =>
-            Effect.sync(() => {
-              this.pinned = true
-            })
-        ),
-        this.pinnedView
+      Effect.map(
+        Effect.onInterrupt(this.waitPipelineIdle, () => this.owner.release(1)),
+        () => {
+          this.pinned = true
+          return new PinnedPgConnection(this)
+        }
       )),
-    () =>
-      Effect.suspend(() => {
-        this.pinned = false
-        return this.owner.release(1)
-      })
+    (view) =>
+      Effect.flatMap(
+        Effect.suspend(() => {
+          view.released = true
+          this.pinned = false
+          return this.wire.takeIfAvailable(1)
+        }),
+        (idle) => {
+          if (idle) return Effect.andThen(this.wire.release(1), this.owner.release(1))
+          // Work through the released view still holds the wire. Waiting could
+          // take as long as the caller keeps it, and lending the session would
+          // let its results land in the next owner's statements.
+          this.fatal(connectionQueryError(
+            new Error("Pinned connection released with a statement in flight"),
+            "PgConnection: Pinned connection released with a statement in flight"
+          ))
+          return this.owner.release(1)
+        }
+      )
   )
 
   private readonly run = (
@@ -812,15 +817,50 @@ class PinnedPgConnection implements PgConnection {
   readonly [TypeId]: TypeId = TypeId
   readonly base: PgConnectionImpl
   readonly [internalsKey]: ConnectionInternals
-  readonly pin: Effect.Effect<PgConnection, never, Scope.Scope>
-  readonly interrupt: Effect.Effect<void>
+  readonly pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>
+  /** Set when the pin that issued this view ends; never cleared. */
+  released = false
 
   constructor(base: PgConnectionImpl) {
     this.base = base
     this[internalsKey] = base[internalsKey]
     this.pin = Effect.succeed(this)
-    this.interrupt = base.cancel
   }
+
+  /**
+   * The error for work through this view once its pin has ended. Callers check
+   * it while holding the wire permit, so a statement queued before the release
+   * cannot run after it.
+   */
+  releasedError(): SqlError | undefined {
+    return this.released
+      ? connectionQueryError(
+        new Error("Pinned connection was released"),
+        "PgConnection: Pinned connection was released"
+      )
+      : undefined
+  }
+
+  /**
+   * One extended-query cycle for a caller that shares the session with others:
+   * the fibers inside a transaction, and a stream running beside them. The
+   * wire permit is what serializes them.
+   */
+  private cycle(
+    sql: string,
+    params: ReadonlyArray<unknown>,
+    wantRows: boolean,
+    prepare: boolean
+  ): Effect.Effect<QueryOutput, SqlError> {
+    return this.base.wire.withPermit(Effect.suspend(() => {
+      const released = this.releasedError()
+      return released !== undefined
+        ? Effect.fail(released)
+        : this.base.cycleOwned(sql, params, wantRows, prepare ? this.base.prepared : undefined)
+    }))
+  }
+
+  readonly interrupt: Effect.Effect<void> = Effect.suspend(() => this.released ? Effect.void : this.base.cancel)
 
   get config(): Config {
     return this.base.config
@@ -831,14 +871,14 @@ class PinnedPgConnection implements PgConnection {
   }
 
   readonly query = (sql: string, params?: ReadonlyArray<unknown>, prepare = true): Effect.Effect<Result, SqlError> =>
-    Effect.map(this.base.cycle(sql, params ?? emptyParams, true, prepare ? this.base.prepared : undefined), takeResult)
+    Effect.map(this.cycle(sql, params ?? emptyParams, true, prepare), takeResult)
 
   readonly queryValues = (
     sql: string,
     params?: ReadonlyArray<unknown>,
     prepare = true
   ): Effect.Effect<ReadonlyArray<ReadonlyArray<unknown>>, SqlError> =>
-    Effect.map(this.base.cycle(sql, params ?? emptyParams, false, prepare ? this.base.prepared : undefined), takeValues)
+    Effect.map(this.cycle(sql, params ?? emptyParams, false, prepare), takeValues)
 
   readonly stream = (sql: string, params?: ReadonlyArray<unknown>): Stream.Stream<Row, SqlError> =>
     streamRows(this.base, this.pin, sql, params ?? emptyParams)
@@ -1641,17 +1681,19 @@ const makeRowBuilder = (fields: ReadonlyArray<PgProtocol.FieldDescription>): Row
 
 const streamRows = (
   conn: PgConnectionImpl,
-  pin: Effect.Effect<PgConnection, never, Scope.Scope>,
+  pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>,
   sql: string,
   params: ReadonlyArray<unknown>
 ): Stream.Stream<Row, SqlError> =>
   Stream.fromChannel(Channel.fromTransform(Effect.fnUntraced(function*(_, scope) {
-    yield* Scope.provide(pin, scope)
+    const pinned = yield* Scope.provide(pin, scope)
     yield* Scope.provide(
       Effect.acquireRelease(conn.wire.take(1), () => conn.wire.release(1)),
       scope
     )
     if (conn.deadWith !== undefined) return yield* conn.deadWith
+    const released = pinned.releasedError()
+    if (released !== undefined) return yield* released
     // Streams stay on the unnamed path: a stream pays its setup once over the
     // whole result, so naming the statement buys little and would need the
     // stale-plan retry to unwind rows already delivered.
@@ -1847,7 +1889,7 @@ const streamRows = (
 
 const listenChannel = (
   conn: PgConnectionImpl,
-  pin: Effect.Effect<PgConnection, never, Scope.Scope>,
+  pin: Effect.Effect<PinnedPgConnection, never, Scope.Scope>,
   channel: string
 ): Effect.Effect<Queue.Dequeue<Notification, SqlError>, SqlError, Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
@@ -1859,6 +1901,9 @@ const listenChannel = (
       return yield* restore(Effect.gen(function*() {
         const pinned = yield* Scope.provide(pin, scope)
         if (conn.deadWith !== undefined) return yield* conn.deadWith
+        // Registering the queue first would hand it the next owner's notifications.
+        const released = pinned.releasedError()
+        if (released !== undefined) return yield* released
         const queue = yield* Queue.unbounded<Notification, SqlError>()
         const identifier = escapeIdentifier(channel)
         let queues = conn.channels.get(channel)
