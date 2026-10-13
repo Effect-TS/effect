@@ -1507,14 +1507,19 @@ const succeedPayload = function(this: { readonly payload: any }, _value: unknown
 // V8 includes the property name of a stored continuation in its stack trace.
 // Other engines need an explicit frame for the stack cleaner to cut at.
 const continuationMarksStack = (() => {
-  if (getStackTraceLimit() === 0) return false
+  const limit = getStackTraceLimit()
+  if (limit === 0) return false
   const marker = "~effect/Effect/stackProbe"
   const probe = {
     [marker]: function stackProbe() {
-      return new Error().stack
+      return new Error()
     }
   }
-  return probe[marker]()?.includes("[as " + marker + "]") === true
+  // Only the probe frame is needed to detect the continuation property name.
+  setStackTraceLimit(1)
+  const error = probe[marker]()
+  setStackTraceLimit(limit)
+  return error.stack?.includes("[as " + marker + "]") === true
 })()
 const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
