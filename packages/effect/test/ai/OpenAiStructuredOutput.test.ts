@@ -398,7 +398,6 @@ describe("toCodecOpenAI", () => {
       it("Int + isGreaterThan", () => {
         assertJsonSchema(Schema.Int.check(Schema.isGreaterThan(1)), {
           "type": "integer",
-          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
           "maximum": globalThis.Number.MAX_SAFE_INTEGER,
           "description": "a value greater than 1",
           "exclusiveMinimum": 1
@@ -408,7 +407,6 @@ describe("toCodecOpenAI", () => {
       it("Int + isGreaterThan + isLessThan", () => {
         assertJsonSchema(Schema.Int.check(Schema.isGreaterThan(1), Schema.isLessThan(2)), {
           "type": "integer",
-          "minimum": globalThis.Number.MIN_SAFE_INTEGER,
           "description": "a value greater than 1 and a value less than 2",
           "exclusiveMinimum": 1,
           "exclusiveMaximum": 2
