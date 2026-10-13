@@ -145,12 +145,10 @@ function mergeInlineCheck(
     else return undefined
   }
   if (typeof out.minimum === "number" && typeof out.exclusiveMinimum === "number") {
-    if (out.exclusiveMinimum >= out.minimum) delete out.minimum
-    else delete out.exclusiveMinimum
+    delete out[out.exclusiveMinimum >= out.minimum ? "minimum" : "exclusiveMinimum"]
   }
   if (typeof out.maximum === "number" && typeof out.exclusiveMaximum === "number") {
-    if (out.exclusiveMaximum <= out.maximum) delete out.maximum
-    else delete out.exclusiveMaximum
+    delete out[out.exclusiveMaximum <= out.maximum ? "maximum" : "exclusiveMaximum"]
   }
   return out
 }
