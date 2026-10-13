@@ -4,25 +4,23 @@
  * The SSH Connection Protocol (RFC 4254) multiplexes channels, such as
  * command sessions and tunnels, over one authenticated connection. This
  * module follows the standard rather than a particular implementation, so
- * it works with any compliant server. `make`
- * returns the protocol as a `Channel` from the server's messages to messages
- * for the server, together with `open`, which opens SSH channels whose
- * messages flow through it. The protocol does no I/O and knows nothing about
- * commands or tunnels: a backend pumps the messages of its transport through
- * the `Channel`, and builds its `SshConnection` from the channels it opens.
- * `NodeOpenSsh` in `@effect/platform-node`, for example, pumps the control
- * socket of an OpenSSH connection master through it.
+ * it works with any compliant server. `make` returns the protocol as a
+ * `Channel` from the server's messages to messages for the server, together
+ * with `open`, which opens SSH channels whose messages flow through it, and
+ * `toSshConnection` runs commands, subsystems, and tunnels on those channels.
+ * The protocol does no I/O: a backend pumps the messages of its transport
+ * through the `Channel`. `NodeOpenSsh` in `@effect/platform-node`, for
+ * example, pumps the control socket of an OpenSSH connection master through
+ * it.
  *
  * **Example** (Running a command over a message transport)
  *
  * ```ts skip-type-checking
  * import { Effect, Stream } from "effect"
- * import { SshConnectionProtocol } from "effect/ssh"
+ * import { SshCommand, SshConnectionProtocol } from "effect/ssh"
  *
  * declare const incoming: Stream.Stream<Uint8Array>
  * declare const send: (message: Uint8Array) => Effect.Effect<void>
- * // The `exec` request's fields: the command as an SSH string.
- * declare const command: Uint8Array
  *
  * const program = Effect.gen(function*() {
  *   const protocol = yield* SshConnectionProtocol.make()
@@ -31,11 +29,9 @@
  *     Stream.runForEach(send),
  *     Effect.forkScoped
  *   )
- *   const session = yield* protocol.open("session", new Uint8Array(0))
- *   yield* session.request("exec", command, true)
- *   yield* session.eof
- *   yield* Stream.runForEach(Stream.decodeText(session.stdout), Effect.log)
- *   yield* Effect.log(yield* session.exit)
+ *   const connection = SshConnectionProtocol.toSshConnection(protocol)
+ *   const result = yield* connection.run(SshCommand.make`uptime`)
+ *   yield* Effect.log(result.stdout)
  * }).pipe(Effect.scoped)
  * ```
  *
@@ -49,12 +45,16 @@ import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Latch from "../Latch.ts"
+import * as Host from "../net/Host.ts"
+import * as NetAddress from "../net/NetAddress.ts"
 import * as Pull from "../Pull.ts"
 import * as Queue from "../Queue.ts"
+import * as Result from "../Result.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
+import * as Sink from "../Sink.ts"
 import * as Stream from "../Stream.ts"
-import { type SessionExit, SshError } from "./Ssh.ts"
+import * as Ssh from "./Ssh.ts"
 
 /**
  * The protocol as a `Channel`: the server's messages in, messages for the
@@ -72,7 +72,7 @@ import { type SessionExit, SshError } from "./Ssh.ts"
  */
 export type ProtocolChannel = Channel.Channel<
   NonEmptyReadonlyArray<Uint8Array>,
-  SshError,
+  Ssh.SshError,
   void,
   NonEmptyReadonlyArray<Uint8Array>,
   unknown,
@@ -80,19 +80,16 @@ export type ProtocolChannel = Channel.Channel<
 >
 
 /**
- * An open SSH channel.
+ * An open SSH channel: an `Ssh.SshStream` that also sends channel requests
+ * and reports the exit of a session.
  *
  * **Details**
  *
- * - `stdout` and `stderr` carry the channel's data and extended data. Each
- *   can be consumed once, and consuming data refills the server's window,
- *   which both share, so data that is not consumed, on either of them,
- *   eventually stops the server from sending.
- * - `write` sends data, waiting while the server's window is full, and `eof`
- *   ends the client's data once pending writes are sent. Concurrent writes
- *   are sent one after another, and an interrupted write may have sent part
- *   of its data. Both fail with a `Channel` error once the channel is
- *   closed, and writes also once `eof` was sent.
+ * - `stdout` and `stderr` carry the channel's data and extended data, and
+ *   consuming them refills the server's window.
+ * - `write` waits while the server's window is full. Writes and `eof` fail
+ *   with a `Channel` error once the channel is closed, and writes also once
+ *   `eof` was sent.
  * - `request` sends a channel request, such as `exec`, with its
  *   type-specific fields encoded as SSH wire types (RFC 4251). With
  *   `wantReply`, it waits for the reply and fails with a `Channel` error when
@@ -100,24 +97,14 @@ export type ProtocolChannel = Channel.Channel<
  * - `exit` waits for the `exit-status` or `exit-signal` of a session, and
  *   fails when the channel closes without one. Signal names have the `SIG`
  *   prefix, such as `SIGTERM`.
- * - `close` closes the channel; afterwards writes and requests fail with a
- *   `Channel` error.
- * - `closed` waits until the channel is closed, by either side or with the
- *   connection.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export interface SshChannel {
-  readonly stdout: Stream.Stream<Uint8Array, SshError>
-  readonly stderr: Stream.Stream<Uint8Array, SshError>
-  readonly write: (data: Uint8Array | string) => Effect.Effect<void, SshError>
-  readonly eof: Effect.Effect<void, SshError>
-  readonly close: Effect.Effect<void>
-  readonly request: (name: string, data: Uint8Array, wantReply: boolean) => Effect.Effect<void, SshError>
-  readonly exit: Effect.Effect<SessionExit, SshError>
-  readonly closed: Effect.Effect<void>
+export interface SshChannel extends Ssh.SshStream {
+  readonly request: (name: string, data: Uint8Array, wantReply: boolean) => Effect.Effect<void, Ssh.SshError>
+  readonly exit: Effect.Effect<Ssh.SessionExit, Ssh.SshError>
 }
 
 /**
@@ -143,7 +130,7 @@ export interface SshChannel {
  */
 export interface SshConnectionProtocol {
   readonly channel: ProtocolChannel
-  readonly open: (type: string, data: Uint8Array) => Effect.Effect<SshChannel, SshError, Scope.Scope>
+  readonly open: (type: string, data: Uint8Array) => Effect.Effect<SshChannel, Ssh.SshError, Scope.Scope>
 }
 
 const MSG_GLOBAL_REQUEST = 80
@@ -290,7 +277,7 @@ export type Event =
   }
   | { readonly _tag: "Writable"; readonly channel: number }
   | { readonly _tag: "Reply"; readonly channel: number; readonly success: boolean }
-  | { readonly _tag: "Exit"; readonly channel: number; readonly exit: SessionExit }
+  | { readonly _tag: "Exit"; readonly channel: number; readonly exit: Ssh.SessionExit }
   | { readonly _tag: "Eof"; readonly channel: number }
   | { readonly _tag: "Closed"; readonly channel: number }
 
@@ -656,31 +643,31 @@ export class ConnectionState {
 
 /** Where a channel's events are delivered. */
 interface Handle {
-  readonly opened: Deferred.Deferred<void, SshError>
+  readonly opened: Deferred.Deferred<void, Ssh.SshError>
   /** Open while the channel can send data or has finished. */
   readonly writable: Latch.Latch
-  readonly stdout: Queue.Queue<Uint8Array, SshError | Cause.Done>
-  readonly stderr: Queue.Queue<Uint8Array, SshError | Cause.Done>
+  readonly stdout: Queue.Queue<Uint8Array, Ssh.SshError | Cause.Done>
+  readonly stderr: Queue.Queue<Uint8Array, Ssh.SshError | Cause.Done>
   /** Requests waiting for a reply, oldest first. */
-  readonly replies: Array<Deferred.Deferred<boolean, SshError>>
-  readonly exit: Deferred.Deferred<SessionExit, SshError>
+  readonly replies: Array<Deferred.Deferred<boolean, Ssh.SshError>>
+  readonly exit: Deferred.Deferred<Ssh.SessionExit, Ssh.SshError>
   readonly closed: Deferred.Deferred<void>
 }
 
-const channelError = (description: string) => new SshError({ reason: "Channel", description })
+const channelError = (description: string) => new Ssh.SshError({ reason: "Channel", description })
 
 const closedError = () => channelError("the channel is closed")
 
 const endedError = () => channelError("the end of data was already sent")
 
-const connectionClosed = () => new SshError({ reason: "Connection", description: "the connection closed" })
+const connectionClosed = () => new Ssh.SshError({ reason: "Connection", description: "the connection closed" })
 
 /** The error that ended a connection, from the cause of its failure. */
-const connectionFailed = (cause: Cause.Cause<unknown>): SshError => {
+const connectionFailed = (cause: Cause.Cause<unknown>): Ssh.SshError => {
   const error = Cause.squash(cause)
-  return error instanceof SshError
+  return error instanceof Ssh.SshError
     ? error
-    : new SshError({ reason: "Connection", description: "the connection failed", cause: error })
+    : new Ssh.SshError({ reason: "Connection", description: "the connection failed", cause: error })
 }
 
 /**
@@ -693,8 +680,8 @@ const connectionFailed = (cause: Cause.Cause<unknown>): SshError => {
 export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectionProtocol, never, Scope.Scope> {
   const connection = new ConnectionState()
   const handles = new Map<number, Handle>()
-  const outgoing = yield* Queue.unbounded<Uint8Array, SshError | Cause.Done>()
-  let failure: SshError | undefined
+  const outgoing = yield* Queue.unbounded<Uint8Array, Ssh.SshError | Cause.Done>()
+  let failure: Ssh.SshError | undefined
   let running = false
 
   const emit = (messages: ReadonlyArray<Uint8Array>) => {
@@ -702,7 +689,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
   }
 
   /** Releases a handle's waiters with `error`, or with end of data. */
-  const settle = (handle: Handle, error: SshError | undefined) => {
+  const settle = (handle: Handle, error: Ssh.SshError | undefined) => {
     const cause = error === undefined ? Cause.fail(Cause.Done()) : Cause.fail(error)
     Queue.failCauseUnsafe(handle.stdout, cause)
     Queue.failCauseUnsafe(handle.stderr, cause)
@@ -718,7 +705,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
    * Ends the connection: every channel fails with `error`, and the output
    * ends, failing with `error` unless the connection closed normally.
    */
-  const fail = (error: SshError, output: SshError | Cause.Done) => {
+  const fail = (error: Ssh.SshError, output: Ssh.SshError | Cause.Done) => {
     if (failure !== undefined) return
     failure = error
     for (const handle of handles.values()) settle(handle, error)
@@ -766,7 +753,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
     for (const message of messages) {
       const received = connection.receive(message)
       if (received._tag === "Violation") {
-        const error = new SshError({ reason: "Protocol", description: received.description })
+        const error = new Ssh.SshError({ reason: "Protocol", description: received.description })
         return fail(error, error)
       }
       for (const event of received.events) deliver(event)
@@ -778,7 +765,7 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
     Effect.gen(function*() {
       if (running) {
         return yield* Effect.fail(
-          new SshError({ reason: "Connection", description: "the protocol channel is already running" })
+          new Ssh.SshError({ reason: "Connection", description: "the protocol channel is already running" })
         )
       }
       running = true
@@ -806,16 +793,16 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
   )
 
   const makeChannel = (id: number, handle: Handle): SshChannel => {
-    const consume = (queue: Queue.Queue<Uint8Array, SshError | Cause.Done>) =>
+    const consume = (queue: Queue.Queue<Uint8Array, Ssh.SshError | Cause.Done>) =>
       Stream.fromQueue(queue).pipe(
         Stream.tap((chunk) => Effect.sync(() => emit(connection.consume(id, chunk.length))))
       )
     // One write at a time, so the data of concurrent writes is not interleaved.
     const writeLock = Semaphore.makeUnsafe(1)
-    const write = (data: Uint8Array | string): Effect.Effect<void, SshError> =>
+    const write = (data: Uint8Array | string): Effect.Effect<void, Ssh.SshError> =>
       writeLock.withPermit(Effect.suspend(() => {
         let bytes = typeof data === "string" ? encoder.encode(data) : data
-        const loop: Effect.Effect<void, SshError> = Effect.suspend(() => {
+        const loop: Effect.Effect<void, Ssh.SshError> = Effect.suspend(() => {
           if (failure !== undefined) return Effect.fail(failure)
           const state = connection.writeState(id)
           if (state === "Closed") return Effect.fail(connection.isOpen(id) ? endedError() : closedError())
@@ -836,23 +823,25 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
         })
         return loop
       }))
+    // After pending writes, so their data is not cut off.
+    const eof = writeLock.withPermit(Effect.suspend(() => {
+      if (failure !== undefined) return Effect.fail(failure)
+      if (!connection.isOpen(id)) return Effect.fail(closedError())
+      return Effect.sync(() => emit(connection.eof(id)))
+    }))
     return {
       stdout: consume(handle.stdout),
       stderr: consume(handle.stderr),
+      stdin: Sink.forEach(write).pipe(Sink.mapEffect(() => eof)),
       write,
-      // After pending writes, so their data is not cut off.
-      eof: writeLock.withPermit(Effect.suspend(() => {
-        if (failure !== undefined) return Effect.fail(failure)
-        if (!connection.isOpen(id)) return Effect.fail(closedError())
-        return Effect.sync(() => emit(connection.eof(id)))
-      })),
+      eof,
       close: close(id, handle),
       request: (name, data, wantReply) =>
         Effect.suspend(() => {
           if (failure !== undefined) return Effect.fail(failure)
           if (!connection.isOpen(id)) return Effect.fail(closedError())
           if (!wantReply) return Effect.sync(() => emit(connection.request(id, name, data, false)))
-          const reply = Deferred.makeUnsafe<boolean, SshError>()
+          const reply = Deferred.makeUnsafe<boolean, Ssh.SshError>()
           handle.replies.push(reply)
           emit(connection.request(id, name, data, true))
           return Effect.flatMap(
@@ -872,15 +861,15 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
       settle(handle, undefined)
     })
 
-  const open = (type: string, data: Uint8Array): Effect.Effect<SshChannel, SshError, Scope.Scope> =>
+  const open = (type: string, data: Uint8Array): Effect.Effect<SshChannel, Ssh.SshError, Scope.Scope> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         if (failure !== undefined) return yield* Effect.fail(failure)
         const handle: Handle = {
           opened: Deferred.makeUnsafe(),
           writable: Latch.makeUnsafe(false),
-          stdout: yield* Queue.unbounded<Uint8Array, SshError | Cause.Done>(),
-          stderr: yield* Queue.unbounded<Uint8Array, SshError | Cause.Done>(),
+          stdout: yield* Queue.unbounded<Uint8Array, Ssh.SshError | Cause.Done>(),
+          stderr: yield* Queue.unbounded<Uint8Array, Ssh.SshError | Cause.Done>(),
           replies: [],
           exit: Deferred.makeUnsafe(),
           closed: Deferred.makeUnsafe()
@@ -897,3 +886,132 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
 
   return { channel, open }
 })
+
+// -----------------------------------------------------------------------------
+// Commands, subsystems, and tunnels (RFC 4254 sections 6 and 7)
+// -----------------------------------------------------------------------------
+
+/**
+ * Options of `toSshConnection`.
+ *
+ * **Details**
+ *
+ * `forwardAgent` requests agent forwarding for every command. The transport
+ * must be able to forward the agent, as an OpenSSH master started with
+ * `ForwardAgent=yes` does.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface ConnectionOptions {
+  readonly forwardAgent?: boolean | undefined
+}
+
+const empty = new Uint8Array(0)
+
+/**
+ * Rejects text with NUL characters, on which OpenSSH servers drop the whole
+ * connection.
+ */
+const withoutNul = (value: string, name: string): Effect.Effect<string, Ssh.SshError> =>
+  value.includes("\0") ? Effect.fail(channelError(`${name} contains a NUL character`)) : Effect.succeed(value)
+
+const targetFromInput = (
+  target: Ssh.ForwardTarget
+): Effect.Effect<Host.HostPort | NetAddress.UnixPathAddress, Ssh.SshError> =>
+  typeof target === "object" && "path" in target
+    ? Effect.map(
+      withoutNul(target.path, "the socket path"),
+      (path) => NetAddress.isUnixPathAddress(target) ? target : NetAddress.unixPathAddress(path)
+    )
+    : Effect.fromResult(
+      Result.mapError(
+        Host.hostPortFromInput(target),
+        (error) => channelError(`invalid forward target: ${error.message}`)
+      )
+    )
+
+/**
+ * Runs commands, subsystems, and tunnels as channels of a protocol.
+ *
+ * **Details**
+ *
+ * - Each command runs in a `session` channel. With `pty`, it requests an
+ *   80x24 terminal of type `pty.term` (default `xterm`) with the server's
+ *   default modes. With `forwardAgent`, each command requests the agent and,
+ *   like OpenSSH's client, runs without it when the server refuses.
+ * - `signal` sends a `signal` request and accepts names with or without the
+ *   `SIG` prefix. Servers do not confirm it.
+ * - `subsystem` starts a subsystem in a `session` channel, and `forwardOut`
+ *   opens a `direct-tcpip` or `direct-streamlocal@openssh.com` channel. The
+ *   origin of TCP tunnels is reported as `127.0.0.1` port 0.
+ * - Requests the server refuses, channels it cannot open, and names or paths
+ *   with NUL characters fail with a `Channel` error.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const toSshConnection = (
+  protocol: SshConnectionProtocol,
+  options?: ConnectionOptions
+): Ssh.SshConnection => {
+  /** Opens a session and sends its requests, closing it when they fail. */
+  const session = Effect.fnUntraced(function*(requests: (channel: SshChannel) => Effect.Effect<void, Ssh.SshError>) {
+    const channel = yield* protocol.open("session", empty)
+    yield* Effect.onError(requests(channel), () => channel.close)
+    return channel
+  })
+
+  const exec = Effect.fnUntraced(function*(
+    command: string,
+    { pty }: { readonly pty?: boolean | Ssh.PtyOptions | undefined }
+  ) {
+    const term = yield* withoutNul((typeof pty === "object" ? pty.term : undefined) ?? "xterm", "pty.term")
+    const channel = yield* session(Effect.fnUntraced(function*(channel) {
+      if (options?.forwardAgent === true) yield* channel.request("auth-agent-req@openssh.com", empty, false)
+      if (pty !== undefined && pty !== false) {
+        // No terminal modes, so the server's defaults apply (RFC 4254 section 8).
+        const fields = new MessageWriter().string(term).uint32(80).uint32(24).uint32(0).uint32(0)
+          .string(Uint8Array.of(0))
+        yield* channel.request("pty-req", fields.finish(), true)
+      }
+      yield* channel.request("exec", new MessageWriter().string(command).finish(), true)
+    }))
+    const process: Ssh.SshProcess = {
+      stdout: channel.stdout,
+      stderr: channel.stderr,
+      stdin: channel.stdin,
+      write: channel.write,
+      eof: channel.eof,
+      close: channel.close,
+      closed: channel.closed,
+      exit: channel.exit,
+      signal: (signal) =>
+        Effect.flatMap(
+          withoutNul(signal.startsWith("SIG") ? signal.slice(3) : signal, "the signal name"),
+          (name) => channel.request("signal", new MessageWriter().string(name).finish(), false)
+        )
+    }
+    return process
+  })
+
+  const subsystem = Effect.fnUntraced(function*(name: string) {
+    yield* withoutNul(name, "the subsystem name")
+    return yield* session((channel) => channel.request("subsystem", new MessageWriter().string(name).finish(), true))
+  })
+
+  const forwardOut = Effect.fnUntraced(function*(target: Ssh.ForwardTarget) {
+    const address = yield* targetFromInput(target)
+    if (NetAddress.isUnixPathAddress(address)) {
+      const fields = new MessageWriter().string(address.path).string("").uint32(0)
+      return yield* protocol.open("direct-streamlocal@openssh.com", fields.finish())
+    }
+    const fields = new MessageWriter().string(Host.formatHost(address.host)).uint32(address.port)
+      .string("127.0.0.1").uint32(0)
+    return yield* protocol.open("direct-tcpip", fields.finish())
+  })
+
+  return Ssh.makeConnection({ exec, subsystem, forwardOut })
+}
