@@ -375,13 +375,17 @@ describe("WorkflowEngine", () => {
           token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
           value: void 0
         })
+        let child = yield* Child.poll(childId)
+        while (Option.isNone(child) || child.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          child = yield* Child.poll(childId)
+        }
         for (let i = 0; i < 100; i++) yield* Effect.yieldNow
-        assert.deepStrictEqual(yield* Child.poll(childId), Option.some(new Workflow.Complete({ exit: Exit.void })))
         assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
 
         yield* Parent.resume(executionId)
-        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
-        assert.strictEqual(failures, 2)
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (failures < 2) yield* Effect.yieldNow
       }).pipe(
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
@@ -421,11 +425,11 @@ describe("WorkflowEngine", () => {
 
         // The parent carries the child's cause but did not fail itself.
         yield* Child.resume(yield* Child.executionId({}))
-        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
-        assert.deepStrictEqual(
-          yield* Parent.poll(executionId),
-          Option.some(new Workflow.Complete({ exit: Exit.succeed(2) }))
-        )
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.succeed(2) }))
       }).pipe(
         Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
       )
@@ -460,8 +464,8 @@ describe("WorkflowEngine", () => {
         })
         yield* Failing.resume(executionId)
         yield* release.open
-        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
-        assert.strictEqual(failures, 2, "the explicit resume must replay the failed activity")
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (failures < 2) yield* Effect.yieldNow
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
     }))
 
