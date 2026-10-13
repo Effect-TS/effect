@@ -1671,6 +1671,10 @@ const toChatMessageContent = (
     return content
   }
 
+  if (content.length === 1 && content[0].type === "input_text") {
+    return content[0].text
+  }
+
   const parts: Array<ChatCompletionContentPart> = []
 
   for (const part of content) {
