@@ -55,7 +55,38 @@ export const NoulQuestion = Schema.Struct({
 export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestion])
 
 /**
- * A batch of questions about text or JSON state.
+ * An image as base64 data with its media type.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.5
+ */
+export const Base64Image = Schema.Struct({
+  content_type: Schema.Union([
+    Schema.Literals(["image/png", "image/jpeg", "image/webp"]),
+    Schema.StringForLiteralAutocomplete
+  ]),
+  base64: Schema.String
+})
+
+/**
+ * An image as a base64 data URL or base64 data with its media type.
+ * Clef accepts PNG, JPEG, and WebP images and rejects remote URLs.
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.5
+ */
+export const Image = Schema.Union([Schema.String, Base64Image])
+
+/**
+ * A batch of questions about text or JSON state, with optional images shown
+ * to the model before the state.
+ *
+ * **Details**
+ *
+ * Clef accepts up to 4 images of at most 4 MiB and 16 megapixels each, 8 MiB
+ * of decoded images in total, and 13 MiB per request body.
  *
  * @stability unstable
  * @category schemas
@@ -64,7 +95,8 @@ export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestio
 export const DecisionsRequest = Schema.Struct({
   model: Schema.Union([Schema.Literals(["clef", "clef-flash"]), Schema.StringForLiteralAutocomplete]),
   state: Schema.Json,
-  questions: Schema.Record(Schema.String, Question)
+  questions: Schema.Record(Schema.String, Question),
+  images: Schema.optional(Schema.Array(Image))
 })
 
 /**

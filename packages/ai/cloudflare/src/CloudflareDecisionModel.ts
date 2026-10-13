@@ -4,9 +4,11 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
+import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
 import { CloudflareClient } from "./CloudflareClient.ts"
 import type * as CloudflareSchema from "./CloudflareSchema.ts"
@@ -32,8 +34,42 @@ export const model = (
 ): AiModel.Model<"cloudflare", DecisionModel.DecisionModel, CloudflareClient> =>
   AiModel.make("cloudflare", model, layer({ model }))
 
+const encodeImage = (
+  image: DecisionModel.Image
+): Effect.Effect<typeof CloudflareSchema.Image.Encoded, AiError.AiError> => {
+  if (!(image.data instanceof URL)) {
+    return Effect.succeed({
+      content_type: image.mediaType,
+      base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
+    })
+  }
+  if (image.data.protocol === "data:") {
+    return Effect.succeed(image.data.href)
+  }
+  return Effect.fail(AiError.make({
+    module: "CloudflareDecisionModel",
+    method: "decide",
+    reason: new AiError.InvalidUserInputError({
+      description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
+    })
+  }))
+}
+
 /**
  * Builds a decision service with tolerance for four-decimal probability rounding.
+ *
+ * **Details**
+ *
+ * Images are sent with their media type as base64. Byte arrays are encoded,
+ * strings are sent as base64, and `data:` URLs are sent as is.
+ *
+ * **Gotchas**
+ *
+ * - Other URLs fail with `AiError.InvalidUserInputError` because Clef does not
+ *   fetch remote images.
+ * - Clef rejects more than 4 images, media types other than PNG, JPEG, or
+ *   WebP, images over 4 MiB or 16 megapixels, and more than 8 MiB of decoded
+ *   images in total.
  *
  * @stability unstable
  * @category constructors
@@ -46,7 +82,8 @@ export const make = Effect.fnUntraced(
     const client = yield* CloudflareClient
     return yield* DecisionModel.make({
       probabilityPrecision: 4,
-      decide: Effect.fnUntraced(function*({ state, decisions }) {
+      supportsImages: true,
+      decide: Effect.fnUntraced(function*({ state, decisions, images }) {
         const questions: Record<string, typeof CloudflareSchema.Question.Encoded> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           switch (decision._tag) {
@@ -61,7 +98,12 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        const response = yield* client.createDecisions({ model: options.model, state, questions })
+        const response = yield* client.createDecisions({
+          model: options.model,
+          state,
+          questions,
+          ...(images === undefined ? undefined : { images: yield* Effect.forEach(images, encodeImage) })
+        })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           const answer = response.answers[key]
