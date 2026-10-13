@@ -508,7 +508,7 @@ describe("OpenAiClient", () => {
   })
 
   describe("createResponseStream", () => {
-    it.effect("ends an SSE stream at the Chat Completions sentinel that some compatible servers send", () =>
+    it.effect("emits response.completed before [DONE] in the same SSE chunk", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
         const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
