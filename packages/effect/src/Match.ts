@@ -2696,7 +2696,8 @@ export declare namespace Types {
   // are narrowed element by element and keep their unmatched tail.
   type NarrowArrayPattern<I extends ReadonlyArray<any>, P extends ReadonlyArray<any>> = number extends I["length"]
     ? number extends P["length"] ? MapArrayPattern<I, P>
-    : NarrowArrayPrefix<I, P>
+    : P["length"] extends Required<P>["length"] ? NarrowArrayPrefix<I, P>
+    : MapArrayPattern<I, P>
     : MapArrayPattern<I, P>
 
   type MapArrayPattern<I, P> = {
