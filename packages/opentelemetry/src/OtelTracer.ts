@@ -628,7 +628,8 @@ const getPropagatedSpan = (span: Tracer.AnySpan | undefined): Tracer.AnySpan | u
   return span
 }
 
-const populateContext = (
+/** @internal */
+export const populateContext = (
   context: Otel.Context,
   span: Tracer.AnySpan,
   annotations?: Context.Context<never> | undefined
