@@ -351,4 +351,43 @@ describe("Match", () => {
       })
     )
   })
+
+  it("array prefix patterns keep the unmatched tail", () => {
+    // https://github.com/Effect-TS/effect/issues/4901
+    type Item = string | number | null
+    const match = Match.type<Array<Item>>().pipe(
+      Match.when(["A", Match.null], (value) => {
+        expect(value[0]).type.toBe<"A">()
+        expect(value[1]).type.toBe<null>()
+        expect(value[2]).type.toBe<Item | undefined>()
+        return value
+      }),
+      Match.orElse((value) => {
+        expect(value).type.toBe<Array<Item>>()
+        return value
+      })
+    )
+    expect(match).type.toBe<
+      (
+        input: Array<Item>
+      ) => readonly ["A", null, ...Array<Item>] | Array<Item>
+    >()
+
+    Match.type<readonly [string, number]>().pipe(
+      Match.when(["A", Match.number], (value) => {
+        expect(value[0]).type.toBe<"A">()
+        expect(value[1]).type.toBe<number>()
+        return value[0]
+      }),
+      Match.orElse((value) => value[0])
+    )
+
+    Match.type<Array<Item>>().pipe(
+      Match.when([], (value) => {
+        expect(value).type.toBe<readonly Item[]>()
+        return value
+      }),
+      Match.orElse((value) => value)
+    )
+  })
 })

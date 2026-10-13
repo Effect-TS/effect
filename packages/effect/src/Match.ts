@@ -2692,6 +2692,29 @@ export declare namespace Types {
 
   type Simplify<A> = { [K in keyof A]: A[K] } & {}
 
+  // A tuple pattern on an open array matches a prefix. Mapping `keyof` would
+  // widen every element through `P[number]`, so the unmatched tail would be
+  // typed as the prefix union. Tuple inputs stay on the mapped branch.
+  type NarrowArrayPattern<I extends ReadonlyArray<any>, P extends ReadonlyArray<any>> = number extends I["length"]
+    ? number extends P["length"] ? MapArrayPattern<I, P>
+    : NarrowArrayPrefix<I extends ReadonlyArray<infer E> ? E : never, P>
+    : MapArrayPattern<I, P>
+
+  type MapArrayPattern<I, P> = {
+    readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]> : I[K]
+  } extends infer R ? Fail extends R[keyof R] ? never
+    : R
+    : never
+
+  type ConsArrayPrefix<N, Rest> = [N] extends [never] ? never
+    : [Rest] extends [never] ? never
+    : Rest extends ReadonlyArray<any> ? readonly [N, ...Rest]
+    : never
+
+  type NarrowArrayPrefix<E, P> = P extends readonly [infer H, ...infer T]
+    ? ConsArrayPrefix<ExtractAndNarrow<E, H>, NarrowArrayPrefix<E, T>>
+    : readonly E[]
+
   type ExtractAndNarrow<Input, P> = P extends Predicate.Refinement<infer _In, infer _Out> ?
     _Out extends Input ? Extract<_Out, Input>
     : Extract<Input, _Out> :
@@ -2700,12 +2723,7 @@ export declare namespace Types {
       : Extract<Input, _In>
     : P extends Predicate.Predicate<infer _In> ? Extract<Input, _In>
     : Input extends infer I ? Exclude<
-        I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? {
-              readonly [K in keyof I]: K extends keyof P ? ExtractAndNarrow<I[K], P[K]>
-                : I[K]
-            } extends infer R ? Fail extends R[keyof R] ? never
-              : R
-            : never
+        I extends ReadonlyArray<any> ? P extends ReadonlyArray<any> ? NarrowArrayPattern<I, P>
           : never
           : IsPlainObject<I> extends true ? string extends keyof I ? I extends P ? I
               : never
