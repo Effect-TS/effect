@@ -45,7 +45,6 @@ import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import type * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
-import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import type * as Host from "../net/Host.ts"
 import type * as NetAddress from "../net/NetAddress.ts"
@@ -170,8 +169,10 @@ export type ForwardTarget =
  * flow-control window, so output that is not consumed, on either of them,
  * eventually stops the remote side from sending. `write` sends data,
  * `stdin` writes every chunk and then signals end of input, `eof` signals end
- * of input, and `close` tears the stream down. Concurrent writes are sent one
- * after another.
+ * of input once pending writes are sent, `close` tears the stream down, and
+ * `closed` waits until it is torn down, by either side or with the
+ * connection. Concurrent writes are sent one after another, and an
+ * interrupted write may have sent part of its data.
  *
  * @stability experimental
  * @category models
@@ -184,6 +185,7 @@ export interface SshStream {
   readonly write: (data: Uint8Array | string) => Effect.Effect<void, SshError>
   readonly eof: Effect.Effect<void, SshError>
   readonly close: Effect.Effect<void>
+  readonly closed: Effect.Effect<void>
 }
 
 /**
@@ -214,7 +216,10 @@ export interface SshProcess extends SshStream {
  * - `subsystem` starts a subsystem such as `sftp`.
  * - `forwardOut` opens a tunnel to a TCP target or Unix socket reachable from
  *   the server; `forwardOutSocket` exposes such tunnels as a
- *   `Socket.Socket`, and `forwardSocket` pipes a local socket through one.
+ *   `Socket.Socket`, and `forwardSocket` pipes a local socket through one,
+ *   in both directions, until both sides have ended their data or the tunnel
+ *   closes. Each side's end of data is passed on to the other, like a
+ *   half-closed TCP connection.
  *
  * **Gotchas**
  *
@@ -224,7 +229,8 @@ export interface SshProcess extends SshStream {
  *   login shell, such as `sh`, `bash`, or `zsh`, rather than fish.
  * - Closing a command's scope closes its session. Without a pty, the remote
  *   command then keeps running until it reads its closed input or writes to
- *   its closed output; use `signal` to stop it first.
+ *   its closed output, and servers may count its session against their
+ *   limit until then; use `signal` to stop it first.
  *
  * @stability experimental
  * @category models
@@ -270,7 +276,8 @@ export interface SshConnection {
  *   run without it when the server refuses it.
  *
  * Settings that are not given fall back to the backend's configuration; for
- * OpenSSH, the user's configuration, so `host` may be a `Host` alias from it.
+ * OpenSSH, the user's configuration, so `host` may be a `Host` alias from it
+ * that is also a valid host name.
  * Backends may support only some `options`.
  *
  * @stability experimental
@@ -399,26 +406,43 @@ const toSocket = (open: Effect.Effect<SshStream, SshError, Scope.Scope>): Socket
   return Socket.make({ reader, writer })
 }
 
+/** Whether a socket error is the peer's normal end of data. */
+const isCleanClose = (error: Socket.SocketError) =>
+  error.reason._tag === "SocketCloseError" && error.reason.code === 1000
+
 /**
- * Pipes a local socket to a stream until the remote side finishes.
+ * Pipes a local socket to a stream in both directions. Each direction ends
+ * on its own, like a half-closed TCP connection: the local end of data
+ * becomes the stream's `eof`, and the stream's end of data closes the
+ * socket's writer. Closing the stream ends both, and local data that
+ * arrives afterwards is discarded.
  */
 const pipeSocket = (
   local: Socket.Socket,
   open: Effect.Effect<SshStream, SshError, Scope.Scope>
 ): Effect.Effect<void, SshError | Socket.SocketError> =>
   Effect.scoped(Effect.gen(function*() {
-    const stream = yield* open
+    // The local connection is acquired first, so it closes with the scope
+    // when the stream cannot be opened.
     const pull = yield* Socket.readerBytes(local)
-    const writer = yield* local.writer
-    const upstream = yield* Effect.forever(
+    const stream = yield* open
+    const upload = Effect.forever(
       Effect.flatMap(pull, (chunks) => Effect.forEach(chunks, (chunk) => stream.write(chunk), { discard: true }))
     ).pipe(
-      Effect.catchTag("SocketError", () => stream.eof),
-      Effect.ignore,
-      Effect.forkScoped
+      Effect.catchIf(
+        (error): error is Socket.SocketError => Socket.isSocketError(error) && isCleanClose(error),
+        () => stream.eof
+      ),
+      // Writes fail with a `Channel` error once the stream is closed.
+      Effect.catchIf((error) => error._tag === "SshError" && error.reason === "Channel", () => Effect.void),
+      // A local peer that neither sends nor closes would otherwise keep a
+      // closed stream's forwarding alive.
+      Effect.raceFirst(stream.closed)
     )
-    yield* Stream.runForEach(stream.stdout, (chunk) => writer.write(chunk))
-    yield* Fiber.interrupt(upstream)
+    const download = Effect.scoped(
+      Effect.flatMap(local.writer, (writer) => Stream.runForEach(stream.stdout, (chunk) => writer.write(chunk)))
+    )
+    yield* Effect.all([upload, download], { concurrency: 2, discard: true })
   }))
 
 const collect = (stream: Stream.Stream<Uint8Array, SshError>) => Stream.mkString(Stream.decodeText(stream))

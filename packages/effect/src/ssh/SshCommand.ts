@@ -79,13 +79,17 @@ export interface PipedCommand extends Pipeable {
  *
  * - `cwd` runs the command in a directory, with a `cd` before it; a missing
  *   directory makes the command exit with a non-zero status without running
- *   it. Relative directories are relative to the remote home directory.
+ *   it. Relative directories, and those starting with `~/`, are relative to
+ *   the remote home directory.
  * - `env` sets environment variables for the command, with `export`; the
  *   rest of the remote environment is kept. Names must be valid shell
- *   variable names, such as `NODE_ENV`.
+ *   variable names, such as `NODE_ENV`, and a variable the shell cannot set,
+ *   such as a read-only one, makes the command exit without running it.
  * - `shell` passes the command and arguments to a shell unquoted: `true`
  *   uses the remote login shell, and a string names another shell, run with
- *   `-c`. Values interpolated into a template are not quoted either.
+ *   `-c`. Values interpolated into a template are not quoted either. Without
+ *   `shell`, the command replaces the shell with `exec`, so it must be a
+ *   program rather than a shell builtin or function.
  *
  * @stability experimental
  * @category models
@@ -112,6 +116,22 @@ const fromTemplate = (
   expressions: ReadonlyArray<ChildProcess.TemplateExpression>,
   options: Options
 ): StandardCommand => {
+  if (options.shell !== undefined && options.shell !== false) {
+    // Shell code is kept as written, so its quotes, newlines, and comments
+    // survive.
+    let code = ""
+    for (const [index, template] of templates.entries()) {
+      if (template === undefined) {
+        throw new IllegalArgumentError(`invalid escape sequence in ${JSON.stringify(templates.raw[index])}`)
+      }
+      code += template
+      if (index < expressions.length) {
+        const expression = expressions[index]
+        code += Array.isArray(expression) ? expression.join(" ") : String(expression)
+      }
+    }
+    return makeStandard(code, [], options)
+  }
   // Templates are split into arguments like `ChildProcess` templates.
   const parsed = ChildProcess.make(templates, ...expressions)
   return makeStandard(parsed.command, parsed.args, options)
@@ -135,7 +155,10 @@ export const isSshCommand = (u: unknown): u is SshCommand => Predicate.hasProper
  * Templates are split into arguments at whitespace, like `ChildProcess`
  * templates: an interpolated value is a single argument however many spaces
  * it contains, and an interpolated array is one argument per element.
- * Arguments are quoted for the remote shell unless `shell` is set.
+ * Arguments are quoted for the remote shell unless `shell` is set. With
+ * `shell`, a template is shell code kept as written, including its quotes,
+ * newlines, and comments, and interpolated values are inserted unquoted, with
+ * the elements of arrays separated by spaces.
  *
  * **Example** (Creating commands)
  *
@@ -206,18 +229,25 @@ export const pipeTo: {
  *
  * Quotes and backslashes are escaped outside the single quotes, so fish
  * reads the result the same way. Words with `=` are quoted, because zsh
- * expands a leading `=` to the path of a command.
+ * expands a leading `=` to the path of a command, and words with `%`,
+ * because fish expands `%self` to its process id.
  */
 const quote = (value: string): string =>
-  value.length > 0 && /^[A-Za-z0-9_@%+:,./-]+$/.test(value)
+  value.length > 0 && /^[A-Za-z0-9_@+:,./-]+$/.test(value)
     ? value
     : `'${value.replace(/['\\]/g, (char) => `'\\${char}'`)}'`
 
 /**
- * Prefixes relative directories with `./`, so `cd` reads none as an option
- * and none is looked up in `CDPATH`.
+ * Quotes a directory for `cd`. A leading `~/` stays unquoted, so it names
+ * the home directory, and other relative directories get a `./` prefix
+ * unless they start with `.` or `..` as a whole component, so `cd` reads
+ * none as an option and none is looked up in `CDPATH`.
  */
-const directory = (path: string): string => path.startsWith("/") || path.startsWith(".") ? path : `./${path}`
+const directory = (path: string): string => {
+  if (path === "~") return path
+  if (path.startsWith("~/")) return `~/${quote(path.slice(2))}`
+  return quote(path.startsWith("/") || /^\.\.?(\/|$)/.test(path) ? path : `./${path}`)
+}
 
 /** Builds the command line for a single command; see `Options`. */
 const line = (command: StandardCommand): string => {
@@ -225,14 +255,16 @@ const line = (command: StandardCommand): string => {
   const parts: Array<string> = []
   // `exit` keeps the rest of the line, even shell code with `||`, from
   // running elsewhere.
-  if (options.cwd !== undefined) parts.push(`cd ${quote(directory(options.cwd))} || exit;`)
+  if (options.cwd !== undefined) parts.push(`cd ${directory(options.cwd)} || exit;`)
   const env = Object.entries(options.env ?? {})
   for (const [name] of env) {
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
       throw new IllegalArgumentError(`invalid environment variable name: ${JSON.stringify(name)}`)
     }
   }
-  if (env.length > 0) parts.push(`export ${env.map(([name, value]) => quote(`${name}=${value}`)).join(" ")};`)
+  if (env.length > 0) {
+    parts.push(`export ${env.map(([name, value]) => quote(`${name}=${value}`)).join(" ")} || exit;`)
+  }
   const shell = options.shell
   if (shell === true) {
     parts.push([command.command, ...args].join(" "))
@@ -257,7 +289,8 @@ const line = (command: StandardCommand): string => {
  * need a POSIX-compatible login shell, such as `sh`, `bash`, or `zsh`.
  *
  * Throws an `IllegalArgumentError` when an `env` name is not a valid shell
- * variable name.
+ * variable name, or when the command line would contain a NUL character,
+ * which servers cannot receive.
  *
  * **Example** (Rendering a command line)
  *
@@ -272,11 +305,18 @@ const line = (command: StandardCommand): string => {
  * @since 4.0.0
  */
 export const render = (command: SshCommand): string => {
-  if (command._tag === "StandardCommand") return line(command)
+  const rendered = command._tag === "StandardCommand" ? line(command) : pipeline(command)
+  // OpenSSH servers drop the whole connection on a command line with NUL.
+  if (rendered.includes("\0")) throw new IllegalArgumentError("the command line contains a NUL character")
+  return rendered
+}
+
+const pipeline = (command: PipedCommand): string => {
   const parts: Array<string> = []
   const visit = (current: SshCommand) => {
     if (current._tag === "StandardCommand") {
-      parts.push(`(${line(current)})`)
+      // The newline ends a trailing comment in shell code.
+      parts.push(`(${line(current)}\n)`)
     } else {
       visit(current.left)
       visit(current.right)

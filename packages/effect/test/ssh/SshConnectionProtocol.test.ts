@@ -103,6 +103,30 @@ describe("ConnectionState", () => {
     assert.deepStrictEqual([reader.byte(), reader.uint32(), reader.uint32()], [MSG.CHANNEL_WINDOW_ADJUST, REMOTE, 32])
   })
 
+  it("rejects windows and maximum packet sizes that are not positive uint32 values", () => {
+    for (const options of [{ maxPacket: 0 }, { window: 0 }, { window: 2 ** 32 }, { maxPacket: 1.5 }]) {
+      assert.throws(() => new ConnectionState(options), RangeError)
+    }
+  })
+
+  it("rejects data beyond the window or the maximum packet size", () => {
+    const data = (length: number) => message(MSG.CHANNEL_DATA, (w) => w.uint32(0).string(new Uint8Array(length)))
+    const stderr = (length: number) =>
+      message(MSG.CHANNEL_EXTENDED_DATA, (w) => w.uint32(0).uint32(1).string(new Uint8Array(length)))
+    // The window is 64 bytes and the maximum packet 50 bytes.
+    assert.deepStrictEqual(opened().connection.receive(data(51)), {
+      _tag: "Violation",
+      description: "data larger than the maximum packet size"
+    })
+    const { channel, connection } = opened()
+    handled(connection, data(40))
+    handled(connection, stderr(24))
+    assert.deepStrictEqual(connection.receive(data(1)), { _tag: "Violation", description: "data beyond the window" })
+    // Consumed data is returned to the window.
+    connection.consume(channel, 40)
+    assert.strictEqual(handled(connection, data(40)).events.length, 1)
+  })
+
   it("delivers data, standard error, end of data, and exit status", () => {
     const { channel, connection } = opened()
     const received = [
@@ -164,6 +188,22 @@ describe("ConnectionState", () => {
     // The server's close completes the exchange without a second close.
     const closed = handled(connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel)))
     assert.deepStrictEqual(closed, { _tag: "Handled", messages: [], events: [{ _tag: "Closed", channel }] })
+  })
+
+  it("refuses requests on channels it closed until the server closes them", () => {
+    const { channel, connection } = opened()
+    connection.close(channel)
+    // OpenSSH servers probe sessions whose command still runs after a close.
+    const keepalive = message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("keepalive@openssh.com").bool(true))
+    assert.deepStrictEqual(handled(connection, keepalive), {
+      _tag: "Handled",
+      messages: [message(MSG.CHANNEL_FAILURE, (w) => w.uint32(REMOTE))],
+      events: []
+    })
+    const exit = message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("exit-status").bool(false).uint32(0))
+    assert.deepStrictEqual(handled(connection, exit), { _tag: "Handled", messages: [], events: [] })
+    handled(connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel)))
+    assert.deepStrictEqual(handled(connection, keepalive), { _tag: "Handled", messages: [], events: [] })
   })
 
   it("answers the server's close", () => {

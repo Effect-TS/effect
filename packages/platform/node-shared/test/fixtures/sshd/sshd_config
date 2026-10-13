@@ -10,6 +10,7 @@ AllowTcpForwarding yes
 AllowStreamLocalForwarding yes
 AllowAgentForwarding yes
 MaxStartups 200
+# Above the default of 10, so tests can run many sessions on one connection.
 MaxSessions 200
 PerSourcePenalties no
 # Probe idle sessions every second, so clients must answer keepalive requests.
