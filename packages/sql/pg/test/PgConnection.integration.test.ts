@@ -2,6 +2,7 @@ import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
 import type { SqlError } from "effect/sql/SqlError"
+import { TestClock } from "effect/testing"
 import { PgContainer } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
@@ -450,5 +451,38 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const results = yield* Fiber.join(queried)
       results.forEach((result, index) => assert.deepStrictEqual(result.rows, [{ n: index }]))
       assert.deepStrictEqual((yield* connection.query("SELECT 1 AS ok")).rows, [{ ok: 1 }])
+    }))
+
+  it.effect("fails work through a released pin without touching the next owner's session", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const released = yield* Effect.scoped(connection.pin)
+      yield* Effect.scoped(Effect.gen(function*() {
+        const owner = yield* connection.pin
+        yield* owner.query("BEGIN")
+        yield* owner.query("SET LOCAL application_name = 'next_owner'")
+
+        const exits: ReadonlyArray<Exit.Exit<unknown, SqlError>> = [
+          yield* Effect.exit(released.query("ROLLBACK")),
+          yield* Effect.exit(released.queryValues("ROLLBACK")),
+          yield* Effect.exit(Stream.runCollect(released.stream("SELECT 1"))),
+          yield* Effect.exit(Effect.scoped(released.listen("released_pin")))
+        ]
+        exits.forEach((exit) => assert.isTrue(Exit.isFailure(exit)))
+
+        const setting = yield* owner.query("SELECT current_setting('application_name') AS name")
+        assert.deepStrictEqual(setting.rows, [{ name: "next_owner" }])
+        yield* owner.query("ROLLBACK")
+      }))
+    }))
+
+  it.effect("ignores interrupt on a released pin", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const released = yield* Effect.scoped(connection.pin)
+      const sleeping = yield* connection.query("SELECT pg_sleep(0.5)").pipe(Effect.forkScoped)
+      yield* Effect.sleep("100 millis").pipe(TestClock.withLive)
+      yield* released.interrupt
+      assert.isTrue(Exit.isSuccess(yield* Fiber.await(sleeping)))
     }))
 })
