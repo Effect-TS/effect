@@ -123,7 +123,9 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
  * @since 4.0.0
  */
 export const make = Effect.gen(function*() {
-  const router = FindMyWay.make<Route<any, never>>(yield* RouterConfig)
+  const config = yield* RouterConfig
+  const ignoreDuplicateSlashes = config.ignoreDuplicateSlashes ?? true
+  const router = FindMyWay.make<Route<any, never>>(config)
   const middleware = new Set<middleware.Fn>()
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
@@ -216,7 +218,7 @@ export const make = Effect.gen(function*() {
           context = Context.add(
             context,
             HttpServerRequest.HttpServerRequest,
-            sliceRequestUrl(request, route.prefix.value)
+            sliceRequestUrl(request, route.prefix.value, ignoreDuplicateSlashes)
           )
         }
         context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
@@ -252,15 +254,24 @@ export const make = Effect.gen(function*() {
 })
 
 // Skips one URL path segment per prefix segment, as params and percent-encoding change the matched length.
-function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: string) {
+function sliceRequestUrl(
+  request: HttpServerRequest.HttpServerRequest,
+  prefix: string,
+  ignoreDuplicateSlashes: boolean
+) {
   const url = request.url
   let index = 0
   for (let i = 0; i < prefix.length; i++) {
     if (prefix.charCodeAt(i) !== 47) continue
-    while (url.charCodeAt(index) === 47) index++
+    if (ignoreDuplicateSlashes) {
+      if (prefix.charCodeAt(i - 1) === 47) continue
+      while (url.charCodeAt(index) === 47) index++
+    } else if (url.charCodeAt(index) === 47) {
+      index++
+    }
     while (index < url.length) {
       const code = url.charCodeAt(index)
-      if (code === 47 || code === 63 || code === 35) break
+      if (code === 47 || code === 63 || code === 59 || code === 35) break
       index++
     }
   }
