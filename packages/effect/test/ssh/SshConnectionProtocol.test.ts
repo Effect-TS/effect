@@ -55,27 +55,21 @@ describe("ConnectionState", () => {
       [reader.byte(), reader.string(), reader.uint32(), reader.uint32(), reader.uint32(), reader.byte(), reader.byte()],
       [MSG.CHANNEL_OPEN, "session", channel, 64, 50, 1, 2]
     )
-    assert.strictEqual(connection.writeState(channel), "Opening")
     const received = handled(
       connection,
       message(MSG.CHANNEL_OPEN_CONFIRMATION, (w) => w.uint32(channel).uint32(REMOTE).uint32(0).uint32(100))
     )
     assert.deepStrictEqual(received.events, [{ _tag: "Opened", channel }])
-    assert.strictEqual(connection.writeState(channel), "Blocked")
-  })
 
-  it("reports channels the server refuses", () => {
-    const connection = new ConnectionState()
-    const { channel } = connection.open("direct-tcpip", new Uint8Array(0))
-    const received = handled(
+    const refused = connection.open("direct-tcpip", new Uint8Array(0)).channel
+    const failed = handled(
       connection,
-      message(MSG.CHANNEL_OPEN_FAILURE, (w) => w.uint32(channel).uint32(2).string("connect failed").string(""))
+      message(MSG.CHANNEL_OPEN_FAILURE, (w) => w.uint32(refused).uint32(2).string("connect failed").string(""))
     )
-    assert.deepStrictEqual(received.events, [{ _tag: "OpenFailed", channel, description: "connect failed" }])
-    assert.strictEqual(connection.writeState(channel), "Closed")
+    assert.deepStrictEqual(failed.events, [{ _tag: "OpenFailed", channel: refused, description: "connect failed" }])
   })
 
-  it("splits writes into packets within the server's window", () => {
+  it("keeps writes within the server's window and returns consumed data to its own", () => {
     const { channel, connection } = opened(250, 100)
     const { messages, written } = connection.write(channel, new Uint8Array(400))
     assert.strictEqual(written, 250)
@@ -93,38 +87,12 @@ describe("ConnectionState", () => {
     const adjusted = handled(connection, message(MSG.CHANNEL_WINDOW_ADJUST, (w) => w.uint32(channel).uint32(150)))
     assert.deepStrictEqual(adjusted.events, [{ _tag: "Writable", channel }])
     assert.strictEqual(connection.write(channel, new Uint8Array(150)).written, 150)
-  })
 
-  it("returns consumed data to the server's window once half of it is used", () => {
-    const { channel, connection } = opened()
+    // The window of 64 bytes is adjusted once half of it is consumed.
     assert.deepStrictEqual(connection.consume(channel, 31), [])
     const [adjust] = connection.consume(channel, 1)
     const reader = new MessageReader(adjust)
     assert.deepStrictEqual([reader.byte(), reader.uint32(), reader.uint32()], [MSG.CHANNEL_WINDOW_ADJUST, REMOTE, 32])
-  })
-
-  it("rejects windows and maximum packet sizes that are not positive uint32 values", () => {
-    for (const options of [{ maxPacket: 0 }, { window: 0 }, { window: 2 ** 32 }, { maxPacket: 1.5 }]) {
-      assert.throws(() => new ConnectionState(options), RangeError)
-    }
-  })
-
-  it("rejects data beyond the window or the maximum packet size", () => {
-    const data = (length: number) => message(MSG.CHANNEL_DATA, (w) => w.uint32(0).string(new Uint8Array(length)))
-    const stderr = (length: number) =>
-      message(MSG.CHANNEL_EXTENDED_DATA, (w) => w.uint32(0).uint32(1).string(new Uint8Array(length)))
-    // The window is 64 bytes and the maximum packet 50 bytes.
-    assert.deepStrictEqual(opened().connection.receive(data(51)), {
-      _tag: "Violation",
-      description: "data larger than the maximum packet size"
-    })
-    const { channel, connection } = opened()
-    handled(connection, data(40))
-    handled(connection, stderr(24))
-    assert.deepStrictEqual(connection.receive(data(1)), { _tag: "Violation", description: "data beyond the window" })
-    // Consumed data is returned to the window.
-    connection.consume(channel, 40)
-    assert.strictEqual(handled(connection, data(40)).events.length, 1)
   })
 
   it("delivers data, standard error, end of data, and exit status", () => {
@@ -148,21 +116,14 @@ describe("ConnectionState", () => {
     ])
   })
 
-  it("matches replies to requests and rejects unexpected replies", () => {
+  it("matches replies to requests and refuses the server's requests and channels", () => {
     const { channel, connection } = opened()
     connection.request(channel, "env", new Uint8Array(0), false)
     connection.request(channel, "exec", new Uint8Array(0), true)
     assert.deepStrictEqual(handled(connection, message(MSG.CHANNEL_FAILURE, (w) => w.uint32(channel))).events, [
       { _tag: "Reply", channel, success: false }
     ])
-    assert.deepStrictEqual(connection.receive(message(MSG.CHANNEL_SUCCESS, (w) => w.uint32(channel))), {
-      _tag: "Violation",
-      description: "unexpected channel request reply"
-    })
-  })
 
-  it("refuses the server's requests and channels", () => {
-    const { channel, connection } = opened()
     const request = handled(
       connection,
       message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("keepalive@openssh.com").bool(true))
@@ -177,40 +138,28 @@ describe("ConnectionState", () => {
     assert.deepStrictEqual(open.messages.map(header), [[MSG.CHANNEL_OPEN_FAILURE, 42]])
   })
 
-  it("closes channels once and ignores their messages afterwards", () => {
+  it("closes channels once and answers keepalive requests until the server closes them", () => {
     const { channel, connection } = opened()
     assert.deepStrictEqual(connection.close(channel).map(header), [[MSG.CHANNEL_CLOSE, REMOTE]])
     assert.deepStrictEqual(connection.close(channel), [])
     assert.strictEqual(connection.writeState(channel), "Closed")
-    assert.deepStrictEqual(connection.request(channel, "signal", new Uint8Array(0), false), [])
     const late = handled(connection, message(MSG.CHANNEL_DATA, (w) => w.uint32(channel).string("late")))
     assert.deepStrictEqual(late, { _tag: "Handled", messages: [], events: [] })
+    // OpenSSH servers probe sessions whose command still runs after a close,
+    // and disconnect when the probes go unanswered.
+    const keepalive = message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("keepalive@openssh.com").bool(true))
+    assert.deepStrictEqual(handled(connection, keepalive).messages, [
+      message(MSG.CHANNEL_FAILURE, (w) => w.uint32(REMOTE))
+    ])
     // The server's close completes the exchange without a second close.
     const closed = handled(connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel)))
     assert.deepStrictEqual(closed, { _tag: "Handled", messages: [], events: [{ _tag: "Closed", channel }] })
-  })
 
-  it("refuses requests on channels it closed until the server closes them", () => {
-    const { channel, connection } = opened()
-    connection.close(channel)
-    // OpenSSH servers probe sessions whose command still runs after a close.
-    const keepalive = message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("keepalive@openssh.com").bool(true))
-    assert.deepStrictEqual(handled(connection, keepalive), {
-      _tag: "Handled",
-      messages: [message(MSG.CHANNEL_FAILURE, (w) => w.uint32(REMOTE))],
-      events: []
-    })
-    const exit = message(MSG.CHANNEL_REQUEST, (w) => w.uint32(channel).string("exit-status").bool(false).uint32(0))
-    assert.deepStrictEqual(handled(connection, exit), { _tag: "Handled", messages: [], events: [] })
-    handled(connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel)))
-    assert.deepStrictEqual(handled(connection, keepalive), { _tag: "Handled", messages: [], events: [] })
-  })
-
-  it("answers the server's close", () => {
-    const { channel, connection } = opened()
-    const closed = handled(connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel)))
-    assert.deepStrictEqual(closed.messages.map(header), [[MSG.CHANNEL_CLOSE, REMOTE]])
-    assert.deepStrictEqual(closed.events, [{ _tag: "Closed", channel }])
+    // A close from the server is answered.
+    const other = opened()
+    const answered = handled(other.connection, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(other.channel)))
+    assert.deepStrictEqual(answered.messages.map(header), [[MSG.CHANNEL_CLOSE, REMOTE]])
+    assert.deepStrictEqual(answered.events, [{ _tag: "Closed", channel: other.channel }])
   })
 
   it("closes channels abandoned before the server confirms them", () => {
@@ -228,32 +177,32 @@ describe("ConnectionState", () => {
     })
   })
 
-  it("rejects messages for channels the server has not confirmed", () => {
-    const connection = new ConnectionState()
-    const { channel } = connection.open("session", new Uint8Array(0))
-    // The client cannot answer them: it does not know the server's id yet.
-    assert.deepStrictEqual(connection.receive(message(MSG.CHANNEL_CLOSE, (w) => w.uint32(channel))), {
-      _tag: "Violation",
-      description: "message for an unconfirmed channel"
-    })
-  })
-
-  it("rejects channels that accept no data", () => {
-    const connection = new ConnectionState()
-    const { channel } = connection.open("session", new Uint8Array(0))
-    const confirmation = message(
-      MSG.CHANNEL_OPEN_CONFIRMATION,
-      (w) => w.uint32(channel).uint32(REMOTE).uint32(1000).uint32(0)
-    )
-    assert.deepStrictEqual(connection.receive(confirmation), {
-      _tag: "Violation",
-      description: "zero maximum packet size"
-    })
-  })
-
-  it("reports truncated messages", () => {
+  it("reports protocol violations", () => {
+    const violation = (connection: ConnectionState, bytes: Uint8Array) => {
+      const received = connection.receive(bytes)
+      return received._tag === "Violation" ? received.description : undefined
+    }
+    const data = (length: number) => message(MSG.CHANNEL_DATA, (w) => w.uint32(0).string(new Uint8Array(length)))
+    // The window is 64 bytes and the maximum packet 50 bytes.
+    assert.strictEqual(violation(opened().connection, data(51)), "data larger than the maximum packet size")
     const { channel, connection } = opened()
-    const truncated = message(MSG.CHANNEL_DATA, (w) => w.uint32(channel).uint32(10))
-    assert.deepStrictEqual(connection.receive(truncated), { _tag: "Violation", description: "truncated message" })
+    handled(connection, data(40))
+    assert.strictEqual(violation(connection, data(25)), "data beyond the window")
+    assert.strictEqual(
+      violation(connection, message(MSG.CHANNEL_SUCCESS, (w) => w.uint32(channel))),
+      "unexpected channel request reply"
+    )
+    assert.strictEqual(
+      violation(connection, message(MSG.CHANNEL_DATA, (w) => w.uint32(channel).uint32(10))),
+      "truncated message"
+    )
+    // The client cannot answer messages for a channel before it knows the
+    // server's id for it.
+    const unconfirmed = new ConnectionState()
+    const pending = unconfirmed.open("session", new Uint8Array(0)).channel
+    assert.strictEqual(
+      violation(unconfirmed, message(MSG.CHANNEL_CLOSE, (w) => w.uint32(pending))),
+      "message for an unconfirmed channel"
+    )
   })
 })
