@@ -10,6 +10,7 @@ import * as Context from "effect/Context"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type * as Pool from "effect/Pool"
 import type * as Queue from "effect/Queue"
 import * as Reactivity from "effect/reactivity/Reactivity"
 import type * as Redacted from "effect/Redacted"
@@ -67,6 +68,13 @@ export interface PgClient extends Client.SqlClient {
     channel: string
   ) => Effect.Effect<Queue.Dequeue<PgConnection.Notification, SqlError>, SqlError, Scope.Scope>
   readonly notify: (channel: string, payload: string) => Effect.Effect<void, SqlError>
+  /**
+   * Returns a snapshot of connection pool occupancy. A client from `makeClient`
+   * has one session that stays leased for its lifetime, so it always reports
+   * `{ idle: 0, used: 1, pending: 0, min: 1, max: 1 }` whatever statements run
+   * on it.
+   */
+  readonly poolStats: Effect.Effect<Pool.Stats>
 }
 
 /**
@@ -181,7 +189,8 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
       borrower: (f) => pool.use((connection) => f(makeConnection(connection))),
       transactionAcquirer: Effect.map(pool.reserve, makeConnection),
       listenAcquirer: pool.reserve,
-      config: options
+      config: options,
+      poolStats: pool.stats
     }))
 
 /**
@@ -207,7 +216,9 @@ export const makeClient = (
       )),
       transactionAcquirer: Effect.map(connection.pin, makeConnection),
       listenAcquirer: options.acquireForStream ? PgConnection.make(options) : connection.pin,
-      config: options
+      config: options,
+      // The one session is leased for the client's lifetime.
+      poolStats: Effect.succeed({ idle: 0, used: 1, pending: 0, min: 1, max: 1 })
     }))
 
 /**
@@ -220,6 +231,7 @@ const makeImpl = Effect.fnUntraced(function*(
     readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
     readonly config: PgClientConfig
+    readonly poolStats: Effect.Effect<Pool.Stats>
   }
 ): Effect.fn.Return<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> {
   const config = options.config
@@ -262,6 +274,7 @@ const makeImpl = Effect.fnUntraced(function*(
     {
       [TypeId]: TypeId as TypeId,
       config,
+      poolStats: options.poolStats,
       json: (_: unknown) => Statement.fragment([PgJson(_)]),
       listen,
       notify: (channel: string, payload: string) => {
