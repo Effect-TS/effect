@@ -1,6 +1,3 @@
-/**
- * The `graphql.config.ts` shape (EFF-1834 points 1, 5, 6 and 7).
- */
 import * as Config from "@effect/graphql-generator/Config"
 import { assert, describe, it } from "@effect/vitest"
 import * as Exit from "effect/Exit"

@@ -1,22 +1,4 @@
-/**
- * Regressions from the stage-4 review: generated modules must load. Each case
- * is valid GraphQL that produced code which failed to parse or threw at
- * import time.
- *
- * - Imports between generated files must not form a cycle. Every fragment
- *   reference is read while a module initializes, so any cycle throws for
- *   some entry point. A cycle is reported as one located error, at the first
- *   cross-file spread on the cycle (file order, then position), and nothing
- *   is emitted. Users own the document files and can move fragments to break
- *   it.
- * - A module that exports a group can't also bind a fragment of that name,
- *   whether the fragment is local or imported only because a spread was
- *   inlined.
- * - Schema type names are not the user's to choose, so names that clash with
- *   the shared module's own bindings or are reserved words must still emit
- *   working code.
- * - A `__proto__` response key or variable must be an own struct field.
- */
+/** Generated modules load without binding collisions; cyclic fragment imports are rejected. */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

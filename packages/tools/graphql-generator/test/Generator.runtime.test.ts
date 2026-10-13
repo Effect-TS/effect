@@ -1,8 +1,4 @@
-/**
- * End-to-end acceptance check: the generated GitHub modules, imported as code,
- * drive a `GraphQLClient` over `GraphQLProtocol.layerHttp` against a mock
- * `HttpClient` with canned GitHub-shaped responses.
- */
+/** Generated GitHub modules drive an HTTP client against canned GitHub responses. */
 import { assert, describe, it } from "@effect/vitest"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"

@@ -1,12 +1,4 @@
-/**
- * The `graphqlgen` command (EFF-1834 points 1 to 13): config loading, exit
- * codes, all-or-nothing writes and `--check`.
- *
- * Each test seeds a scratch project under `test/.tmp` (inside the package, so
- * a config file can import `@effect/graphql-generator/Config`) and runs the
- * command in process with `--config`. The `bin.ts` test spawns Node so the
- * config is imported under the real Node version.
- */
+/** CLI tests run scratch projects in process; the bin test uses Node to load the config. */
 import * as Generator from "@effect/graphql-generator/Generator"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"

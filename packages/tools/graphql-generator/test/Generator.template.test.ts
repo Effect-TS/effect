@@ -1,8 +1,4 @@
-/**
- * Operation documents emitted as templates (EFF-2002). Joining the template
- * must give exactly the document the printer produced before templates, and
- * rendering it for several slices must give a document the schema accepts.
- */
+/** Joining a template reproduces the printed document; batched slices remain valid GraphQL. */
 import type * as Ast from "@effect/graphql-generator/internal/Ast"
 import * as Validate from "@effect/graphql-generator/internal/Validate"
 import * as NodeServices from "@effect/platform-node/NodeServices"

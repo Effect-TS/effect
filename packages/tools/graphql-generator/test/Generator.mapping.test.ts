@@ -1,9 +1,3 @@
-/**
- * Mapping rules and output locations the snapshot sets don't exercise
- * (EFF-1832 points 4 and 5, EFF-1834 points 5 to 7), asserted on the text
- * `generate` emits for `taskSchemaSdl`. The shared module defaults to
- * `schema/app.graphql.ts` next to the schema.
- */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

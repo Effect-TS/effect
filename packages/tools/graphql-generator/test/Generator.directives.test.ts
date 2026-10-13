@@ -1,9 +1,4 @@
-/**
- * `@skip` and `@include` (EFF-1832 point 11), asserted on the emitted Schema
- * text for `taskSchemaSdl`. A variable condition makes every field it covers
- * an optional key, a literal condition is folded at generation time, and the
- * document keeps every directive as written.
- */
+/** Variable @skip/@include conditions produce optional fields; literal conditions are folded. */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

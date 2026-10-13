@@ -1,8 +1,3 @@
-/**
- * Per-file output the snapshot sets don't exercise (EFF-1831): stale-file
- * detection, fragment declaration order, inlining an overlapping fragment and
- * appending fragments reached through other fragments to the document.
- */
 import * as Generator from "@effect/graphql-generator/Generator"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"

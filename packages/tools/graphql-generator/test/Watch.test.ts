@@ -1,4 +1,4 @@
-/** Watch-loop regressions use injected events and TestClock; the CLI smoke test uses real watchers. */
+/** Watch-loop tests use injected events and TestClock; the CLI test uses real watchers. */
 import * as Generator from "@effect/graphql-generator/Generator"
 import * as Watch from "@effect/graphql-generator/internal/Watch"
 import * as NodeServices from "@effect/platform-node/NodeServices"

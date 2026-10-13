@@ -1,9 +1,3 @@
-/**
- * Extracted selection names (EFF-1997): bare GraphQL type names, file-wide
- * sharing of identical selections, and field/parent/operation fallbacks for
- * clashes, including imported and declared names. The subscriptions snapshot
- * set covers union members and the catch-all.
- */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

@@ -1,10 +1,3 @@
-/**
- * Diagnostics `generate` reports (EFF-1832 point 7, EFF-1834 points 4, 7 and
- * 11), one per family: the unmapped-scalars warning, config errors for scalar
- * keys, located errors in document files, recursive input objects (not
- * supported yet) and names generated code can't use. Also covers reading an
- * introspection JSON schema.
- */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

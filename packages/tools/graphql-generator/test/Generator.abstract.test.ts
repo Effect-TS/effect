@@ -1,8 +1,4 @@
-/**
- * Regressions for member selection on interfaces and unions, checked by
- * importing the generated module and decoding through it. The snapshot sets
- * and `Generator.runtime.abstract` cover the rest of the abstract-type output.
- */
+/** Generated interface and union selections decode through their result schemas. */
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"

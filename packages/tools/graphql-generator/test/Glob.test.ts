@@ -1,7 +1,3 @@
-/**
- * The `documents` glob matcher (EFF-1834 point 3): `*`, `**`, `?` and
- * `{a,b}` over `/`-separated paths relative to the config file.
- */
 import * as Glob from "@effect/graphql-generator/internal/Glob"
 import { assert, describe, it } from "@effect/vitest"
 
