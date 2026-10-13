@@ -55,4 +55,4 @@ overrides:
   # Upstream changes: https://github.com/jsdom/jsdom/compare/v30.0.1...v30.1.0
   jsdom: ~30.0.1
 
-  '@types/ssh2>@types/node': ^26.6.3
+  '@types/ssh2>@types/node': ^26.6.5

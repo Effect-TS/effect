@@ -6,7 +6,7 @@ settings:
 
 overrides:
   jsdom: ~30.0.1
-  '@types/ssh2>@types/node': ^26.6.3
+  '@types/ssh2>@types/node': ^26.6.5
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.1': 4b2756eb490a2ad802075423f6b08a5f50f12307ec25e117b20a79e12236b625
