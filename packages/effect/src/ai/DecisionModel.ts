@@ -290,7 +290,7 @@ const validateAnswer = (
       return { label: answer.label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
     }
     case "Rate": {
-      const levels = decision.criteria
+      const levels = decision.criteria.map((level) => level.label)
       if (!isFiniteNumber(answer.rating) || answer.rating < 0 || answer.rating > levels.length - 1) {
         return invalidOutput(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
       }

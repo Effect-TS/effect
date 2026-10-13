@@ -7,6 +7,7 @@ import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientError from "effect/http/HttpClientError"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
+import { answersFor, bugSeverity, structuredExamples } from "./fixtures/structured-examples.ts"
 
 const Triage = Decision.make({
   input: Schema.Struct({ message: Schema.String }),
@@ -104,7 +105,7 @@ describe("CloudflareDecisionModel", () => {
               severity: {
                 type: "score",
                 instructions: Triage.decisions.severity.instructions,
-                criteria: Triage.decisions.severity.criteria
+                criteria: ["Minor", "Major", "Critical"]
               },
               urgent: {
                 type: "noul",
@@ -172,4 +173,41 @@ describe("CloudflareDecisionModel", () => {
         assert.strictEqual(error.reason._tag, "InvalidOutputError")
       }).pipe(Effect.provide(layer(invalid))))
   }
+
+  describe("structured descriptions", () => {
+    for (const example of structuredExamples) {
+      it.effect("sends the " + example.name + " example as the docs write it", () => {
+        const bodies: Array<unknown> = []
+        return Effect.gen(function*() {
+          const definition = Decision.make({ input: Schema.Json, decisions: example.decisions })
+          yield* DecisionModel.decide(definition, { input: example.state })
+          assert.deepStrictEqual(bodies, [{ model: "clef", state: example.state, questions: example.questions }])
+        }).pipe(
+          Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
+          Effect.provide(clientLayer(example.answers ?? answersFor(example.questions), (request) => {
+            if (request.body._tag === "Uint8Array") {
+              bodies.push(JSON.parse(new TextDecoder().decode(request.body.body)))
+            }
+          }))
+        )
+      })
+    }
+
+    it.effect("maps a score answer with a structured legend onto the level labels", () =>
+      Effect.gen(function*() {
+        const definition = Decision.make({ input: Schema.String, decisions: { bug_severity: bugSeverity } })
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Export to PDF fails" })
+
+        assert.strictEqual(answers.bug_severity.label, "degraded")
+        assert.strictEqual(answers.bug_severity.rating, 1.09)
+        assert.strictEqual(answers.bug_severity.confidence, 0.87)
+        assert.deepStrictEqual({ ...answers.bug_severity.probabilities }, {
+          cosmetic: 0,
+          degraded: 0.91,
+          blocking: 0.09
+        })
+      }).pipe(Effect.provide(layer(
+        structuredExamples.find((example) => example.name === "bug severity levels")!.answers
+      ))))
+  })
 })

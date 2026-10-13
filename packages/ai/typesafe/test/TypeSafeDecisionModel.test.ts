@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import { Decision, DecisionModel, Model } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
+import { answersFor, bugSeverity, structuredExamples } from "./fixtures/structured-examples.ts"
 
 const Ticket = Schema.Struct({
   message: Schema.String,
@@ -655,6 +656,48 @@ describe("TypeSafeDecisionModel", () => {
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "RateLimitError")
     }))
+
+  describe("structured descriptions", () => {
+    for (const example of structuredExamples) {
+      it.effect("sends the " + example.name + " example as the docs write it", () =>
+        Effect.gen(function*() {
+          const requests: Array<HttpClientRequest.HttpClientRequest> = []
+          const definition = Decision.make({ input: Schema.Json, decisions: example.decisions })
+
+          yield* DecisionModel.decide(definition, { input: example.state }).pipe(
+            Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+            Effect.provide(makeClientLayer((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(request, {
+                model: "jev-latest",
+                answers: example.answers ?? answersFor(example.questions)
+              }))
+            }))
+          )
+
+          const body = yield* getRequestBody(requests[0])
+          assert.deepStrictEqual(body, { model: "jev-latest", state: example.state, questions: example.questions })
+        }))
+    }
+
+    it.effect("maps a score answer with a structured legend onto the level labels", () =>
+      Effect.gen(function*() {
+        const example = structuredExamples.find((example) => example.name === "bug severity levels")!
+        const definition = Decision.make({ input: Schema.String, decisions: { bug_severity: bugSeverity } })
+
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Export to PDF fails" }).pipe(
+          Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.succeed(jsonResponse(request, { model: "jev-1.13.0", answers: example.answers }))
+          ))
+        )
+
+        assert.strictEqual(answers.bug_severity.label, "degraded")
+        assert.strictEqual(answers.bug_severity.rating, 1.09)
+        assert.strictEqual(answers.bug_severity.confidence, 0.87)
+        assert.deepStrictEqual(answers.bug_severity.probabilities, { cosmetic: 0, degraded: 0.91, blocking: 0.09 })
+      }))
+  })
 })
 
 const makeClientLayer = (

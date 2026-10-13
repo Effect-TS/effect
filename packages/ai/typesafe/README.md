@@ -28,4 +28,19 @@ Whether your team is considering Effect, rolling it out, or already running it i
 
 Use `TypeSafeClient.layerConfig()` to read `TYPESAFE_API_KEY`, then provide `TypeSafeDecisionModel.model("jev-latest")` to a decision workflow. Versioned model identifiers such as `jev-1.13.0` are also supported.
 
+Instructions and descriptions can be strings, JSON objects, or JSON arrays, as in TypeSafe's [structured questions](https://docs.typesafe.ai/primitives/advanced). A rating level with a structured description takes an explicit label, which answers use:
+
+```ts
+import { Decision } from "effect/ai"
+
+const severity = Decision.rate({
+  instructions: "How severe is the reported issue?",
+  criteria: [
+    { label: "cosmetic", description: { what: "No impact to functionality", examples: ["typo in a label"] } },
+    { label: "degraded", description: { what: "Broken, but a workaround exists", examples: ["fails in one browser"] } },
+    { label: "blocking", description: { what: "No workaround exists", examples: ["cannot log in"] } }
+  ]
+})
+```
+
 The client does not retry automatically. Rate-limit errors include the provider's retry delay when available. Provider distributions are preserved, not normalized; they must satisfy the core `DecisionModel` validation, including its current `1e-6` sum tolerance. TypeSafe's rounding behavior has not been verified against the live API.

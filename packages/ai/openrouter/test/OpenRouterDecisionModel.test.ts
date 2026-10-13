@@ -3,6 +3,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Result, Schema } from "effect"
 import { Decision, DecisionModel, Model } from "effect/ai"
 import { HttpClient, type HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { answersFor, bugSeverity, structuredExamples } from "./fixtures/structured-examples.ts"
 
 const Ticket = Schema.Struct({
   message: Schema.String,
@@ -819,6 +820,57 @@ describe("OpenRouterDecisionModel", () => {
         assert.strictEqual(error.reason._tag, reason)
       }))
   }
+
+  describe("structured descriptions", () => {
+    for (const example of structuredExamples) {
+      it.effect("sends the " + example.name + " example as the docs write it", () =>
+        Effect.gen(function*() {
+          const requests: Array<HttpClientRequest.HttpClientRequest> = []
+          const definition = Decision.make({ input: Schema.Json, decisions: example.decisions })
+
+          yield* DecisionModel.decide(definition, { input: example.state }).pipe(
+            Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+            Effect.provide(makeClientLayer((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(request, {
+                model: "test/decision-model",
+                answers: example.answers ?? answersFor(example.questions),
+                usage: { input_tokens: 1, output_tokens: 1 }
+              }))
+            }))
+          )
+
+          const body = yield* getRequestBody(requests[0])
+          assert.deepStrictEqual(body, {
+            model: "test/decision-model",
+            state: example.state,
+            questions: example.questions
+          })
+        }))
+    }
+
+    it.effect("maps a score answer with a structured legend onto the level labels", () =>
+      Effect.gen(function*() {
+        const example = structuredExamples.find((example) => example.name === "bug severity levels")!
+        const definition = Decision.make({ input: Schema.String, decisions: { bug_severity: bugSeverity } })
+
+        const { answers } = yield* DecisionModel.decide(definition, { input: "Export to PDF fails" }).pipe(
+          Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+          Effect.provide(makeClientLayer((request) =>
+            Effect.succeed(jsonResponse(request, {
+              model: "test/decision-model",
+              answers: example.answers,
+              usage: { input_tokens: 379, output_tokens: 18 }
+            }))
+          ))
+        )
+
+        assert.strictEqual(answers.bug_severity.label, "degraded")
+        assert.strictEqual(answers.bug_severity.rating, 1.09)
+        assert.strictEqual(answers.bug_severity.confidence, 0.87)
+        assert.deepStrictEqual(answers.bug_severity.probabilities, { cosmetic: 0, degraded: 0.91, blocking: 0.09 })
+      }))
+  })
 })
 
 const makeClientLayer = (

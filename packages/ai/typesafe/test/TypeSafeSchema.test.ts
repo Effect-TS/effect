@@ -1,6 +1,7 @@
 import * as TypeSafeSchema from "@effect/ai-typesafe/TypeSafeSchema"
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
+import { structuredExamples } from "./fixtures/structured-examples.ts"
 
 const choiceAnswer = {
   type: "choice",
@@ -20,6 +21,21 @@ const scoreAnswer = {
 const noulAnswer = {
   type: "noul",
   noul: 0.999
+}
+
+const structuredScoreAnswer = {
+  type: "score",
+  score: 1.09,
+  confidence: 0.87,
+  legend: {
+    "0": { what: "Cosmetic; no impact to functionality", examples: ["typo in a label", "misaligned icon"] },
+    "1": {
+      what: "Broken or degraded feature, but workaround exists",
+      examples: ["export fails in one browser but works in another"]
+    },
+    "2": { what: "Blocking issue; no workaround exists", examples: ["cannot log in", "data loss"] }
+  },
+  probabilities: { "0": 0.0, "1": 0.91, "2": 0.09 }
 }
 
 describe("TypeSafeSchema", () => {
@@ -50,6 +66,27 @@ describe("TypeSafeSchema", () => {
     const encoded = Schema.encodeSync(TypeSafeSchema.SystemOneRequest)(decoded)
 
     assert.deepStrictEqual(JSON.parse(JSON.stringify(encoded)), request)
+  })
+
+  it.each(structuredExamples)("round trips the structured questions of the $name example", ({ questions }) => {
+    const Questions = Schema.Record(Schema.String, TypeSafeSchema.Question)
+    const decoded = Schema.decodeUnknownSync(Questions)(questions)
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(Schema.encodeSync(Questions)(decoded))), questions)
+  })
+
+  it("accepts null instructions and descriptions", () => {
+    const question = { type: "noul", instructions: null, criteria: { false: null, true: null } }
+
+    const decoded = Schema.decodeUnknownSync(TypeSafeSchema.Question)(question)
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(decoded)), question)
+  })
+
+  it("decodes a score answer whose legend holds structured levels", () => {
+    const decoded = Schema.decodeUnknownSync(TypeSafeSchema.ScoreAnswer)(structuredScoreAnswer)
+
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(decoded)), structuredScoreAnswer)
   })
 
   it("accepts a noul question without criteria", () => {
