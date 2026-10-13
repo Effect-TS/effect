@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Duration.toNanosUnsafe`, `format` and other conversions throwing for millisecond durations too large to convert to nanoseconds as a number.
+Fix `Duration` conversions throwing for very large millisecond values, and make those durations equal to their nanosecond equivalents.
