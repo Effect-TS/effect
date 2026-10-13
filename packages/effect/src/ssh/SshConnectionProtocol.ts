@@ -2,9 +2,8 @@
  * The client side of the SSH Connection Protocol as a `Channel`.
  *
  * The SSH Connection Protocol (RFC 4254) multiplexes channels, such as
- * command sessions and tunnels, over one authenticated connection. This
- * module follows the standard rather than a particular implementation, so
- * it works with any compliant server. `make` returns the protocol as a
+ * command sessions and tunnels, over one authenticated connection.
+ * `make` returns the protocol as a
  * `Channel` from the server's messages to messages for the server, together
  * with `open`, which opens SSH channels whose messages flow through it, and
  * `toSshConnection` runs commands, subsystems, and tunnels on those channels.
@@ -545,7 +544,6 @@ export class ConnectionState {
         state.remote = reader.uint32()
         state.remoteWindow = reader.uint32()
         state.remoteMaxPacket = reader.uint32()
-        // No data could be sent in packets of zero bytes.
         if (state.remoteMaxPacket === 0) return "zero maximum packet size"
         state.confirmed = true
         if (state.abandoned) {
@@ -603,10 +601,8 @@ export class ConnectionState {
         const name = reader.string()
         const wantReply = reader.bool()
         if (state.closeSent) {
-          // OpenSSH servers keep a closed session's channel until its command
-          // exits, and probe it with `keepalive@openssh.com`; they drop the
-          // connection when the probes go unanswered. The channel exists
-          // until the server's close, so the refusal is safe to send.
+          // OpenSSH probes closed sessions until their commands exit. Answer
+          // keepalives until the server closes the channel to avoid disconnects.
           if (wantReply) messages.push(new MessageWriter(MSG_CHANNEL_FAILURE).uint32(state.remote).finish())
           return
         }
@@ -777,7 +773,6 @@ export const make = Effect.fnUntraced(function*(): Effect.fn.Return<SshConnectio
           const error = connectionFailed(exit.cause)
           fail(error, error)
         }))
-      // The end of the input closes the connection, and input failures fail it.
       yield* Effect.forever(Effect.flatMap(upstream, (messages) => Effect.sync(() => receive(messages)))).pipe(
         Effect.catchCause((cause) =>
           Effect.sync(() => {

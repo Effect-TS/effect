@@ -5,6 +5,6 @@
 "@effect/platform-bun": patch
 ---
 
-Add experimental SSH support under `effect/ssh`. The `Ssh` service is a backend-independent connection factory: `ssh.connect({ host })` opens a scoped connection that runs remote commands, starts subsystems, and opens tunnels. Commands are `SshCommand` values, built from template literals or a command and arguments and piped into remote pipelines with `SshCommand.pipeTo`. `SshConnectionProtocol.make` implements the client side of the SSH connection protocol as a `Channel` from the server's messages to messages for the server, and `SshConnectionProtocol.toSshConnection` runs commands, subsystems, and tunnels over it, so backends only pump their transport's messages through it. `Ssh.makeConnection` builds a connection from a backend's own operations.
+Add experimental SSH support under `effect/ssh` for remote commands, subsystems, and TCP or Unix socket tunnels. `Ssh` opens scoped, backend-independent connections; `SshCommand` builds commands and pipelines. Custom backends can use `SshConnectionProtocol` for RFC 4254 channel handling or provide their own operations with `Ssh.makeConnection`.
 
-`NodeOpenSsh.layer` (`BunOpenSsh.layer` on Bun) provides `Ssh` by starting the host's `ssh` executable as a connection master and using its control socket, in multiplexing proxy mode, pumped through `SshConnectionProtocol`, so the user's OpenSSH configuration, agent, and `known_hosts` apply.
+`NodeOpenSsh.layer` and `BunOpenSsh.layer` use the system `ssh` executable and connection multiplexing, honoring OpenSSH configuration, the SSH agent, and `known_hosts`. They require OpenSSH 7.4 or later and do not support Windows.

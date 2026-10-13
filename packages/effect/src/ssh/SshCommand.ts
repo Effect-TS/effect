@@ -117,8 +117,7 @@ const fromTemplate = (
   options: Options
 ): StandardCommand => {
   if (options.shell !== undefined && options.shell !== false) {
-    // Shell code is kept as written, so its quotes, newlines, and comments
-    // survive.
+    // Preserve shell syntax verbatim.
     let code = ""
     for (const [index, template] of templates.entries()) {
       if (template === undefined) {
@@ -132,7 +131,6 @@ const fromTemplate = (
     }
     return makeStandard(code, [], options)
   }
-  // Templates are split into arguments like `ChildProcess` templates.
   const parsed = ChildProcess.make(templates, ...expressions)
   return makeStandard(parsed.command, parsed.args, options)
 }
