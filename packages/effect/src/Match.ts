@@ -586,7 +586,8 @@ type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | Saf
 type ExactPattern<R, P> = (Types.PatternPrimitive<R> | Types.PatternBase<R>) & ObjectPatternGuard<R, P>
 
 type ExactPatterns<R, P> = {
-  readonly [I in keyof P]: I extends `${number}` ? ExactPattern<R, P[I]> : P[I]
+  readonly [I in keyof P]: I extends number | `${number}` ? P[I] & ExactPattern<R, P[I]>
+    : P[I]
 }
 
 /**
@@ -719,7 +720,13 @@ export const whenOr: <
   Pr,
   Ret,
   Args
-> = internal.whenOr
+> = <
+  R,
+  const P extends ReadonlyArray<Types.PatternPrimitive<R> | Types.PatternBase<R>>,
+  Ret,
+  Args extends Array<any>,
+  Fn extends (_: Types.WhenMatch<R, P[number]>, ...args: Args) => Ret
+>(...args: [...patterns: ExactPatterns<R, P>, f: Fn]) => internal.whenOr<R, P, Ret, Args, Fn>(...args)
 
 /**
  * Matches a value that satisfies all provided patterns.
@@ -778,7 +785,13 @@ export const whenAnd: <
   Pr,
   Ret,
   Args
-> = internal.whenAnd
+> = <
+  R,
+  const P extends ReadonlyArray<Types.PatternPrimitive<R> | Types.PatternBase<R>>,
+  Ret,
+  Args extends Array<any>,
+  Fn extends (_: Types.WhenMatch<R, T.UnionToIntersection<P[number]>>, ...args: Args) => Ret
+>(...args: [...patterns: ExactPatterns<R, P>, f: Fn]) => internal.whenAnd<R, P, Ret, Args, Fn>(...args)
 
 /**
  * Matches values based on a specified discriminant field.
