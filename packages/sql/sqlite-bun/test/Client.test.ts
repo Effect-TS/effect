@@ -209,6 +209,28 @@ describe("Client", () => {
       assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "wal" }])
     }).pipe(Effect.provide(Reactivity.layer)))
 
+  it.effect.skipIf(!isBun)("runs every statement in one query", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      yield* sql`
+        CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, name TEXT);
+        CREATE TABLE IF NOT EXISTS test2 (id INTEGER PRIMARY KEY, name TEXT);
+      `
+      const tables = yield* sql<{ name: string }>`
+        SELECT name FROM sqlite_master
+        WHERE type = 'table' AND name NOT LIKE 'sqlite_%'
+        ORDER BY name
+      `
+      assert.deepStrictEqual(tables.map((table) => table.name), ["test", "test2"])
+
+      const rows = yield* sql<{ name: string }>`
+        INSERT INTO test (name) VALUES (${"a;b"});
+        SELECT name FROM test
+      `
+      assert.deepStrictEqual(rows, [{ name: "a;b" }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect.skipIf(!isBun)("fails to enable WAL with a typed error after busyTimeout", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))

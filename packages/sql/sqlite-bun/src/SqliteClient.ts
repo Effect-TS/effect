@@ -8,8 +8,9 @@
  * to avoid read-to-write lock upgrades, which serializes them behind other
  * writers even when they only read. Clients opened with `readonly: true` are
  * unaffected. Busy waits block the event loop because `bun:sqlite` is
- * synchronous. Database export and extension loading are supported; streaming
- * queries and `updateValues` are not.
+ * synchronous. A query string may contain several statements: each one runs,
+ * and the rows from the last statement are returned. Database export and
+ * extension loading are supported; streaming queries and `updateValues` are not.
  *
  * @stability unstable
  * @since 4.0.0
@@ -38,6 +39,84 @@ const NANOS_PER_MILLI = BigInt(1_000_000)
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
+
+// `bun:sqlite`'s prepared query runs only the first statement. Split a script so
+// earlier statements still run, while the last statement keeps its rows.
+const splitSqliteStatements = (
+  sql: string
+): Array<{ readonly sql: string; readonly placeholders: number }> => {
+  const statements: Array<{ sql: string; placeholders: number }> = []
+  let start = 0
+  let placeholders = 0
+  let index = 0
+
+  while (index < sql.length) {
+    const char = sql[index]
+    if (char === "-" && sql[index + 1] === "-") {
+      index += 2
+      while (index < sql.length && sql[index] !== "\n") {
+        index++
+      }
+      continue
+    }
+    if (char === "/" && sql[index + 1] === "*") {
+      index += 2
+      while (index < sql.length && !(sql[index] === "*" && sql[index + 1] === "/")) {
+        index++
+      }
+      index = Math.min(sql.length, index + 2)
+      continue
+    }
+    if (char === "'" || char === "\"" || char === "`") {
+      const quote = char
+      index++
+      while (index < sql.length) {
+        if (sql[index] === quote) {
+          if (sql[index + 1] === quote) {
+            index += 2
+            continue
+          }
+          index++
+          break
+        }
+        index++
+      }
+      continue
+    }
+    if (char === "[") {
+      index++
+      while (index < sql.length && sql[index] !== "]") {
+        index++
+      }
+      if (index < sql.length) {
+        index++
+      }
+      continue
+    }
+    if (char === "?") {
+      placeholders++
+      index++
+      continue
+    }
+    if (char === ";") {
+      const statement = sql.slice(start, index).trim()
+      if (statement.length > 0) {
+        statements.push({ sql: statement, placeholders })
+      }
+      placeholders = 0
+      index++
+      start = index
+      continue
+    }
+    index++
+  }
+
+  const tail = sql.slice(start).trim()
+  if (tail.length > 0) {
+    statements.push({ sql: tail, placeholders })
+  }
+  return statements
+}
 
 /**
  * Runtime type identifier used to mark Bun `SqliteClient` values.
@@ -199,6 +278,33 @@ export const make = (
         return statement
       }
 
+      const readStatement = (
+        sql: string,
+        params: ReadonlyArray<unknown>,
+        useSafeIntegers: boolean,
+        rows: "objects" | "values"
+      ) => {
+        const statements = splitSqliteStatements(sql)
+        const placeholderCount = statements.reduce((total, statement) => total + statement.placeholders, 0)
+        const read = (statementSql: string, statementParams: ReadonlyArray<unknown>) => {
+          const statement = prepare(statementSql, useSafeIntegers)
+          const bindings = statementParams as Array<any>
+          const result = rows === "objects" ? statement.all(...bindings) : statement.values(...bindings)
+          return result ?? []
+        }
+        if (statements.length <= 1 || placeholderCount !== params.length) {
+          return read(sql, params)
+        }
+        let offset = 0
+        for (const statement of statements.slice(0, -1)) {
+          const bindings = params.slice(offset, offset + statement.placeholders)
+          offset += statement.placeholders
+          db.run(statement.sql, ...(bindings as Array<any>))
+        }
+        const last = statements[statements.length - 1]
+        return last === undefined ? [] : read(last.sql, params.slice(offset))
+      }
+
       const run = (
         sql: string,
         params: ReadonlyArray<unknown> = []
@@ -206,7 +312,7 @@ export const make = (
         Effect.withFiber<Array<any>, SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
-            return Effect.succeed((prepare(sql, useSafeIntegers).all(...(params as any)) ?? []) as Array<any>)
+            return Effect.succeed(readStatement(sql, params, useSafeIntegers, "objects") as Array<any>)
           } catch (cause) {
             return Effect.fail(new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") }))
           }
@@ -219,7 +325,7 @@ export const make = (
         Effect.withFiber<Array<any>, SqlError>((fiber) => {
           const useSafeIntegers = Context.get(fiber.context, Client.SafeIntegers)
           try {
-            return Effect.succeed((prepare(sql, useSafeIntegers).values(...(params as any)) ?? []) as Array<any>)
+            return Effect.succeed(readStatement(sql, params, useSafeIntegers, "values") as Array<any>)
           } catch (cause) {
             return Effect.fail(
               new SqlError({ reason: classifyError(cause, "Failed to execute statement", "executeValues") })
