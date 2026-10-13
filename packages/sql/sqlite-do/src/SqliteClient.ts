@@ -288,7 +288,7 @@ export const make = (
     const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
 
-    // Streams and explicit reservations hold the permit until their scope closes.
+    // Streams and reservations hold the permit until their scope closes.
     const acquirer = Effect.as(
       Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
       connection
