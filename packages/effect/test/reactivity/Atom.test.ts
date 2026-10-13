@@ -50,6 +50,26 @@ describe("Atom", { concurrent: false }, () => {
     expect(r.get(counter)).toEqual(1)
   })
 
+  it("late reads of uninitialized dependencies do not rebuild the reader", async () => {
+    const dependency = Atom.make(0)
+    let builds = 0
+    const reader = Atom.make((get) => {
+      const timer = setTimeout(() => get(dependency), 1)
+      get.addFinalizer(() => clearTimeout(timer))
+      return ++builds
+    })
+    const r = AtomRegistry.make()
+    r.subscribe(reader, () => {})
+
+    try {
+      r.get(reader)
+      await vitest.advanceTimersByTimeAsync(10)
+      expect(r.get(reader)).toEqual(1)
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("keepAlive false", async () => {
     const counter = Atom.make(0)
     const r = AtomRegistry.make()
