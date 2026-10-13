@@ -1946,28 +1946,26 @@ export const fromAsyncIterable = <A, D, E>(
 ): Channel<A, E, D> =>
   fromTransform(Effect.fnUntraced(function*(_, scope) {
     const iter = iterable[Symbol.asyncIterator]()
-    const finish = iter.return
-    let nextInFlight = false
-    if (finish) {
+    let pulling = false
+    if (iter.return) {
       // `return()` may not settle until a pending `next()` does, so only
       // await it when the iterator is idle.
       yield* Scope.addFinalizer(
         scope,
-        Effect.suspend(() => {
-          const stopping = finish.call(iter)
-          if (!nextInFlight) return Effect.promise(() => stopping)
-          void stopping.catch(constVoid)
-          return Effect.void
-        })
+        Effect.suspend(() =>
+          pulling
+            ? Effect.sync(() => void iter.return!().catch(constVoid))
+            : Effect.promise(() => iter.return!())
+        )
       )
     }
     return Effect.flatMap(
       Effect.tryPromise({
         try: () => {
-          const pending = iter.next()
-          nextInFlight = true
-          return pending.finally(() => {
-            nextInFlight = false
+          const promise = iter.next()
+          pulling = true
+          return promise.finally(() => {
+            pulling = false
           })
         },
         catch: onError
