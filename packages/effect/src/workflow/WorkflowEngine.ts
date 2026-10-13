@@ -281,9 +281,8 @@ export class WorkflowInstance extends Context.Service<
     cause: Cause.Cause<never> | undefined
 
     /**
-     * Whether this execution's own `SuspendOnFailure` fired, including through
-     * one of its activities. Causes inherited from child workflows do not set
-     * it.
+     * Whether this workflow or an activity hit `SuspendOnFailure`, excluding
+     * inherited child failures.
      */
     failed: boolean
 
@@ -683,9 +682,6 @@ const defaultRetrySchedule = Schedule.min([
   Schedule.spaced(30000)
 ])
 
-// Explicit wakes are `resume` and `interrupt`. Automatic wakes are child,
-// deferred, and clock completions; they never resume a run suspended by its
-// own `SuspendOnFailure`.
 type WakeMode = "explicit" | "automatic"
 
 const isUnwakeable = (result: Workflow.Result<unknown, unknown>, mode: WakeMode) =>
@@ -752,9 +748,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       if (exit && exit._tag === "Success" && isUnwakeable(exit.value, mode)) {
         return
       } else if (state.fiber && !exit) {
-        // A child can finish while the parent is still releasing its activity.
-        // Preserve the wake until that run has published its suspended result,
-        // keeping an explicit wake that arrives behind an automatic one.
+        // Queue wakes until the run finishes cleanup; explicit wakes take priority.
         const requested = state.resumeRequested
         state.resumeRequested = mode === "explicit" ? mode : requested ?? mode
         if (requested === undefined) {

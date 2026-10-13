@@ -619,10 +619,8 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
  *
  * **Details**
  *
- * `failed` is `true` when the execution's own `SuspendOnFailure` fired. Such an
- * execution is only resumed by `resume` or `interrupt`, never by a child,
- * deferred, or clock completion. A `cause` inherited from a suspended child
- * does not set it.
+ * `failed` marks this execution's own `SuspendOnFailure` and requires explicit
+ * `resume` or `interrupt`. Inherited child failures do not set it.
  *
  * @stability unstable
  * @category schemas
@@ -705,7 +703,6 @@ export const intoResult = <A, E, R>(
       Effect.interruptible,
       suspendOnFailure
         ? Effect.catchCause((cause) => {
-          // An interrupted run must finish as interrupted, not suspend again.
           if (instance.abandoned || instance.interrupted) {
             return Effect.failCause(cause)
           }

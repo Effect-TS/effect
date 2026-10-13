@@ -294,8 +294,7 @@ export const make = Effect.gen(function*() {
     const maybeSuspended = Option.filter(maybeReply, isSuspendedReply)
 
     if (Option.isNone(maybeSuspended)) return
-    // A run suspended by its own `SuspendOnFailure` waits for `resume` or
-    // `interrupt`. Replies persisted before `failed` existed stay wakeable.
+    // Replies without `failed` retain automatic wakes for compatibility.
     if (mode === "automatic" && isFailedReply(maybeSuspended.value)) return
     if (
       !(yield* sharding.reset(
@@ -449,10 +448,8 @@ export const make = Effect.gen(function*() {
               readonly instance: WorkflowEngine.WorkflowInstance["Service"]
             } | undefined
             // Concurrent wakes share one wait for the current run to publish its reply.
-            // A dropped wake cannot be explicit: operator `resume` bypasses the
-            // gate, and `InterruptSignal` (never awaited) only reaches it on a
-            // fresh entity, where the gated effect is `Effect.void` and the
-            // permit is never held across a wait.
+            // Explicit wakes cannot be dropped: operator resume bypasses the gate;
+            // InterruptSignal enters it only on a fresh entity, with no run to wait for.
             const resumeGate = Semaphore.makeUnsafe(1)
             const resumeCurrentRun = (mode: WakeMode) =>
               Effect.suspend(() =>
@@ -856,8 +853,6 @@ const DeferredRpc = Rpc.make("deferred", {
   .annotate(ClusterSchema.Persisted, true)
   .annotate(ClusterSchema.Uninterruptible, true)
 
-// Explicit wakes are `resume` and `interrupt`. Automatic wakes are child,
-// deferred, and clock completions.
 type WakeMode = "explicit" | "automatic"
 
 const isSuspendedReply = (reply: WithExitEncoded<Workflow.ResultEncoded<any, any>>) =>
