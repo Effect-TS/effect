@@ -144,6 +144,14 @@ function mergeInlineCheck(
     else if (upperBoundKeywords.includes(`|${key}|`)) out[key] = Math.min(a, b)
     else return undefined
   }
+  if (typeof out.minimum === "number" && typeof out.exclusiveMinimum === "number") {
+    if (out.exclusiveMinimum >= out.minimum) delete out.minimum
+    else delete out.exclusiveMinimum
+  }
+  if (typeof out.maximum === "number" && typeof out.exclusiveMaximum === "number") {
+    if (out.exclusiveMaximum <= out.maximum) delete out.maximum
+    else delete out.exclusiveMaximum
+  }
   return out
 }
 
