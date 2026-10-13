@@ -9,8 +9,9 @@ Subsystem echo /bin/cat
 AllowTcpForwarding yes
 AllowStreamLocalForwarding yes
 AllowAgentForwarding yes
-AcceptEnv EFFECT_*
 MaxStartups 200
 MaxSessions 200
 PerSourcePenalties no
+# Probe idle sessions every second, so clients must answer keepalive requests.
+ClientAliveInterval 1
 LogLevel ERROR

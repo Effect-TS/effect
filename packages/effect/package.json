@@ -57,7 +57,6 @@
     "./*": "./src/*.ts",
     "./cli/internal/*": null,
     "./cluster/internal/*": null,
-    "./ssh/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -104,7 +103,6 @@
       "./internal/*": null,
       "./cli/internal/*": null,
       "./cluster/internal/*": null,
-      "./ssh/internal/*": null,
       "./index": null,
       "./*/index": null
     }
