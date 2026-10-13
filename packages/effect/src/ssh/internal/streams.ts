@@ -11,8 +11,7 @@ import * as Pull from "../../Pull.ts"
 import type * as Scope from "../../Scope.ts"
 import * as Socket from "../../socket/Socket.ts"
 import * as Stream from "../../Stream.ts"
-import type { RunResult, SessionOptions, SshProcess, SshStream } from "../Ssh.ts"
-import type { SshError } from "../SshError.ts"
+import type { RunResult, SessionOptions, SshError, SshProcess, SshStream } from "../Ssh.ts"
 
 const collect = (stream: Stream.Stream<Uint8Array, SshError>) => Stream.mkString(Stream.decodeText(stream))
 
