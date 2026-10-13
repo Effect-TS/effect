@@ -232,7 +232,7 @@ const makeLogRecord = (options: Logger.Options<unknown>, opts: {
   }
 
   if (options.fiber.cache.span) {
-    logRecord.traceId = options.fiber.cache.span.traceId
+    logRecord.traceId = options.fiber.cache.span.traceId.padStart(32, "0")
     logRecord.spanId = options.fiber.cache.span.spanId
   }
 

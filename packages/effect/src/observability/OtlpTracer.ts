@@ -342,7 +342,7 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   for (let i = 0; i < self.links.length; i++) {
     const link = self.links[i]
     links.push({
-      traceId: link.span.traceId,
+      traceId: link.span.traceId.padStart(32, "0"),
       spanId: link.span.spanId,
       attributes: entriesToAttributes(Object.entries(link.attributes)),
       droppedAttributesCount: 0
@@ -350,7 +350,7 @@ const makeOtlpSpan = (self: SpanImpl): OtlpSpan => {
   }
 
   return {
-    traceId: self.traceId,
+    traceId: self.traceId.padStart(32, "0"),
     spanId: self.spanId,
     parentSpanId: Option.isSome(self.parent) ? self.parent.value.spanId : undefined,
     name: self.name,
