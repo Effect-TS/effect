@@ -253,7 +253,6 @@ export const make = Effect.gen(function*() {
   })
 })
 
-// Skips one URL path segment per prefix segment, as params and percent-encoding change the matched length.
 function sliceRequestUrl(
   request: HttpServerRequest.HttpServerRequest,
   prefix: string,
@@ -265,6 +264,7 @@ function sliceRequestUrl(
   for (let i = 0; i < prefix.length; i++) {
     const code = prefix.charCodeAt(i)
     if (inParamName && code === 40) {
+      // Slashes inside parameter regexes are not path segment boundaries.
       let depth = 1
       while (depth > 0 && ++i < prefix.length) {
         const code = prefix.charCodeAt(i)
