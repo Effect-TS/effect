@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import type { Cause } from "effect"
-import { Effect, Exit, Queue, Stream } from "effect"
+import { Data, Effect, Exit, Queue, Stream } from "effect"
 import * as Tar from "effect/encoding/Tar"
 import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
@@ -204,15 +204,26 @@ describe("Tar", () => {
         }
       }))
 
+    it.effect("round trips fileStream entries with the file defaults", () =>
+      Effect.gen(function*() {
+        const chunks = ["hello, ", "streamed ", "world\n"].map((part) => textEncoder.encode(part))
+        const entry = Tar.fileStream("dir/streamed.txt", 22, Stream.fromIterable(chunks))
+        assert.deepStrictEqual(entry.header, Tar.file("dir/streamed.txt", "hello, streamed world\n").header)
+
+        const options = { mode: 0o600, uid: 1000, mtime: new Date("2024-01-02T03:04:05Z") }
+        const input = [entry, Tar.fileStream("other", 3, Stream.make(textEncoder.encode("abc")), options)]
+        const output = yield* decode(yield* encode(input))
+        assert.deepStrictEqual(output.map((entry) => entry.header), input.map((entry) => entry.header))
+        assert.deepStrictEqual(output.map((entry) => text(entry.body)), ["hello, streamed world\n", "abc"])
+      }))
+
     it.effect("fails with SizeMismatch when a body is shorter or longer than its size", () =>
       Effect.gen(function*() {
         for (const body of ["abc", "abcdefghijk"]) {
-          const error = yield* encode([{
-            header: header({ path: "f", type: "File", size: 5 }),
-            body: Stream.make(textEncoder.encode(body))
-          }]).pipe(Effect.flip)
-          assert.isTrue(Tar.isTarError(error))
-          if (Tar.isTarError(error)) assert.strictEqual(error.kind, "SizeMismatch")
+          const error = yield* encode([Tar.fileStream("f", 5, Stream.make(textEncoder.encode(body)))]).pipe(
+            Effect.flip
+          )
+          assert.isTrue(Tar.isTarError(error) && error.kind === "SizeMismatch", body)
         }
       }))
 
@@ -236,12 +247,20 @@ describe("Tar", () => {
 
     it.effect("propagates body failures", () =>
       Effect.gen(function*() {
-        const error = yield* encode([{
-          header: header({ path: "f", type: "File", size: 1 }),
-          body: Stream.fail("boom")
-        }])
-          .pipe(Effect.flip)
-        assert.strictEqual(error, "boom")
+        class ReadError extends Data.TaggedError("ReadError")<{ readonly path: string }> {}
+        const body = Stream.make(textEncoder.encode("partial")).pipe(
+          Stream.concat(Stream.fail(new ReadError({ path: "f" })))
+        )
+        const error: Tar.TarError | ReadError = yield* Stream.make(
+          Tar.file("before", "ok"),
+          Tar.fileStream("f", 100, body)
+        ).pipe(
+          Stream.pipeThroughChannel(Tar.encode()),
+          Stream.runDrain,
+          Effect.flip
+        )
+        assert.instanceOf(error, ReadError)
+        assert.strictEqual(error.path, "f")
       }))
   })
 

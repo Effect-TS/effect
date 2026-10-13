@@ -199,6 +199,7 @@ const makeHeader = (
  * String content is encoded as UTF-8, and `size` is the byte length of the
  * content.
  *
+ * @see {@link fileStream} for content that is streamed instead of held in memory
  * @see {@link encode} for writing entries to an archive
  *
  * @stability unstable
@@ -212,6 +213,41 @@ export const file = (path: string, content: string | Uint8Array, options?: Entry
     body: bytes.length === 0 ? Stream.empty : Stream.succeed(bytes)
   }
 }
+
+/**
+ * Creates a regular file entry whose content is streamed from `body`.
+ *
+ * **When to use**
+ *
+ * Use when the content is too large to hold in memory, or is read from a file
+ * or another stream, and its byte length is known up front.
+ *
+ * **Details**
+ *
+ * The defaults match `file`: mode `0o644`, uid and gid `0`, and an mtime at the
+ * Unix epoch. `body` is not run until the entry is encoded.
+ *
+ * **Gotchas**
+ *
+ * `size` must be the exact byte length of `body`: `encode` fails with a
+ * `SizeMismatch` `TarError` when the body produces fewer or more bytes.
+ *
+ * @see {@link file} for in-memory content
+ * @see {@link encode} for writing entries to an archive
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const fileStream = <E = never, R = never>(
+  path: string,
+  size: number,
+  body: Stream.Stream<Uint8Array, E, R>,
+  options?: EntryOptions
+): Entry<E, R> => ({
+  header: makeHeader(path, "File", "0", size, 0o644, options),
+  body
+})
 
 /**
  * Creates a directory entry.
@@ -1065,12 +1101,25 @@ const encodeHeader = (header: Header): Uint8Array => {
  *
  * @see {@link decode} for the inverse operation
  * @see {@link file} for building entries from in-memory content
+ * @see {@link fileStream} for building entries from streamed content
  *
  * @stability unstable
  * @category encoding
  * @since 4.1.0
  */
-export const encode = <IE = never, Done = unknown, E = never, R = never>(): Channel.Channel<
+export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = Entry>(): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
+  TarError | IE | (In extends Entry<infer E, any> ? E : never),
+  Done,
+  Arr.NonEmptyReadonlyArray<In>,
+  IE,
+  Done,
+  In extends Entry<any, infer R> ? R : never
+> => encodeEntries()
+
+// The input is generic over the entry type in `encode` so that body errors and
+// services are inferred from unions of entries
+const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Uint8Array>,
   TarError | IE | E,
   Done,
