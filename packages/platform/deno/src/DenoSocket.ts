@@ -3,9 +3,10 @@
  *
  * This module uses Deno-specific names: `makeTcp`, `makeTcpChannel`,
  * `layerTcp`, and `fromConn` correspond to the Node platform's net and duplex
- * APIs. Deno does not support `keepAliveInitialDelay`, and the `noDelay` and
- * `keepAlive` options have no effect on Unix connections. A `CloseEvent` always
- * closes gracefully because Deno has no equivalent of Node's reset-on-close.
+ * APIs, and `makeTls`, `makeTlsChannel`, and `layerTls` to its TLS APIs. Deno
+ * does not support `keepAliveInitialDelay`, and the `noDelay` and `keepAlive`
+ * options have no effect on Unix connections. A `CloseEvent` always closes
+ * gracefully because Deno has no equivalent of Node's reset-on-close.
  *
  * @stability unstable
  * @since 4.0.0
@@ -46,6 +47,31 @@ export type TcpOptions = ConnectOptions & {
 }
 
 /**
+ * Options for opening a TLS connection.
+ *
+ * **Details**
+ *
+ * `caCerts`, `cert`, and `key` are PEM strings. `cert` and `key` present a
+ * client certificate for mutual TLS and must be supplied together.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.0
+ */
+export type TlsConnectOptions = Deno.ConnectTlsOptions | (Deno.ConnectTlsOptions & Deno.TlsCertifiedKeyPem)
+
+/**
+ * Options for opening a TLS connection.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.1.0
+ */
+export type TlsOptions = TlsConnectOptions & {
+  readonly openTimeout?: Duration.Input | undefined
+}
+
+/**
  * Service tag for the underlying Deno connection.
  *
  * @stability unstable
@@ -68,9 +94,10 @@ export class Conn extends Context.Service<Conn, Deno.Conn>()(
  * hostname is used.
  *
  * `Deno.startTls` does not support client certificates, so `key`, `cert`,
- * `passphrase`, and `requestCert` do not affect Deno upgrades. Setting
- * `rejectUnauthorized` to `false` disables hostname verification only;
- * certificate-chain validation still applies.
+ * `passphrase`, and `requestCert` do not affect Deno upgrades; use `makeTls`
+ * for mutual TLS. Connections that already use TLS fail the upgrade with a
+ * `SocketUpgradeError`. Setting `rejectUnauthorized` to `false` disables
+ * hostname verification only; certificate-chain validation still applies.
  *
  * @stability unstable
  * @category constructors
@@ -154,6 +181,15 @@ export const fromConn = <RO>(
               new Socket.SocketError({
                 reason: new Socket.SocketUpgradeError({
                   cause: new Error("TLS upgrade requires a TCP connection")
+                })
+              })
+            )
+          }
+          if ("handshake" in conn!) {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketUpgradeError({
+                  cause: new Error("connection already uses TLS")
                 })
               })
             )
@@ -281,32 +317,12 @@ export const fromConn = <RO>(
  */
 export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket> => {
   const { keepAlive, noDelay, openTimeout, ...connectOptions } = options
-  const acquire = Effect.contextWith((context: Context.Context<Scope.Scope>) => {
-    let conn: Deno.Conn | undefined
-    let finalized = false
-    return Scope.addFinalizer(
-      Context.get(context, Scope.Scope),
-      Effect.suspend(() => {
-        finalized = true
-        return conn === undefined ? Effect.void : close(conn)
-      })
+  return fromConn(
+    connectScoped<Deno.TcpConn | Deno.UnixConn>(() =>
+      connectOptions.transport === "unix"
+        ? Deno.connect(connectOptions)
+        : Deno.connect(connectOptions)
     ).pipe(
-      Effect.andThen(Effect.tryPromise({
-        try: () => {
-          const connecting = connectOptions.transport === "unix"
-            ? Deno.connect(connectOptions)
-            : Deno.connect(connectOptions)
-          return connecting.then((connection) => {
-            conn = connection
-            if (finalized) connection.close()
-            return connection
-          })
-        },
-        catch: (cause) =>
-          new Socket.SocketError({
-            reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
-          })
-      })),
       Effect.tap((connection) =>
         Effect.sync(() => {
           if ("setNoDelay" in connection && noDelay !== undefined) {
@@ -316,22 +332,10 @@ export const makeTcp = (options: TcpOptions): Effect.Effect<Socket.Socket> => {
             connection.setKeepAlive(keepAlive)
           }
         })
-      )
+      ),
+      withOpenTimeout(openTimeout)
     )
-  }).pipe(
-    openTimeout === undefined
-      ? Function.identity
-      : Effect.timeoutOrElse({
-        duration: openTimeout,
-        orElse: () =>
-          Effect.fail(
-            new Socket.SocketError({
-              reason: new Socket.SocketOpenError({ kind: "Timeout", cause: new Error("Connection timed out") })
-            })
-          )
-      })
   )
-  return fromConn(acquire)
 }
 
 /**
@@ -364,6 +368,80 @@ export const layerTcp: (options: ConnectOptions) => Layer.Layer<
 > = Function.flow(makeTcp, Layer.effect(Socket.Socket))
 
 /**
+ * Opens a native Deno TLS connection as an Effect socket.
+ *
+ * **When to use**
+ *
+ * Use to create a `Socket.Socket` whose reader acquisition dials
+ * `Deno.connectTls` and completes once the TLS handshake has finished.
+ *
+ * **Details**
+ *
+ * Accepts the same options as `Deno.connectTls`: trust anchors (`caCerts`),
+ * a client certificate for mutual TLS (`cert` and `key`), and ALPN protocols.
+ * `caCerts` are trusted in addition to the default root certificates. A failed
+ * handshake, including an untrusted peer certificate, fails with a
+ * `SocketOpenError`. Under TLS 1.3 the server checks the client certificate
+ * after the client finishes its handshake, so a rejected or missing client
+ * certificate fails the first read with a `SocketReadError` instead.
+ *
+ * Deno has no per-connection option to skip certificate-chain validation;
+ * `unsafelyDisableHostnameVerification` skips only the hostname check.
+ * Releasing the writer scope sends `close_notify` and half-closes the write
+ * side while reads continue. The `openTimeout` behaves as for `makeTcp`.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const makeTls = (options: TlsOptions): Effect.Effect<Socket.Socket> => {
+  const { openTimeout, ...connectOptions } = options
+  return fromConn(
+    connectScoped(() => Deno.connectTls(connectOptions)).pipe(
+      Effect.tap((connection) =>
+        Effect.tryPromise({
+          try: () => connection.handshake(),
+          catch: (cause) =>
+            new Socket.SocketError({
+              reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+            })
+        })
+      ),
+      withOpenTimeout(openTimeout)
+    )
+  )
+}
+
+/**
+ * Creates a channel over a native Deno TLS connection.
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const makeTlsChannel = <IE = never>(
+  options: TlsConnectOptions
+): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
+  Socket.SocketError | IE,
+  void,
+  Arr.NonEmptyReadonlyArray<Uint8Array | string | Socket.CloseEvent>,
+  IE
+> => Channel.unwrap(Effect.map(makeTls(options), Socket.toChannelWith<IE>()))
+
+/**
+ * Provides a socket by opening a native Deno TLS connection.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.1.0
+ */
+export const layerTls: (options: TlsConnectOptions) => Layer.Layer<
+  Socket.Socket,
+  Socket.SocketError
+> = Function.flow(makeTls, Layer.effect(Socket.Socket))
+
+/**
  * Creates a socket layer connected to a URL with Deno's global WebSocket.
  *
  * @stability unstable
@@ -388,6 +466,48 @@ export const layerWebSocket = (url: string, options?: {
  */
 export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> =
   Socket.layerWebSocketConstructorGlobal
+
+const connectScoped = <A extends Deno.Conn>(
+  connect: () => Promise<A>
+): Effect.Effect<A, Socket.SocketError, Scope.Scope> =>
+  Effect.contextWith((context: Context.Context<Scope.Scope>) => {
+    let conn: A | undefined
+    let finalized = false
+    return Scope.addFinalizer(
+      Context.get(context, Scope.Scope),
+      Effect.suspend(() => {
+        finalized = true
+        return conn === undefined ? Effect.void : close(conn)
+      })
+    ).pipe(
+      Effect.andThen(Effect.tryPromise({
+        try: () =>
+          connect().then((connection) => {
+            conn = connection
+            if (finalized) connection.close()
+            return connection
+          }),
+        catch: (cause) =>
+          new Socket.SocketError({
+            reason: new Socket.SocketOpenError({ kind: "Unknown", cause })
+          })
+      }))
+    )
+  })
+
+const withOpenTimeout = (openTimeout: Duration.Input | undefined) =>
+<A, R>(
+  self: Effect.Effect<A, Socket.SocketError, R>
+): Effect.Effect<A, Socket.SocketError, R> =>
+  openTimeout === undefined ? self : Effect.timeoutOrElse(self, {
+    duration: openTimeout,
+    orElse: () =>
+      Effect.fail(
+        new Socket.SocketError({
+          reason: new Socket.SocketOpenError({ kind: "Timeout", cause: new Error("Connection timed out") })
+        })
+      )
+  })
 
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()

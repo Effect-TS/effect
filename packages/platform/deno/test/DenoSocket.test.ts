@@ -3,10 +3,14 @@ import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Fiber, Queue } from "effect"
 import * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
+import * as Tls from "node:tls"
 
 const ca = Deno.readTextFileSync(new URL("./fixtures/tls/ca.pem", import.meta.url))
 const cert = Deno.readTextFileSync(new URL("./fixtures/tls/cert.pem", import.meta.url))
 const key = Deno.readTextFileSync(new URL("./fixtures/tls/key.pem", import.meta.url))
+const clientCa = Deno.readTextFileSync(new URL("./fixtures/tls/client-ca.pem", import.meta.url))
+const clientCert = Deno.readTextFileSync(new URL("./fixtures/tls/client-cert.pem", import.meta.url))
+const clientKey = Deno.readTextFileSync(new URL("./fixtures/tls/client-key.pem", import.meta.url))
 
 const makeTcpServer = Effect.acquireRelease(
   Effect.sync(() => Deno.listen({ hostname: "127.0.0.1", port: 0 })),
@@ -23,6 +27,31 @@ const runTlsEchoServer = (listener: Deno.TlsListener) =>
     try: () => listener.accept().then((conn) => conn.readable.pipeTo(conn.writable)),
     catch: (cause) => cause
   }).pipe(Effect.ignore)
+
+// `Deno.listenTls` cannot require client certificates, so mutual TLS uses `node:tls`.
+const makeMutualTlsServer = Effect.acquireRelease(
+  Effect.callback<Tls.Server>((resume) => {
+    const server = Tls.createServer({
+      cert,
+      key,
+      ca: [clientCa],
+      requestCert: true,
+      rejectUnauthorized: true,
+      allowHalfOpen: true
+    }, (socket) => {
+      let received = ""
+      socket.setEncoding("utf8")
+      socket.on("data", (chunk: string) => {
+        received += chunk
+      })
+      socket.on("end", () => socket.end(`Received ${received}`))
+      socket.on("error", () => {})
+    })
+    server.on("tlsClientError", () => {})
+    server.listen(0, "127.0.0.1", () => resume(Effect.succeed(server)))
+  }),
+  (server) => Effect.sync(() => server.close())
+)
 
 const makeTempDir = Effect.acquireRelease(
   Effect.promise(() => Deno.makeTempDir()),
@@ -174,6 +203,141 @@ describe("DenoSocket", { concurrent: false }, () => {
       assert.strictEqual(error.reason._tag, "SocketUpgradeError")
       if (error.reason._tag === "SocketUpgradeError") assert.instanceOf(error.reason.cause, Error)
       assert.strictEqual(yield* pull.pipe(Effect.flip), error)
+    }))
+
+  it.effect("echoes over TLS", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      yield* runTlsEchoServer(listener).pipe(Effect.forkScoped)
+      const address = listener.addr as Deno.NetAddr
+
+      const output = yield* Stream.make("Hello", "TLS").pipe(
+        Stream.encodeText,
+        Stream.pipeThroughChannel(
+          DenoSocket.makeTlsChannel({ hostname: address.hostname, port: address.port, caCerts: [ca] })
+        ),
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
+        Stream.decodeText(),
+        Stream.mkString
+      )
+
+      assert.strictEqual(output, "HelloTLS")
+    }))
+
+  it.effect("keeps reading after the TLS write side closes", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      const address = listener.addr as Deno.NetAddr
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+
+      yield* Effect.gen(function*() {
+        const conn = yield* Effect.promise(() => listener.accept())
+        // `conn.read` keeps the resource open at EOF, unlike `conn.readable`.
+        let received = ""
+        while (true) {
+          const buffer = new Uint8Array(16)
+          const size = yield* Effect.promise(() => conn.read(buffer))
+          if (size === null) break
+          received += decoder.decode(buffer.subarray(0, size))
+        }
+        const writer = conn.writable.getWriter()
+        yield* Effect.promise(() => writer.write(encoder.encode(`Received ${received}`)))
+        writer.releaseLock()
+        yield* Effect.promise(() => conn.closeWrite())
+      }).pipe(Effect.forkScoped)
+
+      const socket = yield* DenoSocket.makeTls({ hostname: address.hostname, port: address.port, caCerts: [ca] })
+      const messages = yield* Queue.unbounded<Uint8Array>()
+      const runFiber = yield* Effect.gen(function*() {
+        const pull = yield* Socket.readerBytes(socket)
+        while (true) {
+          yield* Queue.offerAll(messages, yield* pull)
+        }
+      }).pipe(Effect.scoped, Effect.catchReason("SocketError", "SocketCloseError", () => Effect.void), Effect.forkChild)
+      yield* Effect.scoped(
+        socket.writer.pipe(Effect.flatMap((writer) => writer.write("Hello")))
+      )
+      yield* Fiber.join(runFiber)
+
+      const received = Array.from(yield* Queue.clear(messages), (chunk) => decoder.decode(chunk)).join("")
+      assert.strictEqual(received, "Received Hello")
+    }))
+
+  it.effect("presents a client certificate for mutual TLS", () =>
+    Effect.gen(function*() {
+      const server = yield* makeMutualTlsServer
+      const address = server.address() as { readonly port: number }
+
+      const output = yield* Stream.make("Hello").pipe(
+        Stream.encodeText,
+        Stream.pipeThroughChannel(DenoSocket.makeTlsChannel({
+          hostname: "127.0.0.1",
+          port: address.port,
+          caCerts: [ca],
+          cert: clientCert,
+          key: clientKey
+        })),
+        Stream.catchIf(
+          (error) => error.reason._tag === "SocketCloseError",
+          () => Stream.empty
+        ),
+        Stream.decodeText(),
+        Stream.mkString
+      )
+
+      assert.strictEqual(output, "Received Hello")
+    }))
+
+  it.effect("fails when mutual TLS requires a missing client certificate", () =>
+    Effect.gen(function*() {
+      const server = yield* makeMutualTlsServer
+      const address = server.address() as { readonly port: number }
+      const socket = yield* DenoSocket.makeTls({ hostname: "127.0.0.1", port: address.port, caCerts: [ca] })
+
+      const error = yield* Effect.gen(function*() {
+        const { pull } = yield* socket.reader
+        while (true) {
+          yield* pull
+        }
+      }).pipe(Effect.scoped, Effect.flip)
+
+      // TLS 1.3 servers reject the client certificate after the client handshake completes.
+      assert.include(["SocketOpenError", "SocketReadError"], error.reason._tag)
+      assert.match(String((error.reason as { readonly cause?: unknown }).cause), /CertificateRequired/)
+    }))
+
+  it.effect("maps TLS handshake failures to SocketOpenError", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      yield* runTlsEchoServer(listener).pipe(Effect.forkScoped)
+      const address = listener.addr as Deno.NetAddr
+      const socket = yield* DenoSocket.makeTls({ hostname: address.hostname, port: address.port })
+
+      const error = yield* Effect.scoped(Effect.asVoid(socket.reader)).pipe(Effect.flip)
+
+      assert.strictEqual(error.reason._tag, "SocketOpenError")
+      if (error.reason._tag === "SocketOpenError") assert.strictEqual(error.reason.kind, "Unknown")
+    }))
+
+  it.effect("rejects TLS upgrades on TLS sockets without disrupting the connection", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTlsServer
+      yield* runTlsEchoServer(listener).pipe(Effect.forkScoped)
+      const address = listener.addr as Deno.NetAddr
+      const socket = yield* DenoSocket.makeTls({ hostname: address.hostname, port: address.port, caCerts: [ca] })
+      const writer = yield* socket.writer
+      const { pull, upgrade } = yield* socket.reader
+
+      const error = yield* upgrade({ ca: [ca] }).pipe(Effect.flip)
+      assert.strictEqual(error.reason._tag, "SocketUpgradeError")
+
+      yield* writer.write("HelloTLS")
+      const [received] = yield* pull
+      assert.strictEqual(new TextDecoder().decode(received as Uint8Array), "HelloTLS")
     }))
 
   it.effect("echoes over TCP", () =>
