@@ -2,4 +2,4 @@
 "@effect/opentelemetry": patch
 ---
 
-Logs emitted inside a span now include that span's context on the OpenTelemetry log record, so backends can link the log to its trace.
+Set the span context on OpenTelemetry log records from the current Effect span, so backends can link logs to their traces.
