@@ -722,9 +722,9 @@ export const matchWithWaiting: {
  *
  * **Details**
  *
- * When the first non-success result is a failure, its previous success is
- * rebuilt in the combined shape from every input's current or previous value,
- * and dropped when any input has no value.
+ * If the first non-success result is a failure, its previous success is
+ * rebuilt in the combined shape from each input's current or previous value.
+ * It is omitted if any input has no value.
  *
  * @stability unstable
  * @category combinators

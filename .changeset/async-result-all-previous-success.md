@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `AsyncResult.all` returning a failing input's `previousSuccess` in that input's shape instead of the combined shape.
+Fix `AsyncResult.all` failures carrying a single input's `previousSuccess` instead of the combined record or tuple.
