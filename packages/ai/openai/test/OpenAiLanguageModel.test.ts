@@ -1320,7 +1320,7 @@ describe("OpenAiLanguageModel", () => {
     })
 
     describe("response handling", () => {
-      it.effect("preserves prompt cache diagnostics alongside the service tier", () =>
+      it.effect("preserves ultrafast service tier alongside prompt cache diagnostics", () =>
         Effect.gen(function*() {
           const diagnostics = {
             type: "cache_miss",
@@ -1329,7 +1329,7 @@ describe("OpenAiLanguageModel", () => {
             comparison_reusable_tokens: 2048
           } as const
           const body = JSON.stringify({
-            ...makeDefaultResponse({ service_tier: "priority" }),
+            ...makeDefaultResponse({ service_tier: "ultrafast" }),
             prompt_cache_diagnostics: diagnostics
           })
           const result = yield* LanguageModel.generateText({ prompt: "test" }).pipe(
@@ -1341,7 +1341,7 @@ describe("OpenAiLanguageModel", () => {
           const finish = result.content.find((part) => part.type === "finish")
           assert.isDefined(finish)
           deepStrictEqual(finish.metadata.openai, {
-            serviceTier: "priority",
+            serviceTier: "ultrafast",
             promptCacheDiagnostics: diagnostics
           })
         }))
@@ -1832,9 +1832,27 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
-    it.effect.each(["completed", "failed"] as const)(
-      "preserves prompt cache diagnostics in response.%s",
-      (status) =>
+    it.effect.each(
+      [
+        {
+          status: "completed",
+          serviceTier: "fast",
+          expectedMetadata: { promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "completed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        },
+        {
+          status: "failed",
+          serviceTier: "ultrafast",
+          expectedMetadata: { serviceTier: "ultrafast", promptCacheDiagnostics: { type: "cache_hit" } }
+        }
+      ] as const
+    )(
+      "preserves supported tiers and prompt cache diagnostics in response.$status with $serviceTier",
+      ({ status, serviceTier, expectedMetadata }) =>
         Effect.gen(function*() {
           const event = {
             type: `response.${status}`,
@@ -1844,7 +1862,7 @@ describe("OpenAiLanguageModel", () => {
                 status,
                 error: status === "failed" ? { code: "server_error", message: "generation failed" } : null
               }),
-              service_tier: "fast",
+              service_tier: serviceTier,
               prompt_cache_diagnostics: { type: "cache_hit" }
             }
           }
@@ -1863,7 +1881,7 @@ describe("OpenAiLanguageModel", () => {
 
           const finish = parts.find((part) => part.type === "finish")
           assert.isDefined(finish)
-          deepStrictEqual(finish.metadata.openai, { promptCacheDiagnostics: { type: "cache_hit" } })
+          deepStrictEqual(finish.metadata.openai, expectedMetadata)
         })
     )
 
