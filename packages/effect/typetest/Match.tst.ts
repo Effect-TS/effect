@@ -383,7 +383,7 @@ describe("Match", () => {
 
     Match.type<Array<Item>>().pipe(
       Match.when([], (value) => {
-        expect(value).type.toBe<readonly Item[]>()
+        expect(value).type.toBe<ReadonlyArray<Item>>()
       })
     )
 
