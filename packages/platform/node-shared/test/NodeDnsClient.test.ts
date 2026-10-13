@@ -2,6 +2,7 @@ import * as NodeDnsClient from "@effect/platform-node-shared/NodeDnsClient"
 import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
@@ -42,23 +43,26 @@ describe("NodeDnsClient", () => {
       assert.strictEqual(error._tag, "NetAddressError")
     }))
 
-  it.effect("accepts parsed resolv.conf files and a hosts table", () =>
+  it.effect("provides Dns from parsed resolv.conf files and a hosts table", () =>
     Effect.gen(function*() {
-      const client = yield* NodeDnsClient.make({
-        ...DnsClient.parseResolvConf("nameserver 192.0.2.1\nsearch Corp.Example\noptions ndots:2 no-aaaa\n"),
-        hosts: Host.parseHostsFile("192.0.2.9 db\n")
-      })
-      assert.deepStrictEqual<ReadonlyArray<string>>(client.search, ["corp.example"])
-      assert.strictEqual(client.ndots, 2)
-      assert.isTrue(client.noAaaa)
-      assert.deepStrictEqual(client.hosts.get("db" as Host.DomainName)?.map(NetAddress.formatIp), ["192.0.2.9"])
+      // The hosts table and `no-aaaa` answer without querying 192.0.2.1.
+      const dns = yield* Effect.service(Dns.Dns).pipe(
+        Effect.provide(NodeDnsClient.layerDns({
+          ...DnsClient.parseResolvConf("nameserver 192.0.2.1\nsearch Corp.Example\noptions ndots:2 no-aaaa\n"),
+          hosts: Host.parseHostsFile("192.0.2.9 db\n")
+        }))
+      )
+      assert.deepStrictEqual((yield* dns.lookup("db")).map(NetAddress.formatIp), ["192.0.2.9"])
+      const error = yield* Effect.flip(dns.lookup("app.corp.example", { family: "IPv6" }))
+      assert.strictEqual(error.reason, "NotFound")
     }))
 
   it.effect("clamps numeric options to their valid ranges", () =>
     Effect.gen(function*() {
-      // Unclamped values would be rejected by the transports and the client.
-      const client = yield* NodeDnsClient.make({ ndots: 20, attempts: 0, timeout: Duration.zero, udpPayloadSize: 100 })
-      assert.strictEqual(client.ndots, 15)
-      yield* NodeDnsClient.make({ ndots: -1, attempts: Number.NaN, udpPayloadSize: 1e6, useTcp: true })
+      // Unclamped values would be rejected by the transports, the client, and layerDns.
+      yield* NodeDnsClient.make({ attempts: 0, timeout: Duration.zero, udpPayloadSize: 100 })
+      yield* NodeDnsClient.make({ attempts: Number.NaN, udpPayloadSize: 1e6, useTcp: true })
+      yield* Effect.service(Dns.Dns).pipe(Effect.provide(NodeDnsClient.layerDns({ ndots: 20 })))
+      yield* Effect.service(Dns.Dns).pipe(Effect.provide(NodeDnsClient.layerDns({ ndots: -1 })))
     }))
 })
