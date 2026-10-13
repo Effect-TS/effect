@@ -1944,12 +1944,34 @@ export const fromAsyncIterable = <A, D, E>(
 ): Channel<A, E, D> =>
   fromTransform(Effect.fnUntraced(function*(_, scope) {
     const iter = iterable[Symbol.asyncIterator]()
+    let nextSettled = true
     if (iter.return) {
-      yield* Scope.addFinalizer(scope, Effect.promise(() => iter.return!()))
+      // `return()` stays pending while `next()` is. Waiting for it then would
+      // keep a timed-out pull open. An idle iterator still finishes `return`
+      // before the channel closes.
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.suspend(() => {
+          const finishing = iter.return!()
+          if (nextSettled) return Effect.promise(() => finishing)
+          void finishing.then(() => undefined, () => undefined)
+          return Effect.void
+        })
+      )
     }
     return Effect.flatMap(
       Effect.tryPromise({
-        try: () => iter.next(),
+        try: () => {
+          const pending = iter.next()
+          nextSettled = false
+          return pending.then((result) => {
+            nextSettled = true
+            return result
+          }, (error: unknown) => {
+            nextSettled = true
+            throw error
+          })
+        },
         catch: onError
       }),
       (result) => result.done ? Cause.done(result.value) : Effect.succeed(result.value)
@@ -1965,6 +1987,8 @@ export const fromAsyncIterable = <A, D, E>(
  * The iterator's return value becomes the channel's done value. Thrown or
  * rejected iterator errors are converted with `onError`. If the channel scope
  * closes early and the iterator has a `return` method, that method is called.
+ * The close does not wait for `return` to settle: a pending `next` would
+ * otherwise keep the channel open.
  *
  * @stability stable
  * @category constructors

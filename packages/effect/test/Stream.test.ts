@@ -35,6 +35,7 @@ import { isReadonlyArrayNonEmpty, type NonEmptyArray } from "effect/Array"
 import { constTrue, constVoid, pipe } from "effect/Function"
 import { TestClock } from "effect/testing"
 import * as fc from "fast-check"
+import { Readable } from "node:stream"
 import { assertCauseFail, assertFailure } from "./utils/assert.ts"
 import { chunkCoordination } from "./utils/chunkCoordination.ts"
 
@@ -5512,6 +5513,53 @@ describe("Stream", () => {
           Stream.runCollect
         )
         deepStrictEqual(result, [4])
+      }))
+
+    it.live("timeoutOrElse finishes when the next async chunk never arrives", () =>
+      Effect.gen(function*() {
+        async function* stall() {
+          yield "a"
+          await new Promise(() => undefined)
+        }
+        const result = yield* Stream.fromAsyncIterable(stall(), (error) => error).pipe(
+          Stream.timeoutOrElse({
+            duration: Duration.millis(50),
+            orElse: () => Stream.make("fallback")
+          }),
+          Stream.runCollect
+        )
+        deepStrictEqual(result, ["a", "fallback"])
+      }))
+
+    it.live("timeout ends a readable that pushes one chunk and never closes", () =>
+      Effect.gen(function*() {
+        const readable = new Readable({
+          read() {
+            // The readable stays open until the consumer stops pulling.
+          }
+        })
+        readable.push(Buffer.from("x"))
+        const result = yield* Stream.fromAsyncIterable(readable, (error) => error).pipe(
+          Stream.timeout(Duration.millis(50)),
+          Stream.runCollect
+        )
+        deepStrictEqual(result.map((chunk) => String(chunk)), ["x"])
+      }))
+
+    it.effect("fromAsyncIterable waits for an idle iterator to return", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        async function* source() {
+          try {
+            yield "a"
+          } finally {
+            events.push("finally")
+          }
+        }
+        const result = yield* Stream.fromAsyncIterable(source(), (error) => error).pipe(Stream.runCollect)
+        events.push("collected")
+        deepStrictEqual(result, ["a"])
+        deepStrictEqual(events, ["finally", "collected"])
       }))
 
     it.effect("timeoutOrElse - should not apply timeout after switch", () =>
