@@ -570,9 +570,9 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _, Args extends Array<a
   : "withReturnType constraint does not extend Result type" = internal.withReturnType
 
 // `P` is a const type parameter, so a fresh object skips excess-property checks.
-// Reject keys absent from every object variant. Predicates, refinements, and arrays
-// stay unchecked: their own properties are not pattern keys. The runtime matcher
-// still tests each own key of an object pattern.
+// Reject keys absent from every object variant on `when`, `whenOr`, `whenAnd`, and
+// `not`. Predicates, refinements, and arrays stay unchecked: their own properties
+// are not pattern keys. The runtime matcher still tests each own key.
 type PatternKeys<A> = object extends A ? PropertyKey
   : A extends object ? keyof A | (string extends keyof A ? number : never)
   : never
@@ -580,6 +580,12 @@ type PatternKeys<A> = object extends A ? PropertyKey
 type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | SafeRefinement<never, any>] ? unknown
   : [P] extends [object] ? { readonly [K in Exclude<keyof P, PatternKeys<A>>]: never }
   : unknown
+
+type ExactPattern<R, P> = (Types.PatternPrimitive<R> | Types.PatternBase<R>) & ObjectPatternGuard<R, P>
+
+type ExactPatterns<R, P> = {
+  readonly [I in keyof P]: I extends `${number}` ? ExactPattern<R, P[I]> : P[I]
+}
 
 /**
  * Defines a condition for matching values.
@@ -630,16 +636,16 @@ type ObjectPatternGuard<A, P> = [P] extends [Function | ReadonlyArray<any> | Saf
  * @category defining patterns
  * @since 4.0.0
  */
-export const when = <
+export const when: <
   R,
-  const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
+  const P extends ExactPattern<R, P>,
   Ret,
   Args extends Array<any>,
   Fn extends (_: Types.WhenMatch<R, P>, ...args: Args) => Ret
 >(
-  pattern: P & ObjectPatternGuard<R, P>,
+  pattern: P,
   f: Fn
-): <I, F, A, Pr>(
+) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret, Args>
 ) => Matcher<
   I,
@@ -649,7 +655,7 @@ export const when = <
   Pr,
   Ret,
   Args
-> => internal.when<R, P, Ret, Args, Fn>(pattern, f)
+> = internal.when
 
 /**
  * Matches one of multiple patterns in a single condition.
@@ -700,7 +706,7 @@ export const whenOr: <
   Args extends Array<any>,
   Fn extends (_: Types.WhenMatch<R, P[number]>, ...args: Args) => Ret
 >(
-  ...args: [...patterns: P, f: Fn]
+  ...args: [...patterns: ExactPatterns<R, P>, f: Fn]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret, Args>
 ) => Matcher<
@@ -759,7 +765,7 @@ export const whenAnd: <
   Args extends Array<any>,
   Fn extends (_: Types.WhenMatch<R, T.UnionToIntersection<P[number]>>, ...args: Args) => Ret
 >(
-  ...args: [...patterns: P, f: Fn]
+  ...args: [...patterns: ExactPatterns<R, P>, f: Fn]
 ) => <I, F, A, Pr>(
   self: Matcher<I, F, R, A, Pr, Ret, Args>
 ) => Matcher<
@@ -1267,7 +1273,7 @@ export const tagsExhaustive: <
  */
 export const not: <
   R,
-  const P extends Types.PatternPrimitive<R> | Types.PatternBase<R>,
+  const P extends ExactPattern<R, P>,
   Ret,
   Args extends Array<any>,
   Fn extends (_: Types.NotMatch<R, P>, ...args: Args) => Ret

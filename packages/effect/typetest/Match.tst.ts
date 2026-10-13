@@ -15,6 +15,7 @@ declare const discriminatedInput:
   | { readonly kind: "A"; readonly a: string }
   | { readonly kind: "B"; readonly b: number }
 declare const renamedTransfer: { readonly _tag: "Transfer"; readonly renamedValue: "foo" } | null
+declare const currentTransfer: { readonly _tag: "Transfer"; readonly value: "foo" } | null
 
 describe("Match", () => {
   it("fn infers the selected value and original arguments", () => {
@@ -226,6 +227,44 @@ describe("Match", () => {
         Match.orElse(() => "other" as const)
       )
     ).type.toBe<"a" | "other">()
+
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Argument of type
+      Match.whenOr({ _tag: "Transfer" }, { value: "foo" }, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Argument of type
+      Match.whenAnd({ _tag: "Transfer" }, { value: "foo" }, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+    pipe(
+      Match.value(renamedTransfer),
+      // @ts-expect-error Type 'string' is not assignable to type 'never'
+      Match.not({ value: "foo" }, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+
+    expect(
+      Match.value(currentTransfer).pipe(
+        Match.whenOr({ _tag: "Transfer" }, { value: "foo" }, () => "hit" as const),
+        Match.orElse(() => "miss" as const)
+      )
+    ).type.toBe<"hit" | "miss">()
+    expect(
+      Match.value(currentTransfer).pipe(
+        Match.whenAnd({ _tag: "Transfer" }, { value: "foo" }, () => "hit" as const),
+        Match.orElse(() => "miss" as const)
+      )
+    ).type.toBe<"hit" | "miss">()
+    expect(
+      Match.value(currentTransfer).pipe(
+        Match.not({ value: "foo" }, () => "excluded" as const),
+        Match.orElse(() => "miss" as const)
+      )
+    ).type.toBe<"excluded" | "miss">()
   })
 
   it("accepts object patterns on broad inputs", () => {
