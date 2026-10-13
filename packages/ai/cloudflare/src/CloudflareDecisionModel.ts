@@ -34,27 +34,6 @@ export const model = (
 ): AiModel.Model<"cloudflare", DecisionModel.DecisionModel, CloudflareClient> =>
   AiModel.make("cloudflare", model, layer({ model }))
 
-const encodeImage = (
-  image: DecisionModel.Image
-): Effect.Effect<typeof CloudflareSchema.Image.Encoded, AiError.AiError> => {
-  if (!(image.data instanceof URL)) {
-    return Effect.succeed({
-      content_type: image.mediaType,
-      base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
-    })
-  }
-  if (image.data.protocol === "data:") {
-    return Effect.succeed(image.data.href)
-  }
-  return Effect.fail(AiError.make({
-    module: "CloudflareDecisionModel",
-    method: "decide",
-    reason: new AiError.InvalidUserInputError({
-      description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
-    })
-  }))
-}
-
 /**
  * Builds a decision service with tolerance for four-decimal probability rounding.
  *
@@ -98,11 +77,31 @@ export const make = Effect.fnUntraced(
               break
           }
         }
+        const encodedImages: Array<typeof CloudflareSchema.Image.Encoded> = []
+        for (const image of images ?? []) {
+          if (image.data instanceof URL) {
+            if (image.data.protocol !== "data:") {
+              return yield* Effect.fail(AiError.make({
+                module: "CloudflareDecisionModel",
+                method: "decide",
+                reason: new AiError.InvalidUserInputError({
+                  description: "Cloudflare Clef accepts base64 or data URL images, not remote URLs"
+                })
+              }))
+            }
+            encodedImages.push(image.data.href)
+          } else {
+            encodedImages.push({
+              content_type: image.mediaType,
+              base64: typeof image.data === "string" ? image.data : Base64.encode(image.data)
+            })
+          }
+        }
         const response = yield* client.createDecisions({
           model: options.model,
           state,
           questions,
-          ...(images === undefined ? undefined : { images: yield* Effect.forEach(images, encodeImage) })
+          ...(encodedImages.length === 0 ? undefined : { images: encodedImages })
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
