@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-End `Stream.timeout` when the next chunk stays pending, including a `Readable` that never closes.
+Fix `Stream.timeout` and `Stream.timeoutOrElse` hanging when an async iterator's pending `next()` never settles.

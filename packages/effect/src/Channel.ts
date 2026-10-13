@@ -1932,10 +1932,9 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
  * Each yielded value is emitted as an output element. The iterator's return
  * value becomes the channel's done value. Thrown or rejected iterator errors
  * are converted with `onError`. If the channel scope closes early and the
- * iterator has a `return` method, that method is called.
- * Cleanup is awaited only when no `next()` call is pending. Otherwise,
- * `return()` is requested without waiting and any rejection is ignored. An
- * async generator may not run its cleanup until the pending pull settles.
+ * iterator has a `return` method, that method is called. It is awaited unless
+ * a `next()` call is still pending, in which case its result is ignored and an
+ * async generator may not run its cleanup until that pull settles.
  *
  * @stability stable
  * @category constructors
@@ -1950,9 +1949,8 @@ export const fromAsyncIterable = <A, D, E>(
     const finish = iter.return
     let nextInFlight = false
     if (finish) {
-      // `return()` stays pending while `next()` is. Waiting for it then would
-      // keep a timed-out pull open. An idle iterator still finishes `return`
-      // before the channel closes.
+      // `return()` may not settle until a pending `next()` does, so only
+      // await it when the iterator is idle.
       yield* Scope.addFinalizer(
         scope,
         Effect.suspend(() => {
@@ -1987,9 +1985,9 @@ export const fromAsyncIterable = <A, D, E>(
  * The iterator's return value becomes the channel's done value. Thrown or
  * rejected iterator errors are converted with `onError`. If the channel scope
  * closes early and the iterator has a `return` method, that method is called.
- * Cleanup is awaited only when no `next()` call is pending. Otherwise,
- * `return()` is requested without waiting and any rejection is ignored. An
- * async generator may not run its cleanup until the pending pull settles.
+ * It is awaited unless a `next()` call is still pending, in which case its
+ * result is ignored and an async generator may not run its cleanup until that
+ * pull settles.
  *
  * @stability stable
  * @category constructors
