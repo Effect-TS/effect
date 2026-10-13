@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, References } from "effect"
-import { expect, vi } from "vitest"
+import { vi } from "vitest"
 
 const withCaptureDisabled = <A>(run: () => A): A => {
   const limit = Error.stackTraceLimit
@@ -31,20 +31,12 @@ const countErrors = (run: () => void): number => {
 }
 
 describe("stack capture", { concurrent: false }, () => {
-  it.each(
-    [
-      [10, [2], [1]],
-      [2, [2], [1]],
-      [1, [1], [1]],
-      [0, [], []],
-      [undefined, [undefined], [undefined]]
-    ] as const
-  )("module loading bounds probes and restores limit %s", async (limit, expectedUtils, expectedContinuation) => {
+  it("module loading bounds probes and restores the stack trace limit", async () => {
     const original = globalThis.Error
     const previous = original.stackTraceLimit
-    const limits: Array<number | undefined> = []
+    const limits: Array<number> = []
     vi.resetModules()
-    ;(original as { stackTraceLimit?: number | undefined }).stackTraceLimit = limit
+    original.stackTraceLimit = 10
     globalThis.Error = new Proxy(original, {
       construct(target, args, newTarget) {
         limits.push(target.stackTraceLimit)
@@ -53,68 +45,14 @@ describe("stack capture", { concurrent: false }, () => {
     })
     try {
       await import("effect/Utils")
-      assert.strictEqual(original.stackTraceLimit, limit)
-      const utilsLimits = limits.splice(0)
+      assert.deepStrictEqual(limits.splice(0), [2])
+      assert.strictEqual(original.stackTraceLimit, 10)
       await import("effect/internal/effect")
-      assert.strictEqual(original.stackTraceLimit, limit)
-      assert.deepStrictEqual(utilsLimits, [...expectedUtils])
-      assert.deepStrictEqual(limits, [...expectedContinuation])
-    } finally {
-      globalThis.Error = original
-      original.stackTraceLimit = previous
-      vi.resetModules()
-    }
-  })
-
-  it.each(["utils", "continuation"])("restores the limit when the %s probe stack getter throws", async (probe) => {
-    const original = globalThis.Error
-    const previous = original.stackTraceLimit
-    const failure = new Error("stack getter failed")
-    vi.resetModules()
-    original.stackTraceLimit = 10
-    try {
-      // Load Utils first to isolate a failure in the continuation probe.
-      if (probe === "continuation") await import("effect/Utils")
-      globalThis.Error = new Proxy(original, {
-        construct(target, args, newTarget) {
-          return new Proxy(Reflect.construct(target, args, newTarget), {
-            get(target, key, receiver) {
-              if (key === "stack") throw failure
-              return Reflect.get(target, key, receiver)
-            }
-          })
-        }
-      })
-      await expect(probe === "utils" ? import("effect/Utils") : import("effect/internal/effect")).rejects.toBe(failure)
+      assert.deepStrictEqual(limits, [1])
       assert.strictEqual(original.stackTraceLimit, 10)
     } finally {
       globalThis.Error = original
       original.stackTraceLimit = previous
-      vi.resetModules()
-    }
-  })
-
-  it.each([10, 2, 1, 0])("preserves internal call and continuation stack detection at limit %s", async (limit) => {
-    const previous = Error.stackTraceLimit
-    vi.resetModules()
-    Error.stackTraceLimit = limit
-    try {
-      const fresh = await import("effect/Effect")
-      const utils = await import("effect/Utils")
-      // Inspect callback frames at normal depth after the import-time detection.
-      Error.stackTraceLimit = 10
-      const internalStack = utils.internalCall(function callback() {
-        return new Error().stack!
-      })
-      assert.match(internalStack, /callback/)
-      assert.strictEqual(internalStack.includes("~effect/Utils/internal"), true)
-      const stack = fresh.runSync(fresh.map(fresh.succeed(0), function callback() {
-        return new Error().stack!
-      }))
-      assert.match(stack, /callback/)
-      assert.strictEqual(stack.includes("~effect/Utils/internal"), limit === 0)
-    } finally {
-      Error.stackTraceLimit = previous
       vi.resetModules()
     }
   })

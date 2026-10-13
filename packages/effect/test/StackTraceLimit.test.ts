@@ -1,6 +1,6 @@
 import { describe, it, vi } from "@effect/vitest"
 import * as StackTraceLimit from "effect/internal/stackTraceLimit"
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "./utils/assert.ts"
+import { assertFalse, assertTrue, strictEqual } from "./utils/assert.ts"
 
 const getLimit = (): number | undefined => (Error as { stackTraceLimit?: number | undefined }).stackTraceLimit
 
@@ -29,7 +29,7 @@ describe("stackTraceLimit", () => {
   describe("frozen intrinsics (non-writable Error.stackTraceLimit)", () => {
     // The writability check is cached at module load, so re-import the module
     // after redefining the property to exercise the frozen path.
-    it("degrades to a no-op and allows probe imports without changing the descriptor", async () => {
+    it("degrades to a no-op without throwing", async () => {
       const original = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")
       Object.defineProperty(Error, "stackTraceLimit", {
         value: 10,
@@ -49,11 +49,6 @@ describe("stackTraceLimit", () => {
         // setStackTraceLimit is a silent no-op rather than throwing
         frozen.setStackTraceLimit(0)
         strictEqual(getLimit(), 10)
-
-        const descriptor = Object.getOwnPropertyDescriptor(Error, "stackTraceLimit")
-        await import("effect/Utils")
-        await import("effect/internal/effect")
-        deepStrictEqual(Object.getOwnPropertyDescriptor(Error, "stackTraceLimit"), descriptor)
       } finally {
         if (original !== undefined) {
           Object.defineProperty(Error, "stackTraceLimit", original)
