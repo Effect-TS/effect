@@ -56,6 +56,31 @@ export const TypeId: TypeId = "~@effect/sql-pg/PgConnection"
 export type TypeId = "~@effect/sql-pg/PgConnection"
 
 /**
+ * TCP keepalive settings for native PostgreSQL connections. A responsive peer
+ * can answer probes while a query is running, so these settings do not impose a
+ * query timeout. Unix sockets and custom streams are not configured.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface KeepAliveOptions {
+  /** Idle time before the first probe. Node rounds timings down to whole seconds. */
+  readonly initialDelay: Duration.Input
+  /**
+   * Time between unanswered probes. Requires the extended `Socket.setKeepAlive`
+   * API (Node >= 24.19.0). Omit to use Node's default.
+   */
+  readonly interval?: Duration.Input | undefined
+  /**
+   * Positive integer count of unanswered probes before closing the connection,
+   * at most 4,294,967,295. The OS may impose a smaller limit. Requires the extended
+   * `Socket.setKeepAlive` API (Node >= 24.19.0). Omit to use Node's default.
+   */
+  readonly count?: number | undefined
+}
+
+/**
  * Connection settings for a PostgreSQL session.
  *
  * **Details**
@@ -99,6 +124,8 @@ export interface Config {
    */
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /** Enables TCP keepalive on each native TCP connection when configured. */
+  readonly keepAlive?: KeepAliveOptions | undefined
   /**
    * Overrides `startupParameters.application_name`, the URL's `application_name`,
    * and the default `"@effect/sql-pg"`, in that order.
@@ -1960,7 +1987,7 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
         ? config.stream()
         : config.path !== undefined
         ? Net.connect({ path: config.path })
-        : Net.connect({ host: config.host, port: config.port, noDelay: true })
+        : connectTcp(config)
     } catch {
       resume(Effect.void)
       return
@@ -1972,6 +1999,21 @@ const sendCancelRequest = (config: ResolvedConfig, session: Session): Effect.Eff
     else socket.once("connect", begin)
     return Effect.sync(finish)
   })
+
+const connectTcp = (config: ResolvedConfig): Net.Socket => {
+  const socket = Net.connect({ host: config.host, port: config.port, noDelay: true })
+  if (config.keepAlive !== undefined) {
+    const { initialDelay, interval, count } = config.keepAlive
+    socket.once("connect", () =>
+      socket.setKeepAlive(
+        true,
+        Duration.toMillis(initialDelay),
+        interval === undefined ? undefined : Duration.toMillis(interval),
+        count
+      ))
+  }
+  return socket
+}
 
 const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): Effect.Effect<Session, SqlError> =>
   Effect.callback<Session, SqlError>((resume) => {
@@ -2194,7 +2236,7 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
         ? Net.connect({ path: config.path })
         // A statement is one write and then a wait for its answer, so Nagle has
         // nothing to coalesce and only holds the write back.
-        : Net.connect({ host: config.host, port: config.port, noDelay: true })
+        : connectTcp(config)
     } catch (cause) {
       resume(Effect.fail(
         new SqlError({
@@ -2229,6 +2271,11 @@ interface ResolvedConfig {
   readonly username: string
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
+  readonly keepAlive: {
+    readonly initialDelay: Duration.Duration
+    readonly interval: Duration.Duration | undefined
+    readonly count: number | undefined
+  } | undefined
   readonly startupParameters: PgProtocol.StartupParameters
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
@@ -2255,6 +2302,13 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
+    }
+    const keepAliveCount = options.keepAlive?.count
+    if (
+      keepAliveCount !== undefined &&
+      (!Number.isInteger(keepAliveCount) || keepAliveCount < 1 || keepAliveCount > 0xffffffff)
+    ) {
+      return Effect.fail(configError("keepAlive.count must be an integer between 1 and 4294967295"))
     }
     const named: Record<string, string> = Object.create(null)
     for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
@@ -2298,6 +2352,13 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       username,
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
+      keepAlive: options.keepAlive === undefined ? undefined : {
+        initialDelay: Duration.fromInputUnsafe(options.keepAlive.initialDelay),
+        interval: options.keepAlive.interval === undefined
+          ? undefined
+          : Duration.fromInputUnsafe(options.keepAlive.interval),
+        count: keepAliveCount
+      },
       startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize

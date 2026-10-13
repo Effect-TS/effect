@@ -5,6 +5,55 @@ import * as TestClock from "effect/testing/TestClock"
 
 describe("PgConnection config", () => {
   it.effect.each([
+    { name: "zero", count: 0 },
+    { name: "negative", count: -1 },
+    { name: "fractional", count: 1.5 },
+    { name: "NaN", count: NaN },
+    { name: "infinite", count: Infinity },
+    { name: "negative infinite", count: -Infinity },
+    { name: "out-of-range", count: 2 ** 32 },
+    { name: "unsafe integer", count: Number.MAX_SAFE_INTEGER + 1 },
+    { name: "string", count: "3" },
+    { name: "null", count: null },
+    { name: "boolean", count: true },
+    { name: "bigint", count: 3n },
+    { name: "object", count: {} },
+    { name: "array", count: [] }
+  ])("rejects $name keepalive counts before connecting", ({ count }) =>
+    Effect.gen(function*() {
+      let connected = false
+      const error = yield* Effect.flip(PgConnection.make({
+        username: "test",
+        keepAlive: { initialDelay: "30 seconds", count: count as number },
+        stream: () => {
+          connected = true
+          throw new Error("unexpected connection")
+        }
+      }))
+      assert.isFalse(connected)
+      assert.strictEqual(error.reason._tag, "ConnectionError")
+      assert.strictEqual(
+        error.reason.message,
+        "PgConnection: keepAlive.count must be an integer between 1 and 4294967295"
+      )
+    }))
+
+  it.effect.each([1, 0xffffffff])("accepts the keepalive count boundary %i", (count) =>
+    Effect.gen(function*() {
+      let connected = false
+      const error = yield* Effect.flip(PgConnection.make({
+        username: "test",
+        keepAlive: { initialDelay: "30 seconds", count },
+        stream: () => {
+          connected = true
+          throw new Error("test connection")
+        }
+      }))
+      assert.isTrue(connected)
+      assert.strictEqual(error.reason.message, "PgConnection: Failed to connect")
+    }))
+
+  it.effect.each([
     { startupParameters: { REPLICATION: "database" } },
     { startupParameters: { client_encoding: "LATIN1" } },
     { startupParameters: { "": "value" } },

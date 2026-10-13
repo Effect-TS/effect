@@ -102,6 +102,8 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+  /** Enables TCP keepalive on each native TCP connection when configured. */
+  readonly keepAlive?: PgConnection.KeepAliveOptions | undefined
 
   readonly stream?: (() => Duplex) | undefined
 
