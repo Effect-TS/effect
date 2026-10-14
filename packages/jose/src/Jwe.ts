@@ -4,13 +4,14 @@
  * @stability unstable
  * @since 4.0.5
  */
-import * as Crypto from "effect/Crypto"
+import * as Aes from "effect/crypto/Aes"
+import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { DecryptionFailed, InvalidKey, InvalidToken } from "./Errors.ts"
-import * as Aead from "./internal/aead.ts"
+import { copy, decode as decodeInput, native, operationError, withSecret } from "./internal/crypto.ts"
 import { CryptoUnavailable, type OperationError } from "./internal/cryptoErrors.ts"
 import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
 import * as KeyPolicy from "./internal/keyPolicy.ts"
@@ -59,7 +60,7 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
 })
 
 /**
- * Encrypts redacted plaintext as a compact JWE with a fresh 96-bit IV from the Crypto service.
+ * Encrypts redacted plaintext as a compact JWE with a fresh 96-bit IV from the SecureRandom service.
  *
  * **Details**
  *
@@ -95,7 +96,7 @@ export const encrypt = Effect.fnUntraced(function*(
   plaintext: Redacted.Redacted<Uint8Array>,
   key: SecretKey,
   input: Header
-): Effect.fn.Return<Redacted.Redacted<string>, JweError, Crypto.Crypto> {
+): Effect.fn.Return<Redacted.Redacted<string>, JweError, Aes.Aes | SecureRandom.SecureRandom> {
   const header = yield* readHeader(input)
 
   if (key.algorithm !== "dir") return yield* InvalidKey.make({})
@@ -111,19 +112,23 @@ export const encrypt = Effect.fnUntraced(function*(
   )
 
   if (protectedPart.length > 4096) return yield* InvalidToken.make({ reason: "header" })
-  const random = yield* Crypto.Crypto
-
-  const nonce = yield* random
-    .randomBytes(12)
-    .pipe(Effect.mapError(() => CryptoUnavailable.make({})))
-
-  const sealed = yield* Aead.encrypt({
-    algorithm: "AES-256-GCM",
-    key: key.material,
-    nonce,
-    plaintext,
-    additionalData: utf8(protectedPart)
-  })
+  const nonce = yield* SecureRandom.randomBytes(12).pipe(
+    Effect.mapError(() => CryptoUnavailable.make({})),
+    Effect.flatMap(copy)
+  )
+  yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(12, 12)), nonce, "nonce")
+  const aes = yield* Aes.Aes
+  const sealed = yield* withSecret(plaintext, (data) =>
+    withSecret(key.material, (owned) =>
+      Effect.gen(function*() {
+        yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
+        return yield* native(aes.encryptGcm({
+          key: Redacted.make(owned),
+          nonce,
+          data,
+          additionalData: utf8(protectedPart)
+        }))
+      })))
 
   return Redacted.make(
     `${protectedPart}..${Base64Url.encode(nonce)}.${Base64Url.encode(sealed.subarray(0, -16))}.${
@@ -164,15 +169,22 @@ export const decrypt = Effect.fnUntraced(function*(
   sealed.set(data)
   sealed.set(authTag, data.length)
 
-  const plaintext = yield* Aead
-    .decrypt({
-      algorithm: "AES-256-GCM",
-      key: key.material,
-      nonce,
-      ciphertext: sealed,
-      additionalData: utf8(protectedPart)
-    })
-    .pipe(Effect.catchTag("CryptoAuthenticationFailed", () => DecryptionFailed.make({})))
+  const aes = yield* Aes.Aes
+  const plaintext = yield* withSecret(key.material, (owned) =>
+    Effect.gen(function*() {
+      yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
+      return yield* aes.decryptGcm({
+        key: Redacted.make(owned),
+        nonce,
+        data: sealed,
+        additionalData: utf8(protectedPart)
+      }).pipe(
+        Effect.mapError((error) =>
+          error.reason._tag === "AuthenticationFailed" ? DecryptionFailed.make({}) : operationError(error)
+        ),
+        Effect.map(Redacted.make)
+      )
+    }))
 
   return { protectedHeader, plaintext }
 })

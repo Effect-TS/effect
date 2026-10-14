@@ -1,5 +1,5 @@
 import { type Errors, OAuth, Oidc, Pkce } from "@effect/oauth"
-import type * as Crypto from "effect/Crypto"
+import type { Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, Sha2 } from "effect/crypto"
 import type * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import type * as Redacted from "effect/Redacted"
@@ -63,13 +63,15 @@ describe("OAuth protocol type contracts", () => {
     expect<ReturnType<typeof Oidc.substituteTenantIssuer>>().type.toBe<string | undefined>()
   })
 
-  it("keeps scoped verification and native hash requirements distinct", () => {
+  it("captures HTTP and Scope while propagating native JOSE and hash requirements", () => {
     const installed = Oidc.makeVerifier(verifierOptions)
     const verified = verifier.verify(secret, verification)
     expect<Effect.Services<typeof installed>>().type.toBe<HttpClient.HttpClient | Scope.Scope>()
     expect<Effect.Success<typeof installed>>().type.toBe<Oidc.Verifier>()
     expect<Effect.Error<typeof installed>>().type.toBe<Errors.ConfigurationError | Errors.Unavailable>()
-    expect<Effect.Services<typeof verified>>().type.toBe<Crypto.Crypto>()
+    expect<Effect.Services<typeof verified>>().type.toBe<
+      Hmac.Hmac | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519 | Sha2.Sha2
+    >()
     expect<Effect.Success<typeof verified>>().type.toBe<Oidc.Verified>()
     expect<Effect.Error<typeof verified>>().type.toBe<Errors.Rejected | Errors.Unavailable>()
     expect<Oidc.Verified["claims"]>().type.toBe<Redacted.Redacted<OAuth.JsonObject>>()
@@ -77,13 +79,13 @@ describe("OAuth protocol type contracts", () => {
     expect<OAuth.Metadata["signing_key_issuer_required"]>().type.toBe<true | undefined>()
   })
 
-  it("requires Effect Crypto for private transaction secrets and S256", () => {
+  it("requires separate SecureRandom and Sha2 services for private transaction secrets and S256", () => {
     const random = Pkce.random()
     const challenge = Pkce.challenge(secret)
     const transaction = Pkce.make()
-    expect<Effect.Services<typeof random>>().type.toBe<Crypto.Crypto>()
-    expect<Effect.Services<typeof challenge>>().type.toBe<Crypto.Crypto>()
-    expect<Effect.Services<typeof transaction>>().type.toBe<Crypto.Crypto>()
+    expect<Effect.Services<typeof random>>().type.toBe<SecureRandom.SecureRandom>()
+    expect<Effect.Services<typeof challenge>>().type.toBe<Sha2.Sha2>()
+    expect<Effect.Services<typeof transaction>>().type.toBe<SecureRandom.SecureRandom | Sha2.Sha2>()
     expect<Effect.Success<typeof random>>().type.toBe<Redacted.Redacted<string>>()
     expect<Effect.Success<typeof challenge>>().type.toBe<string>()
     expect<Effect.Error<typeof transaction>>().type.toBe<Errors.Unavailable>()

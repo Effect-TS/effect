@@ -1,7 +1,8 @@
 import { Jwk, Jwt } from "@effect/jose"
 import { Oidc } from "@effect/oauth"
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Crypto, DateTime, Deferred, Effect, Exit, Fiber, Redacted, Schema, Scope } from "effect"
+import { Cause, DateTime, Deferred, Effect, Exit, Fiber, Redacted, Schema, Scope } from "effect"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as HttpClient from "effect/http/HttpClient"
 import { TestClock } from "effect/testing"
@@ -19,8 +20,8 @@ const setup = Effect.gen(function*() {
   yield* TestClock.setTime(seconds * 1000)
   const pair = yield* Jwk.generateKeyPair({ algorithm: "ES256", kid: "key" })
   const key = yield* Jwk.importPrivate(pair.privateKey, "ES256")
-  const crypto = yield* Crypto.Crypto
-  const digest = yield* crypto.digest("SHA-256", new TextEncoder().encode("access-token"))
+  const sha2 = yield* Sha2.Sha2
+  const digest = yield* sha2.digest("SHA-256", new TextEncoder().encode("access-token"))
   const token = yield* Jwt.sign(
     Schema.Record(Schema.String, Schema.Json),
     {
@@ -35,16 +36,7 @@ const setup = Effect.gen(function*() {
     key,
     { alg: "ES256", kid: "key" }
   )
-  // Exercise asynchronous Web Crypto hashing even when running on Node.
-  const nativeCrypto = Crypto.Crypto.of({
-    ...crypto,
-    digest: (algorithm, data) =>
-      Effect.map(
-        Effect.promise(() => globalThis.crypto.subtle.digest(algorithm, new Uint8Array(data))),
-        (buffer) => new Uint8Array(buffer)
-      )
-  })
-  return { pair, token, nativeCrypto }
+  return { pair, token }
 })
 
 const stages = [
@@ -60,7 +52,7 @@ describe("OIDC native operation lifecycle", { concurrent: false }, () => {
     for (const termination of ["caller interruption", "owner closure"] as const) {
       it.effect(`${termination} joins pending native ${stage.name}`, () =>
         Effect.gen(function*() {
-          const { nativeCrypto, pair, token } = yield* setup
+          const { pair, token } = yield* setup
           const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
           let requests = 0
           const verifier = yield* Oidc.makeVerifier({
@@ -77,7 +69,7 @@ describe("OIDC native operation lifecycle", { concurrent: false }, () => {
               })
             )
           )
-          const verify = verifier.verify(token, input).pipe(Effect.provideService(Crypto.Crypto, nativeCrypto))
+          const verify = verifier.verify(token, input)
           if (stage.warm) yield* verify
           let published = false
           let finalized = false

@@ -22,8 +22,10 @@ Verified claims remain redacted; application policy still owns authorization.
 RS256, PS256, ES256, and EdDSA are accepted only when advertised by metadata.
 HS256 requires explicit opt-in and a client secret of at least 32 UTF-8 bytes;
 it cannot be mixed with asymmetric algorithms or establish tenant signing-key
-authority. Native `effect/Crypto` supplies PKCE entropy/digests and OIDC hash
-bindings, including SHA-512 for EdDSA. Signature verification belongs to JOSE.
+authority. The native `effect/crypto/SecureRandom` service supplies PKCE entropy;
+`effect/crypto/Sha2` supplies PKCE challenges and OIDC hash bindings, including
+SHA-512 for EdDSA. JOSE verifies signatures through the native `Hmac`, `Rsa`,
+`Ecdsa`, and `Ed25519` services.
 
 ## Ownership and requests
 
@@ -34,6 +36,13 @@ Keep the scope open for the client's or verifier's lifetime. Closing it interrup
 and joins active operations and prevents reuse. Caller interruption joins only
 that operation and does not close the owner. Configuration is snapshotted and
 frozen; caller-owned input is not frozen or wiped.
+
+Installation captures HTTP and Scope, not the crypto services. Each
+`verifier.verify` requires `Sha2.Sha2` plus JOSE's `Hmac.Hmac`, `Rsa.Rsa`,
+`Ecdsa.Ecdsa`, and `Ed25519.Ed25519` services. `NodeCrypto.layer` supplies these
+services and `SecureRandom` together on Node.js. Native key, signature, and hash
+operations are joined before cancellation teardown completes; JWKS network waits
+remain interruptible. A native operation that never settles can delay teardown.
 
 Every code exchange, refresh, profile request, and revocation makes one request
 with no implicit retry. Supply a cancellation-aware `HttpClient` without retry,
@@ -77,9 +86,10 @@ and telemetry.
 - Profile requests use an explicitly installed URL and default to GET; POST with
   a JSON body and safe custom headers is supported.
 
-`Pkce` uses the injected native `effect/Crypto` service for 32-byte transaction
-secrets and SHA-256 challenges. Applications own storage, comparison, and one-time
-use of state, nonce, and verifier values.
+`Pkce.random` requires `SecureRandom.SecureRandom` for 32-byte transaction secrets;
+`Pkce.challenge` requires `Sha2.Sha2` for SHA-256. `Pkce.make` requires both, and the
+providers can be overridden independently. Applications own storage, comparison,
+and one-time use of state, nonce, and verifier values.
 
 ## Discovery
 

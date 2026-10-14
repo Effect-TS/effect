@@ -6,11 +6,10 @@
  */
 import * as Jwk from "@effect/jose/Jwk"
 import * as Jwks from "@effect/jose/Jwks"
-import type * as Jws from "@effect/jose/Jws"
 import * as Jwt from "@effect/jose/Jwt"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
-import * as Crypto from "effect/Crypto"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
@@ -148,12 +147,17 @@ export interface Verified {
 }
 
 type VerificationRequirements =
-  | Exclude<Effect.Services<ReturnType<typeof Jws.verifyWithKeySet>>, Jwks.Jwks>
-  | Jws.Requirements
-  | Crypto.Crypto
+  | Effect.Services<ReturnType<typeof Jwt.verify<typeof JsonObject>>>
+  | Exclude<Effect.Services<ReturnType<typeof Jwt.verifyWithKeySet<typeof JsonObject>>>, Jwks.Jwks>
+  | Sha2.Sha2
 
 /**
  * A scoped ID-token verifier. Signature and key failures remain unknown outcomes; authenticated invalid claims are definite rejections.
+ *
+ * **Details**
+ *
+ * Verification requires Sha2 for hash bindings and the native Hmac, Rsa, Ecdsa,
+ * and Ed25519 services used by JOSE. HTTP and Scope are captured at installation.
  *
  * @stability unstable
  * @category models
@@ -218,7 +222,7 @@ const IdClaims = Schema.Struct({
 
 function tokenHash(
   algorithm: string
-): { readonly digest: Crypto.DigestAlgorithm; readonly octets: number } | undefined {
+): { readonly digest: Sha2.Algorithm; readonly octets: number } | undefined {
   switch (algorithm) {
     case "EdDSA":
       return { digest: "SHA-512", octets: 32 }
@@ -511,6 +515,13 @@ function claimFailure(): Rejected {
  * returning Unavailable; caller interruption joins its operation without
  * closing the verifier. No process cache or automatic exchange retry is created.
  *
+ * **Details**
+ *
+ * Installation captures HttpClient and Scope. Each verification uses its caller's
+ * Sha2 and JOSE algorithm services; NodeCrypto.layer supplies all of them on Node.js.
+ * Native hashing is joined before cancellation completes, while JWKS network
+ * waits remain interruptible.
+ *
  * **Example** (Verifying a signed ID token with explicit HS256 policy)
  *
  * ```ts import.meta.vitest
@@ -751,10 +762,10 @@ export const makeVerifier = Effect.fnUntraced(function*(
     ) {
       if (hash === undefined) continue
       if (secret === undefined) return yield* claimFailure()
-      const crypto = yield* Crypto.Crypto
+      const sha2 = yield* Sha2.Sha2
 
       // Native digests cannot be cancelled; join them before releasing the verifier operation.
-      const digest = yield* crypto
+      const digest = yield* sha2
         .digest(hashProfile.digest, new TextEncoder().encode(secret))
         .pipe(Effect.mapError(() => Unavailable.make({})), Effect.uninterruptible)
 

@@ -3,7 +3,7 @@ import { assert, it } from "@effect/vitest"
 import { Effect, Redacted, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
-import { independentJws, independentJwt, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
+import { cryptoLayer, independentJws, independentJwt, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
 
 // Public contracts adapted from panva/jose test/jwt/verify.test.ts at the
 // revision in THIRD_PARTY_NOTICES.md. Tokens come from the independent signer;
@@ -158,7 +158,7 @@ it.effect.each(rejectedPolicies)("rejects $name", ({ claims, options, claim, rea
       ),
       { _tag: "JoseClaimValidationFailed", claim, reason }
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 const acceptedPolicies = [
   {
@@ -223,7 +223,7 @@ it.effect.each(acceptedPolicies)("accepts $name", ({ claims, options }) =>
         .registeredClaims,
       claims
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("requires every explicitly required registered claim without mutating the policy", () =>
   Effect.gen(function*() {
@@ -241,7 +241,7 @@ it.effect("requires every explicitly required registered claim without mutating 
       )
       assert.deepStrictEqual(requiredClaims, [claim])
     }
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect.each([
   { name: "issuer array", claims: { iss: ["issuer"] } },
@@ -262,7 +262,7 @@ it.effect.each([
       claim: "registered",
       reason: "invalid"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect.each([
   { name: "null", payload: utf8("null") },
@@ -284,7 +284,7 @@ it.effect.each([
       _tag: "JoseInvalidToken",
       reason: "payload"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect.each([
   { actual: "JWT", expected: "application/jwt" },
@@ -301,7 +301,7 @@ it.effect.each([
         .protectedHeader.typ,
       actual
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect.each([
   { name: "absent type", header: { alg: "HS256" }, typ: "JWT" },
@@ -326,7 +326,7 @@ it.effect.each([
       claim: "typ",
       reason: "mismatch"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("rejects invalid verification policy instead of disabling claim checks", () =>
   Effect.gen(function*() {
@@ -351,7 +351,7 @@ it.effect("rejects invalid verification policy instead of disabling claim checks
         reason: "parameters"
       })
     }
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 // Retains the previously reproduced issuer-policy mutation during key lookup.
 it.effect("captures verification policy before the key resolver can mutate it", () =>
@@ -388,4 +388,4 @@ it.effect("captures verification policy before the key resolver can mutate it", 
       claim: "iss",
       reason: "mismatch"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))

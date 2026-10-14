@@ -4,7 +4,7 @@ import { Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scope } from "
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
-import { privateJwk, publicJwk, utf8 } from "./fixtures.ts"
+import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"
 
 // Selection, refresh/cooldown and malformed-key contracts adapted from panva/jose
 // test/jwks/{local,remote}.test.ts; Effect Scope and TestClock replace global mocks.
@@ -42,7 +42,7 @@ it.effect("selects local public keys by algorithm, kid, use and key_ops without 
         ._tag,
       "JoseInvalidKey"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect(
   "coalesces refresh, cools down unknown kids, rotates keys and isolates Layer caches",
@@ -117,7 +117,7 @@ it.effect(
       )
       assert.strictEqual(requests, 4)
       assert.strictEqual((yield* other.resolve({ algorithm: "ES256", kid: "two" })).jwk.kid, "two")
-    })
+    }).pipe(Effect.provide(cryptoLayer))
 )
 
 it.effect("bounds remote bodies and keys and refuses untrusted or redirected URLs", () =>
@@ -181,7 +181,7 @@ it.effect("bounds remote bodies and keys and refuses untrusted or redirected URL
         ._tag,
       "JoseJwksUnavailable"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("times out refreshes and interrupts in-flight requests when the Layer Scope closes", () =>
   Effect.gen(function*() {
@@ -227,4 +227,4 @@ it.effect("times out refreshes and interrupts in-flight requests when the Layer 
       _tag: "JoseJwksUnavailable",
       reason: "closed"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))

@@ -1,6 +1,7 @@
 ---
+"effect": patch
 "@effect/jose": patch
 "@effect/oauth": patch
 ---
 
-Add unstable `@effect/jose` APIs for keys, signatures, encryption, and schema-typed JWTs. Add `@effect/oauth` client flows with PKCE, issuer discovery, and signed OpenID Connect verification.
+Add unstable `@effect/jose` and `@effect/oauth` APIs for JOSE tokens, OAuth flows, and signed OpenID Connect using Effect's crypto services. Add redacted private-key JWK exports for ECDSA, Ed25519, and RSA.
