@@ -318,9 +318,7 @@ export const rate = <const Level extends string>(options: {
     throw new Error("Decision.rate: criteria must contain at least two levels")
   }
   const criteria = options.criteria.map((level) =>
-    typeof level === "string"
-      ? { label: level, description: level }
-      : { label: level.label, description: level.description }
+    typeof level === "string" ? { label: level, description: level } : level
   )
   if (new Set(criteria.map((level) => level.label)).size !== criteria.length) {
     throw new Error("Decision.rate: criteria must contain distinct levels")

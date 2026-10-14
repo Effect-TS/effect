@@ -139,20 +139,11 @@ describe("OpenAiDecisionModel", () => {
     ]
     let requests = 0
     return Effect.gen(function*() {
-      const reasons: Array<string> = []
       for (const decision of decisions) {
         const definition = Decision.make({ input: Schema.String, decisions: { question: decision } })
         const error = yield* Effect.flip(DecisionModel.decide(definition, { input: "Checkout is down" }))
-        reasons.push(error.reason._tag)
+        assert.strictEqual(error.reason._tag, "InvalidUserInputError")
       }
-      assert.deepStrictEqual(reasons, [
-        "InvalidUserInputError",
-        "InvalidUserInputError",
-        "InvalidUserInputError",
-        "InvalidUserInputError",
-        "InvalidUserInputError",
-        "InvalidUserInputError"
-      ])
       assert.strictEqual(requests, 0)
     }).pipe(
       Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),

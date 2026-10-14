@@ -80,7 +80,7 @@ export const make = Effect.fnUntraced(
           const question = encodeQuestion(name, decision)
           if (question === undefined) {
             return yield* invalidUserInput(
-              `OpenAI decisions accept only string instructions and descriptions, but "${name}" has another value`
+              `OpenAI decisions accept only string instructions and descriptions, but "${name}" has a structured or null value`
             )
           }
           questions.push(question)
@@ -167,21 +167,13 @@ const encodeQuestion = (
   if (typeof instructions !== "string") return undefined
   switch (decision._tag) {
     case "Classify": {
-      const choices: Array<{ value: string; description: string }> = []
-      for (const [value, description] of Object.entries(decision.criteria)) {
-        if (typeof description !== "string") return undefined
-        choices.push({ value, description })
-      }
-      return { type: "choice", name, instructions, choices }
+      const choices = Object.entries(decision.criteria).map(([value, description]) => ({ value, description }))
+      return choices.every(hasStringDescription) ? { type: "choice", name, instructions, choices } : undefined
     }
-    case "Rate": {
-      const levels: Array<{ label: string; description: string }> = []
-      for (const { label, description } of decision.criteria) {
-        if (typeof description !== "string") return undefined
-        levels.push({ label, description })
-      }
-      return { type: "score", name, instructions, levels }
-    }
+    case "Rate":
+      return decision.criteria.every(hasStringDescription)
+        ? { type: "score", name, instructions, levels: decision.criteria }
+        : undefined
     case "Probability": {
       if (decision.criteria === undefined) return { type: "predicate", name, instructions }
       const { false: no, true: yes } = decision.criteria
@@ -190,6 +182,10 @@ const encodeQuestion = (
     }
   }
 }
+
+const hasStringDescription = <A extends { readonly description: unknown }>(
+  entry: A
+): entry is A & { readonly description: string } => typeof entry.description === "string"
 
 const encodeImage = (image: DecisionModel.Image): string =>
   image.data instanceof URL

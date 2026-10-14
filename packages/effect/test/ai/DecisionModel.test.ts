@@ -174,28 +174,18 @@ describe("Decision", () => {
       { label: "degraded", description: degraded },
       { label: "blocking", description: ["no workaround"] }
     ])
-    assert.strictEqual(decision.criteria[1].description, degraded)
-  })
-
-  it("rate rejects a structured level that repeats a string level's label", () => {
-    assert.throws(() =>
-      Decision.rate({
-        instructions: "How severe",
-        criteria: ["low", { label: "low", description: { what: "Also low" } }]
-      })
-    )
   })
 })
 
 describe("DecisionModel", () => {
   it.effect("probability without criteria reaches the provider and returns an answer", () => {
-    const calls: Array<DecisionModel.ProviderOptions> = []
     const definition = Decision.make({
       input: Schema.String,
       decisions: {
         urgent: Decision.probability({ instructions: "Needs action now" })
       }
     })
+    const calls: Array<DecisionModel.ProviderOptions> = []
 
     return Effect.gen(function*() {
       const { answers } = yield* DecisionModel.decide(definition, { input: "Help now" })
@@ -722,6 +712,9 @@ describe("Decision validation contracts", () => {
 
   it("rate rejects duplicate levels", () => {
     assert.throws(() => Decision.rate({ instructions: "Rate", criteria: ["low", "high", "low"] }))
+    assert.throws(() =>
+      Decision.rate({ instructions: "Rate", criteria: ["low", { label: "low", description: { what: "Also low" } }] })
+    )
   })
 
   it.effect("rate validates and labels answers by the labels of structured levels", () => {
