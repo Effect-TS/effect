@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Scope, Stream } from "effect"
 import {
   ClusterError,
   ClusterSchema,
@@ -405,8 +405,8 @@ describe.concurrent("Runners.makeRpc", () => {
           notify: () => Effect.void
         })
       const a = yield* notify(first).pipe(Effect.forkScoped)
-      // Drains runnable work without reaching the polling deadline: A owns
-      // the reply reader, then B joins it before any reply is persisted.
+      // Drain runnable work without reaching the polling deadline: B joins
+      // the shared reader before any reply is persisted.
       yield* TestClock.adjust(0)
       const b = yield* notify(duplicate).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
       yield* TestClock.adjust(0)
@@ -423,12 +423,13 @@ describe.concurrent("Runners.makeRpc", () => {
           context: first.context
         })
       )
-      yield* TestClock.adjust("1 second")
-      const result = yield* Fiber.join(b)
+      yield* TestClock.adjust(0)
       assert.deepStrictEqual(firstReplies, [])
       assert.deepStrictEqual(duplicateReplies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag), [
         Exit.succeed(42)
       ])
+      assert.strictEqual(finalized, 2, "both callers release their local wake handlers without polling")
+      const result = yield* Fiber.join(b)
       assert.isTrue(Option.isSome(result), "the remaining caller must complete")
     }).pipe(Effect.provide(layerLocalRunners((storage) => ({
       ...storage,
@@ -438,8 +439,138 @@ describe.concurrent("Runners.makeRpc", () => {
             finalized++
           }))
         )
-    }))))
+    }), ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))))
   })
+
+  for (const teardown of ["last-waiter cancellation", "runner shutdown"] as const) {
+    it.effect(
+      `releases a shared local stream awaiting acknowledgment on ${teardown}`,
+      () =>
+        Effect.gen(function*() {
+          let finalized = 0
+          let callersExited = 0
+          const runnerScope = yield* Scope.make()
+          yield* Effect.addFinalizer(() => Scope.close(runnerScope, Exit.void))
+          const context = yield* Layer.buildWithScope(
+            layerLocalRunners((storage) => ({
+              ...storage,
+              registerReplyHandler: (message) =>
+                storage.registerReplyHandler(message).pipe(
+                  Effect.ensuring(Effect.sync(() => {
+                    finalized++
+                  }))
+                )
+            }), ShardingConfig.layer({ entityReplyPollInterval: "1 hour" })),
+            runnerScope
+          )
+          const runners = Context.get(context, Runners.Runners)
+          const storage = Context.get(context, MessageStorage.MessageStorage)
+          const snowflake = Context.get(context, Snowflake.Generator)
+          const requestId = snowflake.nextUnsafe()
+          const received: Array<Array<Reply.Reply<SendRpc>>> = [[], []]
+          const chunkReceived = yield* Deferred.make<void>()
+          const messages = received.map((replies) =>
+            makeOutgoingRequest(TestRpcStream, requestId, (reply) =>
+              Effect.gen(function*() {
+                replies.push(reply)
+                if (received.every((replies) => replies.length === 1)) {
+                  yield* Deferred.succeed(chunkReceived, undefined)
+                }
+                // Intentionally do not acknowledge this chunk.
+              }))
+          )
+          const notify = (message: Message.OutgoingRequest<SendRpc>) =>
+            runners.notifyLocal({
+              message,
+              discard: false,
+              notify: () => Effect.void
+            })
+          // Caller fibers belong to the test's outer scope, NOT runnerScope.
+          // Closing the runner must stop its pump, not merely cancel its callers.
+          const a = yield* notify(messages[0]).pipe(
+            Effect.ensuring(Effect.sync(() => {
+              callersExited++
+            })),
+            Effect.forkScoped
+          )
+          yield* TestClock.adjust(0)
+          const b = yield* notify(messages[1]).pipe(
+            Effect.ensuring(Effect.sync(() => {
+              callersExited++
+            })),
+            Effect.forkScoped
+          )
+          yield* TestClock.adjust(0)
+          const chunk = new Reply.Chunk<typeof TestRpcStream>({
+            id: snowflake.nextUnsafe(),
+            requestId,
+            sequence: 0,
+            values: [1]
+          })
+          yield* storage.saveReply(
+            new Reply.ReplyWithContext({
+              reply: chunk,
+              rpc: messages[0].rpc,
+              context: messages[0].context
+            })
+          )
+          yield* TestClock.adjust(0)
+          assert.deepStrictEqual(received, [[chunk], [chunk]])
+          yield* Deferred.await(chunkReceived)
+
+          let closed = false
+          const closing = yield* (teardown === "last-waiter cancellation"
+            ? Effect.gen(function*() {
+              yield* Fiber.interrupt(a)
+              assert.strictEqual(finalized, 1, "the surviving caller keeps its wake handler")
+              yield* Fiber.interrupt(b)
+            })
+            : Scope.close(runnerScope, Exit.void)).pipe(
+              Effect.tap(() =>
+                Effect.sync(() => {
+                  closed = true
+                })
+              ),
+              Effect.forkScoped
+            )
+          yield* TestClock.adjust(0)
+          assert.isTrue(closed, "teardown must not wait for the withheld acknowledgment")
+          assert.strictEqual(callersExited, 2, "both outer-scope callers must exit")
+          assert.strictEqual(finalized, 2, "both local wake handlers must finalize")
+          yield* Fiber.join(closing)
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(a)))
+          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(b)))
+
+          if (teardown === "runner shutdown") return
+          // Clear the intentionally unacknowledged persisted chunk, then reuse
+          // the request ID immediately: no stale pump may consume its reply.
+          yield* storage.clearReplies(requestId)
+          const reusedReplies: Array<Reply.Reply<SendRpc>> = []
+          const reused = makeOutgoingRequest(TestRpcStream, requestId, (reply) =>
+            Effect.sync(() => {
+              reusedReplies.push(reply)
+            }))
+          const pending = yield* notify(reused).pipe(Effect.forkScoped)
+          yield* TestClock.adjust(0)
+          const terminal = new Reply.WithExit<SendRpc>({
+            id: snowflake.nextUnsafe(),
+            requestId,
+            exit: Exit.void
+          })
+          yield* storage.saveReply(
+            new Reply.ReplyWithContext({
+              reply: terminal,
+              rpc: reused.rpc,
+              context: reused.context
+            })
+          )
+          yield* TestClock.adjust(0)
+          assert.deepStrictEqual(reusedReplies, [terminal])
+          assert.strictEqual(finalized, 3, "the replacement caller also releases its handler")
+          yield* Fiber.join(pending)
+        })
+    )
+  }
 
   it.effect("wakes local streams for acknowledged chunks without polling", () => {
     let finalized = 0
