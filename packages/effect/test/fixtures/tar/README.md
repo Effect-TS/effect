@@ -9,7 +9,3 @@ Gzipped archives decoded by `test/encoding/Tar.test.ts`.
 - `ustar`, `v7`: GNU tar 1.35, `--format=ustar` (prefixed paths) and
   `--format=v7`, with `--owner=0 --group=0 --numeric-owner`.
 - `sparse-gnu`, `sparse-pax`: GNU tar 1.35 `--sparse` over a 64 KiB sparse file.
-- `go`: Go 1.26 `archive/tar` with `Format: tar.FormatPAX`, which writes USTAR
-  unless a field needs PAX. It starts with a PAX global header and covers the
-  USTAR prefix, PAX `path`/`linkpath`/`uid`/`gid`, a `SCHILY.xattr.*` record and
-  device numbers.
