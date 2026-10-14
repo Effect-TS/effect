@@ -376,36 +376,41 @@ const watchTree = (
      * files as created. Deleting the root ends the stream; a watch that
      * fails takes the whole stream down with it.
      */
-    const add: (directory: string, announce: boolean) => Effect.Effect<void> = Effect.fnUntraced(
-      function*(directory, announce) {
-        const existing = watchers.get(directory)
-        if (existing !== undefined) return yield* Deferred.await(existing.ready)
-        // Share readiness with concurrent discovery of the same subtree.
-        const installed = yield* Deferred.make<void>()
-        const ready = yield* Deferred.make<void>()
-        const fiber = yield* watchDirectory(fs, directory, () => {
-          Deferred.doneUnsafe(ready, Effect.void)
-        }).pipe(
-          Stream.runForEach((event) => handle(directory, event)),
-          Effect.matchEffect({
-            onFailure: (error) => Queue.fail(queue, error),
-            onSuccess: () => directory === root ? Queue.end(queue) : Effect.void
-          }),
-          Effect.asVoid,
-          Effect.ensuring(Deferred.succeed(ready, undefined)),
-          Effect.ensuring(Effect.sync(() => watchers.delete(directory))),
-          Effect.forkIn(scope)
-        )
-        watchers.set(directory, { fiber, ready: installed })
-        yield* Deferred.await(ready)
-        const found = yield* children(directory)
-        if (announce) {
-          for (const file of found.files) yield* offer({ _tag: "Create", path: file })
-        }
-        for (const child of found.directories) yield* add(child, announce)
-        yield* Deferred.succeed(installed, undefined)
-      }
-    )
+    const add: (directory: string, announce: boolean) => Effect.Effect<void> = (directory, announce) =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
+          const existing = watchers.get(directory)
+          if (existing !== undefined) return yield* restore(Deferred.await(existing.ready))
+          // Share readiness with concurrent discovery of the same subtree.
+          const installed = yield* Deferred.make<void>()
+          const ready = yield* Deferred.make<void>()
+          const fiber = yield* watchDirectory(fs, directory, () => {
+            Deferred.doneUnsafe(ready, Effect.void)
+          }).pipe(
+            Stream.runForEach((event) => handle(directory, event)),
+            Effect.matchEffect({
+              onFailure: (error) => Queue.fail(queue, error),
+              onSuccess: () => directory === root ? Queue.end(queue) : Effect.void
+            }),
+            Effect.asVoid,
+            Effect.ensuring(Deferred.succeed(ready, undefined)),
+            Effect.ensuring(Effect.sync(() => watchers.delete(directory))),
+            restore,
+            Effect.forkIn(scope)
+          )
+          watchers.set(directory, { fiber, ready: installed })
+          // Publishing shared completion and registering its finalizer must be
+          // atomic: subtree removal can interrupt this discovery owner.
+          yield* restore(Effect.gen(function*() {
+            yield* Deferred.await(ready)
+            const found = yield* children(directory)
+            if (announce) {
+              for (const file of found.files) yield* offer({ _tag: "Create", path: file })
+            }
+            for (const child of found.directories) yield* add(child, announce)
+          })).pipe(Effect.ensuring(Deferred.succeed(installed, undefined)))
+        })
+      )
 
     /** Stops watching `directory` and everything under it. */
     const remove = (directory: string) =>
