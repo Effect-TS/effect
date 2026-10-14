@@ -56,7 +56,11 @@ export const make = Effect.fnUntraced(
               questions[key] = { type: "choice", instructions: decision.instructions, criteria: decision.criteria }
               break
             case "Rate":
-              questions[key] = { type: "score", instructions: decision.instructions, criteria: decision.criteria }
+              questions[key] = {
+                type: "score",
+                instructions: decision.instructions,
+                criteria: decision.criteria.map((level) => level.description)
+              }
               break
             case "Probability":
               questions[key] = { type: "noul", instructions: decision.instructions, criteria: decision.criteria }
@@ -81,7 +85,7 @@ export const make = Effect.fnUntraced(
               const probabilities: Record<string, number> = Object.create(null)
               for (let index = 0; index < levels.length; index++) {
                 const probability = answer.probabilities[String(index)]
-                if (probability !== undefined) probabilities[levels[index]] = probability
+                if (probability !== undefined) probabilities[levels[index].label] = probability
               }
               answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
               break

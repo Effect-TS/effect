@@ -67,6 +67,16 @@ const systemOneResponse = {
   usage: { input_tokens: 312, output_tokens: 48 }
 }
 
+const Structured = Decision.make({
+  input: Schema.String,
+  decisions: {
+    severity: Decision.rate({
+      instructions: ["How severe?"],
+      criteria: ["Minor", { label: "Critical", description: { impact: "outage" } }]
+    })
+  }
+})
+
 describe("TypeSafeDecisionModel", () => {
   it.effect("accepts rounded choice probabilities that total 0.99", () =>
     Effect.gen(function*() {
@@ -655,8 +665,36 @@ describe("TypeSafeDecisionModel", () => {
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "RateLimitError")
     }))
-})
 
+  it.effect("sends structured descriptions and maps score indices to labels", () =>
+    Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(Structured, { input: "Checkout is down" })
+      assert.strictEqual(result.answers.severity.label, "Critical")
+      assert.deepStrictEqual({ ...result.answers.severity.probabilities }, { Minor: 0.1, Critical: 0.9 })
+    }).pipe(
+      Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+      Effect.provide(makeClientLayer((request) =>
+        Effect.gen(function*() {
+          const body = yield* getRequestBody(request)
+          assert.deepStrictEqual(body.questions, {
+            severity: { type: "score", instructions: ["How severe?"], criteria: ["Minor", { impact: "outage" }] }
+          })
+          return jsonResponse(request, {
+            model: "jev-latest",
+            answers: {
+              severity: {
+                type: "score",
+                score: 0.9,
+                probabilities: { "0": 0.1, "1": 0.9 },
+                confidence: 0.9,
+                legend: { "0": "Minor", "1": { impact: "outage" } }
+              }
+            }
+          })
+        })
+      ))
+    ))
+})
 const makeClientLayer = (
   handler: (
     request: HttpClientRequest.HttpClientRequest

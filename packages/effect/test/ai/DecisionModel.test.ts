@@ -105,7 +105,11 @@ describe("Decision", () => {
       technical: "bugs",
       sales: "pricing"
     })
-    assert.deepStrictEqual(TicketTriage.decisions.frustration.criteria, ["calm", "frustrated", "angry"])
+    assert.deepStrictEqual(TicketTriage.decisions.frustration.criteria, [
+      { label: "calm", description: "calm" },
+      { label: "frustrated", description: "frustrated" },
+      { label: "angry", description: "angry" }
+    ])
     assert.deepStrictEqual(TicketTriage.decisions.urgent.criteria, {
       false: "No time pressure",
       true: "Needs action now"
@@ -672,6 +676,30 @@ describe("Decision validation contracts", () => {
 
   it("rate rejects duplicate levels", () => {
     assert.throws(() => Decision.rate({ instructions: "Rate", criteria: ["low", "high", "low"] }))
+    assert.throws(() =>
+      Decision.rate({ instructions: "Rate", criteria: ["low", { label: "low", description: { what: "Also low" } }] })
+    )
+  })
+
+  it.effect("rate validates and labels answers by the labels of structured levels", () => {
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: {
+        severity: Decision.rate({
+          instructions: { question: "How severe?" },
+          criteria: ["low", { label: "high", description: { impact: "outage" } }]
+        })
+      }
+    })
+
+    return Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(definition, { input: "Export fails" })
+
+      assert.strictEqual(answers.severity.label, "high")
+      assert.deepStrictEqual(answers.severity.probabilities, { low: 0.1, high: 0.9 })
+    }).pipe(Effect.provide(succeedWith({
+      severity: { _tag: "Rate", rating: 0.9, probabilities: { low: 0.1, high: 0.9 } }
+    })))
   })
 
   it.effect("rate derives the argmax label without a provider label", () =>

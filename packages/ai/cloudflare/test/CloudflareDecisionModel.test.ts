@@ -72,6 +72,16 @@ const clientLayer = (
 const layer = (answers: unknown) =>
   CloudflareDecisionModel.layer({ model: "clef" }).pipe(Layer.provide(clientLayer(answers)))
 
+const Structured = Decision.make({
+  input: Schema.String,
+  decisions: {
+    severity: Decision.rate({
+      instructions: ["How severe?"],
+      criteria: ["Minor", { label: "Critical", description: { impact: "outage" } }]
+    })
+  }
+})
+
 describe("CloudflareDecisionModel", () => {
   it.effect("sends every decision as a question and maps the answers", () =>
     Effect.gen(function*() {
@@ -104,7 +114,7 @@ describe("CloudflareDecisionModel", () => {
               severity: {
                 type: "score",
                 instructions: Triage.decisions.severity.instructions,
-                criteria: Triage.decisions.severity.criteria
+                criteria: ["Minor", "Major", "Critical"]
               },
               urgent: {
                 type: "noul",
@@ -216,4 +226,29 @@ describe("CloudflareDecisionModel", () => {
       }))
     )
   })
+
+  it.effect("sends structured descriptions and maps score indices to labels", () =>
+    Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(Structured, { input: "Checkout is down" })
+      assert.strictEqual(result.answers.severity.label, "Critical")
+      assert.deepStrictEqual({ ...result.answers.severity.probabilities }, { Minor: 0.1, Critical: 0.9 })
+    }).pipe(
+      Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
+      Effect.provide(clientLayer({
+        severity: {
+          type: "score",
+          score: 0.9,
+          probabilities: { "0": 0.1, "1": 0.9 },
+          confidence: 0.9,
+          legend: { "0": "Minor", "1": { impact: "outage" } }
+        }
+      }, (request) => {
+        assert.strictEqual(request.body._tag, "Uint8Array")
+        if (request.body._tag === "Uint8Array") {
+          assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).questions, {
+            severity: { type: "score", instructions: ["How severe?"], criteria: ["Minor", { impact: "outage" }] }
+          })
+        }
+      }))
+    ))
 })

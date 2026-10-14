@@ -85,6 +85,100 @@ const requestBody = (request: HttpClientRequest.HttpClientRequest) => {
 }
 
 describe("OpenAiDecisionModel", () => {
+  it.effect("keeps explicit Rate labels separate from their string descriptions", () => {
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: {
+        severity: Decision.rate({
+          instructions: "Severity?",
+          criteria: ["Minor", { label: "Critical", description: "Checkout unavailable" }]
+        })
+      }
+    })
+    return Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(definition, { input: "Checkout is down" })
+      assert.strictEqual(result.answers.severity.label, "Critical")
+      assert.deepStrictEqual({ ...result.answers.severity.probabilities }, { Minor: 0.1, Critical: 0.9 })
+    }).pipe(
+      Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
+      Effect.provide(clientLayer(
+        response([{
+          name: "severity",
+          type: "score",
+          score: 0.9,
+          confidence: 0.9,
+          probabilities: [{ value: 0, label: "ignored", probability: 0.1 }, {
+            value: 1,
+            label: "ignored",
+            probability: 0.9
+          }]
+        }]),
+        (request) => {
+          assert.deepStrictEqual(requestBody(request).questions, [{
+            type: "score",
+            name: "severity",
+            instructions: "Severity?",
+            levels: [{ label: "Minor", description: "Minor" }, {
+              label: "Critical",
+              description: "Checkout unavailable"
+            }]
+          }])
+        }
+      ))
+    )
+  })
+
+  it.effect("serializes structured instructions and descriptions to strings, including null choices", () => {
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: {
+        team: Decision.classify({
+          instructions: { question: "Team?" },
+          criteria: { billing: null, technical: { handles: "Outages" } }
+        }),
+        severity: Decision.rate({
+          instructions: ["Severity?"],
+          criteria: ["Minor", "Major", { label: "Critical", description: ["outage"] }]
+        }),
+        urgent: Decision.probability({
+          instructions: { question: "Urgent?" },
+          criteria: { false: ["Can wait"], true: { action: "Act now" } }
+        })
+      }
+    })
+    return DecisionModel.decide(definition, { input: "Checkout is down" }).pipe(
+      Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
+      Effect.provide(clientLayer(response(answers), (request) => {
+        assert.deepStrictEqual(requestBody(request).questions, [
+          {
+            type: "choice",
+            name: "team",
+            instructions: "{\"question\":\"Team?\"}",
+            choices: [
+              { value: "billing", description: "null" },
+              { value: "technical", description: "{\"handles\":\"Outages\"}" }
+            ]
+          },
+          {
+            type: "score",
+            name: "severity",
+            instructions: "[\"Severity?\"]",
+            levels: [
+              { label: "Minor", description: "Minor" },
+              { label: "Major", description: "Major" },
+              { label: "Critical", description: "[\"outage\"]" }
+            ]
+          },
+          {
+            type: "predicate",
+            name: "urgent",
+            instructions: "{\"question\":\"Urgent?\"}\n\nfalse: [\"Can wait\"]\ntrue: {\"action\":\"Act now\"}"
+          }
+        ])
+      }))
+    )
+  })
+
   it.effect("sends every decision as a named question and keys the answers by name", () =>
     Effect.gen(function*() {
       const result = yield* DecisionModel.decide(Triage, { input })

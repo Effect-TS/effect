@@ -138,11 +138,41 @@ describe("Decision", () => {
     })
   })
 
-  it("instructions must be a string", () => {
-    Decision.classify({
+  it("structured descriptions preserve classify and rate label inference", () => {
+    const department = Decision.classify({
+      instructions: { question: "Which team?" },
+      criteria: { billing: { handles: "payments" }, orders: ["delivery"], other: null }
+    })
+    const severity = Decision.rate({
+      instructions: ["How severe?"],
+      criteria: ["low", { label: "high", description: { impact: "outage" } }]
+    })
+    const definition = Decision.make({ input: Schema.String, decisions: { department, severity } })
+    const result = DecisionModel.decide(definition, { input: "Export fails" })
+    type Result = typeof result extends Effect.Effect<infer A, any, any> ? A : never
+
+    expect<Result["answers"]["department"]["label"]>().type.toBe<"billing" | "orders" | "other">()
+    expect<Result["answers"]["severity"]["label"]>().type.toBe<"low" | "high">()
+    expect(Decision.probability).type.toBeCallableWith({
+      instructions: { question: "Urgent?" },
+      criteria: { false: { action: "wait" }, true: ["act now"] }
+    })
+  })
+
+  it("structured levels require labels and non-null descriptions", () => {
+    Decision.rate({
+      instructions: "How severe?",
       // @ts-expect-error is not assignable to type
-      instructions: ["Which team"],
-      criteria: { billing: "payments" }
+      criteria: ["low", { description: { impact: "outage" } }]
+    })
+    Decision.rate({
+      instructions: "How severe?",
+      // @ts-expect-error is not assignable to type
+      criteria: ["low", { label: "high", description: null }]
+    })
+    Decision.probability({
+      // @ts-expect-error is not assignable to type
+      instructions: null
     })
   })
 
