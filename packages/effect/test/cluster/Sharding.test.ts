@@ -2208,8 +2208,8 @@ describe.concurrent("Sharding active teardowns", () => {
           runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
           shardsPerGroup: 1,
           entityTerminationTimeout: 0,
-          entityMessagePollInterval: 10,
-          refreshAssignmentsInterval: 10,
+          entityMessagePollInterval: 1000,
+          refreshAssignmentsInterval: 1000,
           sendRetryInterval: 10
         }))
       )
@@ -2228,8 +2228,10 @@ describe.concurrent("Sharding active teardowns", () => {
         assert.strictEqual(Queue.sizeUnsafe(state.envelopes), 1)
 
         storageState.assignSelf = false
+        // The acquisition loop waits one second between passes. Advance by
+        // that interval instead of repeatedly waking 10ms polling loops.
         while (sharding.hasShardId(shardId)) {
-          yield* TestClock.adjust(10)
+          yield* TestClock.adjust(1000)
         }
         while ((yield* sharding.activeEntityCount) > 0) {
           yield* TestClock.adjust(1)
