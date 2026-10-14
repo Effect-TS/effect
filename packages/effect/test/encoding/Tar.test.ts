@@ -228,6 +228,14 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(decode(bytes)), "InvalidHeader")
       }))
 
+    it.effect("fails on an mtime outside the Date range", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("f", "")])
+        // A base-256 mtime of 2^52 seconds
+        patchHeader(bytes, 136, [0x80, 0, 0, 0, 0, 0x10, 0, 0, 0, 0, 0, 0])
+        assert.strictEqual(yield* failure(decode(bytes)), "InvalidHeader")
+      }))
+
     it.effect("reads an empty PAX header that ends an input chunk", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])

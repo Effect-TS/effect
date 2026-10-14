@@ -500,6 +500,7 @@ const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
 const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
 const MAX_META_SIZE = 1024 * 1024 // PAX and GNU long name data
 const PERMISSION_BITS = 0o7777
+const MAX_DATE_MILLIS = 8.64e15 // the range of `Date`
 
 const padding = (size: number): number => (BLOCK - (size % BLOCK)) % BLOCK
 
@@ -988,6 +989,9 @@ class Decoder {
     this.pax = undefined
     this.longName = ""
     this.longLink = ""
+    if (!(Math.abs(raw.mtimeMillis) <= MAX_DATE_MILLIS)) {
+      throw invalidHeader("mtime is out of range")
+    }
     const type = typeOf(raw.typeflag, raw.path)
     const header: Mutable<Header> = {
       path: raw.path,
