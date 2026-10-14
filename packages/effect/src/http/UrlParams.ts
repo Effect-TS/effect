@@ -564,7 +564,9 @@ export const isRedactedName = (
  * Accepts absolute URLs, relative URLs such as `/path?sig=...`, and bare
  * search strings such as `?sig=...`. Userinfo in absolute or protocol-relative
  * URLs is always replaced with `REDACTED:REDACTED`, even without a query or with
- * an empty redaction list. Query values whose decoded names match
+ * an empty redaction list. Recognition follows URL parsing rules for leading
+ * whitespace, embedded tabs and newlines, and special-scheme slash variants,
+ * while preserving the original spelling outside userinfo. Query values whose decoded names match
  * `isRedactedName` are replaced with `REDACTED`; the rest of the string,
  * including the fragment, is kept verbatim. When `redactedNames` is omitted, the current
  * fiber's `CurrentRedactedNames` is used, falling back to the defaults outside
@@ -587,7 +589,27 @@ export const redactUrl = (
   url: string,
   redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
 ): string => {
-  url = url.replace(/^((?:[a-z][a-z\d+.-]*:)?\/\/)[^/?#]*@/i, "$1REDACTED:REDACTED@")
+  // Recognize authority boundaries using the URL parser's whitespace and
+  // special-scheme rules, but splice the raw string rather than re-encode it.
+  let normalized = ""
+  const offsets: Array<number> = []
+  for (let i = 0; i < url.length; i++) {
+    const code = url.charCodeAt(i)
+    if (code === 9 || code === 10 || code === 13 || (normalized === "" && code <= 32)) continue
+    normalized += url[i]
+    offsets.push(i)
+  }
+  const authority = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]{2,})/i.exec(normalized)
+  if (authority) {
+    const start = authority[0].length
+    const special = authority[1] !== undefined || !authority[0].includes(":")
+    const rest = normalized.slice(start)
+    const end = rest.search(special ? /[/\\?#]/ : /[/?#]/)
+    const userinfoEnd = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
+    if (userinfoEnd !== -1) {
+      url = url.slice(0, offsets[start]) + "REDACTED:REDACTED" + url.slice(offsets[start + userinfoEnd])
+    }
+  }
   const queryStart = url.indexOf("?")
   if (queryStart === -1) return url
   const hashStart = url.indexOf("#")
