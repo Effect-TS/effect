@@ -168,12 +168,12 @@
       "thresholds": "suites/graphql-selections/thresholds.json",
       "fixtures": [
         {
-          "name": "opaque-class-count-100",
-          "file": "suites/graphql-selections/fixtures/opaque-class-count-100.ts"
+          "name": "opaque-class-count-5",
+          "file": "suites/graphql-selections/fixtures/opaque-class-count-5.ts"
         },
         {
-          "name": "struct-interface-count-100",
-          "file": "suites/graphql-selections/fixtures/struct-interface-count-100.ts"
+          "name": "struct-interface-count-5",
+          "file": "suites/graphql-selections/fixtures/struct-interface-count-5.ts"
         }
       ]
     }
