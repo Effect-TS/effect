@@ -161,6 +161,12 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
  * after unhandled failures, and flushes during scope finalization up to
  * `shutdownTimeout`.
  *
+ * Optional gzip compression uses `HttpClientRequest.compressBody` before the
+ * retry loop, so retries reuse the compressed bytes. Bodies smaller than 1KB
+ * remain uncompressed. Compression requires runtime `CompressionStream` support;
+ * compression failures follow the same temporary-disable behavior as transport
+ * failures and do not fail flushing or shutdown.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -169,6 +175,8 @@ export const make: (
   options: {
     readonly url: string
     readonly headers: Headers.Input | undefined
+    /** Gzip uses the default 1KB minimum body size; smaller batches remain uncompressed. */
+    readonly compression?: "gzip" | "none" | undefined
     readonly label: string
     readonly exportInterval: Duration.Input
     readonly maxBatchSize: number | "disabled"
@@ -218,9 +226,12 @@ export const make: (
     const items = buffer
     buffer = []
     const [body, onSuccess] = options.body(items)
-    return client.execute(
-      HttpClientRequest.setBody(request, body)
-    ).pipe(
+    const batchRequest = HttpClientRequest.setBody(request, body)
+    // Compress before client.execute so transient retries reuse the encoded bytes.
+    const response = options.compression === "gzip"
+      ? HttpClientRequest.compressBody(batchRequest, "gzip").pipe(Effect.flatMap(client.execute))
+      : client.execute(batchRequest)
+    return response.pipe(
       Effect.andThen(onSuccess),
       Effect.asVoid,
       Effect.withTracerEnabled(false)
