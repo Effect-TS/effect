@@ -353,7 +353,9 @@ Missing key
         emptyRedaction: true
       },
       { prefix: " https://", query: "", expectedQuery: "", emptyRedaction: false },
-      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true }
+      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true },
+      { prefix: "ht\ttps:\n//", query: "", expectedQuery: "", emptyRedaction: false },
+      { prefix: "https:/\\", query: "", expectedQuery: "", emptyRedaction: true }
     ])("redacts userinfo with prefix $prefix, query $query and empty redaction list $emptyRedaction", async ({
       emptyRedaction,
       expectedQuery,

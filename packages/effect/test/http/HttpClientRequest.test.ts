@@ -331,7 +331,9 @@ describe("HttpClientRequest", () => {
         emptyRedaction: true
       },
       { prefix: " https://", query: "", expectedQuery: "", emptyRedaction: false },
-      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true }
+      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true },
+      { prefix: "ht\ttps:\n//", query: "", expectedQuery: "", emptyRedaction: false },
+      { prefix: "https:/\\", query: "", expectedQuery: "", emptyRedaction: true }
     ])("redacts userinfo with prefix $prefix, query $query and empty redaction list $emptyRedaction", async ({
       emptyRedaction,
       expectedQuery,
@@ -345,7 +347,7 @@ describe("HttpClientRequest", () => {
         const output = Formatter.format(request)
         strictEqual(request.url, url)
         strictEqual(json.url, `${prefix}REDACTED:REDACTED@api.test/path${expectedQuery}`)
-        assertTrue(output.includes(`${prefix}REDACTED:REDACTED@api.test/path${expectedQuery}`))
+        assertTrue(output.includes(JSON.stringify(`${prefix}REDACTED:REDACTED@api.test/path${expectedQuery}`)))
         assertFalse(output.includes("user:password"))
       })
       await Effect.runPromise(
