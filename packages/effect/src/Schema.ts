@@ -2985,7 +2985,7 @@ export interface Enum<A extends { [x: string]: string | number }>
  * @category constructors
  * @since 4.0.0
  */
-export function Enum<A extends { [x: string]: string | number }>(enums: A): Enum<A> {
+export function Enum<const A extends { [x: string]: string | number }>(enums: A): Enum<A> {
   return make(
     new SchemaAST.Enum(
       Object.keys(enums).filter(
