@@ -339,15 +339,28 @@ Missing key
 
   describe("HttpClientError", () => {
     it.each([
-      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=REDACTED&page=1", emptyRedaction: false },
-      { query: "", expectedQuery: "", emptyRedaction: false },
-      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=query-secret&page=1", emptyRedaction: true }
-    ])("redacts userinfo with query $query and empty redaction list $emptyRedaction", async ({
+      {
+        prefix: "https://",
+        query: "?sig=query-secret&page=1",
+        expectedQuery: "?sig=REDACTED&page=1",
+        emptyRedaction: false
+      },
+      { prefix: "https://", query: "", expectedQuery: "", emptyRedaction: false },
+      {
+        prefix: "https://",
+        query: "?sig=query-secret&page=1",
+        expectedQuery: "?sig=query-secret&page=1",
+        emptyRedaction: true
+      },
+      { prefix: " https://", query: "", expectedQuery: "", emptyRedaction: false },
+      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true }
+    ])("redacts userinfo with prefix $prefix, query $query and empty redaction list $emptyRedaction", async ({
       emptyRedaction,
       expectedQuery,
+      prefix,
       query
     }) => {
-      const url = `https://user:password@api.test/path${query}`
+      const url = `${prefix}user:password@api.test/path${query}`
       const request = HttpClientRequest.get(url)
       const inspect = Effect.sync(() => {
         const error = new HttpClientError.HttpClientError({
@@ -355,7 +368,7 @@ Missing key
         })
         const message = error.message
         strictEqual(request.url, url)
-        strictEqual(message, `Transport error (GET https://REDACTED:REDACTED@api.test/path${expectedQuery})`)
+        strictEqual(message, `Transport error (GET ${prefix}REDACTED:REDACTED@api.test/path${expectedQuery})`)
       })
       await Effect.runPromise(
         emptyRedaction

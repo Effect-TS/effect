@@ -317,22 +317,35 @@ describe("HttpClientRequest", () => {
 
   describe("toJSON", () => {
     it.each([
-      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=REDACTED&page=1", emptyRedaction: false },
-      { query: "", expectedQuery: "", emptyRedaction: false },
-      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=query-secret&page=1", emptyRedaction: true }
-    ])("redacts userinfo with query $query and empty redaction list $emptyRedaction", async ({
+      {
+        prefix: "https://",
+        query: "?sig=query-secret&page=1",
+        expectedQuery: "?sig=REDACTED&page=1",
+        emptyRedaction: false
+      },
+      { prefix: "https://", query: "", expectedQuery: "", emptyRedaction: false },
+      {
+        prefix: "https://",
+        query: "?sig=query-secret&page=1",
+        expectedQuery: "?sig=query-secret&page=1",
+        emptyRedaction: true
+      },
+      { prefix: " https://", query: "", expectedQuery: "", emptyRedaction: false },
+      { prefix: "https:////", query: "", expectedQuery: "", emptyRedaction: true }
+    ])("redacts userinfo with prefix $prefix, query $query and empty redaction list $emptyRedaction", async ({
       emptyRedaction,
       expectedQuery,
+      prefix,
       query
     }) => {
-      const url = `https://user:password@api.test/path${query}`
+      const url = `${prefix}user:password@api.test/path${query}`
       const request = HttpClientRequest.get(url)
       const inspect = Effect.sync(() => {
         const json = request.toJSON() as { readonly url: string }
         const output = Formatter.format(request)
         strictEqual(request.url, url)
-        strictEqual(json.url, `https://REDACTED:REDACTED@api.test/path${expectedQuery}`)
-        assertTrue(output.includes(`https://REDACTED:REDACTED@api.test/path${expectedQuery}`))
+        strictEqual(json.url, `${prefix}REDACTED:REDACTED@api.test/path${expectedQuery}`)
+        assertTrue(output.includes(`${prefix}REDACTED:REDACTED@api.test/path${expectedQuery}`))
         assertFalse(output.includes("user:password"))
       })
       await Effect.runPromise(
