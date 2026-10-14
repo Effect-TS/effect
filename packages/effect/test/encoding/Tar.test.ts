@@ -34,6 +34,14 @@ const decode = (bytes: Uint8Array, chunkSize = 4096) =>
     Stream.runCollect
   )
 
+// Overwrites bytes of the first header block and fixes its checksum
+const patchHeader = (archive: Uint8Array, offset: number, bytes: string | ArrayLike<number>) => {
+  archive.set(typeof bytes === "string" ? textEncoder.encode(bytes) : bytes, offset)
+  archive.fill(0x20, 148, 156)
+  const checksum = archive.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
+  archive.set(textEncoder.encode(`${checksum.toString(8).padStart(6, "0")}\0`), 148)
+}
+
 const failure = <A>(effect: Effect.Effect<A, unknown>) =>
   Effect.map(Effect.flip(effect), (error) => Tar.isTarError(error) ? error.kind : error)
 
@@ -116,6 +124,16 @@ describe("Tar", () => {
         const bodies = Array.from({ length: 300 }, (_, i) => String(i % 10).repeat((i * 37) % 1500))
         const output = yield* decode(yield* encode(bodies.map((body, i) => Tar.file(`f${i}`, body))))
         assert.deepStrictEqual(output.map((entry) => text(entry.body)), bodies)
+      }))
+
+    it.effect("keeps only the permission bits of mode", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("f", "", { mode: 0o100755 })])
+        assert.strictEqual(text(bytes.subarray(100, 107)), "0000755")
+        // GNU tar --format=oldgnu writes file type bits into mode
+        patchHeader(bytes, 100, "0100644")
+        const [entry] = yield* decode(bytes)
+        assert.strictEqual(entry.header.mode, 0o644)
       }))
 
     it.effect("fails on entries that cannot be written", () =>
@@ -213,12 +231,9 @@ describe("Tar", () => {
     it.effect("reads an empty PAX header that ends an input chunk", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
-        // Drop the PAX data block and set the PAX header size to 0, then fix its checksum
+        // Drop the PAX data block and set the PAX header size to 0
         const archive = new Uint8Array([...bytes.subarray(0, 512), ...bytes.subarray(1024)])
-        archive.set(textEncoder.encode("00000000000"), 124)
-        archive.fill(0x20, 148, 156)
-        const checksum = archive.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
-        archive.set(textEncoder.encode(`${checksum.toString(8).padStart(6, "0")}\0`), 148)
+        patchHeader(archive, 124, "00000000000")
         const output = yield* decode(archive, 512)
         assert.deepStrictEqual(output.map((entry) => entry.header.path), ["f"])
       }))

@@ -99,7 +99,8 @@ export type EntryType =
  *
  * `path` and `linkTarget` are archive paths; hard link targets name another
  * entry of the same archive. `mode` holds the permission bits, including
- * setuid, setgid and sticky. `pax` holds the PAX extended header records that
+ * setuid, setgid and sticky; file type bits, as in a `stat` mode, are dropped
+ * when decoding and encoding. `pax` holds the PAX extended header records that
  * are not reflected in the other fields, such as `SCHILY.xattr.*` or `atime`.
  * `devMajor` and `devMinor` are set for device entries only.
  *
@@ -498,6 +499,7 @@ const BLOCK = 512
 const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
 const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
 const MAX_META_SIZE = 1024 * 1024 // PAX and GNU long name data
+const PERMISSION_BITS = 0o7777
 
 const padding = (size: number): number => (BLOCK - (size % BLOCK)) % BLOCK
 
@@ -992,7 +994,7 @@ class Decoder {
       type,
       typeflag: raw.typeflag,
       size: isHeaderOnly(type) ? 0 : raw.size,
-      mode: raw.mode,
+      mode: raw.mode & PERMISSION_BITS,
       uid: raw.uid,
       gid: raw.gid,
       uname: raw.uname,
@@ -1156,7 +1158,7 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   if (size > 0 && isHeaderOnly(header.type)) {
     throw invalidHeader(`${header.type} entry ${JSON.stringify(path)} must have size 0`)
   }
-  const mode = checkNumber("mode", header.mode, MAX_OCTAL_7)
+  const mode = checkNumber("mode", header.mode, Number.MAX_SAFE_INTEGER) & PERMISSION_BITS
   const uid = checkNumber("uid", header.uid, Number.MAX_SAFE_INTEGER)
   const gid = checkNumber("gid", header.gid, Number.MAX_SAFE_INTEGER)
   const devMajor = checkNumber("devMajor", header.devMajor, MAX_OCTAL_7)
