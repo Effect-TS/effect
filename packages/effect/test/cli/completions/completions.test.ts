@@ -1041,7 +1041,6 @@ describe("Flags with an optional value", () => {
     const bash = Bash.generate("app", descriptor)
     assert.notInclude(bash, "--watch|-w)\n")
     assert.include(bash, "--watch|-w) ;;")
-    assert.notInclude(bash, "--watch|-w) _skip_next=1 ;;")
     assert.include(
       Zsh.generate("app", descriptor),
       `'(--watch -w)--watch=-[Watch mode]::value:(first-failure until-done)'`

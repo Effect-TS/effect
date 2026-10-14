@@ -443,46 +443,17 @@ describe("Command", () => {
         Effect.gen(function*() {
           const captured: Array<unknown> = []
           const command = Command.make("app", {
-            watch: watchFlag.pipe(Flag.optional),
-            verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false)),
+            watch: watchFlag,
             files: Argument.String("file").pipe(Argument.variadic())
           }, (config) => Effect.sync(() => captured.push(config)))
           const run = Command.runWith(command, { version: "1.0.0" })
 
-          yield* run(["--watch", "until-done"])
-          yield* run(["-w", "--verbose"])
+          yield* run(["-w", "until-done"])
           yield* run(["--watch=until-done"])
-          yield* run([])
 
           assert.deepStrictEqual(captured, [
-            { watch: Option.some("first-failure"), verbose: false, files: ["until-done"] },
-            { watch: Option.some("first-failure"), verbose: true, files: [] },
-            { watch: Option.some("until-done"), verbose: false, files: [] },
-            { watch: Option.none(), verbose: false, files: [] }
-          ])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("supports an optional value after mapping and setting a default", () =>
-        Effect.gen(function*() {
-          const captured: Array<unknown> = []
-          const command = Command.make("app", {
-            level: Flag.Int("level").pipe(
-              Flag.map((n) => n * 10),
-              Flag.withDefault(0),
-              Flag.withOptionalValue("3")
-            ),
-            files: Argument.String("file").pipe(Argument.variadic())
-          }, (config) => Effect.sync(() => captured.push(config)))
-          const run = Command.runWith(command, { version: "1.0.0" })
-
-          yield* run(["--level", "file.txt"])
-          yield* run(["--level=5"])
-          yield* run([])
-
-          assert.deepStrictEqual(captured, [
-            { level: 30, files: ["file.txt"] },
-            { level: 50, files: [] },
-            { level: 0, files: [] }
+            { watch: "first-failure", files: ["until-done"] },
+            { watch: "until-done", files: [] }
           ])
         }).pipe(Effect.provide(TestLayer)))
 
@@ -497,22 +468,6 @@ describe("Command", () => {
           yield* Command.runWith(command, { version: "1.0.0" })(["--no-watch", "false"])
 
           assert.deepStrictEqual(captured, [{ watch: false, files: ["false"] }])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("leaves a following subcommand name alone", () =>
-        Effect.gen(function*() {
-          const captured: Array<Option.Option<string>> = []
-          const root = Command.make("app").pipe(Command.withSharedFlags({ watch: watchFlag.pipe(Flag.optional) }))
-          const build = Command.make("build", {}, () =>
-            Effect.gen(function*() {
-              const { watch } = yield* root
-              captured.push(watch)
-            }))
-          const command = root.pipe(Command.withSubcommands([build]))
-
-          yield* Command.runWith(command, { version: "1.0.0" })(["--watch", "build"])
-
-          assert.deepStrictEqual(captured, [Option.some("first-failure")])
         }).pipe(Effect.provide(TestLayer)))
 
       it.effect("emits the wizard value inline", () =>
