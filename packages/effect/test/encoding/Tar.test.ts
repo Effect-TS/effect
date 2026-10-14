@@ -1,16 +1,21 @@
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import type { Cause } from "effect"
-import { Array as Arr, Channel, Effect, Exit, Fiber, Queue, Result, Stream } from "effect"
+import { Array as Arr, Channel, Effect, Exit, Fiber, FileSystem, Path, Queue, Result, Stream } from "effect"
 import * as Tar from "effect/encoding/Tar"
-import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
 // Fixtures were written by GNU tar 1.35; see fixtures/tar/README.md
-const fixture = (name: string): Uint8Array =>
-  gunzipSync(readFileSync(new URL(`../fixtures/tar/${name}.tar.gz`, import.meta.url)))
+const fixture = (name: string) =>
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const path = yield* Path.Path
+    const file = yield* path.fromFileUrl(new URL(`../fixtures/tar/${name}.tar.gz`, import.meta.url))
+    return gunzipSync(yield* fs.readFile(file))
+  }).pipe(Effect.provide(NodeServices.layer))
 
 const text = (bytes: Uint8Array) => textDecoder.decode(bytes)
 
@@ -189,7 +194,7 @@ describe("Tar", () => {
     for (const [name, expected] of Object.entries(fixtures)) {
       it.effect(`reads GNU tar --format=${name} archives in any chunk size`, () =>
         Effect.gen(function*() {
-          const bytes = fixture(name)
+          const bytes = yield* fixture(name)
           for (const chunkSize of [1, bytes.length]) {
             const output = yield* decode(bytes, chunkSize)
             assert.deepStrictEqual(
@@ -217,8 +222,8 @@ describe("Tar", () => {
 
     it.effect("fails on GNU sparse files", () =>
       Effect.gen(function*() {
-        assert.strictEqual(yield* failure(decode(fixture("sparse-gnu"))), "Unsupported")
-        assert.strictEqual(yield* failure(decode(fixture("sparse-pax"))), "Unsupported")
+        assert.strictEqual(yield* failure(decode(yield* fixture("sparse-gnu"))), "Unsupported")
+        assert.strictEqual(yield* failure(decode(yield* fixture("sparse-pax"))), "Unsupported")
       }))
 
     it.effect("fails on corrupt or truncated archives", () =>
