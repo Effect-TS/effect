@@ -361,31 +361,29 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
       const lock = Semaphore.makeUnsafe(1)
       const pullInput = lock.withPermit(Effect.suspend(() => done === undefined ? pullUpstream : Effect.void))
 
-      // Calls the decoder until it has enough input, pulling more in between
-      const run = <A>(f: () => A | typeof NeedInput): Effect.Effect<A, TarError | IE> =>
-        Effect.suspend(function loop(): Effect.Effect<A, TarError | IE> {
-          let result: A | typeof NeedInput
+      // Calls the decoder until it has enough input, pulling more in between.
+      // The pull is done with `end()` once the decoder returns `undefined`.
+      const run = <A, D>(f: () => A | undefined | typeof NeedInput, end: () => D): Pull.Pull<A, TarError | IE, D> =>
+        Effect.suspend(function loop(): Pull.Pull<A, TarError | IE, D> {
+          let result: A | undefined | typeof NeedInput
           try {
             result = f()
           } catch (error) {
             return Effect.fail(error as TarError)
           }
-          return result === NeedInput ? Effect.flatMap(pullInput, loop) : Effect.succeed(result)
+          if (result === NeedInput) return Effect.flatMap(pullInput, loop)
+          return result === undefined ? Cause.done(end()) : Effect.succeed(result)
         })
 
       const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-        Stream.fromPull(Effect.succeed(Effect.flatMap(
-          run(() => decoder.read(id)),
-          (chunks) => chunks === BodyEnd ? Cause.done() : Effect.succeed(chunks)
-        )))
+        Stream.fromPull(Effect.succeed(run(() => decoder.read(id), () => undefined)))
 
-      const next = Effect.flatMap(
-        run(() => decoder.next()),
-        (header) =>
-          header === undefined
-            ? Cause.done(done!.value)
-            : Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
-      )
+      const next = run(() => {
+        const header = decoder.next()
+        return header === NeedInput || header === undefined
+          ? header
+          : Arr.of({ header, body: body(decoder.generation) })
+      }, () => done!.value)
 
       return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
     })
@@ -692,6 +690,9 @@ const parseHeader = (block: Uint8Array): RawHeader => {
 // PAX records
 // -----------------------------------------------------------------------------
 
+// Shared by the decoded headers without PAX records
+const noPax: Readonly<Record<string, string>> = Object.freeze({})
+
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
 const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
 
@@ -841,9 +842,6 @@ class ByteQueue {
 // Returned by the decoder when the buffered input is not enough to continue
 const NeedInput: unique symbol = Symbol("effect/encoding/Tar/NeedInput")
 
-// Returned by `Decoder.read` once the whole body has been read
-const BodyEnd: unique symbol = Symbol("effect/encoding/Tar/BodyEnd")
-
 // Reads entries from input that is pushed in chunks, like Go's `tar.Reader`.
 // `next` moves to the next entry, skipping what is left of the current body,
 // and `read` returns body bytes. Both return `NeedInput` when the buffered input
@@ -946,8 +944,9 @@ class Decoder {
     }
   }
 
-  // Returns the buffered body bytes of the entry from generation `id`
-  read(id: number): Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd {
+  // Returns the buffered body bytes of the entry from generation `id`, or
+  // `undefined` once the whole body has been read
+  read(id: number): Arr.NonEmptyArray<Uint8Array> | undefined | typeof NeedInput {
     if (id !== this.generation) {
       throw new TarError({
         kind: "BodyConsumed",
@@ -956,7 +955,7 @@ class Decoder {
           "tar entry body read after moving to the next entry"
       })
     }
-    if (this.remaining === 0) return BodyEnd
+    if (this.remaining === 0) return undefined
     if (this.queue.length === 0) return this.needInput()
     const chunks = Arr.of(this.queue.takeSome(this.remaining))
     this.remaining -= chunks[0].length
@@ -980,7 +979,7 @@ class Decoder {
   }
 
   private toHeader(raw: RawHeader): Header {
-    const rest = this.pax === undefined ? {} : applyPax(raw, this.pax)
+    const rest = this.pax === undefined ? noPax : applyPax(raw, this.pax)
     // Empty GNU long names are ignored, as in Go
     if (this.longName !== "") raw.path = this.longName
     if (this.longLink !== "") raw.linkTarget = this.longLink
