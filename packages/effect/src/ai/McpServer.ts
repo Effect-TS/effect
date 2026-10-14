@@ -2057,9 +2057,9 @@ const runWithRuntime = Effect.fnUntraced(function*(
   )
 }, Effect.scoped)
 
-type StatelessProtocolAdapter = McpProtocol.ProtocolAdapter<
+type StatefulProtocolAdapter = McpProtocol.ProtocolAdapter<
   McpProtocol.ProtocolVersion,
-  McpProtocol.StatelessRuntimeDescriptor
+  McpProtocol.StatefulRuntimeDescriptor
 >
 
 /**
@@ -2067,10 +2067,10 @@ type StatelessProtocolAdapter = McpProtocol.ProtocolAdapter<
  *
  * **Details**
  *
- * Every transport supplies `Scope`. `McpServerClient` is not supplied when a
- * sessionless protocol such as `v2026_07_28` is configured, because its
- * requests have no client session. HTTP transports also supply
- * `HttpServerRequest`.
+ * Every transport supplies `Scope`. `McpServerClient` is supplied only when
+ * every configured protocol is known to be sessionful: a `v2026_07_28` request
+ * has no client session, and a protocol array widened to `ProtocolAdapter`
+ * might contain one. HTTP transports also supply `HttpServerRequest`.
  *
  * @stability unstable
  * @category utility types
@@ -2081,7 +2081,7 @@ export type ProvidedServices<
   Http extends boolean = false
 > =
   | Scope.Scope
-  | ([Extract<Protocols[number], StatelessProtocolAdapter>] extends [never] ? McpServerClient : never)
+  | (Protocols[number] extends StatefulProtocolAdapter ? McpServerClient : never)
   | (Http extends true ? HttpServerRequest.HttpServerRequest : never)
 
 type RemainingRequestServices<RR, Provided> = Exclude<McpRequest.Only<"Requires", RR>, Provided>

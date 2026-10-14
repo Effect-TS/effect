@@ -268,8 +268,10 @@ A few rules to know:
   `a.combine(b)`, which runs `b` outside `a`, or from the transport. Otherwise its `layer` is a
   `MissingRequestDependencies<S>` type rather than a layer.
 - The transport discharges what it supplies. Every transport supplies `Scope`, HTTP transports
-  supply `HttpServerRequest`, and `McpServerClient` is supplied unless a sessionless protocol such as
-  `v2026_07_28` is configured. `layerHttp` and `layerHttpRequestScoped` turn any other marker into
+  supply `HttpServerRequest`, and `McpServerClient` is supplied only when every protocol in a
+  literal `protocols` tuple is sessionful. Mixing in a sessionless protocol such as `v2026_07_28`,
+  or widening the tuple to `ProtocolAdapter[]`, leaves `McpServerClient` to be provided by
+  middleware: narrow `protocols` rather than providing a placeholder client. `layerHttp` and `layerHttpRequestScoped` turn any other marker into
   an `HttpRouter` requirement, so an existing `HttpRouter.middleware` that provides `CurrentUser`
   keeps working, and so does its 401 response.
 - Middleware failures must be `McpErrorBase` values and are sent as JSON-RPC errors with their
