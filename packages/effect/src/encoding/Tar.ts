@@ -13,7 +13,7 @@
  * fit USTAR. The module does not touch the file system and does not compress.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
@@ -47,7 +47,7 @@ const TarErrorTypeId = "~effect/encoding/Tar/TarError"
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export class TarError extends Data.TaggedError("TarError")<{
   readonly kind: "InvalidHeader" | "Truncated" | "SizeMismatch" | "Unsupported" | "BodyConsumed"
@@ -57,7 +57,7 @@ export class TarError extends Data.TaggedError("TarError")<{
    * Marks this value as a tar error for runtime guards.
    *
    * @stability unstable
-   * @since 4.1.0
+   * @since 4.0.5
    */
   readonly [TarErrorTypeId] = TarErrorTypeId
 }
@@ -67,7 +67,7 @@ export class TarError extends Data.TaggedError("TarError")<{
  *
  * @stability unstable
  * @category guards
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const isTarError = (u: unknown): u is TarError => Predicate.hasProperty(u, TarErrorTypeId)
 
@@ -81,7 +81,7 @@ export const isTarError = (u: unknown): u is TarError => Predicate.hasProperty(u
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type EntryType =
   | "File"
@@ -106,7 +106,7 @@ export type EntryType =
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface Header {
   readonly path: string
@@ -130,7 +130,7 @@ export interface Header {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface Entry<E = never, R = never> {
   readonly header: Header
@@ -148,7 +148,7 @@ export interface Entry<E = never, R = never> {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface EntryOptions {
   readonly mode?: number | undefined
@@ -204,7 +204,7 @@ const makeHeader = (
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const file = (path: string, content: string | Uint8Array, options?: EntryOptions): Entry => {
   const bytes = typeof content === "string" ? textEncoder.encode(content) : content
@@ -237,7 +237,7 @@ export const file = (path: string, content: string | Uint8Array, options?: Entry
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const fileStream = <E = never, R = never>(
   path: string,
@@ -259,7 +259,7 @@ export const fileStream = <E = never, R = never>(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const directory = (path: string, options?: EntryOptions): Entry => ({
   header: makeHeader(path.endsWith("/") ? path : `${path}/`, "Directory", "5", 0, 0o755, options),
@@ -271,7 +271,7 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const symlink = (path: string, target: string, options?: EntryOptions): Entry => ({
   header: makeHeader(path, "Symlink", "2", 0, 0o777, options, target),
@@ -288,7 +288,7 @@ export const symlink = (path: string, target: string, options?: EntryOptions): E
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const hardlink = (path: string, target: string, options?: EntryOptions): Entry => ({
   header: makeHeader(path, "Hardlink", "1", 0, 0o644, options, target),
@@ -670,7 +670,7 @@ class ByteQueue {
  *
  * @stability unstable
  * @category decoding
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const decode = <IE = never, Done = unknown>(): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>,
@@ -1105,7 +1105,7 @@ const encodeHeader = (header: Header): Uint8Array => {
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = Entry>(): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Uint8Array>,

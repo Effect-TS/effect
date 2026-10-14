@@ -55,7 +55,7 @@ export * as Sse from "./Sse.ts"
 
 /**
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 export * as Tar from "./Tar.ts"
 
