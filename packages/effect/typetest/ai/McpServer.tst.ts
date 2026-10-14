@@ -585,6 +585,14 @@ describe("McpServer", () => {
         const unauthenticated = McpServer.layerStdio({ ...stateful, registrations: UserTools })
         const stdio = McpServer.layerStdio({ ...stateful, registrations: TransportTools })
         const stdioMixed = McpServer.layerStdio({ ...mixed, registrations: TransportTools })
+        const widened: readonly [McpProtocol.ProtocolAdapter, ...Array<McpProtocol.ProtocolAdapter>] = [
+          McpProtocol.v2025_11_25
+        ]
+        const stdioWidened = McpServer.layerStdio({
+          ...serverOptions,
+          protocols: widened,
+          registrations: TransportTools
+        })
         const custom = McpServer.layer({ ...stateful, registrations: TransportTools })
 
         expect<Layer.Services<typeof authenticated>>().type.toBe<Stdio.Stdio | UserHandlers | SessionStore>()
@@ -595,6 +603,12 @@ describe("McpServer", () => {
           Stdio.Stdio | TransportHandlers | Requires<HttpServerRequest.HttpServerRequest>
         >()
         expect<Layer.Services<typeof stdioMixed>>().type.toBe<
+          | Stdio.Stdio
+          | TransportHandlers
+          | Requires<HttpServerRequest.HttpServerRequest>
+          | Requires<McpSchema.McpServerClient>
+        >()
+        expect<Layer.Services<typeof stdioWidened>>().type.toBe<
           | Stdio.Stdio
           | TransportHandlers
           | Requires<HttpServerRequest.HttpServerRequest>
