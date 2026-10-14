@@ -122,7 +122,7 @@ const loadUndici = Effect.promise(() => import("./Undici.ts"))
  *
  * @stability unstable
  * @category resource management
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const makeDispatcherOptions = (
   options?: Undici.Agent.Options | undefined
@@ -152,7 +152,7 @@ export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const layerDispatcherOptions: (options?: Undici.Agent.Options | undefined) => Layer.Layer<Dispatcher> = flow(
   makeDispatcherOptions,
@@ -445,7 +445,7 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const layerUndiciOptions = (options?: Undici.Agent.Options | undefined): Layer.Layer<Client.HttpClient> =>
   Layer.provide(layerUndiciNoDispatcher, layerDispatcherOptions(options))
@@ -484,7 +484,7 @@ export class HttpAgent extends Context.Service<HttpAgent, {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface HttpAgentOptions extends Https.AgentOptions {
   /**
@@ -798,7 +798,7 @@ export const layerNodeHttp: Layer.Layer<Client.HttpClient> = Layer.provide(layer
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const layerNodeHttpOptions = (options?: HttpAgentOptions | undefined): Layer.Layer<Client.HttpClient> =>
   Layer.provide(layerNodeHttpNoAgent, layerAgentOptions(options))
