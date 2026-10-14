@@ -378,15 +378,18 @@ const makeMethod = <Op extends GraphQL.Any>(
   // Type boundary: a middleware sees the errors of the middleware further in
   // as `Types.unhandled` (as in `RpcMiddleware`), and none of their
   // requirements. Those errors are part of `GraphQL.Error<Op>`, so the chain
-  // restates its type here. Force POST only at the transport boundary.
+  // restates its type here. Force POST and the resolved URL apply only at the
+  // transport boundary.
   const execute = (
     index: number,
     request: GraphQLRequest,
-    forcePost: boolean
+    forcePost: boolean,
+    resolvedUrl: internalGraphQL.ResolvedUrl
   ): Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>> =>
     index === chain.length
       ? protocol.execute(request).pipe(
         forcePost ? Effect.provideService(internalGraphQL.ForcePost, true) : identity,
+        resolvedUrl === undefined ? identity : Effect.provideService(internalGraphQL.ResolvedUrl, resolvedUrl),
         Effect.mapError(fail),
         Effect.flatMap(decodeResponse)
       )
@@ -394,11 +397,20 @@ const makeMethod = <Op extends GraphQL.Any>(
         operation,
         request,
         next: (request) =>
-          execute(index + 1, request, forcePost) as Effect.Effect<
+          execute(index + 1, request, forcePost, resolvedUrl) as Effect.Effect<
             ExecutionResult,
             GraphQLClientError | Types.unhandled
           >
       }) as Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
+
+  // Takes a resolver batch's URL out of the context, so middleware and the
+  // calls it makes don't see it.
+  const run = (request: GraphQLRequest, forcePost: boolean) =>
+    internalGraphQL.ResolvedUrl.use((resolved) =>
+      resolved === undefined
+        ? execute(0, request, forcePost, undefined)
+        : execute(0, request, forcePost, resolved).pipe(Effect.provideService(internalGraphQL.ResolvedUrl, undefined))
+    )
 
   const subscribe = (
     index: number,
@@ -441,7 +453,7 @@ const makeMethod = <Op extends GraphQL.Any>(
     Exclude<GraphQL.Services<Op>, R2>
   > {
     return buildRequest(variables, options).pipe(
-      Effect.flatMap((request) => execute(0, request, false)),
+      Effect.flatMap((request) => run(request, false)),
       Effect.flatMap(
         (result): Effect.Effect<
           GraphQL.Result<Op> | PartialResult<GraphQL.Result<Op>>,
@@ -452,7 +464,7 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.provideContext(callContext(options))
     )
   }
-  internalGraphQL.rawExecutors.set(method, { execute: (request) => execute(0, request, true), url: protocol.url })
+  internalGraphQL.rawExecutors.set(method, { execute: (request) => run(request, true), url: protocol.url })
   return Object.assign(method, { operation })
 }
 

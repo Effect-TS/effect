@@ -159,13 +159,22 @@ export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", 
  *
  * @internal
  */
-export const ResolvedUrl = Context.Reference<
-  {
-    readonly url: GraphQLProtocol["Service"]["url"]
-    readonly operationName: string
-    readonly value: string
-  } | undefined
->("effect/graphql/ResolvedUrl", { defaultValue: () => undefined })
+export type ResolvedUrl = {
+  readonly url: GraphQLProtocol["Service"]["url"]
+  readonly operationName: string
+  readonly value: string
+} | undefined
+
+/**
+ * Carries a {@link ResolvedUrl} from a resolver batch to its client call. The
+ * client clears it for middleware and provides it only to the transport, so
+ * calls nested in middleware resolve their own URL.
+ *
+ * @internal
+ */
+export const ResolvedUrl = Context.Reference<ResolvedUrl>("effect/graphql/ResolvedUrl", {
+  defaultValue: () => undefined
+})
 
 /**
  * JSON with object keys sorted, so equal JSON values give equal strings.

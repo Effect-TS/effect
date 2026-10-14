@@ -355,12 +355,10 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   const url = urlEffect(options.url)
   // A resolver batch carries the URL it was grouped by.
   const urlOf = (request: GraphQLRequest) =>
-    Effect.flatMap(
-      Effect.service(internalGraphQL.ResolvedUrl),
-      (resolved) =>
-        resolved !== undefined && resolved.url === url && resolved.operationName === request.operationName
-          ? Effect.succeed(resolved.value)
-          : url({ kind: request.kind, operationName: request.operationName })
+    internalGraphQL.ResolvedUrl.use((resolved) =>
+      resolved !== undefined && resolved.url === url && resolved.operationName === request.operationName
+        ? Effect.succeed(resolved.value)
+        : url({ kind: request.kind, operationName: request.operationName })
     )
   const http = Clock.clockWith((clock) =>
     HttpClient.HttpClient.useSync((client) => {
@@ -408,7 +406,8 @@ const urlEffect = (
 ): NonNullable<GraphQLProtocol["Service"]["url"]> => {
   if (typeof url === "string") return constant(Effect.succeed(url))
   if (Effect.isEffect(url)) return constant(url)
-  return (operation) => Effect.map(Effect.context<never>(), (context) => url({ ...operation, context }))
+  return (operation) =>
+    Effect.contextWith((context: Context.Context<never>) => Effect.succeed(url({ ...operation, context })))
 }
 
 /**
