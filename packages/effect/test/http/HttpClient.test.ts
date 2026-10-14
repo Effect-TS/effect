@@ -354,6 +354,7 @@ Missing key
 
         yield* HttpClientRequest.get("http://test/path?page=1#frag").pipe(
           HttpClientRequest.appendUrlParam("remote", Redacted.make("param-secret")),
+          HttpClientRequest.appendUrlParam("\uD800", Redacted.make("surrogate-secret")),
           HttpClientRequest.appendUrlParam("q", "visible"),
           client.execute,
           Effect.provideService(Tracer.Tracer, tracer)
@@ -362,10 +363,16 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(
           clientSpan.attributes.get("url.full"),
-          "http://test/path?page=1&remote=REDACTED&q=visible#frag"
+          "http://test/path?page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible#frag"
         )
-        assert.strictEqual(clientSpan.attributes.get("url.query"), "page=1&remote=REDACTED&q=visible")
-        assert.strictEqual(sentUrl, "http://test/path?page=1&remote=param-secret&q=visible#frag")
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible"
+        )
+        assert.strictEqual(
+          sentUrl,
+          "http://test/path?page=1&remote=param-secret&%EF%BF%BD=surrogate-secret&q=visible#frag"
+        )
       }))
 
     const makeCapturingClient = () => {
