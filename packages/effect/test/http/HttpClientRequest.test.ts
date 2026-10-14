@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { ByteSize, Effect, FileSystem, Stream } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { ByteSize, Effect, FileSystem, Formatter, Stream } from "effect"
 import { Headers, HttpBody, HttpClientRequest } from "effect/http"
 import * as Option from "effect/Option"
 import { gunzipSync, inflateSync } from "node:zlib"
@@ -312,6 +312,20 @@ describe("HttpClientRequest", () => {
         HttpClientRequest.setUrl("http://[::1")
       )
       assertNone(HttpClientRequest.toUrl(request))
+    })
+  })
+
+  describe("toJSON", () => {
+    it("redacts sensitive query params in url and urlParams", () => {
+      const request = HttpClientRequest.get("https://api.test/path?Signature=url-secret&page=1", {
+        urlParams: { sig: "param-secret", q: "visible" }
+      })
+
+      strictEqual((request.toJSON() as { readonly url: string }).url, "https://api.test/path?Signature=REDACTED&page=1")
+      const output = Formatter.format(request)
+      assertFalse(output.includes("url-secret"))
+      assertFalse(output.includes("param-secret"))
+      assertTrue(output.includes("visible"))
     })
   })
 

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { assertNone, assertSome, deepStrictEqual } from "@effect/vitest/utils"
-import { Schema } from "effect"
+import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { Effect, Formatter, Schema } from "effect"
 import { UrlParams } from "effect/http"
 import { assertSuccess } from "../utils/assert.ts"
 
@@ -21,6 +21,15 @@ describe("UrlParams", () => {
         "sort=name&page=2"
       )
     })
+  })
+
+  describe("CurrentRedactedNames", () => {
+    it.effect("replaces the default names when provided", () =>
+      Effect.gen(function*() {
+        const output = Formatter.format(UrlParams.fromInput({ token: "token-secret", sig: "sig-visible" }))
+        assertFalse(output.includes("token-secret"))
+        assertTrue(output.includes("sig-visible"))
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
   })
 
   describe("Schema.UrlParams", () => {
