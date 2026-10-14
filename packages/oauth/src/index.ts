@@ -1,6 +1,6 @@
 /**
- * OAuth clients, private token receipts, PKCE, and provider discovery.
- * Signed ID-token verification and authentication are not provided.
+ * OAuth clients, private token receipts, PKCE, provider discovery, and signed OIDC verification.
+ * Token receipts remain opaque until explicitly verified with Oidc.makeVerifier.
  *
  * @stability unstable
  * @since 4.0.5

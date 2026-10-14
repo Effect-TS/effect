@@ -3,7 +3,7 @@
   "version": "4.0.4",
   "type": "module",
   "license": "MIT",
-  "description": "OAuth authorization-code flows, PKCE, and provider discovery for Effect",
+  "description": "OAuth and OpenID Connect client protocols for Effect",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -63,9 +63,13 @@
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json"
   },
+  "dependencies": {
+    "@effect/jose": "workspace:^"
+  },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "jose": "6.2.12"
   },
   "peerDependencies": {
     "effect": "workspace:^"

@@ -28,6 +28,7 @@
       "@effect/doctest",
       "@effect/graphql-generator",
       "@effect/openapi-generator",
+      "@effect/jose",
       "@effect/oauth",
       "@effect/opentelemetry",
       "@effect/platform-browser",

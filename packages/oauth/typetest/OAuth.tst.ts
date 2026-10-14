@@ -7,6 +7,9 @@ import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
 
 declare const clientOptions: OAuth.ClientOptions
+declare const verifierOptions: Oidc.VerifierOptions
+declare const verifier: Oidc.Verifier
+declare const verification: Oidc.VerificationInput
 declare const receipt: OAuth.TokenReceipt
 declare const client: OAuth.Client
 declare const secret: Redacted.Redacted<string>
@@ -60,6 +63,20 @@ describe("OAuth protocol type contracts", () => {
     expect<ReturnType<typeof Oidc.substituteTenantIssuer>>().type.toBe<string | undefined>()
   })
 
+  it("keeps scoped verification and native hash requirements distinct", () => {
+    const installed = Oidc.makeVerifier(verifierOptions)
+    const verified = verifier.verify(secret, verification)
+    expect<Effect.Services<typeof installed>>().type.toBe<HttpClient.HttpClient | Scope.Scope>()
+    expect<Effect.Success<typeof installed>>().type.toBe<Oidc.Verifier>()
+    expect<Effect.Error<typeof installed>>().type.toBe<Errors.ConfigurationError | Errors.Unavailable>()
+    expect<Effect.Services<typeof verified>>().type.toBe<Crypto.Crypto>()
+    expect<Effect.Success<typeof verified>>().type.toBe<Oidc.Verified>()
+    expect<Effect.Error<typeof verified>>().type.toBe<Errors.Rejected | Errors.Unavailable>()
+    expect<Oidc.Verified["claims"]>().type.toBe<Redacted.Redacted<OAuth.JsonObject>>()
+    expect<Oidc.IdTokenAlgorithm>().type.toBe<"RS256" | "PS256" | "ES256" | "EdDSA" | "HS256">()
+    expect<OAuth.Metadata["signing_key_issuer_required"]>().type.toBe<true | undefined>()
+  })
+
   it("requires Effect Crypto for private transaction secrets and S256", () => {
     const random = Pkce.random()
     const challenge = Pkce.challenge(secret)
@@ -74,7 +91,7 @@ describe("OAuth protocol type contracts", () => {
 
   it("preserves safe tagged error and authentication discriminants", () => {
     expect<Errors.ConfigurationError["_tag"]>().type.toBe<"OAuthConfigurationError">()
-    expect<Errors.Rejected["reason"]>().type.toBe<"invalid_grant">()
+    expect<Errors.Rejected["reason"]>().type.toBe<"invalid_grant" | "claims">()
     expect<Errors.Rejected["_tag"]>().type.toBe<"OAuthRejected">()
     expect<Errors.Unavailable["_tag"]>().type.toBe<"OAuthUnavailable">()
     expect<Extract<OAuth.Authentication, { method: "none" }>>().type.toBe<{

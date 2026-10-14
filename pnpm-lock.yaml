@@ -377,7 +377,7 @@ importers:
         specifier: ^1.5.0
         version: 1.5.0(typescript@7.0.2)
 
-  packages/oauth:
+  packages/jose:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
@@ -385,6 +385,25 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../effect
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
+
+  packages/oauth:
+    dependencies:
+      '@effect/jose':
+        specifier: workspace:^
+        version: link:../jose
+    devDependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
 
   packages/opentelemetry:
     dependencies:
@@ -4783,6 +4802,9 @@ packages:
 
   jju@1.4.0:
     resolution: {integrity: sha512-8wb9Yw966OSxApiCt0K3yNJL8pnNeIv+OEq2YMidz4FKP6nonSRoOXc80iXY4JaN2FC11B9qsNmDsm+ZOfMROA==}
+
+  jose@6.2.12:
+    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
   js-base64@3.9.4:
     resolution: {integrity: sha512-PtOMXpEGuP0RRiRXsjzHzl44dMHxSu2CPvAhinupR1tBa88me+1DPqsobl7eupn5UukjLkln1ZnAOAOXOrYG0Q==}
@@ -10234,6 +10256,8 @@ snapshots:
       supports-color: 8.1.1
 
   jju@1.4.0: {}
+
+  jose@6.2.12: {}
 
   js-base64@3.9.4: {}
 

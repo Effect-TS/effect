@@ -57,6 +57,9 @@ export type JsonObject = typeof JsonObject.Type
  */
 export const Metadata = Schema.Struct({
   issuer: V.Issuer,
+  /** Local discovery policy: a tenant-template document requires key issuer
+   * authority even when its token issuer is pinned to one tenant. */
+  signing_key_issuer_required: Schema.optionalKey(Schema.Literal(true)),
   authorization_endpoint: V.ProtocolEndpoint,
   token_endpoint: V.ProtocolEndpoint,
   jwks_uri: Schema.optionalKey(V.Endpoint),

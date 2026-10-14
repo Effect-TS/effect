@@ -1,5 +1,6 @@
 ---
+"@effect/jose": patch
 "@effect/oauth": patch
 ---
 
-Add unstable `@effect/oauth` APIs for OAuth client flows, PKCE using native Effect Crypto, and issuer discovery. Treat returned ID tokens as unverified provider receipts.
+Add unstable `@effect/jose` APIs for keys, signatures, encryption, and schema-typed JWTs. Add `@effect/oauth` client flows with PKCE, issuer discovery, and signed OpenID Connect verification.

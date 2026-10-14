@@ -1,32 +1,39 @@
 # @effect/oauth
 
 OAuth authorization-code and refresh flows, profile requests, revocation, PKCE
-S256, and separable issuer discovery for Effect. The package exports `Errors`,
-`OAuth`, `Oidc`, and `Pkce` namespaces and matching subpaths. All public APIs are
-unstable and may change in minor releases.
+S256, signed OpenID Connect verification, and separable issuer discovery for Effect.
+The package exports `Errors`, `OAuth`, `Oidc`, and `Pkce` namespaces and matching
+subpaths. All public APIs are unstable and may change in minor releases.
 
 ## Authentication boundary
 
-**This package does not verify signed OpenID Connect ID tokens or authenticate
-identities.** Effect's native `Crypto` service supplies entropy and digests, not
-signature verification. Signed OIDC verification is deferred; this package has
-no JOSE dependency, signing-key resolver, ID-token verifier, or authenticated
-claims model.
-
 `TokenSet.idToken` is an optional redacted, opaque provider receipt. Its presence,
 JWT-like spelling, or successful normalization is not evidence of authentication.
-Neither discovery, issuer matching, sending a nonce or maximum age, nor fetching
-a profile verifies ID-token signatures or claims. Applications needing OIDC
-sign-in must establish that separate verification boundary before trusting an
-identity. Do not decode an ID token and treat its claims as authenticated.
+Discovery, sending a nonce or maximum age, and fetching a profile do not verify it.
+Pass the token to an installed `Oidc.makeVerifier` before trusting its identity.
+
+The verifier uses `@effect/jose` to authenticate signatures before rejecting
+claims. It checks issuer, a single client audience, authorized party, nonce,
+expiration, issued-at and not-before times, authentication age, and any access-token
+or code hash bindings. Refresh verification binds the prior subject, issuer, nonce,
+and authentication time without treating the original maximum age as a new login.
+Verified claims remain redacted; application policy still owns authorization.
+
+RS256, PS256, ES256, and EdDSA are accepted only when advertised by metadata.
+HS256 requires explicit opt-in and a client secret of at least 32 UTF-8 bytes;
+it cannot be mixed with asymmetric algorithms or establish tenant signing-key
+authority. Native `effect/Crypto` supplies PKCE entropy/digests and OIDC hash
+bindings, including SHA-512 for EdDSA. Signature verification belongs to JOSE.
 
 ## Ownership and requests
 
-`OAuth.make` captures the injected `HttpClient` and `Fetch` and requires an owning
-`Scope`. Keep that scope open for the client's lifetime. Closing it interrupts and
-joins active operations and prevents reuse. Caller interruption joins only that
-operation and does not close the client. Configuration is snapshotted and frozen;
-caller-owned input is not frozen or wiped.
+`OAuth.make` and `Oidc.makeVerifier` require an owning `Scope`. HTTP operations
+capture the injected `HttpClient` and `Fetch`; asymmetric verifiers own a bounded
+JWKS cache in that scope, not a process-wide cache. HS256 does not fetch keys.
+Keep the scope open for the client's or verifier's lifetime. Closing it interrupts
+and joins active operations and prevents reuse. Caller interruption joins only
+that operation and does not close the owner. Configuration is snapshotted and
+frozen; caller-owned input is not frozen or wiped.
 
 Every code exchange, refresh, profile request, and revocation makes one request
 with no implicit retry. Supply a cancellation-aware `HttpClient` without retry,
@@ -46,8 +53,10 @@ Normalization does not make another request. It omits a null refresh token,
 accepts finite nonnegative numeric or whole decimal-string lifetimes, and joins
 array scopes with spaces while preserving the original receipt.
 
-Only a complete JSON HTTP 400 `invalid_grant` without conflicting success fields
-becomes `Errors.Rejected`. Malformed, mixed, other-status, transport, and timeout
+For token receipts, only a complete JSON HTTP 400 `invalid_grant` without
+conflicting success fields becomes `Errors.Rejected`. Authenticated invalid ID-token
+claims also become `Errors.Rejected`, with reason `claims`. Malformed tokens,
+key/signature failures, mixed receipts, other-status, transport, and timeout
 failures remain `Errors.Unavailable`: their outcome is unknown, not permission to
 retry a single-use code or rotating refresh token. Errors omit native causes,
 credentials, and response bodies. Keep receipts and revealed secrets out of logs
@@ -79,9 +88,11 @@ explicit `metadataUrl`. Generic issuers must match exactly, including trailing
 slashes. A discovered `{tenantid}` path segment may template the same authority:
 a GUID authority stays pinned to that issuer; commercial Microsoft `consumers`
 pins its personal-account GUID; `common` and `organizations` retain the template.
-Tenant domains do not match a broader template. These helpers do not validate a
-token issuer, tenant claim, or signing-key authority. Advertised `jwks_uri` and
-signing algorithms are metadata only and are not used for verification.
+Tenant domains do not match a broader template. Verification binds a template to
+a GUID `tid` claim and requires the signing key's issuer to authorize that token
+issuer. Pinned discovery retains `signing_key_issuer_required` so narrowing the
+metadata issuer cannot drop this key-authority check. Discovery alone does not
+authenticate a token.
 
 ## Example
 
@@ -120,5 +131,5 @@ const authorization = Effect.gen(function*() {
 )
 ```
 
-See the [OAuth API](src/OAuth.ts), [discovery API](src/Oidc.ts),
+See the [OAuth API](src/OAuth.ts), [OIDC API](src/Oidc.ts),
 [PKCE API](src/Pkce.ts), and [third-party notices](THIRD_PARTY_NOTICES.md).

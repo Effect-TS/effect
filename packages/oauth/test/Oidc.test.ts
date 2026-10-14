@@ -64,6 +64,7 @@ it.effect("pins tenant metadata from an explicit discovery URL without fetching 
         timeoutMs: 1000
       }).pipe(Effect.provideService(HttpClient.HttpClient, http))
       assert.strictEqual(discovered.issuer, expected)
+      assert.strictEqual(discovered.signing_key_issuer_required, expected === template ? undefined : true)
       assert.strictEqual(discovered.jwks_uri, metadata.jwks_uri)
       assert.isTrue(Object.isFrozen(discovered))
       assert.isTrue(Object.isFrozen(discovered.code_challenge_methods_supported))

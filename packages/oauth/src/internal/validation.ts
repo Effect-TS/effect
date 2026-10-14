@@ -112,6 +112,10 @@ export const Verifier = Schema.Redacted(
 
 export const Challenge = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{43}$/))
 
+export const NumericDate = Schema.Finite.check(
+  Schema.isBetween({ minimum: 0, maximum: 8640000000000 })
+)
+
 export const reserved = new Set([
   "client_id",
   "client_secret",
