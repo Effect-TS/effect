@@ -308,18 +308,26 @@ export class WorkflowInstance extends Context.Service<
   static initial(
     workflow: Workflow.Any,
     executionId: string,
-    scope = Scope.makeUnsafe()
+    options?: {
+      readonly scope?: Scope.Closeable | undefined
+      /**
+       * Awaited deferred names shared with the run this instance belongs to.
+       * An activity instance registers its durable waits there so the run
+       * can be woken once it suspends, without those waits preempting it.
+       */
+      readonly awaitedDeferreds?: Map<string, number> | undefined
+    }
   ): WorkflowInstance["Service"] {
     return WorkflowInstance.of({
       executionId,
       workflow,
-      scope,
+      scope: options?.scope ?? Scope.makeUnsafe(),
       suspended: false,
       interrupted: false,
       abandoned: false,
       cause: undefined,
       failed: false,
-      awaitedDeferreds: new Map(),
+      awaitedDeferreds: options?.awaitedDeferreds ?? new Map(),
       completedDeferreds: new Set(),
       activityState: {
         count: 0,
@@ -779,7 +787,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       const instance = WorkflowInstance.initial(
         state.instance.workflow,
         state.instance.executionId,
-        state.instance.scope
+        { scope: state.instance.scope }
       )
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(

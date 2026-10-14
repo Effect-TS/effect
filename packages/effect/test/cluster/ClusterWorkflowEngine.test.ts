@@ -44,6 +44,67 @@ import {
 } from "effect/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("EarlyActivityWake/Gate", { success: Schema.String })
+      const workflow = Workflow.make("EarlyActivityWake", {
+        payload: {},
+        success: Schema.Array(Schema.String),
+        idempotencyKey: () => "one"
+      })
+      const siblingStarted = yield* Latch.make()
+      const releaseSibling = yield* Latch.make()
+      const activityParked = yield* Latch.make()
+      const awaitGate = Activity.make({
+        name: "await-gate",
+        success: Schema.String,
+        execute: siblingStarted.await.pipe(
+          Effect.andThen(DurableDeferred.await(gate)),
+          Effect.onInterrupt(() => activityParked.open)
+        )
+      })
+      const block = Activity.make({
+        name: "block",
+        success: Schema.String,
+        execute: siblingStarted.open.pipe(Effect.andThen(releaseSibling.await), Effect.as("blocked"))
+      })
+      let activations = 0
+      const context = yield* Layer.build(
+        workflow.toLayer(() => {
+          activations++
+          // Yield the activities themselves so both run through the workflow engine.
+          return Effect.all([awaitGate, block], { concurrency: "unbounded" })
+        }).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+      )
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const executionId = yield* workflow.execute({}, { discard: true })
+        yield* activityParked.await
+        for (let i = 0; i < 5; i++) {
+          yield* TestClock.adjust(1)
+          yield* sharding.pollStorage
+        }
+        assert.isTrue(Option.isNone(yield* workflow.poll(executionId)))
+        const completion = yield* DurableDeferred.succeed(gate, {
+          token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+          value: "done"
+        }).pipe(Effect.forkChild({ startImmediately: true }))
+        // Deliver the callback while the sibling still prevents the parent from suspending.
+        for (let i = 0; i < 5; i++) {
+          yield* TestClock.adjust(1)
+          yield* sharding.pollStorage
+        }
+        assert.isTrue(Option.isNone(yield* workflow.poll(executionId)))
+        yield* releaseSibling.open
+        assert.deepStrictEqual(
+          yield* pollUntil(workflow, executionId, "Complete"),
+          new Workflow.Complete({ exit: Exit.succeed(["done", "blocked"]) })
+        )
+        yield* Fiber.join(completion)
+        assert.strictEqual(activations, 2)
+      }).pipe(Effect.provide(context))
+    }))
+
   it.effect("answers an orphaned activity after restart even when replay never registers it", () =>
     Effect.gen(function*() {
       const release = DurableDeferred.make("OrphanActivity/Release")
