@@ -21,13 +21,7 @@ export const addUrlAttributes = (
   redactedNames: ReadonlyArray<string | RegExp>
 ): void => {
   const query = UrlParams.redactUrl(url.search, redactedNames).slice(1)
-  let full = url
-  if (url.username !== "" || url.password !== "") {
-    full = new URL(url)
-    full.username = "REDACTED"
-    full.password = "REDACTED"
-  }
-  span.attribute("url.full", UrlParams.redactUrl(full.toString(), redactedNames))
+  span.attribute("url.full", UrlParams.redactUrl(url.href, redactedNames))
   span.attribute("url.path", url.pathname)
   if (query !== "") {
     span.attribute("url.query", query)

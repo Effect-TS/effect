@@ -89,6 +89,9 @@ const formatReason = (tag: string) => tag.endsWith("Error") ? tag.slice(0, -5) :
 const formatMessage = (reason: string, description: string | undefined, info: string) =>
   description ? `${reason}: ${description} (${info})` : `${reason} error (${info})`
 
+const formatMethodAndUrl = (request: HttpClientRequest.HttpClientRequest) =>
+  `${request.method} ${UrlParams.redactUrl(request.url)}`
+
 /**
  * Error describing transport-level failures that occur while sending an HTTP request.
  *
@@ -108,7 +111,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**
@@ -141,7 +144,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**
@@ -174,7 +177,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**
@@ -208,7 +211,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**
@@ -243,7 +246,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**
@@ -278,7 +281,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
+    return formatMethodAndUrl(this.request)
   }
 
   /**

@@ -406,10 +406,11 @@ export const isRedactedName = (
   name: string,
   patterns: ReadonlyArray<string | RegExp>
 ): boolean => {
+  const lowerName = name.toLowerCase()
   for (let i = 0; i < patterns.length; i++) {
     const pattern = patterns[i]
     if (typeof pattern === "string") {
-      if (pattern.toLowerCase() === name.toLowerCase()) {
+      if (pattern.toLowerCase() === lowerName) {
         return true
       }
     } else if (name.search(pattern) !== -1) {

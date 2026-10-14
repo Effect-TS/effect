@@ -17,7 +17,6 @@ import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import type { Inspectable } from "../Inspectable.ts"
 import { PipeInspectableProto } from "../internal/core.ts"
-import { getCurrentFiber } from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
@@ -26,6 +25,7 @@ import type { ReadonlyRecord } from "../Record.ts"
 import * as Redactable from "../Redactable.ts"
 import * as Redacted from "../Redacted.ts"
 import * as Tuple from "../Tuple.ts"
+import * as Headers from "./Headers.ts"
 
 const TypeId = "~effect/http/UrlParams"
 
@@ -532,45 +532,26 @@ export const redact: {
  *
  * **Details**
  *
- * String patterns are compared case-insensitively against the parameter name;
- * regular expressions are tested against it.
+ * Uses the same rules as `Headers.isRedactedName`: string patterns are compared
+ * case-insensitively and regular expressions are tested against the name.
  *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
-export const isRedactedName = (
-  name: string,
-  patterns: ReadonlyArray<string | RegExp>
-): boolean => {
-  for (let i = 0; i < patterns.length; i++) {
-    const pattern = patterns[i]
-    if (typeof pattern === "string") {
-      if (pattern.toLowerCase() === name.toLowerCase()) {
-        return true
-      }
-    } else if (name.search(pattern) !== -1) {
-      return true
-    }
-  }
-  return false
-}
+export const isRedactedName: (name: string, patterns: ReadonlyArray<string | RegExp>) => boolean =
+  Headers.isRedactedName
 
 /**
  * Redacts URL userinfo and the values of matching query parameters.
  *
  * **Details**
  *
- * Accepts absolute URLs, relative URLs such as `/path?sig=...`, and bare
- * search strings such as `?sig=...`. Userinfo in absolute or protocol-relative
- * URLs is always replaced with `REDACTED:REDACTED`, even without a query or with
- * an empty redaction list. Recognition follows URL parsing rules for leading
- * whitespace, embedded tabs and newlines, and special-scheme slash variants,
- * while preserving the original spelling outside userinfo. Query values whose decoded names match
- * `isRedactedName` are replaced with `REDACTED`; the rest of the string,
- * including the fragment, is kept verbatim. When `redactedNames` is omitted, the current
- * fiber's `CurrentRedactedNames` is used, falling back to the defaults outside
- * a fiber.
+ * Userinfo is always replaced with `REDACTED:REDACTED`, and query values whose
+ * decoded names match `isRedactedName` are replaced with `REDACTED`. Everything
+ * else, including the original spelling and the fragment, is kept verbatim.
+ * When `redactedNames` is omitted, the current fiber's `CurrentRedactedNames`
+ * is used, falling back to the defaults outside a fiber.
  *
  * **Example** (Redacting a signed URL)
  *
@@ -589,8 +570,23 @@ export const redactUrl = (
   url: string,
   redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
 ): string => {
-  // Recognize authority boundaries using the URL parser's whitespace and
-  // special-scheme rules, but splice the raw string rather than re-encode it.
+  if (url.includes("@")) url = redactUserinfo(url)
+  const queryStart = url.indexOf("?")
+  if (queryStart === -1 || redactedNames.length === 0) return url
+  const hashStart = url.indexOf("#")
+  if (hashStart !== -1 && hashStart < queryStart) return url
+  const queryEnd = hashStart === -1 ? url.length : hashStart
+  return url.slice(0, queryStart + 1) + redactQuery(url.slice(queryStart + 1, queryEnd), redactedNames) +
+    url.slice(queryEnd)
+}
+
+const authorityStart = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]{2,})/i
+const specialAuthorityEnd = /[/\\?#]/
+const authorityEnd = /[/?#]/
+
+// Locates the authority using the URL parser's whitespace and special-scheme
+// rules, then splices the raw string so nothing else is re-encoded.
+const redactUserinfo = (url: string): string => {
   let normalized = ""
   const offsets: Array<number> = []
   for (let i = 0; i < url.length; i++) {
@@ -599,44 +595,28 @@ export const redactUrl = (
     normalized += url[i]
     offsets.push(i)
   }
-  const authority = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]{2,})/i.exec(normalized)
-  if (authority) {
-    const start = authority[0].length
-    const special = authority[1] !== undefined || !authority[0].includes(":")
-    const rest = normalized.slice(start)
-    const end = rest.search(special ? /[/\\?#]/ : /[/?#]/)
-    const userinfoEnd = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
-    if (userinfoEnd !== -1) {
-      url = url.slice(0, offsets[start]) + "REDACTED:REDACTED" + url.slice(offsets[start + userinfoEnd])
-    }
-  }
-  const queryStart = url.indexOf("?")
-  if (queryStart === -1) return url
-  const hashStart = url.indexOf("#")
-  if (hashStart !== -1 && hashStart < queryStart) return url
-  const queryEnd = hashStart === -1 ? url.length : hashStart
-  const query = url.slice(queryStart + 1, queryEnd)
-  const redacted = redactQuery(query, redactedNames)
-  return redacted === query ? url : url.slice(0, queryStart + 1) + redacted + url.slice(queryEnd)
+  const authority = authorityStart.exec(normalized)
+  if (authority === null) return url
+  const start = authority[0].length
+  const special = authority[1] !== undefined || !authority[0].includes(":")
+  const rest = normalized.slice(start)
+  const end = rest.search(special ? specialAuthorityEnd : authorityEnd)
+  const userinfoEnd = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
+  return userinfoEnd === -1
+    ? url
+    : url.slice(0, offsets[start]) + "REDACTED:REDACTED" + url.slice(offsets[start + userinfoEnd])
 }
 
-const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string => {
-  if (query === "" || redactedNames.length === 0) return query
-  const parts = query.split("&")
-  let changed = false
-  for (let i = 0; i < parts.length; i++) {
-    const index = parts[i].indexOf("=")
-    if (index === -1) continue
-    const key = parts[i].slice(0, index)
-    if (isRedactedName(decodeQueryKey(key), redactedNames)) {
-      parts[i] = `${key}=REDACTED`
-      changed = true
-    }
-  }
-  return changed ? parts.join("&") : query
-}
+const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string =>
+  query.split("&").map((part) => {
+    const index = part.indexOf("=")
+    return index !== -1 && isRedactedName(decodeQueryKey(part.slice(0, index)), redactedNames)
+      ? part.slice(0, index + 1) + "REDACTED"
+      : part
+  }).join("&")
 
 const decodeQueryKey = (key: string): string => {
+  if (!key.includes("%") && !key.includes("+")) return key
   try {
     return decodeURIComponent(key.replace(/\+/g, " "))
   } catch {
@@ -644,14 +624,12 @@ const decodeQueryKey = (key: string): string => {
   }
 }
 
-const currentRedactedNames = (): ReadonlyArray<string | RegExp> => {
-  const fiber = getCurrentFiber()
-  return fiber ? fiber.getRef(CurrentRedactedNames) : CurrentRedactedNames.defaultValue()
-}
+const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
+  Context.get((globalThis as any)[Redactable.currentFiberTypeId]?.context ?? Context.empty(), CurrentRedactedNames)
 
 /**
- * Context reference listing parameter names or patterns that should be redacted when `UrlParams` or URLs are inspected,
- * rendered, recorded on spans, or included in error messages.
+ * Context reference listing query parameter names or patterns to redact in
+ * inspect output, span attributes and error messages.
  *
  * **Details**
  *

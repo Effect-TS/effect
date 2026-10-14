@@ -23,6 +23,50 @@ describe("UrlParams", () => {
     })
   })
 
+  describe("redactUrl", () => {
+    it.each([
+      {
+        url: "https://api.test/path?sig=secret&page=1#sig=fragment",
+        names: undefined,
+        expected: "https://api.test/path?sig=REDACTED&page=1#sig=fragment"
+      },
+      {
+        url: "/path?%73ig=a&Sig=b&sig&page=1",
+        names: undefined,
+        expected: "/path?%73ig=REDACTED&Sig=REDACTED&sig&page=1"
+      },
+      { url: "/path/@user?page=a@b", names: undefined, expected: "/path/@user?page=a@b" },
+      {
+        url: "https://user:password@api.test/path",
+        names: undefined,
+        expected: "https://REDACTED:REDACTED@api.test/path"
+      },
+      {
+        url: "https://user:password@api.test/path?sig=secret",
+        names: [],
+        expected: "https://REDACTED:REDACTED@api.test/path?sig=secret"
+      },
+      {
+        url: " https://user:password@api.test/path",
+        names: undefined,
+        expected: " https://REDACTED:REDACTED@api.test/path"
+      },
+      {
+        url: "https:////user:password@api.test/path",
+        names: [],
+        expected: "https:////REDACTED:REDACTED@api.test/path"
+      },
+      {
+        url: "ht\ttps:\n//user:password@api.test/path",
+        names: undefined,
+        expected: "ht\ttps:\n//REDACTED:REDACTED@api.test/path"
+      },
+      { url: "https:/\\user:password@api.test/path", names: [], expected: "https:/\\REDACTED:REDACTED@api.test/path" }
+    ])("redacts $url", ({ expected, names, url }) => {
+      assert.strictEqual(UrlParams.redactUrl(url, names), expected)
+    })
+  })
+
   describe("CurrentRedactedNames", () => {
     it.effect("replaces the default names when provided", () =>
       Effect.gen(function*() {
