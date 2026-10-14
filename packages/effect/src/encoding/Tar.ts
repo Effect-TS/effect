@@ -166,7 +166,6 @@ export interface EntryOptions {
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
-const epoch = new Date(0)
 
 const makeHeader = (
   path: string,
@@ -186,7 +185,7 @@ const makeHeader = (
   gid: options?.gid ?? 0,
   uname: options?.uname ?? "",
   gname: options?.gname ?? "",
-  mtime: options?.mtime ?? epoch,
+  mtime: options?.mtime ?? new Date(0),
   ...(linkTarget === undefined ? undefined : { linkTarget }),
   pax: options?.pax ?? {}
 })
@@ -598,6 +597,7 @@ class ByteQueue {
 
   // Takes exactly `n` bytes; the queue must hold at least `n`
   take(n: number): Uint8Array {
+    if (n === 0) return new Uint8Array(0)
     const first = this.takeSome(n)
     if (first.length === n) return first
     const out = new Uint8Array(n)
@@ -959,6 +959,9 @@ const encodeHeader = (header: Header): Uint8Array => {
 
   const pax: Record<string, string> = {}
   for (const key of Object.keys(header.pax)) {
+    if (key.startsWith("GNU.sparse.")) {
+      throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
+    }
     if (paxHeaderKeys.has(key)) {
       throw invalidHeader(`PAX record ${JSON.stringify(key)} must be set through its header field`)
     }
