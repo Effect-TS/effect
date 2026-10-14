@@ -286,8 +286,8 @@ const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: stri
 }
 
 /**
- * A nested result selection written as its own Struct and interface. Identical
- * selections anywhere in one file share it, keeping the first one's path.
+ * Identical nested selections share a schema and interface within a file,
+ * using the first occurrence's path for naming.
  */
 interface ExtractedClass {
   readonly id: number
@@ -1243,10 +1243,6 @@ class Emitter {
     return names
   }
 
-  /**
-   * A fragment on an object type is a Struct and interface; one on an interface or
-   * union is a `Schema.Union` and a type alias.
-   */
   emitFragment(ctx: FileContext, definition: Ast.FragmentDefinition): string {
     const name = definition.name.value
     const type = this.type(definition.typeCondition.name.value)

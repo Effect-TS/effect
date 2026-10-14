@@ -1,4 +1,3 @@
-// Measures 5 Author/Book selection pairs declared as Schema.Opaque classes, the current @effect/graphql-generator shape.
 import * as Schema from "effect/Schema"
 
 Schema.String

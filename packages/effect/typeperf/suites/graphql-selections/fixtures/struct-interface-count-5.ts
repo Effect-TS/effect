@@ -1,4 +1,3 @@
-// Measures 5 Author/Book selection pairs declared as Schema.Struct consts with interfaces extending their Type.
 import * as Schema from "effect/Schema"
 
 Schema.String
