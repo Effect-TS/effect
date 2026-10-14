@@ -167,12 +167,18 @@ const encodeImage = (
   let mediaType = image.mediaType
   let data: string
   if (image.data instanceof URL) {
-    const match = image.data.protocol === "data:" ? /^data:([^,;]*)[^,]*;base64,(.*)$/s.exec(image.data.href) : null
+    const match = image.data.protocol === "data:"
+      ? /^data:([^,;]*)[^,]*;base64,(.*)$/si.exec(image.data.href.split("#", 1)[0])
+      : null
     if (match === null) {
       return invalidUserInput("TypeSafe accepts byte arrays, base64 strings, or base64 data URLs, not remote URLs")
     }
     mediaType = match[1] || mediaType
-    data = match[2]
+    try {
+      data = decodeURIComponent(match[2])
+    } catch {
+      return invalidUserInput("TypeSafe image data URLs must contain valid percent-encoding")
+    }
   } else {
     data = typeof image.data === "string" ? image.data : Base64.encode(image.data)
   }
