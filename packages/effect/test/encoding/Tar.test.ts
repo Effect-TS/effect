@@ -90,6 +90,9 @@ describe("Tar", () => {
         assert.strictEqual(output[3].header.mode, 0o777)
         assert.strictEqual(text(output[1].body), "hello\n")
         assert.deepStrictEqual(Array.from(output[2].body), [0, 1, 255])
+
+        input[1].header.mtime.setTime(1000)
+        assert.deepStrictEqual([input[0].header.mtime, Tar.file("f", "").header.mtime], [new Date(0), new Date(0)])
       }))
 
     it.effect("splits long paths into the USTAR prefix and adds PAX only for fields that don't fit", () =>
@@ -115,6 +118,10 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(encode([short])), "SizeMismatch")
         assert.strictEqual(yield* failure(encode([Tar.file("", "")])), "InvalidHeader")
         assert.strictEqual(yield* failure(encode([Tar.file("f", "abc", { pax: { size: "10" } })])), "InvalidHeader")
+        assert.strictEqual(
+          yield* failure(encode([Tar.file("f", "abc", { pax: { "GNU.sparse.size": "10" } })])),
+          "InvalidHeader"
+        )
       }))
   })
 
@@ -180,6 +187,19 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(decode(bytes.subarray(0, 512 + 300))), "Truncated")
         bytes[0] = "b".charCodeAt(0)
         assert.strictEqual(yield* failure(decode(bytes)), "InvalidHeader")
+      }))
+
+    it.effect("reads an empty PAX header that ends an input chunk", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
+        // Drop the PAX data block and set the PAX header size to 0, then fix its checksum
+        const archive = concat([bytes.subarray(0, 512), bytes.subarray(1024)])
+        archive.set(textEncoder.encode("00000000000"), 124)
+        archive.fill(0x20, 148, 156)
+        const checksum = archive.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
+        archive.set(textEncoder.encode(`${checksum.toString(8).padStart(6, "0")}\0`), 148)
+        const output = yield* decode(archive, 512)
+        assert.deepStrictEqual(output.map((entry) => entry.header.path), ["f"])
       }))
 
     it.effect("skips unread bodies when moving to the next entry", () =>
