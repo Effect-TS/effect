@@ -353,7 +353,7 @@ Missing key
         })
 
         yield* HttpClientRequest.get("http://test/path?page=1#frag").pipe(
-          HttpClientRequest.appendUrlParam("token", Redacted.make("token-secret")),
+          HttpClientRequest.appendUrlParam("remote", Redacted.make("param-secret")),
           HttpClientRequest.appendUrlParam("q", "visible"),
           client.execute,
           Effect.provideService(Tracer.Tracer, tracer)
@@ -362,10 +362,10 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(
           clientSpan.attributes.get("url.full"),
-          "http://test/path?page=1&token=REDACTED&q=visible#frag"
+          "http://test/path?page=1&remote=REDACTED&q=visible#frag"
         )
-        assert.strictEqual(clientSpan.attributes.get("url.query"), "page=1&token=REDACTED&q=visible")
-        assert.strictEqual(sentUrl, "http://test/path?page=1&token=token-secret&q=visible#frag")
+        assert.strictEqual(clientSpan.attributes.get("url.query"), "page=1&remote=REDACTED&q=visible")
+        assert.strictEqual(sentUrl, "http://test/path?page=1&remote=param-secret&q=visible#frag")
       }))
 
     const makeCapturingClient = () => {
@@ -414,6 +414,22 @@ Missing key
   })
 
   describe("HttpClientError", () => {
+    it.effect("does not expose Redacted query params", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 500 })))
+        ).pipe(HttpClient.filterStatusOk)
+
+        const error = yield* client.get("http://test/path", {
+          urlParams: { remote: Redacted.make("param-secret"), q: "visible" }
+        }).pipe(Effect.flip)
+
+        for (const output of [JSON.stringify(error), String(error), inspect(error, { depth: 10 })]) {
+          assert.notInclude(output, "param-secret")
+        }
+        assert.include(JSON.stringify(error), "visible")
+      }))
+
     it.effect("redacts query params in messages using the current redacted names", () =>
       Effect.gen(function*() {
         const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")

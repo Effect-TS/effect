@@ -9,6 +9,14 @@ describe("UrlParams", () => {
     it("coerces null to a string", () => {
       deepStrictEqual(UrlParams.fromInput({ filter: null }).params, [["filter", "null"]])
     })
+
+    it("sends Redacted values but hides them from inspection", () => {
+      const params = UrlParams.fromInput({ remote: Redacted.make("param-secret"), q: "visible" })
+      assert.strictEqual(UrlParams.toString(params), "remote=param-secret&q=visible")
+      const output = Formatter.format(params)
+      assertFalse(output.includes("param-secret"))
+      assertTrue(output.includes("visible"))
+    })
   })
 
   describe("setAll", () => {
@@ -74,28 +82,6 @@ describe("UrlParams", () => {
         assertFalse(output.includes("token-secret"))
         assertTrue(output.includes("sig-visible"))
       }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
-  })
-
-  describe("Redacted values", () => {
-    it("redact wraps values added as Redacted", () => {
-      const [[, a], b] = UrlParams.redact(UrlParams.fromInput({ a: Redacted.make("secret"), b: "visible" }), [])
-      assert(Redacted.isRedacted(a))
-      assert.strictEqual(Redacted.value(a), "secret")
-      deepStrictEqual(b, ["b", "visible"])
-    })
-
-    it("keeps the redaction through combinators that reuse entries", () => {
-      const params = UrlParams.fromInput({ a: Redacted.make("secret"), b: "visible" })
-      for (
-        const self of [
-          UrlParams.remove(params, "b"),
-          UrlParams.appendAll(UrlParams.empty, params),
-          UrlParams.fromInput([...params])
-        ]
-      ) {
-        assert(Redacted.isRedacted(UrlParams.redact(self, [])[0][1]))
-      }
-    })
   })
 
   describe("Schema.UrlParams", () => {

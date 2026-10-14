@@ -331,7 +331,7 @@ describe("HttpClientRequest", () => {
 
     it("hides Redacted url params from inspection", () => {
       const request = HttpClientRequest.get("https://api.test/path").pipe(
-        HttpClientRequest.setUrlParam("token", Redacted.make("param-secret")),
+        HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
         HttpClientRequest.appendUrlParam("q", "visible")
       )
       for (const output of [JSON.stringify(request), String(request), inspect(request)]) {

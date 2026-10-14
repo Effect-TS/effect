@@ -91,11 +91,13 @@ describe("HttpClient", () => {
       expect(HttpClient.get).type.toBeCallableWith("", { urlParams: { token: secret } })
       expect(HttpClient.get).type.toBeCallableWith("", { urlParams: [["token", secret]] })
       expect(HttpClientRequest.setUrlParam).type.toBeCallableWith("token", secret)
+      expect(HttpClientRequest.appendUrlParam).type.toBeCallableWith("token", secret)
     })
 
     it("should reject non-string Redacted values", () => {
       expect(HttpClient.get).type.not.toBeCallableWith("", { urlParams: [["token", Redacted.make(1)]] })
       expect(HttpClientRequest.setUrlParam).type.not.toBeCallableWith("token", Redacted.make(1))
+      expect(HttpClientRequest.appendUrlParam).type.not.toBeCallableWith("token", Redacted.make(1))
     })
 
     it("should reject non-urlParams input", () => {
