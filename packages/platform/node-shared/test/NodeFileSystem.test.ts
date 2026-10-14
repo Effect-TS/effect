@@ -113,6 +113,26 @@ describe("FileSystem", { concurrent: false }, () => {
       Effect.provide(NodeFileSystem.layer)
     ))
 
+  it.effect("watch uses a WatchBackend provided after the layer is built", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const backendEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-backend" }
+      const backend: FileSystem.WatchBackend["Service"] = {
+        register: () => Option.some(Stream.make(backendEvent))
+      }
+
+      const event = yield* fs.watch(root).pipe(
+        Stream.runHead,
+        Effect.provideService(FileSystem.WatchBackend, backend),
+        Effect.timeout("1 second"),
+        TestClock.withLive
+      )
+      assert.deepStrictEqual(event, Option.some(backendEvent))
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
   it.effect("watch reports nested changes when recursive is true", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
