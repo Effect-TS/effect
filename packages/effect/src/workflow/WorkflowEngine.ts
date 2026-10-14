@@ -84,6 +84,9 @@ export class WorkflowEngine extends Context.Service<
      * `suspendedRetrySchedule`; engines that observe the final result wake it
      * sooner. `ClusterWorkflowEngine` does so only for callers on the runner
      * that owns the execution.
+     *
+     * `detached: true` requires `discard: true` and skips parent completion
+     * wakes and interruption linkage. Otherwise, it is a defect.
      */
     readonly execute: <
       Name extends string,
@@ -97,6 +100,7 @@ export class WorkflowEngine extends Context.Service<
         readonly executionId: string
         readonly payload: Payload["Type"]
         readonly discard?: Discard | undefined
+        readonly detached?: boolean | undefined
         readonly suspendedRetrySchedule?:
           | Schedule.Schedule<any, unknown>
           | undefined
@@ -413,6 +417,8 @@ export interface Encoded {
       readonly payload: object
       readonly discard: Discard
       readonly parent?: WorkflowInstance["Service"] | undefined
+      /** Skip parent completion wakes and interruption linkage. */
+      readonly detached?: boolean | undefined
     }
   ) => Effect.Effect<
     Discard extends true ? void : Workflow.Result<unknown, unknown>
@@ -521,11 +527,15 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
         readonly executionId: string
         readonly payload: Payload["Type"]
         readonly discard?: Discard | undefined
+        readonly detached?: boolean | undefined
         readonly suspendedRetrySchedule?:
           | Schedule.Schedule<any, unknown>
           | undefined
       }
     ) {
+      if (opts.detached && !opts.discard) {
+        return yield* Effect.die(`${self._tag}.execute: detached requires discard`)
+      }
       const payload = opts.payload
       const executionId = opts.executionId
       const suspendedRetrySchedule = opts.suspendedRetrySchedule ?? defaultRetrySchedule
@@ -534,7 +544,7 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
 
       // link interruption with parent workflow
       const parentInstance = yield* Effect.serviceOption(WorkflowInstance)
-      if (Option.isSome(parentInstance)) {
+      if (Option.isSome(parentInstance) && !opts.detached) {
         const instance = parentInstance.value
         yield* Effect.addFinalizer(() => {
           if (!instance.interrupted || (Option.isSome(result) && result.value._tag === "Complete")) {
@@ -547,7 +557,8 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
         executionId,
         payload: payload as object,
         discard: opts.discard ?? false,
-        parent: Option.getOrUndefined(parentInstance)
+        parent: Option.getOrUndefined(parentInstance),
+        detached: opts.detached
       }) as Effect.Effect<Workflow.Result<Success["Type"], Error["Type"]>>
 
       if (opts.discard) {
@@ -826,7 +837,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             resumeRequested: undefined,
             fiber: undefined,
             done: Deferred.makeUnsafe(),
-            parent: options.parent?.executionId
+            parent: options.detached ? undefined : options.parent?.executionId
           }
           executions.set(options.executionId, state)
           yield* resume(options.executionId, "explicit")

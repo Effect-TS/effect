@@ -472,6 +472,52 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
     }))
 
+  it.effect("layerMemory does not interrupt a detached child with its parent", () =>
+    Effect.gen(function*() {
+      const ParentGate = DurableDeferred.make("WorkflowEngine/DetachedParentGate")
+      const ChildGate = DurableDeferred.make("WorkflowEngine/DetachedChildGate")
+      const Parent = Workflow.make("WorkflowEngine/DetachedParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/DetachedChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+        yield* Child.execute({}, { discard: true, detached: true })
+        yield* DurableDeferred.await(ParentGate)
+      }))
+      const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        yield* Parent.interrupt(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+
+        const childId = yield* Child.executionId({})
+        yield* DurableDeferred.succeed(ChildGate, {
+          token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
+          value: void 0
+        })
+        let child = yield* Child.poll(childId)
+        while (Option.isNone(child) || child.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          child = yield* Child.poll(childId)
+        }
+        assert.deepStrictEqual(child.value, new Workflow.Complete({ exit: Exit.void }))
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
   for (const mode of ["failure", "interruption"] as const) {
     it.effect(`layerMemory releases a pending child registration on ${mode}`, () =>
       Effect.gen(function*() {
