@@ -49,8 +49,8 @@ export interface FlagDescriptor {
   readonly description: string | undefined
   readonly type: FlagType
   /**
-   * Whether the flag's value is optional. Such a flag only takes a value
-   * attached with `=` (`--name=value`), never from the next word.
+   * Whether the flag's value is optional. Its value can only be attached with
+   * `=` (`--name=value`), never given as the next word.
    */
   readonly optionalValue?: boolean | undefined
 }

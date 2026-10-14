@@ -491,8 +491,6 @@ const consumeFlagValueWithTokens = (
     }
   }
 
-  // Optional value (GNU-style): a bare flag uses its configured value and
-  // never consumes the next token
   if (spec.optionalValue !== undefined) {
     return {
       _tag: "Value",

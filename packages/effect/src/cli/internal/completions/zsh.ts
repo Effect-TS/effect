@@ -72,8 +72,8 @@ const argAction = (type: Completions.ArgumentType): string => {
 const flagSpecs = (flag: Completions.FlagDescriptor): Array<string> => {
   const specs: Array<string> = []
   const desc = flag.description ? `[${escapeZshExplanation(flag.description)}]` : ""
-  // A flag with an optional value only takes it after `=` in the same word
-  // (`--name=-`), and the value is optional (`::`).
+  // An optional value must follow `=` in the same word (`--name=-`), and `::`
+  // marks it optional.
   const optional = flag.optionalValue === true && flag.type._tag !== "Boolean"
   const valueSuffix = optional ? "=-" : ""
   const action = optional ? `:${valueAction(flag.type)}` : valueAction(flag.type)

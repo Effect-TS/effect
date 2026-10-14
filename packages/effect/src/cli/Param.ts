@@ -214,7 +214,7 @@ export interface Single<Kind extends ParamKind, out A> extends Param<Kind, A> {
   readonly typeName?: string | undefined
   readonly hidden: boolean
   /**
-   * Raw value used when the flag is given without one (see `withOptionalValue`).
+   * Raw value used for a bare flag. See `withOptionalValue`.
    */
   readonly optionalValue?: string | undefined
 }
@@ -1833,12 +1833,10 @@ export const withMetavar: {
  *
  * **Details**
  *
- * Follows GNU-style optional values: an explicit value must be attached with
- * `=` (`--watch=until-done` or `-w=until-done`). A bare `--watch` is parsed as
- * if `--watch=<value>` had been given. The flag never consumes the next
- * command-line token, so positional arguments and subcommands that follow it
- * are left alone. The flag itself is still required unless it is also made
- * optional or given a default.
+ * Follows GNU-style optional values. An explicit value must be attached with
+ * `=` (`--watch=until-done`), and a bare `--watch` is parsed as
+ * `--watch=<value>`. The flag never consumes the next token. It is still
+ * required unless it is made optional or given a default.
  *
  * **Example** (Flag with an optional value)
  *

@@ -514,13 +514,12 @@ export const withDescription: {
  *
  * **Details**
  *
- * Follows GNU-style optional values, like `--color[=WHEN]`: an explicit value
+ * Follows GNU-style optional values, like `--color[=WHEN]`. An explicit value
  * must be attached with `=` (`--watch=until-done` or `-w=until-done`). A bare
- * `--watch` is parsed as if `--watch=<value>` had been given, so `value` goes
- * through the same parsing and validation as a value typed by the user. The
- * flag never consumes the next command-line token, so `--watch build` leaves
- * `build` as a positional argument or subcommand. The flag itself is still
- * required unless it is also made optional or given a default.
+ * `--watch` is parsed as `--watch=<value>`, so `value` is validated like any
+ * other input. The flag never consumes the next token, so in `--watch build`,
+ * `build` stays a positional argument or subcommand. The flag is still
+ * required unless it is made optional or given a default.
  *
  * **Example** (Flag with an optional value)
  *
