@@ -350,6 +350,8 @@ const isZeroBlock = (block: Uint8Array): boolean => {
   return true
 }
 
+type Mutable<A> = { -readonly [K in keyof A]: A[K] }
+
 const isAscii = (s: string): boolean => {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i)
@@ -364,9 +366,16 @@ const isAscii = (s: string): boolean => {
 
 const readString = (block: Uint8Array, offset: number, length: number): string => {
   let end = offset
+  let ascii = true
   const limit = offset + length
-  while (end < limit && block[end] !== 0) end++
-  return textDecoder.decode(block.subarray(offset, end))
+  while (end < limit && block[end] !== 0) {
+    if (block[end] >= 0x80) ascii = false
+    end++
+  }
+  if (end === offset) return ""
+  if (!ascii || end - offset > 256) return textDecoder.decode(block.subarray(offset, end))
+  // Most header strings are short ASCII, which is cheaper to build directly
+  return String.fromCharCode.apply(null, block.subarray(offset, end) as unknown as Array<number>)
 }
 
 const readOctal = (block: Uint8Array, offset: number, length: number): number => {
@@ -404,20 +413,41 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
   return negative ? -value - 1 : value
 }
 
+// The checksum is the sum of the block bytes with the checksum field counted as
+// spaces. Some old tar writers summed signed bytes, which is accepted too.
 const verifyChecksum = (block: Uint8Array): boolean => {
   const stored = readOctal(block, 148, 8)
-  let unsigned = 0
-  let signed = 0
-  for (let i = 0; i < BLOCK; i++) {
-    const c = i >= 148 && i < 156 ? 0x20 : block[i]
-    unsigned += c
-    signed += c > 0x7f ? c - 0x100 : c
+  // Four sums let the loop run faster than one
+  let a = 0
+  let b = 0
+  let c = 0
+  let d = 0
+  for (let i = 0; i < BLOCK; i += 4) {
+    a += block[i]
+    b += block[i + 1]
+    c += block[i + 2]
+    d += block[i + 3]
   }
-  return stored === unsigned || stored === signed
+  let unsigned = a + b + c + d + 8 * 0x20
+  for (let i = 148; i < 156; i++) unsigned -= block[i]
+  if (stored === unsigned) return true
+  let high = 0
+  for (let i = 0; i < BLOCK; i++) {
+    if (block[i] > 0x7f && (i < 148 || i >= 156)) high++
+  }
+  return stored === unsigned - 0x100 * high
 }
 
-const readFixed = (block: Uint8Array, offset: number, length: number): string =>
-  String.fromCharCode(...block.subarray(offset, offset + length))
+const hasBytes = (block: Uint8Array, offset: number, bytes: ReadonlyArray<number>): boolean => {
+  for (let i = 0; i < bytes.length; i++) {
+    if (block[offset + i] !== bytes[i]) return false
+  }
+  return true
+}
+
+const USTAR_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x00] // "ustar\0"
+const GNU_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x20, 0x20, 0x00] // "ustar  \0"
+const STAR_TRAILER = [0x74, 0x61, 0x72, 0x00] // "tar\0"
 
 interface RawHeader {
   readonly typeflag: string
@@ -438,9 +468,8 @@ const parseHeader = (block: Uint8Array): RawHeader => {
   if (!verifyChecksum(block)) {
     throw invalidHeader("header checksum mismatch")
   }
-  const magic = readFixed(block, 257, 6)
-  const isUstar = magic === "ustar\0"
-  const isGnu = magic === "ustar " && readFixed(block, 263, 2) === " \0"
+  const isUstar = hasBytes(block, 257, USTAR_MAGIC)
+  const isGnu = !isUstar && hasBytes(block, 257, GNU_MAGIC)
   const header: RawHeader = {
     typeflag: String.fromCharCode(block[156]),
     path: readString(block, 0, 100),
@@ -465,7 +494,7 @@ const parseHeader = (block: Uint8Array): RawHeader => {
   header.devMinor = readNumber(block, 337, 8)
   if (isUstar) {
     // star archives end the block with "tar\0" and keep times after a shorter prefix
-    const prefix = readFixed(block, 508, 4) === "tar\0" ? readString(block, 345, 131) : readString(block, 345, 155)
+    const prefix = hasBytes(block, 508, STAR_TRAILER) ? readString(block, 345, 131) : readString(block, 345, 155)
     if (prefix.length > 0) header.path = `${prefix}/${header.path}`
   }
   return header
@@ -486,7 +515,7 @@ const parsePax = (data: Uint8Array): Record<string, string> => {
   while (offset < data.length) {
     let space = offset
     while (space < data.length && space - offset < 16 && data[space] !== 0x20) space++
-    const lengthField = readFixed(data, offset, space - offset)
+    const lengthField = String.fromCharCode.apply(null, data.subarray(offset, space) as unknown as Array<number>)
     const length = /^\d+$/.test(lengthField) ? Number(lengthField) : Number.NaN
     const end = offset + length
     if (!(length >= 5) || end > data.length || data[space] !== 0x20 || space + 1 >= end || data[end - 1] !== 0x0a) {
@@ -770,8 +799,7 @@ class Decoder {
     this.longName = ""
     this.longLink = ""
     const type = typeOf(raw.typeflag, raw.path)
-    const isDevice = type === "CharDevice" || type === "BlockDevice"
-    return {
+    const header: Mutable<Header> = {
       path: raw.path,
       type,
       typeflag: raw.typeflag,
@@ -782,10 +810,14 @@ class Decoder {
       uname: raw.uname,
       gname: raw.gname,
       mtime: new Date(raw.mtimeMillis),
-      ...(raw.linkTarget === "" ? undefined : { linkTarget: raw.linkTarget }),
-      ...(isDevice ? { devMajor: raw.devMajor, devMinor: raw.devMinor } : undefined),
       pax: rest
     }
+    if (raw.linkTarget !== "") header.linkTarget = raw.linkTarget
+    if (type === "CharDevice" || type === "BlockDevice") {
+      header.devMajor = raw.devMajor
+      header.devMinor = raw.devMinor
+    }
+    return header
   }
 }
 /**
@@ -918,8 +950,12 @@ const writeString = (block: Uint8Array, offset: number, length: number, value: s
   for (let i = 0; i < n; i++) block[offset + i] = value.charCodeAt(i)
 }
 
+// Writes `length - 1` zero-padded octal digits; the value must fit
 const writeOctal = (block: Uint8Array, offset: number, length: number, value: number): void => {
-  writeString(block, offset, length - 1, value.toString(8).padStart(length - 1, "0"))
+  for (let i = offset + length - 2; i >= offset; i--) {
+    block[i] = 0x30 + (value % 8)
+    value = Math.floor(value / 8)
+  }
 }
 
 // Keeps the ASCII characters of a value that is also stored in a PAX record
@@ -931,6 +967,9 @@ const toAscii = (s: string): string => {
   }
   return out
 }
+
+// Whether a string can be stored as is in a USTAR field of `length` bytes
+const fits = (value: string, length: number): boolean => value.length <= length && isAscii(value)
 
 // Split at the last slash that fits the 155-byte USTAR prefix.
 const splitPath = (path: string): readonly [prefix: string, name: string] | undefined => {
@@ -1054,6 +1093,8 @@ const encodeHeader = (header: Header): Uint8Array => {
   }
   const mtime = Math.floor(millis / 1000)
 
+  // Records of the PAX header, created when one is needed
+  let pax: Record<string, string> | undefined
   for (const key of Object.keys(header.pax)) {
     if (key.startsWith("GNU.sparse.")) {
       throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
@@ -1064,49 +1105,59 @@ const encodeHeader = (header: Header): Uint8Array => {
     if (key === "" || key.includes("=") || key.includes("\0")) {
       throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
     }
+    pax ??= {}
+    pax[key] = header.pax[key]
   }
-  const pax: Record<string, string> = { ...header.pax }
 
   // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
-  const fitString = (key: string, value: string, length: number): string => {
-    if (isAscii(value) && value.length <= length) return value
-    pax[key] = value
-    return toAscii(value).slice(0, length)
-  }
-  const fitNumber = (key: string, value: number, max: number): number => {
-    if (value >= 0 && value <= max) return value
-    pax[key] = String(value)
-    return 0
-  }
-
   const split = splitPath(path)
+  const linkTarget = checkNoNul("linkTarget", header.linkTarget ?? "")
+  const uname = checkNoNul("uname", header.uname)
+  const gname = checkNoNul("gname", header.gname)
+  const pathFits = split !== undefined || fits(path, 100)
+  const linkTargetFits = fits(linkTarget, 100)
+  const unameFits = fits(uname, 32)
+  const gnameFits = fits(gname, 32)
+  if (!pathFits) (pax ??= {}).path = path
+  if (!linkTargetFits) (pax ??= {}).linkpath = linkTarget
+  if (!unameFits) (pax ??= {}).uname = uname
+  if (!gnameFits) (pax ??= {}).gname = gname
+  if (size > MAX_OCTAL_11) (pax ??= {}).size = String(size)
+  if (uid > MAX_OCTAL_7) (pax ??= {}).uid = String(uid)
+  if (gid > MAX_OCTAL_7) (pax ??= {}).gid = String(gid)
+  if (mtime < 0 || mtime > MAX_OCTAL_11) (pax ??= {}).mtime = String(mtime)
+
   const ustar: UstarFields = {
-    name: split === undefined ? fitString("path", path, 100) : split[1],
-    prefix: split === undefined ? "" : split[0],
+    name: split !== undefined ? split[1] : pathFits ? path : toAscii(path).slice(0, 100),
+    prefix: split !== undefined ? split[0] : "",
     typeflag,
-    size: fitNumber("size", size, MAX_OCTAL_11),
+    size: size > MAX_OCTAL_11 ? 0 : size,
     mode,
-    uid: fitNumber("uid", uid, MAX_OCTAL_7),
-    gid: fitNumber("gid", gid, MAX_OCTAL_7),
-    mtime: fitNumber("mtime", mtime, MAX_OCTAL_11),
-    linkname: fitString("linkpath", checkNoNul("linkTarget", header.linkTarget ?? ""), 100),
-    uname: fitString("uname", checkNoNul("uname", header.uname), 32),
-    gname: fitString("gname", checkNoNul("gname", header.gname), 32),
+    uid: uid > MAX_OCTAL_7 ? 0 : uid,
+    gid: gid > MAX_OCTAL_7 ? 0 : gid,
+    mtime: mtime < 0 || mtime > MAX_OCTAL_11 ? 0 : mtime,
+    linkname: linkTargetFits ? linkTarget : toAscii(linkTarget).slice(0, 100),
+    uname: unameFits ? uname : toAscii(uname).slice(0, 32),
+    gname: gnameFits ? gname : toAscii(gname).slice(0, 32),
     devMajor,
     devMinor
   }
 
+  if (pax === undefined) {
+    const out = new Uint8Array(BLOCK)
+    writeUstarBlock(out, ustar)
+    return out
+  }
   const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
-  const dataLength = records.reduce((n, record) => n + record.length, 0)
-  const paxBlocks = records.length === 0 ? 0 : 1 + Math.ceil(dataLength / BLOCK)
+  let dataLength = 0
+  for (const record of records) dataLength += record.length
+  const paxBlocks = 1 + Math.ceil(dataLength / BLOCK)
   const out = new Uint8Array(BLOCK * (paxBlocks + 1))
-  if (paxBlocks > 0) {
-    writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
-    let offset = BLOCK
-    for (const record of records) {
-      out.set(record, offset)
-      offset += record.length
-    }
+  writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
+  let offset = BLOCK
+  for (const record of records) {
+    out.set(record, offset)
+    offset += record.length
   }
   writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
   return out
