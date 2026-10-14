@@ -411,6 +411,8 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *   `path`, `linkpath`, `size`, `uid`, `gid`, `uname`, `gname` and `mtime` must
  *   be set through the corresponding header fields. These keys and
  *   `GNU.sparse.*` records fail with an `InvalidHeader` `TarError`.
+ * - A `File` entry whose path ends with `/` fails with an `InvalidHeader`
+ *   `TarError`, because other tools read it as a directory.
  * - mtime is truncated to whole seconds.
  * - `typeflag` is only written for `Other` entries; every other type writes its
  *   standard flag.
@@ -1153,6 +1155,10 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   const path = checkNoNul("path", header.path)
   if (path === "") {
     throw invalidHeader("path must not be empty")
+  }
+  // GNU tar and node-tar read such an entry as a directory
+  if (header.type === "File" && path.endsWith("/")) {
+    throw invalidHeader(`File entry ${JSON.stringify(path)} must not end with "/"`)
   }
   const typeflag = typeflagOf(header)
   if (typeflag.length !== 1 || typeflag.charCodeAt(0) >= 0x80 || "xgLKS".includes(typeflag)) {

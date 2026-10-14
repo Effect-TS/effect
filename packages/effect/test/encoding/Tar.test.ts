@@ -141,6 +141,7 @@ describe("Tar", () => {
         const short = Tar.fileStream("f", 5, Stream.make(textEncoder.encode("abc")))
         assert.strictEqual(yield* failure(encode([short])), "SizeMismatch")
         assert.strictEqual(yield* failure(encode([Tar.file("", "")])), "InvalidHeader")
+        assert.strictEqual(yield* failure(encode([Tar.file("dir/", "")])), "InvalidHeader")
         assert.strictEqual(yield* failure(encode([Tar.file("f", "abc", { pax: { size: "10" } })])), "InvalidHeader")
         assert.strictEqual(
           yield* failure(encode([Tar.file("f", "abc", { pax: { "GNU.sparse.size": "10" } })])),
