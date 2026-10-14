@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import type { Cause } from "effect"
-import { Effect, Exit, Fiber, Queue, Result, Stream } from "effect"
+import { Array as Arr, Channel, Effect, Exit, Fiber, Queue, Result, Stream } from "effect"
 import * as Tar from "effect/encoding/Tar"
 import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
@@ -172,6 +172,21 @@ describe("Tar", () => {
           }
         }))
     }
+
+    it.effect("ignores input after the end of the archive and passes the upstream done value through", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("f", "f")])
+        const input = Channel.succeed(Arr.of(bytes)).pipe(
+          Channel.concat(Channel.succeed(Arr.of(textEncoder.encode("trailing data")))),
+          Channel.concat(Channel.end("done"))
+        )
+        const paths: Array<string> = []
+        const done = yield* input.pipe(
+          Channel.pipeTo(Tar.decode()),
+          Channel.runForEach((entries) => Effect.sync(() => paths.push(...entries.map((entry) => entry.header.path))))
+        )
+        assert.deepStrictEqual([paths, done], [["f"], "done"])
+      }))
 
     it.effect("fails on GNU sparse files", () =>
       Effect.gen(function*() {

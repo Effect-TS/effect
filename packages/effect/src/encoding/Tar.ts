@@ -375,11 +375,11 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
 
       // Runs a decoder step, pulling input until it has enough, and continues
       // with its result
-      const step = <A, B, E2, D>(
+      const step = <A, B, E>(
         f: () => A | typeof NeedInput,
-        k: (a: A) => Effect.Effect<B, E2 | Cause.Done<D>>
-      ): Effect.Effect<B, TarError | IE | E2 | Cause.Done<D>> =>
-        Effect.suspend(function loop(): Effect.Effect<B, TarError | IE | E2 | Cause.Done<D>> {
+        k: (a: A) => Effect.Effect<B, E>
+      ): Effect.Effect<B, TarError | IE | E> =>
+        Effect.suspend(function loop(): Effect.Effect<B, TarError | IE | E> {
           let result: A | typeof NeedInput
           try {
             result = f()
@@ -389,14 +389,6 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
           return result === NeedInput ? Effect.flatMap(pullInput, loop) : k(result)
         })
 
-      // Discards the input after the end of the archive
-      const drain: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
-        never,
-        IE | Cause.Done<Done>
-      > {
-        return done !== undefined ? Cause.done(done.value) : Effect.flatMap(pullInput, loop)
-      })
-
       const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
         Stream.fromPull(Effect.succeed(
           step(() => decoder.read(id), (chunks) => chunks === BodyEnd ? Cause.done() : Effect.succeed(chunks))
@@ -404,7 +396,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
 
       const next = step(
         () => decoder.next(),
-        (header) => header === undefined ? drain : Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
+        (header) =>
+          header === undefined
+            ? Cause.done(done!.value)
+            : Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
       )
 
       return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
@@ -898,7 +893,8 @@ class Decoder {
     this.queue.clear()
   }
 
-  // Returns the next entry header, or `undefined` at the end of the archive
+  // Returns the next entry header, or `undefined` once the archive and the
+  // input have ended. Input after the end of the archive is discarded.
   next(): Header | undefined | typeof NeedInput {
     this.generation++
     this.skip += this.remaining + this.pad
@@ -906,7 +902,7 @@ class Decoder {
     this.pad = 0
     const queue = this.queue
     while (true) {
-      if (this.finished) return undefined
+      if (this.finished) return this.finish()
       while (this.skip > 0) {
         if (queue.length === 0) return this.needInput()
         this.skip -= queue.takeSome(this.skip).length
@@ -988,10 +984,10 @@ class Decoder {
     return NeedInput
   }
 
-  private finish(): undefined {
+  private finish(): undefined | typeof NeedInput {
     this.finished = true
     this.queue.clear()
-    return undefined
+    return this.ended ? undefined : NeedInput
   }
 
   private toHeader(raw: RawHeader): Header {
