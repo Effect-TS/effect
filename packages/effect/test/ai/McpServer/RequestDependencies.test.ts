@@ -301,7 +301,112 @@ describe("McpServer request-level dependencies", () => {
         assert.lengthOf(logged, 1)
         assert.strictEqual(Cause.squash(logged[0]), defect)
       }))
+
+    it.effect("classifies a middleware failure per request when a handler failed with the same error", () =>
+      Effect.gen(function*() {
+        const denied = new McpSchema.InvalidParams({ message: "denied" })
+        let calls = 0
+        // The first call reaches the handler; the second is rejected by middleware with the same error.
+        const RejectSecond = McpServer.middleware()((effect) => ++calls === 1 ? effect : Effect.fail(denied), {
+          global: true
+        })
+        const registrations = Layer.mergeAll(
+          Layer.effectDiscard(Effect.flatMap(McpServer.McpServer, (server) =>
+            server.addTool({
+              tool: new McpSchema.Tool({ name: "Denied", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () => Effect.fail(denied)
+            }))),
+          RejectSecond
+        )
+        const harness = yield* makeMcpStdioHarness(
+          McpProtocol.v2025_11_25,
+          [McpProtocol.v2025_11_25],
+          registrations
+        )
+        yield* harness.initialize()
+
+        const handled = yield* harness.sendRequest("tools/call", { name: "Denied", arguments: {} })
+        const rejected = yield* harness.sendRequest("tools/call", { name: "Denied", arguments: {} })
+
+        assert.deepInclude(handled.result, { isError: true })
+        assert.deepStrictEqual(rejected.error, { code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "denied" })
+      }))
   })
+
+  it.effect("reports handler defects as internal errors and propagates handler interruption", () =>
+    Effect.gen(function*() {
+      const reported: Array<Cause.Cause<unknown>> = []
+      const logged: Array<Cause.Cause<unknown>> = []
+      const defect = new Error("private handler defect")
+      let mode: "die" | "interrupt" = "die"
+      const fail = () => mode === "die" ? Effect.die(defect) : Effect.interrupt
+      const TestServer = Layer.mergeAll(
+        McpServer.resource({ uri: "test://failing", name: "failing", content: Effect.suspend(fail) }),
+        McpServer.resource`test://failing/${Schema.String}`({
+          name: "failing-template",
+          completion: { param0: fail },
+          content: fail
+        }),
+        McpServer.prompt({
+          name: "failing",
+          parameters: { topic: Schema.String },
+          completion: { topic: fail },
+          content: fail
+        })
+      ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
+      const requests = Effect.gen(function*() {
+        const server = yield* McpServer.McpServer
+        return [
+          server.findResource("test://failing"),
+          server.findResource("test://failing/a"),
+          server.completion({
+            ref: { type: "ref/resource", uri: "test://failing/{param0}" },
+            argument: { name: "param0", value: "a" }
+          }),
+          server.getPromptResult({ name: "failing", arguments: { topic: "a" } }),
+          server.completion({ ref: { type: "ref/prompt", name: "failing" }, argument: { name: "topic", value: "a" } })
+        ] as const
+      })
+
+      const { defects, interruptions } = yield* Effect.gen(function*() {
+        const effects = yield* requests
+        const defects = yield* Effect.forEach(
+          effects,
+          (effect) => Effect.flip(effect as Effect.Effect<unknown, unknown>)
+        )
+        mode = "interrupt"
+        const interruptions = yield* Effect.forEach(
+          effects,
+          (effect) => Effect.exit(effect as Effect.Effect<unknown, unknown>)
+        )
+        return { defects, interruptions }
+      }).pipe(
+        Effect.provideService(McpSchema.McpServerClient, client),
+        Effect.provide(TestServer),
+        Effect.provide([
+          ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
+            reported.push(cause)
+          })]),
+          Logger.layer([Logger.make(({ cause, logLevel }) => {
+            if (logLevel === "Error") logged.push(cause)
+          })])
+        ])
+      )
+
+      for (const error of defects) {
+        assert.instanceOf(error, McpSchema.InternalError)
+        assert.strictEqual((error as McpSchema.InternalError).message, "Internal error")
+      }
+      for (const exit of interruptions) {
+        assert.isTrue(Exit.hasInterrupts(exit))
+      }
+      assert.lengthOf(reported, defects.length)
+      assert.lengthOf(logged, defects.length)
+      for (const cause of [...reported, ...logged]) {
+        assert.strictEqual(Cause.squash(cause), defect)
+      }
+    }))
 
   it.effect("falls back to the server log level on stateless requests without one", () =>
     Effect.gen(function*() {

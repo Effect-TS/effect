@@ -329,6 +329,24 @@ describe("McpServer", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     const name = () => Effect.map(Lookup, (lookup) => lookup.values)
 
+    it("should never require the request context at registration for schema services", () => {
+      const Decoded = hole<Schema.Codec<string, string, McpSchema.McpRequestContext, never>>()
+      const Encoded = hole<Schema.Codec<string, string, never, McpSchema.McpRequestContext>>()
+      const prompt = McpServer.prompt({
+        name: "context-decoder",
+        parameters: { id: Decoded },
+        content: ({ id }) => Effect.succeed(id)
+      })
+      const template = McpServer.resource`context://${McpSchema.param("tag", Encoded)}`({
+        name: "context-encoder",
+        completion: { tag: (input) => Effect.succeed([input]) },
+        content: (_uri, tag) => Effect.succeed(tag)
+      })
+
+      expect<Layer.Services<typeof prompt>>().type.toBe<McpServer.McpServer>()
+      expect<Layer.Services<typeof template>>().type.toBe<McpServer.McpServer>()
+    })
+
     it("should require prompt completion encoding services in both APIs", () => {
       class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}
       const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
