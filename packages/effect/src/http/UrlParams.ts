@@ -557,14 +557,16 @@ export const isRedactedName = (
 }
 
 /**
- * Replaces the values of matching query parameters in a URL with `REDACTED`.
+ * Redacts URL userinfo and the values of matching query parameters.
  *
  * **Details**
  *
  * Accepts absolute URLs, relative URLs such as `/path?sig=...`, and bare
- * search strings such as `?sig=...`. Only the `key=value` pairs whose decoded
- * names match `isRedactedName` are rewritten; the rest of the string, including
- * the fragment, is kept verbatim. When `redactedNames` is omitted, the current
+ * search strings such as `?sig=...`. Userinfo in absolute or protocol-relative
+ * URLs is always replaced with `REDACTED:REDACTED`, even without a query or with
+ * an empty redaction list. Query values whose decoded names match
+ * `isRedactedName` are replaced with `REDACTED`; the rest of the string,
+ * including the fragment, is kept verbatim. When `redactedNames` is omitted, the current
  * fiber's `CurrentRedactedNames` is used, falling back to the defaults outside
  * a fiber.
  *
@@ -585,6 +587,7 @@ export const redactUrl = (
   url: string,
   redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
 ): string => {
+  url = url.replace(/^((?:[a-z][a-z\d+.-]*:)?\/\/)[^/?#]*@/i, "$1REDACTED:REDACTED@")
   const queryStart = url.indexOf("?")
   if (queryStart === -1) return url
   const hashStart = url.indexOf("#")
