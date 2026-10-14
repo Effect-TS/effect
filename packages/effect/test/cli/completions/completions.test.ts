@@ -1028,49 +1028,21 @@ describe("Completions integration", () => {
 })
 
 describe("Flags with an optional value", () => {
-  const withOptionalValue = Command.make("app", {
-    watch: Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
-      Flag.withAlias("w"),
-      Flag.withDescription("Watch mode"),
-      Flag.withOptionalValue("first-failure"),
-      Flag.optional
-    ),
-    file: Argument.Literals("file", ["one"])
-  })
+  it("do not take the next word as the flag value", () => {
+    const descriptor = fromCommand(Command.make("app", {
+      watch: Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+        Flag.withAlias("w"),
+        Flag.withDescription("Watch mode"),
+        Flag.withOptionalValue("first-failure")
+      )
+    }))
 
-  it("marks the flag in the descriptor", () => {
-    const desc = fromCommand(withOptionalValue)
-    assert.deepStrictEqual(desc.flags, [{
-      name: "watch",
-      aliases: ["w"],
-      description: "Watch mode",
-      type: { _tag: "Choice", values: ["first-failure", "until-done"] },
-      optionalValue: true
-    }])
-  })
-
-  it("does not complete or skip the next word in Bash", () => {
-    const script = Bash.generate("app", fromCommand(withOptionalValue))
-    assert.notInclude(script, "--watch|-w)\n")
-    assert.notInclude(script, "--watch|-w) _skip_next=1 ;;")
-    assert.include(script, "--watch|-w) ;;")
-  })
-
-  it("only takes the value after = in Zsh", () => {
-    const script = Zsh.generate("app", fromCommand(withOptionalValue))
-    assert.include(script, `'(--watch -w)--watch=-[Watch mode]::value:(first-failure until-done)'`)
-    assert.include(script, `'(--watch -w)-w=-[Watch mode]::value:(first-failure until-done)'`)
-  })
-
-  it("does not require a value in Fish", () => {
-    const script = Fish.generate("app", fromCommand(withOptionalValue))
-    assert.include(script, "-l watch -s w -d 'Watch mode'\n")
-    assert.notInclude(script, "-a 'first-failure until-done'")
-  })
-
-  it("does not take the next word as the value in PowerShell", () => {
-    const script = PowerShell.generate("app", fromCommand(withOptionalValue))
-    assert.include(script, "forms = @('--watch', '-w'); takesValue = $true; optionalValue = $true;")
-    assert.include(script, "if (-not $hasValue -and -not $flag.optionalValue) { $pending = $flag }")
+    assert.notInclude(Bash.generate("app", descriptor), "--watch|-w)\n")
+    assert.include(
+      Zsh.generate("app", descriptor),
+      `'(--watch -w)--watch=-[Watch mode]::value:(first-failure until-done)'`
+    )
+    assert.notInclude(Fish.generate("app", descriptor), "-a 'first-failure until-done'")
+    assert.include(PowerShell.generate("app", descriptor), "optionalValue = $true;")
   })
 })

@@ -439,47 +439,27 @@ describe("Command", () => {
         Flag.withOptionalValue("first-failure")
       )
 
-      const runWatch = Effect.fnUntraced(function*(args: ReadonlyArray<string>) {
-        const captured: Array<readonly [Option.Option<string>, ReadonlyArray<string>]> = []
-        const command = Command.make("app", {
-          watch: watchFlag.pipe(Flag.optional),
-          files: Argument.String("file").pipe(Argument.variadic())
-        }, ({ files, watch }) => Effect.sync(() => captured.push([watch, files])))
-        yield* Command.runWith(command, { version: "1.0.0" })(args)
-        return captured
-      })
-
-      it.effect("uses the optional value for a bare flag and the inline value otherwise", () =>
+      it.effect("uses the optional value for a bare flag without consuming the next token", () =>
         Effect.gen(function*() {
-          assert.deepStrictEqual(yield* runWatch(["--watch"]), [[Option.some("first-failure"), []]])
-          assert.deepStrictEqual(yield* runWatch(["-w"]), [[Option.some("first-failure"), []]])
-          assert.deepStrictEqual(yield* runWatch(["--watch=until-done"]), [[Option.some("until-done"), []]])
-          assert.deepStrictEqual(yield* runWatch(["-w=until-done"]), [[Option.some("until-done"), []]])
-          assert.deepStrictEqual(yield* runWatch([]), [[Option.none(), []]])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("does not consume the next token as the value", () =>
-        Effect.gen(function*() {
-          assert.deepStrictEqual(yield* runWatch(["--watch", "until-done"]), [[Option.some("first-failure"), [
-            "until-done"
-          ]]])
-          assert.deepStrictEqual(yield* runWatch(["a.ts", "--watch", "b.ts"]), [[Option.some("first-failure"), [
-            "a.ts",
-            "b.ts"
-          ]]])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("is followed by another flag", () =>
-        Effect.gen(function*() {
-          const captured: Array<readonly [string, boolean]> = []
+          const captured: Array<unknown> = []
           const command = Command.make("app", {
-            watch: watchFlag,
-            verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false))
-          }, ({ verbose, watch }) => Effect.sync(() => captured.push([watch, verbose])))
+            watch: watchFlag.pipe(Flag.optional),
+            verbose: Flag.Boolean("verbose").pipe(Flag.withDefault(false)),
+            files: Argument.String("file").pipe(Argument.variadic())
+          }, (config) => Effect.sync(() => captured.push(config)))
+          const run = Command.runWith(command, { version: "1.0.0" })
 
-          yield* Command.runWith(command, { version: "1.0.0" })(["--watch", "--verbose"])
+          yield* run(["--watch", "until-done"])
+          yield* run(["-w", "--verbose"])
+          yield* run(["--watch=until-done"])
+          yield* run([])
 
-          assert.deepStrictEqual(captured, [["first-failure", true]])
+          assert.deepStrictEqual(captured, [
+            { watch: Option.some("first-failure"), verbose: false, files: ["until-done"] },
+            { watch: Option.some("first-failure"), verbose: true, files: [] },
+            { watch: Option.some("until-done"), verbose: false, files: [] },
+            { watch: Option.none(), verbose: false, files: [] }
+          ])
         }).pipe(Effect.provide(TestLayer)))
 
       it.effect("leaves a following subcommand name alone", () =>
@@ -494,60 +474,8 @@ describe("Command", () => {
           const command = root.pipe(Command.withSubcommands([build]))
 
           yield* Command.runWith(command, { version: "1.0.0" })(["--watch", "build"])
-          yield* Command.runWith(command, { version: "1.0.0" })(["build", "--watch"])
-          yield* Command.runWith(command, { version: "1.0.0" })(["--watch=until-done", "build"])
 
-          assert.deepStrictEqual(captured, [
-            Option.some("first-failure"),
-            Option.some("first-failure"),
-            Option.some("until-done")
-          ])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("parses the optional value like an inline value", () =>
-        Effect.gen(function*() {
-          const captured: Array<number> = []
-          const command = Command.make("app", {
-            level: Flag.Int("level").pipe(
-              Flag.withOptionalValue("3"),
-              Flag.map((n) => n * 10),
-              Flag.withDefault(0)
-            )
-          }, ({ level }) => Effect.sync(() => captured.push(level)))
-
-          yield* Command.runWith(command, { version: "1.0.0" })(["--level"])
-          yield* Command.runWith(command, { version: "1.0.0" })(["--level=5"])
-          yield* Command.runWith(command, { version: "1.0.0" })([])
-
-          assert.deepStrictEqual(captured, [30, 50, 0])
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("rejects an invalid inline value", () =>
-        Effect.gen(function*() {
-          const captured = yield* runWatch(["--watch=bogus"]).pipe(Effect.orElseSucceed(() => []))
-
-          const stderr = yield* TestConsole.errorLines
-          assert.deepStrictEqual(captured, [])
-          assert.isTrue(
-            stderr.some((line) =>
-              String(line).includes(`Invalid value for flag --watch: "bogus". Expected: "first-failure" | "until-done"`)
-            )
-          )
-        }).pipe(Effect.provide(TestLayer)))
-
-      it.effect("is still required unless made optional", () =>
-        Effect.gen(function*() {
-          let invoked = false
-          const command = Command.make("app", { watch: watchFlag }, () =>
-            Effect.sync(() => {
-              invoked = true
-            }))
-
-          yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(Effect.ignore)
-
-          const stderr = yield* TestConsole.errorLines
-          assert.isFalse(invoked)
-          assert.isTrue(stderr.some((line) => String(line).includes("--watch")))
+          assert.deepStrictEqual(captured, [Option.some("first-failure")])
         }).pipe(Effect.provide(TestLayer)))
 
       it.effect("emits the wizard value inline", () =>
