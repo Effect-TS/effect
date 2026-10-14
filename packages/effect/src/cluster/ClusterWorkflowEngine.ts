@@ -508,9 +508,8 @@ export const make = Effect.gen(function*() {
               activity(request: Entity.Request<any>) {
                 const payload = request.payload as { name: string; attempt: number }
                 const activityId = `${executionId}/${payload.name}`
-                const instance = WorkflowEngine.WorkflowInstance.of({
-                  ...WorkflowEngine.WorkflowInstance.initial(workflow, executionId),
-                  awaitedDeferreds: currentRun?.activityAwaits ?? new Map()
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  awaitedDeferreds: currentRun?.activityAwaits
                 })
                 interruptedActivities.delete(activityId)
                 const entry = activities.get(activityId)
