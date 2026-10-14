@@ -211,9 +211,9 @@ const makeToolkitTestClient = Effect.fnUntraced(function*(
 ) {
   const reported: Array<Cause.Cause<unknown>> = []
   const logged: Array<Cause.Cause<unknown>> = []
-  const loggerLayer = Logger.layer([Logger.make(({ cause, logLevel }) => {
+  const logger = Logger.make(({ cause, logLevel }) => {
     if (logLevel === "Error") logged.push(cause)
-  })])
+  })
   const reporterLayer = ErrorReporter.layer(
     options?.reportErrors === false ? [] : [ErrorReporter.make(({ cause }) => {
       reported.push(cause)
@@ -221,7 +221,7 @@ const makeToolkitTestClient = Effect.fnUntraced(function*(
   )
   const serverLayer = McpServer.toolkit(TestToolkit).pipe(
     Layer.provideMerge(TestToolkit.toLayer(handlers)),
-    Layer.provide(Layer.mergeAll(TestServerLayer, loggerLayer)),
+    Layer.provide(makeServerLayer({ name: "TestServer", loggers: [logger] })),
     Layer.provide(reporterLayer)
   )
   const { client } = yield* makeTestClientWith(serverLayer)

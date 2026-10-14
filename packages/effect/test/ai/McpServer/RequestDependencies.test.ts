@@ -170,7 +170,7 @@ describe("McpServer request-level dependencies", () => {
       const tool = yield* response(1)
       const resource = yield* response(2)
 
-      assert.deepInclude(tool.result, { structuredContent: "local|request:tag|request:|note:root" })
+      assert.deepInclude(tool.result, { content: [{ type: "text", text: "local|request:tag|request:|note:root" }] })
       assert.deepStrictEqual(resource.result, { contents: [{ uri: "test://user", text: "global" }] })
     }))
 
@@ -189,7 +189,7 @@ describe("McpServer request-level dependencies", () => {
         request(1, "tools/call", { name: "Temp", arguments: {} })
       ])
 
-      assert.deepInclude((yield* response(1)).result, { structuredContent: "done" })
+      assert.deepInclude((yield* response(1)).result, { content: [{ type: "text", text: "done" }] })
       yield* Deferred.await(finalized).pipe(Effect.timeout("1 second"))
     }))
 
