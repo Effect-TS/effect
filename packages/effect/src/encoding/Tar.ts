@@ -25,6 +25,7 @@ import * as Pull from "../Pull.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
+import type * as Types from "../Types.ts"
 
 const TarErrorTypeId = "~effect/encoding/Tar/TarError"
 
@@ -546,8 +547,6 @@ const isZeroBlock = (block: Uint8Array): boolean => {
   return true
 }
 
-type Mutable<A> = { -readonly [K in keyof A]: A[K] }
-
 const isAscii = (s: string): boolean => {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i)
@@ -1005,7 +1004,7 @@ class Decoder {
       throw invalidHeader("mtime is out of range")
     }
     const type = typeOf(raw.typeflag, raw.path)
-    const header: Mutable<Header> = {
+    const header: Types.Mutable<Header> = {
       path: raw.path,
       type,
       typeflag: raw.typeflag,
