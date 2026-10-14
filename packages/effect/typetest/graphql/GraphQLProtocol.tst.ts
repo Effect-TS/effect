@@ -55,8 +55,11 @@ describe("GraphQLProtocol", () => {
     >()
   })
 
-  it("the service has an optional url, so hand-written protocols without one still compile", () => {
-    expect<GraphQLProtocol.GraphQLProtocol["Service"]["url"]>().type.toBe<UrlFunction | undefined>()
+  it("the service has an optional url that resolves to an Effect, so hand-written protocols without one still compile", () => {
+    expect<GraphQLProtocol.GraphQLProtocol["Service"]["url"]>().type.toBe<
+      | ((options: { readonly kind: GraphQL.Kind; readonly operationName: string }) => Effect.Effect<string>)
+      | undefined
+    >()
     expect(GraphQLProtocol.GraphQLProtocol.of).type.toBeCallableWith({
       execute: () => Effect.succeed({ body: null }),
       subscribe: () => Stream.empty
