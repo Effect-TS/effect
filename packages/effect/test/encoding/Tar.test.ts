@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import type { Cause } from "effect"
-import { Effect, Exit, Queue, Stream } from "effect"
+import { Effect, Exit, Fiber, Queue, Result, Stream } from "effect"
 import * as Tar from "effect/encoding/Tar"
 import { readFileSync } from "node:fs"
 import { gunzipSync } from "node:zlib"
@@ -197,6 +197,56 @@ describe("Tar", () => {
           )
           assert.deepStrictEqual(output, ["a".charCodeAt(0), "b".charCodeAt(0)])
         }
+      }))
+
+    it.effect("applies only the last of consecutive PAX headers", () =>
+      Effect.gen(function*() {
+        const first = yield* encode([Tar.file("f", "", { pax: { "a.first": "1" } })])
+        const second = yield* encode([Tar.file("f", "", { pax: { "b.second": "2" } })])
+        // The PAX header and data block of the first entry, then the whole second archive
+        const output = yield* decode(new Uint8Array([...first.subarray(0, 1024), ...second]))
+        assert.deepStrictEqual(output.map((entry) => entry.header.pax), [{ "b.second": "2" }])
+      }))
+
+    it.effect("resumes after an interrupted pull for the next entry", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("a", "a".repeat(2000)), Tar.file("b", "b")])
+        const input = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+        yield* Queue.offer(input, bytes.subarray(0, 512 + 100))
+        const pull = yield* Stream.toPull(Stream.fromQueue(input).pipe(Stream.pipeThroughChannel(Tar.decode())))
+        yield* pull
+        // Interrupted while skipping the unread body of "a"
+        const fiber = yield* Effect.forkChild(pull)
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(fiber)
+        yield* Queue.offer(input, bytes.subarray(512 + 100))
+        yield* Queue.end(input)
+        const [entry] = yield* pull
+        assert.strictEqual(entry.header.path, "b")
+      }))
+
+    it.effect("serves a body read racing the pull for the next entry", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("a", "a".repeat(2000)), Tar.file("b", "b")])
+        const input = yield* Queue.unbounded<Uint8Array, Cause.Done>()
+        yield* Queue.offer(input, bytes.subarray(0, 512 + 100))
+        const pull = yield* Stream.toPull(Stream.fromQueue(input).pipe(Stream.pipeThroughChannel(Tar.decode())))
+        const [entry] = yield* pull
+        // Both wait for the same input
+        const body = yield* Effect.forkChild(Stream.runFold(entry.body, () => 0, (n, chunk) => n + chunk.length))
+        yield* Effect.yieldNow
+        const next = yield* Effect.forkChild(pull)
+        yield* Effect.yieldNow
+        yield* Queue.offer(input, bytes.subarray(512 + 100))
+        yield* Queue.end(input)
+        const [b] = yield* Fiber.join(next)
+        assert.strictEqual(b.header.path, "b")
+        // The body either finished first or was invalidated by the next entry
+        const result = yield* Effect.result(Fiber.join(body))
+        assert.isTrue(
+          Result.isSuccess(result) ? result.success === 2000 : Tar.isTarError(result.failure) &&
+            result.failure.kind === "BodyConsumed"
+        )
       }))
 
     it.effect("emits body bytes before the rest of the archive arrives", () =>

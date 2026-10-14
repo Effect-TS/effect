@@ -480,7 +480,8 @@ const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname"
 
 // Parses records of the form "<length> <key>=<value>\n", where the length counts
 // the bytes of the whole record
-const parsePax = (data: Uint8Array, into: Record<string, string>): void => {
+const parsePax = (data: Uint8Array): Record<string, string> => {
+  const records: Record<string, string> = {}
   let offset = 0
   while (offset < data.length) {
     let space = offset
@@ -501,9 +502,10 @@ const parsePax = (data: Uint8Array, into: Record<string, string>): void => {
     if (key.includes("\0") || (paxStringKeys.has(key) && value.includes("\0"))) {
       throw invalidHeader(`invalid PAX record ${key}`)
     }
-    into[key] = value
+    records[key] = value
     offset = end
   }
+  return records
 }
 
 const paxInteger = (key: string, value: string): number => {
@@ -609,6 +611,168 @@ class ByteQueue {
   }
 }
 
+// Returned by the decoder when the buffered input is not enough to continue
+const NeedInput: unique symbol = Symbol("effect/encoding/Tar/NeedInput")
+
+// Returned by `Decoder.read` once the whole body has been read
+const BodyEnd: unique symbol = Symbol("effect/encoding/Tar/BodyEnd")
+
+// Reads entries from input that is pushed in chunks, like Go's `tar.Reader`.
+// `next` moves to the next entry, skipping what is left of the current body,
+// and `read` returns body bytes. Both return `NeedInput` when the buffered input
+// is not enough, keeping their progress so that they can be called again, and
+// throw a `TarError` on a malformed archive.
+class Decoder {
+  private readonly queue = new ByteQueue()
+  private ended = false
+  private finished = false
+  private closed = false
+  // Incremented whenever the current body is invalidated
+  generation = 0
+  private remaining = 0
+  private pad = 0
+  // Bytes to discard before the next header
+  private skip = 0
+  private zeroBlock = false
+  // An extended header whose data is still to be read
+  private meta: RawHeader | undefined
+  private pax: Record<string, string> | undefined
+  private longName = ""
+  private longLink = ""
+
+  push(chunk: Uint8Array): void {
+    if (!this.finished) this.queue.push(chunk)
+  }
+
+  // Marks the end of the input
+  end(): void {
+    this.ended = true
+  }
+
+  close(): void {
+    this.closed = true
+    this.generation++
+    this.queue.clear()
+  }
+
+  // Returns the next entry header, or `undefined` at the end of the archive
+  next(): Header | undefined | typeof NeedInput {
+    this.generation++
+    this.skip += this.remaining + this.pad
+    this.remaining = 0
+    this.pad = 0
+    const queue = this.queue
+    while (true) {
+      if (this.finished) return undefined
+      while (this.skip > 0) {
+        if (queue.length === 0) return this.needInput()
+        this.skip -= queue.takeSome(this.skip).length
+      }
+      if (this.meta !== undefined) {
+        const { size, typeflag } = this.meta
+        const total = size + padding(size)
+        if (queue.length < total) return this.needInput()
+        const data = queue.take(total).subarray(0, size)
+        this.meta = undefined
+        if (typeflag === "x") this.pax = parsePax(data)
+        else if (typeflag === "L") this.longName = readString(data, 0, size)
+        else this.longLink = readString(data, 0, size)
+        continue
+      }
+      if (queue.length < BLOCK) {
+        if (queue.length === 0 && this.ended) return this.finish()
+        return this.needInput()
+      }
+      const block = queue.take(BLOCK)
+      if (isZeroBlock(block)) {
+        if (this.zeroBlock) return this.finish()
+        this.zeroBlock = true
+        continue
+      }
+      if (this.zeroBlock) {
+        throw invalidHeader("non-zero block after an end-of-archive block")
+      }
+      const raw = parseHeader(block)
+      switch (raw.typeflag) {
+        case "x":
+        case "L":
+        case "K": {
+          if (raw.size > MAX_META_SIZE) {
+            throw invalidHeader(`extended header of ${raw.size} bytes exceeds the limit`)
+          }
+          this.meta = raw
+          continue
+        }
+        case "g": {
+          this.skip = raw.size + padding(raw.size)
+          continue
+        }
+        case "S": {
+          throw sparseUnsupported()
+        }
+      }
+      const header = this.toHeader(raw)
+      this.remaining = header.size
+      this.pad = padding(header.size)
+      return header
+    }
+  }
+
+  // Returns the next body bytes of the entry from generation `id`
+  read(id: number): Uint8Array | typeof NeedInput | typeof BodyEnd {
+    if (id !== this.generation) {
+      throw new TarError({
+        kind: "BodyConsumed",
+        message: this.closed ?
+          "tar entry body read after the archive stream ended" :
+          "tar entry body read after moving to the next entry"
+      })
+    }
+    if (this.remaining === 0) return BodyEnd
+    if (this.queue.length === 0) return this.needInput()
+    const chunk = this.queue.takeSome(this.remaining)
+    this.remaining -= chunk.length
+    return chunk
+  }
+
+  private needInput(): typeof NeedInput {
+    if (this.ended) throw truncated()
+    return NeedInput
+  }
+
+  private finish(): undefined {
+    this.finished = true
+    this.queue.clear()
+    return undefined
+  }
+
+  private toHeader(raw: RawHeader): Header {
+    const rest = this.pax === undefined ? {} : applyPax(raw, this.pax)
+    // Empty GNU long names are ignored, as in Go
+    if (this.longName !== "") raw.path = this.longName
+    if (this.longLink !== "") raw.linkTarget = this.longLink
+    this.pax = undefined
+    this.longName = ""
+    this.longLink = ""
+    const type = typeOf(raw.typeflag, raw.path)
+    const isDevice = type === "CharDevice" || type === "BlockDevice"
+    return {
+      path: raw.path,
+      type,
+      typeflag: raw.typeflag,
+      size: isHeaderOnly(type) ? 0 : raw.size,
+      mode: raw.mode,
+      uid: raw.uid,
+      gid: raw.gid,
+      uname: raw.uname,
+      gname: raw.gname,
+      mtime: new Date(raw.mtimeMillis),
+      ...(raw.linkTarget === "" ? undefined : { linkTarget: raw.linkTarget }),
+      ...(isDevice ? { devMajor: raw.devMajor, devMinor: raw.devMinor } : undefined),
+      pax: rest
+    }
+  }
+}
 /**
  * Creates a channel that decodes tar archive bytes into entries.
  *
@@ -646,172 +810,64 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
 > =>
   Channel.fromTransform((upstream, scope) =>
     Effect.suspend(() => {
-      const decoder = makeDecoder(upstream)
-      return Effect.as(Scope.addFinalizer(scope, Effect.sync(decoder.close)), decoder.pull)
-    })
-  )
+      const decoder = new Decoder()
+      // Serializes upstream pulls between the entry stream and the current body
+      const lock = Semaphore.makeUnsafe(1)
+      let done: { readonly value: Done } | undefined
 
-const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, IE, Done>) => {
-  const queue = new ByteQueue()
-  const lock = Semaphore.makeUnsafe(1)
-  let upstreamDone: { readonly value: Done } | undefined
-  let closed = false
-  // Incremented whenever the current body is invalidated
-  let generation = 0
-  let remaining = 0
-  let pad = 0
+      const pullInput: Effect.Effect<void, IE> = upstream.pipe(
+        Effect.map((chunks) => {
+          for (const chunk of chunks) decoder.push(chunk)
+        }),
+        Pull.catchDone((value) => {
+          done = { value: value as Done }
+          decoder.end()
+          return Effect.void
+        })
+      )
 
-  const pullUpstream: Effect.Effect<boolean, IE> = upstream.pipe(
-    Effect.map((chunks) => {
-      for (const chunk of chunks) queue.push(chunk)
-      return true
-    }),
-    Pull.catchDone((value) => {
-      upstreamDone = { value: value as Done }
-      return Effect.succeed(false)
-    })
-  )
-
-  const fill = (n: number): Effect.Effect<boolean, IE> =>
-    Effect.suspend(() => {
-      if (queue.length >= n) return Effect.succeed(true)
-      if (upstreamDone !== undefined) return Effect.succeed(false)
-      return Effect.flatMap(pullUpstream, () => fill(n))
-    })
-
-  // Reads one block, or `undefined` when the input ends on a block boundary
-  const readBlock: Effect.Effect<Uint8Array | undefined, TarError | IE> = Effect.flatMap(
-    fill(BLOCK),
-    (ok) => {
-      if (ok) return Effect.succeed(queue.take(BLOCK))
-      return queue.length === 0 ? Effect.succeed(undefined) : Effect.fail(truncated())
-    }
-  )
-
-  const readSome = (max: number): Effect.Effect<Uint8Array, TarError | IE> =>
-    Effect.flatMap(fill(1), (ok) => ok ? Effect.succeed(queue.takeSome(max)) : Effect.fail(truncated()))
-
-  const skip = (n: number): Effect.Effect<void, TarError | IE> =>
-    n === 0 ? Effect.void : Effect.flatMap(readSome(n), (chunk) => skip(n - chunk.length))
-
-  const readMeta = (size: number): Effect.Effect<Uint8Array, TarError | IE> => {
-    if (size > MAX_META_SIZE) {
-      return Effect.fail(invalidHeader(`extended header of ${size} bytes exceeds the limit`))
-    }
-    const total = size + padding(size)
-    return Effect.flatMap(
-      fill(total),
-      (ok) => ok ? Effect.succeed(queue.take(total).subarray(0, size)) : Effect.fail(truncated())
-    )
-  }
-
-  const finish: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
-    never,
-    IE | Cause.Done<Done>
-  > {
-    queue.clear()
-    if (upstreamDone !== undefined) return Cause.done(upstreamDone.value)
-    return Effect.flatMap(pullUpstream, loop)
-  })
-
-  const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-    Stream.fromPull(Effect.succeed(lock.withPermit(Effect.suspend((): Pull.Pull<
-      Arr.NonEmptyReadonlyArray<Uint8Array>,
-      TarError | IE
-    > => {
-      if (id !== generation) {
-        return Effect.fail(
-          new TarError({
-            kind: "BodyConsumed",
-            message: closed ?
-              "tar entry body read after the archive stream ended" :
-              "tar entry body read after moving to the next entry"
-          })
-        )
-      }
-      if (remaining === 0) return Cause.done()
-      return Effect.map(readSome(remaining), (chunk) => {
-        remaining -= chunk.length
-        return Arr.of(chunk)
+      // Discards the input after the end of the archive
+      const drain: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
+        never,
+        IE | Cause.Done<Done>
+      > {
+        if (done !== undefined) return Cause.done(done.value)
+        return Effect.flatMap(pullInput, loop)
       })
-    }))))
 
-  const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.gen(
-    function*() {
-      generation++
-      yield* skip(remaining + pad)
-      remaining = 0
-      pad = 0
-      const pax: Record<string, string> = {}
-      let longName: string | undefined
-      let longLink: string | undefined
-      while (true) {
-        const block = yield* readBlock
-        if (block === undefined) return yield* finish
-        if (isZeroBlock(block)) {
-          const second = yield* readBlock
-          if (second === undefined || isZeroBlock(second)) return yield* finish
-          return yield* Effect.fail(invalidHeader("non-zero block after an end-of-archive block"))
+      const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
+        Stream.fromPull(Effect.succeed(lock.withPermit(Effect.suspend(function loop(): Pull.Pull<
+          Arr.NonEmptyReadonlyArray<Uint8Array>,
+          TarError | IE
+        > {
+          let chunk: Uint8Array | typeof NeedInput | typeof BodyEnd
+          try {
+            chunk = decoder.read(id)
+          } catch (error) {
+            return Effect.fail(error as TarError)
+          }
+          if (chunk === NeedInput) return Effect.flatMap(pullInput, loop)
+          if (chunk === BodyEnd) return Cause.done()
+          return Effect.succeed(Arr.of(chunk))
+        }))))
+
+      const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.suspend(
+        function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> {
+          let header: Header | undefined | typeof NeedInput
+          try {
+            header = decoder.next()
+          } catch (error) {
+            return Effect.fail(error as TarError)
+          }
+          if (header === NeedInput) return Effect.flatMap(pullInput, loop)
+          if (header === undefined) return drain
+          return Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
         }
-        const raw = yield* attempt(() => parseHeader(block))
-        switch (raw.typeflag) {
-          case "x": {
-            const data = yield* readMeta(raw.size)
-            yield* attempt(() => parsePax(data, pax))
-            continue
-          }
-          case "g": {
-            yield* skip(raw.size + padding(raw.size))
-            continue
-          }
-          case "L":
-          case "K": {
-            const name = readString(yield* readMeta(raw.size), 0, raw.size)
-            if (raw.typeflag === "L") longName = name
-            else longLink = name
-            continue
-          }
-          case "S": {
-            return yield* Effect.fail(sparseUnsupported())
-          }
-        }
-        const rest = yield* attempt(() => applyPax(raw, pax))
-        if (longName !== undefined) raw.path = longName
-        if (longLink !== undefined) raw.linkTarget = longLink
-        const type = typeOf(raw.typeflag, raw.path)
-        const size = isHeaderOnly(type) ? 0 : raw.size
-        remaining = size
-        pad = padding(size)
-        const isDevice = type === "CharDevice" || type === "BlockDevice"
-        const header: Header = {
-          path: raw.path,
-          type,
-          typeflag: raw.typeflag,
-          size,
-          mode: raw.mode,
-          uid: raw.uid,
-          gid: raw.gid,
-          uname: raw.uname,
-          gname: raw.gname,
-          mtime: new Date(raw.mtimeMillis),
-          ...(raw.linkTarget === "" ? undefined : { linkTarget: raw.linkTarget }),
-          ...(isDevice ? { devMajor: raw.devMajor, devMinor: raw.devMinor } : undefined),
-          pax: rest
-        }
-        return Arr.of({ header, body: body(generation) })
-      }
-    }
+      )
+
+      return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), lock.withPermit(next))
+    })
   )
-
-  return {
-    pull: lock.withPermit(next),
-    close: () => {
-      closed = true
-      generation++
-      queue.clear()
-    }
-  }
-}
 
 // -----------------------------------------------------------------------------
 // Encoding
