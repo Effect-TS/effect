@@ -29,9 +29,9 @@ export type TypeId = "~effect/ai/Decision"
 export const TypeId: TypeId = "~effect/ai/Decision"
 
 /**
- * Instructions or a description: a string, a JSON object, or a JSON array.
- * Structure helps when a question has several parts or refers to data that
- * is already JSON, such as a schema, a taxonomy, or a database row.
+ * Instructions or a description, as a string, a JSON object, or a JSON array.
+ * Use structure when a question has several parts or refers to data that is
+ * already JSON, such as a schema or a database row.
  *
  * **Details**
  *
