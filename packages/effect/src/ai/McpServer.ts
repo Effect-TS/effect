@@ -46,6 +46,8 @@ import * as SchemaAST from "../SchemaAST.ts"
 import * as Scope from "../Scope.ts"
 import type { Stdio } from "../Stdio.ts"
 import * as Stream from "../Stream.ts"
+import * as Tracer from "../Tracer.ts"
+import type * as Types from "../Types.ts"
 import * as AiError from "./AiError.ts"
 import * as McpCore from "./internal/mcpCore.ts"
 import * as McpProtocolInternal from "./internal/mcpProtocol.ts"
@@ -105,6 +107,7 @@ const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
   readonly notifications: Queue.Dequeue<QueuedServerNotification>
   readonly notificationDelivery: { consumers: number; listChangeRevision: number; requestEndpoints: number }
+  readonly globalMiddleware: Array<middleware.Fn<any, any, any>>
 }>()
 
 // Request-scoped HTTP servers deliver a request's own notifications through
@@ -166,13 +169,35 @@ const toInternalServerNotification = (
   }
 }
 
-// Request services must come from the invocation, including when a handler is registered during a request.
-const omitRequestServices = Context.omit(
-  McpRequestContext,
-  McpServerClient,
-  HttpServerRequest.HttpServerRequest,
-  CurrentLogLevel
-)
+const middlewareKeyPrefix = "effect/ai/McpServer/Middleware-"
+const middlewareFnKey = "effect/ai/McpServer/MiddlewareFn"
+
+// Request services must come from the invocation, including when a handler is
+// registered during a request. Registration context also drops the MCP
+// middleware stack, which applies through the registration instead.
+const requestServiceKeys: ReadonlyArray<string> = [
+  McpRequestContext.key,
+  McpServerClient.key,
+  HttpServerRequest.HttpServerRequest.key,
+  HttpServerRequest.ParsedSearchParams.key,
+  HttpRouter.RouteContext.key,
+  CurrentLogLevel.key,
+  Scope.Scope.key,
+  Tracer.ParentSpan.key
+]
+
+const omitRequestServices = <Services>(context: Context.Context<Services>): Context.Context<Services> => {
+  const services = new Map(context.mapUnsafe)
+  for (const key of requestServiceKeys) {
+    services.delete(key)
+  }
+  for (const key of services.keys()) {
+    if (key === middlewareFnKey || key.startsWith(middlewareKeyPrefix)) {
+      services.delete(key)
+    }
+  }
+  return Context.makeUnsafe(services)
+}
 
 const provideInvocationContext = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -198,6 +223,562 @@ const provideInvocationContext = <A, E, R>(
       Exclude<R, McpRequestContext>
     >
 }
+
+// -----------------------------------------------------------------------------
+// Request-level dependencies
+// -----------------------------------------------------------------------------
+
+/**
+ * Marks a request-level dependency of an MCP registration or middleware.
+ *
+ * **Details**
+ *
+ * A registration carries the services its handlers read per request as
+ * `McpRequest<"Requires", S>` in its requirements. Only MCP middleware and the
+ * transport layers discharge these markers. Providing the service itself with
+ * `Layer.provide` or `Effect.provide` does not, so a request-level service can't
+ * be satisfied by a construction-time value by mistake.
+ *
+ * `layerHttp` and `layerHttpRequestScoped` convert the markers they don't
+ * discharge into `HttpRouter.Request` markers, so `HttpRouter.middleware` can
+ * satisfy them. On stdio and custom transports an undischarged marker is a
+ * compile error.
+ *
+ * @see {@link middleware} for discharging request-level dependencies
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export interface McpRequest<Kind extends string, T> {
+  readonly _: unique symbol
+  readonly kind: Kind
+  readonly type: T
+}
+
+/**
+ * Helper types for `McpRequest` markers.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export declare namespace McpRequest {
+  /**
+   * Wraps each member of a union in an `McpRequest` marker of the supplied kind.
+   *
+   * @stability unstable
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type From<Kind extends string, R> = R extends infer T ? McpRequest<Kind, T> : never
+
+  /**
+   * Extracts the services from `McpRequest` markers of the supplied kind.
+   *
+   * @stability unstable
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Only<Kind extends string, A> = A extends McpRequest<Kind, infer T> ? T : never
+
+  /**
+   * Removes `McpRequest` markers from a union.
+   *
+   * @stability unstable
+   * @category utility types
+   * @since 4.0.0
+   */
+  export type Without<A> = A extends McpRequest<infer _Kind, infer _> ? never : A
+}
+
+/**
+ * Alias of `McpRequest`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type Request<Kind extends string, T> = McpRequest<Kind, T>
+
+/**
+ * The result of an MCP handler as seen by middleware.
+ *
+ * **Details**
+ *
+ * The value is opaque: middleware can run code before and after the handler,
+ * provide services and fail the request, but it can't inspect or replace a
+ * handler's result.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export interface MiddlewareSuccess {
+  readonly _: unique symbol
+}
+
+/**
+ * The request methods that run MCP middleware. More methods may be added, so
+ * don't `switch` on it exhaustively without a default case.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export type MiddlewareMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
+
+/**
+ * Describes the request an MCP middleware is running for.
+ *
+ * **Details**
+ *
+ * `target` is the tool name, the requested resource URI, or the prompt name.
+ * For `completion/complete` it is the prompt name, or the URI template of the
+ * resource template being completed. `payload` holds the request parameters.
+ *
+ * `headers` are the HTTP request headers. They are empty on stdio, on custom
+ * transports and for in-process calls. `sessionId` is the `Mcp-Session-Id`
+ * header, so it is `undefined` outside sessionful HTTP.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export interface MiddlewareOptions {
+  readonly method: MiddlewareMethod
+  readonly target: string
+  readonly payload: unknown
+  readonly requestContext: McpRequestContext["Service"]
+  readonly headers: Headers.Headers
+  readonly sessionId: string | undefined
+}
+
+/**
+ * Services a transport supplies to a request before any MCP middleware runs.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export type TransportServices = HttpServerRequest.HttpServerRequest | McpServerClient | Scope.Scope
+
+const MissingRequestDependenciesTypeId = "~effect/ai/McpServer/MissingRequestDependencies"
+
+/**
+ * The type of a middleware layer whose per-request requirements are not met.
+ *
+ * **Details**
+ *
+ * A middleware's per-request requirements must be provided by another
+ * middleware through `combine`, which runs it outside, or by the transport.
+ * The compiler names the missing services in the type argument.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export interface MissingRequestDependencies<Missing> {
+  readonly [MissingRequestDependenciesTypeId]: Missing
+}
+
+const MiddlewareTypeId = "~effect/ai/McpServer/Middleware"
+
+/**
+ * Composable MCP middleware.
+ *
+ * **Details**
+ *
+ * Provide `layer` to registration layers, or to the Effect form of a
+ * registration, to run the middleware for those registrations. Use
+ * `layerGlobal` to run it for every request on the server. `a.combine(b)` runs
+ * `b` outside `a`, so services provided by `b` satisfy the per-request
+ * requirements of `a`.
+ *
+ * @see {@link middleware} for creating MCP middleware
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export interface Middleware<
+  Config extends {
+    provides: any
+    error: McpErrorBase
+    requires: any
+    layerError: any
+    layerRequires: any
+  }
+> {
+  readonly [MiddlewareTypeId]: Config
+
+  readonly layer: [Exclude<Config["requires"], TransportServices>] extends [never] ? Layer.Layer<
+      McpRequest.From<"Requires", Config["provides"]>,
+      Config["layerError"],
+      Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
+    >
+    : MissingRequestDependencies<Exclude<Config["requires"], TransportServices>>
+
+  readonly layerGlobal: [Exclude<Config["requires"], TransportServices>] extends [never] ? Layer.Layer<
+      McpRequest.From<"Requires", Config["provides"]>,
+      Config["layerError"],
+      McpServer | Config["layerRequires"] | McpRequest.From<"Requires", Config["requires"]>
+    >
+    : MissingRequestDependencies<Exclude<Config["requires"], TransportServices>>
+
+  readonly combine: <
+    Config2 extends {
+      provides: any
+      error: McpErrorBase
+      requires: any
+      layerError: any
+      layerRequires: any
+    }
+  >(other: Middleware<Config2>) => Middleware<{
+    provides: Config2["provides"] | Config["provides"]
+    error: Config2["error"] | Config["error"]
+    requires: Exclude<Config["requires"], Config2["provides"]> | Config2["requires"]
+    layerError: Config["layerError"] | Config2["layerError"]
+    layerRequires: Config["layerRequires"] | Config2["layerRequires"]
+  }>
+}
+
+/**
+ * Creates MCP middleware that runs around `tools/call`, `resources/read`,
+ * `prompts/get` and `completion/complete` requests.
+ *
+ * **Details**
+ *
+ * Middleware is how request-level dependencies are satisfied: declare the
+ * services it provides with `middleware<{ provides: S }>()` and provide them to
+ * the handler effect. It receives the request headers, session id and request
+ * context, so it can resolve the current user per request.
+ *
+ * Pass a function, or an Effect that builds the function. Services the Effect
+ * reads are requirements of the middleware layer. Services the function reads
+ * per request, other than `McpRequestContext`, must come from a middleware
+ * combined with `combine` or from the transport.
+ *
+ * Failures must be `McpErrorBase` values. A middleware failure is sent as a
+ * JSON-RPC error with its `code`, `message` and `data`, never as a tool
+ * result. Pick custom codes from the implementation-defined range
+ * (-32000 to -32019): any numeric `code` is sent as is. Defects are logged,
+ * reported to the `ErrorReporter` and sent as `InternalError("Internal error")`.
+ * Interruption propagates.
+ *
+ * Local middleware runs inside global middleware. Neither runs for `list`
+ * requests or `initialize`.
+ *
+ * **Example** (Resolving the current user per request)
+ *
+ * ```ts
+ * import { Context, Effect, Layer, Schema } from "effect"
+ * import { McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
+ *
+ * class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
+ *
+ * class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
+ *   ...McpSchema.McpErrorBase.fields,
+ *   _tag: Schema.tag("Unauthorized"),
+ *   code: Schema.tag(-32001)
+ * }) {}
+ *
+ * const WhoAmI = Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] })
+ * const Tools = Toolkit.make(WhoAmI)
+ *
+ * const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect, { headers }) => {
+ *   const token = headers["authorization"]
+ *   return token === undefined
+ *     ? Effect.fail(new Unauthorized({ message: "Missing credentials" }))
+ *     : Effect.provideService(effect, CurrentUser, { id: token })
+ * })
+ *
+ * const Registrations = McpServer.toolkit(Tools).pipe(
+ *   Layer.provide(Auth.layer),
+ *   Layer.provide(Tools.toLayer({
+ *     WhoAmI: () => Effect.map(CurrentUser, (user) => user.id)
+ *   }))
+ * )
+ * ```
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export const middleware:
+  & middleware.Make<never>
+  & (<Config extends { provides?: any } = {}>() => middleware.Make<
+    Config extends { provides: infer P } ? P : never
+  >) = function() {
+    if (arguments.length === 0) {
+      return makeMiddleware as any
+    }
+    return makeMiddleware(arguments[0], arguments[1]) as any
+  }
+
+/**
+ * Types used by `middleware`.
+ *
+ * @stability unstable
+ * @category middleware
+ * @since 4.0.0
+ */
+export declare namespace middleware {
+  /**
+   * The middleware function.
+   *
+   * @stability unstable
+   * @category middleware
+   * @since 4.0.0
+   */
+  export type Fn<Provides, E, R> = (
+    effect: Effect.Effect<MiddlewareSuccess, McpErrorBase, Types.NoInfer<Provides>>,
+    options: MiddlewareOptions
+  ) => Effect.Effect<MiddlewareSuccess, E, R>
+
+  /**
+   * The layer returned by `middleware(fn, { global: true })`.
+   *
+   * @stability unstable
+   * @category middleware
+   * @since 4.0.0
+   */
+  export type GlobalLayer<Provides, EX, RX, R> = [Exclude<R, McpRequestContext | TransportServices>] extends [never]
+    ? Layer.Layer<
+      McpRequest.From<"Requires", Provides>,
+      EX,
+      McpServer | Exclude<RX, Scope.Scope> | McpRequest.From<"Requires", Exclude<R, McpRequestContext>>
+    >
+    : MissingRequestDependencies<Exclude<R, McpRequestContext | TransportServices>>
+
+  /**
+   * The overloads of a middleware constructor.
+   *
+   * @stability unstable
+   * @category middleware
+   * @since 4.0.0
+   */
+  export type Make<Provides> = {
+    <E extends McpErrorBase, R, EX, RX, const Global extends boolean = false>(
+      middleware: Effect.Effect<Fn<Provides, E, R>, EX, RX>,
+      options?: { readonly global?: Global | undefined }
+    ): Global extends true ? GlobalLayer<Provides, EX, RX, R>
+      : Middleware<{
+        provides: Provides
+        error: E
+        requires: Exclude<R, McpRequestContext>
+        layerError: EX
+        layerRequires: Exclude<RX, Scope.Scope>
+      }>
+    <E extends McpErrorBase, R, const Global extends boolean = false>(
+      middleware: Fn<Provides, E, R>,
+      options?: { readonly global?: Global | undefined }
+    ): Global extends true ? GlobalLayer<Provides, never, never, R>
+      : Middleware<{
+        provides: Provides
+        error: E
+        requires: Exclude<R, McpRequestContext>
+        layerError: never
+        layerRequires: never
+      }>
+  }
+}
+
+type AnyMiddlewareFn = middleware.Fn<any, any, any>
+
+const makeMiddleware = (fn: any, options?: { readonly global?: boolean | undefined }) =>
+  options?.global
+    ? Layer.effectDiscard(
+      Effect.flatMap(
+        Effect.isEffect(fn) ? fn : Effect.succeed(fn),
+        (fn) => addGlobalMiddleware([fn as AnyMiddlewareFn])
+      )
+    )
+    : new MiddlewareImpl(
+      Effect.isEffect(fn)
+        ? Layer.effectContext(Effect.map(fn, (fn) => Context.makeUnsafe(new Map([[middlewareFnKey, fn]]))))
+        : Layer.succeedContext(Context.makeUnsafe(new Map([[middlewareFnKey, fn]])))
+    )
+
+const addGlobalMiddleware = (stack: ReadonlyArray<AnyMiddlewareFn>) =>
+  Effect.flatMap(McpServer, (server) => {
+    const { globalMiddleware } = internalState.get(server)!
+    return Effect.acquireRelease(
+      Effect.sync(() => {
+        globalMiddleware.push(...stack)
+      }),
+      () =>
+        Effect.sync(() => {
+          for (const fn of stack) {
+            const index = globalMiddleware.indexOf(fn)
+            if (index !== -1) globalMiddleware.splice(index, 1)
+          }
+        })
+    )
+  })
+
+let middlewareId = 0
+
+class MiddlewareImpl {
+  readonly [MiddlewareTypeId] = {} as any
+  readonly layer: Layer.Layer<never, any, any>
+  readonly layerGlobal: Layer.Layer<never, any, any>
+  readonly layerFn: Layer.Layer<never, any, any>
+  readonly dependencies: Layer.Layer<any, any, any> | undefined
+
+  constructor(
+    layerFn: Layer.Layer<never, any, any>,
+    dependencies?: Layer.Layer<any, any, any> | undefined
+  ) {
+    this.layerFn = layerFn
+    this.dependencies = dependencies
+    const contextKey = `${middlewareKeyPrefix}${++middlewareId}`
+    this.layer = Layer.effectContext(Effect.gen({ self: this }, function*() {
+      const context = yield* Effect.context<Scope.Scope>()
+      const stack: Array<AnyMiddlewareFn> = [Context.getOrUndefinedUnsafe(context, middlewareFnKey as any)!]
+      if (this.dependencies) {
+        const memoMap = yield* Layer.CurrentMemoMap
+        const dependencies = yield* Layer.buildWithMemoMap(
+          this.dependencies,
+          memoMap,
+          Context.get(context, Scope.Scope)
+        )
+        stack.push(...getMiddleware(dependencies))
+      }
+      return Context.makeUnsafe<never>(new Map([[contextKey, stack]]))
+    })).pipe(Layer.provide(this.layerFn))
+    this.layerGlobal = Layer.effectDiscard(
+      Effect.flatMap(Effect.context<never>(), (context) => addGlobalMiddleware(getMiddleware(context)))
+    ).pipe(Layer.provide(this.layer))
+  }
+
+  combine(other: Middleware<any>): Middleware<any> {
+    return new MiddlewareImpl(
+      this.layerFn,
+      this.dependencies ? Layer.provideMerge(this.dependencies, other.layer as any) : other.layer as any
+    ) as any
+  }
+}
+
+// The innermost middleware comes first.
+const middlewareCache = new WeakMap<Context.Context<never>, ReadonlyArray<AnyMiddlewareFn>>()
+const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
+  let middleware = middlewareCache.get(context)
+  if (middleware !== undefined) return middleware
+  const stacks: Array<ReadonlyArray<AnyMiddlewareFn>> = []
+  let maxLength = 0
+  for (const [key, value] of context.mapUnsafe) {
+    if (key.startsWith(middlewareKeyPrefix)) {
+      stacks.push(value)
+      maxLength = Math.max(maxLength, value.length)
+    }
+  }
+  const unique = new Set<AnyMiddlewareFn>()
+  for (let i = maxLength - 1; i >= 0; i--) {
+    for (const stack of stacks) {
+      if (i < stack.length) unique.add(stack[i])
+    }
+  }
+  middleware = Arr.fromIterable(unique).reverse()
+  middlewareCache.set(context, middleware)
+  return middleware
+}
+
+interface RegistrationContext {
+  readonly services: Context.Context<never>
+  readonly middleware: ReadonlyArray<AnyMiddlewareFn>
+}
+
+const emptyRegistrationContext: RegistrationContext = { services: Context.empty(), middleware: [] }
+
+const registrationContext = (context: Context.Context<never> | undefined): RegistrationContext =>
+  context === undefined ? emptyRegistrationContext : {
+    services: omitRequestServices(context),
+    middleware: getMiddleware(context)
+  }
+
+const isMcpError = (error: unknown): error is McpErrorBase =>
+  Predicate.hasProperty(error, "code") && typeof error.code === "number" &&
+  Predicate.hasProperty(error, "message") && typeof error.message === "string"
+
+// Failures raised by a handler, marked before middleware runs so that the
+// failures middleware raises or rewrites can be told apart.
+const handlerFailures = new WeakSet<object>()
+
+const internalError = new InternalError({ message: "Internal error" })
+
+const invoke = <A, E>(
+  handler: Effect.Effect<A, E, any>,
+  invocation: McpCore.McpInvocation,
+  registration: RegistrationContext,
+  globalMiddleware: ReadonlyArray<AnyMiddlewareFn>,
+  request: {
+    readonly method: MiddlewareMethod
+    readonly target: string
+    readonly payload: unknown
+  }
+): Effect.Effect<A, E | McpCore.RequestRejected> => {
+  // Request services take precedence over the context captured at registration.
+  let effect: Effect.Effect<any, any, any> = registration.services.mapUnsafe.size === 0
+    ? handler
+    : Effect.updateContext(handler, (context: Context.Context<any>) => Context.merge(registration.services, context))
+  const middleware = registration.middleware.length === 0 && globalMiddleware.length === 0
+    ? undefined
+    : [...registration.middleware, ...globalMiddleware]
+  if (middleware !== undefined) {
+    const handled = Effect.tapError(effect, (error) =>
+      Effect.sync(() => {
+        if (Predicate.isObject(error)) handlerFailures.add(error)
+      }))
+    effect = Effect.withFiber((fiber) => {
+      const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
+        Headers.empty
+      const options: MiddlewareOptions = {
+        ...request,
+        requestContext: invocation.requestContext,
+        headers,
+        sessionId: headers[MCP_SESSION_ID_HEADER]
+      }
+      let wrapped = handled
+      for (const fn of middleware) {
+        wrapped = fn(wrapped, options)
+      }
+      return wrapped
+    })
+  }
+  return provideInvocationContext(effect, invocation).pipe(
+    Effect.catchCause((cause): Effect.Effect<never, E | McpCore.RequestRejected> => {
+      if (Cause.hasInterrupts(cause)) {
+        return Effect.failCause(cause)
+      }
+      const failure = Cause.findFail(cause)
+      if (Result.isSuccess(failure) && !Cause.hasDies(cause)) {
+        const error = failure.success.error
+        if (middleware === undefined || (Predicate.isObject(error) && handlerFailures.has(error))) {
+          return Effect.failCause(cause)
+        }
+        if (isMcpError(error)) {
+          return Effect.fail(
+            new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error })
+          )
+        }
+      }
+      return Effect.logError(cause).pipe(
+        Effect.andThen(ErrorReporter.report(cause)),
+        Effect.andThen(Effect.fail(
+          new McpCore.RequestRejected({
+            code: internalError.code,
+            message: internalError.message,
+            error: internalError
+          })
+        ))
+      )
+    })
+  ) as Effect.Effect<A, E | McpCore.RequestRejected>
+}
+
+// Requests made through the service methods fail with the original error.
+const rejectedError = (error: McpCore.RequestRejected) => Effect.fail(error.error as McpErrorBase)
 
 /**
  * Service that stores and serves an MCP server's registered tools, resources,
@@ -225,6 +806,7 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addTool: (options: {
     readonly tool: McpTool
     readonly annotations: Context.Context<never>
+    readonly services?: Context.Context<never> | undefined
     readonly handle: (
       payload: any
     ) => Effect.Effect<
@@ -235,7 +817,7 @@ export class McpServer extends Context.Service<McpServer, {
   }) => Effect.Effect<void>
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
-  ) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
+  ) => Effect.Effect<CallToolResult, McpErrorBase | InternalError | InvalidParams, McpServerClient>
 
   readonly resources: ReadonlyArray<{
     readonly resource: Resource
@@ -244,6 +826,7 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addResource: (options: {
     readonly resource: Resource
     readonly annotations: Context.Context<never>
+    readonly services?: Context.Context<never> | undefined
     readonly handle: Effect.Effect<
       ReadResourceResult,
       InternalError,
@@ -259,6 +842,7 @@ export class McpServer extends Context.Service<McpServer, {
     options: {
       readonly template: ResourceTemplate
       readonly annotations: Context.Context<never>
+      readonly services?: Context.Context<never> | undefined
       readonly routerPath: string
       readonly completions: Record<
         string,
@@ -289,6 +873,7 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addPrompt: (options: {
     readonly prompt: Prompt
     readonly annotations: Context.Context<never>
+    readonly services?: Context.Context<never> | undefined
     readonly completions: Record<
       string,
       (
@@ -302,11 +887,11 @@ export class McpServer extends Context.Service<McpServer, {
   }) => Effect.Effect<void>
   readonly getPromptResult: (
     request: typeof GetPrompt.payloadSchema.Type
-  ) => Effect.Effect<GetPromptResult, InternalError | InvalidParams, McpServerClient>
+  ) => Effect.Effect<GetPromptResult, McpErrorBase | InternalError | InvalidParams, McpServerClient>
 
   readonly completion: (
     complete: typeof Complete.payloadSchema.Type
-  ) => Effect.Effect<CompleteResult, InvalidParams | InternalError, McpServerClient>
+  ) => Effect.Effect<CompleteResult, McpErrorBase | InvalidParams | InternalError, McpServerClient>
 }>()("effect/ai/McpServer") {
   /**
    * Builds an MCP server service from registered tools, prompts, resources, and completions.
@@ -333,6 +918,7 @@ export class McpServer extends Context.Service<McpServer, {
       readonly annotations: Context.Context<never>
     }> = []
     const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
+    const globalMiddleware: Array<AnyMiddlewareFn> = []
     const notificationDelivery = { consumers: 0, listChangeRevision: 0, requestEndpoints: 0 }
     // With only request-scoped endpoints, no long-lived server ever takes from the shared queue.
     const withoutSharedConsumer = () =>
@@ -433,6 +1019,7 @@ export class McpServer extends Context.Service<McpServer, {
             tools[existingIndex] = options
           }
           const enabledWhen = Context.getOrUndefined(options.annotations, EnabledWhen)
+          const registration = registrationContext(options.services)
           yield* internalCore.tools.register({
             descriptor: new McpTool({
               ...options.tool,
@@ -447,7 +1034,11 @@ export class McpServer extends Context.Service<McpServer, {
                 }
               ),
             handle: (call, invocation) =>
-              provideInvocationContext(options.handle(call.arguments), invocation).pipe(
+              invoke(options.handle(call.arguments), invocation, registration, globalMiddleware, {
+                method: "tools/call",
+                target: call.name,
+                payload: call
+              }).pipe(
                 Effect.catchTags({
                   InternalError: (error) =>
                     Effect.fail(
@@ -483,12 +1074,14 @@ export class McpServer extends Context.Service<McpServer, {
             request,
             McpProtocolInternal.invocationFromClient(client)
           ).pipe(
-            Effect.mapError((error) =>
-              new InvalidParams({
-                message: error._tag === "ToolNotFound"
-                  ? `Tool '${error.name}' not found`
-                  : error.message
-              })
+            Effect.catch((error) =>
+              error._tag === "RequestRejected" ? rejectedError(error) : Effect.fail(
+                new InvalidParams({
+                  message: error._tag === "ToolNotFound"
+                    ? `Tool '${error.name}' not found`
+                    : error.message
+                })
+              )
             )
           )
           if (result._tag === "InputRequired") {
@@ -510,6 +1103,7 @@ export class McpServer extends Context.Service<McpServer, {
           } else {
             resources[existingIndex] = options
           }
+          const registration = registrationContext(options.services)
           yield* internalCore.resources.register({
             descriptor: options.resource,
             isVisible: (profile) => {
@@ -520,11 +1114,16 @@ export class McpServer extends Context.Service<McpServer, {
                 clientInfo: profile.clientInfo
               })
             },
-            read: (invocation) => provideInvocationContext(options.handle, invocation)
+            read: (invocation) =>
+              invoke(options.handle, invocation, registration, globalMiddleware, {
+                method: "resources/read",
+                target: options.resource.uri,
+                payload: { uri: options.resource.uri }
+              })
           })
           yield* notifications.client["notifications/resources/list_changed"]({})
         }),
-      addResourceTemplate: ({ annotations, completions, handle, routerPath, template }) =>
+      addResourceTemplate: ({ annotations, completions, handle, routerPath, services, template }) =>
         Effect.gen(function*() {
           const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
             current.uriTemplate === template.uriTemplate
@@ -534,6 +1133,7 @@ export class McpServer extends Context.Service<McpServer, {
           } else {
             resourceTemplates[existingIndex] = { template, annotations }
           }
+          const registration = registrationContext(services)
           const templateMatcher = makeUriMatcher<true>()
           templateMatcher.add(routerPath, true)
           yield* internalCore.resources.registerTemplate({
@@ -557,13 +1157,22 @@ export class McpServer extends Context.Service<McpServer, {
               }
               return params
             },
-            read: (uri, params, invocation) => provideInvocationContext(handle(uri, Array.from(params)), invocation)
+            read: (uri, params, invocation) =>
+              invoke(handle(uri, Array.from(params)), invocation, registration, globalMiddleware, {
+                method: "resources/read",
+                target: uri,
+                payload: { uri }
+              })
           })
           for (const [param, handle] of Object.entries(completions)) {
             yield* internalCore.completions.register(
               `resource/${template.uriTemplate}/${param}`,
               (request, invocation) =>
-                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
+                invoke(handle(request.argument.value, request.context), invocation, registration, globalMiddleware, {
+                  method: "completion/complete",
+                  target: template.uriTemplate,
+                  payload: request
+                }).pipe(
                   Effect.map((result) => ({
                     values: result.completion.values,
                     total: result.completion.total,
@@ -582,8 +1191,11 @@ export class McpServer extends Context.Service<McpServer, {
             uri,
             McpProtocolInternal.invocationFromClient(client)
           ).pipe(
-            Effect.catchTag("ResourceNotFound", (error) =>
-              Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
+            Effect.catchTags({
+              ResourceNotFound: (error) =>
+                Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })),
+              RequestRejected: rejectedError
+            })
           )
         }),
       get prompts() {
@@ -597,6 +1209,7 @@ export class McpServer extends Context.Service<McpServer, {
           } else {
             prompts[existingIndex] = options
           }
+          const registration = registrationContext(options.services)
           yield* internalCore.prompts.register({
             descriptor: options.prompt,
             isVisible: (profile) => {
@@ -608,7 +1221,11 @@ export class McpServer extends Context.Service<McpServer, {
               })
             },
             get: (params, invocation) =>
-              provideInvocationContext(options.handle(params), invocation).pipe(
+              invoke(options.handle(params), invocation, registration, globalMiddleware, {
+                method: "prompts/get",
+                target: options.prompt.name,
+                payload: { name: options.prompt.name, arguments: params }
+              }).pipe(
                 Effect.map((result) =>
                   Predicate.isTagged(result, "InputRequired")
                     ? McpCore.OperationOutcome.InputRequired(result)
@@ -620,7 +1237,11 @@ export class McpServer extends Context.Service<McpServer, {
             yield* internalCore.completions.register(
               `prompt/${options.prompt.name}/${param}`,
               (request, invocation) =>
-                provideInvocationContext(handle(request.argument.value, request.context), invocation).pipe(
+                invoke(handle(request.argument.value, request.context), invocation, registration, globalMiddleware, {
+                  method: "completion/complete",
+                  target: options.prompt.name,
+                  payload: request
+                }).pipe(
                   Effect.map((result) => ({
                     values: result.completion.values,
                     total: result.completion.total,
@@ -639,7 +1260,10 @@ export class McpServer extends Context.Service<McpServer, {
           params ?? {},
           McpProtocolInternal.invocationFromClient(client)
         ).pipe(
-          Effect.catchTag("PromptNotFound", () => new InvalidParams({ message: `Prompt '${name}' not found` }))
+          Effect.catchTags({
+            PromptNotFound: () => new InvalidParams({ message: `Prompt '${name}' not found` }),
+            RequestRejected: rejectedError
+          })
         )
         return outcome._tag === "Complete"
           ? outcome.value
@@ -654,7 +1278,9 @@ export class McpServer extends Context.Service<McpServer, {
             : { type: "prompt", name: ref.name },
           argument: complete.argument,
           context: complete.context
-        }, McpProtocolInternal.invocationFromClient(client))
+        }, McpProtocolInternal.invocationFromClient(client)).pipe(
+          Effect.catchTag("RequestRejected", rejectedError)
+        )
         return {
           _meta: result.metadata,
           completion: {
@@ -665,17 +1291,28 @@ export class McpServer extends Context.Service<McpServer, {
         }
       })
     })
-    internalState.set(service, { core: internalCore, notifications: notificationsQueue, notificationDelivery })
+    internalState.set(service, {
+      core: internalCore,
+      notifications: notificationsQueue,
+      notificationDelivery,
+      globalMiddleware
+    })
     return service
   })
 
   /**
-   * Layer that provides the MCP server and client services.
+   * Layer that provides the MCP server service.
+   *
+   * **Details**
+   *
+   * It doesn't run a transport or discharge request-level dependencies. Use it
+   * to call registrations in process, providing their request-level
+   * dependencies with MCP middleware.
    *
    * @stability unstable
    * @since 4.0.0
    */
-  static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
+  static readonly layer: Layer.Layer<McpServer> = Layer.effect(McpServer)(McpServer.make)
 }
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
@@ -1420,6 +2057,37 @@ const runWithRuntime = Effect.fnUntraced(function*(
   )
 }, Effect.scoped)
 
+type StatelessProtocolAdapter = McpProtocol.ProtocolAdapter<
+  McpProtocol.ProtocolVersion,
+  McpProtocol.StatelessRuntimeDescriptor
+>
+
+/**
+ * The request-level services a transport discharges for every request.
+ *
+ * **Details**
+ *
+ * Every transport supplies `Scope`. `McpServerClient` is not supplied when a
+ * sessionless protocol such as `v2026_07_28` is configured, because its
+ * requests have no client session. HTTP transports also supply
+ * `HttpServerRequest`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ProvidedServices<
+  Protocols extends ReadonlyArray<McpProtocol.ProtocolAdapter>,
+  Http extends boolean = false
+> =
+  | Scope.Scope
+  | ([Extract<Protocols[number], StatelessProtocolAdapter>] extends [never] ? McpServerClient : never)
+  | (Http extends true ? HttpServerRequest.HttpServerRequest : never)
+
+type RemainingRequestServices<RR, Provided> = Exclude<McpRequest.Only<"Requires", RR>, Provided>
+
+type RegistrationServices<RR> = Exclude<McpRequest.Without<RR>, McpServer>
+
 /**
  * Creates a layer that starts an MCP server over an existing
  * `RpcServer.Protocol` and provides `McpServer`. Request handlers receive
@@ -1438,6 +2106,11 @@ const runWithRuntime = Effect.fnUntraced(function*(
  * `McpServer.layer`, so registration layers can use the `McpServer` service
  * while the server is running.
  *
+ * Pass registration layers as `registrations` to build them before the server
+ * reads its first request. The transport discharges the request-level
+ * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
+ * marker stays in the layer's requirements and must be met by MCP middleware.
+ *
  * **Gotchas**
  *
  * Unlike `layerStdio` and `layerHttp`, this layer does not install a concrete
@@ -1451,19 +2124,31 @@ const runWithRuntime = Effect.fnUntraced(function*(
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: {
+export const layer = <
+  const Protocols extends Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>,
+  RA = never,
+  RE = never,
+  RR = never
+>(options: {
   readonly name: string
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
-}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, RpcServer.Protocol> =>
+  readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+}): Layer.Layer<
+  McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
+  Cause.IllegalArgumentError | RE,
+  | RpcServer.Protocol
+  | RegistrationServices<RR>
+  | McpRequest.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols>>>
+> =>
   layerWithRuntime(options, "custom").pipe(
     Layer.provide(McpRuntime.layer(options.protocols))
-  )
+  ) as any
 
 const layerWithRuntime = (options: {
   readonly name: string
@@ -1474,19 +2159,30 @@ const layerWithRuntime = (options: {
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
   readonly allowSubscriptions?: boolean | undefined
+  readonly registrations?: Layer.Layer<any, any, any> | undefined
 }, transport: "custom" | "http" | "stdio"): Layer.Layer<
-  McpServer | McpServerClient,
+  McpServer,
   never,
   RpcServer.Protocol | McpRuntime.ServerRuntime
 > =>
-  Layer.effectDiscard(
-    Effect.gen(function*() {
-      const runtime = yield* McpRuntime.ServerRuntime
-      yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
-    })
+  withRegistrations(
+    Layer.effectDiscard(
+      Effect.gen(function*() {
+        const runtime = yield* McpRuntime.ServerRuntime
+        yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
+      })
+    ),
+    options.registrations
   ).pipe(
     Layer.provideMerge(McpServer.layer)
   )
+
+// Registrations are built before the server layer, so they exist before the
+// first request is served.
+const withRegistrations = <A, E, R>(
+  server: Layer.Layer<A, E, R>,
+  registrations: Layer.Layer<any, any, any> | undefined
+): Layer.Layer<A, E, R> => registrations === undefined ? server : server.pipe(Layer.provide(registrations))
 
 /**
  * Creates a layer that runs an MCP server over standard input and output.
@@ -1503,6 +2199,11 @@ const layerWithRuntime = (options: {
  * `McpRequestContext` and legacy `McpServerClient` services to handlers, and
  * requires `Stdio`.
  *
+ * Pass registration layers as `registrations` to build them before the server
+ * reads its first request. The transport discharges the request-level
+ * dependencies it supplies (see `ProvidedServices`); any other `McpRequest`
+ * marker stays in the layer's requirements and must be met by MCP middleware.
+ *
  * @see {@link layer} for running over an existing `RpcServer.Protocol`
  * @see {@link layerHttp} for the single-endpoint HTTP transport
  *
@@ -1510,16 +2211,28 @@ const layerWithRuntime = (options: {
  * @category layers
  * @since 4.0.0
  */
-export const layerStdio = (options: {
+export const layerStdio = <
+  const Protocols extends Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>,
+  RA = never,
+  RE = never,
+  RR = never
+>(options: {
   readonly name: string
   readonly version: string
   readonly instructions?: string | undefined
   readonly description?: string | undefined
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
-  readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
-}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
+  readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+}): Layer.Layer<
+  McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols>>,
+  Cause.IllegalArgumentError | RE,
+  | Stdio
+  | RegistrationServices<RR>
+  | McpRequest.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols>>>
+> =>
   layerWithRuntime(options, "stdio").pipe(
     Layer.provide(McpRuntime.layer(options.protocols)),
     Layer.provide(RpcServer.layerProtocolStdio),
@@ -1527,7 +2240,7 @@ export const layerStdio = (options: {
       RpcSerialization.RpcSerialization,
       mcpStdioSerialization(options.protocols)
     ))
-  )
+  ) as any
 
 const mcpStdioSerialization = (
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
@@ -1629,6 +2342,13 @@ const mcpStdioSerialization = (
  * serverless hosts where execution must belong to each request, use
  * `layerHttpRequestScoped` instead.
  *
+ * Pass registration layers as `registrations` to build them before the
+ * endpoint serves its first request. The transport discharges the
+ * request-level dependencies it supplies (see `ProvidedServices`) and converts
+ * the remaining `McpRequest` markers into `HttpRouter.Request` markers, so
+ * `HttpRouter.middleware` can provide them, for example to authenticate the
+ * request and resolve the current user.
+ *
  * `layerHttp` always implements the single-endpoint Streamable HTTP topology.
  * Using `v2024_11_05` here is a custom compatibility transport for that
  * revision's schema. It does not implement the historical two-endpoint
@@ -1646,7 +2366,12 @@ const mcpStdioSerialization = (
  * @category layers
  * @since 4.0.0
  */
-export const layerHttp = (options: {
+export const layerHttp = <
+  const Protocols extends Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>,
+  RA = never,
+  RE = never,
+  RR = never
+>(options: {
   readonly name: string
   readonly version: string
   readonly instructions?: string | undefined
@@ -1654,18 +2379,25 @@ export const layerHttp = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly path: HttpRouter.PathInput
-  readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly allowSessionTermination?: boolean | undefined
   readonly allowSubscriptions?: boolean | undefined
-}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
+  readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+}): Layer.Layer<
+  McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols, true>>,
+  Cause.IllegalArgumentError | RE,
+  | HttpRouter.HttpRouter
+  | RegistrationServices<RR>
+  | HttpRouter.Request.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols, true>>>
+> => {
   const runtime = McpRuntime.layer(options.protocols)
   return layerWithRuntime(options, "http").pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
     Layer.provide(runtime),
     Layer.provide(RpcSerialization.layerJsonRpc())
-  )
+  ) as any
 }
 
 /**
@@ -1696,13 +2428,24 @@ export const layerHttp = (options: {
  * Configuring a sessionful protocol through an untyped caller fails layer
  * construction with `IllegalArgumentError`.
  *
+ * Registrations passed as `registrations` are built once, before the routes
+ * are added, and shared by every POST. Remaining `McpRequest` markers become
+ * `HttpRouter.Request` markers, as with `layerHttp`.
+ *
  * @see {@link layerHttp} for the long-lived HTTP transport and HTTP admission policy
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerHttpRequestScoped = (options: {
+export const layerHttpRequestScoped = <
+  const Protocols extends Arr.NonEmptyReadonlyArray<
+    McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
+  >,
+  RA = never,
+  RE = never,
+  RR = never
+>(options: {
   readonly name: string
   readonly version: string
   readonly instructions?: string | undefined
@@ -1710,62 +2453,70 @@ export const layerHttpRequestScoped = (options: {
   readonly websiteUrl?: string | undefined
   readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly path: HttpRouter.PathInput
-  readonly protocols: Arr.NonEmptyReadonlyArray<
-    McpProtocol.ProtocolAdapter<McpProtocol.ProtocolVersion, McpProtocol.StatelessRuntimeDescriptor>
-  >
+  readonly protocols: Protocols
   readonly extensions?: ServerExtensions | undefined
   readonly allowedOrigins?: ReadonlyArray<string> | undefined
-}): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> =>
-  Layer.effectDiscard(Effect.gen(function*() {
-    const runtime = yield* McpRuntime.ServerRuntime
-    const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
-    if (stateful !== undefined) {
-      return yield* new Cause.IllegalArgumentError(
-        `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
-      )
-    }
-    const server = yield* McpServer
-    const { core, notificationDelivery } = internalState.get(server)!
-    // Subscriptions are disabled, so handlers hold no per-request state and
-    // read registrations from the shared core on every call. Request services
-    // still take precedence over the layer context captured here.
-    const handlers = yield* (runtime.installHandlers({
-      core,
-      subscribeServerNotifications: Effect.die("Subscriptions are disabled for request-scoped MCP servers"),
-      getListChangeRevision: () => notificationDelivery.listChangeRevision,
-      defaultLogLevel: yield* CurrentLogLevel,
-      serverInfo: options
-    }) as Effect.Effect<Context.Context<never>>)
-    yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        notificationDelivery.requestEndpoints++
-      }),
-      () =>
+  readonly registrations?: Layer.Layer<RA, RE, RR> | undefined
+}): Layer.Layer<
+  McpServer | McpRequest.From<"Requires", ProvidedServices<Protocols, true>>,
+  Cause.IllegalArgumentError | RE,
+  | HttpRouter.HttpRouter
+  | RegistrationServices<RR>
+  | HttpRouter.Request.From<"Requires", RemainingRequestServices<RR, ProvidedServices<Protocols, true>>>
+> =>
+  withRegistrations(
+    Layer.effectDiscard(Effect.gen(function*() {
+      const runtime = yield* McpRuntime.ServerRuntime
+      const stateful = runtime.protocols.find((protocol) => protocol.runtime._tag === "Stateful")
+      if (stateful !== undefined) {
+        return yield* new Cause.IllegalArgumentError(
+          `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
+        )
+      }
+      const server = yield* McpServer
+      const { core, notificationDelivery } = internalState.get(server)!
+      // Subscriptions are disabled, so handlers hold no per-request state and
+      // read registrations from the shared core on every call. Request services
+      // still take precedence over the layer context captured here.
+      const handlers = yield* (runtime.installHandlers({
+        core,
+        subscribeServerNotifications: Effect.die("Subscriptions are disabled for request-scoped MCP servers"),
+        getListChangeRevision: () => notificationDelivery.listChangeRevision,
+        defaultLogLevel: yield* CurrentLogLevel,
+        serverInfo: options
+      }) as Effect.Effect<Context.Context<never>>)
+      yield* Effect.acquireRelease(
         Effect.sync(() => {
-          notificationDelivery.requestEndpoints--
+          notificationDelivery.requestEndpoints++
+        }),
+        () =>
+          Effect.sync(() => {
+            notificationDelivery.requestEndpoints--
+          })
+      )
+      // Each POST runs its own RPC server in the request scope, so no fiber,
+      // timer, or queue consumer outlives the request that created it.
+      yield* addMcpHttpRoutes(
+        options,
+        Effect.gen(function*() {
+          const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
+            Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
+          )
+          const notifications = yield* Queue.make<QueuedServerNotification>()
+          yield* runWithRuntime(options, runtime, "http", { notifications, handlers }).pipe(
+            Effect.provideService(RpcServer.Protocol, protocol),
+            Effect.provideService(McpServer, server),
+            Effect.forkScoped({ startImmediately: true })
+          )
+          return yield* Effect.provideService(httpEffect, RequestNotificationQueue, notifications)
         })
-    )
-    // Each POST runs its own RPC server in the request scope, so no fiber,
-    // timer, or queue consumer outlives the request that created it.
-    yield* addMcpHttpRoutes(
-      options,
-      Effect.gen(function*() {
-        const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect().pipe(
-          Effect.provideService(RpcSerialization.RpcSerialization, mcpHttpSerialization)
-        )
-        const notifications = yield* Queue.make<QueuedServerNotification>()
-        yield* runWithRuntime(options, runtime, "http", { notifications, handlers }).pipe(
-          Effect.provideService(RpcServer.Protocol, protocol),
-          Effect.provideService(McpServer, server),
-          Effect.forkScoped({ startImmediately: true })
-        )
-        return yield* Effect.provideService(httpEffect, RequestNotificationQueue, notifications)
-      })
-    )
-  })).pipe(
+      )
+    })),
+    options.registrations
+  ).pipe(
     Layer.provideMerge(McpServer.layer),
     Layer.provide(McpRuntime.layer(options.protocols))
-  )
+  ) as any
 
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
@@ -2035,7 +2786,36 @@ const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
   encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
 
 /**
+ * The requirements of a toolkit registration.
+ *
+ * **Details**
+ *
+ * Services a tool declares with `dependencies` or `Tool.addDependency` are
+ * request-level: they are carried as `McpRequest<"Requires", S>` markers and
+ * must be provided by MCP middleware or the transport. Parameter decoding and
+ * result encoding services are required when the toolkit is registered,
+ * unless a tool also declares them.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ToolkitRequirements<Tools extends Record<string, Tool.Any>> = 0 extends
+  (1 & Tool.Requirements<Tools[keyof Tools]>) ? any :
+  | McpServer
+  | Tool.HandlersFor<Tools>
+  | Exclude<Tool.SchemaServices<Tools[keyof Tools]>, Tool.Requirements<Tools[keyof Tools]> | McpRequestContext>
+  | McpRequest.From<"Requires", Exclude<Tool.Requirements<Tools[keyof Tools]>, McpRequestContext>>
+
+/**
  * Registers a `Toolkit` with the `McpServer`.
+ *
+ * **Details**
+ *
+ * The MCP middleware in the current context, provided with
+ * `Effect.provide(middleware.layer)`, runs around every call to the toolkit.
+ *
+ * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category handlers
@@ -2043,11 +2823,9 @@ const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
  */
 export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
-) => Effect.Effect<
-  void,
-  never,
-  McpServer | Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
-> = Effect.fnUntraced(function*<Tools extends Record<string, Tool.Any>>(
+) => Effect.Effect<void, never, ToolkitRequirements<Tools>> = Effect.fnUntraced(function*<
+  Tools extends Record<string, Tool.Any>
+>(
   toolkit: Toolkit.Toolkit<Tools>
 ) {
   const registry = yield* McpServer
@@ -2066,19 +2844,14 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     }
     return Context.makeUnsafe(services)
   }))
-  const services = omitRequestServices(
-    yield* Effect.context<
-      Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
-    >()
-  )
-  const reportCause = (cause: Cause.Cause<unknown>) => Effect.provideContext(ErrorReporter.report(cause), services)
+  const services = yield* Effect.context<never>()
   // Interruption propagates; anything else is logged, reported and scrubbed.
   const internalToolError = (cause: Cause.Cause<unknown>) => {
     const failure = Cause.findFail(cause)
     return Result.isFailure(failure) && !Cause.hasDies(cause)
       ? Effect.failCause(failure.failure)
       : Effect.logError(cause).pipe(
-        Effect.andThen(reportCause(cause)),
+        Effect.andThen(ErrorReporter.report(cause)),
         Effect.as(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
       )
   }
@@ -2176,10 +2949,10 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
                 })
               )
           ),
-          Effect.catchCause(handleCause),
-          Effect.provideContext(services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>)
-        )
-      }
+          Effect.catchCause(handleCause)
+        ) as Effect.Effect<CallToolResult, InvalidParams, never>
+      },
+      services
     })
   }
   for (const registration of registrations) {
@@ -2203,7 +2976,14 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
 }
 
 /**
- * Registers an `AiToolkit` with the `McpServer`.
+ * Creates a layer that registers a `Toolkit` with the `McpServer`.
+ *
+ * **Details**
+ *
+ * The layer requires `McpServer`. Pass it to a transport through the
+ * `registrations` option, or provide the transport layer to it.
+ *
+ * @see {@link ToolkitRequirements} for which services are request-level
  *
  * @stability unstable
  * @category layers
@@ -2211,14 +2991,7 @@ const toolJsonSchema = (schema: Schema.Constraint, strict: boolean): JsonSchema.
  */
 export const toolkit = <Tools extends Record<string, Tool.Any>>(
   toolkit: Toolkit.Toolkit<Tools>
-): Layer.Layer<
-  never,
-  never,
-  Tool.HandlersFor<Tools> | Exclude<Tool.HandlerServices<Tools[keyof Tools]>, McpRequestContext>
-> =>
-  Layer.effectDiscard(registerToolkit(toolkit)).pipe(
-    Layer.provide(McpServer.layer)
-  )
+): Layer.Layer<never, never, ToolkitRequirements<Tools>> => Layer.effectDiscard(registerToolkit(toolkit))
 
 /**
  * Utility type that validates a completion-handler record against the allowed
@@ -2274,6 +3047,71 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
   ) => Effect.Effect<Array<Schemas[K]["Type"]>, any, any>
 }
 
+type HandlerRequestServices<R, Completions> = Exclude<R | CompletionServices<Completions>, McpRequestContext>
+
+type TemplateParamKey<Schemas extends ReadonlyArray<Schema.Constraint>, K extends keyof Schemas> = Schemas[K] extends
+  Param<infer Id, infer _S> ? Id : `param${K & string}`
+
+type TemplateSchemaServices<Schemas extends ReadonlyArray<Schema.Constraint>, Completions> =
+  | Schemas[number]["DecodingServices"]
+  | {
+    [K in Extract<keyof Schemas, `${number}`>]: TemplateParamKey<Schemas, K> extends keyof Completions
+      ? Schemas[K]["EncodingServices"]
+      : never
+  }[Extract<keyof Schemas, `${number}`>]
+
+type PromptSchemaServices<Params extends Schema.Struct.Fields, Completions> =
+  | Schema.Struct.DecodingServices<Params>
+  | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
+
+/**
+ * The requirements of a resource registration: the content handler's services
+ * are request-level.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ResourceRequirements<R> = McpServer | McpRequest.From<"Requires", Exclude<R, McpRequestContext>>
+
+/**
+ * The requirements of a resource template registration.
+ *
+ * **Details**
+ *
+ * Services read by the content and completion handlers are request-level.
+ * Parameter decoding services, and the encoding services of parameters with a
+ * completion handler, are required when the template is registered, unless a
+ * handler also reads them.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type ResourceTemplateRequirements<Schemas extends ReadonlyArray<Schema.Constraint>, R, Completions> =
+  | McpServer
+  | Exclude<TemplateSchemaServices<Schemas, Completions>, HandlerRequestServices<R, Completions>>
+  | McpRequest.From<"Requires", HandlerRequestServices<R, Completions>>
+
+/**
+ * The requirements of a prompt registration.
+ *
+ * **Details**
+ *
+ * Services read by the content and completion handlers are request-level.
+ * Parameter decoding services, and the encoding services of parameters with a
+ * completion handler, are required when the prompt is registered, unless a
+ * handler also reads them.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type PromptRequirements<Params extends Schema.Struct.Fields, R, Completions> =
+  | McpServer
+  | Exclude<PromptSchemaServices<Params, Completions>, HandlerRequestServices<R, Completions>>
+  | McpRequest.From<"Requires", HandlerRequestServices<R, Completions>>
+
 /**
  * Registers an MCP resource or resource template from an Effect program.
  *
@@ -2297,7 +3135,7 @@ export const registerResource: {
       R
     >
     readonly annotations?: Context.Context<never> | undefined
-  }): Effect.Effect<void, never, Exclude<R, McpRequestContext> | McpServer>
+  }): Effect.Effect<void, never, ResourceRequirements<R>>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -2315,18 +3153,7 @@ export const registerResource: {
       R
     >
     readonly annotations?: Context.Context<never> | undefined
-  }) => Effect.Effect<
-    void,
-    never,
-    | Exclude<
-      | Schemas[number]["DecodingServices"]
-      | Schemas[number]["EncodingServices"]
-      | R
-      | CompletionServices<Completions>,
-      McpRequestContext
-    >
-    | McpServer
-  >
+  }) => Effect.Effect<void, never, ResourceTemplateRequirements<Schemas, R, Completions>>
 } = function() {
   if (arguments.length === 1) {
     const options = arguments[0] as {
@@ -2340,15 +3167,15 @@ export const registerResource: {
       readonly annotations?: Context.Context<never> | undefined
     }
     return Effect.gen(function*() {
-      const services = omitRequestServices(yield* Effect.context<any>())
+      const services = yield* Effect.context<never>()
       const registry = yield* McpServer
       yield* registry.addResource({
         resource: new Resource({
           ...options,
           annotations: options
         }),
+        services,
         handle: options.content.pipe(
-          Effect.provideContext(services),
           Effect.map((content) => resolveResourceContent(options.uri, content)),
           Effect.catchCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
@@ -2387,7 +3214,7 @@ export const registerResource: {
     >
     readonly annotations?: Context.Context<never> | undefined
   }) {
-    const services = omitRequestServices(yield* Effect.context<any>())
+    const services = yield* Effect.context<never>()
     const registry = yield* McpServer
     const decode = Schema.decodeUnknownEffect(schema)
     const template = new ResourceTemplate({
@@ -2420,15 +3247,15 @@ export const registerResource: {
           Effect.catchCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
             return Effect.fail(new InternalError({ message: prettyError.message }))
-          }),
-          Effect.provideContext(services)
-        )
+          })
+        ) as unknown as Effect.Effect<CompleteResult, InternalError>
       completions[param] = handler
     }
     yield* registry.addResourceTemplate({
       template,
       routerPath,
       completions,
+      services,
       annotations: options.annotations ?? Context.empty(),
       handle: (uri, params) =>
         decode(params).pipe(
@@ -2441,9 +3268,8 @@ export const registerResource: {
                 return Effect.fail(new InternalError({ message: prettyError.message }))
               })
             )
-          ),
-          Effect.provideContext(services)
-        )
+          )
+        ) as Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
     })
   })
 } as any
@@ -2451,7 +3277,15 @@ export const registerResource: {
 /**
  * Creates a layer that registers an MCP resource or resource template.
  *
+ * **Details**
+ *
+ * Services read by the content and completion handlers are request-level, so
+ * providing them with `Layer.provide` doesn't satisfy them. Read
+ * construction-time services in an enclosing `Layer.unwrap` and close over
+ * them, and provide per-request services with MCP middleware.
+ *
  * @see {@link registerResource} for the Effect-level resource registration API
+ * @see {@link middleware} for providing request-level dependencies
  *
  * @stability unstable
  * @category layers
@@ -2470,7 +3304,7 @@ export const resource: {
       E,
       R
     >
-  }): Layer.Layer<never, never, Exclude<R, McpRequestContext>>
+  }): Layer.Layer<never, never, ResourceRequirements<R>>
   <const Schemas extends ReadonlyArray<Schema.Constraint>>(segments: TemplateStringsArray, ...schemas: Schemas): <
     E,
     R,
@@ -2487,28 +3321,13 @@ export const resource: {
       E,
       R
     >
-  }) => Layer.Layer<
-    never,
-    never,
-    Exclude<
-      | Schemas[number]["DecodingServices"]
-      | Schemas[number]["EncodingServices"]
-      | R
-      | CompletionServices<Completions>,
-      McpRequestContext
-    >
-  >
+  }) => Layer.Layer<never, never, ResourceTemplateRequirements<Schemas, R, Completions>>
 } = function() {
   if (arguments.length === 1) {
-    return Layer.effectDiscard(registerResource(arguments[0])).pipe(
-      Layer.provide(McpServer.layer)
-    )
+    return Layer.effectDiscard(registerResource(arguments[0]))
   }
   const register = registerResource(...(arguments as any as [any, any]))
-  return (options: any) =>
-    Layer.effectDiscard(register(options)).pipe(
-      Layer.provide(McpServer.layer)
-    )
+  return (options: any) => Layer.effectDiscard(register(options))
 } as any
 
 /**
@@ -2547,18 +3366,7 @@ export const registerPrompt = <
     ) => Effect.Effect<Array<PromptMessage> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
-): Effect.Effect<
-  void,
-  never,
-  | Exclude<
-    | Schema.Struct.DecodingServices<Params>
-    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
-    | R
-    | CompletionServices<Completions>,
-    McpRequestContext
-  >
-  | McpServer
-> => {
+): Effect.Effect<void, never, PromptRequirements<Params, R, Completions>> => {
   const args = Arr.empty<PromptArgument>()
   const props: Record<string, Schema.Constraint> = options.parameters ?? {}
   for (const [name, prop] of Object.entries(props)) {
@@ -2586,17 +3394,7 @@ export const registerPrompt = <
   > = options.completion ?? {}
   return Effect.gen(function*() {
     const registry = yield* McpServer
-    const services = omitRequestServices(
-      yield* Effect.context<
-        Exclude<
-          | R
-          | Schema.Struct.DecodingServices<Params>
-          | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
-          | CompletionServices<Completions>,
-          McpRequestContext
-        >
-      >()
-    )
+    const services = yield* Effect.context<never>()
     const completions: Record<
       string,
       (
@@ -2622,14 +3420,14 @@ export const registerPrompt = <
           Effect.catchCause((cause) => {
             const prettyError = Cause.prettyErrors(cause)[0]
             return Effect.fail(new InternalError({ message: prettyError.message }))
-          }),
-          Effect.provide(services)
+          })
         )
       completions[param] = handler as any
     }
     yield* registry.addPrompt({
       prompt,
       completions,
+      services,
       annotations: options.annotations ?? Context.empty(),
       handle: (params) =>
         decode(params).pipe(
@@ -2650,9 +3448,8 @@ export const registerPrompt = <
               }] :
               messages
             return new GetPromptResult({ messages, description: prompt.description })
-          }),
-          Effect.provideContext(services as Context.Context<unknown>)
-        )
+          })
+        ) as Effect.Effect<GetPromptResult, InvalidParams | InternalError>
     })
   })
 }
@@ -2660,7 +3457,15 @@ export const registerPrompt = <
 /**
  * Creates a layer that registers an MCP prompt.
  *
+ * **Details**
+ *
+ * Services read by the content and completion handlers are request-level, so
+ * providing them with `Layer.provide` doesn't satisfy them. Read
+ * construction-time services in an enclosing `Layer.unwrap` and close over
+ * them, and provide per-request services with MCP middleware.
+ *
  * @see {@link registerPrompt} for the Effect-level prompt registration API
+ * @see {@link middleware} for providing request-level dependencies
  *
  * @stability unstable
  * @category layers
@@ -2688,20 +3493,7 @@ export const prompt = <
     ) => Effect.Effect<Array<PromptMessage> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
-): Layer.Layer<
-  never,
-  never,
-  Exclude<
-    | Schema.Struct.DecodingServices<Params>
-    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
-    | R
-    | CompletionServices<Completions>,
-    McpRequestContext
-  >
-> =>
-  Layer.effectDiscard(registerPrompt(options)).pipe(
-    Layer.provide(McpServer.layer)
-  )
+): Layer.Layer<never, never, PromptRequirements<Params, R, Completions>> => Layer.effectDiscard(registerPrompt(options))
 
 /**
  * Collects structured input from the current MCP client and decodes the
@@ -2760,6 +3552,26 @@ export const clientCapabilities: Effect.Effect<
   never,
   McpRequestContext
 > = McpRequestContext.useSync((_) => _.clientCapabilities)
+
+/**
+ * Decodes the value of an `Mcp-Name` request header.
+ *
+ * **When to use**
+ *
+ * Use with `HttpRouter.middleware` to read the tool, prompt or resource a
+ * `2026-07-28` request targets, for example to reject it with an HTTP status
+ * before MCP handles it. Earlier protocol versions carry the name only in the
+ * JSON-RPC body.
+ *
+ * **Details**
+ *
+ * Returns `undefined` for a malformed value. Base64-wrapped values are decoded.
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.0
+ */
+export const decodeNameHeader = (value: string): string | undefined => McpProtocolInternal.decodeRoutingHeader(value)
 
 // -----------------------------------------------------------------------------
 // Internal

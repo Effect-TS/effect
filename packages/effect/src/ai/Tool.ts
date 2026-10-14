@@ -922,6 +922,36 @@ export type HandlerServices<T> = T extends Tool<
   : never
 
 /**
+ * A utility type to extract the request-level dependencies a `Tool` declares
+ * with `dependencies` or `Tool.addDependency`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type Requirements<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Requirements
+  : never
+
+/**
+ * A utility type to extract the services needed to decode the parameters and
+ * encode the result of a `Tool` call.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type SchemaServices<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Config["parameters"]["DecodingServices"] | ResultEncodingServices<T>
+  : never
+
+/**
  * A utility type to extract the requirements needed to encode the result of
  * a `Tool` call.
  *
