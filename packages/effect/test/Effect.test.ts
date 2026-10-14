@@ -2,6 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { assertExitFailure } from "@effect/vitest/utils"
 import {
   Cause,
+  Clock,
   Context,
   Data,
   Deferred,
@@ -4238,6 +4239,112 @@ describe("Effect", () => {
 
           yield* Effect.repeat(Effect.yieldNow, { times: 10 })
           assert.deepStrictEqual(negativeZero.pollUnsafe(), Exit.succeed(-Infinity), "-0 over 0 never woke its waiter")
+        }))
+    })
+
+    describe("transaction metadata", () => {
+      it.effect("starts with zero durations when the clock advances between reads", () =>
+        Effect.gen(function*() {
+          const clock = yield* Clock.Clock
+          let now = 1000
+          const currentTimeMillisUnsafe = () => now++
+          yield* Effect.tx(Effect.gen(function*() {
+            const metadata = yield* Effect.Transaction
+            assert.deepStrictEqual([metadata.elapsed, metadata.elapsedSincePrevious], [0, 0])
+            assert.strictEqual(metadata.start, metadata.now)
+          })).pipe(Effect.provideService(Clock.Clock, {
+            ...clock,
+            currentTimeMillisUnsafe,
+            currentTimeMillis: Effect.sync(currentTimeMillisUnsafe)
+          }))
+        }))
+
+      it.effect("tracks nested metadata across retries and conflicts", () =>
+        Effect.gen(function*() {
+          const ref = TxRef.makeUnsafe(0)
+          const started = yield* Deferred.make<void>()
+          const readyForConflict = yield* Deferred.make<void>()
+          const resume = yield* Deferred.make<void>()
+          const snapshots = yield* Ref.make<
+            Array<{
+              readonly attempt: number
+              readonly retryReason: Effect.TransactionRetryReason | undefined
+              readonly start: number
+              readonly now: number
+              readonly elapsed: number
+              readonly elapsedSincePrevious: number
+              readonly nestedSame: boolean
+            }>
+          >([])
+
+          const fiber = yield* Effect.forkChild(Effect.tx(Effect.gen(function*() {
+            const outer = yield* Effect.Transaction
+            const nestedSame = yield* Effect.tx(Effect.gen(function*() {
+              const inner = yield* Effect.Transaction
+              return inner === outer
+            }))
+            yield* Ref.update(snapshots, (current) => [
+              ...current,
+              {
+                attempt: outer.attempt,
+                retryReason: outer.retryReason,
+                start: outer.start,
+                now: outer.now,
+                elapsed: outer.elapsed,
+                elapsedSincePrevious: outer.elapsedSincePrevious,
+                nestedSame
+              }
+            ])
+            yield* TxRef.get(ref)
+            if (outer.attempt === 1) {
+              yield* Deferred.succeed(started, undefined)
+              return yield* Effect.txRetry
+            }
+            if (outer.attempt === 2) {
+              yield* Deferred.succeed(readyForConflict, undefined)
+              yield* Deferred.await(resume)
+            }
+          })))
+
+          yield* Deferred.await(started)
+          yield* TestClock.adjust("1 second")
+          yield* TxRef.set(ref, 1)
+          yield* Deferred.await(readyForConflict)
+          yield* TestClock.adjust("500 millis")
+          yield* TxRef.set(ref, 2)
+          yield* Deferred.succeed(resume, undefined)
+          yield* Fiber.join(fiber)
+          const recorded = yield* Ref.get(snapshots)
+
+          assert.deepStrictEqual(recorded, [
+            {
+              attempt: 1,
+              retryReason: undefined,
+              start: 0,
+              now: 0,
+              elapsed: 0,
+              elapsedSincePrevious: 0,
+              nestedSame: true
+            },
+            {
+              attempt: 2,
+              retryReason: "retry",
+              start: 0,
+              now: 1000,
+              elapsed: 1000,
+              elapsedSincePrevious: 1000,
+              nestedSame: true
+            },
+            {
+              attempt: 3,
+              retryReason: "conflict",
+              start: 0,
+              now: 1500,
+              elapsed: 1500,
+              elapsedSincePrevious: 500,
+              nestedSame: true
+            }
+          ])
         }))
     })
   })
