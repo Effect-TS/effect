@@ -322,9 +322,15 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
  * **Gotchas**
  *
  * - Read each body before pulling the next entry: a body read afterwards fails
- *   with a `BodyConsumed` `TarError`.
+ *   with a `BodyConsumed` `TarError`. Operators that pull ahead, such as
+ *   `Stream.buffer`, therefore can't sit between `decode` and the body reads.
+ * - A body reads the entry's bytes once: running it again continues where the
+ *   previous run stopped.
  * - Directories, links, devices and FIFOs have no body, and their `size` is
  *   reported as `0`.
+ * - Paths are returned as written in the archive, so they can be absolute or
+ *   contain `..`. Validate them before writing entries to disk.
+ * - Names that are not valid UTF-8 are decoded with replacement characters.
  * - GNU sparse entries fail with an `Unsupported` `TarError`.
  *
  * @see {@link encode} for the inverse operation
