@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reuse language model response decoders across requests with unchanged tool schemas.
+Cache the last response decoder for each language model response kind, keyed by validation mode and ordered tool schema identities.

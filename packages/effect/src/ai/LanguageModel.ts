@@ -2476,8 +2476,8 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
-// Keep the last decoder per model and response kind. Fresh Toolkits reuse it
-// when their tool names and schemas are unchanged.
+// Cache one decoder per model and response kind, keyed by validation mode
+// and tool names and schema identities in insertion order.
 const makeResponseDecoder = <Decode>(make: (toolkit: Toolkit.Any, deferred: boolean) => Decode) => {
   let cached: { readonly key: ReadonlyArray<unknown>; readonly decode: Decode } | undefined
   return (toolkit: Toolkit.WithHandler<any>, encoded: boolean, deferred: boolean): Decode => {
