@@ -566,6 +566,7 @@ describe("Duration", () => {
     strictEqual(Duration.millis(-0.0000015).pipe(Duration.toNanosUnsafe), -2n)
     strictEqual(Duration.millis(100).pipe(Duration.toNanosUnsafe), 100_000_000n)
     strictEqual(Duration.millis(2 ** 1023).pipe(Duration.toNanosUnsafe), 1_000_000n << 1023n)
+    strictEqual(Duration.millis(1_760_450_000_123).pipe(Duration.toNanosUnsafe), 1_760_450_000_123_000_000n)
   })
 
   it("toHrTime", () => {

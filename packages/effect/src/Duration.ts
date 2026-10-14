@@ -38,10 +38,8 @@ const bigint1e9 = BigInt(1_000_000_000)
 
 const roundTiesAwayFromZero = (input: number): bigint => BigInt(Math.sign(input) * Math.round(Math.abs(input)))
 
-const roundMillisToNanos = (millis: number): bigint => {
-  const nanos = millis * 1_000_000
-  return Number.isFinite(nanos) ? roundTiesAwayFromZero(nanos) : BigInt(millis) * bigint1e6
-}
+const roundMillisToNanos = (millis: number): bigint =>
+  Number.isInteger(millis) ? BigInt(millis) * bigint1e6 : roundTiesAwayFromZero(millis * 1_000_000)
 
 const fromNanosNumber = (nanos: number): Duration => make(Number.isFinite(nanos) ? roundTiesAwayFromZero(nanos) : nanos)
 
