@@ -42,6 +42,9 @@ import * as Semaphore from "../Semaphore.ts"
  * the time is set to on or after the time they are scheduled to run. Fork the
  * effect being tested, then adjust the clock time, and finally verify that the
  * expected effects have been performed.
+ * The ordered execution of sleeps registered after multiple scheduler hops
+ * requires fibers running under {@link layer}; providing a clock from
+ * {@link make} by hand does not install the tracking scheduler.
  *
  * **Example** (Testing timeouts deterministically)
  *
@@ -235,6 +238,14 @@ const millisToNanos = (millis: number): bigint => {
 
 /**
  * Creates a `TestClock` with optional configuration.
+ *
+ * **Gotchas**
+ *
+ * The guarantee that sleeps registered after multiple scheduler hops run in
+ * order applies only to fibers running under {@link layer}, which
+ * `@effect/vitest`'s `it.effect` uses. Providing a clock from `make` by hand
+ * waits only one scheduler turn after each woken sleep. Prefer `layer` when
+ * forked fibers sleep.
  *
  * **Example** (Creating a test clock)
  *
