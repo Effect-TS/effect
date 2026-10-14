@@ -192,6 +192,9 @@ export class ProtocolError extends Data.TaggedError("ProtocolError")<{
   static fromTool(
     error: McpCore.ToolError | McpCore.UnsupportedByProtocol
   ): ProtocolError {
+    if (error._tag === "RequestRejected") {
+      return new ProtocolError({ code: error.code, message: error.message, data: error.data })
+    }
     const message = Match.value(error).pipe(
       Match.tag("ToolNotFound", (error) => `Tool '${error.name}' not found`),
       Match.tag(
