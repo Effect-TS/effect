@@ -893,6 +893,13 @@ export const make: (params: {
     Effect.map(Option.getOrElse(() => defaultIdGenerator))
   )
 
+  const contentDecoderFor = makeResponseDecoder((toolkit, deferred) =>
+    Schema.decodeEffect(Schema.mutable(Schema.Array(withUndeclaredToolCalls(Response.Part(toolkit), deferred))))
+  )
+  const streamDecoderFor = makeResponseDecoder((toolkit, deferred) =>
+    Schema.decodeEffect(Schema.NonEmptyArray(withUndeclaredToolCalls(Response.StreamPart(toolkit), deferred)))
+  )
+
   const generateText = <
     Options extends NoExcessProperties<GenerateTextOptions<any>, Options>,
     Tools extends Record<string, Tool.Any> = {}
@@ -1265,20 +1272,17 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.mutable(Schema.Array(withUndeclaredToolCalls(
-      Response.Part(
-        options.disableToolCallResolution === true && !deferToolCallValidation
-          ? makeToolkitWithEncodedParameters(toolkit)
-          : makeToolkitWithOpaqueParameters(toolkit)
-      ),
+    const decodeContent = contentDecoderFor(
+      toolkit,
+      options.disableToolCallResolution === true && !deferToolCallValidation,
       deferToolCallValidation
-    )))
+    )
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
     if (options.disableToolCallResolution === true) {
       const rawContent = yield* generateWithNonIncrementalFallback()
-      const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+      const content = yield* decodeContent(rawContent)
       if (deferToolCallValidation) {
         yield* validateProviderExecutedToolCalls(makeToolkitWithEncodedParameters(toolkit), rawContent)
       }
@@ -1294,7 +1298,7 @@ export const make: (params: {
     const rawContent = yield* generateWithNonIncrementalFallback()
 
     // Validate before running tool handlers.
-    const content = yield* Schema.decodeEffect(ResponseSchema)(rawContent)
+    const content = yield* decodeContent(rawContent)
     yield* validateProviderExecutedToolCalls(toolkit, rawContent)
 
     // Resolve the generated tool calls. When the finish reason indicates an
@@ -1579,15 +1583,11 @@ export const make: (params: {
       }
     }
 
-    const ResponseSchema = Schema.NonEmptyArray(withUndeclaredToolCalls(
-      Response.StreamPart(
-        options.disableToolCallResolution === true && !deferToolCallValidation
-          ? makeToolkitWithEncodedParameters(toolkit)
-          : makeToolkitWithOpaqueParameters(toolkit)
-      ),
+    const decodeParts = streamDecoderFor(
+      toolkit,
+      options.disableToolCallResolution === true && !deferToolCallValidation,
       deferToolCallValidation
-    ))
-    const decodeParts = Schema.decodeEffect(ResponseSchema)
+    )
 
     // If tool call resolution is disabled, return the response without
     // resolving the tool calls that were generated
@@ -2460,6 +2460,27 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // =============================================================================
 // Utilities
 // =============================================================================
+
+// Cache one decoder per model and response kind, keyed by validation mode
+// and tool names and schema identities in insertion order.
+const makeResponseDecoder = <Decode>(make: (toolkit: Toolkit.Any, deferred: boolean) => Decode) => {
+  let cached: { readonly key: ReadonlyArray<unknown>; readonly decode: Decode } | undefined
+  return (toolkit: Toolkit.WithHandler<any>, encoded: boolean, deferred: boolean): Decode => {
+    const key: Array<unknown> = [encoded, deferred]
+    for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
+      key.push(tool.name, tool.parametersSchema, tool.successSchema, tool.failureSchema)
+    }
+    if (cached !== undefined && cached.key.length === key.length && cached.key.every((part, i) => part === key[i])) {
+      return cached.decode
+    }
+    const decode = make(
+      encoded ? makeToolkitWithEncodedParameters(toolkit) : makeToolkitWithOpaqueParameters(toolkit),
+      deferred
+    )
+    cached = { key, decode }
+    return decode
+  }
+}
 
 // Stable parameter-mode copies let Response reuse each tool's part schemas.
 const parameterModeTools = new WeakMap<Tool.Any, { encoded?: Tool.Any; opaque?: Tool.Any }>()

@@ -69,6 +69,38 @@ describe("LanguageModel", () => {
     response: undefined
   }
 
+  for (const method of ["generateText", "streamText"] as const) {
+    it.effect(`${method} uses current tool schemas and handlers across requests`, () =>
+      Effect.gen(function*() {
+        const run = (tool: typeof MyTool, result: string, disableToolCallResolution = false) => {
+          const toolkit = Toolkit.make(tool)
+          const options = { prompt: "hi", toolkit, disableToolCallResolution }
+          return (method === "generateText"
+            ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.toolResults[0]))
+            : LanguageModel.streamText(options).pipe(
+              Stream.runCollect,
+              Effect.map((parts) => parts.find((part) => part.type === "tool-result"))
+            )).pipe(
+              Effect.provide(toolkit.toLayer({ MyTool: () => Effect.succeed({ testSuccess: result }) }))
+            )
+        }
+        for (const result of ["first", "second"]) {
+          const toolResult = yield* run(MyTool, result)
+          assertDefined(toolResult)
+          deepStrictEqual(toolResult.result, { testSuccess: result })
+        }
+        yield* run(MyTool, "unused", true)
+        const changed = MyTool.setParameters(
+          Schema.Struct({ testParam: Schema.String.check(Schema.isPattern(/^changed$/)) })
+        )
+        const error = yield* run(changed, "unused", true).pipe(Effect.flip)
+        strictEqual(error.reason._tag, "InvalidOutputError")
+      }).pipe(TestUtils.withLanguageModel({
+        generateText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }],
+        streamText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }]
+      })))
+  }
+
   describe("generateText", () => {
     it.effect("records resolved request options on a client span", () =>
       LanguageModel.generateText({ prompt: "hi" }).pipe(
