@@ -56,4 +56,50 @@ describe("OtlpSerialization", () => {
         ].flat()
       )
     }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
+
+  it.effect("layerJson writes non-finite doubles as strings", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const metrics = serialization.metrics({
+        resourceMetrics: [{
+          resource: { attributes: [], droppedAttributesCount: 0 },
+          scopeMetrics: [{
+            scope: { name: "s" },
+            metrics: [{
+              name: "ratio",
+              gauge: { dataPoints: [{ attributes: [], startTimeUnixNano: "1", timeUnixNano: "2", asDouble: NaN }] }
+            }, {
+              name: "latency",
+              histogram: {
+                aggregationTemporality: 2,
+                dataPoints: [{
+                  attributes: [],
+                  startTimeUnixNano: "1",
+                  timeUnixNano: "2",
+                  count: 1,
+                  sum: Infinity,
+                  min: -Infinity,
+                  max: Infinity,
+                  bucketCounts: [0, 1],
+                  explicitBounds: [10]
+                }]
+              }
+            }]
+          }]
+        }]
+      })
+      const traces = serialization.traces({
+        resourceSpans: [{
+          resource: { attributes: [{ key: "a", value: { doubleValue: -Infinity } }], droppedAttributesCount: 0 },
+          scopeSpans: []
+        }]
+      })
+      const text = (body: typeof metrics) =>
+        JSON.parse(new TextDecoder().decode(body._tag === "Uint8Array" ? body.body : new Uint8Array()))
+      const [gauge, histogram] = text(metrics).resourceMetrics[0].scopeMetrics[0].metrics
+      assert.strictEqual(gauge.gauge.dataPoints[0].asDouble, "NaN")
+      const point = histogram.histogram.dataPoints[0]
+      assert.deepStrictEqual([point.sum, point.min, point.max], ["Infinity", "-Infinity", "Infinity"])
+      assert.deepStrictEqual(text(traces).resourceSpans[0].resource.attributes[0].value, { doubleValue: "-Infinity" })
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 })
