@@ -1,6 +1,7 @@
 import { Jwe, Jwk, Jws } from "@effect/jose"
 import { assert, it } from "@effect/vitest"
-import { Crypto, Effect, PlatformError, Redacted } from "effect"
+import { Effect, Redacted } from "effect"
+import { CryptoError, SecureRandom } from "effect/crypto"
 import * as jose from "jose"
 import { cryptoLayer, privateJwk, secret, secretJwk, text, utf8 } from "./fixtures.ts"
 
@@ -26,7 +27,7 @@ for (const algorithm of ["RS256", "PS256", "ES256", "EdDSA"] as const) {
       assert.strictEqual(pair.publicKey.kid, "generated")
       assert.strictEqual(Redacted.value(restored.jwk).kid, "restored")
       assert.deepStrictEqual(der, original)
-    }))
+    }).pipe(Effect.provide(cryptoLayer)))
 
   it.effect(`interoperates in both directions with ${algorithm} JWKs and compact JWS`, () =>
     Effect.gen(function*() {
@@ -121,25 +122,24 @@ it.effect("rejects payload tampering and disallowed algorithms", () =>
     )
   }).pipe(Effect.provide(cryptoLayer)))
 
-// Reproduced at 5199d99: RNG PlatformError escaped JweError with its native cause.
+// Random-source diagnostics must not escape the JOSE error boundary.
 it.effect("classifies JWE RNG failures without exposing native causes", () =>
   Effect.gen(function*() {
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
-    const random = yield* Crypto.Crypto
+    const random = yield* SecureRandom.SecureRandom
 
     const error = yield* Jwe.encrypt(Redacted.make(utf8("payload")), key, {
       alg: "dir",
       enc: "A256GCM"
     }).pipe(
-      Effect.provideService(Crypto.Crypto, {
+      Effect.provideService(SecureRandom.SecureRandom, {
         ...random,
         randomBytes: () =>
           Effect.fail(
-            PlatformError.systemError({
-              _tag: "Unknown",
-              module: "Crypto",
+            new CryptoError.CryptoError({
+              algorithm: "SecureRandom",
               method: "randomBytes",
-              cause: "private-rng-canary"
+              reason: new CryptoError.Unknown({ description: "private-rng-canary", cause: "private-rng-canary" })
             })
           )
       }),

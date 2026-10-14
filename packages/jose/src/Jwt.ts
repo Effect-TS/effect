@@ -11,7 +11,6 @@ import * as Schema from "effect/Schema"
 import { ClaimValidationFailed, type VerifyError } from "./Errors.ts"
 import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
 import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
-import type { Jwks } from "./Jwks.ts"
 import { type Header, type Requirements, VerifyOptions as JwsVerifyOptions } from "./Jws.ts"
 import * as Jws from "./Jws.ts"
 
@@ -223,6 +222,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *
  * ```ts import.meta.vitest
  * import { Jwk, Jwt } from "@effect/jose"
+ * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted, Schema } from "effect"
  *
  * const Claims = Schema.Struct({ sub: Schema.String, iss: Schema.String })
@@ -237,7 +237,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *     algorithms: ["HS256"], issuer: "example", requiredClaims: ["sub", "iss"]
  *   })
  *   return verified.claims
- * }))
+ * }).pipe(Effect.provide(NodeCrypto.layer)))
  * claims // => ({ sub: "user-123", iss: "example" })
  * ```
  *
@@ -271,7 +271,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
 ): Effect.fn.Return<
   Verified<S["Type"]> & { readonly key: PublicKey },
   JwtError,
-  Jwks | S["DecodingServices"]
+  Effect.Services<ReturnType<typeof Jws.verifyWithKeySet>> | S["DecodingServices"]
 > {
   const policy = yield* parse(VerifyOptions, options, "parameters")
   const jws = yield* Jws.verifyWithKeySet(token, policy)

@@ -4,16 +4,18 @@
  * @stability unstable
  * @since 4.0.5
  */
+import * as Ecdsa from "effect/crypto/Ecdsa"
+import * as Ed25519 from "effect/crypto/Ed25519"
+import * as Hmac from "effect/crypto/Hmac"
+import * as Rsa from "effect/crypto/Rsa"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { AlgorithmNotAllowed, InvalidKey, InvalidToken, SignatureVerificationFailed } from "./Errors.ts"
-import { algorithms } from "./internal/algorithms.ts"
+import { copy, decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "./internal/crypto.ts"
 import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import * as Hmac from "./internal/hmac.ts"
 import * as KeyPolicy from "./internal/keyPolicy.ts"
-import * as Signature from "./internal/signature.ts"
 import {
   Algorithm,
   type PrivateJwk,
@@ -80,13 +82,13 @@ export interface Verified {
 }
 
 /**
- * Service requirements for JWS operations, which use the runtime Web Crypto implementation.
+ * Algorithm services required by JWS signing and verification.
  *
  * @stability unstable
  * @category models
  * @since 4.0.5
  */
-export type Requirements = never
+export type Requirements = Hmac.Hmac | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519
 
 const readHeader = Effect.fnUntraced(function*(input: unknown) {
   const raw = yield* parse(JsonObject, input, "header")
@@ -131,12 +133,36 @@ const verifyAsymmetric = Effect.fnUntraced(function*(
   if (algorithm === "HS256" || key.algorithm !== algorithm) return yield* InvalidKey.make({})
   yield* KeyPolicy.check(key.jwk, algorithm, "verify")
 
-  const valid = yield* Signature.verify({
-    algorithm: algorithms[algorithm],
-    publicKey: key.material,
-    data: parsed.signingInput,
-    signature: parsed.signature
-  })
+  const valid = yield* Effect.gen(function*() {
+    const material = yield* copy(key.material)
+    yield* decodeInput(derBytes, material, "key")
+    const data = parsed.signingInput
+    const signature = parsed.signature
+    switch (algorithm) {
+      case "ES256": {
+        const publicKey = yield* native(Ecdsa.publicKeyFromSpki("P-256", material))
+        if (signature.length !== 64) return false
+        const ecdsa = yield* Ecdsa.Ecdsa
+        return yield* native(ecdsa.verify({ curve: "P-256", hash: "SHA-256", publicKey, data, signature }))
+      }
+      case "EdDSA": {
+        const publicKey = yield* native(Ed25519.publicKeyFromSpki(material))
+        if (signature.length !== 64) return false
+        const ed25519 = yield* Ed25519.Ed25519
+        return yield* native(ed25519.verify({ publicKey, data, signature }))
+      }
+      default: {
+        const publicKey = yield* native(Rsa.publicKeyFromSpki(material))
+        yield* native(KeyPolicy.checkRsa(publicKey))
+        const rsa = yield* Rsa.Rsa
+        return yield* native(
+          algorithm === "PS256"
+            ? rsa.verifyPss({ hash: "SHA-256", saltLength: 32, publicKey, data, signature })
+            : rsa.verifyPkcs1v15({ hash: "SHA-256", publicKey, data, signature })
+        )
+      }
+    }
+  }).pipe(Effect.uninterruptible)
 
   if (!valid) return yield* SignatureVerificationFailed.make({})
 
@@ -179,20 +205,41 @@ export const sign = Effect.fnUntraced(function*(
 
   if (key._tag === "SecretKey") {
     if (header.alg !== "HS256") return yield* InvalidKey.make({})
-
-    signature = yield* Hmac.sign({
-      algorithm: "SHA-256",
-      key: key.material,
-      data: utf8(signingInput)
-    })
+    const hmac = yield* Hmac.Hmac
+    signature = yield* withSecret(
+      key.material,
+      (owned) => native(hmac.compute({ hash: "SHA-256", key: Redacted.make(owned), data: utf8(signingInput) }))
+    )
   } else {
     if (header.alg === "HS256") return yield* InvalidKey.make({})
-
-    signature = yield* Signature.sign({
-      algorithm: algorithms[header.alg],
-      privateKey: key.material,
-      data: utf8(signingInput)
-    })
+    const algorithm = header.alg
+    signature = yield* withSecret(key.material, (owned) =>
+      Effect.gen(function*() {
+        yield* decodeInput(derBytes, owned, "key")
+        const data = utf8(signingInput)
+        switch (algorithm) {
+          case "ES256": {
+            const ecdsa = yield* Ecdsa.Ecdsa
+            return yield* native(withPrivateKey(Ecdsa.privateKeyFromPkcs8("P-256", owned), (privateKey) =>
+              ecdsa.sign({ curve: "P-256", hash: "SHA-256", privateKey, data })))
+          }
+          case "EdDSA": {
+            const ed25519 = yield* Ed25519.Ed25519
+            return yield* native(withPrivateKey(Ed25519.privateKeyFromPkcs8(owned), (privateKey) =>
+              ed25519.sign({ privateKey, data })))
+          }
+          default: {
+            const rsa = yield* Rsa.Rsa
+            return yield* native(withPrivateKey(Rsa.privateKeyFromPkcs8(owned), (privateKey) =>
+              Effect.gen(function*() {
+                yield* KeyPolicy.checkRsa(yield* Rsa.publicKeyFromPrivateKey(privateKey))
+                return yield* algorithm === "PS256"
+                  ? rsa.signPss({ hash: "SHA-256", saltLength: 32, privateKey, data })
+                  : rsa.signPkcs1v15({ hash: "SHA-256", privateKey, data })
+              })))
+          }
+        }
+      }))
   }
 
   return Redacted.make(`${signingInput}.${Base64Url.encode(signature)}`)
@@ -205,6 +252,7 @@ export const sign = Effect.fnUntraced(function*(
  *
  * ```ts import.meta.vitest
  * import { Jwk, Jws } from "@effect/jose"
+ * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted } from "effect"
  *
  * const payload = await Effect.runPromise(Effect.gen(function*() {
@@ -216,7 +264,7 @@ export const sign = Effect.fnUntraced(function*(
  *   const token = yield* Jws.sign(Redacted.make(new TextEncoder().encode("hello")), key, { alg: "HS256" })
  *   const verified = yield* Jws.verify(token, key, { algorithms: ["HS256"] })
  *   return new TextDecoder().decode(Redacted.value(verified.payload))
- * }))
+ * }).pipe(Effect.provide(NodeCrypto.layer)))
  * payload // => "hello"
  * ```
  *
@@ -238,12 +286,14 @@ export const verify = Effect.fnUntraced(function*(
   yield* KeyPolicy.check(yield* reveal(key.jwk), algorithm, "verify")
   if (algorithm !== "HS256") return yield* InvalidKey.make({})
 
-  const valid = yield* Hmac.verify({
-    algorithm: "SHA-256",
-    key: key.material,
-    data: parsed.signingInput,
-    tag: parsed.signature
-  })
+  const hmac = yield* Hmac.Hmac
+  const valid = yield* withSecret(key.material, (owned) =>
+    native(hmac.verify({
+      hash: "SHA-256",
+      key: Redacted.make(owned),
+      data: parsed.signingInput,
+      tag: parsed.signature
+    })))
 
   if (!valid) return yield* SignatureVerificationFailed.make({})
 

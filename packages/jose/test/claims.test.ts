@@ -3,7 +3,7 @@ import { assert, it } from "@effect/vitest"
 import { Context, Effect, Redacted, Schema, SchemaGetter } from "effect"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
-import { independentJwt, secret, secretJwk, utf8 } from "./fixtures.ts"
+import { cryptoLayer, independentJwt, secret, secretJwk, utf8 } from "./fixtures.ts"
 
 // Adapted JWT verification contracts from panva/jose, plus the explicitly
 // requested Schema inference and branded-subject boundary. See the shipped notices.
@@ -53,7 +53,7 @@ it.effect("encodes and decodes the caller's Schema while retaining registered cl
     assert.deepStrictEqual(verified.claims, { sub: "user_1", role: "member", quota: 3 })
     assert.strictEqual(verified.registeredClaims.iss, registered.iss)
     assert.strictEqual(verified.registeredClaims.exp, registered.exp)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect(
   "rejects correctly signed invalid application claims and preserves Schema errors without input",
@@ -76,7 +76,7 @@ it.effect(
       )
 
       assert.strictEqual(encoding._tag, "SchemaError")
-    })
+    }).pipe(Effect.provide(cryptoLayer))
 )
 
 it.effect("validates registered claims before the application decoder", () =>
@@ -96,7 +96,7 @@ it.effect("validates registered claims before the application decoder", () =>
       claim: "iss",
       reason: "mismatch"
     })
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("checks the signature before parsing claims and labels unverified decoding", () =>
   Effect.gen(function*() {
@@ -121,7 +121,7 @@ it.effect("checks the signature before parsing claims and labels unverified deco
 
     assert.strictEqual(unverified._tag, "UnverifiedJwt")
     assert.deepStrictEqual(Redacted.value(unverified.claims), claims)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 class Decode extends Context.Service<Decode, { readonly prefix: string }>()("test/Decode") {}
 class Encode extends Context.Service<Encode, { readonly prefix: string }>()("test/Encode") {}
@@ -150,4 +150,4 @@ it.effect("retains distinct encoding and decoding Schema services at runtime", (
     )
 
     assert.strictEqual(verified.claims.sub, "user:42")
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))

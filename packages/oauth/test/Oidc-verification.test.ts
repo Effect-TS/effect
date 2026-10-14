@@ -7,7 +7,8 @@ import { createHash } from "node:crypto"
 
 import { assert, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
-import * as Crypto from "effect/Crypto"
+import * as CryptoError from "effect/crypto/CryptoError"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as DateTime from "effect/DateTime"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
@@ -447,7 +448,7 @@ for (const termination of ["owner closure", "caller interruption"] as const) {
         )
       )
 
-      const crypto = yield* Crypto.Crypto
+      const sha2 = yield* Sha2.Sha2
       const entered = yield* Deferred.make<void>()
       const allowDigest = yield* Deferred.make<void>()
       const cleanupStarted = yield* Deferred.make<void>()
@@ -455,10 +456,10 @@ for (const termination of ["owner closure", "caller interruption"] as const) {
       let cleanupFinished = false
       let terminationFinished = false
 
-      const gated = Crypto.Crypto.of({
-        ...crypto,
+      const gated = Sha2.Sha2.of({
+        ...sha2,
         digest: (algorithm, input) =>
-          crypto.digest(algorithm, input).pipe(
+          sha2.digest(algorithm, input).pipe(
             Effect.tap(() => Deferred.succeed(entered, undefined)),
             Effect.tap(() => Deferred.await(allowDigest)),
             Effect.ensuring(
@@ -476,7 +477,7 @@ for (const termination of ["owner closure", "caller interruption"] as const) {
       yield* Effect.gen(function*() {
         const active = yield* verifier
           .verify(token, verification)
-          .pipe(Effect.provideService(Crypto.Crypto, gated), Effect.forkChild)
+          .pipe(Effect.provideService(Sha2.Sha2, gated), Effect.forkChild)
 
         yield* Deferred.await(entered)
 
@@ -545,23 +546,54 @@ for (const algorithm of ["PS256", "ES256", "EdDSA"] as const) {
         at_hash: hash("private-access", digest),
         c_hash: hash("single-use-code", digest)
       }, algorithm)
-      const crypto = yield* Crypto.Crypto
+      const sha2 = yield* Sha2.Sha2
       const digests: Array<string> = []
-      const observed = Crypto.Crypto.of({
-        ...crypto,
+      const observed = Sha2.Sha2.of({
+        ...sha2,
         digest: (algorithm, input) => {
           digests.push(algorithm)
-          return crypto.digest(algorithm, input)
+          return sha2.digest(algorithm, input)
         }
       })
       const verified = yield* verifier.verify(token, verification).pipe(
-        Effect.provideService(Crypto.Crypto, observed)
+        Effect.provideService(Sha2.Sha2, observed)
       )
       assert.strictEqual(verified.subject, claims.sub)
       const expected = algorithm === "EdDSA" ? "SHA-512" : "SHA-256"
       assert.deepStrictEqual(digests, [expected, expected])
     }).pipe(Effect.provide(cryptoLayer)))
 }
+
+it.effect("sanitizes injected Sha2 failures and rejects invalid digest lengths", () =>
+  Effect.gen(function*() {
+    yield* TestClock.setTime(seconds * 1000)
+    const keys = yield* generate
+    const jwk = yield* Effect.promise(() => jose.exportJWK(keys.publicKey))
+    const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeoutMs: 1000 }).pipe(
+      Effect.provideService(HttpClient.HttpClient, transport(() => Response.json({ keys: [{ ...jwk, kid: "key" }] })))
+    )
+    const token = yield* sign(keys.privateKey, claims)
+    const failure = new CryptoError.CryptoError({
+      algorithm: "SHA-256",
+      method: "digest",
+      reason: new CryptoError.Unknown({ description: "private-provider-cause" })
+    })
+    for (
+      const digest of [
+        Effect.fail(failure),
+        ...[0, 31, 33].map((length) => Effect.succeed(new Uint8Array(length)))
+      ]
+    ) {
+      const error = yield* verifier.verify(token, verification).pipe(
+        Effect.provideService(Sha2.Sha2, { digest: () => digest }),
+        Effect.flip
+      )
+      assert.strictEqual(error._tag, "OAuthUnavailable")
+      assert.notInclude(JSON.stringify(error), "private-provider-cause")
+      assert.notInclude(String(error), "private-provider-cause")
+    }
+    assert.strictEqual((yield* verifier.verify(token, verification)).subject, claims.sub)
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("requires explicit strong HS256 policy and verifies without fetching keys", () =>
   Effect.gen(function*() {
@@ -711,10 +743,10 @@ for (const boundary of ["expiration", "authentication age"] as const) {
       const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeoutMs: 1000 }).pipe(
         Effect.provideService(HttpClient.HttpClient, transport(() => Response.json({ keys: [{ ...jwk, kid: "key" }] })))
       )
-      const crypto = yield* Crypto.Crypto
-      const delayed = Crypto.Crypto.of({
-        ...crypto,
-        digest: (algorithm, input) => crypto.digest(algorithm, input).pipe(Effect.tap(() => TestClock.adjust(2000)))
+      const sha2 = yield* Sha2.Sha2
+      const delayed = Sha2.Sha2.of({
+        ...sha2,
+        digest: (algorithm, input) => sha2.digest(algorithm, input).pipe(Effect.tap(() => TestClock.adjust(2000)))
       })
       const token = yield* sign(keys.privateKey, {
         ...claims,
@@ -722,7 +754,7 @@ for (const boundary of ["expiration", "authentication age"] as const) {
         ...(boundary === "expiration" ? { exp: seconds + 1 } : { auth_time: seconds - 60 })
       })
       const failure = yield* verifier.verify(token, verification).pipe(
-        Effect.provideService(Crypto.Crypto, delayed),
+        Effect.provideService(Sha2.Sha2, delayed),
         Effect.flip
       )
       assert.strictEqual(failure._tag, "OAuthRejected")

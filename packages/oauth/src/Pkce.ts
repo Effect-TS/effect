@@ -1,10 +1,12 @@
 /**
- * Fresh private transaction secrets and RFC 7636 S256 PKCE challenges backed by Effect Crypto.
+ * Fresh private transaction secrets and RFC 7636 S256 PKCE challenges backed by Effect's SecureRandom and Sha2 services.
  *
  * @stability unstable
  * @since 4.0.5
  */
-import * as Crypto from "effect/Crypto"
+import type * as CryptoError from "effect/crypto/CryptoError"
+import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
@@ -14,6 +16,10 @@ import * as V from "./internal/validation.ts"
 
 /**
  * Generates a fresh 256-bit state, nonce, or PKCE verifier as an unpadded base64url secret. Application policy owns storage and one-time use.
+ *
+ * **Details**
+ *
+ * Requires the SecureRandom service for entropy.
  *
  * **Example** (Creating a private transaction state)
  *
@@ -31,9 +37,13 @@ import * as V from "./internal/validation.ts"
  * @since 4.0.5
  */
 export const random = Effect.fnUntraced(
-  function*() {
-    const crypto = yield* Crypto.Crypto
-    const bytes = yield* crypto.randomBytes(32)
+  function*(): Effect.fn.Return<
+    Redacted.Redacted<string>,
+    Unavailable | CryptoError.CryptoError,
+    SecureRandom.SecureRandom
+  > {
+    const random = yield* SecureRandom.SecureRandom
+    const bytes = yield* random.randomBytes(32)
 
     if (bytes.length !== 32) return yield* Unavailable.make({})
 
@@ -44,6 +54,10 @@ export const random = Effect.fnUntraced(
 
 /**
  * Computes an RFC 7636 S256 challenge from a redacted 43–128-character PKCE verifier. Invalid input and crypto failures return OAuthUnavailable.
+ *
+ * **Details**
+ *
+ * Requires the Sha2 service for SHA-256 hashing.
  *
  * **Example** (Checking the RFC 7636 Appendix B vector)
  *
@@ -65,10 +79,12 @@ export const random = Effect.fnUntraced(
  * @since 4.0.5
  */
 export const challenge = Effect.fnUntraced(
-  function*(input: Redacted.Redacted<string>) {
+  function*(
+    input: Redacted.Redacted<string>
+  ): Effect.fn.Return<string, Unavailable | CryptoError.CryptoError, Sha2.Sha2> {
     const verifier = yield* V.reveal(yield* V.decode(V.Verifier, input))
-    const crypto = yield* Crypto.Crypto
-    const digest = yield* crypto.digest("SHA-256", new TextEncoder().encode(verifier))
+    const sha2 = yield* Sha2.Sha2
+    const digest = yield* sha2.digest("SHA-256", new TextEncoder().encode(verifier)).pipe(Effect.uninterruptible)
 
     if (digest.length !== 32) return yield* Unavailable.make({})
 
@@ -78,7 +94,7 @@ export const challenge = Effect.fnUntraced(
 )
 
 /**
- * Generates a fresh private PKCE verifier and its public S256 challenge using Effect Crypto.
+ * Generates a fresh private PKCE verifier and its public S256 challenge using the SecureRandom and Sha2 services.
  *
  * **Example** (Creating an S256 transaction)
  *
@@ -96,7 +112,11 @@ export const challenge = Effect.fnUntraced(
  * @category constructors
  * @since 4.0.5
  */
-export const make = Effect.fnUntraced(function*() {
+export const make = Effect.fnUntraced(function*(): Effect.fn.Return<
+  { verifier: Redacted.Redacted<string>; challenge: string },
+  Unavailable,
+  SecureRandom.SecureRandom | Sha2.Sha2
+> {
   const verifier = yield* random()
 
   return { verifier, challenge: yield* challenge(verifier) }

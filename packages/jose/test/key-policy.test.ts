@@ -1,6 +1,6 @@
 import { Jwe, Jwk, Jwks, Jws } from "@effect/jose"
 import { assert, it } from "@effect/vitest"
-import { Effect, Layer, Redacted } from "effect"
+import { Effect, Layer, Redacted, Schema } from "effect"
 import * as jose from "jose"
 import { generateKeyPairSync } from "node:crypto"
 import { cryptoLayer, independentJws, privateJwk, publicJwk, secret, secretJwk, utf8 } from "./fixtures.ts"
@@ -274,4 +274,49 @@ it.effect("enforces encryption key use, algorithm binding and per-operation auth
       assert.strictEqual((yield* Jwe.encrypt(payload, key, header).pipe(Effect.flip))._tag, "JoseInvalidKey")
       assert.strictEqual((yield* Jwe.decrypt(token, key).pipe(Effect.flip))._tag, "JoseInvalidKey")
     }
+  }).pipe(Effect.provide(cryptoLayer)))
+
+it.effect("checks the actual RSA material before signing or verifying structural keys", () =>
+  Effect.gen(function*() {
+    const pair = generateKeyPairSync("rsa", { modulusLength: 1024 })
+    const publicJwk = yield* Schema.decodeUnknownEffect(Jwk.PublicJwk)(pair.publicKey.export({ format: "jwk" }))
+    const privateJwk = yield* Schema.decodeUnknownEffect(Jwk.PrivateJwk)(pair.privateKey.export({ format: "jwk" }))
+    for (const algorithm of ["RS256", "PS256"] as const) {
+      const publicKey: Jwk.PublicKey = {
+        _tag: "PublicKey",
+        algorithm,
+        jwk: publicJwk,
+        material: pair.publicKey.export({ type: "spki", format: "der" })
+      }
+      const privateKey: Jwk.PrivateKey = {
+        _tag: "PrivateKey",
+        algorithm,
+        jwk: Redacted.make(privateJwk),
+        material: Redacted.make(pair.privateKey.export({ type: "pkcs8", format: "der" }))
+      }
+      const token = Redacted.make(`${jose.base64url.encode(JSON.stringify({ alg: algorithm }))}.cGF5bG9hZA.AA`)
+      assert.deepInclude(
+        yield* Jws.sign(Redacted.make(utf8("payload")), privateKey, { alg: algorithm }).pipe(Effect.flip),
+        { _tag: "CryptoInvalidInput", reason: "key" }
+      )
+      assert.deepInclude(
+        yield* Jws.verify(token, publicKey, { algorithms: [algorithm] }).pipe(Effect.flip),
+        { _tag: "CryptoInvalidInput", reason: "key" }
+      )
+    }
+  }).pipe(Effect.provide(cryptoLayer)))
+
+it.effect("does not accept shorter AES keys through structural JOSE keys", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
+    const forged: Jwk.SecretKey = { ...key, material: Redacted.make(new Uint8Array(16)) }
+    const token = yield* Jwe.encrypt(Redacted.make(utf8("payload")), key, { alg: "dir", enc: "A256GCM" })
+    assert.deepInclude(
+      yield* Jwe.encrypt(Redacted.make(utf8("payload")), forged, { alg: "dir", enc: "A256GCM" }).pipe(Effect.flip),
+      { _tag: "CryptoInvalidInput", reason: "key" }
+    )
+    assert.deepInclude(yield* Jwe.decrypt(token, forged).pipe(Effect.flip), {
+      _tag: "CryptoInvalidInput",
+      reason: "key"
+    })
   }).pipe(Effect.provide(cryptoLayer)))

@@ -89,6 +89,7 @@ export class Jwks extends Context.Service<
  *
  * ```ts import.meta.vitest
  * import { Jwk, Jwks } from "@effect/jose"
+ * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect } from "effect"
  *
  * const algorithm = await Effect.runPromise(Effect.gen(function*() {
@@ -96,7 +97,7 @@ export class Jwks extends Context.Service<
  *   const resolver = yield* Jwks.makeLocal({ keys: [pair.publicKey] })
  *   const key = yield* resolver.resolve({ algorithm: "ES256", kid: "signing-1" })
  *   return key.algorithm
- * }))
+ * }).pipe(Effect.provide(NodeCrypto.layer)))
  * algorithm // => "ES256"
  * ```
  *

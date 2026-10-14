@@ -4,7 +4,7 @@ import { Clock, Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Schedul
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
-import { privateJwk, publicJwk, utf8 } from "./fixtures.ts"
+import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"
 
 // Selection/snapshot and failed-response cases adapt panva/jose's
 // test/jwks/{local,remote}.test.ts. Effect-specific lifetime cases exercise the
@@ -30,7 +30,7 @@ it.effect("rejects malformed local sets while allowing an empty set", () =>
     const empty = yield* Jwks.Jwks.pipe(Effect.provide(Jwks.layerLocal({ keys: [] })))
 
     assert.strictEqual((yield* empty.resolve({ algorithm: "ES256" }).pipe(Effect.flip))._tag, "JoseKeyNotFound")
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("captures local key-set authority without freezing the caller's input", () =>
   Effect.gen(function*() {
@@ -49,7 +49,7 @@ it.effect("captures local key-set authority without freezing the caller's input"
       (yield* set.resolve({ algorithm: "ES256", kid: "changed" }).pipe(Effect.flip))._tag,
       "JoseKeyNotFound"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("does not select a key by inherited metadata", () =>
   Effect.gen(function*() {
@@ -63,7 +63,7 @@ it.effect("does not select a key by inherited metadata", () =>
       "JoseKeyNotFound"
     )
     assert.deepStrictEqual((yield* set.resolve({ algorithm: "ES256" })).jwk, publicJwk)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("keeps captured key selection independent of later prototype changes", () =>
   Effect.gen(function*() {
@@ -88,7 +88,7 @@ it.effect("keeps captured key selection independent of later prototype changes",
       (yield* set.resolve({ algorithm: "ES256", kid: "inherited-later" }).pipe(Effect.flip))._tag,
       "JoseKeyNotFound"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("does not import keys supplied by an inherited array slot", () =>
   Effect.gen(function*() {
@@ -100,7 +100,7 @@ it.effect("does not import keys supplied by an inherited array slot", () =>
       (yield* Jwks.Jwks.pipe(Effect.provide(Jwks.layerLocal({ keys })), Effect.flip))._tag,
       "JoseInvalidKey"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("captures set and key metadata getters once before key selection", () =>
   Effect.gen(function*() {
@@ -148,7 +148,7 @@ it.effect("captures set and key metadata getters once before key selection", () 
       ))._tag,
       "JoseInvalidKey"
     )
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("selects each asymmetric algorithm by key family even when kids overlap", () =>
   Effect.gen(function*() {
@@ -182,7 +182,7 @@ it.effect("selects each asymmetric algorithm by key family even when kids overla
 
       assert.deepStrictEqual(Redacted.value(verified.payload), utf8(algorithm))
     }
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect.each(
   [
@@ -275,7 +275,7 @@ it.effect.each(
       yield* TestClock.adjust(10)
       assert.strictEqual((yield* set.resolve({ algorithm: "ES256", kid: "one" })).jwk.kid, "one")
       assert.strictEqual(requests, 3)
-    })
+    }).pipe(Effect.provide(cryptoLayer))
 )
 
 // Reproduced at 5199d99: callers passed the pending check before yielding to
@@ -338,7 +338,7 @@ it.effect("coalesces lookups that interleave during refresh admission", () =>
 
     assert.deepStrictEqual(keys.map((key) => key.jwk), [publicJwk, publicJwk])
     assert.strictEqual(requests, 1)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 // Reproduced at 5199d99: closing during the admission Clock read missed the
 // not-yet-published Deferred; the later fork into the closed Scope never ran.
@@ -398,7 +398,8 @@ it.effect("completes a lookup when its Scope closes during refresh admission", (
     })
     assert.strictEqual(requests, 0)
   }).pipe(
-    Effect.provideService(Scheduler.PreventSchedulerYield, true)
+    Effect.provideService(Scheduler.PreventSchedulerYield, true),
+    Effect.provide(cryptoLayer)
   ))
 
 it.effect("uses a fresh cache after a delayed cache-miss decision", () =>
@@ -454,7 +455,7 @@ it.effect("uses a fresh cache after a delayed cache-miss decision", () =>
     yield* Deferred.succeed(release, undefined)
     assert.deepStrictEqual((yield* Fiber.join(delayed)).jwk, publicJwk)
     assert.strictEqual(requests, 1)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("orders refresh publication with owner shutdown", () =>
   Effect.gen(function*() {
@@ -594,7 +595,7 @@ it.effect("orders refresh publication with owner shutdown", () =>
     } else {
       assert.includeMembers(outcomes, ["lookup:closed", "probe:closed"])
     }
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("bounds waiters and lets one cancel without interrupting the shared refresh", () =>
   Effect.gen(function*() {
@@ -657,7 +658,7 @@ it.effect("bounds waiters and lets one cancel without interrupting the shared re
     assert.deepStrictEqual((yield* set.resolve({ algorithm: "ES256" })).jwk, publicJwk)
     assert.strictEqual(requests, 1)
     assert.strictEqual(interrupted, false)
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
 
 // Retains the original shutdown race: onExit cannot release a waiter if the
 // refresh fiber was interrupted before it began executing.
@@ -694,7 +695,8 @@ it.effect("releases lookup waiters when the Scope closes before refresh starts",
     })
     assert.strictEqual(requests, 0)
   }).pipe(
-    Effect.provideService(Scheduler.PreventSchedulerYield, true)
+    Effect.provideService(Scheduler.PreventSchedulerYield, true),
+    Effect.provide(cryptoLayer)
   ))
 
 it.effect("enforces the response-byte limit across chunks, accepting the exact bound", () =>
@@ -736,4 +738,4 @@ it.effect("enforces the response-byte limit across chunks, accepting the exact b
 
       assert.deepStrictEqual(result, overflow ? "response" : publicJwk)
     }
-  }))
+  }).pipe(Effect.provide(cryptoLayer)))
