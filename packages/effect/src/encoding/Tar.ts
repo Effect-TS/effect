@@ -781,7 +781,8 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
 // A queue of byte chunks that hands out views without copying where possible.
 // Consumed chunks are released right away.
 class ByteQueue {
-  private chunks: Array<Uint8Array> = []
+  private chunks: Array<Uint8Array | undefined> = []
+  private head = 0
   private offset = 0
   length = 0
 
@@ -792,7 +793,7 @@ class ByteQueue {
   }
 
   takeSome(max: number): Uint8Array {
-    const chunk = this.chunks[0]
+    const chunk = this.chunks[this.head]!
     const available = chunk.length - this.offset
     if (max < available) {
       const out = chunk.subarray(this.offset, this.offset + max)
@@ -801,9 +802,16 @@ class ByteQueue {
       return out
     }
     const out = this.offset === 0 ? chunk : chunk.subarray(this.offset)
-    this.chunks.shift()
+    this.chunks[this.head++] = undefined
     this.length -= available
     this.offset = 0
+    if (this.head === this.chunks.length) {
+      this.chunks = []
+      this.head = 0
+    } else if (this.head >= 1024) {
+      this.chunks = this.chunks.slice(this.head)
+      this.head = 0
+    }
     return out
   }
 
@@ -825,6 +833,7 @@ class ByteQueue {
 
   clear(): void {
     this.chunks = []
+    this.head = 0
     this.offset = 0
     this.length = 0
   }
@@ -935,7 +944,7 @@ class Decoder {
     }
   }
 
-  // Returns the next body bytes of the entry from generation `id`, or
+  // Returns the buffered body bytes of the entry from generation `id`, or
   // `undefined` once the whole body has been read
   read(id: number): Arr.NonEmptyArray<Uint8Array> | undefined | typeof NeedInput {
     if (id !== this.generation) {
@@ -948,9 +957,14 @@ class Decoder {
     }
     if (this.remaining === 0) return undefined
     if (this.queue.length === 0) return this.needInput()
-    const chunk = this.queue.takeSome(this.remaining)
-    this.remaining -= chunk.length
-    return Arr.of(chunk)
+    const chunks = Arr.of(this.queue.takeSome(this.remaining))
+    this.remaining -= chunks[0].length
+    while (this.remaining > 0 && this.queue.length > 0) {
+      const chunk = this.queue.takeSome(this.remaining)
+      this.remaining -= chunk.length
+      chunks.push(chunk)
+    }
+    return chunks
   }
 
   private needInput(): typeof NeedInput {
