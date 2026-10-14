@@ -47,11 +47,11 @@ export const model = (
  *
  * Probability criteria are appended to the question instructions, and each
  * rating level is sent with its label and description.
+ * String instructions and descriptions are unchanged; structured values and
+ * null descriptions are serialized with `JSON.stringify`.
  *
  * **Gotchas**
  *
- * - Instructions and descriptions must be strings; other values fail with
- *   `AiError.InvalidUserInputError` before sending a request.
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
  * - If OpenAI refuses any decision, the whole call fails with
@@ -76,13 +76,7 @@ export const make = Effect.fnUntraced(
         }
         const questions: Array<typeof OpenAiSchema.DecisionQuestion.Encoded> = []
         for (const [name, decision] of Object.entries(decisions)) {
-          const question = encodeQuestion(name, decision)
-          if (question === undefined) {
-            return yield* invalidUserInput(
-              `OpenAI decisions accept only string instructions and descriptions, but "${name}" has a structured or null value`
-            )
-          }
-          questions.push(question)
+          questions.push(encodeQuestion(name, decision))
         }
         const text = typeof state === "string" ? state : JSON.stringify(state)
         const response = yield* client.createDecisions({
@@ -161,30 +155,40 @@ const invalidUserInput = (description: string) =>
 const encodeQuestion = (
   name: string,
   decision: Decision.Any
-): typeof OpenAiSchema.DecisionQuestion.Encoded | undefined => {
-  const instructions = decision.instructions
-  if (typeof instructions !== "string") return undefined
+): typeof OpenAiSchema.DecisionQuestion.Encoded => {
+  const instructions = encodeDescription(decision.instructions)
   switch (decision._tag) {
     case "Classify": {
-      const choices = Object.entries(decision.criteria).map(([value, description]) => ({ value, description }))
-      return choices.every(hasStringDescription) ? { type: "choice", name, instructions, choices } : undefined
+      const choices = Object.entries(decision.criteria).map(([value, description]) => ({
+        value,
+        description: encodeDescription(description)
+      }))
+      return { type: "choice", name, instructions, choices }
     }
     case "Rate":
-      return decision.criteria.every(hasStringDescription)
-        ? { type: "score", name, instructions, levels: decision.criteria }
-        : undefined
+      return {
+        type: "score",
+        name,
+        instructions,
+        levels: decision.criteria.map(({ label, description }) => ({
+          label,
+          description: encodeDescription(description)
+        }))
+      }
     case "Probability": {
       if (decision.criteria === undefined) return { type: "predicate", name, instructions }
       const { false: no, true: yes } = decision.criteria
-      if (typeof no !== "string" || typeof yes !== "string") return undefined
-      return { type: "predicate", name, instructions: `${instructions}\n\nfalse: ${no}\ntrue: ${yes}` }
+      return {
+        type: "predicate",
+        name,
+        instructions: `${instructions}\n\nfalse: ${encodeDescription(no)}\ntrue: ${encodeDescription(yes)}`
+      }
     }
   }
 }
 
-const hasStringDescription = <A extends { readonly description: unknown }>(
-  entry: A
-): entry is A & { readonly description: string } => typeof entry.description === "string"
+const encodeDescription = (description: Decision.Description | null): string =>
+  typeof description === "string" ? description : JSON.stringify(description)
 
 const encodeImage = (image: DecisionModel.Image): string =>
   image.data instanceof URL
