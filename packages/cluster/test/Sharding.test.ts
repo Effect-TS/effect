@@ -37,6 +37,7 @@ import {
   Mailbox,
   MutableRef,
   Option,
+  Schema,
   Scope,
   Stream,
   TestClock
@@ -1163,6 +1164,45 @@ describe("Sharding shard lock failover", () => {
 })
 
 describe("Sharding graceful shutdown", () => {
+  it.scoped("rebuilds scoped background fibers after repeated defects and releases shards on shutdown", () =>
+    Effect.gen(function*() {
+      const storage = makeHandoffStorage()
+      const runner = yield* makeHandoffRunner(1, storage)
+      yield* waitFor(() => runner.ownedShards() === handoffShards)
+      const entity = Entity.make("DefectRebuild", [
+        Rpc.make("Ping", { success: Schema.Number }),
+        Rpc.make("Defect", { stream: true })
+      ]).annotateRpcs(ClusterSchema.Persisted, false)
+      let activation = 0
+      yield* runner.sharding.registerEntity(
+        entity,
+        Effect.gen(function*() {
+          const current = ++activation
+          yield* Effect.never.pipe(Effect.forkScoped)
+          return {
+            Ping: () => Effect.succeed(current),
+            Defect: () => Rpc.fork(Stream.die("defect"))
+          }
+        })
+      ).pipe(Effect.provideService(Scope.Scope, runner.scope))
+      const client = (yield* entity.client.pipe(Effect.provideService(Sharding.Sharding, runner.sharding)))("1")
+      assert.strictEqual(yield* client.Ping(), 1)
+
+      for (let expected = 2; expected <= 3; expected++) {
+        yield* client.Defect().pipe(Stream.runDrain, Effect.exit, Effect.forkDaemon)
+        yield* TestClock.adjust(1000)
+        const ping = yield* Effect.forkDaemon(client.Ping())
+        yield* waitFor(() => ping.unsafePoll() !== null)
+        assert.deepStrictEqual(ping.unsafePoll(), Exit.succeed(expected), "request after defect did not complete")
+      }
+
+      const closing = yield* Effect.forkDaemon(Scope.close(runner.scope, Exit.void))
+      yield* waitFor(() => closing.unsafePoll() !== null)
+      assert.deepStrictEqual(closing.unsafePoll(), Exit.void, "shutdown did not complete")
+      assert.strictEqual(storage.lockCount(runner.address), 0)
+      assert.strictEqual(storage.events.filter(([event]) => event === "release").length, handoffShards)
+    }))
+
   it.scoped("hands shards off before the final releaseAll", () => {
     const storage = makeHandoffStorage()
     return Effect.gen(function*() {

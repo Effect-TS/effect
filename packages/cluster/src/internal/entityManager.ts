@@ -293,7 +293,10 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                return Effect.forkIn(onDefect(Cause.die(response.defect)), managerScope)
+                // RpcServer runs this with interruption disabled and `forkIn`
+                // copies those flags, so the rebuilt entity's fibers would be
+                // uninterruptible and closing its scope would hang.
+                return Effect.forkIn(Effect.interruptible(onDefect(Cause.die(response.defect))), managerScope)
               }
               case "ClientEnd": {
                 return endLatch.open
