@@ -47,6 +47,7 @@ import * as HttpMethod from "./HttpMethod.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as tracing from "./internal/tracing.ts"
 import * as Url from "./Url.ts"
+import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClient"
 
@@ -727,7 +728,7 @@ export const make = (
           (span) => {
             span.attribute("http.request.method", request.method)
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-            tracing.addUrlAttributes(span, url)
+            tracing.addUrlAttributes(span, url, fiber.getRef(UrlParams.CurrentRedactedNames))
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
             request = fiber.getRef(TracerPropagationEnabled)

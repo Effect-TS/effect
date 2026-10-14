@@ -41,6 +41,7 @@ import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
 import * as tracing from "./internal/tracing.ts"
+import * as UrlParams from "./UrlParams.ts"
 
 /**
  * Middleware that transforms an HTTP server app effect into another HTTP server app effect.
@@ -289,11 +290,7 @@ export const tracer: <E, R>(
         span.attribute("http.request.method", request.method)
         const url = Request.toURL(request)
         if (Option.isSome(url)) {
-          if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
-            url.value.username = "REDACTED"
-            url.value.password = "REDACTED"
-          }
-          tracing.addUrlAttributes(span, url.value)
+          tracing.addUrlAttributes(span, url.value, fiber.getRef(UrlParams.CurrentRedactedNames))
         }
         if (request.headers["user-agent"] !== undefined) {
           span.attribute("user_agent.original", request.headers["user-agent"])

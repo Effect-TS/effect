@@ -424,9 +424,10 @@ export const isRedactedName = (
  *
  * **Details**
  *
- * Defaults include `authorization`, `cookie`, `set-cookie`, `x-api-key` and
- * `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`. Names match
- * case-insensitively, and providing a new list replaces the defaults.
+ * Defaults include `authorization`, `cookie`, `set-cookie` and `x-api-key`.
+ * Names match case-insensitively, and providing a new list replaces the
+ * defaults. Query parameter names are configured separately with
+ * `UrlParams.CurrentRedactedNames`.
  *
  * @stability unstable
  * @category services
@@ -439,10 +440,6 @@ export const CurrentRedactedNames = Context.Reference<
     "authorization",
     "cookie",
     "set-cookie",
-    "x-api-key",
-    "AWSAccessKeyId",
-    "Signature",
-    "sig",
-    "X-Goog-Signature"
+    "x-api-key"
   ]
 })

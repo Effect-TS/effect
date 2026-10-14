@@ -35,6 +35,7 @@ import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import { HttpServerError, type RequestError, RequestParseError } from "./HttpServerError.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import * as tracing from "./internal/tracing.ts"
 import * as Multipart from "./Multipart.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -512,7 +513,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return HttpIncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: tracing.redactUrl(this.originalUrl)
     })
   }
   modify(
@@ -711,7 +712,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return HttpIncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: tracing.redactUrl(this.originalUrl)
     })
   }
 

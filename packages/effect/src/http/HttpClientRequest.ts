@@ -32,6 +32,7 @@ import * as HttpBody from "./HttpBody.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
 import * as compression from "./internal/compressionBody.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
+import * as tracing from "./internal/tracing.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -105,7 +106,7 @@ const Proto = {
     return {
       _id: "HttpClientRequest",
       method: this.method,
-      url: this.url,
+      url: tracing.redactUrl(this.url),
       urlParams: this.urlParams,
       hash: this.hash,
       headers: redact(this.headers),

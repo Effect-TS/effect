@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Context from "../Context.ts"
 import * as Equal from "../Equal.ts"
 import * as Equ from "../Equivalence.ts"
 import { dual } from "../Function.ts"
@@ -21,6 +22,8 @@ import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import * as Redactable from "../Redactable.ts"
+import * as Redacted from "../Redacted.ts"
 import * as Tuple from "../Tuple.ts"
 
 const TypeId = "~effect/http/UrlParams"
@@ -31,13 +34,14 @@ const TypeId = "~effect/http/UrlParams"
  * **Details**
  *
  * Parameters are stored as ordered string key-value pairs and can contain multiple
- * values for the same key.
+ * values for the same key. When inspected or rendered, values for names listed
+ * in `CurrentRedactedNames` are wrapped in `Redacted`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface UrlParams extends Pipeable, Inspectable, Iterable<readonly [string, string]> {
+export interface UrlParams extends Pipeable, Inspectable, Redactable.Redactable, Iterable<readonly [string, string]> {
   readonly [TypeId]: typeof TypeId
   readonly params: ReadonlyArray<readonly [string, string]>
 }
@@ -118,11 +122,14 @@ const Proto = {
   [Symbol.iterator](this: UrlParams) {
     return this.params[Symbol.iterator]()
   },
-  toJSON(this: UrlParams): unknown {
+  [Redactable.symbolRedactable](this: UrlParams, context: Context.Context<never>): unknown {
     return {
       _id: "UrlParams",
-      params: Object.fromEntries(this.params)
+      params: Object.fromEntries(redact(this, Context.get(context, CurrentRedactedNames)))
     }
+  },
+  toJSON(this: UrlParams): unknown {
+    return Redactable.redact(this)
   },
   [Equal.symbol](this: UrlParams, that: UrlParams): boolean {
     return Equivalence(this, that)
@@ -484,3 +491,92 @@ export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyA
  */
 export const toReadonlyRecord: (self: UrlParams) => ReadonlyRecord<string, string | Arr.NonEmptyReadonlyArray<string>> =
   toRecord as any
+
+/**
+ * Returns the parameter pairs with selected values wrapped in `Redacted`.
+ *
+ * **Details**
+ *
+ * Names are matched with `isRedactedName`. Parameter order and repeated names
+ * are preserved.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const redact: {
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: UrlParams) => Array<[string, string | Redacted.Redacted<string>]>
+  (
+    self: UrlParams,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Array<[string, string | Redacted.Redacted<string>]>
+} = dual(
+  2,
+  (
+    self: UrlParams,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Array<[string, string | Redacted.Redacted<string>]> => {
+    const patterns: ReadonlyArray<string | RegExp> = Array.isArray(key) ? key : [key as string | RegExp]
+    return self.params.map(([name, value]) => [
+      name,
+      isRedactedName(name, patterns) ? Redacted.make(value) : value
+    ])
+  }
+)
+
+/**
+ * Checks whether a parameter name matches one of the redaction patterns.
+ *
+ * **Details**
+ *
+ * String patterns are compared case-insensitively against the parameter name;
+ * regular expressions are tested against it.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const isRedactedName = (
+  name: string,
+  patterns: ReadonlyArray<string | RegExp>
+): boolean => {
+  for (let i = 0; i < patterns.length; i++) {
+    const pattern = patterns[i]
+    if (typeof pattern === "string") {
+      if (pattern.toLowerCase() === name.toLowerCase()) {
+        return true
+      }
+    } else if (name.search(pattern) !== -1) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Context reference listing parameter names or patterns that should be redacted when `UrlParams` or URLs are inspected,
+ * rendered, recorded on spans, or included in error messages.
+ *
+ * **Details**
+ *
+ * Defaults include `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`.
+ * Names match case-insensitively, and providing a new list replaces the
+ * defaults. Redaction never changes the URL sent by a client or seen by a
+ * server handler.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const CurrentRedactedNames = Context.Reference<
+  ReadonlyArray<string | RegExp>
+>("effect/http/UrlParams/CurrentRedactedNames", {
+  defaultValue: () => [
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature"
+  ]
+})
