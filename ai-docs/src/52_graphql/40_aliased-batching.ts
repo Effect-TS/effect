@@ -23,14 +23,16 @@ import { GitHubAuth } from "./10_basics.ts"
 // "../schema.graphql.ts"`); here `Shared` is declared inline.
 const Shared = { Int: Schema.Number.check(Schema.isInt32()) }
 
-export class PullRequestPullRequest extends Schema.Opaque<PullRequestPullRequest>()(Schema.Struct({
+export const PullRequestPullRequest = Schema.Struct({
   number: Shared.Int,
   title: Schema.String
-})) {}
+})
+export interface PullRequestPullRequest extends Schema.Struct.Type<typeof PullRequestPullRequest.fields> {}
 
-export class Repository extends Schema.Opaque<Repository>()(Schema.Struct({
+export const Repository = Schema.Struct({
   pullRequest: Schema.NullOr(PullRequestPullRequest)
-})) {}
+})
+export interface Repository extends Schema.Struct.Type<typeof Repository.fields> {}
 
 // The generator gives queries and mutations their document as a
 // `GraphQL.DocumentTemplate`. The odd entries of each `body` are the names

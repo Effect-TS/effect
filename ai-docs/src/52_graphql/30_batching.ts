@@ -26,15 +26,17 @@ declare namespace Shared {
   }
 }
 
-export class Repository extends Schema.Opaque<Repository>()(Schema.Struct({
+export const Repository = Schema.Struct({
   __typename: Schema.Literal("Repository"),
   nameWithOwner: Schema.String
-})) {}
+})
+export interface Repository extends Schema.Struct.Type<typeof Repository.fields> {}
 
 // Unselected node types are represented by `otherTypename`.
-export class NodeOther extends Schema.Opaque<NodeOther>()(Schema.Struct({
+export const NodeOther = Schema.Struct({
   __typename: GraphQL.otherTypename<Shared.Typename.Node>()(["Repository"])
-})) {}
+})
+export interface NodeOther extends Schema.Struct.Type<typeof NodeOther.fields> {}
 
 /** `query RepoNodes` */
 export const RepoNodes = GraphQL.query("RepoNodes", {
