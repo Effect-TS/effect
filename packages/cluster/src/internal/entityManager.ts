@@ -293,12 +293,9 @@ export const make = Effect.fnUntraced(function*<
                 ))
               }
               case "Defect": {
-                // Runs on the request fiber's failure path, outside
-                // `Effect.interruptible(handler)`, so the fork would inherit the
-                // RpcServer's interruption-disabled runtime flags and the rebuilt
-                // activation's own forks would be uninterruptible. Closing that
-                // scope on the next defect, shard release or shutdown handoff
-                // would then never finish.
+                // RpcServer runs this with interruption disabled and `forkIn`
+                // copies those flags, so the rebuilt entity's fibers would be
+                // uninterruptible and closing its scope would hang.
                 return Effect.forkIn(Effect.interruptible(onDefect(Cause.die(response.defect))), managerScope)
               }
               case "ClientEnd": {
