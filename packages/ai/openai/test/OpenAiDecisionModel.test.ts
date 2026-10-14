@@ -106,6 +106,7 @@ describe("OpenAiDecisionModel", () => {
           name: "severity",
           type: "score",
           score: 0.9,
+          confidence: 0.9,
           probabilities: [{ value: 0, label: "ignored", probability: 0.1 }, {
             value: 1,
             label: "ignored",
