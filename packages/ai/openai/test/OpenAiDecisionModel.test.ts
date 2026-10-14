@@ -128,23 +128,53 @@ describe("OpenAiDecisionModel", () => {
     )
   })
 
-  it.effect("rejects descriptions outside the OpenAI string-only contract before sending", () => {
-    const decisions = [
-      Decision.classify({ instructions: { question: "Team?" }, criteria: { a: "A", b: "B" } }),
-      Decision.rate({ instructions: "Severity?", criteria: ["low", { label: "high", description: ["outage"] }] })
-    ]
-    let requests = 0
-    return Effect.gen(function*() {
-      for (const decision of decisions) {
-        const definition = Decision.make({ input: Schema.String, decisions: { question: decision } })
-        const error = yield* Effect.flip(DecisionModel.decide(definition, { input: "Checkout is down" }))
-        assert.strictEqual(error.reason._tag, "InvalidUserInputError")
+  it.effect("serializes structured instructions and descriptions to strings, including null choices", () => {
+    const definition = Decision.make({
+      input: Schema.String,
+      decisions: {
+        team: Decision.classify({
+          instructions: { question: "Team?" },
+          criteria: { billing: null, technical: { handles: "Outages" } }
+        }),
+        severity: Decision.rate({
+          instructions: ["Severity?"],
+          criteria: ["Minor", "Major", { label: "Critical", description: ["outage"] }]
+        }),
+        urgent: Decision.probability({
+          instructions: { question: "Urgent?" },
+          criteria: { false: ["Can wait"], true: { action: "Act now" } }
+        })
       }
-      assert.strictEqual(requests, 0)
-    }).pipe(
+    })
+    return DecisionModel.decide(definition, { input: "Checkout is down" }).pipe(
       Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
-      Effect.provide(clientLayer(response([]), () => {
-        requests++
+      Effect.provide(clientLayer(response(answers), (request) => {
+        assert.deepStrictEqual(requestBody(request).questions, [
+          {
+            type: "choice",
+            name: "team",
+            instructions: "{\"question\":\"Team?\"}",
+            choices: [
+              { value: "billing", description: "null" },
+              { value: "technical", description: "{\"handles\":\"Outages\"}" }
+            ]
+          },
+          {
+            type: "score",
+            name: "severity",
+            instructions: "[\"Severity?\"]",
+            levels: [
+              { label: "Minor", description: "Minor" },
+              { label: "Major", description: "Major" },
+              { label: "Critical", description: "[\"outage\"]" }
+            ]
+          },
+          {
+            type: "predicate",
+            name: "urgent",
+            instructions: "{\"question\":\"Urgent?\"}\n\nfalse: [\"Can wait\"]\ntrue: {\"action\":\"Act now\"}"
+          }
+        ])
       }))
     )
   })
