@@ -431,18 +431,19 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   IE,
   Done,
   In extends Entry<any, infer R> ? R : never
-> =>
+> => {
   // `In` is generic so that body errors and services are inferred from unions
-  // of entries; the implementation treats them as `unknown` and is cast to the
-  // signature above
-  Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<unknown, unknown>>, IE, Done>, scope) =>
+  // of entries
+  type E = In extends Entry<infer E, any> ? E : never
+  type R = In extends Entry<any, infer R> ? R : never
+  return Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<In>, IE, Done>, scope) =>
     Effect.sync(() => {
       const encoder = new Encoder()
-      let entries: ReadonlyArray<Entry<unknown, unknown>> = []
+      let entries: ReadonlyArray<Entry<E, R>> = []
       let index = 0
       let done: { readonly value: Done } | undefined
       // The body being written, and the scope it runs in
-      let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, void, unknown> | undefined
+      let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E, void, R> | undefined
       let bodyScope: Scope.Closeable | undefined
 
       // Writes entries and their bodies until a slab is full, and hands out what
@@ -489,7 +490,8 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       // The encoder throws a `TarError` for an entry that cannot be written
       return Effect.catchDefect(pull, (defect) => isTarError(defect) ? Effect.fail(defect) : Effect.die(defect))
     })
-  ) as any
+  )
+}
 
 // -----------------------------------------------------------------------------
 // Errors
