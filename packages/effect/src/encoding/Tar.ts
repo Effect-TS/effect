@@ -182,7 +182,8 @@ const makeHeader = (
   uname: options?.uname ?? "",
   gname: options?.gname ?? "",
   mtime: options?.mtime ?? new Date(0),
-  ...(linkTarget === undefined ? undefined : { linkTarget }),
+  // An empty target is not stored, as when decoding
+  ...(linkTarget === undefined || linkTarget === "" ? undefined : { linkTarget }),
   pax: options?.pax ?? {}
 })
 
@@ -249,15 +250,16 @@ export const fileStream = <E = never, R = never>(
  *
  * **Details**
  *
- * A trailing `/` is added to `path` when missing, as tar tools expect for
- * directories.
+ * A trailing `/` is added to a non-empty `path` when missing, as tar tools
+ * expect for directories.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.5
  */
 export const directory = (path: string, options?: EntryOptions): Entry => ({
-  header: makeHeader(path.endsWith("/") ? path : `${path}/`, "Directory", 0, options),
+  // An empty path stays empty, so that `encode` rejects it
+  header: makeHeader(path === "" || path.endsWith("/") ? path : `${path}/`, "Directory", 0, options),
   body: Stream.empty
 })
 
@@ -312,13 +314,22 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
  * - Read each body before pulling the next entry: a body read afterwards fails
  *   with a `BodyConsumed` `TarError`. Operators that pull ahead, such as
  *   `Stream.buffer`, therefore can't sit between `decode` and the body reads.
+ * - Read bodies while the entry stream runs, for example in `Stream.mapEffect`:
+ *   once it has ended, as after `Stream.runCollect`, `Stream.runHead` or
+ *   `Stream.take`, every body fails with a `BodyConsumed` `TarError`.
  * - A body reads the entry's bytes once: running it again continues where the
  *   previous run stopped.
  * - Directories, links, devices and FIFOs have no body, and their `size` is
  *   reported as `0`.
- * - Paths are returned as written in the archive, so they can be absolute or
- *   contain `..`. Validate them before writing entries to disk.
+ * - Paths and link targets are returned as written in the archive, so they can
+ *   be absolute or contain `..`, and a symlink entry can redirect a later entry
+ *   outside the target directory. Validate both before writing entries to disk.
  * - Names that are not valid UTF-8 are decoded with replacement characters.
+ * - PAX extended headers and GNU long names of more than 1 MiB fail with an
+ *   `InvalidHeader` `TarError`.
+ * - The channel completes only when its input ends: input after the
+ *   end-of-archive marker is read and discarded, so that the upstream done
+ *   value can be passed on.
  * - GNU sparse entries fail with an `Unsupported` `TarError`.
  *
  * @see {@link encode} for the inverse operation
@@ -339,34 +350,41 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
     Effect.suspend(() => {
       const decoder = new Decoder()
       let done: { readonly value: Done } | undefined
+      // Counts the upstream pulls, including the one that ends the input
+      let pulls = 0
 
       const pullUpstream = upstream.pipe(
         Effect.map((chunks) => {
+          pulls++
           for (const chunk of chunks) decoder.push(chunk)
         }),
         Pull.catchDone((value) => {
+          pulls++
           done = { value: value as Done }
           decoder.end()
           return Effect.void
         })
       )
 
-      // Pulls more input into the decoder. The entry stream and the current body
-      // can both need input, so they take turns.
+      // Pulls more input into the decoder, unless some arrived since `seen`. The
+      // entry stream and the current body can both need input, so they take
+      // turns, and the one that waited retries with what the other pulled.
       const lock = Semaphore.makeUnsafe(1)
-      const pullInput = lock.withPermit(Effect.suspend(() => done === undefined ? pullUpstream : Effect.void))
+      const pullInput = (seen: number) =>
+        lock.withPermit(Effect.suspend(() => pulls === seen ? pullUpstream : Effect.void))
 
       // Calls the decoder until it has enough input, pulling more in between.
       // The pull is done with `end()` once the decoder returns `undefined`.
       const run = <A, D>(f: () => A | undefined | typeof NeedInput, end: () => D): Pull.Pull<A, TarError | IE, D> =>
         Effect.suspend(function loop(): Pull.Pull<A, TarError | IE, D> {
+          const seen = pulls
           let result: A | undefined | typeof NeedInput
           try {
             result = f()
           } catch (error) {
             return isTarError(error) ? Effect.fail(error) : Effect.die(error)
           }
-          if (result === NeedInput) return Effect.flatMap(pullInput, loop)
+          if (result === NeedInput) return Effect.flatMap(pullInput(seen), loop)
           return result === undefined ? Cause.done(end()) : Effect.succeed(result)
         })
 
@@ -398,7 +416,9 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * Headers, padding and body chunks below 16 KiB are gathered into output chunks
  * of up to 64 KiB, and larger body chunks pass through without copying, so
- * bodies stream without being held in memory.
+ * bodies stream without being held in memory. Output is handed out before
+ * waiting for more entries, but up to 64 KiB of it can be held while a body is
+ * pulled.
  *
  * **Gotchas**
  *
@@ -411,7 +431,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *   `GNU.sparse.*` records fail with an `InvalidHeader` `TarError`.
  * - A `File` entry whose path ends with `/` fails with an `InvalidHeader`
  *   `TarError`, because other tools read it as a directory.
- * - mtime is truncated to whole seconds.
+ * - Entries other than `File` and `Other` must have `size` 0, and `devMajor`
+ *   and `devMinor` must not exceed `2097151`; otherwise encoding fails with an
+ *   `InvalidHeader` `TarError`.
+ * - mtime is rounded down to whole seconds.
  * - `typeflag` is only written for `Other` entries; every other type writes its
  *   standard flag.
  *
@@ -446,30 +469,44 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E, void, R> | undefined
       let bodyScope: Scope.Closeable | undefined
 
+      // Runs encoder calls, which throw a `TarError` for an entry that cannot be
+      // written
+      const write = (f: () => void): Effect.Effect<void, TarError> => {
+        try {
+          f()
+        } catch (error) {
+          return isTarError(error) ? Effect.fail(error) : Effect.die(error)
+        }
+        return Effect.void
+      }
+
       // Writes entries and their bodies until a slab is full, and hands out what
       // was written before waiting for more entries
-      const pull = Effect.gen(function*() {
+      return Effect.gen(function*() {
         while (true) {
           if (encoder.buffered >= SLAB_SIZE) return encoder.flush()
           if (body !== undefined) {
             const chunks = yield* Pull.catchDone(body, () => Effect.undefined)
             if (chunks !== undefined) {
-              for (const chunk of chunks) encoder.body(chunk)
+              yield* write(() => {
+                for (const chunk of chunks) encoder.body(chunk)
+              })
               continue
             }
             body = undefined
             yield* Scope.close(bodyScope!, Exit.void)
-            encoder.end()
+            yield* write(() => encoder.end())
             continue
           }
           if (index < entries.length) {
             const entry = entries[index++]
-            encoder.begin(entry.header)
             // Directories, links and empty files have nothing to stream
-            if (entry.body === Stream.empty) {
-              encoder.end()
-              continue
-            }
+            const empty = entry.body === Stream.empty
+            yield* write(() => {
+              encoder.begin(entry.header)
+              if (empty) encoder.end()
+            })
+            if (empty) continue
             bodyScope = Scope.forkUnsafe(scope)
             body = yield* Channel.toPullScoped(entry.body.channel, bodyScope)
             continue
@@ -487,8 +524,6 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
           }
         }
       })
-      // The encoder throws a `TarError` for an entry that cannot be written
-      return Effect.catchDefect(pull, (defect) => isTarError(defect) ? Effect.fail(defect) : Effect.die(defect))
     })
   )
 }
@@ -507,7 +542,7 @@ const sizeMismatch = (header: Header, written: number) =>
   new TarError({
     kind: "SizeMismatch",
     message: `body of ${JSON.stringify(header.path)} has ${
-      written > header.size ? "more than" : "only"
+      written > header.size ? "at least" : "only"
     } ${written} bytes, but its size is ${header.size}`
   })
 
@@ -626,8 +661,8 @@ const noPax: Readonly<Record<string, string>> = Object.freeze({})
 
 // Parses records of the form "<length> <key>=<value>\n", where the length counts
 // the bytes of the whole record
-const parsePax = (data: Uint8Array): Record<string, string> => {
-  const records: Record<string, string> = {}
+const parsePax = (data: Uint8Array): Map<string, string> => {
+  const records = new Map<string, string>()
   let offset = 0
   while (offset < data.length) {
     let space = offset
@@ -648,7 +683,7 @@ const parsePax = (data: Uint8Array): Record<string, string> => {
     if (key.includes("\0") || (paxStringKeys.has(key) && value.includes("\0"))) {
       throw invalidHeader(`invalid PAX record ${key}`)
     }
-    records[key] = value
+    records.set(key, value)
     offset = end
   }
   return records
@@ -662,17 +697,31 @@ const paxInteger = (key: string, value: string): number => {
   return n
 }
 
+// Parses a PAX time of decimal seconds into milliseconds, rounded down. The
+// digits are added up separately, because `Number(value) * 1000` is inexact.
+const paxMillis = (value: string): number => {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value)
+  if (match === null) {
+    throw invalidHeader(`invalid PAX mtime ${JSON.stringify(value)}`)
+  }
+  const [, sign, seconds, fraction = ""] = match
+  const millis = Number(seconds) * 1000 + Number(fraction.slice(0, 3).padEnd(3, "0"))
+  if (sign === "") return millis
+  // A negative time with digits below a millisecond rounds down past them
+  return -millis - (/[1-9]/.test(fraction.slice(3)) ? 1 : 0)
+}
+
 // Applies the records that override header fields and returns the rest. An
 // empty value keeps the field from the header block.
-const applyPax = (header: RawHeader, records: Record<string, string>): Record<string, string> => {
+const applyPax = (header: RawHeader, records: Map<string, string>): Record<string, string> => {
   const rest: Record<string, string> = {}
-  for (const key of Object.keys(records)) {
-    const value = records[key]
+  for (const [key, value] of records) {
     if (key.startsWith("GNU.sparse.")) {
       throw unsupported("GNU sparse files are not supported")
     }
     if (!paxHeaderKeys.has(key)) {
-      rest[key] = value
+      // Defined rather than assigned, so that a `__proto__` key stays a record
+      Object.defineProperty(rest, key, { value, enumerable: true, writable: true, configurable: true })
       continue
     }
     if (value === "") continue
@@ -693,10 +742,7 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
         header[key] = paxInteger(key, value)
         break
       case "mtime":
-        if (!/^-?\d+(\.\d+)?$/.test(value)) {
-          throw invalidHeader(`invalid PAX mtime ${JSON.stringify(value)}`)
-        }
-        header.mtimeMillis = Math.floor(Number(value) * 1000)
+        header.mtimeMillis = paxMillis(value)
     }
   }
   return rest
@@ -772,6 +818,15 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
   return negative ? -value - 1 : value
 }
 
+// Reads a number that must not be negative, as only a base-256 number can be
+const readUnsigned = (block: Uint8Array, offset: number, length: number, field: string): number => {
+  const value = readNumber(block, offset, length)
+  if (value < 0) {
+    throw invalidHeader(`negative ${field} in header`)
+  }
+  return value
+}
+
 // The checksum is the sum of the block bytes with the checksum field counted as
 // spaces. Some old tar writers summed signed bytes, which is accepted too.
 const verifyChecksum = (block: Uint8Array): boolean => {
@@ -811,24 +866,21 @@ const parseHeader = (block: Uint8Array): RawHeader => {
     typeflag: String.fromCharCode(block[156]),
     path: readString(block, 0, 100),
     linkTarget: readString(block, 157, 100),
-    size: readNumber(block, 124, 12),
-    mode: readNumber(block, 100, 8),
-    uid: readNumber(block, 108, 8),
-    gid: readNumber(block, 116, 8),
+    size: readUnsigned(block, 124, 12, "size"),
+    mode: readUnsigned(block, 100, 8, "mode"),
+    uid: readUnsigned(block, 108, 8, "uid"),
+    gid: readUnsigned(block, 116, 8, "gid"),
     mtimeMillis: readNumber(block, 136, 12) * 1000,
     uname: "",
     gname: "",
     devMajor: 0,
     devMinor: 0
   }
-  if (header.size < 0) {
-    throw invalidHeader("negative entry size")
-  }
   if (!isUstar && !isGnu) return header
   header.uname = readString(block, 265, 32)
   header.gname = readString(block, 297, 32)
-  header.devMajor = readNumber(block, 329, 8)
-  header.devMinor = readNumber(block, 337, 8)
+  header.devMajor = readUnsigned(block, 329, 8, "devMajor")
+  header.devMinor = readUnsigned(block, 337, 8, "devMinor")
   if (isUstar) {
     // star archives end the block with "tar\0" and keep times after a shorter prefix
     const prefix = hasBytes(block, 508, STAR_TRAILER) ? readString(block, 345, 131) : readString(block, 345, 155)
@@ -972,8 +1024,9 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   }
   const mtime = Math.floor(millis / 1000)
 
-  // Records of the PAX header, created when one is needed
-  let pax: Record<string, string> | undefined
+  // Records of the PAX header, created when one is needed. Their keys are
+  // unique, as custom records cannot use the keys of header fields.
+  let pax: Array<readonly [key: string, value: string]> | undefined
   for (const key of Object.keys(header.pax)) {
     if (key.startsWith("GNU.sparse.")) {
       throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
@@ -984,8 +1037,8 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
     if (key === "" || key.includes("=") || key.includes("\0")) {
       throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
     }
-    pax ??= {}
-    pax[key] = header.pax[key]
+    pax ??= []
+    pax.push([key, header.pax[key]])
   }
 
   // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
@@ -997,14 +1050,14 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   const linkTargetFits = fits(linkTarget, 100)
   const unameFits = fits(uname, 32)
   const gnameFits = fits(gname, 32)
-  if (!pathFits) (pax ??= {}).path = path
-  if (!linkTargetFits) (pax ??= {}).linkpath = linkTarget
-  if (!unameFits) (pax ??= {}).uname = uname
-  if (!gnameFits) (pax ??= {}).gname = gname
-  if (size > MAX_OCTAL_11) (pax ??= {}).size = String(size)
-  if (uid > MAX_OCTAL_7) (pax ??= {}).uid = String(uid)
-  if (gid > MAX_OCTAL_7) (pax ??= {}).gid = String(gid)
-  if (mtime < 0 || mtime > MAX_OCTAL_11) (pax ??= {}).mtime = String(mtime)
+  if (!pathFits) (pax ??= []).push(["path", path])
+  if (!linkTargetFits) (pax ??= []).push(["linkpath", linkTarget])
+  if (!unameFits) (pax ??= []).push(["uname", uname])
+  if (!gnameFits) (pax ??= []).push(["gname", gname])
+  if (size > MAX_OCTAL_11) (pax ??= []).push(["size", String(size)])
+  if (uid > MAX_OCTAL_7) (pax ??= []).push(["uid", String(uid)])
+  if (gid > MAX_OCTAL_7) (pax ??= []).push(["gid", String(gid)])
+  if (mtime < 0 || mtime > MAX_OCTAL_11) (pax ??= []).push(["mtime", String(mtime)])
 
   const ustar: UstarFields = {
     name: split !== undefined ? split[1] : pathFits ? path : toAscii(path).slice(0, 100),
@@ -1026,7 +1079,7 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
     writeUstarBlock(alloc(BLOCK), ustar)
     return
   }
-  const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
+  const records = pax.sort(([a], [b]) => a < b ? -1 : 1).map(([key, value]) => paxRecord(key, value))
   let dataLength = 0
   for (const record of records) dataLength += record.length
   const paxBlocks = 1 + Math.ceil(dataLength / BLOCK)
@@ -1130,7 +1183,7 @@ class Decoder {
   private zeroBlock = false
   // An extended header whose data is still to be read
   private meta: RawHeader | undefined
-  private pax: Record<string, string> | undefined
+  private pax: Map<string, string> | undefined
   private longName = ""
   private longLink = ""
 
@@ -1242,6 +1295,10 @@ class Decoder {
   }
 
   private finish(): undefined | typeof NeedInput {
+    // An extended header must be followed by the entry it describes
+    if (!this.finished && (this.pax !== undefined || this.longName !== "" || this.longLink !== "")) {
+      throw truncated()
+    }
     this.finished = true
     this.queue.clear()
     return this.ended ? undefined : NeedInput

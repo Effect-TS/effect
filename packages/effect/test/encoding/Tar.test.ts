@@ -1,7 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
-import type { Cause } from "effect"
-import { Array as Arr, Channel, Effect, Exit, Fiber, FileSystem, Path, Queue, Result, Stream } from "effect"
+import { Array as Arr, Cause, Channel, Effect, Exit, Fiber, FileSystem, Option, Path, Queue, Stream } from "effect"
 import * as Tar from "effect/encoding/Tar"
 import { gunzipSync } from "node:zlib"
 
@@ -50,6 +49,16 @@ const patchHeader = (archive: Uint8Array, offset: number, bytes: string | ArrayL
 const failure = <A>(effect: Effect.Effect<A, unknown>) =>
   Effect.map(Effect.flip(effect), (error) => Tar.isTarError(error) ? error.kind : error)
 
+// An archive of the empty file "f" whose PAX header holds `records`
+const withPax = (records: string) =>
+  Effect.gen(function*() {
+    const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
+    bytes.fill(0, 512, 1024)
+    bytes.set(textEncoder.encode(records), 512)
+    patchHeader(bytes, 124, records.length.toString(8).padStart(11, "0"))
+    return bytes
+  })
+
 describe("Tar", () => {
   describe("encode", () => {
     it.effect("round trips entries with reproducible USTAR defaults", () =>
@@ -60,6 +69,7 @@ describe("Tar", () => {
           Tar.fileStream("dir/b.bin", 3, Stream.make(new Uint8Array([0, 1]), new Uint8Array([255]))),
           Tar.symlink("dir/link", "a.txt", { uid: 1000, uname: "user", mtime: new Date("2024-01-02T03:04:05Z") }),
           Tar.hardlink("dir/hard", "dir/a.txt"),
+          Tar.symlink("dir/empty", ""),
           {
             header: { ...Tar.file("dir/null", "").header, type: "CharDevice", typeflag: "3", devMajor: 1, devMinor: 3 },
             body: Stream.empty
@@ -141,12 +151,60 @@ describe("Tar", () => {
         assert.strictEqual(entry.header.mode, 0o644)
       }))
 
+    it.effect("round trips custom PAX records", () =>
+      Effect.gen(function*() {
+        const pax = JSON.parse(`{"__proto__":"p","comment":"multi\\nline"}`)
+        const [entry] = yield* decode(yield* encode([Tar.file("f", "", { pax })]))
+        assert.deepStrictEqual(Object.entries(entry.header.pax), [["__proto__", "p"], ["comment", "multi\nline"]])
+      }))
+
+    it.effect("closes each body before starting the next", () =>
+      Effect.gen(function*() {
+        const log: Array<string> = []
+        const body = (name: string) =>
+          Stream.make(textEncoder.encode(name)).pipe(
+            Stream.onStart(Effect.sync(() => log.push(`open ${name}`))),
+            Stream.ensuring(Effect.sync(() => log.push(`close ${name}`)))
+          )
+        yield* encode([Tar.fileStream("a", 1, body("a")), Tar.fileStream("b", 1, body("b"))])
+        assert.deepStrictEqual(log, ["open a", "close a", "open b", "close b"])
+      }))
+
+    it.effect("passes the done value, upstream errors and body errors through", () =>
+      Effect.gen(function*() {
+        const done = yield* Channel.succeed(Arr.of(Tar.file("f", "f"))).pipe(
+          Channel.concat(Channel.end("done")),
+          Channel.pipeTo(Tar.encode()),
+          Channel.runDrain
+        )
+        assert.strictEqual(done, "done")
+        const upstream = Stream.fail("upstream").pipe(Stream.pipeThroughChannel(Tar.encode()), Stream.runDrain)
+        assert.strictEqual(yield* failure(upstream), "upstream")
+        assert.strictEqual(yield* failure(encode([Tar.fileStream("f", 1, Stream.fail("body"))])), "body")
+        // A defect stays a defect, even when it is a TarError
+        const defect = new Tar.TarError({ kind: "Truncated", message: "defect" })
+        const exit = yield* Effect.exit(encode([Tar.fileStream("f", 1, Stream.die(defect))]))
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause) && !Cause.hasFails(exit.cause))
+      }))
+
     it.effect("fails on entries that cannot be written", () =>
       Effect.gen(function*() {
         const short = Tar.fileStream("f", 5, Stream.make(textEncoder.encode("abc")))
         assert.strictEqual(yield* failure(encode([short])), "SizeMismatch")
+        const long = Tar.fileStream("f", 2, Stream.make(textEncoder.encode("abc")))
+        assert.strictEqual(yield* failure(encode([long])), "SizeMismatch")
         assert.strictEqual(yield* failure(encode([Tar.file("", "")])), "InvalidHeader")
+        assert.strictEqual(yield* failure(encode([Tar.directory("")])), "InvalidHeader")
         assert.strictEqual(yield* failure(encode([Tar.file("dir/", "")])), "InvalidHeader")
+        assert.strictEqual(
+          yield* failure(encode([Tar.file("f", "", { mtime: new Date(Number.NaN) })])),
+          "InvalidHeader"
+        )
+        const directory = Tar.directory("d")
+        const sized = { header: { ...directory.header, size: 1 }, body: Stream.make(textEncoder.encode("x")) }
+        assert.strictEqual(yield* failure(encode([sized])), "InvalidHeader")
+        const device = { header: { ...Tar.file("dev", "").header, type: "CharDevice", devMajor: 0o10000000 } } as const
+        assert.strictEqual(yield* failure(encode([{ ...device, body: Stream.empty }])), "InvalidHeader")
         assert.strictEqual(yield* failure(encode([Tar.file("f", "abc", { pax: { size: "10" } })])), "InvalidHeader")
         assert.strictEqual(
           yield* failure(encode([Tar.file("f", "abc", { pax: { "GNU.sparse.size": "10" } })])),
@@ -220,6 +278,46 @@ describe("Tar", () => {
         assert.deepStrictEqual([paths, done], [["f"], "done"])
       }))
 
+    it.effect("reads star prefixes, legacy directories and signed checksums", () =>
+      Effect.gen(function*() {
+        const star = yield* encode([Tar.file("name", "")])
+        patchHeader(star, 345, "some/prefix")
+        patchHeader(star, 508, "tar\0")
+        const legacy = yield* encode([Tar.file("dir", "")])
+        patchHeader(legacy, 0, "dir/")
+        patchHeader(legacy, 156, [0])
+        const signed = yield* encode([Tar.file("f", "")])
+        patchHeader(signed, 1, [0xc3, 0xa9])
+        // Old tar writers summed the bytes as signed values
+        signed.fill(0x20, 148, 156)
+        const sum = signed.subarray(0, 512).reduce((sum, byte) => sum + (byte > 0x7f ? byte - 0x100 : byte), 0)
+        signed.set(textEncoder.encode(`${sum.toString(8).padStart(6, "0")}\0`), 148)
+        const output = [...yield* decode(star), ...yield* decode(legacy), ...yield* decode(signed)]
+        assert.deepStrictEqual(output.map(({ header }) => [header.path, header.type]), [
+          ["some/prefix/name", "File"],
+          ["dir/", "Directory"],
+          ["fé", "File"]
+        ])
+      }))
+
+    it.effect("skips PAX global headers and empty GNU long names", () =>
+      Effect.gen(function*() {
+        const global = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
+        patchHeader(global, 156, "g")
+        const bytes = yield* encode([Tar.file("f", "")])
+        const longName = bytes.slice(0, 512)
+        patchHeader(longName, 156, "L")
+        const output = [...yield* decode(global), ...yield* decode(new Uint8Array([...longName, ...bytes]))]
+        assert.deepStrictEqual(output.map(({ header }) => [header.path, header.pax]), [["f", {}], ["f", {}]])
+      }))
+
+    it.effect("reads PAX mtimes to the millisecond", () =>
+      Effect.gen(function*() {
+        const [positive] = yield* decode(yield* withPax("15 mtime=1.001\n"))
+        const [negative] = yield* decode(yield* withPax("17 mtime=-1.0005\n"))
+        assert.deepStrictEqual([positive.header.mtime.getTime(), negative.header.mtime.getTime()], [1001, -1001])
+      }))
+
     it.effect("fails on GNU sparse files", () =>
       Effect.gen(function*() {
         assert.strictEqual(yield* failure(decode(yield* fixture("sparse-gnu"))), "Unsupported")
@@ -232,6 +330,31 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(decode(bytes.subarray(0, 512 + 300))), "Truncated")
         bytes[0] = "b".charCodeAt(0)
         assert.strictEqual(yield* failure(decode(bytes)), "InvalidHeader")
+      }))
+
+    it.effect("fails on malformed extended headers and numbers", () =>
+      Effect.gen(function*() {
+        assert.strictEqual(yield* failure(decode(yield* withPax("3 x=1\n"))), "InvalidHeader")
+        assert.strictEqual(yield* failure(decode(yield* withPax("10 uid=-1\n"))), "InvalidHeader")
+        const oversized = yield* withPax("")
+        patchHeader(oversized, 124, (1024 * 1024 + 1).toString(8).padStart(11, "0"))
+        assert.strictEqual(yield* failure(decode(oversized)), "InvalidHeader")
+        const negative = yield* encode([Tar.file("f", "")])
+        // A base-256 uid of -1
+        patchHeader(negative, 108, new Array(8).fill(0xff))
+        assert.strictEqual(yield* failure(decode(negative)), "InvalidHeader")
+        const bytes = yield* encode([Tar.file("f", "")])
+        assert.strictEqual(yield* failure(decode(new Uint8Array([...new Uint8Array(512), ...bytes]))), "InvalidHeader")
+      }))
+
+    it.effect("fails on archives that end inside a header or before the entry of an extended header", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
+        assert.strictEqual(yield* failure(decode(bytes.subarray(0, 300))), "Truncated")
+        assert.strictEqual(yield* failure(decode(bytes.subarray(0, 600))), "Truncated")
+        assert.strictEqual(yield* failure(decode(bytes.subarray(0, 1024))), "Truncated")
+        const ended = new Uint8Array([...bytes.subarray(0, 1024), ...new Uint8Array(1024)])
+        assert.strictEqual(yield* failure(decode(ended)), "Truncated")
       }))
 
     it.effect("fails on an mtime outside the Date range", () =>
@@ -290,28 +413,44 @@ describe("Tar", () => {
         assert.strictEqual(entry.header.path, "b")
       }))
 
-    it.effect("serves a body read racing the pull for the next entry", () =>
+    it.effect("serves the next entry when a body read races it for input", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("a", "a".repeat(2000)), Tar.file("b", "b")])
         const input = yield* Queue.unbounded<Uint8Array, Cause.Done>()
         yield* Queue.offer(input, bytes.subarray(0, 512 + 100))
         const pull = yield* Stream.toPull(Stream.fromQueue(input).pipe(Stream.pipeThroughChannel(Tar.decode())))
         const [entry] = yield* pull
-        // Both wait for the same input
-        const body = yield* Effect.forkChild(Stream.runFold(entry.body, () => 0, (n, chunk) => n + chunk.length))
+        // Both wait for the same input, which arrives in one chunk while the input stays open
+        const body = yield* Effect.forkChild(Stream.runDrain(entry.body))
         yield* Effect.yieldNow
         const next = yield* Effect.forkChild(pull)
         yield* Effect.yieldNow
         yield* Queue.offer(input, bytes.subarray(512 + 100))
-        yield* Queue.end(input)
         const [b] = yield* Fiber.join(next)
         assert.strictEqual(b.header.path, "b")
-        // The body either finished first or was invalidated by the next entry
-        const result = yield* Effect.result(Fiber.join(body))
-        assert.isTrue(
-          Result.isSuccess(result) ? result.success === 2000 : Tar.isTarError(result.failure) &&
-            result.failure.kind === "BodyConsumed"
-        )
+        assert.strictEqual(yield* failure(Fiber.join(body)), "BodyConsumed")
+      }))
+
+    it.effect("fails body reads after the next entry or the end of the entry stream", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("a", "a"), Tar.file("b", "b")])
+        const pull = yield* Stream.toPull(entries(bytes, 512))
+        const [a] = yield* pull
+        yield* pull
+        assert.strictEqual(yield* failure(Stream.runDrain(a.body)), "BodyConsumed")
+        const head = yield* Stream.runHead(entries(bytes, 512))
+        assert.strictEqual(yield* failure(Stream.runDrain(Option.getOrThrow(head).body)), "BodyConsumed")
+      }))
+
+    it.effect("continues a body that is run again where the previous run stopped", () =>
+      Effect.gen(function*() {
+        const content = "0123456789".repeat(200)
+        const bytes = yield* encode([Tar.file("f", content)])
+        const [entry] = yield* Stream.toPull(entries(bytes, 512)).pipe(Effect.flatten)
+        const first = yield* Stream.mkUint8Array(Stream.take(entry.body, 1))
+        const rest = yield* Stream.mkUint8Array(entry.body)
+        assert.isBelow(first.length, content.length)
+        assert.strictEqual(text(first) + text(rest), content)
       }))
 
     it.effect("emits body bytes before the rest of the archive arrives", () =>
