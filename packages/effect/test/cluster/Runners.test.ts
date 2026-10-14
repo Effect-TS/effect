@@ -245,7 +245,13 @@ describe.concurrent("Runners.makeRpc", () => {
     payload: { id: Schema.Number }
   }).annotate(ClusterSchema.Persisted, true)
 
-  type SendRpc = typeof TestRpc | typeof TestRpcPersisted
+  const TestRpcStream = Rpc.make("TestRpcStream", {
+    success: Schema.Number,
+    payload: { id: Schema.Number },
+    stream: true
+  }).annotate(ClusterSchema.Persisted, true)
+
+  type SendRpc = typeof TestRpc | typeof TestRpcPersisted | typeof TestRpcStream
 
   const makeOutgoingRequest = (
     rpc: SendRpc,
@@ -312,24 +318,36 @@ describe.concurrent("Runners.makeRpc", () => {
       Layer.provide(TestShardingConfig)
     )
 
-  it.effect("delivers a persisted local reply completed during notification", () =>
-    Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const storage = yield* MessageStorage.MessageStorage
-      const snowflake = yield* Snowflake.Generator
-      const replies: Array<Reply.Reply<SendRpc>> = []
-      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
-        Effect.sync(() => {
-          replies.push(reply)
-        }))
+  const layerLocalRunners = (
+    wrap: (storage: MessageStorage.MessageStorage["Service"]) => MessageStorage.MessageStorage["Service"] = (storage) =>
+      storage,
+    config = TestShardingConfig
+  ) =>
+    Runners.layerNoop.pipe(
+      Layer.provideMerge(
+        Layer.effect(MessageStorage.MessageStorage)(
+          Effect.map(MessageStorage.MessageStorage, wrap)
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
+      ),
+      Layer.provideMerge(Snowflake.layerGenerator),
+      Layer.provide(config)
+    )
 
-      const pending = yield* runners.notifyLocal({
-        message,
-        discard: false,
-        // A local entity can finish before the notification returns. Persist
-        // its reply synchronously to exercise that ordering without sleeps.
-        notify: () =>
-          storage.saveReply(
+  for (const window of ["during notification", "before saveRequest returns"] as const) {
+    it.effect(
+      `delivers a persisted local reply completed ${window}`,
+      () => {
+        let complete: Effect.Effect<void> = Effect.void
+        return Effect.gen(function*() {
+          const runners = yield* Runners.Runners
+          const storage = yield* MessageStorage.MessageStorage
+          const snowflake = yield* Snowflake.Generator
+          const replies: Array<Reply.Reply<SendRpc>> = []
+          const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+            Effect.sync(() => {
+              replies.push(reply)
+            }))
+          complete = storage.saveReply(
             new Reply.ReplyWithContext({
               reply: new Reply.WithExit<SendRpc>({
                 id: snowflake.nextUnsafe(),
@@ -340,20 +358,169 @@ describe.concurrent("Runners.makeRpc", () => {
               context: message.context
             })
           ).pipe(Effect.orDie)
-      }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
 
+          const pending = yield* runners.notifyLocal({
+            message,
+            discard: false,
+            notify: () => window === "during notification" ? complete : Effect.void
+          }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
+
+          yield* TestClock.adjust("1 second")
+          yield* Fiber.join(pending)
+          assert.deepStrictEqual(replies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag), [
+            Exit.succeed(42)
+          ])
+        }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+          ...storage,
+          saveRequest: (message) =>
+            storage.saveRequest(message).pipe(
+              Effect.tap(() => window === "before saveRequest returns" ? complete : Effect.void)
+            )
+        }))))
+      }
+    )
+  }
+
+  it.effect("keeps a duplicate local waiter alive when the first caller cancels", () => {
+    let finalized = 0
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const firstReplies: Array<Reply.Reply<SendRpc>> = []
+      const duplicateReplies: Array<Reply.Reply<SendRpc>> = []
+      const requestId = snowflake.nextUnsafe()
+      const first = makeOutgoingRequest(TestRpcPersisted, requestId, (reply) =>
+        Effect.sync(() => {
+          firstReplies.push(reply)
+        }))
+      const duplicate = makeOutgoingRequest(TestRpcPersisted, requestId, (reply) =>
+        Effect.sync(() => {
+          duplicateReplies.push(reply)
+        }))
+      const notify = (message: Message.OutgoingRequest<SendRpc>) =>
+        runners.notifyLocal({
+          message,
+          discard: false,
+          notify: () => Effect.void
+        })
+      const a = yield* notify(first).pipe(Effect.forkScoped)
+      // Drains runnable work without reaching the polling deadline: A owns
+      // the reply reader, then B joins it before any reply is persisted.
+      yield* TestClock.adjust(0)
+      const b = yield* notify(duplicate).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
+      yield* TestClock.adjust(0)
+      yield* Fiber.interrupt(a)
+      assert.strictEqual(finalized, 1, "cancellation releases the local wake handler")
+      yield* storage.saveReply(
+        new Reply.ReplyWithContext({
+          reply: new Reply.WithExit<SendRpc>({
+            id: snowflake.nextUnsafe(),
+            requestId,
+            exit: Exit.succeed(42)
+          }),
+          rpc: first.rpc,
+          context: first.context
+        })
+      )
       yield* TestClock.adjust("1 second")
-      yield* Fiber.join(pending)
-      assert.deepStrictEqual(replies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag), [
+      const result = yield* Fiber.join(b)
+      assert.deepStrictEqual(firstReplies, [])
+      assert.deepStrictEqual(duplicateReplies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag), [
         Exit.succeed(42)
       ])
-    }).pipe(Effect.provide(
-      Runners.layerNoop.pipe(
-        Layer.provideMerge(MessageStorage.layerMemory),
-        Layer.provideMerge(Snowflake.layerGenerator),
-        Layer.provide(TestShardingConfig)
+      assert.isTrue(Option.isSome(result), "the remaining caller must complete")
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      registerReplyHandler: (message) =>
+        storage.registerReplyHandler(message).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            finalized++
+          }))
+        )
+    }))))
+  })
+
+  it.effect("wakes local streams for acknowledged chunks without polling", () => {
+    let finalized = 0
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const received: Array<Reply.Reply<SendRpc>> = []
+      const message = makeOutgoingRequest(TestRpcStream, snowflake.nextUnsafe(), (reply) =>
+        Effect.gen(function*() {
+          received.push(reply)
+          if (reply._tag === "Chunk") {
+            yield* runners.notifyLocal({
+              message: new Message.OutgoingEnvelope({
+                envelope: new Envelope.AckChunk({
+                  id: snowflake.nextUnsafe(),
+                  requestId: reply.requestId,
+                  replyId: reply.id,
+                  address: message.envelope.address
+                }),
+                rpc: message.rpc
+              }),
+              discard: false,
+              notify: () => Effect.void
+            }).pipe(Effect.orDie)
+          }
+        }))
+      const pending = yield* runners.notifyLocal({
+        message,
+        discard: false,
+        notify: () => Effect.void
+      }).pipe(Effect.forkScoped)
+      yield* TestClock.adjust(0)
+
+      const expected: Array<Reply.Reply<SendRpc>> = []
+      for (const sequence of [0, 1]) {
+        const chunk = new Reply.Chunk<typeof TestRpcStream>({
+          id: snowflake.nextUnsafe(),
+          requestId: message.envelope.requestId,
+          sequence,
+          values: [sequence + 1]
+        })
+        expected.push(chunk)
+        yield* storage.saveReply(
+          new Reply.ReplyWithContext({
+            reply: chunk,
+            rpc: message.rpc,
+            context: message.context
+          })
+        )
+        // Let notification and acknowledgment run, but never reach a poll.
+        yield* TestClock.adjust(0)
+        assert.deepStrictEqual(received, expected)
+      }
+      const terminal = new Reply.WithExit<SendRpc>({
+        id: snowflake.nextUnsafe(),
+        requestId: message.envelope.requestId,
+        exit: Exit.void
+      })
+      expected.push(terminal)
+      yield* storage.saveReply(
+        new Reply.ReplyWithContext({
+          reply: terminal,
+          rpc: message.rpc,
+          context: message.context
+        })
       )
-    )))
+      yield* TestClock.adjust(0)
+      assert.deepStrictEqual(received, expected)
+      yield* Fiber.join(pending)
+      assert.strictEqual(finalized, 1, "completion releases the local wake handler")
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      registerReplyHandler: (message) =>
+        storage.registerReplyHandler(message).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            finalized++
+          }))
+        )
+    }), ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))))
+  })
 
   it.effect("uses the client protocol codec for simulated remote serialization", () => {
     let codecCalls = 0
