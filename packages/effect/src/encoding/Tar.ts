@@ -205,11 +205,15 @@ const makeHeader = (
  */
 export const file = (path: string, content: string | Uint8Array, options?: EntryOptions): Entry => {
   const bytes = typeof content === "string" ? textEncoder.encode(content) : content
-  return {
-    header: makeHeader(path, "File", bytes.length, options),
-    body: bytes.length === 0 ? Stream.empty : Stream.succeed(bytes)
-  }
+  const header = makeHeader(path, "File", bytes.length, options)
+  if (bytes.length === 0) return { header, body: Stream.empty }
+  const body = Stream.succeed(bytes)
+  inMemoryBodies.set(body, bytes)
+  return { header, body }
 }
+
+// Content of the `file` bodies, which `encode` writes without running them
+const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, Uint8Array>()
 
 /**
  * Creates a regular file entry whose content is streamed from `body`.
@@ -502,13 +506,16 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
           }
           if (index < entries.length) {
             const entry = entries[index++]
-            // Directories, links and empty files have nothing to stream
-            const empty = entry.body === Stream.empty
+            // Directories, links and in-memory files have nothing to stream
+            const bytes = entry.body === Stream.empty ? emptyBody : inMemoryBodies.get(entry.body)
             yield* write(() => {
               encoder.begin(entry.header)
-              if (empty) encoder.end()
+              if (bytes !== undefined) {
+                encoder.body(bytes)
+                encoder.end()
+              }
             })
-            if (empty) continue
+            if (bytes !== undefined) continue
             bodyScope = Scope.forkUnsafe(scope)
             body = yield* Channel.toPullScoped(entry.body.channel, bodyScope)
             continue
@@ -1382,6 +1389,8 @@ class Decoder {
 // -----------------------------------------------------------------------------
 
 const SLAB_SIZE = 64 * 1024
+
+const emptyBody = new Uint8Array(0)
 
 // Bodies below this size are copied next to their header instead of being
 // handed out as chunks of their own
