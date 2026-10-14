@@ -281,6 +281,12 @@ export class WorkflowInstance extends Context.Service<
     cause: Cause.Cause<never> | undefined
 
     /**
+     * Whether this workflow or an activity hit `SuspendOnFailure`, excluding
+     * inherited child failures.
+     */
+    failed: boolean
+
+    /**
      * Deferred names this run waits on, counted per live wait; their
      * completions preempt the run.
      */
@@ -308,6 +314,7 @@ export class WorkflowInstance extends Context.Service<
       interrupted: false,
       abandoned: false,
       cause: undefined,
+      failed: false,
       awaitedDeferreds: new Map(),
       completedDeferreds: new Set(),
       activityState: {
@@ -675,6 +682,11 @@ const defaultRetrySchedule = Schedule.min([
   Schedule.spaced(30000)
 ])
 
+type WakeMode = "explicit" | "automatic"
+
+const isUnwakeable = (result: Workflow.Result<unknown, unknown>, mode: WakeMode) =>
+  result._tag === "Complete" || (mode === "automatic" && result.failed === true)
+
 /**
  * Layer that provides an in-memory `WorkflowEngine`.
  *
@@ -714,7 +726,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       readonly parent: string | undefined
       instance: WorkflowInstance["Service"]
       interrupted: boolean
-      resumeRequested: boolean
+      // The strongest wake requested while a run was still finishing.
+      resumeRequested: WakeMode | undefined
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
       // Completed once a run succeeds with `Complete`, after which it cannot resume.
       readonly done: Deferred.Deferred<void>
@@ -728,21 +741,22 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
 
     const deferredState = makeDeferredState()
 
-    const resume = Effect.fnUntraced(function*(executionId: string): Effect.fn.Return<void> {
+    const resume = Effect.fnUntraced(function*(executionId: string, mode: WakeMode): Effect.fn.Return<void> {
       const state = executions.get(executionId)
       if (!state) return
       const exit = state.fiber?.pollUnsafe()
-      if (exit && exit._tag === "Success" && exit.value._tag === "Complete") {
+      if (exit && exit._tag === "Success" && isUnwakeable(exit.value, mode)) {
         return
       } else if (state.fiber && !exit) {
-        // A child can finish while the parent is still releasing its activity.
-        // Preserve the wake until that run has published its suspended result.
-        if (!state.resumeRequested) {
-          state.resumeRequested = true
+        // Queue wakes until the run finishes cleanup; explicit wakes take priority.
+        const requested = state.resumeRequested
+        state.resumeRequested = mode === "explicit" ? mode : requested ?? mode
+        if (requested === undefined) {
           yield* Fiber.await(state.fiber).pipe(
             Effect.flatMap(() => {
-              state.resumeRequested = false
-              return resume(executionId)
+              const mode = state.resumeRequested!
+              state.resumeRequested = undefined
+              return resume(executionId, mode)
             }),
             Effect.forkIn(scope)
           )
@@ -773,7 +787,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           if (!state.parent || result._tag !== "Complete") {
             return Effect.void
           }
-          return Effect.forkIn(resume(state.parent), scope)
+          return Effect.forkIn(resume(state.parent, "automatic"), scope)
         }),
         Effect.onExit((exit) => {
           return Exit.isSuccess(exit) && exit.value._tag === "Complete"
@@ -809,13 +823,13 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             execute: entry.execute,
             instance: WorkflowInstance.initial(workflow, options.executionId),
             interrupted: false,
-            resumeRequested: false,
+            resumeRequested: undefined,
             fiber: undefined,
             done: Deferred.makeUnsafe(),
             parent: options.parent?.executionId
           }
           executions.set(options.executionId, state)
-          yield* resume(options.executionId)
+          yield* resume(options.executionId, "explicit")
         }
         if (options.discard) return
         // Capture together so a wake that swaps in a replay cannot desync them.
@@ -836,7 +850,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         const state = executions.get(executionId)
         if (!state) return
         state.interrupted = true
-        yield* resume(executionId)
+        yield* resume(executionId, "explicit")
       }),
       interruptUnsafe: Effect.fnUntraced(function*(_workflow, executionId) {
         const state = executions.get(executionId)
@@ -847,7 +861,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         }
       }),
       resume(_workflow, executionId) {
-        return resume(executionId)
+        return resume(executionId, "explicit")
       },
       activityExecute: Effect.fnUntraced(function*(activity, attempt) {
         const instance = yield* WorkflowInstance
@@ -863,6 +877,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         } else {
           state = { exit: undefined }
           activities.set(activityId, state)
+        }
+        // A pending interrupt replays only to rebuild compensations, so it must
+        // not run new activities. Finalizers run once `interrupted` is set.
+        if (executions.get(instance.executionId)?.interrupted && !instance.interrupted) {
+          return new Workflow.Suspended({})
         }
         const activityInstance = WorkflowInstance.initial(instance.workflow, instance.executionId)
         activityInstance.interrupted = instance.interrupted
@@ -902,7 +921,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           deferredResults.set(id, options.exit)
           const wake = Effect.andThen(
             deferredState.deferredDone(options.executionId, options.deferredName),
-            resume(options.executionId)
+            resume(options.executionId, "automatic")
           )
           return Effect.flatMap(Effect.serviceOption(WorkflowInstance), (instance) =>
             // A workflow finalizer cannot wait for its own run's cleanup.
