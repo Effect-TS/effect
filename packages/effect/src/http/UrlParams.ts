@@ -17,6 +17,7 @@ import { dual } from "../Function.ts"
 import * as Hash from "../Hash.ts"
 import type { Inspectable } from "../Inspectable.ts"
 import { PipeInspectableProto } from "../internal/core.ts"
+import { getCurrentFiber } from "../internal/effect.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
@@ -553,6 +554,74 @@ export const isRedactedName = (
     }
   }
   return false
+}
+
+/**
+ * Replaces the values of matching query parameters in a URL with `REDACTED`.
+ *
+ * **Details**
+ *
+ * Accepts absolute URLs, relative URLs such as `/path?sig=...`, and bare
+ * search strings such as `?sig=...`. Only the `key=value` pairs whose decoded
+ * names match `isRedactedName` are rewritten; the rest of the string, including
+ * the fragment, is kept verbatim. When `redactedNames` is omitted, the current
+ * fiber's `CurrentRedactedNames` is used, falling back to the defaults outside
+ * a fiber.
+ *
+ * **Example** (Redacting a signed URL)
+ *
+ * ```ts import.meta.vitest
+ * import { UrlParams } from "effect/http"
+ *
+ * const url = UrlParams.redactUrl("https://bucket.test/file?Signature=abc&size=1")
+ * url // => "https://bucket.test/file?Signature=REDACTED&size=1"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const redactUrl = (
+  url: string,
+  redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
+): string => {
+  const queryStart = url.indexOf("?")
+  if (queryStart === -1) return url
+  const hashStart = url.indexOf("#")
+  if (hashStart !== -1 && hashStart < queryStart) return url
+  const queryEnd = hashStart === -1 ? url.length : hashStart
+  const query = url.slice(queryStart + 1, queryEnd)
+  const redacted = redactQuery(query, redactedNames)
+  return redacted === query ? url : url.slice(0, queryStart + 1) + redacted + url.slice(queryEnd)
+}
+
+const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string => {
+  if (query === "" || redactedNames.length === 0) return query
+  const parts = query.split("&")
+  let changed = false
+  for (let i = 0; i < parts.length; i++) {
+    const index = parts[i].indexOf("=")
+    if (index === -1) continue
+    const key = parts[i].slice(0, index)
+    if (isRedactedName(decodeQueryKey(key), redactedNames)) {
+      parts[i] = `${key}=REDACTED`
+      changed = true
+    }
+  }
+  return changed ? parts.join("&") : query
+}
+
+const decodeQueryKey = (key: string): string => {
+  try {
+    return decodeURIComponent(key.replace(/\+/g, " "))
+  } catch {
+    return key
+  }
+}
+
+const currentRedactedNames = (): ReadonlyArray<string | RegExp> => {
+  const fiber = getCurrentFiber()
+  return fiber ? fiber.getRef(CurrentRedactedNames) : CurrentRedactedNames.defaultValue()
 }
 
 /**

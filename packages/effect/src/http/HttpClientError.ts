@@ -15,7 +15,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import type * as HttpClientRequest from "./HttpClientRequest.ts"
 import type * as ClientResponse from "./HttpClientResponse.ts"
-import * as tracing from "./internal/tracing.ts"
+import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpClientError"
 
@@ -108,7 +108,7 @@ export class TransportError extends Data.TaggedError("TransportError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
@@ -141,7 +141,7 @@ export class EncodeError extends Data.TaggedError("EncodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
@@ -174,7 +174,7 @@ export class InvalidUrlError extends Data.TaggedError("InvalidUrlError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
@@ -208,7 +208,7 @@ export class StatusCodeError extends Data.TaggedError("StatusCodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
@@ -243,7 +243,7 @@ export class DecodeError extends Data.TaggedError("DecodeError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
@@ -278,7 +278,7 @@ export class EmptyBodyError extends Data.TaggedError("EmptyBodyError")<{
    * @since 4.0.0
    */
   get methodAndUrl() {
-    return `${this.request.method} ${tracing.redactUrl(this.request.url)}`
+    return `${this.request.method} ${UrlParams.redactUrl(this.request.url)}`
   }
 
   /**
