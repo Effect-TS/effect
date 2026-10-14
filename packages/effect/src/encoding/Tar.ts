@@ -376,7 +376,7 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
           try {
             result = f()
           } catch (error) {
-            return Effect.fail(error as TarError)
+            return isTarError(error) ? Effect.fail(error) : Effect.die(error)
           }
           if (result === NeedInput) return Effect.flatMap(pullInput, loop)
           return result === undefined ? Cause.done(end()) : Effect.succeed(result)
@@ -405,8 +405,12 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * prefix and name fields when it is longer than 100 bytes. A PAX extended
  * header is added only for what USTAR cannot hold: a long or non-ASCII path,
  * link target, user or group name, a size of 8 GiB or more, a uid or gid above
- * `2097151`, an mtime outside the USTAR range, or custom `pax` records. Bodies
- * stream without buffering, and the archive ends with two zero blocks.
+ * `2097151`, an mtime outside the USTAR range, or custom `pax` records. The
+ * archive ends with two zero blocks.
+ *
+ * Headers, padding and body chunks below 16 KiB are gathered into output chunks
+ * of up to 64 KiB, and larger body chunks pass through without copying, so
+ * bodies stream without being held in memory.
  *
  * **Gotchas**
  *
