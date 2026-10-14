@@ -3,6 +3,7 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
@@ -180,6 +181,23 @@ describe("TestClock", () => {
       yield* TestClock.adjust("5 seconds")
       assert.isTrue(later)
     }).pipe(Effect.provide(TestClock.layer({ warningDelay: "10 millis" }))))
+
+  it.effect("adjust - waits for woken fibers when the advancing fiber yields on its operation budget", () =>
+    Effect.gen(function*() {
+      let done = false
+      yield* Effect.sleep("1 second").pipe(
+        Effect.andThen(Effect.yieldNow),
+        Effect.andThen(Effect.sync(() => {
+          done = true
+        })),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(done)
+    }).pipe(
+      Effect.provide(TestClock.layer({ warningDelay: Duration.infinity })),
+      Effect.provideService(Scheduler.MaxOpsBeforeYield, 4)
+    ))
 
   // `it.effect` and `it.live` provide an ambient Scope, defeating the #2244 regression guard.
   it("layer - can adjust when provided without an ambient Scope", () =>
