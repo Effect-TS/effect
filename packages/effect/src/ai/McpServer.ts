@@ -170,7 +170,6 @@ const toInternalServerNotification = (
 }
 
 const middlewareKeyPrefix = "effect/ai/McpServer/Middleware-"
-const middlewareFnKey = "effect/ai/McpServer/MiddlewareFn"
 
 // Request services must come from the invocation, including when a handler is
 // registered during a request. Registration context also drops the MCP
@@ -550,11 +549,14 @@ type Made<Global extends boolean, Config extends MiddlewareConfig> = Global exte
 
 type AnyMiddlewareFn = middleware.Fn<any, any, any>
 
-const makeMiddleware = (fn: any, options?: { readonly global?: boolean | undefined }) => {
+class MiddlewareFn extends Context.Service<MiddlewareFn, AnyMiddlewareFn>()("effect/ai/McpServer/MiddlewareFn") {}
+
+const makeMiddleware = (
+  fn: AnyMiddlewareFn | Effect.Effect<AnyMiddlewareFn, any, any>,
+  options?: { readonly global?: boolean | undefined }
+) => {
   const middleware = new MiddlewareImpl(
-    Effect.isEffect(fn)
-      ? Layer.effectContext(Effect.map(fn, (fn) => Context.makeUnsafe(new Map([[middlewareFnKey, fn]]))))
-      : Layer.succeedContext(Context.makeUnsafe(new Map([[middlewareFnKey, fn]])))
+    Effect.isEffect(fn) ? Layer.effect(MiddlewareFn)(fn) : Layer.succeed(MiddlewareFn, fn)
   )
   return options?.global ? middleware.layerGlobal : middleware
 }
@@ -565,30 +567,25 @@ class MiddlewareImpl {
   readonly [MiddlewareTypeId] = {} as any
   readonly layer: Layer.Layer<never, any, any>
   readonly layerGlobal: Layer.Layer<never, any, any>
-  readonly layerFn: Layer.Layer<never, any, any>
+  readonly layerFn: Layer.Layer<MiddlewareFn, any, any>
   readonly dependencies: Layer.Layer<any, any, any> | undefined
 
   constructor(
-    layerFn: Layer.Layer<never, any, any>,
+    layerFn: Layer.Layer<MiddlewareFn, any, any>,
     dependencies?: Layer.Layer<any, any, any> | undefined
   ) {
     this.layerFn = layerFn
     this.dependencies = dependencies
     const contextKey = `${middlewareKeyPrefix}${++middlewareId}`
-    this.layer = Layer.effectContext(Effect.gen({ self: this }, function*() {
-      const context = yield* Effect.context<Scope.Scope>()
-      const stack: Array<AnyMiddlewareFn> = [Context.getOrUndefinedUnsafe(context, middlewareFnKey as any)!]
-      if (this.dependencies) {
+    this.layer = Layer.effectContext(Effect.gen(function*() {
+      const stack: Array<AnyMiddlewareFn> = [yield* MiddlewareFn]
+      if (dependencies) {
         const memoMap = yield* Layer.CurrentMemoMap
-        const dependencies = yield* Layer.buildWithMemoMap(
-          this.dependencies,
-          memoMap,
-          Context.get(context, Scope.Scope)
-        )
-        stack.push(...getMiddleware(dependencies))
+        const scope = yield* Effect.scope
+        stack.push(...getMiddleware(yield* Layer.buildWithMemoMap(dependencies, memoMap, scope)))
       }
       return Context.makeUnsafe<never>(new Map([[contextKey, stack]]))
-    })).pipe(Layer.provide(this.layerFn))
+    })).pipe(Layer.provide(layerFn))
     this.layerGlobal = Layer.effectDiscard(Effect.gen(function*() {
       const stack: ReadonlyArray<AnyMiddlewareFn> = Context.getOrUndefinedUnsafe(
         yield* Effect.context<never>(),
@@ -619,10 +616,7 @@ class MiddlewareImpl {
 }
 
 // The innermost middleware comes first.
-const middlewareCache = new WeakMap<Context.Context<never>, ReadonlyArray<AnyMiddlewareFn>>()
 const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddlewareFn> => {
-  let middleware = middlewareCache.get(context)
-  if (middleware !== undefined) return middleware
   const stacks: Array<ReadonlyArray<AnyMiddlewareFn>> = []
   let maxLength = 0
   for (const [key, value] of context.mapUnsafe) {
@@ -637,9 +631,7 @@ const getMiddleware = (context: Context.Context<never>): ReadonlyArray<AnyMiddle
       if (i < stack.length) unique.add(stack[i])
     }
   }
-  middleware = Arr.fromIterable(unique).reverse()
-  middlewareCache.set(context, middleware)
-  return middleware
+  return Arr.fromIterable(unique).reverse()
 }
 
 const isMcpError = (error: unknown): error is McpErrorBase =>
@@ -681,10 +673,7 @@ const makeInvoke = (
       : Effect.updateContext(handler, (context: Context.Context<any>) => Context.merge(services, context))
     const middleware = [...localMiddleware, ...globalMiddleware]
     if (middleware.length > 0) {
-      const handled = Effect.catchCause(
-        effect,
-        (cause) => Effect.failCause(Cause.hasFails(cause) ? Cause.annotate(cause, handlerFailure) : cause)
-      )
+      const handled = Effect.catchCause(effect, (cause) => Effect.failCause(Cause.annotate(cause, handlerFailure)))
       effect = Effect.withFiber((fiber) => {
         const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
           Headers.empty
@@ -2990,6 +2979,23 @@ const handlerFailureToInternalError = (cause: Cause.Cause<unknown>): Effect.Effe
     ? Effect.failCause(cause as Cause.Cause<never>)
     : Effect.fail(new InternalError({ message: Cause.prettyErrors(cause)[0].message }))
 
+const completionHandler = (
+  handle: (input: string, context: CompletionContext) => Effect.Effect<any, any, any>,
+  encodeValues: (values: unknown) => Effect.Effect<ReadonlyArray<unknown>, any, any>
+) =>
+(input: string, context: CompletionContext): Effect.Effect<CompleteResult, InternalError> =>
+  handle(input, context).pipe(
+    Effect.flatMap(encodeValues),
+    Effect.map((values) => ({
+      completion: {
+        values: values as Array<string>,
+        total: values.length,
+        hasMore: false
+      }
+    })),
+    Effect.catchCause(handlerFailureToInternalError)
+  ) as any
+
 type TemplateParamKey<Schemas extends ReadonlyArray<Schema.Constraint>, K extends keyof Schemas> = Schemas[K] extends
   Param<infer Id, infer _S> ? Id : `param${K & string}`
 
@@ -3166,23 +3172,7 @@ export const registerResource: {
       ) => Effect.Effect<CompleteResult, InternalError>
     > = Object.create(null)
     for (const [param, handle] of Object.entries(options.completion ?? {})) {
-      const encodeArray = Schema.encodeUnknownEffect(Schema.Array(params[param]))
-      const handler = (
-        input: string,
-        context: CompletionContext
-      ) =>
-        handle(input, context).pipe(
-          Effect.flatMap(encodeArray),
-          Effect.map((values) => ({
-            completion: {
-              values: values as Array<string>,
-              total: values.length,
-              hasMore: false
-            }
-          })),
-          Effect.catchCause(handlerFailureToInternalError)
-        ) as unknown as Effect.Effect<CompleteResult, InternalError>
-      completions[param] = handler
+      completions[param] = completionHandler(handle, Schema.encodeUnknownEffect(Schema.Array(params[param])))
     }
     yield* registry.addResourceTemplate({
       template,
@@ -3333,23 +3323,7 @@ export const registerPrompt = <
       ) => Effect.Effect<CompleteResult, InternalError, McpRequestContext>
     > = Object.create(null)
     for (const [param, handle] of Object.entries(completion)) {
-      const encodeArray = Schema.encodeEffect(Schema.Array(props[param]))
-      const handler = (
-        input: string,
-        context: CompletionContext
-      ) =>
-        handle(input, context).pipe(
-          Effect.flatMap(encodeArray),
-          Effect.map((values) => ({
-            completion: {
-              values: values as Array<string>,
-              total: values.length,
-              hasMore: false
-            }
-          })),
-          Effect.catchCause(handlerFailureToInternalError)
-        )
-      completions[param] = handler as any
+      completions[param] = completionHandler(handle, Schema.encodeUnknownEffect(Schema.Array(props[param])))
     }
     yield* registry.addPrompt({
       prompt,
