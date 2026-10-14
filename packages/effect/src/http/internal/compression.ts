@@ -3,12 +3,11 @@ import { identity } from "../../Function.ts"
 import * as Stream from "../../Stream.ts"
 import type * as Headers from "../Headers.ts"
 import * as HttpBody from "../HttpBody.ts"
-import type {
-  CompressionAlgorithm as ClientCompressionAlgorithm,
-  CompressionOptions as ClientCompressionOptions
-} from "../HttpClientRequest.ts"
 import type { Compression, CompressionAlgorithm, CompressionOptions } from "../HttpPlatform.ts"
 import * as Response from "../HttpServerResponse.ts"
+import { compressionTransformWeb } from "./compressionStream.ts"
+
+export { compressionTransformWeb } from "./compressionStream.ts"
 
 /**
  * @internal
@@ -44,47 +43,6 @@ export const wrapCompression = (impl: Compression): Compression => ({
     })
   }
 })
-
-/**
- * @internal
- */
-export const compressionTransformWeb =
-  (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
-    stream.pipeThrough(
-      new CompressionStream(format as CompressionFormat) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-    )
-
-/**
- * @internal
- */
-export const compressBody = (
-  body: HttpBody.HttpBody,
-  algorithm: ClientCompressionAlgorithm,
-  options?: ClientCompressionOptions | undefined
-): Effect.Effect<HttpBody.HttpBody> =>
-  Effect.suspend((): Effect.Effect<HttpBody.HttpBody> => {
-    if (body._tag !== "Uint8Array" && body._tag !== "Stream") {
-      return Effect.succeed(body)
-    }
-    if (body.contentLength !== undefined && body.contentLength < (options?.minSize ?? 1024)) {
-      return Effect.succeed(body)
-    }
-    if (body._tag === "Uint8Array") {
-      return Effect.map(
-        Effect.promise(() =>
-          new globalThis.Response(compressionTransformWeb(algorithm)(singleChunkStream(body.body))).arrayBuffer()
-        ),
-        (buffer) => HttpBody.uint8Array(new Uint8Array(buffer), body.contentType)
-      )
-    }
-    return Effect.succeed(HttpBody.stream(
-      Stream.fromReadableStream({
-        evaluate: () => compressionTransformWeb(algorithm)(Stream.toReadableStream(body.stream)),
-        onError: identity
-      }),
-      body.contentType
-    ))
-  })
 
 /**
  * @internal
