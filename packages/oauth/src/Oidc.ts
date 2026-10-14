@@ -6,7 +6,7 @@
  * are configuration helpers only; opaque ID-token receipts remain unverified.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
@@ -23,7 +23,7 @@ import { Metadata, type RequestOptions } from "./OAuth.ts"
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface DiscoverOptions extends RequestOptions {
   /** Fetch this document instead of issuer + `/.well-known/openid-configuration`.
@@ -64,7 +64,7 @@ const issuerOriginAndPath = (value: string) => {
  *
  * @stability unstable
  * @category predicates
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const isTenantIssuerTemplate = (issuer: string): boolean => {
   const parts = issuerOriginAndPath(issuer)
@@ -93,7 +93,7 @@ export const isTenantIssuerTemplate = (issuer: string): boolean => {
  *
  * @stability unstable
  * @category mapping
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const substituteTenantIssuer = (template: string, tenantId: string): string | undefined => {
   if (!Schema.is(TenantId)(tenantId)) return undefined
@@ -184,7 +184,7 @@ const templateTenantSegment = (configured: string, discovered: string): string |
  *
  * @stability unstable
  * @category predicates
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const discoveredIssuerMatches = (configured: string, discovered: string): boolean => {
   if (configured === discovered) return true
@@ -249,7 +249,7 @@ const DiscoverConfiguration = Schema.Struct({
  *
  * @stability unstable
  * @category discovery
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const discover = Effect.fnUntraced(function*(
   input: string,

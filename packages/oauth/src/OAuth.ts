@@ -2,7 +2,7 @@
  * OAuth authorization-code, refresh, profile, and revocation operations with explicit client ownership and private token receipts.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
@@ -22,7 +22,7 @@ import * as V from "./internal/validation.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const JsonObject = V.JsonObject
 /**
@@ -30,7 +30,7 @@ export const JsonObject = V.JsonObject
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type JsonObject = typeof JsonObject.Type
 
@@ -53,7 +53,7 @@ export type JsonObject = typeof JsonObject.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const Metadata = Schema.Struct({
   issuer: V.Issuer,
@@ -88,7 +88,7 @@ export const Metadata = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type Metadata = typeof Metadata.Type
 
@@ -110,7 +110,7 @@ export type Metadata = typeof Metadata.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const Authentication = Schema.Union([
   Schema.Struct({ method: Schema.Literal("client_secret_basic"), secret: V.secret(4096) }),
@@ -127,7 +127,7 @@ export const Authentication = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type Authentication = typeof Authentication.Type
 
@@ -136,7 +136,7 @@ export type Authentication = typeof Authentication.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const TokenReceipt = Schema.Struct({
   status: V.integer(100, 599),
@@ -149,7 +149,7 @@ export const TokenReceipt = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type TokenReceipt = typeof TokenReceipt.Type
 
@@ -159,7 +159,7 @@ export type TokenReceipt = typeof TokenReceipt.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const TokenSet = Schema.Struct({
   tokenType: Schema.Literal("bearer"),
@@ -175,7 +175,7 @@ export const TokenSet = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type TokenSet = typeof TokenSet.Type
 
@@ -184,7 +184,7 @@ export type TokenSet = typeof TokenSet.Type
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface RequestOptions {
   readonly timeoutMs: number
@@ -196,7 +196,7 @@ export interface RequestOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface ClientOptions extends RequestOptions {
   readonly metadata: Metadata
@@ -221,7 +221,7 @@ export interface ClientOptions extends RequestOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface Parameters {
   readonly parameters?: Readonly<Record<string, string>>
@@ -234,7 +234,7 @@ export interface Parameters {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface AuthorizationInput extends Parameters {
   readonly redirectUri: string
@@ -255,7 +255,7 @@ export interface AuthorizationInput extends Parameters {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface CodeGrantInput extends Parameters {
   readonly code: Redacted.Redacted<string>
@@ -270,7 +270,7 @@ export interface CodeGrantInput extends Parameters {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface RefreshGrantInput extends Parameters {
   readonly refreshToken: Redacted.Redacted<string>
@@ -284,7 +284,7 @@ export interface RefreshGrantInput extends Parameters {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface RevocationInput {
   readonly token: Redacted.Redacted<string>
@@ -298,7 +298,7 @@ export interface RevocationInput {
  *
  * @stability unstable
  * @category models
- * @since 4.1.0
+ * @since 4.0.5
  */
 export interface Client {
   readonly metadata: Metadata
@@ -447,7 +447,7 @@ const successFields = [
  *
  * @stability unstable
  * @category decoding
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const tokens = Effect.fnUntraced(function*(
   input: TokenReceipt
@@ -602,7 +602,7 @@ const authenticated = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const make = Effect.fnUntraced(function*(
   input: ClientOptions

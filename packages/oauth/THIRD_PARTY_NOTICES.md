@@ -1,7 +1,6 @@
 # Third-party notices
 
-This package adapts the OAuth implementation from effect-auth, copyright (c) 2026
-Daniel van der Merwe, under the MIT license retained in [LICENSE](LICENSE).
+This package is licensed under the [MIT license](LICENSE).
 
 Selected OAuth/OIDC contracts were adapted into Effect tests from the pinned
 upstream snapshots below. The native runtime uses Effect, and

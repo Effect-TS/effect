@@ -2,7 +2,7 @@
  * Typed OAuth failures with fixed diagnostics that omit credentials, responses, and native causes.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 import * as Schema from "effect/Schema"
 
@@ -21,7 +21,7 @@ import * as Schema from "effect/Schema"
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()(
   "OAuthConfigurationError",
@@ -44,7 +44,7 @@ export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export class Rejected extends Schema.TaggedError<Rejected>()("OAuthRejected", {
   reason: Schema.Literal("invalid_grant")
@@ -64,6 +64,6 @@ export class Rejected extends Schema.TaggedError<Rejected>()("OAuthRejected", {
  *
  * @stability unstable
  * @category errors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export class Unavailable extends Schema.TaggedError<Unavailable>()("OAuthUnavailable", {}) {}
