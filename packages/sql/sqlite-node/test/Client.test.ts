@@ -238,6 +238,8 @@ describe("Client", () => {
       failRollback = false
       assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
       assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+      yield* sql`INSERT INTO child VALUES (1)`
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [{ parent_id: 1 }])
     }))
 
   it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
