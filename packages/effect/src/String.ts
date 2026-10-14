@@ -1081,9 +1081,11 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  *
  * **Details**
  *
- * Returns an empty string for empty or underscore-only input. Otherwise, preserves
- * a leading underscore and consumes each subsequent underscore with the next
- * character, uppercasing that character. An unmatched trailing underscore is dropped.
+ * Returns an empty string for empty input or an even-length run of underscores.
+ * Otherwise, preserves the first character and consumes each subsequent underscore
+ * with the next character, uppercasing that character. An unmatched trailing
+ * underscore is dropped; odd-length underscore-only input retains one underscore
+ * plus one for each pair after the first.
  *
  * **Example** (Converting snake_case to camelCase)
  *
@@ -1099,7 +1101,7 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @since 2.0.0
  */
 export const snakeToCamel = (self: string): string => {
-  if (self.length === 0 || (self[0] === "_" && /^_+$/.test(self))) return ""
+  if (self.length === 0 || (self.length % 2 === 0 && self[0] === "_" && /^_+$/.test(self))) return ""
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
@@ -1112,9 +1114,11 @@ export const snakeToCamel = (self: string): string => {
  *
  * **Details**
  *
- * Returns an empty string for empty or underscore-only input. Otherwise, uppercases
- * the first character and consumes each subsequent underscore with the next
- * character, uppercasing that character. An unmatched trailing underscore is dropped.
+ * Returns an empty string for empty input or an even-length run of underscores.
+ * Otherwise, uppercases the first character and consumes each subsequent underscore
+ * with the next character, uppercasing that character. An unmatched trailing
+ * underscore is dropped; odd-length underscore-only input retains one underscore
+ * plus one for each pair after the first.
  *
  * **Example** (Converting snake_case to PascalCase)
  *
@@ -1130,7 +1134,7 @@ export const snakeToCamel = (self: string): string => {
  * @since 2.0.0
  */
 export const snakeToPascal = (self: string): string => {
-  if (self.length === 0 || (self[0] === "_" && /^_+$/.test(self))) return ""
+  if (self.length === 0 || (self.length % 2 === 0 && self[0] === "_" && /^_+$/.test(self))) return ""
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
