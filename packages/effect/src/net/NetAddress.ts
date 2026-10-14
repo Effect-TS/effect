@@ -625,6 +625,16 @@ export const isFamily: {
 )
 
 /**
+ * Returns `true` when an internet address is an IPv6 address with a nonzero
+ * scope ID, such as `[fe80::1%1]:53`.
+ *
+ * @stability experimental
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isScoped = (self: IpAddress | InetAddress): boolean => isInetAddressV6(self) && self.scopeId !== 0
+
+/**
  * Returns `true` when a value is a MAC address.
  *
  * @stability unstable
@@ -2153,7 +2163,7 @@ export const formatUrlHost = (self: IpAddress): string => isIpv4Address(self) ? 
  * @since 4.0.0
  */
 export const toUrl = (self: IpAddress | InetAddress, scheme: string = "http"): Result.Result<URL, NetAddressError> => {
-  if (self._tag === "InetAddressV6" && self.scopeId !== 0) {
+  if (isScoped(self)) {
     return addressError(self, "scoped IPv6 addresses are not supported by WHATWG URLs")
   }
   return Result.try({
