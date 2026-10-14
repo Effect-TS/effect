@@ -184,7 +184,7 @@ describe("TestClock", () => {
         assert.deepStrictEqual(log, ["a@1000", "b@1500", "a@2000"])
       }))
 
-    it.live("adjust - warns and keeps advancing when a woken fiber never suspends", () =>
+    const busyFiberFallback = () =>
       Effect.gen(function*() {
         const warnings: Array<unknown> = []
         const logger = Logger.make((options) => {
@@ -207,7 +207,11 @@ describe("TestClock", () => {
         )
         assert.isTrue(later)
         assert.match(String(warnings), /fiber woken by the test clock is still running/)
-      }))
+      })
+
+    it.live("adjust - warns and keeps advancing when a woken fiber never suspends", busyFiberFallback)
+
+    it.effect("adjust - warns and keeps advancing when nested in another TestClock", busyFiberFallback)
 
     it.effect("adjust - runs every sleep after an interrupted adjustment", () =>
       Effect.gen(function*() {
