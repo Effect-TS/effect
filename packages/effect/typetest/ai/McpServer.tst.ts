@@ -1,3 +1,4 @@
+import { hole } from "effect"
 import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
@@ -182,6 +183,35 @@ describe("McpServer", () => {
 
   describe("resource templates", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+    class IdCodec extends Context.Service<IdCodec, { readonly n: number }>()("IdCodec") {}
+    class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}
+
+    it("should require template decoding services in both APIs", () => {
+      const UserId = hole<Schema.Codec<string, string, IdCodec, never>>()
+      const options = {
+        name: "by-id",
+        content: (_uri: string, id: string) => Effect.succeed(id)
+      }
+      const registered = McpServer.registerResource`user://${McpSchema.param("id", UserId)}`(options)
+      const layer = McpServer.resource`user://${McpSchema.param("id", UserId)}`(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<IdCodec | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<IdCodec>()
+    })
+
+    it("should require template completion encoding services in both APIs", () => {
+      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
+      const options = {
+        name: "by-tag",
+        completion: { tag: (input: string) => Effect.succeed([input]) },
+        content: (_uri: string, tag: string) => Effect.succeed(tag)
+      }
+      const registered = McpServer.registerResource`tag://${McpSchema.param("tag", Tag)}`(options)
+      const layer = McpServer.resource`tag://${McpSchema.param("tag", Tag)}`(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<TagEncoder | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<TagEncoder>()
+    })
 
     it("should require services used by one-argument completion handlers in both APIs", () => {
       const registered = McpServer.registerResource`file://${Schema.String}`({
@@ -219,6 +249,22 @@ describe("McpServer", () => {
   describe("prompts", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     const name = () => Effect.map(Lookup, (lookup) => lookup.values)
+
+    it("should require prompt completion encoding services in both APIs", () => {
+      class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}
+      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
+      const options = {
+        name: "tagged",
+        parameters: { tag: Tag },
+        completion: { tag: (input: string) => Effect.succeed([input]) },
+        content: ({ tag }: { readonly tag: string }) => Effect.succeed(tag)
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<TagEncoder | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<TagEncoder>()
+    })
 
     it("should require services used by completion handlers", () => {
       const options = {
