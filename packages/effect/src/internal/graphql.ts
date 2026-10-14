@@ -12,7 +12,7 @@ import {
   type Reason,
   ResponseError
 } from "../graphql/GraphQLClientError.ts"
-import type { ExecutionResult, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
+import type { ExecutionResult, GraphQLProtocol, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
 import * as Schema from "../Schema.ts"
 
 /**
@@ -154,6 +154,29 @@ export const renderSlices = (
 export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
 
 /**
+ * The URL a resolver batch was grouped by, and the protocol `url` that
+ * resolved it, so that transport sends the batch there without resolving it
+ * again.
+ *
+ * @internal
+ */
+export type ResolvedUrl = {
+  readonly resolve: GraphQLProtocol["Service"]["url"]
+  readonly url: string
+} | undefined
+
+/**
+ * Carries a {@link ResolvedUrl} from a resolver batch to the transport. The
+ * client clears it while middleware run, so calls they make resolve their
+ * own URL.
+ *
+ * @internal
+ */
+export const ResolvedUrl = Context.Reference<ResolvedUrl>("effect/graphql/ResolvedUrl", {
+  defaultValue: () => undefined
+})
+
+/**
  * JSON with object keys sorted, so equal JSON values give equal strings.
  *
  * @internal
@@ -219,15 +242,15 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
 }
 
 /**
- * Each real client method's runner for batches: its middleware and protocol,
- * sending as POST. Mock and custom methods have none.
+ * Client batch runners (middleware and protocol, using POST) and URLs for
+ * resolver grouping. Mock and custom methods are not registered.
  *
  * @internal
  */
-export const rawExecutors = new WeakMap<
-  object,
-  (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
->()
+export const rawExecutors = new WeakMap<object, {
+  readonly execute: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
+  readonly url: GraphQLProtocol["Service"]["url"]
+}>()
 
 /**
  * Splits a batched response, removing prefixes from root keys and error paths.

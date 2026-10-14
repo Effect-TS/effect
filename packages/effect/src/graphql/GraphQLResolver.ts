@@ -9,12 +9,15 @@
  * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
+ * Lookups with different protocol URLs are batched separately. See
+ * `GraphQLProtocol.layerHttp` for middleware and caching constraints.
+ *
  * @stability experimental
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
-import type * as Context from "../Context.ts"
+import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { dual } from "../Function.ts"
@@ -246,6 +249,7 @@ export const ordered = <
   const path = options.path as ReadonlyArray<string>
   const codec = internalGraphQL.makeCodec(method.operation)
   return makeResolver(
+    method,
     options.batchKey,
     (entries) =>
       Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
@@ -379,6 +383,7 @@ export const findById = <
   const path = options.path as ReadonlyArray<string>
   const codec = internalGraphQL.makeCodec(method.operation)
   return makeResolver(
+    method,
     options.batchKey,
     (entries) =>
       Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
@@ -522,7 +527,7 @@ export const aliased = <Op extends GraphQL.Any>(
   }
   const codec = internalGraphQL.makeCodec(operation)
   // The registered hook uses this operation's middleware errors and services.
-  const execute = internalGraphQL.rawExecutors.get(method) as
+  const execute = internalGraphQL.rawExecutors.get(method)?.execute as
     | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
     | undefined
   // Generic conditional parameters prevent calling the strict overload directly.
@@ -530,7 +535,7 @@ export const aliased = <Op extends GraphQL.Any>(
     variables: GraphQL.Variables<Op>
   ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
 
-  return makeResolver<AliasedRequest<Op>>(options?.batchKey, (entries) =>
+  return makeResolver<AliasedRequest<Op>>(method, options?.batchKey, (entries) =>
     Effect.flatMap(
       Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
       (encoded) => {
@@ -581,7 +586,7 @@ export const aliased = <Op extends GraphQL.Any>(
           })
         )
       }
-    ).pipe(Effect.provideContext(entries[0].context))).pipe(RequestResolver.batchN(10))
+    )).pipe(RequestResolver.batchN(10))
 }
 
 type AliasedRequest<Op extends GraphQL.Any> = KeyRequest<
@@ -604,20 +609,46 @@ interface Slice<Op extends GraphQL.Any> {
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Without `batchKey`, all entries share one batch. With it, each batch holds
- * entries with equal keys, so the first entry's context stands for the batch.
+ * Resolves each entry's URL in its own context, then splits the entries by URL
+ * and `batchKey`. Each batch runs in its first entry's context, carrying the
+ * URL it was grouped by, so the transport doesn't resolve it again.
  */
 const makeResolver = <A extends Request.Any>(
+  method: OperationMethod<any>,
   batchKey: ((context: Context.Context<any>) => unknown) | undefined,
-  runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
-): RequestResolver.RequestResolver<A> =>
-  batchKey === undefined
-    ? RequestResolver.make(runAll)
-    : RequestResolver.makeGrouped({ key: (entry) => batchKey(entry.context), resolver: runAll })
+  runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>, any>
+): RequestResolver.RequestResolver<A> => {
+  const resolve = internalGraphQL.rawExecutors.get(method)?.url
+  const operation = { kind: method.operation.kind, operationName: method.operation.name }
+  const urlOf = (entry: Request.Entry<A>) =>
+    resolve === undefined ? Effect.succeed(undefined) : Effect.provideContext(resolve(operation), entry.context)
+  return RequestResolver.make((entries) =>
+    Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
+      // Arrays are compared structurally, so equal keys share a batch.
+      const batches = MutableHashMap.empty<
+        readonly [string | undefined, unknown],
+        Arr.NonEmptyArray<Request.Entry<A>>
+      >()
+      entries.forEach((entry, i) => {
+        const key = [urls[i], batchKey?.(entry.context)] as const
+        const batch = MutableHashMap.get(batches, key)
+        if (batch._tag === "Some") batch.value.push(entry)
+        else MutableHashMap.set(batches, key, [entry])
+      })
+      return Effect.forEach(batches, ([[url], entries]) => {
+        const context: Context.Context<any> = entries[0].context
+        return Effect.provideContext(
+          runAll(entries),
+          url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
+        )
+      }, { concurrency: "unbounded", discard: true })
+    })
+  )
+}
 
 /**
- * Calls the method in the first entry's context with deduplicated keys.
- * Each target completes all entries sharing its key.
+ * Calls the method with deduplicated keys. Each target completes all entries
+ * sharing its key.
  */
 const callBatch = <Op extends GraphQL.Any, K>(
   method: OperationMethod<Op>,
@@ -649,10 +680,7 @@ const callBatch = <Op extends GraphQL.Any, K>(
     variables: GraphQL.Variables<Op>,
     options: { readonly partial: true }
   ) => Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, GraphQL.Services<Op>>
-  return call(variables(keys), { partial: true }).pipe(
-    Effect.map((result) => ({ keys, targets, result })),
-    Effect.provideContext(entries[0].context)
-  )
+  return Effect.map(call(variables(keys), { partial: true }), (result) => ({ keys, targets, result }))
 }
 
 // Fails the batch with the response's errors and transport metadata.

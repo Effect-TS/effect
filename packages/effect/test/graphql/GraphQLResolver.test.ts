@@ -301,6 +301,111 @@ describe("GraphQLResolver", () => {
       }))
   })
 
+  describe("url", () => {
+    const GitHubHost = Context.Reference<string>("test/GitHubHost", { defaultValue: () => "api.github.com" })
+
+    /** Looks up R_1 and R_3 on the default host and R_2 on another, returning what each request sent. */
+    const lookUpOnTwoHosts = (url: Parameters<typeof GraphQLProtocol.layerHttp>[0]["url"]) =>
+      Effect.gen(function*() {
+        const sent: Array<string> = []
+        const layer = GraphQLProtocol.layerHttp({ url }).pipe(
+          Layer.provide(httpClientLayer((_, bodyText, url) => {
+            const { ids } = JSON.parse(bodyText!).variables as { ids: Array<string> }
+            sent.push(`${url.host}: ${[...ids].sort()}`)
+            return graphqlResponse({ data: { nodes: ids.map(repo) } })
+          }))
+        )
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(layer))
+        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }))
+
+        const results = yield* Effect.all([
+          get("R_1"),
+          Effect.provideService(get("R_2"), GitHubHost, "api.acme.ghe.com"),
+          get("R_3")
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3")])
+        return sent.sort()
+      })
+
+    const urls = [
+      [
+        "function",
+        ({ context }: { readonly context: Context.Context<never> }) =>
+          `http://${Context.get(context, GitHubHost)}/graphql`
+      ],
+      [
+        "Effect resolved asynchronously",
+        Effect.gen(function*() {
+          yield* Effect.promise(() => Promise.resolve())
+          return `http://${yield* GitHubHost}/graphql`
+        })
+      ]
+    ] as const
+
+    for (const [form, url] of urls) {
+      it.effect(`${form}: lookups whose URLs differ go in separate batches; lookups with the same URL share one`, () =>
+        Effect.gen(function*() {
+          const sent = yield* lookUpOnTwoHosts(url)
+          assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2", "api.github.com: R_1,R_3"])
+        }))
+    }
+
+    it.effect("a batch is sent to the URL its lookups resolved to, without evaluating the URL again", () =>
+      Effect.gen(function*() {
+        let evaluations = 0
+        const sent = yield* lookUpOnTwoHosts(Effect.gen(function*() {
+          evaluations++
+          return `http://${yield* GitHubHost}/graphql`
+        }))
+        assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_2", "api.github.com: R_1,R_3"])
+        // Once per lookup, and not again when each batch is sent.
+        assert.strictEqual(evaluations, 3)
+      }))
+
+    it.effect("a direct call made while a batch is sent resolves its own URL", () =>
+      Effect.gen(function*() {
+        class Nested extends GraphQLMiddleware.Service<Nested>()("test/Nested") {}
+        const sent: Array<string> = []
+        const layer = GraphQLProtocol.layerHttp({
+          url: Effect.map(Effect.service(GitHubHost), (host) => `http://${host}/graphql`)
+        }).pipe(
+          Layer.provide(httpClientLayer((_, bodyText, url) => {
+            const { ids } = JSON.parse(bodyText!).variables as { ids: Array<string> }
+            sent.push(`${url.host}: ${ids}`)
+            return graphqlResponse({ data: { nodes: ids.map(repo) } })
+          }))
+        )
+        // Both clients share one transport. The batched client's middleware
+        // calls the same operation directly on another host.
+        const batched = yield* Effect.gen(function*() {
+          const direct = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes))
+          return yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(Nested)).pipe(
+            Effect.provideService(Nested, {
+              execute: ({ next, request }) =>
+                Effect.andThen(
+                  Effect.orDie(
+                    direct.RepoNodes({ ids: ["R_9"] }, { context: Context.make(GitHubHost, "api.acme.ghe.com") })
+                  ),
+                  next(request)
+                ),
+              subscribe: ({ next, request }) => next(request)
+            })
+          )
+        }).pipe(Effect.provide(layer))
+        const get = GraphQLResolver.request(GraphQLResolver.ordered(batched.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }))
+
+        assert.deepStrictEqual(yield* get("R_1"), repo("R_1"))
+        assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_9", "api.github.com: R_1"])
+      }))
+  })
+
   describe("aliased", () => {
     it.effect("concurrent lookups make one POST whose document repeats the operation under aliases", () =>
       Effect.gen(function*() {

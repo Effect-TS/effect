@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Layer, Schema } from "effect"
+import { Context, Duration, Effect, Layer, Schema, Stream } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLProtocol } from "effect/graphql"
 import * as Headers from "effect/http/Headers"
 import * as HttpClient from "effect/http/HttpClient"
@@ -8,6 +8,7 @@ import {
   expectReason,
   graphqlResponse,
   httpClientLayer,
+  IssueUpdated,
   layerHttp,
   RepoIssues,
   Viewer,
@@ -20,6 +21,8 @@ const AddStar = GraphQL.mutation("AddStar", {
   document: "mutation AddStar{addStar{ok}}",
   result: Schema.Struct({ addStar: Schema.Struct({ ok: Schema.Boolean }) })
 })
+
+const GitHubHost = Context.Reference<string>("test/GitHubHost", { defaultValue: () => "api.github.com" })
 
 /** Every value of every URL param, so a duplicated or missing param shows. */
 const urlParams = (url: URL) =>
@@ -87,6 +90,77 @@ describe("GraphQLProtocol.layerHttp", () => {
       })
       assert.strictEqual(mutation.method, "POST")
       assert.strictEqual(JSON.parse(mutation.bodyText!).operationName, "AddStar")
+    }))
+
+  it.effect("a url function routes queries, mutations and graphql-sse subscriptions by context and operation", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const layer = GraphQLProtocol.layerHttp({
+        url: ({ context, kind, operationName }) =>
+          `http://${Context.get(context, GitHubHost)}/graphql?route=${kind}.${operationName}`,
+        queryMethod: "GET"
+      }).pipe(
+        Layer.provide(httpClientLayer((request, _, url) => {
+          seen.push(`${request.method} ${url.host} ${urlParams(url).route}`)
+          return request.headers["accept"] === "text/event-stream"
+            ? new Response("event: complete\ndata:\n\n", { headers: { "content-type": "text/event-stream" } })
+            : graphqlResponse(request.method === "GET" ? viewerData : { data: { addStar: { ok: true } } })
+        }))
+      )
+      const client = yield* GraphQLClient.make(GraphQLGroup.make(Viewer, AddStar, IssueUpdated)).pipe(
+        Effect.provide(layer)
+      )
+
+      yield* client.Viewer()
+      yield* client.Viewer().pipe(Effect.provideService(GitHubHost, "api.acme.ghe.com"))
+      yield* client.AddStar(undefined, { context: Context.make(GitHubHost, "ghes.example.com") })
+      yield* client.IssueUpdated({ id: "I_1" }).pipe(
+        Stream.runDrain,
+        Effect.provideService(GitHubHost, "api.acme.ghe.com")
+      )
+
+      assert.deepStrictEqual(seen, [
+        "GET api.github.com query.Viewer",
+        "GET api.acme.ghe.com query.Viewer",
+        "POST ghes.example.com mutation.AddStar",
+        "POST api.acme.ghe.com subscription.IssueUpdated"
+      ])
+    }))
+
+  it.effect("an Effect url is resolved asynchronously in the context of each query, mutation and subscription", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const layer = GraphQLProtocol.layerHttp({
+        url: Effect.gen(function*() {
+          yield* Effect.promise(() => Promise.resolve())
+          return `http://${yield* GitHubHost}/graphql`
+        })
+      }).pipe(
+        Layer.provide(httpClientLayer((request, bodyText, url) => {
+          seen.push(`${url.host} ${JSON.parse(bodyText!).operationName}`)
+          return request.headers["accept"] === "text/event-stream"
+            ? new Response("event: complete\ndata:\n\n", { headers: { "content-type": "text/event-stream" } })
+            : graphqlResponse({ data: { viewer: { login: "tim" }, addStar: { ok: true } } })
+        }))
+      )
+      const client = yield* GraphQLClient.make(GraphQLGroup.make(Viewer, AddStar, IssueUpdated)).pipe(
+        Effect.provide(layer)
+      )
+
+      yield* client.Viewer()
+      yield* client.Viewer().pipe(Effect.provideService(GitHubHost, "api.acme.ghe.com"))
+      yield* client.AddStar(undefined, { context: Context.make(GitHubHost, "ghes.example.com") })
+      yield* client.IssueUpdated({ id: "I_1" }).pipe(
+        Stream.runDrain,
+        Effect.provideService(GitHubHost, "api.acme.ghe.com")
+      )
+
+      assert.deepStrictEqual(seen, [
+        "api.github.com Viewer",
+        "api.acme.ghe.com Viewer",
+        "ghes.example.com AddStar",
+        "api.acme.ghe.com IssueUpdated"
+      ])
     }))
 
   it.effect("accepts an application/json body with GraphQL keys, matching the media type case-insensitively", () =>
