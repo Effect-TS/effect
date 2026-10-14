@@ -4,8 +4,35 @@ import * as Reactivity from "effect/reactivity/Reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
 import type { Connection } from "effect/sql/SqlConnection"
 import * as Statement from "effect/sql/Statement"
+import * as Str from "effect/String"
 
 describe("Statement", () => {
+  it("transforms SQL result names without changing nested values", () => {
+    const rows: Array<Record<string, unknown>> = [
+      { user_id: 1, profile_data: { display_name: "Ada" }, tags: [{ tag_name: "admin" }] }
+    ]
+    assert.deepStrictEqual(Statement.defaultTransforms(Str.snakeToCamel).array(rows), [
+      { userId: 1, profileData: { displayName: "Ada" }, tags: [{ tagName: "admin" }] }
+    ])
+    assert.deepStrictEqual(Statement.defaultTransforms(Str.snakeToCamel, false).array(rows), [
+      { userId: 1, profileData: { display_name: "Ada" }, tags: [{ tag_name: "admin" }] }
+    ])
+  })
+
+  it("keeps previously distinct SQL column names distinct", () => {
+    const rows: Array<Record<string, unknown>> = [
+      { _id: 1, id: 2, foo__bar: 3, foo_bar: 4, _: 5, ___: 6 }
+    ]
+    assert.deepStrictEqual(
+      Statement.defaultTransforms(Str.snakeToCamel).array(rows),
+      [{ _id: 1, id: 2, foo_bar: 3, fooBar: 4, _: 5, __: 6 }]
+    )
+    assert.deepStrictEqual(
+      Statement.defaultTransforms(Str.snakeToPascal).array(rows),
+      [{ _id: 1, Id: 2, Foo_bar: 3, FooBar: 4, _: 5, __: 6 }]
+    )
+  })
+
   it("defaultTransforms ignores inherited properties", () => {
     const row = Object.create({ inherited: 1 })
     row.own = 2

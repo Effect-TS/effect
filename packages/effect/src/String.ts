@@ -1079,6 +1079,12 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 /**
  * Converts a snake_case string to camelCase.
  *
+ * **Details**
+ *
+ * Keeps the first character, then replaces each later underscore and the
+ * character after it with that character uppercased. A trailing underscore is
+ * dropped. Input made only of an even number of underscores returns `""`.
+ *
  * **Example** (Converting snake_case to camelCase)
  *
  * ```ts import.meta.vitest
@@ -1093,16 +1099,22 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @since 2.0.0
  */
 export const snakeToCamel = (self: string): string => {
-  if (self.length === 0) return self
+  if (self.length === 0 || (self.length % 2 === 0 && self[0] === "_" && /^_+$/.test(self))) return ""
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+    str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
   }
   return str
 }
 
 /**
  * Converts a snake_case string to PascalCase.
+ *
+ * **Details**
+ *
+ * Uppercases the first character, then replaces each later underscore and the
+ * character after it with that character uppercased. A trailing underscore is
+ * dropped. Input made only of an even number of underscores returns `""`.
  *
  * **Example** (Converting snake_case to PascalCase)
  *
@@ -1118,10 +1130,10 @@ export const snakeToCamel = (self: string): string => {
  * @since 2.0.0
  */
 export const snakeToPascal = (self: string): string => {
-  if (self.length === 0) return self
+  if (self.length === 0 || (self.length % 2 === 0 && self[0] === "_" && /^_+$/.test(self))) return ""
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+    str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
   }
   return str
 }
@@ -1334,6 +1346,7 @@ const normalizeCase = (
   while (result.charAt(end - 1) === "\0") {
     end--
   }
+  if (start >= end) return ""
 
   // Transform each token independently.
   return result.slice(start, end).split("\0").map(transform).join(delimiter)

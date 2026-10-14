@@ -598,6 +598,11 @@ describe("String", () => {
     it("handles an empty string", () => {
       strictEqual(S.snakeToCamel(""), "")
     })
+
+    it("handles trailing and separator-only inputs", () => {
+      strictEqual(S.snakeToCamel("foo_"), "foo")
+      strictEqual(S.snakeToCamel("__"), "")
+    })
   })
 
   describe("snakeToPascal", () => {
@@ -608,6 +613,11 @@ describe("String", () => {
 
     it("handles an empty string", () => {
       strictEqual(S.snakeToPascal(""), "")
+    })
+
+    it("handles trailing and separator-only inputs", () => {
+      strictEqual(S.snakeToPascal("foo_"), "Foo")
+      strictEqual(S.snakeToPascal("__"), "")
     })
   })
 
@@ -673,6 +683,17 @@ describe("String", () => {
     it("splits digit-letter boundaries", () => {
       strictEqual(S.noCase("field2value"), "field 2 value")
       strictEqual(S.noCase("field2Value"), "field 2 value")
+    })
+
+    it("does not transform a word for inputs without words", () => {
+      const parts: Array<string> = []
+      const transform = (part: string) => {
+        parts.push(part)
+        return part
+      }
+      strictEqual(S.noCase("", { transform }), "")
+      strictEqual(S.noCase("---", { transform }), "")
+      deepStrictEqual(parts, [])
     })
   })
 
