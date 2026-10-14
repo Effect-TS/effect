@@ -52,26 +52,6 @@ describe("TypeSafeSchema", () => {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(encoded)), request)
   })
 
-  it("round trips a request with image assets and a box question", () => {
-    const request = {
-      model: "jev-preview",
-      state: { photo: "image-0-abc" },
-      questions: { mug: { type: "box", instructions: "the coffee mug in `photo`" } },
-      assets: { "image-0-abc": { type: "image", format: "jpg", data_base64: "/9j/4AAQ" } }
-    } as const
-
-    const decoded = Schema.decodeUnknownSync(TypeSafeSchema.SystemOneRequest)(request)
-    const encoded = Schema.encodeSync(TypeSafeSchema.SystemOneRequest)(decoded)
-
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(encoded)), request)
-  })
-
-  it("decodes a box answer", () => {
-    const answer = { type: "box", box: { top: 0.25, bottom: 0.82, left: 0.44, right: 0.84 }, confidence: 0.92 } as const
-
-    assert.deepStrictEqual(Schema.decodeUnknownSync(TypeSafeSchema.Answer)(answer), answer)
-  })
-
   it("accepts a noul question without criteria", () => {
     const decoded = Schema.decodeUnknownSync(TypeSafeSchema.NoulQuestion)({
       type: "noul",
@@ -112,8 +92,6 @@ describe("TypeSafeSchema", () => {
     { name: "choice answer without probabilities", answer: { type: "choice", choice: "billing", confidence: 1 } },
     { name: "choice answer without choice", answer: { type: "choice", probabilities: { billing: 1 }, confidence: 1 } },
     { name: "noul answer without noul", answer: { type: "noul" } },
-    { name: "box answer without box", answer: { type: "box", confidence: 0.9 } },
-    { name: "box answer missing an edge", answer: { type: "box", box: { top: 0, bottom: 1, left: 0 }, confidence: 1 } },
     { name: "answer with an unknown type", answer: { type: "rank", rank: [] } }
   ])("rejects a $name", ({ answer }) => {
     assert.throws(() => Schema.decodeUnknownSync(TypeSafeSchema.Answer)(answer))

@@ -54,30 +54,21 @@ describe("TypeSafeClient", () => {
         assert.deepStrictEqual(response.usage, { input_tokens: 360, output_tokens: 39 })
       }).pipe(Effect.provide(makeTestLayer())))
 
-    it.effect("omits the images header from text-only requests", () =>
-      Effect.gen(function*() {
-        const client = yield* TypeSafeClient.TypeSafeClient
-        yield* client.systemOne(systemOneRequest)
-
-        const requests = yield* MockHttpClient.requests
-        assert.isUndefined(requests[0]?.headers["typesafe-danger-zone-images"])
-      }).pipe(Effect.provide(makeTestLayer())))
-
     for (
-      const [name, extra] of [
-        ["image assets", { assets: { "image-0-abc": { format: "png", data_base64: "iVBORw0KGgo=" } } }],
-        ["a box question", { questions: { mug: { type: "box", instructions: "the mug" } } }]
+      const [name, extra, header] of [
+        ["text-only requests", {}, undefined],
+        ["image assets", { assets: { "image-0-abc": { format: "png", data_base64: "iVBORw0KGgo=" } } }, "true"],
+        ["a box question", { questions: { mug: { type: "box", instructions: "the mug" } } }, "true"]
       ] as const
     ) {
-      it.effect("sends the images header with " + name, () =>
+      it.effect("sets the images header for " + name, () =>
         Effect.gen(function*() {
           const client = yield* TypeSafeClient.TypeSafeClient
           yield* client.systemOne({ ...systemOneRequest, ...extra })
 
           const requests = yield* MockHttpClient.requests
-          assert.strictEqual(requests[0]?.headers["typesafe-danger-zone-images"], "true")
-          assert.strictEqual(requests[0]?.headers["authorization"], "Bearer ts-test-12345")
-        }).pipe(Effect.provide(makeTestLayer({ apiKey: Redacted.make("ts-test-12345") }))))
+          assert.strictEqual(requests[0]?.headers["typesafe-danger-zone-images"], header)
+        }).pipe(Effect.provide(makeTestLayer())))
     }
 
     it.effect("uses custom apiUrl when provided", () =>

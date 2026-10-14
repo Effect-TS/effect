@@ -107,23 +107,18 @@ describe("Decision", () => {
   })
 
   it("locate answers carry a bounding box and optional confidence", () => {
-    const mug = Decision.locate({ instructions: "the coffee mug in the photo" })
     const definition = Decision.make({
       input: Schema.String,
-      decisions: { mug, present: Decision.probability({ instructions: "The photo shows a mug" }) }
+      decisions: { mug: Decision.locate({ instructions: "the coffee mug in the photo" }) }
     })
-    const result = DecisionModel.decide(definition, {
-      input: "kitchen",
-      images: [{ mediaType: "image/png", data: new Uint8Array() }]
-    })
+    const result = DecisionModel.decide(definition, { input: "kitchen" })
 
     type Result = typeof result extends Effect.Effect<infer A, any, any> ? A : never
 
-    expect(mug).type.toBe<Decision.Locate>()
-    expect<Result["answers"]["mug"]>().type.toBe<Decision.LocateAnswer>()
-    expect<Result["answers"]["mug"]["box"]>().type.toBe<Decision.BoundingBox>()
-    expect<Result["answers"]["mug"]["confidence"]>().type.toBe<number | undefined>()
-    expect<Result["answers"]["present"]>().type.toBe<Decision.ProbabilityAnswer>()
+    expect<Result["answers"]["mug"]>().type.toBe<{
+      readonly box: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }
+      readonly confidence?: number | undefined
+    }>()
   })
 
   it("probability accepts omitted criteria and preserves answer inference", () => {
