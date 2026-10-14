@@ -94,6 +94,43 @@ describe.concurrent("Sharding", () => {
       expect(driver.unprocessed.size).toEqual(0)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.scoped("persists a discard send before acquiring the shard lock", () =>
+    Effect.gen(function*() {
+      const memory = yield* RunnerStorage.makeMemory
+      const acquiring = yield* Deferred.make<void>()
+      const ctx = yield* Layer.build(
+        TestEntityNoState.pipe(
+          Layer.provideMerge(Sharding.layer),
+          Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, {
+            ...memory,
+            acquire: () => Deferred.succeed(acquiring, void 0).pipe(Effect.as([]))
+          })),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(TestEntityState.Default),
+          Layer.provide(Runners.layerNoop),
+          Layer.provideMerge(MessageStorage.layerMemory),
+          Layer.provide(ShardingConfig.layer({ shardsPerGroup: 1, sendRetryInterval: 10 }))
+        )
+      )
+      yield* Deferred.await(acquiring)
+      const sharding = Context.get(ctx, Sharding.Sharding)
+      const entityId = EntityId.make("1")
+      const shardId = sharding.getShardId(entityId, "default")
+      assert.isFalse(sharding.hasShardId(shardId))
+
+      const client = (yield* TestEntity.client.pipe(Effect.provide(ctx)))(entityId)
+      const send = yield* client.RequestWithKey({ key: "abc" }, { discard: true }).pipe(Effect.fork)
+      yield* TestClock.adjust(100)
+      const sendExit = yield* Fiber.poll(send)
+      assert.isTrue(Option.isSome(sendExit) && Exit.isSuccess(sendExit.value))
+      const persisted = yield* Context.get(ctx, MessageStorage.MessageStorage).requestIdForPrimaryKey({
+        address: EntityAddress.make({ shardId, entityType: EntityType.EntityType.make(TestEntity.type), entityId }),
+        tag: "RequestWithKey",
+        id: "abc"
+      })
+      assert.isTrue(Option.isSome(persisted))
+    }))
+
   it.scoped("interrupts", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
