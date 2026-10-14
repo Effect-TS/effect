@@ -100,7 +100,7 @@ describe("OpenAiLanguageModel", () => {
   }
 
   describe("generateText", () => {
-    it.effect("sends model in request and decodes text output", () =>
+    it.effect("serializes text-only user messages and decodes text output", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
 
@@ -126,7 +126,15 @@ describe("OpenAiLanguageModel", () => {
           ))
         )
 
-        const result = yield* LanguageModel.generateText({ prompt: "hello" }).pipe(
+        const result = yield* LanguageModel.generateText({
+          prompt: Prompt.make([
+            { role: "user", content: [Prompt.textPart({ text: "hello" })] },
+            { role: "user", content: [Prompt.textPart({ text: "" })] },
+            { role: "user", content: [Prompt.textPart({ text: "  Hello, 世界!\nGoodbye.  " })] },
+            { role: "user", content: [Prompt.textPart({ text: "first" }), Prompt.textPart({ text: "second" })] },
+            { role: "user", content: [] }
+          ])
+        }).pipe(
           Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
           Effect.provide(layer)
         )
@@ -139,7 +147,13 @@ describe("OpenAiLanguageModel", () => {
 
         const requestBody = yield* getRequestBody(capturedRequest)
         assert.strictEqual(requestBody.model, "gpt-4o-mini")
-        assert.strictEqual(requestBody.messages[0]?.content, "hello")
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "hello" },
+          { role: "user", content: "" },
+          { role: "user", content: "  Hello, 世界!\nGoodbye.  " },
+          { role: "user", content: "first\nsecond" },
+          { role: "user", content: "" }
+        ])
       }))
 
     it.effect("routes invalid tool call params through failureMode: return without failing the effect", () =>
