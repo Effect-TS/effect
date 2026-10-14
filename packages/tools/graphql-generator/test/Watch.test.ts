@@ -162,6 +162,84 @@ const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched
 
 describe("graphqlgen --watch", () => {
   it.effect(
+    "removing a subtree during nested discovery does not block initial generation",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const path = yield* Path.Path
+        const p = yield* project({ "src/a.graphql": query("A", "id") })
+        const parent = p.file("src/c")
+        const nested = p.file("src/c/d")
+        yield* fs.makeDirectory(parent)
+        const scanningParent = yield* Deferred.make<void>()
+        const releaseParent = yield* Deferred.make<void>()
+        const scanningNested = yield* Deferred.make<void>()
+        const initialScanFoundNested = yield* Deferred.make<void>()
+        const discoveryCancelled = yield* Deferred.make<void>()
+        const holdNested = yield* Deferred.make<void>()
+        const rootEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        const parentEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        let nestedStats = 0
+        const gatedFs: FileSystem.FileSystem = {
+          ...fs,
+          watch: (directory, options) =>
+            Stream.unwrap(Effect.gen(function*() {
+              const events = directory === parent ? parentEvents : rootEvents
+              const subscription = yield* PubSub.subscribe(events)
+              options?.onReady?.()
+              return Stream.fromSubscription(subscription)
+            })),
+          readDirectory: (directory, options) =>
+            Effect.gen(function*() {
+              if (directory === parent) {
+                yield* Deferred.succeed(scanningParent, undefined)
+                yield* Deferred.await(releaseParent)
+              } else if (directory === nested) {
+                yield* Deferred.succeed(scanningNested, undefined)
+                yield* Deferred.await(holdNested).pipe(
+                  Effect.ensuring(Deferred.succeed(discoveryCancelled, undefined))
+                )
+              }
+              return yield* fs.readDirectory(directory, options)
+            }),
+          stat: (file) =>
+            fs.stat(file).pipe(Effect.tap(() => {
+              // The create handler stats D first; the initial scan discovers it second.
+              if (file === nested && ++nestedStats === 2) {
+                return Deferred.succeed(initialScanFoundNested, undefined)
+              }
+              return Effect.void
+            }))
+        }
+        const fiber = yield* Watch.run({
+          configPath: p.configPath,
+          watch: Watch.fileSystemWatch(gatedFs, path)
+        }).pipe(Effect.forkScoped)
+
+        // C owns discovery of D while the initial tree scan is still visiting C.
+        yield* Deferred.await(scanningParent)
+        yield* fs.makeDirectory(nested)
+        yield* PubSub.publish(parentEvents, { _tag: "Create", path: "d" } as FileSystem.WatchEvent)
+        yield* Deferred.await(scanningNested)
+        yield* Deferred.succeed(releaseParent, undefined)
+        yield* Deferred.await(initialScanFoundNested)
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(cycles(yield* output), [], "generation ran before subtree discovery completed")
+
+        // The root stays alive, but removing C cancels the owner of D's discovery.
+        yield* fs.remove(parent, { recursive: true })
+        yield* PubSub.publish(rootEvents, { _tag: "Remove", path: "c" } as FileSystem.WatchEvent)
+        yield* Deferred.await(discoveryCancelled)
+        yield* waitFor(
+          fiber,
+          "initial generation after nested discovery was cancelled",
+          (out) => cycles(out).length > 0 && existsSync(p.file("src/a.graphql.ts"))
+        )
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    15_000
+  )
+
+  it.effect(
     "a document replaced during the installation gap is regenerated without another edit",
     () =>
       Effect.gen(function*() {
