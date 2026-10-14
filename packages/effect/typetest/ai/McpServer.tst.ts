@@ -180,6 +180,42 @@ describe("McpServer", () => {
     expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
   })
 
+  describe("resource templates", () => {
+    class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+
+    it("should require services used by one-argument completion handlers in both APIs", () => {
+      const registered = McpServer.registerResource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+      const layer = McpServer.resource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
+
+    it("should require services used by two-argument completion handlers in both APIs", () => {
+      const registered = McpServer.registerResource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input, _context) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+      const layer = McpServer.resource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input, _context) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
+  })
+
   describe("prompts", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     const name = () => Effect.map(Lookup, (lookup) => lookup.values)
