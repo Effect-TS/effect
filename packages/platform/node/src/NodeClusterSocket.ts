@@ -153,9 +153,21 @@ export const layerDispatcherK8s: Layer.Layer<NodeHttpClient.Dispatcher> = Layer.
     const caCertOption = yield* fs.readFileString("/var/run/secrets/kubernetes.io/serviceaccount/ca.crt").pipe(
       Effect.option
     )
-    return yield* NodeHttpClient.makeDispatcherOptions(
-      caCertOption._tag === "Some" ? { connect: { ca: caCertOption.value } } : undefined
-    )
+    if (caCertOption._tag === "Some") {
+      const Undici = yield* Effect.promise(() => import("./Undici.ts"))
+      return yield* Effect.acquireRelease(
+        Effect.sync(() =>
+          new Undici.Agent({
+            connect: {
+              ca: caCertOption.value
+            }
+          })
+        ),
+        (agent) => Effect.promise(() => agent.destroy())
+      )
+    }
+
+    return yield* NodeHttpClient.makeDispatcher
   })
 ).pipe(
   Layer.provide(NodeFileSystem.layer)
