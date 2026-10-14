@@ -2277,12 +2277,6 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
 /**
  * Registers an MCP resource or resource template from an Effect program.
  *
- * **When to use**
- *
- * Use when you are already inside an Effect program with an `McpServer`
- * service and need to add a concrete resource or URI-template resource
- * directly.
- *
  * @see {@link resource} for the layer-based resource registration wrapper
  *
  * @stability unstable
@@ -2457,10 +2451,6 @@ export const registerResource: {
 /**
  * Creates a layer that registers an MCP resource or resource template.
  *
- * **When to use**
- *
- * Use to compose resource registration into an MCP server layer.
- *
  * @see {@link registerResource} for the Effect-level resource registration API
  *
  * @stability unstable
@@ -2501,6 +2491,8 @@ export const resource: {
     never,
     never,
     Exclude<
+      | Schemas[number]["DecodingServices"]
+      | Schemas[number]["EncodingServices"]
       | R
       | CompletionServices<Completions>,
       McpRequestContext
@@ -2522,16 +2514,10 @@ export const resource: {
 /**
  * Registers an MCP prompt from an Effect program.
  *
- * **When to use**
- *
- * Use when you are already inside an Effect program with an `McpServer`
- * service and need to add a prompt handler directly.
- *
  * **Details**
  *
- * Parameters are decoded with the supplied schema, completion handlers encode
- * per-parameter suggestions, and string prompt content is converted into a user
- * text message.
+ * Decodes parameters and encodes completion suggestions using their schemas.
+ * String content becomes a user text message.
  *
  * @see {@link prompt} for the layer-based prompt registration wrapper
  *
@@ -2566,6 +2552,7 @@ export const registerPrompt = <
   never,
   | Exclude<
     | Schema.Struct.DecodingServices<Params>
+    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
     | R
     | CompletionServices<Completions>,
     McpRequestContext
@@ -2601,7 +2588,13 @@ export const registerPrompt = <
     const registry = yield* McpServer
     const services = omitRequestServices(
       yield* Effect.context<
-        Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext>
+        Exclude<
+          | R
+          | Schema.Struct.DecodingServices<Params>
+          | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
+          | CompletionServices<Completions>,
+          McpRequestContext
+        >
       >()
     )
     const completions: Record<
@@ -2667,16 +2660,6 @@ export const registerPrompt = <
 /**
  * Creates a layer that registers an MCP prompt.
  *
- * **When to use**
- *
- * Use to compose prompt registration into an MCP server layer.
- *
- * **Details**
- *
- * Parameters are decoded with the supplied schema, completion handlers encode
- * per-parameter suggestions, and string prompt content is converted into a user
- * text message.
- *
  * @see {@link registerPrompt} for the Effect-level prompt registration API
  *
  * @stability unstable
@@ -2710,6 +2693,7 @@ export const prompt = <
   never,
   Exclude<
     | Schema.Struct.DecodingServices<Params>
+    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
     | R
     | CompletionServices<Completions>,
     McpRequestContext
