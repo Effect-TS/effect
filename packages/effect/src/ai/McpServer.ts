@@ -2501,6 +2501,8 @@ export const resource: {
     never,
     never,
     Exclude<
+      | Schemas[number]["DecodingServices"]
+      | Schemas[number]["EncodingServices"]
       | R
       | CompletionServices<Completions>,
       McpRequestContext
@@ -2566,6 +2568,7 @@ export const registerPrompt = <
   never,
   | Exclude<
     | Schema.Struct.DecodingServices<Params>
+    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
     | R
     | CompletionServices<Completions>,
     McpRequestContext
@@ -2601,7 +2604,13 @@ export const registerPrompt = <
     const registry = yield* McpServer
     const services = omitRequestServices(
       yield* Effect.context<
-        Exclude<R | Schema.Struct.DecodingServices<Params>, McpRequestContext>
+        Exclude<
+          | R
+          | Schema.Struct.DecodingServices<Params>
+          | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
+          | CompletionServices<Completions>,
+          McpRequestContext
+        >
       >()
     )
     const completions: Record<
@@ -2710,6 +2719,7 @@ export const prompt = <
   never,
   Exclude<
     | Schema.Struct.DecodingServices<Params>
+    | Params[Extract<keyof Completions, keyof Params>]["EncodingServices"]
     | R
     | CompletionServices<Completions>,
     McpRequestContext
