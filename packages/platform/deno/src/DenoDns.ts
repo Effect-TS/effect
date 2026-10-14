@@ -37,20 +37,21 @@ import * as Result from "effect/Result"
  * **Details**
  *
  * `nameServer` replaces the system name server for record queries and reverse
- * lookups; an IP address without a port uses port 53. Address lookups always
- * use the operating system resolver.
+ * lookups and is converted like `Dns.nameServerFromInput`. Address
+ * lookups always use the operating system resolver.
  *
  * **Gotchas**
  *
- * IPv6 name servers with a scope ID, such as link-local addresses, are not
- * supported; creating the service fails with a `NetAddress.NetAddressError`.
+ * Invalid name servers fail with a `NetAddress.NetAddressError` when the
+ * service is created, and so do IPv6 name servers with a scope ID, such as
+ * link-local addresses.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Options {
-  readonly nameServer?: NetAddress.IpAddress | NetAddress.InetAddress | undefined
+  readonly nameServer?: NetAddress.IpAddressInput | NetAddress.InetAddressInput | undefined
 }
 
 const reasons: Record<string, Dns.DnsErrorReason> = {
@@ -149,17 +150,16 @@ const queries: {
  * @since 4.0.0
  */
 export const make = Effect.fnUntraced(function*(options?: Options) {
-  const server = options?.nameServer
+  const input = options?.nameServer
+  const server = input === undefined ? undefined : yield* Effect.fromResult(Dns.nameServerFromInput(input))
   if (server !== undefined && NetAddress.isInetAddressV6(server) && server.scopeId !== 0) {
     return yield* new NetAddress.NetAddressError({
-      input: server,
+      input: input!,
       message: "IPv6 name servers with a scope ID are not supported"
     })
   }
   const nameServer: Deno.ResolveDnsOptions["nameServer"] = server === undefined
     ? undefined
-    : NetAddress.isIpAddress(server)
-    ? { ipAddr: NetAddress.formatIp(server), port: 53 }
     : { ipAddr: NetAddress.formatHost(server), port: server.port }
 
   return Dns.make({

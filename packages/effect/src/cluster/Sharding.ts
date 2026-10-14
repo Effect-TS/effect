@@ -692,6 +692,12 @@ const make = Effect.gen(function*() {
   const storageReadLatch = yield* Latch.make(true)
   const openStorageReadLatch = constant(Effect.asVoid(storageReadLatch.open))
 
+  type PendingNotification = {
+    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
+    readonly message: Message.IncomingRequest<any>
+  }
+  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
+
   const storageReadLock = Semaphore.makeUnsafe(1)
   const withStorageReadLock = storageReadLock.withPermits(1)
 
@@ -725,7 +731,7 @@ const make = Effect.gen(function*() {
   if (storageEnabled && initialRunnerAddress) {
     const selfAddress = initialRunnerAddress
 
-    yield* Effect.gen(function*() {
+    const storageReadLoop = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
@@ -982,8 +988,7 @@ const make = Effect.gen(function*() {
         module: "effect/cluster/Sharding",
         fiber: "Storage read loop",
         runner: selfAddress
-      }),
-      Effect.forkIn(shardingScope)
+      })
     )
 
     // open the storage latch every poll interval
@@ -1110,6 +1115,9 @@ const make = Effect.gen(function*() {
         ),
       Effect.forkIn(shardingScope)
     )
+
+    // fork after the state the loop reads has been initialized
+    yield* Effect.forkIn(storageReadLoop, shardingScope)
   }
 
   // --- Sending messages ---
@@ -1150,11 +1158,6 @@ const make = Effect.gen(function*() {
     return isRequest ? Effect.andThen(awaitShardLock(address.shardId), send) : send
   }
 
-  type PendingNotification = {
-    resume: (_: Effect.Effect<void, EntityNotAssignedToRunner>) => void
-    readonly message: Message.IncomingRequest<any>
-  }
-  const pendingNotifications = new Map<Snowflake.Snowflake, PendingNotification>()
   const notifyLocal = <M extends Message.Outgoing<any> | Message.Incoming<any>>(
     message: M,
     discard: boolean,
@@ -1172,7 +1175,7 @@ const make = Effect.gen(function*() {
       const state = entityManagers.get(address.entityType)
       if (!state) {
         return Effect.flatMap(waitForEntityManager(address.entityType), loop)
-      } else if (state.status === "closed" || !isEntityOnLocalShards(address)) {
+      } else if (state.status === "closed") {
         return Effect.fail(new EntityNotAssignedToRunner({ address }))
       }
 

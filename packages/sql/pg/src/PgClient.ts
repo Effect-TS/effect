@@ -102,6 +102,8 @@ export interface PgClientConfig {
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
 
   readonly connectTimeout?: Duration.Input | undefined
+  /** Idle time before TCP keepalive probes start. See `PgConnection.Config.keepAlive`. */
+  readonly keepAlive?: Duration.Input | undefined
 
   readonly stream?: (() => Duplex) | undefined
 

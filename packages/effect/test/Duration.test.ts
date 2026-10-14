@@ -245,6 +245,7 @@ describe("Duration", () => {
     assertFalse(Equal.equals(Duration.infinity, Duration.negativeInfinity))
 
     assertTrue(HashSet.has(HashSet.make(millisTagged), nanosTagged))
+    assertTrue(Equal.equals(Duration.millis(2 ** 1023), Duration.nanos(1_000_000n << 1023n)))
   })
 
   it("Hash.symbol handles finite millis too large to convert to nanos", () => {
@@ -350,6 +351,18 @@ describe("Duration", () => {
   it("times", () => {
     deepStrictEqual(Duration.times(Duration.seconds(1), 60), Duration.minutes(1))
     deepStrictEqual(Duration.times(Duration.nanos(2n), 10), Duration.nanos(20n))
+    deepStrictEqual(Duration.times(Duration.nanos(3n), 1.5), Duration.nanos(5n))
+    deepStrictEqual(
+      Duration.times(Duration.nanos(5_000_000n), 0.0000003),
+      Duration.times(Duration.millis(5), 0.0000003)
+    )
+    deepStrictEqual(Duration.times(Duration.nanos(3n), -0.5), Duration.nanos(-2n))
+    deepStrictEqual(Duration.times(Duration.nanos(9007199254740993n), 0.5), Duration.nanos(4503599627370497n))
+    deepStrictEqual(Duration.times(Duration.nanos(9007199254740991n), 1.5), Duration.nanos(13510798882111487n))
+    deepStrictEqual(Duration.times(Duration.nanos(3002399751580334n), 1.5), Duration.nanos(4503599627370501n))
+    deepStrictEqual(Duration.times(Duration.nanos(10n ** 400n), 0.5), Duration.nanos(10n ** 400n / 2n))
+    deepStrictEqual(Duration.times(Duration.nanos(1n), Infinity), Duration.infinity)
+    deepStrictEqual(Duration.times(Duration.nanos(1n), NaN), Duration.zero)
     deepStrictEqual(Duration.times(Duration.infinity, 60), Duration.infinity)
   })
 
@@ -552,6 +565,7 @@ describe("Duration", () => {
     strictEqual(Duration.millis(0.0000015).pipe(Duration.toNanosUnsafe), 2n)
     strictEqual(Duration.millis(-0.0000015).pipe(Duration.toNanosUnsafe), -2n)
     strictEqual(Duration.millis(100).pipe(Duration.toNanosUnsafe), 100_000_000n)
+    strictEqual(Duration.millis(2 ** 1023).pipe(Duration.toNanosUnsafe), 1_000_000n << 1023n)
   })
 
   it("toHrTime", () => {

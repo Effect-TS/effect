@@ -406,4 +406,17 @@ describe("Metrics", () => {
         )
       }).pipe(Effect.provideService(Metric.MetricRegistry, new Map()))
   )
+
+  it.effect("histogram buckets above the last custom boundary", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const histogram = Metric.histogram("latency", { boundaries: [10, 50, 100] })
+
+      yield* Metric.update(histogram, 25)
+      yield* Metric.update(histogram, 75)
+      yield* Metric.update(histogram, 500)
+      const value = findMetric(yield* Effect.promise(() => producer.collect()), "latency").dataPoints[0].value
+      assert.deepStrictEqual(value.buckets, { boundaries: [10, 50, 100], counts: [0, 1, 1, 1] })
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 })

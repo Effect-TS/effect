@@ -5,6 +5,100 @@ import { type AiError, LanguageModel, Prompt, Tool, Toolkit } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
 
 describe("OpenAiLanguageModel", () => {
+  for (const mode of ["complete", "stream"] as const) {
+    it.effect(`prepares selected tool codecs once per ${mode} request and normalizes repeated calls`, () =>
+      Effect.gen(function*() {
+        let conversions = 0
+        const Env = Schema.Record(Schema.String, Schema.String).check(
+          Schema.makeFilter<object>(() => true, {
+            representation: { id: "test/compat/toolCodec", payload: null },
+            toJsonSchema: () => {
+              conversions++
+              return { minItems: 1 }
+            }
+          })
+        )
+        const ReadEnv = Tool.make("ReadEnv", { parameters: Schema.Struct({ env: Env }) })
+        const Unselected = Tool.make("Unselected", {
+          parameters: Schema.Struct({ opaque: Schema.declare((input): input is string => typeof input === "string") })
+        })
+        const toolkit = Toolkit.make(ReadEnv, Unselected)
+        const toolkitLayer = toolkit.toLayer({
+          ReadEnv: () => Effect.void,
+          Unselected: () => Effect.void
+        })
+        const calls = ["call_1", "call_2"].map((id) => ({
+          id,
+          type: "function" as const,
+          function: { name: "ReadEnv", arguments: JSON.stringify({ env: [{ 0: "PATH", 1: "/usr/bin" }] }) }
+        }))
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.gen(function*() {
+                const body = yield* getRequestBody(request)
+                assert.deepStrictEqual(body.tools.map((tool: any) => tool.function.name), ["ReadEnv"])
+                assert.strictEqual(body.tools[0].function.parameters.properties.env.type, "array")
+                return mode === "complete"
+                  ? jsonResponse(
+                    request,
+                    makeChatCompletion({
+                      choices: [{
+                        index: 0,
+                        finish_reason: "tool_calls",
+                        message: { role: "assistant", content: null, tool_calls: calls }
+                      }]
+                    })
+                  )
+                  : sseResponse(request, [{
+                    id: "chatcmpl_env",
+                    object: "chat.completion.chunk",
+                    model: "gpt-4o-mini",
+                    created: 1,
+                    choices: [{
+                      index: 0,
+                      delta: { tool_calls: calls.map((call, index) => ({ ...call, index })) },
+                      finish_reason: "tool_calls"
+                    }]
+                  }, "[DONE]"])
+              })
+            )
+          ))
+        )
+        for (let request = 1; request <= 2; request++) {
+          const options = {
+            prompt: "read the environment",
+            toolkit,
+            toolChoice: { oneOf: ["ReadEnv"] as Array<"ReadEnv"> },
+            disableToolCallResolution: true
+          }
+          const calls = yield* (mode === "complete"
+            ? LanguageModel.generateText(options).pipe(
+              Effect.map((result) => result.toolCalls.map((part) => ({ id: part.id, params: part.params })))
+            )
+            : LanguageModel.streamText(options).pipe(
+              Stream.runCollect,
+              Effect.map((parts) =>
+                parts.filter((part) => part.type === "tool-call").map((part) => ({ id: part.id, params: part.params }))
+              )
+            )).pipe(
+              Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+              Effect.provide(toolkitLayer),
+              Effect.provide(layer)
+            )
+          assert.deepStrictEqual(
+            calls,
+            [
+              { id: "call_1", params: { env: { PATH: "/usr/bin" } } },
+              { id: "call_2", params: { env: { PATH: "/usr/bin" } } }
+            ]
+          )
+          assert.strictEqual(conversions, request)
+        }
+      }))
+  }
+
   describe("generateText", () => {
     it.effect("sends model in request and decodes text output", () =>
       Effect.gen(function*() {
@@ -965,6 +1059,168 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(reasoning.text, "I should greet the user.")
         assert.strictEqual(result.text, "Hello!")
       }))
+
+    it.effect("returns invalid and undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeHttpClient((request) =>
+          Effect.succeed(jsonResponse(
+            request,
+            makeChatCompletion({
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                message: {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [
+                    { id: "call_1", type: "function", function: { name: "TestTool", arguments: "{\"input\":42}" } },
+                    { id: "call_2", type: "function", function: { name: "Write", arguments: "{\"path\":\"a\"}" } }
+                  ]
+                }
+              }]
+            })
+          ))
+        )
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(result.toolCalls.map(({ name, params }) => ({ name, params })), [
+          { name: "TestTool", params: { input: 42 } },
+          { name: "Write", params: { path: "a" } }
+        ])
+      }))
+
+    it.effect("replays reasoning alongside assistant text and tool calls", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        const prompt = Prompt.make([
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: [
+              { type: "reasoning", text: "The user wants a.txt; I should read it." },
+              { type: "text", text: "Let me read it." },
+              { type: "tool-call", id: "call_1", name: "TestTool", params: { input: "a.txt" } }
+            ]
+          },
+          {
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+          }
+        ])
+
+        yield* LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("deepseek-reasoner")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const requestBody = yield* getRequestBody(capturedRequest)
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            reasoning_content: "The user wants a.txt; I should read it.",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
+
+    it.effect("replays decoded Groq reasoning under its original field alongside text and tool calls", () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(jsonResponse(
+                request,
+                requests.length > 1 ? makeChatCompletion() : makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      reasoning: "Need the file",
+                      content: "Let me read it.",
+                      tool_calls: [{
+                        id: "call_1",
+                        type: "function",
+                        function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            })
+          ))
+        )
+
+        const generate = (prompt: Prompt.Prompt) =>
+          LanguageModel.generateText({ prompt, toolkit: TestToolkit, disableToolCallResolution: true }).pipe(
+            Effect.provide(OpenAiLanguageModel.model("openai/gpt-oss-120b")),
+            Effect.provide(layer)
+          )
+
+        const prompt = Prompt.make("What is in a.txt?")
+        const first = yield* generate(prompt)
+        yield* generate(Prompt.concat(
+          Prompt.concat(prompt, Prompt.fromResponseParts(first.content)),
+          Prompt.make([{
+            role: "tool",
+            content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+          }])
+        ))
+
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            reasoning: "Need the file",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
   })
 
   describe("generateObject", () => {
@@ -1072,6 +1328,88 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("replays streamed assistant text and tool calls with store enabled", () =>
+      Effect.gen(function*() {
+        const requests: Array<HttpClientRequest.HttpClientRequest> = []
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              requests.push(request)
+              return Effect.succeed(
+                requests.length > 1
+                  ? jsonResponse(request, makeChatCompletion())
+                  : sseResponse(request, [
+                    {
+                      id: "chatcmpl_store_1",
+                      object: "chat.completion.chunk",
+                      model: "gpt-4o-mini",
+                      created: 1,
+                      choices: [{
+                        index: 0,
+                        delta: {
+                          content: "Let me read it.",
+                          tool_calls: [{
+                            index: 0,
+                            id: "call_1",
+                            type: "function",
+                            function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+                          }]
+                        },
+                        finish_reason: "tool_calls"
+                      }]
+                    },
+                    "[DONE]"
+                  ])
+              )
+            })
+          ))
+        )
+
+        const model = OpenAiLanguageModel.model("gpt-4o-mini", { store: true })
+        const prompt = Prompt.make("What is in a.txt?")
+        const parts = yield* LanguageModel.streamText({
+          prompt,
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(model),
+          Effect.provide(layer)
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.concat(
+            Prompt.concat(prompt, Prompt.fromResponseParts(parts)),
+            Prompt.make([{
+              role: "tool",
+              content: [{ type: "tool-result", id: "call_1", name: "TestTool", isFailure: false, result: "hello" }]
+            }])
+          ),
+          toolkit: TestToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(model),
+          Effect.provide(layer)
+        )
+
+        const followUpBody = yield* getRequestBody(requests[1])
+        assert.deepStrictEqual(followUpBody.messages, [
+          { role: "user", content: "What is in a.txt?" },
+          {
+            role: "assistant",
+            content: "Let me read it.",
+            tool_calls: [{
+              id: "call_1",
+              type: "function",
+              function: { name: "TestTool", arguments: JSON.stringify({ input: "a.txt" }) }
+            }]
+          },
+          { role: "tool", tool_call_id: "call_1", content: "hello" }
+        ])
+      }))
+
     it.effect("handles chat completion stream chunks", () =>
       Effect.gen(function*() {
         const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
@@ -1111,6 +1449,51 @@ describe("OpenAiLanguageModel", () => {
         if (finish?.type === "finish") {
           assert.strictEqual(finish.reason, "stop")
         }
+      }))
+
+    it.effect("streams undeclared tool calls when tool call validation is deferred", () =>
+      Effect.gen(function*() {
+        const client = makeHttpClient((request) =>
+          Effect.succeed(sseResponse(request, [
+            {
+              id: "chatcmpl_undeclared",
+              object: "chat.completion.chunk",
+              model: "gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [{
+                    index: 0,
+                    id: "call_1",
+                    type: "function",
+                    function: { name: "Write", arguments: JSON.stringify({ path: "a" }) }
+                  }]
+                },
+                finish_reason: "tool_calls"
+              }]
+            },
+            "[DONE]"
+          ]))
+        )
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "use the tools",
+          toolkit: TestToolkit,
+          disableToolCallResolution: true,
+          toolCallValidation: "deferred"
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") })),
+          Effect.provideService(HttpClient.HttpClient, client)
+        )
+
+        assert.deepStrictEqual(
+          parts.filter((part) => part.type === "tool-call").map(({ name, params }) => ({ name, params })),
+          [{ name: "Write", params: { path: "a" } }]
+        )
       }))
 
     it.effect("emits text when streamed tool_calls is null", () =>
@@ -1233,7 +1616,7 @@ describe("OpenAiLanguageModel", () => {
         }
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
-        assert.deepStrictEqual(toolCall.metadata.openai as unknown, { itemId: "call_1", extraContent })
+        assert.deepStrictEqual(toolCall.metadata["openai-compat"] as unknown, { itemId: "call_1", extraContent })
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
@@ -1349,7 +1732,7 @@ describe("OpenAiLanguageModel", () => {
                 params: { action: localShellAction },
                 providerExecuted: false,
                 options: {
-                  openai: {
+                  "openai-compat": {
                     itemId: "ls_call_1"
                   }
                 }

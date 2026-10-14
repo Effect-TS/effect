@@ -813,9 +813,9 @@ export const addUnsafe = <Services, I, S>(
   const impl = self as ContextImpl<Services>
   const cacheRoot = cacheKeys.has(key) ? undefined : impl.cacheRoot
   if (impl.depth >= MaxDepth) {
-    // Rebase the overlay chain into a flat map, keeping the cacheRoot so a
-    // rebase on an ordinary key does not invalidate fiber caches
-    const map = new Map(impl.mapUnsafe)
+    // Avoid mapUnsafe: it would flatten the parent before copying.
+    const map = new Map(impl._flat ?? impl.base)
+    if (!impl._flat) applyOverlays(map, impl.overlay)
     map.set(key, service)
     return makeImpl(cacheRoot, map, undefined, 0)
   }
@@ -1258,6 +1258,15 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
   ...services: S
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
+  if (services.length <= 1) {
+    const map = new Map<string, unknown>()
+    if (services.length === 1) {
+      const key = services[0].key
+      const value = lookup(self, key)
+      if (value !== notFound) map.set(key, value)
+    }
+    return makeUnsafe(map)
+  }
   const keep = new Set(services.map((key) => key.key))
   return withFlat(self, (map) =>
     map.forEach((_, key) => {

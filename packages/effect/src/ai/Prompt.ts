@@ -2159,11 +2159,11 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     return empty
   }
 
-  const assistantParts: Array<AssistantMessagePart> = []
+  const assistantParts: Array<AssistantMessagePart | undefined> = []
   const toolParts: Array<ToolMessagePart> = []
 
-  const activeTextDeltas = new Map<string, { text: string; options: ProviderOptions }>()
-  const activeReasoningDeltas = new Map<string, { text: string; options: ProviderOptions }>()
+  const activeTextDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
+  const activeReasoningDeltas = new Map<string, { index: number; text: string; options: ProviderOptions }>()
 
   for (const part of parts) {
     switch (part.type) {
@@ -2175,7 +2175,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
       // Text Parts (streaming)
       case "text-start": {
-        activeTextDeltas.set(part.id, { text: "", options: part.metadata })
+        activeTextDeltas.set(part.id, { index: assistantParts.length, text: "", options: part.metadata })
+        assistantParts.push(undefined)
         break
       }
       case "text-delta": {
@@ -2190,7 +2191,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         if (activeTextDeltas.has(part.id)) {
           const active = activeTextDeltas.get(part.id)!
           active.options = mergeOptions(active.options, part.metadata)
-          assistantParts.push(makePart("text", active))
+          assistantParts[active.index] = makePart("text", { text: active.text, options: active.options })
+          activeTextDeltas.delete(part.id)
         }
         break
       }
@@ -2203,7 +2205,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
       // Reasoning Parts (streaming)
       case "reasoning-start": {
-        activeReasoningDeltas.set(part.id, { text: "", options: part.metadata })
+        activeReasoningDeltas.set(part.id, { index: assistantParts.length, text: "", options: part.metadata })
+        assistantParts.push(undefined)
         break
       }
       case "reasoning-delta": {
@@ -2218,7 +2221,8 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
         if (activeReasoningDeltas.has(part.id)) {
           const active = activeReasoningDeltas.get(part.id)!
           active.options = mergeOptions(active.options, part.metadata)
-          assistantParts.push(makePart("reasoning", active))
+          assistantParts[active.index] = makePart("reasoning", { text: active.text, options: active.options })
+          activeReasoningDeltas.delete(part.id)
         }
         break
       }
@@ -2272,14 +2276,24 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
     }
   }
 
-  if (assistantParts.length === 0 && toolParts.length === 0) {
+  // Keep partial text from unended blocks. Unended reasoning is dropped since it
+  // may lack the signature or encrypted content providers require for replay.
+  for (const active of activeTextDeltas.values()) {
+    if (active.text.length > 0) {
+      assistantParts[active.index] = makePart("text", { text: active.text, options: active.options })
+    }
+  }
+
+  const assistantContent = assistantParts.filter((part) => part !== undefined)
+
+  if (assistantContent.length === 0 && toolParts.length === 0) {
     return empty
   }
 
   const messages: Array<Message> = []
 
-  if (assistantParts.length > 0) {
-    messages.push(makeMessage("assistant", { content: assistantParts }))
+  if (assistantContent.length > 0) {
+    messages.push(makeMessage("assistant", { content: assistantContent }))
   }
 
   if (toolParts.length > 0) {

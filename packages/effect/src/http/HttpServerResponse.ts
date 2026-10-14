@@ -1028,23 +1028,35 @@ export const setStatus: {
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
 
+const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): globalThis.Headers => {
+  for (const [key, value] of headers as any) {
+    if (key === "set-cookie") {
+      target.append(key, value)
+    } else {
+      target.set(key, value)
+    }
+  }
+  return target
+}
+
 /**
  * Converts an `HttpServerResponse` to a Web `Response`.
  *
  * **Details**
  *
  * Cookies are appended as `Set-Cookie` headers. Stream bodies are converted using
- * the supplied context.
+ * the supplied context, and are interrupted when `signal` aborts.
  *
  * Bodies are omitted for statuses 204, 205, and 304, or when `withoutBody` is true
  * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
  * cancelled without awaiting completion, and cancellation errors are ignored.
  *
- * A raw `Response` body is returned as-is after the outer headers are merged
- * into it: outer headers replace native ones, and cookies are appended. When
- * its body is omitted, the bodyless `Response` keeps those merged headers and
- * uses the outer status for 204, 205 and 304, or the raw `Response` status
- * otherwise.
+ * A raw `Response` is returned as-is when there are no outer headers or cookies
+ * to merge. Otherwise, they are merged into a copy without modifying the raw
+ * response: outer headers replace native ones, and cookies are appended. When
+ * its body is omitted, the bodyless `Response` keeps those merged
+ * headers and uses the outer status for 204, 205 and 304, or the raw `Response`
+ * status otherwise.
  *
  * @stability unstable
  * @category converting
@@ -1055,6 +1067,7 @@ export const toWeb = (
   options?: {
     readonly withoutBody?: boolean | undefined
     readonly context?: Context.Context<never> | undefined
+    readonly signal?: AbortSignal | undefined
   }
 ): Response => {
   const headers = new globalThis.Headers(response.headers)
@@ -1069,15 +1082,13 @@ export const toWeb = (
   const withoutBody = outerOmitsBody || options?.withoutBody === true
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
-    for (const [key, value] of headers as any) {
-      if (key === "set-cookie") {
-        raw.headers.append(key, value)
-      } else {
-        raw.headers.set(key, value)
-      }
-    }
     if (!withoutBody) {
-      return raw
+      if (headers.keys().next().done) {
+        return raw
+      }
+      const copy = new Response(raw.body, raw)
+      mergeHeaders(copy.headers, headers)
+      return copy
     }
     // A bodyless outer status is what the caller chose to send; otherwise the
     // body is only omitted for HEAD and the raw Response describes the resource.
@@ -1085,7 +1096,7 @@ export const toWeb = (
     return new Response(undefined, {
       status: source.status,
       statusText: source.statusText as string,
-      headers: raw.headers
+      headers: mergeHeaders(new globalThis.Headers(raw.headers), headers)
     })
   }
   if (withoutBody) {
@@ -1131,7 +1142,8 @@ export const toWeb = (
       return new Response(
         Stream.toReadableStreamWith(
           body.stream,
-          options?.context ?? Context.empty()
+          options?.context ?? Context.empty(),
+          { signal: options?.signal }
         ),
         {
           status: response.status,

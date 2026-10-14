@@ -510,6 +510,101 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "SocketReadError")
     }))
 
+  it.effect("runs onPingTimeout only when a ping timeout drops the socket", () =>
+    Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const events: Array<string> = []
+      const record = (event: string) => Effect.sync(() => events.push(event))
+      const closeError = new Socket.SocketError({
+        reason: new Socket.SocketCloseError({ code: 1006 })
+      })
+      let connections = 0
+      const write = () => Effect.asVoid(Deferred.succeed(requestSent, void 0))
+      const socket = Socket.make({
+        // The server closes the first connection; the reconnected one goes silent.
+        reader: Effect.sync(() => ({
+          pull: ++connections === 1
+            ? Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(closeError)))
+            : Effect.never,
+          upgrade: Socket.SocketUpgradeError.unsupported
+        })),
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryPolicy: Schedule.spaced("20 seconds"),
+        onPingTimeout: record("ping timeout")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcClient.ConnectionHooks, {
+          onConnect: Effect.asVoid(record("connect")),
+          onDisconnect: Effect.asVoid(record("disconnect"))
+        }),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+
+      const closedFiber = yield* client.Events().pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+      const closed = yield* Fiber.join(closedFiber)
+      assert.strictEqual(closed.reason._tag, "SocketCloseError")
+
+      // Stay disconnected past the ping timeout, then reconnect at 20s.
+      yield* TestClock.adjust("20 seconds")
+      assert.deepStrictEqual(events, ["connect", "disconnect", "connect"])
+
+      const streamFiber = yield* client.Events().pipe(
+        Stream.runDrain,
+        Effect.tapError(() => record("stream failed")),
+        Effect.flip,
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("10 seconds")
+      const timedOut = yield* Fiber.join(streamFiber)
+
+      assert.strictEqual(timedOut.reason._tag, "SocketReadError")
+      assert.deepStrictEqual(events, [
+        "connect",
+        "disconnect",
+        "connect",
+        "ping timeout",
+        "disconnect",
+        "stream failed"
+      ])
+    }))
+
+  it.effect("does not run onPingTimeout when the ping timeout fires before the socket opens", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const record = (event: string) => Effect.sync(() => events.push(event))
+      const write = () => Effect.void
+      const socket = Socket.make({
+        reader: Effect.never,
+        writer: Effect.succeed({ write, writeAll: write })
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryPolicy: Schedule.spaced("1 hour"),
+        onPingTimeout: record("ping timeout")
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provideService(RpcClient.ConnectionHooks, {
+          onConnect: Effect.asVoid(record("connect")),
+          onDisconnect: Effect.asVoid(record("disconnect"))
+        }),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.flip, Effect.forkChild)
+
+      yield* TestClock.adjust("11 seconds")
+      const error = yield* Fiber.join(streamFiber)
+
+      assert.strictEqual(error.reason._tag, "SocketReadError")
+      assert.deepStrictEqual(events, ["disconnect"])
+    }))
+
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
     Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()

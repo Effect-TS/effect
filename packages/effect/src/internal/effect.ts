@@ -49,6 +49,7 @@ import { internalCall } from "../Utils.ts"
 import type { Primitive } from "./core.ts"
 import {
   args,
+  causeAddInterrupts,
   causeAnnotate,
   causeCombine,
   causeEmpty,
@@ -130,9 +131,9 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
     )
   }
   [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
+    // Equality compares annotations by reference, so leave them out instead of
+    // hashing them randomly.
+    return Hash.string(`${this._tag}:${this.fiberId}`)
   }
 }
 
@@ -566,7 +567,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       cause = causeAnnotate(cause, annotations)
     }
     this._interruptedCause = this._interruptedCause
-      ? causeCombine(this._interruptedCause, cause)
+      ? causeAddInterrupts(this._interruptedCause, cause)
       : cause
     if (this.interruptible) {
       if (this._running) {
@@ -1507,14 +1508,19 @@ const succeedPayload = function(this: { readonly payload: any }, _value: unknown
 // V8 includes the property name of a stored continuation in its stack trace.
 // Other engines need an explicit frame for the stack cleaner to cut at.
 const continuationMarksStack = (() => {
-  if (getStackTraceLimit() === 0) return false
+  const limit = getStackTraceLimit()
+  if (limit === 0) return false
   const marker = "~effect/Effect/stackProbe"
   const probe = {
     [marker]: function stackProbe() {
-      return new Error().stack
+      return new Error()
     }
   }
-  return probe[marker]()?.includes("[as " + marker + "]") === true
+  // Only the probe frame is needed to detect the continuation property name.
+  setStackTraceLimit(1)
+  const error = probe[marker]()
+  setStackTraceLimit(limit)
+  return error.stack?.includes("[as " + marker + "]") === true
 })()
 const mapCont = function(this: { readonly payload: any }, value: any, fiber: FiberImpl) {
   const f = this.payload
@@ -4454,7 +4460,7 @@ export const cachedInvalidateWithTTL: {
 const infiniteTTL = constant(Infinity)
 
 interface CachedRun<A, E> {
-  fiber: FiberImpl<A, E> | undefined
+  readonly fiber: FiberImpl<A, E>
   awaiters: number
 }
 
@@ -4471,17 +4477,19 @@ const makeCachedUnsafe = <A, E, R>(
     onExitUnsafe(fiber, () => {
       // Abandon the run once every caller has left, unless it already finished.
       if (--run.awaiters > 0 || current !== run) return
-      // Detach it first so new callers start a fresh run instead of joining
-      // one that is being interrupted.
+      // Detach before interruption so new callers start a fresh run.
       current = undefined
-      return fiberInterrupt(run.fiber!)
+      return fiberInterrupt(run.fiber)
     })
-    return fiberJoin(run.fiber!)
+    return fiberJoin(run.fiber)
   }
 
   return [
     withFiber((fiber) => {
-      if (current !== undefined) return join(fiber, current)
+      if (current !== undefined) {
+        // A run joining itself is not an awaiter, so external callers can still abandon it.
+        return fiber === current.fiber ? fiberJoin(current.fiber) : join(fiber, current)
+      }
       if (
         exit !== undefined &&
         (expiresAt === Infinity || fiber.getRef(ClockRef).currentTimeMillisUnsafe() < expiresAt)
@@ -4490,10 +4498,11 @@ const makeCachedUnsafe = <A, E, R>(
       }
       exit = undefined
       const clock = fiber.getRef(ClockRef)
-      const run: CachedRun<A, E> = { fiber: undefined, awaiters: 0 }
+      const run: CachedRun<A, E> = { fiber: new FiberImpl(fiber.context), awaiters: 0 }
       current = run
-      run.fiber = forkUnsafe(
-        fiber,
+      // Join before evaluating, which may synchronously re-enter and interrupt other awaiters.
+      const joined = join(fiber, run)
+      run.fiber.evaluate(
         onExitPrimitive(self, (exit_) => {
           // An abandoned run must not overwrite or clear a replacement run.
           if (current !== run) return
@@ -4503,11 +4512,9 @@ const makeCachedUnsafe = <A, E, R>(
           const duration = ttlMillis(exit_)
           expiresAt = duration === Infinity ? Infinity : clock.currentTimeMillisUnsafe() + duration
           exit = exit_
-        }),
-        true,
-        true
+        }) as any
       )
-      return run.fiber._exit ?? join(fiber, run)
+      return run.fiber._exit ?? joined
     }),
     sync(() => {
       exit = undefined

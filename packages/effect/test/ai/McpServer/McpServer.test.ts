@@ -2169,57 +2169,71 @@ describe("McpServer", () => {
       }))
   })
 
-  it.effect("disables HTTP subscription discovery and listening when allowSubscriptions is false", () =>
-    Effect.gen(function*() {
-      const harness = yield* makeHttpHarness(
-        Layer.effectDiscard(Effect.gen(function*() {
-          const server = yield* McpServer.McpServer
-          yield* server.addTool({
-            tool: new McpSchema.Tool({ name: "Test", inputSchema: { type: "object" } }),
-            annotations: Context.empty(),
-            handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
-          })
-        })).pipe(Layer.provideMerge(McpServer.layerHttp({
+  for (
+    const [label, makeLayer] of [
+      ["allowSubscriptions is false", () =>
+        McpServer.layerHttp({
           name: "SubscriptionsTest",
           version: "1.0.0",
           path: "/mcp",
           protocols: [McpProtocol.v2026_07_28],
           allowSubscriptions: false
-        })))
-      )
-      const post = (method: string, params: Record<string, unknown> = {}) =>
-        harness.post({
-          jsonrpc: "2.0",
-          id: 1,
-          method,
-          params: {
-            ...params,
-            _meta: {
-              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-              "io.modelcontextprotocol/clientCapabilities": {}
+        })],
+      ["request scoped", () =>
+        McpServer.layerHttpRequestScoped({
+          name: "SubscriptionsTest",
+          version: "1.0.0",
+          path: "/mcp",
+          protocols: [McpProtocol.v2026_07_28]
+        })]
+    ] as const
+  ) {
+    it.effect(`disables HTTP subscription discovery and listening when ${label}`, () =>
+      Effect.gen(function*() {
+        const harness = yield* makeHttpHarness(
+          Layer.effectDiscard(Effect.gen(function*() {
+            const server = yield* McpServer.McpServer
+            yield* server.addTool({
+              tool: new McpSchema.Tool({ name: "Test", inputSchema: { type: "object" } }),
+              annotations: Context.empty(),
+              handle: () => Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+            })
+          })).pipe(Layer.provideMerge(makeLayer()))
+        )
+        const post = (method: string, params: Record<string, unknown> = {}) =>
+          harness.post({
+            jsonrpc: "2.0",
+            id: 1,
+            method,
+            params: {
+              ...params,
+              _meta: {
+                "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                "io.modelcontextprotocol/clientCapabilities": {}
+              }
             }
-          }
-        }, { "mcp-protocol-version": "2026-07-28", "mcp-method": method })
+          }, { "mcp-protocol-version": "2026-07-28", "mcp-method": method })
 
-      assert.nestedPropertyVal(
-        yield* readMcpHttpResponse(yield* post("server/discover")),
-        "result.capabilities.tools.listChanged",
-        false
-      )
-      const response = yield* post("subscriptions/listen", { notifications: { toolsListChanged: true } })
-      // A live subscription never reaches EOF; inspect only its first frame.
-      if (response.headers.get("content-type")?.includes("text/event-stream")) {
-        const reader = makeMcpSseReader(response)
-        yield* Effect.addFinalizer(() => reader.cancel)
-        const message = yield* reader.take()
-        assert.strictEqual(message.id, 1)
-        assert.deepInclude(message.error, { code: -32601 })
-      } else {
-        const message = yield* readMcpHttpResponse(response)
-        assert.propertyVal(message, "id", 1)
-        assert.nestedPropertyVal(message, "error.code", -32601)
-      }
-    }))
+        assert.nestedPropertyVal(
+          yield* readMcpHttpResponse(yield* post("server/discover")),
+          "result.capabilities.tools.listChanged",
+          false
+        )
+        const response = yield* post("subscriptions/listen", { notifications: { toolsListChanged: true } })
+        // A live subscription never reaches EOF; inspect only its first frame.
+        if (response.headers.get("content-type")?.includes("text/event-stream")) {
+          const reader = makeMcpSseReader(response)
+          yield* Effect.addFinalizer(() => reader.cancel)
+          const message = yield* reader.take()
+          assert.strictEqual(message.id, 1)
+          assert.deepInclude(message.error, { code: -32601 })
+        } else {
+          const message = yield* readMcpHttpResponse(response)
+          assert.propertyVal(message, "id", 1)
+          assert.nestedPropertyVal(message, "error.code", -32601)
+        }
+      }))
+  }
 
   it.effect("rejects unsupported HTTP methods without disturbing an initialized session", () =>
     Effect.gen(function*() {

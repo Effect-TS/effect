@@ -98,6 +98,14 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       expect(result[1]).toEqual(["Tim"])
     }))
 
+  it.effect("binds an empty array using the type inferred by PostgreSQL", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const ids: ReadonlyArray<string> = []
+      const rows = yield* sql`SELECT 1 WHERE 'a' = ANY(${ids})`
+      assert.deepStrictEqual(rows, [])
+    }))
+
   it.effect("array helper", () =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient

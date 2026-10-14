@@ -188,6 +188,59 @@ describe("SchemaGetter", () => {
         }
       )
     })
+
+    describe("sparse array indices", () => {
+      it("keeps arrays with at most 20 holes", () => {
+        const expected: Array<string> = []
+        expected[0] = "x"
+        expected[21] = "y"
+        deepStrictEqual(
+          SchemaGetter.makeTreeRecord([
+            ["a[0]", "x"],
+            ["a[21]", "y"]
+          ]),
+          { a: expected }
+        )
+      })
+
+      it("uses the final indices regardless of entry order", () => {
+        const expected: Array<string> = []
+        expected[0] = "x"
+        expected[21] = "y"
+        deepStrictEqual(
+          SchemaGetter.makeTreeRecord([
+            ["a[21]", "y"],
+            ["a[0]", "x"]
+          ]),
+          { a: expected }
+        )
+      })
+
+      it("keeps index keys on an object when an array would have more than 20 holes", () => {
+        const tree: any = SchemaGetter.makeTreeRecord([
+          ["a[0]", "x"],
+          ["a[22]", "y"]
+        ])
+        assert.isFalse(Array.isArray(tree.a))
+        deepStrictEqual(tree, { a: { "0": "x", "22": "y" } })
+      })
+
+      it("applies the hole limit independently to nested containers", () => {
+        const tree: any = SchemaGetter.makeTreeRecord([["items[1000][tags][0]", "x"]])
+        assert.isFalse(Array.isArray(tree.items))
+        assert.isTrue(Array.isArray(tree.items[1000].tags))
+        deepStrictEqual(tree, { items: { "1000": { tags: ["x"] } } })
+      })
+
+      it("appends after the maximum array index without throwing", () => {
+        const tree: any = SchemaGetter.makeTreeRecord([
+          ["a[4294967294]", "x"],
+          ["a[]", "y"]
+        ])
+        assert.isFalse(Array.isArray(tree.a))
+        deepStrictEqual(tree, { a: { "4294967294": "x", "4294967295": "y" } })
+      })
+    })
   })
 
   describe("decodeFormData / encodeFormData", () => {

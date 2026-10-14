@@ -1,3 +1,4 @@
+import { hole } from "effect"
 import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
@@ -48,6 +49,33 @@ describe("McpServer", () => {
   })
 
   describe("protocol configuration", () => {
+    it("should restrict request-scoped HTTP to stateless protocols without session options", () => {
+      const options = {
+        name: "TestServer",
+        version: "1.0.0",
+        path: "/mcp",
+        protocols: [McpProtocol.v2026_07_28]
+      } as const
+
+      expect(McpServer.layerHttpRequestScoped).type.toBeCallableWith(options)
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        protocols: [McpProtocol.v2025_11_25] as const
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25] as const
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        allowSubscriptions: true
+      })
+      expect(McpServer.layerHttpRequestScoped).type.not.toBeCallableWith({
+        ...options,
+        allowSessionTermination: true
+      })
+    })
+
     it("should accept a non-empty protocol declaration when constructing any server", () => {
       expect(McpServer.run).type.toBeCallableWith(serverOptions)
       expect(McpServer.layer).type.toBeCallableWith(serverOptions)
@@ -153,9 +181,90 @@ describe("McpServer", () => {
     expect<Layer.Services<typeof layer>>().type.toBe<Requirements>()
   })
 
+  describe("resource templates", () => {
+    class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
+    class IdCodec extends Context.Service<IdCodec, { readonly n: number }>()("IdCodec") {}
+    class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}
+
+    it("should require template decoding services in both APIs", () => {
+      const UserId = hole<Schema.Codec<string, string, IdCodec, never>>()
+      const options = {
+        name: "by-id",
+        content: (_uri: string, id: string) => Effect.succeed(id)
+      }
+      const registered = McpServer.registerResource`user://${McpSchema.param("id", UserId)}`(options)
+      const layer = McpServer.resource`user://${McpSchema.param("id", UserId)}`(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<IdCodec | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<IdCodec>()
+    })
+
+    it("should require template completion encoding services in both APIs", () => {
+      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
+      const options = {
+        name: "by-tag",
+        completion: { tag: (input: string) => Effect.succeed([input]) },
+        content: (_uri: string, tag: string) => Effect.succeed(tag)
+      }
+      const registered = McpServer.registerResource`tag://${McpSchema.param("tag", Tag)}`(options)
+      const layer = McpServer.resource`tag://${McpSchema.param("tag", Tag)}`(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<TagEncoder | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<TagEncoder>()
+    })
+
+    it("should require services used by one-argument completion handlers in both APIs", () => {
+      const registered = McpServer.registerResource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+      const layer = McpServer.resource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
+
+    it("should require services used by two-argument completion handlers in both APIs", () => {
+      const registered = McpServer.registerResource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input, _context) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+      const layer = McpServer.resource`file://${Schema.String}`({
+        name: "lookup",
+        completion: { param0: (_input, _context) => Effect.map(Lookup, (lookup) => lookup.values) },
+        content: (_uri, path) => Effect.succeed(path)
+      })
+
+      expect<Effect.Services<typeof registered>>().type.toBe<Lookup | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<Lookup>()
+    })
+  })
+
   describe("prompts", () => {
     class Lookup extends Context.Service<Lookup, { readonly values: Array<string> }>()("Lookup") {}
     const name = () => Effect.map(Lookup, (lookup) => lookup.values)
+
+    it("should require prompt completion encoding services in both APIs", () => {
+      class TagEncoder extends Context.Service<TagEncoder, { readonly n: number }>()("TagEncoder") {}
+      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
+      const options = {
+        name: "tagged",
+        parameters: { tag: Tag },
+        completion: { tag: (input: string) => Effect.succeed([input]) },
+        content: ({ tag }: { readonly tag: string }) => Effect.succeed(tag)
+      }
+      const registered = McpServer.registerPrompt(options)
+      const layer = McpServer.prompt(options)
+
+      expect<Effect.Services<typeof registered>>().type.toBe<TagEncoder | McpServer.McpServer>()
+      expect<Layer.Services<typeof layer>>().type.toBe<TagEncoder>()
+    })
 
     it("should require services used by completion handlers", () => {
       const options = {

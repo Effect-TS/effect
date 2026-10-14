@@ -331,7 +331,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
     return IncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
   modify(options: {

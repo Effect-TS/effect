@@ -32,11 +32,11 @@ import * as NodeDns from "node:dns"
  *
  * **Details**
  *
- * `nameServers` replaces the system name servers; IP addresses without a port
- * use port 53, and an empty list keeps the system name servers. `timeout` is
- * the time allowed for each attempt and `tries` the number of attempts per name
- * server. Address lookups always use the operating system resolver and are not
- * affected.
+ * `nameServers` replaces the system name servers, which are converted like
+ * `Dns.nameServerFromInput`, and an empty list keeps the system name servers.
+ * `timeout` is the time allowed for each attempt and `tries` the number of
+ * attempts per name server. Address lookups always use the operating system
+ * resolver and are not affected.
  *
  * `timeout` is rounded up to whole milliseconds and `tries` down to a whole
  * number, and both are clamped to 1 through 2^31 - 1, so `Duration.infinity`
@@ -44,16 +44,16 @@ import * as NodeDns from "node:dns"
  *
  * **Gotchas**
  *
- * IPv6 name servers with a scope ID, such as link-local addresses, are not
- * supported because the resolver drops the scope; creating the service fails
- * with a `NetAddress.NetAddressError`.
+ * Invalid name servers fail with a `NetAddress.NetAddressError` when the
+ * service is created, and so do IPv6 name servers with a scope ID, such as
+ * link-local addresses, because the resolver drops the scope.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
 export interface Options {
-  readonly nameServers?: ReadonlyArray<NetAddress.IpAddress | NetAddress.InetAddress> | undefined
+  readonly nameServers?: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput> | undefined
   readonly timeout?: Duration.Input | undefined
   readonly tries?: number | undefined
 }
@@ -401,14 +401,16 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
     ...(options?.timeout !== undefined && { timeout: resolverInt(Math.ceil(Duration.toMillis(options.timeout))) }),
     ...(options?.tries !== undefined && { tries: resolverInt(Math.floor(options.tries)) })
   }
-  const nameServers = options?.nameServers ?? []
-  const scoped = nameServers.find((server) => NetAddress.isInetAddressV6(server) && server.scopeId !== 0)
-
-  if (scoped !== undefined) {
-    return yield* new NetAddress.NetAddressError({
-      input: scoped,
-      message: "IPv6 name servers with a scope ID are not supported"
-    })
+  const nameServers: Array<NetAddress.InetAddress> = []
+  for (const input of options?.nameServers ?? []) {
+    const server = yield* Effect.fromResult(Dns.nameServerFromInput(input))
+    if (NetAddress.isInetAddressV6(server) && server.scopeId !== 0) {
+      return yield* new NetAddress.NetAddressError({
+        input,
+        message: "IPv6 name servers with a scope ID are not supported"
+      })
+    }
+    nameServers.push(server)
   }
 
   const resolver = yield* Effect.acquireRelease(
@@ -416,9 +418,7 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
       const resolver = new NodeDns.promises.Resolver(resolverOptions)
       if (nameServers.length > 0) {
         resolver.setServers(
-          nameServers.map((server) =>
-            NetAddress.isIpAddress(server) ? NetAddress.formatIp(server) : NetAddress.formatInet(server)
-          )
+          nameServers.map(NetAddress.formatInet)
         )
       }
       return resolver

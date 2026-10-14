@@ -174,21 +174,19 @@ export class MetricProducerImpl implements MetricProducer {
           break
         }
         case "Histogram": {
-          const size = state.state.buckets.length
           const currentBuckets = {
-            boundaries: Arr.allocate(size - 1) as Array<number>,
-            counts: Arr.allocate(size) as Array<number>
+            boundaries: [] as Array<number>,
+            counts: [] as Array<number>
           }
-          let idx = 0
           let prev = 0
           for (const [boundary, value] of state.state.buckets) {
-            if (idx < size - 1) {
-              currentBuckets.boundaries[idx] = boundary
-            }
-            currentBuckets.counts[idx] = value - prev
+            if (boundary === Number.POSITIVE_INFINITY) break
+            currentBuckets.boundaries.push(boundary)
+            currentBuckets.counts.push(value - prev)
             prev = value
-            idx++
           }
+          // Derive overflow from the total count, whether or not boundaries include Infinity.
+          currentBuckets.counts.push(state.state.count - prev)
 
           let reportCount = state.state.count
           let reportSum = state.state.sum

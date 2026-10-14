@@ -136,3 +136,18 @@ describe("HttpStaticServer precision", () => {
     }).pipe(Effect.provide(precisionServices(size, calls)))
   })
 })
+
+describe("HttpStaticServer paths", () => {
+  it.effect("serves a path with repeated leading slashes from the root", () => {
+    const calls: Array<{ path: string; options: FileOptions }> = []
+    return Effect.gen(function*() {
+      const app = yield* HttpStaticServer.make({ root: "/root" })
+      const response = yield* app.pipe(Effect.provideService(
+        HttpServerRequest.HttpServerRequest,
+        HttpServerRequest.fromWeb(new Request("http://localhost//nested/file.txt"))
+      ))
+      assert.strictEqual(response.status, 200)
+      assert.deepStrictEqual(calls.map((call) => call.path), ["/root/nested/file.txt"])
+    }).pipe(Effect.provide(precisionServices(10n, calls)))
+  })
+})

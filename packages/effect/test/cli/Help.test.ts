@@ -38,6 +38,17 @@ const runCommand = Effect.fnUntraced(
   }
 )
 
+describe("CliOutput.displayWidth", () => {
+  it("measures terminal cells", () => {
+    assert.strictEqual(CliOutput.displayWidth(""), 0)
+    assert.strictEqual(CliOutput.displayWidth("file"), 4)
+    assert.strictEqual(CliOutput.displayWidth("ファイル"), 8)
+    assert.strictEqual(CliOutput.displayWidth("e\u0301"), 1)
+    assert.strictEqual(CliOutput.displayWidth("1️⃣"), 2)
+    assert.strictEqual(CliOutput.displayWidth("\u001B[31mファイル\u001B[0m"), 8)
+  })
+})
+
 describe("Command help output", () => {
   it("marks omittable flags as not required in structured help", () => {
     const command = Command.make("app", {

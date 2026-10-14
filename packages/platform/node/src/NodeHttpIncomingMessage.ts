@@ -23,6 +23,8 @@ import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 import * as NodeStream from "./NodeStream.ts"
 
+const textDecoder = new TextDecoder()
+
 /**
  * Adapts a Node `IncomingMessage` to Effect HTTP incoming messages.
  *
@@ -78,7 +80,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
     if (this.textEffect) {
       return this.textEffect
     }
-    this.textEffect = Effect.map(this.arrayBuffer, (_) => Buffer.from(_).toString("utf8"))
+    this.textEffect = Effect.map(this.arrayBuffer, (_) => textDecoder.decode(_))
     return this.textEffect
   }
 
@@ -127,7 +129,7 @@ export abstract class NodeHttpIncomingMessage<E> extends Inspectable.Class
       Effect.cached,
       Effect.runSync
     )
-    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => new TextDecoder().decode(_))
+    this.textEffect = Effect.map(this.arrayBufferEffect, (_) => textDecoder.decode(_))
     return this.arrayBufferEffect
   }
 }

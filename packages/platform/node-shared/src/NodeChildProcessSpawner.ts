@@ -19,7 +19,9 @@
  * `forceKillAfter`, the wait is limited to one second and never escalates.
  * With it, cleanup may take the configured duration plus a final one-second
  * wait after `SIGKILL`. Zombie descendants can consume either full bound. On
- * Windows, `taskkill` terminates the tree and only the leader's exit is awaited.
+ * Windows, `taskkill` terminates the tree while the leader is running, and
+ * cleanup waits only for the leader's exit. Descendants that outlive the
+ * leader are left running.
  *
  * POSIX cleanup targets a numeric process-group ID. If the group disappears
  * and its ID is reused before cleanup, an unrelated group may be signalled.
@@ -50,7 +52,7 @@ import type * as Scope from "effect/Scope"
 import * as Sink from "effect/Sink"
 import * as Stream from "effect/Stream"
 import * as NodeChildProcess from "node:child_process"
-import { PassThrough } from "node:stream"
+import { PassThrough, type Writable } from "node:stream"
 import { buildSpawnOptions } from "./internal/nodeChildProcessSpawner.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
@@ -80,6 +82,15 @@ type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 const processGroupGraceMillis = 1_000
 const processGroupPollIntervalMillis = 10
 
+// Buffered writes can fail after the sink has been interrupted and removed its
+// error listener. Keep a fallback until close, without replacing the sink
+// listener that propagates errors while it is active.
+const handleInputErrors = (writable: Writable): void => {
+  const onError = () => {}
+  writable.on("error", onError)
+  writable.once("close", () => writable.off("error", onError))
+}
+
 /** The leader has not exited, or a member of its process group still exists. */
 const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal: ExitSignal): boolean => {
   if (!Deferred.isDoneUnsafe(exitSignal)) {
@@ -99,13 +110,19 @@ const isProcessAlive = (childProcess: NodeChildProcess.ChildProcess, exitSignal:
 const taskkill = (
   childProcess: NodeChildProcess.ChildProcess,
   onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
-) =>
+) => {
+  // After the leader exits, its PID may be reused by an unrelated process.
+  if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
+    onExit(null)
+    return
+  }
   NodeChildProcess.execFile(
     "taskkill",
     ["/pid", String(childProcess.pid!), "/T", "/F"],
     { windowsHide: true },
     onExit
   )
+}
 
 const make = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -244,6 +261,7 @@ const make = Effect.gen(function*() {
           // Create a sink to write to for input file descriptors
           let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
           if (nodeStream && "write" in nodeStream) {
+            handleInputErrors(nodeStream)
             sink = NodeSink.fromWritable({
               evaluate: () => nodeStream,
               onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
@@ -300,6 +318,7 @@ const make = Effect.gen(function*() {
       // sink that will attached to the process handle
       let sink: Sink.Sink<void, unknown, never, PlatformError.PlatformError> = Sink.drain
       if (Predicate.isNotNull(childProcess.stdin)) {
+        handleInputErrors(childProcess.stdin)
         sink = NodeSink.fromWritable({
           evaluate: () => childProcess.stdin!,
           onError: (error) => toPlatformError("fromWritable(stdin)", toError(error), command),

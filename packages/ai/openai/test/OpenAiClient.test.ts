@@ -508,6 +508,23 @@ describe("OpenAiClient", () => {
   })
 
   describe("createResponseStream", () => {
+    it.effect("emits response.completed before [DONE] in the same SSE chunk", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+        const events = yield* Stream.runCollect(stream)
+
+        assert.deepStrictEqual(events.map((event) => event.type), ["response.completed"])
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [{
+          type: "response.completed",
+          sequence_number: 1,
+          response: makeResponseBody({ status: "completed" })
+        }],
+        trailer: "data: [DONE]\n\n"
+      }))))
+
     it.live("terminates an SSE stream at response.failed", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
@@ -1128,6 +1145,7 @@ type MockResponse =
   | {
     readonly _tag: "Sse"
     readonly events: ReadonlyArray<typeof OpenAiSchema.ResponseStreamEvent.Encoded>
+    readonly trailer?: string | undefined
     readonly keepOpen?: boolean | undefined
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
@@ -1247,7 +1265,7 @@ const makeResponse = (
     : "text/event-stream"
   const body = response._tag === "Json"
     ? JSON.stringify(response.body)
-    : response.events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
+    : response.events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + (response.trailer ?? "")
 
   const httpResponse = HttpClientResponse.fromWeb(
     request,

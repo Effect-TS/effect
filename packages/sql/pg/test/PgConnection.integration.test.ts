@@ -2,7 +2,7 @@ import { PgConnection, PgTypes } from "@effect/sql-pg"
 import { assert, it } from "@effect/vitest"
 import { Cause, Deferred, Effect, Exit, Fiber, Queue, Redacted, Scope, Stream } from "effect"
 import type { SqlError } from "effect/sql/SqlError"
-import { PgContainer } from "./utils.ts"
+import { PgContainer, waitUntilAdvisoryLock } from "./utils.ts"
 
 const makeConnection = (options?: PgConnection.Config) =>
   Effect.gen(function*() {
@@ -450,5 +450,62 @@ it.layer(PgContainer.layer, { timeout: "30 seconds" })("PgConnection", (it) => {
       const results = yield* Fiber.join(queried)
       results.forEach((result, index) => assert.deepStrictEqual(result.rows, [{ n: index }]))
       assert.deepStrictEqual((yield* connection.query("SELECT 1 AS ok")).rows, [{ ok: 1 }])
+    }))
+
+  it.effect("fails work through a released pin without touching the next owner's session", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const released = yield* Effect.scoped(connection.pin)
+      yield* Effect.scoped(Effect.gen(function*() {
+        const owner = yield* connection.pin
+        yield* owner.query("BEGIN")
+        yield* owner.query("SET LOCAL application_name = 'next_owner'")
+
+        const exits: ReadonlyArray<Exit.Exit<unknown, SqlError>> = [
+          yield* Effect.exit(released.query("ROLLBACK")),
+          yield* Effect.exit(released.queryValues("ROLLBACK")),
+          yield* Effect.exit(Stream.runCollect(released.stream("SELECT 1"))),
+          yield* Effect.exit(Effect.scoped(released.listen("released_pin")))
+        ]
+        exits.forEach((exit) => assert.isTrue(Exit.isFailure(exit)))
+
+        const setting = yield* owner.query("SELECT current_setting('application_name') AS name")
+        assert.deepStrictEqual(setting.rows, [{ name: "next_owner" }])
+        yield* owner.query("ROLLBACK")
+      }))
+    }))
+
+  it.effect("fails a statement that was queued on a pin before its release", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const scope = yield* Scope.make()
+      const pinned = yield* Scope.provide(connection.pin, scope)
+      const queued = yield* Effect.forkScoped(Effect.andThen(Effect.yieldNow, pinned.query("SELECT 1 AS queued")))
+      // `queued` waits for the wire behind this statement, and the pin is
+      // released before it wakes, so the session is idle and handed on.
+      yield* pinned.query("SELECT 1 AS holder")
+      yield* Scope.close(scope, Exit.void)
+      assert.isTrue(Exit.isFailure(yield* Fiber.await(queued)))
+      assert.deepStrictEqual((yield* connection.query("SELECT 1 AS ok")).rows, [{ ok: 1 }])
+    }))
+
+  it.effect("ignores interrupt on a released pin", () =>
+    Effect.gen(function*() {
+      const connection = yield* makeConnection()
+      const blocker = yield* makeConnection()
+      const observer = yield* makeConnection()
+      const released = yield* Effect.scoped(connection.pin)
+      const waiting = yield* Effect.gen(function*() {
+        yield* blocker.query("BEGIN")
+        yield* blocker.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        const waiting = yield* Effect.forkScoped(
+          connection.query("SELECT pg_advisory_xact_lock($1::int4)", [connection.processId])
+        )
+        // A cancel only lands while the backend is executing, so wait for the lock.
+        yield* waitUntilAdvisoryLock(observer, connection.processId)
+        yield* released.interrupt
+        return waiting
+      }).pipe(Effect.ensuring(Effect.ignore(blocker.query("ROLLBACK"))))
+      assert.isTrue(Exit.isSuccess(yield* Fiber.await(waiting)))
     }))
 })

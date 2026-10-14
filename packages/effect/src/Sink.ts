@@ -1825,13 +1825,24 @@ export const takeWhileFilterEffect = <In, Out, X, E, R>(
  * @since 4.0.0
  */
 export const takeUntil = <In>(predicate: Predicate<In>): Sink<Array<In>, In, In> =>
-  suspend(() => {
-    let done = false
-    return takeWhile((i) => {
-      if (done) return false
-      done = predicate(i)
-      return true
-    })
+  fromTransform((upstream) => {
+    const out = Arr.empty<In>()
+    return upstream.pipe(
+      Effect.flatMap((arr) => {
+        for (let i = 0; i < arr.length; i++) {
+          out.push(arr[i])
+          if (predicate(arr[i])) {
+            const leftover: NonEmptyReadonlyArray<In> | undefined = (i + 1) < arr.length
+              ? arr.slice(i + 1) as Arr.NonEmptyArray<In>
+              : undefined
+            return Cause.done([out, leftover] as const)
+          }
+        }
+        return Effect.void
+      }),
+      Effect.forever({ disableYield: true }),
+      Pull.catchDone((end) => Effect.succeed<End<Array<In>, In>>(end ?? [out]))
+    )
   })
 
 /**
@@ -1849,17 +1860,33 @@ export const takeUntil = <In>(predicate: Predicate<In>): Sink<Array<In>, In, In>
 export const takeUntilEffect = <In, E, R>(
   predicate: (input: In) => Effect.Effect<boolean, E, R>
 ): Sink<Array<In>, In, In, E, R> =>
-  suspend(() => {
-    let done = false
-    return takeWhileEffect((input) => {
-      if (done) {
-        return Effect.succeed(false)
-      }
-      return Effect.map(predicate(input), (b) => {
-        done = b
-        return true
-      })
-    })
+  fromTransform((upstream) => {
+    const out = Arr.empty<In>()
+    let leftover: NonEmptyReadonlyArray<In> | undefined = undefined
+    return upstream.pipe(
+      Effect.flatMap((arr) => {
+        let i = 0
+        return Effect.whileLoop({
+          while: () => i < arr.length,
+          body: () => {
+            const input = arr[i++]
+            return Effect.flatMap(predicate(input), (matched) => {
+              out.push(input)
+              if (!matched) {
+                return Effect.void
+              }
+              if (i < arr.length) {
+                leftover = arr.slice(i) as Arr.NonEmptyArray<In>
+              }
+              return Cause.done()
+            })
+          },
+          step: constVoid
+        })
+      }),
+      Effect.forever({ disableYield: true }),
+      Pull.catchDone(() => Effect.succeed([out, leftover] as const))
+    )
   })
 
 /**

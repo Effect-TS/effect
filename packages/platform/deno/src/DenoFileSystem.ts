@@ -170,16 +170,16 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
   mtime: Option.fromNullishOr(info.mtime),
   atime: Option.fromNullishOr(info.atime),
   birthtime: Option.fromNullishOr(info.birthtime),
-  dev: info.dev,
-  rdev: Option.fromNullishOr(info.rdev),
-  ino: Option.fromNullishOr(info.ino),
+  dev: BigInt(info.dev),
+  rdev: Option.map(Option.fromNullishOr(info.rdev), BigInt),
+  ino: Option.map(Option.fromNullishOr(info.ino), BigInt),
   mode: info.mode ?? 0,
-  nlink: Option.fromNullishOr(info.nlink),
+  nlink: Option.map(Option.fromNullishOr(info.nlink), BigInt),
   uid: Option.fromNullishOr(info.uid),
   gid: Option.fromNullishOr(info.gid),
   size: ByteSize.bytes(BigInt(info.size)),
   blksize: Option.map(Option.fromNullishOr(info.blksize), (size) => ByteSize.bytes(BigInt(size))),
-  blocks: Option.fromNullishOr(info.blocks)
+  blocks: Option.map(Option.fromNullishOr(info.blocks), BigInt)
 })
 
 /**
@@ -447,8 +447,9 @@ const watchNative = (
         try: () => Deno.watchFs(path, { recursive: options?.recursive ?? false }),
         catch: handleError("FileSystem", "watch", path)
       }),
-      (watcher) =>
-        Stream.fromAsyncIterable(watcher, handleError("FileSystem", "watch", path)).pipe(
+      (watcher) => {
+        options?.onReady?.()
+        return Stream.fromAsyncIterable(watcher, handleError("FileSystem", "watch", path)).pipe(
           Stream.flatMap((event): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> => {
             switch (event.kind) {
               case "create":
@@ -468,6 +469,7 @@ const watchNative = (
             }
           })
         )
+      }
     )
   )
 

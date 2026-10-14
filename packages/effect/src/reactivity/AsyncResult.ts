@@ -720,6 +720,12 @@ export const matchWithWaiting: {
 /**
  * Combines an iterable or record of `AsyncResult` and plain values into one `AsyncResult`, returning the first non-success result or a success of the collected values marked waiting when any input success is waiting.
  *
+ * **Details**
+ *
+ * If the first non-success result is a failure, its previous success is
+ * rebuilt in the combined shape from each input's current or previous value.
+ * It is omitted if any input has no value.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -751,6 +757,11 @@ export const all = <const Arg extends Iterable<any> | Record<string, any>>(
     if (!isAsyncResult(result)) {
       InternalRecord.assignProperty(successes, key, result)
       continue
+    } else if (isFailure(result)) {
+      return failure(result.cause, {
+        previousSuccess: combinedPreviousSuccess(entries, isIter),
+        waiting: result.waiting
+      }) as any
     } else if (!isSuccess(result)) {
       return result as any
     }
@@ -760,6 +771,26 @@ export const all = <const Arg extends Iterable<any> | Record<string, any>>(
     }
   }
   return success(successes, { waiting }) as any
+}
+
+const combinedPreviousSuccess = (
+  entries: ReadonlyArray<readonly [PropertyKey, unknown]>,
+  isIter: boolean
+): Option.Option<Success<unknown, never>> => {
+  const values: any = isIter ? [] : {}
+  for (let i = 0; i < entries.length; i++) {
+    const [key, entry] = entries[i]
+    if (!isAsyncResult(entry)) {
+      InternalRecord.assignProperty(values, key, entry)
+      continue
+    }
+    const entryValue = value(entry)
+    if (Option.isNone(entryValue)) {
+      return Option.none()
+    }
+    InternalRecord.assignProperty(values, key, entryValue.value)
+  }
+  return Option.some(success(values))
 }
 
 /**

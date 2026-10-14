@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -14,6 +14,19 @@ const makeStatusClient = Effect.fnUntraced(function*(status: number) {
       yield* Ref.update(attempts, (n) => n + 1)
       return HttpClientResponse.fromWeb(request, new Response(null, { status }))
     })
+  )
+  return { attempts, client } as const
+})
+
+const makeSequenceClient = Effect.fnUntraced(function*(
+  responses: ReadonlyArray<{ readonly status: number; readonly headers?: Record<string, string> }>
+) {
+  const attempts = yield* Ref.make(0)
+  const client = HttpClient.make((request) =>
+    Effect.map(
+      Ref.getAndUpdate(attempts, (n) => n + 1),
+      (n) => HttpClientResponse.fromWeb(request, new Response(null, responses[Math.min(n, responses.length - 1)]))
+    )
   )
   return { attempts, client } as const
 })
@@ -272,6 +285,68 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
       }))
+
+    it.effect("redacts sensitive query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* client.get("http://test/path?Signature=sig-secret&page=1", {
+          urlParams: { "X-Goog-Signature": "goog-secret" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(sentUrl, "http://test/path?Signature=sig-secret&page=1&X-Goog-Signature=goog-secret")
+      }))
+
+    it.effect("redacts userinfo in url.full", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        )
+
+        yield* client.get("http://user:password@test/path").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
+      }))
+  })
+
+  describe("HttpClientError", () => {
+    it.effect("redacts query params in messages using the current redacted names", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request })
+        })
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
   })
 
   describe("followRedirects", () => {
@@ -413,6 +488,43 @@ Missing key
         yield* retryClient.get("http://test/").pipe(Effect.ignore)
         strictEqual(yield* Ref.get(attempts), 1)
       }))
+
+    it.effect.each([
+      { name: "seconds", header: "1", status: 503, delay: 1_000 },
+      { name: "a five-minute Retry-After", header: "300", status: 429, delay: 300_000 },
+      { name: "HTTP date on an errors-only retry", header: "date", status: 429, delay: 30_000 },
+      { name: "a longer schedule", header: "5", status: 503, delay: 60_000, scheduled: true },
+      { name: "no header", status: 503, delay: 0 }
+    ])(
+      "honors the retry delay for $name",
+      ({ delay, header, scheduled, status }) =>
+        Effect.gen(function*() {
+          const retryAfter = header === "date"
+            ? new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+            : header
+          const { attempts, client } = yield* makeSequenceClient([
+            { status, headers: retryAfter === undefined ? {} : { "retry-after": retryAfter } },
+            { status: 200 }
+          ])
+          const retryClient = (header === "date" ? HttpClient.filterStatusOk(client) : client).pipe(
+            HttpClient.retryTransient({
+              retryOn: header === "date" ? "errors-only" : "errors-and-responses",
+              times: 1,
+              ...(scheduled ? { schedule: Schedule.spaced("1 minute") } : {})
+            })
+          )
+          const fiber = yield* retryClient.get("http://test/").pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+
+          if (delay > 0) {
+            yield* TestClock.adjust(Duration.millis(delay - 1))
+            strictEqual(yield* Ref.get(attempts), 1)
+            yield* TestClock.adjust("1 millis")
+          }
+          strictEqual((yield* Fiber.join(fiber)).status, 200)
+        })
+    )
   })
 
   describe("stream", () => {
@@ -1079,6 +1191,45 @@ Missing key
           strictEqual(error.reason.response.status, 429)
         }
         strictEqual(yield* Ref.get(attempts), 3)
+      }).pipe(Effect.provide(RateLimiterTestLayer)))
+
+    it.effect("waits until a Retry-After HTTP date", () =>
+      Effect.gen(function*() {
+        const retryAt = new Date((yield* Clock.currentTimeMillis) + 30_000).toUTCString()
+        const attempts = yield* Ref.make(0)
+        const client = HttpClient.make((request) =>
+          Effect.map(
+            Ref.updateAndGet(attempts, (n) => n + 1),
+            (attempt) =>
+              HttpClientResponse.fromWeb(
+                request,
+                new Response(null, {
+                  status: attempt === 1 ? 429 : 200,
+                  headers: { "retry-after": retryAt }
+                })
+              )
+          )
+        ).pipe(
+          HttpClient.withRateLimiter({
+            limiter: yield* RateLimiter.RateLimiter,
+            key: "http-date-retry-after",
+            limit: 100,
+            window: "1 minute",
+            times: 1,
+            disableAdaptiveLearning: true
+          })
+        )
+
+        const fiber = yield* client.get("http://test/").pipe(Effect.forkChild)
+
+        yield* TestClock.adjust("29 seconds")
+        strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("1 second")
+        const response = yield* Fiber.join(fiber)
+
+        strictEqual(response.status, 200)
+        strictEqual(yield* Ref.get(attempts), 2)
       }).pipe(Effect.provide(RateLimiterTestLayer)))
 
     it.effect("uses a custom Retry-After header", () =>

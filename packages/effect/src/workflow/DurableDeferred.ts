@@ -134,6 +134,25 @@ const CurrentAttempt = Context.Reference<number>(
   { defaultValue: () => 1 }
 )
 
+/** Awaits registered under the instance copy of a `recordHeld` body. */
+const awaitOwners = new WeakMap<WorkflowInstance["Service"], Array<string>>()
+
+const registerAwait = (instance: WorkflowInstance["Service"], name: string) => {
+  instance.awaitedDeferreds.set(name, (instance.awaitedDeferreds.get(name) ?? 0) + 1)
+  awaitOwners.get(instance)?.push(name)
+}
+
+const releaseAwaits = (instance: WorkflowInstance["Service"], names: Array<string>) => {
+  for (const name of names) {
+    const count = instance.awaitedDeferreds.get(name)! - 1
+    if (count === 0) {
+      instance.awaitedDeferreds.delete(name)
+    } else {
+      instance.awaitedDeferreds.set(name, count)
+    }
+  }
+}
+
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -150,7 +169,7 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
   // Register before the read so any later completion can preempt the run.
-  instance.awaitedDeferreds.add(self.name)
+  registerAwait(instance, self.name)
   const exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
@@ -301,6 +320,10 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
         suspended: false,
         activityState: { count: 0, latch: Latch.makeUnsafe() }
       }
+      // A losing branch parked on a durable wait has already exited when the
+      // race settles, so this body owns the waits registered beneath it.
+      const owned: Array<string> = []
+      awaitOwners.set(local, owned)
       // A parked `effect` interrupts the fiber it runs on. The child fiber
       // keeps that from skipping the suspension handling below.
       const fiber = yield* effect.pipe(
@@ -308,10 +331,25 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
         Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
         Effect.forkChild({ startImmediately: true })
       )
-      const exit = yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber))
-      return local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
-        ? Option.none()
-        : Option.some(exit)
+      return yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber)).pipe(
+        Effect.map((exit) =>
+          local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+            ? Option.none()
+            : Option.some(exit)
+        ),
+        // The waits are over once the body has a result. Otherwise every branch
+        // parked, or an enclosing race interrupted the body, and the waits move
+        // to the enclosing owner, if any, to be released when that race settles.
+        Effect.onExit((result) =>
+          Effect.sync(() => {
+            if (Exit.isSuccess(result) && Option.isSome(result.value)) {
+              releaseAwaits(instance, owned)
+            } else {
+              awaitOwners.get(instance)?.push(...owned)
+            }
+          })
+        )
+      )
     }),
     // Every branch of `effect` parked: release the hold and let the enclosing
     // activities finish before suspending. External preemption does not wait.

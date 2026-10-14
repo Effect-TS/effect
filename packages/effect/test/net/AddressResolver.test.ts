@@ -2,19 +2,15 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Option } from "effect"
 import * as AddressResolver from "effect/net/AddressResolver"
 import * as Dns from "effect/net/Dns"
-import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
-
-const ip = NetAddress.ipFromStringUnsafe
-const endpoint = Host.hostPortFromStringUnsafe
 
 const resolver = (options?: AddressResolver.MakeOptions) =>
   Effect.service(Dns.Dns).pipe(
     Effect.map((dns) => AddressResolver.make(dns, options)),
     Effect.provide(Dns.layerStatic({
       hosts: {
-        "db.internal": [ip("10.0.0.5"), ip("fd00::5")],
-        "printer.local": [ip("fe80::1"), ip("169.254.0.7")]
+        "db.internal": ["10.0.0.5", "fd00::5"],
+        "printer.local": ["fe80::1", "169.254.0.7"]
       }
     })),
     Effect.orDie
@@ -28,6 +24,17 @@ describe("AddressResolver", () => {
       assert.deepStrictEqual(addresses.map(NetAddress.formatInet), ["10.0.0.5:5432"])
       const scoped = yield* resolve.resolve("[fe80::1%2]:80")
       assert.deepStrictEqual(scoped.map(NetAddress.formatInet), ["[fe80::1%2]:80"])
+    }))
+
+  it.effect("converts host and port objects", () =>
+    Effect.gen(function*() {
+      const resolve = yield* resolver()
+      const addresses = yield* resolve.resolve({ host: "DB.internal", port: 5432 }, { family: "IPv4" })
+      assert.deepStrictEqual(addresses.map(NetAddress.formatInet), ["10.0.0.5:5432"])
+      const numeric = yield* resolve.resolve({ host: [10, 0, 0, 1], port: 80 })
+      assert.deepStrictEqual(numeric.map(NetAddress.formatInet), ["10.0.0.1:80"])
+      const error = yield* Effect.flip(resolve.resolve({ host: "db.internal", port: 70000 }))
+      assert.strictEqual(error._tag, "NetAddressError")
     }))
 
   it.effect("reports invalid string endpoints as NetAddressError", () =>
@@ -51,16 +58,16 @@ describe("AddressResolver", () => {
   it.effect("looks up domain names and attaches the port", () =>
     Effect.gen(function*() {
       const resolve = yield* resolver()
-      const all = yield* resolve.resolve(endpoint("db.internal:5432"))
+      const all = yield* resolve.resolve("db.internal:5432")
       assert.deepStrictEqual(all.map(NetAddress.formatInet), ["10.0.0.5:5432", "[fd00::5]:5432"])
-      const v4 = yield* resolve.resolve(endpoint("db.internal:5432"), { family: "IPv4" })
+      const v4 = yield* resolve.resolve("db.internal:5432", { family: "IPv4" })
       assert.deepStrictEqual(v4.map(NetAddress.formatInet), ["10.0.0.5:5432"])
     }))
 
   it.effect("skips looked-up IPv6 link-local addresses, which have no scope", () =>
     Effect.gen(function*() {
       const resolve = yield* resolver()
-      const addresses = yield* resolve.resolve(endpoint("printer.local:631"))
+      const addresses = yield* resolve.resolve("printer.local:631")
       assert.deepStrictEqual(addresses.map(NetAddress.formatInet), ["169.254.0.7:631"])
     }))
 
@@ -69,12 +76,12 @@ describe("AddressResolver", () => {
       const resolve = yield* resolver({
         scopeId: (name) => Effect.succeed(name === "eth0" ? Option.some(2) : Option.none())
       })
-      const named = yield* resolve.resolve(endpoint("[fe80::1%eth0]:80"))
+      const named = yield* resolve.resolve("[fe80::1%eth0]:80")
       assert.deepStrictEqual(named.map(NetAddress.formatInet), ["[fe80::1%2]:80"])
-      const unknown = yield* Effect.flip(resolve.resolve(endpoint("[fe80::1%wlan0]:80")))
+      const unknown = yield* Effect.flip(resolve.resolve("[fe80::1%wlan0]:80"))
       assert.strictEqual(unknown._tag, "NetAddressError")
       const withoutLookup = yield* resolver()
-      const error = yield* Effect.flip(withoutLookup.resolve(endpoint("[fe80::1%eth0]:80")))
+      const error = yield* Effect.flip(withoutLookup.resolve("[fe80::1%eth0]:80"))
       assert.strictEqual(error._tag, "NetAddressError")
     }))
 })

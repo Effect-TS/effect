@@ -238,6 +238,8 @@ describe("Client", () => {
       failRollback = false
       assert.deepStrictEqual(yield* sql`SELECT * FROM parent`, [{ id: 1 }])
       assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [])
+      yield* sql`INSERT INTO child VALUES (1)`
+      assert.deepStrictEqual(yield* sql`SELECT * FROM child`, [{ parent_id: 1 }])
     }))
 
   it.effect("does not poison a connection already rolled back before failed commit cleanup", () =>
@@ -418,4 +420,22 @@ describe("Client", () => {
       const sql = yield* SqliteClient.make({ filename, readonly: true })
       assert.deepStrictEqual(yield* sql`PRAGMA journal_mode`, [{ journal_mode: "delete" }])
     }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer])))
+
+  it.effect("works when node:sqlite does not provide enableLoadExtension", () =>
+    Effect.gen(function*() {
+      const prototype: Partial<Pick<DatabaseSync, "enableLoadExtension">> = DatabaseSync.prototype
+      const descriptor = Object.getOwnPropertyDescriptor(prototype, "enableLoadExtension")
+      yield* Effect.acquireRelease(
+        Effect.sync(() => delete prototype.enableLoadExtension),
+        () =>
+          Effect.sync(() => {
+            if (descriptor) Object.defineProperty(prototype, "enableLoadExtension", descriptor)
+          })
+      )
+
+      const sql = yield* makeClient
+      assert.deepStrictEqual(yield* sql`SELECT 1 AS value`, [{ value: 1 }])
+      const error = yield* Effect.flip(sql.loadExtension(sql.config.filename + ".missing-extension"))
+      assert.strictEqual(error._tag, "SqlError")
+    }), { concurrent: false })
 })

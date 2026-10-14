@@ -121,6 +121,37 @@ function hasNoCollisions(left: JsonSchema.JsonSchema, rightKeys: ReadonlyArray<s
   return typeof left.$ref !== "string" && rightKeys.every((key) => !Object.hasOwn(left, key))
 }
 
+// Every bound on one schema object applies, so a repeated bound reduces to its tighter value.
+const lowerBoundKeywords = "|minimum|exclusiveMinimum|minLength|minItems|minProperties|"
+const upperBoundKeywords = "|maximum|exclusiveMaximum|maxLength|maxItems|maxProperties|"
+
+// Tightens repeated bounds and drops an inclusive or exclusive bound implied by the other on the same side. Returns
+// `undefined` for a `$ref` schema or a non-bound collision, so the caller falls back to `allOf`.
+function mergeInlineCheck(
+  left: JsonSchema.JsonSchema,
+  right: JsonSchema.JsonSchema,
+  rightKeys: ReadonlyArray<string>
+): JsonSchema.JsonSchema | undefined {
+  if (typeof left.$ref === "string") return undefined
+  const out: JsonSchema.JsonSchema = { ...left, ...right }
+  for (const key of rightKeys) {
+    if (!Object.hasOwn(left, key)) continue
+    const a = left[key]
+    const b = right[key]
+    if (typeof a !== "number" || typeof b !== "number") return undefined
+    if (lowerBoundKeywords.includes(`|${key}|`)) out[key] = Math.max(a, b)
+    else if (upperBoundKeywords.includes(`|${key}|`)) out[key] = Math.min(a, b)
+    else return undefined
+  }
+  if (typeof out.minimum === "number" && typeof out.exclusiveMinimum === "number") {
+    delete out[out.exclusiveMinimum >= out.minimum ? "minimum" : "exclusiveMinimum"]
+  }
+  if (typeof out.maximum === "number" && typeof out.exclusiveMaximum === "number") {
+    delete out[out.exclusiveMaximum <= out.maximum ? "maximum" : "exclusiveMaximum"]
+  }
+  return out
+}
+
 // `format` and `content*` can affect validation, so they are not treated as pure annotations.
 const promotableAnnotationKeywords = "|title|description|default|examples|readOnly|writeOnly|"
 const inlineableAnnotatedCheckKeywords = inlineableCheckKeywords + promotableAnnotationKeywords
@@ -149,8 +180,9 @@ function appendJsonSchema(
         : appendJsonSchema(base, extracted.schema, inlineCheck)
     }
   }
-  if (inlineCheck && hasNoCollisions(left, rightKeys)) {
-    return { ...left, ...right }
+  if (inlineCheck) {
+    const merged = mergeInlineCheck(left, right, rightKeys)
+    if (merged !== undefined) return merged
   }
   const members = Array.isArray(right.allOf) && rightKeys.length === 1 ? right.allOf : [right]
   if (Array.isArray(left.allOf)) {

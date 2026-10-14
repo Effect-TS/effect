@@ -168,11 +168,38 @@ describe("OtlpMetrics", () => {
         const firstMetric = findMetric(requests[0], metricName)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].count, 2)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].sum, 100)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].max, 75)
 
         const secondMetric = findMetric(requests[1], metricName)
         assert.isDefined(secondMetric)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].count, 3)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].sum, 130)
+        assert.strictEqual(secondMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(secondMetric?.histogram?.dataPoints[0].max, 75)
+      }).pipe(Effect.provide(TestLayerCumulative)))
+
+    it.effect("reports histogram buckets above the last boundary", () =>
+      Effect.gen(function*() {
+        const custom = Metric.histogram("custom_boundaries_histogram", { boundaries: [10, 50, 100] })
+        const linear = Metric.histogram("linear_boundaries_histogram", {
+          boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 3 })
+        })
+
+        for (const value of [25, 75, 500]) {
+          yield* Metric.update(custom, value)
+          yield* Metric.update(linear, value)
+        }
+        yield* triggerExport
+
+        const requests = yield* MockHttpClient.requests
+        const customPoint = findMetric(requests[0], "custom_boundaries_histogram")?.histogram?.dataPoints[0]
+        assert.deepStrictEqual(customPoint?.explicitBounds, [10, 50, 100])
+        assert.deepStrictEqual(customPoint?.bucketCounts, [0, 1, 1, 1])
+
+        const linearPoint = findMetric(requests[0], "linear_boundaries_histogram")?.histogram?.dataPoints[0]
+        assert.deepStrictEqual(linearPoint?.explicitBounds, [50])
+        assert.deepStrictEqual(linearPoint?.bucketCounts, [1, 2])
       }).pipe(Effect.provide(TestLayerCumulative)))
 
     it.effect("reports frequency counts across export intervals", () =>
@@ -288,10 +315,14 @@ describe("OtlpMetrics", () => {
         const firstMetric = findMetric(requests[0], metricName)
         assert.strictEqual(firstMetric?.histogram?.dataPoints[0].count, 2)
         assert.strictEqual(firstMetric!.histogram!.dataPoints[0].sum, 100)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].min, 25)
+        assert.strictEqual(firstMetric?.histogram?.dataPoints[0].max, 75)
 
         const secondMetric = findMetric(requests[1], metricName)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].count, 1)
         assert.strictEqual(secondMetric?.histogram?.dataPoints[0].sum, 30)
+        assert.notProperty(secondMetric!.histogram!.dataPoints[0], "min")
+        assert.notProperty(secondMetric!.histogram!.dataPoints[0], "max")
       }).pipe(Effect.provide(TestLayerDelta)))
 
     it.effect("reports frequency count deltas across export intervals", () =>

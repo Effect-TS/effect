@@ -11,6 +11,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as ByteSize from "../ByteSize.ts"
 import * as Cause from "../Cause.ts"
 import { Clock } from "../Clock.ts"
 import * as Context from "../Context.ts"
@@ -26,6 +27,7 @@ import type { Predicate } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import { nativeTracer, ParentSpan, Tracer } from "../Tracer.ts"
 import * as Headers from "./Headers.ts"
+import { hasBody } from "./HttpMethod.ts"
 import type { CompressionAlgorithm } from "./HttpPlatform.ts"
 import { HttpPlatform } from "./HttpPlatform.ts"
 import { causeResponseStripped, ClientAbort, HttpServerError, ResponseError } from "./HttpServerError.ts"
@@ -35,9 +37,11 @@ import * as Response from "./HttpServerResponse.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
 import * as compressionInternal from "./internal/compression.ts"
+import * as decompressionInternal from "./internal/decompression.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
 import * as tracing from "./internal/tracing.ts"
+import * as UrlParams from "./UrlParams.ts"
 
 /**
  * Middleware that transforms an HTTP server app effect into another HTTP server app effect.
@@ -268,42 +272,37 @@ export const tracer: <E, R>(
       }
       const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
       const headerFilter = fiber.getRef(TracerHeaderFilter)
-      fiber.currentDispatcher.scheduleTask(() => {
-        let response: HttpServerResponse
-        let spanExit: Exit.Exit<HttpServerResponse, unknown>
-        if (Exit.isFailure(exit)) {
-          const [failureResponse, cause] = causeResponseStripped(exit.cause)
-          response = failureResponse
-          // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
-          spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
-            ? Exit.failCause(cause.value)
-            : responseSpanExit(request, response)
-        } else {
-          response = exit.value
-          spanExit = responseSpanExit(request, response)
+      // Complete the span before the request fiber exits so shutdown can flush it.
+      let response: HttpServerResponse
+      let spanExit: Exit.Exit<HttpServerResponse, unknown>
+      if (Exit.isFailure(exit)) {
+        const [failureResponse, cause] = causeResponseStripped(exit.cause)
+        response = failureResponse
+        // OpenTelemetry only treats 5xx responses as server span errors; interrupts still fail the span.
+        spanExit = Option.isSome(cause) && (response.status >= 500 || Cause.hasInterrupts(cause.value))
+          ? Exit.failCause(cause.value)
+          : responseSpanExit(request, response)
+      } else {
+        response = exit.value
+        spanExit = responseSpanExit(request, response)
+      }
+      if (span.sampled) {
+        span.attribute("http.request.method", request.method)
+        const url = Request.toURL(request)
+        if (Option.isSome(url)) {
+          tracing.addUrlAttributes(span, url.value, fiber.getRef(UrlParams.CurrentRedactedNames))
         }
-        if (span.sampled) {
-          span.attribute("http.request.method", request.method)
-          const url = Request.toURL(request)
-          if (Option.isSome(url)) {
-            if (!request.url.startsWith("/") && (url.value.username !== "" || url.value.password !== "")) {
-              url.value.username = "REDACTED"
-              url.value.password = "REDACTED"
-            }
-            tracing.addUrlAttributes(span, url.value)
-          }
-          if (request.headers["user-agent"] !== undefined) {
-            span.attribute("user_agent.original", request.headers["user-agent"])
-          }
-          tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
-          if (Option.isSome(request.remoteAddress)) {
-            span.attribute("client.address", request.remoteAddress.value)
-          }
-          span.attribute("http.response.status_code", response.status)
-          tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+        if (request.headers["user-agent"] !== undefined) {
+          span.attribute("user_agent.original", request.headers["user-agent"])
         }
-        span.end(endTime, spanExit)
-      }, 0)
+        tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
+        if (Option.isSome(request.remoteAddress)) {
+          span.attribute("client.address", request.remoteAddress.value)
+        }
+        span.attribute("http.response.status_code", response.status)
+        tracing.addHeaderAttributes(span, "response", response.headers, headerFilter, redactedHeaderNames)
+      }
+      span.end(endTime, spanExit)
       return undefined
     })
     return httpApp
@@ -624,6 +623,86 @@ export const compression = (
       appendPreResponseHandlerUnsafe(request, (request, response) =>
         transform(compression, request.headers["accept-encoding"], response))
       return httpApp
+    })
+}
+
+/**
+ * Middleware that decompresses request bodies sent with a `Content-Encoding`
+ * of `gzip` or `deflate`.
+ *
+ * **Details**
+ *
+ * The request service is replaced with a view whose body accessors (`stream`,
+ * `text`, `json`, `arrayBuffer`, `urlParamsBody`, `multipart`) yield the
+ * decompressed body, and whose headers no longer include `Content-Encoding`
+ * or `Content-Length`. Decompression is lazy and only happens when the body
+ * is read. Stacked codings such as `deflate, gzip` are undone in reverse
+ * order, and `identity` members are ignored.
+ *
+ * Requests whose `Content-Encoding` includes any other coding are rejected
+ * with `415 Unsupported Media Type` and `Accept-Encoding: gzip, deflate`,
+ * without running the app. Malformed compressed data fails the body read
+ * with a `RequestParseError`, or a `MultipartError` with reason `Parse` when
+ * reading multipart data.
+ *
+ * The decompressed size is limited to `maxDecompressedSize`, falling back to
+ * the `MaxBodySize` reference and then to 10 MiB. Exceeding it fails the body
+ * read with a `RequestParseError`, or a `MultipartError` with reason
+ * `BodyTooLarge` when reading multipart data. The limit applies to every body
+ * accessor, including `stream`.
+ *
+ * Decompression uses the global `DecompressionStream`. `deflate` means the
+ * zlib format (RFC 1950); raw deflate data is rejected.
+ *
+ * **Gotchas**
+ *
+ * `request.source` is still the original, compressed request.
+ * `HttpServerRequest.toWeb` returns that compressed request only when the
+ * source is a Web `Request`. On other platforms, such as Node, it builds a new
+ * `Request` from the decompressed body and the stripped headers.
+ *
+ * @stability unstable
+ * @category compression
+ * @since 4.0.0
+ */
+export const decompression = (
+  options?: {
+    /**
+     * Maximum number of decompressed body bytes. Defaults to the
+     * `MaxBodySize` reference, or 10 MiB when that is unset.
+     */
+    readonly maxDecompressedSize?: ByteSize.Input | undefined
+  } | undefined
+): <E, R>(
+  httpApp: Effect.Effect<HttpServerResponse, E, R>
+) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> => {
+  const maxDecompressedSize = options?.maxDecompressedSize === undefined
+    ? undefined
+    : ByteSize.fromInputUnsafe(options.maxDecompressedSize)
+  return <E, R>(
+    httpApp: Effect.Effect<HttpServerResponse, E, R>
+  ): Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> =>
+    Effect.withFiber((fiber) => {
+      const request = Context.getUnsafe(fiber.context, HttpServerRequest)
+      const contentEncoding = request.headers["content-encoding"]
+      if (contentEncoding === undefined || !hasBody(request.method)) {
+        return httpApp
+      }
+      const codings = decompressionInternal.parseContentEncoding(contentEncoding)
+      if (codings === undefined) {
+        return Effect.succeed(Response.empty({
+          status: 415,
+          headers: { "accept-encoding": "gzip, deflate" }
+        }))
+      }
+      if (codings.length === 0) {
+        return httpApp
+      }
+      return Effect.provideService(
+        httpApp,
+        HttpServerRequest,
+        new decompressionInternal.DecompressedRequest(request, codings, maxDecompressedSize)
+      )
     })
 }
 

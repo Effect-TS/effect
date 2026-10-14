@@ -1049,6 +1049,20 @@ An index signature lets a struct accept any string key in addition to its fixed 
 
 Filters applied to either the struct or the record are preserved when combined.
 
+The base schema must have an object-shaped encoded type. Whole-object transformations are not supported, even when the rest array is empty. For JSON-string encoding, wrap the completed schema with `Schema.fromJsonString` rather than passing a JSON-string schema to `Schema.StructWithRest`:
+
+```ts
+import { Schema } from "effect"
+
+const base = Schema.Record(Schema.Literals(["bash", "sh"]), Schema.NonEmptyString)
+const records = [Schema.Record(Schema.NonEmptyString, Schema.NonEmptyString)] as const
+const schema = Schema.fromJsonString(Schema.StructWithRest(base, records), { space: 2 })
+
+type Encoded = typeof schema.Encoded // string
+```
+
+Object-shaped encoded types alone do not guarantee compatibility: unsupported whole-object encodings are still rejected at runtime. Transformations on individual fields remain supported.
+
 **Example** (Combining fixed properties with an index signature)
 
 ```ts
@@ -2160,7 +2174,7 @@ This helper has some advantages over a dedicated constructor:
 - You can choose among multiple possible tag fields if present.
 - It supports unions that include nested unions.
 
-Each member must have a unique discriminant property key. `toTaggedUnion` throws when it encounters a duplicate. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
+Each member must have a unique discriminant property key. `toTaggedUnion` rejects overlapping discriminant types in known member tuples at compile time, including nested unions. It also throws when it encounters a duplicate at runtime. Numeric and string values that resolve to the same property key, such as `1` and `"1"`, are considered duplicates.
 
 **Note**. If the tag is the standard `_tag` field, you can use `Schema.TaggedUnion` instead.
 

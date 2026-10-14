@@ -321,10 +321,11 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
   const httpApp = toHandled(self, (request, response) => {
     const withoutBody = request.method === "HEAD"
     if (!Response.omitsBody(response, withoutBody)) {
+      // The transferred request scope closes when an abort interrupts the body, even if it is no longer read.
       response = scopeTransferToStream(response)
     }
     ;(request as any)[resolveSymbol](
-      Response.toWeb(response, { withoutBody, context })
+      Response.toWeb(response, { withoutBody, context, signal: (request.source as globalThis.Request).signal })
     )
     return Effect.void
   }, middleware)
@@ -340,10 +341,15 @@ export const toWebHandlerWith = <Provided, R = never, ReqR = Exclude<R, Provided
       reqContext = Context.add(reqContext, HttpServerRequest, httpServerRequest)
       ;(httpServerRequest as any)[resolveSymbol] = resolve
       const fiber = Effect.runForkWith(reqContext)(httpApp as any)
-      if (fiber.pollUnsafe() === undefined) {
-        request.signal?.addEventListener("abort", () => {
-          fiber.interruptUnsafe(undefined, ClientAbort.annotation)
-        }, { once: true })
+      const signal = request.signal
+      if (fiber.pollUnsafe() === undefined && signal) {
+        const onAbort = () => fiber.interruptUnsafe(undefined, ClientAbort.annotation)
+        if (signal.aborted) {
+          onAbort()
+        } else {
+          signal.addEventListener("abort", onAbort, { once: true })
+          fiber.addObserver(() => signal.removeEventListener("abort", onAbort))
+        }
       }
     })
 }

@@ -9,6 +9,7 @@
  * @stability experimental
  * @since 4.0.0
  */
+import type * as Arr from "../Array.ts"
 import type * as Brand from "../Brand.ts"
 import * as Equal from "../Equal.ts"
 import * as Hash from "../Hash.ts"
@@ -61,6 +62,15 @@ export type DomainNameInput = DomainName | string
 export type Host = NetAddress.IpAddress | NetAddress.ScopedIpv6Literal | DomainName
 
 /**
+ * A host, or a string or any `IpAddressInput` to convert to one.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type HostInput = Host | NetAddress.IpAddressInput
+
+/**
  * An unresolved host and port.
  *
  * @see {@link hostPortFromString} for parsing `host:port` strings
@@ -77,13 +87,26 @@ export interface HostPort extends Equal.Equal, Hash.Hash, Inspectable.Inspectabl
 }
 
 /**
- * An endpoint or a `host:port` string to parse.
+ * The host and port of an endpoint.
+ *
+ * @see {@link hostPort} for the checked constructor
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface HostPortParts {
+  readonly host: HostInput
+  readonly port: number
+}
+
+/**
+ * An endpoint, or a `host:port` string or parts to convert to one.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export type HostPortInput = HostPort | string
+export type HostPortInput = HostPort | string | HostPortParts
 
 const hostError = (input: unknown, message: string): Result.Result<never, NetAddress.NetAddressError> =>
   Result.fail(new NetAddress.NetAddressError({ input, message }))
@@ -198,6 +221,31 @@ export const domainNameFromString = (input: string): Result.Result<DomainName, N
 export const domainNameFromStringUnsafe = (input: string): DomainName => Result.getOrThrow(domainNameFromString(input))
 
 /**
+ * Converts a `DomainNameInput` to a domain name, parsing and normalizing it like
+ * `domainNameFromString`.
+ *
+ * **Details**
+ *
+ * Domain names are strings, so every input is parsed.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const domainNameFromInput = (input: DomainNameInput): Result.Result<DomainName, NetAddress.NetAddressError> =>
+  domainNameFromString(input)
+
+/**
+ * Converts a trusted `DomainNameInput` to a domain name, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const domainNameFromInputUnsafe = (input: DomainNameInput): DomainName =>
+  Result.getOrThrow(domainNameFromInput(input))
+
+/**
  * Parses a host as a numeric IP address, a scoped IPv6 literal, or a domain
  * name, in that order.
  *
@@ -236,6 +284,26 @@ export const hostFromString = (input: string): Result.Result<Host, NetAddress.Ne
 export const hostFromStringUnsafe = (input: string): Host => Result.getOrThrow(hostFromString(input))
 
 /**
+ * Converts a `HostInput` to a host, parsing strings like `hostFromString` and
+ * converting other inputs like `NetAddress.ipFromInput`.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const hostFromInput = (input: HostInput): Result.Result<Host, NetAddress.NetAddressError> =>
+  typeof input === "string" ? hostFromString(input) : NetAddress.ipFromInput(input)
+
+/**
+ * Converts a trusted `HostInput` to a host, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostFromInputUnsafe = (input: HostInput): Host => Result.getOrThrow(hostFromInput(input))
+
+/**
  * Formats a host without brackets.
  *
  * @stability experimental
@@ -253,6 +321,28 @@ export const formatHost = (self: Host): string => typeof self === "string" ? sel
  * @since 4.0.0
  */
 export const isFullyQualified = (self: DomainName): boolean => self.endsWith(".")
+
+/**
+ * Appends the trailing dot to a domain name, unless it is already fully
+ * qualified.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const toFullyQualified = (self: DomainName): DomainName =>
+  isFullyQualified(self) ? self : `${self}.` as DomainName
+
+/**
+ * Removes the trailing dot of a fully qualified domain name, except from the
+ * root name `.`.
+ *
+ * @stability experimental
+ * @category converting
+ * @since 4.0.0
+ */
+export const toRelative = (self: DomainName): DomainName =>
+  self.length > 1 && isFullyQualified(self) ? self.slice(0, -1) as DomainName : self
 
 const HostPortProto = {
   ...Inspectable.BaseProto,
@@ -364,6 +454,34 @@ export const hostPortFromString = (input: string): Result.Result<HostPort, NetAd
 export const hostPortFromStringUnsafe = (input: string): HostPort => Result.getOrThrow(hostPortFromString(input))
 
 /**
+ * Converts a `HostPortInput` to an endpoint, parsing strings like
+ * `hostPortFromString`, converting parts like `hostPort`, and returning
+ * endpoints unchanged.
+ *
+ * @stability experimental
+ * @category constructors
+ * @since 4.0.0
+ */
+export const hostPortFromInput = (input: HostPortInput): Result.Result<HostPort, NetAddress.NetAddressError> => {
+  if (isHostPort(input)) return Result.succeed(input)
+  if (typeof input === "string") return hostPortFromString(input)
+  if (!hasProperty(input, "host") || !hasProperty(input, "port")) {
+    return hostError(input, "expected a host and port")
+  }
+  const port = input.port
+  return Result.flatMap(hostFromInput(input.host), (host) => hostPort(host, port))
+}
+
+/**
+ * Converts a trusted `HostPortInput` to an endpoint, throwing on failure.
+ *
+ * @stability experimental
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const hostPortFromInputUnsafe = (input: HostPortInput): HostPort => Result.getOrThrow(hostPortFromInput(input))
+
+/**
  * Formats a host and port, bracketing IPv6 hosts.
  *
  * @see {@link hostPortFromString} for the inverse operation
@@ -374,4 +492,53 @@ export const hostPortFromStringUnsafe = (input: string): HostPort => Result.getO
 export const formatHostPort = (self: HostPort): string => {
   const host = formatHost(self.host)
   return host.includes(":") ? `[${host}]:${self.port}` : `${host}:${self.port}`
+}
+
+/**
+ * The addresses of host names, as read from a hosts file.
+ *
+ * @see {@link parseHostsFile} for reading a hosts file
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type HostsTable = ReadonlyMap<DomainName, Arr.NonEmptyReadonlyArray<NetAddress.IpAddress>>
+
+/**
+ * Parses a hosts file into the addresses of each host name. Invalid entries
+ * are skipped.
+ *
+ * **Example** (Parsing a hosts file)
+ *
+ * ```ts import.meta.vitest
+ * import { Host, NetAddress } from "effect/net"
+ *
+ * const hosts = Host.parseHostsFile(`
+ * 127.0.0.1 localhost
+ * ::1       localhost ip6-localhost # loopback
+ * `)
+ * hosts.get(Host.domainNameFromStringUnsafe("localhost"))?.map(NetAddress.formatIp) // => ["127.0.0.1", "::1"]
+ * ```
+ *
+ * @stability experimental
+ * @category decoding
+ * @since 4.0.0
+ */
+export const parseHostsFile = (text: string): HostsTable => {
+  const hosts = new Map<DomainName, Array<NetAddress.IpAddress>>()
+  for (const line of text.split(/\r?\n/)) {
+    const comment = line.indexOf("#")
+    const [first, ...names] = (comment === -1 ? line : line.slice(0, comment)).trim().split(/\s+/)
+    const address = NetAddress.ipFromString(first)
+    if (Result.isFailure(address)) continue
+    for (const name of names) {
+      const domain = domainNameFromString(name)
+      if (Result.isFailure(domain)) continue
+      const key = toRelative(domain.success)
+      const addresses = hosts.get(key)
+      if (addresses === undefined) hosts.set(key, [address.success])
+      else if (!addresses.some((existing) => Equal.equals(existing, address.success))) addresses.push(address.success)
+    }
+  }
+  return hosts as unknown as HostsTable
 }
