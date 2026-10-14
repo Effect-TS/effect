@@ -5967,7 +5967,7 @@ function toIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaError, R>
 ): Effect.Effect<A, SchemaIssue.Issue, R> {
   if (effectIsExit(self) && self._tag === "Success") {
-    return Effect.succeed(self.value)
+    return self as unknown as Exit_.Exit<A, SchemaIssue.Issue>
   }
   return Effect.catchCause(self, (cause) => Effect.failCauseSync(() => Cause_.map(cause, (error) => error.issue)))
 }
