@@ -20,10 +20,10 @@ import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as Latch from "../Latch.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import * as Scope from "../Scope.ts"
-import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
 
 const TarErrorTypeId = "~effect/encoding/Tar/TarError"
@@ -560,9 +560,11 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
 // Decoding
 // -----------------------------------------------------------------------------
 
-// A queue of byte chunks that hands out views without copying where possible
+// A queue of byte chunks that hands out views without copying where possible.
+// Consumed chunks are released right away.
 class ByteQueue {
-  private chunks: Array<Uint8Array> = []
+  private chunks: Array<Uint8Array | undefined> = []
+  private head = 0
   private offset = 0
   length = 0
 
@@ -573,7 +575,7 @@ class ByteQueue {
   }
 
   takeSome(max: number): Uint8Array {
-    const chunk = this.chunks[0]
+    const chunk = this.chunks[this.head]!
     const available = chunk.length - this.offset
     if (max < available) {
       const out = chunk.subarray(this.offset, this.offset + max)
@@ -582,9 +584,16 @@ class ByteQueue {
       return out
     }
     const out = this.offset === 0 ? chunk : chunk.subarray(this.offset)
-    this.chunks.shift()
+    this.chunks[this.head++] = undefined
     this.length -= available
     this.offset = 0
+    if (this.head === this.chunks.length) {
+      this.chunks = []
+      this.head = 0
+    } else if (this.head >= 1024) {
+      this.chunks = this.chunks.slice(this.head)
+      this.head = 0
+    }
     return out
   }
 
@@ -606,6 +615,7 @@ class ByteQueue {
 
   clear(): void {
     this.chunks = []
+    this.head = 0
     this.offset = 0
     this.length = 0
   }
@@ -718,8 +728,8 @@ class Decoder {
     }
   }
 
-  // Returns the next body bytes of the entry from generation `id`
-  read(id: number): Uint8Array | typeof NeedInput | typeof BodyEnd {
+  // Returns the buffered body bytes of the entry from generation `id`
+  read(id: number): Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd {
     if (id !== this.generation) {
       throw new TarError({
         kind: "BodyConsumed",
@@ -730,9 +740,14 @@ class Decoder {
     }
     if (this.remaining === 0) return BodyEnd
     if (this.queue.length === 0) return this.needInput()
-    const chunk = this.queue.takeSome(this.remaining)
-    this.remaining -= chunk.length
-    return chunk
+    const chunks = Arr.of(this.queue.takeSome(this.remaining))
+    this.remaining -= chunks[0].length
+    while (this.remaining > 0 && this.queue.length > 0) {
+      const chunk = this.queue.takeSome(this.remaining)
+      this.remaining -= chunk.length
+      chunks.push(chunk)
+    }
+    return chunks
   }
 
   private needInput(): typeof NeedInput {
@@ -811,11 +826,15 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
   Channel.fromTransform((upstream, scope) =>
     Effect.suspend(() => {
       const decoder = new Decoder()
-      // Serializes upstream pulls between the entry stream and the current body
-      const lock = Semaphore.makeUnsafe(1)
       let done: { readonly value: Done } | undefined
+      // The entry stream and the current body can both wait for input. Only one
+      // of them pulls upstream at a time; the other waits on `waiting`, and
+      // `pulls` tells a reader whether input arrived since it last looked.
+      let pulls = 0
+      let pulling = false
+      let waiting: Latch.Latch | undefined
 
-      const pullInput: Effect.Effect<void, IE> = upstream.pipe(
+      const pullUpstream: Effect.Effect<void, IE> = upstream.pipe(
         Effect.map((chunks) => {
           for (const chunk of chunks) decoder.push(chunk)
         }),
@@ -823,8 +842,27 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
           done = { value: value as Done }
           decoder.end()
           return Effect.void
+        }),
+        Effect.onExit(() => {
+          pulls++
+          pulling = false
+          if (waiting !== undefined) {
+            waiting.openUnsafe()
+            waiting = undefined
+          }
+          return Effect.void
         })
       )
+
+      // Pulls more input, unless it arrived since `seen` or another reader is
+      // pulling it
+      const pullInput = (seen: number): Effect.Effect<void, IE> =>
+        Effect.suspend(() => {
+          if (pulls !== seen) return Effect.void
+          if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
+          pulling = true
+          return pullUpstream
+        })
 
       // Discards the input after the end of the archive
       const drain: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
@@ -832,40 +870,42 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
         IE | Cause.Done<Done>
       > {
         if (done !== undefined) return Cause.done(done.value)
-        return Effect.flatMap(pullInput, loop)
+        return Effect.flatMap(pullInput(pulls), loop)
       })
 
       const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-        Stream.fromPull(Effect.succeed(lock.withPermit(Effect.suspend(function loop(): Pull.Pull<
+        Stream.fromPull(Effect.succeed(Effect.suspend(function loop(): Pull.Pull<
           Arr.NonEmptyReadonlyArray<Uint8Array>,
           TarError | IE
         > {
-          let chunk: Uint8Array | typeof NeedInput | typeof BodyEnd
+          const seen = pulls
+          let chunks: Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd
           try {
-            chunk = decoder.read(id)
+            chunks = decoder.read(id)
           } catch (error) {
             return Effect.fail(error as TarError)
           }
-          if (chunk === NeedInput) return Effect.flatMap(pullInput, loop)
-          if (chunk === BodyEnd) return Cause.done()
-          return Effect.succeed(Arr.of(chunk))
-        }))))
+          if (chunks === NeedInput) return Effect.flatMap(pullInput(seen), loop)
+          if (chunks === BodyEnd) return Cause.done()
+          return Effect.succeed(chunks)
+        })))
 
       const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.suspend(
         function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> {
+          const seen = pulls
           let header: Header | undefined | typeof NeedInput
           try {
             header = decoder.next()
           } catch (error) {
             return Effect.fail(error as TarError)
           }
-          if (header === NeedInput) return Effect.flatMap(pullInput, loop)
+          if (header === NeedInput) return Effect.flatMap(pullInput(seen), loop)
           if (header === undefined) return drain
           return Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
         }
       )
 
-      return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), lock.withPermit(next))
+      return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
     })
   )
 
