@@ -151,6 +151,20 @@ export class UnsupportedByProtocol extends Data.TaggedError("UnsupportedByProtoc
 }> {}
 
 /**
+ * A request rejected outside the handler, for example by MCP middleware.
+ * Adapters send it as a JSON-RPC error with its code, message and data, never
+ * as a tool result. `error` keeps the original failure for in-process callers.
+ *
+ * @internal
+ */
+export class RequestRejected extends Data.TaggedError("RequestRejected")<{
+  readonly code: number
+  readonly message: string
+  readonly data?: unknown
+  readonly error: McpSchema.McpErrorBase
+}> {}
+
+/**
  * @internal
  */
 export type ToolError =
@@ -158,6 +172,7 @@ export type ToolError =
   | InvalidToolInput
   | InvalidToolContinuation
   | ToolExecutionError
+  | RequestRejected
 
 /**
  * @internal
@@ -172,7 +187,7 @@ export interface ToolRegistration {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.CallToolResult>,
-    InvalidToolInput | InvalidToolContinuation | ToolExecutionError,
+    InvalidToolInput | InvalidToolContinuation | ToolExecutionError | RequestRejected,
     never
   >
 }
@@ -201,7 +216,7 @@ export interface ResourceRegistration {
   readonly isVisible: (profile: NegotiatedProtocolProfile<string>) => boolean
   readonly read: (
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError>
+  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -215,7 +230,10 @@ export interface ResourceTemplateRegistration {
     uri: string,
     params: ReadonlyArray<string>,
     invocation: McpInvocation
-  ) => Effect.Effect<McpSchema.ReadResourceResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    McpSchema.ReadResourceResult,
+    McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -235,7 +253,7 @@ export interface Resources {
     invocation: McpInvocation
   ) => Effect.Effect<
     McpSchema.ReadResourceResult,
-    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    ResourceNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -255,7 +273,10 @@ export interface PromptRegistration {
   readonly get: (
     args: Readonly<Record<string, string>>,
     invocation: McpInvocation
-  ) => Effect.Effect<OperationOutcome<McpSchema.GetPromptResult>, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<
+    OperationOutcome<McpSchema.GetPromptResult>,
+    McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
+  >
 }
 
 /**
@@ -272,7 +293,7 @@ export interface Prompts {
     invocation: McpInvocation
   ) => Effect.Effect<
     OperationOutcome<McpSchema.GetPromptResult>,
-    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError
+    PromptNotFound | McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected
   >
 }
 
@@ -315,12 +336,12 @@ export interface Completions {
     complete: (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   ) => Effect.Effect<void>
   readonly complete: (
     request: CompletionRequest,
     invocation: McpInvocation
-  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+  ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
 }
 
 /**
@@ -414,7 +435,7 @@ export const make: Effect.Effect<McpCore> = Effect.sync(() => {
     (
       request: CompletionRequest,
       invocation: McpInvocation
-    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError>
+    ) => Effect.Effect<CompletionResult, McpSchema.InvalidParams | McpSchema.InternalError | RequestRejected>
   >()
 
   const tools: Tools = {
