@@ -2328,9 +2328,7 @@ export const registerResource: {
       | Schemas[number]["DecodingServices"]
       | Schemas[number]["EncodingServices"]
       | R
-      | (Completions[keyof Completions] extends (input: string) => infer Ret ?
-        Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
-        : never),
+      | CompletionServices<Completions>,
       McpRequestContext
     >
     | McpServer
@@ -2504,9 +2502,7 @@ export const resource: {
     never,
     Exclude<
       | R
-      | (Completions[keyof Completions] extends (input: string) => infer Ret ?
-        Ret extends Effect.Effect<infer _A, infer _E, infer _R> ? _R : never
-        : never),
+      | CompletionServices<Completions>,
       McpRequestContext
     >
   >
