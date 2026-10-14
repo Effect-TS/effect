@@ -9,16 +9,9 @@
  * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
- * Over a `GraphQLProtocol.layerHttp` transport with a `url` function, lookups
- * whose URLs differ go in separate batches, and lookups with the same URL
- * still share one. The URL is computed from each lookup's context before
- * middleware runs, so middleware must not change the request's `kind` or
- * `operationName`, or provide a service the `url` function reads.
- *
- * `RequestResolver.withCache` and `RequestResolver.persisted` key on the
- * lookup alone, so caching a resolver whose lookups go to several URLs can
- * answer a lookup with another URL's result. Use one resolver per URL, for
- * example with `LayerMap`, when caching.
+ * Lookups whose `GraphQLProtocol.layerHttp` `url` function returns different
+ * URLs go in separate batches. See its gotchas for what middleware and
+ * caching must respect.
  *
  * @stability experimental
  * @since 4.0.0
@@ -618,8 +611,7 @@ const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
  * Each batch holds entries whose protocol URL and `batchKey` are equal, so the
- * first entry's context stands for the batch. Methods without a protocol URL
- * (mock and custom methods) and without `batchKey` use one batch.
+ * first entry's context stands for the batch.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
@@ -627,7 +619,6 @@ const makeResolver = <A extends Request.Any>(
   runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
 ): RequestResolver.RequestResolver<A> => {
   const url = internalGraphQL.rawExecutors.get(method)?.url
-  if (url === undefined && batchKey === undefined) return RequestResolver.make(runAll)
   const { kind, name } = method.operation
   // Arrays are compared structurally, so equal pairs share a batch.
   return RequestResolver.makeGrouped({

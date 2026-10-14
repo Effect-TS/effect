@@ -20,6 +20,7 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Sse from "../encoding/Sse.ts"
 import * as Fiber from "../Fiber.ts"
+import { constant } from "../Function.ts"
 import * as Headers from "../http/Headers.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -153,22 +154,16 @@ export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
     readonly headers?: Headers.Headers | undefined
   }, TransportError>
   /**
-   * Where the transport sends an operation. `layerHttp` sets it, and
-   * `GraphQLResolver` groups lookups by it so a batch never mixes URLs.
-   * Custom transports can leave it unset.
+   * Where the transport sends an operation. `GraphQLResolver` groups lookups
+   * by it. `layerHttp` sets it; custom transports can leave it unset.
    */
   readonly url?: UrlFunction | undefined
 }>()("effect/graphql/GraphQLProtocol") {}
 
 /**
  * Picks the URL of one operation for {@link layerHttp}, from the current
- * context and the operation's kind and name.
- *
- * **Details**
- *
- * The function must depend only on these options. `GraphQLResolver` calls it
- * for each lookup to decide which lookups share a batch, before variables,
- * the aliased document, `headers` and `urlParams` exist.
+ * context and the operation's kind and name. See {@link layerHttp} for what
+ * it may depend on.
  *
  * @stability experimental
  * @category models
@@ -356,10 +351,8 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   never,
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
 > => {
-  const configured = options.url
-  const url: UrlFunction = typeof configured === "string" ? () => configured : configured
-  // Evaluated in the calling fiber's context, which includes the call's
-  // `context` option.
+  const url: UrlFunction = typeof options.url === "string" ? constant(options.url) : options.url
+  // The calling fiber's context, which includes the call's `context` option.
   const urlOf = (context: Context.Context<never>, request: GraphQLRequest) =>
     url({ context, kind: request.kind, operationName: request.operationName })
   const http = Clock.clockWith((clock) =>
@@ -507,21 +500,16 @@ export const makeHttp: {
  * **Gotchas**
  *
  * A `url` function must depend only on the context and the operation.
- * `GraphQLResolver` calls it for each lookup to keep lookups for different
- * URLs in separate batches. Variables, the aliased document, `headers` and
- * `urlParams` are only assembled once the batch is formed, so a URL that
- * depends on them couldn't be grouped by.
- *
- * Middleware must keep the routing inputs too: it must not change a request's
- * `kind` or `operationName`, or provide a service the `url` function reads.
- * A resolver groups lookups by the URL computed before middleware runs, so a
- * batch formed for one URL would be sent to another.
+ * `GraphQLResolver` groups lookups by the URL it returns before middleware
+ * runs and before variables, `headers` and `urlParams` are assembled. For the
+ * same reason, middleware must not change a request's `kind` or
+ * `operationName`, or provide a service the function reads, or a batch
+ * formed for one URL is sent to another.
  *
  * `RequestResolver.withCache` and `RequestResolver.persisted` key on the
- * lookup alone, not on its URL. A cached resolver over a client with a `url`
- * function can answer one server's lookup with another server's result for
- * the same key. To cache, build one client and resolver per server, for
- * example with `LayerMap`.
+ * lookup alone, so a cached resolver can answer one server's lookup with
+ * another server's result. To cache, use one client and resolver per server,
+ * for example with `LayerMap`.
  *
  * **Example** (Building a client over HTTP)
  *
