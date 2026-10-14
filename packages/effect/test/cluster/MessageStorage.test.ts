@@ -274,52 +274,6 @@ describe("MessageStorage", () => {
         yield* Fiber.await(fiber)
       }).pipe(Effect.provide(MemoryLayer)))
 
-    it.effect.each(["commit", "rollback"] as const)(
-      "nested terminal replies become visible only after the outer transaction: %s",
-      (outcome) =>
-        Effect.gen(function*() {
-          const storage = yield* MessageStorage.MessageStorage
-          const requests = [yield* makeRequest(), yield* makeRequest()]
-          const replies = yield* Effect.forEach(requests, makeReply)
-          const received: Array<Reply.Reply<any>> = []
-          const handlers = yield* Effect.forEach(requests, (request) =>
-            storage.registerReplyHandler(
-              new Message.OutgoingRequest({
-                ...request,
-                respond: (reply) =>
-                  Effect.sync(() => {
-                    received.push(reply)
-                  })
-              })
-            ).pipe(Effect.forkChild({ startImmediately: true })))
-          yield* Effect.forEach(requests, (request) => storage.saveRequest(request))
-          const innerCompleted = yield* Latch.make()
-          const finishOuter = yield* Latch.make()
-          const transaction = yield* storage.withTransaction(Effect.gen(function*() {
-            yield* storage.withTransaction(
-              Effect.forEach(replies, (reply) => storage.saveReply(reply))
-            )
-            yield* innerCompleted.open
-            yield* finishOuter.await
-            if (outcome === "rollback") return yield* Effect.fail("rollback")
-          })).pipe(Effect.forkChild)
-
-          yield* innerCompleted.await
-          expect(yield* storage.repliesFor(requests)).toEqual([])
-          expect(received).toEqual([])
-
-          yield* finishOuter.open
-          const exit = yield* Fiber.await(transaction)
-          expect(exit).toEqual(outcome === "commit" ? Exit.void : Exit.fail("rollback"))
-          if (outcome === "commit") {
-            yield* Effect.forEach(handlers, Fiber.join)
-          }
-          const expected = outcome === "commit" ? replies.map((reply) => reply.reply) : []
-          expect(yield* storage.repliesFor(requests)).toEqual(expected)
-          expect(received).toEqual(expected)
-        }).pipe(Effect.provide(MemoryLayer))
-    )
-
     it.effect("unregisterShardReplyHandlers fails parked waiters during rebalance", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage

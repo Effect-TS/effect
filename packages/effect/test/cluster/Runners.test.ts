@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Scope, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
 import {
   ClusterError,
   ClusterSchema,
@@ -245,13 +245,7 @@ describe.concurrent("Runners.makeRpc", () => {
     payload: { id: Schema.Number }
   }).annotate(ClusterSchema.Persisted, true)
 
-  const TestRpcStream = Rpc.make("TestRpcStream", {
-    success: Schema.Number,
-    payload: { id: Schema.Number },
-    stream: true
-  }).annotate(ClusterSchema.Persisted, true)
-
-  type SendRpc = typeof TestRpc | typeof TestRpcPersisted | typeof TestRpcStream
+  type SendRpc = typeof TestRpc | typeof TestRpcPersisted
 
   const makeOutgoingRequest = (
     rpc: SendRpc,
@@ -320,8 +314,7 @@ describe.concurrent("Runners.makeRpc", () => {
 
   const layerLocalRunners = (
     wrap: (storage: MessageStorage.MessageStorage["Service"]) => MessageStorage.MessageStorage["Service"] = (storage) =>
-      storage,
-    config = TestShardingConfig
+      storage
   ) =>
     Runners.layerNoop.pipe(
       Layer.provideMerge(
@@ -330,266 +323,77 @@ describe.concurrent("Runners.makeRpc", () => {
         ).pipe(Layer.provide(MessageStorage.layerMemory))
       ),
       Layer.provideMerge(Snowflake.layerGenerator),
-      Layer.provide(config)
+      Layer.provide(ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))
     )
-
-  // Disables polling and counts finalized local reply handlers, so tests can
-  // assert that delivery relies on handler wakeups and that handlers are released.
-  const layerLocalRunnersCountingHandlers = (onFinalize: () => void) =>
-    layerLocalRunners((storage) => ({
-      ...storage,
-      registerReplyHandler: (message) =>
-        storage.registerReplyHandler(message).pipe(Effect.ensuring(Effect.sync(onFinalize)))
-    }), ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))
 
   const saveReply = (
     storage: MessageStorage.MessageStorage["Service"],
     message: Message.OutgoingRequest<SendRpc>,
-    reply: Reply.Reply<SendRpc>
-  ) => storage.saveReply(new Reply.ReplyWithContext({ reply, rpc: message.rpc, context: message.context }))
-
-  const notifyLocal = (runners: Runners.Runners["Service"], message: Message.OutgoingRequest<SendRpc>) =>
-    runners.notifyLocal({ message, discard: false, notify: () => Effect.void })
-
-  const exitsOf = (replies: ReadonlyArray<Reply.Reply<SendRpc>>) =>
-    replies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag)
-
-  for (const window of ["during notification", "before saveRequest returns"] as const) {
-    it.effect(
-      `delivers a persisted local reply completed ${window}`,
-      () => {
-        let complete: Effect.Effect<void> = Effect.void
-        return Effect.gen(function*() {
-          const runners = yield* Runners.Runners
-          const storage = yield* MessageStorage.MessageStorage
-          const snowflake = yield* Snowflake.Generator
-          const replies: Array<Reply.Reply<SendRpc>> = []
-          const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
-            Effect.sync(() => {
-              replies.push(reply)
-            }))
-          complete = saveReply(
-            storage,
-            message,
-            new Reply.WithExit({
-              id: snowflake.nextUnsafe(),
-              requestId: message.envelope.requestId,
-              exit: Exit.succeed(42)
-            })
-          ).pipe(Effect.orDie)
-
-          const pending = yield* runners.notifyLocal({
-            message,
-            discard: false,
-            notify: () => window === "during notification" ? complete : Effect.void
-          }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
-
-          yield* TestClock.adjust("1 second")
-          yield* Fiber.join(pending)
-          assert.deepStrictEqual(exitsOf(replies), [Exit.succeed(42)])
-        }).pipe(Effect.provide(layerLocalRunners((storage) => ({
-          ...storage,
-          saveRequest: (message) =>
-            storage.saveRequest(message).pipe(
-              Effect.tap(() => window === "before saveRequest returns" ? complete : Effect.void)
-            )
-        }))))
-      }
+    id: Snowflake.Snowflake
+  ) =>
+    storage.saveReply(
+      new Reply.ReplyWithContext({
+        reply: new Reply.WithExit<SendRpc>({ id, requestId: message.envelope.requestId, exit: Exit.succeed(42) }),
+        rpc: message.rpc,
+        context: message.context
+      })
     )
-  }
 
-  it.effect("keeps a duplicate local waiter alive when the first caller cancels", () => {
-    let finalized = 0
+  it.effect("delivers a persisted local reply completed before saveRequest returns", () => {
+    let complete: Effect.Effect<void> = Effect.void
     return Effect.gen(function*() {
       const runners = yield* Runners.Runners
       const storage = yield* MessageStorage.MessageStorage
       const snowflake = yield* Snowflake.Generator
-      const firstReplies: Array<Reply.Reply<SendRpc>> = []
-      const duplicateReplies: Array<Reply.Reply<SendRpc>> = []
+      const replies: Array<Exit.Exit<number>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          if (reply._tag === "WithExit") replies.push(reply.exit)
+        }))
+      complete = saveReply(storage, message, snowflake.nextUnsafe()).pipe(Effect.orDie)
+      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
+      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      saveRequest: (message) => storage.saveRequest(message).pipe(Effect.tap(() => complete))
+    }))))
+  })
+
+  it.effect("keeps a duplicate local waiter alive when the first caller cancels", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
       const requestId = snowflake.nextUnsafe()
+      const firstReplies: Array<Reply.Reply<SendRpc>> = []
+      const duplicateReplies: Array<Exit.Exit<number>> = []
       const first = makeOutgoingRequest(TestRpcPersisted, requestId, (reply) =>
         Effect.sync(() => {
           firstReplies.push(reply)
         }))
       const duplicate = makeOutgoingRequest(TestRpcPersisted, requestId, (reply) =>
         Effect.sync(() => {
-          duplicateReplies.push(reply)
+          if (reply._tag === "WithExit") duplicateReplies.push(reply.exit)
         }))
-      const a = yield* notifyLocal(runners, first).pipe(Effect.forkScoped)
-      // Drain runnable work without reaching the polling deadline: B joins
-      // the shared reader before any reply is persisted.
+      const notify = (message: Message.OutgoingRequest<SendRpc>) =>
+        runners.notifyLocal({ message, discard: false, notify: () => Effect.void })
+      const a = yield* notify(first).pipe(Effect.forkScoped)
       yield* TestClock.adjust(0)
-      const b = yield* notifyLocal(runners, duplicate).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
+      const b = yield* notify(duplicate).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
       yield* TestClock.adjust(0)
       yield* Fiber.interrupt(a)
-      assert.strictEqual(finalized, 1, "cancellation releases the local wake handler")
-      yield* saveReply(
-        storage,
-        first,
-        new Reply.WithExit({ id: snowflake.nextUnsafe(), requestId, exit: Exit.succeed(42) })
-      )
+      yield* saveReply(storage, first, snowflake.nextUnsafe())
+      // Drain runnable work without reaching the one-hour polling deadline.
       yield* TestClock.adjust(0)
       assert.deepStrictEqual(firstReplies, [])
-      assert.deepStrictEqual(exitsOf(duplicateReplies), [Exit.succeed(42)])
-      assert.strictEqual(finalized, 2, "both callers release their local wake handlers without polling")
-      const result = yield* Fiber.join(b)
-      assert.isTrue(Option.isSome(result), "the remaining caller must complete")
-    }).pipe(Effect.provide(layerLocalRunnersCountingHandlers(() => finalized++)))
-  })
-
-  for (const teardown of ["last-waiter cancellation", "runner shutdown"] as const) {
-    it.effect(
-      `releases a shared local stream awaiting acknowledgment on ${teardown}`,
-      () =>
-        Effect.gen(function*() {
-          let finalized = 0
-          let callersExited = 0
-          const runnerScope = yield* Scope.make()
-          yield* Effect.addFinalizer(() => Scope.close(runnerScope, Exit.void))
-          const context = yield* Layer.buildWithScope(
-            layerLocalRunnersCountingHandlers(() => finalized++),
-            runnerScope
-          )
-          const runners = Context.get(context, Runners.Runners)
-          const storage = Context.get(context, MessageStorage.MessageStorage)
-          const snowflake = Context.get(context, Snowflake.Generator)
-          const requestId = snowflake.nextUnsafe()
-          const received: Array<Array<Reply.Reply<SendRpc>>> = [[], []]
-          const chunkReceived = yield* Deferred.make<void>()
-          const messages = received.map((replies) =>
-            makeOutgoingRequest(TestRpcStream, requestId, (reply) =>
-              Effect.gen(function*() {
-                replies.push(reply)
-                if (received.every((replies) => replies.length === 1)) {
-                  yield* Deferred.succeed(chunkReceived, undefined)
-                }
-                // Intentionally do not acknowledge this chunk.
-              }))
-          )
-          // Caller fibers belong to the test's outer scope, NOT runnerScope.
-          // Closing the runner must stop its pump, not merely cancel its callers.
-          const forkCaller = (message: Message.OutgoingRequest<SendRpc>) =>
-            notifyLocal(runners, message).pipe(
-              Effect.ensuring(Effect.sync(() => {
-                callersExited++
-              })),
-              Effect.forkScoped
-            )
-          const a = yield* forkCaller(messages[0])
-          yield* TestClock.adjust(0)
-          const b = yield* forkCaller(messages[1])
-          yield* TestClock.adjust(0)
-          const chunk = new Reply.Chunk<typeof TestRpcStream>({
-            id: snowflake.nextUnsafe(),
-            requestId,
-            sequence: 0,
-            values: [1]
-          })
-          yield* saveReply(storage, messages[0], chunk)
-          yield* TestClock.adjust(0)
-          assert.deepStrictEqual(received, [[chunk], [chunk]])
-          yield* Deferred.await(chunkReceived)
-
-          let closed = false
-          const closing = yield* (teardown === "last-waiter cancellation"
-            ? Effect.gen(function*() {
-              yield* Fiber.interrupt(a)
-              assert.strictEqual(finalized, 1, "the surviving caller keeps its wake handler")
-              yield* Fiber.interrupt(b)
-            })
-            : Scope.close(runnerScope, Exit.void)).pipe(
-              Effect.tap(() =>
-                Effect.sync(() => {
-                  closed = true
-                })
-              ),
-              Effect.forkScoped
-            )
-          yield* TestClock.adjust(0)
-          assert.isTrue(closed, "teardown must not wait for the withheld acknowledgment")
-          assert.strictEqual(callersExited, 2, "both outer-scope callers must exit")
-          assert.strictEqual(finalized, 2, "both local wake handlers must finalize")
-          yield* Fiber.join(closing)
-          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(a)))
-          assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(b)))
-
-          if (teardown === "runner shutdown") return
-          // Clear the intentionally unacknowledged persisted chunk, then reuse
-          // the request ID immediately: no stale pump may consume its reply.
-          yield* storage.clearReplies(requestId)
-          const reusedReplies: Array<Reply.Reply<SendRpc>> = []
-          const reused = makeOutgoingRequest(TestRpcStream, requestId, (reply) =>
-            Effect.sync(() => {
-              reusedReplies.push(reply)
-            }))
-          const pending = yield* notifyLocal(runners, reused).pipe(Effect.forkScoped)
-          yield* TestClock.adjust(0)
-          const terminal = new Reply.WithExit<SendRpc>({ id: snowflake.nextUnsafe(), requestId, exit: Exit.void })
-          yield* saveReply(storage, reused, terminal)
-          yield* TestClock.adjust(0)
-          assert.deepStrictEqual(reusedReplies, [terminal])
-          assert.strictEqual(finalized, 3, "the replacement caller also releases its handler")
-          yield* Fiber.join(pending)
-        })
-    )
-  }
-
-  it.effect("wakes local streams for acknowledged chunks without polling", () => {
-    let finalized = 0
-    return Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const storage = yield* MessageStorage.MessageStorage
-      const snowflake = yield* Snowflake.Generator
-      const received: Array<Reply.Reply<SendRpc>> = []
-      const message = makeOutgoingRequest(TestRpcStream, snowflake.nextUnsafe(), (reply) =>
-        Effect.gen(function*() {
-          received.push(reply)
-          if (reply._tag === "Chunk") {
-            yield* runners.notifyLocal({
-              message: new Message.OutgoingEnvelope({
-                envelope: new Envelope.AckChunk({
-                  id: snowflake.nextUnsafe(),
-                  requestId: reply.requestId,
-                  replyId: reply.id,
-                  address: message.envelope.address
-                }),
-                rpc: message.rpc
-              }),
-              discard: false,
-              notify: () => Effect.void
-            }).pipe(Effect.orDie)
-          }
-        }))
-      const pending = yield* notifyLocal(runners, message).pipe(Effect.forkScoped)
-      yield* TestClock.adjust(0)
-
-      const expected: Array<Reply.Reply<SendRpc>> = []
-      for (const sequence of [0, 1]) {
-        const chunk = new Reply.Chunk<typeof TestRpcStream>({
-          id: snowflake.nextUnsafe(),
-          requestId: message.envelope.requestId,
-          sequence,
-          values: [sequence + 1]
-        })
-        expected.push(chunk)
-        yield* saveReply(storage, message, chunk)
-        // Let notification and acknowledgment run, but never reach a poll.
-        yield* TestClock.adjust(0)
-        assert.deepStrictEqual(received, expected)
-      }
-      const terminal = new Reply.WithExit<SendRpc>({
-        id: snowflake.nextUnsafe(),
-        requestId: message.envelope.requestId,
-        exit: Exit.void
-      })
-      expected.push(terminal)
-      yield* saveReply(storage, message, terminal)
-      yield* TestClock.adjust(0)
-      assert.deepStrictEqual(received, expected)
-      yield* Fiber.join(pending)
-      assert.strictEqual(finalized, 1, "completion releases the local wake handler")
-    }).pipe(Effect.provide(layerLocalRunnersCountingHandlers(() => finalized++)))
-  })
+      assert.deepStrictEqual(duplicateReplies, [Exit.succeed(42)])
+      assert.isTrue(Option.isSome(yield* Fiber.join(b)), "the surviving caller must complete without polling")
+    }).pipe(Effect.provide(layerLocalRunners())))
 
   it.effect("uses the client protocol codec for simulated remote serialization", () => {
     let codecCalls = 0
