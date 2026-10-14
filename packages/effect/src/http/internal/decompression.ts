@@ -1,12 +1,9 @@
 import * as ByteSize from "../../ByteSize.ts"
 import * as Effect from "../../Effect.ts"
-import type * as FileSystem from "../../FileSystem.ts"
 import * as Inspectable from "../../Inspectable.ts"
 import type * as Option from "../../Option.ts"
-import type * as Path from "../../Path.ts"
 import type { ReadonlyRecord } from "../../Record.ts"
 import type * as Schema from "../../Schema.ts"
-import type * as Scope from "../../Scope.ts"
 import type * as Socket from "../../socket/Socket.ts"
 import * as Stream from "../../Stream.ts"
 import * as Headers from "../Headers.ts"
@@ -22,10 +19,7 @@ import * as UrlParams from "../UrlParams.ts"
  */
 export type Coding = "gzip" | "deflate"
 
-/**
- * @internal
- */
-export const defaultMaxDecompressedSize = ByteSize.mebibytes(10)
+const defaultMaxDecompressedSize = ByteSize.mebibytes(10)
 
 /**
  * Parses a `Content-Encoding` header into the codings to undo, in the order
@@ -57,6 +51,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
   readonly inner: HttpServerRequest.HttpServerRequest
   readonly codings: ReadonlyArray<Coding>
   readonly maxDecompressedSize: ByteSize.ByteSize | undefined
+  readonly headers: Headers.Headers
 
   constructor(
     inner: HttpServerRequest.HttpServerRequest,
@@ -69,6 +64,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     this.inner = inner
     this.codings = codings
     this.maxDecompressedSize = maxDecompressedSize
+    this.headers = Headers.removeMany(inner.headers, ["content-encoding", "content-length"])
   }
 
   toJSON(): unknown {
@@ -123,18 +119,10 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return (this.inner as any).response
   }
 
-  private cachedHeaders: Headers.Headers | undefined
-  get headers(): Headers.Headers {
-    return this.cachedHeaders ??= Headers.removeMany(this.inner.headers, ["content-encoding", "content-length"])
-  }
-
   get stream(): Stream.Stream<Uint8Array, HttpServerError> {
     return Stream.unwrap(Effect.withFiber((fiber) => {
       const limit = this.maxDecompressedSize ?? fiber.getRef(HttpIncomingMessage.MaxBodySize) ??
         defaultMaxDecompressedSize
-      const maxBytes = Number(limit)
-      const exceeded = () =>
-        this.clientError("BodyTooLarge", `Decompressed request body exceeds the limit of ${limit} bytes`)
       return Effect.succeed(Stream.fromReadableStream({
         evaluate: () => {
           let body = Stream.toReadableStreamWith(this.inner.stream, fiber.context)
@@ -146,10 +134,12 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
           let size = 0
           return body.pipeThrough(
             new TransformStream<Uint8Array, Uint8Array>({
-              transform(chunk, controller) {
+              transform: (chunk, controller) => {
                 size += chunk.byteLength
-                if (size > maxBytes) {
-                  controller.error(exceeded())
+                if (size > limit) {
+                  controller.error(
+                    this.parseError(undefined, `Decompressed request body exceeds ${limit} bytes`, "BodyTooLarge")
+                  )
                 } else {
                   controller.enqueue(chunk)
                 }
@@ -157,7 +147,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
             })
           )
         },
-        onError: (cause) => cause instanceof HttpServerError ? cause : this.clientError("Parse", undefined, cause)
+        onError: (cause) => cause instanceof HttpServerError ? cause : this.parseError(cause)
       }))
     }))
   }
@@ -175,7 +165,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
         try: () => text === "" ? null : JSON.parse(text) as Schema.Json,
-        catch: (cause) => this.parseError(undefined, cause)
+        catch: (cause) => this.parseError(cause)
       }))
   }
 
@@ -183,7 +173,7 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return Effect.flatMap(this.text, (text) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(text)),
-        catch: (cause) => this.parseError(undefined, cause)
+        catch: (cause) => this.parseError(cause)
       }))
   }
 
@@ -198,44 +188,39 @@ export class DecompressedRequest extends Inspectable.Class implements HttpServer
     return Stream.pipeThroughChannel(
       Stream.mapError(
         this.stream,
-        (cause) => Multipart.MultipartError.fromReason(clientErrors.get(cause) ?? "InternalError", cause)
+        (cause) => Multipart.MultipartError.fromReason(multipartReasons.get(cause) ?? "InternalError", cause)
       ),
       Multipart.makeChannel(this.headers)
     )
   }
 
-  private multipartEffect:
-    | Effect.Effect<Multipart.Persisted, Multipart.MultipartError, Scope.Scope | FileSystem.FileSystem | Path.Path>
-    | undefined
-  get multipart(): Effect.Effect<
-    Multipart.Persisted,
-    Multipart.MultipartError,
-    Scope.Scope | FileSystem.FileSystem | Path.Path
-  > {
+  private multipartEffect: HttpServerRequest.HttpServerRequest["multipart"] | undefined
+  get multipart(): HttpServerRequest.HttpServerRequest["multipart"] {
     return this.multipartEffect ??= Effect.runSync(Effect.cached(Multipart.toPersisted(this.multipartStream)))
   }
 
-  private clientError(reason: ClientErrorReason, description?: string, cause?: unknown): HttpServerError {
-    const error = this.parseError(description, cause)
-    clientErrors.set(error, reason)
-    return error
-  }
-
-  private parseError(description?: string, cause?: unknown): HttpServerError {
-    return new HttpServerError({
+  private parseError(
+    cause: unknown,
+    description?: string,
+    multipartReason: MultipartReason = "Parse"
+  ): HttpServerError {
+    const error = new HttpServerError({
       reason: new RequestParseError({
         request: this,
         ...(description === undefined ? undefined : { description }),
         ...(cause === undefined ? undefined : { cause })
       })
     })
+    multipartReasons.set(error, multipartReason)
+    return error
   }
 }
 
 const textDecoder = new TextDecoder()
 
-type ClientErrorReason = "Parse" | "BodyTooLarge"
+type MultipartReason = "Parse" | "BodyTooLarge"
 
-// Body failures caused by the client's data rather than the transport, keyed
-// to the multipart reason they map to.
-const clientErrors = new WeakMap<HttpServerError, ClientErrorReason>()
+// Failures caused by the client's data, keyed to the multipart reason they map
+// to. Transport errors from the inner request are absent and map to
+// `InternalError`.
+const multipartReasons = new WeakMap<HttpServerError, MultipartReason>()
