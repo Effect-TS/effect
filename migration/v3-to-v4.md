@@ -617,7 +617,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `@effect/sql-sqlite-react-native/index` -> `@effect/sql-sqlite-react-native`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-react-native package root or import specific modules directly.
 - `@effect/sql-sqlite-wasm/index` -> `@effect/sql-sqlite-wasm`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-wasm package root or import specific modules directly.
 - `@effect/sql/Migrator` -> `effect/sql/Migrator`
-- `@effect/sql/Migrator/FileSystem` -> `effect/sql/MigratorFileSystem`: same `(directory)` signature. Import `fromFileSystem` from there; it is not exported from `effect/sql/Migrator` or the `effect/sql` barrel.
+- `@effect/sql/Migrator/FileSystem` -> `effect/sql/MigratorFileSystem`: Same `(directory)` signature. Import `fromFileSystem` from there; it is not exported from `effect/sql/Migrator` or the `effect/sql` barrel.
 - `@effect/sql/Model` -> `effect/schema/Model`, `effect/sql/SqlModel`
 - `@effect/sql/SqlClient` -> `effect/sql/SqlClient`
 - `@effect/sql/SqlConnection` -> `effect/sql/SqlConnection`
