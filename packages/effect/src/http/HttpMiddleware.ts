@@ -645,20 +645,24 @@ export const compression = (
  * Requests whose `Content-Encoding` includes any other coding are rejected
  * with `415 Unsupported Media Type` and `Accept-Encoding: gzip, deflate`,
  * without running the app. Malformed compressed data fails the body read
- * with a `RequestParseError`.
+ * with a `RequestParseError`, or a `MultipartError` with reason `Parse` when
+ * reading multipart data.
  *
  * The decompressed size is limited to `maxDecompressedSize`, falling back to
  * the `MaxBodySize` reference and then to 10 MiB. Exceeding it fails the body
- * read with a `RequestParseError`. The limit applies to every body accessor,
- * including `stream`.
+ * read with a `RequestParseError`, or a `MultipartError` with reason
+ * `BodyTooLarge` when reading multipart data. The limit applies to every body
+ * accessor, including `stream`.
  *
  * Decompression uses the global `DecompressionStream`. `deflate` means the
  * zlib format (RFC 1950); raw deflate data is rejected.
  *
  * **Gotchas**
  *
- * `request.source` and `HttpServerRequest.toWeb` still return the original,
- * compressed request.
+ * `request.source` is still the original, compressed request.
+ * `HttpServerRequest.toWeb` returns that compressed request only when the
+ * source is a Web `Request`. On other platforms, such as Node, it builds a new
+ * `Request` from the decompressed body and the stripped headers.
  *
  * @stability unstable
  * @category compression
