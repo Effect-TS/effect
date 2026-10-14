@@ -69,6 +69,42 @@ describe("LanguageModel", () => {
     response: undefined
   }
 
+  for (const method of ["generateText", "streamText"] as const) {
+    it.effect(`${method} uses current tool schemas and handlers across requests`, () => {
+      let params: unknown = { value: "first" }
+      const call = () => [{ type: "tool-call" as const, id: "call", name: "Read", params }]
+      const read = Tool.make("Read", {
+        parameters: Schema.Struct({ value: Schema.String }),
+        success: Schema.String
+      })
+      const run = (tool: typeof read, result: string, disableToolCallResolution = false) => {
+        const toolkit = Toolkit.make(tool)
+        const options = { prompt: "hi", toolkit, disableToolCallResolution }
+        const response = method === "generateText"
+          ? LanguageModel.generateText(options).pipe(Effect.map((response) => response.content))
+          : LanguageModel.streamText(options).pipe(Stream.runCollect)
+        return Effect.gen(function*() {
+          const parts = yield* response
+          return parts.find((part) => part.type === "tool-result")
+        }).pipe(Effect.provide(toolkit.toLayer({ Read: () => Effect.succeed(result) })))
+      }
+      return Effect.gen(function*() {
+        for (const result of ["first handler", "second handler"]) {
+          const toolResult = yield* run(read, result)
+          assertDefined(toolResult)
+          strictEqual(toolResult.result, result)
+        }
+        yield* run(read, "unused", true)
+        const changed = read.setParameters(Schema.Struct({ value: Schema.String.check(Schema.isPattern(/^changed$/)) }))
+        params = { value: "changed" }
+        yield* run(changed, "unused", true)
+        params = { value: "first" }
+        const failure = yield* run(changed, "must not run", true).pipe(Effect.flip)
+        strictEqual(failure.reason._tag, "InvalidOutputError")
+      }).pipe(TestUtils.withLanguageModel({ generateText: call, streamText: call }))
+    })
+  }
+
   describe("generateText", () => {
     it.effect("records resolved request options on a client span", () =>
       LanguageModel.generateText({ prompt: "hi" }).pipe(
