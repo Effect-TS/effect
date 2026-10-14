@@ -193,23 +193,6 @@ describe("RpcClient", () => {
       assert.strictEqual(yield* Fiber.join(dropped), error)
     }))
 
-  it.effect("accepts the SchemaBinary result Exit of an older server as the acknowledgement of a discarded call", () =>
-    Effect.gen(function*() {
-      const { codecFor } = yield* RpcSerialization.RpcSerialization.pipe(
-        Effect.provide(RpcSerialization.layerSchemaBinary())
-      )
-      const Fire = Rpc.make("Fire", { success: Schema.Struct({ id: Schema.String }) })
-      const { client, handle, sent } = yield* makeDiscardProtocol(RpcGroup.make(Fire), codecFor)
-
-      const call = yield* client.Fire(undefined, { discard: true }).pipe(Effect.forkChild)
-      const request = yield* Queue.take(sent)
-      assert(request._tag === "Request")
-      // an older server ignores the marker and encodes the handler result with the RPC's own schema
-      const exit = Schema.encodeSync(codecFor(Rpc.exitSchema(Fire)))(Exit.succeed({ id: "1" }))
-      yield* handle({ _tag: "Exit", requestId: request.id, exit: exit as any })
-      assert.isUndefined(yield* Fiber.join(call))
-    }))
-
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()

@@ -521,6 +521,37 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(end, { _tag: "ClientEnd", clientId: 0 })
     }).pipe(Effect.provide(ErrorReporter.layer([]))))
 
+  it.effect("fails only a discarded call whose handler throws, and sends nothing for a throwing notification", () =>
+    Effect.gen(function*() {
+      const group = RpcGroup.make(Rpc.make("boom", { success: Schema.String }))
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
+      const server = yield* RpcServer.makeNoSerialization(group, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(group.toLayer({
+        boom: (): Effect.Effect<string> => {
+          throw new Error("boom")
+        }
+      })))
+      const boom = (id: string) => ({
+        _tag: "Request" as const,
+        id: RpcMessage.RequestId(id),
+        tag: "boom" as const,
+        payload: undefined,
+        headers: Headers.empty
+      })
+      // A Defect would fail every other call of the client.
+      yield* server.write(0, { ...boom("notification"), isNotification: true })
+      yield* server.write(0, { ...boom("discarded"), discard: true })
+      yield* server.write(0, RpcMessage.constEof)
+
+      const sent = yield* takeUntilClientEnd(messages)
+      assert.deepStrictEqual(sent.map((message) => message._tag), ["Exit", "ClientEnd"])
+      const exit = sent[0]
+      assert(exit._tag === "Exit" && Exit.isFailure(exit.exit))
+      assert.strictEqual(exit.requestId, RpcMessage.RequestId("discarded"))
+      assert.strictEqual((Cause.squash(exit.exit.cause) as Error).message, "boom")
+    }).pipe(Effect.provide(ErrorReporter.layer([]))))
+
   // Feeds the lines to an ndJSON-RPC server over stdio, waits until `waits` handlers of `wait` are
   // running and the request with id 1 is answered, then returns every line the server wrote.
   const ndJsonRpcOutput = Effect.fnUntraced(function*(lines: ReadonlyArray<object>, waits: number) {
