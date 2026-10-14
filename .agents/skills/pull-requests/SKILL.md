@@ -9,6 +9,9 @@ earlier; finishing means making the PR ready for review.
 
 ## Workflow
 
+Run each step in a fresh-context subagent when available; otherwise run it
+yourself. Pass along the intent and prior results so each step can check its gate.
+
 1. Write the intent in one or two sentences: the problem, the affected public
    surface, and the GitHub issue it resolves, if any. Later steps are measured
    against this statement.
@@ -27,9 +30,8 @@ earlier; finishing means making the PR ready for review.
    from the merge base is required by the intent.
 4. Review the full diff from the merge base as a maintainer would: correctness,
    failure and interruption paths, resource cleanup, naming and API
-   consistency with neighboring modules, and documentation. When you can spawn
-   a subagent, run this review in a fresh context. Fix findings and review
-   again.
+   consistency with neighboring modules, and documentation. Fix findings and
+   review again.
    Continue when a review pass produces no findings.
 5. Clean up. Remove comments that restate code or narrate the change; keep the
    rest short and about why. Finalize the changeset with
@@ -41,10 +43,9 @@ earlier; finishing means making the PR ready for review.
    fixes alter the diff, repeat the affected passes.
    Continue when applicable checks pass or commands that cannot run and their
    blockers are recorded.
-7. Open or update the pull request. Title: a short imperative summary, with no
-   issue number. Description: the intent, notable decisions, validation results
-   and any commands not run with reasons, and `Closes #<issue>` for each GitHub
-   issue resolved. Do not narrate the diff. Mark the PR ready for review.
+7. Open or update the pull request. Title: a short imperative summary.
+   Description: the intent, notable decisions, and `Closes #<issue>` for each
+   GitHub issue resolved. Do not narrate the diff. Mark the PR ready for review.
    Continue when the final changes are pushed, the description matches the
    final diff, and the PR is ready for review.
 
