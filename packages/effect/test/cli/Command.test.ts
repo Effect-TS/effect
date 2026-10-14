@@ -486,6 +486,19 @@ describe("Command", () => {
           ])
         }).pipe(Effect.provide(TestLayer)))
 
+      it.effect("does not consume a boolean literal after a negated flag", () =>
+        Effect.gen(function*() {
+          const captured: Array<unknown> = []
+          const command = Command.make("app", {
+            watch: Flag.Boolean("watch").pipe(Flag.withOptionalValue("true")),
+            files: Argument.String("file").pipe(Argument.variadic())
+          }, (config) => Effect.sync(() => captured.push(config)))
+
+          yield* Command.runWith(command, { version: "1.0.0" })(["--no-watch", "false"])
+
+          assert.deepStrictEqual(captured, [{ watch: false, files: ["false"] }])
+        }).pipe(Effect.provide(TestLayer)))
+
       it.effect("leaves a following subcommand name alone", () =>
         Effect.gen(function*() {
           const captured: Array<Option.Option<string>> = []
