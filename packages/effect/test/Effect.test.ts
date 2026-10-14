@@ -2,6 +2,7 @@ import { assert, describe, it, vi } from "@effect/vitest"
 import { assertExitFailure } from "@effect/vitest/utils"
 import {
   Cause,
+  Clock,
   Context,
   Data,
   Deferred,
@@ -4242,6 +4243,22 @@ describe("Effect", () => {
     })
 
     describe("transaction metadata", () => {
+      it.effect("starts with zero durations when the clock advances between reads", () =>
+        Effect.gen(function*() {
+          const clock = yield* Clock.Clock
+          let now = 1000
+          const currentTimeMillisUnsafe = () => now++
+          yield* Effect.tx(Effect.gen(function*() {
+            const metadata = yield* Effect.Transaction
+            assert.deepStrictEqual([metadata.elapsed, metadata.elapsedSincePrevious], [0, 0])
+            assert.strictEqual(metadata.start, metadata.now)
+          })).pipe(Effect.provideService(Clock.Clock, {
+            ...clock,
+            currentTimeMillisUnsafe,
+            currentTimeMillis: Effect.sync(currentTimeMillisUnsafe)
+          }))
+        }))
+
       it.effect("tracks nested metadata across retries and conflicts", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
