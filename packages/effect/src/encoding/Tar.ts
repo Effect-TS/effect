@@ -318,14 +318,6 @@ const truncated = () => new TarError({ kind: "Truncated", message: "unexpected e
 
 const sparseUnsupported = () => new TarError({ kind: "Unsupported", message: "GNU sparse files are not supported" })
 
-const attempt = <A>(f: () => A): Effect.Effect<A, TarError> => {
-  try {
-    return Effect.succeed(f())
-  } catch (error) {
-    return Effect.fail(error as TarError)
-  }
-}
-
 const types: Record<string, EntryType> = {
   ...Object.fromEntries(Object.entries(typeflags).map(([type, typeflag]) => [typeflag, type])),
   // Contiguous files
@@ -1069,7 +1061,9 @@ const checkNoNul = (field: string, value: string): string => {
   return value
 }
 
-const encodeHeader = (header: Header): Uint8Array => {
+// Writes the header blocks of an entry, with a PAX header first when needed, into
+// zeroed memory from `alloc`. Throws before allocating when the header is invalid.
+const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void => {
   const path = checkNoNul("path", header.path)
   if (path === "") {
     throw invalidHeader("path must not be empty")
@@ -1144,15 +1138,14 @@ const encodeHeader = (header: Header): Uint8Array => {
   }
 
   if (pax === undefined) {
-    const out = new Uint8Array(BLOCK)
-    writeUstarBlock(out, ustar)
-    return out
+    writeUstarBlock(alloc(BLOCK), ustar)
+    return
   }
   const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
   let dataLength = 0
   for (const record of records) dataLength += record.length
   const paxBlocks = 1 + Math.ceil(dataLength / BLOCK)
-  const out = new Uint8Array(BLOCK * (paxBlocks + 1))
+  const out = alloc(BLOCK * (paxBlocks + 1))
   writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
   let offset = BLOCK
   for (const record of records) {
@@ -1160,7 +1153,6 @@ const encodeHeader = (header: Header): Uint8Array => {
     offset += record.length
   }
   writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
-  return out
 }
 
 /**
@@ -1214,6 +1206,97 @@ const sizeMismatch = (header: Header, written: number) =>
     } ${written} bytes, but its size is ${header.size}`
   })
 
+const SLAB_SIZE = 64 * 1024
+
+// Bodies below this size are copied next to their header instead of being
+// handed out as chunks of their own
+const COPY_LIMIT = 16 * 1024
+
+// Writes archive bytes. Headers, padding and small body chunks are written into
+// shared slabs, so that an archive of small entries comes out in a few large
+// chunks; larger body chunks pass through as they are. `flush` hands out what
+// has been written so far. Methods throw a `TarError` for an entry that cannot
+// be written, before writing any of it.
+class Encoder {
+  private slab = new Uint8Array(0)
+  // Start of the bytes in `slab` that have not been flushed, and their end
+  private start = 0
+  private offset = 0
+  private chunks: Array<Uint8Array> = []
+  // Bytes written since the last flush
+  buffered = 0
+  // The entry whose body is being written, and the body bytes written so far
+  private header: Header | undefined
+  private written = 0
+
+  // Writes the header of an entry whose body follows through `body` calls
+  begin(header: Header): void {
+    encodeHeader(header, this.alloc)
+    this.header = header
+    this.written = 0
+  }
+
+  body(chunk: Uint8Array): void {
+    const header = this.header!
+    this.written += chunk.length
+    if (this.written > header.size) {
+      throw sizeMismatch(header, this.written)
+    }
+    if (chunk.length < COPY_LIMIT) {
+      this.alloc(chunk.length).set(chunk)
+      return
+    }
+    this.cut()
+    this.chunks.push(chunk)
+    this.buffered += chunk.length
+  }
+
+  // Ends the body started with `begin`
+  end(): void {
+    const header = this.header!
+    this.header = undefined
+    if (this.written !== header.size) {
+      throw sizeMismatch(header, this.written)
+    }
+    this.alloc(padding(header.size))
+  }
+
+  // Writes the end-of-archive blocks
+  finish(): void {
+    this.alloc(BLOCK * 2)
+  }
+
+  flush(): Arr.NonEmptyArray<Uint8Array> {
+    this.cut()
+    const chunks = this.chunks as Arr.NonEmptyArray<Uint8Array>
+    this.chunks = []
+    this.buffered = 0
+    return chunks
+  }
+
+  // Ends the current run of slab bytes as a chunk
+  private cut(): void {
+    if (this.offset > this.start) {
+      this.chunks.push(this.slab.subarray(this.start, this.offset))
+      this.start = this.offset
+    }
+  }
+
+  // Returns `size` zeroed bytes of the output
+  private alloc = (size: number): Uint8Array => {
+    if (this.offset + size > this.slab.length) {
+      this.cut()
+      this.slab = new Uint8Array(Math.max(SLAB_SIZE, size))
+      this.start = 0
+      this.offset = 0
+    }
+    const out = this.slab.subarray(this.offset, this.offset + size)
+    this.offset += size
+    this.buffered += size
+    return out
+  }
+}
+
 // The input is generic over the entry type in `encode` so that body errors and
 // services are inferred from unions of entries
 const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
@@ -1227,61 +1310,90 @@ const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
 > =>
   Channel.fromTransform((upstream, scope) =>
     Effect.sync(() => {
+      type Out = Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, TarError | IE | E, Done, R>
+      const encoder = new Encoder()
       let entries: ReadonlyArray<Entry<E, R>> = []
       let index = 0
       let finished: { readonly value: Done } | undefined
-      let current: {
+      // A failed entry, reported once the output before it is handed out
+      let failure: TarError | undefined
+      // The body being written
+      let body: {
         readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E, void, R>
         readonly scope: Scope.Closeable
-        readonly header: Header
-        written: number
       } | undefined
 
-      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, TarError | IE | E, Done, R> = Effect.gen(
-        function*() {
-          while (true) {
-            if (finished !== undefined) return yield* Cause.done(finished.value)
-            if (current !== undefined) {
-              const body = current
-              const chunks = yield* Pull.catchDone(body.pull, () => Effect.succeed(undefined))
-              if (chunks !== undefined) {
-                for (const chunk of chunks) body.written += chunk.length
-                if (body.written > body.header.size) {
-                  return yield* Effect.fail(sizeMismatch(body.header, body.written))
-                }
-                return chunks
-              }
-              current = undefined
-              yield* Scope.close(body.scope, Exit.void)
-              if (body.written !== body.header.size) {
-                return yield* Effect.fail(sizeMismatch(body.header, body.written))
-              }
-              const pad = padding(body.header.size)
-              if (pad > 0) return Arr.of(new Uint8Array(pad))
-              continue
+      const startBody = (entry: Entry<E, R>): Out => {
+        const bodyScope = Scope.forkUnsafe(scope)
+        return Effect.flatMap(Channel.toPullScoped(entry.body.channel, bodyScope), (pull) => {
+          body = { pull, scope: bodyScope }
+          return loop()
+        })
+      }
+
+      const pullBody = (current: NonNullable<typeof body>): Out =>
+        Effect.flatMap(Pull.catchDone(current.pull, () => Effect.succeed(undefined)), (chunks) => {
+          if (chunks !== undefined) {
+            try {
+              for (const chunk of chunks) encoder.body(chunk)
+            } catch (error) {
+              failure = error as TarError
             }
-            if (index < entries.length) {
-              const entry = entries[index++]
-              const blocks = yield* attempt(() => encodeHeader(entry.header))
-              const bodyScope = Scope.forkUnsafe(scope)
-              current = {
-                pull: yield* Channel.toPullScoped(entry.body.channel, bodyScope),
-                scope: bodyScope,
-                header: entry.header,
-                written: 0
-              }
-              return Arr.of(blocks)
+            return loop()
+          }
+          body = undefined
+          return Effect.flatMap(Scope.close(current.scope, Exit.void), () => {
+            try {
+              encoder.end()
+            } catch (error) {
+              failure = error as TarError
             }
-            const next = yield* Pull.catchDone(upstream, (value) => {
-              finished = { value: value as Done }
-              return Effect.succeed(undefined)
-            })
-            if (next === undefined) return Arr.of(new Uint8Array(BLOCK * 2))
+            return loop()
+          })
+        })
+
+      const pullEntries: Out = Effect.flatMap(
+        Pull.catchDone(upstream, (value) => {
+          finished = { value: value as Done }
+          encoder.finish()
+          return Effect.succeed(undefined)
+        }),
+        (next) => {
+          if (next !== undefined) {
             entries = next
             index = 0
           }
+          return loop()
         }
       )
-      return pull
+
+      // Writes entries until there is output to hand out, or a body or more
+      // entries must be pulled. Output is handed out before anything that can
+      // wait or fail.
+      const loop = (): Out => {
+        while (true) {
+          if (encoder.buffered > 0 && (failure !== undefined || body !== undefined || finished !== undefined)) {
+            return Effect.succeed(encoder.flush())
+          }
+          if (failure !== undefined) return Effect.fail(failure)
+          if (finished !== undefined) return Cause.done(finished.value)
+          if (body !== undefined) return pullBody(body)
+          if (encoder.buffered >= SLAB_SIZE) return Effect.succeed(encoder.flush())
+          if (index < entries.length) {
+            const entry = entries[index++]
+            try {
+              encoder.begin(entry.header)
+            } catch (error) {
+              failure = error as TarError
+              continue
+            }
+            return startBody(entry)
+          }
+          if (encoder.buffered > 0) return Effect.succeed(encoder.flush())
+          return pullEntries
+        }
+      }
+
+      return Effect.suspend(loop)
     })
   )

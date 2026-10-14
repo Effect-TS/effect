@@ -97,6 +97,19 @@ describe("Tar", () => {
         assert.deepStrictEqual(output.map((entry) => text(entry.body)), ["x", "y", ""])
       }))
 
+    it.effect("round trips bodies streamed in small and large chunks", () =>
+      Effect.gen(function*() {
+        const large = new Uint8Array(40_000).map((_, i) => i % 251)
+        const chunks = [large.subarray(0, 20_000), large.subarray(0, 10), large.subarray(20_000)]
+        const input = [Tar.file("a", "a"), Tar.fileStream("b", 40_010, Stream.make(...chunks)), Tar.file("c", large)]
+        const output = yield* decode(yield* encode(input))
+        assert.deepStrictEqual(output.map((entry) => entry.body), [
+          textEncoder.encode("a"),
+          new Uint8Array(chunks.flatMap((chunk) => [...chunk])),
+          large
+        ])
+      }))
+
     it.effect("fails on entries that cannot be written", () =>
       Effect.gen(function*() {
         const short = Tar.fileStream("f", 5, Stream.make(textEncoder.encode("abc")))
