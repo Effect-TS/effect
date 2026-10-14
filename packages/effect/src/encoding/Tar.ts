@@ -20,10 +20,10 @@ import * as Channel from "../Channel.ts"
 import * as Data from "../Data.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
-import * as Latch from "../Latch.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
 
 const TarErrorTypeId = "~effect/encoding/Tar/TarError"
@@ -344,12 +344,8 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
     Effect.suspend(() => {
       const decoder = new Decoder()
       let done: { readonly value: Done } | undefined
-      // The entry stream and the current body can both need input. One of them
-      // pulls upstream at a time, and the other waits on `waiting`.
-      let pulling = false
-      let waiting: Latch.Latch | undefined
 
-      const pullUpstream: Effect.Effect<void, IE> = upstream.pipe(
+      const pullUpstream = upstream.pipe(
         Effect.map((chunks) => {
           for (const chunk of chunks) decoder.push(chunk)
         }),
@@ -357,45 +353,34 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
           done = { value: value as Done }
           decoder.end()
           return Effect.void
-        }),
-        Effect.onExit(() => {
-          pulling = false
-          waiting?.openUnsafe()
-          waiting = undefined
-          return Effect.void
         })
       )
 
-      const pullInput: Effect.Effect<void, IE> = Effect.suspend(() => {
-        if (done !== undefined) return Effect.void
-        if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
-        pulling = true
-        return pullUpstream
-      })
+      // Pulls more input into the decoder. The entry stream and the current body
+      // can both need input, so they take turns.
+      const lock = Semaphore.makeUnsafe(1)
+      const pullInput = lock.withPermit(Effect.suspend(() => done === undefined ? pullUpstream : Effect.void))
 
-      // Runs a decoder step, pulling input until it has enough, and continues
-      // with its result
-      const step = <A, B, E>(
-        f: () => A | typeof NeedInput,
-        k: (a: A) => Effect.Effect<B, E>
-      ): Effect.Effect<B, TarError | IE | E> =>
-        Effect.suspend(function loop(): Effect.Effect<B, TarError | IE | E> {
+      // Calls the decoder until it has enough input, pulling more in between
+      const run = <A>(f: () => A | typeof NeedInput): Effect.Effect<A, TarError | IE> =>
+        Effect.suspend(function loop(): Effect.Effect<A, TarError | IE> {
           let result: A | typeof NeedInput
           try {
             result = f()
           } catch (error) {
             return Effect.fail(error as TarError)
           }
-          return result === NeedInput ? Effect.flatMap(pullInput, loop) : k(result)
+          return result === NeedInput ? Effect.flatMap(pullInput, loop) : Effect.succeed(result)
         })
 
       const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-        Stream.fromPull(Effect.succeed(
-          step(() => decoder.read(id), (chunks) => chunks === BodyEnd ? Cause.done() : Effect.succeed(chunks))
-        ))
+        Stream.fromPull(Effect.succeed(Effect.flatMap(
+          run(() => decoder.read(id)),
+          (chunks) => chunks === BodyEnd ? Cause.done() : Effect.succeed(chunks)
+        )))
 
-      const next = step(
-        () => decoder.next(),
+      const next = Effect.flatMap(
+        run(() => decoder.next()),
         (header) =>
           header === undefined
             ? Cause.done(done!.value)
