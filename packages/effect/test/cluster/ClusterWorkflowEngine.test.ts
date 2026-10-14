@@ -1658,6 +1658,60 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
     }))
 
+  it.effect("persists a detached child's parent without waking it", () =>
+    Effect.gen(function*() {
+      let parentRuns = 0
+      const ParentGate = DurableDeferred.make("DetachedParentGate")
+      const ChildGate = DurableDeferred.make("DetachedChildGate")
+      const Parent = Workflow.make("DetachedParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("DetachedChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+        parentRuns++
+        yield* Child.execute({}, { discard: true, detached: true })
+        yield* DurableDeferred.await(ParentGate)
+      }))
+      const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const driver = yield* MessageStorage.MemoryDriver
+        yield* TestClock.adjust(1)
+        const executionId = yield* Parent.execute({}, { discard: true })
+        const childId = yield* Child.executionId({})
+        yield* pollUntil(Parent, executionId, "Suspended")
+        assert.strictEqual(parentRuns, 1)
+
+        // The parent stays recorded on the child for observability.
+        const childRun = Array.from(driver.requests.values()).find(({ envelope }) =>
+          envelope._tag === "Request" && envelope.tag === "run" &&
+          envelope.address.entityType === `Workflow/${Child._tag}`
+        )
+        assert(childRun && childRun.envelope._tag === "Request")
+        assert.deepStrictEqual(
+          (childRun.envelope.payload as Record<string, unknown>)[
+            "~effect/cluster/ClusterWorkflowEngine/payloadParentKey"
+          ],
+          { workflowName: Parent._tag, executionId, detached: true }
+        )
+
+        yield* DurableDeferred.succeed(ChildGate, {
+          token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
+          value: void 0
+        })
+        yield* pollUntil(Child, childId, "Complete")
+        for (let i = 0; i < 20; i++) {
+          yield* TestClock.adjust(1)
+          yield* sharding.pollStorage
+        }
+        assert.strictEqual(parentRuns, 1, "a detached child must not wake its parent")
+      }).pipe(Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(TestWorkflowLayer))))
+    }))
+
   it.effect("interrupts a failure-suspended workflow", () =>
     Effect.gen(function*() {
       let attempts = 0

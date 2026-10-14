@@ -494,7 +494,7 @@ export const make = Effect.gen(function*() {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
                 currentRun = { request, instance }
                 const parent = (request.payload as any)[payloadParentKey] as
-                  | { workflowName: string; executionId: string }
+                  | { workflowName: string; executionId: string; detached?: boolean }
                   | undefined
                 return execute(workflow.payloadSchema.make(request.payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
@@ -511,7 +511,9 @@ export const make = Effect.gen(function*() {
                       !instance.abandoned &&
                       !(suspendOnFailure && exit._tag === "Failure")
                     ) {
-                      return parent ? ensureSuccess(sendResumeParent(parent, executionId)) : Effect.void
+                      return parent && !parent.detached
+                        ? ensureSuccess(sendResumeParent(parent, executionId))
+                        : Effect.void
                     }
                     return engine.deferredResult(InterruptSignal).pipe(
                       Effect.flatMap((maybeExit) => {
@@ -624,7 +626,7 @@ export const make = Effect.gen(function*() {
         ).pipe(Effect.andThen(registration))
       }),
 
-    execute: (workflow, { discard, executionId, parent, payload }) => {
+    execute: (workflow, { detached, discard, executionId, parent, payload }) => {
       ensureEntity(workflow)
       return RcMap.get(clients, workflow._tag).pipe(
         Effect.flatMap((make) =>
@@ -632,7 +634,10 @@ export const make = Effect.gen(function*() {
             parent ?
               {
                 ...payload,
-                [payloadParentKey]: { workflowName: parent.workflow._tag, executionId: parent.executionId }
+                // A detached child keeps its parent for observability only.
+                [payloadParentKey]: detached
+                  ? { workflowName: parent.workflow._tag, executionId: parent.executionId, detached: true }
+                  : { workflowName: parent.workflow._tag, executionId: parent.executionId }
               } :
               payload,
             { discard }
@@ -930,7 +935,8 @@ const makeWorkflowEntity = (workflow: Workflow.Any) =>
         ...workflow.payloadSchema.fields,
         [payloadParentKey]: Schema.optional(Schema.Struct({
           workflowName: Schema.String,
-          executionId: Schema.String
+          executionId: Schema.String,
+          detached: Schema.optional(Schema.Boolean)
         }))
       },
       primaryKey: () => "",

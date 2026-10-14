@@ -78,11 +78,26 @@ export interface Workflow<
 
   /**
    * Execute the workflow with the given payload.
+   *
+   * **Details**
+   *
+   * `discard: true` returns the execution ID without waiting for the result.
+   * The child remains linked to its parent for completion wakes and interruption.
+   *
+   * With `discard: true, detached: true`, the child neither wakes its parent
+   * nor gets interrupted with it. The cluster engine retains the parent for
+   * observability.
+   *
+   * **Gotchas**
+   *
+   * Do not await a detached execution later. Executing the same payload joins
+   * it, but its completion will not wake the awaiting workflow.
    */
   readonly execute: <const Discard extends boolean = false>(
     payload: Payload["~type.make.in"],
     options?: {
       readonly discard?: Discard
+      readonly detached?: [Discard] extends [true] ? boolean | undefined : undefined
     }
   ) => Effect.Effect<
     Discard extends true ? string : Success["Type"],
@@ -248,7 +263,7 @@ export interface AnyWithProps extends Any {
   readonly errorSchema: Schema.Top
   readonly execute: (
     payload: any,
-    options?: { readonly discard?: boolean }
+    options?: { readonly discard?: boolean; readonly detached?: boolean | undefined }
   ) => Effect.Effect<any, any, any>
   readonly resume: (
     executionId: string
@@ -352,7 +367,7 @@ const Proto = {
   execute<const Discard extends boolean = false>(
     this: AnyWithProps,
     fields: any,
-    opts?: { readonly discard?: Discard } | undefined
+    opts?: { readonly discard?: Discard; readonly detached?: boolean | undefined } | undefined
   ) {
     return Effect.suspend(() => {
       const payload = this.payloadSchema.make(fields)
@@ -366,6 +381,7 @@ const Proto = {
                 executionId,
                 payload,
                 discard: opts?.discard,
+                detached: opts?.detached,
                 suspendedRetrySchedule: this.suspendedRetrySchedule
               })
             ))
