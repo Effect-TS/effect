@@ -3,4 +3,4 @@
 "@effect/platform-deno": patch
 ---
 
-Fix `FileSystem.watch` ignoring a `FileSystem.WatchBackend` provided after the file system layer was built without one.
+Fix `FileSystem.watch` to prefer the caller-provided `FileSystem.WatchBackend`, falling back to the backend captured when the file system layer was built.

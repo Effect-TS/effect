@@ -709,7 +709,7 @@ const watch = (
 ) =>
   Effect.all([stat(path), Effect.serviceOption(FileSystem.WatchBackend)]).pipe(
     Effect.map(([stat, callerBackend]) =>
-      Option.orElse(backend, () => callerBackend).pipe(
+      Option.orElse(callerBackend, () => backend).pipe(
         Option.flatMap((_) => _.register(path, stat, options)),
         Option.getOrElse(() => watchNode(path, stat, options))
       )
