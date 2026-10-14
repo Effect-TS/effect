@@ -105,7 +105,6 @@ describe("OpenAiClient", () => {
         assert.propertyVal(events[0], "id", "chatcmpl_test_1")
         assert.propertyVal(events[1], "id", "chatcmpl_test_1")
         assert.strictEqual(events[2], "[DONE]")
-        assert.strictEqual(events.length, 3)
       }).pipe(Effect.provide(makeTestLayer({
         _tag: "Sse",
         events: [
@@ -139,8 +138,7 @@ describe("OpenAiClient", () => {
               finish_reason: "stop"
             }]
           },
-          "[DONE]",
-          { ignored: "after completion" }
+          "[DONE]"
         ]
       }))))
 
@@ -186,7 +184,7 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
-    it.effect("drops invalid JSON and continues streaming", () =>
+    it.effect("drops invalid JSON and streams valid events until [DONE]", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
 
@@ -217,7 +215,8 @@ describe("OpenAiClient", () => {
               }]
             })
           }\n\n`,
-          "data: [DONE]\n\n"
+          "data: [DONE]\n\n",
+          "data: {\"ignored\":\"after completion\"}\n\n"
         ].join("")
       }))))
 
