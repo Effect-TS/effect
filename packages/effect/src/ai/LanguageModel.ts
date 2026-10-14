@@ -2476,53 +2476,23 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
 // Utilities
 // =============================================================================
 
-// Keep one response codec per model and response kind, including its last schema
-// graph. Fresh Toolkit wrappers can reuse it without retaining handlers or request state.
+// Keep the last decoder per model and response kind. Fresh Toolkits reuse it
+// when their tool names and schemas are unchanged.
 const makeResponseDecoder = <Decode>(make: (toolkit: Toolkit.Any, deferred: boolean) => Decode) => {
-  let previous: {
-    readonly encoded: boolean
-    readonly deferred: boolean
-    readonly tools: ReadonlyArray<{
-      readonly name: string
-      readonly parametersSchema: Schema.Top
-      readonly successSchema: Schema.Top
-      readonly failureSchema: Schema.Top
-    }>
-    readonly decode: Decode
-  } | undefined
-
-  return <Tools extends Record<string, Tool.Any>>(
-    toolkit: Toolkit.WithHandler<Tools>,
-    encoded: boolean,
-    deferred: boolean
-  ): Decode => {
-    const tools = Object.values(toolkit.tools)
-    const cached = previous
-    if (
-      cached !== undefined && cached.encoded === encoded && cached.deferred === deferred &&
-      cached.tools.length === tools.length && tools.every((tool, index) => {
-        const prior = cached.tools[index]
-        return prior.name === tool.name && prior.parametersSchema === tool.parametersSchema &&
-          prior.successSchema === tool.successSchema && prior.failureSchema === tool.failureSchema
-      })
-    ) {
+  let cached: { readonly key: ReadonlyArray<unknown>; readonly decode: Decode } | undefined
+  return (toolkit: Toolkit.WithHandler<any>, encoded: boolean, deferred: boolean): Decode => {
+    const key: Array<unknown> = [encoded, deferred]
+    for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
+      key.push(tool.name, tool.parametersSchema, tool.successSchema, tool.failureSchema)
+    }
+    if (cached !== undefined && cached.key.length === key.length && cached.key.every((part, i) => part === key[i])) {
       return cached.decode
     }
     const decode = make(
       encoded ? makeToolkitWithEncodedParameters(toolkit) : makeToolkitWithOpaqueParameters(toolkit),
       deferred
     )
-    previous = {
-      encoded,
-      deferred,
-      tools: tools.map((tool) => ({
-        name: tool.name,
-        parametersSchema: tool.parametersSchema,
-        successSchema: tool.successSchema,
-        failureSchema: tool.failureSchema
-      })),
-      decode
-    }
+    cached = { key, decode }
     return decode
   }
 }
