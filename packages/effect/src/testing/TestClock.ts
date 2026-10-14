@@ -20,7 +20,6 @@ import * as Fiber from "../Fiber.ts"
 import { flow } from "../Function.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
-import * as Order from "../Order.ts"
 import * as Semaphore from "../Semaphore.ts"
 
 /**
@@ -201,11 +200,6 @@ const defaultOptions: Required<TestClock.Options> = {
   warningDelay: "1 second"
 }
 
-const SleepOrder = Order.flip(Order.Struct({
-  timestamp: Order.Number,
-  sequence: Order.Number
-}))
-
 const nanosPerMilli = BigInt(1_000_000)
 
 const millisToNanos = (millis: number): bigint => {
@@ -249,9 +243,8 @@ export const make = Effect.fnUntraced(function*(
   options?: TestClock.Options
 ) {
   const config = { ...defaultOptions, ...options }
-  let sequence = 0
+  // Sorted by descending timestamp, so `pop` wakes the earliest sleep first
   const sleeps: Array<{
-    readonly sequence: number
     readonly timestamp: number
     readonly latch: Latch.Latch
   }> = []
@@ -334,22 +327,15 @@ export const make = Effect.fnUntraced(function*(
     if (end <= currentTimestamp) return
     yield* Effect.acquireUseRelease(
       Effect.sync(() => {
-        const entry = {
-          sequence: sequence++,
-          timestamp: end,
-          latch: Latch.makeUnsafe()
-        }
-        // Keep descending deadline/sequence order so pop wakes the earliest
-        // sleep first, including registration order for equal deadlines.
+        const entry = { timestamp: end, latch: Latch.makeUnsafe() }
+        // Insert before entries with an equal timestamp, so they wake in
+        // registration order
         let low = 0
         let high = sleeps.length
         while (low < high) {
-          const mid = low + Math.floor((high - low) / 2)
-          if (SleepOrder(entry, sleeps[mid]) < 0) {
-            high = mid
-          } else {
-            low = mid + 1
-          }
+          const mid = (low + high) >>> 1
+          if (sleeps[mid].timestamp > end) low = mid + 1
+          else high = mid
         }
         sleeps.splice(low, 0, entry)
         return entry
@@ -357,8 +343,7 @@ export const make = Effect.fnUntraced(function*(
       (entry) => Effect.andThen(warningStart, entry.latch.await),
       (entry) =>
         Effect.sync(() => {
-          // Adjustment may already have popped this exact sleep. Cleanup also
-          // covers interruption while starting the warning, before latch.await.
+          // The entry is already gone if `run` popped it
           const index = sleeps.indexOf(entry)
           if (index !== -1) sleeps.splice(index, 1)
         })

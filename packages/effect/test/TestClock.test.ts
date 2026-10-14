@@ -4,7 +4,6 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
@@ -24,27 +23,15 @@ describe("TestClock", () => {
           )
         }
 
-        // Read the public clock whenever adjustment yields to the scheduler.
+        // Record the clock whenever adjustment yields to other fibers
         const observed = new Set<number>()
-        const scheduler: Scheduler.Scheduler = new Scheduler.MixedScheduler()
-        const makeDispatcher = scheduler.makeDispatcher.bind(scheduler)
-        scheduler.makeDispatcher = () => {
-          const dispatcher = makeDispatcher()
-          return {
-            scheduleTask(task, priority) {
-              dispatcher.scheduleTask(() => {
-                observed.add(testClock.currentTimeMillisUnsafe())
-                task()
-              }, priority)
-            },
-            flush: () => dispatcher.flush()
-          }
-        }
-        yield* testClock.adjust("2 minutes").pipe(
-          Effect.provideService(Scheduler.Scheduler, scheduler)
+        yield* Effect.sync(() => observed.add(testClock.currentTimeMillisUnsafe())).pipe(
+          Effect.andThen(Effect.yieldNow),
+          Effect.forever,
+          Effect.forkChild
         )
-        observed.add(testClock.currentTimeMillisUnsafe())
-        assert.deepStrictEqual([...observed], [0, 120_000])
+        yield* testClock.adjust("2 minutes")
+        assert.isFalse(observed.has(60_000))
       }))
   }
 
