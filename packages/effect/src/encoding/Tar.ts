@@ -479,6 +479,7 @@ const parseHeader = (block: Uint8Array): RawHeader => {
 // -----------------------------------------------------------------------------
 
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
+const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
 
 // Parses records of the form "<length> <key>=<value>\n", where the length counts
 // the bytes of the whole record
@@ -958,6 +959,9 @@ const encodeHeader = (header: Header): Uint8Array => {
 
   const pax: Record<string, string> = {}
   for (const key of Object.keys(header.pax)) {
+    if (paxHeaderKeys.has(key)) {
+      throw invalidHeader(`PAX record ${JSON.stringify(key)} must be set through its header field`)
+    }
     const value = header.pax[key]
     if (key === "" || key.includes("=") || key.includes("\0") || (paxStringKeys.has(key) && value.includes("\0"))) {
       throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
