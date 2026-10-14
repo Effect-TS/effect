@@ -50,19 +50,20 @@ export interface Options {
 }
 
 // Platform sockets cannot use IPv6 name servers with a scope ID.
-const checkNameServers = Effect.fnUntraced(function*(
+const checkNameServers = (
   nameServers: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
-) {
+): Result.Result<void, NetAddress.NetAddressError> => {
   for (const input of nameServers) {
-    const server = yield* Effect.fromResult(Dns.nameServerFromInput(input))
-    if (NetAddress.isScoped(server)) {
-      return yield* new NetAddress.NetAddressError({
-        input,
-        message: "IPv6 name servers with a scope ID are not supported"
-      })
+    const server = Dns.nameServerFromInput(input)
+    if (Result.isFailure(server)) return Result.fail(server.failure)
+    if (NetAddress.isScoped(server.success)) {
+      return Result.fail(
+        new NetAddress.NetAddressError({ input, message: "IPv6 name servers with a scope ID are not supported" })
+      )
     }
   }
-})
+  return Result.void
+}
 
 // Like `NodeDns`, clamp numeric options; NaN becomes the minimum.
 const clamp = (value: number | undefined, min: number, max: number): number | undefined =>
@@ -98,7 +99,7 @@ interface NormalizedOptions {
 
 const normalizeOptions = Effect.fnUntraced(function*(options: Options) {
   const nameServers = options.nameServers ?? []
-  yield* checkNameServers(nameServers)
+  yield* Effect.fromResult(checkNameServers(nameServers))
   const search = options.search === undefined
     ? undefined
     : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
@@ -143,7 +144,7 @@ export const makeTransportUdp = (
   options: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    checkNameServers(options.nameServers),
+    Effect.fromResult(checkNameServers(options.nameServers)),
     DnsClient.makeTransportUdp({ ...options, udp, tcp }).pipe(Effect.provide(NodeCrypto.layer))
   )
 
@@ -174,7 +175,7 @@ export const makeTransportTcp = (
   options: Omit<DnsClient.TransportTcpOptions, "tcp">
 ): Effect.Effect<DnsClient.Transport["Service"], NetAddress.NetAddressError> =>
   Effect.andThen(
-    checkNameServers(options.nameServers),
+    Effect.fromResult(checkNameServers(options.nameServers)),
     DnsClient.makeTransportTcp({ ...options, tcp }).pipe(Effect.provide(NodeCrypto.layer))
   )
 
