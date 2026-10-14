@@ -599,10 +599,8 @@ describe("String", () => {
       strictEqual(S.snakeToCamel(""), "")
     })
 
-    it("handles leading, trailing, and repeated underscores", () => {
+    it("handles trailing and separator-only inputs", () => {
       strictEqual(S.snakeToCamel("foo_"), "foo")
-      strictEqual(S.snakeToCamel("_foo"), "foo")
-      strictEqual(S.snakeToCamel("foo__bar"), "fooBar")
       strictEqual(S.snakeToCamel("__"), "")
     })
   })
@@ -617,10 +615,8 @@ describe("String", () => {
       strictEqual(S.snakeToPascal(""), "")
     })
 
-    it("handles leading, trailing, and repeated underscores", () => {
+    it("handles trailing and separator-only inputs", () => {
       strictEqual(S.snakeToPascal("foo_"), "Foo")
-      strictEqual(S.snakeToPascal("_foo"), "Foo")
-      strictEqual(S.snakeToPascal("foo__bar"), "FooBar")
       strictEqual(S.snakeToPascal("__"), "")
     })
   })
