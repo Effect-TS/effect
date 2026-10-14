@@ -4,7 +4,7 @@ description: Pull request finalization. Use when a change works and is about to 
 ---
 
 A pull request is ready when its tests, implementation, comments, and changeset
-are each the smallest that cover the intended behavior. Draft PRs can be used
+are each the simplest that cover the intended behavior. Draft PRs can be used
 earlier; finishing means making the PR ready for review.
 
 ## Workflow
