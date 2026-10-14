@@ -175,5 +175,19 @@ describe("OtlpResource", () => {
 
       assert.strictEqual(String(output.intValue), input.toString())
     })
+
+    it("keeps integers outside the int64 range out of intValue", () => {
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue(2 ** 63), { doubleValue: 2 ** 63 })
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue(-1e21), { doubleValue: -1e21 })
+      assert.deepStrictEqual(OtlpResource.unknownToAttributeValue(-(2 ** 63)), { intValue: -(2 ** 63) })
+      assert.deepStrictEqual(
+        OtlpResource.unknownToAttributeValue(18_446_744_073_709_551_615n),
+        { stringValue: "18446744073709551615" }
+      )
+      assert.deepStrictEqual(
+        OtlpResource.unknownToAttributeValue(-9_223_372_036_854_775_808n),
+        { intValue: "-9223372036854775808" }
+      )
+    })
   })
 })

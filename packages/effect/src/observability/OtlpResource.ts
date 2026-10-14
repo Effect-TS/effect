@@ -170,13 +170,16 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
   return attributes
 }
 
+const int64Bound = 2 ** 63
+
 /**
  * Converts an arbitrary JavaScript value into an OTLP `AnyValue`.
  *
  * **Details**
  *
  * Arrays are converted recursively, primitive values use their matching OTLP
- * fields, and unsupported values are formatted as strings.
+ * fields, and unsupported values are formatted as strings. Integers outside the
+ * signed 64-bit range use `doubleValue`, or `stringValue` for a `bigint`.
  *
  * @stability unstable
  * @category attributes
@@ -196,11 +199,16 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
         stringValue: value
       }
     case "bigint":
-      return {
-        intValue: String(value)
-      }
+      // OTLP intValue is a signed 64-bit integer
+      return BigInt.asIntN(64, value) === value
+        ? {
+          intValue: String(value)
+        }
+        : {
+          stringValue: String(value)
+        }
     case "number":
-      return Number.isInteger(value)
+      return Number.isInteger(value) && value >= -int64Bound && value < int64Bound
         ? {
           intValue: value
         }
