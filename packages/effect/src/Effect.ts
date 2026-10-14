@@ -14964,7 +14964,9 @@ export const tx = <A, E, R>(
         whileLoop({
           while: () => !result,
           body: () => {
-            stampTransaction(mutable, clock.currentTimeMillisUnsafe())
+            if (mutable.attempt > 1) {
+              stampTransaction(mutable, clock.currentTimeMillisUnsafe())
+            }
             return run
           },
           step(exit: Exit.Exit<A, E>) {
