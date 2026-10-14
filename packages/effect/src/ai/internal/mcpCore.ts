@@ -161,7 +161,7 @@ export class RequestRejected extends Data.TaggedError("RequestRejected")<{
   readonly code: number
   readonly message: string
   readonly data?: unknown
-  readonly error: unknown
+  readonly error: McpSchema.McpErrorBase
 }> {}
 
 /**

@@ -59,7 +59,7 @@ const initialize = [
 
 // Writes `messages` to stdin before the transport starts, so the first requests race registration.
 const serveStdio = Effect.fnUntraced(function*(
-  registrations: Layer.Layer<never, never, McpServer.McpServer | McpServer.Request<"Requires", Scope.Scope>>,
+  registrations: Layer.Layer<never, never, McpServer.McpServer | McpServer.McpRequest<"Requires", Scope.Scope>>,
   messages: ReadonlyArray<unknown>
 ) {
   const encoder = new TextEncoder()

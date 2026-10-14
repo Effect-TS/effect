@@ -23,7 +23,7 @@ const serverOptions = {
   protocols: [McpProtocol.v2025_11_25]
 } as const
 
-type Requires<S> = McpServer.Request<"Requires", S>
+type Requires<S> = McpServer.McpRequest<"Requires", S>
 
 describe("McpServer", () => {
   it("should expose protocol-neutral request facts without a session service", () => {
