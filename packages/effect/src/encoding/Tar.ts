@@ -166,20 +166,28 @@ export interface EntryOptions {
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
+const typeflags: Record<Exclude<EntryType, "Other">, string> = {
+  File: "0",
+  Hardlink: "1",
+  Symlink: "2",
+  CharDevice: "3",
+  BlockDevice: "4",
+  Directory: "5",
+  Fifo: "6"
+}
+
 const makeHeader = (
   path: string,
-  type: EntryType,
-  typeflag: string,
+  type: "File" | "Directory" | "Symlink" | "Hardlink",
   size: number,
-  defaultMode: number,
   options: EntryOptions | undefined,
   linkTarget?: string
 ): Header => ({
   path,
   type,
-  typeflag,
+  typeflag: typeflags[type],
   size,
-  mode: options?.mode ?? defaultMode,
+  mode: options?.mode ?? (type === "Directory" ? 0o755 : type === "Symlink" ? 0o777 : 0o644),
   uid: options?.uid ?? 0,
   gid: options?.gid ?? 0,
   uname: options?.uname ?? "",
@@ -207,7 +215,7 @@ const makeHeader = (
 export const file = (path: string, content: string | Uint8Array, options?: EntryOptions): Entry => {
   const bytes = typeof content === "string" ? textEncoder.encode(content) : content
   return {
-    header: makeHeader(path, "File", "0", bytes.length, 0o644, options),
+    header: makeHeader(path, "File", bytes.length, options),
     body: bytes.length === 0 ? Stream.empty : Stream.succeed(bytes)
   }
 }
@@ -243,7 +251,7 @@ export const fileStream = <E = never, R = never>(
   body: Stream.Stream<Uint8Array, E, R>,
   options?: EntryOptions
 ): Entry<E, R> => ({
-  header: makeHeader(path, "File", "0", size, 0o644, options),
+  header: makeHeader(path, "File", size, options),
   body
 })
 
@@ -260,7 +268,7 @@ export const fileStream = <E = never, R = never>(
  * @since 4.0.5
  */
 export const directory = (path: string, options?: EntryOptions): Entry => ({
-  header: makeHeader(path.endsWith("/") ? path : `${path}/`, "Directory", "5", 0, 0o755, options),
+  header: makeHeader(path.endsWith("/") ? path : `${path}/`, "Directory", 0, options),
   body: Stream.empty
 })
 
@@ -272,7 +280,7 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  * @since 4.0.5
  */
 export const symlink = (path: string, target: string, options?: EntryOptions): Entry => ({
-  header: makeHeader(path, "Symlink", "2", 0, 0o777, options, target),
+  header: makeHeader(path, "Symlink", 0, options, target),
   body: Stream.empty
 })
 
@@ -289,7 +297,7 @@ export const symlink = (path: string, target: string, options?: EntryOptions): E
  * @since 4.0.5
  */
 export const hardlink = (path: string, target: string, options?: EntryOptions): Entry => ({
-  header: makeHeader(path, "Hardlink", "1", 0, 0o644, options, target),
+  header: makeHeader(path, "Hardlink", 0, options, target),
   body: Stream.empty
 })
 
@@ -306,6 +314,8 @@ const padding = (size: number): number => (BLOCK - (size % BLOCK)) % BLOCK
 
 const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader", message })
 
+const truncated = () => new TarError({ kind: "Truncated", message: "unexpected end of tar archive" })
+
 const sparseUnsupported = () => new TarError({ kind: "Unsupported", message: "GNU sparse files are not supported" })
 
 const attempt = <A>(f: () => A): Effect.Effect<A, TarError> => {
@@ -314,16 +324,6 @@ const attempt = <A>(f: () => A): Effect.Effect<A, TarError> => {
   } catch (error) {
     return Effect.fail(error as TarError)
   }
-}
-
-const typeflags: Record<Exclude<EntryType, "Other">, string> = {
-  File: "0",
-  Hardlink: "1",
-  Symlink: "2",
-  CharDevice: "3",
-  BlockDevice: "4",
-  Directory: "5",
-  Fifo: "6"
 }
 
 const types: Record<string, EntryType> = {
@@ -523,38 +523,32 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
     if (key.startsWith("GNU.sparse.")) {
       throw sparseUnsupported()
     }
+    if (!paxHeaderKeys.has(key)) {
+      rest[key] = value
+      continue
+    }
+    if (value === "") continue
     switch (key) {
       case "path":
-        if (value !== "") header.path = value
+        header.path = value
         break
       case "linkpath":
-        if (value !== "") header.linkTarget = value
+        header.linkTarget = value
         break
       case "uname":
-        if (value !== "") header.uname = value
-        break
       case "gname":
-        if (value !== "") header.gname = value
+        header[key] = value
         break
       case "uid":
-        if (value !== "") header.uid = paxInteger(key, value)
-        break
       case "gid":
-        if (value !== "") header.gid = paxInteger(key, value)
-        break
       case "size":
-        if (value !== "") header.size = paxInteger(key, value)
+        header[key] = paxInteger(key, value)
         break
       case "mtime":
-        if (value !== "") {
-          if (!/^-?\d+(\.\d+)?$/.test(value)) {
-            throw invalidHeader(`invalid PAX mtime ${JSON.stringify(value)}`)
-          }
-          header.mtimeMillis = Math.floor(Number(value) * 1000)
+        if (!/^-?\d+(\.\d+)?$/.test(value)) {
+          throw invalidHeader(`invalid PAX mtime ${JSON.stringify(value)}`)
         }
-        break
-      default:
-        rest[key] = value
+        header.mtimeMillis = Math.floor(Number(value) * 1000)
     }
   }
   return rest
@@ -667,8 +661,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
   let remaining = 0
   let pad = 0
 
-  const truncated = () => new TarError({ kind: "Truncated", message: "unexpected end of tar archive" })
-
   const pullUpstream: Effect.Effect<boolean, IE> = upstream.pipe(
     Effect.map((chunks) => {
       for (const chunk of chunks) queue.push(chunk)
@@ -687,9 +679,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
       return Effect.flatMap(pullUpstream, () => fill(n))
     })
 
-  const readExact = (n: number): Effect.Effect<Uint8Array, TarError | IE> =>
-    Effect.flatMap(fill(n), (ok) => ok ? Effect.succeed(queue.take(n)) : Effect.fail(truncated()))
-
   // Reads one block, or `undefined` when the input ends on a block boundary
   const readBlock: Effect.Effect<Uint8Array | undefined, TarError | IE> = Effect.flatMap(
     fill(BLOCK),
@@ -703,20 +692,23 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
     Effect.flatMap(fill(1), (ok) => ok ? Effect.succeed(queue.takeSome(max)) : Effect.fail(truncated()))
 
   const skip = (n: number): Effect.Effect<void, TarError | IE> =>
-    n === 0 ? Effect.void : Effect.flatMap(readSome(Math.min(n, 65536)), (chunk) => skip(n - chunk.length))
+    n === 0 ? Effect.void : Effect.flatMap(readSome(n), (chunk) => skip(n - chunk.length))
 
   const readMeta = (size: number): Effect.Effect<Uint8Array, TarError | IE> => {
     if (size > MAX_META_SIZE) {
       return Effect.fail(invalidHeader(`extended header of ${size} bytes exceeds the limit`))
     }
-    return Effect.flatMap(readExact(size + padding(size)), (data) => Effect.succeed(data.subarray(0, size)))
+    const total = size + padding(size)
+    return Effect.flatMap(
+      fill(total),
+      (ok) => ok ? Effect.succeed(queue.take(total).subarray(0, size)) : Effect.fail(truncated())
+    )
   }
 
   const finish: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
     never,
     IE | Cause.Done<Done>
   > {
-    generation++
     queue.clear()
     if (upstreamDone !== undefined) return Cause.done(upstreamDone.value)
     return Effect.flatMap(pullUpstream, loop)
@@ -772,12 +764,11 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
             yield* skip(raw.size + padding(raw.size))
             continue
           }
-          case "L": {
-            longName = readString(yield* readMeta(raw.size), 0, raw.size)
-            continue
-          }
+          case "L":
           case "K": {
-            longLink = readString(yield* readMeta(raw.size), 0, raw.size)
+            const name = readString(yield* readMeta(raw.size), 0, raw.size)
+            if (raw.typeflag === "L") longName = name
+            else longLink = name
             continue
           }
           case "S": {
@@ -817,6 +808,7 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
     close: () => {
       closed = true
       generation++
+      queue.clear()
     }
   }
 }
@@ -851,17 +843,18 @@ const splitPath = (path: string): readonly [prefix: string, name: string] | unde
   if (length > 156) length = 156
   else if (path[length - 1] === "/") length--
   const i = path.lastIndexOf("/", length - 1)
-  const nameLength = path.length - i - 1
-  if (i <= 0 || nameLength > 100 || nameLength === 0 || i > 155) return undefined
+  if (i <= 0 || path.length - i - 1 > 100) return undefined
   return [path.slice(0, i), path.slice(i + 1)]
 }
 
 const paxRecord = (key: string, value: string): Uint8Array => {
-  const rest = ` ${key}=${value}\n`
-  const restLength = textEncoder.encode(rest).length
-  let size = restLength + String(restLength).length
-  if (String(size).length + restLength !== size) size = String(size).length + restLength
-  return textEncoder.encode(`${size}${rest}`)
+  const rest = textEncoder.encode(` ${key}=${value}\n`)
+  // The length counts its own digits
+  const length = rest.length + String(rest.length + String(rest.length).length).length
+  const out = new Uint8Array(length)
+  writeString(out, 0, length, String(length))
+  out.set(rest, length - rest.length)
+  return out
 }
 
 const paxHeaderName = (path: string): string => {
@@ -885,6 +878,22 @@ interface UstarFields {
   readonly gname: string
   readonly devMajor: number
   readonly devMinor: number
+}
+
+const paxHeaderFields: UstarFields = {
+  name: "",
+  prefix: "",
+  typeflag: "x",
+  size: 0,
+  mode: 0o644,
+  uid: 0,
+  gid: 0,
+  mtime: 0,
+  linkname: "",
+  uname: "",
+  gname: "",
+  devMajor: 0,
+  devMinor: 0
 }
 
 const writeUstarBlock = (block: Uint8Array, fields: UstarFields): void => {
@@ -949,7 +958,6 @@ const encodeHeader = (header: Header): Uint8Array => {
   }
   const mtime = Math.floor(millis / 1000)
 
-  const pax: Record<string, string> = {}
   for (const key of Object.keys(header.pax)) {
     if (key.startsWith("GNU.sparse.")) {
       throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
@@ -957,12 +965,11 @@ const encodeHeader = (header: Header): Uint8Array => {
     if (paxHeaderKeys.has(key)) {
       throw invalidHeader(`PAX record ${JSON.stringify(key)} must be set through its header field`)
     }
-    const value = header.pax[key]
-    if (key === "" || key.includes("=") || key.includes("\0") || (paxStringKeys.has(key) && value.includes("\0"))) {
+    if (key === "" || key.includes("=") || key.includes("\0")) {
       throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
     }
-    pax[key] = value
   }
+  const pax: Record<string, string> = { ...header.pax }
 
   // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
   const fitString = (key: string, value: string, length: number): string => {
@@ -993,38 +1000,19 @@ const encodeHeader = (header: Header): Uint8Array => {
     devMinor
   }
 
-  const keys = Object.keys(pax).sort()
-  if (keys.length === 0) {
-    const block = new Uint8Array(BLOCK)
-    writeUstarBlock(block, ustar)
-    return block
+  const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
+  const dataLength = records.reduce((n, record) => n + record.length, 0)
+  const paxBlocks = records.length === 0 ? 0 : 1 + Math.ceil(dataLength / BLOCK)
+  const out = new Uint8Array(BLOCK * (paxBlocks + 1))
+  if (paxBlocks > 0) {
+    writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
+    let offset = BLOCK
+    for (const record of records) {
+      out.set(record, offset)
+      offset += record.length
+    }
   }
-  const records = keys.map((key) => paxRecord(key, pax[key]))
-  let dataLength = 0
-  for (const record of records) dataLength += record.length
-  const dataBlocks = Math.ceil(dataLength / BLOCK)
-  const out = new Uint8Array(BLOCK * (dataBlocks + 2))
-  writeUstarBlock(out.subarray(0, BLOCK), {
-    name: paxHeaderName(path),
-    prefix: "",
-    typeflag: "x",
-    size: dataLength,
-    mode: 0o644,
-    uid: 0,
-    gid: 0,
-    mtime: 0,
-    linkname: "",
-    uname: "",
-    gname: "",
-    devMajor: 0,
-    devMinor: 0
-  })
-  let offset = BLOCK
-  for (const record of records) {
-    out.set(record, offset)
-    offset += record.length
-  }
-  writeUstarBlock(out.subarray(BLOCK * (dataBlocks + 1)), ustar)
+  writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
   return out
 }
 
@@ -1071,6 +1059,14 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   In extends Entry<any, infer R> ? R : never
 > => encodeEntries()
 
+const sizeMismatch = (header: Header, written: number) =>
+  new TarError({
+    kind: "SizeMismatch",
+    message: `body of ${JSON.stringify(header.path)} has ${
+      written > header.size ? "more than" : "only"
+    } ${written} bytes, but its size is ${header.size}`
+  })
+
 // The input is generic over the entry type in `encode` so that body errors and
 // services are inferred from unions of entries
 const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
@@ -1093,14 +1089,6 @@ const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
         readonly header: Header
         written: number
       } | undefined
-
-      const sizeMismatch = (header: Header, written: number) =>
-        new TarError({
-          kind: "SizeMismatch",
-          message: `body of ${JSON.stringify(header.path)} has ${
-            written > header.size ? "more than" : "only"
-          } ${written} bytes, but its size is ${header.size}`
-        })
 
       const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, TarError | IE | E, Done, R> = Effect.gen(
         function*() {

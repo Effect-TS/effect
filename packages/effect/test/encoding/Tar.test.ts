@@ -12,39 +12,24 @@ const textDecoder = new TextDecoder()
 const fixture = (name: string): Uint8Array =>
   gunzipSync(readFileSync(new URL(`../fixtures/tar/${name}.tar.gz`, import.meta.url)))
 
-const concat = (chunks: Iterable<Uint8Array>): Uint8Array => {
-  const list = Array.from(chunks)
-  const out = new Uint8Array(list.reduce((n, chunk) => n + chunk.length, 0))
-  let offset = 0
-  for (const chunk of list) {
-    out.set(chunk, offset)
-    offset += chunk.length
-  }
-  return out
-}
-
 const text = (bytes: Uint8Array) => textDecoder.decode(bytes)
 
 const encode = <E>(entries: ReadonlyArray<Tar.Entry<E>>) =>
   Stream.fromIterable(entries).pipe(
     Stream.pipeThroughChannel(Tar.encode()),
-    Stream.runCollect,
-    Effect.map(concat)
+    Stream.mkUint8Array
   )
 
 const entries = (bytes: Uint8Array, chunkSize: number) => {
   const chunks: Array<Uint8Array> = []
   for (let i = 0; i < bytes.length; i += chunkSize) chunks.push(bytes.subarray(i, i + chunkSize))
-  return Stream.fromIterable(chunks).pipe(
-    Stream.rechunk(1),
-    Stream.pipeThroughChannel(Tar.decode())
-  )
+  return Stream.fromIterable(chunks, { chunkSize: 1 }).pipe(Stream.pipeThroughChannel(Tar.decode()))
 }
 
 const decode = (bytes: Uint8Array, chunkSize = 4096) =>
   entries(bytes, chunkSize).pipe(
     Stream.mapEffect((entry) =>
-      Effect.map(Stream.runCollect(entry.body), (chunks) => ({ header: entry.header, body: concat(chunks) }))
+      Effect.map(Stream.mkUint8Array(entry.body), (body) => ({ header: entry.header, body }))
     ),
     Stream.runCollect
   )
@@ -193,7 +178,7 @@ describe("Tar", () => {
       Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
         // Drop the PAX data block and set the PAX header size to 0, then fix its checksum
-        const archive = concat([bytes.subarray(0, 512), bytes.subarray(1024)])
+        const archive = new Uint8Array([...bytes.subarray(0, 512), ...bytes.subarray(1024)])
         archive.set(textEncoder.encode("00000000000"), 124)
         archive.fill(0x20, 148, 156)
         const checksum = archive.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
@@ -207,9 +192,7 @@ describe("Tar", () => {
         const bytes = yield* encode([Tar.file("a", "a".repeat(1000)), Tar.file("b", "b".repeat(700))])
         for (const chunkSize of [1, 512, bytes.length]) {
           const output = yield* entries(bytes, chunkSize).pipe(
-            Stream.mapEffect((entry) =>
-              Effect.map(Stream.runCollect(Stream.take(entry.body, 1)), (chunks) => concat(chunks)[0])
-            ),
+            Stream.mapEffect((entry) => Effect.map(Stream.mkUint8Array(Stream.take(entry.body, 1)), (body) => body[0])),
             Stream.runCollect
           )
           assert.deepStrictEqual(output, ["a".charCodeAt(0), "b".charCodeAt(0)])
