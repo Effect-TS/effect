@@ -163,6 +163,58 @@ describe("HttpDecompression", () => {
     assert.strictEqual(response.status, 400)
   })
 
+  it("maps multipart decompression failures to client errors", async () => {
+    const multipart = new FormData()
+    multipart.append("text", bigJson)
+    const encoded = new Response(multipart)
+    const headers = { "content-type": encoded.headers.get("content-type")!, "content-encoding": "gzip" }
+    const body = new Uint8Array(await encoded.arrayBuffer())
+    const handler = makeHandler(
+      HttpServerRequest.HttpServerRequest.use((request) =>
+        Effect.as(Stream.runDrain(request.multipartStream), HttpServerResponse.empty())
+      ),
+      { maxDecompressedSize: 1024 }
+    )
+
+    const corrupt = await post(handler, "not gzip", headers)
+    assert.strictEqual(corrupt.status, 400)
+
+    const tooLarge = await post(handler, await compress(body, ["gzip"]), headers)
+    assert.strictEqual(tooLarge.status, 413)
+  })
+
+  it("cancels the request body when a stream read stops early", async () => {
+    const compressed = await compress(bigJson, ["gzip"])
+    let onCancel!: () => void
+    const cancelled = new Promise<void>((resolve) => {
+      onCancel = resolve
+    })
+    // never closes, so the upstream only finishes if cancellation propagates
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(compressed)
+      },
+      cancel() {
+        onCancel()
+      }
+    })
+    const handler = makeHandler(
+      HttpServerRequest.HttpServerRequest.use((request) =>
+        Effect.as(Stream.runHead(request.stream), HttpServerResponse.empty())
+      )
+    )
+    const response = await handler(
+      new Request("http://localhost/", {
+        method: "POST",
+        body,
+        headers: { "content-encoding": "gzip" },
+        duplex: "half"
+      } as RequestInit)
+    )
+    assert.strictEqual(response.status, 204)
+    await cancelled
+  })
+
   it("decompresses bodies for routes under a prefixed router", async () => {
     const { dispose, handler } = HttpRouter.toWebHandler(
       HttpRouter.use((router) => router.prefixed("/api").add("POST", "/echo", echo("text"))),

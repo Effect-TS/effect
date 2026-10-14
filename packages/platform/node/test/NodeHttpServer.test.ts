@@ -1,5 +1,5 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
-import { NodeHttpServer } from "@effect/platform-node"
+import { NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { ByteSize, Effect, Exit, Logger, Option, References } from "effect"
@@ -14,6 +14,7 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
+  HttpMiddleware,
   HttpPlatform,
   HttpRouter,
   HttpServer,
@@ -37,6 +38,7 @@ import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Net from "node:net"
+import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -104,6 +106,24 @@ describe("HttpServer", () => {
         Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       expect(todo).toEqual({ id: 1, title: "test" })
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("toServerResponse works behind the decompression middleware", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) => {
+          const responses = [request, request.modify({ url: "/modified" })].map(NodeHttpServerRequest.toServerResponse)
+          return Effect.succeed(
+            HttpServerResponse.text(responses.map((response) => response instanceof Http.ServerResponse).join(","))
+          )
+        }),
+        HttpMiddleware.decompression()
+      )
+      const response = yield* HttpClient.post("/", {
+        body: HttpBody.uint8Array(Zlib.gzipSync("hello")),
+        headers: { "content-encoding": "gzip" }
+      })
+      assert.strictEqual(yield* response.text, "true,true")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("schemaJson applies a JSON reviver", () =>
