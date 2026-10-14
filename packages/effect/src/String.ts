@@ -1079,6 +1079,10 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 /**
  * Converts a snake_case string to camelCase.
  *
+ * **Details**
+ *
+ * Leading, trailing, and repeated underscores are dropped.
+ *
  * **Example** (Converting snake_case to camelCase)
  *
  * ```ts import.meta.vitest
@@ -1092,17 +1096,14 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @category transforming
  * @since 2.0.0
  */
-export const snakeToCamel = (self: string): string => {
-  if (self.length === 0) return self
-  let str = self[0]
-  for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
-  }
-  return str
-}
+export const snakeToCamel = (self: string): string => joinSnakeWords(self, false)
 
 /**
  * Converts a snake_case string to PascalCase.
+ *
+ * **Details**
+ *
+ * Leading, trailing, and repeated underscores are dropped.
  *
  * **Example** (Converting snake_case to PascalCase)
  *
@@ -1117,11 +1118,19 @@ export const snakeToCamel = (self: string): string => {
  * @category transforming
  * @since 2.0.0
  */
-export const snakeToPascal = (self: string): string => {
-  if (self.length === 0) return self
-  let str = self[0].toUpperCase()
-  for (let i = 1; i < self.length; i++) {
-    str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
+export const snakeToPascal = (self: string): string => joinSnakeWords(self, true)
+
+const joinSnakeWords = (self: string, upperFirst: boolean): string => {
+  let str = ""
+  let upper = upperFirst
+  for (let i = 0; i < self.length; i++) {
+    const char = self[i]
+    if (char === "_") {
+      upper = upperFirst || str.length > 0
+      continue
+    }
+    str += upper ? char.toUpperCase() : char
+    upper = false
   }
   return str
 }
@@ -1334,6 +1343,7 @@ const normalizeCase = (
   while (result.charAt(end - 1) === "\0") {
     end--
   }
+  if (start >= end) return ""
 
   // Transform each token independently.
   return result.slice(start, end).split("\0").map(transform).join(delimiter)
