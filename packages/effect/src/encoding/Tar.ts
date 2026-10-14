@@ -499,7 +499,7 @@ const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader",
 
 const truncated = () => new TarError({ kind: "Truncated", message: "unexpected end of tar archive" })
 
-const sparseUnsupported = () => new TarError({ kind: "Unsupported", message: "GNU sparse files are not supported" })
+const unsupported = (message: string) => new TarError({ kind: "Unsupported", message })
 
 const sizeMismatch = (header: Header, written: number) =>
   new TarError({
@@ -667,7 +667,7 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
   for (const key of Object.keys(records)) {
     const value = records[key]
     if (key.startsWith("GNU.sparse.")) {
-      throw sparseUnsupported()
+      throw unsupported("GNU sparse files are not supported")
     }
     if (!paxHeaderKeys.has(key)) {
       rest[key] = value
@@ -1201,7 +1201,7 @@ class Decoder {
           continue
         }
         case "S": {
-          throw sparseUnsupported()
+          throw unsupported("GNU sparse files are not supported")
         }
       }
       const header = this.toHeader(raw)
