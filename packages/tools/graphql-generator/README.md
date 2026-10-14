@@ -81,20 +81,19 @@ reach. Defaulted scalars are not included in that warning.
   `GraphQL.DocumentTemplate`, which marks the variable and fragment names a
   batch would rename; the operation joins it into the same compact text.
 - a Schema per fragment
-- a `Schema.Opaque` class per nested object selection and per member of an
-  interface or union selection, so editor hovers show a name instead of the
-  whole type
+- a `Schema.Struct` const and a same-named interface per nested object
+  selection and per member of an interface or union selection
 - `FooGraphQLGroup`, a `GraphQLGroup` with every operation in the file
 
-A nested selection's class is named after its GraphQL type, such as `Issue`
-or `User`, inside fragments too. Every class is a top-level export of the
+A nested selection's schema and interface are named after its GraphQL type,
+such as `Issue` or `User`, inside fragments too. Each is a top-level export of the
 file, so operations and fragments in one file draw from the same names. The
 member covering the types an interface or union selection doesn't name ends
 in `Other`, such as `EventOther`. An interface or union selection without any
-`... on` type conditions is one struct rather than a union, so its class takes
+`... on` type conditions is one struct rather than a union, so its schema takes
 the abstract type's name with no `Other`, such as `Event`.
 
-Selections of a type share one class across the whole file when they select
+Selections of a type share one schema and interface across the whole file when they select
 the same fields under the same response keys, with the same nested
 selections and `@skip` / `@include` optionality, in any order. When different
 selections would get the same name, or a name is already taken by an
@@ -102,9 +101,27 @@ operation, fragment or import in the file, by the file's group or by
 `Schema`, `GraphQL`, `GraphQLGroup` or `Shared`, each adds its field's
 response key (`AuthorUser`), then parent response keys one at a time
 (`CommentsAuthorUser`), then the operation or fragment name
-(`RepoIssuesCommentsAuthorUser`), until the names are free. A shared class
+(`RepoIssuesCommentsAuthorUser`), until the names are free. A shared schema
 uses the path of its first occurrence. A clash left after all of that is an
 error: alias the field.
+
+Object fragments and ordinary input objects use the same declaration shape:
+
+```ts
+export const Author = Schema.Struct({
+  name: Schema.NullOr(Schema.String)
+})
+export interface Author extends Schema.Struct.Type<typeof Author.fields> {}
+```
+
+The const is the runtime schema, including decoding, encoding and `make`; the
+interface supplies a named decoded type without the type-checking overhead of
+an Opaque class. Custom scalar codecs retain their encoded types. Unlike the
+previous Opaque classes, nested selections in inferred types and editor hovers
+can expand structurally instead of showing these names. Use the exported
+interfaces in explicit type annotations when a named type is useful. Abstract
+fragments still use a union schema and type alias, and `@oneOf` inputs retain
+their Opaque union schema and explicit type alias.
 
 The shared module holds only the scalars, enums, input objects and
 `__typename` unions the operations reach. Commit the generated files, and
