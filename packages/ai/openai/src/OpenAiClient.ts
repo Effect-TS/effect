@@ -90,6 +90,13 @@ export interface Service {
   readonly createEmbedding: (
     options: typeof OpenAiSchema.CreateEmbeddingRequest.Encoded
   ) => Effect.Effect<typeof OpenAiSchema.CreateEmbeddingResponse.Type, AiError.AiError>
+
+  /**
+   * Answer decision questions using the OpenAI decisions endpoint.
+   */
+  readonly createDecisions: (
+    options: typeof OpenAiSchema.CreateDecisionsRequest.Encoded
+  ) => Effect.Effect<typeof OpenAiSchema.CreateDecisionsResponse.Type, AiError.AiError>
 }
 
 // =============================================================================
@@ -335,11 +342,32 @@ export const make = Effect.fnUntraced(
         withRedactedHeaders
       )
 
+    const decodeDecisions = HttpClientResponse.schemaBodyJson(OpenAiSchema.CreateDecisionsResponse)
+
+    const createDecisions = (
+      payload: typeof OpenAiSchema.CreateDecisionsRequest.Encoded
+    ): Effect.Effect<typeof OpenAiSchema.CreateDecisionsResponse.Type, AiError.AiError> =>
+      resolveHttpClient.pipe(
+        Effect.flatMap((client) =>
+          client.execute(HttpClientRequest.post("/decisions", {
+            body: HttpBody.jsonUnsafe(payload)
+          })).pipe(
+            Effect.flatMap(decodeDecisions),
+            Effect.catchTags({
+              HttpClientError: (error) => Errors.mapHttpClientError(error, "createDecisions"),
+              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createDecisions"))
+            })
+          )
+        ),
+        withRedactedHeaders
+      )
+
     return OpenAiClient.of({
       client: httpClient,
       createResponse,
       createResponseStream,
-      createEmbedding
+      createEmbedding,
+      createDecisions
     })
   },
   withRedactedHeaders
