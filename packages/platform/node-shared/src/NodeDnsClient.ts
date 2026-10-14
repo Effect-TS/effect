@@ -1,6 +1,6 @@
 /**
  * Node.js implementation of the `DnsClient` service and its UDP and TCP
- * transports.
+ * transports, with a `Dns` service built on them.
  *
  * @stability experimental
  * @since 4.0.0
@@ -14,19 +14,23 @@ import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
+import * as Result from "effect/Result"
+import * as NodeDnsApi from "node:dns"
 import * as NodeCrypto from "./NodeCrypto.ts"
 import * as NodeDatagramSocket from "./NodeDatagramSocket.ts"
 import * as NodeSocket from "./NodeSocket.ts"
 
 /**
- * Options for the Node.js `DnsClient` service.
+ * Options for the Node.js `DnsClient` service and `layerDns`.
  *
  * **Details**
  *
- * No system files are read: spread the result of `DnsClient.parseResolvConf`
- * to use a `resolv.conf` file, and pass `Host.parseHostsFile` results as
- * `hosts`. `nameServers` defaults to the loopback addresses, like an empty
- * `resolv.conf`.
+ * `nameServers` defaults to the system name servers reported by `node:dns`,
+ * without IPv6 addresses with a scope ID, or to the loopback addresses when
+ * there are none. No system files are read: spread the result of
+ * `DnsClient.parseResolvConf` to use a `resolv.conf` file, and pass
+ * `Host.parseHostsFile` results as `hosts`. `search`, `ndots`, `noAaaa`, and
+ * `hosts` are used by `layerDns` only.
  *
  * @stability experimental
  * @category models
@@ -75,25 +79,48 @@ const clampTimeout = (input: Duration.Input | undefined): Duration.Duration | un
 
 const localNameServers = Arr.map(NetAddress.loopbackAddresses, (address) => NetAddress.inetAddressUnsafe(address, 53))
 
+// The system name servers of `node:dns`, without duplicates (Deno reports
+// each one twice) and without IPv6 addresses with a scope ID.
+const systemNameServers: Effect.Effect<ReadonlyArray<NetAddress.InetAddress>> = Effect.sync(() =>
+  Arr.dedupe(
+    NodeDnsApi.getServers().flatMap((input) => {
+      const server = Result.getOrUndefined(Dns.nameServerFromString(input))
+      return server === undefined || isScoped(server) ? [] : [server]
+    })
+  )
+)
+
+interface NormalizedOptions {
+  readonly transport: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
+  readonly client: DnsClient.MakeOptions
+  readonly dns: DnsClient.DnsOptions
+  readonly useTcp: boolean
+}
+
 const normalizeOptions = Effect.fnUntraced(function*(options: Options) {
   const nameServers = options.nameServers ?? []
   yield* checkNameServers(nameServers)
   const search = options.search === undefined
     ? undefined
     : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
-  const normalized: DnsClient.MakeOptions & Omit<DnsClient.TransportUdpOptions, "udp" | "tcp"> & {
-    readonly useTcp: boolean
-  } = {
-    nameServers: Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : localNameServers,
-    search,
-    ndots: clamp(options.ndots, 0, 15),
-    timeout: clampTimeout(options.timeout),
-    attempts: clamp(options.attempts, 1, Number.MAX_SAFE_INTEGER),
-    rotate: options.rotate,
-    useTcp: options.useTcp ?? false,
-    noAaaa: options.noAaaa,
-    udpPayloadSize: clamp(options.udpPayloadSize, 512, 0xffff),
-    hosts: options.hosts
+  const system = Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : yield* systemNameServers
+  const normalized: NormalizedOptions = {
+    transport: {
+      nameServers: Arr.isReadonlyArrayNonEmpty(system) ? system : localNameServers,
+      udpPayloadSize: clamp(options.udpPayloadSize, 512, 0xffff)
+    },
+    client: {
+      timeout: clampTimeout(options.timeout),
+      attempts: clamp(options.attempts, 1, Number.MAX_SAFE_INTEGER),
+      rotate: options.rotate
+    },
+    dns: {
+      search,
+      ndots: clamp(options.ndots, 0, 15),
+      noAaaa: options.noAaaa,
+      hosts: options.hosts
+    },
+    useTcp: options.useTcp ?? false
   }
   return normalized
 })
@@ -166,23 +193,27 @@ export const layerTransportTcp = (
 ): Layer.Layer<DnsClient.Transport, NetAddress.NetAddressError> =>
   Layer.effect(DnsClient.Transport, makeTransportTcp(options))
 
+const makeClient = (config: NormalizedOptions) =>
+  DnsClient.make(config.client).pipe(
+    Effect.provideServiceEffect(
+      DnsClient.Transport,
+      config.useTcp ? makeTransportTcp(config.transport) : makeTransportUdp(config.transport)
+    )
+  )
+
 /**
  * Creates a Node.js `DnsClient` service, sending queries with
  * `makeTransportUdp`, or `makeTransportTcp` with `useTcp`.
  *
+ * @see {@link Options} for the options and their defaults
  * @stability experimental
  * @category constructors
  * @since 4.0.0
  */
-export const make = Effect.fnUntraced(function*(options: Options = {}) {
-  const config = yield* normalizeOptions(options)
-  return yield* DnsClient.make(config).pipe(
-    Effect.provideServiceEffect(
-      DnsClient.Transport,
-      config.useTcp ? makeTransportTcp(config) : makeTransportUdp(config)
-    )
-  )
-})
+export const make = (
+  options: Options = {}
+): Effect.Effect<DnsClient.DnsClient["Service"], NetAddress.NetAddressError> =>
+  Effect.flatMap(normalizeOptions(options), makeClient)
 
 /**
  * Layer that provides the Node.js `DnsClient` service.
@@ -208,3 +239,30 @@ export const layerConfig = (
   options: Config.Wrap<Options>
 ): Layer.Layer<DnsClient.DnsClient, Config.ConfigError | NetAddress.NetAddressError> =>
   Layer.effect(DnsClient.DnsClient, Effect.flatMap(Config.unwrap(options), make))
+
+/**
+ * Layer that provides the `Dns` service by querying name servers with the
+ * Node.js `DnsClient`, which it provides as well.
+ *
+ * **Details**
+ *
+ * This layer speaks DNS only, to the name servers in `options`, and reads no
+ * system files. `NodeDns.layer` resolves names with the operating system
+ * resolver instead, so it also uses the hosts file, mDNS, and whatever else
+ * the system is configured with. Use this layer to control the name servers,
+ * transports, and lookup settings, and `NodeDns.layer` to resolve names the
+ * way the system does.
+ *
+ * @see {@link Options} for the options and their defaults
+ * @see {@link DnsClient.layerDns} for the lookup behavior
+ * @stability experimental
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerDns = (
+  options: Options = {}
+): Layer.Layer<Dns.Dns | DnsClient.DnsClient, NetAddress.NetAddressError> =>
+  Layer.unwrap(Effect.map(normalizeOptions(options), (config) =>
+    DnsClient.layerDns(config.dns).pipe(
+      Layer.provideMerge(Layer.effect(DnsClient.DnsClient, makeClient(config)))
+    )))

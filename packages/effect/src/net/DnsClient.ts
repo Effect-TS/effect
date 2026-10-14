@@ -82,8 +82,7 @@ export interface Response {
 // =============================================================================
 
 /**
- * Service that sends DNS queries and returns the full responses, along with
- * the resolver configuration used by `layerDns`.
+ * Service that sends DNS queries and returns the full responses.
  *
  * @see {@link make} for the default implementation
  * @stability experimental
@@ -102,26 +101,6 @@ export class DnsClient extends Context.Service<DnsClient, {
     type: Dns.RecordType | number,
     options?: { readonly recursionDesired?: boolean | undefined }
   ): Effect.Effect<Response, Dns.DnsError>
-
-  /**
-   * The domains appended to relative names by address lookups.
-   */
-  readonly search: ReadonlyArray<Host.DomainName>
-
-  /**
-   * The minimum dot count for trying a relative name before search domains.
-   */
-  readonly ndots: number
-
-  /**
-   * Whether address lookups skip AAAA queries.
-   */
-  readonly noAaaa: boolean
-
-  /**
-   * The hosts table consulted by address lookups before DNS.
-   */
-  readonly hosts: Host.HostsTable
 }>()("effect/net/DnsClient") {}
 
 const rcodeReasons: Record<number, Dns.DnsErrorReason> = {
@@ -172,11 +151,13 @@ const concat = (head: Uint8Array, chunks: ReadonlyArray<Uint8Array>): Uint8Array
  */
 export interface Exchange {
   /**
-   * Encodes the query with an ID and EDNS(0) options.
+   * Encodes the query with an ID. Unless the client is retrying without
+   * EDNS(0), the message has an OPT record advertising `udpPayloadSize`,
+   * 1232 bytes by default, and is padded to a multiple of `padding` bytes.
    */
   readonly encode: (options: {
     readonly id: number
-    readonly udpPayloadSize: number
+    readonly udpPayloadSize?: number | undefined
     readonly padding?: number | undefined
   }) => Uint8Array
 
@@ -186,15 +167,28 @@ export interface Exchange {
   readonly matches: (message: Uint8Array, id: number) => boolean
 
   /**
-   * Scopes one exchange, applies the client's timeout, and reports other
-   * failures as `Temporary`.
-   */
-  readonly limit: <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) => Effect.Effect<A, Dns.DnsError>
-
-  /**
    * Creates the `Dns.DnsError` of the query.
    */
   readonly fail: (reason: Dns.DnsErrorReason, cause?: unknown) => Dns.DnsError
+}
+
+/**
+ * The response a `Transport` received for an exchange.
+ *
+ * **Details**
+ *
+ * `age` is the time the response spent in a cache before it was received,
+ * such as the HTTP `Age` header of DNS over HTTPS (RFC 8484). The client
+ * subtracts it from the TTL of every resource record, down to zero. SOA
+ * timers are not TTLs and are left as they are.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface Reply {
+  readonly bytes: Uint8Array
+  readonly age?: Duration.Duration | undefined
 }
 
 /**
@@ -214,10 +208,10 @@ export class Transport extends Context.Service<Transport, {
   readonly servers: Arr.NonEmptyReadonlyArray<{
     /**
      * Sends a query to the name server and returns the matching response.
-     * Custom transports must wrap exchanges in `Exchange.limit` to apply
-     * the client's timeout and scope.
+     * The client closes the scope and applies its timeout when the exchange
+     * ends. Failures are reported with `Exchange.fail`.
      */
-    readonly send: (exchange: Exchange) => Effect.Effect<Uint8Array, Dns.DnsError>
+    readonly send: (exchange: Exchange) => Effect.Effect<Reply, Dns.DnsError, Scope.Scope>
   }>
 }>()("effect/net/DnsClient/Transport") {}
 
@@ -260,13 +254,13 @@ export const makeTransportTcp = (
     const servers = Arr.map(options.nameServers, (server) => Result.getOrThrow(Dns.nameServerFromInput(server)))
     return Transport.of({
       servers: Arr.map(servers, (server) => ({
-        send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
+        send: Effect.fnUntraced(function*({ encode, fail, matches }) {
           const id = yield* crypto.randomIntBetween(0, 0xffff)
-          const payload = yield* limit(Effect.gen(function*() {
+          const bytes = yield* Effect.gen(function*() {
             const socket = yield* options.tcp(server)
             const pull = yield* Socket.readerBytes(socket)
             const writer = yield* socket.writer
-            yield* writer.write(frame(encode({ id, udpPayloadSize: 1232 })))
+            yield* writer.write(frame(encode({ id })))
             let prefix: Uint8Array = new Uint8Array(0)
             while (prefix.length < 2) prefix = concat(prefix, yield* pull)
             const message = new Uint8Array((prefix[0] << 8) | prefix[1])
@@ -280,11 +274,11 @@ export const makeTransportTcp = (
               }
             }
             return message
-          }))
-          if (!matches(payload, id)) {
+          }).pipe(Effect.mapError((cause) => fail("Temporary", cause)))
+          if (!matches(bytes, id)) {
             return yield* fail("InvalidResponse", new Error("the TCP response does not match the query"))
           }
-          return payload
+          return { bytes }
         })
       }))
     })
@@ -324,14 +318,17 @@ export interface TransportUdpOptions {
   readonly udpPayloadSize?: number | undefined
 }
 
+const defaultUdpPayloadSize = 1232
+
 // Connected sockets report ICMP port unreachable messages as refused.
 const socketFailure = (exchange: Exchange, error: DatagramSocket.DatagramSocketError): Dns.DnsError =>
   exchange.fail("kind" in error.reason && error.reason.kind === "ConnectionRefused" ? "Refused" : "Temporary", error)
 
 /**
  * Creates a `Transport` that sends queries over UDP and retries truncated
- * responses over TCP. ICMP reports end an exchange at once, and port
- * unreachable reports fail with `Refused`.
+ * responses over TCP within the same exchange, so both share the client's
+ * timeout. ICMP reports end an exchange at once, and port unreachable reports
+ * fail with `Refused`.
  *
  * @see {@link TransportUdpOptions} for the options and their defaults
  * @stability experimental
@@ -343,7 +340,7 @@ export const makeTransportUdp = (
 ): Effect.Effect<Transport["Service"], never, Crypto.Crypto> =>
   Effect.gen(function*() {
     const crypto = yield* Crypto.Crypto
-    const udpPayloadSize = options.udpPayloadSize ?? 1232
+    const udpPayloadSize = options.udpPayloadSize ?? defaultUdpPayloadSize
     if (!Number.isInteger(udpPayloadSize) || udpPayloadSize < 512 || udpPayloadSize > 0xffff) {
       throw new RangeError(`DnsClient udpPayloadSize must be an integer from 512 to 65535, received ${udpPayloadSize}`)
     }
@@ -353,29 +350,31 @@ export const makeTransportUdp = (
       servers: Arr.map(servers, (server, index) => ({
         send: Effect.fnUntraced(function*(exchange) {
           const id = yield* crypto.randomIntBetween(0, 0xffff)
-          const received = yield* exchange.limit(
-            Effect.gen(function*() {
-              const reported = yield* Deferred.make<never, Dns.DnsError>()
-              const socket = yield* options.udp(server, (error) => {
-                Deferred.doneUnsafe(reported, Effect.fail(socketFailure(exchange, error)))
-              })
-              const reader = yield* socket.reader
-              const writer = yield* socket.writer
-              yield* writer.write({ payload: exchange.encode({ id, udpPayloadSize }) })
-              const receive = Effect.gen(function*() {
-                while (true) {
-                  for (const datagram of yield* reader.pull) {
-                    if (Equal.equals(datagram.address, server) && exchange.matches(datagram.payload, id)) {
-                      return datagram.payload
-                    }
+          const received = yield* Effect.gen(function*() {
+            const reported = yield* Deferred.make<never, Dns.DnsError>()
+            const socket = yield* options.udp(server, (error) => {
+              Deferred.doneUnsafe(reported, Effect.fail(socketFailure(exchange, error)))
+            })
+            const reader = yield* socket.reader
+            const writer = yield* socket.writer
+            yield* writer.write({ payload: exchange.encode({ id, udpPayloadSize }) })
+            const receive = Effect.gen(function*() {
+              while (true) {
+                for (const datagram of yield* reader.pull) {
+                  if (Equal.equals(datagram.address, server) && exchange.matches(datagram.payload, id)) {
+                    return datagram.payload
                   }
                 }
-              })
-              return yield* Effect.raceFirst(receive, Deferred.await(reported))
-            }).pipe(Effect.mapError((error) => error instanceof Dns.DnsError ? error : socketFailure(exchange, error)))
+              }
+            })
+            return yield* Effect.raceFirst(receive, Deferred.await(reported))
+          }).pipe(
+            Effect.mapError((error) => error instanceof Dns.DnsError ? error : socketFailure(exchange, error)),
+            // The socket is closed before a retry over TCP.
+            Effect.scoped
           )
           // TC bit
-          return (received[2] & 0x02) !== 0 ? yield* tcp.servers[index].send(exchange) : received
+          return (received[2] & 0x02) !== 0 ? yield* tcp.servers[index].send(exchange) : { bytes: received }
         })
       }))
     })
@@ -391,8 +390,10 @@ export const makeTransportUdp = (
 export interface TransportHttpsOptions {
   /**
    * The URLs of the name servers. `http:` URLs are accepted only for
-   * `localhost` and loopback addresses. Requests sent with `FetchHttpClient`
-   * do not follow redirects.
+   * `localhost` and loopback addresses. Redirects are not followed: the
+   * transport stops `fetch` from following them, other `HttpClient`
+   * implementations follow none unless told to, and a redirect response
+   * fails with `InvalidResponse`.
    */
   readonly urls: Arr.NonEmptyReadonlyArray<string | URL>
 
@@ -412,7 +413,7 @@ const maxMessageSize = 0xffff
 
 /**
  * Creates a DNS over HTTPS transport using `HttpClient` (RFC 8484).
- * Subtracts HTTP `Age` from resource-record TTLs, clamping at zero.
+ * Reports the HTTP `Age` of cached responses as `Reply.age`.
  *
  * @see {@link TransportHttpsOptions} for the options and their defaults
  * @see {@link layerTransportHttps} for a layer
@@ -442,8 +443,8 @@ export const makeTransportHttps = (
 
     return Transport.of({
       servers: Arr.map(urls, (url) => ({
-        send: Effect.fnUntraced(function*({ encode, fail, limit, matches }) {
-          const query = encode({ id: 0, udpPayloadSize: 1232, padding: 128 })
+        send: Effect.fnUntraced(function*({ encode, fail, matches }) {
+          const query = encode({ id: 0, padding: 128 })
           const request = HttpClientRequest.setHeader(
             post
               ? HttpClientRequest.bodyUint8Array(HttpClientRequest.post(url), query, "application/dns-message")
@@ -453,7 +454,7 @@ export const makeTransportHttps = (
           )
           // `fetch` follows redirects by default, which could leave HTTPS.
           const requestInit = Option.getOrUndefined(yield* Effect.serviceOption(FetchHttpClient.RequestInit))
-          const payload = yield* limit(Effect.gen(function*() {
+          const reply = yield* Effect.gen(function*() {
             const response = yield* client.execute(request).pipe(
               Effect.provideService(FetchHttpClient.RequestInit, { ...requestInit, redirect: "manual" })
             )
@@ -478,13 +479,16 @@ export const makeTransportHttps = (
               chunks.push(chunk)
               return Effect.void
             })
-            const age = /^\d+$/.test(response.headers["age"] ?? "") ? Number(response.headers["age"]) : 0
-            return { message: concat(new Uint8Array(0), chunks), age }
-          }))
-          if (!matches(payload.message, 0)) {
+            const age = (response.headers["age"] ?? "").trim()
+            return {
+              bytes: concat(new Uint8Array(0), chunks),
+              age: /^\d+$/.test(age) ? Duration.seconds(Number(age)) : undefined
+            }
+          }).pipe(Effect.mapError((cause) => cause instanceof Dns.DnsError ? cause : fail("Temporary", cause)))
+          if (!matches(reply.bytes, 0)) {
             return yield* fail("InvalidResponse", new Error("the response does not match the query"))
           }
-          return payload.age > 0 ? DnsMessage.subtractTtl(payload.message, payload.age) : payload.message
+          return reply
         })
       }))
     })
@@ -501,7 +505,7 @@ export const makeTransportHttps = (
  * import { FetchHttpClient } from "effect/http"
  * import { DnsClient } from "effect/net"
  *
- * const DnsLive = DnsClient.layerDns.pipe(
+ * const DnsLive = DnsClient.layerDns().pipe(
  *   Layer.provide(DnsClient.layer()),
  *   Layer.provide(DnsClient.layerTransportHttps({ urls: ["https://cloudflare-dns.com/dns-query"] })),
  *   Layer.provide(FetchHttpClient.layer)
@@ -521,14 +525,28 @@ export const layerTransportHttps = (
 // Client
 // =============================================================================
 
+// Resource record TTLs count down while a response sits in a cache.
+const subtractAge = (response: Response, age: Duration.Duration): Response => {
+  const section = Arr.map((record: ResourceRecord): ResourceRecord => ({
+    ...record,
+    ttl: Duration.max(Duration.subtract(record.ttl, age), Duration.zero)
+  }))
+  return {
+    ...response,
+    answer: section(response.answer),
+    authority: section(response.authority),
+    additional: section(response.additional)
+  }
+}
+
 /**
  * Options for `make`.
  *
  * **Details**
  *
  * `attempts` is the number of passes over the name servers, and `timeout`
- * applies to each exchange, including a retry over TCP. `attempts` defaults
- * to 2, `timeout` to 5 seconds, and `ndots` to 1.
+ * applies to each exchange with a name server, including a retry over TCP
+ * within it. `attempts` defaults to 2 and `timeout` to 5 seconds.
  *
  * @stability experimental
  * @category models
@@ -538,10 +556,6 @@ export interface MakeOptions {
   readonly timeout?: Duration.Input | undefined
   readonly attempts?: number | undefined
   readonly rotate?: boolean | undefined
-  readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
-  readonly ndots?: number | undefined
-  readonly noAaaa?: boolean | undefined
-  readonly hosts?: Host.HostsTable | undefined
 }
 
 /**
@@ -566,11 +580,6 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
     if (!Number.isSafeInteger(attempts) || attempts < 1) {
       throw new RangeError(`DnsClient attempts must be a positive integer, received ${attempts}`)
     }
-    const ndots = options.ndots ?? 1
-    if (!Number.isSafeInteger(ndots) || ndots < 0) {
-      throw new RangeError(`DnsClient ndots must be a non-negative integer, received ${ndots}`)
-    }
-    const search = Arr.map(options.search ?? [], (domain) => Host.domainNameFromStringUnsafe(domain))
     let rotation = 0
 
     const query = Effect.fnUntraced(function*(
@@ -606,7 +615,7 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
             name,
             type: question.type,
             recursionDesired,
-            udpPayloadSize: edns ? udpPayloadSize : undefined,
+            udpPayloadSize: edns ? udpPayloadSize ?? defaultUdpPayloadSize : undefined,
             padding
           }),
         matches: (message, id) => {
@@ -620,23 +629,23 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
           const [{ class: klass, name, type }] = header.questions
           return type === question.type && klass === 1 && lower(name) === question.name
         },
-        limit: (effect) =>
-          effect.pipe(
-            Effect.scoped,
-            Effect.mapError((cause) => cause instanceof Dns.DnsError ? cause : fail("Temporary", cause)),
-            Effect.timeoutOrElse({ duration: timeout, orElse: () => Effect.fail(fail("Timeout")) })
-          ),
         fail
       })
       const withEdns = exchange(true)
       const withoutEdns = exchange(false)
 
       const send = Effect.fnUntraced(function*(server: Transport["Service"]["servers"][number], exchange: Exchange) {
-        const decoded = DnsMessage.decodeResponse(yield* server.send(exchange))
+        const reply = yield* server.send(exchange).pipe(
+          Effect.scoped,
+          Effect.timeoutOrElse({ duration: timeout, orElse: () => Effect.fail(fail("Timeout")) })
+        )
+        const decoded = DnsMessage.decodeResponse(reply.bytes)
         if (Result.isFailure(decoded)) {
           return yield* fail("InvalidResponse", decoded.failure)
         }
-        return decoded.success
+        return reply.age === undefined || !Duration.isPositive(reply.age)
+          ? decoded.success
+          : subtractAge(decoded.success, reply.age)
       })
 
       const attempt = Effect.fnUntraced(function*(server: Transport["Service"]["servers"][number]) {
@@ -671,13 +680,7 @@ export const make = (options: MakeOptions = {}): Effect.Effect<DnsClient["Servic
       return yield* error!
     })
 
-    return DnsClient.of({
-      query,
-      search,
-      ndots,
-      noAaaa: options.noAaaa ?? false,
-      hosts: options.hosts ?? new Map()
-    })
+    return DnsClient.of({ query })
   })
 
 /**
@@ -816,6 +819,27 @@ const failureOf =
     new Dns.DnsError({ reason: error.reason, method, hostname, recordType, cause: error.cause })
 
 /**
+ * Options for `layerDns`.
+ *
+ * **Details**
+ *
+ * `search` lists the domains appended to relative names by address lookups,
+ * and `ndots` the number of dots from which a relative name is tried as given
+ * before the search domains, 1 by default. `noAaaa` skips AAAA queries, and
+ * `hosts` is consulted by address lookups before DNS.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export interface DnsOptions {
+  readonly search?: ReadonlyArray<Host.DomainNameInput> | undefined
+  readonly ndots?: number | undefined
+  readonly noAaaa?: boolean | undefined
+  readonly hosts?: Host.HostsTable | undefined
+}
+
+/**
  * Layer that provides the `Dns` service by querying name servers with
  * `DnsClient`.
  *
@@ -828,110 +852,121 @@ const failureOf =
  * CNAME records, querying a target that a response leaves unresolved unless
  * the response is negative or the target is not a host name.
  *
+ * @see {@link DnsOptions} for the options and their defaults
  * @stability experimental
  * @category layers
  * @since 4.0.0
  */
-export const layerDns: Layer.Layer<Dns.Dns, never, DnsClient> = Layer.effect(
-  Dns.Dns,
-  Effect.gen(function*() {
-    const client = yield* DnsClient
+export const layerDns = (options: DnsOptions = {}): Layer.Layer<Dns.Dns, never, DnsClient> =>
+  Layer.effect(
+    Dns.Dns,
+    Effect.gen(function*() {
+      const client = yield* DnsClient
+      const ndots = options.ndots ?? 1
+      if (!Number.isSafeInteger(ndots) || ndots < 0) {
+        throw new RangeError(`DnsClient ndots must be a non-negative integer, received ${ndots}`)
+      }
+      const search = Arr.map(options.search ?? [], (domain) => Host.domainNameFromStringUnsafe(domain))
+      const noAaaa = options.noAaaa ?? false
+      const hosts = options.hosts ?? new Map<Host.DomainName, ReadonlyArray<NetAddress.IpAddress>>()
 
-    const candidates = (host: Host.DomainName): ReadonlyArray<Host.DomainName> => {
-      if (Host.isFullyQualified(host)) return [host]
-      const searched = Arr.filterMap(
-        client.search.filter((domain) => domain !== "."),
-        (domain) => Host.domainNameFromString(`${host}.${Host.toRelative(domain)}.`)
-      )
-      const absoluteHost = Host.toFullyQualified(host)
-      return host.split(".").length - 1 >= client.ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
-    }
+      const candidates = (host: Host.DomainName): ReadonlyArray<Host.DomainName> => {
+        if (Host.isFullyQualified(host)) return [host]
+        const searched = Arr.filterMap(
+          search.filter((domain) => domain !== "."),
+          (domain) => Host.domainNameFromString(`${host}.${Host.toRelative(domain)}.`)
+        )
+        const absoluteHost = Host.toFullyQualified(host)
+        return host.split(".").length - 1 >= ndots ? [absoluteHost, ...searched] : [...searched, absoluteHost]
+      }
 
-    const resolveChain = <T extends Dns.RecordType>(
-      name: Host.DomainName,
-      type: T,
-      // CNAME records followed per lookup, including those of follow-up queries.
-      aliases = 8
-    ): Effect.Effect<ReadonlyArray<Dns.RecordFor<T>>, Dns.DnsError> =>
-      Effect.flatMap(client.query(name, type), (response) => {
-        let owner: string = Host.toFullyQualified(name)
-        for (let hops = 0; hops <= aliases; hops++) {
-          const atOwner = response.answer.filter((record) => record.class === 1 && lower(record.owner) === owner)
-          const records = atOwner.flatMap((record) =>
-            record.data._tag === type ? [record.data as Dns.RecordFor<T>] : []
-          )
-          if (records.length > 0) return Effect.succeed(records)
-          if (
-            atOwner.some((record) => record.data._tag === "UNKNOWN" && record.data.type === DnsMessage.typeCodes[type])
-          ) {
-            return Effect.fail(
-              new Dns.DnsError({
-                reason: "InvalidResponse",
-                method: "resolve",
-                hostname: name,
-                recordType: type,
-                cause: new Error(`no ${type} record can be represented`)
-              })
+      const resolveChain = <T extends Dns.RecordType>(
+        name: Host.DomainName,
+        type: T,
+        // CNAME records followed per lookup, including those of follow-up queries.
+        aliases = 8
+      ): Effect.Effect<ReadonlyArray<Dns.RecordFor<T>>, Dns.DnsError> =>
+        Effect.flatMap(client.query(name, type), (response) => {
+          let owner: string = Host.toFullyQualified(name)
+          for (let hops = 0; hops <= aliases; hops++) {
+            const atOwner = response.answer.filter((record) => record.class === 1 && lower(record.owner) === owner)
+            const records = atOwner.flatMap((record) =>
+              record.data._tag === type ? [record.data as Dns.RecordFor<T>] : []
             )
+            if (records.length > 0) return Effect.succeed(records)
+            if (
+              atOwner.some((record) =>
+                record.data._tag === "UNKNOWN" && record.data.type === DnsMessage.typeCodes[type]
+              )
+            ) {
+              return Effect.fail(
+                new Dns.DnsError({
+                  reason: "InvalidResponse",
+                  method: "resolve",
+                  hostname: name,
+                  recordType: type,
+                  cause: new Error(`no ${type} record can be represented`)
+                })
+              )
+            }
+            const alias = atOwner.find((record) => record.data._tag === "CNAME")?.data as Dns.Cname | undefined
+            if (alias === undefined) {
+              // NXDOMAIN, or NODATA with the SOA record of the target's zone (RFC 2308).
+              const negative = response.rcode !== 0 || response.authority.some((record) => record.data._tag === "SOA")
+              const target = hops === 0 || negative || !/^[\w.-]+$/.test(owner)
+                ? undefined
+                : Result.getOrUndefined(Host.domainNameFromString(owner))
+              return target === undefined ? Effect.succeed([]) : resolveChain(target, type, aliases - hops)
+            }
+            owner = lower(alias.target)
           }
-          const alias = atOwner.find((record) => record.data._tag === "CNAME")?.data as Dns.Cname | undefined
-          if (alias === undefined) {
-            // NXDOMAIN, or NODATA with the SOA record of the target's zone (RFC 2308).
-            const negative = response.rcode !== 0 || response.authority.some((record) => record.data._tag === "SOA")
-            const target = hops === 0 || negative || !/^[\w.-]+$/.test(owner)
-              ? undefined
-              : Result.getOrUndefined(Host.domainNameFromString(owner))
-            return target === undefined ? Effect.succeed([]) : resolveChain(target, type, aliases - hops)
-          }
-          owner = lower(alias.target)
-        }
-        return Effect.succeed([])
-      })
+          return Effect.succeed([])
+        })
 
-    return Dns.make({
-      lookup: Effect.fnUntraced(function*(host, family) {
-        const key = Host.toRelative(host)
-        const fromHosts = (client.hosts.get(key) ?? []).filter((address) =>
-          family === undefined || NetAddress.isFamily(address, family)
-        )
-        if (fromHosts.length > 0) return fromHosts
-        if (key === "localhost" || key.endsWith(".localhost")) {
-          return family === "IPv4"
-            ? [NetAddress.ipv4Loopback]
-            : family === "IPv6"
-            ? [NetAddress.ipv6Loopback]
-            : NetAddress.loopbackAddresses
-        }
-        if (family === "IPv6" && client.noAaaa) return []
-        const types = family === "IPv4" || client.noAaaa
-          ? ["A" as const]
-          : family === "IPv6"
-          ? ["AAAA" as const]
-          : ["A", "AAAA"] as const
-        let error: Dns.DnsError | undefined
-        for (const name of candidates(host)) {
-          const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(name, type)), {
-            concurrency: "unbounded"
-          })
-          const addresses = results.flatMap((result) =>
-            Result.isSuccess(result) ? result.success.map((record) => record.address) : []
+      return Dns.make({
+        lookup: Effect.fnUntraced(function*(host, family) {
+          const key = Host.toRelative(host)
+          const fromHosts = (hosts.get(key) ?? []).filter((address) =>
+            family === undefined || NetAddress.isFamily(address, family)
           )
-          if (addresses.length > 0) return addresses
-          const failures = results.flatMap((result) => Result.isFailure(result) ? [result.failure] : [])
-          // Like glibc, only SERVFAIL moves on to the next name.
-          const fatal = failures.find((failure) => failure.reason !== "ServerFailure")
-          if (fatal !== undefined) return yield* failureOf("lookup", host)(fatal)
-          error ??= failures[0]
-        }
-        if (error !== undefined) return yield* failureOf("lookup", host)(error)
-        return []
-      }),
-      resolve: (name, type) => Effect.mapError(resolveChain(name, type), failureOf("resolve", name, type)),
-      reverse: (address) =>
-        resolveChain(Dns.reverseName(address), "PTR").pipe(
-          Effect.map(Arr.map((record) => record.host)),
-          Effect.mapError(failureOf("reverse", NetAddress.formatIp(address)))
-        )
+          if (fromHosts.length > 0) return fromHosts
+          if (key === "localhost" || key.endsWith(".localhost")) {
+            return family === "IPv4"
+              ? [NetAddress.ipv4Loopback]
+              : family === "IPv6"
+              ? [NetAddress.ipv6Loopback]
+              : NetAddress.loopbackAddresses
+          }
+          if (family === "IPv6" && noAaaa) return []
+          const types = family === "IPv4" || noAaaa
+            ? ["A" as const]
+            : family === "IPv6"
+            ? ["AAAA" as const]
+            : ["A", "AAAA"] as const
+          let error: Dns.DnsError | undefined
+          for (const name of candidates(host)) {
+            const results = yield* Effect.forEach(types, (type) => Effect.result(resolveChain(name, type)), {
+              concurrency: "unbounded"
+            })
+            const addresses = results.flatMap((result) =>
+              Result.isSuccess(result) ? result.success.map((record) => record.address) : []
+            )
+            if (addresses.length > 0) return addresses
+            const failures = results.flatMap((result) => Result.isFailure(result) ? [result.failure] : [])
+            // Like glibc, only SERVFAIL moves on to the next name.
+            const fatal = failures.find((failure) => failure.reason !== "ServerFailure")
+            if (fatal !== undefined) return yield* failureOf("lookup", host)(fatal)
+            error ??= failures[0]
+          }
+          if (error !== undefined) return yield* failureOf("lookup", host)(error)
+          return []
+        }),
+        resolve: (name, type) => Effect.mapError(resolveChain(name, type), failureOf("resolve", name, type)),
+        reverse: (address) =>
+          resolveChain(Dns.reverseName(address), "PTR").pipe(
+            Effect.map(Arr.map((record) => record.host)),
+            Effect.mapError(failureOf("reverse", NetAddress.formatIp(address)))
+          )
+      })
     })
-  })
-)
+  )
