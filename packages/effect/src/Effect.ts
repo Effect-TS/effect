@@ -14779,6 +14779,7 @@ export const trackDuration: {
  * means an accessed `TxRef` changed before commit. The first attempt has no
  * retry reason.
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14798,11 +14799,13 @@ export type TransactionRetryReason = "retry" | "conflict"
  * accessed `TxRef` changes before commit; it is unset on the first attempt.
  * `start`, `now`, `elapsed`, and `elapsedSincePrevious` are millisecond
  * timestamps and durations for the current attempt, matching {@link Schedule}
- * metadata.
+ * metadata. Each journal entry stores the observed version and value of a
+ * `TxRef`. `written` is true when this transaction has updated that ref.
  *
  * @see {@link Transaction} for the context service that provides this metadata
  * @see {@link TransactionRetryReason} for the retry-reason tags recorded on later attempts
  *
+ * @stability stable
  * @category models
  * @since 4.0.0
  */
@@ -14867,7 +14870,8 @@ export interface TransactionMetaInner {
  * @see {@link tx} for the outermost transaction boundary that creates this service
  * @see {@link TransactionMeta} for the journal and attempt metadata
  *
- * @category services
+ * @stability stable
+ * @category transactions
  * @since 4.0.0
  */
 export class Transaction extends Context.Service<
