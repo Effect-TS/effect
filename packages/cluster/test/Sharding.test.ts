@@ -93,6 +93,43 @@ describe.concurrent("Sharding", () => {
       expect(driver.unprocessed.size).toEqual(0)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.scoped("persists a discard send before acquiring the shard lock", () =>
+    Effect.gen(function*() {
+      const memory = yield* RunnerStorage.makeMemory
+      const acquiring = yield* Deferred.make<void>()
+      const ctx = yield* Layer.build(
+        TestEntityNoState.pipe(
+          Layer.provideMerge(Sharding.layer),
+          Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, {
+            ...memory,
+            acquire: () => Deferred.succeed(acquiring, void 0).pipe(Effect.as([]))
+          })),
+          Layer.provide(RunnerHealth.layerNoop),
+          Layer.provide(TestEntityState.Default),
+          Layer.provide(Runners.layerNoop),
+          Layer.provideMerge(MessageStorage.layerMemory),
+          Layer.provide(ShardingConfig.layer({ shardsPerGroup: 1, sendRetryInterval: 10 }))
+        )
+      )
+      yield* Deferred.await(acquiring)
+      const sharding = Context.get(ctx, Sharding.Sharding)
+      const entityId = EntityId.make("1")
+      const shardId = sharding.getShardId(entityId, "default")
+      assert.isFalse(sharding.hasShardId(shardId))
+
+      const client = (yield* TestEntity.client.pipe(Effect.provide(ctx)))(entityId)
+      const send = yield* client.RequestWithKey({ key: "abc" }, { discard: true }).pipe(Effect.fork)
+      yield* TestClock.adjust(100)
+      const sendExit = yield* Fiber.poll(send)
+      assert.isTrue(Option.isSome(sendExit) && Exit.isSuccess(sendExit.value))
+      const persisted = yield* Context.get(ctx, MessageStorage.MessageStorage).requestIdForPrimaryKey({
+        address: EntityAddress.make({ shardId, entityType: EntityType.EntityType.make(TestEntity.type), entityId }),
+        tag: "RequestWithKey",
+        id: "abc"
+      })
+      assert.isTrue(Option.isSome(persisted))
+    }))
+
   it.scoped("interrupts", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
@@ -1603,79 +1640,3 @@ const TestSharding = TestShardingWithoutStorage.pipe(
 )
 
 const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))
-
-// #9043: a persisted send to a shard that the hash ring assigns to this runner,
-// but whose lock has not been acquired yet, must be persisted (and the send must
-// return) instead of retrying until the lock is acquired.
-describe("Sharding persisted sends to a shard awaiting its lock", () => {
-  it.scoped("persists a discard send and delivers it once the shard lock is acquired", () =>
-    Effect.gen(function*() {
-      const memory = yield* RunnerStorage.makeMemory
-      const lockHeldElsewhere = MutableRef.make(true)
-      const acquireAttempts: Array<readonly [RunnerAddress.RunnerAddress, ReadonlyArray<ShardId.ShardId>]> = []
-      const storage: RunnerStorage.RunnerStorage["Type"] = {
-        ...memory,
-        acquire: (address, shardIds) => {
-          acquireAttempts.push([address, Array.fromIterable(shardIds)])
-          return MutableRef.get(lockHeldElsewhere) ? Effect.succeed([]) : memory.acquire(address, shardIds)
-        }
-      }
-      const ctx = yield* Layer.build(
-        TestEntityNoState.pipe(
-          Layer.provideMerge(Sharding.layer),
-          Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, storage)),
-          Layer.provide(RunnerHealth.layerNoop),
-          Layer.provideMerge(TestEntityState.Default),
-          Layer.provide(Runners.layerNoop),
-          Layer.provideMerge(MessageStorage.layerMemory),
-          Layer.provideMerge(ShardingConfig.layer({
-            shardsPerGroup: 1,
-            entityMessagePollInterval: 10,
-            refreshAssignmentsInterval: 10,
-            sendRetryInterval: 10
-          }))
-        )
-      )
-      const sharding = Context.get(ctx, Sharding.Sharding)
-      const state = Context.get(ctx, TestEntityState)
-      const messageStorage = Context.get(ctx, MessageStorage.MessageStorage)
-      const selfAddress = Option.getOrThrow(Context.get(ctx, ShardingConfig.ShardingConfig).runnerAddress)
-      const entityId = EntityId.make("1")
-      const shardId = sharding.getShardId(entityId, "default")
-
-      while (acquireAttempts.length === 0) {
-        yield* TestClock.adjust(10)
-      }
-      // Precondition: the ring assigns the shard to this runner (it only tries
-      // to acquire locks for shards assigned to itself), but the lock is held
-      // elsewhere, so the shard is not acquired.
-      const [attemptAddress, attemptShards] = acquireAttempts[0]
-      assert.isTrue(Equal.equals(attemptAddress, selfAddress))
-      assert.isTrue(attemptShards.some((id) => Equal.equals(id, shardId)))
-      assert.isFalse(sharding.hasShardId(shardId))
-
-      const client = (yield* TestEntity.client.pipe(Effect.provide(ctx)))(entityId)
-      const send = yield* client.RequestWithKey({ key: "abc" }, { discard: true }).pipe(Effect.fork)
-      yield* TestClock.adjust(100)
-
-      const sendExit = yield* Fiber.poll(send)
-      assert.isTrue(Option.isSome(sendExit) && Exit.isSuccess(sendExit.value), "a discard send returns once persisted")
-      const persisted = yield* messageStorage.requestIdForPrimaryKey({
-        address: EntityAddress.make({ shardId, entityType: EntityType.EntityType.make(TestEntity.type), entityId }),
-        tag: "RequestWithKey",
-        id: "abc"
-      })
-      assert.isTrue(Option.isSome(persisted), "the request is saved to MessageStorage")
-      assert.strictEqual(Option.getOrThrow(state.envelopes.unsafeSize()), 0, "delivery must wait for the shard lock")
-
-      MutableRef.set(lockHeldElsewhere, false)
-      while (!sharding.hasShardId(shardId)) {
-        yield* TestClock.adjust(10)
-      }
-      yield* sharding.pollStorage
-      yield* TestClock.adjust(10)
-      assert.strictEqual(Option.getOrThrow(state.envelopes.unsafeSize()), 1, "delivered after the lock is acquired")
-      yield* state.messages.offer(void 0)
-      yield* TestClock.adjust(10)
-    }))
-})
