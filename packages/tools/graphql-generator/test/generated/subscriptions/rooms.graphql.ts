@@ -4,10 +4,11 @@ import * as Schema from "effect/Schema"
 import * as Shared from "./shared.graphql.ts"
 
 /** A room members talk in. */
-export class RoomRoom extends Schema.Opaque<RoomRoom>()(Schema.Struct({
+export const RoomRoom = Schema.Struct({
   id: Shared.ID,
   name: Schema.String
-})) {}
+})
+export interface RoomRoom extends Schema.Struct.Type<typeof RoomRoom.fields> {}
 
 /** `query Room` */
 export const Room = GraphQL.query("Room", {
@@ -34,45 +35,50 @@ export declare namespace Room {
 }
 
 /** Someone in a room. */
-export class Member extends Schema.Opaque<Member>()(Schema.Struct({
+export const Member = Schema.Struct({
   name: Schema.String,
   role: GraphQL.enumLiterals(Shared.Role.literals)
-})) {}
+})
+export interface Member extends Schema.Struct.Type<typeof Member.fields> {}
 
 /** A member joined the room. */
-export class MemberJoined extends Schema.Opaque<MemberJoined>()(Schema.Struct({
+export const MemberJoined = Schema.Struct({
   __typename: Schema.Literal("MemberJoined"),
   id: Shared.ID,
   at: Schema.String,
   member: Member
-})) {}
+})
+export interface MemberJoined extends Schema.Struct.Type<typeof MemberJoined.fields> {}
 
 /** A member posted a message. */
-export class MessagePosted extends Schema.Opaque<MessagePosted>()(Schema.Struct({
+export const MessagePosted = Schema.Struct({
   __typename: Schema.Literal("MessagePosted"),
   id: Shared.ID,
   at: Schema.String,
   member: Member,
   /** The message text. */
   body: Schema.String
-})) {}
+})
+export interface MessagePosted extends Schema.Struct.Type<typeof MessagePosted.fields> {}
 
 /** The room was renamed. */
-export class RoomRenamed extends Schema.Opaque<RoomRenamed>()(Schema.Struct({
+export const RoomRenamed = Schema.Struct({
   __typename: Schema.Literal("RoomRenamed"),
   id: Shared.ID,
   at: Schema.String,
   /** The room's new name. */
   name: Schema.String
-})) {}
+})
+export interface RoomRenamed extends Schema.Struct.Type<typeof RoomRenamed.fields> {}
 
 /** Something that happened in a room. */
-export class EventOther extends Schema.Opaque<EventOther>()(Schema.Struct({
+export const EventOther = Schema.Struct({
   __typename: GraphQL.otherTypename<Shared.Typename.Event>()(["MemberJoined", "MessagePosted", "RoomRenamed"]),
   id: Shared.ID,
   /** When it happened, as an ISO-8601 string. */
   at: Schema.String
-})) {}
+})
+export interface EventOther extends Schema.Struct.Type<typeof EventOther.fields> {}
 
 /** `subscription RoomEvents` */
 export const RoomEvents = GraphQL.subscription("RoomEvents", {

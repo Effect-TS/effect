@@ -115,12 +115,15 @@ const fetch: HttpClient.HttpClient = HttpClient.make((request, url, signal, fibe
  * **Gotchas**
  *
  * Fetch behavior comes from the runtime's implementation, so CORS, cookies,
- * redirects, abort handling, and streaming support can vary by platform. Stream
- * request bodies are sent as Web streams with `duplex: "half"`, and any
- * `content-length` header is removed before calling `fetch`.
+ * redirects, abort handling, and streaming support can vary by platform. Trace
+ * propagation is on by default, and a browser preflight fails unless the
+ * target allows `b3` and `traceparent`. Stream request bodies are sent as Web
+ * streams with `duplex: "half"`, and any `content-length` header is removed
+ * before calling `fetch`.
  *
  * @see {@link Fetch} for supplying the fetch implementation used by this layer
  * @see {@link RequestInit} for default `RequestInit` options applied before request-specific fields
+ * @see {@link HttpClient.TracerPropagationEnabled} for leaving `b3` and `traceparent` off a browser request
  *
  * @stability unstable
  * @category layers

@@ -286,8 +286,8 @@ const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: stri
 }
 
 /**
- * A nested result selection written as its own Opaque class. Identical
- * selections anywhere in one file share it, keeping the first one's path.
+ * Identical nested selections share a schema and interface within a file,
+ * using the first occurrence's path for naming.
  */
 interface ExtractedClass {
   readonly id: number
@@ -1133,9 +1133,9 @@ class Emitter {
         for (const ref of extracted.refs) placeFragment(ref)
         const name = names[id]!
         blocks.push(
-          `${jsdoc(descriptionLines(extracted.description), "")}export class ${name} extends Schema.Opaque<${name}>()(${
+          `${jsdoc(descriptionLines(extracted.description), "")}export const ${name} = ${
             fill(extracted.body)
-          }) {}`
+          }\nexport interface ${name} extends Schema.Struct.Type<typeof ${name}.fields> {}`
         )
       }
     }
@@ -1243,10 +1243,6 @@ class Emitter {
     return names
   }
 
-  /**
-   * A fragment on an object type is an Opaque class; one on an interface or
-   * union is a `Schema.Union` and a type alias.
-   */
   emitFragment(ctx: FileContext, definition: Ast.FragmentDefinition): string {
     const name = definition.name.value
     const type = this.type(definition.typeCondition.name.value)
@@ -1259,7 +1255,9 @@ class Emitter {
       return `${jsdoc(doc, "")}export const ${name} = ${body}\nexport type ${name} = typeof ${name}.Type`
     }
     const body = this.selection(ctx, type.name, selections, "", true).code
-    return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
+    return `${
+      jsdoc(doc, "")
+    }export const ${name} = ${body}\nexport interface ${name} extends Schema.Struct.Type<typeof ${name}.fields> {}`
   }
 
   emitOperation(ctx: FileContext, definition: Ast.OperationDefinition): string {
@@ -1489,7 +1487,11 @@ class Emitter {
         }`
       })
       const body = struct(members, "", schema)
-      blocks.push(declare(type.name, doc, (b, e) => `${e}class ${b} extends ${schema}.Opaque<${b}>()(${body}) {}`))
+      blocks.push(declare(
+        type.name,
+        doc,
+        (b, e) => `${e}const ${b} = ${body}\n${e}interface ${b} extends ${schema}.Struct.Type<typeof ${b}.fields> {}`
+      ))
     }
 
     if (this.reachedAbstract.size > 0) {

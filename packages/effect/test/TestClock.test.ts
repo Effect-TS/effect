@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -7,6 +8,34 @@ import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
+  for (const cancellation of ["interrupted sleep", "successful timeout"] as const) {
+    it.effect(`adjust - skips the cancelled deadline (${cancellation})`, () =>
+      Effect.gen(function*() {
+        const testClock = yield* TestClock.make()
+        if (cancellation === "interrupted sleep") {
+          const sleeper = yield* testClock.sleep(Duration.minutes(1)).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Effect.yieldNow
+          yield* Fiber.interrupt(sleeper)
+        } else {
+          yield* Effect.timeout(Effect.yieldNow, "1 minute").pipe(
+            Effect.provideService(Clock.Clock, testClock)
+          )
+        }
+
+        // Record the clock whenever adjustment yields to other fibers
+        const observed = new Set<number>()
+        yield* Effect.sync(() => observed.add(testClock.currentTimeMillisUnsafe())).pipe(
+          Effect.andThen(Effect.yieldNow),
+          Effect.forever,
+          Effect.forkChild
+        )
+        yield* testClock.adjust("2 minutes")
+        assert.isFalse(observed.has(60_000))
+      }))
+  }
+
   it.effect("sleep - does not require passage of wall time", () =>
     Effect.gen(function*() {
       let elapsed = false

@@ -20,7 +20,6 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
-import * as Order from "../Order.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Semaphore from "../Semaphore.ts"
 
@@ -227,11 +226,6 @@ const defaultOptions: Required<TestClock.Options> = {
   warningDelay: "1 second"
 }
 
-const SleepOrder = Order.flip(Order.Struct({
-  timestamp: Order.Number,
-  sequence: Order.Number
-}))
-
 const nanosPerMilli = BigInt(1_000_000)
 
 const millisToNanos = (millis: number): bigint => {
@@ -285,9 +279,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
   options?: TestClock.Options
 ) {
   const config = { ...defaultOptions, ...options }
-  let sequence = 0
+  // Sorted by descending timestamp, so `pop` wakes the earliest sleep first
   const sleeps: Array<{
-    readonly sequence: number
     readonly timestamp: number
     readonly latch: Latch.Latch
   }> = []
@@ -370,15 +363,29 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     const millis = Duration.toMillis(duration)
     const end = currentTimestamp + millis
     if (end <= currentTimestamp) return
-    const latch = Latch.makeUnsafe()
-    sleeps.push({
-      sequence: sequence++,
-      timestamp: end,
-      latch
-    })
-    sleeps.sort(SleepOrder)
-    yield* warningStart
-    yield* latch.await
+    yield* Effect.acquireUseRelease(
+      Effect.sync(() => {
+        const entry = { timestamp: end, latch: Latch.makeUnsafe() }
+        // Insert before entries with an equal timestamp, so they wake in
+        // registration order
+        let low = 0
+        let high = sleeps.length
+        while (low < high) {
+          const mid = (low + high) >>> 1
+          if (sleeps[mid].timestamp > end) low = mid + 1
+          else high = mid
+        }
+        sleeps.splice(low, 0, entry)
+        return entry
+      }),
+      (entry) => Effect.andThen(warningStart, entry.latch.await),
+      (entry) =>
+        Effect.sync(() => {
+          // The entry is already gone if `run` popped it
+          const index = sleeps.indexOf(entry)
+          if (index !== -1) sleeps.splice(index, 1)
+        })
+    )
   })
 
   /**
