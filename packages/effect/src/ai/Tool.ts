@@ -912,17 +912,36 @@ export type ResultEncoded<T> = SuccessEncoded<T> | FailureResultEncoded<T>
  * @category utility types
  * @since 4.0.0
  */
-export type HandlerServices<T> = T extends Tool<
+export type HandlerServices<T> = SchemaServices<T> | Requirements<T>
+
+/**
+ * A utility type to extract the request-level dependencies a `Tool` declares
+ * with `dependencies` or `Tool.addDependency`.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type Requirements<T> = T extends Tool<
   infer _Name,
   infer _Config,
   infer _Requirements
-> ? // Parameters must be decoded when received from a model
-    | _Config["parameters"]["DecodingServices"]
-    // A tool call `result`, whether success or failure, is encoded and returned
-    // as the `encodedResult` along with the `result`
-    | ResultEncodingServices<T>
-    // Per-request requirements
-    | _Requirements
+> ? _Requirements
+  : never
+
+/**
+ * A utility type to extract the services needed to decode the parameters of a
+ * `Tool` call and encode its result, whether success or failure.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.0
+ */
+export type SchemaServices<T> = T extends Tool<
+  infer _Name,
+  infer _Config,
+  infer _Requirements
+> ? _Config["parameters"]["DecodingServices"] | ResultEncodingServices<T>
   : never
 
 /**
