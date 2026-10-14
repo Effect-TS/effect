@@ -709,7 +709,10 @@ describe("TypeSafeDecisionModel", () => {
       const images: ReadonlyArray<DecisionModel.Image> = [
         { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
         { mediaType: "image/jpeg", data: "/9j/4AAQ" },
-        { mediaType: "application/octet-stream", data: new URL("data:image/png;base64,iVBORw0KGgo=") }
+        {
+          mediaType: "application/octet-stream",
+          data: new URL("data:image/png;base64,iVBORw0KGgo%2B%2FA%3D%3D#preview")
+        }
       ]
 
       return Effect.gen(function*() {
@@ -729,7 +732,7 @@ describe("TypeSafeDecisionModel", () => {
           assets: {
             "<image:0>": { type: "image", format: "png", data_base64: "iVBORw==" },
             "<image:1>": { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
-            "<image:2>": { type: "image", format: "png", data_base64: "iVBORw0KGgo=" }
+            "<image:2>": { type: "image", format: "png", data_base64: "iVBORw0KGgo+/A==" }
           }
         })
       }).pipe(
