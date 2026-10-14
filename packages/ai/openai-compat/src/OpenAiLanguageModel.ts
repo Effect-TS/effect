@@ -16,6 +16,8 @@ import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
 import type * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import * as Tool from "effect/ai/Tool"
+import * as Arr from "effect/Array"
+import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
@@ -1097,8 +1099,9 @@ const makeStreamResponse = Effect.fnUntraced(
     let hasToolCalls = false
     const activeToolCalls: Record<number, ActiveToolCall> = {}
 
-    return stream.pipe(
-      Stream.mapEffect(Effect.fnUntraced(function*(event) {
+    return stream.channel.pipe(
+      Channel.flattenArray,
+      Channel.mapEffect(Effect.fnUntraced(function*(event) {
         const parts: Array<Response.StreamPartEncoded> = []
 
         if (event === "[DONE]") {
@@ -1270,7 +1273,8 @@ const makeStreamResponse = Effect.fnUntraced(
 
         return parts
       })),
-      Stream.flattenIterable
+      Channel.filter(Arr.isArrayNonEmpty),
+      Stream.fromChannel
     )
   }
 )
