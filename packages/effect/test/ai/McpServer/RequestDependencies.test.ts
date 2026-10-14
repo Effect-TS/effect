@@ -473,4 +473,39 @@ describe("McpServer request-level dependencies", () => {
       assert.strictEqual(builds, 1)
       assert.strictEqual(calls, 2)
     }))
+
+  for (const form of ["{ global: true }", "layerGlobal"] as const) {
+    it.effect(`installs only its own middleware globally with ${form}`, () =>
+      Effect.gen(function*() {
+        const calls: Array<string> = []
+        const record = (name: string) => (effect: Effect.Effect<McpServer.MiddlewareSuccess, McpSchema.McpErrorBase>) =>
+          Effect.andThen(Effect.sync(() => calls.push(name)), effect)
+        const Local = McpServer.middleware()(record("local"))
+        const Global = form === "layerGlobal"
+          ? McpServer.middleware()(record("global")).layerGlobal
+          : McpServer.middleware()(record("global"), { global: true })
+        // Local is provided around the global middleware, but must only run for the registration it is provided to.
+        const TestServer = Layer.mergeAll(
+          Layer.mergeAll(
+            McpServer.resource({ uri: "test://local", name: "local", content: Effect.succeed("local") }),
+            Global
+          ).pipe(Layer.provide(Local.layer)),
+          McpServer.resource({ uri: "test://other", name: "other", content: Effect.succeed("other") })
+        ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
+
+        const results = yield* Effect.gen(function*() {
+          const server = yield* McpServer.McpServer
+          const local = yield* server.findResource("test://local")
+          const localCalls = calls.splice(0)
+          yield* server.findResource("test://other")
+          return { local, localCalls, otherCalls: calls.splice(0) }
+        }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, client),
+          Effect.provide(TestServer)
+        )
+
+        assert.deepStrictEqual(results.localCalls, ["global", "local"])
+        assert.deepStrictEqual(results.otherCalls, ["global"])
+      }))
+  }
 })
