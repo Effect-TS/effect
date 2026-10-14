@@ -184,7 +184,7 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
-    it.effect("drops invalid JSON and continues streaming", () =>
+    it.effect("drops invalid JSON and streams valid events until [DONE]", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
 
@@ -215,7 +215,8 @@ describe("OpenAiClient", () => {
               }]
             })
           }\n\n`,
-          "data: [DONE]\n\n"
+          "data: [DONE]\n\n",
+          "data: {\"ignored\":\"after completion\"}\n\n"
         ].join("")
       }))))
 
