@@ -209,6 +209,13 @@ const busyWarningMessage = "A fiber woken by the test clock is still running " +
   "without suspending, so the test clock stopped waiting for it. Sleeps it " +
   "starts later may be scheduled relative to a later time."
 
+/**
+ * The live clock of each `TestClock`, so a `TestClock` constructed while
+ * another one is the current clock uses the outer clock's live clock instead
+ * of the outer `TestClock`, which only advances when adjusted.
+ */
+const liveClocks = new WeakMap<Clock.Clock, Clock.Clock>()
+
 const defaultOptions: Required<TestClock.Options> = {
   warningDelay: "1 second"
 }
@@ -269,7 +276,8 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     readonly timestamp: number
     readonly latch: Latch.Latch
   }> = []
-  const liveClock = yield* Clock.clockWith(Effect.succeed)
+  const currentClock = yield* Clock.clockWith(Effect.succeed)
+  const liveClock = liveClocks.get(currentClock) ?? currentClock
   const warningSemaphore = yield* Semaphore.make(1)
   const parentScheduler = yield* Scheduler.Scheduler
 
@@ -508,6 +516,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     sleep,
     withLive
   }
+  liveClocks.set(testClock, liveClock)
   return [testClock, scheduler] as const
 })
 
