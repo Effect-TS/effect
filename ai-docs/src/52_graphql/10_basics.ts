@@ -21,22 +21,22 @@ import { FetchHttpClient } from "effect/http"
 //     }
 //   }
 //
-// Each nested selection is its own class, so editor hovers show its name.
-export class PageInfo extends Schema.Opaque<PageInfo>()(
-  Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) })
-) {}
+// Each nested selection is its own schema, with an interface of the same
+// name for its decoded type.
+export const PageInfo = Schema.Struct({ hasNextPage: Schema.Boolean, endCursor: Schema.NullOr(Schema.String) })
+export interface PageInfo extends Schema.Struct.Type<typeof PageInfo.fields> {}
 
-export class Issue extends Schema.Opaque<Issue>()(
-  Schema.Struct({ number: Schema.Int, title: Schema.String })
-) {}
+export const Issue = Schema.Struct({ number: Schema.Int, title: Schema.String })
+export interface Issue extends Schema.Struct.Type<typeof Issue.fields> {}
 
-export class IssueConnection extends Schema.Opaque<IssueConnection>()(
-  Schema.Struct({ pageInfo: PageInfo, nodes: Schema.NullOr(Schema.Array(Schema.NullOr(Issue))) })
-) {}
+export const IssueConnection = Schema.Struct({
+  pageInfo: PageInfo,
+  nodes: Schema.NullOr(Schema.Array(Schema.NullOr(Issue)))
+})
+export interface IssueConnection extends Schema.Struct.Type<typeof IssueConnection.fields> {}
 
-export class Repository extends Schema.Opaque<Repository>()(
-  Schema.Struct({ issues: IssueConnection })
-) {}
+export const Repository = Schema.Struct({ issues: IssueConnection })
+export interface Repository extends Schema.Struct.Type<typeof Repository.fields> {}
 
 export const RepoIssues = GraphQL.query("RepoIssues", {
   document:
