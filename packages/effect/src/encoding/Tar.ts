@@ -101,8 +101,9 @@ export type EntryType =
  * `path` and `linkTarget` are archive paths; hard link targets name another
  * entry of the same archive. `mode` holds the permission bits, including
  * setuid, setgid and sticky; file type bits, as in a `stat` mode, are dropped
- * when decoding and encoding. `pax` holds the PAX extended header records that
- * are not reflected in the other fields, such as `SCHILY.xattr.*` or `atime`.
+ * when decoding and encoding. `pax` holds the PAX extended header records,
+ * including those of global headers, that are not reflected in the other
+ * fields, such as `SCHILY.xattr.*`, `atime` or the `comment` of `git archive`.
  * `devMajor` and `devMinor` are set for device entries only.
  *
  * @stability unstable
@@ -306,8 +307,9 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
  * whatever is left of the current body, like Go's `tar.Reader`. The decoder
  * reads v7, USTAR, PAX extended headers (applying `path`, `linkpath`, `size`,
  * `uid`, `gid`, `uname`, `gname` and `mtime`), GNU long names and links, and
- * base-256 numbers. PAX global headers and anything after the end-of-archive
- * marker are ignored.
+ * base-256 numbers. The records of a PAX global header apply to every entry
+ * that follows, except `path`, `linkpath` and `size`, which describe a single
+ * entry. Anything after the end-of-archive marker is ignored.
  *
  * **Gotchas**
  *
@@ -534,7 +536,8 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
 
 const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader", message })
 
-const truncated = () => new TarError({ kind: "Truncated", message: "unexpected end of tar archive" })
+const truncated = (at: number) =>
+  new TarError({ kind: "Truncated", message: `unexpected end of tar archive at byte ${at}` })
 
 const unsupported = (message: string) => new TarError({ kind: "Unsupported", message })
 
@@ -792,7 +795,7 @@ const readOctal = (block: Uint8Array, offset: number, length: number): number =>
   for (let i = start; i < end; i++) {
     const c = block[i]
     if (c < 0x30 || c > 0x37) {
-      throw invalidHeader(`invalid octal number in header at offset ${offset}`)
+      throw invalidHeader(`invalid octal number in the header field at offset ${offset}`)
     }
     value = value * 8 + (c - 0x30)
   }
@@ -812,7 +815,7 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
     if (i === 0) c &= 0x7f
     value = value * 256 + c
     if (value > Number.MAX_SAFE_INTEGER) {
-      throw invalidHeader(`base-256 number in header at offset ${offset} is out of range`)
+      throw invalidHeader(`base-256 number in the header field at offset ${offset} is out of range`)
     }
   }
   return negative ? -value - 1 : value
@@ -822,7 +825,7 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
 const readUnsigned = (block: Uint8Array, offset: number, length: number, field: string): number => {
   const value = readNumber(block, offset, length)
   if (value < 0) {
-    throw invalidHeader(`negative ${field} in header`)
+    throw invalidHeader(`negative ${field}`)
   }
   return value
 }
@@ -1107,6 +1110,8 @@ class ByteQueue {
   private head = 0
   private offset = 0
   length = 0
+  // Bytes taken since the queue was created
+  consumed = 0
 
   push(chunk: Uint8Array): void {
     if (chunk.length === 0) return
@@ -1121,11 +1126,13 @@ class ByteQueue {
       const out = chunk.subarray(this.offset, this.offset + max)
       this.offset += max
       this.length -= max
+      this.consumed += max
       return out
     }
     const out = this.offset === 0 ? chunk : chunk.subarray(this.offset)
     this.chunks[this.head++] = undefined
     this.length -= available
+    this.consumed += available
     this.offset = 0
     if (this.head === this.chunks.length) {
       this.chunks = []
@@ -1181,9 +1188,13 @@ class Decoder {
   // Bytes to discard before the next header
   private skip = 0
   private zeroBlock = false
+  // Archive offset of the last header block read, for error messages
+  private at = 0
   // An extended header whose data is still to be read
   private meta: RawHeader | undefined
   private pax: Map<string, string> | undefined
+  // Records of the PAX global headers read so far
+  private global: Map<string, string> | undefined
   private longName = ""
   private longLink = ""
 
@@ -1205,6 +1216,18 @@ class Decoder {
   // Returns the next entry header, or `undefined` once the archive and the
   // input have ended. Input after the end of the archive is discarded.
   next(): Header | undefined | typeof NeedInput {
+    try {
+      return this.advance()
+    } catch (error) {
+      // Header errors are thrown where the archive offset is not known
+      if (isTarError(error) && (error.kind === "InvalidHeader" || error.kind === "Unsupported")) {
+        throw new TarError({ kind: error.kind, message: `${error.message} (header at byte ${this.at})` })
+      }
+      throw error
+    }
+  }
+
+  private advance(): Header | undefined | typeof NeedInput {
     this.generation++
     this.skip += this.remaining + this.pad
     this.remaining = 0
@@ -1223,6 +1246,7 @@ class Decoder {
         const data = queue.take(total).subarray(0, size)
         this.meta = undefined
         if (typeflag === "x") this.pax = parsePax(data)
+        else if (typeflag === "g") this.addGlobal(parsePax(data))
         else if (typeflag === "L") this.longName = readString(data, 0, size)
         else this.longLink = readString(data, 0, size)
         continue
@@ -1231,6 +1255,7 @@ class Decoder {
         if (queue.length === 0 && this.ended) return this.finish()
         return this.needInput()
       }
+      this.at = queue.consumed
       const block = queue.take(BLOCK)
       if (isZeroBlock(block)) {
         if (this.zeroBlock) return this.finish()
@@ -1243,16 +1268,13 @@ class Decoder {
       const raw = parseHeader(block)
       switch (raw.typeflag) {
         case "x":
+        case "g":
         case "L":
         case "K": {
           if (raw.size > MAX_META_SIZE) {
             throw invalidHeader(`extended header of ${raw.size} bytes exceeds the limit`)
           }
           this.meta = raw
-          continue
-        }
-        case "g": {
-          this.skip = raw.size + padding(raw.size)
           continue
         }
         case "S": {
@@ -1290,22 +1312,39 @@ class Decoder {
   }
 
   private needInput(): typeof NeedInput {
-    if (this.ended) throw truncated()
+    if (this.ended) throw truncated(this.queue.consumed + this.queue.length)
     return NeedInput
   }
 
   private finish(): undefined | typeof NeedInput {
     // An extended header must be followed by the entry it describes
     if (!this.finished && (this.pax !== undefined || this.longName !== "" || this.longLink !== "")) {
-      throw truncated()
+      throw truncated(this.queue.consumed)
     }
     this.finished = true
     this.queue.clear()
     return this.ended ? undefined : NeedInput
   }
 
+  // Global records apply to every entry that follows, except the ones that only
+  // describe a single entry, and an empty value removes a record
+  private addGlobal(records: Map<string, string>): void {
+    for (const [key, value] of records) {
+      if (key === "path" || key === "linkpath" || key === "size") continue
+      if (value !== "") (this.global ??= new Map()).set(key, value)
+      else this.global?.delete(key)
+    }
+    if (this.global?.size === 0) this.global = undefined
+  }
+
   private toHeader(raw: RawHeader): Header {
-    const rest = this.pax === undefined ? noPax : applyPax(raw, this.pax)
+    // The records of the entry's own extended header override global ones
+    const records = this.global === undefined
+      ? this.pax
+      : this.pax === undefined
+      ? this.global
+      : new Map([...this.global, ...this.pax])
+    const rest = records === undefined ? noPax : applyPax(raw, records)
     // Empty GNU long names are ignored, as in Go
     if (this.longName !== "") raw.path = this.longName
     if (this.longLink !== "") raw.linkTarget = this.longLink

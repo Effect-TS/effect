@@ -300,15 +300,39 @@ describe("Tar", () => {
         ])
       }))
 
-    it.effect("skips PAX global headers and empty GNU long names", () =>
+    it.effect("applies PAX global headers to the entries that follow", () =>
       Effect.gen(function*() {
-        const global = yield* encode([Tar.file("f", "", { pax: { comment: "x" } })])
-        patchHeader(global, 156, "g")
+        // A global header and an entry, as the first 3 blocks of an archive
+        const global = (records: string) =>
+          Effect.map(withPax(records), (bytes) => {
+            patchHeader(bytes, 156, "g")
+            return bytes.subarray(0, 1536)
+          })
+        const archive = new Uint8Array([
+          // `path` describes a single entry, so a global one is ignored
+          ...yield* global("15 comment=one\n12 uname=gu\n10 path=p\n"),
+          // An entry's own records override global ones
+          ...(yield* withPax("15 comment=two\n")).subarray(0, 1536),
+          // An empty value removes a global record
+          ...yield* global("10 uname=\n"),
+          ...yield* encode([Tar.file("last", "")])
+        ])
+        const output = yield* decode(archive)
+        assert.deepStrictEqual(output.map(({ header }) => [header.path, header.uname, header.pax]), [
+          ["f", "gu", { comment: "one" }],
+          ["f", "gu", { comment: "two" }],
+          ["f", "", { comment: "one" }],
+          ["last", "", { comment: "one" }]
+        ])
+      }))
+
+    it.effect("ignores empty GNU long names", () =>
+      Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("f", "")])
         const longName = bytes.slice(0, 512)
         patchHeader(longName, 156, "L")
-        const output = [...yield* decode(global), ...yield* decode(new Uint8Array([...longName, ...bytes]))]
-        assert.deepStrictEqual(output.map(({ header }) => [header.path, header.pax]), [["f", {}], ["f", {}]])
+        const output = yield* decode(new Uint8Array([...longName, ...bytes]))
+        assert.deepStrictEqual(output.map(({ header }) => header.path), ["f"])
       }))
 
     it.effect("reads PAX mtimes to the millisecond", () =>
@@ -355,6 +379,16 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(decode(bytes.subarray(0, 1024))), "Truncated")
         const ended = new Uint8Array([...bytes.subarray(0, 1024), ...new Uint8Array(1024)])
         assert.strictEqual(yield* failure(decode(ended)), "Truncated")
+      }))
+
+    it.effect("reports the archive offset of decoding errors", () =>
+      Effect.gen(function*() {
+        const bytes = yield* encode([Tar.file("a", "a"), Tar.file("b", "b")])
+        const message = (bytes: Uint8Array) =>
+          Effect.map(Effect.flip(decode(bytes)), (error) => Tar.isTarError(error) ? error.message : error)
+        assert.strictEqual(yield* message(bytes.subarray(0, 1300)), "unexpected end of tar archive at byte 1300")
+        bytes[1024] = "c".charCodeAt(0)
+        assert.strictEqual(yield* message(bytes), "header checksum mismatch (header at byte 1024)")
       }))
 
     it.effect("fails on an mtime outside the Date range", () =>
