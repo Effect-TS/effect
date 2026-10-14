@@ -163,18 +163,22 @@ export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
 }>()("effect/graphql/GraphQLProtocol") {}
 
 /**
- * Resolves an operation's URL from its context, kind and name. See
- * {@link layerHttp} for routing constraints.
+ * The URL of an HTTP transport: fixed, resolved for each operation from the
+ * calling context, `kind` and `operationName`, or an `Effect` with no errors
+ * or requirements. See {@link layerHttp}.
  *
  * @stability experimental
  * @category models
  * @since 4.0.0
  */
-export type UrlFunction = (options: {
-  readonly context: Context.Context<never>
-  readonly kind: Kind
-  readonly operationName: string
-}) => string
+export type Url =
+  | string
+  | Effect.Effect<string>
+  | ((options: {
+    readonly context: Context.Context<never>
+    readonly kind: Kind
+    readonly operationName: string
+  }) => string)
 
 const graphqlResponseContentType = "application/graphql-response+json"
 const jsonContentType = "application/json"
@@ -340,7 +344,7 @@ const sseEvents = (
   })
 
 interface HttpOptions<R = never> {
-  readonly url: string | UrlFunction | Effect.Effect<string>
+  readonly url: Url
   readonly queryMethod?: "GET" | "POST" | undefined
   readonly subscriptions?: {
     readonly webSocket: WebSocketOptions<R>
@@ -352,13 +356,11 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   never,
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
 > => {
-  const url = urlEffect(options.url)
+  const resolve = urlResolver(options.url)
   // A resolver batch carries the URL it was grouped by.
   const urlOf = (request: GraphQLRequest) =>
     internalGraphQL.ResolvedUrl.use((resolved) =>
-      resolved !== undefined && resolved.url === url && resolved.operationName === request.operationName
-        ? Effect.succeed(resolved.value)
-        : url({ kind: request.kind, operationName: request.operationName })
+      resolved?.resolve === resolve ? Effect.succeed(resolved.url) : resolve(request)
     )
   const http = Clock.clockWith((clock) =>
     HttpClient.HttpClient.useSync((client) => {
@@ -388,7 +390,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
             }),
             fromHttpClientError(clock)
           )))
-      return GraphQLProtocol.of({ execute, subscribe, url })
+      return GraphQLProtocol.of({ execute, subscribe, url: resolve })
     })
   )
   const webSocket = options.subscriptions?.webSocket
@@ -401,13 +403,11 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
     )
 }
 
-const urlEffect = (
-  url: string | UrlFunction | Effect.Effect<string>
-): NonNullable<GraphQLProtocol["Service"]["url"]> => {
+const urlResolver = (url: Url): NonNullable<GraphQLProtocol["Service"]["url"]> => {
   if (typeof url === "string") return constant(Effect.succeed(url))
   if (Effect.isEffect(url)) return constant(url)
-  return (operation) =>
-    Effect.contextWith((context: Context.Context<never>) => Effect.succeed(url({ ...operation, context })))
+  return ({ kind, operationName }) =>
+    Effect.contextWith((context: Context.Context<never>) => Effect.succeed(url({ context, kind, operationName })))
 }
 
 /**
@@ -416,12 +416,11 @@ const urlEffect = (
  *
  * **Details**
  *
- * Takes the same options as {@link layerHttp}, including `queryMethod` and a
- * `url` function or Effect. Without `subscriptions`, subscriptions use graphql-sse
- * distinct mode on `url`. With `subscriptions.webSocket`, they go over
- * graphql-ws instead, and the effect also builds the graphql-ws transport, so
- * it needs a `Socket.WebSocketConstructor` and a `Scope`. `url` must then be
- * a string.
+ * Takes the same options as {@link layerHttp}, including `queryMethod`.
+ * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
+ * `url`. With `subscriptions.webSocket`, `url` must be a string, subscriptions
+ * go over graphql-ws instead, and the effect also builds the graphql-ws
+ * transport, so it needs a `Socket.WebSocketConstructor` and a `Scope`.
  *
  * @stability experimental
  * @category constructors
@@ -447,7 +446,7 @@ export const makeHttp: {
     HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
   >
   (options: {
-    readonly url: string | UrlFunction | Effect.Effect<string>
+    readonly url: Url
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Effect.Effect<
@@ -501,29 +500,23 @@ export const makeHttp: {
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.
  *
- * A {@link UrlFunction} routes each query, mutation and graphql-sse subscription
- * using the calling fiber's context (including the call's `context` option),
- * `kind` and `operationName`. Use a defaulted `Context.Reference` to select
- * the server. Reading a missing service with `Context.get` is a defect, not
- * a `TransportError`.
- *
- * `url` can also be an `Effect<string>` with no errors or requirements, for a
- * URL that is resolved asynchronously. It runs in the calling fiber's context
- * for each operation, so it can read the same `Context.Reference`, but it
- * doesn't see `kind` or `operationName`.
- *
- * Function and Effect URLs can't be combined with `subscriptions.webSocket`:
- * the socket URL is fixed at connection time.
+ * To route each query, mutation and graphql-sse subscription, `url` can be a
+ * function of the calling fiber's context (including the call's `context`
+ * option), `kind` and `operationName`, or an `Effect<string>` with no errors
+ * or requirements that runs in that context. Use a defaulted
+ * `Context.Reference` to select the server. Reading a missing service with
+ * `Context.get` is a defect, not a `TransportError`. Neither form can be
+ * combined with `subscriptions.webSocket`: the socket URL is fixed at
+ * connection time.
  *
  * **Gotchas**
  *
- * A URL function or Effect must depend only on the context and the operation.
- * `GraphQLResolver` resolves each lookup's URL once, before middleware runs
- * and before the batched query, variables, headers and URL parameters exist,
- * then sends each batch to the URL it was grouped by. A single call resolves
- * the URL in the transport, after middleware. Middleware must not change
- * `kind` or `operationName`, or provide services the URL reads, or the two
- * can route differently.
+ * `GraphQLResolver` resolves each lookup's URL once, before middleware run and
+ * before the batched request exists, then sends each batch to the URL it was
+ * grouped by. A single call resolves it in the transport, after middleware.
+ * So the URL must depend only on the context and the operation, and
+ * middleware must not change `kind` or `operationName` or provide services
+ * the URL reads.
  *
  * `RequestResolver.withCache` and `RequestResolver.persisted` key on the lookup,
  * not the URL, so results can leak across servers. For caching, use a separate
@@ -693,7 +686,7 @@ export const layerHttp: {
     }
   }): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
   (options: {
-    readonly url: string | UrlFunction | Effect.Effect<string>
+    readonly url: Url
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Layer.Layer<

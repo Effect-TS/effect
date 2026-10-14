@@ -251,8 +251,8 @@ export const ordered = <
   return makeResolver(
     method,
     options.batchKey,
-    (entries, context) =>
-      Effect.flatMap(callBatch(method, entries, context, options.variables), ({ keys, targets, result }) => {
+    (entries) =>
+      Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
         const byIndex = new Map<number, Arr.NonEmptyArray<GraphQLError>>()
         for (const error of result.errors) {
           const index = entryIndex(error, path, keys.length)
@@ -385,8 +385,8 @@ export const findById = <
   return makeResolver(
     method,
     options.batchKey,
-    (entries, context) =>
-      Effect.flatMap(callBatch(method, entries, context, options.variables), ({ keys, targets, result }) => {
+    (entries) =>
+      Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
         if (result.errors.length > 0) return batchError(codec, result)
         const list = findList(result.data, path)
         if (list === undefined) return completeAll(targets)
@@ -535,7 +535,7 @@ export const aliased = <Op extends GraphQL.Any>(
     variables: GraphQL.Variables<Op>
   ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
 
-  return makeResolver<AliasedRequest<Op>>(method, options?.batchKey, (entries, context) =>
+  return makeResolver<AliasedRequest<Op>>(method, options?.batchKey, (entries) =>
     Effect.flatMap(
       Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
       (encoded) => {
@@ -586,7 +586,7 @@ export const aliased = <Op extends GraphQL.Any>(
           })
         )
       }
-    ).pipe(Effect.provideContext(context))).pipe(RequestResolver.batchN(10))
+    )).pipe(RequestResolver.batchN(10))
 }
 
 type AliasedRequest<Op extends GraphQL.Any> = KeyRequest<
@@ -608,45 +608,38 @@ interface Slice<Op extends GraphQL.Any> {
 
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
-interface Batch<A extends Request.Any> {
-  readonly url: string | undefined
-  readonly entries: Arr.NonEmptyArray<Request.Entry<A>>
-}
-
 /**
  * Resolves each entry's URL in its own context, then splits the entries by URL
  * and `batchKey`. Each batch runs in its first entry's context, carrying the
- * URL it was grouped by.
+ * URL it was grouped by, so the transport doesn't resolve it again.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
   batchKey: ((context: Context.Context<any>) => unknown) | undefined,
-  runAll: (
-    entries: Arr.NonEmptyArray<Request.Entry<A>>,
-    context: Context.Context<any>
-  ) => Effect.Effect<void, Request.Error<A>>
+  runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>, any>
 ): RequestResolver.RequestResolver<A> => {
-  const url = internalGraphQL.rawExecutors.get(method)?.url
+  const resolve = internalGraphQL.rawExecutors.get(method)?.url
   const operation = { kind: method.operation.kind, operationName: method.operation.name }
-  const resolve = (entry: Request.Entry<A>) =>
-    url === undefined ? Effect.succeed(undefined) : Effect.provideContext(url(operation), entry.context)
+  const urlOf = (entry: Request.Entry<A>) =>
+    resolve === undefined ? Effect.succeed(undefined) : Effect.provideContext(resolve(operation), entry.context)
   return RequestResolver.make((entries) =>
-    Effect.flatMap(Effect.forEach(entries, resolve, { concurrency: "unbounded" }), (urls) => {
+    Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
       // Arrays are compared structurally, so equal keys share a batch.
-      const batches = MutableHashMap.empty<unknown, Batch<A>>()
+      const batches = MutableHashMap.empty<
+        readonly [string | undefined, unknown],
+        Arr.NonEmptyArray<Request.Entry<A>>
+      >()
       entries.forEach((entry, i) => {
-        const key = [urls[i], batchKey?.(entry.context)]
+        const key = [urls[i], batchKey?.(entry.context)] as const
         const batch = MutableHashMap.get(batches, key)
-        if (batch._tag === "Some") batch.value.entries.push(entry)
-        else MutableHashMap.set(batches, key, { url: urls[i], entries: [entry] })
+        if (batch._tag === "Some") batch.value.push(entry)
+        else MutableHashMap.set(batches, key, [entry])
       })
-      return Effect.forEach(MutableHashMap.values(batches), ({ entries, url: value }) => {
-        const context = entries[0].context
-        return runAll(
-          entries,
-          value === undefined
-            ? context
-            : Context.add(context, internalGraphQL.ResolvedUrl, { url, operationName: operation.operationName, value })
+      return Effect.forEach(batches, ([[url], entries]) => {
+        const context: Context.Context<any> = entries[0].context
+        return Effect.provideContext(
+          runAll(entries),
+          url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
         )
       }, { concurrency: "unbounded", discard: true })
     })
@@ -654,13 +647,12 @@ const makeResolver = <A extends Request.Any>(
 }
 
 /**
- * Calls the method in the batch's context with deduplicated keys.
- * Each target completes all entries sharing its key.
+ * Calls the method with deduplicated keys. Each target completes all entries
+ * sharing its key.
  */
 const callBatch = <Op extends GraphQL.Any, K>(
   method: OperationMethod<Op>,
   entries: Arr.NonEmptyArray<Request.Entry<KeyRequest<K, any, any, any>>>,
-  context: Context.Context<any>,
   variables: (keys: ReadonlyArray<K>) => GraphQL.Variables<Op>
 ) => {
   const keys: Array<K> = []
@@ -688,10 +680,7 @@ const callBatch = <Op extends GraphQL.Any, K>(
     variables: GraphQL.Variables<Op>,
     options: { readonly partial: true }
   ) => Effect.Effect<PartialResult<GraphQL.Result<Op>>, GraphQL.Error<Op>, GraphQL.Services<Op>>
-  return call(variables(keys), { partial: true }).pipe(
-    Effect.map((result) => ({ keys, targets, result })),
-    Effect.provideContext(context)
-  )
+  return Effect.map(call(variables(keys), { partial: true }), (result) => ({ keys, targets, result }))
 }
 
 // Fails the batch with the response's errors and transport metadata.

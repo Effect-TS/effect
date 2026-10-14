@@ -403,8 +403,8 @@ const makeMethod = <Op extends GraphQL.Any>(
           >
       }) as Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQLMiddleware.Requires<GraphQL.Middleware<Op>>>
 
-  // Takes a resolver batch's URL out of the context, so middleware and the
-  // calls it makes don't see it.
+  // Hands a resolver batch's URL to the transport only, so calls made by
+  // middleware resolve their own.
   const run = (request: GraphQLRequest, forcePost: boolean) =>
     internalGraphQL.ResolvedUrl.use((resolved) =>
       resolved === undefined

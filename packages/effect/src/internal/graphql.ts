@@ -154,21 +154,21 @@ export const renderSlices = (
 export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
 
 /**
- * The URL a resolver batch was grouped by, so the transport whose `url` it
- * came from sends the batch there without resolving it again.
+ * The URL a resolver batch was grouped by, and the protocol `url` that
+ * resolved it, so that transport sends the batch there without resolving it
+ * again.
  *
  * @internal
  */
 export type ResolvedUrl = {
-  readonly url: GraphQLProtocol["Service"]["url"]
-  readonly operationName: string
-  readonly value: string
+  readonly resolve: GraphQLProtocol["Service"]["url"]
+  readonly url: string
 } | undefined
 
 /**
- * Carries a {@link ResolvedUrl} from a resolver batch to its client call. The
- * client clears it for middleware and provides it only to the transport, so
- * calls nested in middleware resolve their own URL.
+ * Carries a {@link ResolvedUrl} from a resolver batch to the transport. The
+ * client clears it while middleware run, so calls they make resolve their
+ * own URL.
  *
  * @internal
  */
