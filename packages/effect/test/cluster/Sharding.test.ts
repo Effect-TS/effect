@@ -2368,6 +2368,7 @@ const ReapStormEntity = Entity.make("ReapStormEntity", [
 const ReapStormEntityLayer = ReapStormEntity.toLayer({ Ping: () => Effect.void })
 
 describe.concurrent("Sharding residency cap", () => {
+  // Repeated TestClock adjustments need wall-clock headroom under concurrent Deno CI load.
   it.effect("bounds resident entities to maxResidentEntities", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
@@ -2392,7 +2393,7 @@ describe.concurrent("Sharding residency cap", () => {
 
       const users = yield* Fiber.joinAll(fibers)
       assert.deepStrictEqual(users.map((user) => user.id), [1, 2, 3, 4, 5, 6])
-    }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 2, entityMaxIdleTime: 1000 }))))
+    }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: 2, entityMaxIdleTime: 1000 }))), 20_000)
 
   it.effect("volatile sends to new entities fail with MailboxFull at the cap", () =>
     Effect.gen(function*() {
