@@ -21,6 +21,7 @@ import * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
+import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Errors from "./internal/errors.ts"
@@ -216,9 +217,9 @@ export const make = Effect.fnUntraced(
       const stream = response.stream.pipe(
         Stream.decodeText(),
         Stream.pipeThroughChannel(Sse.decode()),
-        Stream.flatMap((event) => {
+        Stream.filterMap((event) => {
           const data = decodeChatCompletionSseData(event.data)
-          return Stream.fromIterable(data !== undefined ? [data] : [])
+          return data !== undefined ? Result.succeed(data) : Result.failVoid
         }),
         Stream.takeUntil((event) => event === "[DONE]"),
         Stream.catchTags({

@@ -105,6 +105,7 @@ describe("OpenAiClient", () => {
         assert.propertyVal(events[0], "id", "chatcmpl_test_1")
         assert.propertyVal(events[1], "id", "chatcmpl_test_1")
         assert.strictEqual(events[2], "[DONE]")
+        assert.strictEqual(events.length, 3)
       }).pipe(Effect.provide(makeTestLayer({
         _tag: "Sse",
         events: [
@@ -138,7 +139,8 @@ describe("OpenAiClient", () => {
               finish_reason: "stop"
             }]
           },
-          "[DONE]"
+          "[DONE]",
+          { ignored: "after completion" }
         ]
       }))))
 
