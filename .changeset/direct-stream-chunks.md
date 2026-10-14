@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Reduce overhead when converting streamed chat completion events into response parts.
+Emit each streamed chat completion event's parts as one chunk instead of creating an inner stream per event.
