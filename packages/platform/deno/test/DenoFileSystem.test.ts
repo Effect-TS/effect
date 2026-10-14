@@ -5,7 +5,6 @@ import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
-import * as TestClock from "effect/testing/TestClock"
 import { afterEach } from "vitest"
 import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
@@ -30,20 +29,17 @@ describe("stat", () => {
 })
 
 describe("watch", () => {
-  it.effect("uses a WatchBackend provided after the layer is built", () =>
+  it.live("uses a WatchBackend provided after the layer is built", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
       const root = yield* fs.makeTempDirectoryScoped()
       const backendEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-backend" }
-      const backend: FileSystem.WatchBackend["Service"] = {
-        register: () => Option.some(Stream.make(backendEvent))
-      }
-
       const event = yield* fs.watch(root).pipe(
         Stream.runHead,
-        Effect.provideService(FileSystem.WatchBackend, backend),
-        Effect.timeout("1 second"),
-        TestClock.withLive
+        Effect.provideService(FileSystem.WatchBackend, {
+          register: () => Option.some(Stream.make(backendEvent))
+        }),
+        Effect.timeout("1 second")
       )
       assert.deepStrictEqual(event, Option.some(backendEvent))
     }).pipe(Effect.provide(DenoFileSystem.layer)))
