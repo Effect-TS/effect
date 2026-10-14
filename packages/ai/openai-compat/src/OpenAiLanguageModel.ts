@@ -16,6 +16,7 @@ import { toCodecOpenAI } from "effect/ai/OpenAiStructuredOutput"
 import type * as Prompt from "effect/ai/Prompt"
 import type * as Response from "effect/ai/Response"
 import * as Tool from "effect/ai/Tool"
+import * as Arr from "effect/Array"
 import * as Context from "effect/Context"
 import * as DateTime from "effect/DateTime"
 import * as Effect from "effect/Effect"
@@ -1270,7 +1271,8 @@ const makeStreamResponse = Effect.fnUntraced(
 
         return parts
       })),
-      Stream.flattenIterable
+      Stream.filter(Arr.isArrayNonEmpty),
+      Stream.flattenArray
     )
   }
 )
