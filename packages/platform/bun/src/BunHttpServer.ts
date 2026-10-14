@@ -447,7 +447,7 @@ class BunServerRequest extends Inspectable.Class implements ServerRequest.HttpSe
     return IncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
   modify(

@@ -46,6 +46,7 @@ import { HttpServerRequest } from "effect/http/HttpServerRequest"
 import type { HttpServerResponse } from "effect/http/HttpServerResponse"
 import * as Response from "effect/http/HttpServerResponse"
 import type * as Multipart from "effect/http/Multipart"
+import * as UrlParams from "effect/http/UrlParams"
 import * as Latch from "effect/Latch"
 import * as Layer from "effect/Layer"
 import * as NetAddress from "effect/net/NetAddress"
@@ -426,14 +427,14 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override toString(): string {
-    return `ServerRequest(${this.method} ${this.url})`
+    return `ServerRequest(${this.method} ${UrlParams.redactUrl(this.url)})`
   }
 
   toJSON(): unknown {
     return HttpIncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
 }

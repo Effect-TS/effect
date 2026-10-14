@@ -357,6 +357,35 @@ describe("HttpMiddleware", () => {
         assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response-secret"), undefined)
       }))
 
+    it.effect("redacts sensitive query params in url attributes", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        let handlerUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("http://localhost/todos?sig=sig-secret&foo=bar")
+        )
+
+        yield* HttpMiddleware.tracer(Effect.gen(function*() {
+          handlerUrl = (yield* HttpServerRequest.HttpServerRequest).url
+          return HttpServerResponse.empty()
+        })).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.attributes.get("url.full"), "http://localhost/todos?sig=REDACTED&foo=bar")
+        assert.strictEqual(serverSpan.attributes.get("url.query"), "sig=REDACTED&foo=bar")
+        assert.strictEqual(handlerUrl, "/todos?sig=sig-secret&foo=bar")
+      }))
+
     it.effect("skips attributes for unsampled spans", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined

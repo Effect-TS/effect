@@ -105,7 +105,7 @@ const Proto = {
     return {
       _id: "HttpClientRequest",
       method: this.method,
-      url: this.url,
+      url: UrlParams.redactUrl(this.url),
       urlParams: this.urlParams,
       hash: this.hash,
       headers: redact(this.headers),

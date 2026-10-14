@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -285,6 +285,68 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
       }))
+
+    it.effect("redacts sensitive query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* client.get("http://test/path?Signature=sig-secret&page=1", {
+          urlParams: { "X-Goog-Signature": "goog-secret" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(sentUrl, "http://test/path?Signature=sig-secret&page=1&X-Goog-Signature=goog-secret")
+      }))
+
+    it.effect("redacts userinfo in url.full", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        )
+
+        yield* client.get("http://user:password@test/path").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
+      }))
+  })
+
+  describe("HttpClientError", () => {
+    it.effect("redacts query params in messages using the current redacted names", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request })
+        })
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
   })
 
   describe("followRedirects", () => {

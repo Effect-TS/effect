@@ -512,7 +512,7 @@ class ServerRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return HttpIncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
   modify(
@@ -711,7 +711,7 @@ class ClientRequestImpl extends Inspectable.Class implements HttpServerRequest {
     return HttpIncomingMessage.inspect(this, {
       _id: "HttpServerRequest",
       method: this.method,
-      url: this.originalUrl
+      url: UrlParams.redactUrl(this.originalUrl)
     })
   }
 
