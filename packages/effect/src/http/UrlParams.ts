@@ -35,10 +35,9 @@ const TypeId = "~effect/http/UrlParams"
  *
  * **Details**
  *
- * Parameters are stored as ordered key-value pairs and can contain multiple
- * values for the same key. Values are strings, or `Redacted` strings that are
- * sent unwrapped. Inspection redacts `Redacted` values and values matching
- * `CurrentRedactedNames`.
+ * Parameters are ordered key-value pairs, and a key can repeat. Each value is a
+ * string or a `Redacted` string, which is sent unwrapped. Inspection redacts
+ * `Redacted` values and values whose names match `CurrentRedactedNames`.
  *
  * @stability unstable
  * @category models
@@ -87,7 +86,7 @@ type CoercibleRecordInput = CoercibleRecord & {
  *
  * **Details**
  *
- * `Redacted` values are stored as-is and sent unwrapped.
+ * `Redacted` values are stored wrapped and sent unwrapped.
  *
  * **Gotchas**
  *
