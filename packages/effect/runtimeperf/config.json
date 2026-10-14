@@ -12,29 +12,6 @@
   },
   "suites": [
     {
-      "name": "string-casing",
-      "fixtures": [
-        {
-          "file": "suites/string-casing/fixtures/cases.ts",
-          "defaults": {
-            "tier": 1,
-            "family": "casing",
-            "implementation": "effect",
-            "astTags": [],
-            "operation": "transform",
-            "path": "valid",
-            "size": 5
-          },
-          "cases": [
-            { "name": "snake-to-camel", "export": "snakeToCamel" },
-            { "name": "snake-to-pascal", "export": "snakeToPascal" },
-            { "name": "no-case", "export": "noCase" },
-            { "name": "sql-rows", "export": "sqlRows", "size": 100 }
-          ]
-        }
-      ]
-    },
-    {
       "name": "schema-checked-sources",
       "fixtures": [
         {
