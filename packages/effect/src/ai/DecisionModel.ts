@@ -105,8 +105,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
  * `images` is omitted when no images are supplied.
- * `Decisions` is the decision kinds the provider receives. `make` passes
- * locate decisions only to providers created with `supportsLocate: true`.
+ * `Decisions` is the union of decision kinds the provider receives. `make`
+ * passes locate decisions only to providers created with `supportsLocate: true`.
  *
  * @stability unstable
  * @category options
@@ -396,8 +396,9 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * Set `supportsLocate: true` to accept locate decisions. Otherwise, a
  * definition with a locate decision fails with `AiError.InvalidUserInputError`,
- * as does a locate decision without images. Only a `decide` created with
- * `supportsLocate: true` receives locate decisions, and its options type says so.
+ * as does a locate decision without images. Only a provider created with
+ * `supportsLocate: true` receives locate decisions, so only its `decide`
+ * options include `Decision.Locate`.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
@@ -456,7 +457,7 @@ export const make = (
                 return Effect.fail(invalidUserInput("Locate decisions need at least one image"))
               }
             }
-            // Locate decisions were rejected above unless `supportsLocate` is true.
+            // The checks above keep locate decisions from providers without `supportsLocate`.
             const decide = params.decide as (
               options: ProviderOptions
             ) => Effect.Effect<ProviderResponse, AiError.AiError>

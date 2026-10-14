@@ -149,8 +149,8 @@ const withImages = (
     }
   })
 
-// TypeSafe swaps every occurrence of a placeholder in the request's strings for its image, so each placeholder
-// must be absent from the rest of the request. The closing `>` keeps `<image:1>` from matching inside `<image:10>`.
+// TypeSafe replaces a placeholder anywhere it appears in the request's strings, so pick ones absent from the
+// request. The closing `>` stops `<image:1>` matching inside `<image:10>`.
 const makePlaceholders = (count: number, request: string): Array<string> => {
   for (let attempt = 0;; attempt++) {
     const prefix = attempt === 0 ? "<image:" : `<image~${attempt}:`
