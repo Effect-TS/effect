@@ -128,9 +128,13 @@ const waitFor = Effect.fnUntraced(function*(
 const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched: string) => void) {
   const path = yield* Path.Path
   const events = yield* PubSub.unbounded<{ readonly file: string; readonly tag: "Create" | "Update" }>()
-  const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> => {
+  const watch: Parameters<typeof Watch.run>[0]["watch"] = (watched, _kind, onReady) => {
     onWatch?.(watched)
-    return Stream.fromPubSub(events).pipe(
+    return Stream.unwrap(Effect.gen(function*() {
+      const subscription = yield* PubSub.subscribe(events)
+      onReady()
+      return Stream.fromSubscription(subscription)
+    })).pipe(
       Stream.map(({ file, tag }): FileSystem.WatchEvent | undefined => {
         if (file === watched) return { _tag: tag, path: path.basename(watched) }
         const relative = path.relative(watched, file)
@@ -167,25 +171,28 @@ describe("graphqlgen --watch", () => {
         const release = yield* Deferred.make<void>()
         const installed = yield* Deferred.make<void>()
         const events = yield* PubSub.unbounded<FileSystem.WatchEvent>()
-        const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> =>
-          watched === p.file("src")
-            ? Stream.unwrap(Effect.gen(function*() {
+        const watch: Parameters<typeof Watch.run>[0]["watch"] = (watched, _kind, onReady) =>
+          Stream.unwrap(Effect.gen(function*() {
+            if (watched === p.file("src")) {
               yield* Deferred.succeed(installing, undefined)
               yield* Deferred.await(release)
-              // Acquiring the subscription, not constructing the stream, installs this watcher.
-              const subscription = yield* PubSub.subscribe(events)
+            }
+            // Acquiring the subscription, not constructing the stream, installs this watcher.
+            const subscription = yield* PubSub.subscribe(events)
+            onReady()
+            if (watched === p.file("src")) {
               yield* Deferred.succeed(installed, undefined)
-              return Stream.fromSubscription(subscription)
-            }))
-            : Stream.never
+            }
+            return Stream.fromSubscription(subscription)
+          }))
         const fiber = yield* Watch.run({ configPath: p.configPath, watch }).pipe(Effect.forkScoped)
         yield* Deferred.await(installing)
-        yield* waitFor(
-          fiber,
-          "the initial output before document watcher installation",
-          (out) => cycles(out).length > 0
-        )
-        const initial = yield* read(p.file("src/a.graphql.ts"))
+        const initial = yield* generated(p.dir, p.file("src/a.graphql.ts"))
+        yield* TestClock.adjust("200 millis")
+        yield* liveSleep(100)
+        assert.isUndefined(fiber.pollUnsafe(), "the watch loop exited before installation")
+        assert.deepStrictEqual(cycles(yield* output), [], "generation ran before document watcher installation")
+        assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
 
         // An editor saves while no document subscription exists. No event is replayed on installation.
         yield* write(p.dir, { "src/a.tmp": query("A", "id", "name") })
@@ -198,7 +205,7 @@ describe("graphqlgen --watch", () => {
         yield* waitFor(
           fiber,
           "the installation-gap replacement output without another edit",
-          () => readFileSync(p.file("src/a.graphql.ts"), "utf8") === expected
+          () => existsSync(p.file("src/a.graphql.ts")) && readFileSync(p.file("src/a.graphql.ts"), "utf8") === expected
         )
         assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), expected)
       }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
