@@ -219,9 +219,8 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
 }
 
 /**
- * Each real client method's runner for batches: its middleware and protocol,
- * sending as POST, and the protocol's `url`, which resolvers group lookups by.
- * Mock and custom methods have none.
+ * Client batch runners (middleware and protocol, using POST) and URLs for
+ * resolver grouping. Mock and custom methods are not registered.
  *
  * @internal
  */

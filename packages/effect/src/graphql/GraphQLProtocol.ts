@@ -154,16 +154,15 @@ export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
     readonly headers?: Headers.Headers | undefined
   }, TransportError>
   /**
-   * Where the transport sends an operation. `GraphQLResolver` groups lookups
-   * by it. `layerHttp` sets it; custom transports can leave it unset.
+   * Resolves the transport URL for resolver batching. Set by `layerHttp`;
+   * optional for custom transports.
    */
   readonly url?: UrlFunction | undefined
 }>()("effect/graphql/GraphQLProtocol") {}
 
 /**
- * Picks the URL of one operation for {@link layerHttp}, from the current
- * context and the operation's kind and name. See {@link layerHttp} for what
- * it may depend on.
+ * Resolves an operation's URL from its context, kind and name. See
+ * {@link layerHttp} for routing constraints.
  *
  * @stability experimental
  * @category models
@@ -352,7 +351,6 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
 > => {
   const url: UrlFunction = typeof options.url === "string" ? constant(options.url) : options.url
-  // The calling fiber's context, which includes the call's `context` option.
   const urlOf = (context: Context.Context<never>, request: GraphQLRequest) =>
     url({ context, kind: request.kind, operationName: request.operationName })
   const http = Clock.clockWith((clock) =>
@@ -488,28 +486,24 @@ export const makeHttp: {
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.
  *
- * `url` can also be a {@link UrlFunction}, for one client that talks to
- * several servers. It is called for every query, mutation and graphql-sse
- * subscription with the calling fiber's context, which includes the call's
- * `context` option, and the operation's `kind` and `operationName`. Pick the
- * server from a `Context.Reference` with a default value. Reading a missing
- * service with `Context.get` is a defect, not a `TransportError`. A `url`
- * function can't be combined with `subscriptions.webSocket`, because a
- * socket's URL is fixed when it connects.
+ * A {@link UrlFunction} routes each query, mutation and graphql-sse subscription
+ * using the calling fiber's context (including the call's `context` option),
+ * `kind` and `operationName`. Use a defaulted `Context.Reference` to select
+ * the server. Reading a missing service with `Context.get` is a defect, not
+ * a `TransportError`. Function URLs cannot be combined with
+ * `subscriptions.webSocket`: the socket URL is fixed at connection time.
  *
  * **Gotchas**
  *
- * A `url` function must depend only on the context and the operation.
- * `GraphQLResolver` groups lookups by the URL it returns before middleware
- * runs and before variables, `headers` and `urlParams` are assembled. For the
- * same reason, middleware must not change a request's `kind` or
- * `operationName`, or provide a service the function reads, or a batch
- * formed for one URL is sent to another.
+ * The URL function must depend only on context, `kind` and `operationName`.
+ * `GraphQLResolver` groups by URL before middleware runs and before the batched
+ * query, variables, headers and URL parameters are assembled. Middleware must
+ * preserve those routing inputs, including services the function reads, so
+ * each batch is sent to the URL it was grouped by.
  *
- * `RequestResolver.withCache` and `RequestResolver.persisted` key on the
- * lookup alone, so a cached resolver can answer one server's lookup with
- * another server's result. To cache, use one client and resolver per server,
- * for example with `LayerMap`.
+ * `RequestResolver.withCache` and `RequestResolver.persisted` key on the lookup,
+ * not the URL, so results can leak across servers. For caching, use a separate
+ * client and resolver per server, for example with `LayerMap`.
  *
  * **Example** (Building a client over HTTP)
  *
@@ -596,7 +590,6 @@ export const makeHttp: {
  *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
  * })
  *
- * // The GitHub host a call talks to
  * const GitHubHost = Context.Reference<string>("GitHubHost", { defaultValue: () => "github.com" })
  *
  * const Protocol = GraphQLProtocol.layerHttp({
@@ -608,7 +601,7 @@ export const makeHttp: {
  *   }
  * })
  *
- * // A stand-in server that answers with the URL it was sent to
+ * // Echo the request URL instead of calling GitHub.
  * const FakeServer = Layer.succeed(
  *   HttpClient.HttpClient,
  *   HttpClient.make((request, url) =>

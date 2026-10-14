@@ -9,9 +9,8 @@
  * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
- * Lookups whose `GraphQLProtocol.layerHttp` `url` function returns different
- * URLs go in separate batches. See its gotchas for what middleware and
- * caching must respect.
+ * Lookups with different protocol URLs are batched separately. See
+ * `GraphQLProtocol.layerHttp` for middleware and caching constraints.
  *
  * @stability experimental
  * @since 4.0.0
@@ -610,8 +609,7 @@ interface Slice<Op extends GraphQL.Any> {
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Each batch holds entries whose protocol URL and `batchKey` are equal, so the
- * first entry's context stands for the batch.
+ * Group by URL and `batchKey`; run each batch in its first entry's context.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
@@ -620,7 +618,6 @@ const makeResolver = <A extends Request.Any>(
 ): RequestResolver.RequestResolver<A> => {
   const url = internalGraphQL.rawExecutors.get(method)?.url
   const { kind, name } = method.operation
-  // Arrays are compared structurally, so equal pairs share a batch.
   return RequestResolver.makeGrouped({
     key: (entry) => [url?.({ context: entry.context, kind, operationName: name }), batchKey?.(entry.context)],
     resolver: runAll
