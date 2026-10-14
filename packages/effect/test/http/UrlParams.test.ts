@@ -19,6 +19,17 @@ describe("UrlParams", () => {
     })
   })
 
+  describe("transform", () => {
+    it("preserves redaction when rebuilding pairs", () => {
+      const params = UrlParams.transform(
+        UrlParams.fromInput({ remote: Redacted.make("param-secret") }),
+        (pairs) => pairs.map(([key, value]) => [key, value])
+      )
+      assert.strictEqual(UrlParams.toString(params), "remote=param-secret")
+      assertFalse(Formatter.format(params).includes("param-secret"))
+    })
+  })
+
   describe("setAll", () => {
     it("does not retain parameters when reusing UrlParams overrides", () => {
       const overrides = UrlParams.fromInput({ sort: "name" })

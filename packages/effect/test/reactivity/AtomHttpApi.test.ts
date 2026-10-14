@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Exit, Layer, Ref, Schema, Stream } from "effect"
+import { Duration, Effect, Exit, Layer, type Redacted, Ref, Schema, Stream } from "effect"
 import { Sse } from "effect/encoding"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
@@ -109,7 +109,7 @@ describe("AtomHttpApi", () => {
       const requestRef = yield* Ref.make<
         {
           readonly url: string
-          readonly urlParams: ReadonlyArray<readonly [string, string]>
+          readonly urlParams: ReadonlyArray<readonly [string, string | Redacted.Redacted]>
         } | undefined
       >(undefined)
 

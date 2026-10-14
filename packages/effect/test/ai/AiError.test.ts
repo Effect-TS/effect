@@ -1,9 +1,22 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Duration, Effect, Schema } from "effect"
+import { Duration, Effect, Redacted, Schema } from "effect"
 import { AiError } from "effect/ai"
+import { HttpClientError, HttpClientRequest } from "effect/http"
 
 describe("AiError", () => {
   describe("reason types", () => {
+    describe("NetworkError", () => {
+      it("preserves redacted query params from request errors", () => {
+        const request = HttpClientRequest.get("https://example.com").pipe(
+          HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret"))
+        )
+        const error = AiError.NetworkError.fromRequestError(new HttpClientError.TransportError({ request }))
+        const output = JSON.stringify(error)
+        assert.include(output, "remote")
+        assert.notInclude(output, "param-secret")
+      })
+    })
+
     describe("RateLimitError", () => {
       it("should be retryable", () => {
         const error = new AiError.RateLimitError({})
