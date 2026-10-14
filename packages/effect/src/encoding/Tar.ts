@@ -319,51 +319,29 @@ const attempt = <A>(f: () => A): Effect.Effect<A, TarError> => {
   }
 }
 
-const typeOf = (typeflag: string, path: string): EntryType => {
-  switch (typeflag) {
-    case "0":
-    case "7":
-      return "File"
-    case "\0":
-      // Legacy archives mark directories with a trailing slash only
-      return path.endsWith("/") ? "Directory" : "File"
-    case "1":
-      return "Hardlink"
-    case "2":
-      return "Symlink"
-    case "3":
-      return "CharDevice"
-    case "4":
-      return "BlockDevice"
-    case "5":
-      return "Directory"
-    case "6":
-      return "Fifo"
-    default:
-      return "Other"
-  }
+const typeflags: Record<Exclude<EntryType, "Other">, string> = {
+  File: "0",
+  Hardlink: "1",
+  Symlink: "2",
+  CharDevice: "3",
+  BlockDevice: "4",
+  Directory: "5",
+  Fifo: "6"
 }
 
-const typeflagOf = (header: Header): string => {
-  switch (header.type) {
-    case "File":
-      return "0"
-    case "Hardlink":
-      return "1"
-    case "Symlink":
-      return "2"
-    case "CharDevice":
-      return "3"
-    case "BlockDevice":
-      return "4"
-    case "Directory":
-      return "5"
-    case "Fifo":
-      return "6"
-    case "Other":
-      return header.typeflag
-  }
+const types: Record<string, EntryType> = {
+  ...Object.fromEntries(Object.entries(typeflags).map(([type, typeflag]) => [typeflag, type])),
+  // Contiguous files
+  "7": "File"
 }
+
+const typeOf = (typeflag: string, path: string): EntryType => {
+  // Legacy archives mark directories with a trailing slash only
+  if (typeflag === "\0") return path.endsWith("/") ? "Directory" : "File"
+  return types[typeflag] ?? "Other"
+}
+
+const typeflagOf = (header: Header): string => header.type === "Other" ? header.typeflag : typeflags[header.type]
 
 // Entries of these types never carry body bytes, whatever their size field says
 const isHeaderOnly = (type: EntryType): boolean => type !== "File" && type !== "Other"
@@ -591,7 +569,6 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
 // A queue of byte chunks that hands out views without copying where possible
 class ByteQueue {
   private chunks: Array<Uint8Array> = []
-  private index = 0
   private offset = 0
   length = 0
 
@@ -603,7 +580,7 @@ class ByteQueue {
 
   // Takes up to `max` bytes from the first chunk
   takeSome(max: number): Uint8Array {
-    const chunk = this.chunks[this.index]
+    const chunk = this.chunks[0]
     const available = chunk.length - this.offset
     if (max < available) {
       const out = chunk.subarray(this.offset, this.offset + max)
@@ -612,13 +589,9 @@ class ByteQueue {
       return out
     }
     const out = this.offset === 0 ? chunk : chunk.subarray(this.offset)
+    this.chunks.shift()
     this.length -= available
     this.offset = 0
-    this.index++
-    if (this.index === this.chunks.length) {
-      this.chunks = []
-      this.index = 0
-    }
     return out
   }
 
@@ -639,7 +612,6 @@ class ByteQueue {
 
   clear(): void {
     this.chunks = []
-    this.index = 0
     this.offset = 0
     this.length = 0
   }
@@ -938,7 +910,9 @@ const writeUstarBlock = (block: Uint8Array, fields: UstarFields): void => {
   block.fill(0x20, 148, 156)
   let sum = 0
   for (let i = 0; i < BLOCK; i++) sum += block[i]
+  // Six digits, a NUL and the space left from the fill
   writeOctal(block, 148, 7, sum)
+  block[154] = 0
 }
 
 const checkNumber = (field: string, value: number | undefined, max: number): number => {
@@ -991,52 +965,32 @@ const encodeHeader = (header: Header): Uint8Array => {
     pax[key] = value
   }
 
-  let name = path
-  let prefix = ""
-  if (!isAscii(path) || path.length > 100) {
-    const split = splitPath(path)
-    if (split === undefined) {
-      pax.path = path
-      name = toAscii(path).slice(0, 100)
-    } else {
-      prefix = split[0]
-      name = split[1]
-    }
+  // A value that doesn't fit its USTAR field moves to a PAX record, and the
+  // field keeps what it can: the ASCII part of a string, or zero for a number
+  const fitString = (key: string, value: string, length: number): string => {
+    if (isAscii(value) && value.length <= length) return value
+    pax[key] = value
+    return toAscii(value).slice(0, length)
   }
-  const linkTarget = checkNoNul("linkTarget", header.linkTarget ?? "")
-  let linkname = linkTarget
-  if (!isAscii(linkTarget) || linkTarget.length > 100) {
-    pax.linkpath = linkTarget
-    linkname = toAscii(linkTarget).slice(0, 100)
+  const fitNumber = (key: string, value: number, max: number): number => {
+    if (value >= 0 && value <= max) return value
+    pax[key] = String(value)
+    return 0
   }
-  let uname = checkNoNul("uname", header.uname)
-  if (!isAscii(uname) || uname.length > 32) {
-    pax.uname = uname
-    uname = toAscii(uname).slice(0, 32)
-  }
-  let gname = checkNoNul("gname", header.gname)
-  if (!isAscii(gname) || gname.length > 32) {
-    pax.gname = gname
-    gname = toAscii(gname).slice(0, 32)
-  }
-  if (uid > MAX_OCTAL_7) pax.uid = String(uid)
-  if (gid > MAX_OCTAL_7) pax.gid = String(gid)
-  if (size > MAX_OCTAL_11) pax.size = String(size)
-  if (mtime < 0 || mtime > MAX_OCTAL_11) pax.mtime = String(mtime)
 
-  // Numbers that don't fit are written as zero, next to their PAX record
+  const split = splitPath(path)
   const ustar: UstarFields = {
-    name,
-    prefix,
+    name: split === undefined ? fitString("path", path, 100) : split[1],
+    prefix: split === undefined ? "" : split[0],
     typeflag,
-    size: size > MAX_OCTAL_11 ? 0 : size,
+    size: fitNumber("size", size, MAX_OCTAL_11),
     mode,
-    uid: uid > MAX_OCTAL_7 ? 0 : uid,
-    gid: gid > MAX_OCTAL_7 ? 0 : gid,
-    mtime: mtime < 0 || mtime > MAX_OCTAL_11 ? 0 : mtime,
-    linkname,
-    uname,
-    gname,
+    uid: fitNumber("uid", uid, MAX_OCTAL_7),
+    gid: fitNumber("gid", gid, MAX_OCTAL_7),
+    mtime: fitNumber("mtime", mtime, MAX_OCTAL_11),
+    linkname: fitString("linkpath", checkNoNul("linkTarget", header.linkTarget ?? ""), 100),
+    uname: fitString("uname", checkNoNul("uname", header.uname), 32),
+    gname: fitString("gname", checkNoNul("gname", header.gname), 32),
     devMajor,
     devMinor
   }
