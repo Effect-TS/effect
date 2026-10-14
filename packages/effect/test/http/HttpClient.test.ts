@@ -285,6 +285,56 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
       }))
+
+    it.effect("redacts sensitive query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* client.get("http://test/path?Signature=sig-secret&page=1", {
+          urlParams: { "X-Goog-Signature": "goog-secret" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "Signature=REDACTED&page=1&X-Goog-Signature=REDACTED"
+        )
+        assert.strictEqual(sentUrl, "http://test/path?Signature=sig-secret&page=1&X-Goog-Signature=goog-secret")
+      }))
+
+    it.effect("redacts userinfo in url.full", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        )
+
+        yield* client.get("http://user:password@test/path").pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
+      }))
   })
 
   describe("followRedirects", () => {
