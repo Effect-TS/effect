@@ -422,15 +422,32 @@ export const make: (
             "EntityNotAssignedToRunner",
             () => Effect.void
           )
-        } else if (!duplicate && options.storageOnly !== true) {
-          return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
-            Effect.andThen(storage.registerReplyHandler(message)),
-            Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(message))
-          )
         }
+        // The storage read loop can process the request as soon as saveRequest
+        // completes, even before the local notification. Always recover replies
+        // from storage rather than installing a handler after either race window.
+        // For fresh local requests, keep a handler only to wake the reader so
+        // streaming replies do not have to wait for the next polling interval.
+        const readReplies = !duplicate && options.storageOnly !== true
+          ? Effect.raceFirst(
+            replyFromStorage(message),
+            storage.registerReplyHandler(
+              new Message.OutgoingRequest({
+                ...message,
+                respond: () => storageLatch.open
+              })
+            ).pipe(
+              Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
+              // Registration ends on a terminal reply or shard unassignment,
+              // but only the storage reader may complete the caller. The race
+              // interrupts and cleans up the handler when the reader finishes.
+              Effect.andThen(Effect.never)
+            )
+          )
+          : replyFromStorage(message)
         return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
           Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-          Effect.andThen(replyFromStorage(message))
+          Effect.andThen(readReplies)
         )
       })
     }
