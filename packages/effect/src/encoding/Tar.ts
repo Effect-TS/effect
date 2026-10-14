@@ -165,19 +165,6 @@ export interface EntryOptions {
 // Constructors
 // -----------------------------------------------------------------------------
 
-const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder()
-
-const typeflags: Record<Exclude<EntryType, "Other">, string> = {
-  File: "0",
-  Hardlink: "1",
-  Symlink: "2",
-  CharDevice: "3",
-  BlockDevice: "4",
-  Directory: "5",
-  Fifo: "6"
-}
-
 const makeHeader = (
   path: string,
   type: "File" | "Directory" | "Symlink" | "Hardlink",
@@ -505,23 +492,80 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   ) as any
 
 // -----------------------------------------------------------------------------
-// Format
+// Errors
 // -----------------------------------------------------------------------------
-
-const BLOCK = 512
-const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
-const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
-const MAX_META_SIZE = 1024 * 1024 // PAX and GNU long name data
-const PERMISSION_BITS = 0o7777
-const MAX_DATE_MILLIS = 8.64e15 // the range of `Date`
-
-const padding = (size: number): number => (BLOCK - (size % BLOCK)) % BLOCK
 
 const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader", message })
 
 const truncated = () => new TarError({ kind: "Truncated", message: "unexpected end of tar archive" })
 
 const sparseUnsupported = () => new TarError({ kind: "Unsupported", message: "GNU sparse files are not supported" })
+
+const sizeMismatch = (header: Header, written: number) =>
+  new TarError({
+    kind: "SizeMismatch",
+    message: `body of ${JSON.stringify(header.path)} has ${
+      written > header.size ? "more than" : "only"
+    } ${written} bytes, but its size is ${header.size}`
+  })
+
+// -----------------------------------------------------------------------------
+// Format
+// -----------------------------------------------------------------------------
+
+const BLOCK = 512
+const PERMISSION_BITS = 0o7777
+
+const padding = (size: number): number => (BLOCK - (size % BLOCK)) % BLOCK
+
+const isZeroBlock = (block: Uint8Array): boolean => {
+  for (let i = 0; i < BLOCK; i++) {
+    if (block[i] !== 0) return false
+  }
+  return true
+}
+
+// The sum of the bytes of a block, from which header checksums are computed
+const sumBlock = (block: Uint8Array): number => {
+  // Four sums let the loop run faster than one
+  let a = 0
+  let b = 0
+  let c = 0
+  let d = 0
+  for (let i = 0; i < BLOCK; i += 4) {
+    a += block[i]
+    b += block[i + 1]
+    c += block[i + 2]
+    d += block[i + 3]
+  }
+  return a + b + c + d
+}
+
+const USTAR_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x00] // "ustar\0"
+const GNU_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x20, 0x20, 0x00] // "ustar  \0"
+const STAR_TRAILER = [0x74, 0x61, 0x72, 0x00] // "tar\0"
+const USTAR_MAGIC_VERSION = new Uint8Array([0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30]) // "ustar\0" "00"
+
+const hasBytes = (block: Uint8Array, offset: number, bytes: ReadonlyArray<number>): boolean => {
+  for (let i = 0; i < bytes.length; i++) {
+    if (block[offset + i] !== bytes[i]) return false
+  }
+  return true
+}
+
+// -----------------------------------------------------------------------------
+// Entry types
+// -----------------------------------------------------------------------------
+
+const typeflags: Record<Exclude<EntryType, "Other">, string> = {
+  File: "0",
+  Hardlink: "1",
+  Symlink: "2",
+  CharDevice: "3",
+  BlockDevice: "4",
+  Directory: "5",
+  Fifo: "6"
+}
 
 const types: Record<string, EntryType> = {
   ...Object.fromEntries(Object.entries(typeflags).map(([type, typeflag]) => [typeflag, type])),
@@ -540,12 +584,12 @@ const typeflagOf = (header: Header): string => header.type === "Other" ? header.
 // Entries of these types never carry body bytes, whatever their size field says
 const isHeaderOnly = (type: EntryType): boolean => type !== "File" && type !== "Other"
 
-const isZeroBlock = (block: Uint8Array): boolean => {
-  for (let i = 0; i < BLOCK; i++) {
-    if (block[i] !== 0) return false
-  }
-  return true
-}
+// -----------------------------------------------------------------------------
+// Strings
+// -----------------------------------------------------------------------------
+
+const textEncoder = new TextEncoder()
+const textDecoder = new TextDecoder()
 
 const isAscii = (s: string): boolean => {
   for (let i = 0; i < s.length; i++) {
@@ -555,160 +599,28 @@ const isAscii = (s: string): boolean => {
   return true
 }
 
-// -----------------------------------------------------------------------------
-// Header decoding
-// -----------------------------------------------------------------------------
-
-const readString = (block: Uint8Array, offset: number, length: number): string => {
-  let end = offset
-  let ascii = true
-  const limit = offset + length
-  while (end < limit && block[end] !== 0) {
-    if (block[end] >= 0x80) ascii = false
-    end++
+// Keeps the ASCII characters of a value that is also stored in a PAX record
+const toAscii = (s: string): string => {
+  let out = ""
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    if (c > 0 && c < 0x80) out += s[i]
   }
-  if (end === offset) return ""
-  if (!ascii || end - offset > 256) return textDecoder.decode(block.subarray(offset, end))
-  // Most header strings are short ASCII, which is cheaper to build directly
-  return String.fromCharCode.apply(null, block.subarray(offset, end) as unknown as Array<number>)
+  return out
 }
 
-const readOctal = (block: Uint8Array, offset: number, length: number): number => {
-  let start = offset
-  let end = offset + length
-  while (start < end && (block[start] === 0 || block[start] === 0x20)) start++
-  while (end > start && (block[end - 1] === 0 || block[end - 1] === 0x20)) end--
-  let value = 0
-  for (let i = start; i < end; i++) {
-    const c = block[i]
-    if (c < 0x30 || c > 0x37) {
-      throw invalidHeader(`invalid octal number in header at offset ${offset}`)
-    }
-    value = value * 8 + (c - 0x30)
-  }
-  return value
-}
-
-// GNU base-256: the high bit of the first byte is set, and the next bit is the
-// sign of a two's complement big-endian number
-const readNumber = (block: Uint8Array, offset: number, length: number): number => {
-  if ((block[offset] & 0x80) === 0) return readOctal(block, offset, length)
-  const negative = (block[offset] & 0x40) !== 0
-  // Negative numbers are read as the bitwise inverse of their magnitude minus one
-  let value = 0
-  for (let i = 0; i < length; i++) {
-    let c = block[offset + i]
-    if (negative) c ^= 0xff
-    if (i === 0) c &= 0x7f
-    value = value * 256 + c
-    if (value > Number.MAX_SAFE_INTEGER) {
-      throw invalidHeader(`base-256 number in header at offset ${offset} is out of range`)
-    }
-  }
-  return negative ? -value - 1 : value
-}
-
-const sumBlock = (block: Uint8Array): number => {
-  // Four sums let the loop run faster than one
-  let a = 0
-  let b = 0
-  let c = 0
-  let d = 0
-  for (let i = 0; i < BLOCK; i += 4) {
-    a += block[i]
-    b += block[i + 1]
-    c += block[i + 2]
-    d += block[i + 3]
-  }
-  return a + b + c + d
-}
-
-// The checksum is the sum of the block bytes with the checksum field counted as
-// spaces. Some old tar writers summed signed bytes, which is accepted too.
-const verifyChecksum = (block: Uint8Array): boolean => {
-  const stored = readOctal(block, 148, 8)
-  let unsigned = sumBlock(block) + 8 * 0x20
-  for (let i = 148; i < 156; i++) unsigned -= block[i]
-  if (stored === unsigned) return true
-  let high = 0
-  for (let i = 0; i < BLOCK; i++) {
-    if (block[i] > 0x7f && (i < 148 || i >= 156)) high++
-  }
-  return stored === unsigned - 0x100 * high
-}
-
-const hasBytes = (block: Uint8Array, offset: number, bytes: ReadonlyArray<number>): boolean => {
-  for (let i = 0; i < bytes.length; i++) {
-    if (block[offset + i] !== bytes[i]) return false
-  }
-  return true
-}
-
-const USTAR_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x00] // "ustar\0"
-const GNU_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x20, 0x20, 0x00] // "ustar  \0"
-const STAR_TRAILER = [0x74, 0x61, 0x72, 0x00] // "tar\0"
-const USTAR_MAGIC_VERSION = new Uint8Array([0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30]) // "ustar\0" "00"
-
-interface RawHeader {
-  readonly typeflag: string
-  path: string
-  linkTarget: string
-  size: number
-  readonly mode: number
-  uid: number
-  gid: number
-  uname: string
-  gname: string
-  mtimeMillis: number
-  devMajor: number
-  devMinor: number
-}
-
-const parseHeader = (block: Uint8Array): RawHeader => {
-  if (!verifyChecksum(block)) {
-    throw invalidHeader("header checksum mismatch")
-  }
-  const isUstar = hasBytes(block, 257, USTAR_MAGIC)
-  const isGnu = !isUstar && hasBytes(block, 257, GNU_MAGIC)
-  const header: RawHeader = {
-    typeflag: String.fromCharCode(block[156]),
-    path: readString(block, 0, 100),
-    linkTarget: readString(block, 157, 100),
-    size: readNumber(block, 124, 12),
-    mode: readNumber(block, 100, 8),
-    uid: readNumber(block, 108, 8),
-    gid: readNumber(block, 116, 8),
-    mtimeMillis: readNumber(block, 136, 12) * 1000,
-    uname: "",
-    gname: "",
-    devMajor: 0,
-    devMinor: 0
-  }
-  if (header.size < 0) {
-    throw invalidHeader("negative entry size")
-  }
-  if (!isUstar && !isGnu) return header
-  header.uname = readString(block, 265, 32)
-  header.gname = readString(block, 297, 32)
-  header.devMajor = readNumber(block, 329, 8)
-  header.devMinor = readNumber(block, 337, 8)
-  if (isUstar) {
-    // star archives end the block with "tar\0" and keep times after a shorter prefix
-    const prefix = hasBytes(block, 508, STAR_TRAILER) ? readString(block, 345, 131) : readString(block, 345, 155)
-    if (prefix.length > 0) header.path = `${prefix}/${header.path}`
-  }
-  return header
-}
+// Whether a string can be stored as is in a USTAR field of `length` bytes
+const fits = (value: string, length: number): boolean => value.length <= length && isAscii(value)
 
 // -----------------------------------------------------------------------------
 // PAX records
 // -----------------------------------------------------------------------------
 
-// Shared by the decoded headers without PAX records
-const noPax: Readonly<Record<string, string>> = Object.freeze({})
-
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
 const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
+
+// Shared by the decoded headers without PAX records
+const noPax: Readonly<Record<string, string>> = Object.freeze({})
 
 // Parses records of the form "<length> <key>=<value>\n", where the length counts
 // the bytes of the whole record
@@ -788,9 +700,350 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
   return rest
 }
 
+const paxRecord = (key: string, value: string): Uint8Array => {
+  const rest = textEncoder.encode(` ${key}=${value}\n`)
+  // The length counts its own digits
+  const length = rest.length + String(rest.length + String(rest.length).length).length
+  const out = new Uint8Array(length)
+  writeString(out, 0, length, String(length))
+  out.set(rest, length - rest.length)
+  return out
+}
+
+const paxHeaderName = (path: string): string => {
+  const trimmed = path.replace(/\/+$/, "")
+  const i = trimmed.lastIndexOf("/")
+  const name = i === -1 ? `PaxHeaders.0/${trimmed}` : `${trimmed.slice(0, i)}/PaxHeaders.0/${trimmed.slice(i + 1)}`
+  return toAscii(name).slice(0, 100)
+}
+
+// -----------------------------------------------------------------------------
+// Header decoding
+// -----------------------------------------------------------------------------
+
+const readString = (block: Uint8Array, offset: number, length: number): string => {
+  let end = offset
+  let ascii = true
+  const limit = offset + length
+  while (end < limit && block[end] !== 0) {
+    if (block[end] >= 0x80) ascii = false
+    end++
+  }
+  if (end === offset) return ""
+  if (!ascii || end - offset > 256) return textDecoder.decode(block.subarray(offset, end))
+  // Most header strings are short ASCII, which is cheaper to build directly
+  return String.fromCharCode.apply(null, block.subarray(offset, end) as unknown as Array<number>)
+}
+
+const readOctal = (block: Uint8Array, offset: number, length: number): number => {
+  let start = offset
+  let end = offset + length
+  while (start < end && (block[start] === 0 || block[start] === 0x20)) start++
+  while (end > start && (block[end - 1] === 0 || block[end - 1] === 0x20)) end--
+  let value = 0
+  for (let i = start; i < end; i++) {
+    const c = block[i]
+    if (c < 0x30 || c > 0x37) {
+      throw invalidHeader(`invalid octal number in header at offset ${offset}`)
+    }
+    value = value * 8 + (c - 0x30)
+  }
+  return value
+}
+
+// GNU base-256: the high bit of the first byte is set, and the next bit is the
+// sign of a two's complement big-endian number
+const readNumber = (block: Uint8Array, offset: number, length: number): number => {
+  if ((block[offset] & 0x80) === 0) return readOctal(block, offset, length)
+  const negative = (block[offset] & 0x40) !== 0
+  // Negative numbers are read as the bitwise inverse of their magnitude minus one
+  let value = 0
+  for (let i = 0; i < length; i++) {
+    let c = block[offset + i]
+    if (negative) c ^= 0xff
+    if (i === 0) c &= 0x7f
+    value = value * 256 + c
+    if (value > Number.MAX_SAFE_INTEGER) {
+      throw invalidHeader(`base-256 number in header at offset ${offset} is out of range`)
+    }
+  }
+  return negative ? -value - 1 : value
+}
+
+// The checksum is the sum of the block bytes with the checksum field counted as
+// spaces. Some old tar writers summed signed bytes, which is accepted too.
+const verifyChecksum = (block: Uint8Array): boolean => {
+  const stored = readOctal(block, 148, 8)
+  let unsigned = sumBlock(block) + 8 * 0x20
+  for (let i = 148; i < 156; i++) unsigned -= block[i]
+  if (stored === unsigned) return true
+  let high = 0
+  for (let i = 0; i < BLOCK; i++) {
+    if (block[i] > 0x7f && (i < 148 || i >= 156)) high++
+  }
+  return stored === unsigned - 0x100 * high
+}
+
+interface RawHeader {
+  readonly typeflag: string
+  path: string
+  linkTarget: string
+  size: number
+  readonly mode: number
+  uid: number
+  gid: number
+  uname: string
+  gname: string
+  mtimeMillis: number
+  devMajor: number
+  devMinor: number
+}
+
+const parseHeader = (block: Uint8Array): RawHeader => {
+  if (!verifyChecksum(block)) {
+    throw invalidHeader("header checksum mismatch")
+  }
+  const isUstar = hasBytes(block, 257, USTAR_MAGIC)
+  const isGnu = !isUstar && hasBytes(block, 257, GNU_MAGIC)
+  const header: RawHeader = {
+    typeflag: String.fromCharCode(block[156]),
+    path: readString(block, 0, 100),
+    linkTarget: readString(block, 157, 100),
+    size: readNumber(block, 124, 12),
+    mode: readNumber(block, 100, 8),
+    uid: readNumber(block, 108, 8),
+    gid: readNumber(block, 116, 8),
+    mtimeMillis: readNumber(block, 136, 12) * 1000,
+    uname: "",
+    gname: "",
+    devMajor: 0,
+    devMinor: 0
+  }
+  if (header.size < 0) {
+    throw invalidHeader("negative entry size")
+  }
+  if (!isUstar && !isGnu) return header
+  header.uname = readString(block, 265, 32)
+  header.gname = readString(block, 297, 32)
+  header.devMajor = readNumber(block, 329, 8)
+  header.devMinor = readNumber(block, 337, 8)
+  if (isUstar) {
+    // star archives end the block with "tar\0" and keep times after a shorter prefix
+    const prefix = hasBytes(block, 508, STAR_TRAILER) ? readString(block, 345, 131) : readString(block, 345, 155)
+    if (prefix.length > 0) header.path = `${prefix}/${header.path}`
+  }
+  return header
+}
+
+// -----------------------------------------------------------------------------
+// Header encoding
+// -----------------------------------------------------------------------------
+
+const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
+const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
+
+const writeString = (block: Uint8Array, offset: number, length: number, value: string): void => {
+  const n = Math.min(value.length, length)
+  for (let i = 0; i < n; i++) block[offset + i] = value.charCodeAt(i)
+}
+
+// Writes `length - 1` zero-padded octal digits; the value must fit
+const writeOctal = (block: Uint8Array, offset: number, length: number, value: number): void => {
+  let i = offset + length - 2
+  // Bit operations are faster, but only cover 32 bits
+  for (; value > 0x3fffffff && i >= offset; i--) {
+    block[i] = 0x30 + (value % 8)
+    value = Math.floor(value / 8)
+  }
+  for (; i >= offset; i--) {
+    block[i] = 0x30 + (value & 7)
+    value >>>= 3
+  }
+}
+
+// Split at the last slash that fits the 155-byte USTAR prefix.
+const splitPath = (path: string): readonly [prefix: string, name: string] | undefined => {
+  if (path.length <= 100 || !isAscii(path)) return undefined
+  let length = path.length
+  if (length > 156) length = 156
+  else if (path[length - 1] === "/") length--
+  const i = path.lastIndexOf("/", length - 1)
+  if (i <= 0 || path.length - i - 1 > 100) return undefined
+  return [path.slice(0, i), path.slice(i + 1)]
+}
+
+interface UstarFields {
+  readonly name: string
+  readonly prefix: string
+  readonly typeflag: string
+  readonly size: number
+  readonly mode: number
+  readonly uid: number
+  readonly gid: number
+  readonly mtime: number
+  readonly linkname: string
+  readonly uname: string
+  readonly gname: string
+  readonly devMajor: number
+  readonly devMinor: number
+}
+
+const paxHeaderFields: UstarFields = {
+  name: "",
+  prefix: "",
+  typeflag: "x",
+  size: 0,
+  mode: 0o644,
+  uid: 0,
+  gid: 0,
+  mtime: 0,
+  linkname: "",
+  uname: "",
+  gname: "",
+  devMajor: 0,
+  devMinor: 0
+}
+
+const writeUstarBlock = (block: Uint8Array, fields: UstarFields): void => {
+  writeString(block, 0, 100, fields.name)
+  writeOctal(block, 100, 8, fields.mode)
+  writeOctal(block, 108, 8, fields.uid)
+  writeOctal(block, 116, 8, fields.gid)
+  writeOctal(block, 124, 12, fields.size)
+  writeOctal(block, 136, 12, fields.mtime)
+  block[156] = fields.typeflag.charCodeAt(0)
+  writeString(block, 157, 100, fields.linkname)
+  block.set(USTAR_MAGIC_VERSION, 257)
+  writeString(block, 265, 32, fields.uname)
+  writeString(block, 297, 32, fields.gname)
+  writeOctal(block, 329, 8, fields.devMajor)
+  writeOctal(block, 337, 8, fields.devMinor)
+  writeString(block, 345, 155, fields.prefix)
+  block.fill(0x20, 148, 156)
+  // Six digits, a NUL and the space left from the fill
+  writeOctal(block, 148, 7, sumBlock(block))
+  block[154] = 0
+}
+
+const checkNumber = (field: string, value: number | undefined, max: number): number => {
+  const n = value ?? 0
+  if (!Number.isSafeInteger(n) || n < 0 || n > max) {
+    throw invalidHeader(`invalid ${field} ${n}`)
+  }
+  return n
+}
+
+const checkNoNul = (field: string, value: string): string => {
+  if (value.includes("\0")) {
+    throw invalidHeader(`${field} must not contain NUL characters`)
+  }
+  return value
+}
+
+// Writes the header blocks of an entry, with a PAX header first when needed, into
+// zeroed memory from `alloc`. Throws before allocating when the header is invalid.
+const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void => {
+  const path = checkNoNul("path", header.path)
+  if (path === "") {
+    throw invalidHeader("path must not be empty")
+  }
+  // GNU tar and node-tar read such an entry as a directory
+  if (header.type === "File" && path.endsWith("/")) {
+    throw invalidHeader(`File entry ${JSON.stringify(path)} must not end with "/"`)
+  }
+  const typeflag = typeflagOf(header)
+  if (typeflag.length !== 1 || typeflag.charCodeAt(0) >= 0x80 || "xgLKS".includes(typeflag)) {
+    throw invalidHeader(`invalid typeflag ${JSON.stringify(typeflag)}`)
+  }
+  const size = checkNumber("size", header.size, Number.MAX_SAFE_INTEGER)
+  if (size > 0 && isHeaderOnly(header.type)) {
+    throw invalidHeader(`${header.type} entry ${JSON.stringify(path)} must have size 0`)
+  }
+  const mode = checkNumber("mode", header.mode, Number.MAX_SAFE_INTEGER) & PERMISSION_BITS
+  const uid = checkNumber("uid", header.uid, Number.MAX_SAFE_INTEGER)
+  const gid = checkNumber("gid", header.gid, Number.MAX_SAFE_INTEGER)
+  const devMajor = checkNumber("devMajor", header.devMajor, MAX_OCTAL_7)
+  const devMinor = checkNumber("devMinor", header.devMinor, MAX_OCTAL_7)
+  const millis = header.mtime.getTime()
+  if (Number.isNaN(millis)) {
+    throw invalidHeader("mtime must be a valid date")
+  }
+  const mtime = Math.floor(millis / 1000)
+
+  // Records of the PAX header, created when one is needed
+  let pax: Record<string, string> | undefined
+  for (const key of Object.keys(header.pax)) {
+    if (key.startsWith("GNU.sparse.")) {
+      throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
+    }
+    if (paxHeaderKeys.has(key)) {
+      throw invalidHeader(`PAX record ${JSON.stringify(key)} must be set through its header field`)
+    }
+    if (key === "" || key.includes("=") || key.includes("\0")) {
+      throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
+    }
+    pax ??= {}
+    pax[key] = header.pax[key]
+  }
+
+  // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
+  const split = splitPath(path)
+  const linkTarget = checkNoNul("linkTarget", header.linkTarget ?? "")
+  const uname = checkNoNul("uname", header.uname)
+  const gname = checkNoNul("gname", header.gname)
+  const pathFits = split !== undefined || fits(path, 100)
+  const linkTargetFits = fits(linkTarget, 100)
+  const unameFits = fits(uname, 32)
+  const gnameFits = fits(gname, 32)
+  if (!pathFits) (pax ??= {}).path = path
+  if (!linkTargetFits) (pax ??= {}).linkpath = linkTarget
+  if (!unameFits) (pax ??= {}).uname = uname
+  if (!gnameFits) (pax ??= {}).gname = gname
+  if (size > MAX_OCTAL_11) (pax ??= {}).size = String(size)
+  if (uid > MAX_OCTAL_7) (pax ??= {}).uid = String(uid)
+  if (gid > MAX_OCTAL_7) (pax ??= {}).gid = String(gid)
+  if (mtime < 0 || mtime > MAX_OCTAL_11) (pax ??= {}).mtime = String(mtime)
+
+  const ustar: UstarFields = {
+    name: split !== undefined ? split[1] : pathFits ? path : toAscii(path).slice(0, 100),
+    prefix: split !== undefined ? split[0] : "",
+    typeflag,
+    size: size > MAX_OCTAL_11 ? 0 : size,
+    mode,
+    uid: uid > MAX_OCTAL_7 ? 0 : uid,
+    gid: gid > MAX_OCTAL_7 ? 0 : gid,
+    mtime: mtime < 0 || mtime > MAX_OCTAL_11 ? 0 : mtime,
+    linkname: linkTargetFits ? linkTarget : toAscii(linkTarget).slice(0, 100),
+    uname: unameFits ? uname : toAscii(uname).slice(0, 32),
+    gname: gnameFits ? gname : toAscii(gname).slice(0, 32),
+    devMajor,
+    devMinor
+  }
+
+  if (pax === undefined) {
+    writeUstarBlock(alloc(BLOCK), ustar)
+    return
+  }
+  const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
+  let dataLength = 0
+  for (const record of records) dataLength += record.length
+  const paxBlocks = 1 + Math.ceil(dataLength / BLOCK)
+  const out = alloc(BLOCK * (paxBlocks + 1))
+  writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
+  let offset = BLOCK
+  for (const record of records) {
+    out.set(record, offset)
+    offset += record.length
+  }
+  writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
+}
+
 // -----------------------------------------------------------------------------
 // Decoding
 // -----------------------------------------------------------------------------
+
+const MAX_META_SIZE = 1024 * 1024 // PAX and GNU long name data
+const MAX_DATE_MILLIS = 8.64e15 // the range of `Date`
 
 // A queue of byte chunks that hands out views without copying where possible.
 // Consumed chunks are released right away.
@@ -1029,240 +1282,6 @@ class Decoder {
 // -----------------------------------------------------------------------------
 // Encoding
 // -----------------------------------------------------------------------------
-
-const writeString = (block: Uint8Array, offset: number, length: number, value: string): void => {
-  const n = Math.min(value.length, length)
-  for (let i = 0; i < n; i++) block[offset + i] = value.charCodeAt(i)
-}
-
-// Writes `length - 1` zero-padded octal digits; the value must fit
-const writeOctal = (block: Uint8Array, offset: number, length: number, value: number): void => {
-  let i = offset + length - 2
-  // Bit operations are faster, but only cover 32 bits
-  for (; value > 0x3fffffff && i >= offset; i--) {
-    block[i] = 0x30 + (value % 8)
-    value = Math.floor(value / 8)
-  }
-  for (; i >= offset; i--) {
-    block[i] = 0x30 + (value & 7)
-    value >>>= 3
-  }
-}
-
-// Keeps the ASCII characters of a value that is also stored in a PAX record
-const toAscii = (s: string): string => {
-  let out = ""
-  for (let i = 0; i < s.length; i++) {
-    const c = s.charCodeAt(i)
-    if (c > 0 && c < 0x80) out += s[i]
-  }
-  return out
-}
-
-// Whether a string can be stored as is in a USTAR field of `length` bytes
-const fits = (value: string, length: number): boolean => value.length <= length && isAscii(value)
-
-// Split at the last slash that fits the 155-byte USTAR prefix.
-const splitPath = (path: string): readonly [prefix: string, name: string] | undefined => {
-  if (path.length <= 100 || !isAscii(path)) return undefined
-  let length = path.length
-  if (length > 156) length = 156
-  else if (path[length - 1] === "/") length--
-  const i = path.lastIndexOf("/", length - 1)
-  if (i <= 0 || path.length - i - 1 > 100) return undefined
-  return [path.slice(0, i), path.slice(i + 1)]
-}
-
-const paxRecord = (key: string, value: string): Uint8Array => {
-  const rest = textEncoder.encode(` ${key}=${value}\n`)
-  // The length counts its own digits
-  const length = rest.length + String(rest.length + String(rest.length).length).length
-  const out = new Uint8Array(length)
-  writeString(out, 0, length, String(length))
-  out.set(rest, length - rest.length)
-  return out
-}
-
-const paxHeaderName = (path: string): string => {
-  const trimmed = path.replace(/\/+$/, "")
-  const i = trimmed.lastIndexOf("/")
-  const name = i === -1 ? `PaxHeaders.0/${trimmed}` : `${trimmed.slice(0, i)}/PaxHeaders.0/${trimmed.slice(i + 1)}`
-  return toAscii(name).slice(0, 100)
-}
-
-interface UstarFields {
-  readonly name: string
-  readonly prefix: string
-  readonly typeflag: string
-  readonly size: number
-  readonly mode: number
-  readonly uid: number
-  readonly gid: number
-  readonly mtime: number
-  readonly linkname: string
-  readonly uname: string
-  readonly gname: string
-  readonly devMajor: number
-  readonly devMinor: number
-}
-
-const paxHeaderFields: UstarFields = {
-  name: "",
-  prefix: "",
-  typeflag: "x",
-  size: 0,
-  mode: 0o644,
-  uid: 0,
-  gid: 0,
-  mtime: 0,
-  linkname: "",
-  uname: "",
-  gname: "",
-  devMajor: 0,
-  devMinor: 0
-}
-
-const writeUstarBlock = (block: Uint8Array, fields: UstarFields): void => {
-  writeString(block, 0, 100, fields.name)
-  writeOctal(block, 100, 8, fields.mode)
-  writeOctal(block, 108, 8, fields.uid)
-  writeOctal(block, 116, 8, fields.gid)
-  writeOctal(block, 124, 12, fields.size)
-  writeOctal(block, 136, 12, fields.mtime)
-  block[156] = fields.typeflag.charCodeAt(0)
-  writeString(block, 157, 100, fields.linkname)
-  block.set(USTAR_MAGIC_VERSION, 257)
-  writeString(block, 265, 32, fields.uname)
-  writeString(block, 297, 32, fields.gname)
-  writeOctal(block, 329, 8, fields.devMajor)
-  writeOctal(block, 337, 8, fields.devMinor)
-  writeString(block, 345, 155, fields.prefix)
-  block.fill(0x20, 148, 156)
-  // Six digits, a NUL and the space left from the fill
-  writeOctal(block, 148, 7, sumBlock(block))
-  block[154] = 0
-}
-
-const checkNumber = (field: string, value: number | undefined, max: number): number => {
-  const n = value ?? 0
-  if (!Number.isSafeInteger(n) || n < 0 || n > max) {
-    throw invalidHeader(`invalid ${field} ${n}`)
-  }
-  return n
-}
-
-const checkNoNul = (field: string, value: string): string => {
-  if (value.includes("\0")) {
-    throw invalidHeader(`${field} must not contain NUL characters`)
-  }
-  return value
-}
-
-// Writes the header blocks of an entry, with a PAX header first when needed, into
-// zeroed memory from `alloc`. Throws before allocating when the header is invalid.
-const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void => {
-  const path = checkNoNul("path", header.path)
-  if (path === "") {
-    throw invalidHeader("path must not be empty")
-  }
-  // GNU tar and node-tar read such an entry as a directory
-  if (header.type === "File" && path.endsWith("/")) {
-    throw invalidHeader(`File entry ${JSON.stringify(path)} must not end with "/"`)
-  }
-  const typeflag = typeflagOf(header)
-  if (typeflag.length !== 1 || typeflag.charCodeAt(0) >= 0x80 || "xgLKS".includes(typeflag)) {
-    throw invalidHeader(`invalid typeflag ${JSON.stringify(typeflag)}`)
-  }
-  const size = checkNumber("size", header.size, Number.MAX_SAFE_INTEGER)
-  if (size > 0 && isHeaderOnly(header.type)) {
-    throw invalidHeader(`${header.type} entry ${JSON.stringify(path)} must have size 0`)
-  }
-  const mode = checkNumber("mode", header.mode, Number.MAX_SAFE_INTEGER) & PERMISSION_BITS
-  const uid = checkNumber("uid", header.uid, Number.MAX_SAFE_INTEGER)
-  const gid = checkNumber("gid", header.gid, Number.MAX_SAFE_INTEGER)
-  const devMajor = checkNumber("devMajor", header.devMajor, MAX_OCTAL_7)
-  const devMinor = checkNumber("devMinor", header.devMinor, MAX_OCTAL_7)
-  const millis = header.mtime.getTime()
-  if (Number.isNaN(millis)) {
-    throw invalidHeader("mtime must be a valid date")
-  }
-  const mtime = Math.floor(millis / 1000)
-
-  // Records of the PAX header, created when one is needed
-  let pax: Record<string, string> | undefined
-  for (const key of Object.keys(header.pax)) {
-    if (key.startsWith("GNU.sparse.")) {
-      throw invalidHeader(`PAX record ${JSON.stringify(key)} is not supported`)
-    }
-    if (paxHeaderKeys.has(key)) {
-      throw invalidHeader(`PAX record ${JSON.stringify(key)} must be set through its header field`)
-    }
-    if (key === "" || key.includes("=") || key.includes("\0")) {
-      throw invalidHeader(`invalid PAX record ${JSON.stringify(key)}`)
-    }
-    pax ??= {}
-    pax[key] = header.pax[key]
-  }
-
-  // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
-  const split = splitPath(path)
-  const linkTarget = checkNoNul("linkTarget", header.linkTarget ?? "")
-  const uname = checkNoNul("uname", header.uname)
-  const gname = checkNoNul("gname", header.gname)
-  const pathFits = split !== undefined || fits(path, 100)
-  const linkTargetFits = fits(linkTarget, 100)
-  const unameFits = fits(uname, 32)
-  const gnameFits = fits(gname, 32)
-  if (!pathFits) (pax ??= {}).path = path
-  if (!linkTargetFits) (pax ??= {}).linkpath = linkTarget
-  if (!unameFits) (pax ??= {}).uname = uname
-  if (!gnameFits) (pax ??= {}).gname = gname
-  if (size > MAX_OCTAL_11) (pax ??= {}).size = String(size)
-  if (uid > MAX_OCTAL_7) (pax ??= {}).uid = String(uid)
-  if (gid > MAX_OCTAL_7) (pax ??= {}).gid = String(gid)
-  if (mtime < 0 || mtime > MAX_OCTAL_11) (pax ??= {}).mtime = String(mtime)
-
-  const ustar: UstarFields = {
-    name: split !== undefined ? split[1] : pathFits ? path : toAscii(path).slice(0, 100),
-    prefix: split !== undefined ? split[0] : "",
-    typeflag,
-    size: size > MAX_OCTAL_11 ? 0 : size,
-    mode,
-    uid: uid > MAX_OCTAL_7 ? 0 : uid,
-    gid: gid > MAX_OCTAL_7 ? 0 : gid,
-    mtime: mtime < 0 || mtime > MAX_OCTAL_11 ? 0 : mtime,
-    linkname: linkTargetFits ? linkTarget : toAscii(linkTarget).slice(0, 100),
-    uname: unameFits ? uname : toAscii(uname).slice(0, 32),
-    gname: gnameFits ? gname : toAscii(gname).slice(0, 32),
-    devMajor,
-    devMinor
-  }
-
-  if (pax === undefined) {
-    writeUstarBlock(alloc(BLOCK), ustar)
-    return
-  }
-  const records = Object.keys(pax).sort().map((key) => paxRecord(key, pax[key]))
-  let dataLength = 0
-  for (const record of records) dataLength += record.length
-  const paxBlocks = 1 + Math.ceil(dataLength / BLOCK)
-  const out = alloc(BLOCK * (paxBlocks + 1))
-  writeUstarBlock(out, { ...paxHeaderFields, name: paxHeaderName(path), size: dataLength })
-  let offset = BLOCK
-  for (const record of records) {
-    out.set(record, offset)
-    offset += record.length
-  }
-  writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
-}
-
-const sizeMismatch = (header: Header, written: number) =>
-  new TarError({
-    kind: "SizeMismatch",
-    message: `body of ${JSON.stringify(header.path)} has ${
-      written > header.size ? "more than" : "only"
-    } ${written} bytes, but its size is ${header.size}`
-  })
 
 const SLAB_SIZE = 64 * 1024
 
