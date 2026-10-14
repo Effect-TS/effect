@@ -26,6 +26,14 @@ import { PgClient } from "./PgClient.ts"
  * @since 4.0.0
  */
 export * from "effect/sql/Migrator"
+export {
+  /**
+   * @stability unstable
+   * @category loaders
+   * @since 4.0.0
+   */
+  fromFileSystem
+} from "effect/sql/MigratorFileSystem"
 
 /**
  * Runs PostgreSQL SQL migrations using the configured clients. Schema dumps use `pg_dump` and require child process, filesystem, and path services.
