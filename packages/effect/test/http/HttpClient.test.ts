@@ -338,6 +338,32 @@ Missing key
   })
 
   describe("HttpClientError", () => {
+    it.each([
+      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=REDACTED&page=1", emptyRedaction: false },
+      { query: "", expectedQuery: "", emptyRedaction: false },
+      { query: "?sig=query-secret&page=1", expectedQuery: "?sig=query-secret&page=1", emptyRedaction: true }
+    ])("redacts userinfo with query $query and empty redaction list $emptyRedaction", async ({
+      emptyRedaction,
+      expectedQuery,
+      query
+    }) => {
+      const url = `https://user:password@api.test/path${query}`
+      const request = HttpClientRequest.get(url)
+      const inspect = Effect.sync(() => {
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request })
+        })
+        const message = error.message
+        strictEqual(request.url, url)
+        strictEqual(message, `Transport error (GET https://REDACTED:REDACTED@api.test/path${expectedQuery})`)
+      })
+      await Effect.runPromise(
+        emptyRedaction
+          ? inspect.pipe(Effect.provideService(UrlParams.CurrentRedactedNames, []))
+          : inspect
+      )
+    })
+
     it.effect("redacts query params in messages using the current redacted names", () =>
       Effect.gen(function*() {
         const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
