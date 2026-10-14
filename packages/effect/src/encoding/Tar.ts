@@ -344,10 +344,8 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
     Effect.suspend(() => {
       const decoder = new Decoder()
       let done: { readonly value: Done } | undefined
-      // The entry stream and the current body can both wait for input. Only one
-      // of them pulls upstream at a time; the other waits on `waiting`, and
-      // `pulls` tells a reader whether input arrived since it last looked.
-      let pulls = 0
+      // The entry stream and the current body can both need input. One of them
+      // pulls upstream at a time, and the other waits on `waiting`.
       let pulling = false
       let waiting: Latch.Latch | undefined
 
@@ -361,24 +359,34 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
           return Effect.void
         }),
         Effect.onExit(() => {
-          pulls++
           pulling = false
-          if (waiting !== undefined) {
-            waiting.openUnsafe()
-            waiting = undefined
-          }
+          waiting?.openUnsafe()
+          waiting = undefined
           return Effect.void
         })
       )
 
-      // Pulls more input, unless it arrived since `seen` or another reader is
-      // pulling it
-      const pullInput = (seen: number): Effect.Effect<void, IE> =>
-        Effect.suspend(() => {
-          if (pulls !== seen) return Effect.void
-          if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
-          pulling = true
-          return pullUpstream
+      const pullInput: Effect.Effect<void, IE> = Effect.suspend(() => {
+        if (done !== undefined) return Effect.void
+        if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
+        pulling = true
+        return pullUpstream
+      })
+
+      // Runs a decoder step, pulling input until it has enough, and continues
+      // with its result
+      const step = <A, B, E2, D>(
+        f: () => A | typeof NeedInput,
+        k: (a: A) => Effect.Effect<B, E2 | Cause.Done<D>>
+      ): Effect.Effect<B, TarError | IE | E2 | Cause.Done<D>> =>
+        Effect.suspend(function loop(): Effect.Effect<B, TarError | IE | E2 | Cause.Done<D>> {
+          let result: A | typeof NeedInput
+          try {
+            result = f()
+          } catch (error) {
+            return Effect.fail(error as TarError)
+          }
+          return result === NeedInput ? Effect.flatMap(pullInput, loop) : k(result)
         })
 
       // Discards the input after the end of the archive
@@ -386,40 +394,17 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
         never,
         IE | Cause.Done<Done>
       > {
-        if (done !== undefined) return Cause.done(done.value)
-        return Effect.flatMap(pullInput(pulls), loop)
+        return done !== undefined ? Cause.done(done.value) : Effect.flatMap(pullInput, loop)
       })
 
       const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-        Stream.fromPull(Effect.succeed(Effect.suspend(function loop(): Pull.Pull<
-          Arr.NonEmptyReadonlyArray<Uint8Array>,
-          TarError | IE
-        > {
-          const seen = pulls
-          let chunks: Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd
-          try {
-            chunks = decoder.read(id)
-          } catch (error) {
-            return Effect.fail(error as TarError)
-          }
-          if (chunks === NeedInput) return Effect.flatMap(pullInput(seen), loop)
-          if (chunks === BodyEnd) return Cause.done()
-          return Effect.succeed(chunks)
-        })))
+        Stream.fromPull(Effect.succeed(
+          step(() => decoder.read(id), (chunks) => chunks === BodyEnd ? Cause.done() : Effect.succeed(chunks))
+        ))
 
-      const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.suspend(
-        function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> {
-          const seen = pulls
-          let header: Header | undefined | typeof NeedInput
-          try {
-            header = decoder.next()
-          } catch (error) {
-            return Effect.fail(error as TarError)
-          }
-          if (header === NeedInput) return Effect.flatMap(pullInput(seen), loop)
-          if (header === undefined) return drain
-          return Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
-        }
+      const next = step(
+        () => decoder.next(),
+        (header) => header === undefined ? drain : Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
       )
 
       return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
@@ -473,96 +458,58 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   // signature above
   Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<unknown, unknown>>, IE, Done>, scope) =>
     Effect.sync(() => {
-      type Out = Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, Done, unknown>
       const encoder = new Encoder()
       let entries: ReadonlyArray<Entry<unknown, unknown>> = []
       let index = 0
-      let finished: { readonly value: Done } | undefined
-      // A failed entry, reported once the output before it is handed out
-      let failure: TarError | undefined
-      // The body being written
-      let body: {
-        readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, void, unknown>
-        readonly scope: Scope.Closeable
-      } | undefined
+      let done: { readonly value: Done } | undefined
+      // The body being written, and the scope it runs in
+      let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, void, unknown> | undefined
+      let bodyScope: Scope.Closeable | undefined
 
-      const startBody = (entry: Entry<unknown, unknown>): Out => {
-        const bodyScope = Scope.forkUnsafe(scope)
-        return Effect.flatMap(Channel.toPullScoped(entry.body.channel, bodyScope), (pull) => {
-          body = { pull, scope: bodyScope }
-          return loop()
-        })
-      }
-
-      const pullBody = (current: NonNullable<typeof body>): Out =>
-        Effect.flatMap(Pull.catchDone(current.pull, () => Effect.succeed(undefined)), (chunks) => {
-          if (chunks !== undefined) {
-            try {
+      // Writes entries until a slab is full, and hands out what was written
+      // before waiting for a body or more entries
+      const pull = Effect.gen(function*() {
+        while (true) {
+          if (body !== undefined) {
+            if (encoder.buffered > 0) return encoder.flush()
+            const chunks = yield* Pull.catchDone(body, () => Effect.undefined)
+            if (chunks !== undefined) {
               for (const chunk of chunks) encoder.body(chunk)
-            } catch (error) {
-              failure = error as TarError
+              continue
             }
-            return loop()
+            body = undefined
+            yield* Scope.close(bodyScope!, Exit.void)
+            encoder.end()
+            continue
           }
-          body = undefined
-          return Effect.flatMap(Scope.close(current.scope, Exit.void), () => {
-            try {
+          if (encoder.buffered >= SLAB_SIZE) return encoder.flush()
+          if (index < entries.length) {
+            const entry = entries[index++]
+            encoder.begin(entry.header)
+            // Directories, links and empty files have nothing to stream
+            if (entry.body === Stream.empty) {
               encoder.end()
-            } catch (error) {
-              failure = error as TarError
+              continue
             }
-            return loop()
+            bodyScope = Scope.forkUnsafe(scope)
+            body = yield* Channel.toPullScoped(entry.body.channel, bodyScope)
+            continue
+          }
+          if (encoder.buffered > 0) return encoder.flush()
+          if (done !== undefined) return yield* Cause.done(done.value)
+          const next = yield* Pull.catchDone(upstream, (value) => {
+            done = { value: value as Done }
+            encoder.finish()
+            return Effect.undefined
           })
-        })
-
-      const pullEntries: Out = Effect.flatMap(
-        Pull.catchDone(upstream, (value) => {
-          finished = { value: value as Done }
-          encoder.finish()
-          return Effect.succeed(undefined)
-        }),
-        (next) => {
           if (next !== undefined) {
             entries = next
             index = 0
           }
-          return loop()
         }
-      )
-
-      // Writes entries until there is output to hand out, or a body or more
-      // entries must be pulled. Output is handed out before anything that can
-      // wait or fail.
-      const loop = (): Out => {
-        while (true) {
-          if (encoder.buffered > 0 && (failure !== undefined || body !== undefined || finished !== undefined)) {
-            return Effect.succeed(encoder.flush())
-          }
-          if (failure !== undefined) return Effect.fail(failure)
-          if (finished !== undefined) return Cause.done(finished.value)
-          if (body !== undefined) return pullBody(body)
-          if (encoder.buffered >= SLAB_SIZE) return Effect.succeed(encoder.flush())
-          if (index < entries.length) {
-            const entry = entries[index++]
-            try {
-              encoder.begin(entry.header)
-              // Directories, links and empty files have nothing to stream
-              if (entry.body === Stream.empty) {
-                encoder.end()
-                continue
-              }
-            } catch (error) {
-              failure = error as TarError
-              continue
-            }
-            return startBody(entry)
-          }
-          if (encoder.buffered > 0) return Effect.succeed(encoder.flush())
-          return pullEntries
-        }
-      }
-
-      return Effect.suspend(loop)
+      })
+      // The encoder throws a `TarError` for an entry that cannot be written
+      return Effect.catchDefect(pull, (defect) => isTarError(defect) ? Effect.fail(defect) : Effect.die(defect))
     })
   ) as any
 
