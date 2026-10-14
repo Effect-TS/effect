@@ -365,6 +365,45 @@ describe("GraphQLResolver", () => {
         // Once per lookup, and not again when each batch is sent.
         assert.strictEqual(evaluations, 3)
       }))
+
+    it.effect("a direct call made while a batch is sent resolves its own URL", () =>
+      Effect.gen(function*() {
+        class Nested extends GraphQLMiddleware.Service<Nested>()("test/Nested") {}
+        const sent: Array<string> = []
+        const layer = GraphQLProtocol.layerHttp({
+          url: Effect.map(Effect.service(GitHubHost), (host) => `http://${host}/graphql`)
+        }).pipe(
+          Layer.provide(httpClientLayer((_, bodyText, url) => {
+            const { ids } = JSON.parse(bodyText!).variables as { ids: Array<string> }
+            sent.push(`${url.host}: ${ids}`)
+            return graphqlResponse({ data: { nodes: ids.map(repo) } })
+          }))
+        )
+        // Both clients share one transport. The batched client's middleware
+        // calls the same operation directly on another host.
+        const batched = yield* Effect.gen(function*() {
+          const direct = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes))
+          return yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(Nested)).pipe(
+            Effect.provideService(Nested, {
+              execute: ({ next, request }) =>
+                Effect.andThen(
+                  Effect.orDie(
+                    direct.RepoNodes({ ids: ["R_9"] }, { context: Context.make(GitHubHost, "api.acme.ghe.com") })
+                  ),
+                  next(request)
+                ),
+              subscribe: ({ next, request }) => next(request)
+            })
+          )
+        }).pipe(Effect.provide(layer))
+        const get = GraphQLResolver.request(GraphQLResolver.ordered(batched.RepoNodes, {
+          variables: (ids: ReadonlyArray<string>) => ({ ids }),
+          path: ["nodes"]
+        }))
+
+        assert.deepStrictEqual(yield* get("R_1"), repo("R_1"))
+        assert.deepStrictEqual(sent, ["api.acme.ghe.com: R_9", "api.github.com: R_1"])
+      }))
   })
 
   describe("aliased", () => {
