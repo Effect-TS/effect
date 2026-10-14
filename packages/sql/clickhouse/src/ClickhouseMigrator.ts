@@ -20,6 +20,14 @@ import type { SqlError } from "effect/sql/SqlError"
  * @since 4.0.0
  */
 export * from "effect/sql/Migrator"
+export {
+  /**
+   * @stability unstable
+   * @category loaders
+   * @since 4.0.0
+   */
+  fromFileSystem
+} from "effect/sql/MigratorFileSystem"
 
 /**
  * Runs SQL migrations for ClickHouse using the supplied migrator options and
