@@ -17,6 +17,38 @@ const makeResponse = (overrides: Record<string, unknown> = {}) => ({
 })
 
 describe("OpenAiSchema", () => {
+  it("keeps decision instructions and descriptions string-only", () => {
+    const questions = [
+      { type: "predicate", name: "urgent", instructions: "Urgent?" },
+      { type: "choice", name: "team", instructions: "Team?", choices: [{ value: "billing", description: "Payments" }] },
+      { type: "score", name: "severity", instructions: "Severity?", levels: [{ label: "low", description: "Minor" }] }
+    ] as const
+    for (const question of questions) {
+      assert.deepStrictEqual(Schema.decodeUnknownSync(OpenAiSchema.DecisionQuestion)(question), question)
+      for (const description of [null, { what: "outage" }, ["outage"]]) {
+        assert.throws(() =>
+          Schema.decodeUnknownSync(OpenAiSchema.DecisionQuestion)({ ...question, instructions: description })
+        )
+        if ("choices" in question) {
+          assert.throws(() =>
+            Schema.decodeUnknownSync(OpenAiSchema.DecisionQuestion)({
+              ...question,
+              choices: [{ value: "billing", description }]
+            })
+          )
+        }
+        if ("levels" in question) {
+          assert.throws(() =>
+            Schema.decodeUnknownSync(OpenAiSchema.DecisionQuestion)({
+              ...question,
+              levels: [{ label: "low", description }]
+            })
+          )
+        }
+      }
+    }
+  })
+
   describe("web search sources", () => {
     it("preserves API sources in response history", () => {
       const item = {

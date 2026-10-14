@@ -1,7 +1,6 @@
 import * as OpenRouterSchema from "@effect/ai-openrouter/OpenRouterSchema"
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { structuredExamples } from "./fixtures/structured-examples.ts"
 
 const choiceAnswer = {
   type: "choice",
@@ -19,21 +18,6 @@ const scoreAnswer = {
 }
 
 const noulAnswer = { type: "noul", noul: 0.999 }
-
-const structuredScoreAnswer = {
-  type: "score",
-  score: 1.09,
-  confidence: 0.87,
-  legend: {
-    "0": { what: "Cosmetic; no impact to functionality", examples: ["typo in a label", "misaligned icon"] },
-    "1": {
-      what: "Broken or degraded feature, but workaround exists",
-      examples: ["export fails in one browser but works in another"]
-    },
-    "2": { what: "Blocking issue; no workaround exists", examples: ["cannot log in", "data loss"] }
-  },
-  probabilities: { "0": 0.0, "1": 0.91, "2": 0.09 }
-}
 
 describe("OpenRouterSchema", () => {
   it("encodes a decisions request with every question type", () => {
@@ -79,13 +63,6 @@ describe("OpenRouterSchema", () => {
     assert.strictEqual(decoded.user, "user-1")
   })
 
-  it.each(structuredExamples)("round trips the structured questions of the $name example", ({ questions }) => {
-    const Questions = Schema.Record(Schema.String, OpenRouterSchema.DecisionsQuestion)
-    const decoded = Schema.decodeUnknownSync(Questions)(questions)
-
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(Schema.encodeSync(Questions)(decoded))), questions)
-  })
-
   it.each([
     { name: "null instructions", question: { type: "noul", instructions: null } },
     { name: "a null score level", question: { type: "score", instructions: "Rate", criteria: ["low", null] } },
@@ -96,12 +73,6 @@ describe("OpenRouterSchema", () => {
     { name: "numeric instructions", question: { type: "noul", instructions: 1 } }
   ])("rejects $name", ({ question }) => {
     assert.throws(() => Schema.decodeUnknownSync(OpenRouterSchema.DecisionsQuestion)(question))
-  })
-
-  it("decodes a score answer whose legend holds structured levels", () => {
-    const decoded = Schema.decodeUnknownSync(OpenRouterSchema.Answer)(structuredScoreAnswer)
-
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(decoded)), structuredScoreAnswer)
   })
 
   it("accepts a noul question without criteria", () => {

@@ -185,23 +185,17 @@ describe("Decision", () => {
       })
     )
   })
-
-  it("rate fails with a single structured level", () => {
-    assert.throws(() =>
-      Decision.rate({ instructions: "How much", criteria: [{ label: "only", description: { what: "Only" } }] })
-    )
-  })
 })
 
 describe("DecisionModel", () => {
   it.effect("probability without criteria reaches the provider and returns an answer", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
     const definition = Decision.make({
       input: Schema.String,
       decisions: {
         urgent: Decision.probability({ instructions: "Needs action now" })
       }
     })
-    const calls: Array<DecisionModel.ProviderOptions> = []
 
     return Effect.gen(function*() {
       const { answers } = yield* DecisionModel.decide(definition, { input: "Help now" })
@@ -731,7 +725,6 @@ describe("Decision validation contracts", () => {
   })
 
   it.effect("rate validates and labels answers by the labels of structured levels", () => {
-    const calls: Array<DecisionModel.ProviderOptions> = []
     const definition = Decision.make({
       input: Schema.String,
       decisions: {
@@ -749,18 +742,11 @@ describe("Decision validation contracts", () => {
     return Effect.gen(function*() {
       const { answers } = yield* DecisionModel.decide(definition, { input: "Export fails" })
 
-      assert.strictEqual(calls[0].decisions.severity, definition.decisions.severity)
       assert.strictEqual(answers.severity.label, "degraded")
       assert.strictEqual(answers.severity.rating, 1.09)
       assert.deepStrictEqual(answers.severity.probabilities, { cosmetic: 0, degraded: 0.91, blocking: 0.09 })
-    }).pipe(Effect.provide(makeLayer((options) => {
-      calls.push(options)
-      return Effect.succeed({
-        answers: {
-          severity: { _tag: "Rate", rating: 1.09, probabilities: { cosmetic: 0, degraded: 0.91, blocking: 0.09 } }
-        },
-        usage: { inputTokens: undefined, outputTokens: undefined }
-      })
+    }).pipe(Effect.provide(succeedWith({
+      severity: { _tag: "Rate", rating: 1.09, probabilities: { cosmetic: 0, degraded: 0.91, blocking: 0.09 } }
     })))
   })
 

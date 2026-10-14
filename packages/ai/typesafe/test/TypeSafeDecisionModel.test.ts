@@ -3,7 +3,6 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import { Decision, DecisionModel, Model } from "effect/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/http"
-import { answersFor, bugSeverity, structuredExamples } from "./fixtures/structured-examples.ts"
 
 const Ticket = Schema.Struct({
   message: Schema.String,
@@ -67,6 +66,24 @@ const systemOneResponse = {
   },
   usage: { input_tokens: 312, output_tokens: 48 }
 }
+
+const Structured = Decision.make({
+  input: Schema.String,
+  decisions: {
+    team: Decision.classify({
+      instructions: { question: "Which team?" },
+      criteria: { billing: { handles: ["payments"] }, technical: null }
+    }),
+    severity: Decision.rate({
+      instructions: ["How severe?"],
+      criteria: ["Minor", { label: "Critical", description: { impact: "outage" } }]
+    }),
+    urgent: Decision.probability({
+      instructions: { question: "Urgent?" },
+      criteria: { false: ["Can wait"], true: { action: "now" } }
+    })
+  }
+})
 
 describe("TypeSafeDecisionModel", () => {
   it.effect("accepts rounded choice probabilities that total 0.99", () =>
@@ -657,49 +674,54 @@ describe("TypeSafeDecisionModel", () => {
       assert.strictEqual(error.reason._tag, "RateLimitError")
     }))
 
-  describe("structured descriptions", () => {
-    for (const example of structuredExamples) {
-      it.effect("sends the " + example.name + " example as the docs write it", () =>
+  it.effect("sends structured descriptions and maps score indices to labels", () =>
+    Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(Structured, { input: "Checkout is down" })
+      assert.strictEqual(result.answers.team.label, "technical")
+      assert.strictEqual(result.answers.severity.label, "Critical")
+      assert.deepStrictEqual({ ...result.answers.severity.probabilities }, { Minor: 0.1, Critical: 0.9 })
+      assert.strictEqual(result.answers.urgent.probability, 0.99)
+    }).pipe(
+      Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+      Effect.provide(makeClientLayer((request) =>
         Effect.gen(function*() {
-          const requests: Array<HttpClientRequest.HttpClientRequest> = []
-          const definition = Decision.make({ input: Schema.Json, decisions: example.decisions })
-
-          yield* DecisionModel.decide(definition, { input: example.state }).pipe(
-            Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
-            Effect.provide(makeClientLayer((request) => {
-              requests.push(request)
-              return Effect.succeed(jsonResponse(request, {
-                model: "jev-latest",
-                answers: example.answers ?? answersFor(example.questions)
-              }))
-            }))
-          )
-
-          const body = yield* getRequestBody(requests[0])
-          assert.deepStrictEqual(body, { model: "jev-latest", state: example.state, questions: example.questions })
-        }))
-    }
-
-    it.effect("maps a score answer with a structured legend onto the level labels", () =>
-      Effect.gen(function*() {
-        const example = structuredExamples.find((example) => example.name === "bug severity levels")!
-        const definition = Decision.make({ input: Schema.String, decisions: { bug_severity: bugSeverity } })
-
-        const { answers } = yield* DecisionModel.decide(definition, { input: "Export to PDF fails" }).pipe(
-          Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
-          Effect.provide(makeClientLayer((request) =>
-            Effect.succeed(jsonResponse(request, { model: "jev-1.13.0", answers: example.answers }))
-          ))
-        )
-
-        assert.strictEqual(answers.bug_severity.label, "degraded")
-        assert.strictEqual(answers.bug_severity.rating, 1.09)
-        assert.strictEqual(answers.bug_severity.confidence, 0.87)
-        assert.deepStrictEqual(answers.bug_severity.probabilities, { cosmetic: 0, degraded: 0.91, blocking: 0.09 })
-      }))
-  })
+          const body = yield* getRequestBody(request)
+          assert.deepStrictEqual(body.questions, {
+            team: {
+              type: "choice",
+              instructions: { question: "Which team?" },
+              criteria: { billing: { handles: ["payments"] }, technical: null }
+            },
+            severity: { type: "score", instructions: ["How severe?"], criteria: ["Minor", { impact: "outage" }] },
+            urgent: {
+              type: "noul",
+              instructions: { question: "Urgent?" },
+              criteria: { false: ["Can wait"], true: { action: "now" } }
+            }
+          })
+          return jsonResponse(request, {
+            model: "jev-latest",
+            answers: {
+              team: {
+                type: "choice",
+                choice: "technical",
+                probabilities: { billing: 0.1, technical: 0.9 },
+                confidence: 0.9
+              },
+              severity: {
+                type: "score",
+                score: 0.9,
+                probabilities: { "0": 0.1, "1": 0.9 },
+                confidence: 0.9,
+                legend: { "0": "Minor", "1": { impact: "outage" } }
+              },
+              urgent: { type: "noul", noul: 0.99 }
+            }
+          })
+        })
+      ))
+    ))
 })
-
 const makeClientLayer = (
   handler: (
     request: HttpClientRequest.HttpClientRequest

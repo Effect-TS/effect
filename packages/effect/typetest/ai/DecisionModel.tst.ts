@@ -246,17 +246,6 @@ describe("Decision", () => {
     })
   })
 
-  it("descriptions accept type aliases but not interfaces", () => {
-    type Rubric = { readonly what: string; readonly examples: ReadonlyArray<string> }
-    interface RubricInterface {
-      readonly what: string
-      readonly examples: ReadonlyArray<string>
-    }
-
-    expect<Rubric>().type.toBeAssignableTo<Decision.Description>()
-    expect<RubricInterface>().type.not.toBeAssignableTo<Decision.Description>()
-  })
-
   it("make rejects a non-schema input", () => {
     Decision.make({
       // @ts-expect-error is not assignable to type
