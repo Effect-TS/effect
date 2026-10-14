@@ -590,7 +590,10 @@ class MiddlewareImpl {
       return Context.makeUnsafe<never>(new Map([[contextKey, stack]]))
     })).pipe(Layer.provide(this.layerFn))
     this.layerGlobal = Layer.effectDiscard(Effect.gen(function*() {
-      const stack = getMiddleware(yield* Effect.context<never>())
+      const stack: ReadonlyArray<AnyMiddlewareFn> = Context.getOrUndefinedUnsafe(
+        yield* Effect.context<never>(),
+        contextKey as any
+      )!
       const { globalMiddleware } = internalState.get(yield* McpServer)!
       yield* Effect.acquireRelease(
         Effect.sync(() => {
