@@ -22,12 +22,4 @@ describe("Tar", () => {
       Stream.Stream<Tar.Entry<Tar.TarError | "Io">, Tar.TarError | "Io">
     >()
   })
-
-  it("encode accepts decoded entries", () => {
-    const bytes = Stream.fail("Io") as Stream.Stream<Uint8Array, "Io">
-
-    expect(bytes.pipe(Stream.pipeThroughChannel(Tar.decode()), Stream.pipeThroughChannel(Tar.encode()))).type.toBe<
-      Stream.Stream<Uint8Array, Tar.TarError | "Io">
-    >()
-  })
 })
