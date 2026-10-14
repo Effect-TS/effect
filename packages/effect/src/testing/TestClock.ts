@@ -332,15 +332,37 @@ export const make = Effect.fnUntraced(function*(
     const millis = Duration.toMillis(duration)
     const end = currentTimestamp + millis
     if (end <= currentTimestamp) return
-    const latch = Latch.makeUnsafe()
-    sleeps.push({
-      sequence: sequence++,
-      timestamp: end,
-      latch
-    })
-    sleeps.sort(SleepOrder)
-    yield* warningStart
-    yield* latch.await
+    yield* Effect.acquireUseRelease(
+      Effect.sync(() => {
+        const entry = {
+          sequence: sequence++,
+          timestamp: end,
+          latch: Latch.makeUnsafe()
+        }
+        // Keep descending deadline/sequence order so pop wakes the earliest
+        // sleep first, including registration order for equal deadlines.
+        let low = 0
+        let high = sleeps.length
+        while (low < high) {
+          const mid = low + Math.floor((high - low) / 2)
+          if (SleepOrder(entry, sleeps[mid]) < 0) {
+            high = mid
+          } else {
+            low = mid + 1
+          }
+        }
+        sleeps.splice(low, 0, entry)
+        return entry
+      }),
+      (entry) => Effect.andThen(warningStart, entry.latch.await),
+      (entry) =>
+        Effect.sync(() => {
+          // Adjustment may already have popped this exact sleep. Cleanup also
+          // covers interruption while starting the warning, before latch.await.
+          const index = sleeps.indexOf(entry)
+          if (index !== -1) sleeps.splice(index, 1)
+        })
+    )
   })
 
   const runSemaphore = yield* Semaphore.make(1)
