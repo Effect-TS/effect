@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reduce decoding overhead for schemas whose decoding defaults succeed immediately.
+Keep `Schema` decoding synchronous when a decoding default is an already-successful effect, such as `Effect.succeed(...)`.
