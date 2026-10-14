@@ -3,19 +3,13 @@
  * @since 4.0.0
  */
 
-// @barrel: Auto-generated exports. Do not edit manually.
+// @barrel(!(MigratorFileSystem).ts): Auto-generated exports. Do not edit manually.
 
 /**
  * @stability unstable
  * @since 4.0.0
  */
 export * as Migrator from "./Migrator.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as MigratorFileSystem from "./MigratorFileSystem.ts"
 
 /**
  * @stability unstable
