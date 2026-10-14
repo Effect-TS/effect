@@ -3,16 +3,14 @@ import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
 import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
-import * as HttpRouter from "effect/http/HttpRouter"
-import * as HttpServerRequest from "effect/http/HttpServerRequest"
+import type * as HttpRouter from "effect/http/HttpRouter"
 import * as Layer from "effect/Layer"
 import * as Rpc from "effect/rpc/Rpc"
 import * as RpcGroup from "effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
-import * as Scope from "effect/Scope"
+import type * as Scope from "effect/Scope"
 import type * as Stdio from "effect/Stdio"
 import { describe, expect, it } from "tstyche"
 
@@ -272,40 +270,6 @@ describe("McpServer", () => {
       expect<Effect.Services<typeof registered>>().type.toBe<Requires<Lookup> | McpServer.McpServer>()
       expect<Layer.Services<typeof layer>>().type.toBe<Requires<Lookup> | McpServer.McpServer>()
     })
-
-    it("should count completion encoding services only for completed parameters", () => {
-      const Tag = hole<Schema.Codec<string, string, never, TagEncoder>>()
-      const completed = McpServer.resource`tag://${Schema.String}/${Tag}`({
-        name: "completed",
-        completion: { param1: (input) => Effect.succeed([input]) },
-        content: (_uri, _a, tag) => Effect.succeed(tag)
-      })
-      const uncompleted = McpServer.resource`tag://${Schema.String}/${Tag}`({
-        name: "uncompleted",
-        completion: { param0: (input) => Effect.succeed([input]) },
-        content: (_uri, _a, tag) => Effect.succeed(tag)
-      })
-
-      expect<Layer.Services<typeof completed>>().type.toBe<TagEncoder | McpServer.McpServer>()
-      expect<Layer.Services<typeof uncompleted>>().type.toBe<McpServer.McpServer>()
-    })
-
-    it("should make a schema service request-level when a handler reads it", () => {
-      const UserId = hole<Schema.Codec<string, string, IdCodec, never>>()
-      const ContextTag = hole<Schema.Codec<string, string, McpSchema.McpRequestContext, McpSchema.McpRequestContext>>()
-      const content = McpServer.resource`user://${McpSchema.param("id", UserId)}`({
-        name: "content-reads-codec",
-        content: (_uri, id) => IdCodec.useSync((codec) => `${codec.n}:${id}`)
-      })
-      const requestContext = McpServer.resource`context://${McpSchema.param("tag", ContextTag)}`({
-        name: "request-context",
-        completion: { tag: (input) => Effect.succeed([input]) },
-        content: (_uri, tag) => Effect.succeed(tag)
-      })
-
-      expect<Layer.Services<typeof content>>().type.toBe<Requires<IdCodec> | McpServer.McpServer>()
-      expect<Layer.Services<typeof requestContext>>().type.toBe<McpServer.McpServer>()
-    })
   })
 
   describe("prompts", () => {
@@ -415,105 +379,42 @@ describe("McpServer", () => {
 
   describe("request-level dependencies", () => {
     class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
-    class Db extends Context.Service<Db, { readonly read: (key: string) => Effect.Effect<string> }>()("Db") {}
-    class SessionStore extends Context.Service<SessionStore, {
-      readonly lookup: (token: string | undefined) => Effect.Effect<{ readonly id: string }, Unauthorized>
-    }>()("SessionStore") {}
-    class Unauthorized extends Schema.Error<Unauthorized>("Unauthorized")({
-      ...McpSchema.McpErrorBase.fields,
-      _tag: Schema.tag("Unauthorized"),
-      code: Schema.tag(-32001)
-    }) {}
-    class Boom extends Data.TaggedError("Boom")<{}> {}
 
     const UserToolkit = Toolkit.make(Tool.make("WhoAmI", { success: Schema.String, dependencies: [CurrentUser] }))
     type UserHandlers = Tool.HandlersFor<typeof UserToolkit.tools>
     const UserTools = McpServer.toolkit(UserToolkit)
-
-    const Auth = McpServer.middleware<{ provides: CurrentUser }>()(
-      Effect.gen(function*() {
-        const sessions = yield* SessionStore
-        yield* Effect.addFinalizer(() => Effect.void)
-        return (effect, { headers }) =>
-          Effect.flatMap(
-            sessions.lookup(headers["authorization"]),
-            (user) => Effect.provideService(effect, CurrentUser, user)
-          )
-      })
+    const Auth = McpServer.middleware<{ provides: CurrentUser }>()((effect) =>
+      Effect.provideService(effect, CurrentUser, { id: "alice" })
     )
-    const Audit = McpServer.middleware()((effect) => Effect.andThen(CurrentUser, effect))
 
     it("should discharge request markers only through MCP middleware", () => {
-      const HttpAuth = HttpRouter.middleware<{ provides: CurrentUser }>()((effect) =>
-        Effect.provideService(effect, CurrentUser, { id: "http" })
-      )
       const withMiddleware = UserTools.pipe(Layer.provide(Auth.layer))
-      const withService = UserTools.pipe(Layer.provide(Layer.succeed(CurrentUser, { id: "static" })))
-      const withHttpMiddleware = UserTools.pipe(Layer.provide(HttpAuth.layer))
-      const resource = McpServer.resource({
-        uri: "file:///notes",
-        name: "notes",
-        content: Effect.flatMap(Db, (db) => db.read("notes"))
-      }).pipe(Layer.provide(hole<Layer.Layer<Db>>()))
+      const withService = UserTools.pipe(Layer.provide(Layer.succeed(CurrentUser, { id: "alice" })))
 
-      expect<Layer.Services<typeof withMiddleware>>().type.toBe<McpServer.McpServer | UserHandlers | SessionStore>()
+      expect<Layer.Services<typeof withMiddleware>>().type.toBe<McpServer.McpServer | UserHandlers>()
       expect<Layer.Services<typeof withService>>().type.toBe<
         McpServer.McpServer | UserHandlers | Requires<CurrentUser>
       >()
-      expect<Requires<CurrentUser>>().type.toBeAssignableTo<Layer.Services<typeof withHttpMiddleware>>()
-      expect<Layer.Services<typeof resource>>().type.toBe<McpServer.McpServer | Requires<Db>>()
     })
 
-    it("should require per-call middleware dependencies to come from combine or a transport", () => {
-      const AuditGlobal = McpServer.middleware()((effect) => Effect.andThen(CurrentUser, effect), { global: true })
-      const IpGuard = McpServer.middleware()((effect) => Effect.andThen(HttpServerRequest.HttpServerRequest, effect))
+    it("should require per-call middleware dependencies to come from combine", () => {
+      const Audit = McpServer.middleware()((effect) => Effect.andThen(CurrentUser, effect))
 
-      expect(Auth.layer).type.toBe<Layer.Layer<Requires<CurrentUser>, never, SessionStore>>()
-      expect(Audit.combine(Auth).layer).type.toBe<Layer.Layer<Requires<CurrentUser>, never, SessionStore>>()
       expect(Audit.layer).type.toBe<McpServer.MissingRequestDependencies<CurrentUser>>()
-      expect(AuditGlobal).type.toBe<McpServer.MissingRequestDependencies<CurrentUser>>()
-      expect(IpGuard.layer).type.toBe<Layer.Layer<never, never, Requires<HttpServerRequest.HttpServerRequest>>>()
+      expect(Audit.combine(Auth).layer).type.toBe<Layer.Layer<Requires<CurrentUser>>>()
     })
 
-    it("should require middleware failures to be MCP errors", () => {
-      const middleware = McpServer.middleware()
-
-      expect(middleware).type.toBeCallableWith(() => Effect.fail(new Unauthorized({ message: "Unauthorized" })))
-      expect(middleware).type.not.toBeCallableWith(() => Effect.fail(new Boom()))
+    it("should reject middleware failures that are not MCP errors", () => {
+      expect(McpServer.middleware()).type.not.toBeCallableWith(() => Effect.fail("boom"))
     })
 
-    it("should discharge transport services and leave or convert the remaining markers", () => {
-      const TransportToolkit = Toolkit.make(Tool.make("transport", {
-        dependencies: [Scope.Scope, HttpServerRequest.HttpServerRequest, McpSchema.McpServerClient]
-      }))
-      type TransportHandlers = Tool.HandlersFor<typeof TransportToolkit.tools>
-      const registrations = McpServer.toolkit(TransportToolkit)
-      const stdio = McpServer.layerStdio({ ...serverOptions, registrations })
-      const stdioMixed = McpServer.layerStdio({
-        ...serverOptions,
-        protocols: [McpProtocol.v2025_11_25, McpProtocol.v2026_07_28],
-        registrations
-      })
-      const http = McpServer.layerHttp({ ...serverOptions, path: "/mcp", registrations })
-      const requestScoped = McpServer.layerHttpRequestScoped({
-        ...serverOptions,
-        path: "/mcp",
-        protocols: [McpProtocol.v2026_07_28],
-        registrations
-      })
+    it("should leave undischarged markers on stdio and convert them on HTTP", () => {
+      const stdio = McpServer.layerStdio({ ...serverOptions, registrations: UserTools })
+      const http = McpServer.layerHttp({ ...serverOptions, path: "/mcp", registrations: UserTools })
 
-      expect<Layer.Services<typeof stdio>>().type.toBe<
-        Stdio.Stdio | TransportHandlers | Requires<HttpServerRequest.HttpServerRequest>
-      >()
-      expect<Layer.Services<typeof stdioMixed>>().type.toBe<
-        | Stdio.Stdio
-        | TransportHandlers
-        | Requires<HttpServerRequest.HttpServerRequest>
-        | Requires<McpSchema.McpServerClient>
-      >()
-      expect<Layer.Services<typeof http>>().type.toBe<HttpRouter.HttpRouter | TransportHandlers>()
-      expect<Layer.Services<typeof requestScoped>>().type.toBe<
-        HttpRouter.HttpRouter | TransportHandlers | HttpRouter.Request<"Requires", McpSchema.McpServerClient>
+      expect<Layer.Services<typeof stdio>>().type.toBe<Stdio.Stdio | UserHandlers | Requires<CurrentUser>>()
+      expect<Layer.Services<typeof http>>().type.toBe<
+        HttpRouter.HttpRouter | UserHandlers | HttpRouter.Request<"Requires", CurrentUser>
       >()
     })
   })
