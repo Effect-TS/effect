@@ -4,10 +4,14 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
+import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
+import * as Random from "effect/Random"
+import type * as Schema from "effect/Schema"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
 import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
 
@@ -18,7 +22,7 @@ import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
  * @category models
  * @since 4.0.0
  */
-export type Model = "jev-latest" | "jev-preview" | "jev-1.13.0"
+export type Model = "jev-latest" | "jev-preview" | "jev-1.13.0" | "jev-1.14.0"
 
 /**
  * Creates a decision model with TypeSafe provider metadata.
@@ -37,6 +41,22 @@ export const model = (
  * DecisionModel rescales small sum drift when it validates distributions and
  * derives rating labels.
  *
+ * **Details**
+ *
+ * With images, `state` becomes `{ input, images }`: the encoded input, and one
+ * placeholder per image in order. Instructions can name an image by path,
+ * such as `` `images[0]` ``, and input fields as `` `input.subject` ``. Each
+ * image is sent once as a base64 asset, and the request opts in to
+ * TypeSafe's preview image support. Locate decisions become Box questions,
+ * which need Jev 1.14 (`"jev-preview"` or `"jev-1.14.0"`).
+ *
+ * **Gotchas**
+ *
+ * - Images must be PNG or JPEG, 256 to 1568 pixels on each side. The API
+ *   rejects other sizes rather than resizing, and ignores EXIF orientation.
+ * - Remote URLs fail with `AiError.InvalidUserInputError` because TypeSafe
+ *   does not fetch them.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -48,7 +68,9 @@ export const make = Effect.fnUntraced(
     const client = yield* TypeSafeClient
     return yield* DecisionModel.make({
       probabilityPrecision: 2,
-      decide: Effect.fnUntraced(function*({ state, decisions }) {
+      supportsImages: true,
+      supportsLocate: true,
+      decide: Effect.fnUntraced(function*({ state, decisions, images }) {
         const questions: Record<string, typeof TypeSafeSchema.Question.Encoded> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           switch (decision._tag) {
@@ -65,9 +87,16 @@ export const make = Effect.fnUntraced(
             case "Probability":
               questions[key] = { type: "noul", instructions: decision.instructions, criteria: decision.criteria }
               break
+            case "Locate":
+              questions[key] = { type: "box", instructions: decision.instructions }
+              break
           }
         }
-        const response = yield* client.systemOne({ model: options.model, state, questions })
+        const response = yield* client.systemOne(
+          images === undefined
+            ? { model: options.model, state, questions }
+            : { model: options.model, questions, ...yield* withImages(state, images) }
+        )
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           const answer = response.answers[key]
@@ -93,6 +122,9 @@ export const make = Effect.fnUntraced(
             case "noul":
               answers[key] = { _tag: "Probability", probability: answer.noul }
               break
+            case "box":
+              answers[key] = { _tag: "Locate", box: answer.box, confidence: answer.confidence }
+              break
           }
         }
         return {
@@ -103,6 +135,51 @@ export const make = Effect.fnUntraced(
     })
   }
 )
+
+const withImages = Effect.fnUntraced(function*(state: Schema.Json, images: ReadonlyArray<DecisionModel.Image>) {
+  const assets: Record<string, typeof TypeSafeSchema.ImageAsset.Encoded> = Object.create(null)
+  const placeholders: Array<string> = []
+  for (const image of images) {
+    // TypeSafe replaces placeholders anywhere in the request's strings, so they must not occur in the input.
+    const placeholder = `image-${placeholders.length}-${Math.abs(yield* Random.nextInt).toString(36)}`
+    assets[placeholder] = yield* encodeImage(image)
+    placeholders.push(placeholder)
+  }
+  return { state: { input: state, images: placeholders }, assets }
+})
+
+const encodeImage = (
+  image: DecisionModel.Image
+): Effect.Effect<typeof TypeSafeSchema.ImageAsset.Encoded, AiError.AiError> => {
+  let mediaType = image.mediaType
+  let data: string
+  if (image.data instanceof URL) {
+    const match = image.data.protocol === "data:" ? /^data:([^,;]*)[^,]*;base64,(.*)$/s.exec(image.data.href) : null
+    if (match === null) {
+      return invalidUserInput("TypeSafe accepts byte arrays, base64 strings, or base64 data URLs, not remote URLs")
+    }
+    mediaType = match[1] || mediaType
+    data = match[2]
+  } else {
+    data = typeof image.data === "string" ? image.data : Base64.encode(image.data)
+  }
+  switch (mediaType.toLowerCase()) {
+    case "image/png":
+      return Effect.succeed({ type: "image", format: "png", data_base64: data })
+    case "image/jpeg":
+    case "image/jpg":
+      return Effect.succeed({ type: "image", format: "jpg", data_base64: data })
+    default:
+      return invalidUserInput(`TypeSafe accepts PNG or JPEG images, not ${mediaType}`)
+  }
+}
+
+const invalidUserInput = (description: string) =>
+  Effect.fail(AiError.make({
+    module: "TypeSafeDecisionModel",
+    method: "decide",
+    reason: new AiError.InvalidUserInputError({ description })
+  }))
 
 /**
  * Provides DecisionModel using an existing TypeSafeClient.

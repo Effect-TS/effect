@@ -694,6 +694,108 @@ describe("TypeSafeDecisionModel", () => {
         })
       ))
     ))
+
+  describe("images", () => {
+    const FindMug = Decision.make({
+      input: Ticket,
+      decisions: {
+        present: Decision.probability({ instructions: "`images[0]` shows a coffee mug" }),
+        mug: Decision.locate({ instructions: "the coffee mug in `images[0]`" })
+      }
+    })
+
+    const pngBytes = new Uint8Array([137, 80, 78, 71])
+
+    const images: ReadonlyArray<DecisionModel.Image> = [
+      { mediaType: "image/png", data: pngBytes },
+      { mediaType: "image/jpeg", data: "/9j/4AAQ" },
+      { mediaType: "application/octet-stream", data: new URL("data:image/png;base64,iVBORw0KGgo=") }
+    ]
+
+    it.effect("sends images as assets, wraps the state, and maps box answers onto locate answers", () => {
+      const requests: Array<HttpClientRequest.HttpClientRequest> = []
+      return Effect.gen(function*() {
+        const { answers, usage } = yield* DecisionModel.decide(FindMug, { input: ticket, images })
+
+        assert.deepStrictEqual(answers, {
+          present: { probability: 0.97 },
+          mug: { box: { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }, confidence: 0.92 }
+        })
+        assert.strictEqual(usage.inputTokens, 290)
+
+        assert.strictEqual(requests.length, 1)
+        assert.strictEqual(requests[0].headers["typesafe-danger-zone-images"], "true")
+        const body = yield* getRequestBody(requests[0])
+        const placeholders: Array<string> = body.state.images
+        assert.strictEqual(placeholders.length, 3)
+        assert.strictEqual(new Set(placeholders).size, 3)
+        assert.deepStrictEqual(body, {
+          model: "jev-preview",
+          state: { input: ticket, images: placeholders },
+          questions: {
+            present: { type: "noul", instructions: "`images[0]` shows a coffee mug" },
+            mug: { type: "box", instructions: "the coffee mug in `images[0]`" }
+          },
+          assets: {
+            [placeholders[0]]: { type: "image", format: "png", data_base64: "iVBORw==" },
+            [placeholders[1]]: { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
+            [placeholders[2]]: { type: "image", format: "png", data_base64: "iVBORw0KGgo=" }
+          }
+        })
+        for (const placeholder of placeholders) {
+          assert.isFalse(JSON.stringify(ticket).includes(placeholder))
+        }
+      }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-preview" })),
+        Effect.provide(makeClientLayer((request) => {
+          requests.push(request)
+          return Effect.succeed(jsonResponse(request, {
+            model: "jev-1.14.0",
+            answers: {
+              present: { type: "noul", noul: 0.97 },
+              mug: { type: "box", box: { top: 0.25, bottom: 0.82, left: 0.44, right: 0.84 }, confidence: 0.92 }
+            },
+            usage: { input_tokens: 290, output_tokens: 21 }
+          }))
+        }))
+      )
+    })
+
+    it.effect("sends images with text-only decisions", () =>
+      Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket, images: [images[1]] })
+        assert.strictEqual(answers.urgent.probability, 0.999)
+      }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.gen(function*() {
+            const body = yield* getRequestBody(request)
+            assert.strictEqual(request.headers["typesafe-danger-zone-images"], "true")
+            assert.deepStrictEqual(body.state.input, ticket)
+            assert.deepStrictEqual(Object.keys(body.assets), body.state.images)
+            return jsonResponse(request, systemOneResponse)
+          })
+        ))
+      ))
+
+    for (
+      const [name, image] of [
+        ["a remote URL", { mediaType: "image/png", data: new URL("https://example.com/mug.png") }],
+        ["a data URL without base64", { mediaType: "image/png", data: new URL("data:image/png,%89PNG") }],
+        ["a WebP image", { mediaType: "image/webp", data: "UklGRg==" }],
+        ["a WebP data URL", { mediaType: "image/png", data: new URL("data:image/webp;base64,UklGRg==") }]
+      ] as const
+    ) {
+      it.effect("rejects " + name + " with InvalidUserInputError before sending", () =>
+        Effect.gen(function*() {
+          const error = yield* DecisionModel.decide(FindMug, { input: ticket, images: [image] }).pipe(Effect.flip)
+          assert.strictEqual(error.reason._tag, "InvalidUserInputError")
+        }).pipe(
+          Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-preview" })),
+          Effect.provide(makeClientLayer(() => Effect.die(new Error("Invalid images must not be sent"))))
+        ))
+    }
+  })
 })
 const makeClientLayer = (
   handler: (

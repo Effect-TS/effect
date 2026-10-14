@@ -1,7 +1,7 @@
 /**
  * Defines decisions that a `DecisionModel` answers over a single input.
- * Pair an input schema with named classification, rating, or probability
- * decisions using `make`, then answer them with `DecisionModel.decide`.
+ * Pair an input schema with named classification, rating, probability, or
+ * locate decisions using `make`, then answer them with `DecisionModel.decide`.
  *
  * @see {@link make} for building a definition from an input schema and decisions
  *
@@ -99,13 +99,29 @@ export interface Probability {
 }
 
 /**
+ * Decision that finds where something is in an image supplied with the input.
+ * The answer is a bounding box around one target.
+ *
+ * @see {@link locate} for the constructor
+ * @see {@link LocateAnswer} for the answer produced by this decision
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface Locate {
+  readonly _tag: "Locate"
+  readonly instructions: Description
+}
+
+/**
  * Union of every decision kind.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type Any = Classify<string> | Rate<string> | Probability
+export type Any = Classify<string> | Rate<string> | Probability | Locate
 
 /**
  * Answer to a {@link Classify} decision.
@@ -153,6 +169,38 @@ export interface ProbabilityAnswer {
 }
 
 /**
+ * Smallest rectangle that contains a located target. Each edge is a fraction
+ * of the image's size measured from the top-left corner: `left` and `right`
+ * of its width, `top` and `bottom` of its height. Edges are in `[0, 1]`, with
+ * `left <= right` and `top <= bottom`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface BoundingBox {
+  readonly left: number
+  readonly top: number
+  readonly right: number
+  readonly bottom: number
+}
+
+/**
+ * Answer to a {@link Locate} decision.
+ * There is no "not found" answer: a target absent from the image still gets a
+ * box. Pair the decision with a {@link Probability} that the target is present.
+ * `confidence` is an optional, provider-defined measure in `[0, 1]`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface LocateAnswer {
+  readonly box: BoundingBox
+  readonly confidence?: number | undefined
+}
+
+/**
  * Answer type for a single decision.
  *
  * @stability unstable
@@ -162,6 +210,7 @@ export interface ProbabilityAnswer {
 export type Answer<D extends Any> = D extends Classify<infer Label> ? ClassifyAnswer<Label>
   : D extends Rate<infer Level> ? RateAnswer<Level>
   : D extends Probability ? ProbabilityAnswer
+  : D extends Locate ? LocateAnswer
   : never
 
 /**
@@ -345,6 +394,40 @@ export const probability = (options: {
   _tag: "Probability",
   instructions: options.instructions,
   criteria: options.criteria
+})
+
+/**
+ * Creates a decision that finds one target in the images passed to
+ * `DecisionModel.decide`. Name the target, and the image when there are
+ * several. The model must be created with `supportsLocate: true`, and the
+ * call must include at least one image.
+ *
+ * **Example** (Finding a mug in a photo)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Decision } from "effect/ai"
+ *
+ * const FindMug = Decision.make({
+ *   input: Schema.String,
+ *   decisions: {
+ *     present: Decision.probability({ instructions: "The photo shows a coffee mug" }),
+ *     mug: Decision.locate({ instructions: "the coffee mug in the photo" })
+ *   }
+ * })
+ * ```
+ *
+ * @see {@link LocateAnswer} for the answer
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.5
+ */
+export const locate = (options: {
+  readonly instructions: Description
+}): Locate => ({
+  _tag: "Locate",
+  instructions: options.instructions
 })
 
 /**

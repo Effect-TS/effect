@@ -1,6 +1,6 @@
 # @effect/ai-typesafe
 
-TypeSafe System One provider for Effect's `DecisionModel`. Supports classification, ordered ratings, and probabilities through Effect `HttpClient`.
+TypeSafe System One provider for Effect's `DecisionModel`. Supports classification, ordered ratings, probabilities, images, and locating things in images through Effect `HttpClient`.
 
 ## Installation
 
@@ -26,7 +26,7 @@ Whether your team is considering Effect, rolling it out, or already running it i
 
 ## Usage
 
-Use `TypeSafeClient.layerConfig()` to read `TYPESAFE_API_KEY`, then provide `TypeSafeDecisionModel.model("jev-latest")` to a decision workflow. Versioned model identifiers such as `jev-1.13.0` are also supported.
+Use `TypeSafeClient.layerConfig()` to read `TYPESAFE_API_KEY`, then provide `TypeSafeDecisionModel.model("jev-latest")` to a decision workflow. Versioned model identifiers such as `jev-1.14.0` are also supported.
 
 Instructions and descriptions can be strings, JSON objects, or JSON arrays, as in TypeSafe's [structured questions](https://docs.typesafe.ai/primitives/advanced). A rating level with a structured description takes an explicit label, which answers use:
 
@@ -42,5 +42,32 @@ const severity = Decision.rate({
   ]
 })
 ```
+
+### Images
+
+Pass `images` to include pictures with the input. TypeSafe's [image support](https://docs.typesafe.ai/images) is a preview, and the provider sends the `TypeSafe-Danger-Zone-Images: true` header for you. With images, the state becomes `{ input, images }`: the encoded input, and the images in order. Instructions can name an image by path, such as `` `images[0]` ``.
+
+`Decision.locate` asks where something is, as a TypeSafe [Box](https://docs.typesafe.ai/primitives/box) question. It needs Jev 1.14 (`jev-preview` or `jev-1.14.0`). The answer is a bounding box whose edges are fractions of the image's width and height. A box comes back even when the target is absent, so ask whether it is there too:
+
+```ts
+import { Schema } from "effect"
+import { Decision, DecisionModel } from "effect/ai"
+
+const FindMug = Decision.make({
+  input: Schema.String,
+  decisions: {
+    present: Decision.probability({ instructions: "`images[0]` shows a coffee mug" }),
+    mug: Decision.locate({ instructions: "the coffee mug in `images[0]`" })
+  }
+})
+
+const program = DecisionModel.decide(FindMug, {
+  input: "Kitchen counter, morning",
+  images: [{ mediaType: "image/jpeg", data: photoBytes }]
+})
+// answers.mug.box: { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }
+```
+
+Image `data` may be a `Uint8Array`, a base64 string, or a base64 `data:` URL. Images must be PNG or JPEG, 256 to 1568 pixels on each side; TypeSafe rejects other sizes rather than resizing and ignores EXIF orientation. Remote URLs fail with `AiError.InvalidUserInputError` because TypeSafe does not fetch them.
 
 The client does not retry automatically. Rate-limit errors include the provider's retry delay when available. Provider distributions are preserved, not normalized; they must satisfy the core `DecisionModel` validation, including its current `1e-6` sum tolerance. TypeSafe's rounding behavior has not been verified against the live API.

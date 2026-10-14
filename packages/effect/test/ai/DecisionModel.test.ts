@@ -157,7 +157,7 @@ describe("DecisionModel", () => {
       assert.strictEqual(calls.length, 1)
       assert.strictEqual(calls[0].state, "Help now")
       assert.strictEqual(calls[0].decisions, definition.decisions)
-      assert.strictEqual(calls[0].decisions.urgent.criteria, undefined)
+      assert.strictEqual((calls[0].decisions.urgent as Decision.Probability).criteria, undefined)
       assert.deepStrictEqual(answers, { urgent: { probability: 0.9 } })
     }).pipe(
       Effect.provide(makeLayer((options) => {
@@ -848,4 +848,111 @@ describe("Decision validation contracts", () => {
       assert.deepStrictEqual(answers, expectedAnswers)
     }).pipe(Effect.provide(succeedWith(raw)))
   })
+})
+
+describe("Locate decisions", () => {
+  const FindMug = Decision.make({
+    input: Schema.String,
+    decisions: {
+      present: Decision.probability({ instructions: "The photo shows a coffee mug" }),
+      mug: Decision.locate({ instructions: "the coffee mug in the photo" })
+    }
+  })
+
+  const images: ReadonlyArray<DecisionModel.Image> = [{ mediaType: "image/png", data: "iVBORw0KGgo=" }]
+
+  const box = { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }
+
+  const locateLayer = (
+    mug: unknown,
+    onCall: (options: DecisionModel.ProviderOptions) => void = () => {}
+  ) =>
+    Layer.effect(
+      DecisionModel.DecisionModel,
+      DecisionModel.make({
+        supportsImages: true,
+        supportsLocate: true,
+        decide: (options) => {
+          onCall(options)
+          return Effect.succeed({
+            answers: { present: { _tag: "Probability", probability: 0.97 }, mug } as any,
+            usage: { inputTokens: undefined, outputTokens: undefined }
+          })
+        }
+      })
+    )
+
+  it("locate keeps its instructions", () => {
+    const decision = Decision.locate({ instructions: { target: "the mug", image: "photo" } })
+
+    assert.strictEqual(decision._tag, "Locate")
+    assert.deepStrictEqual(decision.instructions, { target: "the mug", image: "photo" })
+  })
+
+  it.effect("forwards locate decisions and images, and returns a copy of the box", () => {
+    const calls: Array<DecisionModel.ProviderOptions> = []
+    return Effect.gen(function*() {
+      const { answers } = yield* DecisionModel.decide(FindMug, { input: "kitchen", images })
+
+      assert.deepStrictEqual(answers, { present: { probability: 0.97 }, mug: { box, confidence: 0.92 } })
+      assert.strictEqual(calls.length, 1)
+      assert.strictEqual(calls[0].decisions.mug._tag, "Locate")
+      assert.deepStrictEqual(calls[0].images, images)
+    }).pipe(Effect.provide(locateLayer(
+      { _tag: "Locate", box: { ...box, extra: 1 }, confidence: 0.92, extra: "discard" },
+      (options) => calls.push(options)
+    )))
+  })
+
+  for (const edges of [{ left: 0, top: 0, right: 1, bottom: 1 }, { left: 0.5, top: 0.5, right: 0.5, bottom: 0.5 }]) {
+    it.effect(`accepts the box ${JSON.stringify(edges)}`, () =>
+      Effect.gen(function*() {
+        const { answers } = yield* DecisionModel.decide(FindMug, { input: "kitchen", images })
+        assert.deepStrictEqual(answers.mug, { box: edges })
+      }).pipe(Effect.provide(locateLayer({ _tag: "Locate", box: edges }))))
+  }
+
+  for (
+    const [name, mug] of [
+      ["a missing box", { _tag: "Locate" }],
+      ["an edge outside [0, 1]", { _tag: "Locate", box: { ...box, right: 1.01 } }],
+      ["a NaN edge", { _tag: "Locate", box: { ...box, top: NaN } }],
+      ["a missing edge", { _tag: "Locate", box: { left: 0.1, top: 0.1, right: 0.2 } }],
+      ["crossed horizontal edges", { _tag: "Locate", box: { ...box, left: 0.9 } }],
+      ["crossed vertical edges", { _tag: "Locate", box: { ...box, bottom: 0.1 } }],
+      ["confidence outside [0, 1]", { _tag: "Locate", box, confidence: 2 }],
+      ["a probability answer", { _tag: "Probability", probability: 0.5 }]
+    ] as const
+  ) {
+    it.effect(`fails with InvalidOutputError for ${name}`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(DecisionModel.decide(FindMug, { input: "kitchen", images }))
+        assert.strictEqual(error?.reason._tag, "InvalidOutputError")
+      }).pipe(Effect.provide(locateLayer(mug))))
+  }
+
+  for (const supportsLocate of [undefined, false]) {
+    it.effect(`rejects locate decisions with InvalidUserInputError when supportsLocate is ${supportsLocate}`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(DecisionModel.decide(FindMug, { input: "kitchen", images }))
+        assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+      }).pipe(Effect.provide(Layer.effect(
+        DecisionModel.DecisionModel,
+        DecisionModel.make({
+          supportsImages: true,
+          supportsLocate,
+          decide: () => Effect.die("A provider without locate support must not receive locate decisions")
+        })
+      ))))
+  }
+
+  for (const missing of [undefined, []]) {
+    it.effect(`rejects locate decisions with ${missing === undefined ? "omitted" : "empty"} images`, () =>
+      Effect.gen(function*() {
+        const error = yield* failureOf(DecisionModel.decide(FindMug, { input: "kitchen", images: missing }))
+        assert.strictEqual(error?.reason._tag, "InvalidUserInputError")
+      }).pipe(Effect.provide(locateLayer(undefined, () => {
+        throw new Error("Locate decisions without images must not reach the provider")
+      }))))
+  }
 })

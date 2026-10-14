@@ -104,7 +104,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
- * `images` is omitted when no images are supplied.
+ * `images` is omitted when no images are supplied. Locate decisions reach
+ * only providers created with `supportsLocate: true`, and always with images.
  *
  * @stability unstable
  * @category options
@@ -159,13 +160,30 @@ export interface ProviderProbabilityAnswer {
 }
 
 /**
+ * Provider answer for a locate decision.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface ProviderLocateAnswer {
+  readonly _tag: "Locate"
+  readonly box: Decision.BoundingBox
+  readonly confidence?: number | undefined
+}
+
+/**
  * Provider answer for any decision kind.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type ProviderAnswer = ProviderClassifyAnswer | ProviderRateAnswer | ProviderProbabilityAnswer
+export type ProviderAnswer =
+  | ProviderClassifyAnswer
+  | ProviderRateAnswer
+  | ProviderProbabilityAnswer
+  | ProviderLocateAnswer
 
 /**
  * Provider response for a decision request.
@@ -204,6 +222,13 @@ const invalidOutput = (description: string): AiError.AiError =>
     module: "DecisionModel",
     method: "decide",
     reason: new AiError.InvalidOutputError({ description })
+  })
+
+const invalidUserInput = (description: string): AiError.AiError =>
+  AiError.make({
+    module: "DecisionModel",
+    method: "decide",
+    reason: new AiError.InvalidUserInputError({ description })
   })
 
 const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(value) && Number.isFinite(value)
@@ -316,6 +341,26 @@ const validateAnswer = (
       }
       return { probability: answer.probability }
     }
+    case "Locate": {
+      const box = answer.box
+      if (
+        !Predicate.isObject(box) || !isUnitInterval(box.left) || !isUnitInterval(box.top) ||
+        !isUnitInterval(box.right) || !isUnitInterval(box.bottom)
+      ) {
+        return invalidOutput(`Provider returned a box with edges outside [0, 1] for decision "${key}"`)
+      }
+      if (box.left > box.right || box.top > box.bottom) {
+        return invalidOutput(`Provider returned a box with crossed edges for decision "${key}"`)
+      }
+      const confidence = validateConfidence(key, answer)
+      if (AiError.isAiError(confidence)) {
+        return confidence
+      }
+      return {
+        box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+        ...(confidence === undefined ? undefined : { confidence })
+      }
+    }
   }
 }
 
@@ -339,13 +384,18 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * Creates a `DecisionModel` that encodes inputs as JSON and validates provider answers.
  * Answers must cover every decision and use its labels. Distributions must
  * sum to 1 within `1e-6`, optional confidence must be in `[0, 1]`, and ratings must be
- * in `[0, criteria.length - 1]`. Invalid answers fail with
- * `AiError.InvalidOutputError`; encoding failures use `AiError.InvalidUserInputError`.
+ * in `[0, criteria.length - 1]`. Boxes must have edges in `[0, 1]` that do not
+ * cross. Invalid answers fail with `AiError.InvalidOutputError`; encoding
+ * failures use `AiError.InvalidUserInputError`.
  *
  * **Details**
  *
  * Set `supportsImages: true` to accept images. Otherwise, nonempty image input
  * fails with `AiError.InvalidUserInputError`.
+ *
+ * Set `supportsLocate: true` to accept locate decisions. Otherwise, a
+ * definition with a locate decision fails with `AiError.InvalidUserInputError`,
+ * as does a locate decision without images.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
@@ -364,6 +414,7 @@ export const make = (params: {
   readonly decide: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
   readonly probabilityPrecision?: number | undefined
   readonly supportsImages?: boolean | undefined
+  readonly supportsLocate?: boolean | undefined
 }): Effect.Effect<DecisionModel> =>
   Effect.sync(() => {
     const roundingError = params.probabilityPrecision === undefined ? 0 : 0.5 * 10 ** -params.probabilityPrecision
@@ -384,15 +435,15 @@ export const make = (params: {
           Effect.flatMap((state) => {
             const images = options.images?.length ? options.images : undefined
             if (images !== undefined && params.supportsImages !== true) {
-              return Effect.fail(
-                AiError.make({
-                  module: "DecisionModel",
-                  method: "decide",
-                  reason: new AiError.InvalidUserInputError({
-                    description: "This decision model does not accept images"
-                  })
-                })
-              )
+              return Effect.fail(invalidUserInput("This decision model does not accept images"))
+            }
+            if (Object.values(definition.decisions).some((decision) => decision._tag === "Locate")) {
+              if (params.supportsLocate !== true) {
+                return Effect.fail(invalidUserInput("This decision model does not support locate decisions"))
+              }
+              if (images === undefined) {
+                return Effect.fail(invalidUserInput("Locate decisions need at least one image"))
+              }
             }
             return params.decide({
               state,
