@@ -48,7 +48,8 @@ const valueFields = (type: Completions.FlagType | Completions.ArgumentType): str
 
 const flagEntry = (flag: Completions.FlagDescriptor): string =>
   `@{ name = ${quotePs(flag.name)}; forms = ${psArray(flagForms(flag))}; ` +
-  `takesValue = $${flag.type._tag !== "Boolean"}; ${flag.optionalValue === true ? "optionalValue = $true; " : ""}` +
+  `takesValue = $${flag.type._tag !== "Boolean"}; ` +
+  (flag.optionalValue === true ? `optionalValue = $true; ` : "") +
   `${valueFields(flag.type)}; ` +
   `description = ${psOptional(flag.description)} }`
 
