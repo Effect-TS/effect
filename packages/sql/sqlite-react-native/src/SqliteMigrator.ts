@@ -30,6 +30,7 @@ import type { SqlError } from "effect/sql/SqlError"
  * @since 4.0.0
  */
 export * from "effect/sql/Migrator"
+// fromFileSystem lives elsewhere. pulling it in makes metro fail the whole module.
 
 /**
  * Runs SQL migrations for a React Native SQLite database using the shared `Migrator` implementation and the current `SqlClient`.

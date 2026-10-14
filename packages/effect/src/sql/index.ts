@@ -15,6 +15,12 @@ export * as Migrator from "./Migrator.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as MigratorFileSystem from "./MigratorFileSystem.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as SqlClient from "./SqlClient.ts"
 
 /**
