@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
@@ -130,6 +131,39 @@ describe("TestClock", () => {
       assert.strictEqual(observed, 1_000_000_000n)
       assert.strictEqual(testClock.monotonicTimeNanosUnsafe(), 2_000_000_000n)
     }))
+
+  describe("sleeps registered after multiple scheduler hops", () => {
+    const afterTicks = [
+      Effect.yieldNow,
+      Effect.forkChild(Effect.void).pipe(Effect.flatMap(Fiber.join))
+    ]
+    const countTicks = (advance: Effect.Effect<void>) =>
+      Effect.forEach(afterTicks, (afterTick) =>
+        Effect.gen(function*() {
+          let ticks = 0
+          const fiber = yield* Effect.sleep("1 second").pipe(
+            Effect.andThen(Effect.sync(() => {
+              ticks++
+            })),
+            Effect.andThen(afterTick),
+            Effect.forever,
+            Effect.forkChild
+          )
+          yield* advance
+          yield* Fiber.interrupt(fiber)
+          return ticks
+        }).pipe(Effect.provide(TestClock.layer())))
+
+    it.effect("adjust - runs every sleep due by the target time", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* countTicks(TestClock.adjust("5 seconds")), [5, 5])
+      }))
+
+    it.effect("setTime - runs every sleep due by the target time", () =>
+      Effect.gen(function*() {
+        assert.deepStrictEqual(yield* countTicks(TestClock.setTime(5_000)), [5, 5])
+      }))
+  })
 
   // `it.effect` and `it.live` provide an ambient Scope, defeating the #2244 regression guard.
   it("layer - can adjust when provided without an ambient Scope", () =>
