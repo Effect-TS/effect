@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Deferred, Effect, Exit, Layer, Option, Queue, Schema, Stream } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
 import {
   ClusterError,
   ClusterSchema,
@@ -11,7 +11,7 @@ import {
   HttpRunner,
   Message,
   MessageStorage,
-  type Reply,
+  Reply,
   RunnerAddress,
   RunnerHealth,
   Runners,
@@ -311,6 +311,49 @@ describe.concurrent("Runners.makeRpc", () => {
       Layer.provideMerge(MessageStorage.layerNoop),
       Layer.provide(TestShardingConfig)
     )
+
+  it.effect("delivers a persisted local reply completed during notification", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Reply.Reply<SendRpc>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          replies.push(reply)
+        }))
+
+      const pending = yield* runners.notifyLocal({
+        message,
+        discard: false,
+        // A local entity can finish before the notification returns. Persist
+        // its reply synchronously to exercise that ordering without sleeps.
+        notify: () =>
+          storage.saveReply(
+            new Reply.ReplyWithContext({
+              reply: new Reply.WithExit<SendRpc>({
+                id: snowflake.nextUnsafe(),
+                requestId: message.envelope.requestId,
+                exit: Exit.succeed(42)
+              }),
+              rpc: message.rpc,
+              context: message.context
+            })
+          ).pipe(Effect.orDie)
+      }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
+
+      yield* TestClock.adjust("1 second")
+      yield* Fiber.join(pending)
+      assert.deepStrictEqual(replies.map((reply) => reply._tag === "WithExit" ? reply.exit : reply._tag), [
+        Exit.succeed(42)
+      ])
+    }).pipe(Effect.provide(
+      Runners.layerNoop.pipe(
+        Layer.provideMerge(MessageStorage.layerMemory),
+        Layer.provideMerge(Snowflake.layerGenerator),
+        Layer.provide(TestShardingConfig)
+      )
+    )))
 
   it.effect("uses the client protocol codec for simulated remote serialization", () => {
     let codecCalls = 0
