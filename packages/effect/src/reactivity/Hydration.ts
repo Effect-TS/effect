@@ -1,7 +1,7 @@
 /**
  * Saves and restores serializable atom state.
  *
- * `dehydrate` reads atoms marked with `Atom.serializable` from an
+ * `dehydrate` reads atoms marked with `AtomSerializable.serializable` from an
  * `AtomRegistry` and returns encoded entries keyed by their serialization keys.
  * `hydrate` preloads those entries into another registry before the atoms are
  * read. Initial `AsyncResult` values can be ignored, encoded as values, or
@@ -67,7 +67,7 @@ const encodeOrSkip = (
  *
  * **Details**
  *
- * Only atoms marked with `Atom.serializable` whose current values can be encoded
+ * Only atoms marked with `AtomSerializable.serializable` whose current values can be encoded
  * are included. Atoms that fail schema encoding are skipped without throwing.
  * `encodeInitialAs` controls whether `AsyncResult.Initial` values are ignored,
  * encoded as values, or represented by promises that resolve when the atom

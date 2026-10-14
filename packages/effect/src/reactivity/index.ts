@@ -15,6 +15,12 @@ export * as AsyncResult from "./AsyncResult.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as AsyncResultSchema from "./AsyncResultSchema.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as Atom from "./Atom.ts"
 
 /**
@@ -22,6 +28,12 @@ export * as Atom from "./Atom.ts"
  * @since 4.0.0
  */
 export * as AtomHttpApi from "./AtomHttpApi.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as AtomKvs from "./AtomKvs.ts"
 
 /**
  * @stability unstable
@@ -40,6 +52,18 @@ export * as AtomRegistry from "./AtomRegistry.ts"
  * @since 4.0.0
  */
 export * as AtomRpc from "./AtomRpc.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as AtomSearchParam from "./AtomSearchParam.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as AtomSerializable from "./AtomSerializable.ts"
 
 /**
  * @stability unstable

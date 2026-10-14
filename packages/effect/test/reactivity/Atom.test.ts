@@ -15,7 +15,16 @@ import {
   SubscriptionRef
 } from "effect"
 import { KeyValueStore } from "effect/persistence"
-import { AsyncResult, Atom, AtomRegistry, Hydration, Reactivity } from "effect/reactivity"
+import {
+  AsyncResult,
+  Atom,
+  AtomKvs,
+  AtomRegistry,
+  AtomSearchParam,
+  AtomSerializable,
+  Hydration,
+  Reactivity
+} from "effect/reactivity"
 import { TestClock } from "effect/testing"
 import { collectGarbage, getGc } from "../utils/gc.ts"
 
@@ -196,7 +205,7 @@ describe("Atom", { concurrent: false }, () => {
     })
 
     try {
-      const page = Atom.searchParam("page", { schema: Schema.NumberFromString })
+      const page = AtomSearchParam.searchParam("page", { schema: Schema.NumberFromString })
       expect(r.get(page)).toEqual(Option.some(6))
     } finally {
       r.dispose()
@@ -247,7 +256,7 @@ describe("Atom", { concurrent: false }, () => {
     })
 
     try {
-      const q = Atom.searchParam("q")
+      const q = AtomSearchParam.searchParam("q")
       r.set(q, "2")
       await vitest.advanceTimersByTimeAsync(500)
       r.set(q, "")
@@ -2538,25 +2547,25 @@ describe("Atom", { concurrent: false }, () => {
   //   const notSerializable = Atom.make(0)
   //   r.mount(notSerializable)
   //
-  //   const basicSerializable = Atom.make(0).pipe(Atom.serializable({
+  //   const basicSerializable = Atom.make(0).pipe(AtomSerializable.serializable({
   //     key: "basicSerializable",
   //     schema: Schema.Number
   //   }))
   //   r.mount(basicSerializable)
   //
   //   const errored = Atom.make(Effect.fail("error")).pipe(
-  //     Atom.serializable({
+  //     AtomSerializable.serializable({
   //       key: "errored",
-  //       schema: AsyncResult.Schema({
+  //       schema: AsyncResultSchema.Schema({
   //         error: Schema.String
   //       })
   //     })
   //   )
   //   r.mount(errored)
   //
-  //   const success = Atom.make(Effect.succeed(123)).pipe(Atom.serializable({
+  //   const success = Atom.make(Effect.succeed(123)).pipe(AtomSerializable.serializable({
   //     key: "success",
-  //     schema: AsyncResult.Schema({
+  //     schema: AsyncResultSchema.Schema({
   //       success: Schema.Number
   //     })
   //   }))
@@ -2564,9 +2573,9 @@ describe("Atom", { concurrent: false }, () => {
   //
   //   const { promise, resolve } = Promise.withResolvers<number>()
   //
-  //   const pending = Atom.make(Effect.promise(() => promise)).pipe(Atom.serializable({
+  //   const pending = Atom.make(Effect.promise(() => promise)).pipe(AtomSerializable.serializable({
   //     key: "pending",
-  //     schema: AsyncResult.Schema({
+  //     schema: AsyncResultSchema.Schema({
   //       success: Schema.Number
   //     })
   //   }))
@@ -2908,7 +2917,7 @@ describe("Atom", { concurrent: false }, () => {
         return value
       }).pipe(
         Atom.withReactivity(["counter"]),
-        Atom.serializable({ key: "hydrated-counter", schema: Schema.Number }),
+        AtomSerializable.serializable({ key: "hydrated-counter", schema: Schema.Number }),
         Atom.keepAlive
       )
       const r = AtomRegistry.make()
@@ -3065,7 +3074,7 @@ describe("Atom", { concurrent: false }, () => {
       )
 
       const kvsRuntime = Atom.runtime(DelayedKVS)
-      const atom = Atom.kvs({
+      const atom = AtomKvs.kvs({
         runtime: kvsRuntime,
         key: "default-value-key",
         schema: Schema.Number,
@@ -3117,7 +3126,7 @@ describe("Atom", { concurrent: false }, () => {
       )
 
       const kvsRuntime = Atom.runtime(DelayedKVS)
-      const atom = Atom.kvs({
+      const atom = AtomKvs.kvs({
         runtime: kvsRuntime,
         key: "test-key",
         schema: Schema.Number,
@@ -3170,7 +3179,7 @@ describe("Atom", { concurrent: false }, () => {
       )
 
       const kvsRuntime = Atom.runtime(DelayedKVS)
-      const atom = Atom.kvs({
+      const atom = AtomKvs.kvs({
         mode: "async",
         runtime: kvsRuntime,
         key: "test-key",

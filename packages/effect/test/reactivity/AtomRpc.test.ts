@@ -1,6 +1,6 @@
 import { assert, describe, expectTypeOf, it } from "@effect/vitest"
 import { type Cause, Deferred, Effect, Layer, Schema } from "effect"
-import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/reactivity"
+import { AsyncResult, Atom, AtomRegistry, AtomRpc, AtomSerializable, Hydration } from "effect/reactivity"
 import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcMiddleware, type RpcSerialization } from "effect/rpc"
 
 const Group = RpcGroup.make(
@@ -165,7 +165,7 @@ describe("AtomRpc", () => {
         serializationKey: "failed"
       })
       const unaffectedAtom = Atom.make(42).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "unaffected",
           schema: Schema.Number
         })

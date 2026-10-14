@@ -2,9 +2,11 @@
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { Cause, Context, Effect, Latch, Layer } from "effect"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
+import * as AsyncResultSchema from "effect/reactivity/AsyncResultSchema"
 import * as Atom from "effect/reactivity/Atom"
 import * as AtomRef from "effect/reactivity/AtomRef"
 import * as AtomRegistry from "effect/reactivity/AtomRegistry"
+import * as AtomSerializable from "effect/reactivity/AtomSerializable"
 import * as Hydration from "effect/reactivity/Hydration"
 import * as Schema from "effect/Schema"
 import * as React from "react"
@@ -349,7 +351,7 @@ describe("atom-react", { concurrent: false }, () => {
   describe("hydration", () => {
     test("basic hydration with number atom and result atoms", () => {
       const atomBasic = Atom.make(0).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "basic",
           schema: Schema.Number
         })
@@ -357,9 +359,9 @@ describe("atom-react", { concurrent: false }, () => {
       const e: Effect.Effect<number, string> = Effect.never
       const makeAtomResult = (key: string) =>
         Atom.make(e).pipe(
-          Atom.serializable({
+          AtomSerializable.serializable({
             key,
-            schema: AsyncResult.Schema({
+            schema: AsyncResultSchema.Schema({
               success: Schema.Number,
               error: Schema.String
             })
@@ -450,9 +452,9 @@ describe("atom-react", { concurrent: false }, () => {
           return 1
         })
       ).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "test",
-          schema: AsyncResult.Schema({
+          schema: AsyncResultSchema.Schema({
             success: Schema.Number
           })
         })
@@ -501,7 +503,7 @@ describe("atom-react", { concurrent: false }, () => {
 
     test("HydrationBoundary splits new vs existing atoms", () => {
       const newAtom = Atom.make(0).pipe(
-        Atom.serializable({ key: "new-atom", schema: Schema.Number })
+        AtomSerializable.serializable({ key: "new-atom", schema: Schema.Number })
       )
 
       // Use a server registry to generate dehydrated state
@@ -530,9 +532,9 @@ describe("atom-react", { concurrent: false }, () => {
 
     test("dehydrate with encodeInitialAs ignore (default)", () => {
       const atom = Atom.make(Effect.never as Effect.Effect<number>).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "initial-atom",
-          schema: AsyncResult.Schema({ success: Schema.Number })
+          schema: AsyncResultSchema.Schema({ success: Schema.Number })
         })
       )
 
@@ -547,9 +549,9 @@ describe("atom-react", { concurrent: false }, () => {
 
     test("dehydrate with encodeInitialAs value-only", () => {
       const atom = Atom.make(Effect.never as Effect.Effect<number>).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "initial-atom",
-          schema: AsyncResult.Schema({ success: Schema.Number })
+          schema: AsyncResultSchema.Schema({ success: Schema.Number })
         })
       )
 
@@ -568,9 +570,9 @@ describe("atom-react", { concurrent: false }, () => {
 
     test("serializable encode/decode survives JSON roundtrip (wire transfer)", () => {
       const atom = Atom.make(0 as never).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "wire-test",
-          schema: AsyncResult.Schema({
+          schema: AsyncResultSchema.Schema({
             success: Schema.Struct({ name: Schema.String }),
             error: Schema.String
           })
@@ -598,9 +600,9 @@ describe("atom-react", { concurrent: false }, () => {
 
     test("dehydrate + JSON roundtrip + hydrate works (SSR simulation)", () => {
       const atom = Atom.make(Effect.never as Effect.Effect<number>).pipe(
-        Atom.serializable({
+        AtomSerializable.serializable({
           key: "ssr-wire",
-          schema: AsyncResult.Schema({ success: Schema.Number })
+          schema: AsyncResultSchema.Schema({ success: Schema.Number })
         })
       )
 

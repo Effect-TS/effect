@@ -5,8 +5,8 @@
  * registry runs atom reads, remembers current values, tracks dependencies
  * between atoms, starts effects and streams, and cleans up atoms that are no
  * longer used. This module includes the atom constructors and update helpers
- * used for cached values, effect-backed values, streams, browser state, stored
- * values, and server-rendered values.
+ * used for cached values, effect-backed values, streams, browser state, and
+ * server-rendered values.
  *
  * @stability unstable
  * @since 4.0.0
@@ -19,7 +19,6 @@ import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
-import type { LazyArg } from "../Function.ts"
 import { constant, constTrue, constVoid, dual, pipe } from "../Function.ts"
 import type * as Inspectable from "../Inspectable.ts"
 import { PipeInspectableProto } from "../internal/core.ts"
@@ -27,13 +26,12 @@ import { getStackTraceLimit } from "../internal/stackTraceLimit.ts"
 import * as Layer from "../Layer.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as Option from "../Option.ts"
-import * as KeyValueStore from "../persistence/KeyValueStore.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import type { ReadonlyRecord } from "../Record.ts"
 import * as Scheduler from "../Scheduler.ts"
-import * as Schema from "../Schema.ts"
+import type * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as SubscriptionRef from "../SubscriptionRef.ts"
@@ -2234,167 +2232,6 @@ export const refreshOnWindowFocus: <A extends Atom<any>>(self: A) => WithoutSeri
 )
 
 // -----------------------------------------------------------------------------
-// KeyValueStore
-// -----------------------------------------------------------------------------
-
-/**
- * Creates a writable atom backed by a `KeyValueStore` entry.
- *
- * **Details**
- *
- * Values are encoded and decoded with the supplied schema. In sync mode the atom
- * exposes the decoded value and writes the default value when the key is missing;
- * in async mode it exposes an `AsyncResult` of the decoded value.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode extends "sync" | "async" = never>(options: {
-  readonly runtime: AtomRuntime<KeyValueStore.KeyValueStore, any>
-  readonly key: string
-  readonly schema: S
-  readonly defaultValue: LazyArg<S["Type"]>
-  readonly mode?: Mode | undefined
-}): Writable<"async" extends Mode ? AsyncResult.AsyncResult<S["Type"]> : S["Type"], S["Type"]> => {
-  const setAtom = options.runtime.fn(
-    (value: S["Type"]) =>
-      KeyValueStore.KeyValueStore.use((store) =>
-        KeyValueStore.toSchemaStore(store, options.schema).set(options.key, value)
-      )
-  )
-  const resultAtom = options.runtime.atom(
-    KeyValueStore.KeyValueStore.use((store) => KeyValueStore.toSchemaStore(store, options.schema).get(options.key))
-  )
-  return writable(
-    options.mode === "async" ?
-      (get) => {
-        get.mount(setAtom)
-        const mapper = AsyncResult.map<Option.Option<S["Type"]>, S["Type"]>(
-          Option.getOrElse(() => {
-            const value = options.defaultValue()
-            get.set(setAtom, value)
-            return value
-          })
-        )
-        get.subscribe(resultAtom, (result) => get.setSelf(mapper(result)))
-        return mapper(get.once(resultAtom))
-      } :
-      (get) => {
-        get.mount(setAtom)
-        get.subscribe(resultAtom, (result) => {
-          if (!AsyncResult.isSuccess(result)) return
-          if (Option.isSome(result.value)) {
-            get.setSelf(result.value.value)
-          } else {
-            const value = Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
-            get.setSelf(value)
-            get.set(setAtom, value)
-          }
-        }, { immediate: true })
-        return Option.getOrElse(get.self<S["Type"]>(), options.defaultValue)
-      },
-    (ctx, value: S["Type"]) => {
-      ctx.set(setAtom, value as any)
-      ctx.setSelf(options.mode === "async" ? AsyncResult.success(value) : value)
-    }
-  ) as any
-}
-
-// -----------------------------------------------------------------------------
-// URL search params
-// -----------------------------------------------------------------------------
-
-/**
- * Creates an atom that reads and writes a URL search parameter.
- *
- * **Gotchas**
- *
- * If you pass a schema, it has to be synchronous and have no context.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const searchParam = <S extends Schema.ConstraintCodec<any, string> = never>(
-  name: string,
-  options?: {
-    readonly schema?: S | undefined
-  }
-): Writable<[S] extends [never] ? string : Option.Option<S["Type"]>> => {
-  const decode = options?.schema && Schema.decodeExit(options.schema)
-  const encode = options?.schema && Schema.encodeExit(options.schema)
-  return writable(
-    (get) => {
-      if (typeof window === "undefined") {
-        return decode ? Option.none() : ""
-      }
-      const handleUpdate = () => {
-        if (searchParamState.updating) return
-        const searchParams = new URLSearchParams(window.location.search)
-        const newValue = searchParams.get(name) || ""
-        if (decode) {
-          get.setSelf(Exit.getSuccess(decode(newValue)))
-        } else if (newValue !== Option.getOrUndefined(get.self())) {
-          get.setSelf(newValue)
-        }
-      }
-      window.addEventListener("popstate", handleUpdate)
-      window.addEventListener("pushstate", handleUpdate)
-      get.addFinalizer(() => {
-        window.removeEventListener("popstate", handleUpdate)
-        window.removeEventListener("pushstate", handleUpdate)
-      })
-      const value = new URLSearchParams(window.location.search).get(name) || ""
-      return decode ? Exit.getSuccess(decode(value)) : value as any
-    },
-    (ctx, value: any) => {
-      if (typeof window === "undefined") {
-        ctx.setSelf(value)
-        return
-      }
-
-      if (encode) {
-        const encoded = Option.flatMap(value, (v) => Exit.getSuccess(encode(v as S["Type"])))
-        searchParamState.updates.set(name, Option.getOrElse(encoded, () => ""))
-        value = Option.zipRight(encoded, value)
-      } else {
-        searchParamState.updates.set(name, value)
-      }
-      ctx.setSelf(value)
-      if (searchParamState.timeout) {
-        clearTimeout(searchParamState.timeout)
-      }
-      searchParamState.timeout = setTimeout(updateSearchParams, 500) as any
-    }
-  )
-}
-
-const searchParamState = {
-  timeout: undefined as number | undefined,
-  updates: new Map<string, string>(),
-  updating: false
-}
-
-function updateSearchParams() {
-  searchParamState.timeout = undefined
-  searchParamState.updating = true
-  const searchParams = new URLSearchParams(window.location.search)
-  for (const [key, value] of searchParamState.updates.entries()) {
-    if (value.length > 0) {
-      searchParams.set(key, value)
-    } else {
-      searchParams.delete(key)
-    }
-  }
-  searchParamState.updates.clear()
-  const search = searchParams.toString()
-  const newUrl = `${window.location.pathname}${search.length > 0 ? `?${search}` : ""}${window.location.hash}`
-  window.history.pushState({}, "", newUrl)
-  searchParamState.updating = false
-}
-
-// -----------------------------------------------------------------------------
 // conversions
 // -----------------------------------------------------------------------------
 
@@ -2588,43 +2425,6 @@ export interface Serializable<S extends Schema.Constraint> {
  * @since 4.0.0
  */
 export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializable<any> => SerializableTypeId in self
-
-/**
- * Attaches serialization metadata to an atom using a schema and stable key.
- *
- * **Details**
- *
- * The schema is converted to a JSON codec for synchronous encode/decode, and the
- * key is also used as the atom label when the atom does not already have one.
- *
- * @stability unstable
- * @category combinators
- * @since 4.0.0
- */
-export const serializable: {
-  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(options: {
-    readonly key: string
-    readonly schema: S
-  }): (self: R) => R & Serializable<S>
-  <R extends Atom<any>, S extends Schema.ConstraintCodec<Type<R>, any>>(self: R, options: {
-    readonly key: string
-    readonly schema: S
-  }): R & Serializable<S>
-} = dual(2, <R extends Atom<any>, A, I>(self: R, options: {
-  readonly key: string
-  readonly schema: Schema.ConstraintCodec<A, I>
-}): R & Serializable<any> => {
-  const codecJson = Schema.toCodecJson(options.schema)
-  return Object.assign(Object.create(Object.getPrototypeOf(self)), {
-    ...self,
-    label: self.label ?? [options.key, getStackTraceLimit() === 0 ? "" : new Error().stack?.split("\n")[5] ?? ""],
-    [SerializableTypeId]: {
-      key: options.key,
-      encode: Schema.encodeSync(codecJson),
-      decode: Schema.decodeSync(codecJson)
-    }
-  })
-})
 
 /**
  * The type id used to mark atoms with a server-side read override.

@@ -26,8 +26,10 @@ import type { ReadonlyRecord } from "../Record.ts"
 import * as Schema from "../Schema.ts"
 import type { SchemaError } from "../Schema.ts"
 import type { Mutable, Simplify } from "../Types.ts"
-import * as AsyncResult from "./AsyncResult.ts"
+import type * as AsyncResult from "./AsyncResult.ts"
+import * as AsyncResultSchema from "./AsyncResultSchema.ts"
 import * as Atom from "./Atom.ts"
+import * as AtomSerializable from "./AtomSerializable.ts"
 import * as Reactivity from "./Reactivity.ts"
 
 /**
@@ -243,9 +245,9 @@ export const Service =
       )
       if (responseMode === "decoded-only") {
         const definition = groups[group].endpoints[endpoint]
-        return Atom.serializable(atom, {
+        return AtomSerializable.serializable(atom, {
           key: `AtomHttpApi:mutation:${group}:${endpoint}`,
-          schema: AsyncResult.Schema({
+          schema: AsyncResultSchema.Schema({
             success: Schema.Union(HttpApiEndpoint.getSuccessSchemas(definition)),
             error: Schema.Union(HttpApiEndpoint.getErrorSchemas(definition))
           }) as any
@@ -277,9 +279,9 @@ export const Service =
       }
       if (opts.responseMode === "decoded-only" && opts.serializationKey) {
         const endpoint = groups[opts.group].endpoints[opts.endpoint]
-        atom = Atom.serializable(atom, {
+        atom = AtomSerializable.serializable(atom, {
           key: `AtomHttpApi:${opts.group}:${opts.endpoint}:${opts.serializationKey}`,
-          schema: AsyncResult.Schema({
+          schema: AsyncResultSchema.Schema({
             success: Schema.Union(HttpApiEndpoint.getSuccessSchemas(endpoint)),
             error: Schema.Union(HttpApiEndpoint.getErrorSchemas(endpoint))
           }) as any

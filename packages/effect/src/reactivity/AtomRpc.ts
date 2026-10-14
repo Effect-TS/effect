@@ -26,8 +26,10 @@ import * as Schema from "../Schema.ts"
 import type { Scope } from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import type { Mutable, NoInfer } from "../Types.ts"
-import * as AsyncResult from "./AsyncResult.ts"
+import type * as AsyncResult from "./AsyncResult.ts"
+import * as AsyncResultSchema from "./AsyncResultSchema.ts"
 import * as Atom from "./Atom.ts"
+import * as AtomSerializable from "./AtomSerializable.ts"
 import * as Reactivity from "./Reactivity.ts"
 
 /**
@@ -210,9 +212,9 @@ export const Service = <Self>() =>
           : effect as any as Effect.Effect<any>)
       })
     ).pipe(
-      Atom.serializable({
+      AtomSerializable.serializable({
         key: `AtomRpc:mutation:${tag}`,
-        schema: AsyncResult.Schema({
+        schema: AsyncResultSchema.Schema({
           success: rpc.successSchema,
           error: makeErrorSchema(rpc)
         }) as any
@@ -242,9 +244,9 @@ export const Service = <Self>() =>
         atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
       }
       if (!isStream && key.serializationKey) {
-        atom = Atom.serializable(atom, {
+        atom = AtomSerializable.serializable(atom, {
           key: `AtomRpc:${key.tag}:${key.serializationKey}`,
-          schema: AsyncResult.Schema({
+          schema: AsyncResultSchema.Schema({
             success: rpc.successSchema,
             error: makeErrorSchema(rpc)
           }) as any
