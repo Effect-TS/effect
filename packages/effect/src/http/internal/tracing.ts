@@ -1,9 +1,5 @@
-import * as Option from "../../Option.ts"
-import * as Result from "../../Result.ts"
 import type * as Tracer from "../../Tracer.ts"
 import * as Headers from "../Headers.ts"
-import type * as HttpClientRequest from "../HttpClientRequest.ts"
-import * as Url from "../Url.ts"
 import * as UrlParams from "../UrlParams.ts"
 
 const defaultPorts: Record<string, number> = {
@@ -41,26 +37,16 @@ export const addUrlAttributes = (
 }
 
 /**
- * Rebuilds the request URL with `Redacted` parameter values replaced by
- * `REDACTED`, for span attributes.
+ * Adds the names of `Redacted` parameters to the redacted names.
  *
  * @internal
  */
-export const redactParams = (request: HttpClientRequest.HttpClientRequest, url: URL): URL => {
-  const params = request.urlParams.params
-  if (params.every(([, value]) => typeof value === "string")) return url
-  return Result.getOrElse(
-    Url.make(
-      request.url,
-      UrlParams.make(params.map(([key, value]) => [key, typeof value === "string" ? value : "REDACTED"])),
-      Option.getOrUndefined(request.hash)
-    ),
-    () => {
-      const out = new URL(url)
-      out.search = ""
-      return out
-    }
-  )
+export const redactedNames = (
+  urlParams: UrlParams.UrlParams,
+  redactedNames: ReadonlyArray<string | RegExp>
+): ReadonlyArray<string | RegExp> => {
+  const keys = urlParams.params.filter(([, value]) => typeof value !== "string").map(([key]) => key)
+  return keys.length === 0 ? redactedNames : [...redactedNames, ...keys]
 }
 
 /** @internal */

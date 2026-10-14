@@ -450,13 +450,8 @@ export const remove: {
  * @category converting
  * @since 4.0.0
  */
-export const toString = (input: Input): string => {
-  const out = new URLSearchParams()
-  for (const [key, value] of fromInput(input).params) {
-    out.append(key, internal.unwrap(value))
-  }
-  return out.toString()
-}
+export const toString = (input: Input): string =>
+  new URLSearchParams(fromInput(input).params.map(([key, value]) => [key, internal.unwrap(value)])).toString()
 
 /**
  * Builds a `Record` containing all the key-value pairs in the given `UrlParams`

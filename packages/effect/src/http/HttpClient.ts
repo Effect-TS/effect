@@ -730,8 +730,8 @@ export const make = (
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
             tracing.addUrlAttributes(
               span,
-              tracing.redactParams(request, url),
-              fiber.getRef(UrlParams.CurrentRedactedNames)
+              url,
+              tracing.redactedNames(request.urlParams, fiber.getRef(UrlParams.CurrentRedactedNames))
             )
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             tracing.addHeaderAttributes(span, "request", request.headers, headerFilter, redactedHeaderNames)
