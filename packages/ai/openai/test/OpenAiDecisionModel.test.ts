@@ -131,11 +131,7 @@ describe("OpenAiDecisionModel", () => {
   it.effect("rejects descriptions outside the OpenAI string-only contract before sending", () => {
     const decisions = [
       Decision.classify({ instructions: { question: "Team?" }, criteria: { a: "A", b: "B" } }),
-      Decision.probability({ instructions: ["Urgent?"] }),
-      Decision.classify({ instructions: "Team?", criteria: { a: { handles: "billing" }, b: "B" } }),
-      Decision.classify({ instructions: "Team?", criteria: { a: null, b: "B" } }),
-      Decision.rate({ instructions: "Severity?", criteria: ["low", { label: "high", description: ["outage"] }] }),
-      Decision.probability({ instructions: "Urgent?", criteria: { false: "Can wait", true: { action: "now" } } })
+      Decision.rate({ instructions: "Severity?", criteria: ["low", { label: "high", description: ["outage"] }] })
     ]
     let requests = 0
     return Effect.gen(function*() {

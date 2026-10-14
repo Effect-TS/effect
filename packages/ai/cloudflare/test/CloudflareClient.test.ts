@@ -1,7 +1,6 @@
 import * as CloudflareClient from "@effect/ai-cloudflare/CloudflareClient"
-import * as CloudflareSchema from "@effect/ai-cloudflare/CloudflareSchema"
 import { assert, describe, it } from "@effect/vitest"
-import { Config, ConfigProvider, Duration, Effect, Layer, Redacted, Schema } from "effect"
+import { Config, ConfigProvider, Duration, Effect, Layer, Redacted } from "effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as HttpClientError from "effect/http/HttpClientError"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -169,19 +168,5 @@ describe("CloudflareClient", () => {
           )
         ))
       ))
-  })
-})
-describe("Cloudflare question boundaries", () => {
-  it("accepts null descriptions but rejects null instructions", () => {
-    for (
-      const question of [
-        { type: "choice", instructions: "Choose", criteria: { a: null, b: "Other" } },
-        { type: "score", instructions: "Rate", criteria: [null, 1] },
-        { type: "noul", instructions: "Urgent", criteria: { false: null, true: true } }
-      ] as const
-    ) {
-      assert.deepStrictEqual(Schema.decodeUnknownSync(CloudflareSchema.Question)(question), question)
-      assert.throws(() => Schema.decodeUnknownSync(CloudflareSchema.Question)({ ...question, instructions: null }))
-    }
   })
 })

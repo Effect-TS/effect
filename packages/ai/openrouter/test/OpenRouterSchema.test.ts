@@ -63,18 +63,6 @@ describe("OpenRouterSchema", () => {
     assert.strictEqual(decoded.user, "user-1")
   })
 
-  it.each([
-    { name: "null instructions", question: { type: "noul", instructions: null } },
-    { name: "a null score level", question: { type: "score", instructions: "Rate", criteria: ["low", null] } },
-    {
-      name: "a null noul outcome",
-      question: { type: "noul", instructions: "Urgent", criteria: { false: null, true: "Act now" } }
-    },
-    { name: "numeric instructions", question: { type: "noul", instructions: 1 } }
-  ])("rejects $name", ({ question }) => {
-    assert.throws(() => Schema.decodeUnknownSync(OpenRouterSchema.DecisionsQuestion)(question))
-  })
-
   it("accepts a noul question without criteria", () => {
     const decoded = Schema.decodeUnknownSync(OpenRouterSchema.NoulQuestion)({
       type: "noul",

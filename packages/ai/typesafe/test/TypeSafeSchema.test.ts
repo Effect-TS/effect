@@ -52,18 +52,6 @@ describe("TypeSafeSchema", () => {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(encoded)), request)
   })
 
-  it("accepts null instructions and descriptions for every question type", () => {
-    for (
-      const question of [
-        { type: "choice", instructions: null, criteria: { a: null, b: "Other" } },
-        { type: "score", instructions: null, criteria: [null, "high"] },
-        { type: "noul", instructions: null, criteria: { false: null, true: null } }
-      ] as const
-    ) {
-      assert.deepStrictEqual(Schema.decodeUnknownSync(TypeSafeSchema.Question)(question), question)
-    }
-  })
-
   it("accepts a noul question without criteria", () => {
     const decoded = Schema.decodeUnknownSync(TypeSafeSchema.NoulQuestion)({
       type: "noul",

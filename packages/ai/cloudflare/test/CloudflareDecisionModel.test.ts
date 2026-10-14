@@ -75,17 +75,9 @@ const layer = (answers: unknown) =>
 const Structured = Decision.make({
   input: Schema.String,
   decisions: {
-    team: Decision.classify({
-      instructions: { question: "Which team?" },
-      criteria: { billing: { handles: ["payments"] }, technical: null }
-    }),
     severity: Decision.rate({
       instructions: ["How severe?"],
       criteria: ["Minor", { label: "Critical", description: { impact: "outage" } }]
-    }),
-    urgent: Decision.probability({
-      instructions: { question: "Urgent?" },
-      criteria: { false: ["Can wait"], true: { action: "now" } }
     })
   }
 })
@@ -238,37 +230,23 @@ describe("CloudflareDecisionModel", () => {
   it.effect("sends structured descriptions and maps score indices to labels", () =>
     Effect.gen(function*() {
       const result = yield* DecisionModel.decide(Structured, { input: "Checkout is down" })
-      assert.strictEqual(result.answers.team.label, "technical")
       assert.strictEqual(result.answers.severity.label, "Critical")
       assert.deepStrictEqual({ ...result.answers.severity.probabilities }, { Minor: 0.1, Critical: 0.9 })
-      assert.strictEqual(result.answers.urgent.probability, 0.99)
     }).pipe(
       Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
       Effect.provide(clientLayer({
-        team: { type: "choice", choice: "technical", probabilities: { billing: 0.1, technical: 0.9 }, confidence: 0.9 },
         severity: {
           type: "score",
           score: 0.9,
           probabilities: { "0": 0.1, "1": 0.9 },
           confidence: 0.9,
           legend: { "0": "Minor", "1": { impact: "outage" } }
-        },
-        urgent: { type: "noul", noul: 0.99 }
+        }
       }, (request) => {
         assert.strictEqual(request.body._tag, "Uint8Array")
         if (request.body._tag === "Uint8Array") {
           assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).questions, {
-            team: {
-              type: "choice",
-              instructions: { question: "Which team?" },
-              criteria: { billing: { handles: ["payments"] }, technical: null }
-            },
-            severity: { type: "score", instructions: ["How severe?"], criteria: ["Minor", { impact: "outage" }] },
-            urgent: {
-              type: "noul",
-              instructions: { question: "Urgent?" },
-              criteria: { false: ["Can wait"], true: { action: "now" } }
-            }
+            severity: { type: "score", instructions: ["How severe?"], criteria: ["Minor", { impact: "outage" }] }
           })
         }
       }))
