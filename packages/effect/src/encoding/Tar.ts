@@ -4,13 +4,12 @@
  * A tar archive is a sequence of entries, each a header followed by the bytes
  * of its body. `decode` turns archive bytes into entries whose bodies stream
  * straight from the input, and `encode` turns entries back into archive bytes.
- * Neither side buffers an entry body, so archives of any size can pass through
- * in constant memory.
+ * Neither side buffers an entire entry body.
  *
  * The decoder reads the formats produced by common tools: v7, USTAR, PAX
  * extended headers, and GNU long names and base-256 numbers. The encoder writes
- * plain USTAR and adds a PAX extended header only for an entry that does not
- * fit USTAR. The module does not touch the file system and does not compress.
+ * USTAR, adding PAX extended headers for fields that do not fit or for custom
+ * metadata. It does not access the file system or compress archives.
  *
  * @stability unstable
  * @since 4.0.5
@@ -160,10 +159,6 @@ export interface EntryOptions {
   readonly pax?: Readonly<Record<string, string>> | undefined
 }
 
-// -----------------------------------------------------------------------------
-// Constructors
-// -----------------------------------------------------------------------------
-
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
@@ -294,10 +289,6 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
   body: Stream.empty
 })
 
-// -----------------------------------------------------------------------------
-// Format
-// -----------------------------------------------------------------------------
-
 const BLOCK = 512
 const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
 const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
@@ -309,7 +300,6 @@ const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader",
 
 const sparseUnsupported = () => new TarError({ kind: "Unsupported", message: "GNU sparse files are not supported" })
 
-// Runs a header codec function that throws `TarError`
 const attempt = <A>(f: () => A): Effect.Effect<A, TarError> => {
   try {
     return Effect.succeed(f())
@@ -359,10 +349,6 @@ const isAscii = (s: string): boolean => {
   }
   return true
 }
-
-// -----------------------------------------------------------------------------
-// Header decoding
-// -----------------------------------------------------------------------------
 
 const readString = (block: Uint8Array, offset: number, length: number): string => {
   let end = offset
@@ -473,10 +459,6 @@ const parseHeader = (block: Uint8Array): RawHeader => {
   return header
 }
 
-// -----------------------------------------------------------------------------
-// PAX records
-// -----------------------------------------------------------------------------
-
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
 const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
 
@@ -562,10 +544,6 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
   return rest
 }
 
-// -----------------------------------------------------------------------------
-// Decoding
-// -----------------------------------------------------------------------------
-
 // A queue of byte chunks that hands out views without copying where possible
 class ByteQueue {
   private chunks: Array<Uint8Array> = []
@@ -578,7 +556,6 @@ class ByteQueue {
     this.length += chunk.length
   }
 
-  // Takes up to `max` bytes from the first chunk
   takeSome(max: number): Uint8Array {
     const chunk = this.chunks[0]
     const available = chunk.length - this.offset
@@ -667,7 +644,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
   let closed = false
   // Incremented whenever the current body is invalidated
   let generation = 0
-  // Body bytes not yet read, and the padding after them
   let remaining = 0
   let pad = 0
 
@@ -684,7 +660,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
     })
   )
 
-  // Pulls until at least `n` bytes are buffered, or the input ends
   const fill = (n: number): Effect.Effect<boolean, IE> =>
     Effect.suspend(() => {
       if (queue.length >= n) return Effect.succeed(true)
@@ -710,7 +685,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
   const skip = (n: number): Effect.Effect<void, TarError | IE> =>
     n === 0 ? Effect.void : Effect.flatMap(readSome(Math.min(n, 65536)), (chunk) => skip(n - chunk.length))
 
-  // Reads the data of a PAX or GNU long name entry, including its padding
   const readMeta = (size: number): Effect.Effect<Uint8Array, TarError | IE> => {
     if (size > MAX_META_SIZE) {
       return Effect.fail(invalidHeader(`extended header of ${size} bytes exceeds the limit`))
@@ -827,10 +801,6 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
   }
 }
 
-// -----------------------------------------------------------------------------
-// Encoding
-// -----------------------------------------------------------------------------
-
 const writeString = (block: Uint8Array, offset: number, length: number, value: string): void => {
   const n = Math.min(value.length, length)
   for (let i = 0; i < n; i++) block[offset + i] = value.charCodeAt(i)
@@ -850,7 +820,7 @@ const toAscii = (s: string): string => {
   return out
 }
 
-// Splits a path into a USTAR prefix and name, the same way Go's tar.Writer does
+// Split at the last slash that fits the 155-byte USTAR prefix.
 const splitPath = (path: string): readonly [prefix: string, name: string] | undefined => {
   if (path.length <= 100 || !isAscii(path)) return undefined
   let length = path.length
@@ -931,8 +901,6 @@ const checkNoNul = (field: string, value: string): string => {
   return value
 }
 
-// Encodes the header blocks of an entry: an optional PAX extended header for
-// the fields that don't fit USTAR, then the USTAR header
 const encodeHeader = (header: Header): Uint8Array => {
   const path = checkNoNul("path", header.path)
   if (path === "") {
@@ -972,8 +940,7 @@ const encodeHeader = (header: Header): Uint8Array => {
     pax[key] = value
   }
 
-  // A value that doesn't fit its USTAR field moves to a PAX record, and the
-  // field keeps what it can: the ASCII part of a string, or zero for a number
+  // PAX holds overflow values; USTAR keeps truncated ASCII strings or zero.
   const fitString = (key: string, value: string, length: number): string => {
     if (isAscii(value) && value.length <= length) return value
     pax[key] = value
@@ -1046,16 +1013,18 @@ const encodeHeader = (header: Header): Uint8Array => {
  * prefix and name fields when it is longer than 100 bytes. A PAX extended
  * header is added only for what USTAR cannot hold: a long or non-ASCII path,
  * link target, user or group name, a size of 8 GiB or more, a uid or gid above
- * `2097151`, an mtime outside the USTAR range, or extra `pax` records. Records
- * in `header.pax` are written as given, except where a field that doesn't fit
- * replaces a record with the same key. Bodies are streamed through unbuffered,
- * and the archive ends with two zero blocks.
+ * `2097151`, an mtime outside the USTAR range, or custom `pax` records. Bodies
+ * stream without buffering, and the archive ends with two zero blocks.
  *
  * **Gotchas**
  *
  * - A body that produces any byte count other than `header.size` fails with a
  *   `SizeMismatch` `TarError`, so the size must be known before the body is
  *   written.
+ * - `header.pax` may contain custom metadata such as `SCHILY.xattr.*`. Keys
+ *   `path`, `linkpath`, `size`, `uid`, `gid`, `uname`, `gname` and `mtime` must
+ *   be set through the corresponding header fields. These keys and
+ *   `GNU.sparse.*` records fail with an `InvalidHeader` `TarError`.
  * - mtime is truncated to whole seconds.
  * - `typeflag` is only written for `Other` entries; every other type writes its
  *   standard flag.

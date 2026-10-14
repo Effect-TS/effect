@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `effect/encoding/Tar`, a streaming tar codec. `Tar.decode()` turns archive bytes into entries whose bodies stream straight from the input, reading v7, USTAR, PAX and GNU archives. `Tar.encode()` writes entries as USTAR, with PAX extended headers only where needed, and `Tar.file`, `Tar.fileStream`, `Tar.directory`, `Tar.symlink` and `Tar.hardlink` build entries with reproducible defaults.
+Add `effect/encoding/Tar` for streaming tar decoding and encoding, with entry constructors that use reproducible defaults. Decode v7, USTAR, PAX and non-sparse GNU archives; encode USTAR with PAX extended headers as needed.
