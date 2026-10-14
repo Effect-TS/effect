@@ -35,17 +35,20 @@ const TypeId = "~effect/http/UrlParams"
  *
  * **Details**
  *
- * Parameters are stored as ordered string key-value pairs and can contain multiple
- * values for the same key. Inspection redacts values added as `Redacted` and
- * values matching `CurrentRedactedNames`.
+ * Parameters are stored as ordered key-value pairs and can contain multiple
+ * values for the same key. Values are strings, or `Redacted` strings that are
+ * sent unwrapped. Inspection redacts `Redacted` values and values matching
+ * `CurrentRedactedNames`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface UrlParams extends Pipeable, Inspectable, Redactable.Redactable, Iterable<readonly [string, string]> {
+export interface UrlParams
+  extends Pipeable, Inspectable, Redactable.Redactable, Iterable<readonly [string, string | Redacted.Redacted]>
+{
   readonly [TypeId]: typeof TypeId
-  readonly params: ReadonlyArray<readonly [string, string]>
+  readonly params: ReadonlyArray<readonly [string, string | Redacted.Redacted]>
 }
 
 /**
@@ -84,8 +87,7 @@ type CoercibleRecordInput = CoercibleRecord & {
  *
  * **Details**
  *
- * A `Redacted` value is unwrapped into the stored parameter, which stays
- * redacted in inspection, JSON output, errors and HTTP client spans.
+ * `Redacted` values are stored as-is and sent unwrapped.
  *
  * **Gotchas**
  *
@@ -147,22 +149,17 @@ const Proto = {
 }
 
 /**
- * Creates `UrlParams` from ordered string key-value pairs.
+ * Creates `UrlParams` from ordered key-value pairs.
  *
  * **Details**
  *
  * The input pairs are used as-is and are not coerced or normalized.
  *
- * **Gotchas**
- *
- * Redaction follows each entry's identity: an entry taken from another
- * `UrlParams` stays redacted, but a copied `[key, value]` tuple doesn't.
- *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const make = (params: ReadonlyArray<readonly [string, string]>): UrlParams => {
+export const make = (params: ReadonlyArray<readonly [string, string | Redacted.Redacted]>): UrlParams => {
   const self = Object.create(Proto)
   self.params = params
   return self
@@ -175,7 +172,7 @@ export const make = (params: ReadonlyArray<readonly [string, string]>): UrlParam
  *
  * Primitive values are converted to strings, arrays produce repeated parameters,
  * nested records use bracket notation, and `undefined` values are omitted.
- * `Redacted` values are unwrapped and marked for redaction.
+ * `Redacted` values are kept as-is.
  *
  * @stability unstable
  * @category constructors
@@ -186,11 +183,14 @@ export const fromInput = (input: Input): UrlParams => {
     return input
   }
   const parsed = fromInputNested(input)
-  const out: Array<readonly [string, string]> = []
+  const out: Array<[string, string | Redacted.Redacted]> = []
   for (let i = 0; i < parsed.length; i++) {
-    const [key, value] = parsed[i]
-    const name = typeof key === "string" ? key : `${key[0]}[${key.slice(1).join("][")}]`
-    out.push(typeof value === "string" ? [name, value] : makeEntry(name, value))
+    if (Array.isArray(parsed[i][0])) {
+      const [keys, value] = parsed[i] as [Array<string>, string | Redacted.Redacted]
+      out.push([`${keys[0]}[${keys.slice(1).join("][")}]`, value])
+    } else {
+      out.push(parsed[i] as [string, string | Redacted.Redacted])
+    }
   }
   return make(out)
 }
@@ -200,8 +200,7 @@ const fromInputNested = (input: Input): Array<[string | Array<string>, string | 
     ? Arr.fromIterable(input as Iterable<readonly [string, Coercible]>)
     : Object.entries(input)
   const out: Array<[string | Array<string>, string | Redacted.Redacted]> = []
-  for (const entry of entries) {
-    const [key, value] = entry
+  for (const [key, value] of entries) {
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
         if (value[i] !== undefined) {
@@ -214,21 +213,13 @@ const fromInputNested = (input: Input): Array<[string | Array<string>, string | 
         out.push([[key, ...(typeof k === "string" ? [k] : k)], v])
       }
     } else if (value !== undefined) {
-      // Entries of another `UrlParams` keep their redaction mark.
-      out.push([key, internal.isRedactedEntry(entry) ? Redacted.make(value as string) : coerce(value)])
+      out.push([key, coerce(value)])
     }
   }
   return out
 }
 
-const coerce = (value: Coercible): string | Redacted.Redacted =>
-  typeof value === "string" || !Redacted.isRedacted(value) ? String(value) : value
-
-// `String` also covers record inputs, whose field types aren't checked.
-const makeEntry = (key: string, value: Coercible): readonly [string, string] =>
-  Redacted.isRedacted(value)
-    ? internal.markRedacted([key, String(Redacted.value(value))])
-    : [key, String(value)]
+const coerce = (value: Coercible): string | Redacted.Redacted => Redacted.isRedacted(value) ? value : String(value)
 
 /**
  * Provides an order-sensitive `Equivalence` instance for `UrlParams`.
@@ -247,7 +238,7 @@ export const Equivalence: Equ.Equivalence<UrlParams> = Equ.make<UrlParams>((a, b
 )
 
 const arrayEquivalence = Arr.makeEquivalence(
-  Tuple.makeEquivalence([Equ.strictEqual<string>(), Equ.strictEqual<string>()])
+  Tuple.makeEquivalence([Equ.strictEqual<string>(), Equal.asEquivalence<string | Redacted.Redacted>()])
 )
 
 /**
@@ -278,7 +269,7 @@ export const getAll: {
   (self: UrlParams, key: string): ReadonlyArray<string> =>
     Arr.reduce(self.params, [] as Array<string>, (acc, [k, value]) => {
       if (k === key) {
-        acc.push(value)
+        acc.push(internal.unwrap(value))
       }
       return acc
     })
@@ -307,7 +298,7 @@ export const getFirst: {
   2,
   (self: UrlParams, key: string): Option.Option<string> =>
     Arr.findFirst(self.params, ([k]) => k === key).pipe(
-      Option.map(([, value]) => value)
+      Option.map(([, value]) => internal.unwrap(value))
     )
 )
 
@@ -332,7 +323,7 @@ export const getLast: {
   (self: UrlParams, key: string): Option.Option<string>
 } = dual(2, (self: UrlParams, key: string): Option.Option<string> =>
   Arr.findLast(self.params, ([k]) => k === key).pipe(
-    Option.map(([, value]) => value)
+    Option.map(([, value]) => internal.unwrap(value))
   ))
 
 /**
@@ -341,7 +332,7 @@ export const getLast: {
  * **Details**
  *
  * Existing values for the same key are removed, and the new value is appended to
- * the end. A `Redacted` value is unwrapped and marked for redaction.
+ * the end.
  *
  * @stability unstable
  * @category combinators
@@ -354,7 +345,7 @@ export const set: {
   make(
     Arr.append(
       Arr.filter(self.params, ([k]) => k !== key),
-      makeEntry(key, value)
+      [key, coerce(value)]
     )
   ))
 
@@ -364,11 +355,6 @@ export const set: {
  * **Details**
  *
  * The result is wrapped in a new `UrlParams` value.
- *
- * **Gotchas**
- *
- * Redaction follows each entry's identity: return the entries you keep as they
- * are. A rebuilt `[key, value]` tuple is no longer redacted.
  *
  * @stability unstable
  * @category combinators
@@ -413,10 +399,6 @@ export const setAll: {
 /**
  * Appends a query parameter value without removing existing values for the key.
  *
- * **Details**
- *
- * A `Redacted` value is unwrapped and marked for redaction.
- *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -427,7 +409,7 @@ export const append: {
 } = dual(3, (self: UrlParams, key: string, value: Coercible): UrlParams =>
   make(Arr.append(
     self.params,
-    makeEntry(key, value)
+    [key, coerce(value)]
   )))
 
 /**
@@ -469,7 +451,13 @@ export const remove: {
  * @category converting
  * @since 4.0.0
  */
-export const toString = (input: Input): string => new URLSearchParams(fromInput(input).params as any).toString()
+export const toString = (input: Input): string => {
+  const out = new URLSearchParams()
+  for (const [key, value] of fromInput(input).params) {
+    out.append(key, internal.unwrap(value))
+  }
+  return out.toString()
+}
 
 /**
  * Builds a `Record` containing all the key-value pairs in the given `UrlParams`
@@ -496,7 +484,8 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  */
 export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
   const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
-  for (const [k, value] of self.params) {
+  for (const [k, v] of self.params) {
+    const value = internal.unwrap(v)
     if (!Object.hasOwn(out, k)) {
       InternalRecord.assignProperty(out, k, value)
     } else {
@@ -531,8 +520,8 @@ export const toReadonlyRecord: (self: UrlParams) => ReadonlyRecord<string, strin
  *
  * **Details**
  *
- * Wraps values added as `Redacted` and values whose names match
- * `isRedactedName`, preserving order and repeated names.
+ * Keeps `Redacted` values and wraps values whose names match `isRedactedName`,
+ * preserving order and repeated names.
  *
  * @stability unstable
  * @category combinators
@@ -553,9 +542,9 @@ export const redact: {
     key: string | RegExp | ReadonlyArray<string | RegExp>
   ): Array<[string, string | Redacted.Redacted<string>]> => {
     const patterns: ReadonlyArray<string | RegExp> = Array.isArray(key) ? key : [key as string | RegExp]
-    return self.params.map((entry) => [
-      entry[0],
-      internal.isRedactedEntry(entry) || isRedactedName(entry[0], patterns) ? Redacted.make(entry[1]) : entry[1]
+    return self.params.map(([name, value]) => [
+      name,
+      typeof value === "string" && isRedactedName(name, patterns) ? Redacted.make(value) : value
     ])
   }
 )
@@ -664,8 +653,8 @@ const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
  *
  * Defaults include `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`.
  * A custom list replaces the defaults. Matching uses `isRedactedName`.
- * Redaction leaves request URLs and parameter values unchanged. Values added
- * as `Redacted` are redacted regardless of this list.
+ * Redaction leaves request URLs and parameter values unchanged. `Redacted`
+ * values are redacted regardless of this list.
  *
  * @stability unstable
  * @category services
