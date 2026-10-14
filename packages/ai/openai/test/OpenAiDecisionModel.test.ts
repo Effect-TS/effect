@@ -138,12 +138,17 @@ describe("OpenAiDecisionModel", () => {
       }))
     ))
 
-  it.effect("leaves usage undefined when OpenAI omits it", () =>
+  it.effect("sends string state unchanged without images and leaves omitted usage undefined", () =>
     Effect.gen(function*() {
-      const result = yield* DecisionModel.decide(Triage, { input })
+      const result = yield* DecisionModel.decide(Urgency, { input: "Checkout is down" })
       assert.isUndefined(result.usage.inputTokens)
       assert.isUndefined(result.usage.outputTokens)
-    }).pipe(Effect.provide(layer(response(answers, {})))))
+    }).pipe(
+      Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
+      Effect.provide(clientLayer(response([answers[2]], {}), (request) => {
+        assert.strictEqual(requestBody(request).input, "Checkout is down")
+      }))
+    ))
 
   it.effect("fails with InvalidOutputError when an answer is missing", () =>
     Effect.gen(function*() {
@@ -166,18 +171,37 @@ describe("OpenAiDecisionModel", () => {
       answers[2]
     ])))))
 
-  it.effect("sends string state unchanged with byte array, base64 string, and data URL images", () => {
+  it.effect("sends string and JSON state with byte array, base64 string, and data URL images", () => {
     const dataUrl = "data:image/webp;base64,UklGRg=="
+    const images = [
+      { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
+      { mediaType: "image/jpeg", data: "/9j/4AAQ" },
+      { mediaType: "image/webp", data: new URL(dataUrl) }
+    ]
+    const assertInput = (request: HttpClientRequest.HttpClientRequest, text: string) => {
+      const body = requestBody(request)
+      assert.strictEqual(body.input.length, 1)
+      assert.strictEqual(body.input[0].role, "user")
+      assert.deepStrictEqual(body.input[0].content, [
+        { type: "input_text", text },
+        { type: "input_image", image_url: "data:image/png;base64,iVBORw==" },
+        { type: "input_image", image_url: "data:image/jpeg;base64,/9j/4AAQ" },
+        { type: "input_image", image_url: dataUrl }
+      ])
+    }
     return Effect.gen(function*() {
       const result = yield* DecisionModel.decide(Urgency, {
         input: "Checkout is down",
-        images: [
-          { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
-          { mediaType: "image/jpeg", data: "/9j/4AAQ" },
-          { mediaType: "image/webp", data: new URL(dataUrl) }
-        ]
+        images
       })
       assert.strictEqual(result.answers.urgent.probability, 0.99)
+      const jsonResult = yield* DecisionModel.decide(Triage, { input, images }).pipe(
+        Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
+        Effect.provide(clientLayer(response(answers), (request) => {
+          assertInput(request, "{\"message\":\"Checkout is down\"}")
+        }))
+      )
+      assert.strictEqual(jsonResult.answers.urgent.probability, 0.99)
     }).pipe(
       Effect.provide(OpenAiDecisionModel.layer({ model: "gpt-6-luna" })),
       Effect.provide(clientLayer(response([answers[2]]), (request) => {
@@ -185,14 +209,7 @@ describe("OpenAiDecisionModel", () => {
         assert.deepStrictEqual(body.questions, [
           { type: "predicate", name: "urgent", instructions: "Does this need immediate attention?" }
         ])
-        assert.strictEqual(body.input.length, 1)
-        assert.strictEqual(body.input[0].role, "user")
-        assert.deepStrictEqual(body.input[0].content, [
-          { type: "input_text", text: "Checkout is down" },
-          { type: "input_image", image_url: "data:image/png;base64,iVBORw==" },
-          { type: "input_image", image_url: "data:image/jpeg;base64,/9j/4AAQ" },
-          { type: "input_image", image_url: dataUrl }
-        ])
+        assertInput(request, "Checkout is down")
       }))
     )
   })
