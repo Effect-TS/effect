@@ -433,6 +433,62 @@ describe("Command", () => {
         )
       }).pipe(Effect.provide(TestLayer)))
 
+    describe("withOptionalValue", () => {
+      const watchFlag = Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+        Flag.withAlias("w"),
+        Flag.withOptionalValue("first-failure")
+      )
+
+      it.effect("uses the optional value for a bare flag without consuming the next token", () =>
+        Effect.gen(function*() {
+          const captured: Array<unknown> = []
+          const command = Command.make("app", {
+            watch: watchFlag,
+            files: Argument.String("file").pipe(Argument.variadic())
+          }, (config) => Effect.sync(() => captured.push(config)))
+          const run = Command.runWith(command, { version: "1.0.0" })
+
+          yield* run(["-w", "until-done"])
+          yield* run(["--watch=until-done"])
+
+          assert.deepStrictEqual(captured, [
+            { watch: "first-failure", files: ["until-done"] },
+            { watch: "until-done", files: [] }
+          ])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("does not consume a boolean literal after a negated flag", () =>
+        Effect.gen(function*() {
+          const captured: Array<unknown> = []
+          const command = Command.make("app", {
+            watch: Flag.Boolean("watch").pipe(Flag.withOptionalValue("true")),
+            files: Argument.String("file").pipe(Argument.variadic())
+          }, (config) => Effect.sync(() => captured.push(config)))
+
+          yield* Command.runWith(command, { version: "1.0.0" })(["--no-watch", "false"])
+
+          assert.deepStrictEqual(captured, [{ watch: false, files: ["false"] }])
+        }).pipe(Effect.provide(TestLayer)))
+
+      it.effect("emits the wizard value inline", () =>
+        Effect.gen(function*() {
+          const captured: Array<ReadonlyArray<string>> = []
+          const target = Command.make("app", { watch: watchFlag })
+          const command = Command.make("launcher", {}, () =>
+            Effect.flatMap(Command.wizard(target), (args) =>
+              Effect.sync(() => {
+                captured.push(args)
+              })))
+
+          const fiber = yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(Effect.forkChild)
+          yield* MockTerminal.inputKey("down")
+          yield* MockTerminal.inputKey("enter")
+          yield* Fiber.join(fiber)
+
+          assert.deepStrictEqual(captured, [["app", "--watch=until-done"]])
+        }).pipe(Effect.provide(TestLayer)))
+    })
+
     it.effect("should execute handler with parsed config", () =>
       Effect.gen(function*() {
         const path = yield* Path.Path

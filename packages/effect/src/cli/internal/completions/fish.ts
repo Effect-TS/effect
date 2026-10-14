@@ -7,6 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { takesSeparateValue } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -88,7 +89,7 @@ const flagCompletionArgs = (flag: Completions.FlagDescriptor): Array<string> => 
   if (flag.description) {
     args.push(`-d '${escapeFishString(flag.description)}'`)
   }
-  const valueArgs = flagValueArgs(flag.type)
+  const valueArgs = takesSeparateValue(flag) ? flagValueArgs(flag.type) : undefined
   if (valueArgs) {
     args.push(valueArgs)
   }
@@ -159,8 +160,7 @@ const generateCompletions = (
 
   // Flag completions
   for (const flag of descriptor.flags) {
-    const isBoolean = flag.type._tag === "Boolean"
-    const dedup = isBoolean ? flagContainsOptCondition(flag) : valueFlagDedupCondition(flag)
+    const dedup = takesSeparateValue(flag) ? valueFlagDedupCondition(flag) : flagContainsOptCondition(flag)
     const flagCondition = condition ? `${condition}; and ${dedup}` : dedup
     const flagCondArg = flagCondition ? `-n '${flagCondition}'` : ``
 
@@ -170,7 +170,7 @@ const generateCompletions = (
     lines.push(parts.join(" "))
 
     // Boolean negation
-    if (isBoolean) {
+    if (flag.type._tag === "Boolean") {
       const negParts = [`complete -c ${executableName}`]
       if (flagCondArg) negParts.push(flagCondArg)
       negParts.push(`-l no-${flag.name}`)

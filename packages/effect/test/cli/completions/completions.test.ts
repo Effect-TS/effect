@@ -1026,3 +1026,26 @@ describe("Completions integration", () => {
     assert.include(script, "__fish_seen_subcommand_from git")
   })
 })
+
+describe("Flags with an optional value", () => {
+  it("do not take the next word as the flag value", () => {
+    const descriptor = fromCommand(Command.make("app", {
+      watch: Flag.Literals("watch", ["first-failure", "until-done"]).pipe(
+        Flag.withAlias("w"),
+        Flag.withDescription("Watch mode"),
+        Flag.withOptionalValue("first-failure")
+      ),
+      file: Argument.Literals("file", ["one", "two"])
+    }))
+
+    const bash = Bash.generate("app", descriptor)
+    assert.notInclude(bash, "--watch|-w)\n")
+    assert.include(bash, "--watch|-w) ;;")
+    assert.include(
+      Zsh.generate("app", descriptor),
+      `'(--watch -w)--watch=-[Watch mode]::value:(first-failure until-done)'`
+    )
+    assert.notInclude(Fish.generate("app", descriptor), "-a 'first-failure until-done'")
+    assert.include(PowerShell.generate("app", descriptor), "optionalValue = $true;")
+  })
+})
