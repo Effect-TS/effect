@@ -5514,6 +5514,25 @@ describe("Stream", () => {
         deepStrictEqual(result, [4])
       }))
 
+    it.live.each(["timeout", "timeoutOrElse"] as const)(
+      "%s finishes when an async iterator pull never settles",
+      (kind) =>
+        Effect.gen(function*() {
+          async function* source() {
+            yield "a"
+            await new Promise(() => undefined)
+          }
+          const result = yield* Stream.fromAsyncIterable(source(), (error) => error).pipe(
+            kind === "timeout" ? Stream.timeout("10 millis") : Stream.timeoutOrElse({
+              duration: "10 millis",
+              orElse: () => Stream.succeed("fallback")
+            }),
+            Stream.runCollect
+          )
+          deepStrictEqual(result, kind === "timeout" ? ["a"] : ["a", "fallback"])
+        })
+    )
+
     it.effect("timeoutOrElse - should not apply timeout after switch", () =>
       Effect.gen(function*() {
         const fiber = yield* pipe(

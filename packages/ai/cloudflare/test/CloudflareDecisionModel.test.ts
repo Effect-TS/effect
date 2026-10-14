@@ -172,4 +172,48 @@ describe("CloudflareDecisionModel", () => {
         assert.strictEqual(error.reason._tag, "InvalidOutputError")
       }).pipe(Effect.provide(layer(invalid))))
   }
+
+  it.effect("sends byte arrays, base64 strings, and data URLs as images", () => {
+    const dataUrl = "data:image/webp;base64,UklGRg=="
+    return Effect.gen(function*() {
+      const result = yield* DecisionModel.decide(Triage, {
+        input,
+        images: [
+          { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
+          { mediaType: "image/jpeg", data: "/9j/4AAQ" },
+          { mediaType: "image/webp", data: new URL(dataUrl) }
+        ]
+      })
+      assert.strictEqual(result.answers.urgent.probability, 0.99)
+    }).pipe(
+      Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
+      Effect.provide(clientLayer(answers, (request) => {
+        assert.strictEqual(request.body._tag, "Uint8Array")
+        if (request.body._tag === "Uint8Array") {
+          assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)).images, [
+            { content_type: "image/png", base64: "iVBORw==" },
+            { content_type: "image/jpeg", base64: "/9j/4AAQ" },
+            dataUrl
+          ])
+        }
+      }))
+    )
+  })
+
+  it.effect("rejects remote image URLs without sending a request", () => {
+    let requests = 0
+    return Effect.gen(function*() {
+      const error = yield* Effect.flip(DecisionModel.decide(Triage, {
+        input,
+        images: [{ mediaType: "image/png", data: new URL("https://example.com/cat.png") }]
+      }))
+      assert.strictEqual(error.reason._tag, "InvalidUserInputError")
+      assert.strictEqual(requests, 0)
+    }).pipe(
+      Effect.provide(CloudflareDecisionModel.layer({ model: "clef" })),
+      Effect.provide(clientLayer(answers, () => {
+        requests++
+      }))
+    )
+  })
 })

@@ -1069,6 +1069,12 @@ export interface WatchOptions {
    * When `true`, changes in subdirectories are also reported.
    */
   readonly recursive?: boolean | undefined
+  /**
+   * Called once the underlying watcher is installed and can buffer events.
+   * Stream construction alone does not install a watcher. Custom watch
+   * backends must also call this callback after installation, when supplied.
+   */
+  readonly onReady?: (() => void) | undefined
 }
 
 /**

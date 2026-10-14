@@ -1932,7 +1932,9 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
  * Each yielded value is emitted as an output element. The iterator's return
  * value becomes the channel's done value. Thrown or rejected iterator errors
  * are converted with `onError`. If the channel scope closes early and the
- * iterator has a `return` method, that method is called.
+ * iterator has a `return` method, that method is called. It is awaited unless
+ * a `next()` call is still pending, in which case its result is ignored and an
+ * async generator may not run its cleanup until that pull settles.
  *
  * @stability stable
  * @category constructors
@@ -1944,12 +1946,28 @@ export const fromAsyncIterable = <A, D, E>(
 ): Channel<A, E, D> =>
   fromTransform(Effect.fnUntraced(function*(_, scope) {
     const iter = iterable[Symbol.asyncIterator]()
+    let pulling = false
     if (iter.return) {
-      yield* Scope.addFinalizer(scope, Effect.promise(() => iter.return!()))
+      // `return()` may not settle until a pending `next()` does, so only
+      // await it when the iterator is idle.
+      yield* Scope.addFinalizer(
+        scope,
+        Effect.suspend(() =>
+          pulling
+            ? Effect.sync(() => void iter.return!().catch(constVoid))
+            : Effect.promise(() => iter.return!())
+        )
+      )
     }
     return Effect.flatMap(
       Effect.tryPromise({
-        try: () => iter.next(),
+        try: () => {
+          const promise = iter.next()
+          pulling = true
+          return promise.finally(() => {
+            pulling = false
+          })
+        },
         catch: onError
       }),
       (result) => result.done ? Cause.done(result.value) : Effect.succeed(result.value)
@@ -1965,6 +1983,9 @@ export const fromAsyncIterable = <A, D, E>(
  * The iterator's return value becomes the channel's done value. Thrown or
  * rejected iterator errors are converted with `onError`. If the channel scope
  * closes early and the iterator has a `return` method, that method is called.
+ * It is awaited unless a `next()` call is still pending, in which case its
+ * result is ignored and an async generator may not run its cleanup until that
+ * pull settles.
  *
  * @stability stable
  * @category constructors

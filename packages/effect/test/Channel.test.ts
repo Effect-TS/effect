@@ -33,6 +33,26 @@ describe("Channel", () => {
   })
 
   describe("constructors", () => {
+    it.live("fromAsyncIterable awaits idle iterator cleanup on early close", () =>
+      Effect.gen(function*() {
+        let finalized = false
+        async function* source() {
+          try {
+            yield [1] as const
+            yield [2] as const
+          } finally {
+            await new Promise((resolve) => setTimeout(resolve, 10))
+            finalized = true
+          }
+        }
+        yield* Channel.fromAsyncIterable(source(), (error) => error).pipe(
+          Stream.fromChannel,
+          Stream.take(1),
+          Stream.runDrain
+        )
+        assert.strictEqual(finalized, true)
+      }))
+
     for (
       const [name, constructor] of [["callback", Channel.callback], ["callbackArray", Channel.callbackArray]] as const
     ) {

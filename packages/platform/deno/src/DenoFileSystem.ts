@@ -447,8 +447,9 @@ const watchNative = (
         try: () => Deno.watchFs(path, { recursive: options?.recursive ?? false }),
         catch: handleError("FileSystem", "watch", path)
       }),
-      (watcher) =>
-        Stream.fromAsyncIterable(watcher, handleError("FileSystem", "watch", path)).pipe(
+      (watcher) => {
+        options?.onReady?.()
+        return Stream.fromAsyncIterable(watcher, handleError("FileSystem", "watch", path)).pipe(
           Stream.flatMap((event): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> => {
             switch (event.kind) {
               case "create":
@@ -468,6 +469,7 @@ const watchNative = (
             }
           })
         )
+      }
     )
   )
 
