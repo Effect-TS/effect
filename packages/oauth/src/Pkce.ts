@@ -2,7 +2,7 @@
  * Fresh private transaction secrets and RFC 7636 S256 PKCE challenges backed by Effect Crypto.
  *
  * @stability unstable
- * @since 4.1.0
+ * @since 4.0.5
  */
 import * as Crypto from "effect/Crypto"
 import * as Effect from "effect/Effect"
@@ -28,7 +28,7 @@ import * as V from "./internal/validation.ts"
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const random = Effect.fnUntraced(
   function*() {
@@ -62,7 +62,7 @@ export const random = Effect.fnUntraced(
  *
  * @stability unstable
  * @category encoding
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const challenge = Effect.fnUntraced(
   function*(input: Redacted.Redacted<string>) {
@@ -94,7 +94,7 @@ export const challenge = Effect.fnUntraced(
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const make = Effect.fnUntraced(function*() {
   const verifier = yield* random()
