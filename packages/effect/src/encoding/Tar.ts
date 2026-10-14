@@ -446,12 +446,12 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, void, unknown> | undefined
       let bodyScope: Scope.Closeable | undefined
 
-      // Writes entries until a slab is full, and hands out what was written
-      // before waiting for a body or more entries
+      // Writes entries and their bodies until a slab is full, and hands out what
+      // was written before waiting for more entries
       const pull = Effect.gen(function*() {
         while (true) {
+          if (encoder.buffered >= SLAB_SIZE) return encoder.flush()
           if (body !== undefined) {
-            if (encoder.buffered > 0) return encoder.flush()
             const chunks = yield* Pull.catchDone(body, () => Effect.undefined)
             if (chunks !== undefined) {
               for (const chunk of chunks) encoder.body(chunk)
@@ -462,7 +462,6 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
             encoder.end()
             continue
           }
-          if (encoder.buffered >= SLAB_SIZE) return encoder.flush()
           if (index < entries.length) {
             const entry = entries[index++]
             encoder.begin(entry.header)
@@ -597,10 +596,7 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
   return negative ? -value - 1 : value
 }
 
-// The checksum is the sum of the block bytes with the checksum field counted as
-// spaces. Some old tar writers summed signed bytes, which is accepted too.
-const verifyChecksum = (block: Uint8Array): boolean => {
-  const stored = readOctal(block, 148, 8)
+const sumBlock = (block: Uint8Array): number => {
   // Four sums let the loop run faster than one
   let a = 0
   let b = 0
@@ -612,7 +608,14 @@ const verifyChecksum = (block: Uint8Array): boolean => {
     c += block[i + 2]
     d += block[i + 3]
   }
-  let unsigned = a + b + c + d + 8 * 0x20
+  return a + b + c + d
+}
+
+// The checksum is the sum of the block bytes with the checksum field counted as
+// spaces. Some old tar writers summed signed bytes, which is accepted too.
+const verifyChecksum = (block: Uint8Array): boolean => {
+  const stored = readOctal(block, 148, 8)
+  let unsigned = sumBlock(block) + 8 * 0x20
   for (let i = 148; i < 156; i++) unsigned -= block[i]
   if (stored === unsigned) return true
   let high = 0
@@ -632,6 +635,7 @@ const hasBytes = (block: Uint8Array, offset: number, bytes: ReadonlyArray<number
 const USTAR_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x00] // "ustar\0"
 const GNU_MAGIC = [0x75, 0x73, 0x74, 0x61, 0x72, 0x20, 0x20, 0x00] // "ustar  \0"
 const STAR_TRAILER = [0x74, 0x61, 0x72, 0x00] // "tar\0"
+const USTAR_MAGIC_VERSION = new Uint8Array([0x75, 0x73, 0x74, 0x61, 0x72, 0x00, 0x30, 0x30]) // "ustar\0" "00"
 
 interface RawHeader {
   readonly typeflag: string
@@ -1017,9 +1021,15 @@ const writeString = (block: Uint8Array, offset: number, length: number, value: s
 
 // Writes `length - 1` zero-padded octal digits; the value must fit
 const writeOctal = (block: Uint8Array, offset: number, length: number, value: number): void => {
-  for (let i = offset + length - 2; i >= offset; i--) {
+  let i = offset + length - 2
+  // Bit operations are faster, but only cover 32 bits
+  for (; value > 0x3fffffff && i >= offset; i--) {
     block[i] = 0x30 + (value % 8)
     value = Math.floor(value / 8)
+  }
+  for (; i >= offset; i--) {
+    block[i] = 0x30 + (value & 7)
+    value >>>= 3
   }
 }
 
@@ -1105,17 +1115,15 @@ const writeUstarBlock = (block: Uint8Array, fields: UstarFields): void => {
   writeOctal(block, 136, 12, fields.mtime)
   block[156] = fields.typeflag.charCodeAt(0)
   writeString(block, 157, 100, fields.linkname)
-  writeString(block, 257, 8, "ustar\x0000")
+  block.set(USTAR_MAGIC_VERSION, 257)
   writeString(block, 265, 32, fields.uname)
   writeString(block, 297, 32, fields.gname)
   writeOctal(block, 329, 8, fields.devMajor)
   writeOctal(block, 337, 8, fields.devMinor)
   writeString(block, 345, 155, fields.prefix)
   block.fill(0x20, 148, 156)
-  let sum = 0
-  for (let i = 0; i < BLOCK; i++) sum += block[i]
   // Six digits, a NUL and the space left from the fill
-  writeOctal(block, 148, 7, sum)
+  writeOctal(block, 148, 7, sumBlock(block))
   block[154] = 0
 }
 
@@ -1273,7 +1281,7 @@ class Encoder {
       throw sizeMismatch(header, this.written)
     }
     if (chunk.length < COPY_LIMIT) {
-      this.alloc(chunk.length).set(chunk)
+      this.slab.set(chunk, this.reserve(chunk.length))
       return
     }
     this.cut()
@@ -1288,12 +1296,12 @@ class Encoder {
     if (this.written !== header.size) {
       throw sizeMismatch(header, this.written)
     }
-    this.alloc(padding(header.size))
+    this.reserve(padding(header.size))
   }
 
   // Writes the end-of-archive blocks
   finish(): void {
-    this.alloc(BLOCK * 2)
+    this.reserve(BLOCK * 2)
   }
 
   flush(): Arr.NonEmptyArray<Uint8Array> {
@@ -1314,15 +1322,21 @@ class Encoder {
 
   // Returns `size` zeroed bytes of the output
   private alloc = (size: number): Uint8Array => {
+    const offset = this.reserve(size)
+    return this.slab.subarray(offset, offset + size)
+  }
+
+  // Reserves `size` zeroed bytes of the output in `slab`, and returns their offset
+  private reserve(size: number): number {
     if (this.offset + size > this.slab.length) {
       this.cut()
       this.slab = new Uint8Array(Math.max(SLAB_SIZE, size))
       this.start = 0
       this.offset = 0
     }
-    const out = this.slab.subarray(this.offset, this.offset + size)
+    const offset = this.offset
     this.offset += size
     this.buffered += size
-    return out
+    return offset
   }
 }
