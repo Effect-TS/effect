@@ -1,10 +1,11 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
+import { inspect } from "node:util"
 import { collectGarbage } from "../utils/gc.ts"
 
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
@@ -334,6 +335,37 @@ Missing key
 
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
+      }))
+
+    it.effect("redacts Redacted query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* HttpClientRequest.get("http://test/path?page=1#frag").pipe(
+          HttpClientRequest.appendUrlParam("token", Redacted.make("token-secret")),
+          HttpClientRequest.appendUrlParam("q", "visible"),
+          client.execute,
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?page=1&token=REDACTED&q=visible#frag"
+        )
+        assert.strictEqual(clientSpan.attributes.get("url.query"), "page=1&token=REDACTED&q=visible")
+        assert.strictEqual(sentUrl, "http://test/path?page=1&token=token-secret&q=visible#frag")
       }))
 
     const makeCapturingClient = () => {

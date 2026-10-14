@@ -1,6 +1,11 @@
+import * as Option from "../../Option.ts"
+import * as Result from "../../Result.ts"
 import type * as Tracer from "../../Tracer.ts"
 import * as Headers from "../Headers.ts"
+import type * as HttpClientRequest from "../HttpClientRequest.ts"
+import * as Url from "../Url.ts"
 import * as UrlParams from "../UrlParams.ts"
+import * as internalUrlParams from "./urlParams.ts"
 
 const defaultPorts: Record<string, number> = {
   "http:": 80,
@@ -34,6 +39,26 @@ export const addUrlAttributes = (
       span.attribute("server.port", port)
     }
   }
+}
+
+/**
+ * Rebuilds the request URL with `Redacted` parameter values replaced, for
+ * span attributes.
+ *
+ * @internal
+ */
+export const redactedParamsUrl = (request: HttpClientRequest.HttpClientRequest, url: URL): URL => {
+  const params = request.urlParams.params
+  if (!params.some(internalUrlParams.isRedactedEntry)) return url
+  const redacted = Url.make(
+    request.url,
+    UrlParams.make(params.map((entry) => internalUrlParams.isRedactedEntry(entry) ? [entry[0], "REDACTED"] : entry)),
+    Option.getOrUndefined(request.hash)
+  )
+  if (Result.isSuccess(redacted)) return redacted.success
+  const out = new URL(url.href)
+  out.search = ""
+  return out
 }
 
 /** @internal */
