@@ -387,11 +387,49 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(sent, onlyAwaitedReply)
     }))
 
-  it.effect("sends no Defect for a notification that dies", () =>
-    Effect.gen(function*() {
+  it.effect("sends no Defect for a notification that dies, but still reports it", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
       // A Defect would fail the client's other requests.
       const sent = yield* sentAfterNotification({ ...fire("notification", true), isNotification: true })
       assert.deepStrictEqual(sent, onlyAwaitedReply)
+      assert.deepStrictEqual(reports, ["boom"])
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
+
+  it.effect("interrupts a running notification when its client disconnects, without replying", () =>
+    Effect.gen(function*() {
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>>()
+      const entered = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const server = yield* RpcServer.makeNoSerialization(NotificationGroup, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(NotificationGroup.toLayer({
+        fire: () => Effect.succeed("done"),
+        events: () =>
+          Stream.fromEffect(
+            Deferred.succeed(entered, undefined).pipe(
+              Effect.andThen(Effect.never),
+              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
+            )
+          )
+      })))
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("notification"),
+        tag: "events",
+        payload: undefined,
+        headers: Headers.empty,
+        isNotification: true
+      })
+      yield* Deferred.await(entered)
+      yield* server.disconnect(0)
+      yield* Deferred.await(interrupted)
+
+      yield* server.write(0, fire("awaited", false))
+      yield* server.write(0, RpcMessage.constEof)
+      assert.deepStrictEqual([yield* Queue.take(messages), yield* Queue.take(messages)], onlyAwaitedReply)
+      assert.strictEqual(yield* Queue.size(messages), 0)
     }))
 
   it.effect("sends no chunks for a stream notification", () =>
