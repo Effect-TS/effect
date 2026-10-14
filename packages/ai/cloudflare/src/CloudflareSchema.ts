@@ -48,10 +48,8 @@ export const NoulQuestion = Schema.Struct({
 })
 
 /**
- * A Clef classification, rating, or probability question. Instructions can be
- * a string, a JSON object, or a JSON array. Choice option descriptions can
- * also be `null`, and Score level and Noul outcome descriptions can be any
- * JSON value.
+ * A Clef question with string, JSON object, or JSON array instructions.
+ * Choice descriptions also accept `null`; Score and Noul descriptions accept any JSON value.
  *
  * @stability unstable
  * @category schemas
@@ -113,8 +111,7 @@ export const ChoiceAnswer = Schema.Struct({
 })
 
 /**
- * A zero-based rating and index-keyed distribution. `legend` maps each level
- * index to the level's description as sent.
+ * A zero-based rating and index-keyed distribution. `legend` maps indices to descriptions.
  *
  * @stability unstable
  * @category schemas

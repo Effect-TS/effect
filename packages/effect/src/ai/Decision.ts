@@ -29,15 +29,12 @@ export type TypeId = "~effect/ai/Decision"
 export const TypeId: TypeId = "~effect/ai/Decision"
 
 /**
- * Instructions or a description, as a string, a JSON object, or a JSON array.
- * Use structure when a question has several parts or refers to data that is
- * already JSON, such as a schema or a database row.
+ * Decision instructions or descriptions: a string, JSON object, or JSON array.
  *
  * **Details**
  *
- * Values typed as TypeScript `interface`s are not assignable to
- * `Schema.JsonObject`, because interfaces have no index signature. Object
- * literals, `type` aliases, and Schema types are assignable.
+ * TypeScript interfaces lack the index signature required by `Schema.JsonObject`;
+ * use object literals, type aliases, or Schema types instead.
  *
  * @stability unstable
  * @category models
@@ -47,8 +44,7 @@ export type Description = string | Schema.JsonObject | Schema.JsonArray
 
 /**
  * Decision that assigns the input one label out of a set of criteria.
- * `criteria` maps labels to descriptions, or to `null` when the label needs
- * no description.
+ * `criteria` maps labels to descriptions; use `null` for a label without a description.
  *
  * @see {@link classify} for the constructor
  * @see {@link ClassifyAnswer} for the answer produced by this decision
@@ -65,8 +61,8 @@ export interface Classify<Label extends string> {
 
 /**
  * Decision that places the input on an ordered scale of criteria.
- * `criteria` lists levels from lowest to highest, each with the label used in
- * answers and the description sent to the provider.
+ * `criteria` lists levels from lowest to highest, with labels for answers and
+ * descriptions for the provider.
  *
  * @see {@link rate} for the constructor
  * @see {@link RateAnswer} for the answer produced by this decision
@@ -196,8 +192,7 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
 
 /**
  * Creates a classification decision from labelled criteria.
- * Instructions and descriptions can be strings, JSON objects, or JSON arrays,
- * and a description can be `null` when the label speaks for itself.
+ * Descriptions can be `null` when the label needs no explanation.
  * Throws if fewer than two labels are supplied.
  *
  * **Example** (Choosing a department)
@@ -211,30 +206,6 @@ export interface Definition<Input extends Schema.Constraint, Decisions extends R
  *     billing: "payments",
  *     technical: "bugs",
  *     sales: "pricing"
- *   }
- * })
- * ```
- *
- * **Example** (Describing options with structure)
- *
- * ```ts
- * import { Decision } from "effect/ai"
- *
- * const department = Decision.classify({
- *   instructions: {
- *     question: "Which team should handle this message?",
- *     focus: "Classify the customer's primary request, not every topic mentioned."
- *   },
- *   criteria: {
- *     billing: {
- *       what: "Charges, invoices, refunds, or subscriptions",
- *       not_for: "Order tracking or account access"
- *     },
- *     orders: {
- *       what: "Order status, delivery, cancellation, or returns",
- *       not_for: "Charges or account access"
- *     },
- *     other: null
  *   }
  * })
  * ```
@@ -262,8 +233,8 @@ export const classify = <Label extends string>(options: {
 
 /**
  * Creates a rating decision from an ordered list of criteria.
- * A string level is both its label and its description. A level with a
- * structured description needs an explicit `label`, which answers use.
+ * Strings serve as both label and description; use `{ label, description }`
+ * to separate them. Answers use the label.
  * Throws if fewer than two levels or duplicate labels are supplied.
  *
  * **Example** (Rating frustration)
@@ -333,7 +304,6 @@ export const rate = <const Level extends string>(options: {
 /**
  * Creates a probability decision from instructions and optional outcome descriptions.
  * When `criteria` is supplied, descriptions for both `false` and `true` are required.
- * Instructions and descriptions can be strings, JSON objects, or JSON arrays.
  *
  * **Example** (Estimating urgency)
  *
@@ -355,29 +325,6 @@ export const rate = <const Level extends string>(options: {
  *   criteria: {
  *     false: "The message can wait",
  *     true: "The message needs immediate attention"
- *   }
- * })
- * ```
- *
- * **Example** (Structuring instructions and outcomes)
- *
- * ```ts
- * import { Decision } from "effect/ai"
- *
- * const requestsCredentials = Decision.probability({
- *   instructions: {
- *     question: "Does the `message` ask the recipient to disclose a sensitive credential?",
- *     focus: "Look for a request to send the credential itself, not a request to reset it."
- *   },
- *   criteria: {
- *     true: {
- *       what: "Asks the recipient to send a password, PIN, or one-time code",
- *       examples: ["Reply with your password"]
- *     },
- *     false: {
- *       what: "No sensitive credential is requested",
- *       examples: ["Reset your password from the settings page"]
- *     }
  *   }
  * })
  * ```

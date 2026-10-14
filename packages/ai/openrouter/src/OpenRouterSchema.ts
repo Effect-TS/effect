@@ -49,9 +49,8 @@ export const NoulQuestion = Schema.Struct({
 })
 
 /**
- * A choice, ordered score, or probability question. Instructions and
- * descriptions can be a string, a JSON object, or a JSON array. Choice option
- * descriptions can also be `null`.
+ * A choice, score, or probability question with string, JSON object, or JSON array
+ * instructions and descriptions. Choice descriptions also accept `null`.
  *
  * @stability unstable
  * @category schemas

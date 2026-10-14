@@ -48,8 +48,7 @@ export const NoulQuestion = Schema.Struct({
 })
 
 /**
- * A System One question. Instructions and every description can be a string,
- * a JSON object, a JSON array, or `null`.
+ * A System One question with string, JSON object, JSON array, or `null` instructions and descriptions.
  *
  * @stability unstable
  * @category schemas
@@ -85,8 +84,7 @@ export const ChoiceAnswer = Schema.Struct({
 })
 
 /**
- * A zero-based rating and index-keyed distribution. `legend` maps each level
- * index to the level's description as sent.
+ * A zero-based rating and index-keyed distribution. `legend` maps indices to descriptions.
  *
  * @stability unstable
  * @category schemas

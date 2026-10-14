@@ -50,9 +50,8 @@ export const model = (
  *
  * **Gotchas**
  *
- * - OpenAI accepts only string instructions and descriptions. Structured or
- *   `null` values fail with `AiError.InvalidUserInputError` before the request
- *   is sent.
+ * - Instructions and descriptions must be strings; other values fail with
+ *   `AiError.InvalidUserInputError` before sending a request.
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
  * - If OpenAI refuses any decision, the whole call fails with

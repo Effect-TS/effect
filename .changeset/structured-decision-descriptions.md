@@ -6,8 +6,8 @@
 "@effect/ai-openai": patch
 ---
 
-Accept structured instructions and descriptions in `Decision`. They can be strings, JSON objects, or JSON arrays, and `Decision.classify` option descriptions can also be `null`.
+Allow JSON objects and arrays in decision instructions and descriptions, and `null` in classification descriptions.
 
-`Decision.rate` accepts `{ label, description }` levels alongside plain strings. `Rate["criteria"]` now stores every level in that form, so code that read it as an array of strings must read `.label`.
+`Decision.rate` accepts strings or `{ label, description }` levels. **Breaking:** `Rate["criteria"]` now contains objects; read `.label` instead of treating entries as strings.
 
-The TypeSafe, Cloudflare, and OpenRouter decision models send structured descriptions and decode structured score `legend` values. The OpenAI Decisions API accepts only strings, so `OpenAiDecisionModel` rejects structured or `null` values with `InvalidUserInputError` before sending the request.
+TypeSafe, Cloudflare, and OpenRouter support structured descriptions and score legends. OpenAI remains string-only and rejects structured or `null` values with `InvalidUserInputError` before sending a request.
