@@ -46,11 +46,13 @@ export const model = (
  * URLs, and `data:` URLs are sent unchanged.
  *
  * Probability criteria are appended to the question instructions, and each
- * rating criterion is sent as both the label and the description of a score
- * level.
+ * rating level is sent with its label and description.
  *
  * **Gotchas**
  *
+ * - OpenAI accepts only string instructions and descriptions. Structured or
+ *   `null` values fail with `AiError.InvalidUserInputError` before the request
+ *   is sent.
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
  * - If OpenAI refuses any decision, the whole call fails with
@@ -71,13 +73,17 @@ export const make = Effect.fnUntraced(
       supportsImages: true,
       decide: Effect.fnUntraced(function*({ state, decisions, images }) {
         if (images?.some((image) => image.data instanceof URL && image.data.protocol !== "data:")) {
-          return yield* Effect.fail(AiError.make({
-            module: "OpenAiDecisionModel",
-            method: "decide",
-            reason: new AiError.InvalidUserInputError({
-              description: "OpenAI decisions accept base64 or data URL images, not remote URLs"
-            })
-          }))
+          return yield* invalidUserInput("OpenAI decisions accept base64 or data URL images, not remote URLs")
+        }
+        const questions: Array<typeof OpenAiSchema.DecisionQuestion.Encoded> = []
+        for (const [name, decision] of Object.entries(decisions)) {
+          const question = encodeQuestion(name, decision)
+          if (question === undefined) {
+            return yield* invalidUserInput(
+              `OpenAI decisions accept only string instructions and descriptions, but "${name}" has another value`
+            )
+          }
+          questions.push(question)
         }
         const text = typeof state === "string" ? state : JSON.stringify(state)
         const response = yield* client.createDecisions({
@@ -89,7 +95,7 @@ export const make = Effect.fnUntraced(
               ...images.map((image) => ({ type: "input_image" as const, image_url: encodeImage(image) }))
             ]
           }],
-          questions: Object.entries(decisions).map(([name, decision]) => encodeQuestion(name, decision))
+          questions
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         const refused: Array<string> = []
@@ -112,7 +118,7 @@ export const make = Effect.fnUntraced(
               const probabilities: Record<string, number> = Object.create(null)
               for (const { value, probability } of answer.probabilities) {
                 const level = decision.criteria[value]
-                if (level !== undefined) probabilities[level] = probability
+                if (level !== undefined) probabilities[level.label] = probability
               }
               answers[answer.name] = {
                 _tag: "Rate",
@@ -146,30 +152,42 @@ export const make = Effect.fnUntraced(
   }
 )
 
-const encodeQuestion = (name: string, decision: Decision.Any): typeof OpenAiSchema.DecisionQuestion.Encoded => {
+const invalidUserInput = (description: string) =>
+  Effect.fail(AiError.make({
+    module: "OpenAiDecisionModel",
+    method: "decide",
+    reason: new AiError.InvalidUserInputError({ description })
+  }))
+
+const encodeQuestion = (
+  name: string,
+  decision: Decision.Any
+): typeof OpenAiSchema.DecisionQuestion.Encoded | undefined => {
+  const instructions = decision.instructions
+  if (typeof instructions !== "string") return undefined
   switch (decision._tag) {
-    case "Classify":
-      return {
-        type: "choice",
-        name,
-        instructions: decision.instructions,
-        choices: Object.entries(decision.criteria).map(([value, description]) => ({ value, description }))
+    case "Classify": {
+      const choices: Array<{ value: string; description: string }> = []
+      for (const [value, description] of Object.entries(decision.criteria)) {
+        if (typeof description !== "string") return undefined
+        choices.push({ value, description })
       }
-    case "Rate":
-      return {
-        type: "score",
-        name,
-        instructions: decision.instructions,
-        levels: decision.criteria.map((label) => ({ label, description: label }))
+      return { type: "choice", name, instructions, choices }
+    }
+    case "Rate": {
+      const levels: Array<{ label: string; description: string }> = []
+      for (const { label, description } of decision.criteria) {
+        if (typeof description !== "string") return undefined
+        levels.push({ label, description })
       }
-    case "Probability":
-      return {
-        type: "predicate",
-        name,
-        instructions: decision.criteria === undefined
-          ? decision.instructions
-          : `${decision.instructions}\n\nfalse: ${decision.criteria.false}\ntrue: ${decision.criteria.true}`
-      }
+      return { type: "score", name, instructions, levels }
+    }
+    case "Probability": {
+      if (decision.criteria === undefined) return { type: "predicate", name, instructions }
+      const { false: no, true: yes } = decision.criteria
+      if (typeof no !== "string" || typeof yes !== "string") return undefined
+      return { type: "predicate", name, instructions: `${instructions}\n\nfalse: ${no}\ntrue: ${yes}` }
+    }
   }
 }
 
