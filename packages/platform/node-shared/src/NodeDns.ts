@@ -404,7 +404,7 @@ export const resolver = Effect.fnUntraced(function*(options?: Options) {
   const nameServers: Array<NetAddress.InetAddress> = []
   for (const input of options?.nameServers ?? []) {
     const server = yield* Effect.fromResult(Dns.nameServerFromInput(input))
-    if (NetAddress.isInetAddressV6(server) && server.scopeId !== 0) {
+    if (NetAddress.isScoped(server)) {
       return yield* new NetAddress.NetAddressError({
         input,
         message: "IPv6 name servers with a scope ID are not supported"

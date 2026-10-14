@@ -49,16 +49,13 @@ export interface Options {
   readonly hosts?: Host.HostsTable | undefined
 }
 
-const isScoped = (server: NetAddress.IpAddress | NetAddress.InetAddress): boolean =>
-  NetAddress.isInetAddressV6(server) && server.scopeId !== 0
-
 // Platform sockets cannot use IPv6 name servers with a scope ID.
 const checkNameServers = Effect.fnUntraced(function*(
   nameServers: ReadonlyArray<NetAddress.IpAddressInput | NetAddress.InetAddressInput>
 ) {
   for (const input of nameServers) {
     const server = yield* Effect.fromResult(Dns.nameServerFromInput(input))
-    if (isScoped(server)) {
+    if (NetAddress.isScoped(server)) {
       return yield* new NetAddress.NetAddressError({
         input,
         message: "IPv6 name servers with a scope ID are not supported"
@@ -80,15 +77,17 @@ const clampTimeout = (input: Duration.Input | undefined): Duration.Duration | un
 const localNameServers = Arr.map(NetAddress.loopbackAddresses, (address) => NetAddress.inetAddressUnsafe(address, 53))
 
 // The system name servers of `node:dns`, without duplicates (Deno reports
-// each one twice) and without IPv6 addresses with a scope ID.
-const systemNameServers: Effect.Effect<ReadonlyArray<NetAddress.InetAddress>> = Effect.sync(() =>
-  Arr.dedupe(
+// each one twice) and without IPv6 addresses with a scope ID, or the loopback
+// addresses when there are none.
+const systemNameServers: Effect.Effect<Arr.NonEmptyReadonlyArray<NetAddress.InetAddress>> = Effect.sync(() => {
+  const servers = Arr.dedupe(
     NodeDnsApi.getServers().flatMap((input) => {
       const server = Result.getOrUndefined(Dns.nameServerFromString(input))
-      return server === undefined || isScoped(server) ? [] : [server]
+      return server === undefined || NetAddress.isScoped(server) ? [] : [server]
     })
   )
-)
+  return Arr.isReadonlyArrayNonEmpty(servers) ? servers : localNameServers
+})
 
 interface NormalizedOptions {
   readonly transport: Omit<DnsClient.TransportUdpOptions, "udp" | "tcp">
@@ -103,10 +102,9 @@ const normalizeOptions = Effect.fnUntraced(function*(options: Options) {
   const search = options.search === undefined
     ? undefined
     : yield* Effect.forEach(options.search, (domain) => Effect.fromResult(Host.domainNameFromString(domain)))
-  const system = Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : yield* systemNameServers
   const normalized: NormalizedOptions = {
     transport: {
-      nameServers: Arr.isReadonlyArrayNonEmpty(system) ? system : localNameServers,
+      nameServers: Arr.isReadonlyArrayNonEmpty(nameServers) ? nameServers : yield* systemNameServers,
       udpPayloadSize: clamp(options.udpPayloadSize, 512, 0xffff)
     },
     client: {

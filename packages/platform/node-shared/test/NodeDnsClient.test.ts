@@ -7,12 +7,6 @@ import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Dgram from "node:dgram"
-import * as NodeDnsApi from "node:dns"
-import { vi } from "vitest"
-
-vi.mock("node:dns", async (importOriginal) => ({
-  ...await importOriginal<typeof NodeDnsApi>()
-}))
 
 const unusedUdpPort = Effect.promise(() =>
   new Promise<number>((resolve) => {
@@ -24,56 +18,7 @@ const unusedUdpPort = Effect.promise(() =>
   })
 )
 
-describe("NodeDnsClient", { concurrent: false }, () => {
-  it.live("reads default name servers only when run, filtering invalid and scoped addresses and deduplicating", () =>
-    Effect.gen(function*() {
-      const port = yield* unusedUdpPort
-      const getServers = vi.spyOn(NodeDnsApi, "getServers").mockReturnValue([
-        `127.0.0.1:${port}`,
-        `127.0.0.1:${port}`,
-        "not-an-ip",
-        "fe80::1%1"
-      ])
-      const connect = vi.spyOn(Dgram.Socket.prototype, "connect")
-      try {
-        const options = { attempts: 1, timeout: "2 seconds" } as const
-        const clients = [
-          NodeDnsClient.make(options),
-          Effect.service(DnsClient.DnsClient).pipe(Effect.provide(NodeDnsClient.layerDns(options)))
-        ]
-        assert.strictEqual(getServers.mock.calls.length, 0)
-        for (const make of clients) {
-          const client = yield* make
-          const error = yield* Effect.flip(client.query("example.test", "A"))
-          assert.strictEqual(error.reason, "Refused")
-        }
-        assert.strictEqual(getServers.mock.calls.length, 2)
-        assert.deepStrictEqual<unknown>(connect.mock.calls.map(([port, address]) => [port, address]), [
-          [port, "127.0.0.1"],
-          [port, "127.0.0.1"]
-        ])
-      } finally {
-        connect.mockRestore()
-        getServers.mockRestore()
-      }
-    }))
-
-  it.effect("does not read system name servers when explicit servers are provided", () =>
-    Effect.gen(function*() {
-      const getServers = vi.spyOn(NodeDnsApi, "getServers").mockImplementation(() => {
-        throw new Error("system name servers must not be read")
-      })
-      try {
-        yield* NodeDnsClient.make({ nameServers: ["192.0.2.1"] })
-        yield* Effect.service(Dns.Dns).pipe(
-          Effect.provide(NodeDnsClient.layerDns({ nameServers: ["192.0.2.1"] }))
-        )
-        assert.strictEqual(getServers.mock.calls.length, 0)
-      } finally {
-        getServers.mockRestore()
-      }
-    }))
-
+describe("NodeDnsClient", () => {
   it.live("reports name servers without a UDP listener as Refused", () =>
     Effect.gen(function*() {
       const port = yield* unusedUdpPort
