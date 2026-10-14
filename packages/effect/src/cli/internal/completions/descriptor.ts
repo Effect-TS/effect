@@ -96,7 +96,7 @@ export const fromCommand = (
         aliases: single.aliases,
         description: Option.getOrUndefined(single.description),
         type: toFlagType(single as Param.Single<"flag", unknown>),
-        ...(single.optionalValue !== undefined && { optionalValue: true })
+        optionalValue: single.optionalValue !== undefined
       })
     }
   }
@@ -140,3 +140,11 @@ export const fromCommand = (
     subcommands
   }
 }
+
+/**
+ * Whether the flag reads its value from the next word.
+ *
+ * @internal
+ */
+export const takesSeparateValue = (flag: Completions.FlagDescriptor): boolean =>
+  flag.type._tag !== "Boolean" && flag.optionalValue !== true

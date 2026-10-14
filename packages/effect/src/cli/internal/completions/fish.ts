@@ -7,6 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { takesSeparateValue } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,10 +42,6 @@ const subcommandCondition = (
   }
   return parentCondition
 }
-
-/** Whether the flag reads its value from the next word. */
-const takesSeparateValue = (flag: Completions.FlagDescriptor): boolean =>
-  flag.type._tag !== "Boolean" && flag.optionalValue !== true
 
 /**
  * Build a __fish_contains_opt condition that checks whether any form of this

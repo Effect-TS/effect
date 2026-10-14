@@ -7,6 +7,7 @@
  * @internal
  */
 import type * as Completions from "../../Completions.ts"
+import { takesSeparateValue } from "./descriptor.ts"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,10 +27,6 @@ const flagNamesForWordlist = (flag: Completions.FlagDescriptor): Array<string> =
   }
   return names
 }
-
-/** Whether the flag reads its value from the next word. */
-const takesSeparateValue = (flag: Completions.FlagDescriptor): boolean =>
-  flag.type._tag !== "Boolean" && flag.optionalValue !== true
 
 /** Emit a Bash 3.2-compatible used-flag filter. */
 const buildFlagGroupDeclarations = (
