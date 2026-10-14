@@ -20,7 +20,6 @@ import * as Effect from "../Effect.ts"
 import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
-import * as Option from "../Option.ts"
 import * as Order from "../Order.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Semaphore from "../Semaphore.ts"
@@ -219,6 +218,11 @@ const busyWarningMessage = "A fiber woken by the test clock is still running " +
  */
 const liveClocks = new WeakMap<Clock.Clock, Clock.Clock>()
 
+interface WakeTracker {
+  pending: number
+  onIdle: (() => void) | undefined
+}
+
 const defaultOptions: Required<TestClock.Options> = {
   warningDelay: "1 second"
 }
@@ -379,23 +383,19 @@ const makeWithScheduler = Effect.fnUntraced(function*(
 
   /**
    * Tasks scheduled while waking a sleeper, and tasks scheduled by those tasks,
-   * are counted so `run` can wait for the woken fiber, and any fibers it
-   * resumes or forks, to suspend before checking the next sleep. Each wake
-   * starts a new generation, so work left over from earlier wakes is ignored.
+   * are counted by that wake's tracker so `run` can wait for the woken fiber,
+   * and any fibers it resumes or forks, to suspend before checking the next
+   * sleep.
    */
-  let generation = 0
-  let currentGeneration: number | undefined = undefined
-  let pending = 0
-  let onIdle: (() => void) | undefined = undefined
-  const idleDispatcher = parentScheduler.makeDispatcher()
+  let currentTracker: WakeTracker | undefined = undefined
 
-  function runInGeneration<A>(taskGeneration: number, f: () => A): A {
-    const previous = currentGeneration
-    currentGeneration = taskGeneration
+  function runTracked(tracker: WakeTracker, f: () => void): void {
+    const previous = currentTracker
+    currentTracker = tracker
     try {
-      return f()
+      f()
     } finally {
-      currentGeneration = previous
+      currentTracker = previous
     }
   }
 
@@ -406,20 +406,16 @@ const makeWithScheduler = Effect.fnUntraced(function*(
       const dispatcher = parentScheduler.makeDispatcher()
       return {
         scheduleTask(task, priority) {
-          const taskGeneration = currentGeneration
-          if (taskGeneration === undefined) {
+          const tracker = currentTracker
+          if (tracker === undefined) {
             return dispatcher.scheduleTask(task, priority)
           }
-          if (taskGeneration === generation) pending++
+          tracker.pending++
           dispatcher.scheduleTask(() => {
             try {
-              runInGeneration(taskGeneration, task)
+              runTracked(tracker, task)
             } finally {
-              if (taskGeneration === generation && --pending === 0 && onIdle !== undefined) {
-                const resume = onIdle
-                onIdle = undefined
-                resume()
-              }
+              if (--tracker.pending === 0) tracker.onIdle?.()
             }
           }, priority)
         },
@@ -430,42 +426,24 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     }
   }
 
-  /**
-   * Waits until no counted task is pending, then for one more turn of the
-   * parent scheduler.
-   */
-  const awaitIdle = Effect.callback<void>((resume) => {
-    let done = false
-    const finish = () => {
-      idleDispatcher.scheduleTask(() => {
-        if (done) return
-        done = true
-        resume(Effect.void)
-      }, 0)
-    }
-    if (pending === 0) finish()
-    else onIdle = finish
-    return Effect.sync(() => {
-      done = true
-      if (onIdle === finish) onIdle = undefined
-    })
-  })
-
-  const awaitIdleOrWarn = awaitIdle.pipe(
-    Effect.timeoutOption(config.warningDelay),
-    withLive,
-    Effect.flatMap(Option.match({
-      onNone: () => Effect.logWarning(busyWarningMessage),
-      onSome: () => Effect.void
-    }))
-  )
-
   const wake = (latch: Latch.Latch) =>
     Effect.suspend(() => {
-      generation++
-      pending = 0
-      runInGeneration(generation, () => latch.openUnsafe())
-      return pending === 0 ? awaitIdle : awaitIdleOrWarn
+      const tracker: WakeTracker = { pending: 0, onIdle: undefined }
+      runTracked(tracker, () => latch.openUnsafe())
+      if (tracker.pending === 0) return Effect.yieldNow
+      return Effect.callback<void>((resume) => {
+        tracker.onIdle = () => resume(Effect.void)
+        return Effect.sync(() => {
+          tracker.onIdle = undefined
+        })
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: config.warningDelay,
+          orElse: () => Effect.logWarning(busyWarningMessage)
+        }),
+        withLive,
+        Effect.andThen(Effect.yieldNow)
+      )
     })
 
   const runSemaphore = yield* Semaphore.make(1)
