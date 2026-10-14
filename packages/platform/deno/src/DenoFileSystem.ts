@@ -478,9 +478,9 @@ const watch = (
   path: string,
   options?: FileSystem.WatchOptions
 ) =>
-  stat(path).pipe(
-    Effect.map((info) =>
-      backend.pipe(
+  Effect.all([stat(path), Effect.serviceOption(FileSystem.WatchBackend)]).pipe(
+    Effect.map(([info, callerBackend]) =>
+      Option.orElse(callerBackend, () => backend).pipe(
         Option.flatMap((backend) => backend.register(path, info, options)),
         Option.getOrElse(() => watchNative(path, options))
       )
