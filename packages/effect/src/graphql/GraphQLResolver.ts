@@ -9,6 +9,17 @@
  * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
+ * Over a `GraphQLProtocol.layerHttp` transport with a `url` function, lookups
+ * whose URLs differ go in separate batches, and lookups with the same URL
+ * still share one. The URL is computed from each lookup's context before
+ * middleware runs, so middleware must not change the request's `kind` or
+ * `operationName`, or provide a service the `url` function reads.
+ *
+ * `RequestResolver.withCache` and `RequestResolver.persisted` key on the
+ * lookup alone, so caching a resolver whose lookups go to several URLs can
+ * answer a lookup with another URL's result. Use one resolver per URL, for
+ * example with `LayerMap`, when caching.
+ *
  * @stability experimental
  * @since 4.0.0
  */
@@ -246,6 +257,7 @@ export const ordered = <
   const path = options.path as ReadonlyArray<string>
   const codec = internalGraphQL.makeCodec(method.operation)
   return makeResolver(
+    method,
     options.batchKey,
     (entries) =>
       Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
@@ -379,6 +391,7 @@ export const findById = <
   const path = options.path as ReadonlyArray<string>
   const codec = internalGraphQL.makeCodec(method.operation)
   return makeResolver(
+    method,
     options.batchKey,
     (entries) =>
       Effect.flatMap(callBatch(method, entries, options.variables), ({ keys, targets, result }) => {
@@ -522,7 +535,7 @@ export const aliased = <Op extends GraphQL.Any>(
   }
   const codec = internalGraphQL.makeCodec(operation)
   // The registered hook uses this operation's middleware errors and services.
-  const execute = internalGraphQL.rawExecutors.get(method) as
+  const execute = internalGraphQL.rawExecutors.get(method)?.execute as
     | ((request: GraphQLRequest) => Effect.Effect<ExecutionResult, GraphQL.Error<Op>, GraphQL.Services<Op>>)
     | undefined
   // Generic conditional parameters prevent calling the strict overload directly.
@@ -530,7 +543,7 @@ export const aliased = <Op extends GraphQL.Any>(
     variables: GraphQL.Variables<Op>
   ) => Effect.Effect<GraphQL.Result<Op>, GraphQL.Error<Op>, GraphQL.Services<Op>>
 
-  return makeResolver<AliasedRequest<Op>>(options?.batchKey, (entries) =>
+  return makeResolver<AliasedRequest<Op>>(method, options?.batchKey, (entries) =>
     Effect.flatMap(
       Effect.forEach(entries, (entry) => Effect.exit(codec.encodeVariables(entry.request.key))),
       (encoded) => {
@@ -604,16 +617,24 @@ interface Slice<Op extends GraphQL.Any> {
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Without `batchKey`, all entries share one batch. With it, each batch holds
- * entries with equal keys, so the first entry's context stands for the batch.
+ * Each batch holds entries whose protocol URL and `batchKey` are equal, so the
+ * first entry's context stands for the batch. Methods without a protocol URL
+ * (mock and custom methods) and without `batchKey` use one batch.
  */
 const makeResolver = <A extends Request.Any>(
+  method: OperationMethod<any>,
   batchKey: ((context: Context.Context<any>) => unknown) | undefined,
   runAll: (entries: Arr.NonEmptyArray<Request.Entry<A>>) => Effect.Effect<void, Request.Error<A>>
-): RequestResolver.RequestResolver<A> =>
-  batchKey === undefined
-    ? RequestResolver.make(runAll)
-    : RequestResolver.makeGrouped({ key: (entry) => batchKey(entry.context), resolver: runAll })
+): RequestResolver.RequestResolver<A> => {
+  const url = internalGraphQL.rawExecutors.get(method)?.url
+  if (url === undefined && batchKey === undefined) return RequestResolver.make(runAll)
+  const { kind, name } = method.operation
+  // Arrays are compared structurally, so equal pairs share a batch.
+  return RequestResolver.makeGrouped({
+    key: (entry) => [url?.({ context: entry.context, kind, operationName: name }), batchKey?.(entry.context)],
+    resolver: runAll
+  })
+}
 
 /**
  * Calls the method in the first entry's context with deduplicated keys.

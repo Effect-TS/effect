@@ -12,7 +12,7 @@ import {
   type Reason,
   ResponseError
 } from "../graphql/GraphQLClientError.ts"
-import type { ExecutionResult, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
+import type { ExecutionResult, GraphQLRequest, UrlFunction } from "../graphql/GraphQLProtocol.ts"
 import * as Schema from "../Schema.ts"
 
 /**
@@ -220,14 +220,15 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
 
 /**
  * Each real client method's runner for batches: its middleware and protocol,
- * sending as POST. Mock and custom methods have none.
+ * sending as POST, and the protocol's `url`, which resolvers group lookups by.
+ * Mock and custom methods have none.
  *
  * @internal
  */
-export const rawExecutors = new WeakMap<
-  object,
-  (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
->()
+export const rawExecutors = new WeakMap<object, {
+  readonly execute: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
+  readonly url: UrlFunction | undefined
+}>()
 
 /**
  * Splits a batched response, removing prefixes from root keys and error paths.

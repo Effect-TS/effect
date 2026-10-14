@@ -152,7 +152,33 @@ export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
     readonly status?: number | undefined
     readonly headers?: Headers.Headers | undefined
   }, TransportError>
+  /**
+   * Where the transport sends an operation. `layerHttp` sets it, and
+   * `GraphQLResolver` groups lookups by it so a batch never mixes URLs.
+   * Custom transports can leave it unset.
+   */
+  readonly url?: UrlFunction | undefined
 }>()("effect/graphql/GraphQLProtocol") {}
+
+/**
+ * Picks the URL of one operation for {@link layerHttp}, from the current
+ * context and the operation's kind and name.
+ *
+ * **Details**
+ *
+ * The function must depend only on these options. `GraphQLResolver` calls it
+ * for each lookup to decide which lookups share a batch, before variables,
+ * the aliased document, `headers` and `urlParams` exist.
+ *
+ * @stability experimental
+ * @category models
+ * @since 4.0.0
+ */
+export type UrlFunction = (options: {
+  readonly context: Context.Context<never>
+  readonly kind: Kind
+  readonly operationName: string
+}) => string
 
 const graphqlResponseContentType = "application/graphql-response+json"
 const jsonContentType = "application/json"
@@ -318,7 +344,7 @@ const sseEvents = (
   })
 
 interface HttpOptions<R = never> {
-  readonly url: string
+  readonly url: string | UrlFunction
   readonly queryMethod?: "GET" | "POST" | undefined
   readonly subscriptions?: {
     readonly webSocket: WebSocketOptions<R>
@@ -330,23 +356,30 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   never,
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
 > => {
+  const configured = options.url
+  const url: UrlFunction = typeof configured === "string" ? () => configured : configured
+  // Evaluated in the calling fiber's context, which includes the call's
+  // `context` option.
+  const urlOf = (context: Context.Context<never>, request: GraphQLRequest) =>
+    url({ context, kind: request.kind, operationName: request.operationName })
   const http = Clock.clockWith((clock) =>
     HttpClient.HttpClient.useSync((client) => {
       const execute = (request: GraphQLRequest) =>
-        Effect.flatMap(Effect.service(internalGraphQL.ForcePost), (forcePost) => {
-          const toRequest = options.queryMethod === "GET" && request.kind === "query" && !forcePost
+        Effect.flatMap(Effect.context<never>(), (context) => {
+          const toRequest = options.queryMethod === "GET" && request.kind === "query" &&
+              !Context.get(context, internalGraphQL.ForcePost)
             ? getRequest
             : postRequest
           return client.execute(
-            toRequest(options.url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
+            toRequest(urlOf(context, request), request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
             Effect.flatMap(readAnswer),
             fromHttpClientError(clock)
           )
         })
       const subscribe = (request: GraphQLRequest) =>
-        Stream.unwrap(Effect.suspend(() =>
-          client.execute(postRequest(options.url, request, eventStreamContentType)).pipe(
+        Stream.unwrap(Effect.flatMap(Effect.context<never>(), (context) =>
+          client.execute(postRequest(urlOf(context, request), request, eventStreamContentType)).pipe(
             Effect.flatMap((response) => {
               const contentType = contentTypeOf(response)
               if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
@@ -357,9 +390,8 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
               return Effect.map(readAnswer(response), Stream.succeed)
             }),
             fromHttpClientError(clock)
-          )
-        ))
-      return GraphQLProtocol.of({ execute, subscribe })
+          )))
+      return GraphQLProtocol.of({ execute, subscribe, url })
     })
   )
   const webSocket = options.subscriptions?.webSocket
@@ -368,7 +400,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
     : Effect.zipWith(
       http,
       makeWebSocket(webSocket),
-      (http, ws) => GraphQLProtocol.of({ execute: http.execute, subscribe: ws.subscribe })
+      (http, ws) => GraphQLProtocol.of({ execute: http.execute, subscribe: ws.subscribe, url: http.url })
     )
 }
 
@@ -378,11 +410,12 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
  *
  * **Details**
  *
- * Takes the same options as {@link layerHttp}, including `queryMethod`.
- * Without `subscriptions`, subscriptions use graphql-sse distinct mode on
- * `url`. With `subscriptions.webSocket`, they go over graphql-ws instead, and
- * the effect also builds the graphql-ws transport, so it needs a
- * `Socket.WebSocketConstructor` and a `Scope`.
+ * Takes the same options as {@link layerHttp}, including `queryMethod` and a
+ * `url` function. Without `subscriptions`, subscriptions use graphql-sse
+ * distinct mode on `url`. With `subscriptions.webSocket`, they go over
+ * graphql-ws instead, and the effect also builds the graphql-ws transport, so
+ * it needs a `Socket.WebSocketConstructor` and a `Scope`. `url` must then be
+ * a string.
  *
  * @stability experimental
  * @category constructors
@@ -408,7 +441,7 @@ export const makeHttp: {
     HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
   >
   (options: {
-    readonly url: string
+    readonly url: string | UrlFunction
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Effect.Effect<
@@ -461,6 +494,34 @@ export const makeHttp: {
  *
  * With `subscriptions: { webSocket }`, subscriptions go over graphql-ws as in
  * {@link layerWebSocket}, and the layer needs a `Socket.WebSocketConstructor`.
+ *
+ * `url` can also be a {@link UrlFunction}, for one client that talks to
+ * several servers. It is called for every query, mutation and graphql-sse
+ * subscription with the calling fiber's context, which includes the call's
+ * `context` option, and the operation's `kind` and `operationName`. Pick the
+ * server from a `Context.Reference` with a default value. Reading a missing
+ * service with `Context.get` is a defect, not a `TransportError`. A `url`
+ * function can't be combined with `subscriptions.webSocket`, because a
+ * socket's URL is fixed when it connects.
+ *
+ * **Gotchas**
+ *
+ * A `url` function must depend only on the context and the operation.
+ * `GraphQLResolver` calls it for each lookup to keep lookups for different
+ * URLs in separate batches. Variables, the aliased document, `headers` and
+ * `urlParams` are only assembled once the batch is formed, so a URL that
+ * depends on them couldn't be grouped by.
+ *
+ * Middleware must keep the routing inputs too: it must not change a request's
+ * `kind` or `operationName`, or provide a service the `url` function reads.
+ * A resolver groups lookups by the URL computed before middleware runs, so a
+ * batch formed for one URL would be sent to another.
+ *
+ * `RequestResolver.withCache` and `RequestResolver.persisted` key on the
+ * lookup alone, not on its URL. A cached resolver over a client with a `url`
+ * function can answer one server's lookup with another server's result for
+ * the same key. To cache, build one client and resolver per server, for
+ * example with `LayerMap`.
  *
  * **Example** (Building a client over HTTP)
  *
@@ -535,6 +596,57 @@ export const makeHttp: {
  * await Effect.runPromise(program) // => { viewer: { login: "GET draft-token" } }
  * ```
  *
+ * **Example** (One client for github.com, GHE.com and GitHub Enterprise Server)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Layer, Schema } from "effect"
+ * import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLProtocol } from "effect/graphql"
+ * import { HttpClient, HttpClientResponse } from "effect/http"
+ *
+ * const Viewer = GraphQL.query("Viewer", {
+ *   document: "query Viewer{viewer{login}}",
+ *   result: Schema.Struct({ viewer: Schema.Struct({ login: Schema.String }) })
+ * })
+ *
+ * // The GitHub host a call talks to
+ * const GitHubHost = Context.Reference<string>("GitHubHost", { defaultValue: () => "github.com" })
+ *
+ * const Protocol = GraphQLProtocol.layerHttp({
+ *   url: ({ context }) => {
+ *     const host = Context.get(context, GitHubHost)
+ *     if (host === "github.com") return "https://api.github.com/graphql"
+ *     if (host.endsWith(".ghe.com")) return `https://api.${host}/graphql`
+ *     return `https://${host}/api/graphql`
+ *   }
+ * })
+ *
+ * // A stand-in server that answers with the URL it was sent to
+ * const FakeServer = Layer.succeed(
+ *   HttpClient.HttpClient,
+ *   HttpClient.make((request, url) =>
+ *     Effect.succeed(HttpClientResponse.fromWeb(
+ *       request,
+ *       new Response(JSON.stringify({ data: { viewer: { login: url.href } } }), {
+ *         headers: { "content-type": "application/graphql-response+json" }
+ *       })
+ *     ))
+ *   )
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* GraphQLClient.make(GraphQLGroup.make(Viewer))
+ *   const dotcom = yield* client.Viewer()
+ *   const cloud = yield* client.Viewer().pipe(Effect.provideService(GitHubHost, "acme.ghe.com"))
+ *   const server = yield* client.Viewer(undefined, { context: Context.make(GitHubHost, "github.example.com") })
+ *   return [dotcom, cloud, server].map((result) => result.viewer.login)
+ * }).pipe(
+ *   Effect.provide(Protocol),
+ *   Effect.provide(FakeServer)
+ * )
+ *
+ * await Effect.runPromise(program) // => ["https://api.github.com/graphql", "https://api.acme.ghe.com/graphql", "https://github.example.com/api/graphql"]
+ * ```
+ *
  * **Example** (Subscriptions over graphql-ws, everything else over POST)
  *
  * ```ts import.meta.vitest
@@ -576,7 +688,7 @@ export const layerHttp: {
     }
   }): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
   (options: {
-    readonly url: string
+    readonly url: string | UrlFunction
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Layer.Layer<

@@ -452,7 +452,7 @@ const makeMethod = <Op extends GraphQL.Any>(
       Effect.provideContext(callContext(options))
     )
   }
-  internalGraphQL.rawExecutors.set(method, (request) => execute(0, request, true))
+  internalGraphQL.rawExecutors.set(method, { execute: (request) => execute(0, request, true), url: protocol.url })
   return Object.assign(method, { operation })
 }
 
