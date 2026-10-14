@@ -2167,6 +2167,107 @@ describe("LanguageModel", () => {
   })
 
   describe("tool approval", () => {
+    for (const method of ["generateText", "streamText"] as const) {
+      it.effect(`resolves only pending approvals in mixed approval history (${method})`, () =>
+        Effect.gen(function*() {
+          const executed: Array<string> = []
+          let capturedPrompt: LanguageModel.ProviderOptions["prompt"] | undefined
+          const prompt: Array<Prompt.Message> = []
+
+          for (
+            const [id, approved, resolved] of [
+              ["previous-approved", true, true],
+              ["previous-denied", false, true],
+              ["pending-approved", true, false],
+              ["pending-denied", false, false]
+            ] as const
+          ) {
+            prompt.push(
+              Prompt.assistantMessage({
+                content: [
+                  Prompt.toolCallPart({
+                    id,
+                    name: "ApprovalTool",
+                    params: { action: id },
+                    providerExecuted: false
+                  }),
+                  Prompt.toolApprovalRequestPart({ approvalId: id, toolCallId: id })
+                ]
+              }),
+              Prompt.toolMessage({
+                content: [
+                  Prompt.toolApprovalResponsePart({ approvalId: id, approved, reason: "User declined" }),
+                  ...(resolved
+                    ? [Prompt.toolResultPart({
+                      id,
+                      name: "ApprovalTool",
+                      result: { result: id },
+                      isFailure: !approved,
+                      providerExecuted: false
+                    })]
+                    : [])
+                ]
+              })
+            )
+          }
+
+          const options = { prompt, toolkit: ApprovalToolkit }
+          yield* (method === "generateText"
+            ? LanguageModel.generateText(options)
+            : LanguageModel.streamText(options).pipe(Stream.runDrain)).pipe(
+              TestUtils.withLanguageModel({
+                generateText: (opts) => {
+                  capturedPrompt = opts.prompt
+                  return Effect.succeed([finishPart])
+                },
+                streamText: (opts) => {
+                  capturedPrompt = opts.prompt
+                  return [finishPart]
+                }
+              }),
+              Effect.provide(ApprovalToolkit.toLayer({
+                ApprovalTool: ({ action }) =>
+                  Effect.sync(() => {
+                    executed.push(action)
+                    return { result: "approved-result" }
+                  }),
+                DynamicApprovalTool: () => Effect.succeed({ result: "dynamic-result" })
+              }))
+            )
+
+          deepStrictEqual(executed, ["pending-approved"])
+          assertDefined(capturedPrompt)
+          const parts = capturedPrompt.content.flatMap<Prompt.AssistantMessagePart | Prompt.ToolMessagePart>((
+            message
+          ) => message.role === "assistant" || message.role === "tool" ? message.content : [])
+          deepStrictEqual(parts.filter((part) => part.type === "tool-approval-request"), [])
+          deepStrictEqual(parts.filter((part) => part.type === "tool-approval-response"), [])
+          deepStrictEqual(parts.filter((part) => part.type === "tool-call").map((part) => part.id), [
+            "previous-approved",
+            "previous-denied",
+            "pending-approved",
+            "pending-denied"
+          ])
+          deepStrictEqual(
+            parts.filter((part) => part.type === "tool-result").map((part) => ({
+              id: part.id,
+              result: part.result,
+              isFailure: part.isFailure
+            })),
+            [
+              { id: "previous-approved", result: { result: "previous-approved" }, isFailure: false },
+              { id: "previous-denied", result: { result: "previous-denied" }, isFailure: true },
+              { id: "pending-approved", result: { result: "approved-result" }, isFailure: false },
+              {
+                id: "pending-denied",
+                result: { type: "execution-denied", reason: "User declined" },
+                isFailure: true
+              }
+            ]
+          )
+        }))
+    }
+
     it.effect("emits tool-approval-request when tool has needsApproval: true", () =>
       Effect.gen(function*() {
         const parts: Array<Response.StreamPart<Toolkit.Tools<typeof ApprovalToolkit>, "opaque">> = []
