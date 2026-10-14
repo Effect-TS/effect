@@ -546,6 +546,11 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
             const entry = entries[index++]
             try {
               encoder.begin(entry.header)
+              // Directories, links and empty files have nothing to stream
+              if (entry.body === Stream.empty) {
+                encoder.end()
+                continue
+              }
             } catch (error) {
               failure = error as TarError
               continue
