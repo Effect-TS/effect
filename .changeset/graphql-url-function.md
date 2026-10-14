@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Support context- and operation-based URL routing in `GraphQLProtocol.layerHttp` and `makeHttp`. `GraphQLResolver` batches lookups by URL.
+Support per-request URLs in `GraphQLProtocol.layerHttp` and `makeHttp`, as a function of the context and operation or as an `Effect<string>`. `GraphQLResolver` batches lookups by URL.

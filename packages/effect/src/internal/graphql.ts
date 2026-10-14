@@ -12,7 +12,7 @@ import {
   type Reason,
   ResponseError
 } from "../graphql/GraphQLClientError.ts"
-import type { ExecutionResult, GraphQLRequest, UrlFunction } from "../graphql/GraphQLProtocol.ts"
+import type { ExecutionResult, GraphQLProtocol, GraphQLRequest } from "../graphql/GraphQLProtocol.ts"
 import * as Schema from "../Schema.ts"
 
 /**
@@ -154,6 +154,20 @@ export const renderSlices = (
 export const ForcePost = Context.Reference<boolean>("effect/graphql/ForcePost", { defaultValue: () => false })
 
 /**
+ * The URL a resolver batch was grouped by, so the transport whose `url` it
+ * came from sends the batch there without resolving it again.
+ *
+ * @internal
+ */
+export const ResolvedUrl = Context.Reference<
+  {
+    readonly url: GraphQLProtocol["Service"]["url"]
+    readonly operationName: string
+    readonly value: string
+  } | undefined
+>("effect/graphql/ResolvedUrl", { defaultValue: () => undefined })
+
+/**
  * JSON with object keys sorted, so equal JSON values give equal strings.
  *
  * @internal
@@ -226,7 +240,7 @@ export const makeCodec = <Op extends GraphQL.Any>(operation: Op) => {
  */
 export const rawExecutors = new WeakMap<object, {
   readonly execute: (request: GraphQLRequest) => Effect.Effect<ExecutionResult, unknown, unknown>
-  readonly url: UrlFunction | undefined
+  readonly url: GraphQLProtocol["Service"]["url"]
 }>()
 
 /**

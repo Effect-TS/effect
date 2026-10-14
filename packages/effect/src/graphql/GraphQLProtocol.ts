@@ -157,7 +157,9 @@ export class GraphQLProtocol extends Context.Service<GraphQLProtocol, {
    * Resolves the transport URL for resolver batching. Set by `layerHttp`;
    * optional for custom transports.
    */
-  readonly url?: UrlFunction | undefined
+  readonly url?:
+    | ((options: { readonly kind: Kind; readonly operationName: string }) => Effect.Effect<string>)
+    | undefined
 }>()("effect/graphql/GraphQLProtocol") {}
 
 /**
@@ -338,7 +340,7 @@ const sseEvents = (
   })
 
 interface HttpOptions<R = never> {
-  readonly url: string | UrlFunction
+  readonly url: string | UrlFunction | Effect.Effect<string>
   readonly queryMethod?: "GET" | "POST" | undefined
   readonly subscriptions?: {
     readonly webSocket: WebSocketOptions<R>
@@ -350,27 +352,33 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
   never,
   HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
 > => {
-  const url: UrlFunction = typeof options.url === "string" ? constant(options.url) : options.url
-  const urlOf = (context: Context.Context<never>, request: GraphQLRequest) =>
-    url({ context, kind: request.kind, operationName: request.operationName })
+  const url = urlEffect(options.url)
+  // A resolver batch carries the URL it was grouped by.
+  const urlOf = (request: GraphQLRequest) =>
+    Effect.flatMap(
+      Effect.service(internalGraphQL.ResolvedUrl),
+      (resolved) =>
+        resolved !== undefined && resolved.url === url && resolved.operationName === request.operationName
+          ? Effect.succeed(resolved.value)
+          : url({ kind: request.kind, operationName: request.operationName })
+    )
   const http = Clock.clockWith((clock) =>
     HttpClient.HttpClient.useSync((client) => {
       const execute = (request: GraphQLRequest) =>
-        Effect.flatMap(Effect.context<never>(), (context) => {
-          const toRequest = options.queryMethod === "GET" && request.kind === "query" &&
-              !Context.get(context, internalGraphQL.ForcePost)
+        Effect.flatMap(Effect.zip(Effect.service(internalGraphQL.ForcePost), urlOf(request)), ([forcePost, url]) => {
+          const toRequest = options.queryMethod === "GET" && request.kind === "query" && !forcePost
             ? getRequest
             : postRequest
           return client.execute(
-            toRequest(urlOf(context, request), request, `${graphqlResponseContentType}, ${jsonContentType}`)
+            toRequest(url, request, `${graphqlResponseContentType}, ${jsonContentType}`)
           ).pipe(
             Effect.flatMap(readAnswer),
             fromHttpClientError(clock)
           )
         })
       const subscribe = (request: GraphQLRequest) =>
-        Stream.unwrap(Effect.flatMap(Effect.context<never>(), (context) =>
-          client.execute(postRequest(urlOf(context, request), request, eventStreamContentType)).pipe(
+        Stream.unwrap(Effect.flatMap(urlOf(request), (url) =>
+          client.execute(postRequest(url, request, eventStreamContentType)).pipe(
             Effect.flatMap((response) => {
               const contentType = contentTypeOf(response)
               if (contentType.includes(eventStreamContentType) && response.status >= 200 && response.status < 300) {
@@ -395,6 +403,14 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
     )
 }
 
+const urlEffect = (
+  url: string | UrlFunction | Effect.Effect<string>
+): NonNullable<GraphQLProtocol["Service"]["url"]> => {
+  if (typeof url === "string") return constant(Effect.succeed(url))
+  if (Effect.isEffect(url)) return constant(url)
+  return (operation) => Effect.map(Effect.context<never>(), (context) => url({ ...operation, context }))
+}
+
 /**
  * Builds the HTTP transport as an effect, for composing transports by hand.
  * Most code uses {@link layerHttp}.
@@ -402,7 +418,7 @@ const makeHttpWith = <R>(options: HttpOptions<R>): Effect.Effect<
  * **Details**
  *
  * Takes the same options as {@link layerHttp}, including `queryMethod` and a
- * `url` function. Without `subscriptions`, subscriptions use graphql-sse
+ * `url` function or Effect. Without `subscriptions`, subscriptions use graphql-sse
  * distinct mode on `url`. With `subscriptions.webSocket`, they go over
  * graphql-ws instead, and the effect also builds the graphql-ws transport, so
  * it needs a `Socket.WebSocketConstructor` and a `Scope`. `url` must then be
@@ -432,7 +448,7 @@ export const makeHttp: {
     HttpClient.HttpClient | Socket.WebSocketConstructor | Scope.Scope | R
   >
   (options: {
-    readonly url: string | UrlFunction
+    readonly url: string | UrlFunction | Effect.Effect<string>
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Effect.Effect<
@@ -490,16 +506,25 @@ export const makeHttp: {
  * using the calling fiber's context (including the call's `context` option),
  * `kind` and `operationName`. Use a defaulted `Context.Reference` to select
  * the server. Reading a missing service with `Context.get` is a defect, not
- * a `TransportError`. Function URLs cannot be combined with
- * `subscriptions.webSocket`: the socket URL is fixed at connection time.
+ * a `TransportError`.
+ *
+ * `url` can also be an `Effect<string>` with no errors or requirements, for a
+ * URL that is resolved asynchronously. It runs in the calling fiber's context
+ * for each operation, so it can read the same `Context.Reference`, but it
+ * doesn't see `kind` or `operationName`.
+ *
+ * Function and Effect URLs can't be combined with `subscriptions.webSocket`:
+ * the socket URL is fixed at connection time.
  *
  * **Gotchas**
  *
- * The URL function must depend only on context, `kind` and `operationName`.
- * `GraphQLResolver` groups by URL before middleware runs and before the batched
- * query, variables, headers and URL parameters are assembled. Middleware must
- * preserve those routing inputs, including services the function reads, so
- * each batch is sent to the URL it was grouped by.
+ * A URL function or Effect must depend only on the context and the operation.
+ * `GraphQLResolver` resolves each lookup's URL once, before middleware runs
+ * and before the batched query, variables, headers and URL parameters exist,
+ * then sends each batch to the URL it was grouped by. A single call resolves
+ * the URL in the transport, after middleware. Middleware must not change
+ * `kind` or `operationName`, or provide services the URL reads, or the two
+ * can route differently.
  *
  * `RequestResolver.withCache` and `RequestResolver.persisted` key on the lookup,
  * not the URL, so results can leak across servers. For caching, use a separate
@@ -669,7 +694,7 @@ export const layerHttp: {
     }
   }): Layer.Layer<GraphQLProtocol, never, HttpClient.HttpClient | Socket.WebSocketConstructor | R>
   (options: {
-    readonly url: string | UrlFunction
+    readonly url: string | UrlFunction | Effect.Effect<string>
     readonly queryMethod?: "GET" | "POST" | undefined
     readonly subscriptions?: undefined
   }): Layer.Layer<
