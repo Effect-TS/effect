@@ -1,7 +1,7 @@
 /**
  * Emits per-document and shared modules from validated documents. Paths and
  * import specifiers are supplied by the caller; output needs no formatter.
- * Recursive input objects and generated class names that can't be made
+ * Recursive input objects and generated schema names that can't be made
  * unique produce diagnostics instead of output.
  *
  * @internal
@@ -125,6 +125,13 @@ const printConstValue = (value: SchemaModel.ConstValue): string => {
 
 const struct = (members: ReadonlyArray<string>, indent: string, schema = "Schema"): string =>
   members.length === 0 ? `${schema}.Struct({})` : `${schema}.Struct({\n${members.join(",\n")}\n${indent}})`
+
+/**
+ * A struct schema and an interface of its decoded type under the same name,
+ * with `exported` before each statement.
+ */
+const structDeclaration = (name: string, body: string, exported = "export ", schema = "Schema"): string =>
+  `${exported}const ${name} = ${body}\n${exported}interface ${name} extends ${schema}.Struct.Type<typeof ${name}.fields> {}`
 
 /** Writes out a type reference: `leaf` for its named type, `list` around list types, `nullable` around types without `!`. */
 const typeRef = (
@@ -286,7 +293,7 @@ const literalUnion = (prefix: string, names: ReadonlyArray<string>, indent: stri
 }
 
 /**
- * A nested result selection written as its own Opaque class. Identical
+ * A nested result selection written as its own struct and interface. Identical
  * selections anywhere in one file share it, keeping the first one's path.
  */
 interface ExtractedClass {
@@ -1133,9 +1140,7 @@ class Emitter {
         for (const ref of extracted.refs) placeFragment(ref)
         const name = names[id]!
         blocks.push(
-          `${jsdoc(descriptionLines(extracted.description), "")}export class ${name} extends Schema.Opaque<${name}>()(${
-            fill(extracted.body)
-          }) {}`
+          `${jsdoc(descriptionLines(extracted.description), "")}${structDeclaration(name, fill(extracted.body))}`
         )
       }
     }
@@ -1236,16 +1241,18 @@ class Emitter {
         ctx.file.source,
         classes[i]!.offset,
         counts.get(name)! > 1
-          ? `Different selections here would all generate the class "${name}"; alias one of the fields.`
-          : `The generated class name "${name}" ${taken.get(name) ?? "is reserved in generated code"}; alias the field.`
+          ? `Different selections here would all generate the schema "${name}"; alias one of the fields.`
+          : `The generated schema name "${name}" ${
+            taken.get(name) ?? "is reserved in generated code"
+          }; alias the field.`
       ))
     }
     return names
   }
 
   /**
-   * A fragment on an object type is an Opaque class; one on an interface or
-   * union is a `Schema.Union` and a type alias.
+   * A fragment on an object type is a struct and an interface; one on an
+   * interface or union is a `Schema.Union` and a type alias.
    */
   emitFragment(ctx: FileContext, definition: Ast.FragmentDefinition): string {
     const name = definition.name.value
@@ -1259,7 +1266,7 @@ class Emitter {
       return `${jsdoc(doc, "")}export const ${name} = ${body}\nexport type ${name} = typeof ${name}.Type`
     }
     const body = this.selection(ctx, type.name, selections, "", true).code
-    return `${jsdoc(doc, "")}export class ${name} extends Schema.Opaque<${name}>()(${body}) {}`
+    return `${jsdoc(doc, "")}${structDeclaration(name, body)}`
   }
 
   emitOperation(ctx: FileContext, definition: Ast.OperationDefinition): string {
@@ -1489,7 +1496,7 @@ class Emitter {
         }`
       })
       const body = struct(members, "", schema)
-      blocks.push(declare(type.name, doc, (b, e) => `${e}class ${b} extends ${schema}.Opaque<${b}>()(${body}) {}`))
+      blocks.push(declare(type.name, doc, (b, e) => structDeclaration(b, body, e, schema)))
     }
 
     if (this.reachedAbstract.size > 0) {

@@ -7,6 +7,7 @@ import * as Path from "effect/Path"
 import {
   assertDeclaredInOrder,
   assertNoErrors,
+  fileLines,
   generateIn,
   generateTasks,
   importGenerated,
@@ -101,7 +102,19 @@ describe("Generator per-file output", () => {
       assert.include(generated.file("schema.graphql.ts"), "export type Lonely = never")
     }).pipe(Effect.provide(NodeServices.layer)))
 
-  it.effect("schema names that TypeScript reserves for types never become type or class names", () =>
+  it.effect("an input object is a Struct with an interface of its decoded type", () =>
+    Effect.gen(function*() {
+      const generated = yield* generateIn({
+        "schema.graphql": "input Range { from: Int to: Int }\ntype Query { count(range: Range): Int! }",
+        "src/a.graphql": "query A($range: Range) { count(range: $range) }"
+      }, { schema: "./schema.graphql", documents: ["src/*.graphql"] })
+      assertNoErrors(generated)
+      const shared = fileLines(generated.file("schema.graphql.ts"))
+      assert.include(shared, "export const Range = Schema.Struct({")
+      assert.include(shared, "export interface Range extends Schema.Struct.Type<typeof Range.fields> {}")
+    }).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("schema names that TypeScript reserves for types never become type or interface names", () =>
     Effect.gen(function*() {
       const generated = yield* generateIn({
         "schema.graphql": [
@@ -114,7 +127,8 @@ describe("Generator per-file output", () => {
         "src/a.graphql": "query Q($w: any, $s: symbol) { things(where: $w, s: $s) { id } u { ... on object { id } } }"
       }, { schema: "./schema.graphql", documents: ["src/*.graphql"] })
       assertNoErrors(generated)
-      const reserved = /\b(?:type|class) (?:any|bigint|boolean|never|number|object|string|symbol|undefined|unknown)\b/
+      const reserved =
+        /\b(?:type|class|interface) (?:any|bigint|boolean|never|number|object|string|symbol|undefined|unknown)\b/
       for (const file of generated.paths) {
         assert.deepStrictEqual(generated.file(file).split("\n").filter((line) => reserved.test(line)), [], file)
       }

@@ -24,10 +24,11 @@ const generateBoard = (document: string) =>
     })
   )
 
-const classNames = (text: string): ReadonlyArray<string> =>
+/** The names of the struct schemas declared with an interface of their decoded type. */
+const structNames = (text: string): ReadonlyArray<string> =>
   fileLines(text).flatMap((line) => {
-    const match = /^export class (\w+) /.exec(line)
-    return match === null ? [] : [match[1]!]
+    const match = /^export interface (\w+) extends Schema\.Struct\.Type<typeof (\w+)\.fields> \{\}$/.exec(line)
+    return match === null || match[1] !== match[2] ? [] : [match[1]!]
   }).sort()
 
 describe("Generator nested selection names", () => {
@@ -41,11 +42,9 @@ query Board {
 
 fragment IssueSummary on Issue { title assignee { login } }
 `)
-      assert.deepStrictEqual(classNames(board), ["Issue", "IssueSummary", "User"])
-      assert.strictEqual(
-        declaration(board, "Issue"),
-        "export class Issue extends Schema.Opaque<Issue>()(Schema.Struct({"
-      )
+      assert.deepStrictEqual(structNames(board), ["Issue", "IssueSummary", "User"])
+      assert.strictEqual(declaration(board, "Issue"), "export const Issue = Schema.Struct({")
+      assert.notInclude(board, "Schema.Opaque")
       assert.strictEqual(member(board, "issues"), "Schema.Array(Issue)")
       assert.strictEqual(member(board, "author"), "Schema.NullOr(User)")
       assert.strictEqual(member(board, "pulls"), "Schema.Array(IssueSummary)")
@@ -57,11 +56,11 @@ fragment IssueSummary on Issue { title assignee { login } }
       const reordered = yield* generateBoard(
         "query Board { issues { author { login name } } } query Feed { pulls { id author { name login } } }"
       )
-      assert.deepStrictEqual(classNames(reordered), ["IssuesIssue", "PullsIssue", "User"])
+      assert.deepStrictEqual(structNames(reordered), ["IssuesIssue", "PullsIssue", "User"])
       assert.deepStrictEqual(members(reordered, "author"), ["Schema.NullOr(User)", "Schema.NullOr(User)"])
 
       const board = yield* generateBoard("query Board { issues { author { login } assignee { login } } }")
-      assert.deepStrictEqual(classNames(board), ["Issue", "User"])
+      assert.deepStrictEqual(structNames(board), ["Issue", "User"])
       assert.strictEqual(member(board, "author"), "Schema.NullOr(User)")
       assert.strictEqual(member(board, "assignee"), "Schema.NullOr(User)")
 
@@ -71,7 +70,7 @@ query Board {
   b { item { ... on Pull { id } ... on Issue { id } } }
 }
 `)
-      assert.deepStrictEqual(classNames(reorderedMembers), [
+      assert.deepStrictEqual(structNames(reorderedMembers), [
         "Issue",
         "ItemOther",
         "Pull",
@@ -82,13 +81,13 @@ query Board {
       const aliased = yield* generateBoard(
         "query Board { issues { author { value: login } assignee { value: name } } }"
       )
-      assert.deepStrictEqual(classNames(aliased), ["AssigneeUser", "AuthorUser", "Issue"])
+      assert.deepStrictEqual(structNames(aliased), ["AssigneeUser", "AuthorUser", "Issue"])
     }).pipe(Effect.provide(NodeServices.layer)))
 
   it.effect("clashing shapes fall back to field keys, then parents, and only then the operation", () =>
     Effect.gen(function*() {
       const board = yield* generateBoard("query Board { issues { author { login } } pulls { author { id login } } }")
-      assert.deepStrictEqual(classNames(board), [
+      assert.deepStrictEqual(structNames(board), [
         "IssuesAuthorUser",
         "IssuesIssue",
         "PullsAuthorUser",
@@ -111,7 +110,7 @@ query Feed {
   }
 }
 `)
-      assert.deepStrictEqual(classNames(feed), [
+      assert.deepStrictEqual(structNames(feed), [
         "AssigneeUser",
         "AuthorUser",
         "Issue",
@@ -123,7 +122,7 @@ query Feed {
       const operations = yield* generateBoard(
         "query Board { issues { author { login } } } query Feed { issues { author { id } } }"
       )
-      assert.deepStrictEqual(classNames(operations), [
+      assert.deepStrictEqual(structNames(operations), [
         "BoardIssuesAuthorUser",
         "BoardIssuesIssue",
         "FeedIssuesAuthorUser",
@@ -144,7 +143,7 @@ query Feed {
       assertNoErrors(generated)
       const board = generated.file("src/board.graphql.ts")
       assert.include(board, "import { User } from \"./user.graphql.ts\"")
-      assert.deepStrictEqual(classNames(board), ["AuthorUser", "IssuesIssue"])
+      assert.deepStrictEqual(structNames(board), ["AuthorUser", "IssuesIssue"])
       assert.strictEqual(member(board, "issues"), "Schema.Array(IssuesIssue)")
       assert.strictEqual(member(board, "author"), "Schema.NullOr(AuthorUser)")
       assert.strictEqual(member(board, "assignee"), "Schema.NullOr(User)")

@@ -187,7 +187,7 @@ export const docOf = (text: string, key: string): ReadonlyArray<string> =>
   docAbove(text, uniqueIndex(text, memberPattern(key), `member ${key}`))
 
 const declarationPattern = (name: string) =>
-  new RegExp(`^export (?:const|class|type|declare namespace) ${escapeRegExp(name)}\\b`)
+  new RegExp(`^export (?:const|class|interface|type|declare namespace) ${escapeRegExp(name)}\\b`)
 
 /** The first line declaring the export `name`. */
 export const declaration = (text: string, name: string): string => {
