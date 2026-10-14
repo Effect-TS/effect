@@ -271,6 +271,18 @@ describe("DenoSocket", { concurrent: false }, () => {
       assert.strictEqual(output, "Closed")
     }))
 
+  it.effect("releases the writer after the peer has closed the connection", () =>
+    Effect.gen(function*() {
+      const listener = yield* makeTcpServer
+      const address = listener.addr as Deno.NetAddr
+      yield* Effect.promise(() => listener.accept().then((conn) => conn.close())).pipe(Effect.forkScoped)
+
+      const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
+      const { pull } = yield* socket.reader
+      yield* socket.writer
+      yield* Effect.forever(pull).pipe(Effect.ignore)
+    }))
+
   it.effect("does not carry a consumed half-close into a second acquisition", () =>
     Effect.gen(function*() {
       const encoder = new TextEncoder()
