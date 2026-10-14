@@ -462,6 +462,30 @@ describe("Command", () => {
           ])
         }).pipe(Effect.provide(TestLayer)))
 
+      it.effect("supports an optional value after mapping and setting a default", () =>
+        Effect.gen(function*() {
+          const captured: Array<unknown> = []
+          const command = Command.make("app", {
+            level: Flag.Int("level").pipe(
+              Flag.map((n) => n * 10),
+              Flag.withDefault(0),
+              Flag.withOptionalValue("3")
+            ),
+            files: Argument.String("file").pipe(Argument.variadic())
+          }, (config) => Effect.sync(() => captured.push(config)))
+          const run = Command.runWith(command, { version: "1.0.0" })
+
+          yield* run(["--level", "file.txt"])
+          yield* run(["--level=5"])
+          yield* run([])
+
+          assert.deepStrictEqual(captured, [
+            { level: 30, files: ["file.txt"] },
+            { level: 50, files: [] },
+            { level: 0, files: [] }
+          ])
+        }).pipe(Effect.provide(TestLayer)))
+
       it.effect("leaves a following subcommand name alone", () =>
         Effect.gen(function*() {
           const captured: Array<Option.Option<string>> = []

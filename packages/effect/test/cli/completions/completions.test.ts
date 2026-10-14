@@ -1034,10 +1034,14 @@ describe("Flags with an optional value", () => {
         Flag.withAlias("w"),
         Flag.withDescription("Watch mode"),
         Flag.withOptionalValue("first-failure")
-      )
+      ),
+      file: Argument.Literals("file", ["one", "two"])
     }))
 
-    assert.notInclude(Bash.generate("app", descriptor), "--watch|-w)\n")
+    const bash = Bash.generate("app", descriptor)
+    assert.notInclude(bash, "--watch|-w)\n")
+    assert.include(bash, "--watch|-w) ;;")
+    assert.notInclude(bash, "--watch|-w) _skip_next=1 ;;")
     assert.include(
       Zsh.generate("app", descriptor),
       `'(--watch -w)--watch=-[Watch mode]::value:(first-failure until-done)'`
