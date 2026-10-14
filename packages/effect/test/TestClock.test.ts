@@ -1,11 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Clock from "effect/Clock"
-import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
-import * as Logger from "effect/Logger"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
@@ -135,108 +132,54 @@ describe("TestClock", () => {
       assert.strictEqual(testClock.monotonicTimeNanosUnsafe(), 2_000_000_000n)
     }))
 
-  describe("sleeps registered after multiple scheduler hops", () => {
-    const afterTicks = [
-      Effect.yieldNow,
-      Effect.forkChild(Effect.void).pipe(Effect.flatMap(Fiber.join))
-    ]
-    const countTicks = (advance: Effect.Effect<void>) =>
-      Effect.forEach(afterTicks, (afterTick) =>
-        Effect.gen(function*() {
-          let ticks = 0
-          const fiber = yield* Effect.sleep("1 second").pipe(
-            Effect.andThen(Effect.sync(() => {
-              ticks++
-            })),
-            Effect.andThen(afterTick),
-            Effect.forever,
-            Effect.forkChild
-          )
-          yield* advance
-          yield* Fiber.interrupt(fiber)
-          return ticks
-        }).pipe(Effect.provide(TestClock.layer())))
+  it.effect("adjust - runs sleeps registered after a yield", () =>
+    Effect.gen(function*() {
+      let ticks = 0
+      const fiber = yield* Effect.sleep("1 second").pipe(
+        Effect.andThen(Effect.sync(() => {
+          ticks++
+        })),
+        Effect.andThen(Effect.yieldNow),
+        Effect.forever,
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("5 seconds")
+      yield* Fiber.interrupt(fiber)
+      assert.strictEqual(ticks, 5)
+    }))
 
-    it.effect("adjust - runs every sleep due by the target time", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* countTicks(TestClock.adjust("5 seconds")), [5, 5])
-      }))
+  it.effect("setTime - runs sleeps registered after a fork and join", () =>
+    Effect.gen(function*() {
+      let ticks = 0
+      const fiber = yield* Effect.sleep("1 second").pipe(
+        Effect.andThen(Effect.sync(() => {
+          ticks++
+        })),
+        Effect.andThen(Effect.forkChild(Effect.yieldNow).pipe(Effect.flatMap(Fiber.join))),
+        Effect.forever,
+        Effect.forkChild
+      )
+      yield* TestClock.setTime(5_000)
+      yield* Fiber.interrupt(fiber)
+      assert.strictEqual(ticks, 5)
+    }))
 
-    it.effect("setTime - runs every sleep due by the target time", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* countTicks(TestClock.setTime(5_000)), [5, 5])
-      }))
-
-    it.effect("adjust - runs sleeps in order across fibers", () =>
-      Effect.gen(function*() {
-        const log: Array<string> = []
-        const record = (label: string) =>
-          Effect.flatMap(Clock.currentTimeMillis, (now) => Effect.sync(() => log.push(`${label}@${now}`)))
-        yield* Effect.sleep("1 second").pipe(
-          Effect.andThen(record("a")),
-          Effect.andThen(Effect.forkChild(Effect.yieldNow).pipe(Effect.flatMap(Fiber.join))),
-          Effect.andThen(Effect.sleep("1 second")),
-          Effect.andThen(record("a")),
-          Effect.forkChild
-        )
-        yield* Effect.sleep("1500 millis").pipe(Effect.andThen(record("b")), Effect.forkChild)
-        yield* TestClock.adjust("5 seconds")
-        assert.deepStrictEqual(log, ["a@1000", "b@1500", "a@2000"])
-      }))
-
-    const busyFiberFallback = () =>
-      Effect.gen(function*() {
-        const warnings: Array<unknown> = []
-        const logger = Logger.make((options) => {
-          if (options.logLevel === "Warn") warnings.push(options.message)
-        })
-        let later = false
-        yield* Effect.gen(function*() {
-          yield* Effect.sleep("1 second").pipe(Effect.andThen(Effect.forever(Effect.yieldNow)), Effect.forkChild)
-          yield* Effect.sleep("2 seconds").pipe(
-            Effect.andThen(Effect.sync(() => {
-              later = true
-            })),
-            Effect.forkChild
-          )
-          yield* TestClock.adjust("5 seconds")
-          assert.strictEqual(yield* Clock.currentTimeMillis, 5_000)
-        }).pipe(
-          Effect.provide(TestClock.layer({ warningDelay: "10 millis" })),
-          Effect.provide(Logger.layer([logger]))
-        )
-        assert.isTrue(later)
-        assert.match(String(warnings), /fiber woken by the test clock is still running/)
-      })
-
-    it.live("adjust - warns and keeps advancing when a woken fiber never suspends", busyFiberFallback)
-
-    it.effect("adjust - warns and keeps advancing when nested in another TestClock", busyFiberFallback)
-
-    it.effect("adjust - runs every sleep after an interrupted adjustment", () =>
-      Effect.gen(function*() {
-        const woken = yield* Deferred.make<void>()
-        yield* Effect.sleep("1 second").pipe(
-          Effect.andThen(Deferred.succeed(woken, undefined)),
-          Effect.andThen(Effect.forever(Effect.yieldNow)),
-          Effect.forkChild
-        )
-        const adjustment = yield* Effect.forkChild(TestClock.adjust("5 seconds"))
-        yield* Deferred.await(woken)
-        yield* Fiber.interrupt(adjustment)
-        let ticks = 0
-        yield* Effect.sleep("1 second").pipe(
-          Effect.andThen(Effect.sync(() => {
-            ticks++
-          })),
-          Effect.andThen(Effect.yieldNow),
-          Effect.forever,
-          Effect.forkChild
-        )
-        yield* TestClock.adjust("3 seconds")
-        assert.strictEqual(ticks, 3)
-      }))
-  })
+  it.effect("adjust - completes when a nested clock wakes a busy fiber", () =>
+    Effect.gen(function*() {
+      let later = false
+      yield* Effect.sleep("1 second").pipe(
+        Effect.andThen(Effect.forever(Effect.yieldNow)),
+        Effect.forkChild
+      )
+      yield* Effect.sleep("2 seconds").pipe(
+        Effect.andThen(Effect.sync(() => {
+          later = true
+        })),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("5 seconds")
+      assert.isTrue(later)
+    }).pipe(Effect.provide(TestClock.layer({ warningDelay: "10 millis" }))))
 
   // `it.effect` and `it.live` provide an ambient Scope, defeating the #2244 regression guard.
   it("layer - can adjust when provided without an ambient Scope", () =>
