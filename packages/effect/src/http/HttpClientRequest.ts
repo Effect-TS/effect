@@ -30,6 +30,7 @@ import * as Stream from "../Stream.ts"
 import * as Headers from "./Headers.ts"
 import * as HttpBody from "./HttpBody.ts"
 import { hasBody, type HttpMethod } from "./HttpMethod.ts"
+import * as compression from "./internal/compressionBody.ts"
 import * as bodyInternal from "./internal/httpBody.ts"
 import * as Url from "./Url.ts"
 import * as UrlParams from "./UrlParams.ts"
@@ -104,7 +105,7 @@ const Proto = {
     return {
       _id: "HttpClientRequest",
       method: this.method,
-      url: this.url,
+      url: UrlParams.redactUrl(this.url),
       urlParams: this.urlParams,
       hash: this.hash,
       headers: redact(this.headers),
@@ -710,6 +711,88 @@ export const setBody: {
     body
   )
 })
+
+/**
+ * Algorithms supported by Web `CompressionStream` for request body compression.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type CompressionAlgorithm = "gzip" | "deflate"
+
+/**
+ * Options for request body compression.
+ *
+ * @stability unstable
+ * @category options
+ * @since 4.0.0
+ */
+export interface CompressionOptions {
+  /**
+   * Minimum known body length in bytes to compress. Defaults to `1024`.
+   * Bodies with unknown length are always compressed.
+   */
+  readonly minSize?: number | undefined
+}
+
+/**
+ * Compresses a request body using Web `CompressionStream` and sets `Content-Encoding`.
+ *
+ * **Details**
+ *
+ * Byte-array bodies (including text, JSON, and URL-encoded bodies) are compressed
+ * into a new `Uint8Array` body, preserving the content type and updating
+ * `Content-Length`. The compressed body does not retain the original lazy text.
+ * Stream bodies are compressed lazily and have their content length removed.
+ * They still require a client runtime that supports streaming request bodies
+ * (Fetch requires `duplex: "half"`, which Safari and Firefox do not support).
+ *
+ * Returns the original request unchanged for empty, FormData, and raw bodies,
+ * bodies with a known length below `options.minSize`, or requests with any
+ * existing `Content-Encoding` header, including `identity`. Unknown-length
+ * streams are always compressed. The default minimum is 1024 bytes because
+ * gzip can make very small bodies larger.
+ *
+ * Requires `CompressionStream` (available in browsers, Node 18+, Bun, and Deno).
+ * There is no typed error channel: byte compression failures are defects;
+ * stream failures surface when the body is sent.
+ *
+ * To compress every request, use
+ * `HttpClient.mapRequestEffect(HttpClientRequest.compressBody("gzip"))`.
+ * `HttpClient.retryTransient` re-runs preprocessing, so this recompresses on
+ * every retry. For large bodies, compress once before calling `client.execute`.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const compressBody: {
+  (
+    algorithm: CompressionAlgorithm,
+    options?: CompressionOptions | undefined
+  ): (self: HttpClientRequest) => Effect.Effect<HttpClientRequest>
+  (
+    self: HttpClientRequest,
+    algorithm: CompressionAlgorithm,
+    options?: CompressionOptions | undefined
+  ): Effect.Effect<HttpClientRequest>
+} = dual(
+  (args) => isHttpClientRequest(args[0]),
+  (
+    self: HttpClientRequest,
+    algorithm: CompressionAlgorithm,
+    options?: CompressionOptions | undefined
+  ): Effect.Effect<HttpClientRequest> => {
+    if (self.headers["content-encoding"] !== undefined) {
+      return Effect.succeed(self)
+    }
+    return Effect.map(
+      compression.compressBody(self.body, algorithm, options),
+      (body) => body === self.body ? self : setHeader(setBody(self, body), "content-encoding", algorithm)
+    )
+  }
+)
 
 /**
  * Sets a `Uint8Array` request body with an optional content type.

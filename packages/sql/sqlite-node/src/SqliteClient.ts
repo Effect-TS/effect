@@ -173,6 +173,12 @@ export const make = (
         // Switching to WAL can fail with SQLITE_BUSY without invoking the busy
         // handler, so retry it until busyTimeout has elapsed. Each attempt's
         // native busy wait is limited to the remaining time.
+        // Deno's `exec` errors omit `errcode`, so run the pragma as a prepared
+        // statement to keep SQLITE_BUSY retryable.
+        const enableWAL = Effect.try({
+          try: () => db.prepare("PRAGMA journal_mode = WAL").get(),
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to configure database", "connect") })
+        })
         const deadline = (yield* Clock.monotonicTimeNanos) + BigInt(busyTimeout) * NANOS_PER_MILLI
         const remainingMillis = Effect.map(
           Clock.monotonicTimeNanos,
@@ -180,7 +186,7 @@ export const make = (
         )
         yield* remainingMillis.pipe(
           Effect.flatMap((remaining) => exec(`PRAGMA busy_timeout = ${remaining}`)),
-          Effect.andThen(exec("PRAGMA journal_mode = WAL")),
+          Effect.andThen(enableWAL),
           Effect.retry({
             while: (error) =>
               error.reason._tag === "LockTimeoutError" && Effect.map(remainingMillis, (remaining) => remaining > 0),
@@ -334,7 +340,7 @@ export const make = (
     })
 
     const connection = yield* makeConnection
-    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(connection),
       semaphore: yield* Semaphore.make(1),
       isTransaction: (conn) => conn.isTransaction()
@@ -343,6 +349,7 @@ export const make = (
     return Object.assign(
       (yield* Client.make({
         acquirer,
+        borrower,
         compiler,
         transactionAcquirer,
         onCommitFailure,

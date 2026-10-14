@@ -5,6 +5,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import { CliOutput } from "effect/cli"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import type * as Fiber from "effect/Fiber"
@@ -15,7 +16,7 @@ import * as PubSub from "effect/PubSub"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import { TestClock, TestConsole } from "effect/testing"
-import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 
 const schemaSdl = `type User {
@@ -127,9 +128,13 @@ const waitFor = Effect.fnUntraced(function*(
 const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched: string) => void) {
   const path = yield* Path.Path
   const events = yield* PubSub.unbounded<{ readonly file: string; readonly tag: "Create" | "Update" }>()
-  const watch = (watched: string): Stream.Stream<FileSystem.WatchEvent> => {
+  const watch: Parameters<typeof Watch.run>[0]["watch"] = (watched, _kind, onReady) => {
     onWatch?.(watched)
-    return Stream.fromPubSub(events).pipe(
+    return Stream.unwrap(Effect.gen(function*() {
+      const subscription = yield* PubSub.subscribe(events)
+      onReady()
+      return Stream.fromSubscription(subscription)
+    })).pipe(
       Stream.map(({ file, tag }): FileSystem.WatchEvent | undefined => {
         if (file === watched) return { _tag: tag, path: path.basename(watched) }
         const relative = path.relative(watched, file)
@@ -156,6 +161,135 @@ const start = Effect.fnUntraced(function*(configPath: string, onWatch?: (watched
 })
 
 describe("graphqlgen --watch", () => {
+  it.effect(
+    "removing a subtree during nested discovery does not block initial generation",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const path = yield* Path.Path
+        const p = yield* project({ "src/a.graphql": query("A", "id") })
+        const parent = p.file("src/c")
+        const nested = p.file("src/c/d")
+        yield* fs.makeDirectory(parent)
+        const scanningParent = yield* Deferred.make<void>()
+        const releaseParent = yield* Deferred.make<void>()
+        const scanningNested = yield* Deferred.make<void>()
+        const initialScanFoundNested = yield* Deferred.make<void>()
+        const discoveryCancelled = yield* Deferred.make<void>()
+        const holdNested = yield* Deferred.make<void>()
+        const rootEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        const parentEvents = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        let nestedStats = 0
+        const gatedFs: FileSystem.FileSystem = {
+          ...fs,
+          watch: (directory, options) =>
+            Stream.unwrap(Effect.gen(function*() {
+              const events = directory === parent ? parentEvents : rootEvents
+              const subscription = yield* PubSub.subscribe(events)
+              options?.onReady?.()
+              return Stream.fromSubscription(subscription)
+            })),
+          readDirectory: (directory, options) =>
+            Effect.gen(function*() {
+              if (directory === parent) {
+                yield* Deferred.succeed(scanningParent, undefined)
+                yield* Deferred.await(releaseParent)
+              } else if (directory === nested) {
+                yield* Deferred.succeed(scanningNested, undefined)
+                yield* Deferred.await(holdNested).pipe(
+                  Effect.ensuring(Deferred.succeed(discoveryCancelled, undefined))
+                )
+              }
+              return yield* fs.readDirectory(directory, options)
+            }),
+          stat: (file) =>
+            fs.stat(file).pipe(Effect.tap(() => {
+              // The create handler stats D first; the initial scan discovers it second.
+              if (file === nested && ++nestedStats === 2) {
+                return Deferred.succeed(initialScanFoundNested, undefined)
+              }
+              return Effect.void
+            }))
+        }
+        const fiber = yield* Watch.run({
+          configPath: p.configPath,
+          watch: Watch.fileSystemWatch(gatedFs, path)
+        }).pipe(Effect.forkScoped)
+
+        // C owns discovery of D while the initial tree scan is still visiting C.
+        yield* Deferred.await(scanningParent)
+        yield* fs.makeDirectory(nested)
+        yield* PubSub.publish(parentEvents, { _tag: "Create", path: "d" } as FileSystem.WatchEvent)
+        yield* Deferred.await(scanningNested)
+        yield* Deferred.succeed(releaseParent, undefined)
+        yield* Deferred.await(initialScanFoundNested)
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(cycles(yield* output), [], "generation ran before subtree discovery completed")
+
+        // The root stays alive, but removing C cancels the owner of D's discovery.
+        yield* fs.remove(parent, { recursive: true })
+        yield* PubSub.publish(rootEvents, { _tag: "Remove", path: "c" } as FileSystem.WatchEvent)
+        yield* Deferred.await(discoveryCancelled)
+        yield* waitFor(
+          fiber,
+          "initial generation after nested discovery was cancelled",
+          (out) => cycles(out).length > 0 && existsSync(p.file("src/a.graphql.ts"))
+        )
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    15_000
+  )
+
+  it.effect(
+    "a document replaced during the installation gap is regenerated without another edit",
+    () =>
+      Effect.gen(function*() {
+        const fs = yield* FileSystem.FileSystem
+        const p = yield* project({ "src/a.graphql": query("A", "id") })
+        const installing = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const installed = yield* Deferred.make<void>()
+        const events = yield* PubSub.unbounded<FileSystem.WatchEvent>()
+        const watch: Parameters<typeof Watch.run>[0]["watch"] = (watched, _kind, onReady) =>
+          Stream.unwrap(Effect.gen(function*() {
+            if (watched === p.file("src")) {
+              yield* Deferred.succeed(installing, undefined)
+              yield* Deferred.await(release)
+            }
+            // Acquiring the subscription, not constructing the stream, installs this watcher.
+            const subscription = yield* PubSub.subscribe(events)
+            onReady()
+            if (watched === p.file("src")) {
+              yield* Deferred.succeed(installed, undefined)
+            }
+            return Stream.fromSubscription(subscription)
+          }))
+        const fiber = yield* Watch.run({ configPath: p.configPath, watch }).pipe(Effect.forkScoped)
+        yield* Deferred.await(installing)
+        const initial = yield* generated(p.dir, p.file("src/a.graphql.ts"))
+        yield* TestClock.adjust("200 millis")
+        yield* liveSleep(100)
+        assert.isUndefined(fiber.pollUnsafe(), "the watch loop exited before installation")
+        assert.deepStrictEqual(cycles(yield* output), [], "generation ran before document watcher installation")
+        assert.isFalse(yield* exists(p.file("src/a.graphql.ts")))
+
+        // An editor saves while no document subscription exists. No event is replayed on installation.
+        yield* write(p.dir, { "src/a.tmp": query("A", "id", "name") })
+        yield* fs.rename(p.file("src/a.tmp"), p.file("src/a.graphql"))
+        const expected = yield* generated(p.dir, p.file("src/a.graphql.ts"))
+        assert.notStrictEqual(initial, expected)
+        yield* Deferred.succeed(release, undefined)
+        yield* Deferred.await(installed)
+
+        yield* waitFor(
+          fiber,
+          "the installation-gap replacement output without another edit",
+          () => existsSync(p.file("src/a.graphql.ts")) && readFileSync(p.file("src/a.graphql.ts"), "utf8") === expected
+        )
+        assert.strictEqual(yield* read(p.file("src/a.graphql.ts")), expected)
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    15_000
+  )
+
   it.effect("a document root created during watch installation stays watched", () =>
     Effect.gen(function*() {
       const p = yield* project({})

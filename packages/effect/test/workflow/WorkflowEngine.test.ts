@@ -339,6 +339,185 @@ describe("WorkflowEngine", () => {
       )
     }))
 
+  it.effect("layerMemory keeps a failure-suspended workflow parked when a discarded child completes", () =>
+    Effect.gen(function*() {
+      let failures = 0
+      const ChildGate = DurableDeferred.make("WorkflowEngine/FailureParkedChildGate")
+      const Parent = Workflow.make("WorkflowEngine/FailureParked", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const Child = Workflow.make("WorkflowEngine/FailureParkedChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+        yield* Child.execute({}, { discard: true })
+        yield* Activity.make({
+          name: "fail",
+          execute: Effect.suspend(() => {
+            failures++
+            return Effect.die("boom")
+          })
+        })
+      }))
+      const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        const childId = yield* Child.executionId({})
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+
+        yield* DurableDeferred.succeed(ChildGate, {
+          token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
+          value: void 0
+        })
+        let child = yield* Child.poll(childId)
+        while (Option.isNone(child) || child.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          child = yield* Child.poll(childId)
+        }
+        assert.deepStrictEqual(child.value, new Workflow.Complete({ exit: Exit.void }))
+        for (let i = 0; i < 100; i++) yield* Effect.yieldNow
+        assert.strictEqual(failures, 1, "only an explicit resume may replay the failed activity")
+
+        yield* Parent.resume(executionId)
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (failures < 2) yield* Effect.yieldNow
+        assert.strictEqual(failures, 2)
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
+  it.effect("layerMemory wakes a parent when its failure-suspended child is resumed", () =>
+    Effect.gen(function*() {
+      let attempts = 0
+      const Parent = Workflow.make("WorkflowEngine/InheritedCauseParent", {
+        payload: {},
+        success: Schema.Number,
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/InheritedCauseChild", {
+        payload: {},
+        success: Schema.Number,
+        idempotencyKey: () => "child"
+      }).annotate(Workflow.SuspendOnFailure, true)
+      // Await from an activity, so its own result must not inherit the failure.
+      const ParentLayer = Parent.toLayer(() =>
+        Activity.make({ name: "child", success: Schema.Number, execute: Child.execute({}) })
+      )
+      const ChildLayer = Child.toLayer(() =>
+        Activity.make({
+          name: "flaky",
+          success: Schema.Number,
+          execute: Effect.suspend(() => ++attempts === 1 ? Effect.die("boom") : Effect.succeed(attempts))
+        })
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+
+        // The parent carries the child's cause but did not fail itself.
+        yield* Child.resume(yield* Child.executionId({}))
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        assert.deepStrictEqual(result.value, new Workflow.Complete({ exit: Exit.succeed(2) }))
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
+  it.effect("layerMemory keeps an explicit resume queued behind an automatic wake", () =>
+    Effect.gen(function*() {
+      let failures = 0
+      const cleaningUp = yield* Latch.make()
+      const release = yield* Latch.make()
+      const Gate = DurableDeferred.make("WorkflowEngine/QueuedWakeGate")
+      const Failing = Workflow.make("WorkflowEngine/QueuedWake", {
+        payload: {},
+        idempotencyKey: () => "failing"
+      }).annotate(Workflow.SuspendOnFailure, true)
+      const FailingLayer = Failing.toLayer(() =>
+        Activity.make({
+          name: "fail",
+          execute: Effect.suspend(() => {
+            failures++
+            return Effect.die("boom")
+          })
+        }).pipe(Effect.ensuring(Effect.andThen(cleaningUp.open, release.await)))
+      )
+      yield* Effect.gen(function*() {
+        const executionId = yield* Failing.execute({}, { discard: true })
+        yield* cleaningUp.await
+        // The run is still cleaning up, so both wakes wait for it to finish.
+        yield* DurableDeferred.succeed(Gate, {
+          token: DurableDeferred.tokenFromExecutionId(Gate, { workflow: Failing, executionId }),
+          value: void 0
+        })
+        yield* Failing.resume(executionId)
+        yield* release.open
+        // eslint-disable-next-line no-unmodified-loop-condition
+        while (failures < 2) yield* Effect.yieldNow
+        assert.strictEqual(failures, 2, "the explicit resume must replay the failed activity")
+      }).pipe(Effect.provide(FailingLayer.pipe(Layer.provideMerge(WorkflowEngine.layerMemory))))
+    }))
+
+  it.effect("layerMemory does not interrupt a detached child with its parent", () =>
+    Effect.gen(function*() {
+      const ParentGate = DurableDeferred.make("WorkflowEngine/DetachedParentGate")
+      const ChildGate = DurableDeferred.make("WorkflowEngine/DetachedChildGate")
+      const Parent = Workflow.make("WorkflowEngine/DetachedParent", {
+        payload: {},
+        idempotencyKey: () => "parent"
+      })
+      const Child = Workflow.make("WorkflowEngine/DetachedChild", {
+        payload: {},
+        idempotencyKey: () => "child"
+      })
+      const ParentLayer = Parent.toLayer(Effect.fnUntraced(function*() {
+        yield* Child.execute({}, { discard: true, detached: true })
+        yield* DurableDeferred.await(ParentGate)
+      }))
+      const ChildLayer = Child.toLayer(() => DurableDeferred.await(ChildGate))
+      yield* Effect.gen(function*() {
+        const executionId = yield* Parent.execute({}, { discard: true })
+        let result = yield* Parent.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+        yield* Parent.interrupt(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Parent.poll(executionId)
+        }
+
+        const childId = yield* Child.executionId({})
+        yield* DurableDeferred.succeed(ChildGate, {
+          token: DurableDeferred.tokenFromExecutionId(ChildGate, { workflow: Child, executionId: childId }),
+          value: void 0
+        })
+        let child = yield* Child.poll(childId)
+        while (Option.isNone(child) || child.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          child = yield* Child.poll(childId)
+        }
+        assert.deepStrictEqual(child.value, new Workflow.Complete({ exit: Exit.void }))
+      }).pipe(
+        Effect.provide(Layer.mergeAll(ParentLayer, ChildLayer).pipe(Layer.provideMerge(WorkflowEngine.layerMemory)))
+      )
+    }))
+
   for (const mode of ["failure", "interruption"] as const) {
     it.effect(`layerMemory releases a pending child registration on ${mode}`, () =>
       Effect.gen(function*() {

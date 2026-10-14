@@ -13,6 +13,7 @@
 import * as Effect from "../Effect.ts"
 import * as FileSystem from "../FileSystem.ts"
 import * as Layer from "../Layer.ts"
+import * as Option from "../Option.ts"
 import * as Path from "../Path.ts"
 import type { PlatformError } from "../PlatformError.ts"
 import * as HttpPlatform from "./HttpPlatform.ts"
@@ -398,16 +399,9 @@ const resolveFilePath = (path: Path.Path, root: string, url: string): string | u
   if (decodedPath.includes("\u0000")) {
     return undefined
   }
-  const normalizedPath = path.normalize(decodedPath.startsWith("/") ? decodedPath.slice(1) : decodedPath)
-  if (normalizedPath === ".." || normalizedPath.startsWith(`..${path.sep}`)) {
-    return undefined
-  }
-  const resolvedPath = path.join(root, normalizedPath)
-  const rootPrefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`
-  if (resolvedPath !== root && !resolvedPath.startsWith(rootPrefix)) {
-    return undefined
-  }
-  return resolvedPath
+  // every leading separator is part of the URL, not a filesystem root
+  const relativePath = decodedPath.replace(path.sep === "\\" ? /^[/\\]+/ : /^\/+/, "")
+  return Option.getOrUndefined(path.resolveWithin(root, relativePath))
 }
 
 const toRouteNotFoundError = (request: HttpServerRequest.HttpServerRequest) =>

@@ -49,7 +49,7 @@ export const toHeaders = (span: Tracer.Span): Headers.Headers =>
         onSome: (parent) => `-${parent.spanId}`
       })
     }`,
-    traceparent: `00-${span.traceId}-${span.spanId}-${span.sampled ? "01" : "00"}`
+    traceparent: `00-${span.traceId.padStart(32, "0")}-${span.spanId}-${span.sampled ? "01" : "00"}`
   })
 
 /**

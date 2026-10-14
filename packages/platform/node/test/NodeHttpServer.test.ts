@@ -1,8 +1,8 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
-import { NodeHttpServer } from "@effect/platform-node"
+import { NodeHttpServer, NodeHttpServerRequest } from "@effect/platform-node"
 import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { ByteSize, Effect, Exit, Logger, Option, References } from "effect"
+import { ByteSize, Effect, Exit, Formatter, Logger, Option, References } from "effect"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Fiber from "effect/Fiber"
@@ -14,6 +14,7 @@ import {
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
+  HttpMiddleware,
   HttpPlatform,
   HttpRouter,
   HttpServer,
@@ -37,6 +38,7 @@ import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Net from "node:net"
+import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -104,6 +106,49 @@ describe("HttpServer", () => {
         Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
       )
       expect(todo).toEqual({ id: 1, title: "test" })
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("toServerResponse works behind the decompression middleware", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) => {
+          const responses = [request, request.modify({ url: "/modified" })].map(NodeHttpServerRequest.toServerResponse)
+          return Effect.succeed(
+            HttpServerResponse.text(responses.map((response) => response instanceof Http.ServerResponse).join(","))
+          )
+        }),
+        HttpMiddleware.decompression()
+      )
+      const response = yield* HttpClient.post("/", {
+        body: HttpBody.uint8Array(Zlib.gzipSync("hello")),
+        headers: { "content-encoding": "gzip" }
+      })
+      assert.strictEqual(yield* response.text, "true,true")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("redacts query params when inspecting requests", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/inspect",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          return yield* HttpServerResponse.json({
+            url: request.url,
+            json: JSON.stringify(request),
+            formatted: Formatter.format(request)
+          })
+        }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"]))
+      ).pipe(HttpRouter.serve, Layer.build)
+
+      const result = (yield* HttpClient.get("/inspect?token=token-secret&sig=sig-visible").pipe(
+        Effect.flatMap((response) => response.json)
+      )) as { readonly url: string; readonly json: string; readonly formatted: string }
+
+      assert.strictEqual(result.url, "/inspect?token=token-secret&sig=sig-visible")
+      assert.include(result.json, `"url":"/inspect?token=REDACTED&sig=sig-visible"`)
+      assert.include(result.formatted, "/inspect?token=REDACTED&sig=sig-visible")
+      assert.notInclude(result.formatted, "token-secret")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("schemaJson applies a JSON reviver", () =>

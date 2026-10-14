@@ -1616,7 +1616,7 @@ describe("OpenAiLanguageModel", () => {
         }
         assert.strictEqual(toolCall.id, "call_1")
         assert.deepStrictEqual(toolCall.params, { input: "hello" })
-        assert.deepStrictEqual(toolCall.metadata.openai as unknown, { itemId: "call_1", extraContent })
+        assert.deepStrictEqual(toolCall.metadata["openai-compat"] as unknown, { itemId: "call_1", extraContent })
       }))
 
     it.effect("decodes streamed tool call params with the OpenAI codec", () =>
@@ -1732,7 +1732,7 @@ describe("OpenAiLanguageModel", () => {
                 params: { action: localShellAction },
                 providerExecuted: false,
                 options: {
-                  openai: {
+                  "openai-compat": {
                     itemId: "ls_call_1"
                   }
                 }

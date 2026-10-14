@@ -17,6 +17,7 @@ import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Redacted from "effect/Redacted"
 import * as EffectResult from "effect/Result"
@@ -99,6 +100,19 @@ export interface Config {
    */
   readonly password?: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout?: Duration.Input | undefined
+  /**
+   * Enables TCP keepalive on native TCP connections after this idle time.
+   *
+   * **Details**
+   *
+   * The duration is truncated to whole seconds (minimum 1 second). With Node's
+   * defaults, the connection errors after 10 unanswered probes sent 1 second
+   * apart. Disabled when omitted; Unix sockets and custom streams are unaffected.
+   *
+   * This is not a query timeout. Probes only run while no sent data is awaiting
+   * acknowledgement, so use `Effect.timeout` to bound a write to a dead peer.
+   */
+  readonly keepAlive?: Duration.Input | undefined
   /**
    * Overrides `startupParameters.application_name`, the URL's `application_name`,
    * and the default `"@effect/sql-pg"`, in that order.
@@ -2194,7 +2208,12 @@ const connect = (config: ResolvedConfig, resolvedPassword: string | undefined): 
         ? Net.connect({ path: config.path })
         // A statement is one write and then a wait for its answer, so Nagle has
         // nothing to coalesce and only holds the write back.
-        : Net.connect({ host: config.host, port: config.port, noDelay: true })
+        : Net.connect({
+          host: config.host,
+          port: config.port,
+          noDelay: true,
+          ...(config.keepAlive !== undefined && { keepAlive: true, keepAliveInitialDelay: config.keepAlive })
+        })
     } catch (cause) {
       resume(Effect.fail(
         new SqlError({
@@ -2229,6 +2248,7 @@ interface ResolvedConfig {
   readonly username: string
   readonly password: Redacted.Redacted | Effect.Effect<Redacted.Redacted> | undefined
   readonly connectTimeout: Duration.Duration
+  readonly keepAlive: number | undefined
   readonly startupParameters: PgProtocol.StartupParameters
   readonly stream: (() => Duplex) | undefined
   readonly maxMessageSize: number | undefined
@@ -2243,6 +2263,15 @@ const configError = (message: string, cause?: unknown): SqlError =>
     })
   })
 
+// Node truncates to whole seconds and libuv silently ignores zero, which would
+// leave the OS defaults in place.
+const keepAliveMillis = (input: Duration.Input): number | undefined => {
+  const duration = Duration.fromInput(input)
+  if (Option.isNone(duration)) return undefined
+  const seconds = Math.floor(Duration.toSeconds(duration.value))
+  return seconds >= 1 && seconds <= 0x7fffffff ? seconds * 1000 : undefined
+}
+
 const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError> =>
   Effect.suspend(() => {
     const parsed: EffectResult.Result<UrlConfig, SqlError> = options.url !== undefined
@@ -2255,6 +2284,10 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
     const username = options.username ?? url.username ?? process.env.USER ?? process.env.USERNAME
     if (username === undefined) {
       return Effect.fail(configError("No username configured"))
+    }
+    const keepAlive = options.keepAlive === undefined ? undefined : keepAliveMillis(options.keepAlive)
+    if (options.keepAlive !== undefined && keepAlive === undefined) {
+      return Effect.fail(configError("keepAlive must be between 1 and 2147483647 seconds"))
     }
     const named: Record<string, string> = Object.create(null)
     for (const [name, value] of Object.entries(options.startupParameters ?? {})) {
@@ -2298,6 +2331,7 @@ const resolveConfig = (options: Config): Effect.Effect<ResolvedConfig, SqlError>
       username,
       password: options.password ?? (url.password !== undefined ? Redacted.make(url.password) : undefined),
       connectTimeout: Duration.fromInputUnsafe(options.connectTimeout ?? url.connectTimeout ?? Duration.seconds(5)),
+      keepAlive,
       startupParameters,
       stream: options.stream,
       maxMessageSize: options.maxMessageSize

@@ -227,7 +227,7 @@ export const make = (
       })
     })
 
-    const { acquirer, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
+    const { acquirer, borrower, onCommitFailure, transactionAcquirer } = Client.makeSqliteAcquirers({
       connection: Effect.succeed(yield* makeConnection),
       semaphore: yield* Semaphore.make(1)
     })
@@ -235,6 +235,7 @@ export const make = (
     return Object.assign(
       (yield* Client.make({
         acquirer,
+        borrower,
         compiler,
         transactionAcquirer,
         onCommitFailure,

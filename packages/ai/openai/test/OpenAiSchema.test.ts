@@ -457,6 +457,7 @@ describe("OpenAiSchema", () => {
       OpenAiClient.OpenAiClient,
       OpenAiClient.OpenAiClient.of({
         client: undefined as any,
+        createDecisions: () => Effect.die("unexpected"),
         createResponse: () => Effect.die("unexpected"),
         createResponseStream: () =>
           Effect.succeed([

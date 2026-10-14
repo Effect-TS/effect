@@ -8,6 +8,7 @@
  */
 import * as Cause from "effect/Cause"
 import * as Console from "effect/Console"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
@@ -37,16 +38,17 @@ const debounce = "50 millis"
  * file's parent. Missing roots are watched through their first missing
  * directory. Ended or failed watchers are replaced on the next cycle.
  *
- * Watch functions run before generation, but their streams may install
- * watchers lazily. Targets are reconciled after each cycle without polling;
- * a root created between reconciliation and watcher installation can be
- * missed until another relevant event.
+ * Generation waits for every watch to acknowledge installation via `onReady`.
+ * Events are buffered while installation and generation are in progress.
+ * Targets are reconciled after each cycle without polling.
  */
 export const run: (options: {
   readonly configPath: string
+  /** Call `onReady` only after installation, when the stream can buffer events. */
   readonly watch: (
     path: string,
-    kind: "file" | "directory"
+    kind: "file" | "directory",
+    onReady: () => void
   ) => Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError>
 }) => Effect.Effect<never, Cli.ConfigLoadError, FileSystem.FileSystem | Path.Path> = Effect.fnUntraced(
   function*(options) {
@@ -141,8 +143,10 @@ export const run: (options: {
     /** Set when a watch stream ended or failed, so the next `subscribe` starts over. */
     let stale = false
 
-    const watchTarget = (target: Target) =>
-      options.watch(target.path, target.kind === "tree" ? "directory" : "file").pipe(
+    const watchTarget = (target: Target, ready: Deferred.Deferred<void>) =>
+      options.watch(target.path, target.kind === "tree" ? "directory" : "file", () => {
+        Deferred.doneUnsafe(ready, Effect.void)
+      }).pipe(
         Stream.runForEach((event) => {
           const absolute = path.resolve(target.base, event.path)
           return isRelevant(absolute) ? Queue.offer(events, absolute) : Effect.void
@@ -154,7 +158,9 @@ export const run: (options: {
               Console.error(`error: could not watch ${Cli.displayPath(path, target.path)}: ${error.message}`)
             ),
           onSuccess: () => Effect.andThen(Effect.sync(() => (stale = true)), Queue.offer(events, target.path))
-        })
+        }),
+        // A failed or ended stream must not leave subscription waiting forever.
+        Effect.ensuring(Deferred.succeed(ready, undefined))
       )
 
     let watching: { readonly key: string; readonly fiber: Fiber.Fiber<void> } | undefined
@@ -169,11 +175,13 @@ export const run: (options: {
       stale = false
       state.pending = new Set(current.filter((target) => target.kind === "pending").map((target) => target.path))
       // Call watch on the loop fiber; only consumption of its streams is forked.
-      const streams = current.map(watchTarget)
+      const ready = yield* Effect.forEach(current, () => Deferred.make<void>())
+      const streams = current.map((target, index) => watchTarget(target, ready[index]))
       const fiber = yield* Effect.all(streams, { concurrency: "unbounded", discard: true }).pipe(
         Effect.forkChild
       )
       watching = { key, fiber }
+      yield* Effect.forEach(ready, Deferred.await, { concurrency: "unbounded", discard: true })
     })
 
     /** Reconcile roots that appeared or disappeared during this cycle, without polling. */
@@ -219,7 +227,7 @@ export const run: (options: {
       yield* Console.log(`regenerated ${count} ${count === 1 ? "file" : "files"}, deleted ${changes.deletes.length}`)
     })
 
-    /** Subscribes, then regenerates and reconciles the targets. Watch streams may still be installing meanwhile. */
+    /** Installs the watches, then regenerates and reconciles the targets. */
     const refresh = Effect.gen(function*() {
       yield* subscribe
       yield* generate
@@ -290,11 +298,14 @@ export const run: (options: {
 export const fileSystemWatch = (fs: FileSystem.FileSystem, path: Path.Path) =>
 (
   target: string,
-  kind: "file" | "directory"
+  kind: "file" | "directory",
+  onReady: () => void
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> =>
   kind === "file"
-    ? watchDirectory(fs, path.dirname(target)).pipe(Stream.filter((event) => event.path === path.basename(target)))
-    : watchTree(fs, path, target)
+    ? watchDirectory(fs, path.dirname(target), onReady).pipe(
+      Stream.filter((event) => event.path === path.basename(target))
+    )
+    : watchTree(fs, path, target, onReady)
 
 /**
  * `FileSystem.watch` on one directory, ending when the directory is deleted.
@@ -305,13 +316,14 @@ export const fileSystemWatch = (fs: FileSystem.FileSystem, path: Path.Path) =>
  */
 const watchDirectory = (
   fs: FileSystem.FileSystem,
-  directory: string
+  directory: string,
+  onReady: () => void
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> => {
   const gone = fs.exists(directory).pipe(
     Effect.map((exists) => !exists),
     Effect.orElseSucceed(() => false)
   )
-  return fs.watch(directory).pipe(
+  return fs.watch(directory, { onReady }).pipe(
     Stream.takeUntilEffect((event) => event._tag === "Remove" ? gone : Effect.succeed(false)),
     Stream.catchCause((cause) => {
       if (Cause.hasInterruptsOnly(cause)) return Stream.failCause(cause)
@@ -332,11 +344,12 @@ const watchDirectory = (
 const watchTree = (
   fs: FileSystem.FileSystem,
   path: Path.Path,
-  root: string
+  root: string,
+  onReady: () => void
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> =>
   Stream.callback<FileSystem.WatchEvent, PlatformError.PlatformError>(Effect.fnUntraced(function*(queue) {
     const scope = yield* Effect.scope
-    const watchers = new Map<string, Fiber.Fiber<void>>()
+    const watchers = new Map<string, { readonly fiber: Fiber.Fiber<void>; readonly ready: Deferred.Deferred<void> }>()
     const offer = (event: FileSystem.WatchEvent) =>
       Queue.offer(queue, { _tag: event._tag, path: path.relative(root, event.path) })
 
@@ -363,33 +376,47 @@ const watchTree = (
      * files as created. Deleting the root ends the stream; a watch that
      * fails takes the whole stream down with it.
      */
-    const add: (directory: string, announce: boolean) => Effect.Effect<void> = Effect.fnUntraced(
-      function*(directory, announce) {
-        if (watchers.has(directory)) return
-        const fiber = yield* watchDirectory(fs, directory).pipe(
-          Stream.runForEach((event) => handle(directory, event)),
-          Effect.matchEffect({
-            onFailure: (error) => Queue.fail(queue, error),
-            onSuccess: () => directory === root ? Queue.end(queue) : Effect.void
-          }),
-          Effect.asVoid,
-          Effect.ensuring(Effect.sync(() => watchers.delete(directory))),
-          Effect.forkIn(scope)
-        )
-        watchers.set(directory, fiber)
-        const found = yield* children(directory)
-        if (announce) {
-          for (const file of found.files) yield* offer({ _tag: "Create", path: file })
-        }
-        for (const child of found.directories) yield* add(child, announce)
-      }
-    )
+    const add: (directory: string, announce: boolean) => Effect.Effect<void> = (directory, announce) =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function*() {
+          const existing = watchers.get(directory)
+          if (existing !== undefined) return yield* restore(Deferred.await(existing.ready))
+          // Share readiness with concurrent discovery of the same subtree.
+          const installed = yield* Deferred.make<void>()
+          const ready = yield* Deferred.make<void>()
+          const fiber = yield* watchDirectory(fs, directory, () => {
+            Deferred.doneUnsafe(ready, Effect.void)
+          }).pipe(
+            Stream.runForEach((event) => handle(directory, event)),
+            Effect.matchEffect({
+              onFailure: (error) => Queue.fail(queue, error),
+              onSuccess: () => directory === root ? Queue.end(queue) : Effect.void
+            }),
+            Effect.asVoid,
+            Effect.ensuring(Deferred.succeed(ready, undefined)),
+            Effect.ensuring(Effect.sync(() => watchers.delete(directory))),
+            restore,
+            Effect.forkIn(scope)
+          )
+          watchers.set(directory, { fiber, ready: installed })
+          // Publishing shared completion and registering its finalizer must be
+          // atomic: subtree removal can interrupt this discovery owner.
+          yield* restore(Effect.gen(function*() {
+            yield* Deferred.await(ready)
+            const found = yield* children(directory)
+            if (announce) {
+              for (const file of found.files) yield* offer({ _tag: "Create", path: file })
+            }
+            for (const child of found.directories) yield* add(child, announce)
+          })).pipe(Effect.ensuring(Deferred.succeed(installed, undefined)))
+        })
+      )
 
     /** Stops watching `directory` and everything under it. */
     const remove = (directory: string) =>
       Effect.forEach(
         Array.from(watchers).filter(([watched]) => watched === directory || watched.startsWith(directory + path.sep)),
-        ([, fiber]) => Fiber.interrupt(fiber),
+        ([, { fiber }]) => Fiber.interrupt(fiber),
         { discard: true }
       )
 
@@ -408,4 +435,5 @@ const watchTree = (
     )
 
     yield* add(root, false)
+    onReady()
   }))

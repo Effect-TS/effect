@@ -23,6 +23,7 @@ import { hasProperty } from "../Predicate.ts"
 import type * as Request from "./HttpServerRequest.ts"
 import * as Respondable from "./HttpServerRespondable.ts"
 import * as Response from "./HttpServerResponse.ts"
+import * as UrlParams from "./UrlParams.ts"
 
 const TypeId = "~effect/http/HttpServerError"
 
@@ -107,7 +108,7 @@ export class RequestParseError extends Data.TaggedError("RequestParseError")<{
   }
 
   get methodAndUrl() {
-    return `${this.request.method} ${this.request.url}`
+    return formatMethodAndUrl(this.request)
   }
 
   override get message() {
@@ -139,7 +140,7 @@ export class RouteNotFound extends Data.TaggedError("RouteNotFound")<{
   override readonly [ErrorReporter.ignore] = true
 
   get methodAndUrl() {
-    return `${this.request.method} ${this.request.url}`
+    return formatMethodAndUrl(this.request)
   }
 
   override get message() {
@@ -174,7 +175,7 @@ export class InternalError extends Data.TaggedError("InternalError")<{
   }
 
   get methodAndUrl() {
-    return `${this.request.method} ${this.request.url}`
+    return formatMethodAndUrl(this.request)
   }
 
   override get message() {
@@ -214,7 +215,7 @@ export class ResponseError extends Data.TaggedError("ResponseError")<{
   }
 
   get methodAndUrl() {
-    return `${this.request.method} ${this.request.url}`
+    return formatMethodAndUrl(this.request)
   }
 
   override get message() {
@@ -274,6 +275,9 @@ export class ClientAbort extends Context.Service<ClientAbort, true>()("effect/ht
     })
   )
 }
+
+const formatMethodAndUrl = (request: Request.HttpServerRequest) =>
+  `${request.method} ${UrlParams.redactUrl(request.url)}`
 
 const formatRequestMessage = (reason: string, description: string | undefined, info: string) => {
   const prefix = `${reason} (${info})`

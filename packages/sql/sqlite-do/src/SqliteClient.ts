@@ -288,8 +288,7 @@ export const make = (
     const semaphore = yield* Semaphore.make(1)
     const connection = yield* makeConnection
 
-    // Statements, streams and transactions hold the permit until their scope
-    // closes, so no other fiber can use the connection while they run.
+    // Streams and reservations hold the permit until their scope closes.
     const acquirer = Effect.as(
       Effect.acquireRelease(semaphore.take(1), () => semaphore.release(1), { interruptible: true }),
       connection
@@ -297,6 +296,7 @@ export const make = (
 
     const client = (yield* Client.make({
       acquirer,
+      borrower: (f) => semaphore.withPermit(f(connection)),
       compiler,
       transactionService: SqliteTransaction,
       spanAttributes: [

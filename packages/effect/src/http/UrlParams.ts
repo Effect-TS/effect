@@ -10,6 +10,7 @@
  * @since 4.0.0
  */
 import * as Arr from "../Array.ts"
+import * as Context from "../Context.ts"
 import * as Equal from "../Equal.ts"
 import * as Equ from "../Equivalence.ts"
 import { dual } from "../Function.ts"
@@ -21,7 +22,10 @@ import * as Option from "../Option.ts"
 import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import * as Redactable from "../Redactable.ts"
+import * as Redacted from "../Redacted.ts"
 import * as Tuple from "../Tuple.ts"
+import * as Headers from "./Headers.ts"
 
 const TypeId = "~effect/http/UrlParams"
 
@@ -31,13 +35,13 @@ const TypeId = "~effect/http/UrlParams"
  * **Details**
  *
  * Parameters are stored as ordered string key-value pairs and can contain multiple
- * values for the same key.
+ * values for the same key. Inspection redacts values matching `CurrentRedactedNames`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface UrlParams extends Pipeable, Inspectable, Iterable<readonly [string, string]> {
+export interface UrlParams extends Pipeable, Inspectable, Redactable.Redactable, Iterable<readonly [string, string]> {
   readonly [TypeId]: typeof TypeId
   readonly params: ReadonlyArray<readonly [string, string]>
 }
@@ -118,11 +122,14 @@ const Proto = {
   [Symbol.iterator](this: UrlParams) {
     return this.params[Symbol.iterator]()
   },
-  toJSON(this: UrlParams): unknown {
+  [Redactable.symbolRedactable](this: UrlParams, context: Context.Context<never>): unknown {
     return {
       _id: "UrlParams",
-      params: Object.fromEntries(this.params)
+      params: Object.fromEntries(redact(this, Context.get(context, CurrentRedactedNames)))
     }
+  },
+  toJSON(this: UrlParams): unknown {
+    return Redactable.redact(this)
   },
   [Equal.symbol](this: UrlParams, that: UrlParams): boolean {
     return Equivalence(this, that)
@@ -484,3 +491,157 @@ export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyA
  */
 export const toReadonlyRecord: (self: UrlParams) => ReadonlyRecord<string, string | Arr.NonEmptyReadonlyArray<string>> =
   toRecord as any
+
+/**
+ * Returns the parameter pairs with selected values wrapped in `Redacted`.
+ *
+ * **Details**
+ *
+ * Matches names with `isRedactedName`, preserving order and repeated names.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const redact: {
+  (
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): (self: UrlParams) => Array<[string, string | Redacted.Redacted<string>]>
+  (
+    self: UrlParams,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Array<[string, string | Redacted.Redacted<string>]>
+} = dual(
+  2,
+  (
+    self: UrlParams,
+    key: string | RegExp | ReadonlyArray<string | RegExp>
+  ): Array<[string, string | Redacted.Redacted<string>]> => {
+    const patterns: ReadonlyArray<string | RegExp> = Array.isArray(key) ? key : [key as string | RegExp]
+    return self.params.map(([name, value]) => [
+      name,
+      isRedactedName(name, patterns) ? Redacted.make(value) : value
+    ])
+  }
+)
+
+/**
+ * Checks whether a parameter name matches one of the redaction patterns.
+ *
+ * **Details**
+ *
+ * String patterns match case-insensitively; regular expressions test the name.
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const isRedactedName: (name: string, patterns: ReadonlyArray<string | RegExp>) => boolean =
+  Headers.isRedactedName
+
+/**
+ * Redacts URL userinfo and the values of matching query parameters.
+ *
+ * **Details**
+ *
+ * Replaces userinfo with `REDACTED:REDACTED` and query values with `REDACTED`
+ * when their decoded names match `isRedactedName`. Preserves all other text.
+ * When names are omitted, uses the current fiber's `CurrentRedactedNames`,
+ * falling back to the defaults outside a fiber.
+ *
+ * **Example** (Redacting a signed URL)
+ *
+ * ```ts import.meta.vitest
+ * import { UrlParams } from "effect/http"
+ *
+ * const url = UrlParams.redactUrl("https://bucket.test/file?Signature=abc&size=1")
+ * url // => "https://bucket.test/file?Signature=REDACTED&size=1"
+ * ```
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.0
+ */
+export const redactUrl = (
+  url: string,
+  redactedNames: ReadonlyArray<string | RegExp> = currentRedactedNames()
+): string => {
+  if (url.includes("@")) url = redactUserinfo(url)
+  const queryStart = url.indexOf("?")
+  if (queryStart === -1 || redactedNames.length === 0) return url
+  const hashStart = url.indexOf("#")
+  if (hashStart !== -1 && hashStart < queryStart) return url
+  const queryEnd = hashStart === -1 ? url.length : hashStart
+  return url.slice(0, queryStart + 1) + redactQuery(url.slice(queryStart + 1, queryEnd), redactedNames) +
+    url.slice(queryEnd)
+}
+
+const authorityStart = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]{2,})/i
+const specialAuthorityEnd = /[/\\?#]/
+const authorityEnd = /[/?#]/
+
+// Normalize only to locate userinfo; offsets preserve the original URL spelling.
+const redactUserinfo = (url: string): string => {
+  let normalized = ""
+  const offsets: Array<number> = []
+  for (let i = 0; i < url.length; i++) {
+    const code = url.charCodeAt(i)
+    if (code === 9 || code === 10 || code === 13 || (normalized === "" && code <= 32)) continue
+    normalized += url[i]
+    offsets.push(i)
+  }
+  const authority = authorityStart.exec(normalized)
+  if (authority === null) return url
+  const start = authority[0].length
+  const special = authority[1] !== undefined || !authority[0].includes(":")
+  const rest = normalized.slice(start)
+  const end = rest.search(special ? specialAuthorityEnd : authorityEnd)
+  const userinfoEnd = (end === -1 ? rest : rest.slice(0, end)).lastIndexOf("@")
+  return userinfoEnd === -1
+    ? url
+    : url.slice(0, offsets[start]) + "REDACTED:REDACTED" + url.slice(offsets[start + userinfoEnd])
+}
+
+const redactQuery = (query: string, redactedNames: ReadonlyArray<string | RegExp>): string =>
+  query.split("&").map((part) => {
+    const index = part.indexOf("=")
+    return index !== -1 && isRedactedName(decodeQueryKey(part.slice(0, index)), redactedNames)
+      ? part.slice(0, index + 1) + "REDACTED"
+      : part
+  }).join("&")
+
+const decodeQueryKey = (key: string): string => {
+  if (!key.includes("%") && !key.includes("+")) return key
+  try {
+    return decodeURIComponent(key.replace(/\+/g, " "))
+  } catch {
+    return key
+  }
+}
+
+const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
+  Context.get((globalThis as any)[Redactable.currentFiberTypeId]?.context ?? Context.empty(), CurrentRedactedNames)
+
+/**
+ * Query parameter names or patterns to redact in inspection, spans and errors.
+ *
+ * **Details**
+ *
+ * Defaults include `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`.
+ * A custom list replaces the defaults. Matching uses `isRedactedName`.
+ * Redaction leaves request URLs and parameter values unchanged.
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.0
+ */
+export const CurrentRedactedNames = Context.Reference<
+  ReadonlyArray<string | RegExp>
+>("effect/http/UrlParams/CurrentRedactedNames", {
+  defaultValue: () => [
+    "AWSAccessKeyId",
+    "Signature",
+    "sig",
+    "X-Goog-Signature"
+  ]
+})

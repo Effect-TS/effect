@@ -42,6 +42,11 @@ export const layer = (options: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /**
+   * Request compression. Defaults to "none". Gzip uses
+   * HttpClientRequest's default minimum body size of 1KB.
+   */
+  readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
@@ -59,6 +64,7 @@ export const layer = (options: {
       url: url("/v1/logs"),
       resource: options.resource,
       headers: options.headers,
+      compression: options.compression,
       exportInterval: options.loggerExportInterval,
       maxBatchSize: options.maxBatchSize,
       shutdownTimeout: options.shutdownTimeout,
@@ -69,6 +75,7 @@ export const layer = (options: {
       url: url("/v1/metrics"),
       resource: options.resource,
       headers: options.headers,
+      compression: options.compression,
       exportInterval: options.metricsExportInterval,
       shutdownTimeout: options.shutdownTimeout,
       temporality: options.metricsTemporality
@@ -77,6 +84,7 @@ export const layer = (options: {
       url: url("/v1/traces"),
       resource: options.resource,
       headers: options.headers,
+      compression: options.compression,
       exportInterval: options.tracerExportInterval,
       maxBatchSize: options.maxBatchSize,
       context: options.tracerContext,
@@ -138,6 +146,11 @@ export const layerJson: (options: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /**
+   * Request compression. Defaults to "none". Gzip uses
+   * HttpClientRequest's default minimum body size of 1KB.
+   */
+  readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
@@ -165,6 +178,11 @@ export const layerProtobuf: (options: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
+  /**
+   * Request compression. Defaults to "none". Gzip uses
+   * HttpClientRequest's default minimum body size of 1KB.
+   */
+  readonly compression?: "gzip" | "none" | undefined
   readonly maxBatchSize?: number | undefined
   readonly tracerContext?: (<X>(primitive: Tracer.EffectPrimitive<X>, span: Tracer.AnySpan) => X) | undefined
   readonly loggerExportInterval?: Duration.Input | undefined
