@@ -335,6 +335,50 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
       }))
+
+    const makeCapturingClient = () => {
+      let sent: HttpClientRequest.HttpClientRequest | undefined
+      const client = HttpClient.make((request) => {
+        sent = request
+        return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+      })
+      return { client, sent: () => sent }
+    }
+
+    it.effect("sends trace headers by default", () =>
+      Effect.gen(function*() {
+        const { client, sent } = makeCapturingClient()
+
+        yield* client.get("http://test/")
+
+        const request = sent()
+        assert(request !== undefined)
+        assert.strictEqual(typeof request.headers.b3, "string")
+        assert.strictEqual(typeof request.headers.traceparent, "string")
+      }))
+
+    it.effect("omits trace headers when propagation is disabled and keeps the client span", () =>
+      Effect.gen(function*() {
+        const { client, sent } = makeCapturingClient()
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+
+        yield* client.get("http://test/").pipe(
+          Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        const request = sent()
+        assert(request !== undefined)
+        assert.isUndefined(request.headers.b3)
+        assert.isUndefined(request.headers.traceparent)
+        assert(clientSpan !== undefined)
+      }))
   })
 
   describe("HttpClientError", () => {
