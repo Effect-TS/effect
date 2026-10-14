@@ -126,7 +126,10 @@ export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Servi
 export const make = Effect.gen(function*() {
   const config = yield* RouterConfig
   const ignoreDuplicateSlashes = config.ignoreDuplicateSlashes ?? true
-  const router = FindMyWay.make<Route<any, never>>(config)
+  const router = FindMyWay.make<{
+    readonly route: Route<any, never>
+    readonly prefixSegments: number | undefined
+  }>(config)
   const middleware = new Set<middleware.Fn>()
 
   const addAll = <const Routes extends ReadonlyArray<Route<any, any>>>(
@@ -150,19 +153,25 @@ export const make = Effect.gen(function*() {
           ...routes[i],
           handler: applyMiddleware(routes[i].handler as Effect.Effect<HttpServerResponse.HttpServerResponse>)
         })
+        const handler = {
+          route: route as Route<any, never>,
+          prefixSegments: Option.isSome(route.prefix)
+            ? countSegments(route.prefix.value, ignoreDuplicateSlashes)
+            : undefined
+        }
         if (route.method === "*") {
           if (route.path.endsWith("/*")) {
-            router.all(route.path, route as any)
-            router.all(route.path.slice(0, -2) as any, route as any)
+            router.all(route.path, handler)
+            router.all(route.path.slice(0, -2) as any, handler)
           } else {
-            router.all(route.path, route as any)
+            router.all(route.path, handler)
           }
         } else {
           if (route.path.endsWith("/*")) {
-            router.on(route.method, route.path, route as any)
-            router.on(route.method, route.path.slice(0, -2) as any, route as any)
+            router.on(route.method, route.path, handler)
+            router.on(route.method, route.path.slice(0, -2) as any, handler)
           } else {
-            router.on(route.method, route.path, route as any)
+            router.on(route.method, route.path, handler)
           }
         }
       }
@@ -214,12 +223,12 @@ export const make = Effect.gen(function*() {
             })
           )
         }
-        const route = result.handler
-        if (Option.isSome(route.prefix)) {
+        const { route, prefixSegments } = result.handler
+        if (prefixSegments !== undefined) {
           context = Context.add(
             context,
             HttpServerRequest.HttpServerRequest,
-            sliceRequestUrl(request, route.prefix.value, ignoreDuplicateSlashes)
+            sliceRequestUrl(request, prefixSegments, ignoreDuplicateSlashes)
           )
         }
         context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
@@ -256,12 +265,12 @@ export const make = Effect.gen(function*() {
 
 function sliceRequestUrl(
   request: HttpServerRequest.HttpServerRequest,
-  prefix: string,
+  prefixSegments: number,
   ignoreDuplicateSlashes: boolean
 ) {
   const url = request.url
   let index = 0
-  for (let segments = countSegments(prefix, ignoreDuplicateSlashes); segments > 0; segments--) {
+  for (let segments = prefixSegments; segments > 0; segments--) {
     if (ignoreDuplicateSlashes) {
       while (url[index] === "/") index++
     } else if (url[index] === "/") {
