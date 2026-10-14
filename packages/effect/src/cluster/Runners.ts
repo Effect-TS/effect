@@ -14,6 +14,7 @@
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
+import * as Fiber from "../Fiber.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -247,49 +248,37 @@ export const make: (
 
   type StorageRequestEntry = {
     readonly latch: Latch.Latch
-    doneLatch: Latch.Latch | undefined
     readonly messages: Set<Message.OutgoingRequest<any>>
+    readonly fiber: Fiber.Fiber<void>
     replies: Array<Reply.Reply<any>>
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
   const waitingStorageRequests = new Map<Snowflake.Snowflake, Message.OutgoingRequest<any>>()
-  const replyFromStorage = Effect.fnUntraced(
-    function*(message: Message.OutgoingRequest<any>) {
-      let entry = storageRequests.get(message.envelope.requestId)
-      if (entry) {
-        entry.messages.add(message)
-        entry.doneLatch ??= Latch.makeUnsafe(false)
-        return yield* entry.doneLatch.await
-      } else {
-        entry = {
-          latch: Latch.makeUnsafe(false),
-          doneLatch: undefined,
-          replies: [],
-          messages: new Set([message])
-        }
-        storageRequests.set(message.envelope.requestId, entry)
-      }
 
+  // The pump belongs to the shared entry, not to the first caller. Waiters may
+  // independently cancel without interrupting reply delivery to the others.
+  const pumpReplies = (requestId: Snowflake.Snowflake, entry: Omit<StorageRequestEntry, "fiber">) =>
+    Effect.gen(function*() {
       while (true) {
-        // wait for the storage loop to notify us
         entry.latch.closeUnsafe()
-        waitingStorageRequests.set(message.envelope.requestId, message)
+        const message = entry.messages.values().next().value
+        if (!message) return
+        waitingStorageRequests.set(requestId, message)
         storageLatch.openUnsafe()
         yield* entry.latch.await
 
-        // send the replies back
         for (let i = 0; i < entry.replies.length; i++) {
           const reply = entry.replies[i]
-          // we have reached the end
           if (reply._tag === "WithExit") {
-            // A reply can immediately reset and resend the same request. Do not
-            // let that sender attach to this completed reply loop.
-            storageRequests.delete(message.envelope.requestId)
-            waitingStorageRequests.delete(message.envelope.requestId)
+            // A response may reset and resend this request. Detach the completed
+            // entry first, and never let its cleanup delete the replacement.
+            if (storageRequests.get(requestId) === entry) {
+              storageRequests.delete(requestId)
+              waitingStorageRequests.delete(requestId)
+            }
             for (const message of entry.messages) {
               yield* message.respond(reply)
             }
-            entry.doneLatch?.openUnsafe()
             return
           }
 
@@ -297,28 +286,58 @@ export const make: (
           for (const message of entry.messages) {
             yield* message.respond(reply)
           }
-          // wait for ack
           yield* entry.latch.await
         }
         entry.replies = []
       }
-    },
-    (effect, message) =>
-      Effect.ensuring(
-        effect,
-        Effect.sync(() => {
-          const entry = storageRequests.get(message.envelope.requestId)
-          // An old waiter must not clean up a reset request's new reply loop.
-          if (!entry?.messages.has(message)) return
-          if (entry.messages.size > 1) {
-            entry.messages.delete(message)
-            return
+    }).pipe(Effect.ensuring(Effect.sync(() => {
+      if (storageRequests.get(requestId) !== entry) return
+      storageRequests.delete(requestId)
+      waitingStorageRequests.delete(requestId)
+    })))
+
+  const replyFromStorage = (message: Message.OutgoingRequest<any>) =>
+    Effect.uninterruptibleMask((restore) =>
+      Effect.gen(function*() {
+        const requestId = message.envelope.requestId
+        let entry = storageRequests.get(requestId)
+        if (entry) {
+          entry.messages.add(message)
+        } else {
+          // forkIn defers the pump until after the entry is fully initialized.
+          const created = {
+            latch: Latch.makeUnsafe(false),
+            replies: [] as Array<Reply.Reply<any>>,
+            messages: new Set([message])
           }
-          storageRequests.delete(message.envelope.requestId)
-          waitingStorageRequests.delete(message.envelope.requestId)
-        })
-      )
-  )
+          const fiber = yield* Effect.forkIn(
+            Effect.suspend(() => pumpReplies(requestId, created)),
+            runnersScope,
+            { startImmediately: false }
+          )
+          entry = Object.assign(created, { fiber })
+          storageRequests.set(requestId, entry)
+        }
+        const current = entry
+        return yield* restore(Fiber.join(current.fiber)).pipe(Effect.ensuring(
+          Effect.suspend(() => {
+            current.messages.delete(message)
+            if (current.messages.size === 0) {
+              if (storageRequests.get(requestId) === current) {
+                storageRequests.delete(requestId)
+                waitingStorageRequests.delete(requestId)
+              }
+              return Fiber.interrupt(current.fiber)
+            }
+            // The storage reader must decode using a surviving waiter's context.
+            if (storageRequests.get(requestId) === current && waitingStorageRequests.has(requestId)) {
+              waitingStorageRequests.set(requestId, current.messages.values().next().value!)
+            }
+            return Effect.void
+          })
+        ))
+      })
+    )
 
   const storageLatch = Latch.makeUnsafe(false)
   if (storage !== MessageStorage.noop) {
@@ -415,7 +434,7 @@ export const make: (
       })
     },
     notifyLocal(options) {
-      return notifyWith(options.message, (message, duplicate) => {
+      return notifyWith(options.message, (message) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
           return Effect.catchTag(
             options.notify(Message.incomingLocalFromOutgoing(message)),
@@ -426,9 +445,9 @@ export const make: (
         // The storage read loop can process the request as soon as saveRequest
         // completes, even before the local notification. Always recover replies
         // from storage rather than installing a handler after either race window.
-        // For fresh local requests, keep a handler only to wake the reader so
+        // Each local waiter keeps a handler only to wake the reader so
         // streaming replies do not have to wait for the next polling interval.
-        const readReplies = !duplicate && options.storageOnly !== true
+        const readReplies = options.storageOnly !== true
           ? Effect.raceFirst(
             replyFromStorage(message),
             storage.registerReplyHandler(
