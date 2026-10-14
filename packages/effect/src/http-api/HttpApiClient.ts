@@ -23,6 +23,7 @@ import * as HttpClientError from "../http/HttpClientError.ts"
 import * as HttpClientRequest from "../http/HttpClientRequest.ts"
 import type * as HttpClientResponse from "../http/HttpClientResponse.ts"
 import * as HttpMethod from "../http/HttpMethod.ts"
+import * as internalUrlParams from "../http/internal/urlParams.ts"
 import * as UrlParams from "../http/UrlParams.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Predicate from "../Predicate.ts"
@@ -746,7 +747,7 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         )
         for (const [key, value] of urlParams.params) {
           if (value !== undefined) {
-            url.searchParams.append(key, value)
+            url.searchParams.append(key, internalUrlParams.unwrap(value))
           }
         }
         return url.toString()

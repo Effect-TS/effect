@@ -36,6 +36,7 @@ import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
 import * as Cookies_ from "./http/Cookies.ts"
 import * as Headers_ from "./http/Headers.ts"
+import * as UrlParams_internal from "./http/internal/urlParams.ts"
 import * as UrlParams_ from "./http/UrlParams.ts"
 import { NodeInspectSymbol } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
@@ -15233,9 +15234,9 @@ export const UrlParams: UrlParams = declare(
     toCodec: () =>
       link<UrlParams_.UrlParams>()(
         ArraySchema(Tuple([String, String])),
-        SchemaTransformation.transform({
+        SchemaTransformation.transform<UrlParams_.UrlParams, ReadonlyArray<readonly [string, string]>>({
           decode: UrlParams_.make,
-          encode: (self) => self.params
+          encode: (self) => self.params.map(([key, value]) => [key, UrlParams_internal.unwrap(value)])
         })
       )
   }

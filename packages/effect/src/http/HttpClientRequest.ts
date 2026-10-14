@@ -577,14 +577,18 @@ export const updateUrl: {
 /**
  * Sets one query parameter, replacing existing values for that parameter name.
  *
+ * **Details**
+ *
+ * A `Redacted` value is sent unwrapped and stays redacted in inspection, errors and spans.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
 export const setUrlParam: {
-  (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, key: string, value: string): HttpClientRequest
-} = dual(3, (self: HttpClientRequest, key: string, value: string): HttpClientRequest =>
+  (key: string, value: string | Redacted.Redacted): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, key: string, value: string | Redacted.Redacted): HttpClientRequest
+} = dual(3, (self: HttpClientRequest, key: string, value: string | Redacted.Redacted): HttpClientRequest =>
   makeWith(
     self.method,
     self.url,
@@ -617,14 +621,18 @@ export const setUrlParams: {
 /**
  * Appends one query parameter value without removing existing values for the same name.
  *
+ * **Details**
+ *
+ * A `Redacted` value is sent unwrapped and stays redacted in inspection, errors and spans.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
  */
 export const appendUrlParam: {
-  (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest
-  (self: HttpClientRequest, key: string, value: string): HttpClientRequest
-} = dual(3, (self: HttpClientRequest, key: string, value: string): HttpClientRequest =>
+  (key: string, value: string | Redacted.Redacted): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, key: string, value: string | Redacted.Redacted): HttpClientRequest
+} = dual(3, (self: HttpClientRequest, key: string, value: string | Redacted.Redacted): HttpClientRequest =>
   makeWith(
     self.method,
     self.url,

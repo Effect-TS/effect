@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual } from "@effect/vitest/utils"
-import { Effect, Formatter, Schema } from "effect"
+import { Effect, Formatter, Redacted, Schema } from "effect"
 import { UrlParams } from "effect/http"
 import { assertSuccess } from "../utils/assert.ts"
 
@@ -8,6 +8,25 @@ describe("UrlParams", () => {
   describe("fromInput", () => {
     it("coerces null to a string", () => {
       deepStrictEqual(UrlParams.fromInput({ filter: null }).params, [["filter", "null"]])
+    })
+
+    it("sends Redacted values but hides them from inspection", () => {
+      const params = UrlParams.fromInput({ remote: Redacted.make("param-secret"), q: "visible" })
+      assert.strictEqual(UrlParams.toString(params), "remote=param-secret&q=visible")
+      const output = Formatter.format(params)
+      assertFalse(output.includes("param-secret"))
+      assertTrue(output.includes("visible"))
+    })
+  })
+
+  describe("transform", () => {
+    it("preserves redaction when rebuilding pairs", () => {
+      const params = UrlParams.transform(
+        UrlParams.fromInput({ remote: Redacted.make("param-secret") }),
+        (pairs) => pairs.map(([key, value]) => [key, value])
+      )
+      assert.strictEqual(UrlParams.toString(params), "remote=param-secret")
+      assertFalse(Formatter.format(params).includes("param-secret"))
     })
   })
 

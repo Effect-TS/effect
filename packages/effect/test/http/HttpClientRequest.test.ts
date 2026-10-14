@@ -1,8 +1,9 @@
 import { describe, it } from "@effect/vitest"
 import { assertFalse, assertNone, assertSome, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { ByteSize, Effect, FileSystem, Formatter, Stream } from "effect"
+import { ByteSize, Effect, FileSystem, Formatter, Redacted, Stream } from "effect"
 import { Headers, HttpBody, HttpClientRequest } from "effect/http"
 import * as Option from "effect/Option"
+import { inspect } from "node:util"
 import { gunzipSync, inflateSync } from "node:zlib"
 
 describe("HttpClientRequest", () => {
@@ -326,6 +327,17 @@ describe("HttpClientRequest", () => {
       assertFalse(output.includes("url-secret"))
       assertFalse(output.includes("param-secret"))
       assertTrue(output.includes("visible"))
+    })
+
+    it("hides Redacted url params from inspection", () => {
+      const request = HttpClientRequest.get("https://api.test/path").pipe(
+        HttpClientRequest.setUrlParam("remote", Redacted.make("param-secret")),
+        HttpClientRequest.appendUrlParam("q", "visible")
+      )
+      for (const output of [JSON.stringify(request), String(request), inspect(request)]) {
+        assertFalse(output.includes("param-secret"))
+        assertTrue(output.includes("visible"))
+      }
     })
   })
 

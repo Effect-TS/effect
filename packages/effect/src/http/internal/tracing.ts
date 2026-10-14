@@ -36,6 +36,21 @@ export const addUrlAttributes = (
   }
 }
 
+/**
+ * Adds the names of `Redacted` parameters to the redacted names.
+ *
+ * @internal
+ */
+export const redactedNames = (
+  urlParams: UrlParams.UrlParams,
+  redactedNames: ReadonlyArray<string | RegExp>
+): ReadonlyArray<string | RegExp> => {
+  const keys = urlParams.params.filter(([, value]) => typeof value !== "string").map(([key]) => key)
+  return keys.length === 0
+    ? redactedNames
+    : [...redactedNames, ...new URLSearchParams(keys.map((key) => [key, ""])).keys()]
+}
+
 /** @internal */
 export const addHeaderAttributes = (
   span: Tracer.Span,

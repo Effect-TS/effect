@@ -1,10 +1,11 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
-import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
+import { Clock, Deferred, Duration, Effect, Fiber, Layer, Redacted, Ref, Schedule, Schema, Stream } from "effect"
 import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
+import { inspect } from "node:util"
 import { collectGarbage } from "../utils/gc.ts"
 
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
@@ -336,6 +337,44 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
       }))
 
+    it.effect("redacts Redacted query params in url attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        let sentUrl: string | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request, url) => {
+          sentUrl = url.toString()
+          return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+        })
+
+        yield* HttpClientRequest.get("http://test/path?page=1#frag").pipe(
+          HttpClientRequest.appendUrlParam("remote", Redacted.make("param-secret")),
+          HttpClientRequest.appendUrlParam("\uD800", Redacted.make("surrogate-secret")),
+          HttpClientRequest.appendUrlParam("q", "visible"),
+          client.execute,
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(
+          clientSpan.attributes.get("url.full"),
+          "http://test/path?page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible#frag"
+        )
+        assert.strictEqual(
+          clientSpan.attributes.get("url.query"),
+          "page=1&remote=REDACTED&%EF%BF%BD=REDACTED&q=visible"
+        )
+        assert.strictEqual(
+          sentUrl,
+          "http://test/path?page=1&remote=param-secret&%EF%BF%BD=surrogate-secret&q=visible#frag"
+        )
+      }))
+
     const makeCapturingClient = () => {
       let sent: HttpClientRequest.HttpClientRequest | undefined
       const client = HttpClient.make((request) => {
@@ -382,6 +421,22 @@ Missing key
   })
 
   describe("HttpClientError", () => {
+    it.effect("does not expose Redacted query params", () =>
+      Effect.gen(function*() {
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 500 })))
+        ).pipe(HttpClient.filterStatusOk)
+
+        const error = yield* client.get("http://test/path", {
+          urlParams: { remote: Redacted.make("param-secret"), q: "visible" }
+        }).pipe(Effect.flip)
+
+        for (const output of [JSON.stringify(error), String(error), inspect(error, { depth: 10 })]) {
+          assert.notInclude(output, "param-secret")
+        }
+        assert.include(JSON.stringify(error), "visible")
+      }))
+
     it.effect("redacts query params in messages using the current redacted names", () =>
       Effect.gen(function*() {
         const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
