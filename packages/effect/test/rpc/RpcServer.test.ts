@@ -372,9 +372,21 @@ describe("RpcServer", () => {
     yield* server.write(0, fire("awaited", false))
     yield* server.write(0, RpcMessage.constEof)
     // The client ends once every handler, the notification's included, has finished.
-    const sent = [yield* Queue.take(messages), yield* Queue.take(messages)]
+    return yield* takeUntilClientEnd(messages)
+  })
+  const takeUntilClientEnd = Effect.fnUntraced(function*<A extends RpcMessage.FromServer<any>>(
+    messages: Queue.Queue<A>
+  ) {
+    const sent: Array<A> = []
+    while (sent.at(-1)?._tag !== "ClientEnd") sent.push(yield* Queue.take(messages))
     assert.strictEqual(yield* Queue.size(messages), 0)
     return sent
+  })
+  const ack = (id: string): RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>> => ({
+    _tag: "Exit",
+    clientId: 0,
+    requestId: RpcMessage.RequestId(id),
+    exit: Exit.void as any
   })
   const onlyAwaitedReply: Array<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>> = [
     { _tag: "Exit", clientId: 0, requestId: RpcMessage.RequestId("awaited"), exit: Exit.succeed("done") },
@@ -445,6 +457,69 @@ describe("RpcServer", () => {
       })
       assert.deepStrictEqual(sent, onlyAwaitedReply)
     }))
+
+  it.effect("acknowledges a discarded call and sends no Defect when it then dies, but still reports it", () => {
+    const reports: Array<string> = []
+    return Effect.gen(function*() {
+      const sent = yield* sentAfterNotification({ ...fire("discarded", true), discard: true })
+      assert.deepStrictEqual(sent, [ack("discarded"), ...onlyAwaitedReply])
+      assert.deepStrictEqual(reports, ["boom"])
+    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+  })
+
+  it.effect("acknowledges a discarded stream call while it runs, without sending its chunks", () =>
+    Effect.gen(function*() {
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>>()
+      const release = yield* Deferred.make<void>()
+      const server = yield* RpcServer.makeNoSerialization(NotificationGroup, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(NotificationGroup.toLayer({
+        fire: () => Effect.succeed("done"),
+        events: () =>
+          Stream.make("a", "b").pipe(Stream.concat(Stream.fromEffect(Deferred.await(release)).pipe(Stream.drain)))
+      })))
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("discarded"),
+        tag: "events",
+        payload: undefined,
+        headers: Headers.empty,
+        discard: true
+      })
+      assert.deepStrictEqual(yield* Queue.take(messages), ack("discarded"))
+
+      yield* Deferred.succeed(release, undefined)
+      yield* server.write(0, RpcMessage.constEof)
+      assert.deepStrictEqual(yield* takeUntilClientEnd(messages), [{ _tag: "ClientEnd", clientId: 0 }])
+    }))
+
+  it.effect("fails a discarded call with its own Exit, not a Defect, when its middleware dies", () =>
+    Effect.gen(function*() {
+      class Guard extends RpcMiddleware.Service<Guard>()("Guard") {}
+      const group = RpcGroup.make(Rpc.make("guarded", { success: Schema.String }).middleware(Guard))
+      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
+      const server = yield* RpcServer.makeNoSerialization(group, {
+        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
+      }).pipe(Effect.provide(Layer.mergeAll(
+        group.toLayer({ guarded: () => Effect.succeed("done") }),
+        Layer.succeed(Guard, () => Effect.die("denied"))
+      )))
+      yield* server.write(0, {
+        _tag: "Request",
+        id: RpcMessage.RequestId("discarded"),
+        tag: "guarded",
+        payload: undefined,
+        headers: Headers.empty,
+        discard: true
+      })
+      yield* server.write(0, RpcMessage.constEof)
+
+      const [exit, end] = yield* takeUntilClientEnd(messages)
+      assert(exit._tag === "Exit" && Exit.isFailure(exit.exit))
+      assert.strictEqual(exit.requestId, RpcMessage.RequestId("discarded"))
+      assert.strictEqual(Cause.squash(exit.exit.cause), "denied")
+      assert.deepStrictEqual(end, { _tag: "ClientEnd", clientId: 0 })
+    }).pipe(Effect.provide(ErrorReporter.layer([]))))
 
   // Feeds the lines to an ndJSON-RPC server over stdio, waits until `waits` handlers of `wait` are
   // running and the request with id 1 is answered, then returns every line the server wrote.

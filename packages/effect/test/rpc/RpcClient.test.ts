@@ -87,14 +87,15 @@ const makeProtocolLayer = (
 
 const assertEmptyResponseFailsRequest = (
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
-  body: string
+  body: string,
+  options?: { readonly discard?: boolean }
 ) =>
   Effect.gen(function*() {
     const client = yield* RpcClient.make(TestGroup).pipe(
       Effect.provide(makeProtocolLayer(serializationLayer, body))
     )
 
-    const cause = yield* client.Ping().pipe(
+    const cause = yield* client.Ping(undefined, options).pipe(
       Effect.timeout("1 second"),
       Effect.sandbox,
       Effect.flip
@@ -104,6 +105,28 @@ const assertEmptyResponseFailsRequest = (
     assert.instanceOf(error, RpcClientError)
     assert.strictEqual(error.reason._tag, "RpcClientDefect")
     assert.strictEqual(error.reason.message, "Received empty HTTP response from RPC server")
+  })
+
+// A client over a protocol that records what it sends and lets the test deliver replies.
+const makeDiscardProtocol = <Rpcs extends Rpc.Any>(
+  group: RpcGroup.RpcGroup<Rpcs>,
+  codecFor: RpcSerialization.CodecFor
+) =>
+  Effect.gen(function*() {
+    const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
+    const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
+    const client = yield* RpcClient.make(group).pipe(Effect.provideService(
+      RpcClient.Protocol,
+      RpcClient.Protocol.of({
+        codecFor,
+        supportsAck: false,
+        supportsTransferables: false,
+        run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
+        send: (_clientId, message) => Effect.asVoid(Queue.offer(sent, message))
+      })
+    ))
+    const handle = yield* Deferred.await(received)
+    return { client, handle, sent }
   })
 
 describe("RpcClient", () => {
@@ -131,7 +154,7 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
     }))
 
-  it.effect("sends a discarded request as a notification and keeps no entry for its reply", () =>
+  it.effect("completes a discarded call on its acknowledgement and fails it on a disconnect before one", () =>
     Effect.gen(function*() {
       let decodedReplies = 0
       const CountedString = Schema.String.pipe(Schema.decodeTo(
@@ -145,28 +168,46 @@ describe("RpcClient", () => {
         })
       ))
       const group = RpcGroup.make(Rpc.make("Fire", { success: CountedString }))
-      const received = yield* Deferred.make<Parameters<RpcClient.Protocol["Service"]["run"]>[1]>()
-      const sent = yield* Queue.unbounded<Parameters<RpcClient.Protocol["Service"]["send"]>[1]>()
-      const client = yield* RpcClient.make(group).pipe(Effect.provideService(
-        RpcClient.Protocol,
-        RpcClient.Protocol.of({
-          codecFor: RpcSerialization.json.codecFor,
-          supportsAck: false,
-          supportsTransferables: false,
-          run: (_clientId, handle) => Deferred.succeed(received, handle).pipe(Effect.andThen(Effect.never)),
-          send: (_clientId, message) => Effect.asVoid(Queue.offer(sent, message))
-        })
-      ))
-      const handle = yield* Deferred.await(received)
+      const { client, handle, sent } = yield* makeDiscardProtocol(group, RpcSerialization.json.codecFor)
 
-      yield* client.Fire(undefined, { discard: true })
+      const call = yield* client.Fire(undefined, { discard: true }).pipe(Effect.forkChild)
       const request = yield* Queue.take(sent)
       assert(request._tag === "Request")
-      assert.isTrue(request.isNotification)
+      assert.isTrue(request.discard)
+      assert.isUndefined(request.isNotification)
+      // the write alone does not complete the call
+      yield* Effect.yieldNow
+      assert.isUndefined(call.pollUnsafe())
 
-      // A reply from a server that ignores the flag finds no entry to decode it with.
+      // an older server replies with the handler result, which also counts as the acknowledgement
       yield* handle({ _tag: "Exit", requestId: request.id, exit: { _tag: "Success", value: "late" } })
+      assert.isUndefined(yield* Fiber.join(call))
       assert.strictEqual(decodedReplies, 0)
+
+      const dropped = yield* client.Fire(undefined, { discard: true }).pipe(Effect.flip, Effect.forkChild)
+      yield* Queue.take(sent)
+      const error = new RpcClientError({
+        reason: new RpcClientDefect({ message: "connection dropped", cause: undefined })
+      })
+      yield* handle({ _tag: "ClientProtocolError", error })
+      assert.strictEqual(yield* Fiber.join(dropped), error)
+    }))
+
+  it.effect("accepts the SchemaBinary result Exit of an older server as the acknowledgement of a discarded call", () =>
+    Effect.gen(function*() {
+      const { codecFor } = yield* RpcSerialization.RpcSerialization.pipe(
+        Effect.provide(RpcSerialization.layerSchemaBinary())
+      )
+      const Fire = Rpc.make("Fire", { success: Schema.Struct({ id: Schema.String }) })
+      const { client, handle, sent } = yield* makeDiscardProtocol(RpcGroup.make(Fire), codecFor)
+
+      const call = yield* client.Fire(undefined, { discard: true }).pipe(Effect.forkChild)
+      const request = yield* Queue.take(sent)
+      assert(request._tag === "Request")
+      // an older server ignores the marker and encodes the handler result with the RPC's own schema
+      const exit = Schema.encodeSync(codecFor(Rpc.exitSchema(Fire)))(Exit.succeed({ id: "1" }))
+      yield* handle({ _tag: "Exit", requestId: request.id, exit: exit as any })
+      assert.isUndefined(yield* Fiber.join(call))
     }))
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
@@ -366,17 +407,11 @@ describe("RpcClient", () => {
   for (
     const [name, serialization, body] of [
       ["json", RpcSerialization.layerJson, "[]"],
-      ["jsonRpc", RpcSerialization.layerJsonRpc(), ""],
       ["ndjson", RpcSerialization.layerNdjson, ""]
     ] as const
   ) {
-    it.effect(`completes a discarded request on the empty ${name} HTTP response to a notification`, () =>
-      Effect.gen(function*() {
-        const client = yield* RpcClient.make(TestGroup).pipe(
-          Effect.provide(makeProtocolLayer(serialization, body))
-        )
-        yield* client.Ping(undefined, { discard: true })
-      }))
+    it.effect(`fails a discarded request on an empty ${name} HTTP response`, () =>
+      assertEmptyResponseFailsRequest(serialization, body, { discard: true }))
   }
 
   it.effect("sends a discarded call to a worker as a request and waits for its Exit", () =>
@@ -399,7 +434,7 @@ describe("RpcClient", () => {
       yield* protocol.run(0, () => Effect.void).pipe(Effect.forkScoped)
       const request = { _tag: "Request" as const, id: 1, tag: "Test", payload: null, headers: [] }
 
-      const call = yield* protocol.send(0, { ...request, isNotification: true }).pipe(Effect.forkChild)
+      const call = yield* protocol.send(0, { ...request, discard: true }).pipe(Effect.forkChild)
       yield* Deferred.await(requestSent)
       // The pool counts the worker as busy until the Exit, so the worker must be asked for one.
       assert.deepStrictEqual(sent, [request])

@@ -53,6 +53,16 @@ export const e2eSuite = <E>(
         assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
       }).pipe(Effect.provide(layer)))
 
+    it.effect("fails a discarded call that its middleware rejects", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        const error = yield* client.GetUser({ id: "1" }, { discard: true }).pipe(
+          RpcClient.withHeaders({ unauthorized: "true" }),
+          Effect.flip
+        )
+        assert.strictEqual(error._tag, "Unauthorized")
+      }).pipe(Effect.provide(layer)))
+
     it.effect("nested method", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient
