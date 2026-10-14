@@ -62,8 +62,12 @@ export const RequestId = (id: string | number): RequestId => id as RequestId
  * **Details**
  *
  * Requests flow in both directions: servers use them for server-originated
- * requests, and either side sets `isNotification` on a request that gets no
- * reply, such as a server notification or a client call made with `discard`.
+ * requests and, with `isNotification` set, for requests that get no reply,
+ * such as server notifications and inbound JSON-RPC notifications.
+ *
+ * A client call made with `discard` sets `discard` instead. It keeps its id,
+ * and the server acknowledges it with a successful `Exit` once the handler
+ * starts, then sends nothing more for it.
  *
  * @stability unstable
  * @category models
@@ -76,6 +80,7 @@ export interface RequestEncoded {
   readonly payload: unknown
   readonly headers: ReadonlyArray<[string, string]>
   readonly isNotification?: true
+  readonly discard?: true
   readonly traceId?: string
   readonly spanId?: string
   readonly sampled?: boolean
@@ -96,6 +101,7 @@ export interface Request<A extends Rpc.Any> {
   readonly payload: Rpc.Payload<A>
   readonly headers: Headers
   readonly isNotification?: true
+  readonly discard?: true
   readonly traceId?: string
   readonly spanId?: string
   readonly sampled?: boolean
@@ -455,6 +461,7 @@ const RequestEncodedSchema = Schema.Struct({
   payload: Schema.Uint8Array,
   headers: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
   isNotification: Schema.optional(Schema.Literal(true)),
+  discard: Schema.optional(Schema.Literal(true)),
   traceId: Schema.optional(Schema.String),
   spanId: Schema.optional(Schema.String),
   sampled: Schema.optional(Schema.Boolean)
