@@ -249,93 +249,90 @@ export const make: (
   type StorageRequestEntry = {
     readonly latch: Latch.Latch
     readonly messages: Set<Message.OutgoingRequest<any>>
-    readonly fiber: Fiber.Fiber<void>
+    readonly pump: Fiber.Fiber<void>
     replies: Array<Reply.Reply<any>>
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
   const waitingStorageRequests = new Map<Snowflake.Snowflake, Message.OutgoingRequest<any>>()
 
-  // The pump belongs to the shared entry, not to the first caller. Waiters may
-  // independently cancel without interrupting reply delivery to the others.
-  const pumpReplies = (requestId: Snowflake.Snowflake, entry: Omit<StorageRequestEntry, "fiber">) =>
-    Effect.gen(function*() {
-      while (true) {
-        entry.latch.closeUnsafe()
-        const message = entry.messages.values().next().value
-        if (!message) return
-        waitingStorageRequests.set(requestId, message)
-        storageLatch.openUnsafe()
-        yield* entry.latch.await
+  // A reset request can register a replacement entry under the same id, which
+  // must survive the old entry's cleanup.
+  const removeStorageRequest = (requestId: Snowflake.Snowflake, entry: Omit<StorageRequestEntry, "pump">) => {
+    if (storageRequests.get(requestId) !== entry) return
+    storageRequests.delete(requestId)
+    waitingStorageRequests.delete(requestId)
+  }
 
-        for (let i = 0; i < entry.replies.length; i++) {
-          const reply = entry.replies[i]
-          if (reply._tag === "WithExit") {
-            // A response may reset and resend this request. Detach the completed
-            // entry first, and never let its cleanup delete the replacement.
-            if (storageRequests.get(requestId) === entry) {
-              storageRequests.delete(requestId)
-              waitingStorageRequests.delete(requestId)
-            }
-            for (const message of entry.messages) {
-              yield* message.respond(reply)
-            }
-            return
-          }
+  // The pump is owned by the shared entry rather than the first caller, so any
+  // waiter can be interrupted without stopping delivery to the others.
+  const pumpReplies = Effect.fnUntraced(function*(
+    requestId: Snowflake.Snowflake,
+    entry: Omit<StorageRequestEntry, "pump">
+  ) {
+    while (true) {
+      // wait for the storage loop to notify us
+      entry.latch.closeUnsafe()
+      const message = entry.messages.values().next().value
+      if (!message) return
+      waitingStorageRequests.set(requestId, message)
+      storageLatch.openUnsafe()
+      yield* entry.latch.await
 
-          entry.latch.closeUnsafe()
+      // send the replies back
+      for (let i = 0; i < entry.replies.length; i++) {
+        const reply = entry.replies[i]
+        // we have reached the end
+        if (reply._tag === "WithExit") {
+          // A reply can immediately reset and resend the same request. Do not
+          // let that sender attach to this completed entry.
+          removeStorageRequest(requestId, entry)
           for (const message of entry.messages) {
             yield* message.respond(reply)
           }
-          yield* entry.latch.await
+          return
         }
-        entry.replies = []
+
+        entry.latch.closeUnsafe()
+        for (const message of entry.messages) {
+          yield* message.respond(reply)
+        }
+        // wait for ack
+        yield* entry.latch.await
       }
-    }).pipe(Effect.ensuring(Effect.sync(() => {
-      if (storageRequests.get(requestId) !== entry) return
-      storageRequests.delete(requestId)
-      waitingStorageRequests.delete(requestId)
-    })))
+      entry.replies = []
+    }
+  })
 
   const replyFromStorage = (message: Message.OutgoingRequest<any>) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         const requestId = message.envelope.requestId
         let entry = storageRequests.get(requestId)
-        if (entry) {
-          entry.messages.add(message)
-        } else {
-          // forkIn defers the pump until after the entry is fully initialized.
-          const created = {
+        if (!entry) {
+          const state = {
             latch: Latch.makeUnsafe(false),
-            replies: [] as Array<Reply.Reply<any>>,
-            messages: new Set([message])
+            messages: new Set<Message.OutgoingRequest<any>>(),
+            replies: [] as Array<Reply.Reply<any>>
           }
-          const fiber = yield* Effect.forkIn(
-            Effect.suspend(() => pumpReplies(requestId, created)),
-            runnersScope,
-            { startImmediately: false }
-          )
-          entry = Object.assign(created, { fiber })
+          entry = Object.assign(state, { pump: yield* Effect.forkIn(pumpReplies(requestId, state), runnersScope) })
           storageRequests.set(requestId, entry)
         }
         const current = entry
-        return yield* restore(Fiber.join(current.fiber)).pipe(Effect.ensuring(
-          Effect.suspend(() => {
+        current.messages.add(message)
+        return yield* restore(Fiber.join(current.pump)).pipe(
+          Effect.ensuring(Effect.suspend(() => {
             current.messages.delete(message)
             if (current.messages.size === 0) {
-              if (storageRequests.get(requestId) === current) {
-                storageRequests.delete(requestId)
-                waitingStorageRequests.delete(requestId)
-              }
-              return Fiber.interrupt(current.fiber)
+              removeStorageRequest(requestId, current)
+              return Fiber.interrupt(current.pump)
             }
-            // The storage reader must decode using a surviving waiter's context.
-            if (storageRequests.get(requestId) === current && waitingStorageRequests.has(requestId)) {
+            // The storage loop decodes replies using the waiting message.
+            if (waitingStorageRequests.get(requestId) === message) {
               waitingStorageRequests.set(requestId, current.messages.values().next().value!)
             }
             return Effect.void
-          })
-        ))
+          }))
+        )
       })
     )
 
@@ -442,28 +439,17 @@ export const make: (
             () => Effect.void
           )
         }
-        // The storage read loop can process the request as soon as saveRequest
-        // completes, even before the local notification. Always recover replies
-        // from storage rather than installing a handler after either race window.
-        // Each local waiter keeps a handler only to wake the reader so
-        // streaming replies do not have to wait for the next polling interval.
-        const readReplies = options.storageOnly !== true
-          ? Effect.raceFirst(
+        // The request can be processed as soon as it is saved, so replies are
+        // always read back from storage. The local reply handler only wakes the
+        // storage loop, so streams do not have to wait for the next poll.
+        const readReplies = options.storageOnly
+          ? replyFromStorage(message)
+          : Effect.raceFirst(
             replyFromStorage(message),
             storage.registerReplyHandler(
-              new Message.OutgoingRequest({
-                ...message,
-                respond: () => storageLatch.open
-              })
-            ).pipe(
-              Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-              // Registration ends on a terminal reply or shard unassignment,
-              // but only the storage reader may complete the caller. The race
-              // interrupts and cleans up the handler when the reader finishes.
-              Effect.andThen(Effect.never)
-            )
+              new Message.OutgoingRequest({ ...message, respond: () => storageLatch.open })
+            ).pipe(Effect.ignore, Effect.andThen(Effect.never))
           )
-          : replyFromStorage(message)
         return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
           Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
           Effect.andThen(readReplies)
