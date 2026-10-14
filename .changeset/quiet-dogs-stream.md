@@ -2,4 +2,4 @@
 "@effect/ai-openai-compat": patch
 ---
 
-Reduce overhead when decoding streamed chat completions.
+Avoid creating a child stream for each SSE event when streaming chat completions.
