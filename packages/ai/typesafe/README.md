@@ -68,6 +68,26 @@ const program = DecisionModel.decide(FindMug, {
 // answers.mug.box: { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }
 ```
 
+To define options by example pictures, pass the examples as images too and refer to them by path. Each image is sent once, however many questions use it:
+
+```ts
+const Gesture = Decision.make({
+  input: Schema.String,
+  decisions: {
+    gesture: Decision.classify({
+      instructions: "Which gesture is the hand in `images[0]` making?",
+      criteria: {
+        thumbs_up: "The gesture in `images[1]`",
+        open_palm: "The gesture in `images[2]`",
+        none: "No hand, or a gesture unlike the examples"
+      }
+    })
+  }
+})
+
+DecisionModel.decide(Gesture, { input: "Camera frame", images: [frame, thumbsUpExample, openPalmExample] })
+```
+
 Image `data` may be a `Uint8Array`, a base64 string, or a base64 `data:` URL. Images must be PNG or JPEG, 256 to 1568 pixels on each side; TypeSafe rejects other sizes rather than resizing and ignores EXIF orientation. Remote URLs fail with `AiError.InvalidUserInputError` because TypeSafe does not fetch them.
 
 The client does not retry automatically. Rate-limit errors include the provider's retry delay when available. Provider distributions are preserved, not normalized; they must satisfy the core `DecisionModel` validation, including its current `1e-6` sum tolerance. TypeSafe's rounding behavior has not been verified against the live API.
