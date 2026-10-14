@@ -76,8 +76,7 @@ export const make = Effect.fnUntraced(
         }
         const questions: Array<typeof OpenAiSchema.DecisionQuestion.Encoded> = []
         for (const [name, decision] of Object.entries(decisions)) {
-          // DecisionModel.make rejects locate decisions before they reach this provider.
-          if (decision._tag !== "Locate") questions.push(encodeQuestion(name, decision))
+          questions.push(encodeQuestion(name, decision))
         }
         const text = typeof state === "string" ? state : JSON.stringify(state)
         const response = yield* client.createDecisions({

@@ -10,7 +10,6 @@ import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
-import * as Random from "effect/Random"
 import type * as Schema from "effect/Schema"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
 import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
@@ -95,7 +94,7 @@ export const make = Effect.fnUntraced(
         const response = yield* client.systemOne(
           images === undefined
             ? { model: options.model, state, questions }
-            : { model: options.model, questions, ...yield* withImages(state, images) }
+            : { model: options.model, ...yield* withImages(state, questions, images) }
         )
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
@@ -136,17 +135,31 @@ export const make = Effect.fnUntraced(
   }
 )
 
-const withImages = Effect.fnUntraced(function*(state: Schema.Json, images: ReadonlyArray<DecisionModel.Image>) {
-  const assets: Record<string, typeof TypeSafeSchema.ImageAsset.Encoded> = Object.create(null)
-  const placeholders: Array<string> = []
-  for (const image of images) {
-    // TypeSafe replaces placeholders anywhere in the request's strings, so they must not occur in the input.
-    const placeholder = `image-${placeholders.length}-${Math.abs(yield* Random.nextInt).toString(36)}`
-    assets[placeholder] = yield* encodeImage(image)
-    placeholders.push(placeholder)
+const withImages = (
+  state: Schema.Json,
+  questions: Record<string, typeof TypeSafeSchema.Question.Encoded>,
+  images: ReadonlyArray<DecisionModel.Image>
+) =>
+  Effect.map(Effect.forEach(images, encodeImage), (assets) => {
+    const placeholders = makePlaceholders(assets.length, JSON.stringify({ state, questions }))
+    return {
+      state: { input: state, images: placeholders },
+      questions,
+      assets: Object.fromEntries(placeholders.map((placeholder, index) => [placeholder, assets[index]]))
+    }
+  })
+
+// TypeSafe swaps every occurrence of a placeholder in the request's strings for its image, so each placeholder
+// must be absent from the rest of the request. The closing `>` keeps `<image:1>` from matching inside `<image:10>`.
+const makePlaceholders = (count: number, request: string): Array<string> => {
+  for (let attempt = 0;; attempt++) {
+    const prefix = attempt === 0 ? "<image:" : `<image~${attempt}:`
+    const placeholders = Array.from({ length: count }, (_, index) => `${prefix}${index}>`)
+    if (placeholders.every((placeholder) => !request.includes(placeholder))) {
+      return placeholders
+    }
   }
-  return { state: { input: state, images: placeholders }, assets }
-})
+}
 
 const encodeImage = (
   image: DecisionModel.Image

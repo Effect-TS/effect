@@ -104,16 +104,17 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
- * `images` is omitted when no images are supplied. Locate decisions reach
- * only providers created with `supportsLocate: true`, and always with images.
+ * `images` is omitted when no images are supplied.
+ * `Decisions` is the decision kinds the provider receives. `make` passes
+ * locate decisions only to providers created with `supportsLocate: true`.
  *
  * @stability unstable
  * @category options
  * @since 4.0.0
  */
-export interface ProviderOptions {
+export interface ProviderOptions<Decisions extends Decision.Any = Decision.Any> {
   readonly state: Schema.Json
-  readonly decisions: Record<string, Decision.Any>
+  readonly decisions: Record<string, Decisions>
   readonly images?: ReadonlyArray<Image> | undefined
 }
 
@@ -395,7 +396,8 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * Set `supportsLocate: true` to accept locate decisions. Otherwise, a
  * definition with a locate decision fails with `AiError.InvalidUserInputError`,
- * as does a locate decision without images.
+ * as does a locate decision without images. Only a `decide` created with
+ * `supportsLocate: true` receives locate decisions, and its options type says so.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
@@ -410,12 +412,21 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * @category constructors
  * @since 4.0.0
  */
-export const make = (params: {
-  readonly decide: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
-  readonly probabilityPrecision?: number | undefined
-  readonly supportsImages?: boolean | undefined
-  readonly supportsLocate?: boolean | undefined
-}): Effect.Effect<DecisionModel> =>
+export const make = (
+  params: {
+    readonly decide: (
+      options: ProviderOptions<Exclude<Decision.Any, Decision.Locate>>
+    ) => Effect.Effect<ProviderResponse, AiError.AiError>
+    readonly probabilityPrecision?: number | undefined
+    readonly supportsImages?: boolean | undefined
+    readonly supportsLocate?: false | undefined
+  } | {
+    readonly decide: (options: ProviderOptions) => Effect.Effect<ProviderResponse, AiError.AiError>
+    readonly probabilityPrecision?: number | undefined
+    readonly supportsImages?: boolean | undefined
+    readonly supportsLocate: true
+  }
+): Effect.Effect<DecisionModel> =>
   Effect.sync(() => {
     const roundingError = params.probabilityPrecision === undefined ? 0 : 0.5 * 10 ** -params.probabilityPrecision
     return DecisionModel.of({
@@ -445,7 +456,11 @@ export const make = (params: {
                 return Effect.fail(invalidUserInput("Locate decisions need at least one image"))
               }
             }
-            return params.decide({
+            // Locate decisions were rejected above unless `supportsLocate` is true.
+            const decide = params.decide as (
+              options: ProviderOptions
+            ) => Effect.Effect<ProviderResponse, AiError.AiError>
+            return decide({
               state,
               decisions: definition.decisions,
               ...(images === undefined ? undefined : { images })
