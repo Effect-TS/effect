@@ -85,7 +85,7 @@ const fakeTransport = (...handlers: Arr.NonEmptyReadonlyArray<(query: Uint8Array
           const query = exchange.encode({ id: 0, udpPayloadSize: 1232 })
           queries.push({ server, query })
           const response = handle(query)
-          return response === undefined ? exchange.limit(Effect.never) : Effect.succeed(response)
+          return response === undefined ? Effect.never : Effect.succeed({ bytes: response })
         })
     }))
   })
@@ -540,14 +540,17 @@ describe("layerDns", () => {
             additional: [],
             edns: undefined
           })
-        }),
-      search: (options.search ?? []).map(name),
-      ndots: options.ndots ?? 1,
-      noAaaa: options.noAaaa ?? false,
-      hosts: Host.parseHostsFile(options.hosts ?? "")
+        })
     })
     const dns = Effect.service(Dns.Dns).pipe(
-      Effect.provide(DnsClient.layerDns.pipe(Layer.provide(Layer.succeed(DnsClient.DnsClient, client))))
+      Effect.provide(
+        DnsClient.layerDns({
+          search: options.search,
+          ndots: options.ndots,
+          noAaaa: options.noAaaa,
+          hosts: Host.parseHostsFile(options.hosts ?? "")
+        }).pipe(Layer.provide(Layer.succeed(DnsClient.DnsClient, client)))
+      )
     )
     return { dns, queries }
   }

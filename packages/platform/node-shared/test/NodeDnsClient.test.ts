@@ -2,10 +2,17 @@ import * as NodeDnsClient from "@effect/platform-node-shared/NodeDnsClient"
 import { assert, describe, it } from "@effect/vitest"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Dns from "effect/net/Dns"
 import * as DnsClient from "effect/net/DnsClient"
 import * as Host from "effect/net/Host"
 import * as NetAddress from "effect/net/NetAddress"
 import * as Dgram from "node:dgram"
+import * as NodeDnsApi from "node:dns"
+import { vi } from "vitest"
+
+vi.mock("node:dns", async (importOriginal) => ({
+  ...await importOriginal<typeof NodeDnsApi>()
+}))
 
 const unusedUdpPort = Effect.promise(() =>
   new Promise<number>((resolve) => {
@@ -17,7 +24,56 @@ const unusedUdpPort = Effect.promise(() =>
   })
 )
 
-describe("NodeDnsClient", () => {
+describe("NodeDnsClient", { concurrent: false }, () => {
+  it.live("reads default name servers only when run, filtering invalid and scoped addresses and deduplicating", () =>
+    Effect.gen(function*() {
+      const port = yield* unusedUdpPort
+      const getServers = vi.spyOn(NodeDnsApi, "getServers").mockReturnValue([
+        `127.0.0.1:${port}`,
+        `127.0.0.1:${port}`,
+        "not-an-ip",
+        "fe80::1%1"
+      ])
+      const connect = vi.spyOn(Dgram.Socket.prototype, "connect")
+      try {
+        const options = { attempts: 1, timeout: "2 seconds" } as const
+        const clients = [
+          NodeDnsClient.make(options),
+          Effect.service(DnsClient.DnsClient).pipe(Effect.provide(NodeDnsClient.layerDns(options)))
+        ]
+        assert.strictEqual(getServers.mock.calls.length, 0)
+        for (const make of clients) {
+          const client = yield* make
+          const error = yield* Effect.flip(client.query("example.test", "A"))
+          assert.strictEqual(error.reason, "Refused")
+        }
+        assert.strictEqual(getServers.mock.calls.length, 2)
+        assert.deepStrictEqual<unknown>(connect.mock.calls.map(([port, address]) => [port, address]), [
+          [port, "127.0.0.1"],
+          [port, "127.0.0.1"]
+        ])
+      } finally {
+        connect.mockRestore()
+        getServers.mockRestore()
+      }
+    }))
+
+  it.effect("does not read system name servers when explicit servers are provided", () =>
+    Effect.gen(function*() {
+      const getServers = vi.spyOn(NodeDnsApi, "getServers").mockImplementation(() => {
+        throw new Error("system name servers must not be read")
+      })
+      try {
+        yield* NodeDnsClient.make({ nameServers: ["192.0.2.1"] })
+        yield* Effect.service(Dns.Dns).pipe(
+          Effect.provide(NodeDnsClient.layerDns({ nameServers: ["192.0.2.1"] }))
+        )
+        assert.strictEqual(getServers.mock.calls.length, 0)
+      } finally {
+        getServers.mockRestore()
+      }
+    }))
+
   it.live("reports name servers without a UDP listener as Refused", () =>
     Effect.gen(function*() {
       const port = yield* unusedUdpPort
@@ -42,23 +98,26 @@ describe("NodeDnsClient", () => {
       assert.strictEqual(error._tag, "NetAddressError")
     }))
 
-  it.effect("accepts parsed resolv.conf files and a hosts table", () =>
+  it.effect("provides Dns from parsed resolv.conf files and a hosts table", () =>
     Effect.gen(function*() {
-      const client = yield* NodeDnsClient.make({
-        ...DnsClient.parseResolvConf("nameserver 192.0.2.1\nsearch Corp.Example\noptions ndots:2 no-aaaa\n"),
-        hosts: Host.parseHostsFile("192.0.2.9 db\n")
-      })
-      assert.deepStrictEqual<ReadonlyArray<string>>(client.search, ["corp.example"])
-      assert.strictEqual(client.ndots, 2)
-      assert.isTrue(client.noAaaa)
-      assert.deepStrictEqual(client.hosts.get("db" as Host.DomainName)?.map(NetAddress.formatIp), ["192.0.2.9"])
+      // The hosts table and `no-aaaa` answer without querying 192.0.2.1.
+      const dns = yield* Effect.service(Dns.Dns).pipe(
+        Effect.provide(NodeDnsClient.layerDns({
+          ...DnsClient.parseResolvConf("nameserver 192.0.2.1\nsearch Corp.Example\noptions ndots:2 no-aaaa\n"),
+          hosts: Host.parseHostsFile("192.0.2.9 db\n")
+        }))
+      )
+      assert.deepStrictEqual((yield* dns.lookup("db")).map(NetAddress.formatIp), ["192.0.2.9"])
+      const error = yield* Effect.flip(dns.lookup("app.corp.example", { family: "IPv6" }))
+      assert.strictEqual(error.reason, "NotFound")
     }))
 
   it.effect("clamps numeric options to their valid ranges", () =>
     Effect.gen(function*() {
-      // Unclamped values would be rejected by the transports and the client.
-      const client = yield* NodeDnsClient.make({ ndots: 20, attempts: 0, timeout: Duration.zero, udpPayloadSize: 100 })
-      assert.strictEqual(client.ndots, 15)
-      yield* NodeDnsClient.make({ ndots: -1, attempts: Number.NaN, udpPayloadSize: 1e6, useTcp: true })
+      // Unclamped values would be rejected by the transports, the client, and layerDns.
+      yield* NodeDnsClient.make({ attempts: 0, timeout: Duration.zero, udpPayloadSize: 100 })
+      yield* NodeDnsClient.make({ attempts: Number.NaN, udpPayloadSize: 1e6, useTcp: true })
+      yield* Effect.service(Dns.Dns).pipe(Effect.provide(NodeDnsClient.layerDns({ ndots: 20 })))
+      yield* Effect.service(Dns.Dns).pipe(Effect.provide(NodeDnsClient.layerDns({ ndots: -1 })))
     }))
 })
