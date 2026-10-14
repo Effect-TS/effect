@@ -1628,8 +1628,7 @@ export const make: (params: {
     const deferredFinishParts: Array<Response.StreamPart<Tools>> = []
 
     // Emit pre-resolved tool results so Chat.streamText persists them to
-    // history. This ensures collectToolApprovals can
-    // find the corresponding tool-results on future rounds.
+    // history, where collectToolApprovals finds them on future rounds.
     if (preResolvedStreamParts.length > 0) {
       yield* Queue.offerAll(queue, preResolvedStreamParts)
     }

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reuse collected tool approvals when preparing language model requests.
+Collect tool approvals once per `LanguageModel` request instead of twice.
