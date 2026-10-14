@@ -701,9 +701,12 @@ const isMcpError = (error: unknown): error is McpErrorBase =>
   Predicate.hasProperty(error, "code") && typeof error.code === "number" &&
   Predicate.hasProperty(error, "message") && typeof error.message === "string"
 
-// Failures raised by a handler, marked before middleware runs so that the
+// Marks the failures of one invocation's handler before middleware runs, so the
 // failures middleware raises or rewrites can be told apart.
-const handlerFailures = new WeakSet<object>()
+const HandlerFailure = Context.Reference<boolean>("effect/ai/McpServer/HandlerFailure", {
+  defaultValue: () => false
+})
+const handlerFailure = Context.make(HandlerFailure, true)
 
 const internalError = new InternalError({ message: "Internal error" })
 
@@ -726,10 +729,10 @@ const invoke = <A, E>(
     ? undefined
     : [...registration.middleware, ...globalMiddleware]
   if (middleware !== undefined) {
-    const handled = Effect.tapError(effect, (error) =>
-      Effect.sync(() => {
-        if (Predicate.isObject(error)) handlerFailures.add(error)
-      }))
+    const handled = Effect.catchCause(
+      effect,
+      (cause) => Effect.failCause(Cause.hasFails(cause) ? Cause.annotate(cause, handlerFailure) : cause)
+    )
     effect = Effect.withFiber((fiber) => {
       const headers = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)?.headers ??
         Headers.empty
@@ -754,7 +757,7 @@ const invoke = <A, E>(
       const failure = Cause.findFail(cause)
       if (Result.isSuccess(failure) && !Cause.hasDies(cause)) {
         const error = failure.success.error
-        if (middleware === undefined || (Predicate.isObject(error) && handlerFailures.has(error))) {
+        if (middleware === undefined || Context.get(Cause.reasonAnnotations(failure.success), HandlerFailure)) {
           return Effect.failCause(cause)
         }
         if (isMcpError(error)) {
@@ -3047,6 +3050,13 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
   ) => Effect.Effect<Array<Schemas[K]["Type"]>, any, any>
 }
 
+// Expected handler failures become `InternalError`. Defects and interruption
+// reach the invocation, which reports defects with a generic message.
+const handlerFailureToInternalError = (cause: Cause.Cause<unknown>): Effect.Effect<never, InternalError> =>
+  Cause.hasDies(cause) || Cause.hasInterrupts(cause)
+    ? Effect.failCause(cause as Cause.Cause<never>)
+    : Effect.fail(new InternalError({ message: Cause.prettyErrors(cause)[0].message }))
+
 type HandlerRequestServices<R, Completions> = Exclude<R | CompletionServices<Completions>, McpRequestContext>
 
 type TemplateParamKey<Schemas extends ReadonlyArray<Schema.Constraint>, K extends keyof Schemas> = Schemas[K] extends
@@ -3090,7 +3100,7 @@ export type ResourceRequirements<R> = McpServer | McpRequest.From<"Requires", Ex
  */
 export type ResourceTemplateRequirements<Schemas extends ReadonlyArray<Schema.Constraint>, R, Completions> =
   | McpServer
-  | Exclude<TemplateSchemaServices<Schemas, Completions>, HandlerRequestServices<R, Completions>>
+  | Exclude<TemplateSchemaServices<Schemas, Completions>, HandlerRequestServices<R, Completions> | McpRequestContext>
   | McpRequest.From<"Requires", HandlerRequestServices<R, Completions>>
 
 /**
@@ -3109,7 +3119,7 @@ export type ResourceTemplateRequirements<Schemas extends ReadonlyArray<Schema.Co
  */
 export type PromptRequirements<Params extends Schema.Struct.Fields, R, Completions> =
   | McpServer
-  | Exclude<PromptSchemaServices<Params, Completions>, HandlerRequestServices<R, Completions>>
+  | Exclude<PromptSchemaServices<Params, Completions>, HandlerRequestServices<R, Completions> | McpRequestContext>
   | McpRequest.From<"Requires", HandlerRequestServices<R, Completions>>
 
 /**
@@ -3177,10 +3187,7 @@ export const registerResource: {
         services,
         handle: options.content.pipe(
           Effect.map((content) => resolveResourceContent(options.uri, content)),
-          Effect.catchCause((cause) => {
-            const prettyError = Cause.prettyErrors(cause)[0]
-            return Effect.fail(new InternalError({ message: prettyError.message }))
-          })
+          Effect.catchCause(handlerFailureToInternalError)
         ),
         annotations: options.annotations ?? Context.empty()
       })
@@ -3244,10 +3251,7 @@ export const registerResource: {
               hasMore: false
             }
           })),
-          Effect.catchCause((cause) => {
-            const prettyError = Cause.prettyErrors(cause)[0]
-            return Effect.fail(new InternalError({ message: prettyError.message }))
-          })
+          Effect.catchCause(handlerFailureToInternalError)
         ) as unknown as Effect.Effect<CompleteResult, InternalError>
       completions[param] = handler
     }
@@ -3263,10 +3267,7 @@ export const registerResource: {
           Effect.flatMap((params: any) =>
             options.content(uri, ...params).pipe(
               Effect.map((content) => resolveResourceContent(uri, content)),
-              Effect.catchCause((cause) => {
-                const prettyError = Cause.prettyErrors(cause)[0]
-                return Effect.fail(new InternalError({ message: prettyError.message }))
-              })
+              Effect.catchCause(handlerFailureToInternalError)
             )
           )
         ) as Effect.Effect<ReadResourceResult, InvalidParams | InternalError>
@@ -3417,10 +3418,7 @@ export const registerPrompt = <
               hasMore: false
             }
           })),
-          Effect.catchCause((cause) => {
-            const prettyError = Cause.prettyErrors(cause)[0]
-            return Effect.fail(new InternalError({ message: prettyError.message }))
-          })
+          Effect.catchCause(handlerFailureToInternalError)
         )
       completions[param] = handler as any
     }
@@ -3434,10 +3432,7 @@ export const registerPrompt = <
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
           Effect.flatMap((params) =>
             options.content(params as any).pipe(
-              Effect.catchCause((cause) => {
-                const prettyError = Cause.prettyErrors(cause)[0]
-                return Effect.fail(new InternalError({ message: prettyError.message }))
-              })
+              Effect.catchCause(handlerFailureToInternalError)
             )
           ),
           Effect.map((messages) => {
