@@ -699,7 +699,7 @@ const watchNode = (path: string, info: FileSystem.File.Info, options?: FileSyste
         return watcher
       }),
       (watcher) => Effect.sync(() => watcher.close())
-    )
+    ).pipe(Effect.tap(() => Effect.sync(() => options?.onReady?.())))
   )
 
 const watch = (
