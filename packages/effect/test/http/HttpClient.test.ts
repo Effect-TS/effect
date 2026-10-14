@@ -335,6 +335,48 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
       }))
+
+    it.effect("omits trace headers when propagation is disabled", () =>
+      Effect.gen(function*() {
+        const seen = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
+        const client = HttpClient.make((request) =>
+          Ref.update(seen, (current) => [...current, request]).pipe(
+            Effect.as(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+          )
+        )
+
+        yield* client.get("https://example.test/").pipe(
+          Effect.provideService(HttpClient.TracerPropagationEnabled, false)
+        )
+
+        const requests = yield* Ref.get(seen)
+        assert.strictEqual(requests.length, 1)
+        const request = requests[0]
+        assert(request !== undefined)
+        assert.strictEqual(Object.hasOwn(request.headers, "b3"), false)
+        assert.strictEqual(Object.hasOwn(request.headers, "traceparent"), false)
+      }))
+
+    it.effect("sends trace headers when propagation is enabled", () =>
+      Effect.gen(function*() {
+        const seen = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
+        const client = HttpClient.make((request) =>
+          Ref.update(seen, (current) => [...current, request]).pipe(
+            Effect.as(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
+          )
+        )
+
+        yield* client.get("https://example.test/").pipe(
+          Effect.provideService(HttpClient.TracerPropagationEnabled, true)
+        )
+
+        const requests = yield* Ref.get(seen)
+        assert.strictEqual(requests.length, 1)
+        const request = requests[0]
+        assert(request !== undefined)
+        assert.strictEqual(Object.hasOwn(request.headers, "b3"), true)
+        assert.strictEqual(Object.hasOwn(request.headers, "traceparent"), true)
+      }))
   })
 
   describe("HttpClientError", () => {
