@@ -719,20 +719,17 @@ describe("TypeSafeDecisionModel", () => {
           present: { probability: 0.97 },
           mug: { box: { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }, confidence: 0.92 }
         })
-        const body = yield* getRequestBody(requests[0])
-        const placeholders: Array<string> = body.state.images
-        assert.strictEqual(new Set(placeholders).size, 3)
-        assert.deepStrictEqual(body, {
+        assert.deepStrictEqual(yield* getRequestBody(requests[0]), {
           model: "jev-preview",
-          state: { input: ticket, images: placeholders },
+          state: { input: ticket, images: ["<image:0>", "<image:1>", "<image:2>"] },
           questions: {
             present: { type: "noul", instructions: "`images[0]` shows a coffee mug" },
             mug: { type: "box", instructions: "the coffee mug in `images[0]`" }
           },
           assets: {
-            [placeholders[0]]: { type: "image", format: "png", data_base64: "iVBORw==" },
-            [placeholders[1]]: { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
-            [placeholders[2]]: { type: "image", format: "png", data_base64: "iVBORw0KGgo=" }
+            "<image:0>": { type: "image", format: "png", data_base64: "iVBORw==" },
+            "<image:1>": { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
+            "<image:2>": { type: "image", format: "png", data_base64: "iVBORw0KGgo=" }
           }
         })
       }).pipe(
@@ -750,6 +747,22 @@ describe("TypeSafeDecisionModel", () => {
         }))
       )
     })
+
+    it.effect("picks placeholders that do not occur elsewhere in the request", () =>
+      Effect.gen(function*() {
+        const input = { ...ticket, message: "Photo <image:0> attached" }
+        yield* DecisionModel.decide(TicketTriage, { input, images: [{ mediaType: "image/png", data: "iVBORw0KGgo=" }] })
+      }).pipe(
+        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.gen(function*() {
+            const body = yield* getRequestBody(request)
+            assert.deepStrictEqual(body.state.images, ["<image~1:0>"])
+            assert.deepStrictEqual(Object.keys(body.assets), ["<image~1:0>"])
+            return jsonResponse(request, systemOneResponse)
+          })
+        ))
+      ))
 
     for (
       const [name, image] of [

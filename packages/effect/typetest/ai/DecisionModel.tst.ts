@@ -290,4 +290,27 @@ describe("DecisionModel", () => {
 
     expect(DecisionModel.make({ decide: provider })).type.toBe<Effect.Effect<DecisionModel.DecisionModel>>()
   })
+
+  it("make passes locate decisions only to a decide created with supportsLocate: true", () => {
+    const response: DecisionModel.ProviderResponse = {
+      answers: {},
+      usage: { inputTokens: undefined, outputTokens: undefined }
+    }
+
+    DecisionModel.make({
+      decide: Effect.fnUntraced(function*({ decisions }) {
+        expect(decisions).type.toBe<
+          Record<string, Decision.Classify<string> | Decision.Rate<string> | Decision.Probability>
+        >()
+        return response
+      })
+    })
+    DecisionModel.make({
+      supportsLocate: true,
+      decide: Effect.fnUntraced(function*({ decisions }) {
+        expect(decisions).type.toBe<Record<string, Decision.Any>>()
+        return response
+      })
+    })
+  })
 })
