@@ -5,8 +5,6 @@
 "@effect/platform-deno": patch
 ---
 
-Redact sensitive query parameter values in HTTP span attributes, inspect output and error messages.
+Redact sensitive query values in HTTP spans, request inspection and error messages. Also redact URL credentials in client spans, request inspection and errors. Request URLs sent over the wire are unchanged.
 
-Add `UrlParams.CurrentRedactedNames`, `UrlParams.isRedactedName`, `UrlParams.redact` and `UrlParams.redactUrl`. Matching parameter values are recorded as `REDACTED` in `url.full` and `url.query` on client and server spans, and rendered as `Redacted` when `UrlParams`, `HttpClientRequest` or `HttpServerRequest` values are inspected, including the Node, Bun and Deno server requests. `HttpClientError` and `HttpServerError` messages redact them too. URL userinfo is replaced with `REDACTED:REDACTED` on client spans, matching server spans, and in client request inspection and error messages. The URL sent over the wire is unchanged.
-
-The query parameter names `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature` moved from `Headers.CurrentRedactedNames` to `UrlParams.CurrentRedactedNames`. `Headers.CurrentRedactedNames` now defaults to `authorization`, `cookie`, `set-cookie` and `x-api-key`.
+Move `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature` from `Headers.CurrentRedactedNames` to the new `UrlParams.CurrentRedactedNames`. A custom list replaces these defaults. Add `UrlParams.isRedactedName`, `UrlParams.redact` and `UrlParams.redactUrl` for explicit redaction.

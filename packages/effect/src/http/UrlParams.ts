@@ -35,8 +35,7 @@ const TypeId = "~effect/http/UrlParams"
  * **Details**
  *
  * Parameters are stored as ordered string key-value pairs and can contain multiple
- * values for the same key. When inspected or rendered, values for names listed
- * in `CurrentRedactedNames` are wrapped in `Redacted`.
+ * values for the same key. Inspection redacts values matching `CurrentRedactedNames`.
  *
  * @stability unstable
  * @category models
@@ -498,8 +497,7 @@ export const toReadonlyRecord: (self: UrlParams) => ReadonlyRecord<string, strin
  *
  * **Details**
  *
- * Names are matched with `isRedactedName`. Parameter order and repeated names
- * are preserved.
+ * Matches names with `isRedactedName`, preserving order and repeated names.
  *
  * @stability unstable
  * @category combinators
@@ -532,8 +530,7 @@ export const redact: {
  *
  * **Details**
  *
- * Uses the same rules as `Headers.isRedactedName`: string patterns are compared
- * case-insensitively and regular expressions are tested against the name.
+ * String patterns match case-insensitively; regular expressions test the name.
  *
  * @stability unstable
  * @category combinators
@@ -547,11 +544,10 @@ export const isRedactedName: (name: string, patterns: ReadonlyArray<string | Reg
  *
  * **Details**
  *
- * Userinfo is always replaced with `REDACTED:REDACTED`, and query values whose
- * decoded names match `isRedactedName` are replaced with `REDACTED`. Everything
- * else, including the original spelling and the fragment, is kept verbatim.
- * When `redactedNames` is omitted, the current fiber's `CurrentRedactedNames`
- * is used, falling back to the defaults outside a fiber.
+ * Replaces userinfo with `REDACTED:REDACTED` and query values with `REDACTED`
+ * when their decoded names match `isRedactedName`. Preserves all other text.
+ * When names are omitted, uses the current fiber's `CurrentRedactedNames`,
+ * falling back to the defaults outside a fiber.
  *
  * **Example** (Redacting a signed URL)
  *
@@ -584,8 +580,7 @@ const authorityStart = /^(?:(https?|ftp|wss?):[/\\]*|[a-z][a-z\d+.-]*:\/\/|[/\\]
 const specialAuthorityEnd = /[/\\?#]/
 const authorityEnd = /[/?#]/
 
-// Locates the authority using the URL parser's whitespace and special-scheme
-// rules, then splices the raw string so nothing else is re-encoded.
+// Normalize only to locate userinfo; offsets preserve the original URL spelling.
 const redactUserinfo = (url: string): string => {
   let normalized = ""
   const offsets: Array<number> = []
@@ -628,15 +623,13 @@ const currentRedactedNames = (): ReadonlyArray<string | RegExp> =>
   Context.get((globalThis as any)[Redactable.currentFiberTypeId]?.context ?? Context.empty(), CurrentRedactedNames)
 
 /**
- * Context reference listing query parameter names or patterns to redact in
- * inspect output, span attributes and error messages.
+ * Query parameter names or patterns to redact in inspection, spans and errors.
  *
  * **Details**
  *
  * Defaults include `AWSAccessKeyId`, `Signature`, `sig` and `X-Goog-Signature`.
- * Names match case-insensitively, and providing a new list replaces the
- * defaults. Redaction never changes the URL sent by a client or seen by a
- * server handler.
+ * A custom list replaces the defaults. Matching uses `isRedactedName`.
+ * Redaction leaves request URLs and parameter values unchanged.
  *
  * @stability unstable
  * @category services

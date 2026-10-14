@@ -426,9 +426,8 @@ export const isRedactedName = (
  * **Details**
  *
  * Defaults include `authorization`, `cookie`, `set-cookie` and `x-api-key`.
- * Names match case-insensitively, and providing a new list replaces the
- * defaults. Query parameter names are configured separately with
- * `UrlParams.CurrentRedactedNames`.
+ * A custom list replaces the defaults. Matching uses `isRedactedName`.
+ * Use `UrlParams.CurrentRedactedNames` for query parameters.
  *
  * @stability unstable
  * @category services

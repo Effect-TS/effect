@@ -10,8 +10,7 @@ const defaultPorts: Record<string, number> = {
 }
 
 /**
- * Records the `url.*` and `server.*` attributes for a request URL, redacting
- * userinfo and the values of sensitive query parameters.
+ * Records `url.*` and `server.*` attributes with URL redaction.
  *
  * @internal
  */
