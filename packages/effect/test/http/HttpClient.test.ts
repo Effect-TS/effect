@@ -336,46 +336,48 @@ Missing key
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
       }))
 
-    it.effect("omits trace headers when propagation is disabled", () =>
+    const makeCapturingClient = () => {
+      let sent: HttpClientRequest.HttpClientRequest | undefined
+      const client = HttpClient.make((request) => {
+        sent = request
+        return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null)))
+      })
+      return { client, sent: () => sent }
+    }
+
+    it.effect("sends trace headers by default", () =>
       Effect.gen(function*() {
-        const seen = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
-        const client = HttpClient.make((request) =>
-          Ref.update(seen, (current) => [...current, request]).pipe(
-            Effect.as(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
-          )
-        )
+        const { client, sent } = makeCapturingClient()
 
-        yield* client.get("https://example.test/").pipe(
-          Effect.provideService(HttpClient.TracerPropagationEnabled, false)
-        )
+        yield* client.get("http://test/")
 
-        const requests = yield* Ref.get(seen)
-        assert.strictEqual(requests.length, 1)
-        const request = requests[0]
+        const request = sent()
         assert(request !== undefined)
-        assert.strictEqual(Object.hasOwn(request.headers, "b3"), false)
-        assert.strictEqual(Object.hasOwn(request.headers, "traceparent"), false)
+        assert.strictEqual(typeof request.headers.b3, "string")
+        assert.strictEqual(typeof request.headers.traceparent, "string")
       }))
 
-    it.effect("sends trace headers when propagation is enabled", () =>
+    it.effect("omits trace headers when propagation is disabled and keeps the client span", () =>
       Effect.gen(function*() {
-        const seen = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
-        const client = HttpClient.make((request) =>
-          Ref.update(seen, (current) => [...current, request]).pipe(
-            Effect.as(HttpClientResponse.fromWeb(request, new Response(null, { status: 200 })))
-          )
+        const { client, sent } = makeCapturingClient()
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+
+        yield* client.get("http://test/").pipe(
+          Effect.provideService(HttpClient.TracerPropagationEnabled, false),
+          Effect.provideService(Tracer.Tracer, tracer)
         )
 
-        yield* client.get("https://example.test/").pipe(
-          Effect.provideService(HttpClient.TracerPropagationEnabled, true)
-        )
-
-        const requests = yield* Ref.get(seen)
-        assert.strictEqual(requests.length, 1)
-        const request = requests[0]
+        const request = sent()
         assert(request !== undefined)
-        assert.strictEqual(Object.hasOwn(request.headers, "b3"), true)
-        assert.strictEqual(Object.hasOwn(request.headers, "traceparent"), true)
+        assert.isUndefined(request.headers.b3)
+        assert.isUndefined(request.headers.traceparent)
+        assert(clientSpan !== undefined)
       }))
   })
 
