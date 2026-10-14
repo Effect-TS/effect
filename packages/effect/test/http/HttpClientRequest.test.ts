@@ -92,11 +92,11 @@ describe("HttpClientRequest", () => {
       )
       const request = await Effect.runPromise(original.pipe(HttpClientRequest.compressBody("gzip")))
       strictEqual(request.body._tag, "Stream")
-      strictEqual(request.body.contentLength, undefined)
       strictEqual(request.headers["content-length"], undefined)
       strictEqual(request.headers["content-encoding"], "gzip")
       strictEqual(request.headers["content-type"], "text/plain")
       if (request.body._tag === "Stream") {
+        strictEqual(request.body.contentLength, undefined)
         const compressed = await Effect.runPromise(Stream.mkUint8Array(request.body.stream))
         strictEqual(gunzipSync(compressed).toString(), text)
       }
