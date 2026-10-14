@@ -1,10 +1,53 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Clock from "effect/Clock"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
+import * as Fiber from "effect/Fiber"
+import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
 
 describe("TestClock", () => {
+  for (const cancellation of ["interrupted sleep", "successful timeout"] as const) {
+    it.effect(`adjust - skips the cancelled deadline (${cancellation})`, () =>
+      Effect.gen(function*() {
+        const testClock = yield* TestClock.make()
+        if (cancellation === "interrupted sleep") {
+          const sleeper = yield* testClock.sleep(Duration.minutes(1)).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Effect.yieldNow
+          yield* Fiber.interrupt(sleeper)
+        } else {
+          yield* Effect.timeout(Effect.yieldNow, "1 minute").pipe(
+            Effect.provideService(Clock.Clock, testClock)
+          )
+        }
+
+        // Read the public clock whenever adjustment yields to the scheduler.
+        const observed = new Set<number>()
+        const scheduler: Scheduler.Scheduler = new Scheduler.MixedScheduler()
+        const makeDispatcher = scheduler.makeDispatcher.bind(scheduler)
+        scheduler.makeDispatcher = () => {
+          const dispatcher = makeDispatcher()
+          return {
+            scheduleTask(task, priority) {
+              dispatcher.scheduleTask(() => {
+                observed.add(testClock.currentTimeMillisUnsafe())
+                task()
+              }, priority)
+            },
+            flush: () => dispatcher.flush()
+          }
+        }
+        yield* testClock.adjust("2 minutes").pipe(
+          Effect.provideService(Scheduler.Scheduler, scheduler)
+        )
+        observed.add(testClock.currentTimeMillisUnsafe())
+        assert.deepStrictEqual([...observed], [0, 120_000])
+      }))
+  }
+
   it.effect("sleep - does not require passage of wall time", () =>
     Effect.gen(function*() {
       let elapsed = false
