@@ -297,7 +297,17 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       headers: request.headers,
       payload: request.payload
     }
-    const result = entry.handler(request.payload, metadata)
+    let handlerResult: ReturnType<typeof entry.handler>
+    let constructionFailed = false
+    try {
+      handlerResult = entry.handler(request.payload, metadata)
+    } catch (defect) {
+      // Route construction defects through per-request handling without
+      // acknowledging a handler that never started.
+      constructionFailed = true
+      handlerResult = Effect.die(defect)
+    }
+    const result = handlerResult
 
     // if the handler requested forking, then we skip the concurrency control
     const isWrapper = Rpc.isWrapper(result)
@@ -307,12 +317,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     const streamOrEffect = isWrapper ? result.value : result
     // set when a chunk could not be written; the writer has already responded
     let writeFailure: Cause.Cause<never> | undefined
-    let handler = isStream
+    let handler = isStream && !constructionFailed
       ? (streamEffect(client, request, streamOrEffect, (cause) => {
         writeFailure = cause
       }) as Effect.Effect<{} | Deferred.Deferred<any, any>>)
       : (streamOrEffect as Effect.Effect<{} | Deferred.Deferred<any, any>>)
-    if (isDiscard) {
+    if (isDiscard && !constructionFailed) {
       // the acknowledgement runs inside the middleware, so it is only sent
       // once the permit is held and the middleware has started the handler
       handler = Effect.andThen(

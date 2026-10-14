@@ -796,24 +796,12 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         if (entry.discard && message.exit._tag === "Success") {
           return write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
         }
-        const decodedExit = entry.discard
-          ? entry.schemas.decodeDiscardExit(message.exit).pipe(
-            // Older servers encode the handler result with the RPC's normal
-            // exit schema, including when the serializer uses opaque bytes.
-            Effect.catch(() => entry.schemas.decodeExit(message.exit))
-          )
-          : entry.schemas.decodeExit(message.exit)
-        return decodedExit.pipe(
+        const decodeExit = entry.discard ? entry.schemas.decodeDiscardExit : entry.schemas.decodeExit
+        return decodeExit(message.exit).pipe(
           Effect.provideContext(entry.context),
           Effect.orDie,
           Effect.matchCauseEffect({
-            onSuccess: (exit) =>
-              write({
-                _tag: "Exit",
-                clientId: 0,
-                requestId,
-                exit: entry.discard && Exit.isSuccess(exit) ? Exit.void : exit
-              }),
+            onSuccess: (exit) => write({ _tag: "Exit", clientId: 0, requestId, exit }),
             onFailure: (cause) => write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.failCause(cause) })
           })
         ) as Effect.Effect<void>
