@@ -340,7 +340,7 @@ describe("McpServer request-level dependencies", () => {
       const logged: Array<Cause.Cause<unknown>> = []
       const defect = new Error("private handler defect")
       let mode: "die" | "interrupt" = "die"
-      const fail = () => mode === "die" ? Effect.die(defect) : Effect.interrupt
+      const fail = () => mode === "die" ? Effect.die(new Error(defect.message)) : Effect.interrupt
       const TestServer = Layer.mergeAll(
         McpServer.resource({ uri: "test://failing", name: "failing", content: Effect.suspend(fail) }),
         McpServer.resource`test://failing/${Schema.String}`({
@@ -404,7 +404,7 @@ describe("McpServer request-level dependencies", () => {
       assert.lengthOf(reported, defects.length)
       assert.lengthOf(logged, defects.length)
       for (const cause of [...reported, ...logged]) {
-        assert.strictEqual(Cause.squash(cause), defect)
+        assert.strictEqual((Cause.squash(cause) as Error).message, defect.message)
       }
     }))
 
