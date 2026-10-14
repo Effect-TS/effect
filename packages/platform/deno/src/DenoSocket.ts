@@ -56,7 +56,7 @@ export type TcpOptions = ConnectOptions & {
  *
  * @stability unstable
  * @category options
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type TlsConnectOptions = Deno.ConnectTlsOptions | (Deno.ConnectTlsOptions & Deno.TlsCertifiedKeyPem)
 
@@ -65,7 +65,7 @@ export type TlsConnectOptions = Deno.ConnectTlsOptions | (Deno.ConnectTlsOptions
  *
  * @stability unstable
  * @category options
- * @since 4.1.0
+ * @since 4.0.5
  */
 export type TlsOptions = TlsConnectOptions & {
   readonly openTimeout?: Duration.Input | undefined
@@ -392,7 +392,7 @@ export const layerTcp: (options: ConnectOptions) => Layer.Layer<
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const makeTls = (options: TlsOptions): Effect.Effect<Socket.Socket> => {
   const { openTimeout, ...connectOptions } = options
@@ -417,7 +417,7 @@ export const makeTls = (options: TlsOptions): Effect.Effect<Socket.Socket> => {
  *
  * @stability unstable
  * @category constructors
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const makeTlsChannel = <IE = never>(
   options: TlsConnectOptions
@@ -434,7 +434,7 @@ export const makeTlsChannel = <IE = never>(
  *
  * @stability unstable
  * @category layers
- * @since 4.1.0
+ * @since 4.0.5
  */
 export const layerTls: (options: TlsConnectOptions) => Layer.Layer<
   Socket.Socket,
