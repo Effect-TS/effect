@@ -1,10 +1,8 @@
 /**
  * Encodes and decodes tar archives as streams in Effect channels.
  *
- * A tar archive is a sequence of entries, each a header followed by the bytes
- * of its body. `decode` turns archive bytes into entries whose bodies stream
- * straight from the input, and `encode` turns entries back into archive bytes.
- * Neither side buffers an entire entry body.
+ * `decode` streams entry bodies from the archive input; `encode` streams them
+ * back into archive bytes. Neither buffers an entire entry body.
  *
  * The decoder reads the formats produced by common tools: v7, USTAR, PAX
  * extended headers, and GNU long names and base-256 numbers. The encoder writes
@@ -162,10 +160,6 @@ export interface EntryOptions {
   readonly pax?: Readonly<Record<string, string>> | undefined
 }
 
-// -----------------------------------------------------------------------------
-// Constructors
-// -----------------------------------------------------------------------------
-
 const makeHeader = (
   path: string,
   type: "File" | "Directory" | "Symlink" | "Hardlink",
@@ -183,7 +177,6 @@ const makeHeader = (
   uname: options?.uname ?? "",
   gname: options?.gname ?? "",
   mtime: options?.mtime ?? new Date(0),
-  // An empty target is not stored, as when decoding
   ...(linkTarget === undefined || linkTarget === "" ? undefined : { linkTarget }),
   pax: options?.pax ?? {}
 })
@@ -212,7 +205,7 @@ export const file = (path: string, content: string | Uint8Array, options?: Entry
   return { header, body }
 }
 
-// Content of the `file` bodies, which `encode` writes without running them
+// Key by body identity so replacing an entry body bypasses the encode fast path.
 const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, Uint8Array>()
 
 /**
@@ -297,10 +290,6 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
   body: Stream.empty
 })
 
-// -----------------------------------------------------------------------------
-// Codecs
-// -----------------------------------------------------------------------------
-
 /**
  * Creates a channel that decodes tar archive bytes into entries.
  *
@@ -356,7 +345,6 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
     Effect.suspend(() => {
       const decoder = new Decoder()
       let done: { readonly value: Done } | undefined
-      // Counts the upstream pulls, including the one that ends the input
       let pulls = 0
 
       const pullUpstream = upstream.pipe(
@@ -372,15 +360,11 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
         })
       )
 
-      // Pulls more input into the decoder, unless some arrived since `seen`. The
-      // entry stream and the current body can both need input, so they take
-      // turns, and the one that waited retries with what the other pulled.
+      // Serialize entry and body pulls; reuse input pulled while waiting for the lock.
       const lock = Semaphore.makeUnsafe(1)
       const pullInput = (seen: number) =>
         lock.withPermit(Effect.suspend(() => pulls === seen ? pullUpstream : Effect.void))
 
-      // Calls the decoder until it has enough input, pulling more in between.
-      // The pull is done with `end()` once the decoder returns `undefined`.
       const run = <A, D>(f: () => A | undefined | typeof NeedInput, end: () => D): Pull.Pull<A, TarError | IE, D> =>
         Effect.suspend(function loop(): Pull.Pull<A, TarError | IE, D> {
           const seen = pulls
@@ -461,8 +445,7 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   Done,
   In extends Entry<any, infer R> ? R : never
 > => {
-  // `In` is generic so that body errors and services are inferred from unions
-  // of entries
+  // Distribute over entry unions to infer body errors and services.
   type E = In extends Entry<infer E, any> ? E : never
   type R = In extends Entry<any, infer R> ? R : never
   return Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<In>, IE, Done>, scope) =>
@@ -471,12 +454,9 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       let entries: ReadonlyArray<Entry<E, R>> = []
       let index = 0
       let done: { readonly value: Done } | undefined
-      // The body being written, and the scope it runs in
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E, void, R> | undefined
       let bodyScope: Scope.Closeable | undefined
 
-      // Runs encoder calls, which throw a `TarError` for an entry that cannot be
-      // written
       const write = (f: () => void): Effect.Effect<void, TarError> => {
         try {
           f()
@@ -486,8 +466,6 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
         return Effect.void
       }
 
-      // Writes entries and their bodies until a slab is full, and hands out what
-      // was written before waiting for more entries
       return Effect.gen(function*() {
         while (true) {
           if (encoder.buffered >= SLAB_SIZE) return encoder.flush()
@@ -537,10 +515,6 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   )
 }
 
-// -----------------------------------------------------------------------------
-// Errors
-// -----------------------------------------------------------------------------
-
 const invalidHeader = (message: string) => new TarError({ kind: "InvalidHeader", message })
 
 const truncated = (at: number) =>
@@ -556,10 +530,6 @@ const sizeMismatch = (header: Header, written: number) =>
     } ${written} bytes, but its size is ${header.size}`
   })
 
-// -----------------------------------------------------------------------------
-// Format
-// -----------------------------------------------------------------------------
-
 const BLOCK = 512
 const PERMISSION_BITS = 0o7777
 
@@ -572,7 +542,6 @@ const isZeroBlock = (block: Uint8Array): boolean => {
   return true
 }
 
-// The sum of the bytes of a block, from which header checksums are computed
 const sumBlock = (block: Uint8Array): number => {
   // Four sums let the loop run faster than one
   let a = 0
@@ -599,10 +568,6 @@ const hasBytes = (block: Uint8Array, offset: number, bytes: ReadonlyArray<number
   }
   return true
 }
-
-// -----------------------------------------------------------------------------
-// Entry types
-// -----------------------------------------------------------------------------
 
 const typeflags: Record<Exclude<EntryType, "Other">, string> = {
   File: "0",
@@ -631,10 +596,6 @@ const typeflagOf = (header: Header): string => header.type === "Other" ? header.
 // Entries of these types never carry body bytes, whatever their size field says
 const isHeaderOnly = (type: EntryType): boolean => type !== "File" && type !== "Other"
 
-// -----------------------------------------------------------------------------
-// Strings
-// -----------------------------------------------------------------------------
-
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
@@ -656,17 +617,11 @@ const toAscii = (s: string): string => {
   return out
 }
 
-// Whether a string can be stored as is in a USTAR field of `length` bytes
 const fits = (value: string, length: number): boolean => value.length <= length && isAscii(value)
-
-// -----------------------------------------------------------------------------
-// PAX records
-// -----------------------------------------------------------------------------
 
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
 const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
 
-// Shared by the decoded headers without PAX records
 const noPax: Readonly<Record<string, string>> = Object.freeze({})
 
 // Parses records of the form "<length> <key>=<value>\n", where the length counts
@@ -775,10 +730,6 @@ const paxHeaderName = (path: string): string => {
   return toAscii(name).slice(0, 100)
 }
 
-// -----------------------------------------------------------------------------
-// Header decoding
-// -----------------------------------------------------------------------------
-
 const readString = (block: Uint8Array, offset: number, length: number): string => {
   let end = offset
   let ascii = true
@@ -828,7 +779,6 @@ const readNumber = (block: Uint8Array, offset: number, length: number): number =
   return negative ? -value - 1 : value
 }
 
-// Reads a number that must not be negative, as only a base-256 number can be
 const readUnsigned = (block: Uint8Array, offset: number, length: number, field: string): number => {
   const value = readNumber(block, offset, length)
   if (value < 0) {
@@ -898,10 +848,6 @@ const parseHeader = (block: Uint8Array): RawHeader => {
   }
   return header
 }
-
-// -----------------------------------------------------------------------------
-// Header encoding
-// -----------------------------------------------------------------------------
 
 const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
 const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
@@ -1103,10 +1049,6 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
 }
 
-// -----------------------------------------------------------------------------
-// Decoding
-// -----------------------------------------------------------------------------
-
 const MAX_META_SIZE = 1024 * 1024 // PAX and GNU long name data
 const MAX_DATE_MILLIS = 8.64e15 // the range of `Date`
 
@@ -1117,7 +1059,6 @@ class ByteQueue {
   private head = 0
   private offset = 0
   length = 0
-  // Bytes taken since the queue was created
   consumed = 0
 
   push(chunk: Uint8Array): void {
@@ -1178,11 +1119,8 @@ class ByteQueue {
 // Returned by the decoder when the buffered input is not enough to continue
 const NeedInput: unique symbol = Symbol("effect/encoding/Tar/NeedInput")
 
-// Reads entries from input that is pushed in chunks, like Go's `tar.Reader`.
-// `next` moves to the next entry, skipping what is left of the current body,
-// and `read` returns body bytes. Both return `NeedInput` when the buffered input
-// is not enough, keeping their progress so that they can be called again, and
-// throw a `TarError` on a malformed archive.
+// `next` skips unread body bytes; `read` consumes the current body.
+// Both preserve progress across `NeedInput` retries.
 class Decoder {
   private readonly queue = new ByteQueue()
   private ended = false
@@ -1209,7 +1147,6 @@ class Decoder {
     if (!this.finished) this.queue.push(chunk)
   }
 
-  // Marks the end of the input
   end(): void {
     this.ended = true
   }
@@ -1384,10 +1321,6 @@ class Decoder {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Encoding
-// -----------------------------------------------------------------------------
-
 const SLAB_SIZE = 64 * 1024
 
 const emptyBody = new Uint8Array(0)
@@ -1396,24 +1329,19 @@ const emptyBody = new Uint8Array(0)
 // handed out as chunks of their own
 const COPY_LIMIT = 16 * 1024
 
-// Writes archive bytes. Headers, padding and small body chunks are written into
-// shared slabs, so that an archive of small entries comes out in a few large
-// chunks; larger body chunks pass through as they are. `flush` hands out what
-// has been written so far. Methods throw a `TarError` for an entry that cannot
-// be written, before writing any of it.
+// Pack headers, padding and small body chunks into slabs; pass large chunks
+// through without copying. Flushed slab regions are never overwritten.
 class Encoder {
   private slab = new Uint8Array(0)
   // Start of the bytes in `slab` that have not been flushed, and their end
   private start = 0
   private offset = 0
   private chunks: Array<Uint8Array> = []
-  // Bytes written since the last flush
   buffered = 0
   // The entry whose body is being written, and the body bytes written so far
   private header: Header | undefined
   private written = 0
 
-  // Writes the header of an entry whose body follows through `body` calls
   begin(header: Header): void {
     encodeHeader(header, this.alloc)
     this.header = header
@@ -1437,7 +1365,6 @@ class Encoder {
     this.buffered += chunk.length
   }
 
-  // Ends the body started with `begin`
   end(): void {
     const header = this.header!
     this.header = undefined
@@ -1447,7 +1374,6 @@ class Encoder {
     this.reserve(padding(header.size))
   }
 
-  // Writes the end-of-archive blocks
   finish(): void {
     this.reserve(BLOCK * 2)
   }
