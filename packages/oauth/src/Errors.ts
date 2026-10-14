@@ -31,7 +31,7 @@ export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()
 ) {}
 
 /**
- * A definite grant rejection from a complete HTTP 400 invalid_grant response.
+ * A definite, authenticated claim rejection or a complete HTTP 400 invalid_grant response.
  *
  * **Example** (Handling a definite grant rejection)
  *
@@ -47,7 +47,7 @@ export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()
  * @since 4.0.5
  */
 export class Rejected extends Schema.TaggedError<Rejected>()("OAuthRejected", {
-  reason: Schema.Literal("invalid_grant")
+  reason: Schema.Literals(["invalid_grant", "claims"])
 }) {}
 
 /**
