@@ -432,6 +432,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
       runTracked(tracker, () => latch.openUnsafe())
       if (tracker.pending === 0) return Effect.yieldNow
       return Effect.callback<void>((resume) => {
+        if (tracker.pending === 0) return resume(Effect.void)
         tracker.onIdle = () => resume(Effect.void)
         return Effect.sync(() => {
           tracker.onIdle = undefined
