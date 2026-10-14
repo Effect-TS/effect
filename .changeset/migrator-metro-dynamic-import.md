@@ -3,4 +3,4 @@
 "@effect/sql-sqlite-react-native": minor
 ---
 
-Move `fromFileSystem` to `effect/sql/MigratorFileSystem`. A dynamic import in `effect/sql/Migrator` made Metro fail the whole module, so React Native could not import `fromRecord`. The `effect/sql` barrel and the React Native migrator do not re-export the filesystem loader.
+Move `fromFileSystem` from `effect/sql/Migrator` to `effect/sql/MigratorFileSystem`, so React Native apps can import `effect/sql/Migrator` and `effect/sql` under Metro. The `effect/sql` barrel and `@effect/sql-sqlite-react-native/SqliteMigrator` no longer export `fromFileSystem`; the other SQL adapter migrators still re-export it.

@@ -10,8 +10,8 @@ import * as Option from "../Option.ts"
 import { Path } from "../Path.ts"
 import { type Loader, MigrationError, type ResolvedMigration } from "./Migrator.ts"
 
-// separate file on purpose. metro parses a dynamic import even when you only
-// import fromRecord, and that blew up react native.
+// Kept out of `Migrator.ts` and the `effect/sql` barrel: Metro rejects the
+// non-literal `import()` below in any module it bundles.
 
 /**
  * Creates a migration loader that reads a directory with `FileSystem`, imports
@@ -51,15 +51,17 @@ export const fromFileSystem: (directory: string) => Loader<FileSystem | Path> = 
             [
               Number(id),
               name,
-              // windows paths need a file url or the loader rejects them.
-              // orDie so a bad url shows up as an import error later.
+              // `import` needs a file URL: on Windows an absolute path such as
+              // `D:\migrations\1_init.ts` is rejected by the ESM loader. `orDie` keeps the
+              // failure a defect so `loadMigration` reports it as an import error.
               Effect.flatMap(Effect.orDie(path.toFileUrl(path.join(directory, basename))), (url) =>
-                Effect.promise(() =>
-                  import(
-                    /* @vite-ignore */
-                    /* webpackIgnore: true */
-                    url.href
-                  )
+                Effect.promise(
+                  () =>
+                    import(
+                      /* @vite-ignore */
+                      /* webpackIgnore: true */
+                      url.href
+                    )
                 ))
             ]
           ] as const
