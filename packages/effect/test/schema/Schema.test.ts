@@ -9750,6 +9750,16 @@ pointed message
   })
 
   describe("withDecodingDefaultKey", () => {
+    it("keeps successful decoding defaults eager", () => {
+      const schema = Schema.Struct({
+        a: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("1")))
+      })
+      const effect = Schema.decodeUnknownEffect(schema)({})
+
+      assertTrue(Exit.isExit(effect))
+      assertExitSuccess(effect, { a: 1 })
+    })
+
     it("should return a decoding default value if the key is missing", async () => {
       const schema = Schema.Struct({
         a: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultKey(Effect.succeed("1")))
