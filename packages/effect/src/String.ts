@@ -1081,7 +1081,9 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  *
  * **Details**
  *
- * Leading, trailing, and repeated underscores are dropped.
+ * Returns an empty string for empty or underscore-only input. Otherwise, preserves
+ * a leading underscore and consumes each subsequent underscore with the next
+ * character, uppercasing that character. An unmatched trailing underscore is dropped.
  *
  * **Example** (Converting snake_case to camelCase)
  *
@@ -1096,14 +1098,23 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @category transforming
  * @since 2.0.0
  */
-export const snakeToCamel = (self: string): string => joinSnakeWords(self, false)
+export const snakeToCamel = (self: string): string => {
+  if (self.length === 0 || (self[0] === "_" && /^_+$/.test(self))) return ""
+  let str = self[0]
+  for (let i = 1; i < self.length; i++) {
+    str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
+  }
+  return str
+}
 
 /**
  * Converts a snake_case string to PascalCase.
  *
  * **Details**
  *
- * Leading, trailing, and repeated underscores are dropped.
+ * Returns an empty string for empty or underscore-only input. Otherwise, uppercases
+ * the first character and consumes each subsequent underscore with the next
+ * character, uppercasing that character. An unmatched trailing underscore is dropped.
  *
  * **Example** (Converting snake_case to PascalCase)
  *
@@ -1118,19 +1129,11 @@ export const snakeToCamel = (self: string): string => joinSnakeWords(self, false
  * @category transforming
  * @since 2.0.0
  */
-export const snakeToPascal = (self: string): string => joinSnakeWords(self, true)
-
-const joinSnakeWords = (self: string, upperFirst: boolean): string => {
-  let str = ""
-  let upper = upperFirst
-  for (let i = 0; i < self.length; i++) {
-    const char = self[i]
-    if (char === "_") {
-      upper = upperFirst || str.length > 0
-      continue
-    }
-    str += upper ? char.toUpperCase() : char
-    upper = false
+export const snakeToPascal = (self: string): string => {
+  if (self.length === 0 || (self[0] === "_" && /^_+$/.test(self))) return ""
+  let str = self[0].toUpperCase()
+  for (let i = 1; i < self.length; i++) {
+    str += self[i] === "_" ? self.charAt(++i).toUpperCase() : self[i]
   }
   return str
 }
