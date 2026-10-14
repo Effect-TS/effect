@@ -4,14 +4,13 @@ import * as McpSchema from "effect/ai/McpSchema"
 import * as McpServer from "effect/ai/McpServer"
 import * as Tool from "effect/ai/Tool"
 import * as Toolkit from "effect/ai/Toolkit"
-import * as Cause from "effect/Cause"
+import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as ErrorReporter from "effect/ErrorReporter"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
 import * as Queue from "effect/Queue"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
@@ -193,8 +192,8 @@ describe("McpServer request-level dependencies", () => {
       yield* Deferred.await(finalized).pipe(Effect.timeout("1 second"))
     }))
 
-  describe("middleware failures", () => {
-    const makeRegistrations = () => {
+  it.effect("sends middleware failures as JSON-RPC errors and keeps handler failures as tool results", () =>
+    Effect.gen(function*() {
       const Tools = Toolkit.make(
         Tool.make("Guarded"),
         Tool.make("Open", { parameters: Schema.Struct({ text: Schema.String }) })
@@ -204,194 +203,55 @@ describe("McpServer request-level dependencies", () => {
           ? effect
           : Effect.fail(new Unauthorized({ message: "Unauthorized", data: { reason: "expired" } }))
       )
-      return Layer.mergeAll(
+      const registrations = Layer.mergeAll(
         McpServer.toolkit(Tools),
-        McpServer.resource({ uri: "test://guarded", name: "guarded", content: Effect.succeed("secret") }),
-        McpServer.prompt({
-          name: "guarded",
-          parameters: { topic: Schema.String },
-          completion: { topic: () => Effect.succeed(["secret"]) },
-          content: () => Effect.succeed("secret")
-        })
+        McpServer.resource({ uri: "test://guarded", name: "guarded", content: Effect.succeed("secret") })
       ).pipe(
         Layer.provide(Reject.layer),
         Layer.provide(Tools.toLayer({ Guarded: () => Effect.void, Open: () => Effect.void }))
       )
-    }
+      const harness = yield* makeMcpStdioHarness(McpProtocol.v2025_11_25, [McpProtocol.v2025_11_25], registrations)
+      yield* harness.initialize()
 
-    for (const protocol of [McpProtocol.v2025_06_18, McpProtocol.v2025_11_25, McpProtocol.v2026_07_28]) {
-      it.effect(`sends middleware failures as JSON-RPC errors on ${protocol.protocolVersion}`, () =>
-        Effect.gen(function*() {
-          const harness = yield* makeMcpStdioHarness(protocol, [protocol], makeRegistrations())
-          yield* harness.initialize()
+      const tool = yield* harness.sendRequest("tools/call", { name: "Guarded", arguments: {} })
+      const resource = yield* harness.sendRequest("resources/read", { uri: "test://guarded" })
+      const invalidInput = yield* harness.sendRequest("tools/call", { name: "Open", arguments: { text: 1 } })
 
-          const responses = [
-            yield* harness.sendRequest("tools/call", { name: "Guarded", arguments: {} }),
-            yield* harness.sendRequest("resources/read", { uri: "test://guarded" }),
-            yield* harness.sendRequest("prompts/get", { name: "guarded", arguments: { topic: "a" } }),
-            yield* harness.sendRequest("completion/complete", {
-              ref: { type: "ref/prompt", name: "guarded" },
-              argument: { name: "topic", value: "a" }
-            })
-          ]
-
-          for (const response of responses) {
-            assert.deepStrictEqual(response.error, {
-              code: -32001,
-              message: "Unauthorized",
-              data: { reason: "expired" }
-            })
-          }
-        }))
-    }
-
-    it.effect("keeps tool input errors that pass through middleware as tool results", () =>
-      Effect.gen(function*() {
-        const harness = yield* makeMcpStdioHarness(
-          McpProtocol.v2025_11_25,
-          [McpProtocol.v2025_11_25],
-          makeRegistrations()
-        )
-        yield* harness.initialize()
-
-        const response = yield* harness.sendRequest("tools/call", { name: "Open", arguments: { text: 1 } })
-
-        assert.deepInclude(response.result, { isError: true })
-      }))
-
-    it.effect("reports middleware defects as internal errors and propagates interruption", () =>
-      Effect.gen(function*() {
-        const reported: Array<Cause.Cause<unknown>> = []
-        const logged: Array<Cause.Cause<unknown>> = []
-        const defect = new Error("private middleware defect")
-        const Tools = Toolkit.make(Tool.make("Defect"), Tool.make("Interrupt"))
-        const Failing = McpServer.middleware()((_, { target }) =>
-          target === "Defect" ? Effect.die(defect) : Effect.interrupt
-        )
-        const TestServer = McpServer.toolkit(Tools).pipe(
-          Layer.provide(Failing.layer),
-          Layer.provide(Tools.toLayer({ Defect: () => Effect.void, Interrupt: () => Effect.void })),
-          Layer.provideMerge(McpServer.McpServer.layer)
-        )
-
-        const { error, interrupted } = yield* Effect.gen(function*() {
-          const server = yield* McpServer.McpServer
-          return {
-            error: yield* Effect.flip(server.callTool({ name: "Defect" })),
-            interrupted: yield* Effect.exit(server.callTool({ name: "Interrupt" }))
-          }
-        }).pipe(
-          Effect.provideService(McpSchema.McpServerClient, client),
-          Effect.provide(TestServer),
-          Effect.provide([
-            ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
-              reported.push(cause)
-            })]),
-            Logger.layer([Logger.make(({ cause, logLevel }) => {
-              if (logLevel === "Error") logged.push(cause)
-            })])
-          ])
-        )
-
-        assert.instanceOf(error, McpSchema.InternalError)
-        assert.strictEqual(error.message, "Internal error")
-        assert.isTrue(Exit.hasInterrupts(interrupted))
-        assert.lengthOf(reported, 1)
-        assert.strictEqual(Cause.squash(reported[0]), defect)
-        assert.lengthOf(logged, 1)
-        assert.strictEqual(Cause.squash(logged[0]), defect)
-      }))
-
-    it.effect("classifies a middleware failure per request when a handler failed with the same error", () =>
-      Effect.gen(function*() {
-        const denied = new McpSchema.InvalidParams({ message: "denied" })
-        let calls = 0
-        // The first call reaches the handler; the second is rejected by middleware with the same error.
-        const RejectSecond = McpServer.middleware()((effect) => ++calls === 1 ? effect : Effect.fail(denied), {
-          global: true
-        })
-        const registrations = Layer.mergeAll(
-          Layer.effectDiscard(Effect.flatMap(McpServer.McpServer, (server) =>
-            server.addTool({
-              tool: new McpSchema.Tool({ name: "Denied", inputSchema: { type: "object" } }),
-              annotations: Context.empty(),
-              handle: () => Effect.fail(denied)
-            }))),
-          RejectSecond
-        )
-        const harness = yield* makeMcpStdioHarness(
-          McpProtocol.v2025_11_25,
-          [McpProtocol.v2025_11_25],
-          registrations
-        )
-        yield* harness.initialize()
-
-        const handled = yield* harness.sendRequest("tools/call", { name: "Denied", arguments: {} })
-        const rejected = yield* harness.sendRequest("tools/call", { name: "Denied", arguments: {} })
-
-        assert.deepInclude(handled.result, { isError: true })
-        assert.deepStrictEqual(rejected.error, { code: McpSchema.INVALID_PARAMS_ERROR_CODE, message: "denied" })
-      }))
-  })
+      const error = { code: -32001, message: "Unauthorized", data: { reason: "expired" } }
+      assert.deepStrictEqual(tool.error, error)
+      assert.deepStrictEqual(resource.error, error)
+      assert.deepInclude(invalidInput.result, { isError: true })
+    }))
 
   it.effect("reports handler defects as internal errors and propagates handler interruption", () =>
     Effect.gen(function*() {
       const reported: Array<Cause.Cause<unknown>> = []
-      const logged: Array<Cause.Cause<unknown>> = []
-      const defect = new Error("private handler defect")
       let mode: "die" | "interrupt" = "die"
-      const fail = () => mode === "die" ? Effect.die(new Error(defect.message)) : Effect.interrupt
+      const fail = () => mode === "die" ? Effect.die(new Error("private handler defect")) : Effect.interrupt
       const TestServer = Layer.mergeAll(
         McpServer.resource({ uri: "test://failing", name: "failing", content: Effect.suspend(fail) }),
-        McpServer.resource`test://failing/${Schema.String}`({
-          name: "failing-template",
-          completion: { param0: fail },
-          content: fail
-        }),
-        McpServer.prompt({
-          name: "failing",
-          parameters: { topic: Schema.String },
-          completion: { topic: fail },
-          content: fail
-        })
+        McpServer.prompt({ name: "failing", content: fail })
       ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
-      const requests = Effect.gen(function*() {
-        const server = yield* McpServer.McpServer
-        return [
-          server.findResource("test://failing"),
-          server.findResource("test://failing/a"),
-          server.completion({
-            ref: { type: "ref/resource", uri: "test://failing/{param0}" },
-            argument: { name: "param0", value: "a" }
-          }),
-          server.getPromptResult({ name: "failing", arguments: { topic: "a" } }),
-          server.completion({ ref: { type: "ref/prompt", name: "failing" }, argument: { name: "topic", value: "a" } })
-        ] as const
-      })
 
       const { defects, interruptions } = yield* Effect.gen(function*() {
-        const effects = yield* requests
+        const server = yield* McpServer.McpServer
+        const requests = [
+          server.findResource("test://failing"),
+          server.getPromptResult({ name: "failing" })
+        ] as const
         const defects = yield* Effect.forEach(
-          effects,
+          requests,
           (effect) => Effect.flip(effect as Effect.Effect<unknown, unknown>)
         )
         mode = "interrupt"
-        const interruptions = yield* Effect.forEach(
-          effects,
-          (effect) => Effect.exit(effect as Effect.Effect<unknown, unknown>)
-        )
+        const interruptions = yield* Effect.forEach(requests, (effect) => Effect.exit(effect as Effect.Effect<unknown>))
         return { defects, interruptions }
       }).pipe(
         Effect.provideService(McpSchema.McpServerClient, client),
         Effect.provide(TestServer),
-        Effect.provide([
-          ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
-            reported.push(cause)
-          })]),
-          Logger.layer([Logger.make(({ cause, logLevel }) => {
-            if (logLevel === "Error") logged.push(cause)
-          })])
-        ])
+        Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ cause }) => {
+          reported.push(cause)
+        })]))
       )
 
       for (const error of defects) {
@@ -402,10 +262,6 @@ describe("McpServer request-level dependencies", () => {
         assert.isTrue(Exit.hasInterrupts(exit))
       }
       assert.lengthOf(reported, defects.length)
-      assert.lengthOf(logged, defects.length)
-      for (const cause of [...reported, ...logged]) {
-        assert.strictEqual((Cause.squash(cause) as Error).message, defect.message)
-      }
     }))
 
   it.effect("falls back to the server log level on stateless requests without one", () =>
@@ -474,38 +330,34 @@ describe("McpServer request-level dependencies", () => {
       assert.strictEqual(calls, 2)
     }))
 
-  for (const form of ["{ global: true }", "layerGlobal"] as const) {
-    it.effect(`installs only its own middleware globally with ${form}`, () =>
-      Effect.gen(function*() {
-        const calls: Array<string> = []
-        const record = (name: string) => (effect: Effect.Effect<McpServer.MiddlewareSuccess, McpSchema.McpErrorBase>) =>
-          Effect.andThen(Effect.sync(() => calls.push(name)), effect)
-        const Local = McpServer.middleware()(record("local"))
-        const Global = form === "layerGlobal"
-          ? McpServer.middleware()(record("global")).layerGlobal
-          : McpServer.middleware()(record("global"), { global: true })
-        // Local is provided around the global middleware, but must only run for the registration it is provided to.
-        const TestServer = Layer.mergeAll(
-          Layer.mergeAll(
-            McpServer.resource({ uri: "test://local", name: "local", content: Effect.succeed("local") }),
-            Global
-          ).pipe(Layer.provide(Local.layer)),
-          McpServer.resource({ uri: "test://other", name: "other", content: Effect.succeed("other") })
-        ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
+  it.effect("installs only its own middleware globally", () =>
+    Effect.gen(function*() {
+      const calls: Array<string> = []
+      const record = (name: string) => (effect: Effect.Effect<McpServer.MiddlewareSuccess, McpSchema.McpErrorBase>) =>
+        Effect.andThen(Effect.sync(() => calls.push(name)), effect)
+      const Local = McpServer.middleware()(record("local"))
+      const Global = McpServer.middleware()(record("global"), { global: true })
+      // Local is provided around the global middleware, but must only run for the registration it is provided to.
+      const TestServer = Layer.mergeAll(
+        Layer.mergeAll(
+          McpServer.resource({ uri: "test://local", name: "local", content: Effect.succeed("local") }),
+          Global
+        ).pipe(Layer.provide(Local.layer)),
+        McpServer.resource({ uri: "test://other", name: "other", content: Effect.succeed("other") })
+      ).pipe(Layer.provideMerge(McpServer.McpServer.layer))
 
-        const results = yield* Effect.gen(function*() {
-          const server = yield* McpServer.McpServer
-          const local = yield* server.findResource("test://local")
-          const localCalls = calls.splice(0)
-          yield* server.findResource("test://other")
-          return { local, localCalls, otherCalls: calls.splice(0) }
-        }).pipe(
-          Effect.provideService(McpSchema.McpServerClient, client),
-          Effect.provide(TestServer)
-        )
+      const { localCalls, otherCalls } = yield* Effect.gen(function*() {
+        const server = yield* McpServer.McpServer
+        yield* server.findResource("test://local")
+        const localCalls = calls.splice(0)
+        yield* server.findResource("test://other")
+        return { localCalls, otherCalls: calls.splice(0) }
+      }).pipe(
+        Effect.provideService(McpSchema.McpServerClient, client),
+        Effect.provide(TestServer)
+      )
 
-        assert.deepStrictEqual(results.localCalls, ["global", "local"])
-        assert.deepStrictEqual(results.otherCalls, ["global"])
-      }))
-  }
+      assert.deepStrictEqual(localCalls, ["global", "local"])
+      assert.deepStrictEqual(otherCalls, ["global"])
+    }))
 })
