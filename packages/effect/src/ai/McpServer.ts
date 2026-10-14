@@ -171,9 +171,7 @@ const toInternalServerNotification = (
 
 const middlewareKeyPrefix = "effect/ai/McpServer/Middleware-"
 
-// Request services must come from the invocation, including when a handler is
-// registered during a request. Registration context also drops the MCP
-// middleware stack, which applies through the registration instead.
+// Do not capture request services or middleware stacks at registration.
 const requestServiceKeys = new Set<string>([
   McpRequestContext.key,
   McpServerClient.key,
@@ -229,11 +227,9 @@ const provideInvocationContext = <A, E, R>(
  *
  * **Details**
  *
- * A registration carries the services its handlers read per request as
- * `McpRequest<"Requires", S>` in its requirements. Only MCP middleware and the
- * transport layers discharge these markers. Providing the service itself with
- * `Layer.provide` or `Effect.provide` does not, so a request-level service can't
- * be satisfied by a construction-time value by mistake.
+ * Registrations carry handler dependencies as `McpRequest<"Requires", S>`.
+ * MCP middleware and transports discharge these markers; providing `S` with
+ * `Layer.provide` or `Effect.provide` does not.
  *
  * `layerHttp` and `layerHttpRequestScoped` convert the markers they don't
  * discharge into `HttpRouter.Request` markers, so `HttpRouter.middleware` can
@@ -289,13 +285,8 @@ export declare namespace McpRequest {
 }
 
 /**
- * The result of an MCP handler as seen by middleware.
- *
- * **Details**
- *
- * The value is opaque: middleware can run code before and after the handler,
- * provide services and fail the request, but it can't inspect or replace a
- * handler's result.
+ * Opaque handler result. Middleware can wrap execution and provide services,
+ * but cannot inspect or replace the result.
  *
  * @stability unstable
  * @category middleware
@@ -316,7 +307,7 @@ export interface MiddlewareSuccess {
 export type MiddlewareMethod = "tools/call" | "resources/read" | "prompts/get" | "completion/complete"
 
 /**
- * Describes the request an MCP middleware is running for.
+ * Request metadata passed to MCP middleware.
  *
  * **Details**
  *
@@ -357,9 +348,8 @@ const MissingRequestDependenciesTypeId = "~effect/ai/McpServer/MissingRequestDep
  *
  * **Details**
  *
- * A middleware's per-request requirements must be provided by another
- * middleware through `combine`, which runs it outside, or by the transport.
- * The compiler names the missing services in the type argument.
+ * Supply the missing services through `combine` or the transport.
+ * The type argument identifies the missing services.
  *
  * @stability unstable
  * @category middleware
@@ -379,8 +369,6 @@ type MiddlewareConfig = {
   layerRequires: any
 }
 
-// A middleware is only a layer once its per-request requirements, other than
-// transport services, are provided through `combine`.
 type MiddlewareLayer<Config extends MiddlewareConfig, R> = [Exclude<Config["requires"], TransportServices>] extends
   [never] ? Layer.Layer<
     McpRequest.From<"Requires", Config["provides"]>,
@@ -638,8 +626,7 @@ const isMcpError = (error: unknown): error is McpErrorBase =>
   Predicate.hasProperty(error, "code") && typeof error.code === "number" &&
   Predicate.hasProperty(error, "message") && typeof error.message === "string"
 
-// Marks the failures of one invocation's handler before middleware runs, so the
-// failures middleware raises or rewrites can be told apart.
+// Distinguishes handler failures from failures raised or rewritten by middleware.
 const HandlerFailure = Context.Reference<boolean>("effect/ai/McpServer/HandlerFailure", {
   defaultValue: () => false
 })
@@ -650,9 +637,7 @@ const internalError = new InternalError({ message: "Internal error" })
 const rejectWith = (error: McpErrorBase) =>
   Effect.fail(new McpCore.RequestRejected({ code: error.code, message: error.message, data: error.data, error }))
 
-// Runs a registration's handlers: the context captured at registration sits
-// under the request services, inside the registration's and the server's MCP
-// middleware.
+// Request services override captured services; global middleware wraps local middleware.
 const makeInvoke = (
   context: Context.Context<never> | undefined,
   globalMiddleware: ReadonlyArray<AnyMiddlewareFn>
@@ -710,7 +695,6 @@ const makeInvoke = (
   }
 }
 
-// Requests made through the service methods fail with the original error.
 const rejectedError = (rejected: McpCore.RequestRejected) => Effect.fail(rejected.error)
 
 /**
@@ -1996,7 +1980,7 @@ type StatefulProtocolAdapter = McpProtocol.ProtocolAdapter<
 >
 
 /**
- * The request-level services a transport discharges for every request.
+ * Request-level services supplied by a transport.
  *
  * **Details**
  *
@@ -2100,8 +2084,6 @@ const layerWithRuntime = (options: {
       yield* Effect.forkScoped(runWithRuntime(options, runtime, transport))
     })
   ).pipe(
-    // Registrations are built before the server starts, so they exist before
-    // the first request is served.
     Layer.provide(options.registrations ?? Layer.empty),
     Layer.provideMerge(McpServer.layer)
   )
@@ -2725,8 +2707,6 @@ export type ToolkitRequirements<Tools extends Record<string, Tool.Any>> = 0 exte
   | Tool.HandlersFor<Tools>
   | RegistrationRequirements<Tool.SchemaServices<Tools[keyof Tools]>, Tool.Requirements<Tools[keyof Tools]>>
 
-// Request services become markers. Schema services are required at
-// registration unless a handler also reads them.
 type RegistrationRequirements<SchemaServices, RequestServices> =
   | McpServer
   | Exclude<SchemaServices, RequestServices | McpRequestContext>
@@ -2972,8 +2952,7 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
   ) => Effect.Effect<Array<Schemas[K]["Type"]>, any, any>
 }
 
-// Expected handler failures become `InternalError`. Defects and interruption
-// reach the invocation, which reports defects with a generic message.
+// Leave defects and interruption to makeInvoke; convert only expected failures.
 const handlerFailureToInternalError = (cause: Cause.Cause<unknown>): Effect.Effect<never, InternalError> =>
   Cause.hasDies(cause) || Cause.hasInterrupts(cause)
     ? Effect.failCause(cause as Cause.Cause<never>)
@@ -3452,18 +3431,14 @@ export const clientCapabilities: Effect.Effect<
 > = McpRequestContext.useSync((_) => _.clientCapabilities)
 
 /**
- * Decodes the value of an `Mcp-Name` request header.
- *
- * **When to use**
- *
- * Use with `HttpRouter.middleware` to read the tool, prompt or resource a
- * `2026-07-28` request targets, for example to reject it with an HTTP status
- * before MCP handles it. Earlier protocol versions carry the name only in the
- * JSON-RPC body.
+ * Decodes an `Mcp-Name` header, including base64-wrapped values.
+ * Returns `undefined` for malformed values.
  *
  * **Details**
  *
- * Returns `undefined` for a malformed value. Base64-wrapped values are decoded.
+ * Use in `HttpRouter.middleware` to identify the tool, prompt or resource
+ * targeted by a `2026-07-28` request. Earlier protocols carry the name only
+ * in the JSON-RPC body.
  *
  * @stability unstable
  * @category decoding
