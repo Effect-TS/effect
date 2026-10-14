@@ -302,6 +302,266 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
 })
 
 // -----------------------------------------------------------------------------
+// Codecs
+// -----------------------------------------------------------------------------
+
+/**
+ * Creates a channel that decodes tar archive bytes into entries.
+ *
+ * **Details**
+ *
+ * Each output chunk holds one entry, and each entry body streams exactly
+ * `header.size` bytes straight from the input. Pulling the next entry skips
+ * whatever is left of the current body, like Go's `tar.Reader`. The decoder
+ * reads v7, USTAR, PAX extended headers (applying `path`, `linkpath`, `size`,
+ * `uid`, `gid`, `uname`, `gname` and `mtime`), GNU long names and links, and
+ * base-256 numbers. PAX global headers and anything after the end-of-archive
+ * marker are ignored.
+ *
+ * **Gotchas**
+ *
+ * - Read each body before pulling the next entry: a body read afterwards fails
+ *   with a `BodyConsumed` `TarError`.
+ * - Directories, links, devices and FIFOs have no body, and their `size` is
+ *   reported as `0`.
+ * - GNU sparse entries fail with an `Unsupported` `TarError`.
+ *
+ * @see {@link encode} for the inverse operation
+ *
+ * @stability unstable
+ * @category decoding
+ * @since 4.0.5
+ */
+export const decode = <IE = never, Done = unknown>(): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>,
+  TarError | IE,
+  Done,
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
+  IE,
+  Done
+> =>
+  Channel.fromTransform((upstream, scope) =>
+    Effect.suspend(() => {
+      const decoder = new Decoder()
+      let done: { readonly value: Done } | undefined
+      // The entry stream and the current body can both wait for input. Only one
+      // of them pulls upstream at a time; the other waits on `waiting`, and
+      // `pulls` tells a reader whether input arrived since it last looked.
+      let pulls = 0
+      let pulling = false
+      let waiting: Latch.Latch | undefined
+
+      const pullUpstream: Effect.Effect<void, IE> = upstream.pipe(
+        Effect.map((chunks) => {
+          for (const chunk of chunks) decoder.push(chunk)
+        }),
+        Pull.catchDone((value) => {
+          done = { value: value as Done }
+          decoder.end()
+          return Effect.void
+        }),
+        Effect.onExit(() => {
+          pulls++
+          pulling = false
+          if (waiting !== undefined) {
+            waiting.openUnsafe()
+            waiting = undefined
+          }
+          return Effect.void
+        })
+      )
+
+      // Pulls more input, unless it arrived since `seen` or another reader is
+      // pulling it
+      const pullInput = (seen: number): Effect.Effect<void, IE> =>
+        Effect.suspend(() => {
+          if (pulls !== seen) return Effect.void
+          if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
+          pulling = true
+          return pullUpstream
+        })
+
+      // Discards the input after the end of the archive
+      const drain: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
+        never,
+        IE | Cause.Done<Done>
+      > {
+        if (done !== undefined) return Cause.done(done.value)
+        return Effect.flatMap(pullInput(pulls), loop)
+      })
+
+      const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
+        Stream.fromPull(Effect.succeed(Effect.suspend(function loop(): Pull.Pull<
+          Arr.NonEmptyReadonlyArray<Uint8Array>,
+          TarError | IE
+        > {
+          const seen = pulls
+          let chunks: Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd
+          try {
+            chunks = decoder.read(id)
+          } catch (error) {
+            return Effect.fail(error as TarError)
+          }
+          if (chunks === NeedInput) return Effect.flatMap(pullInput(seen), loop)
+          if (chunks === BodyEnd) return Cause.done()
+          return Effect.succeed(chunks)
+        })))
+
+      const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.suspend(
+        function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> {
+          const seen = pulls
+          let header: Header | undefined | typeof NeedInput
+          try {
+            header = decoder.next()
+          } catch (error) {
+            return Effect.fail(error as TarError)
+          }
+          if (header === NeedInput) return Effect.flatMap(pullInput(seen), loop)
+          if (header === undefined) return drain
+          return Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
+        }
+      )
+
+      return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
+    })
+  )
+
+/**
+ * Creates a channel that encodes entries into tar archive bytes.
+ *
+ * **Details**
+ *
+ * Each entry is written as a USTAR header, with the path split into the USTAR
+ * prefix and name fields when it is longer than 100 bytes. A PAX extended
+ * header is added only for what USTAR cannot hold: a long or non-ASCII path,
+ * link target, user or group name, a size of 8 GiB or more, a uid or gid above
+ * `2097151`, an mtime outside the USTAR range, or custom `pax` records. Bodies
+ * stream without buffering, and the archive ends with two zero blocks.
+ *
+ * **Gotchas**
+ *
+ * - A body that produces any byte count other than `header.size` fails with a
+ *   `SizeMismatch` `TarError`, so the size must be known before the body is
+ *   written.
+ * - `header.pax` may contain custom metadata such as `SCHILY.xattr.*`. Keys
+ *   `path`, `linkpath`, `size`, `uid`, `gid`, `uname`, `gname` and `mtime` must
+ *   be set through the corresponding header fields. These keys and
+ *   `GNU.sparse.*` records fail with an `InvalidHeader` `TarError`.
+ * - mtime is truncated to whole seconds.
+ * - `typeflag` is only written for `Other` entries; every other type writes its
+ *   standard flag.
+ *
+ * @see {@link decode} for the inverse operation
+ * @see {@link file} for building entries from in-memory content
+ * @see {@link fileStream} for building entries from streamed content
+ *
+ * @stability unstable
+ * @category encoding
+ * @since 4.0.5
+ */
+export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = Entry>(): Channel.Channel<
+  Arr.NonEmptyReadonlyArray<Uint8Array>,
+  TarError | IE | (In extends Entry<infer E, any> ? E : never),
+  Done,
+  Arr.NonEmptyReadonlyArray<In>,
+  IE,
+  Done,
+  In extends Entry<any, infer R> ? R : never
+> =>
+  // `In` is generic so that body errors and services are inferred from unions
+  // of entries; the implementation treats them as `unknown` and is cast to the
+  // signature above
+  Channel.fromTransform((upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<unknown, unknown>>, IE, Done>, scope) =>
+    Effect.sync(() => {
+      type Out = Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, Done, unknown>
+      const encoder = new Encoder()
+      let entries: ReadonlyArray<Entry<unknown, unknown>> = []
+      let index = 0
+      let finished: { readonly value: Done } | undefined
+      // A failed entry, reported once the output before it is handed out
+      let failure: TarError | undefined
+      // The body being written
+      let body: {
+        readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, unknown, void, unknown>
+        readonly scope: Scope.Closeable
+      } | undefined
+
+      const startBody = (entry: Entry<unknown, unknown>): Out => {
+        const bodyScope = Scope.forkUnsafe(scope)
+        return Effect.flatMap(Channel.toPullScoped(entry.body.channel, bodyScope), (pull) => {
+          body = { pull, scope: bodyScope }
+          return loop()
+        })
+      }
+
+      const pullBody = (current: NonNullable<typeof body>): Out =>
+        Effect.flatMap(Pull.catchDone(current.pull, () => Effect.succeed(undefined)), (chunks) => {
+          if (chunks !== undefined) {
+            try {
+              for (const chunk of chunks) encoder.body(chunk)
+            } catch (error) {
+              failure = error as TarError
+            }
+            return loop()
+          }
+          body = undefined
+          return Effect.flatMap(Scope.close(current.scope, Exit.void), () => {
+            try {
+              encoder.end()
+            } catch (error) {
+              failure = error as TarError
+            }
+            return loop()
+          })
+        })
+
+      const pullEntries: Out = Effect.flatMap(
+        Pull.catchDone(upstream, (value) => {
+          finished = { value: value as Done }
+          encoder.finish()
+          return Effect.succeed(undefined)
+        }),
+        (next) => {
+          if (next !== undefined) {
+            entries = next
+            index = 0
+          }
+          return loop()
+        }
+      )
+
+      // Writes entries until there is output to hand out, or a body or more
+      // entries must be pulled. Output is handed out before anything that can
+      // wait or fail.
+      const loop = (): Out => {
+        while (true) {
+          if (encoder.buffered > 0 && (failure !== undefined || body !== undefined || finished !== undefined)) {
+            return Effect.succeed(encoder.flush())
+          }
+          if (failure !== undefined) return Effect.fail(failure)
+          if (finished !== undefined) return Cause.done(finished.value)
+          if (body !== undefined) return pullBody(body)
+          if (encoder.buffered >= SLAB_SIZE) return Effect.succeed(encoder.flush())
+          if (index < entries.length) {
+            const entry = entries[index++]
+            try {
+              encoder.begin(entry.header)
+            } catch (error) {
+              failure = error as TarError
+              continue
+            }
+            return startBody(entry)
+          }
+          if (encoder.buffered > 0) return Effect.succeed(encoder.flush())
+          return pullEntries
+        }
+      }
+
+      return Effect.suspend(loop)
+    })
+  ) as any
+
+// -----------------------------------------------------------------------------
 // Format
 // -----------------------------------------------------------------------------
 
@@ -812,126 +1072,6 @@ class Decoder {
     return header
   }
 }
-/**
- * Creates a channel that decodes tar archive bytes into entries.
- *
- * **Details**
- *
- * Each output chunk holds one entry, and each entry body streams exactly
- * `header.size` bytes straight from the input. Pulling the next entry skips
- * whatever is left of the current body, like Go's `tar.Reader`. The decoder
- * reads v7, USTAR, PAX extended headers (applying `path`, `linkpath`, `size`,
- * `uid`, `gid`, `uname`, `gname` and `mtime`), GNU long names and links, and
- * base-256 numbers. PAX global headers and anything after the end-of-archive
- * marker are ignored.
- *
- * **Gotchas**
- *
- * - Read each body before pulling the next entry: a body read afterwards fails
- *   with a `BodyConsumed` `TarError`.
- * - Directories, links, devices and FIFOs have no body, and their `size` is
- *   reported as `0`.
- * - GNU sparse entries fail with an `Unsupported` `TarError`.
- *
- * @see {@link encode} for the inverse operation
- *
- * @stability unstable
- * @category decoding
- * @since 4.0.5
- */
-export const decode = <IE = never, Done = unknown>(): Channel.Channel<
-  Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>,
-  TarError | IE,
-  Done,
-  Arr.NonEmptyReadonlyArray<Uint8Array>,
-  IE,
-  Done
-> =>
-  Channel.fromTransform((upstream, scope) =>
-    Effect.suspend(() => {
-      const decoder = new Decoder()
-      let done: { readonly value: Done } | undefined
-      // The entry stream and the current body can both wait for input. Only one
-      // of them pulls upstream at a time; the other waits on `waiting`, and
-      // `pulls` tells a reader whether input arrived since it last looked.
-      let pulls = 0
-      let pulling = false
-      let waiting: Latch.Latch | undefined
-
-      const pullUpstream: Effect.Effect<void, IE> = upstream.pipe(
-        Effect.map((chunks) => {
-          for (const chunk of chunks) decoder.push(chunk)
-        }),
-        Pull.catchDone((value) => {
-          done = { value: value as Done }
-          decoder.end()
-          return Effect.void
-        }),
-        Effect.onExit(() => {
-          pulls++
-          pulling = false
-          if (waiting !== undefined) {
-            waiting.openUnsafe()
-            waiting = undefined
-          }
-          return Effect.void
-        })
-      )
-
-      // Pulls more input, unless it arrived since `seen` or another reader is
-      // pulling it
-      const pullInput = (seen: number): Effect.Effect<void, IE> =>
-        Effect.suspend(() => {
-          if (pulls !== seen) return Effect.void
-          if (pulling) return (waiting ??= Latch.makeUnsafe(false)).await
-          pulling = true
-          return pullUpstream
-        })
-
-      // Discards the input after the end of the archive
-      const drain: Effect.Effect<never, IE | Cause.Done<Done>> = Effect.suspend(function loop(): Effect.Effect<
-        never,
-        IE | Cause.Done<Done>
-      > {
-        if (done !== undefined) return Cause.done(done.value)
-        return Effect.flatMap(pullInput(pulls), loop)
-      })
-
-      const body = (id: number): Stream.Stream<Uint8Array, TarError | IE> =>
-        Stream.fromPull(Effect.succeed(Effect.suspend(function loop(): Pull.Pull<
-          Arr.NonEmptyReadonlyArray<Uint8Array>,
-          TarError | IE
-        > {
-          const seen = pulls
-          let chunks: Arr.NonEmptyArray<Uint8Array> | typeof NeedInput | typeof BodyEnd
-          try {
-            chunks = decoder.read(id)
-          } catch (error) {
-            return Effect.fail(error as TarError)
-          }
-          if (chunks === NeedInput) return Effect.flatMap(pullInput(seen), loop)
-          if (chunks === BodyEnd) return Cause.done()
-          return Effect.succeed(chunks)
-        })))
-
-      const next: Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> = Effect.suspend(
-        function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<Entry<TarError | IE>>, TarError | IE, Done> {
-          const seen = pulls
-          let header: Header | undefined | typeof NeedInput
-          try {
-            header = decoder.next()
-          } catch (error) {
-            return Effect.fail(error as TarError)
-          }
-          if (header === NeedInput) return Effect.flatMap(pullInput(seen), loop)
-          if (header === undefined) return drain
-          return Effect.succeed(Arr.of({ header, body: body(decoder.generation) }))
-        }
-      )
-
-      return Effect.as(Scope.addFinalizer(scope, Effect.sync(() => decoder.close())), next)
-    })
-  )
 
 // -----------------------------------------------------------------------------
 // Encoding
@@ -1155,49 +1295,6 @@ const encodeHeader = (header: Header, alloc: (size: number) => Uint8Array): void
   writeUstarBlock(out.subarray(BLOCK * paxBlocks), ustar)
 }
 
-/**
- * Creates a channel that encodes entries into tar archive bytes.
- *
- * **Details**
- *
- * Each entry is written as a USTAR header, with the path split into the USTAR
- * prefix and name fields when it is longer than 100 bytes. A PAX extended
- * header is added only for what USTAR cannot hold: a long or non-ASCII path,
- * link target, user or group name, a size of 8 GiB or more, a uid or gid above
- * `2097151`, an mtime outside the USTAR range, or custom `pax` records. Bodies
- * stream without buffering, and the archive ends with two zero blocks.
- *
- * **Gotchas**
- *
- * - A body that produces any byte count other than `header.size` fails with a
- *   `SizeMismatch` `TarError`, so the size must be known before the body is
- *   written.
- * - `header.pax` may contain custom metadata such as `SCHILY.xattr.*`. Keys
- *   `path`, `linkpath`, `size`, `uid`, `gid`, `uname`, `gname` and `mtime` must
- *   be set through the corresponding header fields. These keys and
- *   `GNU.sparse.*` records fail with an `InvalidHeader` `TarError`.
- * - mtime is truncated to whole seconds.
- * - `typeflag` is only written for `Other` entries; every other type writes its
- *   standard flag.
- *
- * @see {@link decode} for the inverse operation
- * @see {@link file} for building entries from in-memory content
- * @see {@link fileStream} for building entries from streamed content
- *
- * @stability unstable
- * @category encoding
- * @since 4.0.5
- */
-export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = Entry>(): Channel.Channel<
-  Arr.NonEmptyReadonlyArray<Uint8Array>,
-  TarError | IE | (In extends Entry<infer E, any> ? E : never),
-  Done,
-  Arr.NonEmptyReadonlyArray<In>,
-  IE,
-  Done,
-  In extends Entry<any, infer R> ? R : never
-> => encodeEntries()
-
 const sizeMismatch = (header: Header, written: number) =>
   new TarError({
     kind: "SizeMismatch",
@@ -1296,104 +1393,3 @@ class Encoder {
     return out
   }
 }
-
-// The input is generic over the entry type in `encode` so that body errors and
-// services are inferred from unions of entries
-const encodeEntries = <IE, Done, E, R>(): Channel.Channel<
-  Arr.NonEmptyReadonlyArray<Uint8Array>,
-  TarError | IE | E,
-  Done,
-  Arr.NonEmptyReadonlyArray<Entry<E, R>>,
-  IE,
-  Done,
-  R
-> =>
-  Channel.fromTransform((upstream, scope) =>
-    Effect.sync(() => {
-      type Out = Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, TarError | IE | E, Done, R>
-      const encoder = new Encoder()
-      let entries: ReadonlyArray<Entry<E, R>> = []
-      let index = 0
-      let finished: { readonly value: Done } | undefined
-      // A failed entry, reported once the output before it is handed out
-      let failure: TarError | undefined
-      // The body being written
-      let body: {
-        readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E, void, R>
-        readonly scope: Scope.Closeable
-      } | undefined
-
-      const startBody = (entry: Entry<E, R>): Out => {
-        const bodyScope = Scope.forkUnsafe(scope)
-        return Effect.flatMap(Channel.toPullScoped(entry.body.channel, bodyScope), (pull) => {
-          body = { pull, scope: bodyScope }
-          return loop()
-        })
-      }
-
-      const pullBody = (current: NonNullable<typeof body>): Out =>
-        Effect.flatMap(Pull.catchDone(current.pull, () => Effect.succeed(undefined)), (chunks) => {
-          if (chunks !== undefined) {
-            try {
-              for (const chunk of chunks) encoder.body(chunk)
-            } catch (error) {
-              failure = error as TarError
-            }
-            return loop()
-          }
-          body = undefined
-          return Effect.flatMap(Scope.close(current.scope, Exit.void), () => {
-            try {
-              encoder.end()
-            } catch (error) {
-              failure = error as TarError
-            }
-            return loop()
-          })
-        })
-
-      const pullEntries: Out = Effect.flatMap(
-        Pull.catchDone(upstream, (value) => {
-          finished = { value: value as Done }
-          encoder.finish()
-          return Effect.succeed(undefined)
-        }),
-        (next) => {
-          if (next !== undefined) {
-            entries = next
-            index = 0
-          }
-          return loop()
-        }
-      )
-
-      // Writes entries until there is output to hand out, or a body or more
-      // entries must be pulled. Output is handed out before anything that can
-      // wait or fail.
-      const loop = (): Out => {
-        while (true) {
-          if (encoder.buffered > 0 && (failure !== undefined || body !== undefined || finished !== undefined)) {
-            return Effect.succeed(encoder.flush())
-          }
-          if (failure !== undefined) return Effect.fail(failure)
-          if (finished !== undefined) return Cause.done(finished.value)
-          if (body !== undefined) return pullBody(body)
-          if (encoder.buffered >= SLAB_SIZE) return Effect.succeed(encoder.flush())
-          if (index < entries.length) {
-            const entry = entries[index++]
-            try {
-              encoder.begin(entry.header)
-            } catch (error) {
-              failure = error as TarError
-              continue
-            }
-            return startBody(entry)
-          }
-          if (encoder.buffered > 0) return Effect.succeed(encoder.flush())
-          return pullEntries
-        }
-      }
-
-      return Effect.suspend(loop)
-    })
-  )
