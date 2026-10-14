@@ -127,6 +127,42 @@ describe("GraphQLProtocol.layerHttp", () => {
       ])
     }))
 
+  it.effect("an Effect url is resolved asynchronously in the context of each query, mutation and subscription", () =>
+    Effect.gen(function*() {
+      const seen: Array<string> = []
+      const layer = GraphQLProtocol.layerHttp({
+        url: Effect.gen(function*() {
+          yield* Effect.promise(() => Promise.resolve())
+          return `http://${yield* GitHubHost}/graphql`
+        })
+      }).pipe(
+        Layer.provide(httpClientLayer((request, bodyText, url) => {
+          seen.push(`${url.host} ${JSON.parse(bodyText!).operationName}`)
+          return request.headers["accept"] === "text/event-stream"
+            ? new Response("event: complete\ndata:\n\n", { headers: { "content-type": "text/event-stream" } })
+            : graphqlResponse({ data: { viewer: { login: "tim" }, addStar: { ok: true } } })
+        }))
+      )
+      const client = yield* GraphQLClient.make(GraphQLGroup.make(Viewer, AddStar, IssueUpdated)).pipe(
+        Effect.provide(layer)
+      )
+
+      yield* client.Viewer()
+      yield* client.Viewer().pipe(Effect.provideService(GitHubHost, "api.acme.ghe.com"))
+      yield* client.AddStar(undefined, { context: Context.make(GitHubHost, "ghes.example.com") })
+      yield* client.IssueUpdated({ id: "I_1" }).pipe(
+        Stream.runDrain,
+        Effect.provideService(GitHubHost, "api.acme.ghe.com")
+      )
+
+      assert.deepStrictEqual(seen, [
+        "api.github.com Viewer",
+        "api.acme.ghe.com Viewer",
+        "ghes.example.com AddStar",
+        "api.acme.ghe.com IssueUpdated"
+      ])
+    }))
+
   it.effect("accepts an application/json body with GraphQL keys, matching the media type case-insensitively", () =>
     Effect.gen(function*() {
       for (const contentType of ["application/json", "Application/JSON; charset=utf-8"]) {
