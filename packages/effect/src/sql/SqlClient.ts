@@ -275,22 +275,22 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
 })
 
 /**
- * Builds the acquirers and failed-COMMIT cleanup for a SQLite client that
+ * Builds the acquirers, borrower and failed-COMMIT cleanup for a SQLite client that
  * shares one connection through a semaphore.
  *
  * **Details**
  *
  * Both acquirers lease the connection into the current scope and hold the
- * semaphore until that scope closes, so a statement or stream keeps the
- * connection until it finishes and another fiber cannot begin a transaction
- * underneath it. Effects that use the connection directly, such as an export,
- * have to run inside `Effect.scoped`.
+ * semaphore until that scope closes. The borrower holds the same semaphore
+ * until the statement finishes without creating a scope. Another fiber cannot
+ * begin a transaction underneath either. Effects that use the connection directly,
+ * such as an export, have to run inside `Effect.scoped`.
  *
  * SQLite can keep a transaction open after COMMIT fails, for example on a
  * deferred foreign key violation. `onCommitFailure` rolls it back before the
  * connection is reused. If that ROLLBACK fails, the connection is rejected, and
- * each acquisition retries the ROLLBACK once while holding the semaphore until
- * it succeeds. The database is never reopened, and transactions started with a
+ * each acquisition or borrow retries the ROLLBACK once while holding the semaphore
+ * until it succeeds. The database is never reopened, and transactions started with a
  * plain `BEGIN` are only touched after a failed cleanup.
  *
  * Pass `isTransaction` when the driver can report whether a transaction is
@@ -307,6 +307,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
   readonly isTransaction?: ((conn: C) => boolean) | undefined
 }): {
   readonly acquirer: Effect.Effect<C, SqlError, Scope.Scope>
+  readonly borrower: Connection.Borrower
   readonly transactionAcquirer: Effect.Effect<C, SqlError, Scope.Scope>
   readonly onCommitFailure: (conn: Connection.Connection) => Effect.Effect<void, SqlError>
 } => {
@@ -352,6 +353,7 @@ export const makeSqliteAcquirers = <C extends Connection.Connection>(options: {
 
   return {
     acquirer: lease,
+    borrower: (f) => semaphore.withPermit(Effect.flatMap(available, f)),
     transactionAcquirer: lease,
     onCommitFailure: (conn) => Effect.tapCause(rollback(conn as C), (cause) => Effect.sync(() => poison(cause)))
   }
