@@ -130,6 +130,25 @@ describe("FileSystem", { concurrent: false }, () => {
       Effect.provide(NodeFileSystem.layer)
     ))
 
+  it.effect("watch prefers the caller WatchBackend over the construction backend", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const callerEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-caller" }
+      const event = yield* fs.watch(root).pipe(
+        Stream.runHead,
+        Effect.provideService(FileSystem.WatchBackend, {
+          register: () => Option.some(Stream.make(callerEvent))
+        })
+      )
+      assert.deepStrictEqual(event, Option.some(callerEvent))
+    }).pipe(
+      Effect.provide(NodeFileSystem.layer),
+      Effect.provideService(FileSystem.WatchBackend, {
+        register: () => Option.some(Stream.make({ _tag: "Create" as const, path: "from-construction" }))
+      })
+    ))
+
   it.effect("watch reports nested changes when recursive is true", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem

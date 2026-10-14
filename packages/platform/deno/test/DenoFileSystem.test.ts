@@ -29,6 +29,25 @@ describe("stat", () => {
 })
 
 describe("watch", () => {
+  it.effect("prefers the caller WatchBackend over the construction backend", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const callerEvent: FileSystem.WatchEvent = { _tag: "Create", path: "from-caller" }
+      const event = yield* fs.watch(root).pipe(
+        Stream.runHead,
+        Effect.provideService(FileSystem.WatchBackend, {
+          register: () => Option.some(Stream.make(callerEvent))
+        })
+      )
+      assert.deepStrictEqual(event, Option.some(callerEvent))
+    }).pipe(
+      Effect.provide(DenoFileSystem.layer),
+      Effect.provideService(FileSystem.WatchBackend, {
+        register: () => Option.some(Stream.make({ _tag: "Create" as const, path: "from-construction" }))
+      })
+    ))
+
   it.live("uses a WatchBackend provided after the layer is built", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
