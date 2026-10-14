@@ -1,7 +1,7 @@
 import { assert, describe, it, vi } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Deferred, Duration, Effect, Fiber, Layer, Ref, Schedule, Schema, Stream } from "effect"
-import { Cookies, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
+import { Cookies, HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse, UrlParams } from "effect/http"
 import { RateLimiter } from "effect/persistence"
 import { TestClock } from "effect/testing"
 import * as Tracer from "effect/Tracer"
@@ -335,6 +335,18 @@ Missing key
         assert(clientSpan !== undefined)
         assert.strictEqual(clientSpan.attributes.get("url.full"), "http://REDACTED:REDACTED@test/path")
       }))
+  })
+
+  describe("HttpClientError", () => {
+    it.effect("redacts query params in messages using the current redacted names", () =>
+      Effect.gen(function*() {
+        const request = HttpClientRequest.get("http://test/path?token=token-secret&sig=sig-visible")
+        const error = new HttpClientError.HttpClientError({
+          reason: new HttpClientError.TransportError({ request })
+        })
+
+        strictEqual(error.message, "Transport error (GET http://test/path?token=REDACTED&sig=sig-visible)")
+      }).pipe(Effect.provideService(UrlParams.CurrentRedactedNames, ["token"])))
   })
 
   describe("followRedirects", () => {
