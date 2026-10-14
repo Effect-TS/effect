@@ -466,7 +466,7 @@ const consumeFlagValueWithTokens = (
       }
     }
 
-    const literal = asBooleanLiteral(cursor.peek())
+    const literal = spec.optionalValue === undefined ? asBooleanLiteral(cursor.peek()) : undefined
     if (literal !== undefined) {
       const literalToken = cursor.take()
       return {
