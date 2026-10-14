@@ -254,17 +254,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     return write
   }
 
-  // a notification gets no reply of any kind
-  const respond = (client: Client, request: Request<Rpcs>, exit: Exit.Exit<any, any>): Effect.Effect<void> =>
-    request.isNotification === true ? Effect.void : options.onFromServer({
-      _tag: "Exit",
-      clientId: client.id,
-      requestId: request.id,
-      exit
-    })
-
-  const constAckExit = Exit.void as Exit.Exit<any, any>
-
   const handleRequest = (
     requestFiber: Fiber.Fiber<any, any>,
     client: Client,
@@ -276,14 +265,21 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     }
     const isNotification = request.isNotification === true
     const isDiscard = !isNotification && request.discard === true
-    // set once a discarded call has been acknowledged, after which nothing
-    // else is sent for it
     let acknowledged = false
+    // a notification, or a discarded call once it has been acknowledged, gets
+    // no reply of any kind
+    const respond = (exit: Exit.Exit<any, any>): Effect.Effect<void> =>
+      isNotification || acknowledged ? Effect.void : options.onFromServer({
+        _tag: "Exit",
+        clientId: client.id,
+        requestId: request.id,
+        exit
+      })
     const rpc = group.requests.get(request.tag) as any as Rpc.AnyWithProps
     const entry = Context.getOrUndefinedUnsafe(services, rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
     if (!rpc || !entry) {
       const write = Effect.catchDefect(
-        respond(client, request, Exit.die(`Unknown request tag: ${request.tag}`)),
+        respond(Exit.die(`Unknown request tag: ${request.tag}`)),
         (defect) => sendDefect(client, defect)
       )
       if (!client.ended || client.fibers.size > 0) return write
@@ -298,15 +294,16 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       payload: request.payload
     }
     let handlerResult: ReturnType<typeof entry.handler>
+    // a handler that throws while being constructed never starts, so it is
+    // neither streamed nor acknowledged
     let constructionFailed = false
     try {
       handlerResult = entry.handler(request.payload, metadata)
     } catch (defect) {
-      // Route construction defects through per-request handling without
-      // acknowledging a handler that never started.
-      constructionFailed = true
       handlerResult = Effect.die(defect)
+      constructionFailed = true
     }
+    // a const, so that the narrowing below can be aliased
     const result = handlerResult
 
     // if the handler requested forking, then we skip the concurrency control
@@ -327,13 +324,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       // once the permit is held and the middleware has started the handler
       handler = Effect.andThen(
         Effect.suspend(() => {
+          const ack = respond(Exit.void)
           acknowledged = true
-          return options.onFromServer({
-            _tag: "Exit",
-            clientId: client.id,
-            requestId: request.id,
-            exit: constAckExit
-          })
+          return ack
         }),
         handler
       )
@@ -359,24 +352,22 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           deferred = exit.value
           write = Effect.void
         } else {
-          write = acknowledged ? Effect.void : respond(client, request, exit)
+          write = respond(exit)
         }
       } else if (writeFailure) {
         // onFromServer has already answered the client and reported the failure
         return Scope.closeUnsafe(scope, exit) ?? Effect.void
-      } else if (acknowledged) {
-        write = Effect.void
       } else if (
         !disableFatalDefects &&
+        // a notification or a discarded call only ever fails itself
         !isNotification &&
-        // a discarded call that fails before its acknowledgement only fails itself
         !isDiscard &&
         Cause.hasDies(exit.cause) &&
         !Cause.hasInterrupts(exit.cause)
       ) {
         write = sendDefect(client, Cause.squash(exit.cause))
       } else {
-        write = respond(client, request, exit)
+        write = respond(exit)
       }
       const close = Scope.closeUnsafe(scope, exit)
       if (exit._tag === "Failure") {
@@ -434,10 +425,11 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         const fiber = trackFiber(
           runFork(
             Effect.onExit(Deferred.await(deferred), (exit) => {
-              if (!acknowledged) return respond(client, request, exit)
-              // an acknowledged call has no reply to carry the failure
-              if (exit._tag === "Failure") reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
-              return Effect.void
+              // a failure with no reply to carry it is only reported
+              if (exit._tag === "Failure" && (isNotification || acknowledged)) {
+                reportCauseUnsafe(Fiber.getCurrent()!, exit.cause)
+              }
+              return respond(exit)
             })
           )
         )
@@ -447,7 +439,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         return
       }
       if (!responded && !isNotification && !acknowledged && exit._tag === "Failure") {
-        trackFiber(runFork(respond(client, request, Exit.interrupt())))
+        trackFiber(runFork(respond(Exit.interrupt())))
       }
       client.fibers.delete(request.id)
       client.latches?.delete(request.id)
@@ -468,9 +460,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
   ) => {
     // the chunks of a notification or a discarded call have no reader, so they
     // are neither sent nor acknowledged
-    const isNotification = request.isNotification === true || request.discard === true
+    const silent = request.isNotification === true || request.discard === true
     const writeChunk = (values: NonEmptyReadonlyArray<any>) =>
-      isNotification ? Effect.void : Effect.onError(
+      silent ? Effect.void : Effect.onError(
         options.onFromServer({ _tag: "Chunk", clientId: client.id, requestId: request.id, values }),
         (cause) => {
           if (!Cause.hasInterruptsOnly(cause)) onWriteFailure(cause)
@@ -478,7 +470,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         }
       )
     let latch: Latch.Latch | undefined
-    if (supportsAck && !isNotification) {
+    if (supportsAck && !silent) {
       client.latches ??= new Map()
       latch = client.latches.get(request.id)
       if (!latch) {

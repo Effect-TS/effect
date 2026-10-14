@@ -250,7 +250,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       options: {
         readonly message: FromClient<Rpcs>
         readonly context: Context.Context<never>
-        readonly discard: boolean
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
@@ -274,7 +273,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       options: {
         readonly message: FromClient<Rpcs>
         readonly context: Context.Context<never>
-        readonly discard: boolean
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
@@ -389,12 +387,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
       const id = generateRequestId()
       const send = middleware(
-        (message) =>
-          options.onFromClient({
-            message,
-            context,
-            discard
-          }),
+        (message) => options.onFromClient({ message, context }),
         {
           _tag: "Request",
           id,
@@ -425,12 +418,9 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
                 // Interrupting the send could cancel the call, as an HTTP
                 // handler is scoped to its request, so the call completes
                 // once the send has finished too.
-                const result = exit._tag === "Success" ? Exit.void : exit
-                if (fiber && !fiber.pollUnsafe()) {
-                  ack = result
-                  return
-                }
-                return resume(result)
+                ack = exit._tag === "Success" ? Exit.void : exit
+                if (fiber?.pollUnsafe()) resume(ack)
+                return
               }
               resume(exit)
               if (fiber && !fiber.pollUnsafe()) {
@@ -512,12 +502,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     })
 
     yield* middleware(
-      (message) =>
-        options.onFromClient({
-          message,
-          context,
-          discard: false
-        }),
+      (message) => options.onFromClient({ message, context }),
       {
         _tag: "Request",
         id,
@@ -586,8 +571,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       const parentFiber = Fiber.getCurrent()!
       const fiber = options.onFromClient({
         message: { _tag: "Interrupt", requestId, interruptors },
-        context,
-        discard: false
+        context
       }).pipe(
         Effect.timeout(1000),
         Effect.runForkWith(parentFiber.context)
@@ -608,8 +592,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             ? Effect.flatMap(() =>
               options.onFromClient({
                 message: { _tag: "Ack", requestId: message.requestId },
-                context: entry.context,
-                discard: false
+                context: entry.context
               })
             )
             : identity,
