@@ -98,6 +98,41 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
 const loadUndici = Effect.promise(() => import("./Undici.ts"))
 
 /**
+ * Acquires a new Undici `Agent` dispatcher configured with the supplied
+ * options and destroys it when the enclosing scope is finalized.
+ *
+ * **When to use**
+ *
+ * Use to control how the Undici client connects, for example to send every
+ * request over a unix domain socket or to present a client certificate.
+ *
+ * **Details**
+ *
+ * The options are passed to `new Agent(options)`. Connection settings live
+ * under `connect`:
+ *
+ * - `connect: { socketPath }` dials a unix domain socket (or a Windows named
+ *   pipe) instead of TCP. The request URL still supplies the `Host` header
+ *   and path, so any origin such as `http://localhost` works.
+ * - `connect: { ca, cert, key, servername, rejectUnauthorized }` configures
+ *   TLS for `https:` origins, including mutual TLS.
+ *
+ * `makeUndici` sets `headersTimeout` and `bodyTimeout` on every request, so
+ * timeouts given here are overridden. Use `Effect.timeout` instead.
+ *
+ * @stability unstable
+ * @category resource management
+ * @since 4.0.5
+ */
+export const makeDispatcherOptions = (
+  options?: Undici.Agent.Options | undefined
+): Effect.Effect<Undici.Dispatcher, never, Scope.Scope> =>
+  Effect.acquireRelease(
+    Effect.map(loadUndici, (_) => new _.Agent(options)),
+    (dispatcher) => Effect.promise(() => dispatcher.destroy())
+  )
+
+/**
  * Acquires a new Undici `Agent` dispatcher and destroys it when the enclosing
  * scope is finalized.
  *
@@ -105,9 +140,23 @@ const loadUndici = Effect.promise(() => import("./Undici.ts"))
  * @category resource management
  * @since 4.0.0
  */
-export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = Effect.acquireRelease(
-  Effect.map(loadUndici, (_) => new _.Agent()),
-  (dispatcher) => Effect.promise(() => dispatcher.destroy())
+export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = makeDispatcherOptions()
+
+/**
+ * Provides the `Dispatcher` service using a scoped Undici `Agent` configured
+ * with the supplied options.
+ *
+ * **Details**
+ *
+ * See `makeDispatcherOptions` for the unix socket and TLS settings.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerDispatcherOptions: (options?: Undici.Agent.Options | undefined) => Layer.Layer<Dispatcher> = flow(
+  makeDispatcherOptions,
+  Layer.effect(Dispatcher)
 )
 
 /**
@@ -117,7 +166,7 @@ export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope
  * @category layers
  * @since 4.0.0
  */
-export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)(makeDispatcher)
+export const layerDispatcher: Layer.Layer<Dispatcher> = layerDispatcherOptions()
 
 /**
  * Provides the `Dispatcher` service from Undici's process-global dispatcher,
@@ -380,6 +429,27 @@ export const layerUndiciNoDispatcher: Layer.Layer<
  */
 export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUndiciNoDispatcher, layerDispatcher)
 
+/**
+ * Provides an Undici-backed `HttpClient` together with a scoped Undici
+ * `Agent` dispatcher configured with the supplied options.
+ *
+ * **When to use**
+ *
+ * Use to send every request over a unix domain socket with
+ * `{ connect: { socketPath } }`, or over TLS with a custom CA and client
+ * certificate with `{ connect: { ca, cert, key, servername, rejectUnauthorized } }`.
+ *
+ * **Details**
+ *
+ * See `makeDispatcherOptions` for how the options are applied.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerUndiciOptions = (options?: Undici.Agent.Options | undefined): Layer.Layer<Client.HttpClient> =>
+  Layer.provide(layerUndiciNoDispatcher, layerDispatcherOptions(options))
+
 // -----------------------------------------------------------------------------
 // node:http
 // -----------------------------------------------------------------------------
@@ -398,6 +468,33 @@ export class HttpAgent extends Context.Service<HttpAgent, {
 }>()("@effect/platform-node/NodeHttpClient/HttpAgent") {}
 
 /**
+ * Options for the Node `http` and `https` agents created by `makeAgent`.
+ *
+ * **Details**
+ *
+ * Extends `https.AgentOptions` with `socketPath`. Node agents merge their
+ * options into every request they create, so:
+ *
+ * - `socketPath` dials a unix domain socket (or a Windows named pipe) instead
+ *   of TCP. The request URL still supplies the `Host` header and path.
+ * - `ca`, `cert`, `key`, `servername` and `rejectUnauthorized` configure TLS
+ *   for `https:` URLs, including mutual TLS.
+ *
+ * Both agents receive the same options.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface HttpAgentOptions extends Https.AgentOptions {
+  /**
+   * Path of a unix domain socket or Windows named pipe to connect through
+   * instead of TCP.
+   */
+  readonly socketPath?: string | undefined
+}
+
+/**
  * Acquires Node `http` and `https` agents with the supplied options and
  * destroys both agents when the enclosing scope is finalized.
  *
@@ -405,7 +502,7 @@ export class HttpAgent extends Context.Service<HttpAgent, {
  * @category resource management
  * @since 4.0.0
  */
-export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
+export const makeAgent = (options?: HttpAgentOptions): Effect.Effect<HttpAgent["Service"], never, Scope.Scope> =>
   Effect.zipWith(
     Effect.acquireRelease(
       Effect.sync(() => new Http.Agent(options)),
@@ -426,7 +523,7 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<HttpAgent
  * @category layers
  * @since 4.0.0
  */
-export const layerAgentOptions: (options?: Https.AgentOptions | undefined) => Layer.Layer<
+export const layerAgentOptions: (options?: HttpAgentOptions | undefined) => Layer.Layer<
   HttpAgent
 > = flow(makeAgent, Layer.effect(HttpAgent))
 
@@ -684,3 +781,24 @@ export const layerNodeHttpNoAgent: Layer.Layer<
  * @since 4.0.0
  */
 export const layerNodeHttp: Layer.Layer<Client.HttpClient> = Layer.provide(layerNodeHttpNoAgent, layerAgent)
+
+/**
+ * Provides a node:http-backed `HttpClient` together with scoped Node `http`
+ * and `https` agents configured with the supplied options.
+ *
+ * **When to use**
+ *
+ * Use to send every request over a unix domain socket with `{ socketPath }`,
+ * or over TLS with a custom CA and client certificate with
+ * `{ ca, cert, key, servername, rejectUnauthorized }`.
+ *
+ * **Details**
+ *
+ * See `HttpAgentOptions` for how the options are applied.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layerNodeHttpOptions = (options?: HttpAgentOptions | undefined): Layer.Layer<Client.HttpClient> =>
+  Layer.provide(layerNodeHttpNoAgent, layerAgentOptions(options))
