@@ -110,6 +110,14 @@ describe("Tar", () => {
         ])
       }))
 
+    it.effect("round trips more small entries than fit in one output chunk", () =>
+      Effect.gen(function*() {
+        // Bodies of varying size, so that output chunks end inside a body
+        const bodies = Array.from({ length: 300 }, (_, i) => String(i % 10).repeat((i * 37) % 1500))
+        const output = yield* decode(yield* encode(bodies.map((body, i) => Tar.file(`f${i}`, body))))
+        assert.deepStrictEqual(output.map((entry) => text(entry.body)), bodies)
+      }))
+
     it.effect("fails on entries that cannot be written", () =>
       Effect.gen(function*() {
         const short = Tar.fileStream("f", 5, Stream.make(textEncoder.encode("abc")))

@@ -1280,7 +1280,9 @@ class Encoder {
       throw sizeMismatch(header, this.written)
     }
     if (chunk.length < COPY_LIMIT) {
-      this.slab.set(chunk, this.reserve(chunk.length))
+      // `reserve` can start a new slab, so it must run before `slab` is read
+      const offset = this.reserve(chunk.length)
+      this.slab.set(chunk, offset)
       return
     }
     this.cut()
