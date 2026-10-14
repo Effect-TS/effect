@@ -1191,10 +1191,14 @@ describe("McpServer", () => {
         dependencies: [McpSchema.McpRequestContext, RegistrationLabel]
       }))
 
-      // Registration captures application services, but each invocation owns its request identity.
-      // This contract belongs to the public server helpers rather than wire conformance.
+      // Registration captures application services, but each invocation owns its request identity
+      // and request-level services. This contract belongs to the public server helpers rather than
+      // wire conformance.
       const makeRegisteredServer = Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
+        const ProvideLabel = McpServer.middleware<{ provides: RegistrationLabel }>()((effect) =>
+          Effect.provideService(effect, RegistrationLabel, "middleware")
+        )
         yield* server.addTool({
           tool: new McpSchema.Tool({ name: "register", inputSchema: { type: "object" } }),
           annotations: Context.empty(),
@@ -1217,6 +1221,7 @@ describe("McpServer", () => {
               )
               return new McpSchema.CallToolResult({ content: [] })
             }).pipe(
+              Effect.provide(ProvideLabel.layer),
               Effect.provideService(McpServer.McpServer, server),
               Effect.provideService(RegistrationLabel, "registered")
             )
@@ -1225,7 +1230,7 @@ describe("McpServer", () => {
         return server
       })
 
-      const expectedOwner = "registered:2:Bob:Bob"
+      const expectedOwner = "middleware:2:Bob:Bob"
 
       it.effect("should use the current request when a resource was registered by another client", () =>
         Effect.gen(function*() {
