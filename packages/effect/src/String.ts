@@ -1081,11 +1081,9 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  *
  * **Details**
  *
- * Returns an empty string for empty input or an even-length run of underscores.
- * Otherwise, preserves the first character and consumes each subsequent underscore
- * with the next character, uppercasing that character. An unmatched trailing
- * underscore is dropped; odd-length underscore-only input retains one underscore
- * plus one for each pair after the first.
+ * Keeps the first character, then replaces each later underscore and the
+ * character after it with that character uppercased. A trailing underscore is
+ * dropped. Input made only of an even number of underscores returns `""`.
  *
  * **Example** (Converting snake_case to camelCase)
  *
@@ -1114,11 +1112,9 @@ export const snakeToCamel = (self: string): string => {
  *
  * **Details**
  *
- * Returns an empty string for empty input or an even-length run of underscores.
- * Otherwise, uppercases the first character and consumes each subsequent underscore
- * with the next character, uppercasing that character. An unmatched trailing
- * underscore is dropped; odd-length underscore-only input retains one underscore
- * plus one for each pair after the first.
+ * Uppercases the first character, then replaces each later underscore and the
+ * character after it with that character uppercased. A trailing underscore is
+ * dropped. Input made only of an even number of underscores returns `""`.
  *
  * **Example** (Converting snake_case to PascalCase)
  *
