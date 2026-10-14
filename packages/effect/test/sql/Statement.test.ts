@@ -20,11 +20,16 @@ describe("Statement", () => {
   })
 
   it("keeps previously distinct SQL column names distinct", () => {
+    const rows: Array<Record<string, unknown>> = [
+      { _id: 1, id: 2, foo__bar: 3, foo_bar: 4, _: 5, ___: 6 }
+    ]
     assert.deepStrictEqual(
-      Statement.defaultTransforms(Str.snakeToCamel).array<Record<string, unknown>>([
-        { _id: 1, id: 2, foo__bar: 3, foo_bar: 4 }
-      ]),
-      [{ _id: 1, id: 2, foo_bar: 3, fooBar: 4 }]
+      Statement.defaultTransforms(Str.snakeToCamel).array(rows),
+      [{ _id: 1, id: 2, foo_bar: 3, fooBar: 4, _: 5, __: 6 }]
+    )
+    assert.deepStrictEqual(
+      Statement.defaultTransforms(Str.snakeToPascal).array(rows),
+      [{ _id: 1, Id: 2, Foo_bar: 3, FooBar: 4, _: 5, __: 6 }]
     )
   })
 
