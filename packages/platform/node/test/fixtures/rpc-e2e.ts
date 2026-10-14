@@ -45,6 +45,14 @@ export const e2eSuite = <E>(
         assert.deepStrictEqual(user, new User({ id: "1", name: "John" }))
       }).pipe(Effect.provide(layer)))
 
+    it.effect("completes a discarded call and keeps serving requests", () =>
+      Effect.gen(function*() {
+        const client = yield* UsersClient
+        assert.isUndefined(yield* client.GetUser({ id: "1" }, { discard: true }))
+        const user = yield* client.GetUser({ id: "1" })
+        assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
+      }).pipe(Effect.provide(layer)))
+
     it.effect("nested method", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient

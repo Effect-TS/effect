@@ -62,7 +62,8 @@ export const RequestId = (id: string | number): RequestId => id as RequestId
  * **Details**
  *
  * Requests flow in both directions: servers use them for server-originated
- * requests and, with `isNotification` set, for server notifications.
+ * requests, and either side sets `isNotification` on a request that gets no
+ * reply, such as a server notification or a client call made with `discard`.
  *
  * @stability unstable
  * @category models
@@ -94,6 +95,7 @@ export interface Request<A extends Rpc.Any> {
   readonly tag: Rpc.Tag<A>
   readonly payload: Rpc.Payload<A>
   readonly headers: Headers
+  readonly isNotification?: true
   readonly traceId?: string
   readonly spanId?: string
   readonly sampled?: boolean

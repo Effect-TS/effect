@@ -88,6 +88,9 @@ export interface RpcServer<A extends Rpc.Any> {
  * the request fails with that cause. `onFromServer` is assumed to have already
  * answered the client and reported it, so nothing else is sent or reported.
  *
+ * A request with `isNotification` set runs like any other, but no `Exit`,
+ * `Chunk` or `Defect` is sent for it. Its failures are still reported.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -245,6 +248,15 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     return write
   }
 
+  // a notification gets no reply of any kind
+  const respond = (client: Client, request: Request<Rpcs>, exit: Exit.Exit<any, any>): Effect.Effect<void> =>
+    request.isNotification === true ? Effect.void : options.onFromServer({
+      _tag: "Exit",
+      clientId: client.id,
+      requestId: request.id,
+      exit
+    })
+
   const handleRequest = (
     requestFiber: Fiber.Fiber<any, any>,
     client: Client,
@@ -254,16 +266,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     if (client.fibers.has(request.id)) {
       return Effect.interrupt
     }
+    const isNotification = request.isNotification === true
     const rpc = group.requests.get(request.tag) as any as Rpc.AnyWithProps
     const entry = Context.getOrUndefinedUnsafe(services, rpc?.key) as Rpc.Handler<Rpcs["_tag"]>
     if (!rpc || !entry) {
       const write = Effect.catchDefect(
-        options.onFromServer({
-          _tag: "Exit",
-          clientId: client.id,
-          requestId: request.id,
-          exit: Exit.die(`Unknown request tag: ${request.tag}`)
-        }),
+        respond(client, request, Exit.die(`Unknown request tag: ${request.tag}`)),
         (defect) => sendDefect(client, defect)
       )
       if (!client.ended || client.fibers.size > 0) return write
@@ -313,29 +321,20 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           deferred = exit.value
           write = Effect.void
         } else {
-          write = options.onFromServer({
-            _tag: "Exit",
-            clientId: client.id,
-            requestId: request.id,
-            exit: exit as any
-          })
+          write = respond(client, request, exit)
         }
       } else if (writeFailure) {
         // onFromServer has already answered the client and reported the failure
         return Scope.closeUnsafe(scope, exit) ?? Effect.void
       } else if (
         !disableFatalDefects &&
+        !isNotification &&
         Cause.hasDies(exit.cause) &&
         !Cause.hasInterrupts(exit.cause)
       ) {
         write = sendDefect(client, Cause.squash(exit.cause))
       } else {
-        write = options.onFromServer({
-          _tag: "Exit",
-          clientId: client.id,
-          requestId: request.id,
-          exit: exit as any
-        })
+        write = respond(client, request, exit)
       }
       const close = Scope.closeUnsafe(scope, exit)
       if (exit._tag === "Failure") {
@@ -390,29 +389,16 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
     )
     fiber.addObserver(function onExit(exit: Exit.Exit<any, any>): void {
       if (deferred) {
-        const fiber = trackFiber(runFork(Effect.onExit(Deferred.await(deferred), (exit) =>
-          options.onFromServer({
-            _tag: "Exit",
-            clientId: client.id,
-            requestId: request.id,
-            exit: exit as any
-          }))))
+        const fiber = trackFiber(
+          runFork(Effect.onExit(Deferred.await(deferred), (exit) => respond(client, request, exit)))
+        )
         client.fibers.set(request.id, fiber)
         deferred = undefined
         fiber.addObserver(onExit)
         return
       }
-      if (!responded && exit._tag === "Failure") {
-        trackFiber(
-          runFork(
-            options.onFromServer({
-              _tag: "Exit",
-              clientId: client.id,
-              requestId: request.id,
-              exit: Exit.interrupt()
-            })
-          )
-        )
+      if (!responded && !isNotification && exit._tag === "Failure") {
+        trackFiber(runFork(respond(client, request, Exit.interrupt())))
       }
       client.fibers.delete(request.id)
       client.latches?.delete(request.id)
@@ -431,8 +417,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
       | Effect.Effect<Queue.Dequeue<any, any>, any, Scope.Scope>,
     onWriteFailure: (cause: Cause.Cause<never>) => void
   ) => {
+    // a notification's chunks have no reader, so they are neither sent nor acknowledged
+    const isNotification = request.isNotification === true
     const writeChunk = (values: NonEmptyReadonlyArray<any>) =>
-      Effect.onError(
+      isNotification ? Effect.void : Effect.onError(
         options.onFromServer({ _tag: "Chunk", clientId: client.id, requestId: request.id, values }),
         (cause) => {
           if (!Cause.hasInterruptsOnly(cause)) onWriteFailure(cause)
@@ -440,7 +428,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
         }
       )
     let latch: Latch.Latch | undefined
-    if (supportsAck) {
+    if (supportsAck && !isNotification) {
       client.latches ??= new Map()
       latch = client.latches.get(request.id)
       if (!latch) {
@@ -806,6 +794,13 @@ export const make: <Rpcs extends Rpc.Any>(
         })
     )
 
+  // a notification has no reply to carry the error, so it is only logged
+  const dropNotification = (reason: string) =>
+    Effect.annotateLogs(Effect.logDebug(`Dropped RPC notification: ${reason}`), {
+      module: "RpcServer",
+      method: "dropNotification"
+    })
+
   const writeDecodedRequest = (
     client: Client,
     requestId: RequestId,
@@ -813,15 +808,18 @@ export const make: <Rpcs extends Rpc.Any>(
     request: RequestEncoded,
     payload: unknown
   ) => {
-    client.schemas.set(
-      requestId,
-      supportsTransferables
-        ? {
-          ...schemas,
-          collector: Transferable.makeCollectorUnsafe()
-        }
-        : schemas
-    )
+    // nothing is encoded for a notification, and only a reply would remove its schemas
+    if (request.isNotification !== true) {
+      client.schemas.set(
+        requestId,
+        supportsTransferables
+          ? {
+            ...schemas,
+            collector: Transferable.makeCollectorUnsafe()
+          }
+          : schemas
+      )
+    }
     // the envelope is owned by this protocol loop, so it is decoded in place
     // instead of copied for every request
     const decoded = request as Types.Mutable<RequestEncoded>
@@ -830,6 +828,8 @@ export const make: <Rpcs extends Rpc.Any>(
     decoded.headers = Headers.fromInput(request.headers) as any
     return server.write(client.id, decoded as any)
   }
+
+  let notificationCount = 0
 
   // main server loop
   return yield* run((clientId, request) => {
@@ -845,20 +845,29 @@ export const make: <Rpcs extends Rpc.Any>(
     switch (request._tag) {
       case "Request": {
         const tag = Object.hasOwn(request, "tag") ? (request.tag as string) : ""
+        const isNotification = request.isNotification === true
         let requestId: RequestId
-        switch (typeof request.id) {
-          case "number":
-          case "string": {
-            requestId = RequestId(request.id)
-            break
-          }
-          default: {
-            return sendDefect(client, `Invalid request id: ${request.id}`)
+        if (isNotification) {
+          // JSON-RPC notifications share an empty id, and no reply ever names one
+          requestId = RequestId(`@effect/rpc/notification/${notificationCount++}`)
+        } else {
+          switch (typeof request.id) {
+            case "number":
+            case "string": {
+              requestId = RequestId(request.id)
+              break
+            }
+            default: {
+              return sendDefect(client, `Invalid request id: ${request.id}`)
+            }
           }
         }
         const rpc = group.requests.get(tag)
         if (!rpc) {
-          return sendRequestDefect(client, requestId, encodeUnknownRequestExit, `Unknown request tag: ${tag}`)
+          const reason = `Unknown request tag: ${tag}`
+          return isNotification
+            ? dropNotification(reason)
+            : sendRequestDefect(client, requestId, encodeUnknownRequestExit, reason)
         }
         const schemas = getSchemas(rpc as any)
         const decoded = schemas.decode(request.payload)
@@ -871,8 +880,12 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provideContext(decoded, schemas.context),
           {
-            onFailure: (error) =>
-              sendRequestDefect(client, requestId, schemas.encodeExit, SchemaIssue.defaultFormatter(error.issue)),
+            onFailure: (error) => {
+              const reason = SchemaIssue.defaultFormatter(error.issue)
+              return isNotification
+                ? dropNotification(reason)
+                : sendRequestDefect(client, requestId, schemas.encodeExit, reason)
+            },
             onSuccess: (payload) => writeDecodedRequest(client, requestId, schemas, request, payload)
           }
         )

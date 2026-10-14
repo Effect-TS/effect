@@ -99,6 +99,14 @@ export declare namespace RpcClient {
         {
           readonly headers?: Headers.Input | undefined
           readonly context?: Context.Context<never> | undefined
+          /**
+           * Does not wait for or return the handler's result. The caller sees
+           * neither its success nor its error, but transport and middleware errors
+           * still fail the call. A client made with `RpcClient.make` sends the
+           * request as a notification, which gets no reply, except over workers.
+           * When the call returns depends on the protocol: over HTTP and workers,
+           * after the handler has finished.
+           */
           readonly discard?: Discard | undefined
         }
     ) => Current extends Rpc.Rpc<
@@ -166,6 +174,14 @@ export declare namespace RpcClient {
       {
         readonly headers?: Headers.Input | undefined
         readonly context?: Context.Context<never> | undefined
+        /**
+         * Does not wait for or return the handler's result. The caller sees
+         * neither its success nor its error, but transport and middleware errors
+         * still fail the call. A client made with `RpcClient.make` sends the
+         * request as a notification, which gets no reply, except over workers.
+         * When the call returns depends on the protocol: over HTTP and workers,
+         * after the handler has finished.
+         */
         readonly discard?: Discard | undefined
       }
   ) => Rpcs extends Rpc.Rpc<
@@ -684,7 +700,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
   const { client, write } = yield* makeNoSerialization(group, {
     ...options,
     supportsAck,
-    onFromClient({ message }) {
+    onFromClient({ message, discard }) {
       switch (message._tag) {
         case "Request": {
           const rpc = group.requests.get(message.tag)! as any as Rpc.AnyWithProps
@@ -697,19 +713,27 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
             context: collector ? Context.add(fiber.context, Transferable.Collector, collector) : fiber.context,
             schemas: rpcSchemas(rpc)
           }
-          entries.set(message.id, entry)
+          // a discarded call is sent as a notification, so no reply will look its entry up
+          if (!discard) {
+            entries.set(message.id, entry)
+          }
 
           return entry.schemas.encodePayload(message.payload).pipe(
             Effect.provideContext(entry.context),
             Effect.orDie,
-            Effect.flatMap((payload) =>
-              send(clientId, {
+            Effect.flatMap((payload) => {
+              const request = {
                 ...message,
                 id: message.id,
                 payload,
                 headers: Object.entries(message.headers)
-              }, collector && collector.readUnsafe())
-            )
+              }
+              return send(
+                clientId,
+                discard ? { ...request, isNotification: true as const } : request,
+                collector && collector.readUnsafe()
+              )
+            })
           ) as Effect.Effect<void, RpcClientError>
         }
         case "Ack": {
@@ -939,17 +963,17 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
 
       const response = yield* client.post("", { body }).pipe(Effect.mapError(httpClientError))
 
+      // a notification gets no reply, so its response may hold nothing for it
+      const isNotification = request.isNotification === true
       if (!isFramed) {
         const text = yield* response.text.pipe(Effect.mapError(httpClientError))
-        const responses = yield* Effect.try({
+        // the JSON-RPC parser cannot decode the empty body sent for a lone notification
+        const responses = isNotification && text === "" ? [] : yield* Effect.try({
           try: () => parser.decode(text),
           catch: (cause) => protocolDefect("Error decoding HTTP response", cause)
         })
         if (!Array.isArray(responses)) {
           return yield* protocolDefect("Expected an array of responses", responses)
-        }
-        if (responses.length === 0) {
-          return yield* emptyResponseError(request)
         }
         let completed = false
         for (let i = 0; i < responses.length; i++) {
@@ -959,7 +983,11 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
           }
           yield* writeResponse(clientId, response)
         }
-        if (!completed) {
+        if (isNotification) {
+          return
+        } else if (responses.length === 0) {
+          return yield* emptyResponseError(request)
+        } else if (!completed) {
           return yield* incompleteResponseError(request)
         }
         return
@@ -991,7 +1019,9 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
         )).pipe(
           Effect.mapError((cause) => isRpcClientError(cause) ? cause : httpClientError(cause))
         )
-      if (!hasResponse) {
+      if (isNotification) {
+        return
+      } else if (!hasResponse) {
         return yield* emptyResponseError(request)
       } else if (!completed) {
         return yield* incompleteResponseError(request)
@@ -1207,7 +1237,8 @@ export const makeProtocolSocket = (options?: {
         if (currentError) {
           return Effect.fail(currentError)
         }
-        if (request._tag === "Request") {
+        // a notification's id never comes back, so it is not mapped to its client
+        if (request._tag === "Request" && request.isNotification !== true) {
           requestClientMap.set(request.id, clientId)
         }
         const encoded = parser.encode(request)
@@ -1435,7 +1466,14 @@ export const makeProtocolWorker = (
             Effect.flatMap((worker) => {
               const latch = Latch.makeUnsafe(false)
               entries.set(request.id, { clientId, worker, latch })
-              return Effect.flatMap(worker.send(request, transferables), () => latch.await)
+              // the pool counts a worker as busy until the Exit arrives, so a
+              // discarded call is still sent as a request that gets one
+              let message = request
+              if (request.isNotification === true) {
+                const { isNotification: _, ...rest } = request
+                message = rest
+              }
+              return Effect.flatMap(worker.send(message, transferables), () => latch.await)
             }),
             Effect.scoped,
             Effect.orDie
