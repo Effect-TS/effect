@@ -159,6 +159,10 @@ export interface EntryOptions {
   readonly pax?: Readonly<Record<string, string>> | undefined
 }
 
+// -----------------------------------------------------------------------------
+// Constructors
+// -----------------------------------------------------------------------------
+
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 
@@ -289,6 +293,10 @@ export const hardlink = (path: string, target: string, options?: EntryOptions): 
   body: Stream.empty
 })
 
+// -----------------------------------------------------------------------------
+// Format
+// -----------------------------------------------------------------------------
+
 const BLOCK = 512
 const MAX_OCTAL_7 = 0o7777777 // 8-byte numeric fields
 const MAX_OCTAL_11 = 0o77777777777 // 12-byte numeric fields
@@ -349,6 +357,10 @@ const isAscii = (s: string): boolean => {
   }
   return true
 }
+
+// -----------------------------------------------------------------------------
+// Header decoding
+// -----------------------------------------------------------------------------
 
 const readString = (block: Uint8Array, offset: number, length: number): string => {
   let end = offset
@@ -459,6 +471,10 @@ const parseHeader = (block: Uint8Array): RawHeader => {
   return header
 }
 
+// -----------------------------------------------------------------------------
+// PAX records
+// -----------------------------------------------------------------------------
+
 const paxStringKeys = new Set(["path", "linkpath", "uname", "gname"])
 const paxHeaderKeys = new Set(["path", "linkpath", "size", "uid", "gid", "uname", "gname", "mtime"])
 
@@ -543,6 +559,10 @@ const applyPax = (header: RawHeader, records: Record<string, string>): Record<st
   }
   return rest
 }
+
+// -----------------------------------------------------------------------------
+// Decoding
+// -----------------------------------------------------------------------------
 
 // A queue of byte chunks that hands out views without copying where possible
 class ByteQueue {
@@ -800,6 +820,10 @@ const makeDecoder = <IE, Done>(upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<Uin
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// Encoding
+// -----------------------------------------------------------------------------
 
 const writeString = (block: Uint8Array, offset: number, length: number, value: string): void => {
   const n = Math.min(value.length, length)
