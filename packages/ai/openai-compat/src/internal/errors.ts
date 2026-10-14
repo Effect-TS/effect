@@ -230,7 +230,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
     case 400:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 401:
@@ -250,14 +250,14 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
     case 404:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 409:
     case 422:
       return new AiError.InvalidRequestError({
         description: errorDescription,
-        metadata: { openai: metadata },
+        metadata: { "openai-compat": metadata },
         http
       })
     case 429: {
@@ -268,7 +268,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
         metadata.errorType?.includes("exhausted")
       ) {
         return new AiError.QuotaExhaustedError({
-          metadata: { openai: metadata },
+          metadata: { "openai-compat": metadata },
           http
         })
       }
@@ -276,7 +276,7 @@ export const mapStatusCodeToReason = ({ status, headers, message, metadata, http
       return new AiError.RateLimitError({
         retryAfter,
         metadata: {
-          openai: {
+          "openai-compat": {
             ...metadata,
             ...rateLimitMetadata
           }

@@ -2711,6 +2711,7 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
     OpenAiClient.OpenAiClient,
     OpenAiClient.OpenAiClient.of({
       client: undefined as any,
+      createDecisions: () => Effect.die(new Error("unexpected createDecisions call")),
       createResponse: () => Effect.die(new Error("unexpected createResponse call")),
       createResponseStream: () => Effect.succeed([response, Stream.fromIterable(events)]),
       createEmbedding: () => Effect.die(new Error("unexpected createEmbedding call"))

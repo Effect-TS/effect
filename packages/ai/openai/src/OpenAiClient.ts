@@ -90,6 +90,13 @@ export interface Service {
   readonly createEmbedding: (
     options: typeof OpenAiSchema.CreateEmbeddingRequest.Encoded
   ) => Effect.Effect<typeof OpenAiSchema.CreateEmbeddingResponse.Type, AiError.AiError>
+
+  /**
+   * Answer decision questions using the OpenAI decisions endpoint.
+   */
+  readonly createDecisions: (
+    options: typeof OpenAiSchema.CreateDecisionsRequest.Encoded
+  ) => Effect.Effect<typeof OpenAiSchema.CreateDecisionsResponse.Type, AiError.AiError>
 }
 
 // =============================================================================
@@ -315,31 +322,47 @@ export const make = Effect.fnUntraced(
         )
       })
 
-    const decodeEmbedding = HttpClientResponse.schemaBodyJson(OpenAiSchema.CreateEmbeddingResponse)
+    const postJson = <Response extends Schema.Decoder<unknown>>(
+      path: string,
+      schema: Response,
+      method: string
+    ) => {
+      const decode = HttpClientResponse.schemaBodyJson(schema)
+      return (payload: unknown): Effect.Effect<Response["Type"], AiError.AiError> =>
+        resolveHttpClient.pipe(
+          Effect.flatMap((client) =>
+            client.execute(HttpClientRequest.post(path, {
+              body: HttpBody.jsonUnsafe(payload)
+            })).pipe(
+              Effect.flatMap(decode),
+              Effect.catchTags({
+                HttpClientError: (error) => Errors.mapHttpClientError(error, method),
+                SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, method))
+              })
+            )
+          ),
+          withRedactedHeaders
+        )
+    }
 
-    const createEmbedding = (
-      payload: typeof OpenAiSchema.CreateEmbeddingRequest.Encoded
-    ): Effect.Effect<typeof OpenAiSchema.CreateEmbeddingResponse.Type, AiError.AiError> =>
-      resolveHttpClient.pipe(
-        Effect.flatMap((client) =>
-          client.execute(HttpClientRequest.post("/embeddings", {
-            body: HttpBody.jsonUnsafe(payload)
-          })).pipe(
-            Effect.flatMap(decodeEmbedding),
-            Effect.catchTags({
-              HttpClientError: (error) => Errors.mapHttpClientError(error, "createEmbedding"),
-              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createEmbedding"))
-            })
-          )
-        ),
-        withRedactedHeaders
-      )
+    const createEmbedding: Service["createEmbedding"] = postJson(
+      "/embeddings",
+      OpenAiSchema.CreateEmbeddingResponse,
+      "createEmbedding"
+    )
+
+    const createDecisions: Service["createDecisions"] = postJson(
+      "/decisions",
+      OpenAiSchema.CreateDecisionsResponse,
+      "createDecisions"
+    )
 
     return OpenAiClient.of({
       client: httpClient,
       createResponse,
       createResponseStream,
-      createEmbedding
+      createEmbedding,
+      createDecisions
     })
   },
   withRedactedHeaders
