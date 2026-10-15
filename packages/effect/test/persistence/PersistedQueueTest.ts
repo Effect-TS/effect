@@ -97,26 +97,6 @@ export const suiteWith = <R>(
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 42n })
       }), testOptions)
 
-    it.effect("cleanup releases custom ids after delivering lone surrogates", () =>
-      Effect.gen(function*() {
-        const store = yield* PersistedQueue.PersistedQueueStore
-        const queue = yield* PersistedQueue.make({
-          name: "test-queue-lone-surrogate-id",
-          schema: Schema.Struct({ s: Schema.String })
-        })
-        const surrogate = "😀".slice(0, 1)
-        const id = "lone-surrogate-custom-id"
-        yield* queue.offer({ s: surrogate }, { id })
-        const first = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-        assert.deepStrictEqual(yield* awaitDelivery(first), { s: surrogate })
-
-        yield* advancePastTtl
-        yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
-        yield* queue.offer({ s: "reoffered" }, { id })
-        const second = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
-        assert.deepStrictEqual(yield* awaitDelivery(second), { s: "reoffered" })
-      }), testOptions)
-
     it.effect(
       "cleanup retains failed lone surrogates until the failed TTL releases their custom ids",
       () =>

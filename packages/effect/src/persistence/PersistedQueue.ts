@@ -898,7 +898,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   return PersistedQueueStore.of({
     offer: ({ delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
-      // Match Redis UTF-8 encoding; Unicode mode leaves valid surrogate pairs intact.
+      // replace lone surrogates like Redis' UTF-8 encoding does, so the id in
+      // the payload matches the id keys
       id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
       const payload = JSON.stringify({ id, element })
       const send = Effect.suspend(() => {
@@ -1233,10 +1234,8 @@ redis.call("ZADD", key_ids, "XX", "+inf", id)
   }
 )
 
-// Both queued and failed records start with {"id":...}.
-// Decode only the id: Redis cjson rejects lone UTF-16 surrogates in the
-// element, even though JSON.stringify / JSON.parse preserve them. Keep the
-// existing wire format so already queued, delayed and pending records work.
+// Every record starts with {"id":"...". Decode only the id, since Redis cjson
+// rejects lone UTF-16 surrogates that JSON.stringify can emit in the element.
 const queueRecordIdRedis = `
 local function record_id(payload)
   assert(string.sub(payload, 1, 7) == '{"id":"', "Invalid queue record id")
@@ -1297,8 +1296,7 @@ if #payloads == 0 then
   return nil
 end
 
--- Validate all metadata before removing anything: Redis script errors do not
--- roll back writes, so even an invalid record must not discard this batch.
+-- read every id before removing the batch, as script errors do not roll back
 local ids = {}
 for i, payload in ipairs(payloads) do
   ids[i] = record_id(payload)
@@ -1306,8 +1304,8 @@ end
 redis.call("LTRIM", key_queue, #payloads, -1)
 
 local result = {}
-for i, payload in ipairs(payloads) do
-  local id = ids[i]
+for i, id in ipairs(ids) do
+  local payload = payloads[i]
   local key_lock = prefix .. id .. ":lock"
   redis.call("SET", key_lock, worker_id, "PX", pttl)
   redis.call("HSET", key_pending, id, payload)
@@ -1353,17 +1351,13 @@ while removed < ${trimFailedBatchSize} do
   if not head then break end
   local ok, id = pcall(record_id, head)
   if ok then
-    -- failedAt is appended after the opaque element and failure description.
+    -- failedAt is always the last field of a failed record
     local failed_at = tonumber(string.match(head, ',"failedAt":([^,}]+)%}$'))
     if failed_at ~= nil and failed_at >= cutoff then break end
-    redis.call("LPOP", key_failed)
-    if id ~= nil then
-      redis.call("ZREM", key_ids, id)
-    end
-  else
-    -- a corrupt head would otherwise block trimming of the whole list
-    redis.call("LPOP", key_failed)
+    redis.call("ZREM", key_ids, id)
   end
+  -- a corrupt head would otherwise block trimming of the whole list
+  redis.call("LPOP", key_failed)
   removed = removed + 1
 end
 
