@@ -1048,10 +1048,11 @@ export const withCompensation: {
       compensationRegistrations.set(instance.scope, registrations)
       // A replay of the same step replaces its compensation in place. Steps
       // not yet replayed keep theirs, preserving the reverse cleanup order.
-      if (!registrations.has(key)) {
+      const isNew = !registrations.has(key)
+      registrations.set(key, finalizer)
+      if (isNew) {
         yield* Scope.addFinalizerExit(instance.scope, (exit) => registrations.get(key)!(exit))
       }
-      registrations.set(key, finalizer)
       return value
     })
   ))
