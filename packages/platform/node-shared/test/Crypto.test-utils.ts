@@ -6,7 +6,6 @@ import type * as CryptoError from "effect/crypto/CryptoError"
 import * as Ecdh from "effect/crypto/Ecdh"
 import * as Ecdsa from "effect/crypto/Ecdsa"
 import * as Ed25519 from "effect/crypto/Ed25519"
-import * as Md5 from "effect/crypto/Md5"
 import * as Rsa from "effect/crypto/Rsa"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
@@ -41,7 +40,6 @@ const assertReason = (
  * of services a platform does not add are skipped.
  */
 export interface CryptoLayers {
-  readonly md5?: Layer.Layer<Md5.Md5> | undefined
   readonly chaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.ChaCha20Poly1305> | undefined
   readonly xChaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1305> | undefined
   readonly argon2id?: Layer.Layer<Argon2.Argon2id, CryptoError.CryptoError> | undefined
@@ -233,13 +231,6 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           assertReason(error, "deriveSharedSecret", "InvalidKey")
         }).pipe(Effect.provide(Ecdh.layer)))
     })
-
-    it.effect.skipIf(layers.md5 === undefined)("computes MD5 digests", () =>
-      Effect.gen(function*() {
-        const md5 = yield* Md5.Md5
-        // RFC 1321 "abc" vector.
-        assert.strictEqual(Hex.encode(yield* md5.digest(view(encode("abc")))), "900150983cd24fb0d6963f7d28e17f72")
-      }).pipe(Effect.provide(layers.md5!)))
 
     it.effect.skipIf(layers.chaCha20Poly1305 === undefined)("encrypts with ChaCha20-Poly1305", () =>
       Effect.gen(function*() {
