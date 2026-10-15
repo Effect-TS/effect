@@ -239,14 +239,12 @@ export const toString = <E = Cause.UnknownError>(
     let string = ""
     let bytes = 0
     const cleanup = finished(stream, { readable: true, writable: false }, (err) => {
-      cleanup()
       stream.off("data", onData)
       if (err) {
-        if ("closed" in stream && !stream.closed) {
-          stream.destroy()
-        }
+        destroyReadable(stream, cleanup)
         resume(Effect.fail(onError(err) as E))
       } else {
+        cleanup()
         resume(Effect.succeed(string))
       }
     })
@@ -254,21 +252,15 @@ export const toString = <E = Cause.UnknownError>(
       string += chunk
       bytes += Buffer.byteLength(chunk)
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
-        cleanup()
         stream.off("data", onData)
-        if ("closed" in stream && !stream.closed) {
-          stream.destroy()
-        }
+        destroyReadable(stream, cleanup)
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     }
     stream.on("data", onData)
     return Effect.sync(() => {
-      cleanup()
       stream.off("data", onData)
-      if ("closed" in stream && !stream.closed) {
-        stream.destroy()
-      }
+      destroyReadable(stream, cleanup)
     })
   })
 }
@@ -296,14 +288,12 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     const buffers: Array<Uint8Array> = []
     let bytes = 0
     const cleanup = finished(stream, { readable: true, writable: false }, (err) => {
-      cleanup()
       stream.off("data", onData)
       if (err) {
-        if ("closed" in stream && !stream.closed) {
-          stream.destroy()
-        }
+        destroyReadable(stream, cleanup)
         return resume(Effect.fail(onError(err) as E))
       }
+      cleanup()
       const buffer = buffers.length === 1 ? buffers[0] : Buffer.concat(buffers)
       if (buffer.byteOffset === 0 && buffer.buffer.byteLength === buffer.byteLength) {
         return resume(Effect.succeed(buffer.buffer as ArrayBuffer))
@@ -316,21 +306,15 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
       buffers.push(chunk)
       bytes += chunk.length
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
-        cleanup()
         stream.off("data", onData)
-        if ("closed" in stream && !stream.closed) {
-          stream.destroy()
-        }
+        destroyReadable(stream, cleanup)
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
     }
     stream.on("data", onData)
     return Effect.sync(() => {
-      cleanup()
       stream.off("data", onData)
-      if ("closed" in stream && !stream.closed) {
-        stream.destroy()
-      }
+      destroyReadable(stream, cleanup)
     })
   })
 }
@@ -354,6 +338,23 @@ export const toUint8Array = <E = Cause.UnknownError>(
 // ----------------------------------------------------------------------------
 // internal
 // ----------------------------------------------------------------------------
+
+// Keep teardown errors handled after removing the consumer's lifecycle listeners.
+// Node emits the destruction error (if any) only once _destroy has completed.
+const destroyReadable = (readable: Readable, cleanup: () => void): void => {
+  if (!("closed" in readable) || readable.closed) {
+    cleanup()
+    return
+  }
+  const onDone = () => {
+    readable.off("error", onDone)
+    readable.off("close", onDone)
+  }
+  readable.once("error", onDone)
+  readable.once("close", onDone)
+  cleanup()
+  readable.destroy()
+}
 
 const readableToPullUnsafe = <A, E>(options: {
   readonly scope: Scope.Scope
@@ -404,9 +405,10 @@ const readableToPullUnsafe = <A, E>(options: {
       options.scope,
       Effect.sync(() => {
         readable.off("readable", onReadable)
-        cleanup()
-        if (closeOnDone && "closed" in options.readable && !options.readable.closed) {
-          options.readable.destroy()
+        if (closeOnDone) {
+          destroyReadable(readable, cleanup)
+        } else {
+          cleanup()
         }
       })
     ),
