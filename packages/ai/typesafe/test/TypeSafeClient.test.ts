@@ -54,6 +54,23 @@ describe("TypeSafeClient", () => {
         assert.deepStrictEqual(response.usage, { input_tokens: 360, output_tokens: 39 })
       }).pipe(Effect.provide(makeTestLayer())))
 
+    for (
+      const [name, extra, header] of [
+        ["text-only requests", {}, undefined],
+        ["image assets", { assets: { "image-0-abc": { format: "png", data_base64: "iVBORw0KGgo=" } } }, "true"],
+        ["a box question", { questions: { mug: { type: "box", instructions: "the mug" } } }, "true"]
+      ] as const
+    ) {
+      it.effect("sets the images header for " + name, () =>
+        Effect.gen(function*() {
+          const client = yield* TypeSafeClient.TypeSafeClient
+          yield* client.systemOne({ ...systemOneRequest, ...extra })
+
+          const requests = yield* MockHttpClient.requests
+          assert.strictEqual(requests[0]?.headers["typesafe-danger-zone-images"], header)
+        }).pipe(Effect.provide(makeTestLayer())))
+    }
+
     it.effect("uses custom apiUrl when provided", () =>
       Effect.gen(function*() {
         const client = yield* TypeSafeClient.TypeSafeClient
