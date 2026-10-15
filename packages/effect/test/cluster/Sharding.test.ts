@@ -2560,6 +2560,38 @@ describe.concurrent("Sharding residency cap", () => {
     }).pipe(Effect.provide(CappedSharding({ maxResidentEntities: "unbounded" }))))
 })
 
+describe("Sharding metrics", { concurrent: false }, () => {
+  it.effect("updates the shards gauge after reassignment", () =>
+    Effect.gen(function*() {
+      const storage = yield* RunnerStorage.makeMemory
+      const context = yield* Sharding.layer.pipe(
+        Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, storage)),
+        Layer.provide([RunnerHealth.layerNoop, Runners.layerNoop]),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 8,
+          refreshAssignmentsInterval: 10
+        })),
+        Layer.build
+      )
+      const sharding = Context.get(context, Sharding.Sharding)
+      const shardIds = Array.makeBy(8, (i) => ShardId.make("default", i + 1))
+      const held = () => shardIds.filter((shardId) => sharding.hasShardId(shardId)).length
+
+      while (held() !== 8) {
+        yield* TestClock.adjust(10)
+      }
+      assert.strictEqual(ClusterMetrics.shards.valueUnsafe(Context.empty()).value, 8n)
+
+      yield* storage.register(otherRunner, true)
+      while (held() !== 4) {
+        yield* TestClock.adjust(10)
+      }
+      assert.strictEqual(ClusterMetrics.shards.valueUnsafe(Context.empty()).value, 4n)
+    }))
+})
+
 describe("Sharding shard lock failover", { concurrent: false }, () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
