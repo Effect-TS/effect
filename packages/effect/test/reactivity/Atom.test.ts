@@ -3,12 +3,15 @@ import {
   Array as Arr,
   Cause,
   Context,
+  Deferred,
   Effect,
   Hash,
   Latch,
   Layer,
+  Logger,
   Option,
   Queue,
+  References,
   Result,
   Schema,
   Stream,
@@ -313,6 +316,35 @@ describe("Atom", { concurrent: false }, () => {
 
     registryB.dispose()
   })
+
+  it.effect("reports asynchronous runtime layer finalizer failures on disposal", () =>
+    Effect.gen(function*() {
+      const release = yield* Latch.make()
+      const logged = yield* Deferred.make<Logger.Options<unknown>>()
+      const cause = Cause.die("cleanup failed")
+      const runtime = Atom.runtime(
+        Layer.effectDiscard(Effect.addFinalizer(() => release.await.pipe(Effect.andThen(Effect.failCause(cause)))))
+          .pipe(
+            Layer.provideMerge(Layer.mergeAll(
+              Logger.layer([Logger.make((event) => Deferred.doneUnsafe(logged, Effect.succeed(event)))]),
+              Layer.succeed(References.UnhandledLogLevel, "Warn")
+            ))
+          )
+      )
+      const registry = AtomRegistry.make()
+
+      try {
+        registry.get(runtime.atom(Effect.void))
+        registry.dispose()
+        yield* release.open
+        const event = yield* Deferred.await(logged)
+        assert.deepStrictEqual(event.cause, cause)
+        assert.strictEqual(event.logLevel, "Warn")
+      } finally {
+        yield* release.open
+        registry.dispose()
+      }
+    }))
 
   it("default runtime factories build layers once per registry", () => {
     const Service = Context.Service<number>("Atom.test/DefaultRegistryScopedService")
