@@ -443,6 +443,8 @@ interface AfterCommitLevel {
   readonly parent: AfterCommitLevel | undefined
   /** Shared by every level of the transaction, in registration order. */
   readonly callbacks: Array<AfterCommitCallback>
+  /** The transaction service value the level was provided with. */
+  transaction: unknown
   open: boolean
   committed: boolean
 }
@@ -453,20 +455,40 @@ interface AfterCommitCallback {
 }
 
 /**
- * Levels by the transaction service value they were provided with, so a level
- * is found only while its own transaction is in scope, and "outermost" agrees
- * with the transaction depth: a transaction that escaped its surrounding one
- * starts a new outermost level.
+ * Derived from the client's transaction service key, so each client tracks
+ * its own levels.
  */
-const afterCommitLevels = new WeakMap<object, AfterCommitLevel>()
+const afterCommitLevel = <I, S>(transactionService: Context.Key<I, S>) =>
+  Context.Service<AfterCommitLevel>(`${transactionService.key}/AfterCommit`)
 
-/** `null` when a transaction is open but doesn't track `afterCommit`. */
-const currentLevel = <I, S extends object>(
+/**
+ * The level of the transaction in scope: `undefined` outside a transaction,
+ * `null` in a transaction that doesn't track `afterCommit`. A level counts only
+ * while the transaction it was provided with is in scope, so a transaction
+ * started outside the surrounding one, with its service removed, is a new
+ * outermost level.
+ */
+const currentLevel = <I, S>(
   context: Context.Context<never>,
-  transactionService: Context.Key<I, S>
+  transactionService: Context.Key<I, S>,
+  levelService: Context.Key<AfterCommitLevel, AfterCommitLevel>
 ): AfterCommitLevel | null | undefined => {
   const transaction = Context.getOrUndefined(context, transactionService)
-  return transaction === undefined ? undefined : afterCommitLevels.get(transaction) ?? null
+  if (transaction === undefined) {
+    return undefined
+  }
+  const level = Context.getOrUndefined(context, levelService)
+  return level !== undefined && level.transaction === transaction ? level : null
+}
+
+/** A level is open only while every level around it is open. */
+const isOpen = (level: AfterCommitLevel): boolean => {
+  for (let current: AfterCommitLevel | undefined = level; current !== undefined; current = current.parent) {
+    if (!current.open) {
+      return false
+    }
+  }
+  return true
 }
 
 const runAfterCommit = (callback: Effect.Effect<void>): Effect.Effect<void> =>
@@ -511,22 +533,24 @@ const endAfterCommitLevel = (level: AfterCommitLevel): Effect.Effect<void> => {
  * @category transactions
  * @since 4.0.6
  */
-export const makeAfterCommit = <I, S extends object>(
+export const makeAfterCommit = <I, S>(
   transactionService: Context.Key<I, S>
-): (effect: Effect.Effect<void>) => Effect.Effect<void> =>
-(callback) =>
-  Effect.withFiber((fiber) => {
-    const level = currentLevel(fiber.context, transactionService)
-    // Outside a transaction, or in one that doesn't track callbacks.
-    if (level == null) {
-      return runAfterCommit(callback)
-    }
-    if (!level.open) {
-      return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
-    }
-    level.callbacks.push({ level, effect: callback })
-    return Effect.void
-  })
+): (effect: Effect.Effect<void>) => Effect.Effect<void> => {
+  const levelService = afterCommitLevel(transactionService)
+  return (callback) =>
+    Effect.withFiber((fiber) => {
+      const level = currentLevel(fiber.context, transactionService, levelService)
+      // Outside a transaction, or in one that doesn't track callbacks.
+      if (level == null) {
+        return runAfterCommit(callback)
+      }
+      if (!isOpen(level)) {
+        return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+      }
+      level.callbacks.push({ level, effect: callback })
+      return Effect.void
+    })
+}
 
 const untrackedLevel = {
   provide: identity,
@@ -568,42 +592,42 @@ const untrackedLevel = {
  * @category transactions
  * @since 4.0.6
  */
-export const withAfterCommit = <I, S extends object>(transactionService: Context.Key<I, S>) =>
-<A, E, R>(
-  transaction: (level: {
-    readonly provide: <Services>(context: Context.Context<Services>) => Context.Context<Services>
-    readonly markCommitted: Effect.Effect<void>
-  }) => Effect.Effect<A, E, R>
-): Effect.Effect<A, E, R> =>
-  Effect.withFiber((fiber) => {
-    const parent = currentLevel(fiber.context, transactionService)
-    if (parent === null) {
-      // Nested in a transaction that doesn't track callbacks, so they run
-      // immediately here too.
-      return transaction(untrackedLevel)
-    }
-    const current: AfterCommitLevel = {
-      parent,
-      callbacks: parent === undefined ? [] : parent.callbacks,
-      open: true,
-      committed: false
-    }
-    return Effect.ensuring(
-      transaction({
-        provide: (context) => {
-          const transaction = Context.getOrUndefined(context, transactionService)
-          if (transaction !== undefined) {
-            afterCommitLevels.set(transaction, current)
-          }
-          return context
-        },
-        markCommitted: Effect.sync(() => {
-          current.committed = true
-        })
-      }),
-      Effect.suspend(() => endAfterCommitLevel(current))
-    )
-  })
+export const withAfterCommit = <I, S>(transactionService: Context.Key<I, S>) => {
+  const levelService = afterCommitLevel(transactionService)
+  return <A, E, R>(
+    transaction: (level: {
+      readonly provide: <Services>(context: Context.Context<Services>) => Context.Context<Services>
+      readonly markCommitted: Effect.Effect<void>
+    }) => Effect.Effect<A, E, R>
+  ): Effect.Effect<A, E, R> =>
+    Effect.withFiber((fiber) => {
+      const parent = currentLevel(fiber.context, transactionService, levelService)
+      if (parent === null) {
+        // Nested in a transaction that doesn't track callbacks, so they run
+        // immediately here too.
+        return transaction(untrackedLevel)
+      }
+      const current: AfterCommitLevel = {
+        parent,
+        callbacks: parent === undefined ? [] : parent.callbacks,
+        transaction: undefined,
+        open: true,
+        committed: false
+      }
+      return Effect.ensuring(
+        transaction({
+          provide: (context) => {
+            current.transaction = Context.getOrUndefined(context, transactionService)
+            return Context.add(context, levelService, current)
+          },
+          markCommitted: Effect.sync(() => {
+            current.committed = true
+          })
+        }),
+        Effect.suspend(() => endAfterCommitLevel(current))
+      )
+    })
+}
 
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses
