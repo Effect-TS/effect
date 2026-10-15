@@ -59,6 +59,54 @@ import {
 } from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
+  it.effect(
+    "counts in-flight requests while an entity drains and clears them after completion",
+    () =>
+      Effect.gen(function*() {
+        const entity = Entity.make("DrainingMailboxMetrics", [Rpc.make("Wait").annotate(ClusterSchema.Persisted, true)])
+        const gate = yield* Effect.makeLatch()
+        const started = yield* Effect.makeLatch()
+        const storageState = makeFailoverStorageState()
+        const mailboxMax = Metric.value(ClusterMetrics.entityMailboxMax.pipe(Metric.tagged("type", entity.type)))
+        const entities = Metric.value(ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type)))
+        yield* Effect.gen(function*() {
+          const sharding = yield* Sharding.Sharding
+          const shardId = sharding.getShardId(EntityId.make("1"), "default")
+          yield* waitFor(() => sharding.hasShardId(shardId))
+          assert.isTrue(sharding.hasShardId(shardId))
+          const client = (yield* entity.client)("1")
+          const request = yield* Effect.fork(client.Wait())
+          yield* started.await
+          yield* TestClock.adjust(1000)
+          assert.strictEqual((yield* mailboxMax).value, 1n)
+
+          storageState.assignSelf = false
+          yield* waitFor(() => !sharding.hasShardId(shardId))
+          assert.isFalse(sharding.hasShardId(shardId))
+          yield* TestClock.adjust(1000)
+          assert.strictEqual(yield* sharding.activeEntityCount, 0)
+          assert.strictEqual((yield* entities).value, 0n)
+          assert.isTrue(Option.isNone(yield* Fiber.poll(request)))
+          assert.strictEqual((yield* mailboxMax).value, 1n)
+
+          yield* gate.open
+          yield* TestClock.adjust(1000)
+          yield* Fiber.join(request)
+          yield* TestClock.adjust(1000)
+          assert.strictEqual((yield* mailboxMax).value, 0n)
+        }).pipe(
+          Effect.ensuring(gate.open),
+          Effect.provide(
+            entity.toLayer({ Wait: () => Effect.andThen(started.open, gate.await) }).pipe(
+              Layer.provideMerge(makeTerminationSharding(storageState, 10_000))
+            )
+          ),
+          Effect.scoped
+        )
+      }),
+    20_000
+  )
+
   it.scoped("tracks the largest entity mailbox and clears it when requests complete", () =>
     Effect.gen(function*() {
       const entity = Entity.make("MailboxMetrics", [Rpc.make("Wait")])
@@ -1420,7 +1468,7 @@ const TerminationEntity = Entity.make("TerminationEntity", [
   Rpc.make("Persisted").annotate(ClusterSchema.Persisted, true)
 ]).annotateRpcs(ClusterSchema.InterruptOnTermination, true)
 
-const makeTerminationSharding = (state: FailoverStorageState) =>
+const makeTerminationSharding = (state: FailoverStorageState, entityTerminationTimeout = 1000) =>
   Sharding.layer.pipe(
     Layer.provide(Layer.effect(
       RunnerStorage.RunnerStorage,
@@ -1433,7 +1481,7 @@ const makeTerminationSharding = (state: FailoverStorageState) =>
       shardsPerGroup: 1,
       shardLockExpiration: 3000,
       shardLockRefreshInterval: 100,
-      entityTerminationTimeout: 1000,
+      entityTerminationTimeout,
       entityMessagePollInterval: 10,
       entityReplyPollInterval: 10,
       refreshAssignmentsInterval: 10,
