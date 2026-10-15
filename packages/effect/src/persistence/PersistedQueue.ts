@@ -1231,6 +1231,29 @@ redis.call("ZADD", key_ids, "XX", "+inf", id)
   }
 )
 
+// Both queued and failed records start with {"id":...}.
+// Decode only the id: Redis cjson rejects lone UTF-16 surrogates in the
+// element, even though JSON.stringify / JSON.parse preserve them. Keep the
+// existing wire format so already queued, delayed and pending records work.
+const queueRecordIdRedis = `
+local function record_id(payload)
+  assert(string.sub(payload, 1, 7) == '{"id":"', "Invalid queue record id")
+  local i = 8
+  while i <= #payload do
+    local byte = string.byte(payload, i)
+    if byte == 92 then
+      -- Skip escaped characters, including escaped quotes and backslashes.
+      i = i + 2
+    elseif byte == 34 then
+      return cjson.decode(string.sub(payload, 7, i))
+    else
+      i = i + 1
+    end
+  end
+  error("Unterminated queue record id")
+end
+`
+
 const takeRedis = Redis.script(
   (
     ...args: [
@@ -1257,6 +1280,8 @@ local batch_size = tonumber(ARGV[3])
 local pttl = ARGV[4]
 local now = ARGV[5]
 
+${queueRecordIdRedis}
+
 local due = redis.call("ZRANGEBYSCORE", key_delayed, "-inf", now, "LIMIT", 0, 100)
 if #due > 0 then
   for i, payload in ipairs(due) do
@@ -1265,14 +1290,22 @@ if #due > 0 then
   redis.call("ZREM", key_delayed, unpack(due))
 end
 
-local payloads = redis.call("LPOP", key_queue, batch_size)
-if not payloads then
+local payloads = redis.call("LRANGE", key_queue, 0, batch_size - 1)
+if #payloads == 0 then
   return nil
 end
 
+-- Validate all metadata before removing anything: Redis script errors do not
+-- roll back writes, so even an invalid record must not discard this batch.
+local ids = {}
+for i, payload in ipairs(payloads) do
+  ids[i] = record_id(payload)
+end
+redis.call("LTRIM", key_queue, #payloads, -1)
+
 local result = {}
 for i, payload in ipairs(payloads) do
-  local id = cjson.decode(payload).id
+  local id = ids[i]
   local key_lock = prefix .. id .. ":lock"
   redis.call("SET", key_lock, worker_id, "PX", pttl)
   redis.call("HSET", key_pending, id, payload)
@@ -1311,16 +1344,19 @@ local key_ids = KEYS[2]
 local cutoff = tonumber(ARGV[1])
 local removed = 0
 
+${queueRecordIdRedis}
+
 while removed < ${trimFailedBatchSize} do
   local head = redis.call("LINDEX", key_failed, 0)
   if not head then break end
-  local ok, decoded = pcall(cjson.decode, head)
+  local ok, id = pcall(record_id, head)
   if ok then
-    local failed_at = tonumber(decoded.failedAt)
+    -- failedAt is appended after the opaque element and failure description.
+    local failed_at = tonumber(string.match(head, ',"failedAt":([^,}]+)%}$'))
     if failed_at ~= nil and failed_at >= cutoff then break end
     redis.call("LPOP", key_failed)
-    if decoded.id ~= nil then
-      redis.call("ZREM", key_ids, decoded.id)
+    if id ~= nil then
+      redis.call("ZREM", key_ids, id)
     end
   else
     -- a corrupt head would otherwise block trimming of the whole list
