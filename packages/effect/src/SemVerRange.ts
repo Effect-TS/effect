@@ -12,12 +12,21 @@ import * as Equal from "./Equal.ts"
 import { dual } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
-import * as internal from "./internal/semver.ts"
 import * as Option from "./Option.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Result from "./Result.ts"
-import type { SemVer, SemVerError } from "./SemVer.ts"
+import {
+  compareCore,
+  type Core,
+  invalid,
+  parseComponent,
+  prereleaseIdentifier,
+  sameCore,
+  type SemVer,
+  type SemVerError,
+  tryParse
+} from "./SemVer.ts"
 
 const TypeId = "~effect/SemVerRange"
 
@@ -123,34 +132,34 @@ const operatorPattern = /^(<=|>=|<|>|=|~|\^)?(.*)$/
 const isWildcard = (part: string): boolean => part === "x" || part === "X" || part === "*"
 
 const parsePartial = (input: string): PartialVersion => {
-  if (input.length === 0) return internal.fail("expected a version after the operator")
+  if (input.length === 0) return invalid("expected a version after the operator")
   if (input.includes("+")) {
-    return internal.fail(`build metadata is not allowed in ranges, received ${JSON.stringify(input)}`)
+    return invalid(`build metadata is not allowed in ranges, received ${JSON.stringify(input)}`)
   }
   const dash = input.indexOf("-")
   const parts = (dash === -1 ? input : input.slice(0, dash)).split(".")
-  if (parts.length > 3) return internal.fail(`expected at most MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
+  if (parts.length > 3) return invalid(`expected at most MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
   const numbers: Array<number | undefined> = []
   for (const [index, part] of parts.entries()) {
     if (isWildcard(part)) {
       numbers.push(undefined)
     } else if (numbers.includes(undefined)) {
-      return internal.fail(`a version component cannot follow a wildcard, received ${JSON.stringify(input)}`)
+      return invalid(`a version component cannot follow a wildcard, received ${JSON.stringify(input)}`)
     } else {
-      numbers.push(internal.parseComponent(part, (["major", "minor", "patch"] as const)[index]))
+      numbers.push(parseComponent(part, (["major", "minor", "patch"] as const)[index]))
     }
   }
   const [major, minor, patch] = numbers
   if (dash === -1) return { major, minor, patch, prerelease: [] }
   if (patch === undefined) {
-    return internal.fail(`a pre-release requires MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
+    return invalid(`a pre-release requires MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
   }
-  return { major, minor, patch, prerelease: input.slice(dash + 1).split(".").map(internal.prereleaseIdentifier) }
+  return { major, minor, patch, prerelease: input.slice(dash + 1).split(".").map(prereleaseIdentifier) }
 }
 
 const parseComparatorSet = (input: string): ReadonlyArray<Comparator> => {
   const tokens = input.split(/\s+/).filter((token) => token.length > 0)
-  if (tokens.length === 0) return internal.fail("expected a comparator")
+  if (tokens.length === 0) return invalid("expected a comparator")
   if (tokens.length === 3 && tokens[1] === "-") {
     return [{ _tag: "Hyphen", from: parsePartial(tokens[0]), to: parsePartial(tokens[2]) }]
   }
@@ -216,7 +225,7 @@ const parseOrThrow = (input: string): SemVerRange => {
  * @since 4.0.6
  */
 export const parse = (input: string): Result.Result<SemVerRange, SemVerError> =>
-  internal.tryParse("SemVer range", input, parseOrThrow)
+  tryParse("SemVer range", input, parseOrThrow)
 
 /**
  * Parses an npm-style version range and throws `SemVer.SemVerError` for
@@ -448,7 +457,7 @@ const formatComparator = (self: Comparator): string =>
 export const format = (self: SemVerRange): string =>
   (self as SemVerRangeImpl).sets.map((set) => set.map(formatComparator).join(" ")).join(" || ")
 
-interface Bound extends internal.Core {
+interface Bound extends Core {
   readonly operator: "=" | "<" | "<=" | ">" | ">="
 }
 
@@ -540,7 +549,7 @@ const expand = (self: Comparator, includePrerelease: boolean): ReadonlyArray<Bou
 }
 
 const testBound = (self: Bound, version: SemVer): boolean => {
-  const result = internal.compareCore(version, self)
+  const result = compareCore(version, self)
   switch (self.operator) {
     case "=":
       return result === 0
@@ -561,7 +570,7 @@ const compile = (self: SemVerRangeImpl, includePrerelease: boolean): (version: S
     sets.some((bounds) =>
       bounds.every((bound) => testBound(bound, version)) &&
       (includePrerelease || version.prerelease.length === 0 ||
-        bounds.some((bound) => bound.prerelease.length > 0 && internal.sameCore(bound, version)))
+        bounds.some((bound) => bound.prerelease.length > 0 && sameCore(bound, version)))
     )
 }
 
@@ -636,7 +645,7 @@ const select = (
   const test = matcher(self, options)
   let selected: SemVer | undefined
   for (const version of versions) {
-    if (test(version) && (selected === undefined || internal.compareCore(version, selected) === better)) {
+    if (test(version) && (selected === undefined || compareCore(version, selected) === better)) {
       selected = version
     }
   }
