@@ -120,9 +120,6 @@ export const aes128Kw: AesKw = { _tag: "AesKw", name: "aes128Kw", keyLength: 16 
  */
 export const aes256Kw: AesKw = { _tag: "AesKw", name: "aes256Kw", keyLength: 32 }
 
-const hashName = (hash: Digest.Algorithm): string =>
-  hash.name.charAt(0) + hash.name.slice(1).toLowerCase().replace("-", "")
-
 /**
  * Builds an RSA-OAEP algorithm for a hash and a modulus length in bits.
  *
@@ -139,7 +136,7 @@ export const rsaOaep = (options: {
   readonly modulusLength: number
 }): RsaOaep => ({
   _tag: "RsaOaep",
-  name: `rsaOaep${hashName(options.hash)}`,
+  name: `rsaOaep${Digest.nameSuffix(options.hash)}`,
   hash: options.hash,
   modulusLength: options.modulusLength
 })
@@ -298,7 +295,14 @@ const specOf = (algorithm: RsaOaep): Asymmetric.Spec => ({
   check: Asymmetric.checkHash(algorithm.hash.name)
 })
 
-const fail = (method: string, reason: CryptoError.CryptoErrorReason) => KeyModel.fail("KeyWrap", method, reason)
+/** @internal */
+export const family: Asymmetric.Family = {
+  module: "KeyWrap",
+  specOf,
+  privateKeyProto: PrivateKeyProto,
+  publicKeyProto: PublicKeyProto,
+  isPrivateKey
+}
 
 /**
  * The family of a target key's algorithm, for reading and building target
@@ -313,19 +317,7 @@ export interface SecretFamily {
 
 /** @internal */
 export const secretFamily = (algorithm: KeyFormat.SecretAlgorithm): SecretFamily =>
-  "nonceLength" in algorithm
-    ? Aead
-    : "mode" in algorithm
-    ? Cipher
-    : "_tag" in algorithm
-    ? { key, toBytes: (key: Key) => KeyModel.toBytes("KeyWrap", key, "raw") }
-    : Mac
-
-// Moves an error from another family's function onto `KeyWrap.<method>`.
-const rehome = (method: string) => (error: CryptoError.CryptoError) =>
-  Effect.fail(new CryptoError.CryptoError({ module: "KeyWrap", method, reason: error.reason }))
-
-class ArgumentError extends Error {}
+  "nonceLength" in algorithm ? Aead : "mode" in algorithm ? Cipher : "_tag" in algorithm ? { key, toBytes } : Mac
 
 // AES-KW in WebCrypto only wraps `CryptoKey`s, so the key bytes go through a
 // temporary extractable HMAC key, which imports any non-empty length.
@@ -333,13 +325,15 @@ const hmacParams: HmacImportParams = { name: "HMAC", hash: "SHA-256" }
 
 const rsaOaepParams: RsaOaepParams = { name: "RSA-OAEP" }
 
+const invalidArgument = (description: string) => new internal.Failure(new CryptoError.InvalidArgument({ description }))
+
 // RFC 8017, section 7.1.1: the message fits the modulus minus two hashes and
 // two bytes.
 const checkOaepLength = (algorithm: RsaOaep, cryptoKey: CryptoKey, length: number) => {
   const modulusLength = (cryptoKey.algorithm as RsaHashedKeyAlgorithm).modulusLength
   const max = Math.ceil(modulusLength / 8) - 2 * algorithm.hash.outputLength - 2
   if (length > max) {
-    throw new ArgumentError(
+    throw invalidArgument(
       `A ${modulusLength}-bit RSA-OAEP key with ${algorithm.hash.name} wraps at most ${max} bytes, not ${length}`
     )
   }
@@ -349,9 +343,7 @@ const checkOaepLength = (algorithm: RsaOaep, cryptoKey: CryptoKey, length: numbe
 // form adds one block.
 const checkKwLength = (length: number, overhead: number) => {
   if (length % 8 !== 0 || length < 16 + overhead) {
-    throw new ArgumentError(
-      `AES-KW needs a multiple of 8 bytes and at least ${16 + overhead} bytes, not ${length}`
-    )
+    throw invalidArgument(`AES-KW needs a multiple of 8 bytes and at least ${16 + overhead} bytes, not ${length}`)
   }
 }
 
@@ -435,102 +427,79 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
     const kwCryptoKey = KeyModel.makeCache((subtle, bytes) =>
       subtle.importKey("raw", bytes as BufferSource, "AES-KW", false, ["wrapKey", "unwrapKey"])
     )
-    const privateCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: RsaOaep) =>
-      Asymmetric.importPrivate(subtle, bytes, specOf(algorithm), false)
-    )
-    const publicCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: RsaOaep) =>
-      Asymmetric.importPublic(subtle, bytes, specOf(algorithm))
-    )
-    const onError = (method: string) => (cause: unknown) =>
-      cause instanceof ArgumentError
-        ? new CryptoError.CryptoError({
-          module: "KeyWrap",
-          method,
-          reason: new CryptoError.InvalidArgument({ description: cause.message })
-        })
-        : internal.webCryptoError(
-          "KeyWrap",
-          method,
-          cause,
-          method === "unwrap" ? () => new CryptoError.DecryptionFailed() : undefined
-        )
+    const caches = Asymmetric.makeCaches(family)
 
     const wrapBytes = (wrapKey: WrapKey, bytes: Uint8Array) =>
-      Asymmetric.run("KeyWrap", "wrap", crypto, async (subtle) => {
+      internal.run("KeyWrap", "wrap", crypto, async (subtle) => {
         if (isKey(wrapKey)) {
           checkKwLength(bytes.length, 0)
           const kek = await kwCryptoKey(subtle, wrapKey)
           const target = await subtle.importKey("raw", bytes as BufferSource, hmacParams, true, ["sign"])
           return new Uint8Array(await subtle.wrapKey("raw", target, kek, "AES-KW"))
         }
-        const publicKey = await publicCryptoKey(subtle, wrapKey)
+        const publicKey = await caches.publicKey(subtle, wrapKey)
         checkOaepLength(wrapKey.algorithm, publicKey, bytes.length)
         if (publicKey.usages.includes("encrypt")) {
           return new Uint8Array(await subtle.encrypt(rsaOaepParams, publicKey, bytes as BufferSource))
         }
         const target = await subtle.importKey("raw", bytes as BufferSource, hmacParams, true, ["sign"])
         return new Uint8Array(await subtle.wrapKey("raw", target, publicKey, rsaOaepParams))
-      }, onError("wrap"))
+      })
 
     const unwrapBytes = (unwrapKey: UnwrapKey, wrapped: Uint8Array) =>
-      Asymmetric.run("KeyWrap", "unwrap", crypto, async (subtle) => {
-        if (isKey(unwrapKey)) {
-          checkKwLength(wrapped.length, 8)
-          const kek = await kwCryptoKey(subtle, unwrapKey)
-          const target = await subtle.unwrapKey("raw", wrapped as BufferSource, kek, "AES-KW", hmacParams, true, [
-            "sign"
-          ])
-          return new Uint8Array(await subtle.exportKey("raw", target))
-        }
-        const privateKey = await privateCryptoKey(subtle, unwrapKey)
-        if (privateKey.usages.includes("decrypt")) {
-          return new Uint8Array(await subtle.decrypt(rsaOaepParams, privateKey, wrapped as BufferSource))
-        }
-        const target = await subtle.unwrapKey(
-          "raw",
-          wrapped as BufferSource,
-          privateKey,
-          rsaOaepParams,
-          hmacParams,
-          true,
-          ["sign"]
-        )
-        return new Uint8Array(await subtle.exportKey("raw", target))
-      }, onError("unwrap"))
+      internal.run(
+        "KeyWrap",
+        "unwrap",
+        crypto,
+        async (subtle) => {
+          if (isKey(unwrapKey)) {
+            checkKwLength(wrapped.length, 8)
+            const kek = await kwCryptoKey(subtle, unwrapKey)
+            const target = await subtle.unwrapKey("raw", wrapped as BufferSource, kek, "AES-KW", hmacParams, true, [
+              "sign"
+            ])
+            return KeyModel.exportRaw(subtle, target)
+          }
+          const privateKey = await caches.privateKey(subtle, unwrapKey)
+          if (privateKey.usages.includes("decrypt")) {
+            return new Uint8Array(await subtle.decrypt(rsaOaepParams, privateKey, wrapped as BufferSource))
+          }
+          const target = await subtle.unwrapKey(
+            "raw",
+            wrapped as BufferSource,
+            privateKey,
+            rsaOaepParams,
+            hmacParams,
+            true,
+            ["sign"]
+          )
+          return KeyModel.exportRaw(subtle, target)
+        },
+        (cause) => internal.webCryptoError("KeyWrap", "unwrap", cause, () => new CryptoError.DecryptionFailed())
+      )
 
     return KeyWrap.of({
       generateKey: <A extends AesKw>(algorithm: A) =>
         Effect.map(
           random.randomBytes(algorithm.keyLength),
-          (bytes) => KeyModel.make<Key<A>>(KeyProto, algorithm, { _tag: "Bytes", bytes })
+          (bytes) => KeyModel.makeBytes<Key<A>>(KeyProto, algorithm, bytes)
         ),
       generateKeyPair: <A extends RsaOaep>(algorithm: A) =>
-        Effect.map(
-          Asymmetric.run(
-            "KeyWrap",
-            "generateKeyPair",
-            crypto,
-            (subtle) =>
-              Asymmetric.generate(subtle, specOf(algorithm), {
-                name: "RSA-OAEP",
-                hash: algorithm.hash.name,
-                modulusLength: algorithm.modulusLength,
-                publicExponent: Uint8Array.of(1, 0, 1)
-              }, undefined)
-          ),
-          ({ privateKey, publicKey }): KeyPair<A> => ({
-            privateKey: KeyModel.make(PrivateKeyProto, algorithm, { _tag: "Bytes", bytes: privateKey }),
-            publicKey: KeyModel.make(PublicKeyProto, algorithm, { _tag: "Bytes", bytes: publicKey })
-          })
+        Asymmetric.generateKeyPair<KeyPair<A>>(
+          family,
+          crypto,
+          random,
+          algorithm,
+          Asymmetric.rsaGenerateParams(specOf(algorithm), algorithm.modulusLength)
         ),
       wrap: (wrapKey, key) =>
         Effect.suspend(() => {
           const stored = KeyModel.material(key)
           if (stored._tag === "CryptoKey" && !stored.cryptoKey.extractable) {
-            return fail("wrap", new CryptoError.NotExtractable({ description: "The CryptoKey is not extractable" }))
+            return internal.notExtractable("KeyWrap", "wrap")
           }
           return secretFamily(key.algorithm).toBytes(key).pipe(
-            Effect.catch(rehome("wrap")),
+            Effect.catch(internal.rehome("KeyWrap", "wrap")),
             Effect.flatMap((bytes) => wrapBytes(wrapKey, bytes))
           )
         }),
@@ -539,7 +508,7 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
           unwrapBytes(unwrapKey, wrapped),
           (bytes) =>
             secretFamily(algorithm).key(algorithm, bytes).pipe(
-              Effect.catch(rehome("unwrap"))
+              Effect.catch(internal.rehome("KeyWrap", "unwrap"))
             ) as Effect.Effect<KeyFormat.SecretKey<A>, CryptoError.CryptoError>
         )
     })
@@ -563,17 +532,7 @@ export const key = <A extends AesKw>(
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  KeyModel.fromBytes(
-    "KeyWrap",
-    "key",
-    KeyProto,
-    algorithm,
-    bytes,
-    (length) =>
-      length === algorithm.keyLength
-        ? undefined
-        : `Expected a ${algorithm.keyLength}-byte key for ${algorithm.name}, not ${length} bytes`
-  )
+  KeyModel.fromBytes("KeyWrap", "key", KeyProto, algorithm, bytes, KeyModel.checkKeyLength(algorithm))
 
 /**
  * Builds an AES-KW key from an existing `CryptoKey`, such as a
@@ -594,42 +553,29 @@ export const fromCryptoKey = <A extends AesKw>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const problem = KeyModel.checkCryptoKey(cryptoKey, {
-      type: "secret",
-      name: "AES-KW",
-      usages: ["wrapKey", "unwrapKey"],
-      usagePolicy: "all",
-      check: (keyAlgorithm) => {
-        const length = (keyAlgorithm as AesKeyAlgorithm).length
-        return length === algorithm.keyLength * 8
-          ? undefined
-          : `Expected a ${algorithm.keyLength * 8}-bit AES-KW key, not ${length} bits`
-      }
-    })
-    return problem === undefined
-      ? Effect.succeed(KeyModel.make<Key<A>>(KeyProto, algorithm, { _tag: "CryptoKey", cryptoKey }))
-      : fail("fromCryptoKey", new CryptoError.InvalidKey({ description: problem }))
+  KeyModel.fromCryptoKey("KeyWrap", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
+    type: "secret",
+    name: "AES-KW",
+    usages: ["wrapKey", "unwrapKey"],
+    usagePolicy: "all",
+    check: KeyModel.checkAesLength("AES-KW", algorithm.keyLength)
   })
 
+// RSA-OAEP keys need one usage the layer can use for the key's role, since
+// `wrapKey` and `encrypt` produce the same ciphertext.
 const rsaFromCryptoKey = <K>(
   method: string,
   proto: object,
   algorithm: RsaOaep,
-  role: "private" | "public",
+  role: Asymmetric.Role,
   cryptoKey: CryptoKey
 ): Effect.Effect<K, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const problem = KeyModel.checkCryptoKey(cryptoKey, {
-      type: role,
-      name: "RSA-OAEP",
-      usages: role === "private" ? ["decrypt", "unwrapKey"] : ["encrypt", "wrapKey"],
-      usagePolicy: "any",
-      check: Asymmetric.checkHash(algorithm.hash.name)
-    })
-    return problem === undefined
-      ? Effect.succeed(KeyModel.make<K>(proto, algorithm, { _tag: "CryptoKey", cryptoKey }))
-      : fail(method, new CryptoError.InvalidKey({ description: problem }))
+  KeyModel.fromCryptoKey("KeyWrap", method, proto, algorithm, cryptoKey, {
+    type: role,
+    name: "RSA-OAEP",
+    usages: role === "private" ? ["decrypt", "unwrapKey"] : ["encrypt", "wrapKey"],
+    usagePolicy: "any",
+    check: Asymmetric.checkHash(algorithm.hash.name)
   })
 
 /**
@@ -688,15 +634,4 @@ export const publicKeyFromCryptoKey = <A extends RsaOaep>(
  * @since 4.0.0
  */
 export const toBytes = (key: Key | PrivateKey | PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  isKey(key)
-    ? KeyModel.toBytes("KeyWrap", key, "raw")
-    : Asymmetric.toBytes("KeyWrap", key, specOf(key.algorithm), isPrivateKey(key) ? "private" : "public")
-
-/** @internal */
-export const family: Asymmetric.Family = {
-  module: "KeyWrap",
-  specOf,
-  privateKeyProto: PrivateKeyProto,
-  publicKeyProto: PublicKeyProto,
-  isPrivateKey
-}
+  isKey(key) ? KeyModel.toBytes("KeyWrap", key, KeyModel.exportRaw) : Asymmetric.toBytes(family, key)

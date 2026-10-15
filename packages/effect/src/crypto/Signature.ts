@@ -46,6 +46,7 @@ import * as CryptoError from "./CryptoError.ts"
 import * as Digest from "./Digest.ts"
 import * as Asymmetric from "./internal/asymmetric.ts"
 import * as KeyModel from "./internal/key.ts"
+import * as internal from "./internal/webCrypto.ts"
 import * as SecureRandom from "./SecureRandom.ts"
 import { WebCrypto } from "./WebCrypto.ts"
 
@@ -193,9 +194,6 @@ export const ecdsaP384: Ecdsa<"P-384"> = { _tag: "Ecdsa", name: "ecdsaP384", nam
  */
 export const ecdsaP521: Ecdsa<"P-521"> = { _tag: "Ecdsa", name: "ecdsaP521", namedCurve: "P-521", hash: Digest.sha512 }
 
-const hashName = (hash: Digest.Algorithm): string =>
-  hash.name.charAt(0) + hash.name.slice(1).toLowerCase().replace("-", "")
-
 /**
  * Builds an RSA-PSS algorithm for a hash and a modulus length in bits.
  *
@@ -214,7 +212,7 @@ export const rsaPss = (options: {
   readonly saltLength?: number | undefined
 }): RsaPss => ({
   _tag: "RsaPss",
-  name: `rsaPss${hashName(options.hash)}`,
+  name: `rsaPss${Digest.nameSuffix(options.hash)}`,
   hash: options.hash,
   modulusLength: options.modulusLength,
   saltLength: options.saltLength ?? options.hash.outputLength
@@ -233,7 +231,7 @@ export const rsaPkcs1v15 = (options: {
   readonly modulusLength: number
 }): RsaPkcs1v15 => ({
   _tag: "RsaPkcs1v15",
-  name: `rsaPkcs1v15${hashName(options.hash)}`,
+  name: `rsaPkcs1v15${Digest.nameSuffix(options.hash)}`,
   hash: options.hash,
   modulusLength: options.modulusLength
 })
@@ -396,6 +394,15 @@ const specOf = (algorithm: Algorithm): Asymmetric.Spec => {
   }
 }
 
+/** @internal */
+export const family: Asymmetric.Family = {
+  module: "Signature",
+  specOf,
+  privateKeyProto: PrivateKeyProto,
+  publicKeyProto: PublicKeyProto,
+  isPrivateKey
+}
+
 const signParams = (algorithm: Algorithm): AlgorithmIdentifier | EcdsaParams | RsaPssParams => {
   switch (algorithm._tag) {
     case "Ed25519":
@@ -417,11 +424,7 @@ const generateParams = (algorithm: Algorithm): AlgorithmIdentifier | EcKeyGenPar
       return { name: "ECDSA", namedCurve: algorithm.namedCurve }
     case "RsaPss":
     case "RsaPkcs1v15":
-      return {
-        ...specOf(algorithm).importParams as RsaHashedImportParams,
-        modulusLength: algorithm.modulusLength,
-        publicExponent: Uint8Array.of(1, 0, 1)
-      }
+      return Asymmetric.rsaGenerateParams(specOf(algorithm), algorithm.modulusLength)
   }
 }
 
@@ -441,20 +444,22 @@ const signatureLength = (algorithm: Algorithm, cryptoKey: CryptoKey): number => 
 }
 
 // RFC 8017, section 9.1.1: the encoded message must fit the hash, the salt
-// and two more bytes.
-const checkSaltLength = (algorithm: Algorithm, cryptoKey: CryptoKey): string | undefined => {
-  if (algorithm._tag !== "RsaPss") return undefined
+// and two more bytes. The modulus is only known once the key is imported, so
+// the check throws inside `run`.
+const checkSaltLength = (algorithm: Algorithm, cryptoKey: CryptoKey): void => {
+  if (algorithm._tag !== "RsaPss") return
+  let problem: string | undefined
   if (!Number.isSafeInteger(algorithm.saltLength) || algorithm.saltLength < 0) {
-    return "PSS salt length must be a non-negative safe integer"
+    problem = "PSS salt length must be a non-negative safe integer"
+  } else {
+    const modulusLength = (cryptoKey.algorithm as RsaHashedKeyAlgorithm).modulusLength
+    if (algorithm.hash.outputLength + algorithm.saltLength + 2 > Math.ceil((modulusLength - 1) / 8)) {
+      problem =
+        `A ${algorithm.saltLength}-byte PSS salt does not fit a ${modulusLength}-bit key with ${algorithm.hash.name}`
+    }
   }
-  const modulusLength = (cryptoKey.algorithm as RsaHashedKeyAlgorithm).modulusLength
-  const encodedLength = Math.ceil((modulusLength - 1) / 8)
-  return algorithm.hash.outputLength + algorithm.saltLength + 2 <= encodedLength
-    ? undefined
-    : `A ${algorithm.saltLength}-byte PSS salt does not fit a ${modulusLength}-bit key with ${algorithm.hash.name}`
+  if (problem !== undefined) throw new internal.Failure(new CryptoError.InvalidArgument({ description: problem }))
 }
-
-class SaltLengthError extends Error {}
 
 /**
  * Service that generates key pairs, signs, verifies, and computes public keys.
@@ -531,60 +536,24 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
   Effect.gen(function*() {
     const random = yield* SecureRandom.SecureRandom
     const crypto = yield* WebCrypto
-    const privateCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
-      Asymmetric.importPrivate(subtle, bytes, specOf(algorithm), false)
-    )
-    const publicCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
-      Asymmetric.importPublic(subtle, bytes, specOf(algorithm))
-    )
-    const argumentError = (method: string, cause: unknown) =>
-      cause instanceof SaltLengthError
-        ? new CryptoError.CryptoError({
-          module: "Signature",
-          method,
-          reason: new CryptoError.InvalidArgument({ description: cause.message })
-        })
-        : undefined
+    const caches = Asymmetric.makeCaches(family)
     return Signature.of({
       generateKeyPair: <A extends Algorithm>(algorithm: A) =>
-        Effect.flatMap(
-          algorithm._tag === "Ed25519" ? random.randomBytes(Asymmetric.seedLength) : Effect.undefined,
-          (seed) =>
-            Effect.map(
-              Asymmetric.run(
-                "Signature",
-                "generateKeyPair",
-                crypto,
-                (subtle) => Asymmetric.generate(subtle, specOf(algorithm), generateParams(algorithm), seed)
-              ),
-              ({ privateKey, publicKey }): KeyPair<A> => ({
-                privateKey: KeyModel.make(PrivateKeyProto, algorithm, { _tag: "Bytes", bytes: privateKey }),
-                publicKey: KeyModel.make(PublicKeyProto, algorithm, { _tag: "Bytes", bytes: publicKey })
-              })
-            )
-        ),
+        Asymmetric.generateKeyPair<KeyPair<A>>(family, crypto, random, algorithm, generateParams(algorithm)),
       sign: (privateKey, data) =>
-        Asymmetric.run(
-          "Signature",
-          "sign",
-          crypto,
-          async (subtle) => {
-            const cryptoKey = await privateCryptoKey(subtle, privateKey)
-            const problem = checkSaltLength(privateKey.algorithm, cryptoKey)
-            if (problem !== undefined) throw new SaltLengthError(problem)
-            return new Uint8Array(await subtle.sign(signParams(privateKey.algorithm), cryptoKey, data as BufferSource))
-          },
-          (cause) => argumentError("sign", cause) ?? Asymmetric.error("Signature", "sign", cause)
-        ),
+        internal.run("Signature", "sign", crypto, async (subtle) => {
+          const cryptoKey = await caches.privateKey(subtle, privateKey)
+          checkSaltLength(privateKey.algorithm, cryptoKey)
+          return new Uint8Array(await subtle.sign(signParams(privateKey.algorithm), cryptoKey, data as BufferSource))
+        }),
       verify: (publicKey, signature, data) =>
-        Asymmetric.run(
+        internal.run(
           "Signature",
           "verify",
           crypto,
           async (subtle) => {
-            const cryptoKey = await publicCryptoKey(subtle, publicKey)
-            const problem = checkSaltLength(publicKey.algorithm, cryptoKey)
-            if (problem !== undefined) throw new SaltLengthError(problem)
+            const cryptoKey = await caches.publicKey(subtle, publicKey)
+            checkSaltLength(publicKey.algorithm, cryptoKey)
             if (signature.length !== signatureLength(publicKey.algorithm, cryptoKey)) return false
             return subtle.verify(
               signParams(publicKey.algorithm),
@@ -593,17 +562,10 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
               data as BufferSource
             )
           },
-          (cause) =>
-            argumentError("verify", cause) ?? Asymmetric.publicKeyError("Signature", "verify", publicKey, cause)
+          (cause) => Asymmetric.publicKeyError("Signature", "verify", publicKey, cause)
         ),
       publicKeyOf: <A extends Algorithm>(privateKey: PrivateKey<A>) =>
-        Asymmetric.publicKeyOf<PublicKey<A>>(
-          "Signature",
-          crypto,
-          privateKey,
-          specOf(privateKey.algorithm),
-          PublicKeyProto
-        )
+        Asymmetric.publicKeyOf<PublicKey<A>>(family, crypto, privateKey)
     })
   })
 )
@@ -628,13 +590,13 @@ export const privateKey = <
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromBytes(
+  KeyModel.fromBytes(
     "Signature",
     "privateKey",
     PrivateKeyProto,
     algorithm,
     bytes,
-    (bytes) => Asymmetric.checkSeedLength("Ed25519", "private")(bytes.length)
+    Asymmetric.checkSeedLength("Ed25519", "private")
   )
 
 /**
@@ -658,7 +620,7 @@ export const publicKey = <
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromBytes(
+  KeyModel.fromBytes(
     "Signature",
     "publicKey",
     PublicKeyProto,
@@ -666,7 +628,7 @@ export const publicKey = <
     bytes,
     algorithm._tag === "Ecdsa"
       ? Asymmetric.checkPoint(algorithm.namedCurve)
-      : (bytes) => Asymmetric.checkSeedLength("Ed25519", "public")(bytes.length)
+      : Asymmetric.checkSeedLength("Ed25519", "public")
   )
 
 /**
@@ -689,15 +651,7 @@ export const privateKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromCryptoKey(
-    "Signature",
-    "privateKeyFromCryptoKey",
-    PrivateKeyProto,
-    algorithm,
-    specOf(algorithm),
-    "private",
-    cryptoKey
-  )
+  Asymmetric.fromCryptoKey(family, "privateKeyFromCryptoKey", algorithm, "private", cryptoKey)
 
 /**
  * Builds a public key from an existing `CryptoKey`.
@@ -717,15 +671,7 @@ export const publicKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromCryptoKey(
-    "Signature",
-    "publicKeyFromCryptoKey",
-    PublicKeyProto,
-    algorithm,
-    specOf(algorithm),
-    "public",
-    cryptoKey
-  )
+  Asymmetric.fromCryptoKey(family, "publicKeyFromCryptoKey", algorithm, "public", cryptoKey)
 
 /**
  * Exports a key's stored bytes.
@@ -743,13 +689,4 @@ export const publicKeyFromCryptoKey = <A extends Algorithm>(
  * @since 4.0.0
  */
 export const toBytes = (key: PrivateKey | PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Asymmetric.toBytes("Signature", key, specOf(key.algorithm), isPrivateKey(key) ? "private" : "public")
-
-/** @internal */
-export const family: Asymmetric.Family = {
-  module: "Signature",
-  specOf,
-  privateKeyProto: PrivateKeyProto,
-  publicKeyProto: PublicKeyProto,
-  isPrivateKey
-}
+  Asymmetric.toBytes(family, key)

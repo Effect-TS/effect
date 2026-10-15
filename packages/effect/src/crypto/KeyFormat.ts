@@ -244,10 +244,10 @@ export type Key = PublicKey | PrivateKey | SecretKey
  */
 export type RoleOf<K extends Key> = K extends PublicKey ? "public" : K extends PrivateKey ? "private" : "secret"
 
-const invalidKey = (method: string, description: string) => KeyModel.invalidKey("KeyFormat", method, description)
+const invalidKey = (method: string, description: string) => internal.invalidKey("KeyFormat", method, description)
 
 const unsupported = (method: string, description: string) =>
-  KeyModel.fail("KeyFormat", method, new CryptoError.Unsupported({ description }))
+  internal.fail("KeyFormat", method, new CryptoError.Unsupported({ description }))
 
 const familyOf = (algorithm: AsymmetricAlgorithm | SecretAlgorithm): Asymmetric.Family | undefined => {
   switch ("_tag" in algorithm ? algorithm._tag : undefined) {
@@ -518,29 +518,18 @@ const decodeAsymmetric = <K>(
       input = { format: format._tag === "spki" ? "spki" : "pkcs8", data: converted as BufferSource }
     }
 
-    return Effect.flatMap(internal.subtle, (subtle) =>
-      Effect.tryPromise({
-        try: async () => {
-          const usages = role === "private" ? spec.privateUsages : spec.publicUsages
-          const cryptoKey = input.format === "jwk"
-            ? await subtle.importKey("jwk", input.data as JsonWebKey, spec.importParams, true, [...usages])
-            : await subtle.importKey(input.format, input.data as BufferSource, spec.importParams, true, [...usages])
-          const bytes = role === "private"
-            ? await Asymmetric.exportPrivate(subtle, cryptoKey, spec)
-            : await Asymmetric.exportPublic(subtle, cryptoKey, spec)
-          return KeyModel.make<K>(
-            role === "private" ? family.privateKeyProto : family.publicKeyProto,
-            algorithm,
-            { _tag: "Bytes", bytes }
-          )
-        },
-        catch: (cause) => Asymmetric.error("KeyFormat", method, cause)
-      }))
+    return internal.runWithReference("KeyFormat", method, async (subtle) => {
+      const usages = role === "private" ? spec.privateUsages : spec.publicUsages
+      const cryptoKey = input.format === "jwk"
+        ? await subtle.importKey("jwk", input.data as JsonWebKey, spec.importParams, true, [...usages])
+        : await subtle.importKey(input.format, input.data as BufferSource, spec.importParams, true, [...usages])
+      return KeyModel.makeBytes<K>(
+        role === "private" ? family.privateKeyProto : family.publicKeyProto,
+        algorithm,
+        await Asymmetric.exportKey(subtle, cryptoKey, spec, role)
+      )
+    })
   })
-
-// Moves an error from a family's function onto `KeyFormat.<method>`.
-const rehome = (method: string) => (error: CryptoError.CryptoError) =>
-  Effect.fail(new CryptoError.CryptoError({ module: "KeyFormat", method, reason: error.reason }))
 
 /**
  * Decodes a public key.
@@ -623,7 +612,7 @@ export const decodeSecret = <A extends SecretAlgorithm, Data>(
     const bytes = Base64Url.decode(checked.k!)
     if (Result.isFailure(bytes)) return invalidKey("decodeSecret", "The JWK k member is not valid base64url")
     return KeyWrap.secretFamily(algorithm).key(algorithm, bytes.success).pipe(
-      Effect.catch(rehome("decodeSecret"))
+      Effect.catch(internal.rehome("KeyFormat", "decodeSecret"))
     ) as Effect.Effect<SecretKey<A>, CryptoError.CryptoError>
   })
 
@@ -639,7 +628,7 @@ const encodeAsymmetric = (
     const role = family.isPrivateKey(key) ? "private" : "public"
     const stored = KeyModel.material(key)
     if (stored._tag === "CryptoKey" && !stored.cryptoKey.extractable) {
-      return Asymmetric.notExtractable("KeyFormat", "encode")
+      return internal.notExtractable("KeyFormat", "encode")
     }
     const target = format._tag === "jwk" ? "jwk" : format._tag === "spki" ? "spki" : "pkcs8"
     if (stored._tag === "Bytes") {
@@ -651,21 +640,17 @@ const encodeAsymmetric = (
         return Effect.succeed(KeyModel.copyBytes(stored.bytes))
       }
     }
-    return Effect.flatMap(internal.subtle, (subtle) =>
-      Effect.tryPromise({
-        try: async () => {
-          const cryptoKey = stored._tag === "CryptoKey"
-            ? stored.cryptoKey
-            : role === "private"
-            ? await Asymmetric.importPrivate(subtle, stored.bytes, spec, true)
-            : await Asymmetric.importPublic(subtle, stored.bytes, spec)
-          if (target === "jwk") {
-            return pick(await subtle.exportKey("jwk", cryptoKey), role === "private" ? privateMembers : publicMembers)
-          }
-          return new Uint8Array(await subtle.exportKey(target, cryptoKey))
-        },
-        catch: (cause) => Asymmetric.error("KeyFormat", "encode", cause)
-      }))
+    return internal.runWithReference("KeyFormat", "encode", async (subtle) => {
+      const cryptoKey = stored._tag === "CryptoKey"
+        ? stored.cryptoKey
+        : role === "private"
+        ? await Asymmetric.importPrivate(subtle, stored.bytes, spec, true)
+        : await Asymmetric.importPublic(subtle, stored.bytes, spec)
+      if (target === "jwk") {
+        return pick(await subtle.exportKey("jwk", cryptoKey), role === "private" ? privateMembers : publicMembers)
+      }
+      return new Uint8Array(await subtle.exportKey(target, cryptoKey))
+    })
   })
 
 /**
@@ -713,7 +698,7 @@ export const encode = <K extends Key, Data>(
     : generic._tag !== "jwk"
     ? invalidKey("encode", "Secret keys are only written as JWK")
     : KeyWrap.secretFamily(key.algorithm as SecretAlgorithm).toBytes(key).pipe(
-      Effect.catch(rehome("encode")),
+      Effect.catch(internal.rehome("KeyFormat", "encode")),
       Effect.map((bytes): JsonWebKey => ({ kty: "oct", k: Base64Url.encode(bytes) }))
     )
   return (generic.pem

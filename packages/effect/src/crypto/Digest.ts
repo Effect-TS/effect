@@ -104,6 +104,15 @@ export const sha384: Algorithm = { name: "SHA-384", outputLength: 48, implementa
 export const sha512: Algorithm = { name: "SHA-512", outputLength: 64, implementation: undefined }
 
 /**
+ * The hash's name as it appears in the names of the pre-made algorithm
+ * values of the other families: `"SHA-256"` becomes `"Sha256"`.
+ *
+ * @internal
+ */
+export const nameSuffix = (hash: Algorithm): string =>
+  hash.name.charAt(0) + hash.name.slice(1).toLowerCase().replace("-", "")
+
+/**
  * Service that computes message digests.
  *
  * **Example** (Hashing with SHA-256)

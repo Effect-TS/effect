@@ -117,8 +117,6 @@ const blockSizes: Record<Digest.Algorithm["name"], number> = {
   "SHA-512": 128
 }
 
-const fail = (method: string, description: string) => KeyModel.invalidKey("Mac", method, description)
-
 /**
  * Service that generates HMAC keys, signs data, and verifies tags.
  *
@@ -185,31 +183,26 @@ export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> 
     const cryptoKeyFor = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
       subtle.importKey("raw", bytes as BufferSource, importParams(algorithm), false, ["sign", "verify"])
     )
-    const run = <A>(method: string, f: (subtle: SubtleCrypto) => Promise<A>) =>
-      Effect.suspend(() => {
-        const subtle = crypto?.subtle
-        if (subtle === undefined) return Effect.die(internal.subtleUnavailable())
-        return Effect.tryPromise({
-          try: () => f(subtle),
-          catch: (cause) => internal.webCryptoError("Mac", method, cause)
-        })
-      })
     return Mac.of({
       generateKey: (algorithm) =>
         Effect.map(
           random.randomBytes(blockSizes[algorithm.hash.name]),
-          (bytes) => KeyModel.make(KeyProto, algorithm, { _tag: "Bytes", bytes })
+          (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)
         ),
       sign: (key, data) =>
-        run(
+        internal.run(
+          "Mac",
           "sign",
+          crypto,
           async (subtle) =>
             new Uint8Array(await subtle.sign("HMAC", await cryptoKeyFor(subtle, key), data as BufferSource))
         ),
       // Web Crypto compares HMAC tags in constant time and rejects other lengths.
       verify: (key, tag, data) =>
-        run(
+        internal.run(
+          "Mac",
           "verify",
+          crypto,
           async (subtle) =>
             subtle.verify("HMAC", await cryptoKeyFor(subtle, key), tag as BufferSource, data as BufferSource)
         )
@@ -241,7 +234,7 @@ export const key = <A extends Algorithm>(
     KeyProto,
     algorithm,
     bytes,
-    (length) => length === 0 ? "An HMAC key cannot be empty" : undefined
+    (bytes) => bytes.length === 0 ? "An HMAC key cannot be empty" : undefined
   )
 
 /**
@@ -262,20 +255,15 @@ export const fromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const problem = KeyModel.checkCryptoKey(cryptoKey, {
-      type: "secret",
-      name: "HMAC",
-      usages: ["sign", "verify"],
-      usagePolicy: "all",
-      check: (keyAlgorithm) => {
-        const hash = (keyAlgorithm as HmacKeyAlgorithm).hash?.name
-        return hash === algorithm.hash.name ? undefined : `Expected an HMAC key for ${algorithm.hash.name}, not ${hash}`
-      }
-    })
-    return problem === undefined
-      ? Effect.succeed(KeyModel.make<Key<A>>(KeyProto, algorithm, { _tag: "CryptoKey", cryptoKey }))
-      : fail("fromCryptoKey", problem)
+  KeyModel.fromCryptoKey("Mac", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
+    type: "secret",
+    name: "HMAC",
+    usages: ["sign", "verify"],
+    usagePolicy: "all",
+    check: (keyAlgorithm) => {
+      const hash = (keyAlgorithm as HmacKeyAlgorithm).hash?.name
+      return hash === algorithm.hash.name ? undefined : `Expected an HMAC key for ${algorithm.hash.name}, not ${hash}`
+    }
   })
 
 /**
@@ -292,7 +280,7 @@ export const fromCryptoKey = <A extends Algorithm>(
  * @since 4.0.0
  */
 export const toBytes = (key: Key): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  KeyModel.toBytes("Mac", key, "raw")
+  KeyModel.toBytes("Mac", key, KeyModel.exportRaw)
 
 /**
  * Compares two byte arrays in constant time.

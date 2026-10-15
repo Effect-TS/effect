@@ -254,7 +254,9 @@ export class Aead extends Context.Service<Aead, {
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
 }>()("effect/crypto/Aead") {}
 
-const fail = (method: string, reason: CryptoError.CryptoErrorReason) => KeyModel.fail("Aead", method, reason)
+type Method = "encrypt" | "decrypt"
+
+const fail = (method: Method, reason: CryptoError.CryptoErrorReason) => internal.fail("Aead", method, reason)
 
 const decryptionFailed = () => fail("decrypt", new CryptoError.DecryptionFailed())
 
@@ -266,7 +268,7 @@ const tagLength = 16
 // Every check runs before any work, so the pure TypeScript code only throws on
 // a bug, and WebCrypto's `OperationError` only means a failed tag check.
 const checkArguments = (
-  method: "encrypt" | "decrypt",
+  method: Method,
   key: Key,
   data: Uint8Array,
   options: Options
@@ -294,7 +296,7 @@ const checkArguments = (
 }
 
 const runImplementation = (
-  method: "encrypt" | "decrypt",
+  method: Method,
   implementation: Implementation,
   key: Key,
   data: Uint8Array,
@@ -312,16 +314,6 @@ const runImplementation = (
     const plaintext = implementation.decrypt(stored.bytes, options.nonce, data, aad)
     return plaintext === undefined ? decryptionFailed() : Effect.succeed(plaintext)
   })
-}
-
-const pure = (
-  method: "encrypt" | "decrypt",
-  key: Key,
-  data: Uint8Array,
-  options: Options
-): Effect.Effect<Uint8Array, CryptoError.CryptoError> | undefined => {
-  const implementation = key.algorithm.implementation
-  return implementation === undefined ? undefined : runImplementation(method, implementation, key, data, options)
 }
 
 /**
@@ -347,39 +339,40 @@ export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom>
     const cryptoKeyFor = KeyModel.makeCache((subtle, bytes) =>
       subtle.importKey("raw", bytes as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"])
     )
-    const gcm = (method: "encrypt" | "decrypt", key: Key, data: Uint8Array, options: Options) =>
-      Effect.suspend(() => {
-        const subtle = crypto?.subtle
-        if (subtle === undefined) return Effect.die(internal.subtleUnavailable())
-        const params: AesGcmParams = {
-          name: "AES-GCM",
-          iv: options.nonce as BufferSource,
-          tagLength: 128,
-          ...(options.aad === undefined ? {} : { additionalData: options.aad as BufferSource })
-        }
-        return Effect.tryPromise({
-          try: async () =>
-            new Uint8Array(await subtle[method](params, await cryptoKeyFor(subtle, key), data as BufferSource)),
-          catch: (cause) =>
-            internal.webCryptoError(
-              "Aead",
-              method,
-              cause,
-              method === "decrypt" ? () => new CryptoError.DecryptionFailed() : undefined
-            )
-        })
-      })
-    const run = (method: "encrypt" | "decrypt") => (key: Key, data: Uint8Array, options: Options) =>
-      Effect.suspend(() =>
-        checkArguments(method, key, data, options) ?? pure(method, key, data, options) ??
-          gcm(method, key, data, options)
+    const gcm = (method: Method, key: Key, data: Uint8Array, options: Options) => {
+      const params: AesGcmParams = {
+        name: "AES-GCM",
+        iv: options.nonce as BufferSource,
+        tagLength: 128,
+        ...(options.aad === undefined ? {} : { additionalData: options.aad as BufferSource })
+      }
+      return internal.run(
+        "Aead",
+        method,
+        crypto,
+        async (subtle) =>
+          new Uint8Array(await subtle[method](params, await cryptoKeyFor(subtle, key), data as BufferSource)),
+        (cause) =>
+          internal.webCryptoError(
+            "Aead",
+            method,
+            cause,
+            method === "decrypt" ? () => new CryptoError.DecryptionFailed() : undefined
+          )
       )
+    }
+    const run = (method: Method) => (key: Key, data: Uint8Array, options: Options) =>
+      Effect.suspend(() => {
+        const failure = checkArguments(method, key, data, options)
+        if (failure !== undefined) return failure
+        const implementation = key.algorithm.implementation
+        return implementation === undefined
+          ? gcm(method, key, data, options)
+          : runImplementation(method, implementation, key, data, options)
+      })
     return Aead.of({
       generateKey: (algorithm) =>
-        Effect.map(
-          random.randomBytes(algorithm.keyLength),
-          (bytes) => KeyModel.make(KeyProto, algorithm, { _tag: "Bytes", bytes })
-        ),
+        Effect.map(random.randomBytes(algorithm.keyLength), (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)),
       encrypt: run("encrypt"),
       decrypt: run("decrypt")
     })
@@ -404,17 +397,7 @@ export const key = <A extends Algorithm>(
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  KeyModel.fromBytes(
-    "Aead",
-    "key",
-    KeyProto,
-    algorithm,
-    bytes,
-    (length) =>
-      length === algorithm.keyLength
-        ? undefined
-        : `Expected a ${algorithm.keyLength}-byte key for ${algorithm.name}, not ${length} bytes`
-  )
+  KeyModel.fromBytes("Aead", "key", KeyProto, algorithm, bytes, KeyModel.checkKeyLength(algorithm))
 
 /**
  * Builds an AES-GCM key from an existing `CryptoKey`, such as a
@@ -438,25 +421,15 @@ export const fromCryptoKey = <A extends Algorithm<true>>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const problem = algorithm.implementation !== undefined
-      ? `${algorithm.name} keys cannot be CryptoKeys`
-      : KeyModel.checkCryptoKey(cryptoKey, {
-        type: "secret",
-        name: "AES-GCM",
-        usages: ["encrypt", "decrypt"],
-        usagePolicy: "all",
-        check: (keyAlgorithm) => {
-          const length = (keyAlgorithm as AesKeyAlgorithm).length
-          return length === algorithm.keyLength * 8
-            ? undefined
-            : `Expected a ${algorithm.keyLength * 8}-bit AES-GCM key, not ${length} bits`
-        }
-      })
-    return problem === undefined
-      ? Effect.succeed(KeyModel.make<Key<A>>(KeyProto, algorithm, { _tag: "CryptoKey", cryptoKey }))
-      : fail("fromCryptoKey", new CryptoError.InvalidKey({ description: problem }))
-  })
+  algorithm.implementation !== undefined
+    ? internal.invalidKey("Aead", "fromCryptoKey", `${algorithm.name} keys cannot be CryptoKeys`)
+    : KeyModel.fromCryptoKey("Aead", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
+      type: "secret",
+      name: "AES-GCM",
+      usages: ["encrypt", "decrypt"],
+      usagePolicy: "all",
+      check: KeyModel.checkAesLength("AES-GCM", algorithm.keyLength)
+    })
 
 /**
  * Exports a key's bytes.
@@ -472,4 +445,4 @@ export const fromCryptoKey = <A extends Algorithm<true>>(
  * @since 4.0.0
  */
 export const toBytes = (key: Key): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  KeyModel.toBytes("Aead", key, "raw")
+  KeyModel.toBytes("Aead", key, KeyModel.exportRaw)

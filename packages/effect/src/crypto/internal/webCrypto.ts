@@ -7,16 +7,41 @@ import { WebCrypto } from "../WebCrypto.ts"
 export const subtleUnavailable = (): Error =>
   new Error("crypto.subtle is unavailable; browsers expose it only in secure contexts")
 
+/** @internal */
+export const fail = (
+  module: string,
+  method: string,
+  reason: CryptoError.CryptoErrorReason
+): Effect.Effect<never, CryptoError.CryptoError> => Effect.fail(new CryptoError.CryptoError({ module, method, reason }))
+
+/** @internal */
+export const invalidKey = (module: string, method: string, description: string) =>
+  fail(module, method, new CryptoError.InvalidKey({ description }))
+
+/** @internal */
+export const notExtractable = (module: string, method: string) =>
+  fail(module, method, new CryptoError.NotExtractable({ description: "The CryptoKey is not extractable" }))
+
 /**
- * Reads `crypto.subtle` from the `WebCrypto` reference, dying when it is
- * missing, as in an insecure browser context.
+ * Moves an error raised by another module's function onto `module.method`.
  *
  * @internal
  */
-export const subtle: Effect.Effect<SubtleCrypto> = WebCrypto.use((crypto) => {
-  const subtle = crypto?.subtle
-  return subtle === undefined ? Effect.die(subtleUnavailable()) : Effect.succeed(subtle)
-})
+export const rehome = (module: string, method: string) => (error: CryptoError.CryptoError) =>
+  fail(module, method, error.reason)
+
+/**
+ * Thrown inside {@link run} to fail with a typed reason instead of a defect,
+ * for checks that need the imported `CryptoKey`.
+ *
+ * @internal
+ */
+export class Failure {
+  readonly reason: CryptoError.CryptoErrorReason
+  constructor(reason: CryptoError.CryptoErrorReason) {
+    this.reason = reason
+  }
+}
 
 /** @internal */
 export const isOperationError = (cause: unknown): boolean =>
@@ -25,10 +50,11 @@ export const isOperationError = (cause: unknown): boolean =>
 /**
  * Maps an exception thrown by `crypto.subtle` to a `CryptoError`.
  *
- * `DataError` and `InvalidAccessError` are `InvalidKey`, and
- * `NotSupportedError` is `Unsupported`. An `OperationError` becomes the reason
- * from `onOperationError`, such as `DecryptionFailed` for a decryption. Any
- * other exception is rethrown, which `Effect.tryPromise` turns into a defect.
+ * A {@link Failure} carries its own reason. `DataError` and
+ * `InvalidAccessError` are `InvalidKey`, and `NotSupportedError` is
+ * `Unsupported`. An `OperationError` becomes the reason from
+ * `onOperationError`, such as `DecryptionFailed` for a decryption. Any other
+ * exception is rethrown, which `Effect.tryPromise` turns into a defect.
  *
  * @internal
  */
@@ -48,6 +74,7 @@ const reasonFor = (
   cause: unknown,
   onOperationError: (() => CryptoError.CryptoErrorReason) | undefined
 ): CryptoError.CryptoErrorReason | undefined => {
+  if (cause instanceof Failure) return cause.reason
   switch (Predicate.hasProperty(cause, "name") ? cause.name : undefined) {
     case "DataError":
       return new CryptoError.InvalidKey({ description: "Invalid key data", cause })
@@ -61,3 +88,36 @@ const reasonFor = (
       return undefined
   }
 }
+
+/**
+ * Runs `f` on the `subtle` of a `Crypto` object, dying when it is missing, as
+ * in an insecure browser context. Exceptions go through `onError`, which
+ * defaults to {@link webCryptoError}.
+ *
+ * @internal
+ */
+export const run = <A>(
+  module: string,
+  method: string,
+  crypto: Crypto | undefined,
+  f: (subtle: SubtleCrypto) => Promise<A>,
+  onError: (cause: unknown) => CryptoError.CryptoError = (cause) => webCryptoError(module, method, cause)
+): Effect.Effect<A, CryptoError.CryptoError> =>
+  Effect.suspend(() => {
+    const subtle = crypto?.subtle
+    if (subtle === undefined) return Effect.die(subtleUnavailable())
+    return Effect.tryPromise({ try: () => f(subtle), catch: onError })
+  })
+
+/**
+ * {@link run} on the `WebCrypto` reference, for the top-level functions that
+ * have no layer to read it from.
+ *
+ * @internal
+ */
+export const runWithReference = <A>(
+  module: string,
+  method: string,
+  f: (subtle: SubtleCrypto) => Promise<A>,
+  onError?: (cause: unknown) => CryptoError.CryptoError
+): Effect.Effect<A, CryptoError.CryptoError> => WebCrypto.use((crypto) => run(module, method, crypto, f, onError))

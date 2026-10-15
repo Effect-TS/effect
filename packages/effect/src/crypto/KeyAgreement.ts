@@ -238,6 +238,15 @@ const specOf = (algorithm: Algorithm): Asymmetric.Spec =>
       check: Asymmetric.checkNamedCurve(algorithm.namedCurve)
     }
 
+/** @internal */
+export const family: Asymmetric.Family = {
+  module: "KeyAgreement",
+  specOf,
+  privateKeyProto: PrivateKeyProto,
+  publicKeyProto: PublicKeyProto,
+  isPrivateKey
+}
+
 // P-521 coordinates are 521 bits, padded to 66 bytes.
 const sharedSecretBits = (algorithm: Algorithm): number =>
   algorithm._tag === "X25519" ? 256 : 8 * Asymmetric.coordinateSizes[algorithm.namedCurve]
@@ -321,30 +330,10 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
   Effect.gen(function*() {
     const random = yield* SecureRandom.SecureRandom
     const crypto = yield* WebCrypto
-    const privateCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
-      Asymmetric.importPrivate(subtle, bytes, specOf(algorithm), false)
-    )
-    const publicCryptoKey = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
-      Asymmetric.importPublic(subtle, bytes, specOf(algorithm))
-    )
+    const caches = Asymmetric.makeCaches(family)
     return KeyAgreement.of({
       generateKeyPair: <A extends Algorithm>(algorithm: A) =>
-        Effect.flatMap(
-          algorithm._tag === "X25519" ? random.randomBytes(Asymmetric.seedLength) : Effect.undefined,
-          (seed) =>
-            Effect.map(
-              Asymmetric.run(
-                "KeyAgreement",
-                "generateKeyPair",
-                crypto,
-                (subtle) => Asymmetric.generate(subtle, specOf(algorithm), specOf(algorithm).importParams, seed)
-              ),
-              ({ privateKey, publicKey }): KeyPair<A> => ({
-                privateKey: KeyModel.make(PrivateKeyProto, algorithm, { _tag: "Bytes", bytes: privateKey }),
-                publicKey: KeyModel.make(PublicKeyProto, algorithm, { _tag: "Bytes", bytes: publicKey })
-              })
-            )
-        ),
+        Asymmetric.generateKeyPair<KeyPair<A>>(family, crypto, random, algorithm, specOf(algorithm).importParams),
       deriveSharedSecret: (privateKey, publicKey) =>
         Effect.suspend(() => {
           const algorithm: Algorithm = privateKey.algorithm
@@ -355,20 +344,22 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
               invalidPeer(`Expected a ${algorithm.name} public key, not ${publicKey.algorithm.name}`)
             )
           }
+          const onError = (cause: unknown) =>
+            Asymmetric.publicKeyError("KeyAgreement", "deriveSharedSecret", publicKey, cause)
           // The keys are imported before deriving, so an `OperationError` from
           // `deriveBits` can only come from the peer key.
-          return Asymmetric.run(
+          return internal.run(
             "KeyAgreement",
             "deriveSharedSecret",
             crypto,
             async (subtle) => ({
-              privateKey: await privateCryptoKey(subtle, privateKey),
-              publicKey: await publicCryptoKey(subtle, publicKey)
+              privateKey: await caches.privateKey(subtle, privateKey),
+              publicKey: await caches.publicKey(subtle, publicKey)
             }),
-            (cause) => Asymmetric.publicKeyError("KeyAgreement", "deriveSharedSecret", publicKey, cause)
+            onError
           ).pipe(
             Effect.flatMap((keys) =>
-              Asymmetric.run(
+              internal.run(
                 "KeyAgreement",
                 "deriveSharedSecret",
                 crypto,
@@ -381,9 +372,7 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
                     )
                   ),
                 (cause) =>
-                  internal.isOperationError(cause)
-                    ? invalidPeer("Invalid peer public key", cause)
-                    : Asymmetric.publicKeyError("KeyAgreement", "deriveSharedSecret", publicKey, cause)
+                  internal.isOperationError(cause) ? invalidPeer("Invalid peer public key", cause) : onError(cause)
               )
             ),
             Effect.flatMap((secret) =>
@@ -396,13 +385,7 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
           )
         }),
       publicKeyOf: <A extends Algorithm>(privateKey: PrivateKey<A>) =>
-        Asymmetric.publicKeyOf<PublicKey<A>>(
-          "KeyAgreement",
-          crypto,
-          privateKey,
-          specOf(privateKey.algorithm),
-          PublicKeyProto
-        )
+        Asymmetric.publicKeyOf<PublicKey<A>>(family, crypto, privateKey)
     })
   })
 )
@@ -427,13 +410,13 @@ export const privateKey = <
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromBytes(
+  KeyModel.fromBytes(
     "KeyAgreement",
     "privateKey",
     PrivateKeyProto,
     algorithm,
     bytes,
-    (bytes) => Asymmetric.checkSeedLength("X25519", "private")(bytes.length)
+    Asymmetric.checkSeedLength("X25519", "private")
   )
 
 /**
@@ -454,7 +437,7 @@ export const publicKey = <A extends Algorithm>(
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromBytes(
+  KeyModel.fromBytes(
     "KeyAgreement",
     "publicKey",
     PublicKeyProto,
@@ -462,7 +445,7 @@ export const publicKey = <A extends Algorithm>(
     bytes,
     algorithm._tag === "Ecdh"
       ? Asymmetric.checkPoint(algorithm.namedCurve)
-      : (bytes) => Asymmetric.checkSeedLength("X25519", "public")(bytes.length)
+      : Asymmetric.checkSeedLength("X25519", "public")
   )
 
 /**
@@ -484,15 +467,7 @@ export const privateKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<PrivateKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromCryptoKey(
-    "KeyAgreement",
-    "privateKeyFromCryptoKey",
-    PrivateKeyProto,
-    algorithm,
-    specOf(algorithm),
-    "private",
-    cryptoKey
-  )
+  Asymmetric.fromCryptoKey(family, "privateKeyFromCryptoKey", algorithm, "private", cryptoKey)
 
 /**
  * Builds a public key from an existing `CryptoKey`.
@@ -512,15 +487,7 @@ export const publicKeyFromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<PublicKey<A>, CryptoError.CryptoError> =>
-  Asymmetric.fromCryptoKey(
-    "KeyAgreement",
-    "publicKeyFromCryptoKey",
-    PublicKeyProto,
-    algorithm,
-    specOf(algorithm),
-    "public",
-    cryptoKey
-  )
+  Asymmetric.fromCryptoKey(family, "publicKeyFromCryptoKey", algorithm, "public", cryptoKey)
 
 /**
  * Exports a key's stored bytes.
@@ -537,13 +504,4 @@ export const publicKeyFromCryptoKey = <A extends Algorithm>(
  * @since 4.0.0
  */
 export const toBytes = (key: PrivateKey | PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Asymmetric.toBytes("KeyAgreement", key, specOf(key.algorithm), isPrivateKey(key) ? "private" : "public")
-
-/** @internal */
-export const family: Asymmetric.Family = {
-  module: "KeyAgreement",
-  specOf,
-  privateKeyProto: PrivateKeyProto,
-  publicKeyProto: PublicKeyProto,
-  isPrivateKey
-}
+  Asymmetric.toBytes(family, key)

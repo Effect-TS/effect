@@ -197,7 +197,7 @@ export class Cipher extends Context.Service<Cipher, {
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
 }>()("effect/crypto/Cipher") {}
 
-const fail = (method: string, reason: CryptoError.CryptoErrorReason) => KeyModel.fail("Cipher", method, reason)
+const fail = (method: string, reason: CryptoError.CryptoErrorReason) => internal.fail("Cipher", method, reason)
 
 const blockLength = 16
 
@@ -239,10 +239,11 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
         if (method === "decrypt" && cbc && (data.length === 0 || data.length % blockLength !== 0)) {
           return fail(method, new CryptoError.DecryptionFailed())
         }
-        const subtle = crypto?.subtle
-        if (subtle === undefined) return Effect.die(internal.subtleUnavailable())
-        return Effect.tryPromise({
-          try: async () =>
+        return internal.run(
+          "Cipher",
+          method,
+          crypto,
+          async (subtle) =>
             new Uint8Array(
               await subtle[method](
                 params(key.algorithm, options.iv),
@@ -250,21 +251,18 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
                 data as BufferSource
               )
             ),
-          catch: (cause) =>
+          (cause) =>
             internal.webCryptoError(
               "Cipher",
               method,
               cause,
               method === "decrypt" && cbc ? () => new CryptoError.DecryptionFailed() : undefined
             )
-        })
+        )
       })
     return Cipher.of({
       generateKey: (algorithm) =>
-        Effect.map(
-          random.randomBytes(algorithm.keyLength),
-          (bytes) => KeyModel.make(KeyProto, algorithm, { _tag: "Bytes", bytes })
-        ),
+        Effect.map(random.randomBytes(algorithm.keyLength), (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)),
       encrypt: run("encrypt"),
       decrypt: run("decrypt")
     })
@@ -289,17 +287,7 @@ export const key = <A extends Algorithm>(
   algorithm: A,
   bytes: Uint8Array
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  KeyModel.fromBytes(
-    "Cipher",
-    "key",
-    KeyProto,
-    algorithm,
-    bytes,
-    (length) =>
-      length === algorithm.keyLength
-        ? undefined
-        : `Expected a ${algorithm.keyLength}-byte key for ${algorithm.name}, not ${length} bytes`
-  )
+  KeyModel.fromBytes("Cipher", "key", KeyProto, algorithm, bytes, KeyModel.checkKeyLength(algorithm))
 
 /**
  * Builds a key from an existing `CryptoKey`, such as a non-extractable one.
@@ -320,22 +308,12 @@ export const fromCryptoKey = <A extends Algorithm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const problem = KeyModel.checkCryptoKey(cryptoKey, {
-      type: "secret",
-      name: algorithm.mode,
-      usages: ["encrypt", "decrypt"],
-      usagePolicy: "all",
-      check: (keyAlgorithm) => {
-        const length = (keyAlgorithm as AesKeyAlgorithm).length
-        return length === algorithm.keyLength * 8
-          ? undefined
-          : `Expected a ${algorithm.keyLength * 8}-bit ${algorithm.mode} key, not ${length} bits`
-      }
-    })
-    return problem === undefined
-      ? Effect.succeed(KeyModel.make<Key<A>>(KeyProto, algorithm, { _tag: "CryptoKey", cryptoKey }))
-      : fail("fromCryptoKey", new CryptoError.InvalidKey({ description: problem }))
+  KeyModel.fromCryptoKey("Cipher", "fromCryptoKey", KeyProto, algorithm, cryptoKey, {
+    type: "secret",
+    name: algorithm.mode,
+    usages: ["encrypt", "decrypt"],
+    usagePolicy: "all",
+    check: KeyModel.checkAesLength(algorithm.mode, algorithm.keyLength)
   })
 
 /**
@@ -352,4 +330,4 @@ export const fromCryptoKey = <A extends Algorithm>(
  * @since 4.0.0
  */
 export const toBytes = (key: Key): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  KeyModel.toBytes("Cipher", key, "raw")
+  KeyModel.toBytes("Cipher", key, KeyModel.exportRaw)

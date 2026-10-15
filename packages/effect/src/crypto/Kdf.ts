@@ -101,10 +101,6 @@ export interface DeriveOptions {
   readonly info?: Uint8Array | undefined
 }
 
-// "SHA-256" becomes "Sha256", as in the names of the pre-made values.
-const hashName = (hash: Digest.Algorithm): string =>
-  hash.name.charAt(0) + hash.name.slice(1).toLowerCase().replace("-", "")
-
 /**
  * Builds the HKDF algorithm for a hash.
  *
@@ -112,7 +108,7 @@ const hashName = (hash: Digest.Algorithm): string =>
  * @category algorithms
  * @since 4.0.0
  */
-export const hkdf = (hash: Digest.Algorithm): Hkdf => ({ _tag: "Hkdf", name: `hkdf${hashName(hash)}`, hash })
+export const hkdf = (hash: Digest.Algorithm): Hkdf => ({ _tag: "Hkdf", name: `hkdf${Digest.nameSuffix(hash)}`, hash })
 
 /**
  * Builds a PBKDF2 algorithm for a hash and an iteration count.
@@ -128,7 +124,7 @@ export const hkdf = (hash: Digest.Algorithm): Hkdf => ({ _tag: "Hkdf", name: `hk
  */
 export const pbkdf2 = (options: { readonly hash: Digest.Algorithm; readonly iterations: number }): Pbkdf2 => ({
   _tag: "Pbkdf2",
-  name: `pbkdf2${hashName(options.hash)}`,
+  name: `pbkdf2${Digest.nameSuffix(options.hash)}`,
   hash: options.hash,
   iterations: options.iterations
 })
@@ -263,23 +259,19 @@ export class Kdf extends Context.Service<Kdf, {
 }>()("effect/crypto/Kdf") {}
 
 const invalidArgument = (description: string) =>
-  Effect.fail(
-    new CryptoError.CryptoError({
-      module: "Kdf",
-      method: "derive",
-      reason: new CryptoError.InvalidArgument({ description })
-    })
-  )
+  internal.fail("Kdf", "derive", new CryptoError.InvalidArgument({ description }))
 
 const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
 
-// Checks the HKDF and PBKDF2 arguments before they reach Web Crypto, which
-// takes a 32-bit bit length that some backends wrap instead of rejecting.
-// Node.js aborts the process on PBKDF2 iteration counts above 2^31 - 1.
+// Checks the arguments before they reach Web Crypto, which takes a 32-bit bit
+// length that some backends wrap instead of rejecting. Node.js aborts the
+// process on PBKDF2 iteration counts above 2^31 - 1.
 const checkArguments = (
-  algorithm: Hkdf | Pbkdf2,
+  algorithm: Algorithm,
   options: DeriveOptions
 ): Effect.Effect<never, CryptoError.CryptoError> | undefined => {
+  if (algorithm._tag !== "Hkdf" && options.info !== undefined) return invalidArgument("info only applies to HKDF")
+  if (algorithm._tag === "Argon2id") return undefined
   if (algorithm.hash.name === "MD5") return invalidArgument(`${algorithm._tag} needs a SHA hash, not MD5`)
   if (algorithm._tag === "Hkdf") {
     const maxLength = 255 * algorithm.hash.outputLength
@@ -287,7 +279,6 @@ const checkArguments = (
       ? undefined
       : invalidArgument(`length must be between 1 and ${maxLength} bytes for ${algorithm.name}`)
   }
-  if (options.info !== undefined) return invalidArgument("info only applies to HKDF")
   if (!isIntegerIn(algorithm.iterations, 1, 0x7fff_ffff)) {
     return invalidArgument("iterations must be between 1 and 2^31 - 1")
   }
@@ -329,29 +320,21 @@ export const layerWebCrypto: Layer.Layer<Kdf> = Layer.effect(
     Effect.succeed(Kdf.of({
       derive: (algorithm, secret, options) =>
         Effect.suspend(() => {
-          if (algorithm._tag === "Argon2id") {
-            if (options.info !== undefined) return invalidArgument("info only applies to HKDF")
-            return Effect.fail(
-              new CryptoError.CryptoError({
-                module: "Kdf",
-                method: "derive",
-                reason: new CryptoError.Unsupported({ description: "Kdf.layerWebCrypto does not provide argon2id" })
-              })
-            )
-          }
           const failure = checkArguments(algorithm, options)
           if (failure !== undefined) return failure
-          const subtle = crypto?.subtle
-          if (subtle === undefined) return Effect.die(internal.subtleUnavailable())
+          if (algorithm._tag === "Argon2id") {
+            return internal.fail(
+              "Kdf",
+              "derive",
+              new CryptoError.Unsupported({ description: "Kdf.layerWebCrypto does not provide argon2id" })
+            )
+          }
           const name = algorithm._tag === "Hkdf" ? "HKDF" : "PBKDF2"
-          return Effect.tryPromise({
-            try: async () => {
-              const handle = await subtle.importKey("raw", secret as BufferSource, name, false, ["deriveBits"])
-              return new Uint8Array(
-                await subtle.deriveBits(webCryptoParams(algorithm, options), handle, options.length * 8)
-              )
-            },
-            catch: (cause) => internal.webCryptoError("Kdf", "derive", cause)
+          return internal.run("Kdf", "derive", crypto, async (subtle) => {
+            const handle = await subtle.importKey("raw", secret as BufferSource, name, false, ["deriveBits"])
+            return new Uint8Array(
+              await subtle.deriveBits(webCryptoParams(algorithm, options), handle, options.length * 8)
+            )
           })
         })
     }))

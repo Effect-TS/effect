@@ -3,7 +3,7 @@ import * as Equal from "../../Equal.ts"
 import { format } from "../../Formatter.ts"
 import { NodeInspectSymbol } from "../../Inspectable.ts"
 import * as Predicate from "../../Predicate.ts"
-import * as CryptoError from "../CryptoError.ts"
+import type * as CryptoError from "../CryptoError.ts"
 import * as internal from "./webCrypto.ts"
 
 /**
@@ -63,28 +63,31 @@ export const redactedProto = (typeId: string, label: string): object => ({
 /**
  * Builds a key. Keys compare by reference: comparing key bytes is not constant
  * time, and structural equality would let secret keys act as `HashMap` keys.
- *
- * @internal
  */
-export const make = <K>(proto: object, algorithm: unknown, material: Material): K =>
+const make = <K>(proto: object, algorithm: unknown, material: Material): K =>
   Equal.byReferenceUnsafe(Object.create(proto, {
     algorithm: { value: algorithm, enumerable: true },
     [MaterialId]: { value: material }
   }))
 
 /** @internal */
-export const fail = (
-  module: string,
-  method: string,
-  reason: CryptoError.CryptoErrorReason
-): Effect.Effect<never, CryptoError.CryptoError> => Effect.fail(new CryptoError.CryptoError({ module, method, reason }))
-
-/** @internal */
-export const invalidKey = (module: string, method: string, description: string) =>
-  fail(module, method, new CryptoError.InvalidKey({ description }))
+export const makeBytes = <K>(proto: object, algorithm: unknown, bytes: Uint8Array): K =>
+  make(proto, algorithm, { _tag: "Bytes", bytes })
 
 /**
- * Copies raw key bytes into a byte-backed key, rejecting other values.
+ * Checks the length of a symmetric key against its algorithm.
+ *
+ * @internal
+ */
+export const checkKeyLength =
+  (algorithm: { readonly name: string; readonly keyLength: number }) => (bytes: Uint8Array): string | undefined =>
+    bytes.length === algorithm.keyLength
+      ? undefined
+      : `Expected a ${algorithm.keyLength}-byte key for ${algorithm.name}, not ${bytes.length} bytes`
+
+/**
+ * Copies raw key bytes into a byte-backed key, rejecting other values and
+ * bytes that fail `check`.
  *
  * @internal
  */
@@ -94,19 +97,18 @@ export const fromBytes = <K>(
   proto: object,
   algorithm: unknown,
   bytes: Uint8Array,
-  check: (length: number) => string | undefined
+  check: (bytes: Uint8Array) => string | undefined
 ): Effect.Effect<K, CryptoError.CryptoError> =>
   Effect.suspend(() => {
-    if (!(bytes instanceof Uint8Array)) return invalidKey(module, method, "Expected the key as a Uint8Array")
-    const problem = check(bytes.length)
+    if (!(bytes instanceof Uint8Array)) return internal.invalidKey(module, method, "Expected the key as a Uint8Array")
+    const problem = check(bytes)
     return problem === undefined
-      ? Effect.succeed(make<K>(proto, algorithm, { _tag: "Bytes", bytes: copyBytes(bytes) }))
-      : invalidKey(module, method, problem)
+      ? Effect.succeed(makeBytes<K>(proto, algorithm, copyBytes(bytes)))
+      : internal.invalidKey(module, method, problem)
   })
 
 /**
- * Checks a `CryptoKey` against the typed key it is to back, returning a
- * description of the first mismatch.
+ * What a `CryptoKey` must match to back a typed key.
  *
  * With `usages: "all"`, the key must have every expected usage, because the
  * typed key reaches every operation that needs them. `"any"` accepts a key
@@ -115,16 +117,25 @@ export const fromBytes = <K>(
  *
  * @internal
  */
-export const checkCryptoKey = (
-  cryptoKey: CryptoKey,
-  expected: {
-    readonly type: KeyType
-    readonly name: string
-    readonly usages: ReadonlyArray<KeyUsage>
-    readonly usagePolicy: "all" | "any"
-    readonly check?: (algorithm: KeyAlgorithm) => string | undefined
-  }
-): string | undefined => {
+export interface ExpectedCryptoKey {
+  readonly type: KeyType
+  readonly name: string
+  readonly usages: ReadonlyArray<KeyUsage>
+  readonly usagePolicy: "all" | "any"
+  readonly check?: ((algorithm: KeyAlgorithm) => string | undefined) | undefined
+}
+
+/**
+ * Checks that an AES `CryptoKey` has the algorithm's length.
+ *
+ * @internal
+ */
+export const checkAesLength = (name: string, keyLength: number) => (algorithm: KeyAlgorithm): string | undefined => {
+  const length = (algorithm as AesKeyAlgorithm).length
+  return length === keyLength * 8 ? undefined : `Expected a ${keyLength * 8}-bit ${name} key, not ${length} bits`
+}
+
+const checkCryptoKey = (cryptoKey: CryptoKey, expected: ExpectedCryptoKey): string | undefined => {
   if (
     !Predicate.hasProperty(cryptoKey, "type") || !Predicate.hasProperty(cryptoKey, "algorithm") ||
     !Predicate.hasProperty(cryptoKey, "usages") || !Array.isArray(cryptoKey.usages)
@@ -149,32 +160,46 @@ export const checkCryptoKey = (
 }
 
 /**
+ * Builds a key backed by a `CryptoKey`, after checking it against the typed
+ * key synchronously.
+ *
+ * @internal
+ */
+export const fromCryptoKey = <K>(
+  module: string,
+  method: string,
+  proto: object,
+  algorithm: unknown,
+  cryptoKey: CryptoKey,
+  expected: ExpectedCryptoKey
+): Effect.Effect<K, CryptoError.CryptoError> =>
+  Effect.suspend(() => {
+    const problem = checkCryptoKey(cryptoKey, expected)
+    return problem === undefined
+      ? Effect.succeed(make<K>(proto, algorithm, { _tag: "CryptoKey", cryptoKey }))
+      : internal.invalidKey(module, method, problem)
+  })
+
+/** @internal */
+export const exportRaw = async (subtle: SubtleCrypto, cryptoKey: CryptoKey): Promise<Uint8Array> =>
+  new Uint8Array(await subtle.exportKey("raw", cryptoKey))
+
+/**
  * Exports a key's stored representation as fresh bytes. `CryptoKey`-backed
- * keys are exported on the `WebCrypto` reference.
+ * keys are exported on the `WebCrypto` reference with `exportKey`.
  *
  * @internal
  */
 export const toBytes = (
   module: string,
   key: object,
-  format: "raw" | "spki" | "pkcs8"
+  exportKey: (subtle: SubtleCrypto, cryptoKey: CryptoKey) => Promise<Uint8Array>
 ): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const stored = material(key)
     if (stored._tag === "Bytes") return Effect.succeed(copyBytes(stored.bytes))
-    const cryptoKey = stored.cryptoKey
-    if (!cryptoKey.extractable) {
-      return fail(
-        module,
-        "toBytes",
-        new CryptoError.NotExtractable({ description: "The CryptoKey is not extractable" })
-      )
-    }
-    return Effect.flatMap(internal.subtle, (subtle) =>
-      Effect.tryPromise({
-        try: async () => new Uint8Array(await subtle.exportKey(format, cryptoKey)),
-        catch: (cause) => internal.webCryptoError(module, "toBytes", cause)
-      }))
+    if (!stored.cryptoKey.extractable) return internal.notExtractable(module, "toBytes")
+    return internal.runWithReference(module, "toBytes", (subtle) => exportKey(subtle, stored.cryptoKey))
   })
 
 /**
