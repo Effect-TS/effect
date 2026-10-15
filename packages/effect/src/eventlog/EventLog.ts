@@ -25,6 +25,7 @@ import { Reactivity } from "../reactivity/Reactivity.ts"
 import * as ReactivityLayer from "../reactivity/Reactivity.ts"
 import type * as Record from "../Record.ts"
 import * as Redacted from "../Redacted.ts"
+import * as Result from "../Result.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
@@ -616,9 +617,8 @@ export const groupCompaction = <Events extends Event.Any, R>(
           const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
             Schema.decodeUnknownEffect(group.events[tag].payloadSchemaBinary)(payload).pipe(
-              Effect.updateContext((input) => Context.merge(services, input)),
-              Effect.orDie
-            ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>>
+              Effect.updateContext((input) => Context.merge(services, input))
+            ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
           const writePayload = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
             timestamp: number,
             tag: Tag,
@@ -647,7 +647,13 @@ export const groupCompaction = <Events extends Event.Any, R>(
             if (!isEventTag(entry.event)) {
               continue
             }
-            const payload = yield* decodePayload(entry.event, entry.payload)
+            const decoded = yield* Effect.result(decodePayload(entry.event, entry.payload))
+            if (Result.isFailure(decoded)) {
+              // Preserve opaque entries for replay or forwarding without compacting them.
+              yield* write(entry)
+              continue
+            }
+            const payload = decoded.success
             const record = byPrimaryKey.get(entry.primaryKey)
             const taggedPayload = { _tag: entry.event, payload } as unknown as Event.TaggedPayload<Events>
             if (record) {

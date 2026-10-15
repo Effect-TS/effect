@@ -1,7 +1,8 @@
-import { ClickhouseClient } from "@effect/sql-clickhouse"
+import { ClickhouseClient, ClickhouseMigrator } from "@effect/sql-clickhouse"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber } from "effect"
 import * as Reactivity from "effect/reactivity/Reactivity"
+import * as SqlClient from "effect/sql/SqlClient"
 import * as Statement from "effect/sql/Statement"
 import { TestClock } from "effect/testing"
 import { vi } from "vitest"
@@ -11,11 +12,12 @@ let connectImmediately = false
 const commandCalls: Array<Record<string, unknown>> = []
 const insertCalls: Array<Record<string, unknown>> = []
 let insertImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
+let queryImpl: ((options: Record<string, unknown>) => Promise<unknown>) | undefined
 
 vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
     ping: () => connectImmediately ? Promise.resolve({ success: true }) : new Promise(() => {}),
-    query: () => new Promise(() => {}),
+    query: (options: Record<string, unknown>) => queryImpl ? queryImpl(options) : new Promise(() => {}),
     insert: (options: Record<string, unknown>) => {
       insertCalls.push(options)
       return insertImpl ? insertImpl(options) : new Promise(() => {})
@@ -128,4 +130,29 @@ describe("ClickhouseClient", { concurrent: false }, () => {
       assert.deepStrictEqual(insertCalls[0].columns, ["name"])
       assert.deepStrictEqual(insertCalls[1].columns, { except: ["id"] })
     }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect("creates the ledger without sqlite ddl or BEGIN", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      const queries: Array<string> = []
+      queryImpl = (options) => {
+        queries.push(String(options.query))
+        return Promise.resolve({ json: () => Promise.resolve({ data: [] }) })
+      }
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      const applied = yield* ClickhouseMigrator.run({
+        loader: ClickhouseMigrator.fromRecord({
+          "1_init": Effect.void
+        })
+      }).pipe(Effect.provideService(SqlClient.SqlClient, client))
+
+      assert.deepStrictEqual(applied, [[1, "init"]])
+      assert.match(queries[0] ?? "", /ENGINE = MergeTree/)
+      assert.notMatch(queries.join("\n"), /PRIMARY KEY NOT NULL|BEGIN/)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        queryImpl = undefined
+      })),
+      Effect.provide(Reactivity.layer)
+    ))
 })

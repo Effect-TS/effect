@@ -56,6 +56,18 @@ export interface SqlClient extends Constructor {
   readonly reserve: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
 
   /**
+   * Identifies the driver that created this client.
+   *
+   * **Details**
+   *
+   * Effect drivers use their package name without the `@effect/sql-` prefix,
+   * such as `"pg"`, `"pglite"` or `"sqlite-node"`. Unlike the compiler
+   * dialect, it distinguishes drivers that share a SQL dialect but manage
+   * connections differently.
+   */
+  readonly driver: string
+
+  /**
    * With the given effect, ensure all sql queries are run in a transaction.
    */
   readonly withTransaction: <R, E, A>(
@@ -126,6 +138,10 @@ export declare namespace SqlClient {
     readonly borrower?: Connection.Borrower | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
+    /**
+     * Identifies the driver creating the client, exposed as `SqlClient.driver`.
+     */
+    readonly driver: string
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
@@ -237,6 +253,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       withTransaction,
       transactionService,
       reserve: transactionAcquirer,
+      driver: options.driver,
       withoutTransforms(): any {
         if (options.transformRows === undefined) {
           return this

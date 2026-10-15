@@ -352,6 +352,7 @@ export const make = (
 
     return Object.assign(
       yield* Client.make({
+        driver: "clickhouse",
         acquirer: Effect.succeed(connection),
         compiler,
         spanAttributes: [

@@ -1,6 +1,6 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Option } from "effect"
+import { Effect, Exit, Option } from "effect"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as SqlEventJournal from "effect/eventlog/SqlEventJournal"
 import { Reactivity } from "effect/reactivity"
@@ -14,6 +14,92 @@ const makeJournal = Effect.gen(function*() {
 }).pipe(Effect.provide(Reactivity.layer))
 
 describe("SqlEventJournal", () => {
+  for (const [name, make] of [["SQL", makeJournal], ["memory", EventJournal.makeMemory]] as const) {
+    describe(name, () => {
+      it.effect("remote conflicts include only previously stored newer entries", () =>
+        Effect.gen(function*() {
+          const journal = yield* make
+          const newer = new EventJournal.Entry({
+            id: EventJournal.makeEntryIdUnsafe({ msecs: 2000 }),
+            event: "Repro",
+            primaryKey: "key",
+            payload: new Uint8Array()
+          }, { disableChecks: true })
+          const older = new EventJournal.Entry({
+            ...newer,
+            id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 })
+          }, { disableChecks: true })
+          const sameBatch = new EventJournal.Entry({
+            ...newer,
+            id: EventJournal.makeEntryIdUnsafe({ msecs: 1500 })
+          }, { disableChecks: true })
+          const seenConflicts: Array<ReadonlyArray<string>> = []
+          const effect = ({ conflicts }: { conflicts: ReadonlyArray<EventJournal.Entry> }) =>
+            Effect.sync(() => {
+              seenConflicts.push(conflicts.map((entry) => entry.idString))
+            })
+          yield* journal.writeFromRemote({
+            remoteId: EventJournal.makeRemoteIdUnsafe(),
+            entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: newer })],
+            effect
+          })
+          yield* journal.writeFromRemote({
+            remoteId: EventJournal.makeRemoteIdUnsafe(),
+            entries: [
+              new EventJournal.RemoteEntry({ remoteSequence: 0, entry: older }),
+              new EventJournal.RemoteEntry({ remoteSequence: 1, entry: sameBatch })
+            ],
+            effect
+          })
+          assert.deepStrictEqual(seenConflicts, [[], [newer.idString], [newer.idString]])
+        }))
+
+      it.effect("failed remote callbacks persist nothing and allow redelivery", () =>
+        Effect.gen(function*() {
+          const journal = yield* make
+          const remoteId = EventJournal.makeRemoteIdUnsafe()
+          const entry = new EventJournal.Entry({
+            id: EventJournal.makeEntryIdUnsafe({ msecs: 1000 }),
+            event: "Repro",
+            primaryKey: "key",
+            payload: new Uint8Array()
+          }, { disableChecks: true })
+          const entries = [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })]
+          const exit = yield* Effect.exit(journal.writeFromRemote({
+            remoteId,
+            entries,
+            effect: () =>
+              Effect.fail(
+                new EventJournal.EventJournalError({
+                  method: "writeFromRemote",
+                  cause: "callback failed"
+                })
+              )
+          }))
+          assert.isTrue(Exit.isFailure(exit))
+          const afterFailure = {
+            entries: yield* journal.entries,
+            sequence: yield* journal.nextRemoteSequence(remoteId)
+          }
+          let retryCalls = 0
+          yield* journal.writeFromRemote({
+            remoteId,
+            entries,
+            effect: () =>
+              Effect.sync(() => {
+                retryCalls++
+              })
+          })
+          assert.deepStrictEqual({ afterFailure, retryCalls }, {
+            afterFailure: { entries: [], sequence: 0 },
+            retryCalls: 1
+          })
+          assert.deepStrictEqual((yield* journal.entries).map((entry) => entry.idString), [entry.idString])
+          assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+        }))
+    })
+  }
+
   it.effect("preserves write callback error identity", () =>
     Effect.gen(function*() {
       const journal = yield* makeJournal
@@ -135,8 +221,6 @@ describe("SqlEventJournal", () => {
       assert.strictEqual(uncommitted.value.length, 1)
       assert.strictEqual(uncommitted.value[0].event, "LocalCreated")
       assert.strictEqual(uncommittedCalls, 1)
-      assert.strictEqual(seenConflicts.length, 2)
-      assert.strictEqual(seenConflicts[0][0]?.idString, entryA.idString)
-      assert.strictEqual(seenConflicts[1][0]?.idString, entryB.idString)
+      assert.deepStrictEqual(seenConflicts, [[], []])
     }))
 })

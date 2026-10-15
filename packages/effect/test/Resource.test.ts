@@ -43,6 +43,21 @@ describe("Resource", () => {
       assert.strictEqual(result2, 1)
     }))
 
+  it.effect("scheduled refresh continues after a failed refresh", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make<Effect.Effect<number, string>>(Effect.succeed(0))
+      const resource = yield* Resource.auto(Effect.flatMap(Ref.get(ref), identity), Schedule.spaced(Duration.millis(4)))
+      yield* Ref.set(ref, Effect.succeed(1))
+      yield* TestClock.adjust(Duration.millis(5))
+      assert.strictEqual(yield* Resource.get(resource), 1)
+      yield* Ref.set(ref, Effect.fail("Uh oh!"))
+      yield* TestClock.adjust(Duration.millis(5))
+      assert.strictEqual(yield* Resource.get(resource), 1)
+      yield* Ref.set(ref, Effect.succeed(2))
+      yield* TestClock.adjust(Duration.millis(40))
+      assert.strictEqual(yield* Resource.get(resource), 2)
+    }))
+
   it.effect("failed refresh doesn't affect cached value", () =>
     Effect.gen(function*() {
       const ref = yield* Ref.make<Effect.Effect<number, string>>(Effect.succeed(0))

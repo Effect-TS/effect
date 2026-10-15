@@ -397,9 +397,11 @@ export const layerBackingSqlMultiTable: Layer.Layer<
 
       return identity<BackingPersistenceStore>({
         get: (key) =>
-          sql<
-            { value: string }
-          >`SELECT value FROM ${table} WHERE id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          Effect.suspend(() =>
+            sql<
+              { value: string }
+            >`SELECT value FROM ${table} WHERE id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          )
             .pipe(
               Effect.mapError((cause) =>
                 new PersistenceError({
@@ -424,9 +426,11 @@ export const layerBackingSqlMultiTable: Layer.Layer<
               })
             ),
         getMany: (keys) =>
-          sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE ${
-            sql.in("id", keys)
-          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
+          Effect.suspend(() =>
+            sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE ${
+              sql.in("id", keys)
+            } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared
+          ).pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,
@@ -738,9 +742,11 @@ export const layerBackingSql: Layer.Layer<
 
       return identity<BackingPersistenceStore>({
         get: (key) =>
-          sql<
-            { value: string }
-          >`SELECT value FROM ${table} WHERE store_id = ${storeId} AND id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          Effect.suspend(() =>
+            sql<
+              { value: string }
+            >`SELECT value FROM ${table} WHERE store_id = ${storeId} AND id = ${key} AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`
+          )
             .pipe(
               Effect.mapError((cause) =>
                 new PersistenceError({
@@ -765,9 +771,11 @@ export const layerBackingSql: Layer.Layer<
               })
             ),
         getMany: (keys) =>
-          sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE store_id = ${storeId} AND ${
-            sql.in("id", keys)
-          } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared.pipe(
+          Effect.suspend(() =>
+            sql<{ id: string; value: string }>`SELECT id, value FROM ${table} WHERE store_id = ${storeId} AND ${
+              sql.in("id", keys)
+            } AND (expires IS NULL OR expires > ${clock.currentTimeMillisUnsafe()})`.unprepared
+          ).pipe(
             Effect.mapError((cause) =>
               new PersistenceError({
                 message: `Failed to getMany from backing store`,

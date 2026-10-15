@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Context, Effect, Layer, Redacted, Ref, Schema } from "effect"
+import { Context, Effect, Exit, Layer, Redacted, Ref, Schema } from "effect"
 import * as EventGroup from "effect/eventlog/EventGroup"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -146,6 +146,66 @@ const makeRecordingStorage = Effect.gen(function*() {
   })
   return { storage, bindingCalls }
 })
+
+it.effect("Authenticate retries a failed binding lookup for the same identity", () =>
+  Effect.gen(function*() {
+    const inner = yield* EventLogServerUnencrypted.makeStorageMemory
+    const bindingCalls = yield* Ref.make(0)
+    const client = yield* makeAuthClient({
+      storage: {
+        ...inner,
+        getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
+          Ref.updateAndGet(bindingCalls, (count) => count + 1).pipe(
+            Effect.andThen((count) =>
+              count === 1
+                ? Effect.die("transient storage error")
+                : inner.getOrCreateSessionAuthBinding(publicKey, signingPublicKey)
+            )
+          )
+      },
+      authorization: {
+        authorizeWrite: () => Effect.void,
+        authorizeRead: () => Effect.void,
+        authorizeIdentity: () => Effect.void
+      }
+    })
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    const error = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+    ).pipe(Effect.flip)
+    assert.strictEqual(error.code, "Forbidden")
+    assert.strictEqual(error.message, "Session auth binding lookup failed")
+    assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+
+    const retryHello = yield* client["EventLog.Hello"]()
+    const retry = yield* client["EventLog.Authenticate"](
+      yield* authenticate({ identity, challenge: retryHello.challenge, remoteId: retryHello.remoteId })
+    ).pipe(Effect.exit)
+    assert.strictEqual(yield* Ref.get(bindingCalls), 2)
+    assert.isTrue(Exit.isSuccess(retry))
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
+
+it.effect("Authenticate caches successful binding lookups for the same identity", () =>
+  Effect.gen(function*() {
+    const { storage, bindingCalls } = yield* makeRecordingStorage
+    const client = yield* makeAuthClient({
+      storage,
+      authorization: {
+        authorizeWrite: () => Effect.void,
+        authorizeRead: () => Effect.void,
+        authorizeIdentity: () => Effect.void
+      }
+    })
+    const identity = yield* EventLog.makeIdentity
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const hello = yield* client["EventLog.Hello"]()
+      yield* client["EventLog.Authenticate"](
+        yield* authenticate({ identity, challenge: hello.challenge, remoteId: hello.remoteId })
+      )
+      assert.strictEqual(yield* Ref.get(bindingCalls), 1)
+    }
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
 it.effect("Authenticate denies a first-use identity without creating a binding", () =>
   Effect.gen(function*() {

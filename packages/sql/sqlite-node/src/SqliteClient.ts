@@ -348,6 +348,7 @@ export const make = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-node",
         acquirer,
         borrower,
         compiler,
