@@ -222,9 +222,10 @@ export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> 
  *
  * **Details**
  *
- * The bytes are copied. Any non-empty length is accepted; RFC 2104 recommends
- * at least the hash's output length. An empty key fails with an `InvalidKey`
- * reason.
+ * The bytes are copied into a new `Uint8Array`, so later changes to the input,
+ * including a Node.js `Buffer`, do not reach the key. Any non-empty length is
+ * accepted; RFC 2104 recommends at least the hash's output length. An empty key
+ * fails with an `InvalidKey` reason.
  *
  * @stability unstable
  * @category constructors
@@ -248,9 +249,10 @@ export const key = <A extends Algorithm>(
  *
  * **Details**
  *
- * The `CryptoKey` must be a secret HMAC key with the algorithm's hash and the
- * `sign` or `verify` usage, or the constructor fails with an `InvalidKey`
- * reason. It must come from the `Crypto` object of the `WebCrypto` reference.
+ * The `CryptoKey` must be a secret HMAC key with the algorithm's hash and both
+ * the `sign` and `verify` usages, since a key reaches both operations.
+ * Otherwise the constructor fails with an `InvalidKey` reason. It must come
+ * from the `Crypto` object of the `WebCrypto` reference.
  *
  * @stability unstable
  * @category constructors
@@ -265,6 +267,7 @@ export const fromCryptoKey = <A extends Algorithm>(
       type: "secret",
       name: "HMAC",
       usages: ["sign", "verify"],
+      usagePolicy: "all",
       check: (keyAlgorithm) => {
         const hash = (keyAlgorithm as HmacKeyAlgorithm).hash?.name
         return hash === algorithm.hash.name ? undefined : `Expected an HMAC key for ${algorithm.hash.name}, not ${hash}`
@@ -280,9 +283,9 @@ export const fromCryptoKey = <A extends Algorithm>(
  *
  * **Details**
  *
- * Returns a fresh copy. A `CryptoKey`-backed key is exported on the
- * `WebCrypto` reference, and fails with a `NotExtractable` reason when the
- * `CryptoKey` is not extractable.
+ * Returns a fresh `Uint8Array` that shares no memory with the key. A
+ * `CryptoKey`-backed key is exported on the `WebCrypto` reference, and fails
+ * with a `NotExtractable` reason when the `CryptoKey` is not extractable.
  *
  * @stability unstable
  * @category converting

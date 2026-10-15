@@ -18,12 +18,25 @@ export type Material =
 
 /**
  * The property holding a key's material. It is shared through `Symbol.for` so
- * the platform layers, which cannot import this module, can read it. It is not
- * enumerable, so it never reaches `JSON.stringify` or `inspect`.
+ * the platform layers, which cannot import this module, can read it.
+ *
+ * This is an internal protocol between `effect` and its platform packages, not
+ * a supported API, and not a secrecy mechanism. Being non-enumerable keeps the
+ * material out of `JSON.stringify` and `inspect`, but anyone holding a key can
+ * read it through `Symbol.for`. Third-party layers should use the family's
+ * public `toBytes`.
  *
  * @internal
  */
 export const MaterialId: unique symbol = Symbol.for("~effect/crypto/Key/material") as never
+
+/**
+ * Copies bytes into a plain `Uint8Array` with its own buffer. A subclass's
+ * `slice` may not copy: a Node.js `Buffer`'s returns a view of the same memory.
+ *
+ * @internal
+ */
+export const copyBytes = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes)
 
 /** @internal */
 export const material = (key: object): Material => (key as { readonly [MaterialId]: Material })[MaterialId]
@@ -87,13 +100,18 @@ export const fromBytes = <K>(
     if (!(bytes instanceof Uint8Array)) return invalidKey(module, method, "Expected the key as a Uint8Array")
     const problem = check(bytes.length)
     return problem === undefined
-      ? Effect.succeed(make<K>(proto, algorithm, { _tag: "Bytes", bytes: bytes.slice() }))
+      ? Effect.succeed(make<K>(proto, algorithm, { _tag: "Bytes", bytes: copyBytes(bytes) }))
       : invalidKey(module, method, problem)
   })
 
 /**
  * Checks a `CryptoKey` against the typed key it is to back, returning a
  * description of the first mismatch.
+ *
+ * With `usages: "all"`, the key must have every expected usage, because the
+ * typed key reaches every operation that needs them. `"any"` accepts a key
+ * with at least one, which section 5 of the design allows only for RSA-OAEP,
+ * where the layer picks the usage that fits the key's role.
  *
  * @internal
  */
@@ -103,6 +121,7 @@ export const checkCryptoKey = (
     readonly type: KeyType
     readonly name: string
     readonly usages: ReadonlyArray<KeyUsage>
+    readonly usagePolicy: "all" | "any"
     readonly check?: (algorithm: KeyAlgorithm) => string | undefined
   }
 ): string | undefined => {
@@ -118,7 +137,12 @@ export const checkCryptoKey = (
   if (cryptoKey.type !== expected.type) return `Expected a ${expected.type} key, not ${cryptoKey.type}`
   const problem = expected.check?.(cryptoKey.algorithm)
   if (problem !== undefined) return problem
-  if (!cryptoKey.usages.some((usage) => expected.usages.includes(usage))) {
+  const usages: ReadonlyArray<string> = cryptoKey.usages
+  if (expected.usagePolicy === "all") {
+    if (!expected.usages.every((usage) => usages.includes(usage))) {
+      return `Expected a key with the usages ${expected.usages.join(" and ")}, not ${usages.join(", ") || "none"}`
+    }
+  } else if (!expected.usages.some((usage) => usages.includes(usage))) {
     return `Expected a key with one of the usages ${expected.usages.join(", ")}`
   }
   return undefined
@@ -137,7 +161,7 @@ export const toBytes = (
 ): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const stored = material(key)
-    if (stored._tag === "Bytes") return Effect.succeed(stored.bytes.slice())
+    if (stored._tag === "Bytes") return Effect.succeed(copyBytes(stored.bytes))
     const cryptoKey = stored.cryptoKey
     if (!cryptoKey.extractable) {
       return fail(

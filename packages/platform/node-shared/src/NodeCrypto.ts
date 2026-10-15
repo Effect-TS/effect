@@ -102,7 +102,8 @@ export const layerXChaCha20Poly1305: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1
 )
 
 // The material of an `effect/crypto` key, shared by `effect` through
-// `Symbol.for`: key bytes, or a `CryptoKey`.
+// `Symbol.for`: key bytes, or a `CryptoKey`. This is an internal protocol
+// between `effect` and its platform packages, not a public API.
 const MaterialId = Symbol.for("~effect/crypto/Key/material")
 type Material =
   | { readonly _tag: "Bytes"; readonly bytes: Uint8Array }
