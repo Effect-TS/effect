@@ -183,10 +183,18 @@ export type Replay = string
  * checking returns the best shrunk input found so far. The `shrinks` field in a `Falsified` result counts only
  * candidates that were accepted as smaller failures.
  *
+ * `concurrency` bounds how many generated values the property evaluates at once (default `1`; `"unbounded"` allows
+ * all `runs`). Values are still generated in order, and the result is the one a sequential check returns: the first
+ * falsification in generation order wins, evaluations after it that already started are interrupted, and shrinking
+ * evaluates one candidate at a time.
+ *
  * **Gotchas**
  *
  * When `replay` is present, its recorded seed, attempt, size, and shrink path control the run. The `runs`, `size`,
- * `maxDiscards`, `maxShrinks`, and `seed` options are ignored.
+ * `maxDiscards`, `maxShrinks`, `seed`, and `concurrency` options are ignored.
+ *
+ * With `concurrency` above `1`, evaluations share the services the property uses, so a property that draws from
+ * `Random` or mutates shared state no longer sees the same sequence for the same seed.
  *
  * @stability unstable
  * @category models
@@ -197,6 +205,7 @@ export interface CheckOptions {
   readonly size?: number | undefined
   readonly maxDiscards?: number | undefined
   readonly maxShrinks?: number | undefined
+  readonly concurrency?: Types.Concurrency | undefined
   readonly seed?: string | number | undefined
   readonly replay?: Replay | undefined
 }

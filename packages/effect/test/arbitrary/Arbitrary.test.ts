@@ -4210,5 +4210,78 @@ describe("Arbitrary", () => {
 
         assert.isTrue(Exit.hasInterrupts(exit))
       }))
+
+    describe("concurrency", () => {
+      // completes after a number of yields that depends on the value, so evaluations finish out of order
+      const settle = (value: number) => Effect.repeat(Effect.yieldNow, { times: Math.abs(value * 7) % 5 })
+
+      it.effect("returns the result of a sequential check", () =>
+        Effect.gen(function*() {
+          const arbitrary = Arbitrary.schema(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })))
+          const property = (value: number) => Effect.as(settle(value), value < 60)
+          const options = { runs: 100, seed: "concurrent", size: 10 }
+          const sequential = yield* Arbitrary.checkEffect(arbitrary, property, options)
+          const concurrent = yield* Arbitrary.checkEffect(arbitrary, property, { ...options, concurrency: 4 })
+
+          const unbounded = yield* Arbitrary.checkEffect(arbitrary, property, { ...options, concurrency: "unbounded" })
+
+          assert.strictEqual(sequential._tag, "Falsified")
+          assert.deepStrictEqual(concurrent, sequential)
+          assert.deepStrictEqual(unbounded, sequential)
+        }))
+
+      it.effect("counts runs and discards as a sequential check does", () =>
+        Effect.gen(function*() {
+          const arbitrary = Arbitrary.filter(Arbitrary.schema(Schema.Int), (value) => value % 3 !== 0)
+          const property = (value: number) => Effect.as(settle(value), true)
+          for (const options of [{ runs: 50, seed: "passed" }, { runs: 50, maxDiscards: 2, seed: "exhausted" }]) {
+            const sequential = yield* Arbitrary.checkEffect(arbitrary, property, options)
+            const concurrent = yield* Arbitrary.checkEffect(arbitrary, property, { ...options, concurrency: 8 })
+            assert.deepStrictEqual(concurrent, sequential)
+          }
+        }))
+
+      it.effect("evaluates up to `concurrency` values at once", () =>
+        Effect.gen(function*() {
+          let running = 0
+          let most = 0
+          const result = yield* Arbitrary.checkEffect(Arbitrary.schema(Schema.Int), () =>
+            Effect.gen(function*() {
+              most = Math.max(most, ++running)
+              yield* Effect.yieldNow
+              running--
+              return true
+            }), { runs: 20, seed: 0, concurrency: 4 })
+
+          assert.strictEqual(result._tag, "Passed")
+          assert.strictEqual(most, 4)
+        }))
+
+      it.effect("interrupts the evaluations after the first falsification", () =>
+        Effect.gen(function*() {
+          let calls = 0
+          // the first value falsifies the property; a sequential check would never evaluate the others
+          const result = yield* Arbitrary.checkEffect(
+            Arbitrary.schema(Schema.Int),
+            () => calls++ === 0 ? Effect.as(Effect.yieldNow, false) : Effect.never,
+            { runs: 10, seed: 0, maxShrinks: 0, concurrency: 4 }
+          )
+
+          assert.strictEqual(result._tag, "Falsified")
+          if (result._tag === "Falsified") assert.strictEqual(result.runs, 1)
+        }))
+
+      it.effect("ignores a defect after an earlier falsification, as a sequential check never reaches it", () =>
+        Effect.gen(function*() {
+          let calls = 0
+          const result = yield* Arbitrary.checkEffect(
+            Arbitrary.schema(Schema.Int),
+            () => calls++ === 0 ? Effect.as(Effect.yieldNow, false) : Effect.die("later defect"),
+            { runs: 10, seed: 0, maxShrinks: 0, concurrency: 4 }
+          )
+
+          assert.strictEqual(result._tag, "Falsified")
+        }))
+    })
   })
 })
