@@ -22,9 +22,9 @@ const x25519 = NodeCrypto.generateKeyPairSync("x25519")
 const rsa = NodeCrypto.generateKeyPairSync("rsa", { modulusLength: 2048 })
 
 const der = (key: NodeCrypto.KeyObject, type: "spki" | "pkcs8" | "pkcs1" | "sec1") =>
-  new Uint8Array(key.export({ format: "der", type } as NodeCrypto.KeyExportOptions<"der">))
+  new Uint8Array(key.export({ format: "der", type }))
 const pem = (key: NodeCrypto.KeyObject, type: "spki" | "pkcs8" | "pkcs1" | "sec1") =>
-  key.export({ format: "pem", type } as NodeCrypto.KeyExportOptions<"pem">) as string
+  key.export({ format: "pem", type })
 const jwk = (key: NodeCrypto.KeyObject) => key.export({ format: "jwk" })
 // The private key behind PKCS#8 bytes, read back by node:crypto.
 const nodeJwk = (pkcs8: Uint8Array) =>
