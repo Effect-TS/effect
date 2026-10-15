@@ -399,6 +399,36 @@ describe("SqlClient", () => {
         assert.deepStrictEqual(harness.calls, ["after(1)"])
       }))
 
+    it.effect("keeps callbacks outside the transaction independent of its rollback", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ commit: () => Effect.void })
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
+          yield* harness.after("discarded")
+          yield* Effect.gen(function*() {
+            yield* harness.after("immediate")
+            yield* harness.withTransaction(harness.after("committed"))
+          }).pipe(
+            Effect.updateContext((context: Context.Context<never>) => Context.omit(harness.transactionService)(context))
+          )
+          return yield* Effect.fail("boom")
+        })))
+
+        assertTypedFailure(exit, "boom")
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "after(immediate)",
+          "acquireConnection",
+          "begin",
+          "commit",
+          "closeConnection",
+          "after(committed)",
+          "rollback",
+          "closeConnection"
+        ])
+      }))
+
     it.effect("runs immediately in another client's transaction", () =>
       Effect.gen(function*() {
         const harness = makeHarness()
