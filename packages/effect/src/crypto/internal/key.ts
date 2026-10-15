@@ -160,6 +160,21 @@ const checkCryptoKey = (cryptoKey: CryptoKey, expected: ExpectedCryptoKey): stri
 }
 
 /**
+ * The algorithm of a key imported from `cryptoKey`. An RSA algorithm's
+ * `modulusLength` is only read by key generation, so the key reports the real
+ * size of `cryptoKey` instead.
+ *
+ * @internal
+ */
+export const importedAlgorithm = (algorithm: unknown, cryptoKey: CryptoKey): unknown => {
+  const modulusLength = (cryptoKey.algorithm as Partial<RsaKeyAlgorithm>).modulusLength
+  return Predicate.hasProperty(algorithm, "modulusLength") && modulusLength !== undefined &&
+      algorithm.modulusLength !== modulusLength
+    ? { ...algorithm, modulusLength }
+    : algorithm
+}
+
+/**
  * Builds a key backed by a `CryptoKey`, after checking it against the typed
  * key synchronously.
  *
@@ -176,7 +191,7 @@ export const fromCryptoKey = <K>(
   Effect.suspend(() => {
     const problem = checkCryptoKey(cryptoKey, expected)
     return problem === undefined
-      ? Effect.succeed(make<K>(proto, algorithm, { _tag: "CryptoKey", cryptoKey }))
+      ? Effect.succeed(make<K>(proto, importedAlgorithm(algorithm, cryptoKey), { _tag: "CryptoKey", cryptoKey }))
       : internal.invalidKey(module, method, problem)
   })
 
@@ -192,14 +207,15 @@ export const exportRaw = async (subtle: SubtleCrypto, cryptoKey: CryptoKey): Pro
  */
 export const toBytes = (
   module: string,
-  key: object,
+  key: { readonly algorithm: { readonly name: string } },
   exportKey: (subtle: SubtleCrypto, cryptoKey: CryptoKey) => Promise<Uint8Array>
 ): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const stored = material(key)
     if (stored._tag === "Bytes") return Effect.succeed(copyBytes(stored.bytes))
     if (!stored.cryptoKey.extractable) return internal.notExtractable(module, "toBytes")
-    return internal.runWithReference(module, "toBytes", (subtle) => exportKey(subtle, stored.cryptoKey))
+    return internal.runWithReference(module, "toBytes", key.algorithm.name, (subtle) =>
+      exportKey(subtle, stored.cryptoKey))
   })
 
 /**

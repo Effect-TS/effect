@@ -25,8 +25,14 @@
  *
  * **Gotchas**
  *
- * - EC private keys must include their public point. Safari cannot import
- *   one without it, so every runtime fails with an `Unsupported` reason.
+ * - EC private keys must include their public point. Safari and Firefox
+ *   before 132 cannot import one without it, so every runtime fails with an
+ *   `Unsupported` reason.
+ * - SPKI accepts compressed EC points. Safari and Firefox before 146 reject
+ *   them in raw import, so the families' raw constructors take only
+ *   uncompressed points.
+ * - Ed25519 and X25519 private JWKs need a correct `x`. Bun and Deno accept
+ *   `d` alone, and other runtimes reject it.
  * - JWK members other than `kty`, `crv`, `alg`, and the key material are
  *   ignored on import, and written JWKs contain only `kty`, `crv`, and the key
  *   material.
@@ -121,6 +127,9 @@ export const pkcs8: Format<"private", Direction, Uint8Array> = { _tag: "pkcs8", 
  * `decodePublic` rejects a JWK with `d`, and `decodePrivate` requires it.
  * `kty`, `crv`, and `alg` must match the algorithm when present. Written JWKs
  * contain only `kty`, `crv`, and the key material.
+ *
+ * Ed25519 and X25519 private JWKs need a correct `x`: Bun and Deno accept `d`
+ * alone, but other runtimes reject it.
  *
  * @stability unstable
  * @category formats
@@ -297,7 +306,8 @@ const toPem = (label: string, der: Uint8Array): string => {
 // DER conversion
 
 // AlgorithmIdentifier for rsaEncryption (1.2.840.113549.1.1.1) with NULL
-// parameters, and the OIDs of id-ecPublicKey and the NIST curves.
+// parameters, the OIDs of id-ecPublicKey and the NIST curves, and the EC
+// AlgorithmIdentifier of each curve.
 const rsaEncryption = Uint8Array.of(48, 13, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0)
 const ecPublicKey = Uint8Array.of(6, 7, 42, 134, 72, 206, 61, 2, 1)
 const curveOids: Record<Asymmetric.Curve, Uint8Array> = {
@@ -305,6 +315,7 @@ const curveOids: Record<Asymmetric.Curve, Uint8Array> = {
   "P-384": Uint8Array.of(6, 5, 43, 129, 4, 0, 34),
   "P-521": Uint8Array.of(6, 5, 43, 129, 4, 0, 35)
 }
+const ecAlgorithm = (curve: Asymmetric.Curve): Uint8Array => Der.encode(Der.sequence, ecPublicKey, curveOids[curve])
 const version0 = Uint8Array.of(2, 1, 0)
 
 interface Problem {
@@ -352,18 +363,23 @@ const sec1ToPkcs8 = (sec1: Uint8Array, curve: Asymmetric.Curve): Uint8Array | Pr
   return Der.encode(
     Der.sequence,
     version0,
-    Der.encode(Der.sequence, ecPublicKey, curveOids[curve]),
+    ecAlgorithm(curve),
     Der.encode(Der.octetString, ecPrivateKey)
   )
 }
 
-// Finds the `[1]` public point of an EC PKCS#8 key. Malformed DER is left to
-// the runtime's import, which reports it.
-const checkEcPkcs8 = (pkcs8: Uint8Array): Problem | undefined => {
+// Checks that a PKCS#8 key is an EC key on `curve`, so a key of another
+// algorithm is not reported as missing its point, then finds the `[1]` public
+// point. Other malformed DER is left to the runtime's import, which reports it.
+const checkEcPkcs8 = (pkcs8: Uint8Array, curve: Asymmetric.Curve): Problem | undefined => {
   const outer = Der.readOnly(pkcs8, Der.sequence)
   const fields = outer === undefined ? undefined : Der.children(pkcs8, outer)
-  const octets = fields?.[2]
-  if (octets === undefined || octets.tag !== Der.octetString) return undefined
+  if (fields === undefined || fields.length < 3) return undefined
+  if (!Der.equals(Der.slice(pkcs8, fields[1]), ecAlgorithm(curve))) {
+    return { reason: "InvalidKey", description: `Expected a ${curve} EC private key` }
+  }
+  const octets = fields[2]
+  if (octets.tag !== Der.octetString) return undefined
   const inner = Der.read(pkcs8, octets.start, octets.end)
   if (inner === undefined || inner.tag !== Der.sequence) return undefined
   const ecFields = Der.children(pkcs8, inner)
@@ -508,7 +524,7 @@ const decodeAsymmetric = <K>(
           ? sec1ToPkcs8(der, algorithm.namedCurve)
           : { reason: "InvalidKey", description: "SEC1 holds EC private keys only" }
       } else if (format._tag === "pkcs8" && (algorithm._tag === "Ecdsa" || algorithm._tag === "Ecdh")) {
-        converted = checkEcPkcs8(der) ?? der
+        converted = checkEcPkcs8(der, algorithm.namedCurve) ?? der
       }
       if (!(converted instanceof Uint8Array)) {
         return converted.reason === "Unsupported"
@@ -518,14 +534,14 @@ const decodeAsymmetric = <K>(
       input = { format: format._tag === "spki" ? "spki" : "pkcs8", data: converted as BufferSource }
     }
 
-    return internal.runWithReference("KeyFormat", method, async (subtle) => {
+    return internal.runWithReference("KeyFormat", method, algorithm.name, async (subtle) => {
       const usages = role === "private" ? spec.privateUsages : spec.publicUsages
       const cryptoKey = input.format === "jwk"
         ? await subtle.importKey("jwk", input.data as JsonWebKey, spec.importParams, true, [...usages])
         : await subtle.importKey(input.format, input.data as BufferSource, spec.importParams, true, [...usages])
       return KeyModel.makeBytes<K>(
         role === "private" ? family.privateKeyProto : family.publicKeyProto,
-        algorithm,
+        KeyModel.importedAlgorithm(algorithm, cryptoKey),
         await Asymmetric.exportKey(subtle, cryptoKey, spec, role)
       )
     })
@@ -573,7 +589,8 @@ export const decodePublic = <A extends AsymmetricAlgorithm, Data>(
  * converted to PKCS#8 before the import. Malformed data, a key of another
  * algorithm or curve, or a JWK without `d` fails with an `InvalidKey` reason.
  * An EC private key without its public point fails with an `Unsupported`
- * reason on every runtime, because Safari cannot import it.
+ * reason on every runtime, because Safari and Firefox before 132 cannot import
+ * it.
  *
  * @stability unstable
  * @category decoding
@@ -640,7 +657,7 @@ const encodeAsymmetric = (
         return Effect.succeed(KeyModel.copyBytes(stored.bytes))
       }
     }
-    return internal.runWithReference("KeyFormat", "encode", async (subtle) => {
+    return internal.runWithReference("KeyFormat", "encode", key.algorithm.name, async (subtle) => {
       const cryptoKey = stored._tag === "CryptoKey"
         ? stored.cryptoKey
         : role === "private"

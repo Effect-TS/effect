@@ -330,7 +330,7 @@ export const layerWebCrypto: Layer.Layer<Kdf> = Layer.effect(
             )
           }
           const name = algorithm._tag === "Hkdf" ? "HKDF" : "PBKDF2"
-          return internal.run("Kdf", "derive", crypto, async (subtle) => {
+          return internal.run("Kdf", "derive", algorithm.name, crypto, async (subtle) => {
             const handle = await subtle.importKey("raw", secret as BufferSource, name, false, ["deriveBits"])
             return new Uint8Array(
               await subtle.deriveBits(webCryptoParams(algorithm, options), handle, options.length * 8)

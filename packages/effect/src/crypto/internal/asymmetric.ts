@@ -208,7 +208,7 @@ export const exportKey = (subtle: SubtleCrypto, cryptoKey: CryptoKey, spec: Spec
  */
 export const toBytes = (
   family: Family,
-  key: { readonly algorithm: unknown }
+  key: { readonly algorithm: { readonly name: string } }
 ): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   KeyModel.toBytes(
     family.module,
@@ -252,7 +252,7 @@ export const generateKeyPair = <KP>(
   family: Family,
   crypto: Crypto | undefined,
   random: SecureRandom.SecureRandom["Service"],
-  algorithm: unknown,
+  algorithm: { readonly name: string },
   params: AlgorithmIdentifier | EcKeyGenParams | RsaHashedKeyGenParams
 ): Effect.Effect<KP, CryptoError.CryptoError> => {
   const spec = family.specOf(algorithm)
@@ -272,7 +272,7 @@ export const generateKeyPair = <KP>(
     spec.seedPrefix === undefined ? Effect.undefined : random.randomBytes(seedLength),
     (seed) =>
       Effect.map(
-        internal.run(family.module, "generateKeyPair", crypto, (subtle) => generate(subtle, seed)),
+        internal.run(family.module, "generateKeyPair", algorithm.name, crypto, (subtle) => generate(subtle, seed)),
         ({ privateKey, publicKey }) =>
           ({
             privateKey: KeyModel.makeBytes(family.privateKeyProto, algorithm, privateKey),
@@ -291,7 +291,7 @@ export const generateKeyPair = <KP>(
 export const publicKeyOf = <K>(
   family: Family,
   crypto: Crypto | undefined,
-  privateKey: { readonly algorithm: unknown }
+  privateKey: { readonly algorithm: { readonly name: string } }
 ): Effect.Effect<K, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const stored = KeyModel.material(privateKey)
@@ -300,7 +300,7 @@ export const publicKeyOf = <K>(
     }
     const spec = family.specOf(privateKey.algorithm)
     return Effect.map(
-      internal.run(family.module, "publicKeyOf", crypto, async (subtle) =>
+      internal.run(family.module, "publicKeyOf", privateKey.algorithm.name, crypto, async (subtle) =>
         publicOf(
           subtle,
           stored._tag === "CryptoKey" ? stored.cryptoKey : await importPrivate(subtle, stored.bytes, spec, true),
@@ -321,7 +321,7 @@ export const publicKeyOf = <K>(
 export const publicKeyError = (
   module: string,
   method: string,
-  publicKey: object,
+  publicKey: { readonly algorithm: { readonly name: string } },
   cause: unknown
 ): CryptoError.CryptoError =>
   KeyModel.material(publicKey)._tag === "Bytes" && Predicate.hasProperty(cause, "name") && cause.name === "TypeError"
@@ -330,4 +330,4 @@ export const publicKeyError = (
       method,
       reason: new CryptoError.InvalidKey({ description: "Invalid public key", cause })
     })
-    : internal.webCryptoError(module, method, cause)
+    : internal.webCryptoError(module, method, publicKey.algorithm.name, cause)

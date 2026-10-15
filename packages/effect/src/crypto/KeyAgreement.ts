@@ -351,6 +351,7 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
           return internal.run(
             "KeyAgreement",
             "deriveSharedSecret",
+            algorithm.name,
             crypto,
             async (subtle) => ({
               privateKey: await caches.privateKey(subtle, privateKey),
@@ -362,6 +363,7 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
               internal.run(
                 "KeyAgreement",
                 "deriveSharedSecret",
+                algorithm.name,
                 crypto,
                 async (subtle) =>
                   new Uint8Array(
@@ -426,8 +428,10 @@ export const privateKey = <
  * **Details**
  *
  * The bytes are copied. A wrong length, or a compressed point, fails with an
- * `InvalidKey` reason. Whether a point is on the curve is checked when the
- * key is first used.
+ * `InvalidKey` reason. Only uncompressed points are taken because Safari and
+ * Firefox before 146 reject compressed ones in raw import, though they accept
+ * them inside SPKI: decode a compressed point with `KeyFormat.spki`. Whether a
+ * point is on the curve is checked when the key is first used.
  *
  * @stability unstable
  * @category constructors

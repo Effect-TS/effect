@@ -349,6 +349,7 @@ export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom>
       return internal.run(
         "Aead",
         method,
+        key.algorithm.name,
         crypto,
         async (subtle) =>
           new Uint8Array(await subtle[method](params, await cryptoKeyFor(subtle, key), data as BufferSource)),
@@ -356,6 +357,7 @@ export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom>
           internal.webCryptoError(
             "Aead",
             method,
+            key.algorithm.name,
             cause,
             method === "decrypt" ? () => new CryptoError.DecryptionFailed() : undefined
           )

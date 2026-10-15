@@ -14245,7 +14245,8 @@ export const DnsRecord: DnsRecord = Union([
 // -----------------------------------------------------------------------------
 
 // The algorithm members a key schema reads. RSA algorithm values come from
-// factories, so they match by name and PSS salt length rather than by
+// factories, and a non-standard hash pairing is a copy with another hash, so
+// algorithms match by name, hash and PSS salt length rather than by
 // reference. The modulus length is ignored, as it is on import.
 interface CryptoAlgorithm {
   readonly _tag?: string
@@ -14256,7 +14257,8 @@ interface CryptoAlgorithm {
 }
 
 const cryptoAlgorithmEquals = (self: CryptoAlgorithm, that: CryptoAlgorithm): boolean =>
-  self === that || (self.name === that.name && self.saltLength === that.saltLength)
+  self === that ||
+  (self.name === that.name && self.hash?.name === that.hash?.name && self.saltLength === that.saltLength)
 
 const cryptoDigestCode = (hash: { readonly name: string }) => `Digest.${hash.name.toLowerCase().replace("-", "")}`
 
@@ -14273,7 +14275,7 @@ const cryptoAlgorithmCode = (family: string, algorithm: CryptoAlgorithm): string
 
 const cryptoAlgorithmPayload = (algorithm: CryptoAlgorithm): Json => {
   const payload: { [key: string]: Json } = { name: algorithm.name }
-  if (algorithm.hash !== undefined && algorithm.modulusLength !== undefined) payload.hash = algorithm.hash.name
+  if (algorithm.hash !== undefined) payload.hash = algorithm.hash.name
   if (algorithm.modulusLength !== undefined) payload.modulusLength = algorithm.modulusLength
   if (algorithm.saltLength !== undefined) payload.saltLength = algorithm.saltLength
   return payload

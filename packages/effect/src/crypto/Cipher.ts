@@ -242,6 +242,7 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
         return internal.run(
           "Cipher",
           method,
+          key.algorithm.name,
           crypto,
           async (subtle) =>
             new Uint8Array(
@@ -255,6 +256,7 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
             internal.webCryptoError(
               "Cipher",
               method,
+              key.algorithm.name,
               cause,
               method === "decrypt" && cbc ? () => new CryptoError.DecryptionFailed() : undefined
             )

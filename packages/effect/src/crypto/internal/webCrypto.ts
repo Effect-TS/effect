@@ -48,29 +48,44 @@ export const isOperationError = (cause: unknown): boolean =>
   Predicate.hasProperty(cause, "name") && cause.name === "OperationError"
 
 /**
- * Maps an exception thrown by `crypto.subtle` to a `CryptoError`.
+ * Maps an exception thrown by `crypto.subtle` in `module.layerWebCrypto` to a
+ * `CryptoError`.
  *
  * A {@link Failure} carries its own reason. `DataError` and
  * `InvalidAccessError` are `InvalidKey`, and `NotSupportedError` is
- * `Unsupported`. An `OperationError` becomes the reason from
- * `onOperationError`, such as `DecryptionFailed` for a decryption. Any other
- * exception is rethrown, which `Effect.tryPromise` turns into a defect.
+ * `Unsupported`, naming the algorithm and the layer. An `OperationError`
+ * becomes the reason from `onOperationError`, such as `DecryptionFailed` for a
+ * decryption. Any other exception is rethrown, which `Effect.tryPromise` turns
+ * into a defect.
  *
  * @internal
  */
 export const webCryptoError = (
   module: string,
   method: string,
+  algorithm: string,
+  cause: unknown,
+  onOperationError?: () => CryptoError.CryptoErrorReason
+): CryptoError.CryptoError =>
+  toCryptoError(module, method, `${module}.layerWebCrypto`, algorithm, cause, onOperationError)
+
+const toCryptoError = (
+  module: string,
+  method: string,
+  provider: string,
+  algorithm: string,
   cause: unknown,
   onOperationError?: () => CryptoError.CryptoErrorReason
 ): CryptoError.CryptoError => {
-  const reason = reasonFor(method, cause, onOperationError)
+  const reason = reasonFor(method, provider, algorithm, cause, onOperationError)
   if (reason === undefined) throw cause
   return new CryptoError.CryptoError({ module, method, reason })
 }
 
 const reasonFor = (
   method: string,
+  provider: string,
+  algorithm: string,
   cause: unknown,
   onOperationError: (() => CryptoError.CryptoErrorReason) | undefined
 ): CryptoError.CryptoErrorReason | undefined => {
@@ -81,7 +96,7 @@ const reasonFor = (
     case "InvalidAccessError":
       return new CryptoError.InvalidKey({ description: `The key cannot be used for ${method}`, cause })
     case "NotSupportedError":
-      return new CryptoError.Unsupported({ description: `${method} does not support the requested parameters`, cause })
+      return new CryptoError.Unsupported({ description: `${provider} does not provide ${algorithm}`, cause })
     case "OperationError":
       return onOperationError?.()
     default:
@@ -90,18 +105,19 @@ const reasonFor = (
 }
 
 /**
- * Runs `f` on the `subtle` of a `Crypto` object, dying when it is missing, as
- * in an insecure browser context. Exceptions go through `onError`, which
- * defaults to {@link webCryptoError}.
+ * Runs `f` on the `subtle` of a `Crypto` object in `module.layerWebCrypto`,
+ * dying when it is missing, as in an insecure browser context. Exceptions go
+ * through `onError`, which defaults to {@link webCryptoError}.
  *
  * @internal
  */
 export const run = <A>(
   module: string,
   method: string,
+  algorithm: string,
   crypto: Crypto | undefined,
   f: (subtle: SubtleCrypto) => Promise<A>,
-  onError: (cause: unknown) => CryptoError.CryptoError = (cause) => webCryptoError(module, method, cause)
+  onError: (cause: unknown) => CryptoError.CryptoError = (cause) => webCryptoError(module, method, algorithm, cause)
 ): Effect.Effect<A, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const subtle = crypto?.subtle
@@ -111,13 +127,24 @@ export const run = <A>(
 
 /**
  * {@link run} on the `WebCrypto` reference, for the top-level functions that
- * have no layer to read it from.
+ * have no layer to read it from. `crypto.subtle` is named as the provider
+ * that declined an algorithm.
  *
  * @internal
  */
 export const runWithReference = <A>(
   module: string,
   method: string,
-  f: (subtle: SubtleCrypto) => Promise<A>,
-  onError?: (cause: unknown) => CryptoError.CryptoError
-): Effect.Effect<A, CryptoError.CryptoError> => WebCrypto.use((crypto) => run(module, method, crypto, f, onError))
+  algorithm: string,
+  f: (subtle: SubtleCrypto) => Promise<A>
+): Effect.Effect<A, CryptoError.CryptoError> =>
+  WebCrypto.use((crypto) =>
+    run(
+      module,
+      method,
+      algorithm,
+      crypto,
+      f,
+      (cause) => toCryptoError(module, method, "crypto.subtle", algorithm, cause)
+    )
+  )

@@ -10,6 +10,11 @@
  * the core WebCrypto implementation. There is no bundled layer: provide each
  * family's layer where it is used.
  *
+ * `CryptoKey`-backed keys go through Node.js's `crypto.subtle`, because
+ * `KeyObject.from(cryptoKey)` is deprecated (DEP0204). A `CryptoKey` must
+ * come from the `WebCrypto` reference: Node.js rejects one from another
+ * reference with a `TypeError`, which is a defect.
+ *
  * @stability unstable
  * @since 1.0.0
  */

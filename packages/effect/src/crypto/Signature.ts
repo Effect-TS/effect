@@ -115,8 +115,8 @@ export interface Ecdsa<C extends Curve = Curve> extends Phantom<false, true> {
  *
  * **Details**
  *
- * `modulusLength` is in bits and is only read by key generation: imported keys
- * keep their own size. `saltLength` is in bytes.
+ * `modulusLength` is in bits and is only read by key generation: an imported
+ * key's `algorithm.modulusLength` is its real size. `saltLength` is in bytes.
  *
  * @stability unstable
  * @category models
@@ -135,8 +135,8 @@ export interface RsaPss extends Phantom<false, false> {
  *
  * **Details**
  *
- * `modulusLength` is in bits and is only read by key generation: imported keys
- * keep their own size.
+ * `modulusLength` is in bits and is only read by key generation: an imported
+ * key's `algorithm.modulusLength` is its real size.
  *
  * @stability unstable
  * @category models
@@ -541,7 +541,7 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
       generateKeyPair: <A extends Algorithm>(algorithm: A) =>
         Asymmetric.generateKeyPair<KeyPair<A>>(family, crypto, random, algorithm, generateParams(algorithm)),
       sign: (privateKey, data) =>
-        internal.run("Signature", "sign", crypto, async (subtle) => {
+        internal.run("Signature", "sign", privateKey.algorithm.name, crypto, async (subtle) => {
           const cryptoKey = await caches.privateKey(subtle, privateKey)
           checkSaltLength(privateKey.algorithm, cryptoKey)
           return new Uint8Array(await subtle.sign(signParams(privateKey.algorithm), cryptoKey, data as BufferSource))
@@ -550,6 +550,7 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
         internal.run(
           "Signature",
           "verify",
+          publicKey.algorithm.name,
           crypto,
           async (subtle) => {
             const cryptoKey = await caches.publicKey(subtle, publicKey)
@@ -606,9 +607,11 @@ export const privateKey = <
  * **Details**
  *
  * The bytes are copied. A wrong length, or a compressed point, fails with an
- * `InvalidKey` reason. Whether a point is on the curve is checked when the
- * key is first used. RSA public keys have no raw form, so passing them is a
- * type error.
+ * `InvalidKey` reason. Only uncompressed points are taken because Safari and
+ * Firefox before 146 reject compressed ones in raw import, though they accept
+ * them inside SPKI: decode a compressed point with `KeyFormat.spki`. Whether a
+ * point is on the curve is checked when the key is first used. RSA public keys have
+ * no raw form, so passing them is a type error.
  *
  * @stability unstable
  * @category constructors

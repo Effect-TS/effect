@@ -193,6 +193,7 @@ export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> 
         internal.run(
           "Mac",
           "sign",
+          key.algorithm.name,
           crypto,
           async (subtle) =>
             new Uint8Array(await subtle.sign("HMAC", await cryptoKeyFor(subtle, key), data as BufferSource))
@@ -202,6 +203,7 @@ export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> 
         internal.run(
           "Mac",
           "verify",
+          key.algorithm.name,
           crypto,
           async (subtle) =>
             subtle.verify("HMAC", await cryptoKeyFor(subtle, key), tag as BufferSource, data as BufferSource)

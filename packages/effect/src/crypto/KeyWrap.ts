@@ -77,8 +77,9 @@ export interface AesKw {
  * **Details**
  *
  * MGF1 uses the same hash, and there is no label. `modulusLength` is in bits
- * and is only read by key generation: imported keys keep their own size. The
- * `~flags` and `~keys` members exist only in the types.
+ * and is only read by key generation: an imported key's
+ * `algorithm.modulusLength` is its real size. The `~flags` and `~keys`
+ * members exist only in the types.
  *
  * @stability unstable
  * @category models
@@ -430,7 +431,7 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
     const caches = Asymmetric.makeCaches(family)
 
     const wrapBytes = (wrapKey: WrapKey, bytes: Uint8Array) =>
-      internal.run("KeyWrap", "wrap", crypto, async (subtle) => {
+      internal.run("KeyWrap", "wrap", wrapKey.algorithm.name, crypto, async (subtle) => {
         if (isKey(wrapKey)) {
           checkKwLength(bytes.length, 0)
           const kek = await kwCryptoKey(subtle, wrapKey)
@@ -450,6 +451,7 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
       internal.run(
         "KeyWrap",
         "unwrap",
+        unwrapKey.algorithm.name,
         crypto,
         async (subtle) => {
           if (isKey(unwrapKey)) {
@@ -475,7 +477,14 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
           )
           return KeyModel.exportRaw(subtle, target)
         },
-        (cause) => internal.webCryptoError("KeyWrap", "unwrap", cause, () => new CryptoError.DecryptionFailed())
+        (cause) =>
+          internal.webCryptoError(
+            "KeyWrap",
+            "unwrap",
+            unwrapKey.algorithm.name,
+            cause,
+            () => new CryptoError.DecryptionFailed()
+          )
       )
 
     return KeyWrap.of({
