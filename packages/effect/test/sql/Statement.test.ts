@@ -145,6 +145,7 @@ const makeClient = (observe: Effect.Effect<void>, borrow = false) => {
     executeStream: () => Stream.fromEffect(execute)
   }
   return SqlClient.make({
+    driver: "test",
     acquirer: Effect.as(observe, connection),
     borrower: borrow ? (f) => Effect.andThen(observe, f(connection)) : undefined,
     compiler: Statement.makeCompilerSqlite(),

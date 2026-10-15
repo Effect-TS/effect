@@ -1582,6 +1582,43 @@ describe("fromJsonSchemaDocument", () => {
   })
 
   describe("allOf", () => {
+    it.each([
+      {
+        annotations: { description: "name" },
+        options: {},
+        annotationCode: `{ "description": "name" }`
+      },
+      {
+        annotations: { "x-sensitive": true },
+        options: { includeAnnotationKey: (key: string) => key === "x-sensitive" },
+        annotationCode: `{ "x-sensitive": true }`
+      }
+    ])("intersects union members containing annotated references: $annotationCode", ({
+      annotationCode,
+      annotations,
+      options
+    }) => {
+      const unconstrained = { $ref: "#/$defs/Any", ...annotations }
+      const name = { $ref: "#/$defs/Name" }
+      for (const allOf of [[unconstrained, name], [name, unconstrained]]) {
+        assertFromJsonSchema({
+          schema: {
+            allOf: [
+              { anyOf: [{ allOf }, { type: "number" }] },
+              { enum: ["a", "b"] }
+            ],
+            $defs: { Any: {}, Name: { type: "string" } }
+          },
+          options
+        }, {
+          codes: makeCode(
+            `Schema.Union([Schema.Literal("a").annotate(${annotationCode}), Schema.Literal("b").annotate(${annotationCode})])`,
+            `"a" | "b"`
+          )
+        })
+      }
+    })
+
     it("prunes disjoint lanes before intersecting unions", () => {
       assertFromJsonSchema({
         schema: {

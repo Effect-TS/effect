@@ -216,6 +216,30 @@ describe("Channel", () => {
         assert.deepStrictEqual(result, [[1], [2]])
       }))
 
+    it.effect("fromReadableStream - surfaces cancellation failures and releases the lock", () =>
+      Effect.gen(function*() {
+        const error = new Error("cancel failed")
+        const readable = new ReadableStream<number>({
+          start(controller) {
+            controller.enqueue(1)
+          },
+          cancel() {
+            return Promise.reject(error)
+          }
+        })
+        const exit = yield* Channel.fromReadableStream({
+          evaluate: () => readable,
+          onError: (error) => error
+        }).pipe(
+          Channel.mapEffect(() => Effect.fail("downstream failed")),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.combine(Cause.fail("downstream failed"), Cause.die(error)))
+        assert.isFalse(readable.locked)
+      }))
+
     it.effect("fromTransformStream - surfaces write-side errors through the read side", () =>
       Effect.gen(function*() {
         const error = new Error("write failed")

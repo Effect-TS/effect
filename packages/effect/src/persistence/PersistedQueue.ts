@@ -909,6 +909,9 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   return PersistedQueueStore.of({
     offer: ({ delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
+      // replace lone surrogates like Redis' UTF-8 encoding does, so the id in
+      // the payload matches the id keys
+      id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
       const payload = JSON.stringify({ id, element })
       const send = Effect.suspend(() => {
         if (delay === undefined) {
@@ -1284,6 +1287,27 @@ redis.call("ZADD", key_ids, "XX", "+inf", id)
   }
 )
 
+// Every record starts with {"id":"...". Decode only the id, since Redis cjson
+// rejects lone UTF-16 surrogates that JSON.stringify can emit in the element.
+const queueRecordIdRedis = `
+local function record_id(payload)
+  assert(string.sub(payload, 1, 7) == '{"id":"', "Invalid queue record id")
+  local i = 8
+  while i <= #payload do
+    local byte = string.byte(payload, i)
+    if byte == 92 then
+      -- Skip escaped characters, including escaped quotes and backslashes.
+      i = i + 2
+    elseif byte == 34 then
+      return cjson.decode(string.sub(payload, 7, i))
+    else
+      i = i + 1
+    end
+  end
+  error("Unterminated queue record id")
+end
+`
+
 const takeRedis = Redis.script(
   (
     ...args: [
@@ -1310,6 +1334,8 @@ local batch_size = tonumber(ARGV[2])
 local pttl = ARGV[3]
 local now = ARGV[4]
 
+${queueRecordIdRedis}
+
 local due = redis.call("ZRANGEBYSCORE", key_delayed, "-inf", now, "LIMIT", 0, 100)
 if #due > 0 then
   for i, payload in ipairs(due) do
@@ -1318,14 +1344,21 @@ if #due > 0 then
   redis.call("ZREM", key_delayed, unpack(due))
 end
 
-local payloads = redis.call("LPOP", key_queue, batch_size)
-if not payloads then
+local payloads = redis.call("LRANGE", key_queue, 0, batch_size - 1)
+if #payloads == 0 then
   return nil
 end
 
-local result = {}
+-- read every id before removing the batch, as script errors do not roll back
+local ids = {}
 for i, payload in ipairs(payloads) do
-  local id = cjson.decode(payload).id
+  ids[i] = record_id(payload)
+end
+redis.call("LTRIM", key_queue, #payloads, -1)
+
+local result = {}
+for i, id in ipairs(ids) do
+  local payload = payloads[i]
   -- the lock key is unique per acquisition and doubles as the ownership token
   local key_lock = lock_prefix .. i
   redis.call("SET", key_lock, 1, "PX", pttl)
@@ -1379,21 +1412,20 @@ local key_ids = KEYS[2]
 local cutoff = tonumber(ARGV[1])
 local removed = 0
 
+${queueRecordIdRedis}
+
 while removed < ${trimFailedBatchSize} do
   local head = redis.call("LINDEX", key_failed, 0)
   if not head then break end
-  local ok, decoded = pcall(cjson.decode, head)
+  local ok, id = pcall(record_id, head)
   if ok then
-    local failed_at = tonumber(decoded.failedAt)
+    -- failedAt is always the last field of a failed record
+    local failed_at = tonumber(string.match(head, ',"failedAt":([^,}]+)%}$'))
     if failed_at ~= nil and failed_at >= cutoff then break end
-    redis.call("LPOP", key_failed)
-    if decoded.id ~= nil then
-      redis.call("ZREM", key_ids, decoded.id)
-    end
-  else
-    -- a corrupt head would otherwise block trimming of the whole list
-    redis.call("LPOP", key_failed)
+    redis.call("ZREM", key_ids, id)
   end
+  -- a corrupt head would otherwise block trimming of the whole list
+  redis.call("LPOP", key_failed)
   removed = removed + 1
 end
 

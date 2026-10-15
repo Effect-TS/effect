@@ -176,13 +176,6 @@ export const make = (options?: {
           )
         )
       }
-      if (entries.length > 0) {
-        yield* insertEntries(entries.map(toEntryRow))
-      }
-      if (remoteRows.length > 0) {
-        yield* insertRemotes(remoteRows)
-      }
-
       const uncommitted = options.entries.filter((entry) => !existingIds.has(entry.entry.idString))
       const duplicateEntries = options.entries
         .filter((entry) => existingIds.has(entry.entry.idString))
@@ -197,13 +190,22 @@ export const make = (options?: {
             FROM ${entryTableSql}
             WHERE event = ${entry.event} AND
                   primary_key = ${entry.primaryKey} AND
-                  timestamp >= ${entry.createdAtMillis}
+                  timestamp > ${entry.createdAtMillis}
             ORDER BY timestamp ASC
           `.pipe(
           Effect.flatMap(decodeEntryRows),
           Effect.map(toEntries)
         )
         yield* options.effect({ entry, conflicts })
+      }
+
+      // Keep the incoming batch out of conflict queries and persist only after
+      // compaction and every callback have succeeded.
+      if (entries.length > 0) {
+        yield* insertEntries(entries.map(toEntryRow))
+      }
+      if (remoteRows.length > 0) {
+        yield* insertRemotes(remoteRows)
       }
 
       return {
@@ -241,6 +243,7 @@ export const make = (options?: {
       ),
       writeFromRemote: (options) =>
         writeFromRemote(options).pipe(
+          sql.withTransaction,
           withTracerDisabled,
           Effect.catchIf(
             (e) => e._tag !== "EventJournalError",

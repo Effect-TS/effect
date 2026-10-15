@@ -556,21 +556,18 @@ describe("Stream", () => {
 
     it.effect("fromReadableStream - errored streams fail with the mapped error, not a finalizer defect", () =>
       Effect.gen(function*() {
+        const readable = new ReadableStream<number>({
+          start(controller) {
+            controller.error(new Error("boom"))
+          }
+        })
         const exit = yield* Stream.fromReadableStream({
-          evaluate: () =>
-            new ReadableStream<number>({
-              start(controller) {
-                controller.error(new Error("boom"))
-              }
-            }),
-          onError: (error) => new Error(`mapped: ${(error as Error).message}`)
+          evaluate: () => readable,
+          onError: () => "mapped"
         }).pipe(Stream.runDrain, Effect.exit)
 
-        assertTrue(Exit.isFailure(exit))
-        if (Exit.isFailure(exit)) {
-          assertTrue(exit.cause.reasons.every(Cause.isFailReason))
-          deepStrictEqual(Cause.squash(exit.cause), new Error("mapped: boom"))
-        }
+        assertExitFailure(exit, Cause.fail("mapped"))
+        assert.isFalse(readable.locked)
       }))
   })
 

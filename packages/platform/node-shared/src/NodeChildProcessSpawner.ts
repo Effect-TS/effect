@@ -16,7 +16,9 @@
  * `all`, or `fdN`) to the destination `stdin` or `fdN`.
  *
  * Scoped release and `kill` wait for the signalled process group. Without
- * `forceKillAfter`, the wait is limited to one second and never escalates.
+ * `forceKillAfter`, cleanup waits for the leader to exit with no time limit,
+ * then gives remaining group members up to one second to exit, without
+ * escalating.
  * With it, cleanup may take the configured duration plus a final one-second
  * wait after `SIGKILL`. Zombie descendants can consume either full bound. On
  * Windows, `taskkill` terminates the tree while the leader is running, and
@@ -253,50 +255,81 @@ const make = Effect.gen(function*() {
     const inputSinks = new Map<number, Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError>>()
     const outputStreams = new Map<number, Stream.Stream<Uint8Array, PlatformError.PlatformError>>()
 
+    const setupInput = (
+      fd: number,
+      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> | undefined
+    ) =>
+      Effect.suspend(() => {
+        let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
+        if (nodeStream && "write" in nodeStream) {
+          handleInputErrors(nodeStream)
+          sink = NodeSink.fromWritable({
+            evaluate: () => nodeStream,
+            onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
+          })
+        }
+
+        if (stream) {
+          return Effect.map(Effect.forkScoped(Stream.run(stream, sink)), () => {
+            inputSinks.set(fd, sink)
+          })
+        }
+
+        inputSinks.set(fd, sink)
+        return Effect.void
+      })
+
+    const setupOutput = (
+      fd: number,
+      nodeStream: NodeChildProcess.ChildProcess["stdio"][number],
+      sink: Sink.Sink<Uint8Array, Uint8Array, never, PlatformError.PlatformError> | undefined
+    ) => {
+      let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
+      if (nodeStream && "read" in nodeStream) {
+        const passThrough = new PassThrough()
+        // Retain errors raised before anyone reads, e.g. a failed write on a
+        // duplex fd, so they neither go uncaught nor leave later readers hanging
+        let error: unknown = undefined
+        passThrough.on("error", (cause) => {
+          error ??= cause
+        })
+        nodeStream.on("error", (cause) => passThrough.destroy(cause))
+        nodeStream.pipe(passThrough)
+        const onError = (cause: unknown) => toPlatformError(`fromReadable(fd${fd})`, toError(cause), command)
+        stream = Stream.suspend(() =>
+          error === undefined
+            ? NodeStream.fromReadable({ evaluate: () => passThrough, onError })
+            : Stream.fail(onError(error))
+        )
+      }
+
+      if (sink) {
+        stream = Stream.transduce(stream, sink)
+      }
+
+      outputStreams.set(fd, stream)
+    }
+
     for (const { config, fd } of additionalFds) {
       const nodeStream = childProcess.stdio[fd]
 
       switch (config.type) {
         case "input": {
-          // Create a sink to write to for input file descriptors
-          let sink: Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError> = Sink.drain
-          if (nodeStream && "write" in nodeStream) {
-            handleInputErrors(nodeStream)
-            sink = NodeSink.fromWritable({
-              evaluate: () => nodeStream,
-              onError: (error) => toPlatformError(`fromWritable(fd${fd})`, toError(error), command)
-            })
-          }
-
-          // If user provided a stream, pipe it into the sink
-          if (config.stream) {
-            yield* Effect.forkScoped(Stream.run(config.stream, sink))
-          }
-
-          inputSinks.set(fd, sink)
-
+          yield* setupInput(fd, nodeStream, config.stream)
           break
         }
         case "output": {
-          // Create a stream to read from for output file descriptors
-          let stream: Stream.Stream<Uint8Array, PlatformError.PlatformError> = Stream.empty
-          if (nodeStream && "read" in nodeStream) {
-            const passThrough = new PassThrough()
-            nodeStream.on("error", (error) => passThrough.destroy(error))
-            nodeStream.pipe(passThrough)
-            stream = NodeStream.fromReadable({
-              evaluate: () => passThrough,
-              onError: (error) => toPlatformError(`fromReadable(fd${fd})`, toError(error), command)
-            })
+          setupOutput(fd, nodeStream, config.sink)
+          break
+        }
+        case "duplex": {
+          // Keep writing possible after the child closes its write side.
+          if (nodeStream && "allowHalfOpen" in nodeStream) {
+            nodeStream.allowHalfOpen = true
           }
-
-          // If user provided a sink, transduce the stream through it
-          if (config.sink) {
-            stream = Stream.transduce(stream, config.sink)
-          }
-
-          outputStreams.set(fd, stream)
-
+          setupOutput(fd, nodeStream, config.sink)
+          yield* setupInput(fd, nodeStream, config.stream)
           break
         }
       }
@@ -502,6 +535,7 @@ const make = Effect.gen(function*() {
       )
     yield* signalGroup(options?.killSignal ?? "SIGTERM")
     if (Predicate.isUndefined(options?.forceKillAfter)) {
+      yield* Deferred.await(exitSignal)
       yield* awaitProcessExit(childProcess, exitSignal, processGroupGraceMillis)
     } else {
       yield* awaitProcessExit(childProcess, exitSignal, Duration.toMillis(options.forceKillAfter))
@@ -663,12 +697,16 @@ const make = Effect.gen(function*() {
             if (Predicate.isNotUndefined(fd)) {
               const fdName = ChildProcess.fdName(fd) as `fd${number}`
               const existingFds = command.options.additionalFds ?? {}
+              const existingFd = existingFds[fdName]
+              const fdConfig: ChildProcess.AdditionalFdConfig = existingFd?.type === "duplex"
+                ? { ...existingFd, stream: sourceStream }
+                : { type: "input", stream: sourceStream }
               handles.push(
                 yield* spawnCommand(ChildProcess.make(command.command, command.args, {
                   ...command.options,
                   additionalFds: {
                     ...existingFds,
-                    [fdName]: { type: "input" as const, stream: sourceStream }
+                    [fdName]: fdConfig
                   }
                 }))
               )

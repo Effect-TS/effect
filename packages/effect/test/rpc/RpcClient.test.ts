@@ -11,6 +11,7 @@ import {
   Queue,
   Schedule,
   Schema,
+  Scope,
   Stream,
   Tracer
 } from "effect"
@@ -107,6 +108,67 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("does not fail a new request started synchronously during connection defect delivery", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const caller = yield* client.Unary().pipe(
+        Effect.catchDefect(() => client.Unary()),
+        Effect.exit,
+        Effect.forkChild
+      )
+      takeRequestId(yield* Queue.take(sent))
+      // Let the first call suspend before delivering the defect.
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "Defect", defect: "connection defect" })
+
+      const retryRequestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("releases pending calls when connection defect delivery is interrupted and the client closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
+      const sent = yield* Queue.unbounded<void>()
+      const delivery = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+      const { client, write } = yield* RpcClient.makeNoSerialization(TestGroup, {
+        onFromClient: ({ message }) =>
+          message._tag === "Request" ? Queue.offer(sent, undefined).pipe(Effect.asVoid) : Effect.void
+      }).pipe(Effect.provideService(Scope.Scope, scope))
+
+      const first = yield* client.Ping().pipe(
+        Effect.catchDefect(() =>
+          Effect.gen(function*() {
+            const receiver = yield* Deferred.await(delivery)
+            yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+          })
+        ),
+        Effect.forkChild
+      )
+      yield* Queue.take(sent)
+      // A queue completion introduces an interruption boundary between the unary calls.
+      yield* client.Events(undefined, { asQueue: true })
+      yield* Queue.take(sent)
+      const last = yield* client.Ping().pipe(Effect.forkChild)
+      yield* Queue.take(sent)
+      yield* Effect.yieldNow
+
+      const receiver = yield* Effect.withFiber((fiber) =>
+        Deferred.succeed(delivery, fiber).pipe(
+          Effect.andThen(write({ _tag: "Defect", clientId: 0, defect: "connection defect" }))
+        )
+      ).pipe(Effect.forkChild)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      yield* Fiber.join(first)
+      yield* Scope.close(scope, Exit.void)
+
+      const lastExit = last.pollUnsafe()
+      assert(lastExit !== undefined, "client shutdown must not leave a pending call stranded")
+      assert(Exit.isFailure(lastExit))
+    }))
+
   it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
@@ -129,6 +191,20 @@ describe("RpcClient", () => {
       const retryRequestId = takeRequestId(yield* Queue.take(sent))
       yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.forkChild)
+      const request = yield* Queue.take(sent)
+      assert(request._tag === "Request" && request.discard === true)
+      yield* Effect.yieldNow
+      assert.isUndefined(call.pollUnsafe())
+
+      // an older server replies with the handler result, which also counts as the acknowledgement
+      yield* handle({ _tag: "Exit", requestId: request.id, exit: { _tag: "Success", value: "ignored" } })
+      assert.isUndefined(yield* Fiber.join(call))
     }))
 
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
@@ -324,6 +400,36 @@ describe("RpcClient", () => {
 
   it.effect("fails request on empty HTTP response for framed serialization", () =>
     assertEmptyResponseFailsRequest(RpcSerialization.layerNdjson, ""))
+
+  it.effect("sends a discarded call to a worker as a request and waits for its Exit", () =>
+    Effect.gen(function*() {
+      const sent: Array<unknown> = []
+      const requestSent = yield* Deferred.make<void>()
+      const reply = yield* Deferred.make<(message: unknown) => Effect.Effect<unknown, unknown>>()
+      const backing: Worker.Worker<any, any> = {
+        send: (message) =>
+          Effect.sync(() => void sent.push(message)).pipe(Effect.andThen(Deferred.succeed(requestSent, void 0))),
+        run: (handler: any) => Deferred.succeed(reply, handler).pipe(Effect.andThen(Effect.never))
+      }
+      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1 }).pipe(
+        Effect.provideService(
+          Worker.WorkerPlatform,
+          Worker.WorkerPlatform.of({ spawn: () => Effect.succeed(backing) })
+        ),
+        Effect.provideService(Worker.Spawner, (() => undefined) as Worker.SpawnerFn)
+      )
+      yield* protocol.run(0, () => Effect.void).pipe(Effect.forkScoped)
+      const request = { _tag: "Request" as const, id: 1, tag: "Test", payload: null, headers: [] }
+
+      const call = yield* protocol.send(0, { ...request, discard: true }).pipe(Effect.forkChild)
+      yield* Deferred.await(requestSent)
+      // The pool counts the worker as busy until the Exit, so the worker must be asked for one.
+      assert.deepStrictEqual(sent, [request])
+      assert.isUndefined(call.pollUnsafe())
+
+      yield* (yield* Deferred.await(reply))({ _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: null } })
+      yield* Fiber.join(call)
+    }))
 
   it.effect("defects request when framed HTTP response closes before request completes", () =>
     Effect.gen(function*() {

@@ -1,7 +1,8 @@
 import { PgliteClient } from "@effect/sql-pglite"
-import { assert, describe, layer } from "@effect/vitest"
+import { assert, describe, it, layer } from "@effect/vitest"
 import * as Pglite from "@electric-sql/pglite"
-import { Effect, Exit, Layer, Queue, Scope } from "effect"
+import { Effect, Exit, Layer, Queue, Scope, String } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import { SqlClient } from "effect/sql/SqlClient"
 
 const ClientLayer = PgliteClient.layer()
@@ -162,4 +163,11 @@ describe("PgliteClient", { concurrent: false }, () => {
         }))
     })
   })
+
+  it.effect("identifies the pglite driver on directly constructed clients", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgliteClient.make({ transformResultNames: String.snakeToCamel })
+      assert.strictEqual(sql.driver, "pglite")
+      assert.strictEqual(sql.withoutTransforms().driver, "pglite")
+    }).pipe(Effect.scoped, Effect.provide(Reactivity.layer)), { timeout: 30_000 })
 })

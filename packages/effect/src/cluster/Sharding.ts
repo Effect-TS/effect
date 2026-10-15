@@ -19,7 +19,7 @@ import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
-import type * as Exit from "../Exit.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
@@ -276,6 +276,8 @@ const make = Effect.gen(function*() {
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
+  const updateShardsGauge = () =>
+    ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
   const activeShardsLatch = yield* Latch.make(false)
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
@@ -494,6 +496,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
+        updateShardsGauge()
 
         if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
@@ -555,13 +558,11 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
+        updateShardsGauge()
         if (acquired.length > 0) {
           yield* notifyShardLockWaiters
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
-
-          // update metrics
-          ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
         }
         // the shutdown handoff releases the shards acquired here without waiting
         yield* Effect.raceFirst(Effect.sleep(1000), handoffLatch.await)
@@ -589,7 +590,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
           MutableHashSet.add(forceReleasingShards, shardId)
         }
-        ClusterMetrics.shards.updateUnsafe(BigInt(0), Context.empty())
+        updateShardsGauge()
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
@@ -632,6 +633,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
         }
       }
+      updateShardsGauge()
       if (MutableHashSet.size(releasingShards) > 0) {
         yield* activeShardsLatch.open
       }
@@ -1520,18 +1522,23 @@ const make = Effect.gen(function*() {
                   envelope as any
                 )
               })
-              if (!options.discard) {
-                const entry: ClientRequestEntry = {
-                  rpc: rpc as any,
-                  context: fiber.context,
-                  message
-                }
-                clientRequests.set(id, entry)
-                respond = makeClientRespond(entry, client.write)
-              } else {
+              if (options.message.discard === true) {
                 respond = clientRespondDiscard
+                // a discarded call is acknowledged once its message is sent
+                const requestId = options.message.id
+                return Effect.flatMap(
+                  sendOutgoing(message, true),
+                  () => client.write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
+                )
               }
-              return sendOutgoing(message, options.discard)
+              const entry: ClientRequestEntry = {
+                rpc: rpc as any,
+                context: fiber.context,
+                message
+              }
+              clientRequests.set(id, entry)
+              respond = makeClientRespond(entry, client.write)
+              return sendOutgoing(message, false)
             }
             case "Ack": {
               const requestId = Snowflake.Snowflake(options.message.requestId)

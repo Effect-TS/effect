@@ -32,6 +32,7 @@ import type { Pipeable } from "../Pipeable.ts"
 import { hasProperty } from "../Predicate.ts"
 import * as Pull from "../Pull.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Scheduler from "../Scheduler.ts"
 import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
@@ -558,18 +559,19 @@ function makeEffect<A, E>(
   ctx: AtomContext,
   effect: Effect.Effect<A, E, Scope.Scope | AtomRegistry>,
   initialValue: AsyncResult.AsyncResult<A, E>,
-  services = Context.empty(),
+  services: Context.Context<never> | LazyArg<Context.Context<never>> = Context.empty(),
   uninterruptible = false
 ): AsyncResult.AsyncResult<A, E> {
+  const getServices = typeof services === "function" ? services : constant(services)
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
-    Effect.runForkWith(services)(Scope.close(scope, Exit.void))
+    Effect.runForkWith(getServices())(closeScope(scope))
   })
   let syncResult: AsyncResult.AsyncResult<A, E> | undefined
   let isAsync = false
   const cancel = runCallbackSync(
-    services.pipe(
+    getServices().pipe(
       Context.add(Scope.Scope, scope),
       Context.add(AtomRegistry, ctx.registry),
       Context.add(Scheduler.Scheduler, ctx.registry.scheduler)
@@ -594,6 +596,16 @@ function makeEffect<A, E>(
   }
   return AsyncResult.waiting(initialValue)
 }
+
+const closeScope = (scope: Scope.Closeable): Effect.Effect<void> =>
+  Effect.catchCause(
+    Scope.close(scope, Exit.void),
+    (cause) =>
+      Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.withFiber((fiber) => {
+        const level = fiber.getRef(UnhandledLogLevel)
+        return level ? Effect.logWithLevel(level)("Unhandled error in atom finalizer", cause) : Effect.void
+      })
+  )
 
 function runCallbackSync<R, A, E, ER = never>(
   services: Context.Context<R>,
@@ -807,8 +819,18 @@ export function context(options?: {
 
     self.read = function read(get: AtomContext) {
       const layer = get(layerAtom)
-      const build = Effect.flatMap(Effect.scope, (scope) => Layer.buildWithMemoMap(layer, resolveMemoMap(get), scope))
-      return effect(get, build, { uninterruptible: true })
+      // Teardown failures are logged with the built services. A scoped logger
+      // from this layer is closed by then, so those reports may be dropped.
+      let services = Context.empty()
+      const build = Effect.flatMap(
+        Effect.scope,
+        (scope) =>
+          Effect.map(Layer.buildWithMemoMap(layer, resolveMemoMap(get), scope), (context) => {
+            services = context
+            return context
+          })
+      )
+      return makeEffect(get, build, AsyncResult.initial(), () => services, true)
     }
 
     return self
@@ -2566,7 +2588,8 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * **Details**
  *
  * The key identifies the atom in dehydrated state, and the encode/decode
- * functions convert between the atom value and the schema encoded value.
+ * functions convert between the atom value and its JSON representation, as
+ * produced by the schema's JSON codec (`Schema.toCodecJson`).
  *
  * @stability unstable
  * @category models
@@ -2575,8 +2598,8 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
 export interface Serializable<S extends Schema.Constraint> {
   readonly [SerializableTypeId]: {
     readonly key: string
-    readonly encode: (value: S["Type"]) => S["Encoded"]
-    readonly decode: (value: S["Encoded"]) => S["Type"]
+    readonly encode: (value: S["Type"]) => Schema.Json
+    readonly decode: (value: Schema.Json) => S["Type"]
   }
 }
 
