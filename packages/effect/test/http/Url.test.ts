@@ -46,6 +46,25 @@ describe("Url", () => {
       }
     })
 
+    it("resolves relative URLs when URL.canParse is unavailable", () => {
+      const canParse = Object.getOwnPropertyDescriptor(URL, "canParse")
+      vi.stubGlobal("location", new URL("https://example.com/app/index.html"))
+      Object.defineProperty(URL, "canParse", { configurable: true, value: undefined })
+      try {
+        assert.deepStrictEqual(
+          Url.make("api", UrlParams.empty, undefined),
+          Result.succeed(new URL("https://example.com/app/api"))
+        )
+      } finally {
+        if (canParse) {
+          Object.defineProperty(URL, "canParse", canParse)
+        } else {
+          Reflect.deleteProperty(URL, "canParse")
+        }
+        vi.unstubAllGlobals()
+      }
+    })
+
     it("appends query parameters and hash", () => {
       assertSuccess(
         Url.make(
