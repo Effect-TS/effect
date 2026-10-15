@@ -2387,7 +2387,8 @@ const jsonSchemaRevivers: ReadonlyArray<AnyReviver> = [
  *
  * **When to use**
  *
- * Use when you need to configure pattern handling or transform each JSON Schema node before translation.
+ * Use when you need to configure pattern handling, preserve custom annotations, or transform each JSON Schema node
+ * before translation.
  *
  * **Details**
  *
@@ -2422,6 +2423,42 @@ export interface FromJsonSchemaOptions {
    * @default "error"
    */
   readonly patterns?: "error" | "ignore" | "apply" | undefined
+  /**
+   * Selects additional JSON Schema keys to preserve as Effect schema annotations.
+   *
+   * **Details**
+   *
+   * Standard annotations such as `title` and `description` are imported independently of this predicate.
+   * Other keys are ignored by default. Selected values must be JSON-compatible and are kept as opaque metadata.
+   * Selection runs after `onEnter`. JSON Schema structural and validation keywords, Effect's reserved annotation
+   * keys, and keys starting with `~` are excluded before calling the predicate. Exceptions from the predicate
+   * pass through unchanged.
+   *
+   * **Gotchas**
+   *
+   * Import normalizes the schema. Selected annotations stay on surviving values when checks simplify, and
+   * annotations from eliminated alternatives or unreachable children are discarded. When schemas merge,
+   * later annotations overwrite earlier values for the same key, following the importer's merge order.
+   * Retaining an annotation does not enforce its semantics or preserve the original JSON Schema structure.
+   *
+   * **Example** (Preserving custom metadata on import and export)
+   *
+   * ```ts import.meta.vitest
+   * import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+   *
+   * const document = JsonSchema.fromSchemaDraft2020_12({
+   *   type: "string",
+   *   "x-sensitive": true
+   * })
+   * const options = { includeAnnotationKey: (key: string) => key.startsWith("x-") }
+   * const schema = SchemaRepresentation.fromJsonSchemaDocument(document, options)
+   *
+   * Schema.toJsonSchemaDocument(schema, options).schema // => { type: "string", "x-sensitive": true }
+   * ```
+   *
+   * @see Schema.ToJsonSchemaOptions
+   */
+  readonly includeAnnotationKey?: ((key: string) => boolean) | undefined
 }
 
 /**

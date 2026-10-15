@@ -6404,10 +6404,37 @@ would strip. Use the imported schema's actual checks and parse options when reas
 Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`,
 active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` are rejected with an error identifying
 the unsupported keyword. Inactive conditional keywords and `minContains` / `maxContains` without
-`contains` have no validation effect and are ignored. Unknown extension keywords are ignored and their semantics are not
-enforced. Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and
+`contains` have no validation effect and are ignored. Unknown extension keywords are ignored by default and their
+semantics are not enforced. Objects and arrays used as `const` values or `enum` members are rejected. Only strings, numbers, booleans, and
 null are supported. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
+
+Both import functions accept `includeAnnotationKey` to preserve selected custom keys as Effect schema annotations.
+It pairs with the exporter's option of the same name:
+
+```ts
+import { JsonSchema, Schema, SchemaRepresentation } from "effect"
+
+const document = JsonSchema.fromSchemaDraft2020_12({
+  type: "string",
+  "x-sensitive": true
+})
+const options = { includeAnnotationKey: (key: string) => key.startsWith("x-") }
+const schema = SchemaRepresentation.fromJsonSchemaDocument(document, options)
+const exported = Schema.toJsonSchemaDocument(schema, options)
+// exported.schema: { type: "string", "x-sensitive": true }
+```
+
+Standard annotations such as `title` and `description` are imported independently of the predicate. Selection runs
+after `onEnter` and only considers additional own enumerable keys. JSON Schema structural and validation keywords,
+Effect's reserved annotation keys, and keys starting with `~` are excluded before calling the predicate. Selected
+values must be JSON-compatible. Objects and arrays are retained as opaque metadata, without interpreting nested
+schema keywords. Exceptions raised by the predicate pass through unchanged.
+
+Selected metadata stays on the value's schema when intersections merge checks or simplify to literals. When annotations
+collide, later values overwrite earlier ones according to the existing merge order. Metadata belonging only to eliminated
+alternatives or unreachable children is discarded. The resulting schema can have a different structure from the input;
+retaining annotations does not provide a lossless round trip or enforce custom validation rules.
 
 Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
 sets. Other union intersections, including cases that would duplicate a nested choice, are rejected.
