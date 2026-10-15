@@ -301,8 +301,10 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   )
 
   const clearEntries = Effect.fnUntraced(function*(exit: Exit.Exit<never>) {
-    for (const [id, entry] of entries) {
-      entries.delete(id)
+    // Resuming callers can synchronously start new requests.
+    const pending = Array.from(entries.values())
+    entries.clear()
+    for (const entry of pending) {
       if (entry._tag === "Queue") {
         yield* (exit._tag === "Success"
           ? Queue.end(entry.queue as any)
