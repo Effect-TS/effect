@@ -88,11 +88,18 @@ export const make = Effect.fnUntraced(
               break
           }
         }
-        const response = yield* client.systemOne(
-          images === undefined
-            ? { model: options.model, state, questions }
-            : { model: options.model, state, questions, assets: yield* encodeAssets(images) }
-        )
+        const assets: Record<string, typeof TypeSafeSchema.ImageAsset.Encoded> = Object.create(null)
+        for (const { reference, image } of images ?? []) {
+          const asset = encodeImage(image)
+          if (AiError.isAiError(asset)) return yield* Effect.fail(asset)
+          assets[reference] = asset
+        }
+        const response = yield* client.systemOne({
+          model: options.model,
+          state,
+          questions,
+          ...(images === undefined ? undefined : { assets })
+        })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
           const answer = response.answers[key]
@@ -132,23 +139,14 @@ export const make = Effect.fnUntraced(
   }
 )
 
-const encodeAssets = (images: ReadonlyArray<DecisionModel.ProviderImage>) =>
-  Effect.map(
-    Effect.forEach(images, ({ image }) => encodeImage(image)),
-    (assets) => Object.fromEntries(images.map(({ reference }, index) => [reference, assets[index]]))
-  )
-
 const encodeImage = (
   image: DecisionModel.ProviderImage["image"]
-): Effect.Effect<typeof TypeSafeSchema.ImageAsset.Encoded, AiError.AiError> => {
-  let mediaType = image.mediaType
-  let data: string
-  if (image.data instanceof URL) {
-    const match = image.data.protocol === "data:"
-      ? /^data:([^,;]*)[^,]*;base64,(.*)$/si.exec(image.data.href.split("#", 1)[0])
-      : null
+): typeof TypeSafeSchema.ImageAsset.Encoded | AiError.AiError => {
+  let { data, mediaType } = image
+  if (data instanceof URL) {
+    const match = /^data:([^,;]*)[^,]*;base64,(.*)$/si.exec(data.href.split("#", 1)[0])
     if (match === null) {
-      return invalidUserInput("TypeSafe accepts byte arrays, base64 strings, or base64 data URLs, not remote URLs")
+      return invalidUserInput("TypeSafe accepts bytes, base64 strings, or base64 data URLs; it does not fetch URLs")
     }
     mediaType = match[1] || mediaType
     try {
@@ -156,26 +154,24 @@ const encodeImage = (
     } catch {
       return invalidUserInput("TypeSafe image data URLs must contain valid percent-encoding")
     }
-  } else {
-    data = image.data
   }
   switch (mediaType.toLowerCase()) {
     case "image/png":
-      return Effect.succeed({ type: "image", format: "png", data_base64: data })
+      return { type: "image", format: "png", data_base64: data }
     case "image/jpeg":
     case "image/jpg":
-      return Effect.succeed({ type: "image", format: "jpg", data_base64: data })
+      return { type: "image", format: "jpg", data_base64: data }
     default:
       return invalidUserInput(`TypeSafe accepts PNG or JPEG images, not ${mediaType}`)
   }
 }
 
-const invalidUserInput = (description: string) =>
-  Effect.fail(AiError.make({
+const invalidUserInput = (description: string): AiError.AiError =>
+  AiError.make({
     module: "TypeSafeDecisionModel",
     method: "decide",
     reason: new AiError.InvalidUserInputError({ description })
-  }))
+  })
 
 /**
  * Provides DecisionModel using an existing TypeSafeClient.

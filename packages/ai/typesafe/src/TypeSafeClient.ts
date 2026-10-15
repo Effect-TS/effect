@@ -66,8 +66,8 @@ const decodeSystemOne = HttpClientResponse.schemaBodyJson(TypeSafeSchema.SystemO
 const imagesHeader = { "TypeSafe-Danger-Zone-Images": "true" }
 
 const usesImages = (request: typeof TypeSafeSchema.SystemOneRequest.Encoded): boolean =>
-  (request.assets !== undefined && Object.keys(request.assets).length > 0) ||
-  Object.values(request.questions).some((question) => question.type === "box")
+  request.assets !== undefined || Object.values(request.questions).some((question) => question.type === "box")
+
 const decodeListModels = HttpClientResponse.schemaBodyJson(TypeSafeSchema.ListModelsResponse)
 
 /**

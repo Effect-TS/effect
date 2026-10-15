@@ -8,11 +8,9 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
-import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
 import type * as DecisionModel from "./DecisionModel.ts"
 
@@ -167,7 +165,7 @@ export interface Image extends
       readonly [ImageKey]: Schema.Union<
         readonly [
           Schema.Struct<{ readonly mediaType: Schema.String; readonly base64: Schema.String }>,
-          Schema.Struct<{ readonly mediaType: Schema.String; readonly url: Schema.String }>
+          Schema.Struct<{ readonly mediaType: Schema.String; readonly url: Schema.URLFromString }>
         ]
       >
     }>
@@ -207,26 +205,21 @@ export interface Image extends
 export const Image: Image = Schema.Struct({
   [ImageKey]: Schema.Union([
     Schema.Struct({ mediaType: Schema.String, base64: Schema.String }),
-    Schema.Struct({ mediaType: Schema.String, url: Schema.String })
+    Schema.Struct({ mediaType: Schema.String, url: Schema.URLFromString })
   ])
 }).pipe(
   Schema.decodeTo(
     Schema.declare(isImage, { expected: "DecisionModel.Image" }),
-    SchemaTransformation.transformEffect<DecisionModel.Image, ImageEncoded>({
-      decode: ({ [ImageKey]: image }, options) => {
-        if ("base64" in image) {
-          return Effect.succeed({ mediaType: image.mediaType, data: image.base64 })
-        }
-        return globalThis.URL.canParse(image.url)
-          ? Effect.succeed({ mediaType: image.mediaType, data: new globalThis.URL(image.url) })
-          : Effect.fail(new SchemaIssue.InvalidValue({ expected: "a valid URL string" }, image.url, options))
-      },
-      encode: ({ mediaType, data }) =>
-        Effect.succeed({
-          [ImageKey]: data instanceof globalThis.URL
-            ? { mediaType, url: data.href }
-            : { mediaType, base64: typeof data === "string" ? data : Base64.encode(data) }
-        })
+    SchemaTransformation.transform({
+      decode: ({ [ImageKey]: image }): DecisionModel.Image => ({
+        mediaType: image.mediaType,
+        data: "base64" in image ? image.base64 : image.url
+      }),
+      encode: ({ mediaType, data }) => ({
+        [ImageKey]: data instanceof globalThis.URL
+          ? { mediaType, url: data }
+          : { mediaType, base64: typeof data === "string" ? data : Base64.encode(data) }
+      })
     })
   )
 )
