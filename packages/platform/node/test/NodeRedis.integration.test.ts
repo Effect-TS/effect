@@ -2,6 +2,7 @@ import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Clock, Duration, Effect, Fiber, Layer, Queue, Schema } from "effect"
+import * as BackingPersistenceTest from "effect-test/persistence/BackingPersistenceTest"
 import * as CircuitBreakerRedisTest from "effect-test/persistence/CircuitBreakerRedisTest"
 import * as CircuitBreakerTest from "effect-test/persistence/CircuitBreakerTest"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
@@ -31,6 +32,11 @@ const RedisLayer = Layer.unwrap(
 PersistedCacheTest.suite(
   "NodeRedis",
   Persistence.layerRedis.pipe(Layer.provide(RedisLayer))
+)
+
+BackingPersistenceTest.suite(
+  "NodeRedis",
+  Persistence.layerBackingRedis.pipe(Layer.provide(RedisLayer))
 )
 
 PersistedQueueTest.suite(
