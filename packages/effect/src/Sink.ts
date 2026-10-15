@@ -1215,7 +1215,9 @@ export const take = <In>(n: number): Sink<Array<In>, In, In> => {
     return upstream.pipe(
       Effect.flatMap((arr) => {
         if (taken.length + arr.length <= count) {
-          taken.push(...arr)
+          for (let i = 0; i < arr.length; i++) {
+            taken.push(arr[i])
+          }
           if (taken.length === count) {
             return Cause.done()
           }
@@ -1644,7 +1646,9 @@ export const count: Sink<number, unknown> = reduceArray(() => 0, (s, arr) => s +
  */
 export const collect = <In>(): Sink<Array<In>, In> =>
   reduceArray(Arr.empty<In>, (s, arr) => {
-    s.push(...arr)
+    for (let i = 0; i < arr.length; i++) {
+      s.push(arr[i])
+    }
     return s
   })
 
