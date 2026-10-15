@@ -192,28 +192,33 @@ describe("Aead", () => {
         )
       }
       // ChaCha never runs on `crypto.subtle`.
-      // @ts-expect-error
-      Aead.fromCryptoKey(Aead.chacha20Poly1305, cryptoKey)
+      const fromChaCha = () =>
+        // @ts-expect-error
+        Aead.fromCryptoKey(Aead.chacha20Poly1305, cryptoKey)
+      void fromChaCha
     }).pipe(Effect.provide(layer)))
 
-  it.effect("matches node:crypto ChaCha20-Poly1305 on random inputs", () =>
-    Effect.gen(function*() {
-      const aead = yield* Aead.Aead
-      for (let i = 0; i < 64; i++) {
-        // Lengths cross the 16-byte Poly1305 and 64-byte ChaCha20 blocks.
-        const keyBytes = NodeCrypto.randomBytes(32)
-        const nonce = NodeCrypto.randomBytes(12)
-        const aad = NodeCrypto.randomBytes(NodeCrypto.randomInt(40))
-        const plaintext = NodeCrypto.randomBytes(NodeCrypto.randomInt(300))
-        const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", keyBytes, nonce, { authTagLength: 16 })
-        cipher.setAAD(aad)
-        const expected = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
-        const inputs = Hex.encode(Buffer.concat([keyBytes, nonce, aad, plaintext]))
+  it.effect.skipIf(!NodeCrypto.getCiphers().includes("chacha20-poly1305"))(
+    "matches node:crypto ChaCha20-Poly1305 on random inputs",
+    () =>
+      Effect.gen(function*() {
+        const aead = yield* Aead.Aead
+        for (let i = 0; i < 64; i++) {
+          // Lengths cross the 16-byte Poly1305 and 64-byte ChaCha20 blocks.
+          const keyBytes = NodeCrypto.randomBytes(32)
+          const nonce = NodeCrypto.randomBytes(12)
+          const aad = NodeCrypto.randomBytes(NodeCrypto.randomInt(40))
+          const plaintext = NodeCrypto.randomBytes(NodeCrypto.randomInt(300))
+          const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", keyBytes, nonce, { authTagLength: 16 })
+          cipher.setAAD(aad)
+          const expected = Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+          const inputs = Hex.encode(Buffer.concat([keyBytes, nonce, aad, plaintext]))
 
-        const key = yield* Aead.key(Aead.chacha20Poly1305, keyBytes)
-        const sealed = yield* aead.encrypt(key, plaintext, { nonce, aad })
-        assert.strictEqual(Hex.encode(sealed), Hex.encode(expected), inputs)
-        assert.deepStrictEqual(yield* aead.decrypt(key, expected, { nonce, aad }), new Uint8Array(plaintext), inputs)
-      }
-    }).pipe(Effect.provide(layer)))
+          const key = yield* Aead.key(Aead.chacha20Poly1305, keyBytes)
+          const sealed = yield* aead.encrypt(key, plaintext, { nonce, aad })
+          assert.strictEqual(Hex.encode(sealed), Hex.encode(expected), inputs)
+          assert.deepStrictEqual(yield* aead.decrypt(key, expected, { nonce, aad }), new Uint8Array(plaintext), inputs)
+        }
+      }).pipe(Effect.provide(layer))
+  )
 })
