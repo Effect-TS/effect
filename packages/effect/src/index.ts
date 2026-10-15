@@ -111,6 +111,12 @@ export * as Channel from "./Channel.ts"
 export * as ChannelSchema from "./ChannelSchema.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as CharacterEncoding from "./CharacterEncoding.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
