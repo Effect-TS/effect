@@ -4,7 +4,7 @@
 
 Base: `e730f59d29db5f1e312be6476a95d07bcad45788` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `origin/main` (`7547a99f81fa6f7e651d52f3d42081f399bfbca8`)
+Head: `4839c601bdda845d9a54d77f578f64372475ab04` (`4839c601bdda845d9a54d77f578f64372475ab04`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -1528,7 +1528,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ActiveStatusType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.AddUploadPartRequest` -> `Generated.AddUploadPartRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.AddUploadPartRequest` -> `Generated.AddUploadPartRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape.
 
 - `Generated.AdminApiKey` -> `Generated.AdminApiKey`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1544,13 +1544,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ApiKeyList` -> `Generated.ApiKeyList`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ApplyPatchCallOutputStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApplyPatchCallOutputStatus` -> `Generated.ApplyPatchCallOutputStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ApplyPatchCallOutputStatusParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApplyPatchCallOutputStatusParam` -> `Generated.ApplyPatchCallOutputStatusParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ApplyPatchCallStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApplyPatchCallStatus` -> `Generated.ApplyPatchCallStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ApplyPatchCallStatusParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApplyPatchCallStatusParam` -> `Generated.ApplyPatchCallStatusParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ApplyPatchCreateFileOperation` -> `Generated.ApplyPatchCreateFileOperation`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1568,7 +1568,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ApplyPatchDeleteFileOperationType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ApplyPatchOperationParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApplyPatchOperationParam` -> `Generated.ApplyPatchOperationParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ApplyPatchToolCall` -> `Generated.ApplyPatchToolCall`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1598,7 +1598,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ApplyPatchUpdateFileOperationType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ApproximateLocation` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ApproximateLocation` -> `Generated.ApproximateLocation`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ApproximateLocationType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -1644,11 +1644,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.Attachment` -> `Generated.Attachment`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.AttachmentType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.AttachmentType` -> `Generated.AttachmentType`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.AudioResponseFormat` -> `Generated.AudioResponseFormat`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.AudioTranscription` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.AudioTranscription` -> `Generated.AudioTranscription`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.AudioTranscriptionModel` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -1670,15 +1670,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.AuditLogEventType` -> `Generated.AuditLogEventType`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.AutoChunkingStrategyRequestParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.AutoChunkingStrategyRequestParam` -> `Generated.AutoChunkingStrategyRequestParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.AutoChunkingStrategyRequestParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.AutomaticThreadTitlingParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.AutomaticThreadTitlingParam` -> `Generated.AutomaticThreadTitlingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.Batch` -> `Generated.Batch`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.BatchError` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.BatchError` -> `Generated.BatchError`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.BatchFileExpirationAfter` -> `Generated.BatchFileExpirationAfter`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1686,7 +1686,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.BatchObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.BatchRequestCounts` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.BatchRequestCounts` -> `Generated.BatchRequestCounts`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.BatchStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -1812,33 +1812,33 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ChatModel` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ChatSessionAutomaticThreadTitling` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionAutomaticThreadTitling` -> `Generated.ChatSessionAutomaticThreadTitling`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatSessionChatkitConfiguration` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionChatkitConfiguration` -> `Generated.ChatSessionChatkitConfiguration`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatSessionFileUpload` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionFileUpload` -> `Generated.ChatSessionFileUpload`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatSessionHistory` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionHistory` -> `Generated.ChatSessionHistory`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatSessionRateLimits` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionRateLimits` -> `Generated.ChatSessionRateLimits`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ChatSessionResource` -> `Generated.ChatSessionResource`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.ChatSessionResourceObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ChatSessionStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatSessionStatus` -> `Generated.ChatSessionStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatkitConfigurationParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatkitConfigurationParam` -> `Generated.ChatkitConfigurationParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatkitWorkflow` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatkitWorkflow` -> `Generated.ChatkitWorkflow`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.ChatkitWorkflowTracing` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ChatkitWorkflowTracing` -> `Generated.ChatkitWorkflowTracing`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ChunkingStrategyRequestParam` -> `Generated.ChunkingStrategyRequestParam`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.ChunkingStrategyResponse` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ClickButtonType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ClickButtonType` -> `Generated.ClickButtonType`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ClickParam` -> `Generated.ClickParam`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1854,7 +1854,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ClientToolCallItemType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ClientToolCallStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ClientToolCallStatus` -> `Generated.ClientToolCallStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ClosedStatus` -> `Generated.ClosedStatus`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1904,7 +1904,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ComputerCallSafetyCheckParam` -> `Generated.ComputerCallSafetyCheckParam`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ComputerEnvironment` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ComputerEnvironment` -> `Generated.ComputerEnvironment`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ComputerScreenshotContent` -> `Generated.ComputerScreenshotContent`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1940,7 +1940,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ContainerListResource` -> `Generated.ContainerListResource`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ContainerMemoryLimit` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ContainerMemoryLimit` -> `Generated.ContainerMemoryLimit`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ContainerResource` -> `Generated.ContainerResource`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -1966,7 +1966,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateAssistantRequest` -> `Generated.CreateAssistantRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateBatchRequest` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateBatchRequest` -> `Generated.CreateBatchRequest`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateBatchRequestCompletionWindow` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2018,19 +2018,19 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateEmbeddingResponseObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateEvalCompletionsRunDataSource` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalCompletionsRunDataSource` -> `Generated.CreateEvalCompletionsRunDataSource`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalCompletionsRunDataSourceInputMessagesEnumType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
 - `Generated.CreateEvalCompletionsRunDataSourceType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateEvalCustomDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalCustomDataSourceConfig` -> `Generated.CreateEvalCustomDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalCustomDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
 - `Generated.CreateEvalItem` -> `Generated.CreateEvalItem`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateEvalJsonlRunDataSource` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalJsonlRunDataSource` -> `Generated.CreateEvalJsonlRunDataSource`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalJsonlRunDataSourceType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2038,13 +2038,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateEvalLabelModelGraderType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateEvalLogsDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalLogsDataSourceConfig` -> `Generated.CreateEvalLogsDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalLogsDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
 - `Generated.CreateEvalRequest` -> `Generated.CreateEvalRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateEvalResponsesRunDataSource` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalResponsesRunDataSource` -> `Generated.CreateEvalResponsesRunDataSource`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalResponsesRunDataSourceInputMessagesEnumType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2052,11 +2052,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateEvalRunRequest` -> `Generated.CreateEvalRunRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateEvalStoredCompletionsDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.CreateEvalStoredCompletionsDataSourceConfig` -> `Generated.CreateEvalStoredCompletionsDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.CreateEvalStoredCompletionsDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateFileRequest` -> `Generated.CreateFileRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateFileRequest` -> `Generated.CreateFileRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape.
 
 - `Generated.CreateFineTuningCheckpointPermissionRequest` -> `Generated.CreateFineTuningCheckpointPermissionRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2074,7 +2074,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateGroupUserBody` -> `Generated.CreateGroupUserBody`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateImageEditRequest` -> `Generated.CreateImageEditRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateImageEditRequest` -> `Generated.CreateImageEditRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape. JSON image edits instead use Generated.CreateImageEditRequestJson.
 
 - `Generated.CreateImageEditRequestBackground` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2106,7 +2106,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateImageRequestStyle` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.CreateImageVariationRequest` -> `Generated.CreateImageVariationRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateImageVariationRequest` -> `Generated.CreateImageVariationRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape.
 
 - `Generated.CreateImageVariationRequestModelEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2166,7 +2166,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateTranscription200` -> `Generated.CreateTranscription200`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateTranscriptionRequest` -> `Generated.CreateTranscriptionRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateTranscriptionRequest` -> `Generated.CreateTranscriptionRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape.
 
 - `Generated.CreateTranscriptionRequestModelEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2180,7 +2180,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.CreateTranslation200` -> `Generated.CreateTranslation200`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.CreateTranslationRequest` -> `Generated.CreateTranslationRequest`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.CreateTranslationRequest` -> `Generated.CreateTranslationRequestMultipart`: Renamed for multipart requests; file fields now accept File or Blob. Re-check the current Type/Encoded shape.
 
 - `Generated.CreateTranslationRequestModelEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2282,13 +2282,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.DeletedVideoResourceObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.DetailEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.DetailEnum` -> `Generated.DetailEnum`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.DoubleClickAction` -> `Generated.DoubleClickAction`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.DoubleClickActionType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.DownloadFile200` -> `Generated.DownloadFile200`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
+- `Generated.DownloadFile200` -> `none`: The standalone response schema was removed. The generated client's downloadFile method returns Uint8Array, optionally paired with the HTTP response according to its config; downloadFileStream streams Uint8Array chunks.
 
 - `Generated.Drag` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2316,7 +2316,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.EvalApiError` -> `Generated.EvalApiError`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.EvalCustomDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.EvalCustomDataSourceConfig` -> `Generated.EvalCustomDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.EvalCustomDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2364,7 +2364,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.EvalListObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.EvalLogsDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.EvalLogsDataSourceConfig` -> `Generated.EvalLogsDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.EvalLogsDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2392,7 +2392,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.EvalRunOutputItemResult` -> `Generated.EvalRunOutputItemResult`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.EvalStoredCompletionsDataSourceConfig` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.EvalStoredCompletionsDataSourceConfig` -> `Generated.EvalStoredCompletionsDataSourceConfig`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.EvalStoredCompletionsDataSourceConfigType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2400,13 +2400,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.EvalStoredCompletionsSourceType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.ExpiresAfterParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ExpiresAfterParam` -> `Generated.ExpiresAfterParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ExpiresAfterParamAnchor` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
 - `Generated.FileAnnotation` -> `Generated.FileAnnotation`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.FileAnnotationSource` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FileAnnotationSource` -> `Generated.FileAnnotationSource`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FileAnnotationSourceType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2440,9 +2440,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FileSearchToolType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.FileUploadParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FileUploadParam` -> `Generated.FileUploadParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.Filters` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.Filters` -> `Generated.Filters`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FineTuneDPOHyperparameters` -> `Generated.FineTuneDPOHyperparameters`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2522,7 +2522,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FunctionAndCustomToolCallOutput` -> `Generated.FunctionAndCustomToolCallOutput`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.FunctionCallItemStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FunctionCallItemStatus` -> `Generated.FunctionCallItemStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FunctionCallOutputItemParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2532,9 +2532,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FunctionParameters` -> `Generated.FunctionParameters`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.FunctionShellAction` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FunctionShellAction` -> `Generated.FunctionShellAction`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.FunctionShellActionParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FunctionShellActionParam` -> `Generated.FunctionShellActionParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FunctionShellCall` -> `Generated.FunctionShellCall`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2542,7 +2542,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FunctionShellCallItemParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.FunctionShellCallItemStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FunctionShellCallItemStatus` -> `Generated.FunctionShellCallItemStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FunctionShellCallOutput` -> `Generated.FunctionShellCallOutput`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2562,7 +2562,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.FunctionShellCallOutputItemParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.FunctionShellCallOutputOutcomeParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.FunctionShellCallOutputOutcomeParam` -> `Generated.FunctionShellCallOutputOutcomeParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.FunctionShellCallOutputTimeoutOutcome` -> `Generated.FunctionShellCallOutputTimeoutOutcome`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2630,7 +2630,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.GraderLabelModelType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.GraderMulti` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.GraderMulti` -> `Generated.GraderMulti`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.GraderMultiType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -2654,7 +2654,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.GraderTextSimilarityType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.GrammarSyntax1` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.GrammarSyntax1` -> `Generated.GrammarSyntax1`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.Group` -> `Generated.Group`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2684,13 +2684,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.GroupUserDeletedResourceObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.HistoryParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.HistoryParam` -> `Generated.HistoryParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.HybridSearchOptions` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.HybridSearchOptions` -> `Generated.HybridSearchOptions`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.Image` -> `Generated.Image`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ImageDetail` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ImageDetail` -> `Generated.ImageDetail`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ImageGenInputUsageDetails` -> `Generated.ImageGenInputUsageDetails`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -2730,7 +2730,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.IncludeEnum` -> `Generated.IncludeEnum`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.InferenceOptions` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.InferenceOptions` -> `Generated.InferenceOptions`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.InputAudio` -> `Generated.InputAudio`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3058,7 +3058,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.MCPToolCall` -> `Generated.MCPToolCall`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.MCPToolCallStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.MCPToolCallStatus` -> `Generated.MCPToolCallStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.MCPToolCallType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3116,7 +3116,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.MessageRequestContentTextObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.MessageRole` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.MessageRole` -> `Generated.MessageRole`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.MessageStatus` -> `OpenAiSchema.MessageStatus`: Use the focused v4 OpenAiSchema definition; the old generated export was removed when the OpenAI specification client was regenerated.
 
@@ -3168,7 +3168,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.OrderEnum` -> `Generated.OrderEnum`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.OtherChunkingStrategyResponseParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.OtherChunkingStrategyResponseParam` -> `Generated.OtherChunkingStrategyResponseParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.OtherChunkingStrategyResponseParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3306,11 +3306,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.PublicUpdateOrganizationRoleBody` -> `Generated.PublicUpdateOrganizationRoleBody`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RankerVersionType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RankerVersionType` -> `Generated.RankerVersionType`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.RankingOptions` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RankingOptions` -> `Generated.RankingOptions`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.RateLimitsParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RateLimitsParam` -> `Generated.RateLimitsParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.RealtimeAudioFormats` -> `Generated.RealtimeAudioFormats`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3506,7 +3506,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RunStepCompletionUsage` -> `Generated.RunStepCompletionUsage`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.RunStepDetailsMessageCreationObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RunStepDetailsMessageCreationObject` -> `Generated.RunStepDetailsMessageCreationObject`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.RunStepDetailsMessageCreationObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3516,11 +3516,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RunStepDetailsToolCallsCodeObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RunStepDetailsToolCallsCodeOutputImageObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RunStepDetailsToolCallsCodeOutputImageObject` -> `Generated.RunStepDetailsToolCallsCodeOutputImageObject`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.RunStepDetailsToolCallsCodeOutputImageObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RunStepDetailsToolCallsCodeOutputLogsObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RunStepDetailsToolCallsCodeOutputLogsObject` -> `Generated.RunStepDetailsToolCallsCodeOutputLogsObject`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.RunStepDetailsToolCallsCodeOutputLogsObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3536,7 +3536,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.RunStepDetailsToolCallsFunctionObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.RunStepDetailsToolCallsObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.RunStepDetailsToolCallsObject` -> `Generated.RunStepDetailsToolCallsObject`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.RunStepDetailsToolCallsObjectType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3562,11 +3562,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.ScrollType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.SearchContextSize` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.SearchContextSize` -> `Generated.SearchContextSize`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.ServiceTier` -> `Generated.ServiceTier`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.ServiceTierEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.ServiceTierEnum` -> `Generated.ServiceTierEnum`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.SpecificApplyPatchParam` -> `Generated.SpecificApplyPatchParam`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3578,11 +3578,11 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.StaticChunkingStrategy` -> `Generated.StaticChunkingStrategy`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.StaticChunkingStrategyRequestParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.StaticChunkingStrategyRequestParam` -> `Generated.StaticChunkingStrategyRequestParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.StaticChunkingStrategyRequestParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.StaticChunkingStrategyResponseParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.StaticChunkingStrategyResponseParam` -> `Generated.StaticChunkingStrategyResponseParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.StaticChunkingStrategyResponseParamType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3610,7 +3610,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.TaskItemType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.TaskType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.TaskType` -> `Generated.TaskType`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.TextAnnotation` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3702,7 +3702,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.TranscriptionWord` -> `Generated.TranscriptionWord`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.TruncationEnum` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.TruncationEnum` -> `Generated.TruncationEnum`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.Type` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3746,7 +3746,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.UrlAnnotation` -> `Generated.UrlAnnotation`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.UrlAnnotationSource` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.UrlAnnotationSource` -> `Generated.UrlAnnotationSource`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.UrlAnnotationSourceType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3932,17 +3932,17 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.VideoListResource` -> `Generated.VideoListResource`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
-- `Generated.VideoModel` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.VideoModel` -> `Generated.VideoModel`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.VideoResource` -> `Generated.VideoResource`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
 - `Generated.VideoResourceObject` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.VideoSeconds` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.VideoSeconds` -> `Generated.VideoSeconds`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.VideoSize` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.VideoSize` -> `Generated.VideoSize`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.VideoStatus` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.VideoStatus` -> `Generated.VideoStatus`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.VoiceIdsShared` -> `Generated.VoiceIdsShared`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -3952,15 +3952,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WaitType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.WebSearchActionFind` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.WebSearchActionFind` -> `Generated.WebSearchActionFind`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.WebSearchActionFindType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.WebSearchActionOpenPage` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.WebSearchActionOpenPage` -> `Generated.WebSearchActionOpenPage`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.WebSearchActionOpenPageType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.WebSearchActionSearch` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.WebSearchActionSearch` -> `Generated.WebSearchActionSearch`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.WebSearchActionSearchType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
@@ -3994,9 +3994,9 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `Generated.WidgetMessageItemType` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
 
-- `Generated.WorkflowParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.WorkflowParam` -> `Generated.WorkflowParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
-- `Generated.WorkflowTracingParam` -> `none`: Removed when the OpenAI specification client was regenerated; use the current Generated or OpenAiSchema request/response schema for the relevant endpoint instead of this old snapshot helper.
+- `Generated.WorkflowTracingParam` -> `Generated.WorkflowTracingParam`: Available again in the regenerated v4 OpenAI client; re-check the schema's Type/Encoded shape against the current specification.
 
 - `Generated.make` -> `Generated.make`: Still generated in v4 from the current OpenAI specification; re-check the schema's Type/Encoded shape because the generated definition changed.
 
@@ -6626,6 +6626,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `FileSystem.File.Descriptor` -> `none`: Native file descriptors are no longer part of the portable File interface; use the File methods and keep any platform handle private in custom implementations.
 
+- `FileSystem.File.Info` -> `FileSystem.File.Info`: The module moved to effect/FileSystem. dev is now bigint; ino, rdev, nlink, and blocks are Option\<bigint\>. Update custom stat results, comparisons, arithmetic, and serialization rather than converting these values to number and losing precision. mode, uid, and gid remain numeric; size and blksize use ByteSize. Node and Bun preserve the 64-bit metadata exactly, while Deno may round large values before converting them to bigint.
+
 - `FileSystem.FileDescriptor` -> `none`: The descriptor branding constructor was removed with the public fd field; use File operations instead of exposing a native descriptor.
 
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
@@ -7069,6 +7071,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `HttpClient.make` -> `HttpClient.make`: Retained; the runner receives Fiber.Fiber and failures use the v4 error wrapper.
 
 - `HttpClient.makeWith` -> `HttpClient.makeWith`: Retained with the preprocess and postprocess constructor pattern.
+
+- `HttpClient.mapRequest`: TODO: needs guidance
 
 - `HttpClient.retry` -> `HttpClient.retry`: Retained; the Schedule error channel is included in the resulting client error type.
 
@@ -7526,6 +7530,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/Path`
 
+- `Path.Path` -> `Path.Path`: The module moved to effect/Path. Custom service implementations must now provide resolveWithin as well. Prefer Path.make with the existing platform operations: it adds the type marker and derives resolveWithin, which returns an Option and checks lexical containment without following symlinks.
+
 - `Path.TypeId` -> `typeof Path.TypeId`: The module moved to effect/Path; the runtime marker remains exported but the separate type alias was removed.
 
 ### `@effect/platform/PlatformConfigProvider`
@@ -7567,6 +7573,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `Socket.fromTransformStream` -> `Socket.fromTransformStream`: The constructor remains in effect/socket/Socket but drops closeCodeIsError; every close fails the reader's pull with a SocketError wrapping SocketCloseError.
 
 - `Socket.layerWebSocket` -> `Socket.layerWebSocket`: The constructor remains in effect/socket/Socket; its URL may now also be an Effect.
+
+- `Socket.makeWebSocket`: TODO: needs guidance
 
 - `Socket.toChannelMap` -> `none`: The v4 Socket read side is an Effect that never completes via Cause.Done; map frames by acquiring Socket.readerBytes or Socket.readerString, or Effect.map the reader from socket.reader, and use Socket.toChannel or Socket.toChannelString for duplex channels.
 
@@ -7610,11 +7618,13 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform/UrlParams`
 
+- `UrlParams.Coercible` -> `Template.PrimitiveValue`: TODO: needs guidance
+
 - `UrlParams.CoercibleRecord` -> `UrlParams.CoercibleRecord<A>`: The recursive interface became a generic mapped type preserving the input shape.
 
 - `UrlParams.Input` -> `UrlParams.Input`: Retained and broadened to include UrlParams itself.
 
-- `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput.
+- `UrlParams.UrlParams` -> `UrlParams.UrlParams`: Import UrlParams from effect/http. It is now a branded iterable object with a params field rather than a ReadonlyArray; construct it with UrlParams.make or UrlParams.fromInput. Iteration and params values are string | Redacted.Redacted, not just string. getAll, getFirst, getLast and toRecord unwrap values; toString also serializes unwrapped values and can expose secrets.
 
 - `UrlParams.makeUrl` -> `Url.make`: Moved to Url, returns Result, and takes string | undefined for the hash.
 
@@ -8060,13 +8070,15 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqlClient.SafeIntegers` -> `effect/sql/SqlClient#SafeIntegers`: Moved and changed from a Reference subclass to a Context.Reference value; provide it as a service.
 
-- `SqlClient.SqlClient.MakeOptions`: TODO: needs guidance
+- `SqlClient.SqlClient` -> `effect/sql/SqlClient#SqlClient`: Moved into core Effect. Custom service implementations must expose driver, a string identifying the driver independently of its SQL dialect; SqlClient.make sets it from MakeOptions.driver.
+
+- `SqlClient.SqlClient.MakeOptions` -> `effect/sql/SqlClient#SqlClient.MakeOptions`: Moved; driver is now required and conventionally names the driver package without @effect/sql-, for example pg or pglite. Rename reactiveMailbox to reactiveQueue; transactionService is optional.
 
 - `SqlClient.TransactionConnection` -> `effect/sql/SqlClient#TransactionConnection`: Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service.
 
 - `SqlClient.TypeId` -> `none`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
 
-- `SqlClient.make` -> `effect/sql/SqlClient#make`: Moved; custom clients rename MakeOptions.reactiveMailbox to reactiveQueue and may supply transactionService.
+- `SqlClient.make` -> `effect/sql/SqlClient#make`: Moved; custom clients must supply MakeOptions.driver, rename reactiveMailbox to reactiveQueue, and may supply transactionService. Driver names conventionally omit the @effect/sql- prefix, for example pg or pglite.
 
 ### `@effect/sql/SqlConnection`
 
@@ -8098,6 +8110,10 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `SqlResolver.SqlResolver` -> `RequestResolver.RequestResolver<SqlResolver.SqlRequest<...>>`: The wrapper interface was removed; constructors return RequestResolvers. Execute them with effect/sql/SqlResolver#request.
 
+- `SqlResolver.findById`: TODO: needs guidance
+
+- `SqlResolver.ordered`: TODO: needs guidance
+
 - `SqlResolver.void` -> `effect/sql/SqlResolver#void`: Moved, but remove the leading tag and withContext arguments; it now returns a RequestResolver synchronously and runs through SqlResolver.request.
 
 ### `@effect/sql/SqlSchema`
@@ -8107,6 +8123,8 @@ effect/rpc/Utils (barrel: effect/rpc)
 - `SqlSchema.void` -> `effect/sql/SqlSchema#void`: Moved with the same encode, execute, and discard-result pattern; schema failures now use Schema.SchemaError.
 
 ### `@effect/sql/Statement`
+
+- `Statement.Fragment`: TODO: needs guidance
 
 - `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
 
@@ -12005,7 +12023,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Match.Types` -> `Match.Types`: The public type-level namespace is retained with no call-site migration.
 
-- `Match.Types.ExtractAndNarrow` -> `Match.Types.ExtractAndNarrow`: The type-only matching helper is retained unchanged.
+- `Match.Types.ExtractAndNarrow` -> `Match.Types.ExtractAndNarrow`: Array prefix patterns now narrow the required positions and preserve the unmatched tail of arrays and variadic tuples. Update explicit handler or helper result types that assumed a prefix pattern described the entire array; runtime prefix matching is unchanged.
 
 - `Match.Types.MaybeReplace` -> `Match.Types.MaybeReplace`: The type-only matching helper is retained unchanged.
 
@@ -12026,6 +12044,14 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `Match.When` -> `Match.When`: The case type is retained. Its evaluate method now receives any Match.fn selector arguments after the selected input; update custom case implementations that consume those arguments.
 
 - `Match.either` -> `Match.result`: Renamed finalizer with a container change: matched Right and unmatched Left become Result.Success and Result.Failure.
+
+- `Match.not` -> `Match.not`: Object patterns now reject top-level keys absent from every variant of the remaining input type. Correct stale property names or narrow the input before matching; function, refinement, and array patterns are not subject to this object-key check.
+
+- `Match.when` -> `Match.when`: Object patterns now reject top-level keys absent from every variant of the remaining input type. Correct stale property names or narrow the input before matching. Array prefix patterns retain the unmatched tail in the handler type rather than treating the pattern as the entire array.
+
+- `Match.whenAnd` -> `Match.whenAnd`: Each object pattern now rejects top-level keys absent from every variant of the remaining input type, including patterns spread from an array. Correct stale property names or narrow the input before matching.
+
+- `Match.whenOr` -> `Match.whenOr`: Each object pattern now rejects top-level keys absent from every variant of the remaining input type, including patterns spread from an array. Correct stale property names or narrow the input before matching.
 
 ### `effect/MergeDecision`
 
