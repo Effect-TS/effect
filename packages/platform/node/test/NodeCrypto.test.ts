@@ -1,5 +1,7 @@
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert, describe, it } from "@effect/vitest"
+import * as Aead from "effect/crypto/Aead"
+import * as Cipher from "effect/crypto/Cipher"
 import * as Digest from "effect/crypto/Digest"
 import * as Kdf from "effect/crypto/Kdf"
 import * as Mac from "effect/crypto/Mac"
@@ -7,10 +9,36 @@ import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Layer from "effect/Layer"
+import * as Result from "effect/Result"
 import * as NodeCryptoModule from "node:crypto"
 import { describeCrypto } from "../../node-shared/test/Crypto.test-utils.ts"
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
+const bytes = (hex: string): Uint8Array => Result.getOrThrow(Hex.decode(hex))
+
+// RFC 8439, section 2.8.2, and draft-irtf-cfrg-xchacha-03, Appendix A.3.1.
+const sunscreen = encode(
+  "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it."
+)
+const chachaKey = "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+const aeadVectors: ReadonlyArray<readonly [Aead.Algorithm, string, string, string]> = [
+  [
+    Aead.chacha20Poly1305,
+    chachaKey,
+    "070000004041424344454647",
+    "d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d63dbea45e8ca9671282fafb69da92728b" +
+    "1a71de0a9e060b2905d6a5b67ecd3b3692ddbd7f2d778b8c9803aee328091b58fab324e4fad675945585808b4831d7bc" +
+    "3ff4def08e4b7a9de576d26586cec64b61161ae10b594f09e26a7e902ecbd0600691"
+  ],
+  [
+    Aead.xchacha20Poly1305,
+    chachaKey,
+    "404142434445464748494a4b4c4d4e4f5051525354555657",
+    "bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb731c7f1b0b4aa6440bf3a82f4eda7e39" +
+    "ae64c6708c54c216cb96b72e1213b4522f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff9" +
+    "21f9664c97637da9768812f615c68b13b52ec0875924c1c7987947deafd8780acf49"
+  ]
+]
 
 describe("NodeCrypto", () => {
   it.effect("layerDigest computes MD5 and SHA digests", () =>
@@ -73,12 +101,49 @@ describe("NodeCrypto", () => {
       )
     }).pipe(Effect.provide(NodeCrypto.layerKdf)))
 
-  it("layerSecureRandom is the core layer", () => {
+  it.effect("layerAead encrypts ChaCha20-Poly1305 on node:crypto and the other algorithms through the core implementation", () =>
+    Effect.gen(function*() {
+      const aead = yield* Aead.Aead
+      const aad = bytes("50515253c0c1c2c3c4c5c6c7")
+      for (const [algorithm, keyHex, nonceHex, expected] of aeadVectors) {
+        const key = yield* Aead.key(algorithm, bytes(keyHex))
+        const nonce = bytes(nonceHex)
+        const sealed = yield* aead.encrypt(key, sunscreen, { nonce, aad })
+        assert.strictEqual(Hex.encode(sealed), expected)
+        assert.deepStrictEqual(yield* aead.decrypt(key, sealed, { nonce, aad }), sunscreen)
+        sealed[sealed.length - 1] ^= 1
+        for (const data of [sealed, sealed.subarray(0, 15)]) {
+          const error = yield* Effect.flip(aead.decrypt(key, data, { nonce, aad }))
+          assert.strictEqual(error.reason._tag, "DecryptionFailed")
+          assert.strictEqual(error.message, "Aead.decrypt: Could not decrypt the data")
+        }
+        // node:crypto would throw its own error for a wrong nonce length.
+        const error = yield* Effect.flip(aead.encrypt(key, sunscreen, { nonce: new Uint8Array(16) }))
+        assert.strictEqual(error.reason._tag, "InvalidArgument")
+      }
+
+      const cryptoKey = yield* Effect.promise(() =>
+        globalThis.crypto.subtle.importKey("raw", new Uint8Array(32), "AES-GCM", false, ["encrypt", "decrypt"])
+      )
+      for (
+        const key of [
+          yield* Aead.key(Aead.aes256Gcm, new Uint8Array(32)),
+          yield* Aead.fromCryptoKey(Aead.aes256Gcm, cryptoKey)
+        ]
+      ) {
+        const nonce = new Uint8Array(12)
+        // The GCM specification, test case 13.
+        assert.strictEqual(
+          Hex.encode(yield* aead.encrypt(key, new Uint8Array(), { nonce })),
+          "530f8afbc74536b9a963b4f1c4cb738b"
+        )
+      }
+    }).pipe(Effect.provide(NodeCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
+
+  it("layerSecureRandom and layerCipher are the core layers", () => {
     assert.strictEqual(NodeCrypto.layerSecureRandom, SecureRandom.layerWebCrypto)
+    assert.strictEqual(NodeCrypto.layerCipher, Cipher.layerWebCrypto)
   })
 })
 
-describeCrypto("NodeCrypto services", {
-  chaCha20Poly1305: NodeCrypto.layerChaCha20Poly1305,
-  xChaCha20Poly1305: NodeCrypto.layerXChaCha20Poly1305
-})
+describeCrypto("NodeCrypto services")

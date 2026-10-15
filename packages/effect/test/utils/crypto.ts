@@ -10,6 +10,14 @@ export const encode = (text: string): Uint8Array => new TextEncoder().encode(tex
 
 export const bytes = (hex: string): Uint8Array => Result.getOrThrow(Hex.decode(hex))
 
+// Copies bytes into the middle of a larger buffer, so implementations must
+// respect the view's offset and length.
+export const view = (data: Uint8Array): Uint8Array => {
+  const backing = new Uint8Array(data.length + 8).fill(0xff)
+  backing.set(data, 4)
+  return backing.subarray(4, 4 + data.length)
+}
+
 export const assertReason = (
   error: CryptoError.CryptoError,
   reason: CryptoError.CryptoErrorReason["_tag"],
