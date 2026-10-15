@@ -122,6 +122,11 @@ const getSharedFlagsForCommandPath = (
         if (single.hidden) {
           continue
         }
+        // Flags marked with `withInheritedHidden` are shown at their
+        // declaring command but excluded from descendant help output.
+        if (single.inheritedHidden) {
+          continue
+        }
         seen.add(single.name)
         sharedFlags.push(toFlagDoc(single, metadata))
       }

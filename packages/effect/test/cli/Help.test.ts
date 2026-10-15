@@ -257,6 +257,65 @@ describe("Command help output", () => {
       expect(errorText + helpText).not.toContain("experimental-foo")
     }).pipe(Effect.provide(TestLayer)))
 
+  it.effect("withInheritedHidden shared flag shows in root help but not in subcommand help", () =>
+    Effect.gen(function*() {
+      const deploy = Command.make("deploy", {
+        target: Flag.String("target").pipe(Flag.withDescription("Deploy target"))
+      }, () => Effect.void)
+
+      const root = Command.make("app").pipe(
+        Command.withSharedFlags({
+          profile: Flag.String("profile").pipe(
+            Flag.withDescription("Profile to use"),
+            Flag.withDefault("default"),
+            Flag.withInheritedHidden
+          )
+        }),
+        Command.withSubcommands([deploy])
+      )
+      const run = Command.runWith(root, { version: "1.0.0" })
+
+      yield* run(["--help"])
+      const rootHelp = (yield* TestConsole.logLines).join("\n")
+
+      yield* run(["deploy", "--help"])
+      const allHelp = (yield* TestConsole.logLines).join("\n")
+      const deployHelp = allHelp.slice(rootHelp.length)
+
+      // Root help should show --profile
+      expect(rootHelp).toContain("--profile")
+      // Subcommand help should NOT show --profile
+      expect(deployHelp).not.toContain("--profile")
+      // Subcommand help should still show its own flags
+      expect(deployHelp).toContain("--target")
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("withInheritedHidden shared flag still parses in subcommands", () =>
+    Effect.gen(function*() {
+      let captured: string | undefined
+      const deploy = Command.make("deploy", {
+        target: Flag.String("target")
+      }, (config) =>
+        Effect.sync(() => {
+          captured = config.target
+        }))
+
+      const root = Command.make("app").pipe(
+        Command.withSharedFlags({
+          profile: Flag.String("profile").pipe(
+            Flag.withDefault("default"),
+            Flag.withInheritedHidden
+          )
+        }),
+        Command.withSubcommands([deploy])
+      )
+      const run = Command.runWith(root, { version: "1.0.0" })
+
+      yield* run(["deploy", "--profile", "staging", "--target", "prod"])
+
+      expect(captured).toBe("prod")
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("hides unlisted subcommands from help output", () =>
     Effect.gen(function*() {
       const visible = Command.make("visible").pipe(
