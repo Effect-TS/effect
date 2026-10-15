@@ -342,3 +342,17 @@ export const publicKeyError = (
       reason: new CryptoError.InvalidKey({ description: "Invalid public key", cause })
     })
     : error(module, method, cause)
+
+/**
+ * What `KeyFormat` needs from an asymmetric family to build its keys: the
+ * WebCrypto mapping of each algorithm and the key prototypes.
+ *
+ * @internal
+ */
+export interface Family {
+  readonly module: string
+  readonly specOf: (algorithm: any) => Spec
+  readonly privateKeyProto: object
+  readonly publicKeyProto: object
+  readonly isPrivateKey: (u: unknown) => boolean
+}

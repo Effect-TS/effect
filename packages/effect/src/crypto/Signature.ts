@@ -744,3 +744,12 @@ export const publicKeyFromCryptoKey = <A extends Algorithm>(
  */
 export const toBytes = (key: PrivateKey | PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   Asymmetric.toBytes("Signature", key, specOf(key.algorithm), isPrivateKey(key) ? "private" : "public")
+
+/** @internal */
+export const family: Asymmetric.Family = {
+  module: "Signature",
+  specOf,
+  privateKeyProto: PrivateKeyProto,
+  publicKeyProto: PublicKeyProto,
+  isPrivateKey
+}
