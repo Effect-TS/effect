@@ -1391,6 +1391,16 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, Array.scan([1, 2, 3, 4, 5], 0, (acc, curr) => acc + curr))
       }))
 
+    it.effect("mapAccum preserves large callback results in order", () =>
+      Effect.gen(function*() {
+        const values = Array.makeBy(200000, (i) => i)
+        const result = yield* Stream.make(1).pipe(
+          Stream.mapAccum(() => 0, (state) => [state, values]),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, values)
+      }))
+
     it.effect("mapAccumArrayEffect data-first", () =>
       Effect.gen(function*() {
         const result = yield* Stream.mapAccumArrayEffect(
