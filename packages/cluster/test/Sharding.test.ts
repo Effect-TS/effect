@@ -874,9 +874,9 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
     }))
 
-  it.effect("records shard release duration after graceful reassignment completes", () =>
+  it.effect("records shard release duration including retries", () =>
     Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
+      const storageState = makeFailoverStorageState({ releaseFailures: 2 })
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
         Effect.map(Effect.clock, (clock) => makeFailoverStorage(storageState, clock))
@@ -938,9 +938,12 @@ describe("Sharding shard lock failover", () => {
         const entityExit = entityFiber.unsafePoll()
         assert(entityExit && Exit.isFailure(entityExit) && Cause.isInterrupted(entityExit.cause))
         assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.strictEqual((yield* Metric.value(metric)).count, before.count)
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 3)
         const after = yield* Metric.value(metric)
         assert.strictEqual(after.count - before.count, 1)
-        assert.strictEqual(after.sum - before.sum, 1000)
+        assert.strictEqual(after.sum - before.sum, 1100)
       }).pipe(
         Effect.ensuring(TestClock.adjust(2000)),
         Effect.provide(layer),
@@ -1215,6 +1218,7 @@ describe("Sharding graceful shutdown", () => {
       const storage = makeHandoffStorage()
       const runner = yield* makeHandoffRunner(1, storage)
       yield* waitFor(() => runner.ownedShards() === handoffShards)
+      const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
       const entity = Entity.make("DefectRebuild", [
         Rpc.make("Ping", { success: Schema.Number }),
         Rpc.make("Defect", { stream: true })
@@ -1247,7 +1251,8 @@ describe("Sharding graceful shutdown", () => {
       assert.deepStrictEqual(closing.unsafePoll(), Exit.void, "shutdown did not complete")
       assert.strictEqual(storage.lockCount(runner.address), 0)
       assert.strictEqual(storage.events.filter(([event]) => event === "release").length, handoffShards)
-    }))
+      assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+    }).pipe(Effect.tagMetrics("test", "shutdown-handoff-duration")))
 
   it.scoped("hands shards off before the final releaseAll", () => {
     const storage = makeHandoffStorage()
@@ -1434,6 +1439,7 @@ interface FailoverStorageState {
   assignSelf: boolean
   otherRunnerHealthy: boolean
   releaseAllDuration: number
+  releaseFailures: number
   runner: Runner.Runner | undefined
   readonly acquireCalls: Array<{
     readonly shards: ReadonlyArray<ShardId.ShardId>
@@ -1454,6 +1460,7 @@ const makeFailoverStorageState = (
   assignSelf: true,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
+  releaseFailures: 0,
   runner: undefined,
   acquireCalls: [],
   refreshCalls: [],
@@ -1495,8 +1502,13 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
         return state.blackholed ? Effect.never : Effect.succeed(shards)
       }),
     release: (_address, shardId) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
         state.releaseCalls.push(shardId)
+        if (state.releaseFailures > 0) {
+          state.releaseFailures--
+          return Effect.fail(new ClusterError.PersistenceError({ cause: "release failed" }))
+        }
+        return Effect.void
       }),
     releaseAll: () =>
       Effect.suspend(() => {
