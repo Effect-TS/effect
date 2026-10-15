@@ -197,6 +197,38 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         assert.strictEqual(pending, 0)
       }))
 
+    it.effect("success after lease expiry but before reset is not redelivered", () =>
+      Effect.gen(function*() {
+        const makeQueue = Effect.fnUntraced(function*(lockRefreshInterval: Duration.Input) {
+          const store = yield* PersistedQueue.makeStoreRedis({
+            prefix: "effectq-late-success:",
+            pollInterval: "50 millis",
+            lockExpiration: "1 second",
+            lockRefreshInterval
+          })
+          const factory = yield* PersistedQueue.makeFactory.pipe(
+            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+          )
+          return yield* factory.make({ name: "ownership", schema: RedisItem })
+        })
+        // Neither refresh nor reset can run again before this handler succeeds.
+        const queue = yield* makeQueue("1 hour")
+        yield* queue.offer({ n: 42 }, { id: "order-1" })
+        yield* queue.take((_value, { attempts }) =>
+          Effect.gen(function*() {
+            assert.strictEqual(attempts, 1)
+            // Redis owns the lease clock; let it expire without another claimant.
+            yield* Effect.sleep("1100 millis")
+          })
+        )
+
+        // Only now allow recovery to run: a recorded success must leave no work.
+        const recovery = yield* makeQueue("100 millis")
+        const duplicate = yield* recovery.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
+        yield* Effect.sleep("1500 millis")
+        assert.isUndefined(duplicate.pollUnsafe())
+      }).pipe(TestClock.withLive), { timeout: 20000 })
+
     for (const settlement of ["failure", "interruption", "success", "dead-letter"] as const) {
       it.effect(`stale-owner ${settlement} does not release a live claim`, () =>
         Effect.gen(function*() {
