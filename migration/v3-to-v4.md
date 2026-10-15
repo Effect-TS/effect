@@ -6274,7 +6274,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 ### `@effect/platform-bun/BunContext`
 
-- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add the `BunCrypto.layer*` layer for each `effect/crypto` family you use, and add BunWorker separately when needed.
+- `BunContext.BunContext` -> `BunServices.BunServices`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `BunCrypto.layer` for every `effect/crypto` family, or the `BunCrypto.layer*` layer for each family you use, and add BunWorker separately when needed.
 
 - `BunContext.layer` -> `BunServices.layer`: Use the renamed aggregate layer; worker services are no longer included.
 
@@ -6388,7 +6388,7 @@ effect/rpc/Utils (barrel: effect/rpc)
 
 - `NodeContext.NodeContext` -> `NodeServices.NodeServices`: Use the renamed service union; it replaces CommandExecutor with ChildProcessSpawner, adds Stdio, and omits WorkerManager. It includes no crypto services.
 
-- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add the `NodeCrypto.layer*` layer for each `effect/crypto` family you use, and add NodeWorker separately when needed.
+- `NodeContext.layer` -> `NodeServices.layer`: The aggregate was renamed and now provides ChildProcessSpawner, FileSystem, Path, Stdio, and Terminal. It provides no crypto services: add `NodeCrypto.layer` for every `effect/crypto` family, or the `NodeCrypto.layer*` layer for each family you use, and add NodeWorker separately when needed.
 
 ### `@effect/platform-node/NodeFileSystem/ParcelWatcher`
 

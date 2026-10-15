@@ -11,8 +11,8 @@ Replace `effect/Crypto` with per-family `effect/crypto` modules for secure rando
 
 ### Breaking changes
 
-- Replace `Crypto` and the bundled `NodeCrypto.layer` with individual family services and layers. Node and Bun expose `layerDigest`, `layerAead` and other family layers through `NodeCrypto` and `BunCrypto`; browsers, Deno and Workers use core `layerWebCrypto` layers. Crypto is no longer included in `*Services` bundles.
-- Replace `BrowserCrypto` and `DenoCrypto` with core layers, and `effect/testing/TestCrypto` with family mocks using `Layer.mock`.
+- Replace `Crypto` with individual family services and layers. `NodeCrypto`, `BunCrypto`, `DenoCrypto` and `BrowserCrypto` expose `layerDigest`, `layerAead` and the other family layers, plus a `layer` that provides every family. Node and Bun run some families on `node:crypto`; the Deno and browser layers are the core `layerWebCrypto` layers, which Workers also use. Crypto is no longer included in `*Services` bundles.
+- Replace `effect/testing/TestCrypto` with family mocks using `Layer.mock`.
 - Provide `Digest.Digest` instead of `Crypto.Crypto` to `SqlMessageStorage` and `SingleRunner`, and instead of `EventLogEncryption` to `SqlEventLogServerEncrypted.makeStorage` and `layerStorage`. Replace `EventLogEncryption.sha256String` with the Digest service's `digestHex` using SHA-256.
 
 Workflow execution IDs, activity idempotency keys and event log table names retain their existing encodings.

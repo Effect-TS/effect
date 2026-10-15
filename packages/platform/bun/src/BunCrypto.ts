@@ -5,7 +5,8 @@
  * programs take every crypto layer from one place: `layerDigest` and
  * `layerMac` run on `node:crypto`, `layerKdf` adds Argon2id, and
  * `layerSecureRandom`, `layerCipher`, `layerSignature`, `layerKeyAgreement`,
- * and `layerKeyWrap` are the core WebCrypto layers.
+ * and `layerKeyWrap` are the core WebCrypto layers. `layer` provides every
+ * family at once.
  *
  * **Gotchas**
  *

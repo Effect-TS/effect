@@ -30,6 +30,12 @@ export * as DenoClusterHttp from "./DenoClusterHttp.ts"
 export * as DenoClusterSocket from "./DenoClusterSocket.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as DenoCrypto from "./DenoCrypto.ts"
+
+/**
  * @stability experimental
  * @since 4.0.0
  */

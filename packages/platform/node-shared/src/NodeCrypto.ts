@@ -7,8 +7,8 @@
  * {@link layerCipher}, {@link layerSignature}, {@link layerKeyAgreement}, and
  * {@link layerKeyWrap} re-export the core WebCrypto layers. Each Node.js layer
  * handles only the algorithms and keys it exists for and hands the rest to
- * the core WebCrypto implementation. There is no bundled layer: provide each
- * family's layer where it is used.
+ * the core WebCrypto implementation. {@link layer} provides every family at
+ * once; provide a family's own layer to pick services selectively.
  *
  * `CryptoKey`-backed keys go through Node.js's `crypto.subtle`, because
  * `KeyObject.from(cryptoKey)` is deprecated (DEP0204). A `CryptoKey` must
@@ -306,3 +306,39 @@ export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement, never, Se
  * @since 4.0.0
  */
 export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap, never, SecureRandom.SecureRandom> = KeyWrap.layerWebCrypto
+
+/**
+ * Layer that provides every `effect/crypto` service with the Node.js
+ * implementations.
+ *
+ * **Details**
+ *
+ * This merges the family layers of this module and provides them with
+ * {@link layerSecureRandom}, so it requires nothing. It keeps the `node:crypto`
+ * implementations of {@link layerDigest}, {@link layerMac}, {@link layerKdf},
+ * and {@link layerAead}.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layer: Layer.Layer<
+  | SecureRandom.SecureRandom
+  | Digest.Digest
+  | Mac.Mac
+  | Kdf.Kdf
+  | Aead.Aead
+  | Cipher.Cipher
+  | Signature.Signature
+  | KeyAgreement.KeyAgreement
+  | KeyWrap.KeyWrap
+> = Layer.mergeAll(
+  layerDigest,
+  layerMac,
+  layerKdf,
+  layerAead,
+  layerCipher,
+  layerSignature,
+  layerKeyAgreement,
+  layerKeyWrap
+).pipe(Layer.provideMerge(layerSecureRandom))
