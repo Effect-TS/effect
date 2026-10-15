@@ -898,6 +898,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   return PersistedQueueStore.of({
     offer: ({ delay, element, id, isCustomId, name }) => {
       const keys = keysFor(name)
+      // Match Redis UTF-8 encoding; Unicode mode leaves valid surrogate pairs intact.
+      id = id.replace(/[\uD800-\uDFFF]/gu, "\uFFFD")
       const payload = JSON.stringify({ id, element })
       const send = Effect.suspend(() => {
         if (delay === undefined) {
