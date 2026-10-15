@@ -55,6 +55,6 @@ export const shards = Metric.gauge("effect_cluster_shards", {
  * @category metrics
  */
 export const shardReleaseDuration = Metric.timer(
-  "effect_cluster_shard_release_duration_ms",
+  "effect_cluster_shard_release",
   "Time taken to release a shard after reassignment or lock loss, including entity teardown, retries and lock storage recovery. Excludes shutdown handoff and forced releases"
 )
