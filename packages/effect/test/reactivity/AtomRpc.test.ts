@@ -62,12 +62,15 @@ const makeClientMiddlewareProtocol = (
   )
 
 describe("AtomRpc", () => {
-  it.effect("isolates mutations with the same tag across services", () =>
+  it.effect.each([
+    { idA: "RpcA", tagA: "create", idB: "RpcB", tagB: "create" },
+    { idA: "Tenant:User", tagA: "create", idB: "Tenant", tagB: "User:create" }
+  ])("isolates mutations across services ($idA / $idB)", ({ idA, tagA, idB, tagB }) =>
     Effect.gen(function*() {
       const requests: Array<{ service: string; name: string }> = []
-      const makeClient = (id: string) => {
+      const makeClient = (id: string, tag: string) => {
         const group = RpcGroup.make(
-          Rpc.make("create", {
+          Rpc.make(tag, {
             payload: Schema.Struct({ name: Schema.String }),
             success: Schema.String
           })
@@ -75,7 +78,7 @@ describe("AtomRpc", () => {
         return AtomRpc.Service()(id, {
           group,
           protocol: group.toLayer({
-            create: ({ name }) =>
+            [tag]: ({ name }) =>
               Effect.sync(() => {
                 requests.push({ service: id, name })
                 return `${id} ok`
@@ -84,10 +87,10 @@ describe("AtomRpc", () => {
           makeEffect: RpcTest.makeClient(group, { flatten: true })
         })
       }
-      const RpcA = makeClient("RpcA")
-      const RpcB = makeClient("RpcB")
-      const createA = RpcA.mutation("create")
-      const createB = RpcB.mutation("create")
+      const RpcA = makeClient(idA, tagA)
+      const RpcB = makeClient(idB, tagB)
+      const createA = RpcA.mutation(tagA)
+      const createB = RpcB.mutation(tagB)
       const registry = AtomRegistry.make()
       yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
       yield* AtomRegistry.mount(registry, createA)
@@ -99,10 +102,10 @@ describe("AtomRpc", () => {
       const resultB = yield* AtomRegistry.getResult(registry, createB, { suspendOnWaiting: true })
 
       assert.deepStrictEqual({ results: [resultA, resultB], requests }, {
-        results: ["RpcA ok", "RpcB ok"],
+        results: [`${idA} ok`, `${idB} ok`],
         requests: [
-          { service: "RpcA", name: "alice" },
-          { service: "RpcB", name: "bob" }
+          { service: idA, name: "alice" },
+          { service: idB, name: "bob" }
         ]
       })
     }))
