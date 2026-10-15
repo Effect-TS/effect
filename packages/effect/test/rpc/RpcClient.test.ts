@@ -107,6 +107,24 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("does not fail a new request started synchronously during connection defect delivery", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const caller = yield* client.Unary().pipe(
+        Effect.catchDefect(() => client.Unary()),
+        Effect.exit,
+        Effect.forkChild
+      )
+      takeRequestId(yield* Queue.take(sent))
+      // Let the first call suspend before delivering the defect.
+      yield* Effect.yieldNow
+      yield* handle({ _tag: "Defect", defect: "connection defect" })
+
+      const retryRequestId = takeRequestId(yield* Queue.take(sent))
+      yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
+      assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
   it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
