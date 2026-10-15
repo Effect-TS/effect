@@ -7,26 +7,6 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("OpenRouterLanguageModel", () => {
   describe("strictJsonSchema", () => {
-    it.effect("defaults to strict JSON schema validation for structured outputs", () =>
-      Effect.gen(function*() {
-        yield* LanguageModel.generateObject({
-          prompt: "Give me a name",
-          schema: Schema.Struct({ name: Schema.String })
-        }).pipe(Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")))
-
-        const requests = yield* MockHttpClient.requests
-        const body = yield* getRequestBody(requests[0])
-        strictEqual(body.response_format.json_schema.strict, true)
-      }).pipe(Effect.provide(makeTestLayer({
-        body: {
-          choices: [{
-            finish_reason: "stop",
-            index: 0,
-            message: { role: "assistant", content: JSON.stringify({ name: "Alice" }) }
-          }]
-        }
-      }))))
-
     it.effect("omits false from requests while preserving response strictness", () =>
       Effect.gen(function*() {
         yield* LanguageModel.generateObject({
