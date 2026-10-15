@@ -11,12 +11,13 @@
  * @stability unstable
  * @since 4.0.6
  */
-import * as Data from "./Data.ts"
+import type { YieldableError } from "./Cause.ts"
 import * as Equal from "./Equal.ts"
 import * as Equ from "./Equivalence.ts"
 import { dual } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
+import * as internal from "./internal/semver.ts"
 import * as Option from "./Option.ts"
 import * as order from "./Order.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
@@ -24,7 +25,6 @@ import { hasProperty } from "./Predicate.ts"
 import * as Result from "./Result.ts"
 
 const TypeId = "~effect/SemVer"
-const SemVerErrorTypeId = "~effect/SemVer/SemVerError"
 
 /**
  * Represents a semantic version.
@@ -65,17 +65,32 @@ export interface SemVer extends Pipeable, Equal.Equal, Inspectable {
 /**
  * Error raised for invalid version strings, ranges, or components.
  *
+ * **Details**
+ *
+ * `input` is set when parsing a string fails.
+ *
  * @see {@link isSemVerError} for narrowing unknown values
  * @stability unstable
  * @category errors
  * @since 4.0.6
  */
-export class SemVerError extends Data.TaggedError("SemVerError")<{
-  readonly message: string
-  readonly input?: string
-}> {
-  readonly [SemVerErrorTypeId]: typeof SemVerErrorTypeId = SemVerErrorTypeId
+export interface SemVerError extends YieldableError {
+  readonly _tag: "SemVerError"
+  readonly [internal.SemVerErrorTypeId]: typeof internal.SemVerErrorTypeId
+  readonly input?: string | undefined
 }
+
+/**
+ * Creates a `SemVerError`.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.6
+ */
+export const SemVerError: new(options: {
+  readonly message: string
+  readonly input?: string | undefined
+}) => SemVerError = internal.SemVerError
 
 /**
  * Checks whether a value is a `SemVerError`.
@@ -84,104 +99,7 @@ export class SemVerError extends Data.TaggedError("SemVerError")<{
  * @category guards
  * @since 4.0.6
  */
-export const isSemVerError = (u: unknown): u is SemVerError => hasProperty(u, SemVerErrorTypeId)
-
-/** @internal */
-export const invalid = (message: string): never => {
-  throw new SemVerError({ message })
-}
-
-/** @internal */
-export const tryParse = <A>(
-  label: string,
-  input: string,
-  parse: (input: string) => A
-): Result.Result<A, SemVerError> => {
-  try {
-    return Result.succeed(parse(input))
-  } catch (error) {
-    return Result.fail(
-      new SemVerError({
-        message: `Invalid ${label} ${JSON.stringify(input)}: ${(error as SemVerError).message}`,
-        input
-      })
-    )
-  }
-}
-
-const numericPattern = /^(?:0|[1-9]\d*)$/
-const digitsPattern = /^\d+$/
-const identifierPattern = /^[0-9A-Za-z-]+$/
-
-const checkComponent = (value: number, label: string): number => {
-  if (!Number.isSafeInteger(value) || value < 0) {
-    return invalid(`${label} must be a non-negative safe integer, received ${value}`)
-  }
-  return value
-}
-
-/** @internal */
-export const parseComponent = (value: string, label: string): number => {
-  if (!numericPattern.test(value)) {
-    return invalid(`${label} must be a non-negative integer without leading zeros, received ${JSON.stringify(value)}`)
-  }
-  return checkComponent(Number(value), label)
-}
-
-/** @internal */
-export const prereleaseIdentifier = (identifier: string | number): string | number => {
-  if (typeof identifier === "number") return checkComponent(identifier, "numeric pre-release identifier")
-  if (!identifierPattern.test(identifier)) {
-    return invalid(`pre-release identifier must be non-empty [0-9A-Za-z-], received ${JSON.stringify(identifier)}`)
-  }
-  return digitsPattern.test(identifier) ? parseComponent(identifier, "numeric pre-release identifier") : identifier
-}
-
-const buildIdentifier = (identifier: string): string => {
-  if (!identifierPattern.test(identifier)) {
-    return invalid(`build identifier must be non-empty [0-9A-Za-z-], received ${JSON.stringify(identifier)}`)
-  }
-  return identifier
-}
-
-/** @internal */
-export interface Core {
-  readonly major: number
-  readonly minor: number
-  readonly patch: number
-  readonly prerelease: ReadonlyArray<string | number>
-}
-
-const compareNumbers = (self: number, that: number): -1 | 0 | 1 => self < that ? -1 : self > that ? 1 : 0
-
-const comparePrerelease = (
-  self: ReadonlyArray<string | number>,
-  that: ReadonlyArray<string | number>
-): -1 | 0 | 1 => {
-  if (self.length === 0) return that.length === 0 ? 0 : 1
-  if (that.length === 0) return -1
-  const length = Math.min(self.length, that.length)
-  for (let i = 0; i < length; i++) {
-    const a = self[i]
-    const b = that[i]
-    if (a === b) continue
-    if (typeof a === "number") return typeof b === "number" ? compareNumbers(a, b) : -1
-    if (typeof b === "number") return 1
-    return a < b ? -1 : 1
-  }
-  return compareNumbers(self.length, that.length)
-}
-
-/** @internal */
-export const sameCore = (self: Core, that: Core): boolean =>
-  self.major === that.major && self.minor === that.minor && self.patch === that.patch
-
-/** @internal */
-export const compareCore = (self: Core, that: Core): -1 | 0 | 1 =>
-  compareNumbers(self.major, that.major) ||
-  compareNumbers(self.minor, that.minor) ||
-  compareNumbers(self.patch, that.patch) ||
-  comparePrerelease(self.prerelease, that.prerelease)
+export const isSemVerError: (u: unknown) => u is SemVerError = internal.isSemVerError
 
 const SemVerProto: Omit<SemVer, "major" | "minor" | "patch" | "prerelease" | "build"> = {
   [TypeId]: TypeId,
@@ -222,7 +140,9 @@ const unchecked = (
 }
 
 const increment = (value: number, label: string): number => {
-  if (value >= Number.MAX_SAFE_INTEGER) return invalid(`${label} cannot be incremented past Number.MAX_SAFE_INTEGER`)
+  if (value >= Number.MAX_SAFE_INTEGER) {
+    return internal.fail(`${label} cannot be incremented past Number.MAX_SAFE_INTEGER`)
+  }
   return value + 1
 }
 
@@ -315,11 +235,11 @@ export type Input = SemVer | VersionString | Components
  */
 export const make = (components: Components): SemVer =>
   unchecked(
-    checkComponent(components.major, "major"),
-    checkComponent(components.minor, "minor"),
-    checkComponent(components.patch, "patch"),
-    components.prerelease?.map(prereleaseIdentifier) ?? [],
-    components.build?.map(buildIdentifier) ?? []
+    internal.checkComponent(components.major, "major"),
+    internal.checkComponent(components.minor, "minor"),
+    internal.checkComponent(components.patch, "patch"),
+    components.prerelease?.map(internal.prereleaseIdentifier) ?? [],
+    components.build?.map(internal.buildIdentifier) ?? []
   )
 
 const parseOrThrow = (input: string): SemVer => {
@@ -327,21 +247,21 @@ const parseOrThrow = (input: string): SemVer => {
   let build: ReadonlyArray<string> = []
   const plus = rest.indexOf("+")
   if (plus !== -1) {
-    build = rest.slice(plus + 1).split(".").map(buildIdentifier)
+    build = rest.slice(plus + 1).split(".").map(internal.buildIdentifier)
     rest = rest.slice(0, plus)
   }
   let prerelease: ReadonlyArray<string | number> = []
   const dash = rest.indexOf("-")
   if (dash !== -1) {
-    prerelease = rest.slice(dash + 1).split(".").map(prereleaseIdentifier)
+    prerelease = rest.slice(dash + 1).split(".").map(internal.prereleaseIdentifier)
     rest = rest.slice(0, dash)
   }
   const core = rest.split(".")
-  if (core.length !== 3) return invalid("expected MAJOR.MINOR.PATCH")
+  if (core.length !== 3) return internal.fail("expected MAJOR.MINOR.PATCH")
   return unchecked(
-    parseComponent(core[0], "major"),
-    parseComponent(core[1], "minor"),
-    parseComponent(core[2], "patch"),
+    internal.parseComponent(core[0], "major"),
+    internal.parseComponent(core[1], "minor"),
+    internal.parseComponent(core[2], "patch"),
     prerelease,
     build
   )
@@ -376,7 +296,8 @@ const parseOrThrow = (input: string): SemVer => {
  * @category constructors
  * @since 4.0.6
  */
-export const parse = (input: string): Result.Result<SemVer, SemVerError> => tryParse("SemVer", input, parseOrThrow)
+export const parse = (input: string): Result.Result<SemVer, SemVerError> =>
+  internal.tryParse("SemVer", input, parseOrThrow)
 
 /**
  * Parses a strict Semantic Versioning 2.0.0 string and throws `SemVerError`
@@ -416,7 +337,7 @@ export const parseUnsafe = (input: string): SemVer => Result.getOrThrow(parse(in
 export const fromInput = (input: Input): Result.Result<SemVer, SemVerError> => {
   if (isSemVer(input)) return Result.succeed(input)
   if (typeof input === "string") return parse(input)
-  return Result.try({ try: () => make(input), catch: (error) => error as SemVerError })
+  return internal.attempt(() => make(input))
 }
 
 /**
@@ -515,7 +436,7 @@ export const isInitialDevelopment = (self: SemVer): boolean => self.major === 0
  * @category instances
  * @since 4.0.6
  */
-export const Order: order.Order<SemVer> = order.make((self, that) => compareCore(self, that))
+export const Order: order.Order<SemVer> = order.make(internal.compareCore)
 
 const arrayEquals = <A>(self: ReadonlyArray<A>, that: ReadonlyArray<A>): boolean => {
   if (self.length !== that.length) return false
@@ -671,7 +592,7 @@ export const withPrerelease: {
 } = dual(
   2,
   (self: SemVer, prerelease: ReadonlyArray<string | number>): SemVer =>
-    unchecked(self.major, self.minor, self.patch, prerelease.map(prereleaseIdentifier), self.build)
+    unchecked(self.major, self.minor, self.patch, prerelease.map(internal.prereleaseIdentifier), self.build)
 )
 
 /**
@@ -693,7 +614,7 @@ export const withBuild: {
 } = dual(
   2,
   (self: SemVer, build: ReadonlyArray<string>): SemVer =>
-    unchecked(self.major, self.minor, self.patch, self.prerelease, build.map(buildIdentifier))
+    unchecked(self.major, self.minor, self.patch, self.prerelease, build.map(internal.buildIdentifier))
 )
 
 /**
@@ -793,7 +714,7 @@ export const bumpPatch = (self: SemVer): SemVer =>
   )
 
 const startPrerelease = (identifier: string | undefined): ReadonlyArray<string | number> =>
-  identifier === undefined ? [0] : [prereleaseIdentifier(identifier), 0]
+  identifier === undefined ? [0] : [internal.prereleaseIdentifier(identifier), 0]
 
 const isSemVerArgs = (args: IArguments) => isSemVer(args[0])
 
@@ -913,7 +834,7 @@ export const bumpPrerelease: {
     return unchecked(self.major, self.minor, increment(self.patch, "patch"), startPrerelease(identifier), [])
   }
   if (identifier !== undefined) {
-    const normalized = prereleaseIdentifier(identifier)
+    const normalized = internal.prereleaseIdentifier(identifier)
     if (self.prerelease[0] !== normalized) {
       return unchecked(self.major, self.minor, self.patch, [normalized, 0], [])
     }
@@ -1045,7 +966,7 @@ export const difference: {
   const highIsPrerelease = high.prerelease.length > 0
   if (low.prerelease.length > 0 && !highIsPrerelease) {
     if (low.minor === 0 && low.patch === 0) return Option.some("major")
-    if (sameCore(low, high)) return Option.some(low.patch === 0 ? "minor" : "patch")
+    if (internal.sameCore(low, high)) return Option.some(low.patch === 0 ? "minor" : "patch")
   }
   if (self.major !== that.major) return Option.some(highIsPrerelease ? "premajor" : "major")
   if (self.minor !== that.minor) return Option.some(highIsPrerelease ? "preminor" : "minor")

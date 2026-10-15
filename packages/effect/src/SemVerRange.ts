@@ -12,66 +12,46 @@ import * as Equal from "./Equal.ts"
 import { dual } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
+import * as internal from "./internal/semver.ts"
 import * as Option from "./Option.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Result from "./Result.ts"
-import {
-  compareCore,
-  type Core,
-  invalid,
-  parseComponent,
-  prereleaseIdentifier,
-  sameCore,
-  type SemVer,
-  type SemVerError,
-  tryParse
-} from "./SemVer.ts"
+import type { SemVer, SemVerError } from "./SemVer.ts"
 
 const TypeId = "~effect/SemVerRange"
 
 /**
- * A version whose trailing components may be wildcards, as written in a range.
+ * Represents an npm-style version range.
  *
  * **Details**
  *
- * An `undefined` component is a wildcard (`x`, `X`, or `*`), and every
- * component after a wildcard is also `undefined`. Pre-release identifiers are
- * only present when major, minor, and patch are all numbers.
+ * Ranges are opaque. They keep the syntax they were parsed from, so `^1.2`
+ * stays a caret comparator rather than being expanded into bounds, and
+ * {@link format} returns that syntax in canonical form.
  *
+ * @see {@link parse} for decoding range strings
+ * @see {@link matches} for matching versions
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface PartialVersion {
+export interface SemVerRange extends Pipeable, Equal.Equal, Inspectable {
+  readonly [TypeId]: typeof TypeId
+}
+
+// A version whose trailing components may be wildcards. Every component after
+// a wildcard is also a wildcard, and only full versions carry a pre-release.
+interface PartialVersion {
   readonly major: number | undefined
   readonly minor: number | undefined
   readonly patch: number | undefined
   readonly prerelease: ReadonlyArray<string | number>
 }
 
-/**
- * Operators accepted before a partial version in a range.
- *
- * **Details**
- *
- * A comparator without an operator, or with `=`, uses `"="`.
- *
- * @stability unstable
- * @category models
- * @since 4.0.6
- */
-export type Operator = "=" | "<" | "<=" | ">" | ">=" | "~" | "^"
+type Operator = "=" | "<" | "<=" | ">" | ">=" | "~" | "^"
 
-/**
- * A single range term: an operator applied to a partial version, or a hyphen
- * range between two partial versions.
- *
- * @stability unstable
- * @category models
- * @since 4.0.6
- */
-export type Comparator =
+type Comparator =
   | {
     readonly _tag: "Comparator"
     readonly operator: Operator
@@ -83,25 +63,11 @@ export type Comparator =
     readonly to: PartialVersion
   }
 
-/**
- * Represents an npm-style version range.
- *
- * **Details**
- *
- * `sets` are alternatives separated by `||`. A version matches the range when
- * it satisfies every comparator of at least one set. Ranges keep the syntax
- * they were parsed from, so `^1.2` stays a caret comparator rather than being
- * expanded into bounds.
- *
- * @see {@link parse} for decoding range strings
- * @see {@link matches} for matching versions
- * @stability unstable
- * @category models
- * @since 4.0.6
- */
-export interface SemVerRange extends Pipeable, Equal.Equal, Inspectable {
-  readonly [TypeId]: typeof TypeId
+interface SemVerRangeImpl extends SemVerRange {
+  // Alternatives separated by `||`, each a set of comparators that must all match.
   readonly sets: ReadonlyArray<ReadonlyArray<Comparator>>
+  matcher?: (version: SemVer) => boolean
+  prereleaseMatcher?: (version: SemVer) => boolean
 }
 
 /**
@@ -121,7 +87,7 @@ export interface MatchOptions {
   readonly includePrerelease?: boolean | undefined
 }
 
-const SemVerRangeProto: Omit<SemVerRange, "sets"> = {
+const SemVerRangeProto: SemVerRange = {
   [TypeId]: TypeId,
   [Equal.symbol](this: SemVerRange, that: unknown): boolean {
     return isSemVerRange(that) && format(this) === format(that)
@@ -157,32 +123,34 @@ const operatorPattern = /^(<=|>=|<|>|=|~|\^)?(.*)$/
 const isWildcard = (part: string): boolean => part === "x" || part === "X" || part === "*"
 
 const parsePartial = (input: string): PartialVersion => {
-  if (input.length === 0) return invalid("expected a version after the operator")
-  if (input.includes("+")) return invalid(`build metadata is not allowed in ranges, received ${JSON.stringify(input)}`)
+  if (input.length === 0) return internal.fail("expected a version after the operator")
+  if (input.includes("+")) {
+    return internal.fail(`build metadata is not allowed in ranges, received ${JSON.stringify(input)}`)
+  }
   const dash = input.indexOf("-")
   const parts = (dash === -1 ? input : input.slice(0, dash)).split(".")
-  if (parts.length > 3) return invalid(`expected at most MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
+  if (parts.length > 3) return internal.fail(`expected at most MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
   const numbers: Array<number | undefined> = []
   for (const [index, part] of parts.entries()) {
     if (isWildcard(part)) {
       numbers.push(undefined)
     } else if (numbers.includes(undefined)) {
-      return invalid(`a version component cannot follow a wildcard, received ${JSON.stringify(input)}`)
+      return internal.fail(`a version component cannot follow a wildcard, received ${JSON.stringify(input)}`)
     } else {
-      numbers.push(parseComponent(part, (["major", "minor", "patch"] as const)[index]))
+      numbers.push(internal.parseComponent(part, (["major", "minor", "patch"] as const)[index]))
     }
   }
   const [major, minor, patch] = numbers
   if (dash === -1) return { major, minor, patch, prerelease: [] }
   if (patch === undefined) {
-    return invalid(`a pre-release requires MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
+    return internal.fail(`a pre-release requires MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
   }
-  return { major, minor, patch, prerelease: input.slice(dash + 1).split(".").map(prereleaseIdentifier) }
+  return { major, minor, patch, prerelease: input.slice(dash + 1).split(".").map(internal.prereleaseIdentifier) }
 }
 
 const parseComparatorSet = (input: string): ReadonlyArray<Comparator> => {
   const tokens = input.split(/\s+/).filter((token) => token.length > 0)
-  if (tokens.length === 0) return invalid("expected a comparator")
+  if (tokens.length === 0) return internal.fail("expected a comparator")
   if (tokens.length === 3 && tokens[1] === "-") {
     return [{ _tag: "Hyphen", from: parsePartial(tokens[0]), to: parsePartial(tokens[2]) }]
   }
@@ -248,7 +216,7 @@ const parseOrThrow = (input: string): SemVerRange => {
  * @since 4.0.6
  */
 export const parse = (input: string): Result.Result<SemVerRange, SemVerError> =>
-  tryParse("SemVer range", input, parseOrThrow)
+  internal.tryParse("SemVer range", input, parseOrThrow)
 
 /**
  * Parses an npm-style version range and throws `SemVer.SemVerError` for
@@ -478,9 +446,9 @@ const formatComparator = (self: Comparator): string =>
  * @since 4.0.6
  */
 export const format = (self: SemVerRange): string =>
-  self.sets.map((set) => set.map(formatComparator).join(" ")).join(" || ")
+  (self as SemVerRangeImpl).sets.map((set) => set.map(formatComparator).join(" ")).join(" || ")
 
-interface Bound extends Core {
+interface Bound extends internal.Core {
   readonly operator: "=" | "<" | "<=" | ">" | ">="
 }
 
@@ -571,8 +539,8 @@ const expand = (self: Comparator, includePrerelease: boolean): ReadonlyArray<Bou
   }
 }
 
-const testBound = (self: Bound, version: Core): boolean => {
-  const result = compareCore(version, self)
+const testBound = (self: Bound, version: SemVer): boolean => {
+  const result = internal.compareCore(version, self)
   switch (self.operator) {
     case "=":
       return result === 0
@@ -587,15 +555,21 @@ const testBound = (self: Bound, version: Core): boolean => {
   }
 }
 
-const compile = (self: SemVerRange, options: MatchOptions | undefined): (version: SemVer) => boolean => {
-  const includePrerelease = options?.includePrerelease === true
+const compile = (self: SemVerRangeImpl, includePrerelease: boolean): (version: SemVer) => boolean => {
   const sets = self.sets.map((set) => set.flatMap((comparator) => expand(comparator, includePrerelease)))
   return (version) =>
     sets.some((bounds) =>
       bounds.every((bound) => testBound(bound, version)) &&
       (includePrerelease || version.prerelease.length === 0 ||
-        bounds.some((bound) => bound.prerelease.length > 0 && sameCore(bound, version)))
+        bounds.some((bound) => bound.prerelease.length > 0 && internal.sameCore(bound, version)))
     )
+}
+
+const matcher = (range: SemVerRange, options: MatchOptions | undefined): (version: SemVer) => boolean => {
+  const self = range as SemVerRangeImpl
+  return options?.includePrerelease === true
+    ? (self.prereleaseMatcher ??= compile(self, true))
+    : (self.matcher ??= compile(self, false))
 }
 
 /**
@@ -650,7 +624,7 @@ export const matches: {
   (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean
 } = dual(
   (args) => isSemVerRange(args[0]),
-  (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean => compile(self, options)(version)
+  (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean => matcher(self, options)(version)
 )
 
 const select = (
@@ -659,10 +633,12 @@ const select = (
   options: MatchOptions | undefined,
   better: -1 | 1
 ): Option.Option<SemVer> => {
-  const test = compile(self, options)
+  const test = matcher(self, options)
   let selected: SemVer | undefined
   for (const version of versions) {
-    if (test(version) && (selected === undefined || compareCore(version, selected) === better)) selected = version
+    if (test(version) && (selected === undefined || internal.compareCore(version, selected) === better)) {
+      selected = version
+    }
   }
   return Option.fromUndefinedOr(selected)
 }
