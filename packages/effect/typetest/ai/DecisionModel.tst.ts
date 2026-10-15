@@ -123,6 +123,15 @@ describe("Decision", () => {
     }>()
   })
 
+  it("Image preserves its concrete schema type and requires no services", () => {
+    expect(Decision.Image.annotate({})).type.toBe<Decision.Image>()
+    expect<typeof Decision.Image.Type>().type.toBe<DecisionModel.Image>()
+    expect<typeof Decision.Image.Encoded>().type.toBe<Decision.ImageEncoded>()
+    expect<typeof Decision.Image.DecodingServices>().type.toBe<never>()
+    expect<typeof Decision.Image.EncodingServices>().type.toBe<never>()
+    expect(Decision.Image).type.toBeAssignableTo<Schema.Codec<DecisionModel.Image, Decision.ImageEncoded>>()
+  })
+
   it("image paths follow nested, array, and tuple fields of the encoded input", () => {
     class Listing extends Schema.Class<Listing>("Listing")({ cover: Decision.Image }) {}
     const Input = Schema.Struct({
