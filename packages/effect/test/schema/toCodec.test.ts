@@ -2909,6 +2909,8 @@ Expected "Infinity" | "-Infinity" | "NaN"`
       await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Array(Schema.String))).decoding().succeed(null, [])
       await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Record(Schema.String, Schema.String))).decoding()
         .succeed(null, {})
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.suspend(() => Schema.Array(Schema.String)))).decoding()
+        .succeed(null, [])
     })
 
     it("applies through classes, unions, and recursive schemas", async () => {
@@ -2927,6 +2929,15 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         { mount: { Options: null }, node: { Children: [{ Children: null }] }, either: { a: null } },
         { mount: new Mount({ Options: [] }), node: { Children: [{ Children: [] }] }, either: { a: [] } }
       )
+    })
+
+    it("decodes unions like toCodecJson", async () => {
+      const schema = Schema.toCodecGoJson(Schema.Union([
+        Schema.Struct({ a: Schema.FiniteFromString }),
+        Schema.Struct({ b: Schema.String })
+      ]))
+
+      await new TestSchema.Asserts(schema).decoding().succeed({ a: "a", b: "b" }, { b: "b" })
     })
 
     it("keeps null where the schema accepts it and rejects it where Go would not write it", async () => {

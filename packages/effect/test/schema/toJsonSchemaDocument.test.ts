@@ -4065,5 +4065,28 @@ describe("toJsonSchemaDocument", () => {
         }
       )
     })
+
+    it("describes recursive schemas", () => {
+      interface Node {
+        readonly Children: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({
+        Children: Schema.Array(Schema.suspend(() => Node))
+      }).annotate({ identifier: "Node" })
+
+      assertJsonSchemaDocument(Schema.toCodecGoJson(Node), {
+        schema: { "$ref": "#/$defs/Node" },
+        definitions: {
+          Node: {
+            "type": "object",
+            "properties": {
+              "Children": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/Node" } }, { "type": "null" }] }
+            },
+            "required": ["Children"],
+            "additionalProperties": false
+          }
+        }
+      })
+    })
   })
 })
