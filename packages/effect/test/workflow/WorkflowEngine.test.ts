@@ -899,6 +899,68 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(events, ["charge", "refund ch_1"])
     }))
 
+  it.effect("layerMemory retains compensation identity during a concurrent partial replay", () =>
+    Effect.gen(function*() {
+      const prepared = yield* Latch.make()
+      const rebuilt = yield* Latch.make()
+      const holdB = yield* Latch.make()
+      const gate = DurableDeferred.make("WorkflowEngine/ConcurrentCompensationReplay/Gate")
+      const events: Array<string> = []
+      let runs = 0
+      const Order = Workflow.make("WorkflowEngine/ConcurrentCompensationReplay", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          const step = (name: string) =>
+            Activity.make({
+              name,
+              success: Schema.String,
+              execute: Effect.sync(() => {
+                events.push(`do ${name}`)
+                return name
+              })
+            }).pipe(
+              Order.withCompensation((value) => Effect.sync(() => events.push(`undo ${value} run ${run}`)))
+            )
+          yield* Effect.all([
+            Effect.gen(function*() {
+              // B completes first initially; on replay this preparation is cached.
+              yield* Activity.make({ name: "prepare A", execute: prepared.await })
+              yield* step("A")
+              if (run > 1) yield* rebuilt.open
+            }),
+            Effect.gen(function*() {
+              // Leave B unreached while A installs its replacement callback.
+              if (run > 1) yield* holdB.await
+              yield* step("B")
+              yield* prepared.open
+            })
+          ], { concurrency: "unbounded" })
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      const scope = yield* Scope.make()
+      const context = yield* Scope.provide(Layer.build(layer), scope)
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
+        let result = yield* Order.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Order.poll(executionId)
+        }
+        assert.deepStrictEqual(events, ["do B", "do A"])
+        yield* Order.resume(executionId)
+        yield* rebuilt.await
+      }).pipe(Effect.provideContext(context))
+
+      yield* Scope.close(scope, Exit.void)
+      assert.deepStrictEqual(events, ["do B", "do A", "undo A run 2", "undo B run 1"])
+    }))
+
   it.effect("layerMemory compensates a completed activity only once after replay", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/CompensationReplay/Gate", { error: Schema.String })
