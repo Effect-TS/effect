@@ -340,6 +340,18 @@ importers:
         specifier: ^3.5.43
         version: 3.5.43(typescript@7.0.2)
 
+  packages/auth:
+    devDependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../platform/node
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
+
   packages/effect:
     devDependencies:
       '@types/node':
@@ -372,34 +384,6 @@ importers:
       valibot:
         specifier: ^1.5.0
         version: 1.5.0(typescript@7.0.2)
-
-  packages/jose:
-    devDependencies:
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform/node
-      effect:
-        specifier: workspace:^
-        version: link:../effect
-      jose:
-        specifier: 6.2.12
-        version: 6.2.12
-
-  packages/oauth:
-    dependencies:
-      '@effect/jose':
-        specifier: workspace:^
-        version: link:../jose
-    devDependencies:
-      '@effect/platform-node':
-        specifier: workspace:^
-        version: link:../platform/node
-      effect:
-        specifier: workspace:^
-        version: link:../effect
-      jose:
-        specifier: 6.2.12
-        version: 6.2.12
 
   packages/opentelemetry:
     dependencies:
