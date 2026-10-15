@@ -1,7 +1,15 @@
 import { assert, describe, expectTypeOf, it } from "@effect/vitest"
 import { type Cause, Deferred, Effect, Layer, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, AtomRpc, Hydration } from "effect/reactivity"
-import { Rpc, RpcClient, type RpcClientError, RpcGroup, RpcMiddleware, type RpcSerialization } from "effect/rpc"
+import {
+  Rpc,
+  RpcClient,
+  type RpcClientError,
+  RpcGroup,
+  RpcMiddleware,
+  type RpcSerialization,
+  RpcTest
+} from "effect/rpc"
 
 const Group = RpcGroup.make(
   Rpc.make("getUser", {
@@ -54,6 +62,51 @@ const makeClientMiddlewareProtocol = (
   )
 
 describe("AtomRpc", () => {
+  it.effect("isolates mutations with the same tag across services", () =>
+    Effect.gen(function*() {
+      const requests: Array<{ service: string; name: string }> = []
+      const makeClient = (id: string) => {
+        const group = RpcGroup.make(
+          Rpc.make("create", {
+            payload: Schema.Struct({ name: Schema.String }),
+            success: Schema.String
+          })
+        )
+        return AtomRpc.Service()(id, {
+          group,
+          protocol: group.toLayer({
+            create: ({ name }) =>
+              Effect.sync(() => {
+                requests.push({ service: id, name })
+                return `${id} ok`
+              })
+          }),
+          makeEffect: RpcTest.makeClient(group, { flatten: true })
+        })
+      }
+      const RpcA = makeClient("RpcA")
+      const RpcB = makeClient("RpcB")
+      const createA = RpcA.mutation("create")
+      const createB = RpcB.mutation("create")
+      const registry = AtomRegistry.make()
+      yield* Effect.addFinalizer(() => Effect.sync(() => registry.dispose()))
+      yield* AtomRegistry.mount(registry, createA)
+      yield* AtomRegistry.mount(registry, createB)
+
+      registry.set(createA, { payload: { name: "alice" } })
+      const resultA = yield* AtomRegistry.getResult(registry, createA, { suspendOnWaiting: true })
+      registry.set(createB, { payload: { name: "bob" } })
+      const resultB = yield* AtomRegistry.getResult(registry, createB, { suspendOnWaiting: true })
+
+      assert.deepStrictEqual({ results: [resultA, resultB], requests }, {
+        results: ["RpcA ok", "RpcB ok"],
+        requests: [
+          { service: "RpcA", name: "alice" },
+          { service: "RpcB", name: "bob" }
+        ]
+      })
+    }))
+
   it("includes client middleware errors in atom failure types", () => {
     const Client = AtomRpc.Service()("MiddlewareClient", {
       group: ClientMiddlewareGroup,
