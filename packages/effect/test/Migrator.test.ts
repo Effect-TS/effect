@@ -115,22 +115,32 @@ describe("Migrator", () => {
           "pg",
           "select E'a\\';b'; select 'c\\'; select $1;\n" +
           "create function f() returns int as $$ select 1; $$ language sql;\n" +
-          "create function g() returns int as $body$ select 2; $body$ language sql;",
+          "create function g() returns int as $body$ select 2; $body$ language sql;\n" +
+          "/* outer /* inner; */ -- */ create table t (id int);",
           [
             "select E'a\\';b'",
             "select 'c\\'",
             "select $1",
             "create function f() returns int as $$ select 1; $$ language sql",
-            "create function g() returns int as $body$ select 2; $body$ language sql"
+            "create function g() returns int as $body$ select 2; $body$ language sql",
+            "/* outer /* inner; */ -- */ create table t (id int)"
           ]
         ],
         [
+          "mssql",
+          "/* outer /* inner; */ -- */ create table t (id int);",
+          ["/* outer /* inner; */ -- */ create table t (id int)"]
+        ],
+        [
           "mysql",
-          "/*! CREATE TABLE t (id INT) */;\ninsert into t values ('it\\'s; fine', \"a\\\";b\");\nselect `x;y`",
+          "/*! CREATE TABLE t (id INT) */;\ninsert into t values ('it\\'s; fine', \"a\\\";b\");\nselect `x;y`;\n" +
+          "select 1--1;\n# skipped;\nselect 2; -- done;",
           [
             "/*! CREATE TABLE t (id INT) */",
             "insert into t values ('it\\'s; fine', \"a\\\";b\")",
-            "select `x;y`"
+            "select `x;y`",
+            "select 1--1",
+            "# skipped;\nselect 2"
           ]
         ]
       ] as const
