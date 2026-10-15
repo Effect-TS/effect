@@ -1,4 +1,4 @@
-import type { Jwk } from "@effect/auth"
+import type { Jwk } from "@effect/auth/Jose"
 import { NodeCrypto } from "@effect/platform-node"
 import { Effect, Redacted } from "effect"
 import * as jose from "jose"

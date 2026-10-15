@@ -8,10 +8,15 @@ unstable and may change in minor releases.
 pnpm add @effect/auth effect
 ```
 
-Every module is available as a root namespace export and a matching subpath:
-`Jwe`, `Jwk`, `Jwks`, `Jws`, `Jwt`, `OAuth`, `Oidc`, `Pkce`, `JoseError`, and
-`OAuthError`. For example, use `import { Jwt } from "@effect/auth"` or
-`import * as Jwt from "@effect/auth/Jwt"`.
+The root namespace exports are `Jose`, `JoseError`, `OAuth`, `OAuthError`, `Oidc`,
+and `Pkce`, each with a matching public subpath. Use
+`import { Jose, OAuth } from "@effect/auth"` for `Jose.Jwt.verify(...)` and
+`OAuth.make(...)`.
+
+`Jose` groups [Jwe](src/Jose/Jwe.ts), [Jwk](src/Jose/Jwk.ts),
+[Jwks](src/Jose/Jwks.ts), [Jws](src/Jose/Jws.ts), and [Jwt](src/Jose/Jwt.ts).
+Individual JOSE namespaces are available with
+`import { Jwk } from "@effect/auth/Jose"`.
 
 ## Native Effect services
 
@@ -27,9 +32,9 @@ helpers. For other runtimes, compose the corresponding layers from `effect/crypt
 When injecting `WebCrypto.SubtleCrypto`, provide it both to those layers and to
 the program so key helpers use the same backend.
 
-`Jws.Requirements` includes the four signature/HMAC services. JWS and JWT key-set
-verification require the three asymmetric services plus `Jwks`. `Jwe.encrypt`
-requires `Aes` and `SecureRandom`; `Jwe.decrypt` requires only `Aes`. JWT operations
+`Jose.Jws.Requirements` includes the four signature/HMAC services. JWS and JWT key-set
+verification require the three asymmetric services plus `Jose.Jwks.Jwks`. `Jose.Jwe.encrypt`
+requires `Aes` and `SecureRandom`; `Jose.Jwe.decrypt` requires only `Aes`. JWT operations
 also retain the application's Schema services. `Pkce.random` requires
 `SecureRandom`, `Pkce.challenge` requires `Sha2`, and `Pkce.make` requires both.
 Each installed OIDC verifier's `verify` operation requires `Sha2` and all four
@@ -42,18 +47,18 @@ delay teardown. Caller-owned secret bytes are never wiped by an operation.
 ## JOSE and schema-typed JWTs
 
 ```ts
-import { Jwk, Jwt } from "@effect/auth"
+import { Jose } from "@effect/auth"
 import { NodeCrypto } from "@effect/platform-node"
 import { Effect, Schema } from "effect"
 
 const Claims = Schema.Struct({ sub: Schema.String })
 
 const program = Effect.gen(function*() {
-  const pair = yield* Jwk.generateKeyPair({ algorithm: "ES256", kid: "signing-key" })
-  const signingKey = yield* Jwk.importPrivate(pair.privateKey, "ES256")
-  const verificationKey = yield* Jwk.importPublic(pair.publicKey, "ES256")
-  const token = yield* Jwt.sign(Claims, { sub: "user_1" }, signingKey, { alg: "ES256", typ: "JWT" })
-  return yield* Jwt.verify(Claims, token, verificationKey, { algorithms: ["ES256"], typ: "JWT" })
+  const pair = yield* Jose.Jwk.generateKeyPair({ algorithm: "ES256", kid: "signing-key" })
+  const signingKey = yield* Jose.Jwk.importPrivate(pair.privateKey, "ES256")
+  const verificationKey = yield* Jose.Jwk.importPublic(pair.publicKey, "ES256")
+  const token = yield* Jose.Jwt.sign(Claims, { sub: "user_1" }, signingKey, { alg: "ES256", typ: "JWT" })
+  return yield* Jose.Jwt.verify(Claims, token, verificationKey, { algorithms: ["ES256"], typ: "JWT" })
 }).pipe(Effect.provide(NodeCrypto.layer))
 ```
 
@@ -61,7 +66,7 @@ Tokens, private and symmetric keys, and decrypted bytes use `Redacted`. JWT
 verification checks signatures and registered claims before decoding the
 application Schema. Schema failures and encoding/decoding services remain in
 `E` and `R`; custom Schema diagnostics remain application-owned.
-`Jwt.decodeUnverified` parses without establishing trust. Applications own keys,
+`Jose.Jwt.decodeUnverified` parses without establishing trust. Applications own keys,
 accepted algorithms, issuers, audiences, and token purpose.
 
 Local JWKS verification needs no HTTP. Remote JWKS use an application-configured

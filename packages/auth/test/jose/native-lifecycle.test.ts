@@ -1,4 +1,5 @@
-import { type JoseError, Jwe, Jwk, Jws } from "@effect/auth"
+import type { JoseError } from "@effect/auth"
+import { Jwe, Jwk, Jws } from "@effect/auth/Jose"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Redacted, Scope } from "effect"
 import { Aes, Hmac, type SecureRandom } from "effect/crypto"

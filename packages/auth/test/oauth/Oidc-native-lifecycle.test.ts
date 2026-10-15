@@ -1,4 +1,5 @@
-import { Jwk, Jwt, Oidc } from "@effect/auth"
+import { Oidc } from "@effect/auth"
+import { Jwk, Jwt } from "@effect/auth/Jose"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, DateTime, Deferred, Effect, Exit, Fiber, Redacted, Schema, Scope } from "effect"
 import * as Sha2 from "effect/crypto/Sha2"

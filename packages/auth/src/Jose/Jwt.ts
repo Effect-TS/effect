@@ -8,8 +8,8 @@ import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import { ClaimValidationFailed, type VerifyError } from "./JoseError.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
+import { ClaimValidationFailed, type VerifyError } from "../JoseError.ts"
 import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
 import { type Header, type Requirements, VerifyOptions as JwsVerifyOptions } from "./Jws.ts"
 import * as Jws from "./Jws.ts"
@@ -221,7 +221,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * **Example** (Verifying application claims and issuer policy)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwt } from "@effect/auth"
+ * import { Jwk, Jwt } from "@effect/auth/Jose"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted, Schema } from "effect"
  *

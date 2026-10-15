@@ -1,8 +1,8 @@
 import * as CryptoError from "effect/crypto/CryptoError"
 import * as Rsa from "effect/crypto/Rsa"
 import * as Effect from "effect/Effect"
+import type { PrivateJwk, PublicJwk, SecretJwk } from "../Jose/Jwk.ts"
 import { InvalidKey } from "../JoseError.ts"
-import type { PrivateJwk, PublicJwk, SecretJwk } from "../Jwk.ts"
 
 export const check = (
   jwk: PublicJwk | PrivateJwk | SecretJwk,

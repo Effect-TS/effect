@@ -12,12 +12,12 @@ import * as Rsa from "effect/crypto/Rsa"
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "./internal/crypto.ts"
-import type { CryptoUnavailable, OperationError, UnsupportedAlgorithm } from "./internal/cryptoErrors.ts"
-import { decode, reveal } from "./internal/encoding.ts"
-import * as KeyInput from "./internal/keyInput.ts"
-import * as KeyPolicy from "./internal/keyPolicy.ts"
-import { InvalidKey } from "./JoseError.ts"
+import { decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "../internal/crypto.ts"
+import type { CryptoUnavailable, OperationError, UnsupportedAlgorithm } from "../internal/cryptoErrors.ts"
+import { decode, reveal } from "../internal/encoding.ts"
+import * as KeyInput from "../internal/keyInput.ts"
+import * as KeyPolicy from "../internal/keyPolicy.ts"
+import { InvalidKey } from "../JoseError.ts"
 
 /**
  * Schema for the supported asymmetric signing algorithms: RS256, PS256, ES256, and EdDSA.
@@ -504,7 +504,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  * **Example** (Binding a symmetric signing key)
  *
  * ```ts import.meta.vitest
- * import { Jwk } from "@effect/auth"
+ * import { Jwk } from "@effect/auth/Jose"
  * import { Effect, Redacted } from "effect"
  *
  * // Fixed public example material; generate application secrets securely.

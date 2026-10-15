@@ -1,4 +1,4 @@
-import { Jwks, Jws } from "@effect/auth"
+import { Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"

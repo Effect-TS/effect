@@ -12,10 +12,10 @@ import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { copy, decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "./internal/crypto.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import * as KeyPolicy from "./internal/keyPolicy.ts"
-import { AlgorithmNotAllowed, InvalidKey, InvalidToken, SignatureVerificationFailed } from "./JoseError.ts"
+import { copy, decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "../internal/crypto.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
+import * as KeyPolicy from "../internal/keyPolicy.ts"
+import { AlgorithmNotAllowed, InvalidKey, InvalidToken, SignatureVerificationFailed } from "../JoseError.ts"
 import {
   Algorithm,
   type PrivateJwk,
@@ -251,7 +251,7 @@ export const sign = Effect.fnUntraced(function*(
  * **Example** (Authenticating signed payload bytes)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jws } from "@effect/auth"
+ * import { Jwk, Jws } from "@effect/auth/Jose"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted } from "effect"
  *

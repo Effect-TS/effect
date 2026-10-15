@@ -6,6 +6,12 @@
  * @since 4.0.5
  */
 
+/**
+ * @stability unstable
+ * @since 4.0.5
+ */
+export * as Jose from "./Jose/index.ts"
+
 // @barrel
 
 /**
@@ -13,36 +19,6 @@
  * @since 4.0.5
  */
 export * as JoseError from "./JoseError.ts"
-
-/**
- * @stability unstable
- * @since 4.0.5
- */
-export * as Jwe from "./Jwe.ts"
-
-/**
- * @stability unstable
- * @since 4.0.5
- */
-export * as Jwk from "./Jwk.ts"
-
-/**
- * @stability unstable
- * @since 4.0.5
- */
-export * as Jwks from "./Jwks.ts"
-
-/**
- * @stability unstable
- * @since 4.0.5
- */
-export * as Jws from "./Jws.ts"
-
-/**
- * @stability unstable
- * @since 4.0.5
- */
-export * as Jwt from "./Jwt.ts"
 
 /**
  * @stability unstable
