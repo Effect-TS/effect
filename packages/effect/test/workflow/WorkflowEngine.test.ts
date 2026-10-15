@@ -947,6 +947,58 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  it.effect("layerMemory closes every suspended run scope when a finalizer dies", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/SuspendedScopeDefect/Gate")
+      const finalized: Array<number> = []
+      let runs = 0
+      const Suspends = Workflow.make("WorkflowEngine/SuspendedScopeDefect", {
+        payload: {},
+        idempotencyKey: () => "one"
+      })
+      const layer = Suspends.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          yield* Workflow.addFinalizer(() =>
+            Effect.gen(function*() {
+              finalized.push(run)
+              if (run === 2) return yield* Effect.die("finalizer defect")
+            })
+          )
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Suspends.execute({}, { discard: true })
+        let result = yield* Suspends.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Suspends.poll(executionId)
+        }
+
+        yield* Suspends.resume(executionId)
+        result = yield* Suspends.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Suspends.poll(executionId)
+        }
+        assert.strictEqual(runs, 2)
+
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Suspends, executionId })
+        yield* DurableDeferred.succeed(gate, { token, value: void 0 })
+        let exit = yield* Effect.exit(Suspends.poll(executionId))
+        while (Exit.isSuccess(exit) && (Option.isNone(exit.value) || exit.value.value._tag !== "Complete")) {
+          yield* Effect.yieldNow
+          exit = yield* Effect.exit(Suspends.poll(executionId))
+        }
+
+        assert.strictEqual(runs, 3)
+        assert(Exit.hasDies(exit))
+        assert.deepStrictEqual(finalized, [3, 2, 1])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("layerMemory hides deposited interrupts from body finalizers", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/InterruptBodyFinalizer/Gate")
