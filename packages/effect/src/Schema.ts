@@ -14264,7 +14264,8 @@ const cryptoDigestCode = (hash: { readonly name: string }) => `Digest.${hash.nam
 
 const cryptoAlgorithmCode = (family: string, algorithm: CryptoAlgorithm): string => {
   if (algorithm.modulusLength === undefined || algorithm.hash === undefined || algorithm._tag === undefined) {
-    return `${family}.${algorithm.name}`
+    const code = `${family}.${algorithm.name}`
+    return algorithm.hash === undefined ? code : `{ ...${code}, hash: ${cryptoDigestCode(algorithm.hash)} }`
   }
   const factory = algorithm._tag.charAt(0).toLowerCase() + algorithm._tag.slice(1)
   const saltLength = algorithm.saltLength === undefined ? "" : `, saltLength: ${algorithm.saltLength}`
