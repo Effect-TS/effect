@@ -66,7 +66,6 @@ describe("Duration", () => {
     deepStrictEqual(Duration.fromInputUnsafe([0, Infinity]), Duration.infinity)
     deepStrictEqual(Duration.fromInputUnsafe([0, -Infinity]), Duration.negativeInfinity)
     deepStrictEqual(Duration.fromInputUnsafe([0, NaN]), Duration.zero)
-    deepStrictEqual(Duration.fromInputUnsafe([10_368_000, 123_456_789]), Duration.nanos(10_368_000_123_456_789n))
 
     // object input
     deepStrictEqual(Duration.fromInputUnsafe({}), Duration.zero)
@@ -106,10 +105,6 @@ describe("Duration", () => {
       Duration.nanos(1n)
     )
     deepStrictEqual(
-      Duration.fromInputUnsafe({ days: 200, nanoseconds: 1 }),
-      Duration.nanos(17_280_000_000_000_001n)
-    )
-    deepStrictEqual(
       Duration.fromInputUnsafe({ days: 1, hours: 2, minutes: 30, seconds: 15 }),
       Duration.sum(
         Duration.sum(Duration.days(1), Duration.hours(2)),
@@ -133,6 +128,11 @@ describe("Duration", () => {
     const input = `${sign < 0 ? "-" : ""}1${"0".repeat(302)}1 millis` as Duration.Input
     assertTrue(Duration.isFinite(Duration.fromInputUnsafe(input)))
     deepStrictEqual([Duration.toMillis(input), Duration.toSeconds(input)], [sign * 1e303, sign * 1e300])
+  })
+
+  it("fromInputUnsafe preserves integer nanoseconds in large tuple and object inputs", () => {
+    deepStrictEqual(Duration.fromInputUnsafe([10_368_000, 123_456_789]), Duration.nanos(10_368_000_123_456_789n))
+    deepStrictEqual(Duration.fromInputUnsafe({ days: 200, nanoseconds: 1 }), Duration.nanos(17_280_000_000_000_001n))
   })
 
   it("fromInputUnsafe normalizes infinite nanosecond totals", () => {
