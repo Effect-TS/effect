@@ -19,6 +19,24 @@ const UserGroup = EventGroup.empty.add({
 
 const schema = EventLog.schema(UserGroup)
 
+const CurrentUserGroup = EventGroup.empty.add({
+  tag: "UserCreated",
+  primaryKey: (payload) => payload.id,
+  payload: Schema.Struct({ id: Schema.String, name: Schema.String })
+})
+
+const makeCompactionEntry = Effect.fnUntraced(function*(payload: { readonly id: string; readonly name?: string }) {
+  const payloadSchema = payload.name === undefined
+    ? UserGroup.events.UserCreated.payloadSchemaBinary
+    : CurrentUserGroup.events.UserCreated.payloadSchemaBinary
+  return new EventJournal.Entry({
+    id: EventJournal.makeEntryIdUnsafe(),
+    event: "UserCreated",
+    primaryKey: payload.id,
+    payload: yield* Schema.encodeUnknownEffect(payloadSchema)(payload)
+  }, { disableChecks: true })
+})
+
 const handlerLayer = (handled: Ref.Ref<ReadonlyArray<string>>) =>
   EventLog.group(
     UserGroup,
@@ -42,6 +60,80 @@ const logLayer = (
   )
 
 describe("EventLog", () => {
+  it.effect("compacts valid events while preserving undecodable entries unchanged", () =>
+    Effect.gen(function*() {
+      const first = yield* makeCompactionEntry({ id: "user-1", name: "before" })
+      const opaque = yield* makeCompactionEntry({ id: "user-1" })
+      const last = yield* makeCompactionEntry({ id: "user-1", name: "after" })
+      const seen = yield* Ref.make<ReadonlyArray<unknown>>([])
+      const compaction = EventLog.groupCompaction(CurrentUserGroup, ({ events, write }) =>
+        Ref.update(seen, (values) => [...values, events]).pipe(
+          Effect.andThen(write("UserCreated", events[events.length - 1].payload))
+        ))
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const compactor = registry.compactors.get("UserCreated")!
+        const output: Array<EventJournal.Entry> = []
+        yield* compactor.effect({
+          entries: [first, opaque, last],
+          write: (entry) =>
+            Effect.sync(() => {
+              output.push(entry)
+            })
+        })
+
+        assert.deepStrictEqual(yield* Ref.get(seen), [[
+          { _tag: "UserCreated", payload: { id: "user-1", name: "before" } },
+          { _tag: "UserCreated", payload: { id: "user-1", name: "after" } }
+        ]])
+        assert.strictEqual(output.length, 2)
+        const preserved = output.find((entry) =>
+          entry.idString === opaque.idString
+        )
+        assert.strictEqual(preserved, opaque)
+        assert.deepStrictEqual(preserved?.payload, opaque.payload)
+        const replacement = output.find((entry) => entry !== opaque)!
+        assert.strictEqual(replacement.event, "UserCreated")
+        assert.strictEqual(replacement.primaryKey, "user-1")
+        assert.deepStrictEqual(
+          yield* Schema.decodeUnknownEffect(CurrentUserGroup.events.UserCreated.payloadSchemaBinary)(
+            replacement.payload
+          ),
+          { id: "user-1", name: "after" }
+        )
+      }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+    }))
+
+  it.effect("preserves all undecodable entries without invoking the group compactor", () =>
+    Effect.gen(function*() {
+      const entries = [
+        yield* makeCompactionEntry({ id: "user-1" }),
+        yield* makeCompactionEntry({ id: "user-2" })
+      ]
+      const calls = yield* Ref.make(0)
+      const compaction = EventLog.groupCompaction(CurrentUserGroup, () => Ref.update(calls, (count) => count + 1))
+
+      yield* Effect.gen(function*() {
+        const registry = yield* EventLog.Registry
+        const output: Array<EventJournal.Entry> = []
+        yield* registry.compactors.get("UserCreated")!.effect({
+          entries,
+          write: (entry) =>
+            Effect.sync(() => {
+              output.push(entry)
+            })
+        })
+
+        assert.strictEqual(yield* Ref.get(calls), 0)
+        assert.strictEqual(output.length, entries.length)
+        for (let i = 0; i < entries.length; i++) {
+          assert.strictEqual(output[i], entries[i])
+          assert.deepStrictEqual(output[i].payload, entries[i].payload)
+        }
+      }).pipe(Effect.provide(compaction.pipe(Layer.provideMerge(EventLog.layerRegistry))))
+    }))
+
   it.effect("writes a typed event, commits the entry, and runs its handler", () =>
     Effect.gen(function*() {
       const handled = yield* Ref.make<ReadonlyArray<string>>([])
