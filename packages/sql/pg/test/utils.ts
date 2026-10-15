@@ -66,24 +66,30 @@ const instrumentClient = <A, E, R>(
     inner.pipe(Layer.tap(() => Effect.addFinalizer(() => marker(containerId, `${name} disposal start`))))
   )
 
+// Shared with the regression tests so they exercise the real container finalizer.
+export const releasePgContainer = (container: {
+  getId(): string
+  stop(options: { remove: boolean }): Promise<unknown>
+}) =>
+  Effect.promise(async () => {
+    const id = container.getId()
+    lifecycleLog(id, "container-release", "start", 0)
+    await lifecycle(id, "stop", () => container.stop({ remove: false }))
+    const client = await lifecycle(id, "runtime-client", () => getContainerRuntimeClient())
+    const handle = client.container.getById(container.getId())
+    // Stop can return before the daemon processes the exit event; wait before removing.
+    await lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running" }))
+    await lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true }))
+    lifecycleLog(id, "container-release", "done", 0)
+  })
+
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
       try: () => lifecycle("new", "container-start", () => new PostgreSqlContainer("postgres:alpine").start()),
       catch: (cause) => new ContainerError({ cause })
     }).pipe(Effect.tap((container) => marker(container.getId(), "container-started"))),
-    (container) =>
-      Effect.promise(async () => {
-        const id = container.getId()
-        lifecycleLog(id, "container-release", "start", 0)
-        await lifecycle(id, "stop", () => container.stop({ remove: false }))
-        const client = await lifecycle(id, "runtime-client", () => getContainerRuntimeClient())
-        const handle = client.container.getById(container.getId())
-        // Stop can return before the daemon processes the exit event; wait before removing.
-        await lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running" }))
-        await lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true }))
-        lifecycleLog(id, "container-release", "done", 0)
-      })
+    releasePgContainer
   )
 }) {
   static readonly layer = Layer.effect(this)(this.make)
