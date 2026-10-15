@@ -16828,9 +16828,13 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
  * - A required field that is not an array or a record (a nil pointer to a Go
  *   struct, for example) still fails on `null`. Make it optional if the API
  *   can omit it.
- * - Only `null` handling is covered. Other Go conventions, such as `[]byte`
- *   as base64 or `int64` values beyond `Number.MAX_SAFE_INTEGER`, need the
- *   matching field schema.
+ * - Only the `null` rules are covered, because they are the part of Go's v1
+ *   output that does not depend on field types and is missing from API
+ *   documents. Field formats depend on the Go type behind each field (a
+ *   `time.Duration` is integer nanoseconds unless the type has its own
+ *   `MarshalJSON`, `[]byte` is base64, `,string` writes numbers as strings),
+ *   so they belong in the field schemas, usually generated from the API
+ *   document.
  * - Go's `encoding/json/v2` writes nil slices and maps as `[]` and `{}`, but
  *   still writes nil pointers as `null`.
  *
