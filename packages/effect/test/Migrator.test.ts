@@ -116,14 +116,17 @@ describe("Migrator", () => {
           "select E'a\\';b'; select 'c\\'; select $1;\n" +
           "create function f() returns int as $$ select 1; $$ language sql;\n" +
           "create function g() returns int as $body$ select 2; $body$ language sql;\n" +
-          "/* outer /* inner; */ -- */ create table t (id int);",
+          "/* outer /* inner; */ -- */ create table t (id int);\n" +
+          "-- header\rcreate table u (id int);\nselect $é$a;b$é$;",
           [
             "select E'a\\';b'",
             "select 'c\\'",
             "select $1",
             "create function f() returns int as $$ select 1; $$ language sql",
             "create function g() returns int as $body$ select 2; $body$ language sql",
-            "/* outer /* inner; */ -- */ create table t (id int)"
+            "/* outer /* inner; */ -- */ create table t (id int)",
+            "-- header\rcreate table u (id int)",
+            "select $é$a;b$é$"
           ]
         ],
         [
@@ -133,12 +136,14 @@ describe("Migrator", () => {
         ],
         [
           "clickhouse",
-          "/* outer /* inner; */ -- */ select 1;\n// skipped;\nselect 2;\n# skipped;\n#!shebang;\nselect 3 #x; select 4",
+          "/* outer /* inner; */ -- */ select 1;\n// skipped;\nselect 2;\n# skipped;\n#!shebang;\nselect 3 #x; select 4;\n" +
+          "select 5 as `a\\`;b`",
           [
             "/* outer /* inner; */ -- */ select 1",
             "// skipped;\nselect 2",
             "# skipped;\n#!shebang;\nselect 3 #x",
-            "select 4"
+            "select 4",
+            "select 5 as `a\\`;b`"
           ]
         ],
         [
