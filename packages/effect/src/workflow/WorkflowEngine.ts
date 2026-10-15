@@ -278,6 +278,9 @@ export class WorkflowInstance extends Context.Service<
      */
     abandoned: boolean
 
+    // Memory replays retain the scope, but rebuild compensation registrations.
+    replayed?: boolean
+
     /**
      * When SuspendOnFailure is triggered, the cause of the failure is stored
      * here.
@@ -325,6 +328,7 @@ export class WorkflowInstance extends Context.Service<
       suspended: false,
       interrupted: false,
       abandoned: false,
+      replayed: false,
       cause: undefined,
       failed: false,
       awaitedDeferreds: options?.awaitedDeferreds ?? new Map(),
@@ -784,6 +788,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       }
 
       const entry = workflows.get(state.instance.workflow._tag)!
+      state.instance.replayed = true
       const instance = WorkflowInstance.initial(
         state.instance.workflow,
         state.instance.executionId,

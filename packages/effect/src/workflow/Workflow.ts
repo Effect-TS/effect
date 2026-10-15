@@ -976,7 +976,11 @@ export const withCompensation: {
   Effect.uninterruptibleMask((restore) =>
     Effect.tap(
       restore(effect),
-      (value) => addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause))
+      (value) =>
+        Effect.flatMap(InstanceTag, (instance) =>
+          addFinalizer((exit) =>
+            instance.replayed || Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause)
+          ))
     )
   ))
 
