@@ -498,7 +498,8 @@ const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
     const next = source[i + 1]
     if (
       (char === "-" && next === "-" && (dialect !== "mysql" || isSpaceOrControl(source, i + 2))) ||
-      (char === "#" && dialect === "mysql")
+      (char === "#" && (dialect === "mysql" || (dialect === "clickhouse" && (next === " " || next === "!")))) ||
+      (char === "/" && next === "/" && dialect === "clickhouse")
     ) {
       i = skipPast(source, i, "\n")
     } else if (char === "/" && next === "*") {
