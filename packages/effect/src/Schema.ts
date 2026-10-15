@@ -14388,7 +14388,10 @@ const cryptoKeyFromFormat = <To extends Codec<any>, R extends KeyFormat_.Role, D
   return cryptoFormatData(format).pipe(decodeTo(
     to,
     SchemaTransformation.transformEffect<To["Type"], Data>({
-      decode: (data, options) => Effect.mapError(decode(data), (error) => cryptoIssue(error, data, options)),
+      decode: (data, options) =>
+        // Secret JWK decoding is synchronous, but all format schemas are async-only.
+        Effect.flatMap(Effect.promise(() => Promise.resolve()), () =>
+          Effect.mapError(decode(data), (error) => cryptoIssue(error, data, options))),
       encode: (key, options) =>
         writable
           ? Effect.mapError(
