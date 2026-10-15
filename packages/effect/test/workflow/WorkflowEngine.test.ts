@@ -956,6 +956,54 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  for (const lastStep of [true, false]) {
+    it.effect(
+      `layerMemory applies safe interruption during ${
+        lastStep ? "the last activity" : "an activity before another step"
+      } only on suspension`,
+      () =>
+        Effect.gen(function*() {
+          const started = yield* Latch.make()
+          const release = yield* Latch.make()
+          const events: Array<string> = []
+          const Running = Workflow.make(`WorkflowEngine/InterruptRunningActivity/${lastStep}`, {
+            payload: {},
+            success: Schema.String,
+            idempotencyKey: () => "one"
+          })
+          const layer = Running.toLayer(Effect.fnUntraced(function*() {
+            yield* Activity.make({
+              name: "running",
+              execute: started.open.pipe(Effect.andThen(release.await))
+            }).pipe(Running.withCompensation(() => Effect.sync(() => events.push("compensated"))))
+            if (!lastStep) {
+              yield* Activity.make({ name: "next", execute: Effect.sync(() => events.push("next")) })
+            }
+            return "done"
+          })).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+          yield* Effect.gen(function*() {
+            const executionId = yield* Running.execute({}, { discard: true })
+            yield* started.await
+            yield* Running.interrupt(executionId)
+            yield* release.open
+            let result = yield* Running.poll(executionId)
+            while (Option.isNone(result) || result.value._tag !== "Complete") {
+              yield* Effect.yieldNow
+              result = yield* Running.poll(executionId)
+            }
+
+            // Safe interruption takes effect at the next suspension, not at normal completion.
+            assert.deepStrictEqual(
+              { interrupted: Exit.hasInterrupts(result.value.exit), events },
+              lastStep ? { interrupted: false, events: [] } : { interrupted: true, events: ["compensated"] }
+            )
+            if (lastStep) assert.deepStrictEqual(result.value.exit, Exit.succeed("done"))
+          }).pipe(Effect.provide(layer))
+        })
+    )
+  }
+
   it.effect("layerMemory preserves interruptUnsafe across a suspended replay", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/InterruptUnsafeReplay/Gate")
