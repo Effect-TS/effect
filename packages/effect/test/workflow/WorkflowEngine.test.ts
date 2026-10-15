@@ -961,6 +961,145 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(events, ["do B", "do A", "undo A run 2", "undo B run 1"])
     }))
 
+  it.effect("layerMemory retains distinct compensations for concurrent steps sharing an activity", () =>
+    Effect.gen(function*() {
+      const prepared = yield* Latch.make()
+      const rebuilt = yield* Latch.make()
+      const holdB = yield* Latch.make()
+      const gate = DurableDeferred.make("WorkflowEngine/SharedActivityCompensationReplay/Gate")
+      const events: Array<string> = []
+      let runs = 0
+      const Order = Workflow.make("WorkflowEngine/SharedActivityCompensationReplay", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const shared = Activity.make({
+        name: "shared",
+        success: Schema.String,
+        execute: Effect.sync(() => {
+          events.push("do shared")
+          return "shared"
+        })
+      })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          // Both steps run the same durable activity but are different steps.
+          const step = (name: string) =>
+            shared.pipe(
+              Effect.as(name),
+              Order.withCompensation((value) => Effect.sync(() => events.push(`undo ${value} run ${run}`)))
+            )
+          yield* Effect.all([
+            Effect.gen(function*() {
+              yield* Activity.make({ name: "prepare A", execute: prepared.await })
+              yield* step("A")
+              if (run > 1) yield* rebuilt.open
+            }),
+            Effect.gen(function*() {
+              if (run > 1) yield* holdB.await
+              yield* step("B")
+              yield* prepared.open
+            })
+          ], { concurrency: "unbounded" })
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      const scope = yield* Scope.make()
+      const context = yield* Scope.provide(Layer.build(layer), scope)
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
+        let result = yield* Order.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Order.poll(executionId)
+        }
+        assert.deepStrictEqual(events, ["do shared"])
+        yield* Order.resume(executionId)
+        yield* rebuilt.await
+      }).pipe(Effect.provideContext(context))
+
+      yield* Scope.close(scope, Exit.void)
+      assert.deepStrictEqual(events, ["do shared", "undo A run 2", "undo B run 1"])
+    }))
+
+  it.effect("layerMemory replays nested compensations while another step is unreached", () =>
+    Effect.gen(function*() {
+      const prepared = yield* Latch.make()
+      const rebuilt = yield* Latch.make()
+      const holdB = yield* Latch.make()
+      const gate = DurableDeferred.make("WorkflowEngine/NestedCompensationReplay/Gate")
+      const events: Array<string> = []
+      let runs = 0
+      const Order = Workflow.make("WorkflowEngine/NestedCompensationReplay", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const activity = (name: string) =>
+        Activity.make({
+          name,
+          success: Schema.String,
+          execute: Effect.sync(() => {
+            events.push(`do ${name}`)
+            return name
+          })
+        })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          const undo = (label: string) =>
+            Order.withCompensation((value: string) =>
+              Effect.sync(() => events.push(`undo ${label} ${value} run ${run}`))
+            )
+          yield* Effect.all([
+            Effect.gen(function*() {
+              yield* Activity.make({ name: "prepare outer", execute: prepared.await })
+              // The outer step runs no activity of its own, so it is identified
+              // only by the activities of the inner step.
+              yield* Effect.all([activity("A1"), activity("A2")]).pipe(
+                Effect.map((values) => values.join("+")),
+                undo("inner"),
+                Effect.map((value) => `(${value})`),
+                undo("outer")
+              )
+              if (run > 1) yield* rebuilt.open
+            }),
+            Effect.gen(function*() {
+              if (run > 1) yield* holdB.await
+              yield* activity("B").pipe(undo("B"))
+              yield* prepared.open
+            })
+          ], { concurrency: "unbounded" })
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+      const scope = yield* Scope.make()
+      const context = yield* Scope.provide(Layer.build(layer), scope)
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
+        let result = yield* Order.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Order.poll(executionId)
+        }
+        assert.deepStrictEqual(events, ["do B", "do A1", "do A2"])
+        yield* Order.resume(executionId)
+        yield* rebuilt.await
+      }).pipe(Effect.provideContext(context))
+
+      yield* Scope.close(scope, Exit.void)
+      assert.deepStrictEqual(events, [
+        "do B",
+        "do A1",
+        "do A2",
+        "undo outer (A1+A2) run 2",
+        "undo inner A1+A2 run 2",
+        "undo B B run 1"
+      ])
+    }))
+
   it.effect("layerMemory compensates a completed activity only once after replay", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/CompensationReplay/Gate", { error: Schema.String })
