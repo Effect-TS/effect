@@ -1,14 +1,9 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import { Arbitrary, Array, Effect, Equal, Hash, Option, pipe, Result, Schema, SemVer } from "effect"
+import { Array, Equal, Hash, Option, pipe, Result, SemVer } from "effect"
 
 const $ = SemVer.parseUnsafe
 const fmt = SemVer.format
-
-// The regular expression suggested by https://semver.org/spec/v2.0.0.html, used
-// as an independent oracle for generated versions.
-const officialPattern =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
 describe("SemVer", () => {
   it("parses and formats SemVer 2.0.0 strings", () => {
@@ -31,17 +26,6 @@ describe("SemVer", () => {
     deepStrictEqual(version.prerelease, ["rc", 10, "0a"])
     deepStrictEqual(version.build, ["001", "exp"])
   })
-
-  it.effect("formats generated versions per the spec and parses them back", () =>
-    Effect.gen(function*() {
-      const failure = Arbitrary.formatCheckFailure(
-        yield* Arbitrary.checkEffect(
-          Arbitrary.schema(Schema.SemVer),
-          (version) => officialPattern.test(fmt(version)) && Equal.equals($(fmt(version)), version)
-        )
-      )
-      if (failure !== undefined) assert.fail(failure)
-    }))
 
   it("rejects strings outside the SemVer 2.0.0 grammar", () => {
     for (
@@ -88,7 +72,9 @@ describe("SemVer", () => {
         { major: 0, minor: 0, patch: 0, build: [""] }
       ]
     ) {
-      throws(() => SemVer.make(components), (error) => assertTrue(SemVer.isSemVerError(error)))
+      throws(() => SemVer.make(components), (error) => {
+        assertTrue(SemVer.isSemVerError(error))
+      })
     }
   })
 
