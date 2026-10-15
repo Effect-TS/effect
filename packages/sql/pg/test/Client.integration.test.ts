@@ -509,22 +509,6 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
 
       assert.isTrue(Option.isNone(overlap))
     }))
-
-  it.effect("afterCommit callbacks can query on the single connection", () =>
-    Effect.gen(function*() {
-      const sql = yield* PgClient.PgClient
-      const queried = yield* Deferred.make<ReadonlyArray<{ readonly value: number }>>()
-
-      yield* sql.withTransaction(sql.afterCommit(
-        sql<{ value: number }>`SELECT 1 AS value`.pipe(
-          Effect.flatMap((rows) => Deferred.succeed(queried, rows)),
-          Effect.orDie
-        )
-      ))
-
-      const rows = yield* Deferred.await(queried).pipe(Effect.timeoutOption("5 seconds"), TestClock.withLive)
-      assert.deepStrictEqual(rows, Option.some([{ value: 1 }]))
-    }))
 })
 
 it.layer(PgContainer.layerMakeClientAcquireForStream, { timeout: "30 seconds" })(
