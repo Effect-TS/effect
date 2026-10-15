@@ -181,10 +181,11 @@ const makeStorageBackedWithTransaction = (
         })
       })
       return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
-    })
-  ).pipe(
-    // The storage transaction closes the input gate, blocking dispatcher tasks until it completes.
-    Effect.provideService(Scheduler.PreventSchedulerYield, true)
+    }).pipe(
+      // The storage transaction closes the input gate, blocking dispatcher tasks until it completes.
+      // Provided inside `afterCommit` so callbacks run with the caller's scheduling.
+      Effect.provideService(Scheduler.PreventSchedulerYield, true)
+    )
   )
 
 /**
