@@ -185,7 +185,11 @@ const liveSleep = (millis: number) =>
 const liveTimeout = (millis: number) => <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.raceFirst(effect, liveSleep(millis).pipe(Effect.andThen(Effect.die(new Error("timed out")))))
 
-const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: ChildProcess.CommandOptions) =>
+const startProcessGroup = (
+  mode: "exit-on-signal" | "ignore-signal",
+  options?: ChildProcess.CommandOptions,
+  delays: { readonly leader: number; readonly descendant: number } = { leader: 0, descendant: 200 }
+) =>
   Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
     const directory = yield* fs.makeTempDirectoryScoped()
@@ -193,7 +197,7 @@ const startProcessGroup = (mode: "exit-on-signal" | "ignore-signal", options?: C
     const scope = yield* Scope.fork(yield* Effect.scope)
     const handle = yield* Scope.provide(scope)(ChildProcess.make(
       process.execPath,
-      [processGroupFixture, "leader", mode, marker],
+      [processGroupFixture, "leader", mode, marker, String(delays.leader), String(delays.descendant)],
       { stdin: "ignore", ...options }
     ))
     const ready = yield* Deferred.make<number>()
@@ -292,6 +296,23 @@ describe.skipIf(process.platform === "win32")("process group cleanup", () => {
       assert.isFalse(yield* handle.isRunning)
       assert.isTrue(yield* fs.exists(marker))
     }).pipe(Effect.scoped, Effect.provide(NodeServices)))
+
+  it.live("scope release drains descendants after a slow leader exits", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const { descendantPid, handle, marker, scope } = yield* startProcessGroup("exit-on-signal", undefined, {
+        leader: 1_500,
+        descendant: 2_000
+      })
+      yield* Effect.addFinalizer(() => killDescendant(descendantPid))
+
+      const releaseMillis = yield* timed(Scope.close(scope, Exit.void))
+
+      assert.isAtLeast(releaseMillis, 1_500)
+      assert.isFalse(yield* handle.isRunning)
+      assert.isTrue(yield* fs.exists(marker), "scope release must wait for the descendant's exit marker")
+      assert.strictEqual(yield* fs.readFileString(marker), "exited")
+    }).pipe(Effect.provide(NodeServices)))
 
   it.live("scope release force kills descendants that ignore the kill signal", () =>
     Effect.gen(function*() {
