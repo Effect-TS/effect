@@ -2,8 +2,8 @@
  * The WebCrypto `Crypto` object that the `effect/crypto` modules run on.
  *
  * The `layerWebCrypto` layers of the family modules, such as
- * `Digest.layerWebCrypto`, and the top-level functions that touch
- * `crypto.subtle`, such as `Digest.digest`, read the {@link WebCrypto}
+ * `Digest.layerWebCrypto`, and key functions that touch
+ * `crypto.subtle`, such as `Mac.toBytes`, read the {@link WebCrypto}
  * reference. It defaults to `globalThis.crypto`. Provide {@link layer} to run
  * them on a polyfill, a worker's object, or a test double.
  *
@@ -48,7 +48,10 @@ export const WebCrypto: Context.Reference<Crypto> = Context.Reference<Crypto>("e
  * import { Effect } from "effect"
  * import { Digest, WebCrypto } from "effect/crypto"
  *
- * const program = Digest.digestHex(Digest.sha256, new TextEncoder().encode("abc"))
+ * const program = Effect.gen(function*() {
+ *   const digest = yield* Digest.Digest
+ *   return yield* digest.digestHex(Digest.sha256, new TextEncoder().encode("abc"))
+ * }).pipe(Effect.provide(Digest.layerWebCrypto))
  *
  * const hex = await Effect.runPromise(program.pipe(Effect.provide(WebCrypto.layer(globalThis.crypto))))
  * hex.length // => 64

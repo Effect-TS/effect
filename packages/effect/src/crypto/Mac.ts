@@ -304,20 +304,27 @@ export const toBytes = (key: Key): Effect.Effect<Uint8Array, CryptoError.CryptoE
  *
  * **Gotchas**
  *
- * Arrays of different lengths die, because the length of a secret is usually
- * not secret and comparing different lengths is a bug.
+ * Arrays of different lengths return `false` immediately, revealing their
+ * lengths. Equal-length arrays are compared with an XOR-accumulate loop;
+ * JavaScript runtimes do not guarantee constant-time execution.
+ *
+ * **Example** (Comparing fixed-length secrets)
+ *
+ * ```ts import.meta.vitest
+ * import { Mac } from "effect/crypto"
+ *
+ * const expected = new Uint8Array([1, 2, 3])
+ * const received = new Uint8Array([1, 2, 3])
+ * Mac.timingSafeEqual(expected, received) // => true
+ * ```
  *
  * @stability unstable
  * @category utils
  * @since 4.0.0
  */
-export const timingSafeEqual = (a: Uint8Array, b: Uint8Array): Effect.Effect<boolean> =>
-  Effect.suspend(() => {
-    if (a.length !== b.length) {
-      return Effect.die(new Error(`Mac.timingSafeEqual: cannot compare ${a.length} bytes with ${b.length} bytes`))
-    }
-    // Accumulate every difference so the comparison takes constant time.
-    let difference = 0
-    for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
-    return Effect.succeed(difference === 0)
-  })
+export const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
+  if (a.length !== b.length) return false
+  let difference = 0
+  for (let i = 0; i < a.length; i++) difference |= a[i] ^ b[i]
+  return difference === 0
+}

@@ -1,5 +1,8 @@
 import * as Digest from "../../crypto/Digest.ts"
+import { webCryptoDigest } from "../../crypto/internal/digest.ts"
+import { WebCrypto } from "../../crypto/WebCrypto.ts"
 import * as Effect from "../../Effect.ts"
+import * as Hex from "../../encoding/Hex.ts"
 
 const encoder = new TextEncoder()
 
@@ -10,4 +13,9 @@ const encoder = new TextEncoder()
  * @internal
  */
 export const makeHashDigest = (original: string): Effect.Effect<string> =>
-  Effect.map(Digest.digestHex(Digest.sha256, encoder.encode(original)), (hex) => hex.slice(0, 32))
+  WebCrypto.use((crypto) =>
+    Effect.map(
+      webCryptoDigest(crypto, Digest.sha256, encoder.encode(original)),
+      (bytes) => Hex.encode(bytes).slice(0, 32)
+    )
+  )
