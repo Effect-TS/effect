@@ -471,8 +471,14 @@ export const make = Effect.fnUntraced(function*<
 
   // update metrics for active servers
   const gauge = ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type))
+  const mailboxMaxGauge = ClusterMetrics.entityMailboxMax.pipe(Metric.tagged("type", entity.type))
   yield* Effect.sync(() => {
     gauge.unsafeUpdate(BigInt(activeServers.size), [])
+    let mailboxMax = 0
+    for (const server of activeServers.values()) {
+      mailboxMax = Math.max(mailboxMax, server.activeRequests.size)
+    }
+    mailboxMaxGauge.unsafeUpdate(BigInt(mailboxMax), [])
   }).pipe(
     Effect.andThen(Effect.sleep(1000)),
     Effect.forever,
