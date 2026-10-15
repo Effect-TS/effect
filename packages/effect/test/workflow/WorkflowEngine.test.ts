@@ -8,7 +8,6 @@ import {
   Fiber,
   Latch,
   Layer,
-  Logger,
   Option,
   Ref,
   Schedule,
@@ -962,190 +961,7 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(events, ["do B", "do A", "undo A run 2", "undo B run 1"])
     }))
 
-  it.effect("layerMemory retains named compensations for concurrent steps sharing an activity", () =>
-    Effect.gen(function*() {
-      const prepared = yield* Latch.make()
-      const rebuilt = yield* Latch.make()
-      const holdB = yield* Latch.make()
-      const gate = DurableDeferred.make("WorkflowEngine/SharedActivityCompensationReplay/Gate")
-      const events: Array<string> = []
-      let runs = 0
-      const Order = Workflow.make("WorkflowEngine/SharedActivityCompensationReplay", {
-        payload: { id: Schema.String },
-        idempotencyKey: ({ id }) => id
-      })
-      const shared = Activity.make({
-        name: "shared",
-        success: Schema.String,
-        execute: Effect.sync(() => {
-          events.push("do shared")
-          return "shared"
-        })
-      })
-      const layer = Order.toLayer(() =>
-        Effect.gen(function*() {
-          const run = ++runs
-          // Both steps run the same durable activity, so only their names
-          // tell them apart.
-          const step = (name: string) =>
-            shared.pipe(
-              Effect.as(name),
-              Order.withCompensation((value) => Effect.sync(() => events.push(`undo ${value} run ${run}`)), {
-                name: `step ${name}`
-              })
-            )
-          yield* Effect.all([
-            Effect.gen(function*() {
-              yield* Activity.make({ name: "prepare A", execute: prepared.await })
-              yield* step("A")
-              if (run > 1) yield* rebuilt.open
-            }),
-            Effect.gen(function*() {
-              if (run > 1) yield* holdB.await
-              yield* step("B")
-              yield* prepared.open
-            })
-          ], { concurrency: "unbounded" })
-          yield* DurableDeferred.await(gate)
-        })
-      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
-      const scope = yield* Scope.make()
-      const context = yield* Scope.provide(Layer.build(layer), scope)
-
-      yield* Effect.gen(function*() {
-        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
-        let result = yield* Order.poll(executionId)
-        while (Option.isNone(result) || result.value._tag !== "Suspended") {
-          yield* Effect.yieldNow
-          result = yield* Order.poll(executionId)
-        }
-        assert.deepStrictEqual(events, ["do shared"])
-        yield* Order.resume(executionId)
-        yield* rebuilt.await
-      }).pipe(Effect.provideContext(context))
-
-      yield* Scope.close(scope, Exit.void)
-      assert.deepStrictEqual(events, ["do shared", "undo A run 2", "undo B run 1"])
-    }))
-
-  it.effect("layerMemory warns when unnamed compensations share durable operations", () =>
-    Effect.gen(function*() {
-      const warnings: Array<string> = []
-      const logger = Logger.make<unknown, void>((options) => {
-        if (options.logLevel === "Warn") warnings.push(String(options.message))
-      })
-      const Order = Workflow.make("WorkflowEngine/UnnamedCompensationCollision", {
-        payload: { id: Schema.String },
-        idempotencyKey: ({ id }) => id
-      })
-      const shared = Activity.make({ name: "shared", success: Schema.String, execute: Effect.succeed("shared") })
-      const layer = Order.toLayer(() =>
-        Effect.gen(function*() {
-          yield* shared.pipe(Effect.as("A"), Order.withCompensation(() => Effect.void))
-          yield* shared.pipe(Effect.as("B"), Order.withCompensation(() => Effect.void))
-          // A named step is never ambiguous, even over the same activity.
-          yield* shared.pipe(Effect.as("C"), Order.withCompensation(() => Effect.void, { name: "C" }))
-        })
-      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
-
-      yield* Order.execute({ id: "one" }).pipe(
-        Effect.provide(layer),
-        Effect.provide(Logger.layer([logger]))
-      )
-
-      assert.strictEqual(warnings.length, 1)
-      assert.include(warnings[0], "shared")
-      assert.include(warnings[0], "name")
-    }))
-
-  it.effect("layerMemory rejects concurrent compensations with the same name", () =>
-    Effect.gen(function*() {
-      const bothEntered = yield* Latch.make()
-      let entered = 0
-      const Order = Workflow.make("WorkflowEngine/DuplicateCompensationName", {
-        payload: { id: Schema.String },
-        idempotencyKey: ({ id }) => id
-      })
-      // Both bodies start before either succeeds, so only the check on
-      // registration can catch the duplicate.
-      const step = Effect.gen(function*() {
-        if (++entered === 2) yield* bothEntered.open
-        yield* bothEntered.await
-      }).pipe(Order.withCompensation(() => Effect.void, { name: "charge" }))
-      const layer = Order.toLayer(() => Effect.all([step, step], { concurrency: "unbounded", discard: true })).pipe(
-        Layer.provideMerge(WorkflowEngine.layerMemory)
-      )
-
-      const exit = yield* Order.execute({ id: "one" }).pipe(Effect.provide(layer), Effect.exit)
-
-      assert.strictEqual(entered, 2)
-      assert(Exit.isFailure(exit))
-      assert(Cause.hasDies(exit.cause))
-      assert.include(String(Cause.squash(exit.cause)), "\"charge\" is used by more than one step")
-    }))
-
-  it.effect("layerMemory replays a named compensation inside an unnamed one", () =>
-    Effect.gen(function*() {
-      const warnings: Array<string> = []
-      const logger = Logger.make<unknown, void>((options) => {
-        if (options.logLevel === "Warn") warnings.push(String(options.message))
-      })
-      const gate = DurableDeferred.make("WorkflowEngine/NamedInUnnamedCompensation/Gate", { error: Schema.String })
-      const events: Array<string> = []
-      let runs = 0
-      const Order = Workflow.make("WorkflowEngine/NamedInUnnamedCompensation", {
-        payload: { id: Schema.String },
-        error: Schema.String,
-        idempotencyKey: ({ id }) => id
-      })
-      const charge = Activity.make({
-        name: "charge",
-        success: Schema.String,
-        execute: Effect.sync(() => {
-          events.push("charge")
-          return "ch_1"
-        })
-      })
-      const layer = Order.toLayer(() =>
-        Effect.gen(function*() {
-          const run = ++runs
-          // The outer step runs no durable operation of its own, so its identity
-          // comes only from the named inner step.
-          yield* charge.pipe(
-            Order.withCompensation((id) => Effect.sync(() => events.push(`undo inner ${id} run ${run}`)), {
-              name: "charge"
-            }),
-            Effect.map((id) => `order(${id})`),
-            Order.withCompensation((value) => Effect.sync(() => events.push(`undo outer ${value} run ${run}`)))
-          )
-          yield* DurableDeferred.await(gate)
-        })
-      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
-
-      yield* Effect.gen(function*() {
-        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
-        const awaitStatus = (tag: "Suspended" | "Complete") =>
-          Effect.gen(function*() {
-            let result = yield* Order.poll(executionId)
-            while (Option.isNone(result) || result.value._tag !== tag) {
-              yield* Effect.yieldNow
-              result = yield* Order.poll(executionId)
-            }
-          })
-        yield* awaitStatus("Suspended")
-        yield* Order.resume(executionId)
-        yield* awaitStatus("Suspended")
-        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Order, executionId })
-        yield* DurableDeferred.fail(gate, { token, error: "rejected" })
-        yield* awaitStatus("Complete")
-      }).pipe(Effect.provide(layer), Effect.provide(Logger.layer([logger])))
-
-      assert.strictEqual(runs, 3)
-      assert.deepStrictEqual(events, ["charge", "undo outer order(ch_1) run 3", "undo inner ch_1 run 3"])
-      assert.deepStrictEqual(warnings, [])
-    }))
-
-  it.effect("layerMemory runs a named compensation registered while the workflow scope closes", () =>
+  it.effect("layerMemory runs a compensation registered while the workflow scope closes", () =>
     Effect.gen(function*() {
       const events: Array<string> = []
       const Order = Workflow.make("WorkflowEngine/CompensationDuringClose", {
@@ -1156,14 +972,12 @@ describe("WorkflowEngine", () => {
       const layer = Order.toLayer(() =>
         Effect.gen(function*() {
           // Runs while the workflow scope is closing, so the compensation is
-          // registered on a closed scope and must run straight away.
+          // registered on a closed scope and must run straight away. The
+          // activity gives the step a replay identity.
           yield* Workflow.addFinalizer(() =>
-            Effect.void.pipe(
-              Workflow.withCompensation(
-                (_, cause) => Effect.sync(() => events.push(`compensate ${Cause.squash(cause)}`)),
-                {
-                  name: "late"
-                }
+            Activity.make({ name: "late", execute: Effect.sync(() => events.push("late")) }).pipe(
+              Workflow.withCompensation((_, cause) =>
+                Effect.sync(() => events.push(`compensate ${Cause.squash(cause)}`))
               ),
               Effect.andThen(Effect.sync(() => events.push("finalizer done")))
             )
@@ -1179,7 +993,7 @@ describe("WorkflowEngine", () => {
       const reason = exit.cause.reasons[0]
       assert(Cause.isFailReason(reason))
       assert.strictEqual(reason.error, "rejected")
-      assert.deepStrictEqual(events, ["compensate rejected", "finalizer done"])
+      assert.deepStrictEqual(events, ["late", "compensate rejected", "finalizer done"])
     }))
 
   it.effect("layerMemory replays nested compensations while another step is unreached", () =>
