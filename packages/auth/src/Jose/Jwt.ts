@@ -2,7 +2,7 @@
  * Schema-based compact JSON Web Tokens with signature authentication and registered-claim validation.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
@@ -20,7 +20,7 @@ import * as Jws from "./Jws.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const RegisteredClaims = Schema.Struct({
   iss: Schema.optionalKey(Schema.String),
@@ -37,7 +37,7 @@ export const RegisteredClaims = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type RegisteredClaims = typeof RegisteredClaims.Type
 
@@ -52,7 +52,7 @@ const expected = Schema.Union([
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const VerifyOptions = Schema.Struct({
   ...JwsVerifyOptions.fields,
@@ -78,7 +78,7 @@ export const VerifyOptions = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type VerifyOptions = typeof VerifyOptions.Type
 
@@ -97,7 +97,7 @@ type ResolvedVerifyOptions = typeof ResolvedVerifyOptions.Type
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface Verified<A> {
   readonly claims: A
@@ -110,7 +110,7 @@ export interface Verified<A> {
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type JwtError = VerifyError | ClaimValidationFailed | Schema.SchemaError
 
@@ -215,7 +215,7 @@ const decodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
@@ -253,7 +253,10 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *     algorithms: ["HS256"], issuer: "example", requiredClaims: ["sub", "iss"]
  *   })
  *   return verified.claims
- * }).pipe(Effect.provide(NodeCrypto.layer)))
+ * }).pipe(
+ *   Effect.provide([NodeCrypto.layerMac, NodeCrypto.layerSignature]),
+ *   Effect.provide(NodeCrypto.layerSecureRandom)
+ * ))
  * claims // => ({ sub: "user-123", iss: "example" })
  * ```
  *
@@ -261,7 +264,7 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
@@ -282,7 +285,7 @@ export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
@@ -307,7 +310,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const decodeUnverified = Effect.fnUntraced(function*(token: Redacted.Redacted<string>) {
   const [, payload] = yield* split(token, 3)

@@ -1,13 +1,13 @@
 import { Pkce } from "@effect/auth"
 import { assert, it } from "@effect/vitest"
-import * as CryptoError from "effect/crypto/CryptoError"
+import * as Digest from "effect/crypto/Digest"
 import * as SecureRandom from "effect/crypto/SecureRandom"
-import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
+import { makeDigest } from "../utils/crypto.ts"
 
-it.effect("uses independently injected SecureRandom and Sha2 services for a PKCE transaction", () =>
+it.effect("uses independently injected SecureRandom and Digest services for a PKCE transaction", () =>
   Effect.gen(function*() {
     const entropy = Uint8Array.from({ length: 32 }, (_, i) => i)
     const digest = new Uint8Array(32).fill(42)
@@ -17,17 +17,15 @@ it.effect("uses independently injected SecureRandom and Sha2 services for a PKCE
       calls.push("random")
       return entropy.slice()
     })
-    const sha2 = Sha2.Sha2.of({
-      digest: (algorithm, input) => {
-        assert.strictEqual(algorithm, "SHA-256")
-        assert.strictEqual(new TextDecoder().decode(input), Base64Url.encode(entropy))
-        calls.push("digest")
-        return Effect.succeed(digest)
-      }
+    const digestService = makeDigest((algorithm, input) => {
+      assert.strictEqual(algorithm, Digest.sha256)
+      assert.strictEqual(new TextDecoder().decode(input), Base64Url.encode(entropy))
+      calls.push("digest")
+      return Effect.succeed(digest)
     })
     const transaction = yield* Pkce.make().pipe(
       Effect.provideService(SecureRandom.SecureRandom, random),
-      Effect.provideService(Sha2.Sha2, sha2)
+      Effect.provideService(Digest.Digest, digestService)
     )
     assert.strictEqual(Redacted.value(transaction.verifier), Base64Url.encode(entropy))
     assert.strictEqual(transaction.challenge, Base64Url.encode(digest))
@@ -44,17 +42,18 @@ it.effect("generates transaction secrets with only SecureRandom", () =>
     assert.strictEqual(Redacted.value(secret), Base64Url.encode(entropy))
   }))
 
-it.effect("computes an S256 challenge with only Sha2", () =>
+it.effect("computes an S256 challenge with only Digest", () =>
   Effect.gen(function*() {
     const digest = new Uint8Array(32).fill(42)
     const challenge = yield* Pkce.challenge(Redacted.make("v".repeat(43))).pipe(
-      Effect.provideService(Sha2.Sha2, {
-        digest: (algorithm, input) => {
-          assert.strictEqual(algorithm, "SHA-256")
+      Effect.provideService(
+        Digest.Digest,
+        makeDigest((algorithm, input) => {
+          assert.strictEqual(algorithm, Digest.sha256)
           assert.strictEqual(new TextDecoder().decode(input), "v".repeat(43))
           return Effect.succeed(digest)
-        }
-      })
+        })
+      )
     )
     assert.strictEqual(challenge, Base64Url.encode(digest))
   }))
@@ -63,21 +62,17 @@ it.effect("maps injected entropy and digest failures to safe unknown outcomes", 
   Effect.gen(function*() {
     const base = SecureRandom.make((size) => new Uint8Array(size))
     for (const operation of ["randomBytes", "digest"] as const) {
-      const failure = new CryptoError.CryptoError({
-        algorithm: operation === "randomBytes" ? "SecureRandom" : "SHA-256",
-        method: operation,
-        reason: new CryptoError.BadArgument({ description: "private-provider-cause" })
-      })
+      const failure = new Error("private-provider-cause")
       const random = SecureRandom.SecureRandom.of({
         ...base,
-        randomBytes: operation === "randomBytes" ? () => Effect.fail(failure) : base.randomBytes
+        randomBytes: operation === "randomBytes" ? () => Effect.die(failure) : base.randomBytes
       })
-      const sha2 = Sha2.Sha2.of({
-        digest: () => operation === "digest" ? Effect.fail(failure) : Effect.succeed(new Uint8Array(32))
-      })
+      const digestService = makeDigest(() =>
+        operation === "digest" ? Effect.die(failure) : Effect.succeed(new Uint8Array(32))
+      )
       const error = yield* Pkce.make().pipe(
         Effect.provideService(SecureRandom.SecureRandom, random),
-        Effect.provideService(Sha2.Sha2, sha2),
+        Effect.provideService(Digest.Digest, digestService),
         Effect.flip
       )
       assert.strictEqual(error._tag, "OAuthUnavailable")
@@ -91,12 +86,10 @@ it.effect("rejects wrong-sized entropy and digests from injected services", () =
     for (const operation of ["randomBytes", "digest"] as const) {
       for (const length of [0, 31, 33]) {
         const random = SecureRandom.make((size) => new Uint8Array(operation === "randomBytes" ? length : size))
-        const sha2 = Sha2.Sha2.of({
-          digest: () => Effect.succeed(new Uint8Array(operation === "digest" ? length : 32))
-        })
+        const digestService = makeDigest(() => Effect.succeed(new Uint8Array(operation === "digest" ? length : 32)))
         const error = yield* Pkce.make().pipe(
           Effect.provideService(SecureRandom.SecureRandom, random),
-          Effect.provideService(Sha2.Sha2, sha2),
+          Effect.provideService(Digest.Digest, digestService),
           Effect.flip
         )
         assert.strictEqual(error._tag, "OAuthUnavailable")
@@ -104,16 +97,14 @@ it.effect("rejects wrong-sized entropy and digests from injected services", () =
     }
   }))
 
-it.effect("rejects invalid and erased verifiers before invoking Sha2", () =>
+it.effect("rejects invalid and erased verifiers before invoking Digest", () =>
   Effect.gen(function*() {
     const erased = Redacted.make("x".repeat(43))
     Redacted.wipeUnsafe(erased)
-    const sha2 = Sha2.Sha2.of({
-      digest: () => Effect.die("Sha2 must not be called")
-    })
+    const digestService = makeDigest(() => Effect.die("Digest must not be called"))
     for (const verifier of [erased, Redacted.make("x".repeat(129)), Redacted.make("!".repeat(43))]) {
       const error = yield* Pkce.challenge(verifier).pipe(
-        Effect.provideService(Sha2.Sha2, sha2),
+        Effect.provideService(Digest.Digest, digestService),
         Effect.flip
       )
       assert.strictEqual(error._tag, "OAuthUnavailable")

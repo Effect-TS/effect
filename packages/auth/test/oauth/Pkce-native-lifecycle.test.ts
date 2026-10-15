@@ -1,8 +1,9 @@
 import { Pkce } from "@effect/auth"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Scope } from "effect"
+import { webCryptoLayer as cryptoLayer } from "../utils/crypto.ts"
 import { withNativeGate } from "../utils/nativeGate.ts"
-import { codeInput, cryptoLayer } from "./fixtures.ts"
+import { codeInput } from "./fixtures.ts"
 
 describe("PKCE native hash lifecycle", { concurrent: false }, () => {
   for (const operation of ["challenge", "make"] as const) {

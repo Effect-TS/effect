@@ -1,5 +1,4 @@
 import type * as CryptoError from "effect/crypto/CryptoError"
-import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as Effect from "effect/Effect"
 import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
@@ -29,17 +28,8 @@ export function operationError(error: CryptoError.CryptoError): OperationError {
       return InvalidInput.make({ reason: "key" })
     case "Unsupported":
       return UnsupportedAlgorithm.make({})
-    case "BadArgument":
+    case "InvalidArgument":
       if (Predicate.hasProperty(error.reason.cause, "name") && error.reason.cause.name === "SyntaxError") {
-        return InvalidInput.make({ reason: "key" })
-      }
-      return CryptoUnavailable.make({})
-    case "Unknown":
-      // Deno may defer rejecting an invalid EC point until SPKI export.
-      if (
-        error.algorithm === "ECDSA" && error.method === "publicKeyToSpki" &&
-        WebCrypto.isOperationError(error.reason.cause)
-      ) {
         return InvalidInput.make({ reason: "key" })
       }
       return CryptoUnavailable.make({})
@@ -48,14 +38,26 @@ export function operationError(error: CryptoError.CryptoError): OperationError {
   }
 }
 
+/** @internal */
+export function defectError(cause: unknown): OperationError {
+  return Predicate.hasProperty(cause, "name") && cause.name === "SyntaxError"
+    ? InvalidInput.make({ reason: "key" })
+    : CryptoUnavailable.make({})
+}
+
 /**
  * Join native work before releasing or wiping its owned inputs.
  * @internal
  */
 export function native<A, R>(
-  effect: Effect.Effect<A, CryptoError.CryptoError, R>
+  effect: Effect.Effect<A, CryptoError.CryptoError, R>,
+  onDefect: (cause: unknown) => OperationError = defectError
 ): Effect.Effect<A, OperationError, R> {
-  return effect.pipe(Effect.mapError(operationError), Effect.uninterruptible)
+  return effect.pipe(
+    Effect.mapError(operationError),
+    Effect.catchDefect((cause) => Effect.fail(onDefect(cause))),
+    Effect.uninterruptible
+  )
 }
 
 /**
@@ -72,21 +74,6 @@ export function withSecret<A, E, R>(
     ),
     (owned) => Effect.uninterruptible(use(owned)),
     (owned) => Effect.sync(() => owned.fill(0))
-  )
-}
-
-/**
- * Release temporary private keys produced by native key constructors.
- * @internal
- */
-export function withPrivateKey<K extends Redacted.Redacted<Uint8Array>, A, E, R, E2, R2>(
-  key: Effect.Effect<K, E, R>,
-  use: (key: K) => Effect.Effect<A, E2, R2>
-): Effect.Effect<A, E | E2, R | R2> {
-  return Effect.acquireUseRelease(
-    key,
-    (owned) => Effect.uninterruptible(use(owned)),
-    (owned) => Effect.sync(() => Redacted.value(owned).fill(0))
   )
 }
 

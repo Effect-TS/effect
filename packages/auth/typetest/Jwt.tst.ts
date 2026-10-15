@@ -1,7 +1,7 @@
 import type * as Auth from "@effect/auth"
 import { Jwe, Jwk, type Jwks, Jws, Jwt } from "@effect/auth/Jose"
 import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter } from "effect"
-import type { Aes, CryptoError, Ecdsa, Ed25519, Hmac, Rsa, SecureRandom } from "effect/crypto"
+import type { Aead, CryptoError, Mac, SecureRandom, Signature } from "effect/crypto"
 import { describe, expect, it } from "tstyche"
 
 declare const key: Jwk.SecretKey
@@ -59,7 +59,7 @@ describe("JWT schema inference", () => {
 
   it("retains the key-set service and verified key", () => {
     const verified = Jwt.verifyWithKeySet(Claims, token, { algorithms: ["ES256"] })
-    expect<Effect.Services<typeof verified>>().type.toBe<Decode | Jwks.Jwks | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519>()
+    expect<Effect.Services<typeof verified>>().type.toBe<Decode | Jwks.Jwks | Signature.Signature>()
     expect<Effect.Success<typeof verified>>().type.toBe<
       Jwt.Verified<typeof Claims.Type> & { readonly key: Jwk.PublicKey }
     >()
@@ -68,13 +68,13 @@ describe("JWT schema inference", () => {
   it("requires the native algorithm services for each operation", () => {
     const encrypted = Jwe.encrypt(Redacted.make(new Uint8Array()), key, { alg: "dir", enc: "A256GCM" })
     const signed = Jws.sign(Redacted.make(new Uint8Array()), key, { alg: "HS256" })
-    expect<Effect.Services<typeof encrypted>>().type.toBe<Aes.Aes | SecureRandom.SecureRandom>()
+    expect<Effect.Services<typeof encrypted>>().type.toBe<Aead.Aead | SecureRandom.SecureRandom>()
     expect<Effect.Services<typeof signed>>().type.toBe<Jws.Requirements>()
-    expect<Jws.Requirements>().type.toBe<Hmac.Hmac | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519>()
+    expect<Jws.Requirements>().type.toBe<Mac.Mac | Signature.Signature>()
     const decrypted = Jwe.decrypt(token, key)
-    expect<Effect.Services<typeof decrypted>>().type.toBe<Aes.Aes>()
+    expect<Effect.Services<typeof decrypted>>().type.toBe<Aead.Aead>()
     const verified = Jws.verifyWithKeySet(token, { algorithms: ["ES256"] })
-    expect<Effect.Services<typeof verified>>().type.toBe<Jwks.Jwks | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519>()
+    expect<Effect.Services<typeof verified>>().type.toBe<Jwks.Jwks | Signature.Signature>()
   })
 
   it("keeps key helper environments empty and native causes out of public failures", () => {
@@ -82,7 +82,7 @@ describe("JWT schema inference", () => {
     const imported = Jwk.importPkcs8(Redacted.make(new Uint8Array()), "ES256")
     const verified = Jws.verify(token, key, { algorithms: ["HS256"] })
     const decrypted = Jwe.decrypt(token, key)
-    expect<Effect.Services<typeof generated>>().type.toBe<Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519>()
+    expect<Effect.Services<typeof generated>>().type.toBe<Signature.Signature>()
     expect<Effect.Services<typeof imported>>().type.toBe<never>()
     expect<Effect.Success<typeof imported>>().type.toBe<Jwk.PrivateKey>()
     expect<Effect.Success<typeof generated>>().type.toBe<Jwk.GeneratedKeyPair>()

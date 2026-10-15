@@ -1,7 +1,7 @@
 import { Jwe, Jwk, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
-import { CryptoError, SecureRandom } from "effect/crypto"
+import { SecureRandom } from "effect/crypto"
 import * as jose from "jose"
 import { cryptoLayer, privateJwk, secret, secretJwk, text, utf8 } from "./fixtures.ts"
 
@@ -134,14 +134,7 @@ it.effect("classifies JWE RNG failures without exposing native causes", () =>
     }).pipe(
       Effect.provideService(SecureRandom.SecureRandom, {
         ...random,
-        randomBytes: () =>
-          Effect.fail(
-            new CryptoError.CryptoError({
-              algorithm: "SecureRandom",
-              method: "randomBytes",
-              reason: new CryptoError.Unknown({ description: "private-rng-canary", cause: "private-rng-canary" })
-            })
-          )
+        randomBytes: () => Effect.die(new Error("private-rng-canary"))
       }),
       Effect.flip
     )

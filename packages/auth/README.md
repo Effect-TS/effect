@@ -20,29 +20,34 @@ Individual JOSE namespaces are available with
 
 ## Native Effect services
 
-Cryptographic operations use Effect's native algorithm services: `Hmac` for
-HS256, `Rsa` for RS256/PS256, `Ecdsa` for ES256, `Ed25519` for EdDSA, and `Aes` for
-direct A256GCM encryption. `SecureRandom` supplies JWE nonces and PKCE entropy;
-`Sha2` supplies PKCE challenges and OIDC hash bindings, including SHA-512 for
-EdDSA. There are no runtime dependencies other than the application's Effect peer.
+Cryptographic operations use Effect's `Mac` service for HS256, `Signature` for
+RS256/PS256, ES256, and EdDSA, and `Aead` for direct A256GCM encryption.
+`SecureRandom` supplies JWE nonces and PKCE entropy; `Digest` supplies PKCE
+challenges and OIDC hash bindings, including SHA-512 for EdDSA. There are no
+runtime dependencies other than the application's Effect peer.
 
-On Node.js, provide `NodeCrypto.layer` from `@effect/platform-node/NodeCrypto`.
-It supplies these services and the Web Crypto backend used by key import/export
-helpers. For other runtimes, compose the corresponding layers from `effect/crypto`.
-When injecting `WebCrypto.SubtleCrypto`, provide it both to those layers and to
-the program so key helpers use the same backend.
+On Node.js, compose the individual layers from
+`@effect/platform-node/NodeCrypto`: `layerMac`, `layerSignature`, `layerAead`,
+`layerDigest`, and `layerSecureRandom`. The Mac, Signature, and Aead layers require
+SecureRandom. For other runtimes, compose the corresponding `layerWebCrypto`
+layers from `effect/crypto`. Key import/export uses `KeyFormat` and the
+`WebCrypto.WebCrypto` reference, which defaults to `globalThis.crypto`. When
+injecting a different backend with `WebCrypto.layer(crypto)`, provide it both to
+the service layers and to the program so key helpers use the same backend.
 
-`Jose.Jws.Requirements` includes the four signature/HMAC services. JWS and JWT key-set
-verification require the three asymmetric services plus `Jose.Jwks.Jwks`. `Jose.Jwe.encrypt`
-requires `Aes` and `SecureRandom`; `Jose.Jwe.decrypt` requires only `Aes`. JWT operations
-also retain the application's Schema services. `Pkce.random` requires
-`SecureRandom`, `Pkce.challenge` requires `Sha2`, and `Pkce.make` requires both.
-Each installed OIDC verifier's `verify` operation requires `Sha2` and all four
-signature/HMAC services; installation captures HTTP and Scope, not crypto services.
+`Jose.Jws.Requirements` includes Mac and Signature. JWS and JWT key-set
+verification require Signature plus `Jose.Jwks.Jwks`. `Jose.Jwe.encrypt` requires
+Aead and SecureRandom; `Jose.Jwe.decrypt` requires only Aead. JWT operations also
+retain the application's Schema services. `Pkce.random` requires SecureRandom,
+`Pkce.challenge` requires Digest, and `Pkce.make` requires both. Each installed
+OIDC verifier's `verify` operation requires Digest, Mac, and Signature;
+installation captures HTTP and Scope, not crypto services.
 
 Native operations finish before interruption releases their owned inputs; JWKS
 network waits remain interruptible. A native operation that never settles can
-delay teardown. Caller-owned secret bytes are never wiped by an operation.
+delay teardown. Auth wipes its temporary secret byte copies after use and never
+wipes caller-owned bytes. Opaque crypto keys follow the crypto library's lifetime
+and are not explicitly erased by Auth.
 
 ## JOSE and schema-typed JWTs
 
@@ -59,7 +64,10 @@ const program = Effect.gen(function*() {
   const verificationKey = yield* Jose.Jwk.importPublic(pair.publicKey, "ES256")
   const token = yield* Jose.Jwt.sign(Claims, { sub: "user_1" }, signingKey, { alg: "ES256", typ: "JWT" })
   return yield* Jose.Jwt.verify(Claims, token, verificationKey, { algorithms: ["ES256"], typ: "JWT" })
-}).pipe(Effect.provide(NodeCrypto.layer))
+}).pipe(
+  Effect.provide([NodeCrypto.layerMac, NodeCrypto.layerSignature]),
+  Effect.provide(NodeCrypto.layerSecureRandom)
+)
 ```
 
 Tokens, private and symmetric keys, and decrypted bytes use `Redacted`. JWT
@@ -182,7 +190,7 @@ const authorization = Effect.gen(function*() {
   return { state, pkce, url }
 }).pipe(
   Effect.provide(OAuthLive),
-  Effect.provide(NodeCrypto.layer)
+  Effect.provide([NodeCrypto.layerDigest, NodeCrypto.layerSecureRandom])
 )
 ```
 

@@ -1,5 +1,5 @@
 import { OAuth, type OAuthError, Oidc, Pkce } from "@effect/auth"
-import type { Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, Sha2 } from "effect/crypto"
+import type { Digest, Mac, SecureRandom, Signature } from "effect/crypto"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import type * as Redacted from "effect/Redacted"
@@ -87,7 +87,7 @@ describe("OAuth protocol type contracts", () => {
     expect<Effect.Success<typeof installed>>().type.toBe<Oidc.Verifier>()
     expect<Effect.Error<typeof installed>>().type.toBe<OAuthError.ConfigurationError | OAuthError.Unavailable>()
     expect<Effect.Services<typeof verified>>().type.toBe<
-      Hmac.Hmac | Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519 | Sha2.Sha2
+      Mac.Mac | Signature.Signature | Digest.Digest
     >()
     expect<Effect.Success<typeof verified>>().type.toBe<Oidc.Verified>()
     expect<Effect.Error<typeof verified>>().type.toBe<OAuthError.Rejected | OAuthError.Unavailable>()
@@ -96,13 +96,13 @@ describe("OAuth protocol type contracts", () => {
     expect<OAuth.Metadata["signing_key_issuer_required"]>().type.toBe<true | undefined>()
   })
 
-  it("requires separate SecureRandom and Sha2 services for private transaction secrets and S256", () => {
+  it("requires separate SecureRandom and Digest services for private transaction secrets and S256", () => {
     const random = Pkce.random()
     const challenge = Pkce.challenge(secret)
     const transaction = Pkce.make()
     expect<Effect.Services<typeof random>>().type.toBe<SecureRandom.SecureRandom>()
-    expect<Effect.Services<typeof challenge>>().type.toBe<Sha2.Sha2>()
-    expect<Effect.Services<typeof transaction>>().type.toBe<SecureRandom.SecureRandom | Sha2.Sha2>()
+    expect<Effect.Services<typeof challenge>>().type.toBe<Digest.Digest>()
+    expect<Effect.Services<typeof transaction>>().type.toBe<SecureRandom.SecureRandom | Digest.Digest>()
     expect<Effect.Success<typeof random>>().type.toBe<Redacted.Redacted<string>>()
     expect<Effect.Success<typeof challenge>>().type.toBe<string>()
     expect<Effect.Error<typeof transaction>>().type.toBe<OAuthError.Unavailable>()

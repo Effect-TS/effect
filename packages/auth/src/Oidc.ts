@@ -2,11 +2,11 @@
  * Signed OpenID Connect ID-token verification and trusted-issuer discovery with scoped JWKS ownership.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
-import * as Sha2 from "effect/crypto/Sha2"
+import * as Digest from "effect/crypto/Digest"
 import * as DateTime from "effect/DateTime"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -42,7 +42,7 @@ import { ConfigurationError, Rejected, Unavailable } from "./OAuthError.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const IdTokenAlgorithm = Schema.Literals(["RS256", "PS256", "ES256", "EdDSA", "HS256"])
 /**
@@ -50,7 +50,7 @@ export const IdTokenAlgorithm = Schema.Literals(["RS256", "PS256", "ES256", "EdD
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type IdTokenAlgorithm = typeof IdTokenAlgorithm.Type
 
@@ -59,7 +59,7 @@ export type IdTokenAlgorithm = typeof IdTokenAlgorithm.Type
  *
  * @stability unstable
  * @category constants
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const defaultIdTokenAlgorithms: ReadonlyArray<IdTokenAlgorithm> = [
   "RS256",
@@ -81,7 +81,7 @@ const idTokenAlgorithms: ReadonlyArray<IdTokenAlgorithm> = [
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface DiscoverOptions extends RequestOptions {
   /**
@@ -98,7 +98,7 @@ export interface DiscoverOptions extends RequestOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface VerifierOptions extends RequestOptions {
   readonly metadata: Metadata
@@ -126,7 +126,7 @@ export interface VerifierOptions extends RequestOptions {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface VerificationInput {
   readonly verificationStartedAt: DateTime.Utc
@@ -154,7 +154,7 @@ export interface VerificationInput {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface Verified {
   readonly claims: Redacted.Redacted<JsonObject>
@@ -168,27 +168,27 @@ export interface Verified {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type VerificationRequirements =
   | Effect.Services<ReturnType<typeof Jwt.verify<typeof JsonObject>>>
   | Exclude<Effect.Services<ReturnType<typeof Jwt.verifyWithKeySet<typeof JsonObject>>>, Jwks.Jwks>
-  | Sha2.Sha2
+  | Digest.Digest
 
 /**
  * A scoped ID-token verifier. Signature and key failures remain unknown outcomes; authenticated invalid claims are definite rejections.
  *
  * **Details**
  *
- * Verification requires Sha2 for hash bindings and the native Hmac, Rsa, Ecdsa,
- * and Ed25519 services used by JOSE. HTTP and Scope are captured at installation.
+ * Verification requires Digest for hash bindings and the Mac and Signature
+ * services used by JOSE. HTTP and Scope are captured at installation.
  *
  * @see {@link makeVerifier}
  * @see {@link VerificationInput}
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface Verifier {
   readonly verify: (
@@ -249,15 +249,15 @@ const IdClaims = Schema.Struct({
 
 function tokenHash(
   algorithm: string
-): { readonly digest: Sha2.Algorithm; readonly octets: number } | undefined {
+): { readonly digest: Digest.Algorithm; readonly octets: number } | undefined {
   switch (algorithm) {
     case "EdDSA":
-      return { digest: "SHA-512", octets: 32 }
+      return { digest: Digest.sha512, octets: 32 }
     case "RS256":
     case "PS256":
     case "ES256":
     case "HS256":
-      return { digest: "SHA-256", octets: 16 }
+      return { digest: Digest.sha256, octets: 16 }
     default:
       return undefined
   }
@@ -298,7 +298,7 @@ const issuerOriginAndPath = (value: string) => {
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const isTenantIssuerTemplate = (issuer: string): boolean => {
   const parts = issuerOriginAndPath(issuer)
@@ -329,7 +329,7 @@ export const isTenantIssuerTemplate = (issuer: string): boolean => {
  *
  * @stability unstable
  * @category mapping
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const substituteTenantIssuer = (template: string, tenantId: string): string | undefined => {
   if (!Schema.is(TenantId)(tenantId)) return undefined
@@ -422,7 +422,7 @@ const templateTenantSegment = (configured: string, discovered: string): string |
  *
  * @stability unstable
  * @category predicates
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const discoveredIssuerMatches = (configured: string, discovered: string): boolean => {
   if (configured === discovered) return true
@@ -489,7 +489,7 @@ const DiscoverConfiguration = Schema.Struct({
  *
  * @stability unstable
  * @category discovery
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const discover = Effect.fnUntraced(function*(
   input: string,
@@ -553,7 +553,7 @@ function claimFailure(): Rejected {
  * **Details**
  *
  * Installation captures HttpClient and Scope. Each verification uses its caller's
- * Sha2 and JOSE algorithm services; NodeCrypto.layer supplies all of them on Node.js.
+ * Digest, Mac, and Signature services. Provide their individual NodeCrypto layers on Node.js.
  * Native hashing is joined before cancellation completes, while JWKS network
  * waits remain interruptible.
  *
@@ -597,7 +597,8 @@ function claimFailure(): Rejected {
  * }).pipe(
  *   Effect.scoped,
  *   Effect.provide(FetchHttpClient.layer),
- *   Effect.provide(NodeCrypto.layer)
+ *   Effect.provide([NodeCrypto.layerDigest, NodeCrypto.layerMac, NodeCrypto.layerSignature]),
+ *   Effect.provide(NodeCrypto.layerSecureRandom)
  * ))
  * subject // => "subject-42"
  * ```
@@ -607,7 +608,7 @@ function claimFailure(): Rejected {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const makeVerifier = Effect.fnUntraced(function*(
   input: VerifierOptions
@@ -810,12 +811,12 @@ export const makeVerifier = Effect.fnUntraced(function*(
     ) {
       if (hash === undefined) continue
       if (secret === undefined) return yield* claimFailure()
-      const sha2 = yield* Sha2.Sha2
+      const digests = yield* Digest.Digest
 
       // Native digests cannot be cancelled; join them before releasing the verifier operation.
-      const digest = yield* sha2
+      const digest = yield* digests
         .digest(hashProfile.digest, new TextEncoder().encode(secret))
-        .pipe(Effect.mapError(() => Unavailable.make({})), Effect.uninterruptible)
+        .pipe(Effect.catchDefect(() => Unavailable.make({})), Effect.uninterruptible)
 
       if (digest.length !== hashProfile.octets * 2) return yield* Unavailable.make({})
       if (hash !== Base64Url.encode(digest.subarray(0, hashProfile.octets))) {
