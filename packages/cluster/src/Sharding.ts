@@ -227,6 +227,7 @@ const make = Effect.gen(function*() {
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
+  const updateShardsGauge = () => ClusterMetrics.shards.unsafeUpdate(BigInt(MutableHashSet.size(acquiredShards)), [])
   const activeShardsLatch = yield* Effect.makeLatch(false)
   // set once shutdown starts handing every shard off
   let handingOff = false
@@ -421,6 +422,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
+        updateShardsGauge()
 
         if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
@@ -475,11 +477,9 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
+          updateShardsGauge()
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
-
-          // update metrics
-          ClusterMetrics.shards.unsafeUpdate(BigInt(MutableHashSet.size(acquiredShards)), [])
         }
         // the shutdown handoff releases the shards acquired here without waiting
         yield* Effect.raceFirst(Effect.sleep(1000), handoffStarted.await)
@@ -511,7 +511,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
           MutableHashSet.add(forceReleasingShards, shardId)
         }
-        ClusterMetrics.shards.unsafeUpdate(BigInt(0), [])
+        updateShardsGauge()
         activeShardsLatch.unsafeOpen()
 
         return Effect.gen(function*() {
@@ -558,6 +558,7 @@ const make = Effect.gen(function*() {
             MutableHashSet.add(releasingShards, shardId)
           }
         }
+        updateShardsGauge()
         return MutableHashSet.size(releasingShards) > 0
           ? activeShardsLatch.open
           : Effect.void

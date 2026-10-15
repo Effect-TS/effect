@@ -1,6 +1,7 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
   ClusterError,
+  ClusterMetrics,
   ClusterSchema,
   Entity,
   EntityAddress,
@@ -35,6 +36,7 @@ import {
   FiberId,
   Layer,
   Mailbox,
+  Metric,
   MutableRef,
   Option,
   Schema,
@@ -1425,6 +1427,36 @@ describe("Sharding graceful shutdown", () => {
       assert(defaultExit && Exit.isSuccess(defaultExit), "interrupting the default shard did not complete")
       assert.strictEqual(stopped, 2)
     }).pipe(Effect.provide(TestSharding)))
+})
+
+describe("Sharding metrics", () => {
+  it.scoped("updates the shards gauge after reassignment", () =>
+    Effect.gen(function*() {
+      const storage = yield* RunnerStorage.makeMemory
+      const context = yield* Sharding.layer.pipe(
+        Layer.provide(Layer.succeed(RunnerStorage.RunnerStorage, storage)),
+        Layer.provide([RunnerHealth.layerNoop, Runners.layerNoop]),
+        Layer.provide(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 8,
+          refreshAssignmentsInterval: 10
+        })),
+        Layer.build
+      )
+      const sharding = Context.get(context, Sharding.Sharding)
+      const shardIds = Array.makeBy(8, (i) => ShardIdModule.make("default", i + 1))
+      const held = () => shardIds.filter((shardId) => sharding.hasShardId(shardId)).length
+
+      yield* waitFor(() => held() === 8)
+      assert.strictEqual(held(), 8)
+      assert.strictEqual((yield* Metric.value(ClusterMetrics.shards)).value, 8n)
+
+      yield* storage.register(otherRunner, true)
+      yield* waitFor(() => held() === 4)
+      assert.strictEqual(held(), 4)
+      assert.strictEqual((yield* Metric.value(ClusterMetrics.shards)).value, 4n)
+    }))
 })
 
 const TerminationEntity = Entity.make("TerminationEntity", [
