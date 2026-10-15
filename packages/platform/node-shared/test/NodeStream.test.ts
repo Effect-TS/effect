@@ -6,9 +6,29 @@ import * as ByteSize from "effect/ByteSize"
 import * as Channel from "effect/Channel"
 import * as Console from "effect/Console"
 import * as Stream from "effect/Stream"
+import { spawnSync } from "node:child_process"
 import { once } from "node:events"
+import { join } from "node:path"
 import { Duplex, Readable, Transform } from "node:stream"
 import * as Zlib from "node:zlib"
+
+// Isolate unhandled stream errors so a regression cannot crash the Vitest worker.
+describe("collector destruction", { concurrent: false, timeout: 15_000 }, () => {
+  for (const helper of ["toString", "toArrayBuffer"] as const) {
+    for (const reason of ["maxBytes", "interruption"] as const) {
+      it(`${helper} preserves ${reason} when destruction fails`, () => {
+        const result = spawnSync(process.execPath, [
+          join(__dirname, "fixtures", "readable-destroy-error.ts"),
+          helper,
+          reason
+        ], { encoding: "utf8", timeout: 10_000 })
+        assert.isUndefined(result.error)
+        assert.strictEqual(result.status, 0, result.stderr)
+        assert.include(result.stdout, "destruction completed")
+      })
+    }
+  }
+})
 
 describe("Stream", () => {
   const onErrorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
