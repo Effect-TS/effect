@@ -56,4 +56,40 @@ describe("OtlpSerialization", () => {
         ].flat()
       )
     }).pipe(Effect.provide(OtlpSerialization.layerProtobuf)))
+
+  it.effect("layerJson preserves JSON values and writes non-finite doubles as strings for every signal", () =>
+    Effect.gen(function*() {
+      const serialization = yield* OtlpSerialization.OtlpSerialization
+      const resource = {
+        attributes: [{
+          key: "values",
+          value: {
+            arrayValue: {
+              values: [NaN, Infinity, -Infinity, 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
+            }
+          }
+        }, { key: "text", value: { stringValue: "null" } }],
+        droppedAttributesCount: 0
+      }
+      for (
+        const [key, body] of [
+          ["resourceMetrics", serialization.metrics({ resourceMetrics: [{ resource, scopeMetrics: [] }] })],
+          ["resourceSpans", serialization.traces({ resourceSpans: [{ resource, scopeSpans: [] }] })],
+          ["resourceLogs", serialization.logs({ resourceLogs: [{ resource, scopeLogs: [] }] })]
+        ] as const
+      ) {
+        assert.strictEqual(body._tag, "Uint8Array")
+        if (body._tag !== "Uint8Array") throw new Error("Expected a byte body")
+        assert.strictEqual(body.contentType, "application/json")
+        const data = JSON.parse(new TextDecoder().decode(body.body))
+        assert.deepStrictEqual(data[key][0].resource.attributes, [{
+          key: "values",
+          value: {
+            arrayValue: {
+              values: ["NaN", "Infinity", "-Infinity", 1.5, 0, null].map((doubleValue) => ({ doubleValue }))
+            }
+          }
+        }, { key: "text", value: { stringValue: "null" } }])
+      }
+    }).pipe(Effect.provide(OtlpSerialization.layerJson)))
 })
