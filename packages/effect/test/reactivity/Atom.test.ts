@@ -388,6 +388,31 @@ describe("Atom", { concurrent: false }, () => {
       }
     }))
 
+  it.effect("does not report finalizer failures when UnhandledLogLevel is undefined", () =>
+    Effect.gen(function*() {
+      const closing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+      const events: Array<Logger.Options<unknown>> = []
+      const runtime = Atom.runtime(Layer.mergeAll(
+        Logger.layer([Logger.make((event) => events.push(event))]),
+        Layer.succeed(References.UnhandledLogLevel, undefined)
+      ))
+      const resource = runtime.atom(Effect.addFinalizer(() =>
+        Effect.withFiber((fiber) => Deferred.succeed(closing, fiber)).pipe(
+          Effect.andThen(Effect.die("cleanup failed"))
+        )
+      ))
+      const registry = AtomRegistry.make()
+
+      try {
+        assert.isTrue(AsyncResult.isSuccess(registry.get(resource)))
+        registry.dispose()
+        yield* Fiber.await(yield* Deferred.await(closing))
+        assert.deepStrictEqual(events, [])
+      } finally {
+        registry.dispose()
+      }
+    }))
+
   it("default runtime factories build layers once per registry", () => {
     const Service = Context.Service<number>("Atom.test/DefaultRegistryScopedService")
     let builds = 0
