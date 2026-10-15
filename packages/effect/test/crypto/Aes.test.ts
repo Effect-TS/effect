@@ -16,7 +16,7 @@ describe("Aes", () => {
       assert.strictEqual(sealed.length, data.length + 16)
       assert.deepStrictEqual(yield* aes.decryptGcm({ ...options, data: sealed }), data)
       const error = yield* Effect.flip(aes.decryptGcm({ ...options, additionalData: encode("other"), data: sealed }))
-      assertReason(error, "AuthenticationFailed")
+      assertReason(error, "DecryptionFailed")
       assert.strictEqual(Redacted.value(yield* aes.generateKey({ length: 128 })).length, 16)
       const short = yield* Effect.flip(aes.encryptGcm({ ...options, key: Redacted.make(new Uint8Array(15)), data }))
       assertReason(short, "InvalidKey")
@@ -30,8 +30,8 @@ describe("Aes", () => {
       const key = Redacted.make(new Uint8Array(16))
       for (const nonce of [new Uint8Array(0), new Uint8Array(8), new Uint8Array(24)]) {
         const data = new Uint8Array(32)
-        assertReason(yield* Effect.flip(aes.encryptGcm({ key, nonce, data })), "BadArgument", "encryptGcm")
-        assertReason(yield* Effect.flip(aes.decryptGcm({ key, nonce, data })), "BadArgument", "decryptGcm")
+        assertReason(yield* Effect.flip(aes.encryptGcm({ key, nonce, data })), "InvalidArgument", "encryptGcm")
+        assertReason(yield* Effect.flip(aes.decryptGcm({ key, nonce, data })), "InvalidArgument", "decryptGcm")
       }
     }).pipe(Effect.provide(Aes.layer.pipe(Layer.provide(unreachable)))))
 

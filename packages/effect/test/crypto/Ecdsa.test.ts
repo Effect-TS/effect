@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Cause from "effect/Cause"
 import * as Ecdsa from "effect/crypto/Ecdsa"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import { assertReason, encode, fakeSubtle, point, privateJwk, raise, spki, unreachable } from "../utils/crypto.ts"
@@ -81,8 +83,8 @@ describe("Ecdsa", () => {
       assertReason(yield* Effect.flip(ecdsa.verify(options)), "InvalidKey", "verify")
       assertReason(yield* Effect.flip(Ecdsa.publicKeyToSpki("P-256", publicKey)), "InvalidKey", "publicKeyToSpki")
       assertReason(yield* Effect.flip(Ecdsa.publicKeyToJwk("P-256", publicKey)), "InvalidKey", "publicKeyToJwk")
-      // Unrelated failures keep their own reason.
-      const error = yield* Effect.flip(
+      // An unrelated TypeError during signing is a defect, not a typed failure.
+      const exit = yield* Effect.exit(
         ecdsa.sign({
           curve: "P-256",
           privateKey: Redacted.make(new Uint8Array(8)) as Ecdsa.PrivateKey,
@@ -90,7 +92,9 @@ describe("Ecdsa", () => {
           data: encode("data")
         })
       )
-      assertReason(error, "BadArgument", "sign")
+      if (!Exit.isFailure(exit)) assert.fail("expected a defect")
+      assert.isTrue(Cause.hasDies(exit.cause))
+      assert.include(String(Cause.squash(exit.cause)), "TypeError from fixture")
     }).pipe(
       Effect.provide(
         Ecdsa.layer.pipe(

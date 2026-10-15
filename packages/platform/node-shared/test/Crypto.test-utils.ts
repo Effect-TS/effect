@@ -181,7 +181,7 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           assertReason(
             yield* Effect.flip(aes.decryptGcm({ key, nonce, data: sealed })),
             "decryptGcm",
-            "AuthenticationFailed"
+            "DecryptionFailed"
           )
         }).pipe(Effect.provide(Aes.layer)))
 
@@ -191,7 +191,7 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           const key = yield* aes.generateKey()
           // Three blocks need more than the two values of a 1-bit counter.
           const options = { key, counter: new Uint8Array(16), counterLength: 1, data: new Uint8Array(33) }
-          assertReason(yield* Effect.flip(aes.encryptCtr(options)), "encryptCtr", "BadArgument")
+          assertReason(yield* Effect.flip(aes.encryptCtr(options)), "encryptCtr", "InvalidArgument")
         }).pipe(Effect.provide(Aes.layer)))
 
       it.effect("derives full-length P-521 shared secrets", () =>
@@ -266,17 +266,17 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
         assertReason(
           yield* Effect.flip(chacha.decrypt({ ...options, data: tampered })),
           "decrypt",
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
         assertReason(
           yield* Effect.flip(chacha.decrypt({ ...options, data: new Uint8Array(15) })),
           "decrypt",
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
         assertReason(
           yield* Effect.flip(chacha.encrypt({ ...options, nonce: new Uint8Array(24), data: sunscreen })),
           "encrypt",
-          "BadArgument"
+          "InvalidArgument"
         )
         // A key of the wrong length is a key error, not a failed authentication,
         // even when the ciphertext is also too short.
@@ -331,22 +331,22 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
         assertReason(
           yield* Effect.flip(xchacha.decrypt({ ...options, data: tampered })),
           "decrypt",
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
         assertReason(
           yield* Effect.flip(xchacha.decrypt({ ...options, additionalData: undefined, data: sealed })),
           "decrypt",
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
         assertReason(
           yield* Effect.flip(xchacha.decrypt({ ...options, data: sealed.subarray(0, 15) })),
           "decrypt",
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
         assertReason(
           yield* Effect.flip(xchacha.encrypt({ ...options, nonce: new Uint8Array(12), data: sunscreen })),
           "encrypt",
-          "BadArgument"
+          "InvalidArgument"
         )
 
         const generated = yield* xchacha.generateKey()
@@ -390,12 +390,12 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           assertReason(
             yield* Effect.flip(argon2id.verify({ ...options, passes: 0, expected: new Uint8Array(3) })),
             "verify",
-            "BadArgument"
+            "InvalidArgument"
           )
           assertReason(
             yield* Effect.flip(argon2id.derive({ ...options, salt: new Uint8Array(7), length: 32 })),
             "derive",
-            "BadArgument"
+            "InvalidArgument"
           )
         })
         yield* program.pipe(Effect.provide(layers.argon2id!))

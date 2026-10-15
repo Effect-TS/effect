@@ -29,14 +29,14 @@ describe("Pbkdf2", () => {
       for (const [iterations, length] of [[0, 32], [2 ** 31, 32], [1, 2 ** 29]]) {
         assertReason(
           yield* Effect.flip(pbkdf2.derive({ hash: "SHA-256", password, salt: data, iterations, length })),
-          "BadArgument"
+          "InvalidArgument"
         )
       }
       assertReason(
         yield* Effect.flip(
           pbkdf2.verify({ hash: "SHA-256", password, salt: data, iterations: 0, expected: data })
         ),
-        "BadArgument",
+        "InvalidArgument",
         "verify"
       )
     }).pipe(Effect.provide(Pbkdf2.layer.pipe(Layer.provide(unreachable)))))

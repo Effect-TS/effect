@@ -3,7 +3,6 @@ import type * as CryptoError from "effect/crypto/CryptoError"
 import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
-import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 
@@ -26,21 +25,19 @@ export const raise = (name: string) => () => Promise.reject(Object.assign(new Er
 // A `SubtleCrypto` whose key imports succeed and whose other methods are
 // supplied by the test.
 export const fakeSubtle = (methods: Partial<Record<keyof SubtleCrypto, () => Promise<unknown>>>) =>
-  Layer.succeed(
-    WebCrypto.SubtleCrypto,
-    { importKey: () => Promise.resolve({}), ...methods } as unknown as SubtleCrypto
-  )
+  WebCrypto.layer({
+    subtle: { importKey: () => Promise.resolve({}), ...methods } as unknown as SubtleCrypto
+  } as Crypto)
 
 // A `SubtleCrypto` that throws on any access, so a test proves that invalid
 // arguments are rejected before reaching Web Crypto.
-export const unreachable = Layer.succeed(
-  WebCrypto.SubtleCrypto,
-  new Proxy({} as SubtleCrypto, {
+export const unreachable = WebCrypto.layer({
+  subtle: new Proxy({} as SubtleCrypto, {
     get: () => {
       throw new Error("invalid arguments reached Web Crypto")
     }
   })
-)
+} as Crypto)
 
 // Encodings produced with Web Crypto directly, independently of the conversion
 // functions under test.

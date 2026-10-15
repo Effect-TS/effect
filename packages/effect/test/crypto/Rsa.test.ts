@@ -33,7 +33,7 @@ describe("Rsa", () => {
       for (const options of [{ hash: "SHA-256", label: undefined }, { hash: "SHA-384", label }] as const) {
         assertReason(
           yield* Effect.flip(rsa.decryptOaep({ privateKey, data: ciphertext, ...options })),
-          "AuthenticationFailed"
+          "DecryptionFailed"
         )
       }
     }).pipe(Effect.provide(Rsa.layer)))
@@ -66,7 +66,7 @@ describe("Rsa", () => {
       )
       assertReason(
         yield* Effect.flip(rsa.encryptOaep({ publicKey, hash: "SHA-256", data: new Uint8Array(191) })),
-        "BadArgument",
+        "InvalidArgument",
         "encryptOaep"
       )
     }).pipe(Effect.provide(Rsa.layer)))

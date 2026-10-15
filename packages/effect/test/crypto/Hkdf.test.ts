@@ -19,7 +19,7 @@ describe("Hkdf", () => {
       const hkdf = yield* Hkdf.Hkdf
       const key = Redacted.make(new Uint8Array(16))
       for (const length of [0, 255 * 32 + 1]) {
-        assertReason(yield* Effect.flip(hkdf.derive({ hash: "SHA-256", key, length })), "BadArgument")
+        assertReason(yield* Effect.flip(hkdf.derive({ hash: "SHA-256", key, length })), "InvalidArgument")
       }
     }).pipe(Effect.provide(Hkdf.layer.pipe(Layer.provide(unreachable)))))
 })

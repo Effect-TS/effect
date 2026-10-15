@@ -136,6 +136,7 @@ describe("Ecdh", () => {
         publicKey: yield* Ecdh.publicKeyFromRaw("X25519", new Uint8Array(32))
       }))
       assertReason(error, "InvalidKey", "deriveSharedSecret")
+      if (error.reason._tag !== "InvalidKey") assert.fail("expected InvalidKey")
       assert.strictEqual(error.reason.description, "X25519 shared secret must not be all zeros")
     }).pipe(
       Effect.provide(
