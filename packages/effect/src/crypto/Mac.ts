@@ -17,6 +17,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import type { Inspectable } from "../Inspectable.ts"
 import * as Layer from "../Layer.ts"
+import * as Predicate from "../Predicate.ts"
 import type * as CryptoError from "./CryptoError.ts"
 import * as Digest from "./Digest.ts"
 import * as KeyModel from "./internal/key.ts"
@@ -107,6 +108,15 @@ export interface Key<out A extends Algorithm = Algorithm> extends Inspectable {
 }
 
 const KeyProto = KeyModel.redactedProto(TypeId, "Mac.Key")
+
+/**
+ * Checks whether a value is a {@link Key}.
+ *
+ * @stability unstable
+ * @category guards
+ * @since 4.0.0
+ */
+export const isKey = (u: unknown): u is Key => Predicate.hasProperty(u, TypeId)
 
 // Generated keys have the hash's block size, as Web Crypto generates them.
 const blockSizes: Record<Digest.Algorithm["name"], number> = {

@@ -14403,8 +14403,6 @@ const cryptoKeyFromFormat = <To extends Codec<any>, R extends KeyFormat_.Role, D
   ))
 }
 
-const isCryptoKeyOf = (typeId: string) => (u: unknown) => Predicate.hasProperty(u, typeId)
-
 /**
  * Type-level representation of {@link MacKey}.
  *
@@ -14431,7 +14429,7 @@ export interface MacKey<A extends Mac_.Algorithm = Mac_.Algorithm> extends decla
  * @since 4.0.0
  */
 export const MacKey = <A extends Mac_.Algorithm>(algorithm: A): MacKey<A> =>
-  declareCryptoKey<Mac_.Key<A>>("MacKey", "Mac", "Key", isCryptoKeyOf("~effect/crypto/Mac/Key"), algorithm)
+  declareCryptoKey<Mac_.Key<A>>("MacKey", "Mac", "Key", Mac_.isKey, algorithm)
 
 /**
  * Schema that decodes raw key bytes into a `Mac.Key`.
@@ -14523,7 +14521,7 @@ export interface AeadKey<A extends Aead_.Algorithm = Aead_.Algorithm> extends de
  * @since 4.0.0
  */
 export const AeadKey = <A extends Aead_.Algorithm>(algorithm: A): AeadKey<A> =>
-  declareCryptoKey<Aead_.Key<A>>("AeadKey", "Aead", "Key", isCryptoKeyOf("~effect/crypto/Aead/Key"), algorithm)
+  declareCryptoKey<Aead_.Key<A>>("AeadKey", "Aead", "Key", Aead_.isKey, algorithm)
 
 /**
  * Schema that decodes raw key bytes into an `Aead.Key`.
@@ -14608,7 +14606,7 @@ export const CipherKey = <A extends Cipher_.Algorithm>(algorithm: A): CipherKey<
     "CipherKey",
     "Cipher",
     "Key",
-    isCryptoKeyOf("~effect/crypto/Cipher/Key"),
+    Cipher_.isKey,
     algorithm
   )
 
