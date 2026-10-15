@@ -26,7 +26,6 @@ import * as Scope from "../Scope.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
-import { durableOperation } from "./internal/compensation.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -562,16 +561,13 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
           return options.interrupt(self, executionId)
         })
       }
-      const run = durableOperation(
-        `Workflow/${self._tag}/${executionId}`,
-        options.execute(self, {
-          executionId,
-          payload: payload as object,
-          discard: opts.discard ?? false,
-          parent: Option.getOrUndefined(parentInstance),
-          detached: opts.detached
-        })
-      ) as Effect.Effect<Workflow.Result<Success["Type"], Error["Type"]>>
+      const run = options.execute(self, {
+        executionId,
+        payload: payload as object,
+        discard: opts.discard ?? false,
+        parent: Option.getOrUndefined(parentInstance),
+        detached: opts.detached
+      }) as Effect.Effect<Workflow.Result<Success["Type"], Error["Type"]>>
 
       if (opts.discard) {
         yield* run
@@ -754,6 +750,9 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
       // Completed once a run succeeds with `Complete`, after which it cannot resume.
       readonly done: Deferred.Deferred<void>
+      // Scopes of earlier runs that suspended, kept open so their finalizers
+      // and resources last until the execution finishes.
+      readonly suspendedScopes: Array<Scope.Closeable>
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -788,11 +787,10 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       }
 
       const entry = workflows.get(state.instance.workflow._tag)!
-      const instance = WorkflowInstance.initial(
-        state.instance.workflow,
-        state.instance.executionId,
-        { scope: state.instance.scope }
-      )
+      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
+      // compensations instead of registering them again.
+      if (state.fiber) state.suspendedScopes.push(state.instance.scope)
+      const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId)
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
         Effect.onExit(() => {
@@ -813,9 +811,15 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.forkIn(resume(state.parent, "automatic"), scope)
         }),
         Effect.onExit((exit) => {
-          return Exit.isSuccess(exit) && exit.value._tag === "Complete"
-            ? Deferred.succeed(state.done, void 0)
-            : Effect.void
+          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
+          // The final run's scope closes with the real exit. Earlier scopes close
+          // with `Exit.void` so their superseded compensations are skipped, which
+          // means their finalizers also observe success rather than the outcome.
+          const scopes = state.suspendedScopes.splice(0).reverse()
+          return Effect.andThen(
+            Effect.forEach(scopes, (scope) => Scope.close(scope, Exit.void), { discard: true }),
+            Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void
+          )
         }),
         Effect.forkIn(entry.scope)
       )
@@ -849,6 +853,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             resumeRequested: undefined,
             fiber: undefined,
             done: Deferred.makeUnsafe(),
+            suspendedScopes: [],
             parent: options.detached ? undefined : options.parent?.executionId
           }
           executions.set(options.executionId, state)

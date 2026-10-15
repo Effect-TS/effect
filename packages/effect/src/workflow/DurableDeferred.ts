@@ -24,7 +24,6 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Activity from "./Activity.ts"
-import { durableOperation } from "./internal/compensation.ts"
 import * as Workflow from "./Workflow.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -171,9 +170,9 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
   const instance = yield* InstanceTag
   // Register before the read so any later completion can preempt the run.
   registerAwait(instance, self.name)
-  const exit = yield* durableOperation(
-    `DurableDeferred/${self.name}`,
-    Workflow.wrapActivityResult(engine.deferredResult(self), Option.isNone)
+  const exit = yield* Workflow.wrapActivityResult(
+    engine.deferredResult(self),
+    Option.isNone
   )
   if (Option.isNone(exit)) {
     return yield* Workflow.suspend(instance)
@@ -360,7 +359,7 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
     return yield* Workflow.suspend(instance)
   }
   return yield* exit.value
-}, (effect, _, self) => durableOperation(`DurableDeferred/${self.name}`, effect))
+})
 
 /**
  * Runs effects as a durable race, returning a previously persisted result when

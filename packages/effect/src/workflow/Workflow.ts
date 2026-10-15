@@ -30,7 +30,6 @@ import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
-import { type CompensationStep, CurrentCompensationStep } from "./internal/compensation.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -176,8 +175,6 @@ export interface Workflow<
    * **Gotchas**
    *
    * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
-   *
-   * See {@link withCompensation} for how replays identify a step.
    */
   readonly withCompensation: {
     <A, R2>(
@@ -958,18 +955,6 @@ export const addFinalizer: <R>(
  *
  * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
  *
- * Engines that replay a workflow keep one compensation per step, identified
- * by the activities, durable deferreds, and child workflows it runs directly.
- * Steps that run the same durable operations are told apart by completion
- * order, which concurrent replays can change. A step without durable
- * operations runs again on every replay and registers a compensation each
- * time.
- *
- * `WorkflowEngine.layerMemory` keeps a completed step's compensation until a
- * replay registers it again, so shutting down mid-replay still compensates
- * it. Engines that start each run with a fresh scope, such as the cluster
- * engine, only run compensations registered by the final run.
- *
  * @stability unstable
  * @category compensation
  * @since 4.0.0
@@ -989,50 +974,11 @@ export const withCompensation: {
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
 ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.gen(function*() {
-      const instance = yield* InstanceTag
-      const step: CompensationStep = { keys: new Set(), parent: yield* CurrentCompensationStep }
-      const value = yield* restore(Effect.provideService(effect, CurrentCompensationStep, step))
-      const services = yield* Effect.context<R2>()
-      const finalizer = (exit: Exit.Exit<unknown, unknown>) =>
-        instance.abandoned || Exit.isSuccess(exit)
-          ? Effect.void
-          : Effect.provideContext(compensation(value, exit.cause), services)
-      if (step.keys.size === 0) {
-        // Without durable operations the step runs again on every replay, so
-        // each run compensates its own execution.
-        yield* Scope.addFinalizerExit(instance.scope, finalizer)
-        return value
-      }
-      // Durable operations are the same in every run regardless of scheduling.
-      // Steps sharing them are told apart by completion order.
-      const operations = Array.from(step.keys).sort().join("\u0000")
-      let occurrences = compensationOccurrences.get(instance)
-      if (!occurrences) {
-        occurrences = new Map()
-        compensationOccurrences.set(instance, occurrences)
-      }
-      const occurrence = occurrences.get(operations) ?? 0
-      occurrences.set(operations, occurrence + 1)
-      const key = `${occurrence}\u0000${operations}`
-      const registrations = compensationRegistrations.get(instance.scope) ?? new Map()
-      compensationRegistrations.set(instance.scope, registrations)
-      // A replay of the same step replaces its compensation in place. Steps
-      // not yet replayed keep theirs, preserving the reverse cleanup order.
-      const isNew = !registrations.has(key)
-      registrations.set(key, finalizer)
-      if (isNew) {
-        yield* Scope.addFinalizerExit(instance.scope, (exit) => registrations.get(key)!(exit))
-      }
-      return value
-    })
+    Effect.tap(
+      restore(effect),
+      (value) => addFinalizer((exit) => Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause))
+    )
   ))
-
-const compensationOccurrences = new WeakMap<WorkflowInstance["Service"], Map<string, number>>()
-const compensationRegistrations = new WeakMap<
-  Scope.Closeable,
-  Map<string, (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>>
->()
 
 /**
  * Marks a workflow instance as suspended and interrupts the current fiber to

@@ -20,7 +20,6 @@ import * as Schema from "../Schema.ts"
 import type { Scope } from "../Scope.ts"
 import type * as Types from "../Types.ts"
 import * as DurableDeferred from "./DurableDeferred.ts"
-import { durableOperation } from "./internal/compensation.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import * as Workflow from "./Workflow.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
@@ -332,12 +331,9 @@ const makeExecute = Effect.fnUntraced(function*<
   const instance = yield* InstanceTag
   const attempt = yield* CurrentAttempt
   yield* Effect.annotateCurrentSpan({ executionId: instance.executionId })
-  const result = yield* durableOperation(
-    `Activity/${activity.name}/${attempt}`,
-    Workflow.wrapActivityResult(
-      engine.activityExecute(activity, attempt),
-      (_) => _._tag === "Suspended"
-    )
+  const result = yield* Workflow.wrapActivityResult(
+    engine.activityExecute(activity, attempt),
+    (_) => _._tag === "Suspended"
   )
   if (result._tag === "Suspended") {
     if (result.failed) instance.failed = true
