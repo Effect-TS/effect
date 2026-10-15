@@ -1,3 +1,4 @@
+import { JoseError } from "@effect/auth"
 import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
@@ -236,15 +237,15 @@ it.effect("routes key helpers and algorithm layers through the injected WebCrypt
 
 for (
   const [reason, tag] of [
-    [new CryptoError.InvalidKey({ description: "secret-canary", cause: "secret-canary" }), "CryptoInvalidInput"],
+    [new CryptoError.InvalidKey({ description: "secret-canary", cause: "secret-canary" }), "JoseInvalidInput"],
     [
       new CryptoError.Unsupported({ description: "secret-canary", cause: "secret-canary" }),
-      "CryptoUnsupportedAlgorithm"
+      "JoseUnsupportedAlgorithm"
     ],
-    [new CryptoError.Unknown({ description: "secret-canary", cause: "secret-canary" }), "CryptoUnavailable"],
+    [new CryptoError.Unknown({ description: "secret-canary", cause: "secret-canary" }), "JoseCryptoUnavailable"],
     [
       new CryptoError.BadArgument({ description: "secret-canary", cause: new SyntaxError("secret-canary") }),
-      "CryptoInvalidInput"
+      "JoseInvalidInput"
     ]
   ] as const
 ) {
@@ -265,6 +266,43 @@ for (
       assert.notProperty(error, "cause")
     }).pipe(Effect.provide(cryptoLayer)))
 }
+
+it.effect.each([
+  {
+    name: "unsupported",
+    cause: new DOMException("secret-canary", "NotSupportedError"),
+    error: JoseError.UnsupportedAlgorithm
+  },
+  { name: "unavailable", cause: new Error("secret-canary"), error: JoseError.CryptoUnavailable }
+])(
+  "preserves $name key import failures across serialization formats",
+  ({ cause, error: ErrorClass }) =>
+    Effect.gen(function*() {
+      const subtle = yield* WebCrypto.subtleCrypto
+      const key = yield* Jwk.importPrivate(Redacted.make(privateJwk), "ES256")
+      const backend = new Proxy(subtle, {
+        get(target, name) {
+          if (name === "importKey") return () => Promise.reject(cause)
+          const value = Reflect.get(target, name, target)
+          return typeof value === "function" ? value.bind(target) : value
+        }
+      })
+      const imports: ReadonlyArray<Effect.Effect<unknown, JoseError.KeyError>> = [
+        Jwk.importPublic(publicJwk, "ES256"),
+        Jwk.importPrivate(Redacted.make(privateJwk), "ES256"),
+        Jwk.importPkcs8(key.material, "ES256"),
+        Jwk.importSecret(Redacted.make(secretJwk), "HS256"),
+        Jwk.importSecret(Redacted.make(secretJwk), "dir")
+      ]
+
+      for (const effect of imports) {
+        const error = yield* effect.pipe(Effect.provideService(WebCrypto.SubtleCrypto, backend), Effect.flip)
+        assert.ok(error instanceof ErrorClass)
+        assert.notInclude(JSON.stringify(error), "secret-canary")
+        assert.notProperty(error, "cause")
+      }
+    }).pipe(Effect.provide(cryptoLayer))
+)
 
 it.effect("sanitizes authentication failures from the injected AES service", () =>
   Effect.gen(function*() {

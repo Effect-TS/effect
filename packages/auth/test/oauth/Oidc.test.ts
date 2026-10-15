@@ -61,7 +61,7 @@ it.effect("pins tenant metadata from an explicit discovery URL without fetching 
     ) {
       const discovered = yield* Oidc.discover(`${origin}/${segment}/v2.0`, {
         metadataUrl: documentUrl,
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(Effect.provideService(HttpClient.HttpClient, http))
       assert.strictEqual(discovered.issuer, expected)
       assert.strictEqual(discovered.signing_key_issuer_required, expected === template ? undefined : true)
@@ -72,7 +72,7 @@ it.effect("pins tenant metadata from an explicit discovery URL without fetching 
     assert.deepStrictEqual(requests, Array(4).fill(documentUrl))
     const failure = yield* Oidc.discover(`${origin}/example.com/v2.0`, {
       metadataUrl: documentUrl,
-      timeoutMs: 1000
+      timeout: 1000
     }).pipe(Effect.provideService(HttpClient.HttpClient, http), Effect.flip)
     assert.strictEqual(failure._tag, "OAuthConfigurationError")
     assert.lengthOf(requests, 5)
@@ -86,7 +86,7 @@ it.effect("rejects unsafe discovery URLs before dispatch and mismatched issuer d
       return Response.json(metadata)
     })
     for (const metadataUrl of ["http://issuer.example/config", "https://issuer.example/config#fragment"]) {
-      const failure = yield* Oidc.discover(metadata.issuer, { metadataUrl, timeoutMs: 1000 }).pipe(
+      const failure = yield* Oidc.discover(metadata.issuer, { metadataUrl, timeout: 1000 }).pipe(
         Effect.provideService(HttpClient.HttpClient, http),
         Effect.flip
       )
@@ -95,7 +95,7 @@ it.effect("rejects unsafe discovery URLs before dispatch and mismatched issuer d
     assert.strictEqual(calls, 0)
     const mismatch = yield* Oidc.discover("https://other.example", {
       metadataUrl: "https://issuer.example/config",
-      timeoutMs: 1000
+      timeout: 1000
     }).pipe(Effect.provideService(HttpClient.HttpClient, http), Effect.flip)
     assert.strictEqual(mismatch._tag, "OAuthConfigurationError")
     assert.strictEqual(calls, 1)

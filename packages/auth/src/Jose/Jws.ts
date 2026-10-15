@@ -61,7 +61,7 @@ export const VerifyOptions = Schema.Struct({
 })
 
 /**
- * Schema requiring an explicit, non-empty allowlist of acceptable signature algorithms.
+ * Value described by the VerifyOptions schema.
  *
  * @stability unstable
  * @category models
@@ -175,6 +175,8 @@ const verifyAsymmetric = Effect.fnUntraced(function*(
 /**
  * Signs redacted payload bytes as a compact JWS using an algorithm-bound key.
  *
+ * @see {@link verify}
+ *
  * @stability unstable
  * @category cryptography
  * @since 4.0.5
@@ -208,7 +210,10 @@ export const sign = Effect.fnUntraced(function*(
     const hmac = yield* Hmac.Hmac
     signature = yield* withSecret(
       key.material,
-      (owned) => native(hmac.compute({ hash: "SHA-256", key: Redacted.make(owned), data: utf8(signingInput) }))
+      Effect.fnUntraced(function*(owned) {
+        yield* decodeInput(Schema.Uint8Array.check(Schema.isMinLength(32)), owned, "key")
+        return yield* native(hmac.compute({ hash: "SHA-256", key: Redacted.make(owned), data: utf8(signingInput) }))
+      })
     )
   } else {
     if (header.alg === "HS256") return yield* InvalidKey.make({})
@@ -268,6 +273,9 @@ export const sign = Effect.fnUntraced(function*(
  * payload // => "hello"
  * ```
  *
+ * @see {@link sign}
+ * @see {@link verifyWithKeySet} for resolving a key through the Jwks service
+ *
  * @stability unstable
  * @category cryptography
  * @since 4.0.5
@@ -287,13 +295,18 @@ export const verify = Effect.fnUntraced(function*(
   if (algorithm !== "HS256") return yield* InvalidKey.make({})
 
   const hmac = yield* Hmac.Hmac
-  const valid = yield* withSecret(key.material, (owned) =>
-    native(hmac.verify({
-      hash: "SHA-256",
-      key: Redacted.make(owned),
-      data: parsed.signingInput,
-      tag: parsed.signature
-    })))
+  const valid = yield* withSecret(
+    key.material,
+    Effect.fnUntraced(function*(owned) {
+      yield* decodeInput(Schema.Uint8Array.check(Schema.isMinLength(32)), owned, "key")
+      return yield* native(hmac.verify({
+        hash: "SHA-256",
+        key: Redacted.make(owned),
+        data: parsed.signingInput,
+        tag: parsed.signature
+      }))
+    })
+  )
 
   if (!valid) return yield* SignatureVerificationFailed.make({})
 
@@ -305,6 +318,8 @@ export const verify = Effect.fnUntraced(function*(
 
 /**
  * Resolves an asymmetric verification key from the Jwks service and authenticates the compact JWS.
+ *
+ * @see {@link verify} for verifying with an explicit key
  *
  * @stability unstable
  * @category cryptography

@@ -146,7 +146,7 @@ it.effect("classifies JWE RNG failures without exposing native causes", () =>
       Effect.flip
     )
 
-    assert.strictEqual(error._tag, "CryptoUnavailable")
+    assert.strictEqual(error._tag, "JoseCryptoUnavailable")
     assert.notInclude(JSON.stringify(error), "private-rng-canary")
     assert.notInclude(String(error), "private-rng-canary")
   }).pipe(Effect.provide(cryptoLayer)))

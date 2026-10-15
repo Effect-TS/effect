@@ -11,7 +11,7 @@ import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 
-import * as V from "./internal/validation.ts"
+import * as Validation from "./internal/validation.ts"
 import { Unavailable } from "./OAuthError.ts"
 
 /**
@@ -31,6 +31,8 @@ import { Unavailable } from "./OAuthError.ts"
  * const state = await Effect.runPromise(Pkce.random().pipe(Effect.provide(NodeCrypto.layer)))
  * Redacted.value(state).length // => 43
  * ```
+ *
+ * @see {@link make} for a verifier and its S256 challenge
  *
  * @stability unstable
  * @category constructors
@@ -74,6 +76,8 @@ export const random = Effect.fnUntraced(
  * challenge // => "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
  * ```
  *
+ * @see {@link make} for generating a verifier and its challenge together
+ *
  * @stability unstable
  * @category encoding
  * @since 4.0.5
@@ -82,7 +86,7 @@ export const challenge = Effect.fnUntraced(
   function*(
     input: Redacted.Redacted<string>
   ): Effect.fn.Return<string, Unavailable | CryptoError.CryptoError, Sha2.Sha2> {
-    const verifier = yield* V.reveal(yield* V.decode(V.Verifier, input))
+    const verifier = yield* Validation.reveal(yield* Validation.decode(Validation.Verifier, input))
     const sha2 = yield* Sha2.Sha2
     const digest = yield* sha2.digest("SHA-256", new TextEncoder().encode(verifier)).pipe(Effect.uninterruptible)
 
@@ -107,6 +111,9 @@ export const challenge = Effect.fnUntraced(
  * Redacted.value(transaction.verifier).length // => 43
  * transaction.challenge.length // => 43
  * ```
+ *
+ * @see {@link random}
+ * @see {@link challenge}
  *
  * @stability unstable
  * @category constructors

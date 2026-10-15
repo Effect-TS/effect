@@ -8,6 +8,7 @@ import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
+import * as DurationInput from "../internal/duration.ts"
 import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
 import { ClaimValidationFailed, type VerifyError } from "../JoseError.ts"
 import type { PublicKey, SigningKey, VerificationKey } from "./Jwk.ts"
@@ -45,10 +46,9 @@ const expected = Schema.Union([
   Schema.Array(Schema.String).check(Schema.isMinLength(1))
 ])
 
-const seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))
-
 /**
  * Schema for signature policy, expected claims, required claims, clock tolerance, and maximum token age.
+ * Expiration and not-before claims are validated when present; require them explicitly with requiredClaims.
  *
  * @stability unstable
  * @category schemas
@@ -60,8 +60,14 @@ export const VerifyOptions = Schema.Struct({
   audience: Schema.optionalKey(expected),
   subject: Schema.optionalKey(Schema.String),
   typ: Schema.optionalKey(Schema.NonEmptyString),
-  clockTolerance: Schema.optionalKey(seconds),
-  maxTokenAge: Schema.optionalKey(seconds),
+  /**
+   * Nonnegative tolerance for temporal claims. Defaults to zero. Numeric inputs are milliseconds.
+   */
+  clockTolerance: Schema.optionalKey(DurationInput.NonNegativeInput),
+  /**
+   * Nonnegative maximum age measured from iat. When set, iat is required. Numeric inputs are milliseconds.
+   */
+  maxTokenAge: Schema.optionalKey(DurationInput.NonNegativeInput),
   requiredClaims: Schema.optionalKey(
     Schema.Array(Schema.Literals(["iss", "sub", "aud", "exp", "nbf", "iat", "jti"]))
   )
@@ -75,6 +81,16 @@ export const VerifyOptions = Schema.Struct({
  * @since 4.0.5
  */
 export type VerifyOptions = typeof VerifyOptions.Type
+
+const seconds = DurationInput.Seconds.check(Schema.isGreaterThanOrEqualTo(0))
+
+const ResolvedVerifyOptions = Schema.Struct({
+  ...VerifyOptions.fields,
+  clockTolerance: Schema.optionalKey(seconds),
+  maxTokenAge: Schema.optionalKey(seconds)
+})
+
+type ResolvedVerifyOptions = typeof ResolvedVerifyOptions.Type
 
 /**
  * Decoded application claims, validated registered claims, and the authenticated protected header.
@@ -93,7 +109,7 @@ export interface Verified<A> {
  * Failures produced by JWT key handling, signature verification, claim validation, or schema conversion.
  *
  * @stability unstable
- * @category models
+ * @category errors
  * @since 4.0.5
  */
 export type JwtError = VerifyError | ClaimValidationFailed | Schema.SchemaError
@@ -101,7 +117,7 @@ export type JwtError = VerifyError | ClaimValidationFailed | Schema.SchemaError
 const checkClaims = Effect.fnUntraced(function*(
   claims: Readonly<Record<string, Schema.Json>>,
   header: Header,
-  options: VerifyOptions
+  options: ResolvedVerifyOptions
 ) {
   const registered = yield* Schema.decodeEffect(RegisteredClaims)(claims, {
     reportInput: false
@@ -183,7 +199,7 @@ const checkClaims = Effect.fnUntraced(function*(
 const decodeClaims = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   schema: S,
   verified: Jws.Verified,
-  options: VerifyOptions
+  options: ResolvedVerifyOptions
 ) {
   const wire = yield* json(yield* reveal(verified.payload), "payload")
   const registeredClaims = yield* checkClaims(wire, verified.protectedHeader, options)
@@ -241,6 +257,8 @@ export const sign = Effect.fnUntraced(function*<S extends Schema.Constraint>(
  * claims // => ({ sub: "user-123", iss: "example" })
  * ```
  *
+ * @see {@link verifyWithKeySet} to resolve the verification key from the Jwks service
+ *
  * @stability unstable
  * @category cryptography
  * @since 4.0.5
@@ -252,13 +270,15 @@ export const verify = Effect.fnUntraced(function*<S extends Schema.Constraint>(
   options: VerifyOptions
 ): Effect.fn.Return<Verified<S["Type"]>, JwtError, Requirements | S["DecodingServices"]> {
   // Capture all policy before asynchronous cryptography or key resolution.
-  const policy = yield* parse(VerifyOptions, options, "parameters")
+  const policy = yield* parse(ResolvedVerifyOptions, options, "parameters")
 
   return yield* decodeClaims(schema, yield* Jws.verify(token, key, policy), policy)
 })
 
 /**
  * Authenticates and decodes a JWT using an asymmetric key resolved from the Jwks service.
+ *
+ * @see {@link verify} to authenticate with an explicit key
  *
  * @stability unstable
  * @category cryptography
@@ -273,7 +293,7 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
   JwtError,
   Effect.Services<ReturnType<typeof Jws.verifyWithKeySet>> | S["DecodingServices"]
 > {
-  const policy = yield* parse(VerifyOptions, options, "parameters")
+  const policy = yield* parse(ResolvedVerifyOptions, options, "parameters")
   const jws = yield* Jws.verifyWithKeySet(token, policy)
 
   return { ...(yield* decodeClaims(schema, jws, policy)), key: jws.key }
@@ -281,6 +301,9 @@ export const verifyWithKeySet = Effect.fnUntraced(function*<S extends Schema.Con
 
 /**
  * Parses claims without establishing authenticity, validating registered claims, or decoding application claims.
+ *
+ * @see {@link verify} to authenticate a token with an explicit key
+ * @see {@link verifyWithKeySet} to authenticate using the Jwks service
  *
  * @stability unstable
  * @category cryptography

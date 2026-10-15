@@ -1,10 +1,180 @@
+import type { JoseError } from "@effect/auth"
 import { Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
-import { Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
+import { Context, Deferred, Duration, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"
+
+const unsupportedPublicKeys = [
+  { ...publicJwk, crv: "P-384", kid: "one" },
+  { kty: "OKP", crv: "X25519", x: publicJwk.x, kid: "one" },
+  { kty: "future-key-family", kid: "one" }
+]
+
+it.effect.each(["local", "remote"] as const)(
+  "resolves supported keys from a mixed %s key set",
+  (source) =>
+    Effect.gen(function*() {
+      const supported = { ...publicJwk, kid: "one" }
+      const keys = [supported, ...unsupportedPublicKeys]
+      const client = HttpClient.make((request) =>
+        Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ keys })))
+      )
+      const layer: Layer.Layer<Jwks.Jwks, JoseError.InvalidKey | JoseError.JwksUnavailable> = source === "local"
+        ? Jwks.layerLocal({ keys })
+        : Jwks.layerRemote({ url: "https://issuer.example/keys" }).pipe(
+          Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+        )
+      const set = Context.get(yield* Layer.build(layer), Jwks.Jwks)
+
+      assert.deepStrictEqual((yield* set.resolve({ algorithm: "ES256", kid: "one" })).jwk, supported)
+      assert.strictEqual(
+        (yield* set.resolve({ algorithm: "EdDSA", kid: "one" }).pipe(Effect.flip))._tag,
+        "JoseKeyNotFound"
+      )
+    }).pipe(Effect.provide(cryptoLayer))
+)
+
+it.effect.each(["local", "remote"] as const)(
+  "rejects private and symmetric material in unsupported %s entries",
+  (source) =>
+    Effect.gen(function*() {
+      for (
+        const invalid of [
+          { ...unsupportedPublicKeys[0], d: "AA" },
+          { ...unsupportedPublicKeys[2], d: "AA" },
+          { ...unsupportedPublicKeys[2], k: "AA" },
+          { kty: "oct" }
+        ]
+      ) {
+        const keys = [publicJwk, invalid]
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ keys })))
+        )
+        const error = source === "local"
+          ? yield* Jwks.makeLocal({ keys }).pipe(Effect.flip)
+          : yield* Effect.gen(function*() {
+            const context = yield* Layer.build(
+              Jwks.layerRemote({ url: "https://issuer.example/keys" }).pipe(
+                Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+              )
+            )
+            return yield* Context.get(context, Jwks.Jwks).resolve({ algorithm: "ES256" })
+          }).pipe(Effect.flip)
+        assert.strictEqual(error._tag, source === "local" ? "JoseInvalidKey" : "JoseJwksUnavailable")
+      }
+    }).pipe(Effect.provide(cryptoLayer))
+)
+
+it.effect.each(["local", "remote"] as const)(
+  "does not ignore invalid supported keys or ambiguous matches in a mixed %s set",
+  (source) =>
+    Effect.gen(function*() {
+      for (
+        const [keys, expected] of [
+          [[{ ...publicJwk, x: "AA", kid: "one" }, ...unsupportedPublicKeys], "JoseInvalidKey"],
+          [[publicJwk, publicJwk, ...unsupportedPublicKeys], "JoseAmbiguousKey"]
+        ] as const
+      ) {
+        const client = HttpClient.make((request) =>
+          Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ keys })))
+        )
+        const layer: Layer.Layer<Jwks.Jwks, JoseError.InvalidKey | JoseError.JwksUnavailable> = source === "local"
+          ? Jwks.layerLocal({ keys })
+          : Jwks.layerRemote({ url: "https://issuer.example/keys" }).pipe(
+            Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+          )
+        const set = Context.get(yield* Layer.build(layer), Jwks.Jwks)
+        assert.strictEqual((yield* set.resolve({ algorithm: "ES256" }).pipe(Effect.flip))._tag, expected)
+      }
+    }).pipe(Effect.provide(cryptoLayer))
+)
+
+it.effect("counts unsupported entries toward the remote key limit", () =>
+  Effect.gen(function*() {
+    const client = HttpClient.make((request) =>
+      Effect.succeed(
+        HttpClientResponse.fromWeb(request, Response.json({ keys: [publicJwk, ...unsupportedPublicKeys] }))
+      )
+    )
+    const context = yield* Layer.build(
+      Jwks.layerRemote({ url: "https://issuer.example/keys", maxKeys: 1 }).pipe(
+        Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+      )
+    )
+    assert.deepInclude(yield* Context.get(context, Jwks.Jwks).resolve({ algorithm: "ES256" }).pipe(Effect.flip), {
+      _tag: "JoseJwksUnavailable",
+      reason: "response"
+    })
+  }).pipe(Effect.provide(cryptoLayer)))
+
+it.effect("accepts finite duration formats and rejects invalid remote configuration", () =>
+  Effect.gen(function*() {
+    const client = HttpClient.make((request) =>
+      Effect.succeed(HttpClientResponse.fromWeb(request, Response.json({ keys: [publicJwk] })))
+    )
+    const formats: ReadonlyArray<Duration.Input> = [
+      "1 second",
+      Duration.seconds(1),
+      1000,
+      1_000_000_000n,
+      [1, 0],
+      { seconds: 1 }
+    ]
+    for (const duration of formats) {
+      const context = yield* Layer.build(
+        Jwks.layerRemote({
+          url: "https://issuer.example/keys",
+          timeToLive: duration,
+          cooldown: duration,
+          timeout: duration
+        })
+          .pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
+      )
+      assert.deepStrictEqual((yield* Context.get(context, Jwks.Jwks).resolve({ algorithm: "ES256" })).jwk, publicJwk)
+    }
+    const invalid: ReadonlyArray<unknown> = [
+      NaN,
+      Infinity,
+      -Infinity,
+      "Infinity",
+      Duration.infinity,
+      "not a duration",
+      -1,
+      { seconds: NaN },
+      [1, Infinity]
+    ]
+    for (const field of ["timeToLive", "cooldown", "timeout"] as const) {
+      for (const duration of invalid) {
+        const error = yield* Layer.build(
+          Jwks.layerRemote({ url: "https://issuer.example/keys", [field]: duration } as Jwks.RemoteOptions).pipe(
+            Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+          )
+        ).pipe(Effect.flip)
+        assert.deepInclude(error, { _tag: "JoseJwksUnavailable", reason: "configuration" })
+      }
+    }
+    for (
+      const options of [
+        { timeToLive: 0 },
+        { timeToLive: "25 hours" },
+        { cooldown: "2 hours" },
+        { timeout: 0 },
+        { timeout: "2 minutes" }
+      ] as const
+    ) {
+      assert.deepInclude(
+        yield* Layer.build(
+          Jwks.layerRemote({ url: "https://issuer.example/keys", ...options }).pipe(
+            Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
+          )
+        ).pipe(Effect.flip),
+        { _tag: "JoseJwksUnavailable", reason: "configuration" }
+      )
+    }
+  }).pipe(Effect.provide(cryptoLayer)))
 
 // Selection, refresh/cooldown and malformed-key contracts adapted from panva/jose
 // test/jwks/{local,remote}.test.ts; Effect Scope and TestClock replace global mocks.
@@ -65,8 +235,8 @@ it.effect(
 
       const layer = Jwks.layerRemote({
         url: "https://issuer.example/keys",
-        cacheTimeMs: 100,
-        cooldownMs: 10
+        timeToLive: 100,
+        cooldown: 10
       }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
 
       const context = yield* Layer.build(layer)
@@ -202,7 +372,7 @@ it.effect("times out refreshes and interrupts in-flight requests when the Layer 
     const scoped = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
 
     const context = yield* Layer.buildWithScope(
-      Jwks.layerRemote({ url: "https://issuer.example/keys", timeoutMs: 10, cooldownMs: 1 }).pipe(
+      Jwks.layerRemote({ url: "https://issuer.example/keys", timeout: 10, cooldown: 1 }).pipe(
         Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
       ),
       scoped

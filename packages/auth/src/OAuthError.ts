@@ -9,16 +9,6 @@ import * as Schema from "effect/Schema"
 /**
  * Local protocol configuration is invalid; no remote response or credential is retained.
  *
- * **Example** (Inspecting a safe diagnostic)
- *
- * ```ts import.meta.vitest
- * import { OAuthError } from "@effect/auth"
- *
- * const error = OAuthError.ConfigurationError.make({ reason: "endpoint" })
- * error._tag // => "OAuthConfigurationError"
- * error.reason // => "endpoint"
- * ```
- *
  * @stability unstable
  * @category errors
  * @since 4.0.5
@@ -33,15 +23,6 @@ export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()
 /**
  * A definite, authenticated claim rejection or a complete HTTP 400 invalid_grant response.
  *
- * **Example** (Handling a definite grant rejection)
- *
- * ```ts import.meta.vitest
- * import { OAuthError } from "@effect/auth"
- *
- * const error = OAuthError.Rejected.make({ reason: "invalid_grant" })
- * error._tag // => "OAuthRejected"
- * ```
- *
  * @stability unstable
  * @category errors
  * @since 4.0.5
@@ -52,15 +33,6 @@ export class Rejected extends Schema.TaggedError<Rejected>()("OAuthRejected", {
 
 /**
  * The outcome is unknown. This error never authorizes retrying a grant.
- *
- * **Example** (Recognizing an unknown outcome)
- *
- * ```ts import.meta.vitest
- * import { OAuthError } from "@effect/auth"
- *
- * const error = OAuthError.Unavailable.make({})
- * error._tag // => "OAuthUnavailable"
- * ```
  *
  * @stability unstable
  * @category errors

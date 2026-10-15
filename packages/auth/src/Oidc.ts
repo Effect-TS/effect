@@ -8,6 +8,7 @@ import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Sha2 from "effect/crypto/Sha2"
 import * as DateTime from "effect/DateTime"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as HttpClient from "effect/http/HttpClient"
@@ -19,7 +20,7 @@ import type * as Scope from "effect/Scope"
 
 import * as Ownership from "./internal/ownership.ts"
 import * as Transport from "./internal/transport.ts"
-import * as V from "./internal/validation.ts"
+import * as Validation from "./internal/validation.ts"
 import * as Jwk from "./Jose/Jwk.ts"
 import * as Jwks from "./Jose/Jwks.ts"
 import * as Jwt from "./Jose/Jwt.ts"
@@ -83,13 +84,17 @@ const idTokenAlgorithms: ReadonlyArray<IdTokenAlgorithm> = [
  * @since 4.0.5
  */
 export interface DiscoverOptions extends RequestOptions {
-  /** Fetch this document instead of issuer + `/.well-known/openid-configuration`.
-   * The document issuer must still equal the trusted issuer identifier. */
+  /**
+   * Fetch this document instead of issuer + `/.well-known/openid-configuration`.
+   * The document issuer must still equal the trusted issuer identifier.
+   */
   readonly metadataUrl?: string
 }
 
 /**
  * Installed metadata, audience, accepted signing algorithms, PKCE policy, and optional HS256 client secret.
+ *
+ * @see {@link makeVerifier}
  *
  * @stability unstable
  * @category models
@@ -98,15 +103,21 @@ export interface DiscoverOptions extends RequestOptions {
 export interface VerifierOptions extends RequestOptions {
   readonly metadata: Metadata
   readonly clientId: string
-  /** Algorithms this verifier will accept. Discovery must advertise at least one.
+  /**
+   * Algorithms this verifier will accept. Discovery must advertise at least one.
    * Defaults to RS256, PS256, ES256 and EdDSA. HS256 is accepted only when
-   * requested here and a client secret is supplied. */
+   * requested here and a client secret is supplied.
+   */
   readonly algorithms?: ReadonlyArray<IdTokenAlgorithm>
-  /** Require advertised S256 PKCE. Defaults to true. Set false only for issuers
-   * that cannot complete authorization-code + PKCE. */
+  /**
+   * Requires advertised S256 PKCE. Defaults to true. Set false only for issuers
+   * that cannot complete authorization-code + PKCE.
+   */
   readonly pkceS256?: boolean
-  /** Channel or client secret used as the HS256 HMAC key. Required when the
-   * advertised algorithm set is HS256. */
+  /**
+   * Channel or client secret used as the HS256 HMAC key. Required when the
+   * advertised algorithm set is HS256.
+   */
   readonly clientSecret?: Redacted.Redacted<string>
 }
 
@@ -120,11 +131,17 @@ export interface VerifierOptions extends RequestOptions {
 export interface VerificationInput {
   readonly verificationStartedAt: DateTime.Utc
   readonly nonce: Redacted.Redacted<string>
-  readonly maxAgeSeconds?: number
+  /**
+   * Maximum authentication age for initial verification, in whole seconds from zero through 24 hours.
+   * Numeric inputs are milliseconds. Omit to skip this age limit; refresh continuity does not apply it.
+   */
+  readonly maxAge?: Duration.Input
   readonly accessToken?: Redacted.Redacted<string>
   readonly code?: Redacted.Redacted<string>
-  /** Refresh continuation: same subject, optional nonce must match, auth_time cannot change.
-   * A `{tenantid}` metadata issuer also requires the original token `iss`. */
+  /**
+   * Refresh continuation: same subject, optional nonce must match, `auth_time` cannot change.
+   * A `{tenantid}` metadata issuer also requires the original token `iss`.
+   */
   readonly previous?: {
     readonly subject: string
     readonly authTime?: number
@@ -159,6 +176,9 @@ type VerificationRequirements =
  * Verification requires Sha2 for hash bindings and the native Hmac, Rsa, Ecdsa,
  * and Ed25519 services used by JOSE. HTTP and Scope are captured at installation.
  *
+ * @see {@link makeVerifier}
+ * @see {@link VerificationInput}
+ *
  * @stability unstable
  * @category models
  * @since 4.0.5
@@ -172,44 +192,44 @@ export interface Verifier {
 
 const Configuration = Schema.Struct({
   metadata: Metadata,
-  clientId: V.text(1024),
-  ...V.RequestOptions.fields,
+  clientId: Validation.text(1024),
+  ...Validation.RequestOptions.fields,
   algorithms: Schema.optionalKey(
     Schema.Array(IdTokenAlgorithm).check(Schema.isMinLength(1), Schema.isMaxLength(5))
   ),
   pkceS256: Schema.optionalKey(Schema.Boolean),
-  clientSecret: Schema.optionalKey(V.secret(4096))
+  clientSecret: Schema.optionalKey(Validation.secret(4096))
 })
 
 const VerifyInput = Schema.Struct({
   verificationStartedAt: Schema.DateTimeUtc,
-  nonce: V.secret(256),
-  maxAgeSeconds: Schema.optional(V.integer(0, 86400)),
-  accessToken: Schema.optional(V.secret(16384)),
-  code: Schema.optional(V.secret(16384)),
+  nonce: Validation.secret(256),
+  maxAge: Schema.optional(Validation.MaxAge),
+  accessToken: Schema.optional(Validation.secret(16384)),
+  code: Schema.optional(Validation.secret(16384)),
   previous: Schema.optional(
     Schema.Struct({
-      subject: V.text(1024),
-      authTime: Schema.optional(V.NumericDate),
+      subject: Validation.text(1024),
+      authTime: Schema.optional(Validation.NumericDate),
       /** Original token `iss`. Required when the metadata issuer is a `{tenantid}` template. */
-      issuer: Schema.optional(V.text(2048))
+      issuer: Schema.optional(Validation.text(2048))
     })
   )
 })
 
 const IdClaims = Schema.Struct({
-  iss: V.text(2048),
-  sub: V.text(1024),
+  iss: Validation.text(2048),
+  sub: Validation.text(1024),
   aud: Schema.Union([
-    V.text(1024),
-    Schema.Array(V.text(1024)).check(Schema.isMinLength(1), Schema.isMaxLength(1))
+    Validation.text(1024),
+    Schema.Array(Validation.text(1024)).check(Schema.isMinLength(1), Schema.isMaxLength(1))
   ]),
-  azp: Schema.optionalKey(V.text(1024)),
-  exp: V.NumericDate,
-  iat: V.NumericDate,
-  nbf: Schema.optionalKey(V.NumericDate),
-  auth_time: Schema.optionalKey(V.NumericDate),
-  nonce: Schema.optionalKey(V.text(256)),
+  azp: Schema.optionalKey(Validation.text(1024)),
+  exp: Validation.NumericDate,
+  iat: Validation.NumericDate,
+  nbf: Schema.optionalKey(Validation.NumericDate),
+  auth_time: Schema.optionalKey(Validation.NumericDate),
+  nonce: Schema.optionalKey(Validation.text(256)),
   // Leftmost half of the signing-algorithm hash, unpadded base64url: 22
   // characters for SHA-256 (RS256, PS256, ES256, HS256) and 43 for SHA-512 (Ed25519).
   at_hash: Schema.optionalKey(
@@ -267,6 +287,8 @@ const issuerOriginAndPath = (value: string) => {
  * Oidc.isTenantIssuerTemplate("https://login.example/tenantid/v2.0") // => false
  * ```
  *
+ * @see {@link substituteTenantIssuer}
+ *
  * @stability unstable
  * @category predicates
  * @since 4.0.5
@@ -295,6 +317,8 @@ export const isTenantIssuerTemplate = (issuer: string): boolean => {
  * issuer // => "https://login.example/11111111-1111-1111-1111-111111111111/v2.0"
  * Oidc.substituteTenantIssuer("https://login.example/{tenantid}/v2.0", "common") // => undefined
  * ```
+ *
+ * @see {@link isTenantIssuerTemplate}
  *
  * @stability unstable
  * @category mapping
@@ -387,6 +411,8 @@ const templateTenantSegment = (configured: string, discovered: string): string |
  * Oidc.discoveredIssuerMatches("https://issuer.example", "https://other.example") // => false
  * ```
  *
+ * @see {@link discover}
+ *
  * @stability unstable
  * @category predicates
  * @since 4.0.5
@@ -418,8 +444,8 @@ const pinnedConcreteIssuer = (configured: string, discovered: string): string | 
 }
 
 const DiscoverConfiguration = Schema.Struct({
-  ...V.RequestOptions.fields,
-  metadataUrl: Schema.optionalKey(V.Endpoint)
+  ...Validation.RequestOptions.fields,
+  metadataUrl: Schema.optionalKey(Validation.Endpoint)
 })
 
 /**
@@ -445,12 +471,14 @@ const DiscoverConfiguration = Schema.Struct({
  *   }))
  * ))
  * const metadata = await Effect.runPromise(
- *   Oidc.discover("https://issuer.example", { timeoutMs: 5000 }).pipe(
+ *   Oidc.discover("https://issuer.example", { timeout: "5 seconds" }).pipe(
  *     Effect.provideService(HttpClient.HttpClient, http)
  *   )
  * )
  * metadata.issuer // => "https://issuer.example"
  * ```
+ *
+ * @see {@link makeVerifier} for installing a verifier from trusted metadata
  *
  * @stability unstable
  * @category discovery
@@ -460,9 +488,9 @@ export const discover = Effect.fnUntraced(function*(
   input: string,
   inputOptions: DiscoverOptions
 ): Effect.fn.Return<Metadata, ConfigurationError | Unavailable, HttpClient.HttpClient> {
-  const issuer = yield* V.configuration(V.Issuer, input, "issuer")
+  const issuer = yield* Validation.configuration(Validation.Issuer, input, "issuer")
 
-  const options = yield* V.configuration(DiscoverConfiguration, inputOptions)
+  const options = yield* Validation.configuration(DiscoverConfiguration, inputOptions)
   const url = new URL(options.metadataUrl ?? issuer)
 
   if (options.metadataUrl === undefined) {
@@ -479,7 +507,7 @@ export const discover = Effect.fnUntraced(function*(
 
   if (response.status !== 200) return yield* Unavailable.make({})
   const document = yield* Transport.json(response)
-  const metadata = yield* V.configuration(Metadata, yield* V.reveal(document.body), "metadata")
+  const metadata = yield* Validation.configuration(Metadata, yield* Validation.reveal(document.body), "metadata")
 
   if (!discoveredIssuerMatches(issuer, metadata.issuer)) {
     return yield* ConfigurationError.make({ reason: "issuer" })
@@ -494,13 +522,13 @@ export const discover = Effect.fnUntraced(function*(
 
   const accepted = pinned === undefined
     ? metadata
-    : yield* V.configuration(
+    : yield* Validation.configuration(
       Metadata,
       { ...metadata, issuer: pinned, signing_key_issuer_required: true },
       "metadata"
     )
 
-  return V.freeze(accepted)
+  return Validation.freeze(accepted)
 })
 
 function claimFailure(): Rejected {
@@ -553,7 +581,7 @@ function claimFailure(): Rejected {
  *       id_token_signing_alg_values_supported: ["HS256"]
  *     },
  *     clientId: "client", algorithms: ["HS256"],
- *     clientSecret: Redacted.make(secret), timeoutMs: 5000
+ *     clientSecret: Redacted.make(secret), timeout: "5 seconds"
  *   })
  *   const verified = yield* verifier.verify(token, {
  *     verificationStartedAt: now, nonce: Redacted.make("stored-nonce")
@@ -567,6 +595,9 @@ function claimFailure(): Rejected {
  * subject // => "subject-42"
  * ```
  *
+ * @see {@link discover} for retrieving trusted issuer metadata
+ * @see {@link Verifier}
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.5
@@ -578,9 +609,9 @@ export const makeVerifier = Effect.fnUntraced(function*(
   ConfigurationError | Unavailable,
   HttpClient.HttpClient | Scope.Scope
 > {
-  const options = yield* V.configuration(Configuration, input, "metadata")
+  const options = yield* Validation.configuration(Configuration, input, "metadata")
 
-  const metadata = V.freeze(options.metadata)
+  const metadata = Validation.freeze(options.metadata)
 
   const algorithms = idTokenAlgorithms.filter((algorithm) =>
     (options.algorithms ?? defaultIdTokenAlgorithms).includes(algorithm)
@@ -611,15 +642,25 @@ export const makeVerifier = Effect.fnUntraced(function*(
   }
 
   const hmacKey = hmacOnly && options.clientSecret !== undefined
-    ? yield* Jwk.importSecret(
-      Redacted.make({
-        kty: "oct" as const,
-        alg: "HS256" as const,
-        k: Base64Url.encode(new TextEncoder().encode(yield* V.reveal(options.clientSecret)))
-      }),
-      "HS256"
-    ).pipe(Effect.mapError(() => ConfigurationError.make({ reason: "authentication" })))
+    ? yield* Effect.acquireRelease(
+      Jwk.importSecret(
+        Redacted.make({
+          kty: "oct" as const,
+          alg: "HS256" as const,
+          k: Base64Url.encode(new TextEncoder().encode(yield* Validation.reveal(options.clientSecret)))
+        }),
+        "HS256"
+      ).pipe(Effect.mapError(() => ConfigurationError.make({ reason: "authentication" }))),
+      (key) =>
+        Effect.sync(() => {
+          Redacted.value(key.material).fill(0)
+          Redacted.wipeUnsafe(key.material)
+          Redacted.wipeUnsafe(key.jwk)
+        })
+    )
     : undefined
+
+  if (options.clientSecret !== undefined) Redacted.wipeUnsafe(options.clientSecret)
 
   const keys = hmacOnly || jwksUri === undefined
     ? undefined
@@ -627,7 +668,7 @@ export const makeVerifier = Effect.fnUntraced(function*(
       yield* Layer.build(
         Jwks.layerRemote({
           url: jwksUri,
-          timeoutMs: options.timeoutMs,
+          timeout: options.timeout,
           maxResponseBytes: options.maxResponseBytes
         }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, yield* Transport.capture)))
       ).pipe(Effect.mapError(() => Unavailable.make({}))),
@@ -641,13 +682,13 @@ export const makeVerifier = Effect.fnUntraced(function*(
     input: VerificationInput
   ): Effect.fn.Return<Verified, Rejected | Unavailable, VerificationRequirements> {
     // Capture caller policy and secret values before key lookup or cryptography.
-    const policy = yield* V.decode(VerifyInput, input)
+    const policy = yield* Validation.decode(VerifyInput, input)
     const start = DateTime.toEpochMillis(policy.verificationStartedAt)
-    const expectedNonce = yield* V.reveal(policy.nonce)
+    const expectedNonce = yield* Validation.reveal(policy.nonce)
 
-    const accessToken = policy.accessToken === undefined ? undefined : yield* V.reveal(policy.accessToken)
+    const accessToken = policy.accessToken === undefined ? undefined : yield* Validation.reveal(policy.accessToken)
 
-    const code = policy.code === undefined ? undefined : yield* V.reveal(policy.code)
+    const code = policy.code === undefined ? undefined : yield* Validation.reveal(policy.code)
 
     // Jwt verifies the signature before any registered/application claim checks.
     // Unauthenticated malformed/key/signature failures must never burn a receipt.
@@ -681,7 +722,7 @@ export const makeVerifier = Effect.fnUntraced(function*(
       signingKey = opened.key
     }
 
-    const claims = yield* V.decode(IdClaims, verified.claims).pipe(Effect.mapError(claimFailure))
+    const claims = yield* Validation.decode(IdClaims, verified.claims).pipe(Effect.mapError(claimFailure))
 
     if (tenantTemplate) {
       const tenant = yield* Schema.decodeUnknownEffect(Schema.Struct({ tid: TenantId }))(
@@ -734,9 +775,9 @@ export const makeVerifier = Effect.fnUntraced(function*(
     if (policy.previous === undefined) {
       if (
         claims.nonce !== expectedNonce ||
-        (policy.maxAgeSeconds !== undefined &&
+        (policy.maxAge !== undefined &&
           (claims.auth_time === undefined ||
-            claims.auth_time + policy.maxAgeSeconds < Math.floor(now)))
+            claims.auth_time + policy.maxAge < Math.floor(now)))
       ) {
         return yield* claimFailure()
       }
@@ -780,15 +821,15 @@ export const makeVerifier = Effect.fnUntraced(function*(
     if (
       claims.exp <= finished ||
       (policy.previous === undefined &&
-        policy.maxAgeSeconds !== undefined &&
+        policy.maxAge !== undefined &&
         claims.auth_time !== undefined &&
-        claims.auth_time + policy.maxAgeSeconds < Math.floor(finished))
+        claims.auth_time + policy.maxAge < Math.floor(finished))
     ) {
       return yield* claimFailure()
     }
 
     return {
-      claims: Redacted.make(V.freeze(verified.claims)),
+      claims: Redacted.make(Validation.freeze(verified.claims)),
       subject: claims.sub,
       ...(claims.auth_time === undefined
         ? {}

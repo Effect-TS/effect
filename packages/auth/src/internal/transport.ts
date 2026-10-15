@@ -8,10 +8,10 @@ import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 
 import { Unavailable } from "../OAuthError.ts"
-import * as V from "./validation.ts"
+import * as Validation from "./validation.ts"
 
 export interface Options {
-  readonly timeoutMs: number
+  readonly timeout: number
   readonly maxResponseBytes: number
 }
 
@@ -66,7 +66,7 @@ export const request = Effect.fnUntraced(
       }),
       Effect.provideService(Tracer.DisablePropagation, true),
       Effect.mapError(() => Unavailable.make({})),
-      Effect.timeoutOrElse({ duration: options.timeoutMs, orElse: () => Unavailable.make({}) })
+      Effect.timeoutOrElse({ duration: options.timeout, orElse: () => Unavailable.make({}) })
     )
 )
 
@@ -77,23 +77,23 @@ export const json = Effect.fnUntraced(function*(
   response: Effect.Success<ReturnType<typeof request>>
 ) {
   if (!isJson(response.contentType)) return yield* Unavailable.make({})
-  const bytes = yield* V.reveal(response.bytes)
+  const bytes = yield* Validation.reveal(response.bytes)
 
   const text = yield* Effect.try({
     try: () => new TextDecoder("utf-8", { fatal: true }).decode(bytes),
     catch: () => Unavailable.make({})
   })
 
-  const body = yield* V.decode(Json, text)
+  const body = yield* Validation.decode(Json, text)
 
   return {
     status: response.status,
     contentType: response.contentType,
-    body: Redacted.make(V.freeze(body))
+    body: Redacted.make(Validation.freeze(body))
   }
 })
 
-const Json = Schema.fromJsonString(V.JsonObject)
+const Json = Schema.fromJsonString(Validation.JsonObject)
 
 /** Capture Fetch's optional reference at the installed-client boundary too. */
 export const capture = Effect.gen(function*() {

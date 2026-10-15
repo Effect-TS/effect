@@ -1,6 +1,6 @@
 /**
  * JOSE keys, signatures, encryption, schema-typed JWTs, OAuth clients, PKCE, and signed OpenID Connect verification.
- * Token receipts remain opaque until explicitly verified with Oidc.makeVerifier.
+ * OAuth receipts require explicit token normalization; ID tokens require signature and claim verification.
  *
  * @stability unstable
  * @since 4.0.5

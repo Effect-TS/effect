@@ -66,12 +66,22 @@ Tokens, private and symmetric keys, and decrypted bytes use `Redacted`. JWT
 verification checks signatures and registered claims before decoding the
 application Schema. Schema failures and encoding/decoding services remain in
 `E` and `R`; custom Schema diagnostics remain application-owned.
+Expiration and not-before claims are checked when present. Include `"exp"` in
+`requiredClaims` when the token must have an expiration time.
 `Jose.Jwt.decodeUnverified` parses without establishing trust. Applications own keys,
 accepted algorithms, issuers, audiences, and token purpose.
 
 Local JWKS verification needs no HTTP. Remote JWKS use an application-configured
 HTTPS URL and an Effect `HttpClient`, with a bounded cache and refresh lifetime
 owned by the Layer's Scope. Token-supplied key URLs are ignored; redirects are rejected.
+Unrelated public keys with unsupported key types or curves do not prevent a
+supported key from being selected. Private and symmetric key material is rejected.
+
+Time options accept `Duration.Input`, such as `"5 seconds"`, `Duration.seconds(5)`,
+or a number of milliseconds. This includes request `timeout`, JWKS `timeToLive`
+and `cooldown`, JWT `clockTolerance` and `maxTokenAge`, and OAuth/OIDC `maxAge`.
+OAuth/OIDC `maxAge` must represent a whole number of seconds. Wire claims such as
+`exp`, `iat`, and `auth_time`, and token receipt `expiresIn`, remain in seconds.
 
 The supported profile is compact JWS/JWT with HS256, RS256, PS256, ES256, and EdDSA
 (Ed25519), and compact JWE with `dir` / `A256GCM`. RSA requires at least 2048 bits.
@@ -83,15 +93,15 @@ are unsupported.
 ## OAuth and OpenID Connect
 
 `OAuth.Client` is the service for an installed OAuth client. Provide it with
-`Layer.effect(OAuth.Client, OAuth.make(options))` and acquire it with
+`OAuth.layer(options)` and acquire it with
 `const oauth = yield* OAuth.Client`. The layer owns the client's scope.
 
 `OAuth.make` installs authorization-code and refresh flows, profile requests, and
 revocation. `client.codeGrant` and `client.refreshGrant` return redacted
 `TokenReceipt` values. Inspect provider-specific extensions before calling
 `OAuth.tokens`; normalization makes no additional request and preserves the receipt.
-It omits null refresh tokens, accepts finite nonnegative numeric or whole
-decimal-string lifetimes, and joins array scopes with spaces.
+It omits null refresh tokens, accepts finite nonnegative numeric or decimal-string
+lifetimes, and joins array scopes with spaces.
 
 `TokenSet.idToken` is an optional redacted, opaque provider receipt, not evidence
 of authentication. Discovery, sending a nonce or maximum age, and fetching a
@@ -147,19 +157,16 @@ import { NodeCrypto } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
 import { FetchHttpClient } from "effect/http"
 
-const OAuthLive = Layer.effect(
-  OAuth.Client,
-  OAuth.make({
-    metadata: {
-      issuer: "https://issuer.example",
-      authorization_endpoint: "https://issuer.example/authorize",
-      token_endpoint: "https://issuer.example/token"
-    },
-    clientId: "registered-client",
-    authentication: { method: "none", publicClient: true },
-    timeoutMs: 5000
-  })
-).pipe(Layer.provide(FetchHttpClient.layer))
+const OAuthLive = OAuth.layer({
+  metadata: {
+    issuer: "https://issuer.example",
+    authorization_endpoint: "https://issuer.example/authorize",
+    token_endpoint: "https://issuer.example/token"
+  },
+  clientId: "registered-client",
+  authentication: { method: "none", publicClient: true },
+  timeout: "5 seconds"
+}).pipe(Layer.provide(FetchHttpClient.layer))
 
 const authorization = Effect.gen(function*() {
   const client = yield* OAuth.Client
@@ -182,7 +189,9 @@ const authorization = Effect.gen(function*() {
 ## Errors and attribution
 
 [JoseError](src/JoseError.ts) and [OAuthError](src/OAuthError.ts) expose typed
-failures with fixed diagnostics that omit native causes and secrets. Only a
+failures with fixed diagnostics that omit native causes and secrets. JOSE key
+imports distinguish invalid key material from `JoseError.UnsupportedAlgorithm`
+and `JoseError.CryptoUnavailable` across supported input formats. Only a
 complete JSON HTTP 400 `invalid_grant` without conflicting success fields becomes
 `OAuthError.Rejected`; authenticated invalid ID-token claims also become
 `OAuthError.Rejected`, with reason `claims`. Malformed tokens, key/signature faults,

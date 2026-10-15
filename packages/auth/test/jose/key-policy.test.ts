@@ -1,3 +1,4 @@
+import { JoseError } from "@effect/auth"
 import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
@@ -103,8 +104,7 @@ it.effect("captures every operation slot before a getter can shorten its array",
     )
   }).pipe(Effect.provide(cryptoLayer)))
 
-// ec3ab38 expands sparse input lengths before admission. The throwing first
-// slot safely stops the old loop; bounded admission must never invoke it.
+// Reject oversized arrays before reading any slot, including accessor properties.
 it.effect.each(["JWK", "JWKS"] as const)(
   "rejects oversized sparse %s metadata before reading its slots",
   (boundary) =>
@@ -297,11 +297,11 @@ it.effect("checks the actual RSA material before signing or verifying structural
       const token = Redacted.make(`${jose.base64url.encode(JSON.stringify({ alg: algorithm }))}.cGF5bG9hZA.AA`)
       assert.deepInclude(
         yield* Jws.sign(Redacted.make(utf8("payload")), privateKey, { alg: algorithm }).pipe(Effect.flip),
-        { _tag: "CryptoInvalidInput", reason: "key" }
+        { _tag: "JoseInvalidInput", reason: "key" }
       )
       assert.deepInclude(
         yield* Jws.verify(token, publicKey, { algorithms: [algorithm] }).pipe(Effect.flip),
-        { _tag: "CryptoInvalidInput", reason: "key" }
+        { _tag: "JoseInvalidInput", reason: "key" }
       )
     }
   }).pipe(Effect.provide(cryptoLayer)))
@@ -313,10 +313,36 @@ it.effect("does not accept shorter AES keys through structural JOSE keys", () =>
     const token = yield* Jwe.encrypt(Redacted.make(utf8("payload")), key, { alg: "dir", enc: "A256GCM" })
     assert.deepInclude(
       yield* Jwe.encrypt(Redacted.make(utf8("payload")), forged, { alg: "dir", enc: "A256GCM" }).pipe(Effect.flip),
-      { _tag: "CryptoInvalidInput", reason: "key" }
+      { _tag: "JoseInvalidInput", reason: "key" }
     )
     assert.deepInclude(yield* Jwe.decrypt(token, forged).pipe(Effect.flip), {
-      _tag: "CryptoInvalidInput",
+      _tag: "JoseInvalidInput",
       reason: "key"
     })
+  }).pipe(Effect.provide(cryptoLayer)))
+
+it.effect("checks the actual HS256 material before signing or verifying structural keys", () =>
+  Effect.gen(function*() {
+    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
+    const payload = Redacted.make(utf8("payload"))
+    const token = yield* Jws.sign(payload, key, { alg: "HS256" })
+
+    for (const size of [0, 1, 31]) {
+      const material = new Uint8Array(size).fill(7)
+      const structural: Jwk.SecretKey = { ...key, material: Redacted.make(material) }
+
+      const signError = yield* Jws.sign(payload, structural, { alg: "HS256" }).pipe(Effect.flip)
+      assert.instanceOf(signError, JoseError.InvalidInput)
+      assert.deepInclude(signError, {
+        _tag: "JoseInvalidInput",
+        reason: "key"
+      })
+      const verifyError = yield* Jws.verify(token, structural, { algorithms: ["HS256"] }).pipe(Effect.flip)
+      assert.instanceOf(verifyError, JoseError.InvalidInput)
+      assert.deepInclude(verifyError, {
+        _tag: "JoseInvalidInput",
+        reason: "key"
+      })
+      assert.deepStrictEqual(material, new Uint8Array(size).fill(7))
+    }
   }).pipe(Effect.provide(cryptoLayer)))
