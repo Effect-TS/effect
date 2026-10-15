@@ -795,20 +795,30 @@ describe("HttpServer", () => {
 
   it.effect("aborts the response when a streamed body fails after it started", () =>
     Effect.gen(function*() {
+      const received = yield* Latch.make()
       yield* HttpRouter.add(
         "GET",
         "/stream",
         HttpServerResponse.stream(
-          Stream.make(Buffer.Buffer.from("partial")).pipe(Stream.concat(Stream.fail("boom")))
+          Stream.make(Buffer.Buffer.from("partial")).pipe(
+            Stream.concat(Stream.fromEffect(received.await.pipe(Effect.andThen(Effect.fail("boom")))))
+          )
         )
       ).pipe(
         HttpRouter.serve,
         Layer.build
       )
-      const exit = yield* HttpClient.get("/stream").pipe(
-        Effect.flatMap((response) => response.text),
+      const response = yield* HttpClient.get("/stream")
+      assert.strictEqual(response.status, 200)
+      let body = ""
+      const exit = yield* response.stream.pipe(
+        Stream.runForEach((chunk) => {
+          body += Buffer.Buffer.from(chunk).toString()
+          return received.open
+        }),
         Effect.exit
       )
+      assert.strictEqual(body, "partial")
       assert.isTrue(Exit.isFailure(exit))
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
