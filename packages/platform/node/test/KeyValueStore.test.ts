@@ -1,6 +1,7 @@
 import * as NodeFileSystem from "@effect/platform-node/NodeFileSystem"
 import * as NodePath from "@effect/platform-node/NodePath"
 import { assert, describe, it } from "@effect/vitest"
+import { clearPrefixSuite } from "effect-test/persistence/KeyValueStoreTest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
@@ -9,6 +10,15 @@ import * as KeyValueStore from "effect/persistence/KeyValueStore"
 const platformLayer = Layer.merge(NodeFileSystem.layer, NodePath.layer)
 
 describe("KeyValueStore / layerFileSystem", () => {
+  clearPrefixSuite(
+    "file system",
+    Layer.unwrap(Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const directory = yield* fs.makeTempDirectoryScoped()
+      return KeyValueStore.layerFileSystem(directory).pipe(Layer.provide(platformLayer))
+    })).pipe(Layer.provide(NodeFileSystem.layer))
+  )
+
   it.effect("rejects invalid keys without modifying the file system", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
