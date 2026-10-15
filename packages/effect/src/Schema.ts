@@ -15749,20 +15749,26 @@ export function Result<A extends Constraint, E extends Constraint>(
 // SemVer schemas
 // -----------------------------------------------------------------------------
 
-// Alphanumeric identifiers contain at least one non-digit.
-const SemVerPrereleaseArbitrary = ArraySchema(
-  Union([Natural, String.check(isPattern(/^[0-9]*[A-Za-z-][0-9A-Za-z-]*$/))])
-)
-const semVerFromString: SchemaTransformation.Transformation<SemVer_.SemVer, string> = SchemaTransformation
-  .transformEffect<SemVer_.SemVer, string>({
-    decode: (s, options) => {
-      const result = SemVer_.parse(s)
-      return Result_.isFailure(result)
-        ? Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, s, options))
-        : Effect.succeed(result.success)
-    },
-    encode: (version) => Effect.succeed(SemVer_.format(version))
+const semVerStringTransformation = <A>(
+  parse: (input: string) => Result_.Result<A, SemVer_.SemVerError>,
+  format: (value: A) => string
+): SchemaTransformation.Transformation<A, string> =>
+  SchemaTransformation.transformEffect({
+    decode: (input, options) =>
+      Effect.mapErrorEager(
+        Effect.fromResult(parse(input)),
+        (error) => new SchemaIssue.InvalidValue({ message: error.message }, input, options)
+      ),
+    encode: (value) => Effect.succeed(format(value))
   })
+// Alphanumeric identifiers contain at least one non-digit.
+const SemVerCoreArbitrary = Struct({
+  major: Natural,
+  minor: Natural,
+  patch: Natural,
+  prerelease: ArraySchema(Union([Natural, String.check(isPattern(/^[0-9]*[A-Za-z-][0-9A-Za-z-]*$/))]))
+})
+const semVerFromString = semVerStringTransformation(SemVer_.parse, SemVer_.format)
 const SemVerString = String.annotate({ expected: "a string that will be decoded as a SemVer" })
 /**
  * Type-level representation of {@link SemVer}.
@@ -15803,10 +15809,7 @@ export const SemVer: SemVer = declare(
     toCodecArbitrary: () =>
       linkDecoding<SemVer_.SemVer>()(
         Struct({
-          major: Natural,
-          minor: Natural,
-          patch: Natural,
-          prerelease: SemVerPrereleaseArbitrary,
+          ...SemVerCoreArbitrary.fields,
           build: ArraySchema(String.check(isPattern(/^[0-9A-Za-z-]+$/)))
         }),
         SchemaGetter.transform(SemVer_.make)
@@ -15846,17 +15849,7 @@ export interface SemVerFromString extends decodeTo<SemVer, String> {
 export const SemVerFromString: SemVerFromString = SemVerString.pipe(
   decodeTo(SemVer, semVerFromString)
 )
-const semVerRangeFromString: SchemaTransformation.Transformation<SemVerRange_.SemVerRange, string> =
-  SchemaTransformation
-    .transformEffect<SemVerRange_.SemVerRange, string>({
-      decode: (s, options) => {
-        const result = SemVerRange_.parse(s)
-        return Result_.isFailure(result)
-          ? Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, s, options))
-          : Effect.succeed(result.success)
-      },
-      encode: (range) => Effect.succeed(SemVerRange_.format(range))
-    })
+const semVerRangeFromString = semVerStringTransformation(SemVerRange_.parse, SemVerRange_.format)
 const SemVerRangeString = String.annotate({ expected: "a string that will be decoded as a SemVer range" })
 /**
  * Type-level representation of {@link SemVerRange}.
@@ -15897,13 +15890,8 @@ export const SemVerRange: SemVerRange = declare(
       linkDecoding<SemVerRange_.SemVerRange>()(
         ArraySchema(
           ArraySchema(Struct({
-            operator: String.check(isPattern(/^(?:<=|>=|<|>|=|~|\^)?$/)),
-            version: Struct({
-              major: Natural,
-              minor: Natural,
-              patch: Natural,
-              prerelease: SemVerPrereleaseArbitrary
-            })
+            operator: Literals(["", "=", "<", "<=", ">", ">=", "~", "^"]),
+            version: SemVerCoreArbitrary
           })).check(isMinLength(1))
         ),
         SchemaGetter.transform((sets) =>

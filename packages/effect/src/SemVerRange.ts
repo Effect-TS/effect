@@ -48,11 +48,10 @@ export interface SemVerRange extends Pipeable, Equal.Equal, Inspectable {
   readonly [TypeId]: typeof TypeId
 }
 
-// Wildcards must be trailing; only full versions carry a pre-release.
 interface PartialVersion {
-  readonly major: number | undefined
-  readonly minor: number | undefined
-  readonly patch: number | undefined
+  // The components given before the first wildcard; empty for `*`.
+  readonly components: ReadonlyArray<number>
+  // Only a full MAJOR.MINOR.PATCH may carry a pre-release.
   readonly prerelease: ReadonlyArray<string | number>
 }
 
@@ -125,9 +124,13 @@ const SemVerRangeProto: SemVerRange = {
  */
 export const isSemVerRange = (u: unknown): u is SemVerRange => hasProperty(u, TypeId)
 
-const wildcard: PartialVersion = { major: undefined, minor: undefined, patch: undefined, prerelease: [] }
+const isRangeArgs = (args: IArguments) => isSemVerRange(args[0])
+
+const wildcard: PartialVersion = { components: [], prerelease: [] }
 const operatorPattern = /^(<=|>=|<|>|=|~|\^)?(.*)$/
 const isWildcard = (part: string): boolean => part === "x" || part === "X" || part === "*"
+
+const componentLabels = ["major", "minor", "patch"] as const
 
 const parsePartial = (input: string): PartialVersion => {
   if (input.length === 0) return invalid("expected a version after the operator")
@@ -137,22 +140,20 @@ const parsePartial = (input: string): PartialVersion => {
   const dash = input.indexOf("-")
   const parts = (dash === -1 ? input : input.slice(0, dash)).split(".")
   if (parts.length > 3) return invalid(`expected at most MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
-  const numbers: Array<number | undefined> = []
-  for (const [index, part] of parts.entries()) {
-    if (isWildcard(part)) {
-      numbers.push(undefined)
-    } else if (numbers.includes(undefined)) {
+  const components: Array<number> = []
+  for (let i = 0; i < parts.length; i++) {
+    if (isWildcard(parts[i])) continue
+    // A skipped wildcard leaves `components` shorter than the position reached.
+    if (components.length < i) {
       return invalid(`a version component cannot follow a wildcard, received ${JSON.stringify(input)}`)
-    } else {
-      numbers.push(parseComponent(part, (["major", "minor", "patch"] as const)[index]))
     }
+    components.push(parseComponent(parts[i], componentLabels[i]))
   }
-  const [major, minor, patch] = numbers
-  if (dash === -1) return { major, minor, patch, prerelease: [] }
-  if (patch === undefined) {
+  if (dash === -1) return { components, prerelease: [] }
+  if (components.length < 3) {
     return invalid(`a pre-release requires MAJOR.MINOR.PATCH, received ${JSON.stringify(input)}`)
   }
-  return { major, minor, patch, prerelease: input.slice(dash + 1).split(".").map(prereleaseIdentifier) }
+  return { components, prerelease: input.slice(dash + 1).split(".").map(prereleaseIdentifier) }
 }
 
 const parseComparatorSet = (input: string): ReadonlyArray<Comparator> => {
@@ -274,9 +275,7 @@ export const fromInput = (input: Input): Result.Result<SemVerRange, SemVerError>
 export const fromInputUnsafe = (input: Input): SemVerRange => Result.getOrThrow(fromInput(input))
 
 const toPartial = (version: SemVer): PartialVersion => ({
-  major: version.major,
-  minor: version.minor,
-  patch: version.patch,
+  components: [version.major, version.minor, version.patch],
   prerelease: version.prerelease
 })
 
@@ -426,10 +425,8 @@ export const between = (options: { readonly minimum: SemVer; readonly maximum: S
   makeRange([[comparator(">=", options.minimum), comparator("<=", options.maximum)]])
 
 const formatPartial = (self: PartialVersion): string => {
-  if (self.major === undefined) return "*"
-  if (self.minor === undefined) return `${self.major}`
-  if (self.patch === undefined) return `${self.major}.${self.minor}`
-  const core = `${self.major}.${self.minor}.${self.patch}`
+  if (self.components.length === 0) return "*"
+  const core = self.components.join(".")
   return self.prerelease.length === 0 ? core : `${core}-${self.prerelease.join(".")}`
 }
 
@@ -461,81 +458,74 @@ interface Bound extends Core {
 
 const bound = (
   operator: Bound["operator"],
-  major: number,
-  minor: number,
-  patch: number,
-  prerelease: ReadonlyArray<string | number> = []
+  [major = 0, minor = 0, patch = 0]: ReadonlyArray<number>,
+  prerelease: ReadonlyArray<string | number>
 ): Bound => ({ operator, major, minor, patch, prerelease })
 
-// The expansions below follow node-semver's `Range` desugaring, including the
-// `-0` upper bounds that exclude pre-releases of the next version.
-const lowerFrom = (from: PartialVersion, z: ReadonlyArray<number>): ReadonlyArray<Bound> => {
-  if (from.major === undefined) return []
-  if (from.minor === undefined) return [bound(">=", from.major, 0, 0, z)]
-  if (from.patch === undefined) return [bound(">=", from.major, from.minor, 0, z)]
-  return [bound(">=", from.major, from.minor, from.patch, from.prerelease.length > 0 ? from.prerelease : z)]
+// The expansions below follow node-semver's `Range` desugaring. `z` is the
+// pre-release a wildcard lower bound carries: `[0]` when pre-releases are
+// included, so `>=1.2` admits `1.2.0-alpha`, and empty otherwise.
+
+// Exclusive upper bound at the first pre-release of `core`, node-semver's `<X.Y.Z-0`.
+const below = (core: ReadonlyArray<number>): Bound => bound("<", core, [0])
+
+// The lowest version a partial covers.
+const floor = (self: PartialVersion, z: ReadonlyArray<number>): Bound =>
+  bound(">=", self.components, self.components.length === 3 ? self.prerelease : z)
+
+// The first core above every version the first `precision` components cover.
+const after = (components: ReadonlyArray<number>, precision: number): ReadonlyArray<number> => {
+  const next = components.slice(0, precision)
+  next[precision - 1]++
+  return next
 }
 
-const upperTo = (to: PartialVersion, includePrerelease: boolean): ReadonlyArray<Bound> => {
-  if (to.major === undefined) return []
-  if (to.minor === undefined) return [bound("<", to.major + 1, 0, 0, [0])]
-  if (to.patch === undefined) return [bound("<", to.major, to.minor + 1, 0, [0])]
-  if (to.prerelease.length === 0 && includePrerelease) return [bound("<", to.major, to.minor, to.patch + 1, [0])]
-  return [bound("<=", to.major, to.minor, to.patch, to.prerelease)]
+const expandCaret = (self: PartialVersion, z: ReadonlyArray<number>): ReadonlyArray<Bound> => {
+  const n = self.components.length
+  if (n === 0) return []
+  // The first non-zero component may not change; `^0.0.x` pins the patch.
+  const precision = self.components.findIndex((component) => component !== 0) + 1 || n
+  return [floor(self, z), below(after(self.components, precision))]
 }
 
-const expandCaret = ({ major, minor, patch, prerelease }: PartialVersion, z: ReadonlyArray<number>) => {
-  if (major === undefined) return []
-  if (minor === undefined) return [bound(">=", major, 0, 0, z), bound("<", major + 1, 0, 0, [0])]
-  if (patch === undefined) {
-    return [
-      bound(">=", major, minor, 0, z),
-      major === 0 ? bound("<", 0, minor + 1, 0, [0]) : bound("<", major + 1, 0, 0, [0])
-    ]
-  }
-  return [
-    bound(">=", major, minor, patch, prerelease),
-    major !== 0
-      ? bound("<", major + 1, 0, 0, [0])
-      : minor !== 0
-      ? bound("<", 0, minor + 1, 0, [0])
-      : bound("<", 0, 0, patch + 1, [0])
-  ]
-}
-
-const expandTilde = ({ major, minor, patch, prerelease }: PartialVersion, z: ReadonlyArray<number>) => {
-  if (major === undefined) return []
-  if (minor === undefined) return [bound(">=", major, 0, 0, z), bound("<", major + 1, 0, 0, [0])]
-  if (patch === undefined) return [bound(">=", major, minor, 0, z), bound("<", major, minor + 1, 0, [0])]
-  return [bound(">=", major, minor, patch, prerelease), bound("<", major, minor + 1, 0, [0])]
+const expandTilde = (self: PartialVersion, z: ReadonlyArray<number>): ReadonlyArray<Bound> => {
+  const n = self.components.length
+  if (n === 0) return []
+  return [floor(self, z), below(after(self.components, Math.min(n, 2)))]
 }
 
 const expandXRange = (
   operator: Bound["operator"],
-  { major, minor, patch, prerelease }: PartialVersion,
+  self: PartialVersion,
   z: ReadonlyArray<number>
 ): ReadonlyArray<Bound> => {
-  if (patch !== undefined) return [bound(operator, major!, minor!, patch, prerelease)]
-  if (major === undefined) return operator === "<" || operator === ">" ? [bound("<", 0, 0, 0, [0])] : []
+  const n = self.components.length
+  if (n === 3) return [bound(operator, self.components, self.prerelease)]
+  if (n === 0) return operator === "<" || operator === ">" ? [below([0, 0, 0])] : []
   switch (operator) {
     case "=":
-      return minor === undefined
-        ? [bound(">=", major, 0, 0, z), bound("<", major + 1, 0, 0, [0])]
-        : [bound(">=", major, minor, 0, z), bound("<", major, minor + 1, 0, [0])]
+      return [floor(self, z), below(after(self.components, n))]
     case ">":
-      return [minor === undefined ? bound(">=", major + 1, 0, 0, z) : bound(">=", major, minor + 1, 0, z)]
+      return [bound(">=", after(self.components, n), z)]
     case ">=":
-      return [bound(">=", major, minor ?? 0, 0, z)]
+      return [floor(self, z)]
     case "<=":
-      return [minor === undefined ? bound("<", major + 1, 0, 0, [0]) : bound("<", major, minor + 1, 0, [0])]
+      return [below(after(self.components, n))]
     case "<":
-      return [bound("<", major, minor ?? 0, 0, [0])]
+      return [below(self.components)]
   }
 }
 
 const expand = (self: Comparator, includePrerelease: boolean): ReadonlyArray<Bound> => {
   const z = includePrerelease ? [0] : []
-  if (self._tag === "Hyphen") return [...lowerFrom(self.from, z), ...upperTo(self.to, includePrerelease)]
+  if (self._tag === "Hyphen") {
+    const { from, to } = self
+    // Unlike `>=`, a full hyphen lower bound without a pre-release also takes `z`.
+    const lower = from.components.length === 0
+      ? []
+      : [bound(">=", from.components, from.prerelease.length > 0 ? from.prerelease : z)]
+    return [...lower, ...expandXRange("<=", to, z)]
+  }
   switch (self.operator) {
     case "^":
       return expandCaret(self.version, z)
@@ -630,7 +620,7 @@ export const matches: {
   (version: SemVer, options?: MatchOptions): (self: SemVerRange) => boolean
   (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean
 } = dual(
-  (args) => isSemVerRange(args[0]),
+  isRangeArgs,
   (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean => matcher(self, options)(version)
 )
 
@@ -677,7 +667,7 @@ export const maxSatisfying: {
   (versions: Iterable<SemVer>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
   (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer>
 } = dual(
-  (args) => isSemVerRange(args[0]),
+  isRangeArgs,
   (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer> =>
     select(self, versions, options, 1)
 )
@@ -699,7 +689,7 @@ export const minSatisfying: {
   (versions: Iterable<SemVer>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
   (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer>
 } = dual(
-  (args) => isSemVerRange(args[0]),
+  isRangeArgs,
   (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer> =>
     select(self, versions, options, -1)
 )

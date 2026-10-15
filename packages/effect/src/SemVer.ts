@@ -91,24 +91,25 @@ export const invalid = (message: string): never => {
   throw new SemVerError({ message })
 }
 
+const attempt = <A>(evaluate: () => A): Result.Result<A, SemVerError> =>
+  Result.try({
+    try: evaluate,
+    catch: (error) => {
+      if (!isSemVerError(error)) throw error
+      return error
+    }
+  })
+
 /** @internal */
 export const tryParse = <A>(
   label: string,
   input: string,
   parse: (input: string) => A
-): Result.Result<A, SemVerError> => {
-  try {
-    return Result.succeed(parse(input))
-  } catch (error) {
-    if (!isSemVerError(error)) throw error
-    return Result.fail(
-      new SemVerError({
-        message: `Invalid ${label} ${JSON.stringify(input)}: ${error.message}`,
-        input
-      })
-    )
-  }
-}
+): Result.Result<A, SemVerError> =>
+  Result.mapError(
+    attempt(() => parse(input)),
+    (error) => new SemVerError({ message: `Invalid ${label} ${JSON.stringify(input)}: ${error.message}`, input })
+  )
 
 const numericPattern = /^(?:0|[1-9]\d*)$/
 const digitsPattern = /^\d+$/
@@ -146,14 +147,7 @@ const buildIdentifier = (identifier: string): string => {
 }
 
 /** @internal */
-export interface Core {
-  readonly major: number
-  readonly minor: number
-  readonly patch: number
-  readonly prerelease: ReadonlyArray<string | number>
-}
-
-const compareNumbers = (self: number, that: number): -1 | 0 | 1 => self < that ? -1 : self > that ? 1 : 0
+export type Core = Pick<SemVer, "major" | "minor" | "patch" | "prerelease">
 
 const comparePrerelease = (
   self: ReadonlyArray<string | number>,
@@ -166,11 +160,11 @@ const comparePrerelease = (
     const a = self[i]
     const b = that[i]
     if (a === b) continue
-    if (typeof a === "number") return typeof b === "number" ? compareNumbers(a, b) : -1
+    if (typeof a === "number") return typeof b === "number" ? order.Number(a, b) : -1
     if (typeof b === "number") return 1
-    return a < b ? -1 : 1
+    return order.String(a, b)
   }
-  return compareNumbers(self.length, that.length)
+  return order.Number(self.length, that.length)
 }
 
 /** @internal */
@@ -179,9 +173,9 @@ export const sameCore = (self: Core, that: Core): boolean =>
 
 /** @internal */
 export const compareCore = (self: Core, that: Core): -1 | 0 | 1 =>
-  compareNumbers(self.major, that.major) ||
-  compareNumbers(self.minor, that.minor) ||
-  compareNumbers(self.patch, that.patch) ||
+  order.Number(self.major, that.major) ||
+  order.Number(self.minor, that.minor) ||
+  order.Number(self.patch, that.patch) ||
   comparePrerelease(self.prerelease, that.prerelease)
 
 const SemVerProto: Omit<SemVer, "major" | "minor" | "patch" | "prerelease" | "build"> = {
@@ -416,12 +410,7 @@ export const parseUnsafe = (input: string): SemVer => Result.getOrThrow(parse(in
 export const fromInput = (input: Input): Result.Result<SemVer, SemVerError> => {
   if (isSemVer(input)) return Result.succeed(input)
   if (typeof input === "string") return parse(input)
-  try {
-    return Result.succeed(make(input))
-  } catch (error) {
-    if (!isSemVerError(error)) throw error
-    return Result.fail(error)
-  }
+  return attempt(() => make(input))
 }
 
 /**
@@ -520,15 +509,9 @@ export const isInitialDevelopment = (self: SemVer): boolean => self.major === 0
  * @category instances
  * @since 4.0.6
  */
-export const Order: order.Order<SemVer> = order.make((self, that) => compareCore(self, that))
+export const Order: order.Order<SemVer> = order.make(compareCore)
 
-const arrayEquals = <A>(self: ReadonlyArray<A>, that: ReadonlyArray<A>): boolean => {
-  if (self.length !== that.length) return false
-  for (let i = 0; i < self.length; i++) {
-    if (self[i] !== that[i]) return false
-  }
-  return true
-}
+const identifiersEqual = Equ.Array(Equ.strictEqual<string | number>())
 
 /**
  * Provides structural equivalence for versions, including build metadata.
@@ -542,8 +525,8 @@ export const Equivalence: Equ.Equivalence<SemVer> = Equ.make((self, that) =>
   self.major === that.major &&
   self.minor === that.minor &&
   self.patch === that.patch &&
-  arrayEquals(self.prerelease, that.prerelease) &&
-  arrayEquals(self.build, that.build)
+  identifiersEqual(self.prerelease, that.prerelease) &&
+  identifiersEqual(self.build, that.build)
 )
 
 /**
