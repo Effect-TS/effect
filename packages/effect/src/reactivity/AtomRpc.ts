@@ -211,7 +211,7 @@ export const Service = <Self>() =>
       })
     ).pipe(
       Atom.serializable({
-        key: `AtomRpc:mutation:${id}:${tag}`,
+        key: `AtomRpc:mutation:${JSON.stringify([id, tag])}`,
         schema: AsyncResult.Schema({
           success: rpc.successSchema,
           error: makeErrorSchema(rpc)
