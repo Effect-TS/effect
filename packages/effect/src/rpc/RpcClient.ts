@@ -304,6 +304,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     // Resuming callers can synchronously start new requests.
     const pending = Array.from(entries.values())
     entries.clear()
+    // Once detached, every entry must complete even if delivery is interrupted.
     for (const entry of pending) {
       if (entry._tag === "Queue") {
         yield* (exit._tag === "Success"
@@ -313,7 +314,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
         entry.resume(exit)
       }
     }
-  })
+  }, Effect.uninterruptible)
 
   const onRequest = (rpc: Rpc.AnyWithProps) => {
     const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
