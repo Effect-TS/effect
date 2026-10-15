@@ -6,6 +6,7 @@ import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { CryptoUnavailable, InvalidInput, type OperationError, UnsupportedAlgorithm } from "../JoseError.ts"
 
+/** @internal */
 export function decode<A>(
   schema: Schema.Codec<A, A>,
   input: A,
@@ -18,7 +19,10 @@ export function decode<A>(
   )
 }
 
-/** Discard native diagnostics, which may contain key material or plaintext. */
+/**
+ * Discard native diagnostics, which may contain key material or plaintext.
+ * @internal
+ */
 export function operationError(error: CryptoError.CryptoError): OperationError {
   switch (error.reason._tag) {
     case "InvalidKey":
@@ -44,14 +48,20 @@ export function operationError(error: CryptoError.CryptoError): OperationError {
   }
 }
 
-/** Join native work before releasing or wiping its owned inputs. */
+/**
+ * Join native work before releasing or wiping its owned inputs.
+ * @internal
+ */
 export function native<A, R>(
   effect: Effect.Effect<A, CryptoError.CryptoError, R>
 ): Effect.Effect<A, OperationError, R> {
   return effect.pipe(Effect.mapError(operationError), Effect.uninterruptible)
 }
 
-/** Own a secret copy until every native reader has settled. */
+/**
+ * Own a secret copy until every native reader has settled.
+ * @internal
+ */
 export function withSecret<A, E, R>(
   value: Redacted.Redacted<Uint8Array>,
   use: (owned: Uint8Array<ArrayBuffer>) => Effect.Effect<A, E, R>
@@ -65,7 +75,10 @@ export function withSecret<A, E, R>(
   )
 }
 
-/** Release temporary private keys produced by native key constructors. */
+/**
+ * Release temporary private keys produced by native key constructors.
+ * @internal
+ */
 export function withPrivateKey<K extends Redacted.Redacted<Uint8Array>, A, E, R, E2, R2>(
   key: Effect.Effect<K, E, R>,
   use: (key: K) => Effect.Effect<A, E2, R2>
@@ -77,6 +90,7 @@ export function withPrivateKey<K extends Redacted.Redacted<Uint8Array>, A, E, R,
   )
 }
 
+/** @internal */
 export function copy(value: Uint8Array): Effect.Effect<Uint8Array<ArrayBuffer>, InvalidInput> {
   return decode(Schema.Uint8Array, value, "data").pipe(
     Effect.flatMap((bytes) =>
@@ -88,4 +102,5 @@ export function copy(value: Uint8Array): Effect.Effect<Uint8Array<ArrayBuffer>, 
   )
 }
 
+/** @internal */
 export const derBytes = Schema.Uint8Array.check(Schema.isMinLength(1), Schema.isMaxLength(16384))

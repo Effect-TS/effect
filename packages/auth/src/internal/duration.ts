@@ -41,6 +41,7 @@ const readMillis = (input: unknown): Option.Option<number> => {
   }
 }
 
+/** @internal */
 export const NonNegativeInput = Schema.declare<Duration.Input>(
   (input): input is Duration.Input => {
     const millis = readMillis(input)
@@ -63,6 +64,8 @@ const normalized = (divisor: number) =>
     })
   )
 
+/** @internal */
 export const Millis = normalized(1)
 
+/** @internal */
 export const Seconds = normalized(1000)

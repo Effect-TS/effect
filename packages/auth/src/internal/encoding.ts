@@ -5,7 +5,10 @@ import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import { InvalidToken } from "../JoseError.ts"
 
+/** @internal */
 export const JsonObject = Schema.Record(Schema.String, Schema.Json)
+
+/** @internal */
 export const utf8 = (value: string) => new TextEncoder().encode(value)
 
 const Segment = Schema.String.check(
@@ -26,6 +29,7 @@ const Segment = Schema.String.check(
 
 const Token = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(65536))
 
+/** @internal */
 export const parse = <S extends Schema.Constraint>(
   schema: S,
   input: unknown,
@@ -37,12 +41,14 @@ export const parse = <S extends Schema.Constraint>(
     Effect.catchDefect(() => InvalidToken.make({ reason }))
   )
 
+/** @internal */
 export const reveal = <A>(value: Redacted.Redacted<A>) =>
   Effect.try({
     try: () => Redacted.value(value),
     catch: () => InvalidToken.make({ reason: "parameters" })
   })
 
+/** @internal */
 export const decode = Effect.fnUntraced(function*(
   value: string,
   reason: InvalidToken["reason"] = "serialization"
@@ -57,6 +63,7 @@ export const decode = Effect.fnUntraced(function*(
   return bytes
 })
 
+/** @internal */
 export const json = Effect.fnUntraced(function*(
   bytes: Uint8Array,
   reason: InvalidToken["reason"]
@@ -69,9 +76,11 @@ export const json = Effect.fnUntraced(function*(
   return yield* parse(Schema.fromJsonString(JsonObject), value, reason)
 })
 
+/** @internal */
 export const stringify = (value: Readonly<Record<string, Schema.Json>>) =>
   Schema.encodeEffect(Schema.fromJsonString(JsonObject))(value, { reportInput: false })
 
+/** @internal */
 export const split = Effect.fnUntraced(function*(input: Redacted.Redacted<string>, count: number) {
   const value = yield* parse(Token, yield* reveal(input), "serialization")
   const parts = value.split(".")
