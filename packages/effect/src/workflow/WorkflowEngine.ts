@@ -889,6 +889,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         if (state.fiber) {
           yield* Fiber.interrupt(state.fiber)
         }
+        // Replay after hard interruption to record a terminal workflow result.
+        yield* resume(executionId, "explicit")
       }),
       resume(_workflow, executionId) {
         return resume(executionId, "explicit")
