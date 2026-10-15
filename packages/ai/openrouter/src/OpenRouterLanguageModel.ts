@@ -1811,7 +1811,7 @@ const getResponseFormat = Effect.fnUntraced(function*({ config, options, transfo
       json_schema: {
         name: options.responseFormat.objectName,
         schema: jsonSchema,
-        strict: config.strictJsonSchema ?? null,
+        strict: config.strictJsonSchema ?? true,
         ...(Predicate.isNotUndefined(description) ? { description } : undefined)
       }
     }
