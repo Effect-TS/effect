@@ -1233,16 +1233,21 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
   const interval = options?.pingInterval ?? "5 seconds"
   const timeoutMillis = Duration.toMillis(options?.pingTimeout ?? interval)
   let lastSeen = clock.currentTimeMillisUnsafe()
+  let awaitingResponse = false
   const latch = Latch.makeUnsafe()
   const onFrame = () => {
     lastSeen = clock.currentTimeMillisUnsafe()
+    awaitingResponse = false
   }
   const reset = () => {
     onFrame()
     latch.closeUnsafe()
   }
   yield* Effect.suspend((): Effect.Effect<void, E, R> => {
-    if (clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
+    // A late tick must send a ping before it can declare the connection silent.
+    // Keep the timeout measured from the last frame, including for custom timeouts.
+    if (awaitingResponse && clock.currentTimeMillisUnsafe() - lastSeen > timeoutMillis) return latch.open
+    awaitingResponse = true
     return writePing
   }).pipe(
     Effect.delay(interval),
