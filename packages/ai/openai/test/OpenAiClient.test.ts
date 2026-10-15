@@ -254,6 +254,46 @@ describe("OpenAiClient", () => {
   })
 
   describe("error mapping", () => {
+    for (
+      const [status, reasonTag] of [
+        [400, "InvalidRequestError"],
+        [429, "RateLimitError"],
+        [401, "AuthenticationError"],
+        [403, "AuthenticationError"],
+        [500, "InternalProviderError"],
+        [418, "UnknownError"]
+      ] as const
+    ) {
+      it.effect(
+        `nests openai metadata for HTTP ${status}`,
+        () =>
+          Effect.gen(function*() {
+            const client = yield* OpenAiClient.OpenAiClient
+            const error = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(Effect.flip)
+
+            assert.strictEqual(error.reason._tag, reasonTag)
+            if (error.reason._tag !== reasonTag) {
+              return yield* Effect.die(new Error(`Expected ${reasonTag}`))
+            }
+            assert.deepStrictEqual(error.reason.metadata, {
+              openai: {
+                errorCode: "some_code",
+                errorType: "some_type",
+                requestId: "req_123",
+                ...(status === 429
+                  ? { limit: null, remaining: null, resetRequests: null, resetTokens: null }
+                  : {})
+              }
+            })
+          }).pipe(Effect.provide(makeTestLayer(undefined, {
+            _tag: "Json",
+            status,
+            headers: { "x-request-id": "req_123" },
+            body: { error: { message: "failed", type: "some_type", code: "some_code" } }
+          })))
+      )
+    }
+
     it.effect("maps TransportError to NetworkError reason", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.make({
