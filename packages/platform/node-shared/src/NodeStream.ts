@@ -342,18 +342,34 @@ export const toUint8Array = <E = Cause.UnknownError>(
 // Keep teardown errors handled after removing the consumer's lifecycle listeners.
 // Node emits the destruction error (if any) only once _destroy has completed.
 const destroyReadable = (readable: Readable, cleanup: () => void): void => {
-  if (!("closed" in readable) || readable.closed) {
+  if (!("closed" in readable)) {
     cleanup()
     return
   }
   const onDone = () => {
+    clearImmediate(immediate)
     readable.off("error", onDone)
     readable.off("close", onDone)
   }
+  // With emitClose: false, successful destruction emits no event. Check the
+  // public closed flag on a later turn, after any queued destruction error.
+  // This also protects streams already closed but with an error still queued.
+  const onClosed = () => {
+    if (readable.closed) {
+      onDone()
+    } else {
+      immediate = setImmediate(onClosed)
+      immediate.unref()
+    }
+  }
+  let immediate = setImmediate(onClosed)
+  immediate.unref()
   readable.once("error", onDone)
   readable.once("close", onDone)
   cleanup()
-  readable.destroy()
+  if (!readable.closed) {
+    readable.destroy()
+  }
 }
 
 const readableToPullUnsafe = <A, E>(options: {
