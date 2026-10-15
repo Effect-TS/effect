@@ -27,7 +27,7 @@ export const options: OAuth.ClientOptions = {
   metadata,
   clientId: "client",
   authentication: { method: "client_secret_post", secret: Redacted.make("client-secret") },
-  timeoutMs: 1000,
+  timeout: 1000,
   profile: { url: "https://api.example/user", headers: { "X-Api-Version": "2026" } }
 }
 

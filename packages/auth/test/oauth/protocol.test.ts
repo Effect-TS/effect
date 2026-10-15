@@ -5,6 +5,7 @@
 // Cancellation seam adapted from the existing Auth adapter protocol.test.ts.
 import { assert, it } from "@effect/vitest"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -32,7 +33,7 @@ it.effect("provides the OAuth client as a service owned by its layer scope", () 
   Effect.gen(function*() {
     const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
     let requests = 0
-    const context = yield* Layer.build(Layer.effect(OAuth.Client, OAuth.make(options))).pipe(
+    const context = yield* Layer.build(OAuth.layer(options)).pipe(
       Effect.provideService(Scope.Scope, owner),
       Effect.provideService(
         HttpClient.HttpClient,
@@ -82,7 +83,7 @@ it.effect(
       })
 
       assert.deepStrictEqual(
-        yield* Oidc.discover(metadata.issuer, { timeoutMs: 1000 }).pipe(
+        yield* Oidc.discover(metadata.issuer, { timeout: 1000 }).pipe(
           Effect.provideService(HttpClient.HttpClient, client)
         ),
         metadata
@@ -90,14 +91,14 @@ it.effect(
       assert.deepStrictEqual(requests, ["https://issuer.example/tenant/.well-known/openid-configuration"])
       document = { ...metadata, issuer: metadata.issuer.slice(0, -1) }
       assert.strictEqual(
-        (yield* Oidc.discover(metadata.issuer, { timeoutMs: 1000 }).pipe(
+        (yield* Oidc.discover(metadata.issuer, { timeout: 1000 }).pipe(
           Effect.provideService(HttpClient.HttpClient, client),
           Effect.flip
         ))._tag,
         "OAuthConfigurationError"
       )
       assert.strictEqual(
-        (yield* Oidc.discover("http://issuer.example", { timeoutMs: 1000 }).pipe(
+        (yield* Oidc.discover("http://issuer.example", { timeout: 1000 }).pipe(
           Effect.provideService(HttpClient.HttpClient, client),
           Effect.flip
         ))._tag,
@@ -226,7 +227,7 @@ it.effect("binds authorization parameters and snapshots configuration before net
       state: Redacted.make("state"),
       nonce: Redacted.make("nonce"),
       codeChallenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
-      maxAgeSeconds: 0,
+      maxAge: 0,
       resources: ["urn:one", "urn:two"],
       parameters: { prompt: "consent", resource: "urn:legacy", audience: "api" }
     }
@@ -252,6 +253,66 @@ it.effect("binds authorization parameters and snapshots configuration before net
         .pipe(Effect.flip))._tag,
       "OAuthConfigurationError"
     )
+  }))
+
+it.effect("normalizes duration inputs for request bounds and authorization max_age", () =>
+  Effect.gen(function*() {
+    let requests = 0
+    const http = transport(() => {
+      requests++
+      return Response.json(tokenBody)
+    })
+    for (
+      const duration of [
+        2000,
+        "2 seconds",
+        Duration.seconds(2),
+        { seconds: 2 },
+        [2, 0],
+        2_000_000_000n
+      ] satisfies ReadonlyArray<Duration.Input>
+    ) {
+      const client = yield* OAuth.make({ ...options, timeout: duration }).pipe(
+        Effect.provideService(HttpClient.HttpClient, http)
+      )
+      const url = yield* client.authorizationUrl({
+        redirectUri: codeInput.redirectUri,
+        scopes: [],
+        state: Redacted.make("state"),
+        maxAge: duration
+      })
+      assert.strictEqual(new URL(Redacted.value(url)).searchParams.get("max_age"), "2")
+      yield* client.codeGrant(codeInput)
+    }
+    assert.strictEqual(requests, 6)
+  }))
+
+it.effect("rejects invalid request durations and non-whole-second authorization ages before dispatch", () =>
+  Effect.gen(function*() {
+    let requests = 0
+    const http = transport(() => {
+      requests++
+      return Response.json(tokenBody)
+    })
+    const invalid = [NaN, Infinity, -1, "forever", { seconds: NaN }, { seconds: "1" }, [1, Infinity]]
+    for (const timeout of [...invalid, 0, "61 seconds"]) {
+      const failure = yield* OAuth.make({ ...options, timeout: timeout as Duration.Input }).pipe(
+        Effect.provideService(HttpClient.HttpClient, http),
+        Effect.flip
+      )
+      assert.strictEqual(failure._tag, "OAuthConfigurationError")
+    }
+    const client = yield* OAuth.make(options).pipe(Effect.provideService(HttpClient.HttpClient, http))
+    for (const maxAge of [...invalid, 500, "0.5 seconds", "25 hours"]) {
+      const failure = yield* client.authorizationUrl({
+        redirectUri: codeInput.redirectUri,
+        scopes: [],
+        state: Redacted.make("state"),
+        maxAge: maxAge as Duration.Input
+      }).pipe(Effect.flip)
+      assert.strictEqual(failure._tag, "OAuthConfigurationError")
+    }
+    assert.strictEqual(requests, 0)
   }))
 
 it.effect("keeps installed metadata arrays detached and immutable through revocation", () =>
@@ -374,7 +435,7 @@ it.effect(
             ...options,
             profile: { url: "https://api.example/user", headers: { Authorization: "injected" } }
           },
-          { ...options, timeoutMs: Infinity }
+          { ...options, timeout: Infinity }
         ]
       ) {
         assert.strictEqual(
@@ -507,10 +568,12 @@ for (const termination of ["interruption", "timeout"] as const) {
         )
       })
 
-      const client = yield* OAuth.make({ ...options, timeoutMs: 50 }).pipe(
+      const timeout = { milliseconds: 50 }
+      const client = yield* OAuth.make({ ...options, timeout }).pipe(
         Effect.provide(FetchHttpClient.layer),
         Effect.provideService(FetchHttpClient.Fetch, fetch)
       )
+      timeout.milliseconds = 60000
 
       const fiber = yield* client.codeGrant(codeInput).pipe(Effect.forkChild)
 
@@ -557,7 +620,7 @@ it.effect("closing the owner scope cancels an active exchange before returning",
       )
     })
 
-    const client = yield* OAuth.make({ ...options, timeoutMs: 60000 }).pipe(
+    const client = yield* OAuth.make({ ...options, timeout: 60000 }).pipe(
       Effect.provideService(Scope.Scope, scope),
       Effect.provide(FetchHttpClient.layer),
       Effect.provideService(FetchHttpClient.Fetch, fetch)

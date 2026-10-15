@@ -11,10 +11,9 @@ import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { copy, decode as decodeInput, native, operationError, withSecret } from "../internal/crypto.ts"
-import { CryptoUnavailable, type OperationError } from "../internal/cryptoErrors.ts"
 import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
 import * as KeyPolicy from "../internal/keyPolicy.ts"
-import { DecryptionFailed, InvalidKey, InvalidToken } from "../JoseError.ts"
+import { CryptoUnavailable, DecryptionFailed, InvalidKey, InvalidToken, type OperationError } from "../JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
 /**
@@ -44,7 +43,7 @@ export type Header = typeof Header.Type
  * Failures produced by compact encryption, decryption, key validation, or cryptographic operations.
  *
  * @stability unstable
- * @category models
+ * @category errors
  * @since 4.0.5
  */
 export type JweError = InvalidToken | InvalidKey | OperationError | DecryptionFailed
@@ -87,6 +86,8 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  * }).pipe(Effect.provide(NodeCrypto.layer)))
  * plaintext // => "private message"
  * ```
+ *
+ * @see {@link decrypt}
  *
  * @stability unstable
  * @category cryptography
@@ -139,6 +140,8 @@ export const encrypt = Effect.fnUntraced(function*(
 
 /**
  * Authenticates and decrypts a compact direct A256GCM JWE, returning redacted plaintext and its protected header.
+ *
+ * @see {@link encrypt}
  *
  * @stability unstable
  * @category cryptography

@@ -1,6 +1,6 @@
 import type * as Auth from "@effect/auth"
 import { Jwe, Jwk, type Jwks, Jws, Jwt } from "@effect/auth/Jose"
-import { Context, Effect, Redacted, Schema, SchemaGetter } from "effect"
+import { Context, type Duration, Effect, Redacted, Schema, SchemaGetter } from "effect"
 import type { Aes, CryptoError, Ecdsa, Ed25519, Hmac, Rsa, SecureRandom } from "effect/crypto"
 import { describe, expect, it } from "tstyche"
 
@@ -36,6 +36,15 @@ describe("grouped JOSE exports", () => {
 })
 
 describe("JWT schema inference", () => {
+  it("accepts Duration inputs without changing the public options schema type", () => {
+    expect<Jwt.VerifyOptions>().type.toBe<typeof Jwt.VerifyOptions.Type>()
+    expect<Jwt.VerifyOptions["clockTolerance"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwt.VerifyOptions["maxTokenAge"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwks.RemoteOptions["timeToLive"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwks.RemoteOptions["cooldown"]>().type.toBe<Duration.Input | undefined>()
+    expect<Jwks.RemoteOptions["timeout"]>().type.toBe<Duration.Input | undefined>()
+  })
+
   it("keeps encoding and decoding services distinct", () => {
     const signed = Jwt.sign(Claims, { sub: "user:42", quota: 3 }, key, { alg: "HS256" })
     const verified = Jwt.verify(Claims, token, key, { algorithms: ["HS256"] })

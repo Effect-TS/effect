@@ -13,11 +13,10 @@ import * as Effect from "effect/Effect"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "../internal/crypto.ts"
-import type { CryptoUnavailable, OperationError, UnsupportedAlgorithm } from "../internal/cryptoErrors.ts"
 import { decode, reveal } from "../internal/encoding.ts"
 import * as KeyInput from "../internal/keyInput.ts"
 import * as KeyPolicy from "../internal/keyPolicy.ts"
-import { InvalidKey } from "../JoseError.ts"
+import { type CryptoUnavailable, InvalidKey, type OperationError, type UnsupportedAlgorithm } from "../JoseError.ts"
 
 /**
  * Schema for the supported asymmetric signing algorithms: RS256, PS256, ES256, and EdDSA.
@@ -67,7 +66,9 @@ const metadata = {
   alg: Schema.optionalKey(Schema.NonEmptyString),
   use: Schema.optionalKey(Schema.Literals(["sig", "enc"])),
   key_ops: Schema.optionalKey(operations),
-  /** Optional issuer restriction published with a public key. */
+  /**
+   * Optional issuer restriction published with a public key.
+   */
   issuer: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2048)))
 }
 
@@ -270,10 +271,20 @@ export type SigningKey = PrivateKey | SecretKey
  */
 export type VerificationKey = PublicKey | SecretKey
 
-type ImportError = InvalidKey | CryptoUnavailable | UnsupportedAlgorithm
+/**
+ * Failures produced by key validation or the cryptographic backend during key import.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.5
+ */
+export type ImportError = InvalidKey | CryptoUnavailable | UnsupportedAlgorithm
 
 /**
  * Generates asymmetric signing JWKs through the Rsa, Ecdsa, or Ed25519 service, keeping private material redacted.
+ *
+ * @see {@link importPrivate} for preparing the generated key for signing
+ * @see {@link importPublic} for preparing the generated key for verification
  *
  * @stability unstable
  * @category constructors
@@ -379,6 +390,9 @@ const checkComponents = Effect.fnUntraced(function*(
 /**
  * Validates and snapshots a public JWK for the explicitly selected asymmetric algorithm.
  *
+ * @see {@link exportPublic}
+ * @see {@link importPrivate}
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.5
@@ -403,7 +417,7 @@ export const importPublic = Effect.fnUntraced(function*(
         return key
       }
     }
-  }).pipe(native, Effect.catchTag("CryptoInvalidInput", () => InvalidKey.make({})))
+  }).pipe(native, Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return Object.freeze({
     _tag: "PublicKey",
@@ -415,6 +429,9 @@ export const importPublic = Effect.fnUntraced(function*(
 
 /**
  * Validates and snapshots a redacted private JWK for the explicitly selected asymmetric algorithm.
+ *
+ * @see {@link importPkcs8} for importing DER-encoded keys
+ * @see {@link exportPrivate}
  *
  * @stability unstable
  * @category constructors
@@ -447,7 +464,7 @@ export const importPrivate = Effect.fnUntraced(function*(
             return Redacted.make(new Uint8Array(Redacted.value(key)))
           }))
     }
-  }).pipe(native, Effect.catchTag("CryptoInvalidInput", () => InvalidKey.make({})))
+  }).pipe(native, Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return Object.freeze({
     _tag: "PrivateKey",
@@ -459,6 +476,8 @@ export const importPrivate = Effect.fnUntraced(function*(
 
 /**
  * Imports redacted PKCS8 DER through Effect crypto key helpers and binds the private key to an algorithm.
+ *
+ * @see {@link importPrivate} for importing JWK-encoded keys
  *
  * @stability unstable
  * @category constructors
@@ -485,7 +504,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
         default:
           return yield* native(withPrivateKey(Rsa.privateKeyFromPkcs8(owned), Rsa.privateKeyToJwk))
       }
-    })).pipe(Effect.mapError(() => InvalidKey.make({})))
+    })).pipe(Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return yield* importPrivate(
     Redacted.make({
@@ -514,6 +533,8 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  * key._tag // => "SecretKey"
  * ```
  *
+ * @see {@link exportPrivate}
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.5
@@ -521,7 +542,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
 export const importSecret = Effect.fnUntraced(function*(
   input: Redacted.Redacted<unknown>,
   selected: "HS256" | "dir"
-): Effect.fn.Return<SecretKey, InvalidKey> {
+): Effect.fn.Return<SecretKey, ImportError> {
   const algorithm = yield* read(Schema.Literals(["HS256", "dir"]), selected)
 
   const jwk = yield* read(
@@ -546,7 +567,7 @@ export const importSecret = Effect.fnUntraced(function*(
     algorithm === "HS256"
       ? Hmac.keyFromJwk({ kty: "oct", k: jwk.k })
       : Aes.keyFromJwk({ kty: "oct", k: jwk.k })
-  ).pipe(Effect.mapError(() => InvalidKey.make({})))
+  ).pipe(Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return Object.freeze({
     _tag: "SecretKey",
@@ -559,6 +580,8 @@ export const importSecret = Effect.fnUntraced(function*(
 /**
  * Returns a detached, validated public JWK from an imported key.
  *
+ * @see {@link importPublic}
+ *
  * @stability unstable
  * @category encoding
  * @since 4.0.5
@@ -569,6 +592,9 @@ export const exportPublic = Effect.fnUntraced(function*(key: PublicKey) {
 
 /**
  * Returns a detached private or symmetric JWK while preserving its redacted wrapper.
+ *
+ * @see {@link importPrivate}
+ * @see {@link importSecret}
  *
  * @stability unstable
  * @category encoding

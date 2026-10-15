@@ -11,6 +11,7 @@ import * as CryptoError from "effect/crypto/CryptoError"
 import * as Sha2 from "effect/crypto/Sha2"
 import * as DateTime from "effect/DateTime"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -50,7 +51,7 @@ const claims = {
 const verification: Oidc.VerificationInput = {
   verificationStartedAt: DateTime.makeUnsafe(seconds * 1000 - 1000),
   nonce: Redacted.make("nonce"),
-  maxAgeSeconds: 60,
+  maxAge: "60 seconds",
   accessToken: Redacted.make("private-access"),
   code: Redacted.make("single-use-code")
 }
@@ -95,13 +96,13 @@ it.effect("requires signing-key issuer authority after pinning discovery metadat
 
       const discovered = yield* Oidc.discover(issuer, {
         metadataUrl: documentUrl,
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(Effect.provideService(HttpClient.HttpClient, http))
 
       const verifier = yield* Oidc.makeVerifier({
         metadata: discovered,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(Effect.provideService(HttpClient.HttpClient, http))
 
       const result = yield* verifier.verify(token, verification).pipe(Effect.result)
@@ -131,7 +132,7 @@ it.effect(
       const verifier = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(
           HttpClient.HttpClient,
@@ -150,6 +151,20 @@ it.effect(
       assert.strictEqual(result.authTime, seconds - 10)
       assert.strictEqual(Redacted.value(result.claims).hd, "example.com")
       assert.strictEqual(DateTime.toEpochMillis(result.upstreamAuthenticatedAt!), (seconds - 10) * 1000)
+
+      const token = yield* sign(keys.privateKey, claims)
+      for (
+        const maxAge of [
+          60000,
+          "60 seconds",
+          Duration.seconds(60),
+          { minutes: 1 },
+          [60, 0],
+          60_000_000_000n
+        ] satisfies ReadonlyArray<Duration.Input>
+      ) {
+        assert.strictEqual((yield* verifier.verify(token, { ...verification, maxAge })).subject, "provider-subject")
+      }
 
       const recent = yield* verifier.verify(
         yield* sign(keys.privateKey, { ...claims, auth_time: seconds }),
@@ -175,6 +190,41 @@ it.effect(
     }).pipe(Effect.provide(cryptoLayer))
 )
 
+it.effect("rejects invalid verification durations before key lookup", () =>
+  Effect.gen(function*() {
+    let requests = 0
+    const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeout: "1 second" }).pipe(
+      Effect.provideService(
+        HttpClient.HttpClient,
+        transport(() => {
+          requests++
+          return Response.json({ keys: [] })
+        })
+      )
+    )
+    for (
+      const maxAge of [
+        NaN,
+        Infinity,
+        -1,
+        "forever",
+        { seconds: NaN },
+        { seconds: "1" },
+        [1, Infinity],
+        500,
+        "0.5 seconds",
+        "25 hours"
+      ]
+    ) {
+      const failure = yield* verifier.verify(Redacted.make("unread-token"), {
+        ...verification,
+        maxAge: maxAge as Duration.Input
+      }).pipe(Effect.flip)
+      assert.strictEqual(failure._tag, "OAuthUnavailable")
+    }
+    assert.strictEqual(requests, 0)
+  }).pipe(Effect.provide(cryptoLayer)))
+
 it.effect(
   "rejects authenticated wrong issuer/aud/azp/time/nonce/hash claims with no clock tolerance",
   () =>
@@ -186,7 +236,7 @@ it.effect(
       const verifier = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(
           HttpClient.HttpClient,
@@ -257,7 +307,7 @@ it.effect(
       const verifier = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(
           HttpClient.HttpClient,
@@ -282,7 +332,7 @@ it.effect(
       const unavailable = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(
           HttpClient.HttpClient,
@@ -310,7 +360,7 @@ it.effect(
       const verifier = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(
           HttpClient.HttpClient,
@@ -367,7 +417,7 @@ it.effect("rejects unsupported OIDC metadata and closes the issuer's scoped JWKS
         (yield* Oidc.makeVerifier({
           metadata: unsupported,
           clientId: "client",
-          timeoutMs: 1000
+          timeout: 1000
         }).pipe(Effect.provideService(HttpClient.HttpClient, http), Effect.flip))._tag,
         "OAuthConfigurationError"
       )
@@ -377,7 +427,7 @@ it.effect("rejects unsupported OIDC metadata and closes the issuer's scoped JWKS
     const verifier = yield* Oidc.makeVerifier({
       metadata,
       clientId: "client",
-      timeoutMs: 1000
+      timeout: 1000
     }).pipe(
       Effect.provideService(Scope.Scope, scope),
       Effect.provideService(HttpClient.HttpClient, http)
@@ -413,15 +463,17 @@ it.effect("captures verification policy before JWKS I/O", () =>
     const verifier = yield* Oidc.makeVerifier({
       metadata,
       clientId: "client",
-      timeoutMs: 1000
+      timeout: 1000
     }).pipe(Effect.provideService(HttpClient.HttpClient, http))
 
-    const policy = { ...verification, nonce: Redacted.make("nonce") }
+    const maxAge = { seconds: 60 }
+    const policy = { ...verification, nonce: Redacted.make("nonce"), maxAge }
     const token = yield* sign(keys.privateKey, claims)
     const fiber = yield* verifier.verify(token, policy).pipe(Effect.forkChild)
 
     yield* Deferred.await(entered)
     policy.nonce = Redacted.make("substituted")
+    maxAge.seconds = 0
     yield* Deferred.succeed(release, undefined)
     assert.strictEqual((yield* Fiber.join(fiber)).subject, "provider-subject")
   }).pipe(Effect.provide(cryptoLayer)))
@@ -439,7 +491,7 @@ for (const termination of ["owner closure", "caller interruption"] as const) {
       const verifier = yield* Oidc.makeVerifier({
         metadata,
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(
         Effect.provideService(Scope.Scope, owner),
         Effect.provideService(
@@ -535,7 +587,7 @@ for (const algorithm of ["PS256", "ES256", "EdDSA"] as const) {
       const verifier = yield* Oidc.makeVerifier({
         metadata: { ...metadata, id_token_signing_alg_values_supported: [algorithm] },
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(Effect.provideService(
         HttpClient.HttpClient,
         transport(() => Response.json({ keys: [{ ...jwk, kid: "key", alg: algorithm }] }))
@@ -569,7 +621,7 @@ it.effect("sanitizes injected Sha2 failures and rejects invalid digest lengths",
     yield* TestClock.setTime(seconds * 1000)
     const keys = yield* generate
     const jwk = yield* Effect.promise(() => jose.exportJWK(keys.publicKey))
-    const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeoutMs: 1000 }).pipe(
+    const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeout: 1000 }).pipe(
       Effect.provideService(HttpClient.HttpClient, transport(() => Response.json({ keys: [{ ...jwk, kid: "key" }] })))
     )
     const token = yield* sign(keys.privateKey, claims)
@@ -620,7 +672,7 @@ it.effect("requires explicit strong HS256 policy and verifies without fetching k
       const failure = yield* Oidc.makeVerifier({
         metadata: hmacMetadata,
         clientId: "client",
-        timeoutMs: 1000,
+        timeout: 1000,
         ...configuration
       }).pipe(Effect.provideService(HttpClient.HttpClient, http), Effect.flip)
       assert.strictEqual(failure._tag, "OAuthConfigurationError")
@@ -630,7 +682,7 @@ it.effect("requires explicit strong HS256 policy and verifies without fetching k
       clientId: "client",
       algorithms: ["HS256"],
       clientSecret: Redacted.make(secret),
-      timeoutMs: 1000
+      timeout: 1000
     }).pipe(Effect.provideService(HttpClient.HttpClient, http))
     const token = yield* sign(key, claims, "HS256")
     assert.strictEqual((yield* verifier.verify(token, verification)).subject, claims.sub)
@@ -657,7 +709,7 @@ it.effect("binds tenant token issuers to GUID claims and signing-key authority",
       const verifier = yield* Oidc.makeVerifier({
         metadata: { ...metadata, issuer: template },
         clientId: "client",
-        timeoutMs: 1000
+        timeout: 1000
       }).pipe(Effect.provideService(
         HttpClient.HttpClient,
         transport(() => Response.json({ keys: [{ ...jwk, kid: "key", issuer: keyIssuer }] }))
@@ -707,7 +759,7 @@ it.effect("keeps signing-key caches isolated between verifier owners", () =>
       calls++
       return Response.json({ keys: [{ ...(calls === 1 ? firstJwk : secondJwk), kid: "key" }] })
     })
-    const install = Oidc.makeVerifier({ metadata, clientId: "client", timeoutMs: 1000 }).pipe(
+    const install = Oidc.makeVerifier({ metadata, clientId: "client", timeout: 1000 }).pipe(
       Effect.provideService(HttpClient.HttpClient, http)
     )
     const firstVerifier = yield* install.pipe(Effect.provideService(Scope.Scope, owner))
@@ -740,7 +792,7 @@ for (const boundary of ["expiration", "authentication age"] as const) {
       yield* TestClock.setTime(seconds * 1000)
       const keys = yield* generate
       const jwk = yield* Effect.promise(() => jose.exportJWK(keys.publicKey))
-      const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeoutMs: 1000 }).pipe(
+      const verifier = yield* Oidc.makeVerifier({ metadata, clientId: "client", timeout: 1000 }).pipe(
         Effect.provideService(HttpClient.HttpClient, transport(() => Response.json({ keys: [{ ...jwk, kid: "key" }] })))
       )
       const sha2 = yield* Sha2.Sha2

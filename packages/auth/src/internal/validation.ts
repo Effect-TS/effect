@@ -4,6 +4,7 @@ import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 
 import { ConfigurationError, Unavailable } from "../OAuthError.ts"
+import * as DurationInput from "./duration.ts"
 
 export const text = (maximum: number) => Schema.NonEmptyString.check(Schema.isMaxLength(maximum))
 
@@ -99,11 +100,16 @@ export const Resource = text(2048).check(
 export const Resources = Schema.Array(Resource).check(Schema.isMaxLength(64))
 
 export const RequestOptions = Schema.Struct({
-  timeoutMs: Schema.Finite.check(Schema.isBetween({ minimum: 1, maximum: 60000 })),
+  timeout: DurationInput.Millis.check(Schema.isBetween({ minimum: 1, maximum: 60000 })),
   maxResponseBytes: integer(1, 1048576).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed(1048576))
   )
 })
+
+export const MaxAge = DurationInput.Seconds.check(
+  Schema.isInt(),
+  Schema.isBetween({ minimum: 0, maximum: 86400 })
+)
 
 export const Verifier = Schema.Redacted(
   Schema.String.check(Schema.isPattern(/^[A-Za-z0-9._~-]{43,128}$/)),

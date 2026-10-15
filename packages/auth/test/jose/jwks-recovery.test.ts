@@ -235,8 +235,8 @@ it.effect.each(
       const context = yield* Layer.build(
         Jwks.layerRemote({
           url: "https://issuer.example/keys",
-          cacheTimeMs: 100,
-          cooldownMs: 10
+          timeToLive: 100,
+          cooldown: 10
         }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, client)))
       )
 
@@ -278,8 +278,8 @@ it.effect.each(
     }).pipe(Effect.provide(cryptoLayer))
 )
 
-// Reproduced at 5199d99: callers passed the pending check before yielding to
-// Clock, then each started a GET. Gate that read through the public Clock service.
+// Interleave callers at the Clock read to ensure refresh admission starts only
+// one request even when each caller initially observes an empty cache.
 it.effect("coalesces lookups that interleave during refresh admission", () =>
   Effect.gen(function*() {
     let requests = 0
@@ -300,7 +300,7 @@ it.effect("coalesces lookups that interleave during refresh admission", () =>
     )
 
     const context = yield* Layer.build(
-      Jwks.layerRemote({ url: "https://issuer.example/keys", cooldownMs: 0 }).pipe(
+      Jwks.layerRemote({ url: "https://issuer.example/keys", cooldown: 0 }).pipe(
         Layer.provide(Layer.succeed(HttpClient.HttpClient, client))
       )
     )
@@ -340,8 +340,8 @@ it.effect("coalesces lookups that interleave during refresh admission", () =>
     assert.strictEqual(requests, 1)
   }).pipe(Effect.provide(cryptoLayer)))
 
-// Reproduced at 5199d99: closing during the admission Clock read missed the
-// not-yet-published Deferred; the later fork into the closed Scope never ran.
+// Closing during refresh admission must release waiters even when the fetch
+// fiber has not started and cannot publish its result.
 it.effect("completes a lookup when its Scope closes during refresh admission", () =>
   Effect.gen(function*() {
     let requests = 0

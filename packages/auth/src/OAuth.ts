@@ -5,17 +5,19 @@
  * @since 4.0.5
  */
 import * as Context from "effect/Context"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import type { HttpClient } from "effect/http"
 import * as HttpClientRequest from "effect/http/HttpClientRequest"
+import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 
 import * as Ownership from "./internal/ownership.ts"
 import * as Transport from "./internal/transport.ts"
-import * as V from "./internal/validation.ts"
+import * as Validation from "./internal/validation.ts"
 import { ConfigurationError, Rejected, Unavailable } from "./OAuthError.ts"
 
 /**
@@ -25,7 +27,7 @@ import { ConfigurationError, Rejected, Unavailable } from "./OAuthError.ts"
  * @category schemas
  * @since 4.0.5
  */
-export const JsonObject = V.JsonObject
+export const JsonObject = Validation.JsonObject
 /**
  * Value described by the JsonObject schema.
  *
@@ -57,32 +59,34 @@ export type JsonObject = typeof JsonObject.Type
  * @since 4.0.5
  */
 export const Metadata = Schema.Struct({
-  issuer: V.Issuer,
-  /** Local discovery policy: a tenant-template document requires key issuer
-   * authority even when its token issuer is pinned to one tenant. */
+  issuer: Validation.Issuer,
+  /**
+   * Local discovery policy: a tenant-template document requires key issuer
+   * authority even when its token issuer is pinned to one tenant.
+   */
   signing_key_issuer_required: Schema.optionalKey(Schema.Literal(true)),
-  authorization_endpoint: V.ProtocolEndpoint,
-  token_endpoint: V.ProtocolEndpoint,
-  jwks_uri: Schema.optionalKey(V.Endpoint),
-  userinfo_endpoint: Schema.optionalKey(V.Endpoint),
-  revocation_endpoint: Schema.optionalKey(V.ProtocolEndpoint),
+  authorization_endpoint: Validation.ProtocolEndpoint,
+  token_endpoint: Validation.ProtocolEndpoint,
+  jwks_uri: Schema.optionalKey(Validation.Endpoint),
+  userinfo_endpoint: Schema.optionalKey(Validation.Endpoint),
+  revocation_endpoint: Schema.optionalKey(Validation.ProtocolEndpoint),
   code_challenge_methods_supported: Schema.optionalKey(
-    Schema.Array(V.text(64)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(64)).check(Schema.isMaxLength(64))
   ),
   response_types_supported: Schema.optionalKey(
-    Schema.Array(V.text(64)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(64)).check(Schema.isMaxLength(64))
   ),
   grant_types_supported: Schema.optionalKey(
-    Schema.Array(V.text(128)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(128)).check(Schema.isMaxLength(64))
   ),
   id_token_signing_alg_values_supported: Schema.optionalKey(
-    Schema.Array(V.text(64)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(64)).check(Schema.isMaxLength(64))
   ),
   token_endpoint_auth_methods_supported: Schema.optionalKey(
-    Schema.Array(V.text(64)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(64)).check(Schema.isMaxLength(64))
   ),
   revocation_endpoint_auth_methods_supported: Schema.optionalKey(
-    Schema.Array(V.text(64)).check(Schema.isMaxLength(64))
+    Schema.Array(Validation.text(64)).check(Schema.isMaxLength(64))
   ),
   authorization_response_iss_parameter_supported: Schema.optionalKey(Schema.Boolean)
 })
@@ -117,11 +121,13 @@ export type Metadata = typeof Metadata.Type
  * @since 4.0.5
  */
 export const Authentication = Schema.Union([
-  Schema.Struct({ method: Schema.Literal("client_secret_basic"), secret: V.secret(4096) }),
+  Schema.Struct({ method: Schema.Literal("client_secret_basic"), secret: Validation.secret(4096) }),
   Schema.Struct({
     method: Schema.Literal("client_secret_post"),
-    /** Omit when each token request supplies clientSecret. */
-    secret: Schema.optionalKey(V.secret(4096))
+    /**
+     * Omit when each token request supplies `clientSecret`.
+     */
+    secret: Schema.optionalKey(Validation.secret(4096))
   }),
   Schema.Struct({ method: Schema.Literal("none"), publicClient: Schema.Literal(true) })
 ])
@@ -138,12 +144,14 @@ export type Authentication = typeof Authentication.Type
 /**
  * Uninterpreted private receipt. Inspect provider extensions before calling tokens; a receipt does not establish grant success or identity.
  *
+ * @see {@link tokens} for normalizing a provider-checked receipt
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.5
  */
 export const TokenReceipt = Schema.Struct({
-  status: V.integer(100, 599),
+  status: Validation.integer(100, 599),
   contentType: Schema.NullOr(Schema.String.check(Schema.isMaxLength(512))),
   body: Schema.Redacted(JsonObject, { disallowJsonEncode: true })
 })
@@ -161,15 +169,17 @@ export type TokenReceipt = typeof TokenReceipt.Type
  * Normalized bearer tokens with redacted secrets and optional lifetime and granted scope.
  * An optional `idToken` is an opaque, unverified receipt, not an authenticated identity.
  *
+ * @see {@link tokens}
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.5
  */
 export const TokenSet = Schema.Struct({
   tokenType: Schema.Literal("bearer"),
-  accessToken: V.secret(16384),
-  refreshToken: Schema.optionalKey(V.secret(16384)),
-  idToken: Schema.optionalKey(V.secret(65536)),
+  accessToken: Validation.secret(16384),
+  refreshToken: Schema.optionalKey(Validation.secret(16384)),
+  idToken: Schema.optionalKey(Validation.secret(65536)),
   expiresIn: Schema.optionalKey(Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))),
   scope: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(16447)))
 })
@@ -184,14 +194,20 @@ export const TokenSet = Schema.Struct({
 export type TokenSet = typeof TokenSet.Type
 
 /**
- * Request bounds: a timeout of 1–60,000 milliseconds and a response limit of 1–1,048,576 bytes, defaulting to 1,048,576.
+ * Request timeout and response body bounds.
  *
  * @stability unstable
  * @category models
  * @since 4.0.5
  */
 export interface RequestOptions {
-  readonly timeoutMs: number
+  /**
+   * Maximum request duration, from 1 millisecond through 1 minute. Numeric inputs are milliseconds.
+   */
+  readonly timeout: Duration.Input
+  /**
+   * Maximum response body size, from 1 through 1,048,576 bytes. Defaults to 1,048,576 bytes.
+   */
   readonly maxResponseBytes?: number
 }
 
@@ -212,10 +228,14 @@ export interface ClientOptions extends RequestOptions {
     readonly headers?: Readonly<Record<string, string>>
     readonly body?: string
   }
-  /** Defaults to form. Notion's token endpoint requires JSON. Repeated names,
-   * including more than one `resource`, fail before the request. */
+  /**
+   * Defaults to form. Notion's token endpoint requires JSON. Repeated names,
+   * including more than one `resource`, fail before the request.
+   */
   readonly tokenBodyFormat?: "form" | "json"
-  /** Defaults to a space. Linear's authorize URL requires commas. */
+  /**
+   * Defaults to a space. Linear's authorize URL requires commas.
+   */
   readonly scopeSeparator?: " " | ","
   readonly revocationAuthentication?: Authentication
 }
@@ -246,11 +266,17 @@ export interface AuthorizationInput extends Parameters {
   readonly state: Redacted.Redacted<string>
   readonly codeChallenge?: string
   readonly nonce?: Redacted.Redacted<string>
-  readonly maxAgeSeconds?: number
+  /**
+   * Maximum authentication age in whole seconds, from zero through 24 hours.
+   * Numeric inputs are milliseconds. Omit to leave `max_age` unspecified.
+   */
+  readonly maxAge?: Duration.Input
   readonly prompt?: "none" | "login" | "consent" | "select_account"
   readonly loginHint?: string
-  /** Defaults to query. form_post is required by some issuers when name or
-   * email scopes are requested. */
+  /**
+   * Defaults to query. `form_post` is required by some issuers when name or
+   * email scopes are requested.
+   */
   readonly responseMode?: "query" | "form_post"
 }
 
@@ -265,7 +291,9 @@ export interface CodeGrantInput extends Parameters {
   readonly code: Redacted.Redacted<string>
   readonly redirectUri: string
   readonly pkceVerifier?: Redacted.Redacted<string>
-  /** Used when client_secret_post has no stored secret. */
+  /**
+   * Used when `client_secret_post` has no stored secret.
+   */
   readonly clientSecret?: Redacted.Redacted<string>
 }
 
@@ -279,7 +307,9 @@ export interface CodeGrantInput extends Parameters {
 export interface RefreshGrantInput extends Parameters {
   readonly refreshToken: Redacted.Redacted<string>
   readonly scopes?: ReadonlyArray<string>
-  /** Used when client_secret_post has no stored secret. */
+  /**
+   * Used when `client_secret_post` has no stored secret.
+   */
   readonly clientSecret?: Redacted.Redacted<string>
 }
 
@@ -293,7 +323,9 @@ export interface RefreshGrantInput extends Parameters {
 export interface RevocationInput {
   readonly token: Redacted.Redacted<string>
   readonly tokenTypeHint: "access_token" | "refresh_token"
-  /** Used when client_secret_post has no stored secret. */
+  /**
+   * Used when `client_secret_post` has no stored secret.
+   */
   readonly clientSecret?: Redacted.Redacted<string>
 }
 
@@ -328,10 +360,11 @@ export interface Client {
  *
  * **Details**
  *
- * Provide with `Layer.effect(Client, make(options))` to bind the client's lifetime
- * to the layer scope. Acquire the installed client with `yield* Client`.
+ * Provide with `layer(options)` to bind the client's lifetime to the layer
+ * scope. Acquire the installed client with `yield* Client`.
  *
  * @see {@link make}
+ * @see {@link layer}
  *
  * @stability unstable
  * @category services
@@ -343,15 +376,15 @@ export const Client: Context.Service<Client, Client> = Context.Service<Client, C
 
 const ClientOptionsSchema = Schema.Struct({
   metadata: Metadata,
-  clientId: V.text(1024),
+  clientId: Validation.text(1024),
   authentication: Authentication,
-  ...V.RequestOptions.fields,
+  ...Validation.RequestOptions.fields,
   profile: Schema.optionalKey(
     Schema.Struct({
-      url: V.Endpoint,
+      url: Validation.Endpoint,
       method: Schema.optionalKey(Schema.Literals(["GET", "POST"])),
-      headers: Schema.optionalKey(V.Headers),
-      body: Schema.optionalKey(V.text(4096))
+      headers: Schema.optionalKey(Validation.Headers),
+      body: Schema.optionalKey(Validation.text(4096))
     })
   ),
   tokenBodyFormat: Schema.optionalKey(Schema.Literals(["form", "json"])),
@@ -360,42 +393,42 @@ const ClientOptionsSchema = Schema.Struct({
 })
 
 const additional = {
-  parameters: Schema.optionalKey(V.Parameters),
-  resources: Schema.optionalKey(V.Resources)
+  parameters: Schema.optionalKey(Validation.Parameters),
+  resources: Schema.optionalKey(Validation.Resources)
 }
 
 const Authorization = Schema.Struct({
   ...additional,
-  redirectUri: V.Callback,
-  scopes: V.Scopes,
-  state: V.secret(256),
-  codeChallenge: Schema.optionalKey(V.Challenge),
-  nonce: Schema.optionalKey(V.secret(256)),
-  maxAgeSeconds: Schema.optionalKey(V.integer(0, 86400)),
+  redirectUri: Validation.Callback,
+  scopes: Validation.Scopes,
+  state: Validation.secret(256),
+  codeChallenge: Schema.optionalKey(Validation.Challenge),
+  nonce: Schema.optionalKey(Validation.secret(256)),
+  maxAge: Schema.optionalKey(Validation.MaxAge),
   prompt: Schema.optionalKey(Schema.Literals(["none", "login", "consent", "select_account"])),
-  loginHint: Schema.optionalKey(V.text(1024)),
+  loginHint: Schema.optionalKey(Validation.text(1024)),
   responseMode: Schema.optionalKey(Schema.Literals(["query", "form_post"]))
 })
 
-const requestSecret = Schema.optionalKey(V.secret(8192))
+const requestSecret = Schema.optionalKey(Validation.secret(8192))
 
 const CodeGrant = Schema.Struct({
   ...additional,
-  code: V.secret(16384),
-  redirectUri: V.Callback,
-  pkceVerifier: Schema.optionalKey(V.Verifier),
+  code: Validation.secret(16384),
+  redirectUri: Validation.Callback,
+  pkceVerifier: Schema.optionalKey(Validation.Verifier),
   clientSecret: requestSecret
 })
 
 const RefreshGrant = Schema.Struct({
   ...additional,
-  refreshToken: V.secret(16384),
-  scopes: Schema.optionalKey(V.Scopes),
+  refreshToken: Validation.secret(16384),
+  scopes: Schema.optionalKey(Validation.Scopes),
   clientSecret: requestSecret
 })
 
 const Revocation = Schema.Struct({
-  token: V.secret(16384),
+  token: Validation.secret(16384),
   tokenTypeHint: Schema.Literals(["access_token", "refresh_token"]),
   clientSecret: requestSecret
 })
@@ -408,10 +441,10 @@ const ExpiresIn = Schema.Union([
 ]).check(Schema.isGreaterThanOrEqualTo(0))
 
 const RawToken = Schema.Struct({
-  access_token: V.text(16384),
+  access_token: Validation.text(16384),
   token_type: Schema.String.check(Schema.isPattern(/^[Bb][Ee][Aa][Rr][Ee][Rr]$/)),
-  refresh_token: Schema.optionalKey(Schema.NullOr(V.text(16384))),
-  id_token: Schema.optionalKey(V.text(65536)),
+  refresh_token: Schema.optionalKey(Schema.NullOr(Validation.text(16384))),
+  id_token: Schema.optionalKey(Validation.text(65536)),
   expires_in: Schema.optionalKey(ExpiresIn),
   scope: Schema.optionalKey(
     Schema.Union([
@@ -422,7 +455,7 @@ const RawToken = Schema.Struct({
 })
 
 const Terminal = Schema.Struct({
-  error: V.text(128),
+  error: Validation.text(128),
   error_description: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(4096))),
   error_uri: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2048)))
 })
@@ -440,7 +473,7 @@ const successFields = [
 
 /**
  * Parses tokens once provider-specific receipt checks have succeeded. `expires_in` accepts
- * finite nonnegative numbers and whole decimal strings (for example "60.5").
+ * finite nonnegative numbers and decimal strings (for example "60.5").
  * Whitespace, exponent/prefix syntax and nonfinite values are rejected. Raw
  * receipt extensions stay untouched. A null refresh token is omitted, and an
  * array scope is joined with spaces. No request, retry or claim verification.
@@ -467,6 +500,9 @@ const successFields = [
  * tokens.refreshToken // => undefined
  * ```
  *
+ * @see {@link TokenReceipt}
+ * @see {@link TokenSet}
+ *
  * @stability unstable
  * @category decoding
  * @since 4.0.5
@@ -474,14 +510,14 @@ const successFields = [
 export const tokens = Effect.fnUntraced(function*(
   input: TokenReceipt
 ): Effect.fn.Return<TokenSet, Rejected | Unavailable> {
-  const receipt = yield* V.decode(TokenReceipt, input)
+  const receipt = yield* Validation.decode(TokenReceipt, input)
 
   if (!Transport.isJson(receipt.contentType)) return yield* Unavailable.make({})
-  const raw = yield* V.reveal(receipt.body)
+  const raw = yield* Validation.reveal(receipt.body)
 
   if (Object.hasOwn(raw, "error")) {
     if (successFields.some((key) => Object.hasOwn(raw, key))) return yield* Unavailable.make({})
-    const terminal = yield* V.decode(Terminal, raw)
+    const terminal = yield* Validation.decode(Terminal, raw)
 
     if (receipt.status === 400 && terminal.error === "invalid_grant") {
       return yield* Rejected.make({ reason: "invalid_grant" })
@@ -496,7 +532,7 @@ export const tokens = Effect.fnUntraced(function*(
   ) {
     return yield* Unavailable.make({})
   }
-  const value = yield* V.decode(RawToken, raw)
+  const value = yield* Validation.decode(RawToken, raw)
 
   const scope: string | undefined = typeof value.scope === "string"
     ? value.scope
@@ -546,7 +582,7 @@ const authenticated = Effect.fnUntraced(function*(
   let request = HttpClientRequest.post(url).pipe(HttpClientRequest.acceptJson)
 
   if (authentication.method === "client_secret_basic") {
-    const secret = yield* V.reveal(authentication.secret)
+    const secret = yield* Validation.reveal(authentication.secret)
 
     const credential = yield* Effect.try({
       try: () => Base64.encode(`${basicComponent(clientId)}:${basicComponent(secret)}`),
@@ -560,7 +596,7 @@ const authenticated = Effect.fnUntraced(function*(
       const secret = authentication.secret ?? clientSecret
 
       if (secret === undefined) return yield* Unavailable.make({})
-      body.set("client_secret", yield* V.reveal(secret))
+      body.set("client_secret", yield* Validation.reveal(secret))
       if (authentication.secret === undefined) Redacted.wipeUnsafe(secret)
     }
   }
@@ -610,7 +646,7 @@ const authenticated = Effect.fnUntraced(function*(
  *     },
  *     clientId: "example-client",
  *     authentication: { method: "none", publicClient: true },
- *     timeoutMs: 5000
+ *     timeout: "5 seconds"
  *   })
  *   const url = yield* client.authorizationUrl({
  *     redirectUri: "https://app.example/callback",
@@ -622,6 +658,9 @@ const authenticated = Effect.fnUntraced(function*(
  * responseType // => "code"
  * ```
  *
+ * @see {@link Client}
+ * @see {@link layer} for providing the client as a service
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.5
@@ -629,7 +668,7 @@ const authenticated = Effect.fnUntraced(function*(
 export const make = Effect.fnUntraced(function*(
   input: ClientOptions
 ): Effect.fn.Return<Client, ConfigurationError | Unavailable, HttpClient.HttpClient | Scope.Scope> {
-  const options = yield* V.configuration(ClientOptionsSchema, input, "metadata")
+  const options = yield* Validation.configuration(ClientOptionsSchema, input, "metadata")
 
   const authentication = yield* detachAuthentication(options.authentication)
 
@@ -637,7 +676,7 @@ export const make = Effect.fnUntraced(function*(
     ? authentication
     : yield* detachAuthentication(options.revocationAuthentication)
 
-  const metadata = V.freeze(options.metadata)
+  const metadata = Validation.freeze(options.metadata)
 
   const supported = metadata.token_endpoint_auth_methods_supported ??
     (metadata.jwks_uri === undefined ? undefined : ["client_secret_basic"])
@@ -656,7 +695,7 @@ export const make = Effect.fnUntraced(function*(
   }
   const { available, use } = yield* Ownership.make
   const http = yield* Transport.capture
-  const profile = options.profile === undefined ? undefined : V.freeze(options.profile)
+  const profile = options.profile === undefined ? undefined : Validation.freeze(options.profile)
 
   const tokenBodyFormat = options.tokenBodyFormat === "json" ? ("json" as const) : ("form" as const)
 
@@ -704,7 +743,7 @@ export const make = Effect.fnUntraced(function*(
 
   const authorizationUrl = Effect.fnUntraced(function*(input: AuthorizationInput) {
     yield* available
-    const value = yield* V.configuration(Authorization, input)
+    const value = yield* Validation.configuration(Authorization, input)
     const url = new URL(metadata.authorization_endpoint)
     const body = parameters(value)
 
@@ -713,13 +752,13 @@ export const make = Effect.fnUntraced(function*(
     body.set("response_type", "code")
     body.set("response_mode", value.responseMode === "form_post" ? "form_post" : "query")
     if (value.scopes.length > 0) body.set("scope", value.scopes.join(scopeSeparator))
-    body.set("state", yield* V.reveal(value.state))
+    body.set("state", yield* Validation.reveal(value.state))
     if (value.codeChallenge !== undefined) {
       body.set("code_challenge", value.codeChallenge)
       body.set("code_challenge_method", "S256")
     }
-    if (value.nonce !== undefined) body.set("nonce", yield* V.reveal(value.nonce))
-    if (value.maxAgeSeconds !== undefined) body.set("max_age", String(value.maxAgeSeconds))
+    if (value.nonce !== undefined) body.set("nonce", yield* Validation.reveal(value.nonce))
+    if (value.maxAge !== undefined) body.set("max_age", String(value.maxAge))
     if (value.prompt !== undefined) body.set("prompt", value.prompt)
     if (value.loginHint !== undefined) body.set("login_hint", value.loginHint)
     for (const [key, item] of body) url.searchParams.append(key, item)
@@ -730,13 +769,13 @@ export const make = Effect.fnUntraced(function*(
 
   const codeGrant = Effect.fnUntraced(function*(input: CodeGrantInput) {
     yield* available
-    const value = yield* V.configuration(CodeGrant, input)
+    const value = yield* Validation.configuration(CodeGrant, input)
     const body = parameters(value)
 
     body.set("grant_type", "authorization_code")
-    body.set("code", yield* V.reveal(value.code))
+    body.set("code", yield* Validation.reveal(value.code))
     if (value.pkceVerifier !== undefined) {
-      body.set("code_verifier", yield* V.reveal(value.pkceVerifier))
+      body.set("code_verifier", yield* Validation.reveal(value.pkceVerifier))
     }
     body.set("redirect_uri", value.redirectUri)
 
@@ -745,11 +784,11 @@ export const make = Effect.fnUntraced(function*(
 
   const refreshGrant = Effect.fnUntraced(function*(input: RefreshGrantInput) {
     yield* available
-    const value = yield* V.configuration(RefreshGrant, input)
+    const value = yield* Validation.configuration(RefreshGrant, input)
     const body = parameters(value)
 
     body.set("grant_type", "refresh_token")
-    body.set("refresh_token", yield* V.reveal(value.refreshToken))
+    body.set("refresh_token", yield* Validation.reveal(value.refreshToken))
     if (value.scopes !== undefined && value.scopes.length > 0) {
       body.set("scope", value.scopes.join(scopeSeparator))
     }
@@ -760,7 +799,7 @@ export const make = Effect.fnUntraced(function*(
   const fetchProfile = Effect.fnUntraced(function*(input: Redacted.Redacted<string>) {
     yield* available
     if (profile === undefined) return yield* ConfigurationError.make({ reason: "endpoint" })
-    const token = yield* V.reveal(yield* V.decode(Bearer, input))
+    const token = yield* Validation.reveal(yield* Validation.decode(Bearer, input))
     const url = new URL(profile.url).href
 
     let request = (
@@ -779,7 +818,7 @@ export const make = Effect.fnUntraced(function*(
 
     if (response.status !== 200) return yield* Unavailable.make({})
 
-    return yield* V.reveal((yield* Transport.json(response)).body)
+    return yield* Validation.reveal((yield* Transport.json(response)).body)
   }, use)
 
   const revoke = Effect.fnUntraced(function*(input: RevocationInput) {
@@ -790,14 +829,14 @@ export const make = Effect.fnUntraced(function*(
     if (revokeSupported !== undefined && !revokeSupported.includes(revocationAuthentication.method)) {
       return yield* ConfigurationError.make({ reason: "authentication" })
     }
-    const value = yield* V.configuration(Revocation, input)
+    const value = yield* Validation.configuration(Revocation, input)
 
     const request = yield* authenticated(
       new URL(metadata.revocation_endpoint).href,
       options.clientId,
       revocationAuthentication,
       new URLSearchParams({
-        token: yield* V.reveal(value.token),
+        token: yield* Validation.reveal(value.token),
         token_type_hint: value.tokenTypeHint
       }),
       "form",
@@ -812,7 +851,26 @@ export const make = Effect.fnUntraced(function*(
   return { metadata, authorizationUrl, codeGrant, refreshGrant, fetchProfile, revoke }
 })
 
-const Bearer = Schema.Redacted(V.text(16384).check(Schema.isPattern(/^[A-Za-z0-9._~+/-]+=*$/u)), {
+/**
+ * Creates a layer that installs an OAuth client and owns its lifetime.
+ *
+ * **Details**
+ *
+ * Requires an HttpClient service. Closing the layer cancels and joins active
+ * client operations.
+ *
+ * @see {@link Client}
+ * @see {@link make} for constructing a client in an existing scope
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.5
+ */
+export const layer = (
+  options: ClientOptions
+): Layer.Layer<Client, ConfigurationError | Unavailable, HttpClient.HttpClient> => Layer.effect(Client, make(options))
+
+const Bearer = Schema.Redacted(Validation.text(16384).check(Schema.isPattern(/^[A-Za-z0-9._~+/-]+=*$/u)), {
   disallowJsonEncode: true
 })
 
@@ -825,5 +883,5 @@ const detachAuthentication = Effect.fnUntraced(function*(
   }
   if (authentication.secret === undefined) return yield* Unavailable.make({})
 
-  return { ...authentication, secret: Redacted.make(yield* V.reveal(authentication.secret)) }
+  return { ...authentication, secret: Redacted.make(yield* Validation.reveal(authentication.secret)) }
 })

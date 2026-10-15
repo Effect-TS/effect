@@ -5,8 +5,8 @@ import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, independentJwt, secret, secretJwk, utf8 } from "./fixtures.ts"
 
-// Adapted JWT verification contracts from panva/jose, plus the explicitly
-// requested Schema inference and branded-subject boundary. See the shipped notices.
+// Adapted JWT verification contracts from panva/jose, including Schema decoding
+// and branded-subject handling. See the shipped notices.
 export const Subject = Schema.String.check(Schema.isPattern(/^user_[0-9]+$/)).pipe(
   Schema.brand("Subject")
 )
@@ -32,8 +32,8 @@ const policy = {
   issuer: registered.iss,
   audience: "api",
   typ: "JWT",
-  maxTokenAge: 30
-}
+  maxTokenAge: "30 seconds"
+} satisfies Jwt.VerifyOptions
 
 it.effect("encodes and decodes the caller's Schema while retaining registered claims", () =>
   Effect.gen(function*() {

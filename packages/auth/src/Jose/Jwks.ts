@@ -7,6 +7,7 @@
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
+import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -18,20 +19,35 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import * as SynchronizedRef from "effect/SynchronizedRef"
+import * as DurationInput from "../internal/duration.ts"
 import { json } from "../internal/encoding.ts"
 import * as KeyInput from "../internal/keyInput.ts"
 import { AmbiguousKey, InvalidKey, JwksUnavailable, type KeyError, KeyNotFound } from "../JoseError.ts"
 import { AsymmetricAlgorithm, importPublic, PublicJwk, type PublicKey } from "./Jwk.ts"
 
+const UnsupportedPublicJwk = Schema.Struct({
+  kty: Schema.NonEmptyString,
+  crv: Schema.optionalKey(Schema.String),
+  d: Schema.optionalKey(Schema.Never),
+  k: Schema.optionalKey(Schema.Never)
+}).check(Schema.makeFilter((key) =>
+  key.kty !== "oct" && key.kty !== "RSA" &&
+  (key.kty !== "EC" || (key.crv !== undefined && key.crv !== "P-256")) &&
+  (key.kty !== "OKP" || (key.crv !== undefined && key.crv !== "Ed25519"))
+))
+
+const isPublicJwk = Schema.is(PublicJwk)
+
 /**
- * Schema for a bounded collection of public JWKs.
+ * Schema for a bounded collection of public JWKs. Unsupported key families and curves are ignored during resolution.
+ * Private and symmetric key material is rejected even in unsupported entries.
  *
  * @stability unstable
  * @category schemas
  * @since 4.0.5
  */
 export const KeySet = Schema.Struct({
-  keys: Schema.Array(PublicJwk).check(Schema.isMaxLength(KeyInput.maxArrayLength))
+  keys: Schema.Array(Schema.Union([PublicJwk, UnsupportedPublicJwk])).check(Schema.isMaxLength(KeyInput.maxArrayLength))
 })
 
 /**
@@ -76,7 +92,7 @@ export class Jwks extends Context.Service<
   {
     readonly resolve: (selection: Selection) => Effect.Effect<PublicKey, KeyError>
   }
->()("@effect/auth/Jwks") {}
+>()("@effect/auth/Jose/Jwks") {}
 
 /**
  * Captures a detached, immutable key-set generation and returns its resource-free public-key resolver.
@@ -135,13 +151,35 @@ export const layerLocal = (input: unknown): Layer.Layer<Jwks, InvalidKey> => Lay
  * @since 4.0.5
  */
 export interface RemoteOptions {
-  /** Trusted application configuration, never a URL from a token. HTTPS only. */
+  /**
+   * Trusted HTTPS endpoint without credentials or a fragment. Must come from application configuration, never a token.
+   */
   readonly url: string
-  readonly cacheTimeMs?: number
-  readonly cooldownMs?: number
-  readonly timeoutMs?: number
+  /**
+   * Successful key-set cache lifetime. Defaults to 10 minutes; must resolve to whole milliseconds between 1 millisecond and 24 hours.
+   */
+  readonly timeToLive?: Duration.Input
+  /**
+   * Minimum interval between refresh attempts, including failed attempts. Defaults to 30 seconds; must resolve to whole milliseconds between zero and 1 hour.
+   * Missing keys remain KeyNotFound during this interval; an expired or absent cache fails with a cooldown reason.
+   */
+  readonly cooldown?: Duration.Input
+  /**
+   * Timeout for the complete HTTP request and body read. Defaults to 5 seconds; must resolve to whole milliseconds between 1 millisecond and 1 minute.
+   */
+  readonly timeout?: Duration.Input
+  /**
+   * Maximum response body size in bytes. Defaults to 131072; must be between 1 and 1048576.
+   */
   readonly maxResponseBytes?: number
+  /**
+   * Maximum number of keys before unsupported entries are ignored. Defaults to 64; must be between 1 and 256.
+   */
   readonly maxKeys?: number
+  /**
+   * Maximum concurrent resolutions, including callers sharing a refresh. Defaults to 64; must be between 1 and 1024.
+   * Additional callers fail immediately with a busy reason.
+   */
   readonly maxWaiters?: number
 }
 
@@ -159,7 +197,7 @@ const readSet = (input: unknown) =>
     Effect.map((set) => {
       for (const key of set.keys) {
         KeyInput.detach(key)
-        if (key.key_ops !== undefined) Object.freeze(key.key_ops)
+        if (isPublicJwk(key) && key.key_ops !== undefined) Object.freeze(key.key_ops)
         Object.freeze(key)
       }
       Object.freeze(set.keys)
@@ -194,7 +232,7 @@ const select = Effect.fnUntraced(function*(set: KeySet, selection: Selection) {
       keyType = "RSA"
   }
 
-  const candidates = set.keys.filter(
+  const candidates = set.keys.filter(isPublicJwk).filter(
     (key) =>
       (selection.kid === undefined || key.kid === selection.kid) &&
       (key.alg === undefined || key.alg === selection.algorithm) &&
@@ -238,9 +276,9 @@ const RemoteConfiguration = Schema.Struct({
       (url) => url.protocol === "https:" && url.username === "" && url.password === "" && url.hash === ""
     )
   ),
-  cacheTimeMs: bounded(1, 86400000),
-  cooldownMs: bounded(0, 3600000),
-  timeoutMs: bounded(1, 60000),
+  timeToLive: DurationInput.Millis.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 86400000 })),
+  cooldown: DurationInput.Millis.check(Schema.isInt(), Schema.isBetween({ minimum: 0, maximum: 3600000 })),
+  timeout: DurationInput.Millis.check(Schema.isInt(), Schema.isBetween({ minimum: 1, maximum: 60000 })),
   maxResponseBytes: bounded(1, 1048576),
   maxKeys: bounded(1, KeyInput.maxArrayLength),
   maxWaiters: bounded(1, 1024)
@@ -283,9 +321,9 @@ export const layerRemote = (
   input: RemoteOptions
 ): Layer.Layer<Jwks, JwksUnavailable, HttpClient.HttpClient> => {
   const configuration = {
-    cacheTimeMs: 600000,
-    cooldownMs: 30000,
-    timeoutMs: 5000,
+    timeToLive: "10 minutes",
+    cooldown: "30 seconds",
+    timeout: "5 seconds",
     maxResponseBytes: 131072,
     maxKeys: 64,
     maxWaiters: 64,
@@ -355,7 +393,7 @@ export const layerRemote = (
 
         return {
           keys,
-          expiresAt: (yield* Clock.currentTimeMillis) + options.cacheTimeMs
+          expiresAt: (yield* Clock.currentTimeMillis) + options.timeToLive
         } satisfies Snapshot
       }).pipe(
         Effect.scoped,
@@ -367,7 +405,7 @@ export const layerRemote = (
         Effect.catchTag("HttpClientError", () => JwksUnavailable.make({ reason: "transport" })),
         Effect.catchTag(["JoseInvalidToken", "JoseInvalidKey"], () => JwksUnavailable.make({ reason: "response" })),
         Effect.timeoutOrElse({
-          duration: options.timeoutMs,
+          duration: options.timeout,
           orElse: () => JwksUnavailable.make({ reason: "transport" })
         })
       )
@@ -396,7 +434,7 @@ export const layerRemote = (
                 if (current.pending !== undefined) {
                   return [{ _tag: "Join", result: current.pending }, current]
                 }
-                if (now - current.lastAttempt < options.cooldownMs) {
+                if (now - current.lastAttempt < options.cooldown) {
                   return [{ _tag: "Rejected", reason: "cooldown" }, current]
                 }
 

@@ -1,7 +1,7 @@
 import type { JoseError } from "@effect/auth"
 import { Jwk, Jwks, Jwt } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
-import { Effect, Redacted, Schema } from "effect"
+import { Duration, Effect, Redacted, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, independentJws, independentJwt, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
@@ -11,6 +11,35 @@ import { cryptoLayer, independentJws, independentJwt, privateJwk, publicJwk, sec
 // the application Schema deliberately does not validate registered claims.
 const Claims = Schema.Record(Schema.String, Schema.Json)
 const now = 1604416038
+
+it.effect("accepts duration inputs for claim tolerance and maximum token age", () =>
+  Effect.gen(function*() {
+    yield* TestClock.setTime(now * 1000)
+    const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
+    const token = yield* independentJwt({ exp: now, nbf: now + 1, iat: now - 1 })
+
+    const formats: ReadonlyArray<Duration.Input> = [
+      "1 second",
+      Duration.seconds(1),
+      1000,
+      1_000_000_000n,
+      [1, 0],
+      { seconds: 1 }
+    ]
+    const stale = yield* independentJwt({ iat: now - 2 })
+    for (const duration of formats) {
+      const verified = yield* Jwt.verify(Claims, token, key, {
+        algorithms: ["HS256"],
+        clockTolerance: duration,
+        maxTokenAge: duration
+      })
+      assert.strictEqual(verified.registeredClaims.iat, now - 1)
+      assert.deepInclude(
+        yield* Jwt.verify(Claims, stale, key, { algorithms: ["HS256"], maxTokenAge: duration }).pipe(Effect.flip),
+        { _tag: "JoseClaimValidationFailed", claim: "iat", reason: "tooOld" }
+      )
+    }
+  }).pipe(Effect.provide(cryptoLayer)))
 
 const rejectedPolicies = [
   {
@@ -86,7 +115,7 @@ const rejectedPolicies = [
   {
     name: "missing issuance with maximum age",
     claims: {},
-    options: { maxTokenAge: 30 },
+    options: { maxTokenAge: "30 seconds" },
     claim: "iat",
     reason: "missing"
   },
@@ -100,35 +129,35 @@ const rejectedPolicies = [
   {
     name: "expiration at the tolerance boundary",
     claims: { exp: now - 1 },
-    options: { clockTolerance: 1 },
+    options: { clockTolerance: "1 second" },
     claim: "exp",
     reason: "expired"
   },
   {
     name: "not-before beyond tolerance",
     claims: { nbf: now + 2 },
-    options: { clockTolerance: 1 },
+    options: { clockTolerance: "1 second" },
     claim: "nbf",
     reason: "notYetValid"
   },
   {
     name: "future issuance without expiration",
     claims: { iat: now + 2 },
-    options: { maxTokenAge: 30, clockTolerance: 1 },
+    options: { maxTokenAge: "30 seconds", clockTolerance: "1 second" },
     claim: "iat",
     reason: "future"
   },
   {
     name: "future issuance with expiration",
     claims: { iat: now + 1, exp: now + 10 },
-    options: { maxTokenAge: 30 },
+    options: { maxTokenAge: "30 seconds" },
     claim: "iat",
     reason: "future"
   },
   {
     name: "age beyond tolerance",
     claims: { iat: now - 32 },
-    options: { maxTokenAge: 30, clockTolerance: 1 },
+    options: { maxTokenAge: "30 seconds", clockTolerance: "1 second" },
     claim: "iat",
     reason: "tooOld"
   },
@@ -188,22 +217,22 @@ const acceptedPolicies = [
     claims: { iss: "", aud: "", sub: "" },
     options: { issuer: "", audience: "", subject: "" }
   },
-  { name: "expiration within tolerance", claims: { exp: now }, options: { clockTolerance: 1 } },
+  { name: "expiration within tolerance", claims: { exp: now }, options: { clockTolerance: "1 second" } },
   { name: "not-before at the current second", claims: { nbf: now }, options: {} },
   {
     name: "not-before at tolerance boundary",
     claims: { nbf: now + 1 },
-    options: { clockTolerance: 1 }
+    options: { clockTolerance: "1 second" }
   },
   {
     name: "issuance at future tolerance boundary",
     claims: { iat: now + 1 },
-    options: { maxTokenAge: 0, clockTolerance: 1 }
+    options: { maxTokenAge: 0, clockTolerance: "1 second" }
   },
   {
     name: "age at maximum plus tolerance",
     claims: { iat: now - 31 },
-    options: { maxTokenAge: 30, clockTolerance: 1 }
+    options: { maxTokenAge: "30 seconds", clockTolerance: "1 second" }
   },
   { name: "fresh token with zero maximum age", claims: { iat: now }, options: { maxTokenAge: 0 } },
   { name: "issuance without an age policy", claims: { iat: now + 1 }, options: {} }
@@ -335,18 +364,34 @@ it.effect("rejects invalid verification policy instead of disabling claim checks
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
     const token = yield* independentJwt({ exp: now - 1, iat: now })
 
+    const invalidDurations: ReadonlyArray<Duration.Input> = [
+      NaN,
+      Infinity,
+      -Infinity,
+      -1,
+      "-1 second",
+      -1_000_000_000n,
+      Duration.seconds(-1),
+      { seconds: -1 },
+      [-1, 0],
+      "Infinity",
+      Duration.infinity,
+      { seconds: NaN },
+      [1, Infinity]
+    ]
     const options: ReadonlyArray<Jwt.VerifyOptions> = [
       { algorithms: [] },
       { algorithms: ["HS256"], issuer: [] },
       { algorithms: ["HS256"], audience: [] },
       { algorithms: ["HS256"], typ: "" },
-      ...[NaN, Infinity, -Infinity, -1].flatMap((value): Array<Jwt.VerifyOptions> => [
+      ...invalidDurations.flatMap((value): Array<Jwt.VerifyOptions> => [
         { algorithms: ["HS256"], clockTolerance: value },
         { algorithms: ["HS256"], maxTokenAge: value }
       ])
     ]
 
     for (const policy of options) {
+      assert.isFalse(Schema.is(Jwt.VerifyOptions)(policy))
       assert.deepInclude(yield* Jwt.verify(Claims, token, key, policy).pipe(Effect.flip), {
         _tag: "JoseInvalidToken",
         reason: "parameters"
@@ -354,7 +399,36 @@ it.effect("rejects invalid verification policy instead of disabling claim checks
     }
   }).pipe(Effect.provide(cryptoLayer)))
 
-// Retains the previously reproduced issuer-policy mutation during key lookup.
+it.effect("normalizes duration policy once before key-set resolution", () =>
+  Effect.gen(function*() {
+    yield* TestClock.setTime(now * 1000)
+    const signing = yield* Effect.promise(() => jose.importJWK(privateJwk, "ES256"))
+    const token = yield* Effect.promise(() =>
+      new jose.SignJWT({ iat: now - 1 }).setProtectedHeader({ alg: "ES256" }).sign(signing)
+    )
+    const key = yield* Jwk.importPublic(publicJwk, "ES256")
+    let seconds = 1
+    let reads = 0
+    const maxTokenAge = {
+      get seconds() {
+        reads++
+        return seconds
+      }
+    }
+    const result = yield* Jwt.verifyWithKeySet(Claims, Redacted.make(token), {
+      algorithms: ["ES256"],
+      maxTokenAge
+    }).pipe(Effect.provideService(Jwks.Jwks, {
+      resolve: () =>
+        Effect.sync(() => {
+          seconds = 0
+          return key
+        })
+    }))
+    assert.strictEqual(result.registeredClaims.iat, now - 1)
+    assert.strictEqual(reads, 1)
+  }).pipe(Effect.provide(cryptoLayer)))
+
 it.effect("captures verification policy before the key resolver can mutate it", () =>
   Effect.gen(function*() {
     const signing = yield* Effect.promise(() => jose.importJWK(privateJwk, "ES256"))

@@ -2,7 +2,6 @@ import { OAuth, type OAuthError, Oidc, Pkce } from "@effect/auth"
 import type { Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, Sha2 } from "effect/crypto"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
-import * as Layer from "effect/Layer"
 import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
@@ -32,7 +31,7 @@ describe("OAuth protocol type contracts", () => {
     expect<Effect.Services<typeof supplied>>().type.toBe<never>()
     expect<Effect.Success<typeof supplied>>().type.toBe<OAuth.Client>()
 
-    const installed = acquired.pipe(Effect.provide(Layer.effect(OAuth.Client, OAuth.make(clientOptions))))
+    const installed = acquired.pipe(Effect.provide(OAuth.layer(clientOptions)))
     expect<Effect.Services<typeof installed>>().type.toBe<HttpClient.HttpClient>()
     expect<Effect.Error<typeof installed>>().type.toBe<OAuthError.ConfigurationError | OAuthError.Unavailable>()
   })
@@ -72,7 +71,7 @@ describe("OAuth protocol type contracts", () => {
   })
 
   it("requires only HTTP for discovery and preserves issuer helper types", () => {
-    const discovered = Oidc.discover("https://issuer.example", { timeoutMs: 1000 })
+    const discovered = Oidc.discover("https://issuer.example", { timeout: 1000 })
     expect<Effect.Services<typeof discovered>>().type.toBe<HttpClient.HttpClient>()
     expect<Effect.Success<typeof discovered>>().type.toBe<OAuth.Metadata>()
     expect<Effect.Error<typeof discovered>>().type.toBe<OAuthError.ConfigurationError | OAuthError.Unavailable>()

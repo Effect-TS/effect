@@ -3,9 +3,11 @@ import { Jwk, Jwt } from "@effect/auth/Jose"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, DateTime, Deferred, Effect, Exit, Fiber, Redacted, Schema, Scope } from "effect"
 import * as Sha2 from "effect/crypto/Sha2"
+import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as HttpClient from "effect/http/HttpClient"
 import { TestClock } from "effect/testing"
+import { vi } from "vitest"
 import { withNativeGate } from "../utils/nativeGate.ts"
 import { cryptoLayer, metadata, transport } from "./fixtures.ts"
 
@@ -48,6 +50,83 @@ const stages = [
 ] as const
 
 describe("OIDC native operation lifecycle", { concurrent: false }, () => {
+  for (const termination of ["caller interruption", "owner closure"] as const) {
+    it.effect(`${termination} joins HS256 verification before releasing the owned key`, () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(seconds * 1000)
+        const secret = Redacted.make("hmac-client-secret-with-at-least-32-bytes")
+        const bytes = new TextEncoder().encode(Redacted.value(secret))
+        const key = yield* Jwk.importSecret(Redacted.make({ kty: "oct", k: Base64Url.encode(bytes) }), "HS256")
+        const token = yield* Jwt.sign(
+          Schema.Record(Schema.String, Schema.Json),
+          {
+            iss: metadata.issuer,
+            sub: "subject",
+            aud: "client",
+            iat: seconds,
+            exp: seconds + 300,
+            nonce: "nonce"
+          },
+          key,
+          { alg: "HS256" }
+        )
+        const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+        const subtle = yield* Effect.orDie(WebCrypto.subtleCrypto)
+        const exportKey = subtle.exportKey.bind(subtle)
+        const captured = { material: new Uint8Array() }
+        yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            vi.spyOn(subtle, "exportKey").mockImplementationOnce((...args) =>
+              exportKey(...args).then((value) => {
+                if (value instanceof ArrayBuffer) captured.material = new Uint8Array(value)
+                return value
+              })
+            )
+          ),
+          (mock) => Effect.sync(() => mock.mockRestore())
+        )
+        const verifier = yield* Oidc.makeVerifier({
+          metadata: { ...metadata, id_token_signing_alg_values_supported: ["HS256"] },
+          clientId: "client",
+          algorithms: ["HS256"],
+          clientSecret: secret,
+          timeout: 1000
+        }).pipe(
+          Effect.provideService(Scope.Scope, owner),
+          Effect.provideService(HttpClient.HttpClient, HttpClient.make(() => Effect.die("HS256 must not fetch keys")))
+        )
+        assert.deepStrictEqual(captured.material, bytes)
+        const verify = verifier.verify(token, input)
+
+        yield* withNativeGate("verify", (gate) =>
+          Effect.gen(function*() {
+            const active = yield* Effect.forkChild(verify)
+            yield* gate.entered
+            const terminating = yield* Effect.forkChild(
+              termination === "owner closure" ? Scope.close(owner, Exit.void) : Fiber.interrupt(active),
+              { startImmediately: true }
+            )
+            yield* Effect.yieldNow
+            assert.isUndefined(terminating.pollUnsafe())
+            assert.deepStrictEqual(captured.material, bytes)
+            yield* gate.release
+            yield* Fiber.join(terminating)
+            if (termination === "owner closure") {
+              assert.strictEqual((yield* Fiber.join(active).pipe(Effect.flip))._tag, "OAuthUnavailable")
+            } else {
+              const exit = yield* Fiber.await(active)
+              assert.isTrue(Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause))
+              assert.deepStrictEqual(captured.material, bytes)
+              assert.strictEqual((yield* verify).subject, "subject")
+              yield* Scope.close(owner, Exit.void)
+            }
+            assert.deepStrictEqual(captured.material, new Uint8Array(bytes.length))
+            assert.strictEqual(Redacted.value(secret), "hmac-client-secret-with-at-least-32-bytes")
+            assert.strictEqual((yield* verify.pipe(Effect.flip))._tag, "OAuthUnavailable")
+          }))
+      }).pipe(Effect.provide(cryptoLayer)))
+  }
+
   for (const stage of stages) {
     for (const termination of ["caller interruption", "owner closure"] as const) {
       it.effect(`${termination} joins pending native ${stage.name}`, () =>
@@ -58,7 +137,7 @@ describe("OIDC native operation lifecycle", { concurrent: false }, () => {
           const verifier = yield* Oidc.makeVerifier({
             metadata: { ...metadata, id_token_signing_alg_values_supported: ["ES256"] },
             clientId: "client",
-            timeoutMs: 1000
+            timeout: 1000
           }).pipe(
             Effect.provideService(Scope.Scope, owner),
             Effect.provideService(
@@ -124,7 +203,7 @@ describe("OIDC native operation lifecycle", { concurrent: false }, () => {
         const verifier = yield* Oidc.makeVerifier({
           metadata: { ...metadata, id_token_signing_alg_values_supported: ["ES256"] },
           clientId: "client",
-          timeoutMs: 1000
+          timeout: 1000
         }).pipe(
           Effect.provideService(Scope.Scope, owner),
           Effect.provideService(

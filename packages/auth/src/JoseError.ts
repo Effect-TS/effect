@@ -5,20 +5,53 @@
  * @since 4.0.5
  */
 import * as Schema from "effect/Schema"
-import type { OperationError as CryptoError } from "./internal/cryptoErrors.ts"
+
+/**
+ * Error indicating invalid input to a cryptographic operation without retaining key material or plaintext.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.5
+ */
+export class InvalidInput extends Schema.TaggedError<InvalidInput>()("JoseInvalidInput", {
+  reason: Schema.Literals(["key", "nonce", "parameters", "data"])
+}) {}
+
+/**
+ * Error indicating that the cryptographic backend does not support the requested algorithm.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.5
+ */
+export class UnsupportedAlgorithm extends Schema.TaggedError<UnsupportedAlgorithm>()(
+  "JoseUnsupportedAlgorithm",
+  {}
+) {}
+
+/**
+ * Error indicating a cryptographic backend failure without exposing its native cause.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.5
+ */
+export class CryptoUnavailable extends Schema.TaggedError<CryptoUnavailable>()(
+  "JoseCryptoUnavailable",
+  {}
+) {}
+
+/**
+ * Failures produced by cryptographic operations, with diagnostics that omit secret inputs and native causes.
+ *
+ * @stability unstable
+ * @category errors
+ * @since 4.0.5
+ */
+export type OperationError = InvalidInput | UnsupportedAlgorithm | CryptoUnavailable
 
 /**
  * Error indicating malformed compact serialization, headers, payload, or options; diagnostics omit sensitive inputs.
- *
- * **Example** (Inspecting a safe diagnostic)
- *
- * ```ts import.meta.vitest
- * import { JoseError } from "@effect/auth"
- *
- * const error = JoseError.InvalidToken.make({ reason: "header" })
- * error._tag // => "JoseInvalidToken"
- * error.reason // => "header"
- * ```
  *
  * @stability unstable
  * @category errors
@@ -81,6 +114,7 @@ export class DecryptionFailed extends Schema.TaggedError<DecryptionFailed>()(
  * @since 4.0.5
  */
 export class KeyNotFound extends Schema.TaggedError<KeyNotFound>()("JoseKeyNotFound", {}) {}
+
 /**
  * Error indicating that more than one public key matches the selection policy.
  *
@@ -131,7 +165,7 @@ export class ClaimValidationFailed extends Schema.TaggedError<ClaimValidationFai
  * @category errors
  * @since 4.0.5
  */
-export type KeyError = InvalidKey | KeyNotFound | AmbiguousKey | JwksUnavailable | CryptoError
+export type KeyError = InvalidKey | KeyNotFound | AmbiguousKey | JwksUnavailable | OperationError
 
 /**
  * Failures produced when authenticating a compact JWS or resolving its verification key.
