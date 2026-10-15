@@ -31,6 +31,7 @@ const nodeJwk = (pkcs8: Uint8Array) =>
   NodeCrypto.createPrivateKey({ key: Buffer.from(pkcs8), format: "der", type: "pkcs8" }).export({ format: "jwk" })
 
 const rsaPss2048 = Signature.rsaPss({ hash: Digest.sha256, modulusLength: 2048 })
+const rsaOaep2048 = KeyWrap.rsaOaep({ hash: Digest.sha256, modulusLength: 2048 })
 
 describe("KeyFormat", () => {
   it.effect("rejects RSA PKCS#8 decoded as ECDSA with InvalidKey", () =>
@@ -69,9 +70,8 @@ describe("KeyFormat", () => {
         [KeyAgreement.ecdhP384, p384],
         [Signature.ed25519, ed25519],
         [KeyAgreement.x25519, x25519],
-        // Import ignores the modulus length.
         [rsaPss2048, rsa],
-        [KeyWrap.rsaOaepSha256, rsa]
+        [rsaOaep2048, rsa]
       ] as const
       for (const [algorithm, pair] of cases) {
         const publicKey = yield* KeyFormat.decodePublic(KeyFormat.spki, algorithm, der(pair.publicKey, "spki"))
