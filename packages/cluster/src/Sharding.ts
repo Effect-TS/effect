@@ -21,6 +21,7 @@ import { constant } from "effect/Function"
 import * as HashMap from "effect/HashMap"
 import * as HashRing from "effect/HashRing"
 import * as Layer from "effect/Layer"
+import * as Metric from "effect/Metric"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as MutableRef from "effect/MutableRef"
@@ -340,6 +341,7 @@ const make = Effect.gen(function*() {
       (effect, shardId) =>
         effect.pipe(
           retryShardRelease({ fiber: "releaseShard", shardId }),
+          Metric.trackDuration(ClusterMetrics.shardReleaseDuration),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )

@@ -42,3 +42,14 @@ export const runnersHealthy = Metric.gauge("effect_cluster_runners_healthy", {
 export const shards = Metric.gauge("effect_cluster_shards", {
   bigint: true
 })
+
+/**
+ * Time taken to release a single shard, including entity shutdown and retries.
+ *
+ * @since 1.0.0
+ * @category metrics
+ */
+export const shardReleaseDuration = Metric.timer(
+  "effect_cluster_shard_release_duration_ms",
+  "Time taken to release a single shard, including entity shutdown and retries"
+)
