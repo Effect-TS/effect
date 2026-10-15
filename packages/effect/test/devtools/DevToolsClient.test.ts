@@ -5,6 +5,57 @@ import { Socket } from "effect/socket"
 import { TestClock } from "effect/testing"
 
 describe("DevToolsClient", () => {
+  it.effect("closes its scope while the endpoint remains unavailable", () =>
+    Effect.gen(function*() {
+      let unavailable = true
+      const socket = Socket.make({
+        reader: Effect.suspend(() => {
+          if (unavailable) {
+            return Effect.fail(
+              new Socket.SocketError({
+                reason: new Socket.SocketOpenError({ kind: "Unknown", cause: "connection refused" })
+              })
+            )
+          }
+          // Restore connectivity only for cleanup after observing shutdown.
+          return Effect.gen(function*() {
+            const closed = Latch.makeUnsafe(false)
+            yield* Effect.addFinalizer(() => closed.open)
+            let sent = false
+            return {
+              pull: Effect.suspend(() => {
+                if (!sent) {
+                  sent = true
+                  return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
+                }
+                return Effect.andThen(
+                  closed.await,
+                  Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
+                )
+              }),
+              upgrade: () => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketUpgradeError({}) }))
+            }
+          })
+        }),
+        writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
+      })
+      const closed = yield* Deferred.make<void>()
+      const fiber = yield* DevToolsClient.make.pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.scoped,
+        Effect.andThen(Deferred.succeed(closed, void 0)),
+        Effect.forkScoped
+      )
+
+      yield* TestClock.adjust("5 seconds")
+      const closedDuringOutage = yield* Deferred.isDone(closed)
+      unavailable = false
+      yield* TestClock.adjust("2 seconds")
+      yield* Fiber.join(fiber)
+
+      assert.isTrue(closedDuringOutage)
+    }))
+
   for (const scenario of ["healthy", "startup refusal", "connection loss"] as const) {
     it.effect(`sends later spans after ${scenario}`, () =>
       Effect.gen(function*() {
