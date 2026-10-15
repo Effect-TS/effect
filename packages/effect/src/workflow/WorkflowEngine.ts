@@ -751,6 +751,10 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
       // Completed once a run succeeds with `Complete`, after which it cannot resume.
       readonly done: Deferred.Deferred<void>
+      // Parent of every run's scope. Scopes of runs that suspended stay open
+      // under it, so their finalizers and resources last until the execution
+      // finishes.
+      readonly scope: Scope.Closeable
     }
     const executions = new Map<string, ExecutionState>()
 
@@ -785,11 +789,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       }
 
       const entry = workflows.get(state.instance.workflow._tag)!
-      const instance = WorkflowInstance.initial(
-        state.instance.workflow,
-        state.instance.executionId,
-        { scope: state.instance.scope }
-      )
+      // Like the cluster engine, each run gets a fresh scope, so replays rebuild
+      // compensations instead of registering them again.
+      const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId, {
+        scope: Scope.forkUnsafe(state.scope)
+      })
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
         Effect.onExit((exit) => {
@@ -818,9 +822,15 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.forkIn(resume(state.parent, "automatic"), scope)
         }),
         Effect.onExit((exit) => {
-          return Exit.isSuccess(exit) && exit.value._tag === "Complete"
-            ? Deferred.succeed(state.done, void 0)
-            : Effect.void
+          if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
+          // The final run's scope closes with the real exit. Closing the parent
+          // then closes earlier scopes in reverse order with `Exit.void`, so their
+          // superseded compensations are skipped, which means their finalizers
+          // also observe success rather than the outcome.
+          return Effect.andThen(
+            Scope.close(state.scope, Exit.void),
+            Exit.isSuccess(exit) && exit.value._tag === "Complete" ? Deferred.succeed(state.done, void 0) : Effect.void
+          )
         }),
         Effect.forkIn(entry.scope)
       )
@@ -855,6 +865,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             resumeRequested: undefined,
             fiber: undefined,
             done: Deferred.makeUnsafe(),
+            scope: Scope.makeUnsafe(),
             parent: options.detached ? undefined : options.parent?.executionId
           }
           executions.set(options.executionId, state)
