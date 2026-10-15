@@ -566,17 +566,7 @@ function makeEffect<A, E>(
   const previous = ctx.self<AsyncResult.AsyncResult<A, E>>()
   const scope = Scope.makeUnsafe()
   ctx.addFinalizer(() => {
-    Effect.runForkWith(getServices())(
-      Scope.close(scope, Exit.void).pipe(
-        Effect.onError((cause) => {
-          if (Cause.hasInterruptsOnly(cause)) return Effect.void
-          return Effect.flatMap(
-            UnhandledLogLevel,
-            (level) => level ? Effect.logWithLevel(level)("Unhandled error in atom finalizer", cause) : Effect.void
-          )
-        })
-      )
-    )
+    Effect.runForkWith(getServices())(closeScope(scope))
   })
   let syncResult: AsyncResult.AsyncResult<A, E> | undefined
   let isAsync = false
@@ -606,6 +596,16 @@ function makeEffect<A, E>(
   }
   return AsyncResult.waiting(initialValue)
 }
+
+const closeScope = (scope: Scope.Closeable): Effect.Effect<void> =>
+  Effect.catchCause(
+    Scope.close(scope, Exit.void),
+    (cause) =>
+      Cause.hasInterruptsOnly(cause) ? Effect.void : Effect.withFiber((fiber) => {
+        const level = fiber.getRef(UnhandledLogLevel)
+        return level ? Effect.logWithLevel(level)("Unhandled error in atom finalizer", cause) : Effect.void
+      })
+  )
 
 function runCallbackSync<R, A, E, ER = never>(
   services: Context.Context<R>,
