@@ -1,10 +1,7 @@
 name: Check
+# EFF-2213 diagnostic branch only: instrumented Bun PostgreSQL lifecycle reproduction.
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main, v4/next-minor, v4/next-major]
-  push:
-    branches: [main, v4/next-minor, v4/next-major]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,130 +10,30 @@ concurrency:
 permissions: {}
 
 jobs:
-  static-checks:
-    name: Static
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Lint
-        run: pnpm lint
-      - name: Check JSDoc
-        run: pnpm jsdocs --check
-      - name: Check circular dependencies
-        run: pnpm circular
-      - name: Generate AI documentation
-        run: pnpm ai-docgen
-      - name: Verify AI documentation is up-to-date
-        run: |
-          if [ -n "$(git status --short)" ]; then
-            git status --short
-            echo "Run 'pnpm ai-docgen' and commit generated changes."
-            exit 1
-          fi
-
-  types:
-    name: Types
-    runs-on: namespace-profile-linux-small
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-        with:
-          deno-version: v2.9.7
-      - run: pnpm check
-        env:
-          # Leave memory headroom for the runner by collecting the Go heap earlier.
-          GOMEMLIMIT: 4GiB
-      - run: deno check .
-      - run: pnpm test-types --target '>=5.9'
-
-  build:
-    name: Build
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Set strip internals config
-        run: |
-          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
-      - run: pnpm build
-      - run: pnpm check-dist-types
-
-  bundle:
-    name: Bundle
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Clone base ref
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          path: base
-          ref: ${{ github.event.pull_request.base.ref }}
-      - name: Set strip internals config
-        run: |
-          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
-          sed -i 's/"stripInternal": false/"stripInternal": true/' base/tsconfig.base.json
-      - name: Build
-        run: |
-          pnpm build
-          cd base
-          pnpm install
-          pnpm build
-      - name: Compare bundle size
-        run: node ./packages/tools/bundle/src/bin.ts compare --base-dir base/packages/tools/bundle/fixtures
-      - name: Upload stats artifact
-        if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: bundle-stats
-          path: stats.txt
-          if-no-files-found: error
-
-  test:
-    name: Test (${{ matrix.runtime }})
+  pg-lifecycle:
+    name: PG lifecycle (${{ matrix.runtime }} ${{ matrix.mode }} ${{ matrix.shard }})
     runs-on: namespace-profile-linux-default
     env:
       EFFECT_INTEGRATION_TESTS: "1"
-      # The ephemeral runner provides cleanup without a Ryuk sidecar.
       TESTCONTAINERS_RYUK_DISABLED: "true"
+      PG_LIFECYCLE_DIAGNOSTICS: "1"
     permissions:
       contents: read
-    timeout-minutes: 15
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runtime: Node
-            deno: ""
-            bun: ""
-            command: pnpm test --max-concurrency=10
-          - runtime: Deno
-            deno: v2.9.7
-            bun: ""
-            command: deno task test --max-concurrency=10
-          - runtime: Bun
-            deno: ""
-            bun: 1.4.0
-            command: bun run --bun vitest run --max-concurrency=10
+          # Full-suite runs reproduce the original concurrency pressure.
+          - { runtime: Bun, bun: 1.4.0, mode: full, shard: 1, iterations: 1 }
+          - { runtime: Bun, bun: 1.4.0, mode: full, shard: 2, iterations: 1 }
+          - { runtime: Bun, bun: 1.4.0, mode: full, shard: 3, iterations: 1 }
+          # Isolated loops of the failing file.
+          - { runtime: Bun, bun: 1.4.0, mode: file, shard: 1, iterations: 25 }
+          - { runtime: Bun, bun: 1.4.0, mode: file, shard: 2, iterations: 25 }
+          - { runtime: Bun, bun: 1.4.0, mode: file, shard: 3, iterations: 25 }
+          # Node control for the isolated loop.
+          - { runtime: Node, bun: "", mode: file, shard: 1, iterations: 25 }
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
@@ -154,52 +51,60 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: ${{ matrix.deno }}
           bun-version: ${{ matrix.bun }}
-      - name: Test
-        if: matrix.runtime != 'Deno'
-        run: ${{ matrix.command }}
-      - name: Test with PostgreSQL lifecycle capture
-        if: matrix.runtime == 'Deno'
+
+      - name: Run with PostgreSQL lifecycle capture
         shell: bash
         env:
-          PG_LIFECYCLE_DIAGNOSTICS: "1"
-          PG_LIFECYCLE_LOG: ${{ runner.temp }}/pg-lifecycle/lifecycle.log
+          CAPTURE_DIR: ${{ runner.temp }}/pg-lifecycle
+          MODE: ${{ matrix.mode }}
+          RUNTIME: ${{ matrix.runtime }}
+          ITERATIONS: ${{ matrix.iterations }}
         run: |
-          capture_dir="${{ runner.temp }}/pg-lifecycle"
-          mkdir -p "$capture_dir"
+          mkdir -p "$CAPTURE_DIR"
           started_at=$(date --iso-8601=seconds)
-          docker events --since "$started_at" --format '{{json .}}' > "$capture_dir/docker-events.jsonl" 2> "$capture_dir/docker-events.stderr" &
+          docker version > "$CAPTURE_DIR/docker-version.txt" 2>&1 || true
+          bun --version > "$CAPTURE_DIR/bun-version.txt" 2>&1 || true
+          docker events --since "$started_at" --format '{{json .}}' > "$CAPTURE_DIR/docker-events.jsonl" 2> "$CAPTURE_DIR/docker-events.stderr" &
           events_pid=$!
           cleanup() {
-            # Reap only the capture process started here; preserve the test exit code.
             kill "$events_pid" 2>/dev/null || true
             wait "$events_pid" 2>/dev/null || true
-            # The runner owns the output file; only journal access needs sudo.
             # shellcheck disable=SC2024
-            sudo -n journalctl -u docker.service --since "$started_at" --no-pager -o short-iso-precise > "$capture_dir/docker-journal.log" 2>&1 || true
+            sudo -n journalctl -u docker.service --since "$started_at" --no-pager -o short-iso-precise > "$CAPTURE_DIR/docker-journal.log" 2>&1 || true
           }
           trap cleanup EXIT
-          trap 'exit 130' INT
-          trap 'exit 143' TERM
-          ${{ matrix.command }} 2>&1 | tee "$capture_dir/tests.log"
+          failures=0
+          for i in $(seq 1 "$ITERATIONS"); do
+            export PG_LIFECYCLE_LOG="$CAPTURE_DIR/lifecycle-$i.log"
+            if [ "$MODE" = full ]; then
+              cmd=(bun run --bun vitest run --max-concurrency=10)
+            elif [ "$RUNTIME" = Bun ]; then
+              cmd=(bun run --bun vitest run --max-concurrency=10 packages/sql/pg/test/Client.integration.test.ts)
+            else
+              cmd=(pnpm vitest run --max-concurrency=10 packages/sql/pg/test/Client.integration.test.ts)
+            fi
+            echo "::group::iteration $i: ${cmd[*]}"
+            set +e
+            "${cmd[@]}" > "$CAPTURE_DIR/tests-$i.log" 2>&1
+            status=$?
+            set -e
+            echo "::endgroup::"
+            echo "iteration $i exit=$status" | tee -a "$CAPTURE_DIR/summary.txt"
+            if [ "$status" -ne 0 ]; then
+              failures=$((failures + 1))
+              grep -E "FAIL|Hook timed out|Error" "$CAPTURE_DIR/tests-$i.log" | head -20 || true
+              grep -h "pg-lifecycle" "$PG_LIFECYCLE_LOG" | grep -vE " done | mark " | tail -40 || true
+            fi
+          done
+          echo "failures=$failures/$ITERATIONS" | tee -a "$CAPTURE_DIR/summary.txt"
+          test "$failures" -eq 0
+
       - name: Upload PostgreSQL lifecycle diagnostics
-        if: always() && matrix.runtime == 'Deno' && (failure() || cancelled())
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: deno-pg-lifecycle-${{ github.run_attempt }}
+          name: pg-lifecycle-${{ matrix.runtime }}-${{ matrix.mode }}-${{ matrix.shard }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/pg-lifecycle
+          retention-days: 30
           if-no-files-found: warn
-
-  doctest:
-    name: Test (Documentation)
-    runs-on: namespace-profile-linux-small
-    permissions:
-      contents: read
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - name: Test Documentation
-        run: pnpm doctest
