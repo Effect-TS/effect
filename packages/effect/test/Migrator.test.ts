@@ -56,22 +56,31 @@ describe("Migrator", () => {
         const migrations = yield* Migrator.fromSql({
           "0002_second.sql": "insert into t values ('a;b');",
           "1_init.sql": "-- drop table old;\ncreate table t (id int);\n/* ;\n*/\ncreate index t_id on t (id);",
+          "3_fn.sql":
+            "select/**/1; select $1; create function f() returns void as $$ begin perform 1; end $$ language sql; create function g() returns void as $body$ begin perform 1; end $body$ language sql;",
           "notes.txt": "select 1"
         })
 
         assert.deepStrictEqual(migrationNames(migrations), [
           [1, "init"],
-          [2, "second"]
+          [2, "second"],
+          [3, "fn"]
         ])
 
         const first = yield* migrations[0]![2] as Effect.Effect<Effect.Effect<void>>
         const second = yield* migrations[1]![2] as Effect.Effect<Effect.Effect<void>>
+        const third = yield* migrations[2]![2] as Effect.Effect<Effect.Effect<void>>
         yield* first.pipe(Effect.provideService(SqlClient.SqlClient, sql))
         yield* second.pipe(Effect.provideService(SqlClient.SqlClient, sql))
+        yield* third.pipe(Effect.provideService(SqlClient.SqlClient, sql))
         assert.deepStrictEqual(ran, [
           "create table t (id int)",
           "create index t_id on t (id)",
-          "insert into t values ('a;b')"
+          "insert into t values ('a;b')",
+          "select 1",
+          "select $1",
+          "create function f() returns void as $$ begin perform 1; end $$ language sql",
+          "create function g() returns void as $body$ begin perform 1; end $body$ language sql"
         ])
       }))
 

@@ -434,20 +434,47 @@ export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknow
     Effect.succeed
   )
 
-// semicolons inside quotes stay put. $$ blocks are not special.
+// `$tag$` or `$$`. a digit after `$` is a placeholder, not a tag.
+const dollarTagAt = (source: string, index: number): string | undefined => {
+  if (source[index] !== "$") return undefined
+  let end = index + 1
+  const first = source[end]
+  if (first !== "$" && !/[A-Za-z_]/.test(first ?? "")) return undefined
+  if (first !== "$") {
+    end++
+    while (/[A-Za-z0-9_]/.test(source[end] ?? "")) end++
+  }
+  if (source[end] !== "$") return undefined
+  return source.slice(index, end + 1)
+}
+
+// a dropped comment has to leave a space, or SELECT/**/1 becomes SELECT1
 const sqlStatements = (source: string): Array<string> => {
   const statements: Array<string> = []
   let current = ""
   let quote: string | undefined
+  let dollar: string | undefined
   for (let i = 0; i < source.length; i++) {
     const char = source[i]!
     const next = source[i + 1]
+    if (dollar !== undefined) {
+      if (source.startsWith(dollar, i)) {
+        current += dollar
+        i += dollar.length - 1
+        dollar = undefined
+      } else {
+        current += char
+      }
+      continue
+    }
     if (quote === undefined && char === "-" && next === "-") {
+      current += " "
       const end = source.indexOf("\n", i)
       i = end === -1 ? source.length : end
       continue
     }
     if (quote === undefined && char === "/" && next === "*") {
+      current += " "
       const end = source.indexOf("*/", i + 2)
       i = end === -1 ? source.length : end + 1
       continue
@@ -469,6 +496,13 @@ const sqlStatements = (source: string): Array<string> => {
       current += char
       continue
     }
+    const tag = char === "$" ? dollarTagAt(source, i) : undefined
+    if (tag !== undefined) {
+      current += tag
+      i += tag.length - 1
+      dollar = tag
+      continue
+    }
     if (char === ";") {
       const statement = current.trim()
       if (statement.length > 0) statements.push(statement)
@@ -485,7 +519,8 @@ const sqlStatements = (source: string): Array<string> => {
 /**
  * Creates a migration loader from SQL text keyed by `<id>_<name>` or
  * `<id>_<name>.sql`, sorted by migration id. Each script is run with
- * `SqlClient.unsafe`, one statement at a time.
+ * `SqlClient.unsafe`, one statement at a time. Comments become a space, and
+ * PostgreSQL dollar quotes stay one statement.
  *
  * @stability unstable
  * @category loaders
