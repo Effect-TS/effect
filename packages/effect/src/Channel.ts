@@ -4942,7 +4942,7 @@ export const catchIf: {
     InDone2 = unknown,
     Env2 = never
   >(
-    refinement: Predicate.Refinement<OutErr, EB>,
+    refinement: Predicate.Refinement<NoInfer<OutErr>, EB>,
     f: (failure: EB) => Channel<OutElem1, OutErr1, OutDone1, InElem1, InErr1, InDone1, Env1>,
     orElse?:
       | ((
@@ -5030,7 +5030,7 @@ export const catchIf: {
     Env2 = never
   >(
     self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
-    refinement: Predicate.Refinement<OutErr, EB>,
+    refinement: Predicate.Refinement<NoInfer<OutErr>, EB>,
     f: (failure: EB) => Channel<OutElem1, OutErr1, OutDone1, InElem1, InErr1, InDone1, Env1>,
     orElse?:
       | ((
