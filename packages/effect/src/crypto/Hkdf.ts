@@ -9,7 +9,22 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
+
+/**
+ * SHA hash algorithms accepted by this module.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
 
 /**
  * Parameters for HKDF key derivation.
@@ -24,7 +39,7 @@ import * as WebCrypto from "./WebCrypto.ts"
  * @since 4.0.0
  */
 export interface Options {
-  readonly hash: WebCrypto.HashAlgorithm
+  readonly hash: HashAlgorithm
   readonly key: Redacted.Redacted<Uint8Array>
   readonly salt?: Uint8Array | undefined
   readonly info?: Uint8Array | undefined
@@ -61,13 +76,13 @@ export interface Options {
 export class Hkdf extends Context.Service<Hkdf, {
   /**
    * Derives secret bytes with HKDF. Lengths outside 1 to 255 times the hash
-   * output size fail with a `BadArgument` reason.
+   * output size fail with an `InvalidArgument` reason.
    */
   readonly derive: (options: Options) => Effect.Effect<Redacted.Redacted<Uint8Array>, CryptoError.CryptoError>
 }>()("effect/crypto/Hkdf") {}
 
 // Output sizes in bytes.
-const hashLengths: Record<WebCrypto.HashAlgorithm, number> = {
+const hashLengths: Record<HashAlgorithm, number> = {
   "SHA-1": 20,
   "SHA-256": 32,
   "SHA-384": 48,
@@ -84,7 +99,7 @@ const hashLengths: Record<WebCrypto.HashAlgorithm, number> = {
 export const layer: Layer.Layer<Hkdf, CryptoError.CryptoError> = Layer.effect(
   Hkdf,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     return {
       derive: (options) => {
         // Web Crypto takes a 32-bit bit length, and some backends wrap larger
@@ -93,9 +108,9 @@ export const layer: Layer.Layer<Hkdf, CryptoError.CryptoError> = Layer.effect(
         if (!Number.isSafeInteger(options.length) || options.length < 1 || options.length > maxLength) {
           return Effect.fail(
             new CryptoError.CryptoError({
-              algorithm: "HKDF",
+              module: "HKDF",
               method: "derive",
-              reason: new CryptoError.BadArgument({
+              reason: new CryptoError.InvalidArgument({
                 description: "length must be between 1 and 255 times the hash output size"
               })
             })

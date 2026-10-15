@@ -1,356 +1,192 @@
 /**
- * Cryptographically secure randomness: random bytes, numbers, shuffles,
- * UUIDs, and ULIDs.
+ * Cryptographically secure randomness: random bytes, uniform integers,
+ * shuffles, UUIDv4, UUIDv7, and ULIDs.
  *
- * {@link layer} draws from `globalThis.crypto.getRandomValues`, and
- * {@link make} builds the service from any secure byte source.
+ * The {@link SecureRandom} service is built from one `randomBytes` primitive
+ * with {@link make}. {@link layerWebCrypto} draws from `getRandomValues` on
+ * the `WebCrypto` reference. The `*Unsafe` functions draw synchronously from
+ * `globalThis.crypto` for code that cannot use a service, such as constructors
+ * and model defaults.
+ *
+ * Every operation has a `never` error channel. A bad size or an empty range is
+ * a defect.
+ *
+ * **Gotchas**
+ *
+ * There are no float, boolean, or full-range integer helpers. Insecure random
+ * numbers belong to `effect/Random`, and a secure bit is `randomBytes(1)`.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
-import * as internalRandom from "../internal/random.ts"
 import * as Ulid from "../internal/ulid.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Layer from "../Layer.ts"
-import * as CryptoError from "./CryptoError.ts"
+import { WebCrypto } from "./WebCrypto.ts"
 
-const SecureRandomTypeId = "~effect/crypto/SecureRandom"
+/**
+ * Output format of the UUID functions: a lowercase, hyphenated string, or the
+ * 16 UUID bytes.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type UuidFormat = "string" | "bytes"
+
+/**
+ * Generates a UUID in the requested format.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface UuidGenerator<R> {
+  (options?: { readonly format?: "string" | undefined }): Effect.Effect<string, never, R>
+  <Format extends UuidFormat>(options: {
+    readonly format: Format
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, never, R>
+}
 
 /**
  * Service that generates cryptographically secure random values.
  *
  * **Details**
  *
- * Implementations supply secure random bytes, and `make` derives every other
- * operation from them. The service is structurally compatible with `Random`.
- *
- * @see {@link make} for constructing the service from a byte source
+ * Every operation is derived from `randomBytes`. See {@link make}.
  *
  * @stability unstable
  * @category services
  * @since 4.0.0
  */
-export interface SecureRandom {
-  readonly [SecureRandomTypeId]: typeof SecureRandomTypeId
-
+export class SecureRandom extends Context.Service<SecureRandom, {
   /**
-   * Generates a random integer in the range Number.MIN_SAFE_INTEGER to
-   * Number.MAX_SAFE_INTEGER (both inclusive).
+   * Generates `size` cryptographically secure random bytes.
+   *
+   * A negative or non-integer size dies with a `RangeError`.
    */
-  nextIntUnsafe(): number
+  readonly randomBytes: (size: number) => Effect.Effect<Uint8Array>
 
   /**
-   * Generates a random number in the range 0 (inclusive) to 1 (exclusive).
-   */
-  nextDoubleUnsafe(): number
-
-  /**
-   * Generates cryptographically secure random bytes.
-   */
-  randomBytes(size: number): Effect.Effect<Uint8Array, CryptoError.CryptoError>
-
-  /**
-   * Generates a cryptographically secure random number between 0 (inclusive)
-   * and 1 (exclusive).
-   */
-  readonly random: Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random boolean with equal probability
-   * for both values.
-   */
-  readonly randomBoolean: Effect.Effect<boolean>
-
-  /**
-   * Generates a cryptographically secure random integer between
-   * `Number.MIN_SAFE_INTEGER` and `Number.MAX_SAFE_INTEGER` (both inclusive).
-   */
-  readonly randomInt: Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random number between `min`
-   * (inclusive) and `max` (exclusive).
-   */
-  randomBetween(min: number, max: number): Effect.Effect<number>
-
-  /**
-   * Generates a cryptographically secure random integer between `min` and `max`.
+   * Generates an integer between `min` and `max`, both inclusive unless
+   * `halfOpen` excludes `max`.
    *
    * **Details**
    *
-   * The lower bound is rounded up with `Math.ceil` and the upper bound is
-   * rounded down with `Math.floor`. By default the range is inclusive; set
-   * `options.halfOpen: true` to exclude the upper bound.
-   * Rejection sampling gives each integer the same probability.
-   * Empty ranges and bounds that do not round to safe integers die with
-   * `RangeError`.
+   * The result is exactly uniform: draws that would bias it are rejected.
+   * `min` is rounded up and `max` down. An empty range, or bounds that do not
+   * round to safe integers, die with a `RangeError`.
    */
-  randomIntBetween(min: number, max: number, options?: {
+  readonly intBetween: (min: number, max: number, options?: {
     readonly halfOpen?: boolean | undefined
-  }): Effect.Effect<number>
+  }) => Effect.Effect<number>
 
   /**
-   * Uses the cryptographically secure random generator to shuffle the supplied
-   * iterable.
+   * Returns a uniformly shuffled copy of the elements, using Fisher-Yates over
+   * `intBetween`.
    */
-  randomShuffle<A>(elements: Iterable<A>): Effect.Effect<Array<A>>
+  readonly shuffle: <A>(elements: Iterable<A>) => Effect.Effect<Array<A>>
 
   /**
-   * Generates a cryptographically secure UUIDv4.
-   *
-   * **Details**
-   *
-   * The default `"hex"` format returns a lowercase, hyphenated UUID string
-   * (36 characters), not a bare hexadecimal string. The `"bytes"` format
-   * returns the 16 UUID bytes, including the version and variant bits.
+   * Generates a UUIDv4, as a lowercase hyphenated string or, with
+   * `format: "bytes"`, the 16 UUID bytes.
    */
-  randomUUIDv4(options?: {
-    readonly format?: "hex" | undefined
-  }): Effect.Effect<string, CryptoError.CryptoError>
-  randomUUIDv4<Format extends "hex" | "bytes">(options: {
-    readonly format: Format
-  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, CryptoError.CryptoError>
-  randomUUIDv4(options?: {
-    readonly format?: "hex" | "bytes" | undefined
-  }): Effect.Effect<string | Uint8Array, CryptoError.CryptoError>
+  readonly uuidV4: UuidGenerator<never>
 
   /**
-   * Generates a cryptographically secure UUIDv7 using the `Clock` timestamp.
-   *
-   * **Details**
-   *
-   * The default `"hex"` format returns a lowercase, hyphenated UUID string
-   * (36 characters), not a bare hexadecimal string. The `"bytes"` format
-   * returns the 16 UUID bytes, including the timestamp, version and variant bits.
+   * Generates a UUIDv7 from the `Clock` timestamp, as a lowercase hyphenated
+   * string or, with `format: "bytes"`, the 16 UUID bytes.
    */
-  randomUUIDv7(options?: {
-    readonly format?: "hex" | undefined
-  }): Effect.Effect<string, CryptoError.CryptoError>
-  randomUUIDv7<Format extends "hex" | "bytes">(options: {
-    readonly format: Format
-  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, CryptoError.CryptoError>
-  randomUUIDv7(options?: {
-    readonly format?: "hex" | "bytes" | undefined
-  }): Effect.Effect<string | Uint8Array, CryptoError.CryptoError>
+  readonly uuidV7: UuidGenerator<never>
 
   /**
-   * Generates a cryptographically secure ULID string.
-   *
-   * **Details**
-   *
-   * ULIDs contain 26 uppercase Crockford base32 characters. The first 10 encode
-   * the `Clock` timestamp in milliseconds; the remaining 16 encode 80 random
-   * bits. ULIDs sort by timestamp, with no ordering guarantee within the same
-   * millisecond.
-   *
-   * Timestamp normalization matches UUIDv7: fractions are truncated, values are
-   * clamped to the 48-bit range, and `NaN` encodes as zero.
+   * Generates a ULID from the `Clock` timestamp: 26 uppercase Crockford
+   * base32 characters, sorting by timestamp with no ordering guarantee within
+   * a millisecond.
    */
-  readonly randomULID: Effect.Effect<string, CryptoError.CryptoError>
+  readonly ulid: Effect.Effect<string>
+}>()("effect/crypto/SecureRandom") {}
+
+const checkSize = (size: number): void => {
+  if (!Number.isSafeInteger(size) || size < 0) {
+    throw new RangeError("size must be a non-negative safe integer")
+  }
 }
 
-/**
- * Service tag for cryptographically secure randomness.
- *
- * **When to use**
- *
- * Use to provide or retrieve the secure random generator from an effect's
- * context.
- *
- * @see {@link make} for constructing the service from a byte source
- *
- * @stability unstable
- * @category services
- * @since 4.0.0
- */
-export const SecureRandom: Context.Service<SecureRandom, SecureRandom> = Context.Service("effect/crypto/SecureRandom")
+const readUint53 = (bytes: Uint8Array): number =>
+  ((bytes[0] & 0x1f) * 2 ** 48) + (bytes[1] * 2 ** 40) + (bytes[2] * 2 ** 32) +
+  (bytes[3] * 2 ** 24) + (bytes[4] * 2 ** 16) + (bytes[5] * 2 ** 8) + bytes[6]
 
-/**
- * Generates cryptographically secure random bytes using the SecureRandom
- * service.
- *
- * **Gotchas**
- *
- * The size must be a non-negative safe integer. Invalid sizes fail with a
- * `BadArgument` reason, and random source failures with `Unknown`.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomBytes = (size: number): Effect.Effect<Uint8Array, CryptoError.CryptoError, SecureRandom> =>
-  Effect.flatMap(SecureRandom, (random) => random.randomBytes(size))
+// Draws an integer by rejection sampling over 53-bit (or, for ranges wider than
+// 2^53, 54-bit) draws, so every integer in the range has the same probability.
+const intBetweenUnsafe = (
+  min: number,
+  max: number,
+  halfOpen: boolean,
+  draw: () => Uint8Array
+): number => {
+  const minInt = Math.ceil(min)
+  const maxInt = Math.floor(max)
+  if (!Number.isSafeInteger(minInt) || !Number.isSafeInteger(maxInt)) {
+    throw new RangeError("bounds must round to safe integers")
+  }
+  if (maxInt - minInt < Number.MAX_SAFE_INTEGER) {
+    // Every intermediate stays below 2^53, and `%` is exact, so the divisions
+    // below are exact without BigInt.
+    const count = maxInt - minInt + (halfOpen ? 0 : 1)
+    if (count <= 0) {
+      throw new RangeError("range must contain at least one integer")
+    }
+    // `+ 0` turns `Math.ceil` of a value in (-1, 0) into 0 instead of -0.
+    if (count === 1) return minInt + 0
+    const bucketSize = (2 ** 53 - (2 ** 53 % count)) / count
+    const limit = bucketSize * count
+    while (true) {
+      const value = readUint53(draw())
+      if (value < limit) return minInt + (value - (value % bucketSize)) / bucketSize
+    }
+  }
+  // BigInt keeps every integer distinct when the range is wider than 2^53.
+  const lower = BigInt(minInt)
+  const count = BigInt(maxInt) - lower + (halfOpen ? BigInt(0) : BigInt(1))
+  const wide = count > BigInt(1) << BigInt(53)
+  const bucketSize = (wide ? BigInt(1) << BigInt(54) : BigInt(1) << BigInt(53)) / count
+  const limit = bucketSize * count
+  while (true) {
+    const bytes = draw()
+    const value = BigInt(readUint53(bytes)) + (wide && (bytes[0] & 0x20) !== 0 ? BigInt(1) << BigInt(53) : BigInt(0))
+    if (value < limit) return Number(lower + value / bucketSize)
+  }
+}
 
-/**
- * Generates a cryptographically secure number between zero, inclusive, and one,
- * exclusive, using the SecureRandom service.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const random: Effect.Effect<number, never, SecureRandom> = Effect.flatMap(SecureRandom, (r) => r.random)
-
-/**
- * Generates a cryptographically secure boolean with equal probability for both
- * values using the SecureRandom service.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomBoolean: Effect.Effect<boolean, never, SecureRandom> = Effect.flatMap(
-  SecureRandom,
-  (r) => r.randomBoolean
-)
-
-/**
- * Generates a cryptographically secure integer across the full safe-integer
- * range using the SecureRandom service.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomInt: Effect.Effect<number, never, SecureRandom> = Effect.flatMap(SecureRandom, (r) => r.randomInt)
-
-/**
- * Generates a cryptographically secure number between `min`, inclusive, and
- * `max`, exclusive, using the SecureRandom service.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomBetween = (min: number, max: number): Effect.Effect<number, never, SecureRandom> =>
-  Effect.flatMap(SecureRandom, (r) => r.randomBetween(min, max))
-
-/**
- * Generates a uniformly distributed cryptographically secure integer between
- * `min` and `max` using the SecureRandom service.
- *
- * **Details**
- *
- * The lower bound is rounded up and the upper bound is rounded down. Both
- * bounds are inclusive unless `options.halfOpen` excludes the upper bound.
- *
- * **Gotchas**
- *
- * Empty ranges and bounds that do not round to safe integers die with
- * `RangeError` when the service is constructed with `make`.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomIntBetween = (min: number, max: number, options?: {
-  readonly halfOpen?: boolean | undefined
-}): Effect.Effect<number, never, SecureRandom> =>
-  Effect.flatMap(SecureRandom, (r) => r.randomIntBetween(min, max, options))
-
-/**
- * Shuffles an iterable using cryptographically secure random choices from the
- * SecureRandom service.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomShuffle = <A>(elements: Iterable<A>): Effect.Effect<Array<A>, never, SecureRandom> =>
-  Effect.flatMap(SecureRandom, (r) => r.randomShuffle(elements))
-
-/**
- * Generates a cryptographically secure UUIDv4 using the SecureRandom service.
- *
- * **Details**
- *
- * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
- * `"bytes"` format returns the 16 UUID bytes.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomUUIDv4: {
-  (options?: {
-    readonly format?: "hex" | undefined
-  }): Effect.Effect<string, CryptoError.CryptoError, SecureRandom>
-  <Format extends "hex" | "bytes">(options: {
-    readonly format: Format
-  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, CryptoError.CryptoError, SecureRandom>
-  (options?: {
-    readonly format?: "hex" | "bytes" | undefined
-  }): Effect.Effect<string | Uint8Array, CryptoError.CryptoError, SecureRandom>
-} =
-  ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
-    Effect.flatMap(SecureRandom, (r) => r.randomUUIDv4(options))) as any
-
-/**
- * Generates a cryptographically secure UUIDv7 using the SecureRandom service
- * and the current Clock timestamp.
- *
- * **Details**
- *
- * The default `"hex"` format returns a lowercase, hyphenated UUID string; the
- * `"bytes"` format returns the 16 UUID bytes.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomUUIDv7: {
-  (options?: {
-    readonly format?: "hex" | undefined
-  }): Effect.Effect<string, CryptoError.CryptoError, SecureRandom>
-  <Format extends "hex" | "bytes">(options: {
-    readonly format: Format
-  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, CryptoError.CryptoError, SecureRandom>
-  (options?: {
-    readonly format?: "hex" | "bytes" | undefined
-  }): Effect.Effect<string | Uint8Array, CryptoError.CryptoError, SecureRandom>
-} =
-  ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
-    Effect.flatMap(SecureRandom, (r) => r.randomUUIDv7(options))) as any
-
-/**
- * Generates a cryptographically secure ULID using the SecureRandom service and
- * the current Clock timestamp.
- *
- * **Details**
- *
- * The result contains 26 uppercase Crockford base32 characters. ULIDs sort by
- * timestamp, with no ordering guarantee within the same millisecond.
- *
- * @stability unstable
- * @category generators
- * @since 4.0.0
- */
-export const randomULID: Effect.Effect<string, CryptoError.CryptoError, SecureRandom> = Effect.flatMap(
-  SecureRandom,
-  (r) => r.randomULID
-)
+const makeUuid = (
+  bytes: (randomBytes: Uint8Array) => Uint8Array,
+  randomBytes: (size: number) => Uint8Array,
+  format: UuidFormat | undefined
+): string | Uint8Array => {
+  const uuid = bytes(randomBytes(16))
+  return format === "bytes" ? uuid : Uuid.stringify(uuid)
+}
 
 /**
  * Creates a `SecureRandom` service from a secure byte source.
  *
  * **When to use**
  *
- * Use to build a SecureRandom service for a platform integration, test layer,
- * or custom runtime.
+ * Use to build the service for a platform integration, a custom runtime, or a
+ * seeded test double.
  *
  * **Details**
  *
- * Random numbers, booleans, integer ranges, shuffling, UUIDs, and ULIDs are
- * derived from `randomBytes`. Exceptions thrown by `randomBytes` fail with a
- * `CryptoError` whose reason is `Unknown`.
+ * Every operation is derived from `randomBytes`. Sizes are checked before it
+ * is called, and an exception it throws is a defect.
  *
  * **Gotchas**
  *
- * `randomBytes` must return fresh, cryptographically secure bytes of the
- * requested length. UUID formatting mutates the returned array, so each call
- * must return a new array.
+ * `randomBytes` must return a fresh array of exactly `size` secure random
+ * bytes. UUID formatting mutates the returned array.
  *
  * **Example** (Creating a SecureRandom service)
  *
@@ -368,191 +204,141 @@ export const randomULID: Effect.Effect<string, CryptoError.CryptoError, SecureRa
  * @category constructors
  * @since 4.0.0
  */
-export const make = (randomBytesUnsafe: (size: number) => Uint8Array): SecureRandom => {
-  const tryRandom = <A>(method: string, f: () => A): Effect.Effect<A, CryptoError.CryptoError> =>
-    Effect.try({
-      try: f,
-      catch: (cause) =>
-        new CryptoError.CryptoError({
-          algorithm: "SecureRandom",
-          method,
-          reason: new CryptoError.Unknown({ description: "Could not generate secure random bytes", cause })
-        })
-    })
-
-  const randomBytes: SecureRandom["randomBytes"] = (size) =>
-    Number.isSafeInteger(size) && size >= 0
-      ? tryRandom("randomBytes", () => randomBytesUnsafe(size))
-      : Effect.fail(
-        new CryptoError.CryptoError({
-          algorithm: "SecureRandom",
-          method: "randomBytes",
-          reason: new CryptoError.BadArgument({ description: "size must be a non-negative safe integer" })
-        })
-      )
-
-  const readUint53 = (bytes: Uint8Array): number =>
-    ((bytes[0] & 0x1f) * 2 ** 48) + (bytes[1] * 2 ** 40) + (bytes[2] * 2 ** 32) +
-    (bytes[3] * 2 ** 24) + (bytes[4] * 2 ** 16) + (bytes[5] * 2 ** 8) + bytes[6]
-
-  const nextDoubleUnsafe = (): number => readUint53(randomBytesUnsafe(7)) / 2 ** 53
-
-  const nextIntUnsafe = (): number => {
-    while (true) {
-      const bytes = randomBytesUnsafe(7)
-      const value = readUint53(bytes)
-      if ((bytes[0] & 0x20) === 0) {
-        return value + Number.MIN_SAFE_INTEGER
-      }
-      if (value < Number.MAX_SAFE_INTEGER) {
-        return value + 1
-      }
-    }
+export const make = (randomBytes: (size: number) => Uint8Array): SecureRandom["Service"] => {
+  const randomBytesChecked = (size: number): Uint8Array => {
+    checkSize(size)
+    return randomBytes(size)
   }
-
-  // Batch 7-byte draws without consuming extra bytes or retaining randomness
-  // across operations. Rejection draws refill one at a time after the batch.
-  const makeDrawSource = (expected: number): () => Uint8Array => {
-    let bytes: Uint8Array = new Uint8Array(0)
-    let offset = 0
-    return () => {
-      if (offset === bytes.length) {
-        bytes = randomBytesUnsafe(7 * Math.max(1, Math.min(expected, 585)))
-        offset = 0
-      }
-      expected--
-      offset += 7
-      return bytes.subarray(offset - 7, offset)
-    }
-  }
-
-  const nextIntBetweenUnsafe = (
-    min: number,
-    max: number,
-    halfOpen = false,
-    draw: () => Uint8Array = () => randomBytesUnsafe(7)
-  ): number => {
-    const minInt = Math.ceil(min)
-    const maxInt = Math.floor(max)
-    if (!Number.isSafeInteger(minInt) || !Number.isSafeInteger(maxInt)) {
-      throw new RangeError("bounds must round to safe integers")
-    }
-    if (maxInt - minInt < Number.MAX_SAFE_INTEGER) {
-      // Every intermediate stays below 2^53, and `%` is exact, so the
-      // divisions below are exact without BigInt.
-      const count = maxInt - minInt + (halfOpen ? 0 : 1)
-      if (count <= 0) {
-        throw new RangeError("range must contain at least one integer")
-      }
-      // `+ 0` turns `Math.ceil` of a value in (-1, 0) into 0 instead of -0.
-      if (count === 1) return minInt + 0
-      const bucketSize = (2 ** 53 - (2 ** 53 % count)) / count
-      const limit = bucketSize * count
-      while (true) {
-        const value = readUint53(draw())
-        if (value < limit) return minInt + (value - (value % bucketSize)) / bucketSize
-      }
-    }
-    // Use 54 bits only for ranges wider than a 53-bit draw. BigInt keeps
-    // every integer distinct when the range crosses the safe-integer domain.
-    const lower = BigInt(minInt)
-    const count = BigInt(maxInt) - lower + (halfOpen ? BigInt("0") : BigInt("1"))
-    const wide = count > BigInt("1") << BigInt("53")
-    const bucketSize = (wide ? BigInt("1") << BigInt("54") : BigInt("1") << BigInt("53")) / count
-    const limit = bucketSize * count
-    while (true) {
-      const bytes = draw()
-      const value = BigInt(readUint53(bytes)) +
-        (wide && (bytes[0] & 0x20) !== 0 ? BigInt("1") << BigInt("53") : BigInt("0"))
-      if (value < limit) return Number(lower + value / bucketSize)
-    }
-  }
-
-  return SecureRandom.of({
-    [SecureRandomTypeId]: SecureRandomTypeId,
-    randomBytes,
-    nextDoubleUnsafe,
-    nextIntUnsafe,
-    random: Effect.sync(() => nextDoubleUnsafe()),
-    randomBoolean: Effect.sync(() => nextDoubleUnsafe() >= 0.5),
-    randomInt: Effect.sync(() => nextIntUnsafe()),
-    randomBetween: (min, max) =>
-      Effect.sync(() => {
-        const draw = nextDoubleUnsafe()
-        return Number.isFinite(min) && Number.isFinite(max) && !Number.isFinite(max - min)
-          ? min * (1 - draw) + max * draw
-          : internalRandom.nextBetween(min, max, draw)
-      }),
-    randomIntBetween: (min, max, options) => Effect.sync(() => nextIntBetweenUnsafe(min, max, options?.halfOpen)),
-    randomShuffle: (elements) =>
+  const draw = () => randomBytes(7)
+  return {
+    randomBytes: (size) => Effect.sync(() => randomBytesChecked(size)),
+    intBetween: (min, max, options) => Effect.sync(() => intBetweenUnsafe(min, max, options?.halfOpen ?? false, draw)),
+    shuffle: <A>(elements: Iterable<A>) =>
       Effect.sync(() => {
         const buffer = Array.from(elements)
-        const draw = makeDrawSource(buffer.length - 1)
-        for (let i = buffer.length - 1; i >= 1; i = i - 1) {
-          const index = nextIntBetweenUnsafe(0, i, false, draw)
+        for (let i = buffer.length - 1; i >= 1; i--) {
+          const index = intBetweenUnsafe(0, i, false, draw)
           const value = buffer[i]!
           buffer[i] = buffer[index]!
           buffer[index] = value
         }
         return buffer
       }),
-    randomUUIDv4: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
-      tryRandom("randomUUIDv4", () => {
-        const bytes = Uuid.v4Bytes(randomBytesUnsafe(16))
-        return options?.format === "bytes" ? bytes : Uuid.stringify(bytes)
-      })) as SecureRandom["randomUUIDv4"],
-    randomUUIDv7: ((options?: { readonly format?: "hex" | "bytes" | undefined }) =>
+    uuidV4: ((options?: { readonly format?: UuidFormat | undefined }) =>
+      Effect.sync(() => makeUuid(Uuid.v4Bytes, randomBytes, options?.format))) as UuidGenerator<never>,
+    uuidV7: ((options?: { readonly format?: UuidFormat | undefined }) =>
       Effect.clockWith((clock) =>
-        tryRandom("randomUUIDv7", () => {
-          const bytes = Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(16))
-          return options?.format === "bytes" ? bytes : Uuid.stringify(bytes)
-        })
-      )) as SecureRandom["randomUUIDv7"],
-    randomULID: Effect.clockWith((clock) =>
-      tryRandom("randomULID", () =>
-        Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytesUnsafe(10)))
+        Effect.sync(() =>
+          makeUuid((bytes) => Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
+        )
+      )) as UuidGenerator<never>,
+    ulid: Effect.clockWith((clock) =>
+      Effect.sync(() => Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytes(10)))
     )
-  })
+  }
+}
+
+// `getRandomValues` throws a `QuotaExceededError` above 65,536 bytes.
+const fillRandom = (crypto: Crypto, size: number): Uint8Array => {
+  const bytes = new Uint8Array(size)
+  for (let offset = 0; offset < size; offset += 65_536) {
+    crypto.getRandomValues(bytes.subarray(offset, offset + 65_536))
+  }
+  return bytes
 }
 
 /**
- * Layer that provides `SecureRandom` using `globalThis.crypto.getRandomValues`.
+ * Layer that provides `SecureRandom` from `getRandomValues` on the `WebCrypto`
+ * reference.
  *
  * **Details**
  *
- * Requests larger than the 65,536-byte `getRandomValues` limit are filled in
- * chunks. Only `getRandomValues` is needed, so the layer also works in
- * insecure browser contexts without `crypto.subtle`.
- *
- * **Gotchas**
- *
- * The layer fails to build with an `Unsupported` reason when the runtime has
- * no global `crypto` object, such as Node.js 18. Use the Node.js platform
- * package's `layerSecureRandom` there.
+ * Requests above the 65,536-byte `getRandomValues` limit are filled in chunks.
+ * Only `getRandomValues` is needed, so the layer also works in insecure browser
+ * contexts, which have no `crypto.subtle`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layer: Layer.Layer<SecureRandom, CryptoError.CryptoError> = Layer.effect(
+export const layerWebCrypto: Layer.Layer<SecureRandom> = Layer.effect(
   SecureRandom,
-  Effect.suspend(() => {
-    const crypto = globalThis.crypto
-    if (crypto === undefined) {
-      return Effect.fail(
-        new CryptoError.CryptoError({
-          algorithm: "SecureRandom",
-          method: "layer",
-          reason: new CryptoError.Unsupported({ description: "Web Crypto is unavailable" })
-        })
-      )
-    }
-    return Effect.succeed(make((size) => {
-      const bytes = new Uint8Array(size)
-      for (let offset = 0; offset < bytes.length; offset += 65_536) {
-        crypto.getRandomValues(bytes.subarray(offset, offset + 65_536))
-      }
-      return bytes
-    }))
-  })
+  WebCrypto.use((crypto) => Effect.succeed(make((size) => fillRandom(crypto, size))))
 )
+
+/**
+ * Synchronously generates `size` cryptographically secure random bytes from
+ * `globalThis.crypto`.
+ *
+ * **When to use**
+ *
+ * Use when a service cannot be read, as in constructors and model defaults.
+ * Elsewhere, use the `SecureRandom` service.
+ *
+ * **Gotchas**
+ *
+ * Reads `globalThis.crypto` directly, so neither the `WebCrypto` reference nor
+ * a mocked `SecureRandom` service affects it. A negative or non-integer size
+ * throws a `RangeError`.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const randomBytesUnsafe = (size: number): Uint8Array => {
+  checkSize(size)
+  return fillRandom(globalThis.crypto, size)
+}
+
+/**
+ * Synchronously generates a UUIDv4 from `globalThis.crypto`, as a lowercase
+ * hyphenated string or, with `format: "bytes"`, the 16 UUID bytes.
+ *
+ * **Gotchas**
+ *
+ * Reads `globalThis.crypto` directly, so neither the `WebCrypto` reference nor
+ * a mocked `SecureRandom` service affects it.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const uuidV4Unsafe: {
+  (options?: { readonly format?: "string" | undefined }): string
+  <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
+} = ((options?: { readonly format?: UuidFormat | undefined }) =>
+  makeUuid(Uuid.v4Bytes, randomBytesUnsafe, options?.format)) as any
+
+/**
+ * Synchronously generates a UUIDv7 from `Date.now()` and `globalThis.crypto`,
+ * as a lowercase hyphenated string or, with `format: "bytes"`, the 16 UUID
+ * bytes.
+ *
+ * **Gotchas**
+ *
+ * Reads `Date.now()` rather than the `Clock`, and `globalThis.crypto` rather
+ * than the `WebCrypto` reference.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const uuidV7Unsafe: {
+  (options?: { readonly format?: "string" | undefined }): string
+  <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
+} = ((options?: { readonly format?: UuidFormat | undefined }) =>
+  makeUuid((bytes) => Uuid.v7Bytes(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
+
+/**
+ * Synchronously generates a ULID from `Date.now()` and `globalThis.crypto`.
+ *
+ * **Gotchas**
+ *
+ * Reads `Date.now()` rather than the `Clock`, and `globalThis.crypto` rather
+ * than the `WebCrypto` reference.
+ *
+ * @stability unstable
+ * @category unsafe
+ * @since 4.0.0
+ */
+export const ulidUnsafe = (): string => Ulid.ulidString(Date.now(), randomBytesUnsafe(10))

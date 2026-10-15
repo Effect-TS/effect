@@ -7,4 +7,4 @@
 "@effect/platform-deno": minor
 ---
 
-Split `effect/Crypto` into algorithm modules under `effect/crypto`, such as `Aes`, `Ed25519`, `Rsa`, and `Sha2`, each with a Web Crypto `layer`. Asymmetric keys are typed per key family. `NodeCrypto`, `BunCrypto`, and `DenoCrypto` add MD5, ChaCha20-Poly1305, and Argon2id where the runtime supports them. `BrowserCrypto` and `TestCrypto` are removed; use the Web Crypto layers and `TestSecureRandom` instead.
+Replace `effect/Crypto` with modules under `effect/crypto`: `CryptoError`, `WebCrypto`, `SecureRandom`, `Digest`, and per-algorithm modules such as `Aes`, `Ed25519`, and `Rsa`. Each service has a core `layerWebCrypto`. `NodeCrypto` provides `layerDigest` and `layerSecureRandom` and is re-exported by `BunCrypto`; `DenoCrypto`, `BrowserCrypto`, `TestCrypto`, and `TestSecureRandom` are removed, and the `*Services` bundles no longer include crypto services. Cluster SQL message storage now requires `Digest.Digest`.

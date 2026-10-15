@@ -62,7 +62,7 @@ export interface Options {
 export class Argon2id extends Context.Service<Argon2id, {
   /**
    * Derives a password hash with Argon2id. Invalid memory, passes,
-   * parallelism, output lengths, or salts fail with a `BadArgument` reason.
+   * parallelism, output lengths, or salts fail with an `InvalidArgument` reason.
    */
   readonly derive: (options: Options) => Effect.Effect<Redacted.Redacted<Uint8Array>, CryptoError.CryptoError>
   /**

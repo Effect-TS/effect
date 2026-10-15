@@ -9,7 +9,22 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
+
+/**
+ * SHA hash algorithms accepted by this module.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
 
 /**
  * Service that computes and verifies HMAC tags.
@@ -51,13 +66,13 @@ export class Hmac extends Context.Service<Hmac, {
    * Generates a random key of the hash's block size.
    */
   readonly generateKey: (options: {
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
   }) => Effect.Effect<Redacted.Redacted<Uint8Array>, CryptoError.CryptoError>
   /**
    * Computes the HMAC tag of the supplied data.
    */
   readonly compute: (options: {
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly key: Redacted.Redacted<Uint8Array>
     readonly data: Uint8Array
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
@@ -66,7 +81,7 @@ export class Hmac extends Context.Service<Hmac, {
    * the HMAC of `data`; truncated tags return `false`.
    */
   readonly verify: (options: {
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly key: Redacted.Redacted<Uint8Array>
     readonly tag: Uint8Array
     readonly data: Uint8Array
@@ -75,7 +90,7 @@ export class Hmac extends Context.Service<Hmac, {
 
 // The JOSE `alg` values of HMAC keys, mapped to the hash Web Crypto checks
 // them against. `HS1` is the name Web Crypto gives HMAC with SHA-1.
-const jwkHash = (alg: string | undefined): WebCrypto.HashAlgorithm | undefined => {
+const jwkHash = (alg: string | undefined): HashAlgorithm | undefined => {
   switch (alg) {
     case undefined:
     case "HS256":
@@ -110,13 +125,13 @@ export const keyFromJwk = (jwk: JsonWebKey): Effect.Effect<Redacted.Redacted<Uin
   if (hash === undefined) {
     return Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "HMAC",
+        module: "HMAC",
         method: "keyFromJwk",
         reason: new CryptoError.InvalidKey({ description: `Expected an HMAC key, not ${jwk.alg}` })
       })
     )
   }
-  return Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  return Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -138,8 +153,8 @@ export const keyFromJwk = (jwk: JsonWebKey): Effect.Effect<Redacted.Redacted<Uin
 export const layer: Layer.Layer<Hmac, CryptoError.CryptoError> = Layer.effect(
   Hmac,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
-    const params = (hash: WebCrypto.HashAlgorithm): HmacImportParams => ({ name: "HMAC", hash })
+    const subtle = yield* WebCrypto.subtle
+    const params = (hash: HashAlgorithm): HmacImportParams => ({ name: "HMAC", hash })
     return {
       generateKey: ({ hash }) =>
         Effect.tryPromise({

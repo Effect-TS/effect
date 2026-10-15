@@ -16,7 +16,7 @@ import type * as Aead from "./Aead.ts"
  * **Details**
  *
  * Keys are 32 `Redacted` bytes and nonces contain 12 bytes. Decryption fails
- * with an `AuthenticationFailed` reason when the tag does not match.
+ * with a `DecryptionFailed` reason when the tag does not match.
  *
  * **Gotchas**
  *

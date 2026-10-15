@@ -62,13 +62,13 @@ const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
 
 const makeAead = (label: string, nonceLength: 12 | 24): Aead.Aead => {
   const fail = (method: string, reason: CryptoError.CryptoErrorReason) =>
-    Effect.fail(new CryptoError.CryptoError({ algorithm: label, method, reason }))
+    Effect.fail(new CryptoError.CryptoError({ module: label, method, reason }))
 
   const cipher = (method: "encrypt" | "decrypt") => ({ additionalData, data, key, nonce }: Aead.Options) => {
     if (nonce.length !== nonceLength) {
       return fail(
         method,
-        new CryptoError.BadArgument({ description: `${label} nonce must contain exactly ${nonceLength} bytes` })
+        new CryptoError.InvalidArgument({ description: `${label} nonce must contain exactly ${nonceLength} bytes` })
       )
     }
     const material = Redacted.value(key)
@@ -76,7 +76,7 @@ const makeAead = (label: string, nonceLength: 12 | 24): Aead.Aead => {
       return fail(method, new CryptoError.InvalidKey({ description: `${label} keys must contain exactly 32 bytes` }))
     }
     if (method === "decrypt" && data.length < 16) {
-      return fail(method, new CryptoError.AuthenticationFailed({ description: "Ciphertext is shorter than the tag" }))
+      return fail(method, new CryptoError.DecryptionFailed())
     }
     return Effect.try({
       try: () => {
@@ -100,13 +100,9 @@ const makeAead = (label: string, nonceLength: 12 | 24): Aead.Aead => {
             prefix = decipher.update(data.subarray(0, data.length - 16))
             try {
               suffix = decipher.final()
-            } catch (cause) {
+            } catch {
               // `final` throws only when the tag does not match.
-              throw new CryptoError.CryptoError({
-                algorithm: label,
-                method,
-                reason: new CryptoError.AuthenticationFailed({ description: "Could not authenticate data", cause })
-              })
+              throw new CryptoError.CryptoError({ module: label, method, reason: new CryptoError.DecryptionFailed() })
             }
             return concat([prefix, suffix])
           }
@@ -119,12 +115,11 @@ const makeAead = (label: string, nonceLength: 12 | 24): Aead.Aead => {
           suffix?.fill(0)
         }
       },
-      catch: (cause) =>
-        CryptoError.isCryptoError(cause) ? cause : new CryptoError.CryptoError({
-          algorithm: label,
-          method,
-          reason: new CryptoError.Unknown({ description: `Could not perform ${method}`, cause })
-        })
+      // Anything other than a failed tag check is a defect.
+      catch: (cause) => {
+        if (CryptoError.isCryptoError(cause)) return cause
+        throw cause
+      }
     })
   }
 

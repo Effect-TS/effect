@@ -13,7 +13,7 @@
  */
 import * as Layer from "effect/Layer"
 import type { ConfigError } from "../Config.ts"
-import type * as Sha2 from "../crypto/Sha2.ts"
+import type * as Digest from "../crypto/Digest.ts"
 import type * as SqlClient from "../sql/SqlClient.ts"
 import type * as MessageStorage from "./MessageStorage.ts"
 import * as RunnerHealth from "./RunnerHealth.ts"
@@ -44,7 +44,7 @@ import * as SqlRunnerStorage from "./SqlRunnerStorage.ts"
  * **Gotchas**
  *
  * - Even when `runnerStorage` is `"memory"`, message storage remains
- *   SQL-backed, so callers must still provide `SqlClient` and `Sha2.Sha2`
+ *   SQL-backed, so callers must still provide `SqlClient` and `Digest.Digest`
  *   (used to hash over-length message deduplication keys).
  * - Runner communication and runner health are no-op services, so this layer is
  *   for single-process use rather than multi-runner coordination.
@@ -66,7 +66,7 @@ export const layer = (options?: {
   | Runners.Runners
   | MessageStorage.MessageStorage,
   ConfigError,
-  SqlClient.SqlClient | Sha2.Sha2
+  SqlClient.SqlClient | Digest.Digest
 > =>
   Sharding.layer.pipe(
     Layer.provideMerge(Runners.layerNoop),

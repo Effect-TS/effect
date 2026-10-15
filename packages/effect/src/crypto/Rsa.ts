@@ -11,7 +11,22 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
+
+/**
+ * SHA hash algorithms accepted by this module.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
 
 /**
  * An RSA private key: `Redacted` PKCS8 bytes.
@@ -57,7 +72,7 @@ export interface KeyPairOptions {
  * Each operation names its hash. RSA-PSS salt lengths are measured in bytes
  * and default to the hash output size. RSA-OAEP labels are authenticated and
  * default to empty; decryption with the wrong key, hash, or label fails with
- * an `AuthenticationFailed` reason. Verification returns `false` for a
+ * a `DecryptionFailed` reason. Verification returns `false` for a
  * mismatched signature.
  *
  * **Gotchas**
@@ -65,7 +80,7 @@ export interface KeyPairOptions {
  * Prefer RSA-PSS for new signatures. RSASSA-PKCS1-v1_5 is for protocols that
  * require it, such as `RS256` JWTs and SSH `rsa-sha2-*` host keys. RSA-OAEP
  * plaintext must fit in one RSA block: at most the modulus length minus twice
- * the hash length minus 2 bytes. Longer plaintext fails with a `BadArgument`
+ * the hash length minus 2 bytes. Longer plaintext fails with an `InvalidArgument`
  * reason.
  *
  * @stability unstable
@@ -84,7 +99,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly signPss: (options: {
     readonly privateKey: PrivateKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly saltLength?: number | undefined
     readonly data: Uint8Array
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
@@ -93,7 +108,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly verifyPss: (options: {
     readonly publicKey: PublicKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly saltLength?: number | undefined
     readonly signature: Uint8Array
     readonly data: Uint8Array
@@ -103,7 +118,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly signPkcs1v15: (options: {
     readonly privateKey: PrivateKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly data: Uint8Array
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
   /**
@@ -111,7 +126,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly verifyPkcs1v15: (options: {
     readonly publicKey: PublicKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly signature: Uint8Array
     readonly data: Uint8Array
   }) => Effect.Effect<boolean, CryptoError.CryptoError>
@@ -120,7 +135,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly encryptOaep: (options: {
     readonly publicKey: PublicKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly data: Uint8Array
     readonly label?: Uint8Array | undefined
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
@@ -129,7 +144,7 @@ export class Rsa extends Context.Service<Rsa, {
    */
   readonly decryptOaep: (options: {
     readonly privateKey: PrivateKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly data: Uint8Array
     readonly label?: Uint8Array | undefined
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
@@ -137,7 +152,7 @@ export class Rsa extends Context.Service<Rsa, {
 
 // RSA keys are imported for one scheme at a time; exported keys are not bound
 // to the scheme or hash they are imported with.
-const rsaParams = (name: string, hash: WebCrypto.HashAlgorithm = "SHA-256"): RsaHashedImportParams => ({ name, hash })
+const rsaParams = (name: string, hash: HashAlgorithm = "SHA-256"): RsaHashedImportParams => ({ name, hash })
 
 /**
  * Creates an RSA private key from PKCS8 bytes.
@@ -149,7 +164,7 @@ const rsaParams = (name: string, hash: WebCrypto.HashAlgorithm = "SHA-256"): Rsa
 export const privateKeyFromPkcs8 = (
   pkcs8: Uint8Array | Redacted.Redacted<Uint8Array>
 ): Effect.Effect<PrivateKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const bytes = Redacted.isRedacted(pkcs8) ? Redacted.value(pkcs8) : pkcs8
@@ -176,12 +191,12 @@ export const privateKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PrivateKey, Cr
   jwk.d === undefined
     ? Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "RSA",
+        module: "RSA",
         method: "privateKeyFromJwk",
         reason: new CryptoError.InvalidKey({ description: "Expected a private JWK with d" })
       })
     )
-    : Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+    : Effect.flatMap(WebCrypto.subtle, (subtle) =>
       Effect.tryPromise({
         try: async () => {
           // Web Crypto would check these JOSE members against the import parameters.
@@ -200,7 +215,7 @@ export const privateKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PrivateKey, Cr
  * @since 4.0.0
  */
 export const publicKeyFromSpki = (spki: Uint8Array): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", spki as BufferSource, rsaParams("RSA-PSS"), true, [])
@@ -222,7 +237,7 @@ export const publicKeyFromSpki = (spki: Uint8Array): Effect.Effect<PublicKey, Cr
  * @since 4.0.0
  */
 export const publicKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -241,7 +256,7 @@ export const publicKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PublicKey, Cryp
  * @since 4.0.0
  */
 export const publicKeyFromPrivateKey = (privateKey: PrivateKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto cannot export the public key of a private key, so the
@@ -265,7 +280,7 @@ export const publicKeyFromPrivateKey = (privateKey: PrivateKey): Effect.Effect<P
  * @since 4.0.0
  */
 export const modulusLength = (publicKey: PublicKey): Effect.Effect<number, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", publicKey, rsaParams("RSA-PSS"), false, ["verify"])
@@ -282,7 +297,7 @@ export const modulusLength = (publicKey: PublicKey): Effect.Effect<number, Crypt
  * @since 4.0.0
  */
 export const publicKeyToJwk = (key: PublicKey): Effect.Effect<JsonWebKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", key, rsaParams("RSA-PSS"), true, [])
@@ -293,7 +308,7 @@ export const publicKeyToJwk = (key: PublicKey): Effect.Effect<JsonWebKey, Crypto
     }))
 
 // Output sizes in bytes.
-const hashLengths: Record<WebCrypto.HashAlgorithm, number> = {
+const hashLengths: Record<HashAlgorithm, number> = {
   "SHA-1": 20,
   "SHA-256": 32,
   "SHA-384": 48,
@@ -310,9 +325,9 @@ const hashLengths: Record<WebCrypto.HashAlgorithm, number> = {
 export const layer: Layer.Layer<Rsa, CryptoError.CryptoError> = Layer.effect(
   Rsa,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     // The salt length defaults to the hash output size.
-    const pss = (hash: WebCrypto.HashAlgorithm, saltLength: number | undefined): RsaPssParams => ({
+    const pss = (hash: HashAlgorithm, saltLength: number | undefined): RsaPssParams => ({
       name: "RSA-PSS",
       saltLength: saltLength ?? hashLengths[hash]
     })
@@ -322,7 +337,7 @@ export const layer: Layer.Layer<Rsa, CryptoError.CryptoError> = Layer.effect(
     (
       { data, hash, privateKey }: {
         readonly privateKey: PrivateKey
-        readonly hash: WebCrypto.HashAlgorithm
+        readonly hash: HashAlgorithm
         readonly data: Uint8Array
       }
     ) =>
@@ -345,7 +360,7 @@ export const layer: Layer.Layer<Rsa, CryptoError.CryptoError> = Layer.effect(
       (algorithm: string, method: string, params: AlgorithmIdentifier | RsaPssParams) =>
       ({ data, hash, publicKey, signature }: {
         readonly publicKey: PublicKey
-        readonly hash: WebCrypto.HashAlgorithm
+        readonly hash: HashAlgorithm
         readonly signature: Uint8Array
         readonly data: Uint8Array
       }) =>
@@ -393,9 +408,9 @@ export const layer: Layer.Layer<Rsa, CryptoError.CryptoError> = Layer.effect(
             catch: (cause) =>
               WebCrypto.isOperationError(cause)
                 ? new CryptoError.CryptoError({
-                  algorithm: "RSA-OAEP",
+                  module: "RSA-OAEP",
                   method: "encryptOaep",
-                  reason: new CryptoError.BadArgument({
+                  reason: new CryptoError.InvalidArgument({
                     description: "Plaintext is too long for the key and hash",
                     cause
                   })
@@ -418,12 +433,9 @@ export const layer: Layer.Layer<Rsa, CryptoError.CryptoError> = Layer.effect(
             catch: (cause) =>
               WebCrypto.isOperationError(cause)
                 ? new CryptoError.CryptoError({
-                  algorithm: "RSA-OAEP",
+                  module: "RSA-OAEP",
                   method: "decryptOaep",
-                  reason: new CryptoError.AuthenticationFailed({
-                    description: "Could not authenticate or decrypt data",
-                    cause
-                  })
+                  reason: new CryptoError.DecryptionFailed()
                 })
                 : WebCrypto.webCryptoError("RSA-OAEP", "decryptOaep", cause)
           })

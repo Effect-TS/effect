@@ -10,7 +10,7 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
 
 /**
  * An Ed25519 private key: `Redacted` PKCS8 bytes.
@@ -102,7 +102,7 @@ export const publicKeyFromRaw = (bytes: Uint8Array): Effect.Effect<PublicKey, Cr
     ? Effect.succeed(new Uint8Array(bytes) as PublicKey)
     : Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "Ed25519",
+        module: "Ed25519",
         method: "publicKeyFromRaw",
         reason: new CryptoError.InvalidKey({ description: "Ed25519 public keys must contain exactly 32 bytes" })
       })
@@ -131,7 +131,7 @@ export const privateKeyFromRaw = (
   if (raw.length !== 32) {
     return Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "Ed25519",
+        module: "Ed25519",
         method: "privateKeyFromRaw",
         reason: new CryptoError.InvalidKey({ description: "Ed25519 private keys must contain exactly 32 bytes" })
       })
@@ -158,7 +158,7 @@ export const privateKeyToRaw = (
     ? Effect.succeed(Redacted.make(pkcs8.slice(ed25519Pkcs8Header.length)))
     : Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "Ed25519",
+        module: "Ed25519",
         method: "privateKeyToRaw",
         reason: new CryptoError.InvalidKey({ description: "Expected Ed25519 PKCS8 in the form Web Crypto exports" })
       })
@@ -175,7 +175,7 @@ export const privateKeyToRaw = (
 export const privateKeyFromPkcs8 = (
   pkcs8: Uint8Array | Redacted.Redacted<Uint8Array>
 ): Effect.Effect<PrivateKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const bytes = Redacted.isRedacted(pkcs8) ? Redacted.value(pkcs8) : pkcs8
@@ -203,12 +203,12 @@ export const privateKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PrivateKey, Cr
   jwk.d === undefined
     ? Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "Ed25519",
+        module: "Ed25519",
         method: "privateKeyFromJwk",
         reason: new CryptoError.InvalidKey({ description: "Expected a private JWK with d" })
       })
     )
-    : Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+    : Effect.flatMap(WebCrypto.subtle, (subtle) =>
       Effect.tryPromise({
         try: async () => {
           // Web Crypto would check these JOSE members against the import parameters.
@@ -227,7 +227,7 @@ export const privateKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PrivateKey, Cr
  * @since 4.0.0
  */
 export const publicKeyFromSpki = (spki: Uint8Array): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", spki as BufferSource, "Ed25519", true, [])
@@ -249,7 +249,7 @@ export const publicKeyFromSpki = (spki: Uint8Array): Effect.Effect<PublicKey, Cr
  * @since 4.0.0
  */
 export const publicKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -268,7 +268,7 @@ export const publicKeyFromJwk = (jwk: JsonWebKey): Effect.Effect<PublicKey, Cryp
  * @since 4.0.0
  */
 export const publicKeyFromPrivateKey = (privateKey: PrivateKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto cannot export the public key of a private key, so the
@@ -289,7 +289,7 @@ export const publicKeyFromPrivateKey = (privateKey: PrivateKey): Effect.Effect<P
  * @since 4.0.0
  */
 export const publicKeyToSpki = (key: PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, "Ed25519", true, [])
@@ -306,7 +306,7 @@ export const publicKeyToSpki = (key: PublicKey): Effect.Effect<Uint8Array, Crypt
  * @since 4.0.0
  */
 export const publicKeyToJwk = (key: PublicKey): Effect.Effect<JsonWebKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, "Ed25519", true, [])
@@ -326,7 +326,7 @@ export const publicKeyToJwk = (key: PublicKey): Effect.Effect<JsonWebKey, Crypto
 export const layer: Layer.Layer<Ed25519, CryptoError.CryptoError> = Layer.effect(
   Ed25519,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     return {
       generateKeyPair: () =>
         Effect.tryPromise({

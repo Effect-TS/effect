@@ -12,7 +12,22 @@ import * as Layer from "../Layer.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
+
+/**
+ * SHA hash algorithms accepted by this module.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
 
 /**
  * The NIST elliptic curves supported for ECDSA and ECDH keys.
@@ -73,7 +88,7 @@ export class Ecdsa extends Context.Service<Ecdsa, {
   readonly sign: (options: {
     readonly curve: Curve
     readonly privateKey: PrivateKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly data: Uint8Array
   }) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
   /**
@@ -82,7 +97,7 @@ export class Ecdsa extends Context.Service<Ecdsa, {
   readonly verify: (options: {
     readonly curve: Curve
     readonly publicKey: PublicKey
-    readonly hash: WebCrypto.HashAlgorithm
+    readonly hash: HashAlgorithm
     readonly signature: Uint8Array
     readonly data: Uint8Array
   }) => Effect.Effect<boolean, CryptoError.CryptoError>
@@ -103,7 +118,7 @@ const isPoint = (curve: keyof typeof coordinateSizes, point: Uint8Array): boolea
 const publicKeyError = (method: string, cause: unknown): CryptoError.CryptoError =>
   Predicate.hasProperty(cause, "name") && cause.name === "TypeError"
     ? new CryptoError.CryptoError({
-      algorithm: "ECDSA",
+      module: "ECDSA",
       method,
       reason: new CryptoError.InvalidKey({ description: "Invalid public key", cause })
     })
@@ -127,7 +142,7 @@ export const publicKeyFromRaw = (curve: Curve, point: Uint8Array): Effect.Effect
     ? Effect.succeed(new Uint8Array(point) as PublicKey)
     : Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDSA",
+        module: "ECDSA",
         method: "publicKeyFromRaw",
         reason: new CryptoError.InvalidKey({ description: `Expected an uncompressed ${curve} point` })
       })
@@ -144,7 +159,7 @@ export const privateKeyFromPkcs8 = (
   curve: Curve,
   pkcs8: Uint8Array | Redacted.Redacted<Uint8Array>
 ): Effect.Effect<PrivateKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const bytes = Redacted.isRedacted(pkcs8) ? Redacted.value(pkcs8) : pkcs8
@@ -174,12 +189,12 @@ export const privateKeyFromJwk = (
   jwk.d === undefined
     ? Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDSA",
+        module: "ECDSA",
         method: "privateKeyFromJwk",
         reason: new CryptoError.InvalidKey({ description: "Expected a private JWK with d" })
       })
     )
-    : Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+    : Effect.flatMap(WebCrypto.subtle, (subtle) =>
       Effect.tryPromise({
         try: async () => {
           // Web Crypto would check these JOSE members against the import parameters.
@@ -201,7 +216,7 @@ export const publicKeyFromSpki = (
   curve: Curve,
   spki: Uint8Array
 ): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", spki as BufferSource, ecdsaParams(curve), true, [])
@@ -223,7 +238,7 @@ export const publicKeyFromSpki = (
  * @since 4.0.0
  */
 export const publicKeyFromJwk = (curve: Curve, jwk: JsonWebKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -245,7 +260,7 @@ export const publicKeyFromPrivateKey = (
   curve: Curve,
   privateKey: PrivateKey
 ): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto cannot export the public key of a private key, so the
@@ -266,7 +281,7 @@ export const publicKeyFromPrivateKey = (
  * @since 4.0.0
  */
 export const publicKeyToSpki = (curve: Curve, key: PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, ecdsaParams(curve), true, [])
@@ -283,7 +298,7 @@ export const publicKeyToSpki = (curve: Curve, key: PublicKey): Effect.Effect<Uin
  * @since 4.0.0
  */
 export const publicKeyToJwk = (curve: Curve, key: PublicKey): Effect.Effect<JsonWebKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, ecdsaParams(curve), true, [])
@@ -303,7 +318,7 @@ export const publicKeyToJwk = (curve: Curve, key: PublicKey): Effect.Effect<Json
 export const layer: Layer.Layer<Ecdsa, CryptoError.CryptoError> = Layer.effect(
   Ecdsa,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     return {
       generateKeyPair: ({ curve }) =>
         Effect.tryPromise({

@@ -10,6 +10,7 @@
  * @stability unstable
  * @since 4.0.0
  */
+import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
 import { layerClientProtocol, layerSocketServer } from "@effect/platform-node-shared/NodeClusterSocket"
 import * as K8sHttpClient from "effect/cluster/K8sHttpClient"
 import * as MessageStorage from "effect/cluster/MessageStorage"
@@ -22,7 +23,6 @@ import * as SocketRunner from "effect/cluster/SocketRunner"
 import * as SqlMessageStorage from "effect/cluster/SqlMessageStorage"
 import * as SqlRunnerStorage from "effect/cluster/SqlRunnerStorage"
 import type * as Config from "effect/Config"
-import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
@@ -115,7 +115,7 @@ export const layer = <
         ? MessageStorage.layerNoop
         : options?.storage === "byo"
         ? Layer.empty
-        : Layer.orDie(SqlMessageStorage.layer.pipe(Layer.provide(Sha2.layer)))
+        : SqlMessageStorage.layer.pipe(Layer.provide(NodeCrypto.layerDigest))
     ),
     Layer.provide(
       options?.storage === "local"

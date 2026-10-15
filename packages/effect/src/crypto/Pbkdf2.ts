@@ -9,7 +9,22 @@ import * as Effect from "../Effect.ts"
 import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
+
+/**
+ * SHA hash algorithms accepted by this module.
+ *
+ * **Gotchas**
+ *
+ * SHA-1 is included for interoperability with existing protocols. Do not use
+ * it for new security-sensitive designs.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+
 
 /**
  * Parameters for PBKDF2 password derivation.
@@ -24,7 +39,7 @@ import * as WebCrypto from "./WebCrypto.ts"
  * @since 4.0.0
  */
 export interface Options {
-  readonly hash: WebCrypto.HashAlgorithm
+  readonly hash: HashAlgorithm
   readonly password: Redacted.Redacted<Uint8Array>
   readonly salt: Uint8Array
   readonly iterations: number
@@ -52,7 +67,7 @@ export interface Options {
 export class Pbkdf2 extends Context.Service<Pbkdf2, {
   /**
    * Derives a password hash with PBKDF2. Iterations outside 1 to 2^31 - 1 and
-   * lengths outside 1 to 2^29 - 1 bytes fail with a `BadArgument` reason.
+   * lengths outside 1 to 2^29 - 1 bytes fail with an `InvalidArgument` reason.
    */
   readonly derive: (options: Options) => Effect.Effect<Redacted.Redacted<Uint8Array>, CryptoError.CryptoError>
   /**
@@ -75,7 +90,7 @@ export class Pbkdf2 extends Context.Service<Pbkdf2, {
 export const layer: Layer.Layer<Pbkdf2, CryptoError.CryptoError> = Layer.effect(
   Pbkdf2,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     // Web Crypto takes a 32-bit bit length, and some backends wrap larger
     // values instead of rejecting them. Node.js aborts the process on
     // iteration counts above 2^31 - 1.
@@ -87,9 +102,9 @@ export const layer: Layer.Layer<Pbkdf2, CryptoError.CryptoError> = Layer.effect(
       if (!validIterations(iterations) || !Number.isSafeInteger(length) || !validLength(length)) {
         return Effect.fail(
           new CryptoError.CryptoError({
-            algorithm: "PBKDF2",
+            module: "PBKDF2",
             method: method,
-            reason: new CryptoError.BadArgument({
+            reason: new CryptoError.InvalidArgument({
               description: "iterations must be between 1 and 2^31 - 1 and length between 1 and 2^29 - 1"
             })
           })

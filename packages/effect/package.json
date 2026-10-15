@@ -57,6 +57,7 @@
     "./*": "./src/*.ts",
     "./cli/internal/*": null,
     "./cluster/internal/*": null,
+    "./crypto/internal/*": null,
     "./internal/*": null,
     "./index": null,
     "./*/index": null
@@ -103,6 +104,7 @@
       "./internal/*": null,
       "./cli/internal/*": null,
       "./cluster/internal/*": null,
+      "./crypto/internal/*": null,
       "./index": null,
       "./*/index": null
     }

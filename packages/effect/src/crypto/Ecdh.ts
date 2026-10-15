@@ -13,7 +13,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Redacted from "../Redacted.ts"
 import * as CryptoError from "./CryptoError.ts"
 import type * as Ecdsa from "./Ecdsa.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
 
 /**
  * The curves supported for ECDH key agreement: X25519 (RFC 7748) and the NIST
@@ -124,7 +124,7 @@ const isPoint = (curve: keyof typeof coordinateSizes, point: Uint8Array): boolea
 const publicKeyError = (method: string, cause: unknown): CryptoError.CryptoError =>
   Predicate.hasProperty(cause, "name") && cause.name === "TypeError"
     ? new CryptoError.CryptoError({
-      algorithm: "ECDH",
+      module: "ECDH",
       method,
       reason: new CryptoError.InvalidKey({ description: "Invalid public key", cause })
     })
@@ -149,7 +149,7 @@ export const publicKeyFromRaw = (curve: Curve, bytes: Uint8Array): Effect.Effect
     ? Effect.succeed(new Uint8Array(bytes) as PublicKey)
     : Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDH",
+        module: "ECDH",
         method: "publicKeyFromRaw",
         reason: new CryptoError.InvalidKey({ description: `Expected a raw ${curve} public key` })
       })
@@ -181,7 +181,7 @@ export const privateKeyFromRaw = (
   if (raw.length !== 32) {
     return Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDH",
+        module: "ECDH",
         method: "privateKeyFromRaw",
         reason: new CryptoError.InvalidKey({ description: `${curve} private keys must contain exactly 32 bytes` })
       })
@@ -209,7 +209,7 @@ export const privateKeyToRaw = (
     ? Effect.succeed(Redacted.make(pkcs8.slice(x25519Pkcs8Header.length)))
     : Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDH",
+        module: "ECDH",
         method: "privateKeyToRaw",
         reason: new CryptoError.InvalidKey({ description: `Expected ${curve} PKCS8 in the form Web Crypto exports` })
       })
@@ -227,7 +227,7 @@ export const privateKeyFromPkcs8 = (
   curve: Curve,
   pkcs8: Uint8Array | Redacted.Redacted<Uint8Array>
 ): Effect.Effect<PrivateKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const bytes = Redacted.isRedacted(pkcs8) ? Redacted.value(pkcs8) : pkcs8
@@ -255,12 +255,12 @@ export const privateKeyFromJwk = (curve: Curve, jwk: JsonWebKey): Effect.Effect<
   jwk.d === undefined
     ? Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "ECDH",
+        module: "ECDH",
         method: "privateKeyFromJwk",
         reason: new CryptoError.InvalidKey({ description: "Expected a private JWK with d" })
       })
     )
-    : Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+    : Effect.flatMap(WebCrypto.subtle, (subtle) =>
       Effect.tryPromise({
         try: async () => {
           // Web Crypto would check these JOSE members against the import parameters.
@@ -282,7 +282,7 @@ export const publicKeyFromPrivateKey = (
   curve: Curve,
   privateKey: PrivateKey
 ): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto cannot export the public key of a private key, so the
@@ -305,7 +305,7 @@ export const publicKeyFromPrivateKey = (
  * @since 4.0.0
  */
 export const publicKeyFromSpki = (curve: Curve, spki: Uint8Array): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("spki", spki as BufferSource, ecdhParams(curve), true, [])
@@ -322,7 +322,7 @@ export const publicKeyFromSpki = (curve: Curve, spki: Uint8Array): Effect.Effect
  * @since 4.0.0
  */
 export const publicKeyToSpki = (curve: Curve, key: PublicKey): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, ecdhParams(curve), true, [])
@@ -344,7 +344,7 @@ export const publicKeyToSpki = (curve: Curve, key: PublicKey): Effect.Effect<Uin
  * @since 4.0.0
  */
 export const publicKeyFromJwk = (curve: Curve, jwk: JsonWebKey): Effect.Effect<PublicKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -363,7 +363,7 @@ export const publicKeyFromJwk = (curve: Curve, jwk: JsonWebKey): Effect.Effect<P
  * @since 4.0.0
  */
 export const publicKeyToJwk = (curve: Curve, key: PublicKey): Effect.Effect<JsonWebKey, CryptoError.CryptoError> =>
-  Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         const handle = await subtle.importKey("raw", key, ecdhParams(curve), true, [])
@@ -383,7 +383,7 @@ export const publicKeyToJwk = (curve: Curve, key: PublicKey): Effect.Effect<Json
 export const layer: Layer.Layer<Ecdh, CryptoError.CryptoError> = Layer.effect(
   Ecdh,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     return {
       generateKeyPair: ({ curve }) =>
         Effect.tryPromise({
@@ -422,7 +422,7 @@ export const layer: Layer.Layer<Ecdh, CryptoError.CryptoError> = Layer.effect(
               catch: (cause) =>
                 WebCrypto.isOperationError(cause)
                   ? new CryptoError.CryptoError({
-                    algorithm: "ECDH",
+                    module: "ECDH",
                     method: "deriveSharedSecret",
                     reason: new CryptoError.InvalidKey({ description: "Invalid peer public key", cause })
                   })
@@ -435,7 +435,7 @@ export const layer: Layer.Layer<Ecdh, CryptoError.CryptoError> = Layer.effect(
             curve === "X25519" && secret.every((byte) => byte === 0)
               ? Effect.fail(
                 new CryptoError.CryptoError({
-                  algorithm: "ECDH",
+                  module: "ECDH",
                   method: "deriveSharedSecret",
                   reason: new CryptoError.InvalidKey({ description: "X25519 shared secret must not be all zeros" })
                 })

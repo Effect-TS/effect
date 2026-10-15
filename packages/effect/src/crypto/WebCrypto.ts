@@ -1,139 +1,61 @@
 /**
- * The Web Crypto API that the cryptographic layers run on.
+ * The WebCrypto `Crypto` object that the `effect/crypto` modules run on.
  *
- * The layers of the `effect/crypto` modules, such as `Aes.layer`, run on the
- * {@link SubtleCrypto} reference, which defaults to `globalThis.crypto.subtle`.
- * The module also defines {@link HashAlgorithm}, the hash identifiers the
- * services take as parameters.
+ * The `layerWebCrypto` layers of the family modules, such as
+ * `Digest.layerWebCrypto`, and the top-level functions that touch
+ * `crypto.subtle`, such as `Digest.digest`, read the {@link WebCrypto}
+ * reference. It defaults to `globalThis.crypto`. Provide {@link layer} to run
+ * them on a polyfill, a worker's object, or a test double.
  *
- * The services do not copy their byte inputs: do not modify keys, nonces, or
- * data until the operation that reads them completes. Results are fresh arrays
- * that the caller owns.
+ * **Gotchas**
+ *
+ * Browsers expose `crypto.subtle` only in secure contexts. Elsewhere, every
+ * operation that needs it dies with "crypto.subtle is unavailable". Layers
+ * still build, and `SecureRandom` and the pure TypeScript algorithms, such as
+ * MD5, keep working.
  *
  * @stability unstable
  * @since 4.0.0
  */
 import * as Context from "../Context.ts"
-import * as Effect from "../Effect.ts"
-import * as Predicate from "../Predicate.ts"
-import * as CryptoError from "./CryptoError.ts"
+import * as Layer from "../Layer.ts"
 
 /**
- * Reference to the `SubtleCrypto` that the Web Crypto layers run on.
+ * Reference to the WebCrypto `Crypto` object, defaulting to
+ * `globalThis.crypto`.
  *
- * **When to use**
- *
- * Use to run the Web Crypto layers on a specific `SubtleCrypto`, such as a
- * polyfill or a test double, by providing it with `Layer.succeed`.
- *
- * **Details**
- *
- * The default is `globalThis.crypto.subtle`, which is `undefined` where the
- * runtime has no Web Crypto.
- *
- * @see {@link subtleCrypto} for reading the reference in a layer
+ * @see {@link layer} for replacing it
  *
  * @stability unstable
  * @category references
  * @since 4.0.0
  */
-export const SubtleCrypto: Context.Reference<globalThis.SubtleCrypto | undefined> = Context.Reference<
-  globalThis.SubtleCrypto | undefined
->("effect/crypto/SubtleCrypto", { defaultValue: () => globalThis.crypto?.subtle })
+export const WebCrypto: Context.Reference<Crypto> = Context.Reference<Crypto>("effect/crypto/WebCrypto", {
+  defaultValue: () => globalThis.crypto
+})
 
 /**
- * Reads the {@link SubtleCrypto} reference, failing when there is none.
+ * Layer that sets the {@link WebCrypto} reference.
  *
- * **Details**
+ * **When to use**
  *
- * Fails with a `CryptoError` whose reason is `Unsupported` where the runtime
- * has no Web Crypto. The Web Crypto layers read it when they are built, so they
- * fail to build there.
+ * Use to run the `effect/crypto` modules on a polyfill, a worker's `Crypto`
+ * object, or a test double.
  *
- * **Gotchas**
+ * **Example** (Using a `Crypto` polyfill)
  *
- * Browsers expose `crypto.subtle` only in secure contexts.
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { Digest, WebCrypto } from "effect/crypto"
  *
- * @stability unstable
- * @category accessors
- * @since 4.0.0
- */
-export const subtleCrypto: Effect.Effect<globalThis.SubtleCrypto, CryptoError.CryptoError> = SubtleCrypto.use((
-  subtle
-) =>
-  subtle === undefined
-    ? Effect.fail(
-      new CryptoError.CryptoError({
-        algorithm: "WebCrypto",
-        method: "subtle",
-        reason: new CryptoError.Unsupported({
-          description: "Web Crypto is unavailable; browsers expose crypto.subtle only in secure contexts"
-        })
-      })
-    )
-    : Effect.succeed(subtle)
-)
-
-/**
- * Returns `true` for the `OperationError` that Web Crypto raises when an
- * operation fails on valid arguments, such as a decryption whose tag does not
- * match.
+ * const program = Digest.digestHex(Digest.sha256, new TextEncoder().encode("abc"))
+ *
+ * const hex = await Effect.runPromise(program.pipe(Effect.provide(WebCrypto.layer(globalThis.crypto))))
+ * hex.length // => 64
+ * ```
  *
  * @stability unstable
- * @category guards
+ * @category layers
  * @since 4.0.0
  */
-export const isOperationError = (cause: unknown): boolean =>
-  Predicate.hasProperty(cause, "name") && cause.name === "OperationError"
-
-/**
- * Creates the `CryptoError` for an exception thrown by Web Crypto.
- *
- * **Details**
- *
- * The reason follows the exception: `DataError` is `InvalidKey`,
- * `NotSupportedError` is `Unsupported`, `InvalidAccessError`, `SyntaxError`,
- * and `TypeError` are `BadArgument`, and anything else, including
- * `OperationError`, is `Unknown`. Handle `OperationError` first where it has a specific meaning,
- * such as `AuthenticationFailed` for decryption.
- *
- * @stability unstable
- * @category constructors
- * @since 4.0.0
- */
-export const webCryptoError = (algorithm: string, method: string, cause: unknown): CryptoError.CryptoError =>
-  new CryptoError.CryptoError({ algorithm, method, reason: reasonFor(method, cause) })
-
-const reasonFor = (method: string, cause: unknown): CryptoError.CryptoErrorReason => {
-  switch (Predicate.hasProperty(cause, "name") ? cause.name : undefined) {
-    case "DataError":
-      return new CryptoError.InvalidKey({ description: "Invalid key data", cause })
-    case "NotSupportedError":
-      return new CryptoError.Unsupported({ description: `${method} does not support the requested parameters`, cause })
-    case "InvalidAccessError":
-    case "SyntaxError":
-      return new CryptoError.BadArgument({
-        description: `${method} does not permit the requested key or usages`,
-        cause
-      })
-    case "TypeError":
-      return new CryptoError.BadArgument({ description: `${method} does not accept the requested parameters`, cause })
-    default:
-      return new CryptoError.Unknown({ description: `Could not perform ${method}`, cause })
-  }
-}
-
-/**
- * SHA hash algorithms used as parameters by HMAC, key derivation, RSA, and
- * ECDSA.
- *
- * **Gotchas**
- *
- * SHA-1 is included for interoperability with existing protocols. Do not use
- * it for new security-sensitive designs.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
+export const layer = (crypto: Crypto): Layer.Layer<never> => Layer.succeed(WebCrypto, crypto)

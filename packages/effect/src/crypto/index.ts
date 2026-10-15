@@ -39,6 +39,12 @@ export * as CryptoError from "./CryptoError.ts"
  * @stability unstable
  * @since 4.0.0
  */
+export * as Digest from "./Digest.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
 export * as Ecdh from "./Ecdh.ts"
 
 /**
@@ -69,12 +75,6 @@ export * as Hmac from "./Hmac.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Md5 from "./Md5.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
 export * as Pbkdf2 from "./Pbkdf2.ts"
 
 /**
@@ -88,18 +88,6 @@ export * as Rsa from "./Rsa.ts"
  * @since 4.0.0
  */
 export * as SecureRandom from "./SecureRandom.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Sha1 from "./Sha1.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Sha2 from "./Sha2.ts"
 
 /**
  * @stability unstable

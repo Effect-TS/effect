@@ -11,7 +11,7 @@ import * as Layer from "../Layer.ts"
 import * as Redacted from "../Redacted.ts"
 import type * as Aead from "./Aead.ts"
 import * as CryptoError from "./CryptoError.ts"
-import * as WebCrypto from "./WebCrypto.ts"
+import * as WebCrypto from "./internal/webCrypto.ts"
 
 /**
  * Inputs for AES-CTR encryption and decryption.
@@ -22,7 +22,7 @@ import * as WebCrypto from "./WebCrypto.ts"
  * bits, between 1 and 128, increment big-endian once per 16-byte block. Each
  * call starts from the supplied counter and may span at most
  * `2^counterLength` blocks. Counters, counter lengths, and data lengths that
- * Web Crypto rejects fail with a `BadArgument` reason.
+ * Web Crypto rejects fail with an `InvalidArgument` reason.
  *
  * **Gotchas**
  *
@@ -48,8 +48,8 @@ export interface CtrOptions {
  *
  * Keys are 16, 24, or 32 `Redacted` bytes; other lengths fail with an
  * `InvalidKey` reason. AES-GCM takes 12-byte nonces, failing with a
- * `BadArgument` reason for other lengths, and appends a 16-byte tag;
- * decryption fails with an `AuthenticationFailed` reason when the tag does not
+ * `InvalidArgument` reason for other lengths, and appends a 16-byte tag;
+ * decryption fails with a `DecryptionFailed` reason when the tag does not
  * match. AES-CTR output has the length of its input.
  *
  * **Gotchas**
@@ -147,13 +147,13 @@ export const keyFromJwk = (jwk: JsonWebKey): Effect.Effect<Redacted.Redacted<Uin
   if (name === undefined) {
     return Effect.fail(
       new CryptoError.CryptoError({
-        algorithm: "AES",
+        module: "AES",
         method: "keyFromJwk",
         reason: new CryptoError.InvalidKey({ description: `Expected an AES-GCM or AES-CTR key, not ${jwk.alg}` })
       })
     )
   }
-  return Effect.flatMap(WebCrypto.subtleCrypto, (subtle) =>
+  return Effect.flatMap(WebCrypto.subtle, (subtle) =>
     Effect.tryPromise({
       try: async () => {
         // Web Crypto would check these JOSE members against the import parameters.
@@ -175,7 +175,7 @@ export const keyFromJwk = (jwk: JsonWebKey): Effect.Effect<Redacted.Redacted<Uin
 export const layer: Layer.Layer<Aes, CryptoError.CryptoError> = Layer.effect(
   Aes,
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const subtle = yield* WebCrypto.subtle
     // Keys are imported separately, so an `OperationError` from the import,
     // such as Chrome's rejection of 192-bit keys, is not mistaken for one from
     // the operation.
@@ -197,9 +197,9 @@ export const layer: Layer.Layer<Aes, CryptoError.CryptoError> = Layer.effect(
         if (nonce.length !== 12) {
           return Effect.fail(
             new CryptoError.CryptoError({
-              algorithm: "AES-GCM",
+              module: "AES-GCM",
               method,
-              reason: new CryptoError.BadArgument({ description: "AES-GCM nonces must contain exactly 12 bytes" })
+              reason: new CryptoError.InvalidArgument({ description: "AES-GCM nonces must contain exactly 12 bytes" })
             })
           )
         }
@@ -215,12 +215,9 @@ export const layer: Layer.Layer<Aes, CryptoError.CryptoError> = Layer.effect(
             catch: (cause) =>
               usage === "decrypt" && WebCrypto.isOperationError(cause)
                 ? new CryptoError.CryptoError({
-                  algorithm: "AES-GCM",
+                  module: "AES-GCM",
                   method,
-                  reason: new CryptoError.AuthenticationFailed({
-                    description: "Could not authenticate or decrypt data",
-                    cause
-                  })
+                  reason: new CryptoError.DecryptionFailed()
                 })
                 : WebCrypto.webCryptoError("AES-GCM", method, cause)
           }))
@@ -237,9 +234,9 @@ export const layer: Layer.Layer<Aes, CryptoError.CryptoError> = Layer.effect(
             catch: (cause) =>
               WebCrypto.isOperationError(cause)
                 ? new CryptoError.CryptoError({
-                  algorithm: "AES-CTR",
+                  module: "AES-CTR",
                   method,
-                  reason: new CryptoError.BadArgument({
+                  reason: new CryptoError.InvalidArgument({
                     description: "Invalid counter, counter length, or data length",
                     cause
                   })
