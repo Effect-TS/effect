@@ -42,7 +42,8 @@ import {
   Schema,
   Scope,
   Stream,
-  TestClock
+  TestClock,
+  Tracer
 } from "effect"
 import type { Clock } from "effect"
 import * as EntityManager from "../src/internal/entityManager.js"
@@ -124,6 +125,39 @@ describe.concurrent("Sharding", () => {
         yield* TestClock.adjust(1000)
         assert.strictEqual((yield* mailboxMax).value, 0n)
       }).pipe(Effect.provide(entity.toLayer({ Wait: () => gate.await }).pipe(Layer.provideMerge(TestSharding))))
+    }))
+
+  it.scoped("keeps entity RPC span names stable across entity IDs while retaining identity attributes", () =>
+    Effect.gen(function*() {
+      const spans: Array<Tracer.Span> = []
+      const tracer = yield* Effect.tracer
+      const testTracer = Tracer.make({
+        ...tracer,
+        span(...args) {
+          const span = tracer.span(...args)
+          spans.push(span)
+          return span
+        }
+      })
+
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        yield* makeClient("42").GetUserVolatile({ id: 1 })
+        yield* makeClient("43").GetUserVolatile({ id: 1 })
+      }).pipe(Effect.provide(TestSharding), Effect.withTracer(testTracer))
+
+      assert.deepStrictEqual(
+        spans.filter((span) => span.attributes.has("entity.id")).map((span) => ({
+          name: span.name,
+          entityType: span.attributes.get("entity.type"),
+          entityId: span.attributes.get("entity.id")
+        })),
+        [
+          { name: "TestEntity.GetUserVolatile", entityType: "TestEntity", entityId: "42" },
+          { name: "TestEntity.GetUserVolatile", entityType: "TestEntity", entityId: "43" }
+        ]
+      )
     }))
 
   it.scoped("delivers a message", () =>
