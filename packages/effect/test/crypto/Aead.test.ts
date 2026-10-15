@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Aead from "effect/crypto/Aead"
+import * as Cipher from "effect/crypto/Cipher"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
@@ -80,6 +81,13 @@ const importAes = (name: string, length: number, usages: Array<KeyUsage> = ["enc
   )
 
 describe("Aead", () => {
+  it.effect("isKey accepts Aead keys and rejects Cipher keys", () =>
+    Effect.gen(function*() {
+      const bytes = new Uint8Array(32)
+      assert.isTrue(Aead.isKey(yield* Aead.key(Aead.aes256Gcm, bytes)))
+      assert.isFalse(Aead.isKey(yield* Cipher.key(Cipher.aes256Ctr, bytes)))
+    }))
+
   it.effect("encrypts and decrypts the published vectors", () =>
     Effect.gen(function*() {
       const aead = yield* Aead.Aead

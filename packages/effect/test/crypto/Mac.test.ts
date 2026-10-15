@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
+import * as Aead from "effect/crypto/Aead"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
@@ -35,6 +36,13 @@ const importHmac = (hash: string, extractable: boolean, usages: Array<KeyUsage> 
   )
 
 describe("Mac", () => {
+  it.effect("isKey accepts Mac keys and rejects Aead keys", () =>
+    Effect.gen(function*() {
+      const bytes = new Uint8Array(32)
+      assert.isTrue(Mac.isKey(yield* Mac.key(Mac.hmacSha256, bytes)))
+      assert.isFalse(Mac.isKey(yield* Aead.key(Aead.aes256Gcm, bytes)))
+    }))
+
   it.effect("signs and verifies the published vectors", () =>
     Effect.gen(function*() {
       const mac = yield* Mac.Mac

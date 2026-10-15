@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Cipher from "effect/crypto/Cipher"
+import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
@@ -54,6 +55,13 @@ const importAes = (name: string, length: number, usages: Array<KeyUsage> = ["enc
   )
 
 describe("Cipher", () => {
+  it.effect("isKey accepts Cipher keys and rejects Mac keys", () =>
+    Effect.gen(function*() {
+      const bytes = new Uint8Array(32)
+      assert.isTrue(Cipher.isKey(yield* Cipher.key(Cipher.aes256Ctr, bytes)))
+      assert.isFalse(Cipher.isKey(yield* Mac.key(Mac.hmacSha256, bytes)))
+    }))
+
   it.effect("encrypts and decrypts the published vectors", () =>
     Effect.gen(function*() {
       const cipher = yield* Cipher.Cipher
