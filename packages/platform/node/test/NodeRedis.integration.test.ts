@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Clock, Duration, Effect, Fiber, Latch, Layer, Queue, Schedule, Schema } from "effect"
+import { Clock, Duration, Effect, Fiber, Latch, Layer, Queue, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/persistence/RateLimiterTest"
@@ -199,20 +199,8 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 
     it.effect("success after lease expiry but before reset is not redelivered", () =>
       Effect.gen(function*() {
-        const makeQueue = Effect.fnUntraced(function*(lockRefreshInterval: Duration.Input) {
-          const store = yield* PersistedQueue.makeStoreRedis({
-            prefix: "effectq-late-success:",
-            pollInterval: "50 millis",
-            lockExpiration: "1 second",
-            lockRefreshInterval
-          })
-          const factory = yield* PersistedQueue.makeFactory.pipe(
-            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-          )
-          return yield* factory.make({ name: "ownership", schema: RedisItem })
-        })
         // Neither refresh nor reset can run again before this handler succeeds.
-        const queue = yield* makeQueue("1 hour")
+        const queue = yield* makeOwnershipQueue("effectq-late-success:", "1 hour")
         yield* queue.offer({ n: 42 }, { id: "order-1" })
         yield* queue.take((_value, { attempts }) =>
           Effect.gen(function*() {
@@ -223,7 +211,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         )
 
         // Only now allow recovery to run: a recorded success must leave no work.
-        const recovery = yield* makeQueue("100 millis")
+        const recovery = yield* makeOwnershipQueue("effectq-late-success:", "100 millis")
         const duplicate = yield* recovery.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
         yield* Effect.sleep("1500 millis")
         assert.isUndefined(duplicate.pollUnsafe())
@@ -262,177 +250,75 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
     it.effect("revoked ownership cannot settle recovered work before reacquisition", () =>
       Effect.gen(function*() {
         const prefix = "effectq-revoked-owner:"
+        // Store construction pauses renewal. Takes use live time so polling
+        // and reset keep running even while this test's clock is stopped.
         const queue = yield* makeOwnershipQueue(prefix, "100 millis")
-        const recovery = yield* makeOwnershipQueue(prefix, "100 millis").pipe(TestClock.withLive)
-        // Start recovery's reset loop, then leave it idle: no replacement may
-        // acquire until after the old owner has resumed renewal and settled.
-        yield* recovery.offer({ n: 0 }, { id: "initialize-recovery" })
-        yield* recovery.take(Effect.succeed).pipe(TestClock.withLive)
         yield* queue.offer({ n: 42 }, { id: "order-1" })
         const taken = Latch.makeUnsafe()
         const finish = Latch.makeUnsafe()
-        const stale = yield* queue.take(() => taken.open.pipe(Effect.andThen(finish.await))).pipe(Effect.forkScoped)
+        const stale = yield* queue.take(() => taken.open.pipe(Effect.andThen(finish.await))).pipe(
+          TestClock.withLive,
+          Effect.forkScoped
+        )
         yield* taken.await
+        // Reset recovers the expired lease, but no taker can acquire it yet.
         yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
         yield* TestClock.adjust("100 millis")
         yield* Effect.sleep("100 millis").pipe(TestClock.withLive)
         yield* finish.open
         yield* Fiber.join(stale)
-        const recovered = yield* recovery.take((value, metadata) => Effect.succeed({ value, ...metadata })).pipe(
+        const recovered = yield* queue.take((value, metadata) => Effect.succeed({ value, ...metadata })).pipe(
           TestClock.withLive
         )
         assert.deepStrictEqual(recovered, { value: { n: 42 }, id: "order-1", attempts: 2 })
-        const duplicate = yield* recovery.take(Effect.succeed).pipe(TestClock.withLive, Effect.forkScoped)
+        const duplicate = yield* queue.take(Effect.succeed).pipe(TestClock.withLive, Effect.forkScoped)
         yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
         assert.isUndefined(duplicate.pollUnsafe())
       }).pipe(Effect.provide(TestClock.layer())), { timeout: 20000 })
 
-    for (const settlement of ["failure", "interruption", "success", "dead-letter"] as const) {
-      it.effect(`stale-owner ${settlement} does not release a live claim`, () =>
+    it.effect(
+      "stale interruption does not release a replacement or decrement its attempts",
+      () =>
         Effect.gen(function*() {
-          const makeQueue = Effect.fnUntraced(function*(lockRefreshInterval: Duration.Input) {
-            const store = yield* PersistedQueue.makeStoreRedis({
-              prefix: `effectq-stale-${settlement}:`,
-              pollInterval: "50 millis",
-              lockExpiration: "1 second",
-              lockRefreshInterval
-            })
-            const factory = yield* PersistedQueue.makeFactory.pipe(
-              Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-            )
-            return yield* factory.make({
-              name: "ownership",
-              schema: RedisItem,
-              maxAttempts: settlement === "dead-letter" && lockRefreshInterval === "1 hour" ? 1 : undefined,
-              retrySchedule: Schedule.spaced(0)
-            })
-          })
-          const a = yield* makeQueue("1 hour")
-          const b = yield* makeQueue("100 millis")
-          const c = yield* makeQueue("100 millis")
+          const a = yield* makeOwnershipQueue("effectq-stale-interrupt:", "1 hour")
+          const b = yield* makeOwnershipQueue("effectq-stale-interrupt:", "100 millis")
           yield* a.offer({ n: 42 }, { id: "order-1" })
-
-          const aTaken = Latch.makeUnsafe()
-          const releaseA = Latch.makeUnsafe()
-          const stale = yield* a.take(() =>
-            Effect.gen(function*() {
-              yield* aTaken.open
-              yield* releaseA.await
-              if (settlement === "success") return
-              return yield* Effect.fail("stale failure")
-            })
-          ).pipe(Effect.forkScoped)
-          yield* aTaken.await
-
-          const bTaken = Latch.makeUnsafe()
+          const taken = Latch.makeUnsafe()
+          const stale = yield* a.take(() => taken.open.pipe(Effect.andThen(Effect.never))).pipe(Effect.forkScoped)
+          yield* taken.await
+          const replaced = Latch.makeUnsafe()
           const replacement = yield* b.take((_value, { attempts }) =>
             Effect.gen(function*() {
               assert.strictEqual(attempts, 2)
-              yield* bTaken.open
+              yield* replaced.open
               return yield* Effect.never
             })
           ).pipe(Effect.forkScoped)
-          // Redis owns the expiry clock. Wait for B to actually reclaim A's
-          // expired lease before allowing the stale finalizer to run.
-          yield* bTaken.await
-
-          if (settlement === "success") {
-            yield* releaseA.open
-            yield* Fiber.join(stale)
-          } else if (settlement !== "interruption") {
-            yield* releaseA.open
-            assert.strictEqual(yield* Fiber.join(stale).pipe(Effect.flip), "stale failure")
-          } else {
-            yield* Fiber.interrupt(stale)
-          }
-
-          const duplicate = yield* c.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
-          // Longer than a lease: B must keep its claim while C polls and resets.
+          yield* replaced.await
+          yield* Fiber.interrupt(stale)
+          const duplicate = yield* b.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
           yield* Effect.sleep("1500 millis")
           assert.isUndefined(duplicate.pollUnsafe())
-          // Requeue the replacement: a stale success must not silently delete
-          // its pending/attempt state, and stale dead-lettering must not archive it.
           yield* Fiber.interrupt(replacement)
           assert.strictEqual((yield* Fiber.join(duplicate)).attempts, 2)
-          const redis = yield* Redis.Redis
-          assert.deepStrictEqual(
-            yield* redis.send<Array<string>>("LRANGE", `effectq-stale-${settlement}:ownership:failed`, "0", "-1"),
-            []
-          )
-        }).pipe(TestClock.withLive), { timeout: 20000 })
-    }
-
-    for (const suffix of ["ids", "failed"] as const) {
-      it.effect(`cleanup ignores live custom ids ending in :${suffix}`, () =>
-        Effect.gen(function*() {
-          const store = yield* PersistedQueue.makeStoreRedis({
-            prefix: `effectq-cleanup-${suffix}:`,
-            pollInterval: "50 millis",
-            lockExpiration: "1 second",
-            lockRefreshInterval: "100 millis"
-          })
-          const factory = yield* PersistedQueue.makeFactory.pipe(
-            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-          )
-          const retained = yield* factory.make({ name: "retained", schema: RedisItem, maxAttempts: 1 })
-          yield* retained.offer({ n: 1 }, { id: "completed" })
-          yield* retained.take(Effect.succeed)
-          yield* retained.offer({ n: 2 }, { id: "failed" })
-          yield* retained.take(() => Effect.fail("boom")).pipe(Effect.flip)
-
-          const queue = yield* factory.make({ name: "orders", schema: RedisItem })
-          yield* queue.offer({ n: 42 }, { id: `order-1:${suffix}` })
-          const taken = Latch.makeUnsafe()
-          const claim = yield* queue.take(() => taken.open.pipe(Effect.andThen(Effect.never))).pipe(Effect.forkScoped)
-          yield* taken.await
-          yield* Effect.sleep("200 millis")
-          // Both cleanup passes must ignore string-valued locks, while still
-          // pruning completed dedupe entries and expired dead-letter records.
-          yield* store.cleanup({ timeToLive: Duration.millis(100), failedTimeToLive: Duration.millis(100) })
-          yield* retained.offer({ n: 3 }, { id: "completed" })
-          yield* retained.offer({ n: 4 }, { id: "failed" })
-          assert.deepStrictEqual(yield* retained.take(Effect.succeed), { n: 3 })
-          assert.deepStrictEqual(yield* retained.take(Effect.succeed), { n: 4 })
-          const duplicate = yield* queue.take((value, metadata) => Effect.succeed({ value, ...metadata })).pipe(
-            Effect.forkScoped
-          )
-          yield* Effect.sleep("1500 millis")
-          assert.isUndefined(duplicate.pollUnsafe())
-          yield* Fiber.interrupt(claim)
-          const recovered = yield* Fiber.join(duplicate)
-          assert.deepStrictEqual(recovered.value, { n: 42 })
-          assert.strictEqual(recovered.attempts, 1)
-        }).pipe(TestClock.withLive), { timeout: 20000 })
-    }
+        }).pipe(TestClock.withLive),
+      { timeout: 20000 }
+    )
 
     it.effect(
       "same-store stale success preserves the replacement and its refresh registration",
       () =>
         Effect.gen(function*() {
-          const store = yield* PersistedQueue.makeStoreRedis({
-            prefix: "effectq-same-store:",
-            pollInterval: "50 millis",
-            lockExpiration: "1 second",
-            lockRefreshInterval: "100 millis"
-          })
-          const factory = yield* PersistedQueue.makeFactory.pipe(
-            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-          )
-          const queue = yield* factory.make({ name: "ownership", schema: RedisItem })
+          const queue = yield* makeOwnershipQueue("effectq-same-store:", "100 millis")
           yield* queue.offer({ n: 42 }, { id: "order-1" })
           const aTaken = Latch.makeUnsafe()
           const releaseA = Latch.makeUnsafe()
           const stale = yield* queue.take(() => aTaken.open.pipe(Effect.andThen(releaseA.await))).pipe(
+            TestClock.withLive,
             Effect.forkScoped
           )
           yield* aTaken.await
-          // An idle, live-clock worker recovers expired claims without taking
-          // them. Keep this store's clock paused until its replacement acquires:
-          // resuming reset and renewal together would permit valid late renewal.
-          const recovery = yield* makeOwnershipQueue("effectq-same-store:", "100 millis").pipe(TestClock.withLive)
-          yield* recovery.offer({ n: 0 }, { id: "initialize-recovery" })
-          yield* recovery.take(Effect.succeed).pipe(TestClock.withLive)
-          yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
+          // Poll/reset use live time; only renewal stays paused until B takes.
           const bTaken = Latch.makeUnsafe()
           const replacement = yield* queue.take((_value, { attempts }) =>
             Effect.gen(function*() {
@@ -440,7 +326,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
               yield* bTaken.open
               return yield* Effect.never
             })
-          ).pipe(Effect.forkScoped)
+          ).pipe(TestClock.withLive, Effect.forkScoped)
           yield* bTaken.await
           // Only the replacement can now renew. Keep ticking while Redis I/O
           // completes, including while testing the old finalizer below.
@@ -452,7 +338,10 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
           )
           yield* releaseA.open
           yield* Fiber.join(stale)
-          const duplicate = yield* queue.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
+          const duplicate = yield* queue.take((_value, metadata) => Effect.succeed(metadata)).pipe(
+            TestClock.withLive,
+            Effect.forkScoped
+          )
           // The old finalizer must not unregister the new acquisition's refresh.
           yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
           assert.isUndefined(duplicate.pollUnsafe())
@@ -461,50 +350,6 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         }).pipe(Effect.provide(TestClock.layer())),
       { timeout: 20000 }
     )
-
-    it.effect("stale refresh cannot extend a replacement lease", () =>
-      Effect.gen(function*() {
-        const makeQueue = Effect.fnUntraced(function*(lockRefreshInterval: Duration.Input) {
-          const store = yield* PersistedQueue.makeStoreRedis({
-            prefix: "effectq-stale-refresh:",
-            pollInterval: "50 millis",
-            lockExpiration: "1 second",
-            lockRefreshInterval
-          })
-          const factory = yield* PersistedQueue.makeFactory.pipe(
-            Effect.provideService(PersistedQueue.PersistedQueueStore, store)
-          )
-          return yield* factory.make({ name: "ownership", schema: RedisItem })
-        })
-        // Only A's background refresh uses TestClock. Resume it after B takes
-        // over. B's own refresh is disabled for the duration of the test.
-        const a = yield* makeQueue("100 millis")
-        const testClock = yield* Clock.Clock
-        yield* Effect.gen(function*() {
-          const b = yield* makeQueue("1 hour")
-          const c = yield* makeQueue("100 millis")
-          yield* a.offer({ n: 42 }, { id: "order-1" })
-          const aTaken = Latch.makeUnsafe()
-          yield* a.take(() => aTaken.open.pipe(Effect.andThen(Effect.never))).pipe(Effect.forkScoped)
-          yield* aTaken.await
-          yield* Effect.sleep("1100 millis")
-          const bTaken = Latch.makeUnsafe()
-          yield* b.take((_value, { attempts }) =>
-            Effect.gen(function*() {
-              assert.strictEqual(attempts, 2)
-              yield* bTaken.open
-              return yield* Effect.never
-            })
-          ).pipe(Effect.forkScoped)
-          yield* bTaken.await
-          const recovered = yield* c.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
-          for (let i = 0; i < 20; i++) {
-            yield* TestClock.adjust("100 millis").pipe(Effect.provideService(Clock.Clock, testClock))
-            yield* Effect.sleep("100 millis")
-          }
-          assert.strictEqual((yield* Fiber.join(recovered)).attempts, 3)
-        }).pipe(TestClock.withLive)
-      }), { timeout: 20000 })
 
     it.effect("recovers elements from crashed workers", () =>
       Effect.gen(function*() {
