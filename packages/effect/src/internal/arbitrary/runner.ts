@@ -589,86 +589,12 @@ interface InFlight<A, E> {
   readonly size: number
   /** the discards before this value was generated */
   readonly discards: number
-  readonly fiber: Fiber.Fiber<typeof passedProperty | PropertyFailure<E>>
+  /** absent when values are evaluated one at a time: the value is then evaluated when its outcome is read */
+  readonly fiber: Fiber.Fiber<typeof passedProperty | PropertyFailure<E>> | undefined
 }
 
-/**
- * `checkEffect` with up to `concurrency` evaluations in flight. Values are generated in the order, and with the sizes,
- * of a sequential check, and their outcomes are read in that order, so every field of the result is the one a
- * sequential check returns.
- */
-const checkConcurrently = Effect.fnUntraced(function*<A, E, R>(
-  self: Arbitrary<A>,
-  property: (value: A) => boolean | Effect.Effect<boolean, E, R>,
-  settings: {
-    readonly runsTarget: number
-    readonly size: number
-    readonly maxDiscards: number
-    readonly maxShrinks: number
-    readonly concurrency: number
-    readonly seed: string | number
-    readonly maxOpsBeforeYield: number
-  }
-): Effect.fn.Return<CheckResult<A, E>, never, R> {
-  const { concurrency, maxDiscards, maxOpsBeforeYield, maxShrinks, runsTarget, seed, size } = settings
-  const seedState = hashSeed(seed)
-  const inFlight: Array<InFlight<A, E>> = []
-  let generated = 0
-  let runs = 0
-  let discards = 0
-  let attemptIndex = 0
-  let exhausted = false
-  while (runs < runsTarget) {
-    // A sequential check sizes a value by the runs that passed before it, which are exactly the values generated
-    // before it.
-    while (!exhausted && generated < runsTarget && inFlight.length < concurrency) {
-      const currentAttempt = attemptIndex++
-      const currentSize = runsTarget === 1 ? size : Math.round(generated * size / (runsTarget - 1))
-      const attempt = yield* generateAttempt(self.gen, seedState, currentAttempt, currentSize, true)
-      if (attempt._tag === "Discarded") {
-        if (++discards > maxDiscards) exhausted = true
-        else if (maxOpsBeforeYield <= 1 || discards % maxOpsBeforeYield === 0) yield* Effect.yieldNow
-        continue
-      }
-      generated++
-      const fiber = yield* Effect.forkChild(evaluateProperty(property, attempt.value))
-      inFlight.push({ sample: attempt, attempt: currentAttempt, size: currentSize, discards, fiber })
-    }
-    const next = inFlight.shift()
-    // nothing left in flight and nothing more to generate: the discards ran out
-    if (next === undefined) return { _tag: "Exhausted", runs, discards, seed }
-    // a sequential check would never have evaluated the values after a failing one
-    const exit = yield* Fiber.await(next.fiber)
-    if (exit._tag === "Failure") {
-      yield* Fiber.interruptAll(inFlight.map((entry) => entry.fiber))
-      return yield* Effect.failCause(exit.cause)
-    }
-    const outcome = exit.value
-    if (outcome._tag === "Passed") {
-      runs++
-      continue
-    }
-    yield* Fiber.interruptAll(inFlight.map((entry) => entry.fiber))
-    const minimized = yield* shrink(next.sample, outcome, property, maxShrinks)
-    return {
-      _tag: "Falsified",
-      initialInput: next.sample.value,
-      shrunkInput: minimized.current.value,
-      failure: minimized.failure,
-      runs: runs + 1,
-      discards: next.discards,
-      shrinks: minimized.shrinks,
-      replay: makeReplay({
-        seed,
-        attempt: next.attempt,
-        size: next.size,
-        path: minimized.path,
-        failureTag: outcome._tag
-      })
-    }
-  }
-  return { _tag: "Passed", runs, discards }
-})
+const interruptRest = <A, E>(inFlight: ReadonlyArray<InFlight<A, E>>) =>
+  Fiber.interruptAll(inFlight.flatMap((entry) => entry.fiber ?? []))
 
 /** @internal */
 export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
@@ -714,48 +640,56 @@ export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
   const seedOption = options?.seed ?? defaults?.seed
   const maxOpsBeforeYield = yield* Scheduler.MaxOpsBeforeYield
   const seed = yield* resolveMasterSeed(seedOption)
-  if (concurrency > 1) {
-    return yield* checkConcurrently(self, property, {
-      runsTarget,
-      size,
-      maxDiscards,
-      maxShrinks,
-      concurrency,
-      seed,
-      maxOpsBeforeYield
-    })
-  }
   const seedState = hashSeed(seed)
+  // Up to `concurrency` evaluations run at once. Values are generated in the order, and with the sizes, of a check that
+  // evaluates them one at a time, and their outcomes are read in that order, so the result does not depend on
+  // `concurrency`.
+  const inFlight: Array<InFlight<A, E>> = []
+  let generated = 0
   let runs = 0
   let discards = 0
   let attemptIndex = 0
+  let exhausted = false
   while (runs < runsTarget) {
-    const currentAttempt = attemptIndex++
-    const currentSize = runsTarget === 1 ? size : Math.round(runs * size / (runsTarget - 1))
-    const attempt = yield* generateAttempt(self.gen, seedState, currentAttempt, currentSize, true)
-    if (attempt._tag === "Discarded") {
-      if (++discards > maxDiscards) return { _tag: "Exhausted", runs, discards, seed }
-      if (maxOpsBeforeYield <= 1 || discards % maxOpsBeforeYield === 0) yield* Effect.yieldNow
-      continue
+    while (!exhausted && generated < runsTarget && inFlight.length < concurrency) {
+      const currentAttempt = attemptIndex++
+      // a value is sized by the runs before it, which are the values generated before it
+      const currentSize = runsTarget === 1 ? size : Math.round(generated * size / (runsTarget - 1))
+      const attempt = yield* generateAttempt(self.gen, seedState, currentAttempt, currentSize, true)
+      if (attempt._tag === "Discarded") {
+        if (++discards > maxDiscards) exhausted = true
+        else if (maxOpsBeforeYield <= 1 || discards % maxOpsBeforeYield === 0) yield* Effect.yieldNow
+        continue
+      }
+      generated++
+      const fiber = concurrency === 1 ? undefined : yield* Effect.forkChild(evaluateProperty(property, attempt.value))
+      inFlight.push({ sample: attempt, attempt: currentAttempt, size: currentSize, discards, fiber })
     }
-    const outcome = yield* evaluateProperty(property, attempt.value)
+    const next = inFlight.shift()
+    // nothing left in flight and nothing more to generate: the discards ran out
+    if (next === undefined) return { _tag: "Exhausted", runs, discards, seed }
+    // the values after a failing one would not have been evaluated one at a time, so their outcomes are dropped
+    const outcome = next.fiber === undefined
+      ? yield* evaluateProperty(property, next.sample.value)
+      : yield* Effect.onError(Fiber.join(next.fiber), () => interruptRest(inFlight))
     if (outcome._tag === "Passed") {
       runs++
       continue
     }
-    const minimized = yield* shrink(attempt, outcome, property, maxShrinks)
+    yield* interruptRest(inFlight)
+    const minimized = yield* shrink(next.sample, outcome, property, maxShrinks)
     return {
       _tag: "Falsified",
-      initialInput: attempt.value,
+      initialInput: next.sample.value,
       shrunkInput: minimized.current.value,
       failure: minimized.failure,
       runs: runs + 1,
-      discards,
+      discards: next.discards,
       shrinks: minimized.shrinks,
       replay: makeReplay({
         seed,
-        attempt: currentAttempt,
-        size: currentSize,
+        attempt: next.attempt,
+        size: next.size,
         path: minimized.path,
         failureTag: outcome._tag
       })
