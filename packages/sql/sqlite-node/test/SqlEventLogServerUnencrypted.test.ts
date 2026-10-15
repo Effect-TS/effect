@@ -1,6 +1,7 @@
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
+import * as RegressionTest from "effect-test/eventlog/EventLogServerUnencryptedRegressionTest"
 import * as SqlEventLogServerUnencryptedStorageTest from "effect-test/eventlog/SqlEventLogServerUnencryptedStorageTest"
 import * as EventJournal from "effect/eventlog/EventJournal"
 import * as EventLog from "effect/eventlog/EventLog"
@@ -19,6 +20,14 @@ SqlEventLogServerUnencryptedStorageTest.suite(
   SqliteClient.layer({
     filename: ":memory:"
   })
+)
+
+RegressionTest.suite(
+  "SQLite",
+  SqlEventLogServerUnencrypted.layerStorage().pipe(
+    Layer.provide(SqliteClient.layer({ filename: ":memory:" })),
+    Layer.provide(Reactivity.layer)
+  )
 )
 
 const getIdentityRootSecretMaterial = makeGetIdentityRootSecretMaterial(globalThis.crypto)

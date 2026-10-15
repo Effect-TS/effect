@@ -9,6 +9,9 @@ import * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerUnencr
 import * as EventLogSessionAuth from "effect/eventlog/EventLogSessionAuth"
 import { makeGetIdentityRootSecretMaterial } from "effect/eventlog/internal/identityRootSecretDerivation"
 import * as RpcTest from "effect/rpc/RpcTest"
+import * as RegressionTest from "./EventLogServerUnencryptedRegressionTest.ts"
+
+RegressionTest.suite("memory", EventLogServerUnencrypted.layerStorageMemory)
 
 const ReproGroup = EventGroup.empty.add({
   tag: "ReproEvent",
