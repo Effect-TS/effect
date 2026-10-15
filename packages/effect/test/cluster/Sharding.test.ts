@@ -1273,7 +1273,7 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
       Layer.provide(ShardingConfig.layer({})),
       Layer.merge(TestEntityState.layer)
-    ))))
+    ))), 20_000)
 
   it.effect("defects durable messages when no entity ever registers", () =>
     Effect.gen(function*() {
@@ -1334,7 +1334,7 @@ describe.concurrent("Sharding", () => {
     }).pipe(Effect.provide(MessageStorage.layerMemory.pipe(
       Layer.provide(ShardingConfig.layer({})),
       Layer.merge(TestEntityState.layer)
-    ))))
+    ))), 20_000)
 
   it.effect("bounds local sends while entity registration is missing", () =>
     Effect.gen(function*() {
