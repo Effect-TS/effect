@@ -35,6 +35,10 @@ const bigint60 = BigInt(60)
 const bigint1e3 = BigInt(1_000)
 const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
+const bigintMillisPerMinute = BigInt(60_000)
+const bigintMillisPerHour = BigInt(3_600_000)
+const bigintMillisPerDay = BigInt(86_400_000)
+const bigintMillisPerWeek = BigInt(604_800_000)
 
 const roundTiesAwayFromZero = (input: number): bigint => BigInt(Math.sign(input) * Math.round(Math.abs(input)))
 
@@ -49,12 +53,6 @@ const nanosToUnit = (nanos: bigint, divisor: number): number => {
   if (Number.isFinite(value)) return value / divisor
   const scale = BigInt(divisor)
   return Number(nanos / scale) + Number(nanos % scale) / divisor
-}
-
-const fromNanosTerms = (nanos: number, ...terms: ReadonlyArray<readonly [value: number, scale: number]>): Duration => {
-  return Number.isFinite(nanos) && terms.every(([value]) => Number.isInteger(value))
-    ? make(terms.reduce((total, [value, scale]) => total + BigInt(value) * BigInt(scale), bigint0))
-    : fromNanosNumber(nanos)
 }
 
 const parseNanos = (input: string, scale: bigint): bigint => {
@@ -334,7 +332,10 @@ export const fromInputUnsafe = (input: Input): Duration => {
         if (input[0] === Infinity || input[1] === Infinity) {
           return infinity
         }
-        return fromNanosTerms(input[0] * 1_000_000_000 + input[1], [input[0], 1_000_000_000], [input[1], 1])
+        const nanos = input[0] * 1_000_000_000 + input[1]
+        return Number.isFinite(nanos) && Number.isInteger(input[0]) && Number.isInteger(input[1])
+          ? make(BigInt(input[0]) * bigint1e9 + BigInt(input[1]))
+          : fromNanosNumber(nanos)
       }
       const obj = input as DurationObject
       let millis = 0
@@ -345,18 +346,31 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (obj.minutes) millis += obj.minutes * 60_000
       if (obj.seconds) millis += obj.seconds * 1_000
       if (obj.milliseconds) millis += obj.milliseconds
-      if (!obj.microseconds && !obj.nanoseconds) return make(millis)
-      return fromNanosTerms(
-        millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0),
-        [obj.weeks || 0, 604_800_000_000_000],
-        [obj.days || 0, 86_400_000_000_000],
-        [obj.hours || 0, 3_600_000_000_000],
-        [obj.minutes || 0, 60_000_000_000],
-        [obj.seconds || 0, 1_000_000_000],
-        [obj.milliseconds || 0, 1_000_000],
-        [obj.microseconds ?? 0, 1_000],
-        [obj.nanoseconds ?? 0, 1]
-      )
+      const hasNanos = !!(obj.microseconds || obj.nanoseconds)
+      const total = hasNanos ? millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0) : millis
+      if (
+        !Number.isFinite(total) ||
+        !Number.isInteger(obj.weeks || 0) ||
+        !Number.isInteger(obj.days || 0) ||
+        !Number.isInteger(obj.hours || 0) ||
+        !Number.isInteger(obj.minutes || 0) ||
+        !Number.isInteger(obj.seconds || 0) ||
+        !Number.isInteger(obj.milliseconds || 0) ||
+        (hasNanos && (!Number.isInteger(obj.microseconds ?? 0) || !Number.isInteger(obj.nanoseconds ?? 0)))
+      ) {
+        return hasNanos ? fromNanosNumber(total) : make(millis)
+      }
+      let exactMillis = bigint0
+      if (obj.weeks) exactMillis += BigInt(obj.weeks) * bigintMillisPerWeek
+      if (obj.days) exactMillis += BigInt(obj.days) * bigintMillisPerDay
+      if (obj.hours) exactMillis += BigInt(obj.hours) * bigintMillisPerHour
+      if (obj.minutes) exactMillis += BigInt(obj.minutes) * bigintMillisPerMinute
+      if (obj.seconds) exactMillis += BigInt(obj.seconds) * bigint1e3
+      if (obj.milliseconds) exactMillis += BigInt(obj.milliseconds)
+      if (!hasNanos) {
+        return BigInt(millis) === exactMillis ? make(millis) : make(exactMillis * bigint1e6)
+      }
+      return make(exactMillis * bigint1e6 + BigInt(obj.microseconds ?? 0) * bigint1e3 + BigInt(obj.nanoseconds ?? 0))
     }
   }
   return invalid(input)
