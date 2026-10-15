@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Reject `--=value` in the CLI lexer instead of producing a flag with an empty name.
+Fix the CLI treating `--=value` as a flag with an empty name. The argument is now passed through unchanged as a plain value, so it no longer fails with `Unrecognized flag: --`.
