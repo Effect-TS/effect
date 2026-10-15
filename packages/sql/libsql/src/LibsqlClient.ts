@@ -351,6 +351,7 @@ export const make = (
 
     return Object.assign(
       yield* Client.make({
+        driver: "libsql",
         acquirer,
         transactionService: LibsqlTransaction as any,
         compiler,

@@ -56,16 +56,16 @@ export interface SqlClient extends Constructor {
   readonly reserve: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
 
   /**
-   * Whether every statement on this client runs on one shared database
-   * session, as with an embedded database such as PGlite.
+   * Identifies the driver that created this client.
    *
    * **Details**
    *
-   * Session state, such as advisory locks, is then shared by every user of the
-   * client, and a connection held by `reserve` blocks all other statements
-   * until its scope closes.
+   * Effect drivers use their package name without the `@effect/sql-` prefix,
+   * such as `"pg"`, `"pglite"` or `"sqlite-node"`. Unlike the compiler
+   * dialect, it distinguishes drivers that share a SQL dialect but manage
+   * connections differently.
    */
-  readonly singleSession: boolean
+  readonly driver: string
 
   /**
    * With the given effect, ensure all sql queries are run in a transaction.
@@ -139,10 +139,9 @@ export declare namespace SqlClient {
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
     /**
-     * Whether every statement runs on one shared database session. Defaults to
-     * `false`.
+     * Identifies the driver creating the client, exposed as `SqlClient.driver`.
      */
-    readonly singleSession?: boolean | undefined
+    readonly driver: string
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
@@ -254,7 +253,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       withTransaction,
       transactionService,
       reserve: transactionAcquirer,
-      singleSession: options.singleSession === true,
+      driver: options.driver,
       withoutTransforms(): any {
         if (options.transformRows === undefined) {
           return this

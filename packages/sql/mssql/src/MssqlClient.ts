@@ -625,6 +625,7 @@ export const make = (
 
     return identity<MssqlClient>(Object.assign(
       yield* Client.make({
+        driver: "mssql",
         acquirer: acquireConnection,
         compiler,
         transactionService: transactionService as any,

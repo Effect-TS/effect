@@ -295,6 +295,7 @@ export const make = (
     )
 
     const client = (yield* Client.make({
+      driver: "sqlite-do",
       acquirer,
       borrower: (f) => semaphore.withPermit(f(connection)),
       compiler,

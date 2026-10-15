@@ -11,6 +11,7 @@ const makeMigrator = (password: PgClient.PgClientConfig["password"]) =>
     const files: Array<string> = []
     const pg = yield* PgClient.make({ password })
     const sql = yield* SqlClient.make({
+      driver: "test",
       acquirer: Effect.succeed({
         execute: () => Effect.succeed([]),
         executeRaw: () => Effect.succeed([]),

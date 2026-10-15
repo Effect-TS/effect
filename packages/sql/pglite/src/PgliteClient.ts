@@ -232,10 +232,10 @@ export const fromClient = (
 
     const config = options as PgliteClientConfig
     const client = yield* Client.make({
+      driver: "pglite",
       acquirer,
       compiler,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
-      singleSession: true,
       spanAttributes,
       transformRows
     })
