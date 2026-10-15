@@ -1,6 +1,6 @@
 ---
-"effect": patch
-"@effect/platform-browser": patch
+"effect": minor
+"@effect/platform-browser": minor
 ---
 
 Isolate `Persistence` stores on the `KeyValueStore` and Redis backings. Clearing a store now only removes that store's entries, and different store / key pairs no longer map to the same backing key.
