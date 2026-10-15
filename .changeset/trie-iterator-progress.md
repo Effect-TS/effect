@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix Trie iterators to resume from their current position and remain exhausted after completion.
+Fix Trie iterators restarting from the first entry when iterated again. They now continue from their current position.
