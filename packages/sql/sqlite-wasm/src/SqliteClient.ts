@@ -273,6 +273,7 @@ export const makeMemory = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-wasm",
         acquirer,
         borrower,
         compiler,
@@ -445,6 +446,7 @@ export const make = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-wasm",
         acquirer,
         borrower,
         compiler,

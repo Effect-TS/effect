@@ -234,6 +234,7 @@ export const make = (
 
     return Object.assign(
       (yield* Client.make({
+        driver: "sqlite-react-native",
         acquirer,
         borrower,
         compiler,
