@@ -271,18 +271,20 @@ export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom>
       key.algorithm.name === "chacha20Poly1305" && options.nonce.length === 12 ? keyBytes(key) : undefined
     return Aead.Aead.of({
       generateKey: core.generateKey,
-      encrypt: (key, plaintext, options) => {
-        const bytes = nativeBytes(key, options)
-        return bytes === undefined
-          ? core.encrypt(key, plaintext, options)
-          : Effect.sync(() => chachaEncrypt(bytes, plaintext, options))
-      },
-      decrypt: (key, ciphertext, options) => {
-        const bytes = nativeBytes(key, options)
-        return bytes === undefined || ciphertext.length < 16
-          ? core.decrypt(key, ciphertext, options)
-          : chachaDecrypt(bytes, ciphertext, options)
-      }
+      encrypt: (key, plaintext, options) =>
+        Effect.suspend(() => {
+          const bytes = nativeBytes(key, options)
+          return bytes === undefined
+            ? core.encrypt(key, plaintext, options)
+            : Effect.sync(() => chachaEncrypt(bytes, plaintext, options))
+        }),
+      decrypt: (key, ciphertext, options) =>
+        Effect.suspend(() => {
+          const bytes = nativeBytes(key, options)
+          return bytes === undefined || ciphertext.length < 16
+            ? core.decrypt(key, ciphertext, options)
+            : chachaDecrypt(bytes, ciphertext, options)
+        })
     })
   })
 ).pipe(Layer.provide(Aead.layerWebCrypto))

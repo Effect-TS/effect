@@ -370,7 +370,10 @@ export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom>
         })
       })
     const run = (method: "encrypt" | "decrypt") => (key: Key, data: Uint8Array, options: Options) =>
-      checkArguments(method, key, data, options) ?? pure(method, key, data, options) ?? gcm(method, key, data, options)
+      Effect.suspend(() =>
+        checkArguments(method, key, data, options) ?? pure(method, key, data, options) ??
+          gcm(method, key, data, options)
+      )
     return Aead.of({
       generateKey: (algorithm) =>
         Effect.map(
