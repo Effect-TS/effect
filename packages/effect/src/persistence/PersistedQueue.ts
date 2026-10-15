@@ -695,18 +695,15 @@ export const layerStoreMemory: Layer.Layer<
  * queue. Delayed offers share the retry sorted set: they are scored with the
  * offering process's clock and released by the polling worker's clock, so
  * clock skew between hosts shifts their delivery.
- * Acquisition ownership is retained separately from the expiring liveness lock:
- * an owner can settle or renew a lapsed lease until recovery revokes its claim.
+ * A handler whose lock lapsed can still settle or renew its claim until a
+ * reset recovers the element.
  *
  * **Gotchas**
  *
- * The queue-scoped lock format is incompatible with older workers on the same
- * prefix. Stop all old workers (including suspended handlers) before upgrading
- * every consumer together, and let legacy leases expire before recovering pending
- * work. Mixed versions are unsafe because old settlements are not fenced and
- * can corrupt replacement claims, not merely cause duplicate delivery. Preserve
- * queue, pending, delayed, attempt, ownership, and deduplication data; do not
- * flush Redis. Using a fresh prefix instead requires explicit backlog migration.
+ * The lock format is incompatible with older workers on the same prefix: their
+ * settlements are not fenced and can corrupt newer claims. Stop every old
+ * worker and let its locks expire before starting upgraded workers. Keep the
+ * existing Redis data rather than flushing it.
  *
  * @stability unstable
  * @category constructors
@@ -740,9 +737,6 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     1
   )
   const prefix = options?.prefix ?? "effectq:"
-  // JSON quoting makes the queue boundary unambiguous even for custom names/ids.
-  // Keep the lock suffix disjoint from cleanup scans for :ids and :failed.
-  const lockPrefixFor = (name: string) => `${prefix}locks:v2:${JSON.stringify(name)}:`
   const keysFor = (name: string) => ({
     queue: `${prefix}${name}`,
     pending: `${prefix}${name}:pending`,
@@ -760,7 +754,8 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     readonly attempts: number
     // the raw wire payload, so requeue and retry do not re-stringify it
     readonly payload: string
-    readonly token: string
+    // unique per acquisition, and recorded in the owners hash as the claim token
+    readonly lock: string
   }
 
   const requeue = redis.eval(requeueRedis)
@@ -779,7 +774,6 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   const queues = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(name: string) {
       const keys = keysFor(name)
-      const lockPrefix = lockPrefixFor(name)
       const queue = yield* Queue.make<Element>()
       const takers = MutableRef.make(0)
       const pollLatch = Latch.makeUnsafe()
@@ -795,12 +789,11 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                 requeue(
                   keys.queue,
                   keys.pending,
-                  lockPrefix + element.id + ":lock",
+                  element.lock,
                   keys.attempts,
                   keys.owners,
                   element.id,
-                  element.payload,
-                  element.token
+                  element.payload
                 ), { concurrency: "unbounded", discard: true })
           )
         )
@@ -814,7 +807,6 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           keys.failed,
           keys.ids,
           keys.owners,
-          lockPrefix,
           state.maxAttempts,
           clock.currentTimeMillisUnsafe()
         )
@@ -832,8 +824,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
             keys.delayed,
             keys.attempts,
             keys.owners,
-            lockPrefix,
-            crypto.randomUUID(),
+            `${prefix}lock:${crypto.randomUUID()}:`,
             size,
             lockExpirationMillis,
             clock.currentTimeMillisUnsafe()
@@ -860,7 +851,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
               element: parsed.element,
               attempts: Number(results[i + 1]),
               payload,
-              token: results[i + 2] as string
+              lock: results[i + 2] as string
             })
           }
           yield* Queue.offerAll(queue, elements)
@@ -880,15 +871,12 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
     idleTimeToLive: Duration.seconds(30)
   })
 
-  // Key by acquisition, not lock key: a stale handler may outlive a newer claim.
-  const activeLocks = new Map<string, { lock: string; owners: string; id: string; token: string }>()
+  const activeLocks = new Map<string, { readonly owners: string; readonly id: string }>()
 
   yield* Effect.gen(function*() {
     while (true) {
       yield* Effect.sleep(lockRefreshMillis)
-      yield* Effect.ignore(
-        expireAll(Array.from(activeLocks.values()), lockExpirationMillis)
-      )
+      yield* Effect.ignore(expireAll(activeLocks, lockExpirationMillis))
     }
   }).pipe(
     Effect.forkScoped,
@@ -973,21 +961,19 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           Effect.scoped,
           Effect.tap((element) => {
             const keys = keysFor(options.name)
-            const lock = lockPrefixFor(options.name) + element.id + ":lock"
-            activeLocks.set(element.token, { lock, owners: keys.owners, id: element.id, token: element.token })
+            const lock = element.lock
+            activeLocks.set(lock, { owners: keys.owners, id: element.id })
             const ack = (effect: Effect.Effect<unknown, Redis.RedisError>) =>
               effect.pipe(
                 Effect.retry(ackRetrySchedule),
                 Effect.orDie,
-                Effect.ensuring(Effect.sync(() => activeLocks.delete(element.token)))
+                Effect.ensuring(Effect.sync(() => activeLocks.delete(lock)))
               )
             return Effect.addFinalizer((exit) =>
               Effect.suspend(() => {
                 const now = clock.currentTimeMillisUnsafe()
                 if (exit._tag === "Success") {
-                  return ack(
-                    complete(keys.pending, lock, keys.attempts, keys.ids, keys.owners, element.id, now, element.token)
-                  )
+                  return ack(complete(keys.pending, lock, keys.attempts, keys.ids, keys.owners, element.id, now))
                 }
                 const dead = deadLetterFromCause(exit.cause)
                 const failElement = (cause: Cause.Cause<unknown>) =>
@@ -1005,24 +991,14 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                       attempts: element.attempts,
                       lastFailure: Cause.pretty(cause),
                       failedAt: now
-                    }),
-                    element.token
+                    })
                   ))
                 if (dead !== undefined) {
                   return failElement(dead.cause)
                 }
                 if (Cause.hasInterruptsOnly(exit.cause)) {
                   return ack(
-                    requeue(
-                      keys.queue,
-                      keys.pending,
-                      lock,
-                      keys.attempts,
-                      keys.owners,
-                      element.id,
-                      element.payload,
-                      element.token
-                    )
+                    requeue(keys.queue, keys.pending, lock, keys.attempts, keys.owners, element.id, element.payload)
                   )
                 }
                 if (element.attempts >= options.maxAttempts) {
@@ -1036,8 +1012,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                     keys.owners,
                     element.id,
                     element.payload,
-                    now + Duration.toMillis(delay),
-                    element.token
+                    now + Duration.toMillis(delay)
                   )))
               })
             )
@@ -1126,7 +1101,6 @@ const resetQueueRedis = Redis.script(
       keyFailed: string,
       keyIds: string,
       keyOwners: string,
-      prefix: string,
       maxAttempts: number,
       now: number
     ]
@@ -1139,18 +1113,16 @@ local key_attempts = KEYS[3]
 local key_failed = KEYS[4]
 local key_ids = KEYS[5]
 local key_owners = KEYS[6]
-local prefix = ARGV[1]
-local max_attempts = tonumber(ARGV[2])
-local now = ARGV[3]
+local max_attempts = tonumber(ARGV[1])
+local now = ARGV[2]
 
 local entries = redis.call("HGETALL", key_pending)
--- Recovery revokes ownership atomically, before a later take can replace it.
+-- recovery revokes ownership, so late settlements from the old claim are no-ops
 for i = 1, #entries, 2 do
   local id = entries[i]
   local payload = entries[i + 1]
-  local lock_key = prefix .. id .. ":lock"
-  local exists = redis.call("EXISTS", lock_key)
-  if exists == 0 then
+  local key_lock = redis.call("HGET", key_owners, id)
+  if not key_lock or redis.call("EXISTS", key_lock) == 0 then
     local attempts = tonumber(redis.call("HGET", key_attempts, id) or "0")
     if attempts >= max_attempts then
       -- compose the failed record by hand so the element payload does not go
@@ -1174,6 +1146,17 @@ end
   }
 )
 
+// Settlements are fenced on the acquisition's lock key, so a handler whose claim
+// was recovered cannot release a newer claim on the same id.
+const releaseClaimLua = `if redis.call("HGET", key_owners, id) ~= key_lock then
+  return 0
+end
+
+redis.call("HDEL", key_owners, id)
+redis.call("DEL", key_lock)
+redis.call("HDEL", key_pending, id)
+`
+
 const requeueRedis = Redis.script(
   (
     ...args: [
@@ -1183,8 +1166,7 @@ const requeueRedis = Redis.script(
       keyAttempts: string,
       keyOwners: string,
       id: string,
-      payload: string,
-      token: string
+      payload: string
     ]
   ) => args,
   {
@@ -1197,13 +1179,7 @@ local key_owners = KEYS[5]
 local id = ARGV[1]
 local payload = ARGV[2]
 
-if redis.call("HGET", key_owners, id) ~= ARGV[3] then
-  return 0
-end
-
-redis.call("HDEL", key_owners, id)
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
+${releaseClaimLua}
 local attempts = redis.call("HINCRBY", key_attempts, id, -1)
 if attempts <= 0 then
   redis.call("HDEL", key_attempts, id)
@@ -1223,8 +1199,7 @@ const completeRedis = Redis.script(
       keyIds: string,
       keyOwners: string,
       id: string,
-      now: number,
-      token: string
+      now: number
     ]
   ) => args,
   {
@@ -1237,13 +1212,7 @@ local key_owners = KEYS[5]
 local id = ARGV[1]
 local now = ARGV[2]
 
-if redis.call("HGET", key_owners, id) ~= ARGV[3] then
-  return 0
-end
-
-redis.call("HDEL", key_owners, id)
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
+${releaseClaimLua}
 redis.call("HDEL", key_attempts, id)
 redis.call("ZADD", key_ids, "XX", now, id)
 `,
@@ -1260,8 +1229,7 @@ const retryRedis = Redis.script(
       keyOwners: string,
       id: string,
       payload: string,
-      visibleAt: number,
-      token: string
+      visibleAt: number
     ]
   ) => args,
   {
@@ -1274,13 +1242,7 @@ local id = ARGV[1]
 local payload = ARGV[2]
 local visible_at = ARGV[3]
 
-if redis.call("HGET", key_owners, id) ~= ARGV[4] then
-  return 0
-end
-
-redis.call("HDEL", key_owners, id)
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
+${releaseClaimLua}
 redis.call("ZADD", key_delayed, visible_at, payload)
 `,
     numberOfKeys: 4
@@ -1297,8 +1259,7 @@ const failedRedis = Redis.script(
       keyIds: string,
       keyOwners: string,
       id: string,
-      payload: string,
-      token: string
+      payload: string
     ]
   ) => args,
   {
@@ -1312,13 +1273,7 @@ local key_owners = KEYS[6]
 local id = ARGV[1]
 local payload = ARGV[2]
 
-if redis.call("HGET", key_owners, id) ~= ARGV[3] then
-  return 0
-end
-
-redis.call("HDEL", key_owners, id)
-redis.call("DEL", key_lock)
-redis.call("HDEL", key_pending, id)
+${releaseClaimLua}
 redis.call("HDEL", key_attempts, id)
 redis.call("RPUSH", key_failed, payload)
 -- failed ids keep their dedupe entry until failedTimeToLive removes the
@@ -1337,8 +1292,7 @@ const takeRedis = Redis.script(
       keyDelayed: string,
       keyAttempts: string,
       keyOwners: string,
-      prefix: string,
-      tokenPrefix: string,
+      lockPrefix: string,
       batchSize: number,
       pttl: number,
       now: number
@@ -1351,11 +1305,10 @@ local key_pending = KEYS[2]
 local key_delayed = KEYS[3]
 local key_attempts = KEYS[4]
 local key_owners = KEYS[5]
-local prefix = ARGV[1]
-local token_prefix = ARGV[2]
-local batch_size = tonumber(ARGV[3])
-local pttl = ARGV[4]
-local now = ARGV[5]
+local lock_prefix = ARGV[1]
+local batch_size = tonumber(ARGV[2])
+local pttl = ARGV[3]
+local now = ARGV[4]
 
 local due = redis.call("ZRANGEBYSCORE", key_delayed, "-inf", now, "LIMIT", 0, 100)
 if #due > 0 then
@@ -1373,15 +1326,15 @@ end
 local result = {}
 for i, payload in ipairs(payloads) do
   local id = cjson.decode(payload).id
-  local key_lock = prefix .. id .. ":lock"
-  local token = token_prefix .. ":" .. i
-  redis.call("SET", key_lock, token, "PX", pttl)
-  redis.call("HSET", key_owners, id, token)
+  -- the lock key is unique per acquisition and doubles as the ownership token
+  local key_lock = lock_prefix .. i
+  redis.call("SET", key_lock, 1, "PX", pttl)
+  redis.call("HSET", key_owners, id, key_lock)
   redis.call("HSET", key_pending, id, payload)
   local attempts = redis.call("HINCRBY", key_attempts, id, 1)
   result[i * 3 - 2] = payload
   result[i * 3 - 1] = attempts
-  result[i * 3] = token
+  result[i * 3] = key_lock
 end
 
 return result
@@ -1391,21 +1344,24 @@ return result
 ).withReturnType<ReadonlyArray<string | number> | null>()
 
 const expireAllRedis = Redis.script(
-  (claims: ReadonlyArray<{ lock: string; owners: string; id: string; token: string }>, ttl: number) => [
-    ...claims.flatMap((claim) => [claim.lock, claim.owners]),
-    ttl,
-    ...claims.flatMap((claim) => [claim.id, claim.token])
-  ],
+  (claims: ReadonlyMap<string, { readonly owners: string; readonly id: string }>, ttl: number) => {
+    const keys: Array<string> = []
+    const ids: Array<string> = []
+    for (const [lock, { id, owners }] of claims) {
+      keys.push(lock, owners)
+      ids.push(id)
+    }
+    return [...keys, ttl, ...ids]
+  },
   {
-    numberOfKeys: (claims) => claims.length * 2,
+    numberOfKeys: (claims) => claims.size * 2,
     lua: `
 local ttl = ARGV[1]
--- A lapsed liveness key can be recreated only while durable ownership matches.
-for i = 1, #KEYS, 2 do
-  local id = ARGV[i + 1]
-  local token = ARGV[i + 2]
-  if redis.call("HGET", KEYS[i + 1], id) == token then
-    redis.call("SET", KEYS[i], token, "PX", ttl)
+-- a lapsed lock can be recreated only while the claim has not been recovered
+for i = 2, #ARGV do
+  local key_lock = KEYS[i * 2 - 3]
+  if redis.call("HGET", KEYS[i * 2 - 2], ARGV[i]) == key_lock then
+    redis.call("SET", key_lock, 1, "PX", ttl)
   end
 end
 `
