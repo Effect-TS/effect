@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, PlatformError } from "effect"
 import * as Migrator from "effect/sql/Migrator"
+import * as SqlClient from "effect/sql/SqlClient"
 
 const migrationNames = (
   migrations: ReadonlyArray<Migrator.ResolvedMigration>
@@ -40,6 +41,37 @@ describe("Migrator", () => {
           [2, "second"],
           [3, "third"],
           [4, "fourth"]
+        ])
+      }))
+
+    it.effect("fromSql runs numbered scripts one statement at a time", () =>
+      Effect.gen(function*() {
+        const ran: Array<string> = []
+        const sql = {
+          unsafe: (statement: string) =>
+            Effect.sync(() => {
+              ran.push(statement)
+            })
+        } as any as SqlClient.SqlClient
+        const migrations = yield* Migrator.fromSql({
+          "0002_second.sql": "insert into t values ('a;b');",
+          "1_init.sql": "-- drop table old;\ncreate table t (id int);\n/* ;\n*/\ncreate index t_id on t (id);",
+          "notes.txt": "select 1"
+        })
+
+        assert.deepStrictEqual(migrationNames(migrations), [
+          [1, "init"],
+          [2, "second"]
+        ])
+
+        const first = yield* migrations[0]![2] as Effect.Effect<Effect.Effect<void>>
+        const second = yield* migrations[1]![2] as Effect.Effect<Effect.Effect<void>>
+        yield* first.pipe(Effect.provideService(SqlClient.SqlClient, sql))
+        yield* second.pipe(Effect.provideService(SqlClient.SqlClient, sql))
+        assert.deepStrictEqual(ran, [
+          "create table t (id int)",
+          "create index t_id on t (id)",
+          "insert into t values ('a;b')"
         ])
       }))
 

@@ -434,6 +434,83 @@ export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknow
     Effect.succeed
   )
 
+// semicolons inside quotes stay put. $$ blocks are not special.
+const sqlStatements = (source: string): Array<string> => {
+  const statements: Array<string> = []
+  let current = ""
+  let quote: string | undefined
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]!
+    const next = source[i + 1]
+    if (quote === undefined && char === "-" && next === "-") {
+      const end = source.indexOf("\n", i)
+      i = end === -1 ? source.length : end
+      continue
+    }
+    if (quote === undefined && char === "/" && next === "*") {
+      const end = source.indexOf("*/", i + 2)
+      i = end === -1 ? source.length : end + 1
+      continue
+    }
+    if (quote !== undefined) {
+      current += char
+      if (char === quote) {
+        if (next === quote) {
+          current += next
+          i++
+        } else {
+          quote = undefined
+        }
+      }
+      continue
+    }
+    if (char === "'" || char === "\"" || char === "`") {
+      quote = char
+      current += char
+      continue
+    }
+    if (char === ";") {
+      const statement = current.trim()
+      if (statement.length > 0) statements.push(statement)
+      current = ""
+      continue
+    }
+    current += char
+  }
+  const statement = current.trim()
+  if (statement.length > 0) statements.push(statement)
+  return statements
+}
+
+/**
+ * Creates a migration loader from SQL text keyed by `<id>_<name>` or
+ * `<id>_<name>.sql`, sorted by migration id. Each script is run with
+ * `SqlClient.unsafe`, one statement at a time.
+ *
+ * @stability unstable
+ * @category loaders
+ * @since 4.0.0
+ */
+export const fromSql = (migrations: Record<string, string>): Loader =>
+  pipe(
+    Object.keys(migrations),
+    Arr.flatMapNullishOr((_) => _.match(/^(\d+)_(.+?)(?:\.sql)?$/)),
+    Arr.map(
+      ([key, id, name]): ResolvedMigration => [
+        Number(id),
+        name,
+        Effect.succeed(Effect.gen(function*() {
+          const sql = yield* Client.SqlClient
+          for (const statement of sqlStatements(migrations[key]!)) {
+            yield* sql.unsafe(statement)
+          }
+        }))
+      ]
+    ),
+    Arr.sort(migrationOrder),
+    Effect.succeed
+  )
+
 /**
  * Creates a migration loader that reads a directory with `FileSystem`, imports
  * files named `<id>_<name>.js`, `<id>_<name>.ts`,
