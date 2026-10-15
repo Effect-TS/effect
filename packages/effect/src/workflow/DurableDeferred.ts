@@ -24,6 +24,7 @@ import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaGetter from "../SchemaGetter.ts"
 import type * as Activity from "./Activity.ts"
+import { durableOperation } from "./internal/compensation.ts"
 import * as Workflow from "./Workflow.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -170,9 +171,9 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
   const instance = yield* InstanceTag
   // Register before the read so any later completion can preempt the run.
   registerAwait(instance, self.name)
-  const exit = yield* Workflow.wrapActivityResult(
-    engine.deferredResult(self),
-    Option.isNone
+  const exit = yield* durableOperation(
+    `DurableDeferred/${self.name}`,
+    Workflow.wrapActivityResult(engine.deferredResult(self), Option.isNone)
   )
   if (Option.isNone(exit)) {
     return yield* Workflow.suspend(instance)
@@ -305,55 +306,58 @@ const recordHeld = Effect.fnUntraced(function*<A, E, R>(
 ): Effect.fn.Return<A, E, R | WorkflowEngine | WorkflowInstance> {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  const exit = yield* Workflow.wrapActivityResult(
-    Effect.gen(function*() {
-      if (checkCache) {
-        const cached = yield* engine.deferredResult(self)
-        if (Option.isSome(cached)) return cached
-      }
-      // `effect` counts on its own activity state, so a durable await inside
-      // it waits for its own siblings and not for the hold above. The copy
-      // starts unsuspended: a parked arm of an enclosing race leaves that
-      // copy marked suspended while only interrupting its own fiber.
-      const local: WorkflowInstance["Service"] = {
-        ...instance,
-        suspended: false,
-        activityState: { count: 0, latch: Latch.makeUnsafe() }
-      }
-      // A losing branch parked on a durable wait has already exited when the
-      // race settles, so this body owns the waits registered beneath it.
-      const owned: Array<string> = []
-      awaitOwners.set(local, owned)
-      // A parked `effect` interrupts the fiber it runs on. The child fiber
-      // keeps that from skipping the suspension handling below.
-      const fiber = yield* effect.pipe(
-        Effect.provideService(InstanceTag, local),
-        Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
-        Effect.forkChild({ startImmediately: true })
-      )
-      return yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber)).pipe(
-        Effect.map((exit) =>
-          local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
-            ? Option.none()
-            : Option.some(exit)
-        ),
-        // The waits are over once the body has a result. Otherwise every branch
-        // parked, or an enclosing race interrupted the body, and the waits move
-        // to the enclosing owner, if any, to be released when that race settles.
-        Effect.onExit((result) =>
-          Effect.sync(() => {
-            if (Exit.isSuccess(result) && Option.isSome(result.value)) {
-              releaseAwaits(instance, owned)
-            } else {
-              awaitOwners.get(instance)?.push(...owned)
-            }
-          })
+  const exit = yield* durableOperation(
+    `DurableDeferred/${self.name}`,
+    Workflow.wrapActivityResult(
+      Effect.gen(function*() {
+        if (checkCache) {
+          const cached = yield* engine.deferredResult(self)
+          if (Option.isSome(cached)) return cached
+        }
+        // `effect` counts on its own activity state, so a durable await inside
+        // it waits for its own siblings and not for the hold above. The copy
+        // starts unsuspended: a parked arm of an enclosing race leaves that
+        // copy marked suspended while only interrupting its own fiber.
+        const local: WorkflowInstance["Service"] = {
+          ...instance,
+          suspended: false,
+          activityState: { count: 0, latch: Latch.makeUnsafe() }
+        }
+        // A losing branch parked on a durable wait has already exited when the
+        // race settles, so this body owns the waits registered beneath it.
+        const owned: Array<string> = []
+        awaitOwners.set(local, owned)
+        // A parked `effect` interrupts the fiber it runs on. The child fiber
+        // keeps that from skipping the suspension handling below.
+        const fiber = yield* effect.pipe(
+          Effect.provideService(InstanceTag, local),
+          Effect.onExit((exit) => recordExit(engine, instance, self, exit)),
+          Effect.forkChild({ startImmediately: true })
         )
-      )
-    }),
-    // Every branch of `effect` parked: release the hold and let the enclosing
-    // activities finish before suspending. External preemption does not wait.
-    Option.isNone
+        return yield* Effect.onInterrupt(Fiber.await(fiber), () => Fiber.interrupt(fiber)).pipe(
+          Effect.map((exit) =>
+            local.suspended && Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)
+              ? Option.none()
+              : Option.some(exit)
+          ),
+          // The waits are over once the body has a result. Otherwise every branch
+          // parked, or an enclosing race interrupted the body, and the waits move
+          // to the enclosing owner, if any, to be released when that race settles.
+          Effect.onExit((result) =>
+            Effect.sync(() => {
+              if (Exit.isSuccess(result) && Option.isSome(result.value)) {
+                releaseAwaits(instance, owned)
+              } else {
+                awaitOwners.get(instance)?.push(...owned)
+              }
+            })
+          )
+        )
+      }),
+      // Every branch of `effect` parked: release the hold and let the enclosing
+      // activities finish before suspending. External preemption does not wait.
+      Option.isNone
+    )
   )
   if (Option.isNone(exit)) {
     return yield* Workflow.suspend(instance)

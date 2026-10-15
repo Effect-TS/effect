@@ -26,6 +26,7 @@ import * as Scope from "../Scope.ts"
 import type * as Activity from "./Activity.ts"
 import type { DurableClock } from "./DurableClock.ts"
 import type * as DurableDeferred from "./DurableDeferred.ts"
+import { durableOperation } from "./internal/compensation.ts"
 import * as Workflow from "./Workflow.ts"
 
 /**
@@ -561,13 +562,16 @@ export const makeUnsafe = (options: Encoded): WorkflowEngine["Service"] =>
           return options.interrupt(self, executionId)
         })
       }
-      const run = options.execute(self, {
-        executionId,
-        payload: payload as object,
-        discard: opts.discard ?? false,
-        parent: Option.getOrUndefined(parentInstance),
-        detached: opts.detached
-      }) as Effect.Effect<Workflow.Result<Success["Type"], Error["Type"]>>
+      const run = durableOperation(
+        `Workflow/${self._tag}/${executionId}`,
+        options.execute(self, {
+          executionId,
+          payload: payload as object,
+          discard: opts.discard ?? false,
+          parent: Option.getOrUndefined(parentInstance),
+          detached: opts.detached
+        })
+      ) as Effect.Effect<Workflow.Result<Success["Type"], Error["Type"]>>
 
       if (opts.discard) {
         yield* run

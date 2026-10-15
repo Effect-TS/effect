@@ -30,6 +30,7 @@ import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
+import { type CompensationStep, CurrentCompensationStep } from "./internal/compensation.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -175,6 +176,11 @@ export interface Workflow<
    * **Gotchas**
    *
    * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
+   *
+   * Replays identify a step by the activities, durable deferreds, and child
+   * workflows it runs directly, and keep one compensation for it. A step
+   * without any of these runs again on every replay and registers a
+   * compensation each time.
    */
   readonly withCompensation: {
     <A, R2>(
@@ -955,6 +961,11 @@ export const addFinalizer: <R>(
  *
  * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
  *
+ * Replays identify a step by the activities, durable deferreds, and child
+ * workflows it runs directly, and keep one compensation for it. A step without
+ * any of these runs again on every replay and registers a compensation each
+ * time.
+ *
  * @stability unstable
  * @category compensation
  * @since 4.0.0
@@ -976,39 +987,64 @@ export const withCompensation: {
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       const instance = yield* InstanceTag
-      // Allocate before running the effect so concurrent steps are identified by
-      // invocation order, not their (potentially different on replay) completion order.
-      const index = compensationIndices.get(instance) ?? 0
-      compensationIndices.set(instance, index + 1)
-      const value = yield* restore(effect)
+      const step: CompensationStep = { keys: new Set(), parent: yield* CurrentCompensationStep }
+      const value = yield* restore(Effect.provideService(effect, CurrentCompensationStep, step))
       const services = yield* Effect.context<R2>()
       const finalizer = (exit: Exit.Exit<unknown, unknown>) =>
         instance.abandoned || Exit.isSuccess(exit)
           ? Effect.void
           : Effect.provideContext(compensation(value, exit.cause), services)
+      const key = compensationKey(instance, step)
+      if (key === undefined) {
+        // Without durable operations the step runs again on every replay, so
+        // each run compensates its own execution.
+        yield* Scope.addFinalizerExit(instance.scope, finalizer)
+        return value
+      }
       let registrations = compensationRegistrations.get(instance.scope)
       if (!registrations) {
         registrations = new Map()
         compensationRegistrations.set(instance.scope, registrations)
       }
-      const existing = registrations.get(index)
+      const existing = registrations.get(key)
       if (existing) {
-        // Replace in place only after success. Unreached steps retain their last
-        // compensation, and scope finalizers keep their original reverse order.
+        // A replay of the same step replaces its compensation in place. Steps
+        // not yet replayed keep theirs, preserving the reverse cleanup order.
         existing.finalizer = finalizer
       } else {
         const registration = { finalizer }
-        registrations.set(index, registration)
+        registrations.set(key, registration)
         yield* Scope.addFinalizerExit(instance.scope, (exit) => registration.finalizer(exit))
       }
       return value
     })
   ))
 
-const compensationIndices = new WeakMap<WorkflowInstance["Service"], number>()
+/**
+ * Identifies a compensated step by the durable operations it performed, which
+ * are the same in every run regardless of scheduling. Steps sharing those
+ * operations within a run are told apart by completion order.
+ */
+const compensationKey = (
+  instance: WorkflowInstance["Service"],
+  step: CompensationStep
+): string | undefined => {
+  if (step.keys.size === 0) return undefined
+  const operations = Array.from(step.keys).sort().join("\u0000")
+  let occurrences = compensationOccurrences.get(instance)
+  if (!occurrences) {
+    occurrences = new Map()
+    compensationOccurrences.set(instance, occurrences)
+  }
+  const occurrence = occurrences.get(operations) ?? 0
+  occurrences.set(operations, occurrence + 1)
+  return `${occurrence}\u0000${operations}`
+}
+
+const compensationOccurrences = new WeakMap<WorkflowInstance["Service"], Map<string, number>>()
 const compensationRegistrations = new WeakMap<
   Scope.Closeable,
-  Map<number, {
+  Map<string, {
     finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   }>
 >()
