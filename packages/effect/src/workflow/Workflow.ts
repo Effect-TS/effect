@@ -974,15 +974,44 @@ export const withCompensation: {
   compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
 ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
-    Effect.tap(
-      restore(effect),
-      (value) =>
-        Effect.flatMap(InstanceTag, (instance) =>
-          addFinalizer((exit) =>
-            instance.replayed || Exit.isSuccess(exit) ? Effect.void : compensation(value, exit.cause)
-          ))
-    )
+    Effect.gen(function*() {
+      const instance = yield* InstanceTag
+      // Allocate before running the effect so concurrent steps are identified by
+      // invocation order, not their (potentially different on replay) completion order.
+      const index = compensationIndices.get(instance) ?? 0
+      compensationIndices.set(instance, index + 1)
+      const value = yield* restore(effect)
+      const services = yield* Effect.context<R2>()
+      const finalizer = (exit: Exit.Exit<unknown, unknown>) =>
+        instance.abandoned || Exit.isSuccess(exit)
+          ? Effect.void
+          : Effect.provideContext(compensation(value, exit.cause), services)
+      let registrations = compensationRegistrations.get(instance.scope)
+      if (!registrations) {
+        registrations = new Map()
+        compensationRegistrations.set(instance.scope, registrations)
+      }
+      const existing = registrations.get(index)
+      if (existing) {
+        // Replace in place only after success. Unreached steps retain their last
+        // compensation, and scope finalizers keep their original reverse order.
+        existing.finalizer = finalizer
+      } else {
+        const registration = { finalizer }
+        registrations.set(index, registration)
+        yield* Scope.addFinalizerExit(instance.scope, (exit) => registration.finalizer(exit))
+      }
+      return value
+    })
   ))
+
+const compensationIndices = new WeakMap<WorkflowInstance["Service"], number>()
+const compensationRegistrations = new WeakMap<
+  Scope.Closeable,
+  Map<number, {
+    finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
+  }>
+>()
 
 /**
  * Marks a workflow instance as suspended and interrupts the current fiber to
