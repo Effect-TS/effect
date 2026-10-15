@@ -448,7 +448,12 @@ export const layerWebCrypto: Layer.Layer<KeyWrap, never, SecureRandom.SecureRand
           method,
           reason: new CryptoError.InvalidArgument({ description: cause.message })
         })
-        : internal.webCryptoError("KeyWrap", method, cause, () => new CryptoError.DecryptionFailed())
+        : internal.webCryptoError(
+          "KeyWrap",
+          method,
+          cause,
+          method === "unwrap" ? () => new CryptoError.DecryptionFailed() : undefined
+        )
 
     const wrapBytes = (wrapKey: WrapKey, bytes: Uint8Array) =>
       Asymmetric.run("KeyWrap", "wrap", crypto, async (subtle) => {
