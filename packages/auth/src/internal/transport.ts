@@ -10,13 +10,17 @@ import * as Tracer from "effect/Tracer"
 import { Unavailable } from "../OAuthError.ts"
 import * as Validation from "./validation.ts"
 
+/** @internal */
 export interface Options {
   readonly timeout: number
   readonly maxResponseBytes: number
 }
 
-/** Caller supplies a nonretrying, nonredirecting HttpClient. Each body and socket
- * belongs to this request's Scope; cancellation reaches the entire body read. */
+/**
+ * Caller supplies a nonretrying, nonredirecting HttpClient. Each body and socket
+ * belongs to this request's Scope; cancellation reaches the entire body read.
+ * @internal
+ */
 export const request = Effect.fnUntraced(
   function*(
     client: HttpClient.HttpClient,
@@ -70,9 +74,11 @@ export const request = Effect.fnUntraced(
     )
 )
 
+/** @internal */
 export const isJson = (contentType: string | null) =>
   contentType?.split(";", 1)[0]?.trim().toLowerCase() === "application/json"
 
+/** @internal */
 export const json = Effect.fnUntraced(function*(
   response: Effect.Success<ReturnType<typeof request>>
 ) {
@@ -95,7 +101,10 @@ export const json = Effect.fnUntraced(function*(
 
 const Json = Schema.fromJsonString(Validation.JsonObject)
 
-/** Capture Fetch's optional reference at the installed-client boundary too. */
+/**
+ * Capture Fetch's optional reference at the installed-client boundary too.
+ * @internal
+ */
 export const capture = Effect.gen(function*() {
   const client = yield* HttpClient.HttpClient
   const fetch = yield* FetchHttpClient.Fetch

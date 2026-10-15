@@ -3,7 +3,10 @@ import * as Fiber from "effect/Fiber"
 
 import { Unavailable } from "../OAuthError.ts"
 
-/** Each operation belongs to the factory's Scope and is joined by its caller. */
+/**
+ * Each operation belongs to the factory's Scope and is joined by its caller.
+ * @internal
+ */
 export const make = Effect.gen(function*() {
   const scope = yield* Effect.scope
 

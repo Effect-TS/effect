@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import type { PrivateJwk, PublicJwk, SecretJwk } from "../Jose/Jwk.ts"
 import { InvalidKey } from "../JoseError.ts"
 
+/** @internal */
 export const check = (
   jwk: PublicJwk | PrivateJwk | SecretJwk,
   algorithm: string,
@@ -18,7 +19,10 @@ export const check = (
     : Effect.void
 }
 
-/** Check the parsed key, not caller-supplied JWK metadata. */
+/**
+ * Check the parsed key, not caller-supplied JWK metadata.
+ * @internal
+ */
 export const checkRsa = Effect.fnUntraced(
   function*(key: Rsa.PublicKey): Effect.fn.Return<void, CryptoError.CryptoError> {
     if ((yield* Rsa.modulusLength(key)) < 2048) {

@@ -3,11 +3,15 @@ import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import { InvalidKey } from "../JoseError.ts"
 
+/** @internal */
 export const maxArrayLength = 256
 
 const ArrayLength = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: maxArrayLength }))
 
-/** Copy only own fields, evaluating accessors once before Schema validation. */
+/**
+ * Copy only own fields, evaluating accessors once before Schema validation.
+ * @internal
+ */
 export const object = (input: unknown): unknown => {
   if (!Predicate.isObject(input)) return input
   const descriptors = Object.getOwnPropertyDescriptors(input)
@@ -42,6 +46,7 @@ const array = (input: ReadonlyArray<unknown>) =>
     })
   })
 
+/** @internal */
 export const jwk = (input: unknown) =>
   Result.gen(function*() {
     const copy = object(input)
@@ -53,6 +58,7 @@ export const jwk = (input: unknown) =>
     return copy
   })
 
+/** @internal */
 export const keySet = (input: unknown) =>
   Result.gen(function*() {
     const copy = object(input)
@@ -66,7 +72,10 @@ export const keySet = (input: unknown) =>
     return copy
   })
 
-/** Struct decoding creates ordinary objects; detach owned output as well. */
+/**
+ * Struct decoding creates ordinary objects; detach owned output as well.
+ * @internal
+ */
 export const detach = <A>(value: A): A => {
   if (Predicate.isObject(value)) Object.setPrototypeOf(value, null)
 

@@ -6,13 +6,19 @@ import * as Schema from "effect/Schema"
 import { ConfigurationError, Unavailable } from "../OAuthError.ts"
 import * as DurationInput from "./duration.ts"
 
+/** @internal */
 export const text = (maximum: number) => Schema.NonEmptyString.check(Schema.isMaxLength(maximum))
 
+/** @internal */
 export const integer = (minimum: number, maximum: number) => Schema.Int.check(Schema.isBetween({ minimum, maximum }))
 
+/** @internal */
 export const secret = (maximum: number) => Schema.Redacted(text(maximum), { disallowJsonEncode: true })
 
-/** At most 64 nested containers and 65,536 values, including the root object. */
+/**
+ * At most 64 nested containers and 65,536 values, including the root object.
+ * @internal
+ */
 export const JsonObject = Schema.Record(Schema.String, Schema.Json).check(
   Schema.makeFilter((value) => {
     const pending: Array<{ value: Schema.JsonObject | Schema.JsonArray; depth: number }> = [
@@ -60,28 +66,34 @@ const validUrl = (value: string, loopback: boolean) => {
   }
 }
 
+/** @internal */
 export const Endpoint = text(2048).check(Schema.makeFilter((value) => validUrl(value, false)))
 
+/** @internal */
 export const Issuer = Endpoint.check(
   Schema.makeFilter(
     (value) => !value.includes("?") && !new URL(value).pathname.includes("/.well-known/")
   )
 )
 
+/** @internal */
 export const Callback = text(2048).check(
   Schema.makeFilter(
     (value) => validUrl(value, true) && new URL(value).href === value && !value.includes("?")
   )
 )
 
+/** @internal */
 // oxlint-disable-next-line no-control-regex -- RFC6749 scope-token permits these visible ASCII ranges.
 export const ScopeName = Schema.String.check(Schema.isPattern(/^[\x21\x23-\x5b\x5d-\x7e]{1,256}$/))
 
+/** @internal */
 export const Scopes = Schema.Array(ScopeName).check(
   Schema.isMaxLength(64),
   Schema.makeFilter((values) => new Set(values).size === values.length)
 )
 
+/** @internal */
 export const Resource = text(2048).check(
   Schema.makeFilter((value) => {
     try {
@@ -97,8 +109,10 @@ export const Resource = text(2048).check(
   })
 )
 
+/** @internal */
 export const Resources = Schema.Array(Resource).check(Schema.isMaxLength(64))
 
+/** @internal */
 export const RequestOptions = Schema.Struct({
   timeout: DurationInput.Millis.check(Schema.isBetween({ minimum: 1, maximum: 60000 })),
   maxResponseBytes: integer(1, 1048576).pipe(
@@ -106,22 +120,27 @@ export const RequestOptions = Schema.Struct({
   )
 })
 
+/** @internal */
 export const MaxAge = DurationInput.Seconds.check(
   Schema.isInt(),
   Schema.isBetween({ minimum: 0, maximum: 86400 })
 )
 
+/** @internal */
 export const Verifier = Schema.Redacted(
   Schema.String.check(Schema.isPattern(/^[A-Za-z0-9._~-]{43,128}$/)),
   { disallowJsonEncode: true }
 )
 
+/** @internal */
 export const Challenge = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{43}$/))
 
+/** @internal */
 export const NumericDate = Schema.Finite.check(
   Schema.isBetween({ minimum: 0, maximum: 8640000000000 })
 )
 
+/** @internal */
 export const reserved = new Set([
   "client_id",
   "client_secret",
@@ -156,6 +175,7 @@ export const reserved = new Set([
   "requested_token_type"
 ])
 
+/** @internal */
 export const Parameters = Schema.Record(
   Schema.String.check(Schema.isPattern(/^[A-Za-z][A-Za-z0-9._~-]{0,63}$/)),
   Schema.String.check(Schema.isMaxLength(2048))
@@ -184,6 +204,7 @@ const forbiddenHeaders = new Set([
   "baggage"
 ])
 
+/** @internal */
 export const Headers = Schema.Record(
   Schema.String.check(Schema.isPattern(/^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,64}$/)),
   Schema.String.check(Schema.isMaxLength(2048))
@@ -200,6 +221,7 @@ export const Headers = Schema.Record(
   })
 )
 
+/** @internal */
 export const ProtocolEndpoint = Endpoint.check(
   Schema.makeFilter((value) =>
     Array.from(new URL(value).searchParams.keys()).every((key) => !reserved.has(key.toLowerCase()))
@@ -208,6 +230,7 @@ export const ProtocolEndpoint = Endpoint.check(
 
 // Keep exceptions from hostile input access and erased Redacted values inside
 // schema decoding; service execution must remain outside these catches.
+/** @internal */
 export const configuration = <S extends Schema.Constraint>(
   schema: S,
   input: unknown,
@@ -218,16 +241,21 @@ export const configuration = <S extends Schema.Constraint>(
     Effect.catchDefect(() => ConfigurationError.make({ reason }))
   )
 
+/** @internal */
 export const decode = <S extends Schema.Constraint>(schema: S, input: unknown) =>
   Effect.suspend(() => Schema.decodeUnknownEffect(schema)(input, { reportInput: false })).pipe(
     Effect.mapError(() => Unavailable.make({})),
     Effect.catchDefect(() => Unavailable.make({}))
   )
 
+/** @internal */
 export const reveal = <A>(value: Redacted.Redacted<A>) =>
   Effect.try({ try: () => Redacted.value(value), catch: () => Unavailable.make({}) })
 
-/** Freeze owned configuration snapshots or freshly parsed wire JSON, not caller-owned graphs. */
+/**
+ * Freeze owned configuration snapshots or freshly parsed wire JSON, not caller-owned graphs.
+ * @internal
+ */
 export const freeze = <A>(value: A): A => {
   const pending: Array<unknown> = [value]
   const seen = new WeakSet<object>()

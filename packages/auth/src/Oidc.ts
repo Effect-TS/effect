@@ -163,7 +163,14 @@ export interface Verified {
   readonly upstreamAuthenticatedAt?: DateTime.Utc
 }
 
-type VerificationRequirements =
+/**
+ * Services required for ID-token signature verification and hash bindings.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export type VerificationRequirements =
   | Effect.Services<ReturnType<typeof Jwt.verify<typeof JsonObject>>>
   | Exclude<Effect.Services<ReturnType<typeof Jwt.verifyWithKeySet<typeof JsonObject>>>, Jwks.Jwks>
   | Sha2.Sha2
