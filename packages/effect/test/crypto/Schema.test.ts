@@ -99,6 +99,8 @@ describe("Schema crypto keys", () => {
 
       const k = Base64Url.encode(new Uint8Array(32).fill(5))
       const secretSchema = Schema.AeadKeyFromFormat(KeyFormat.jwk, Aead.aes256Gcm, { allowEncode: true })
+      // Secret keys skip subtle, but format schemas stay async only.
+      assert.throws(() => Schema.decodeSync(secretSchema)({ kty: "oct", k }))
       const secretKey = yield* Schema.decodeEffect(secretSchema)({ kty: "oct", k })
       assert.deepStrictEqual(yield* Schema.encodeEffect(secretSchema)(secretKey), { kty: "oct", k })
 
