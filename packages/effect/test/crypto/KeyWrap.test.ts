@@ -8,11 +8,12 @@ import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import { Buffer } from "node:buffer"
 import * as NodeCrypto from "node:crypto"
 import { inspect } from "node:util"
-import { assertReason, bytes } from "../utils/crypto.ts"
+import { assertReason, bytes, fakeSubtle } from "../utils/crypto.ts"
 
 // RFC 3394, sections 4.1 and 4.6.
 const rfc3394 = [
@@ -64,6 +65,26 @@ describe("KeyWrap", () => {
         assert.isUndefined(error.cause)
       }
     }).pipe(Effect.provide(layer)))
+
+  // Only unwrap turns an OperationError into DecryptionFailed. Arguments are
+  // checked before wrap reaches WebCrypto, so its OperationError is a bug.
+  it.effect("keeps an unexpected wrap failure a defect, unlike an unwrap failure", () =>
+    Effect.gen(function*() {
+      const keyWrap = yield* KeyWrap.KeyWrap
+      const kek = yield* KeyWrap.key(KeyWrap.aes128Kw, new Uint8Array(16))
+      const exit = yield* Effect.exit(keyWrap.wrap(kek, yield* Aead.key(Aead.aes128Gcm, new Uint8Array(16))))
+      assert.isTrue(Exit.hasDies(exit), "expected a defect")
+
+      const error = yield* Effect.flip(keyWrap.unwrap(kek, Aead.aes128Gcm, new Uint8Array(24)))
+      assertReason(error, "DecryptionFailed", "unwrap")
+      assert.isUndefined(error.cause)
+    }).pipe(Effect.provide(KeyWrap.layerWebCrypto.pipe(Layer.provide(Layer.mergeAll(
+      seeded,
+      fakeSubtle({
+        wrapKey: () => Promise.reject(new DOMException("failed", "OperationError")),
+        unwrapKey: () => Promise.reject(new DOMException("failed", "OperationError"))
+      })
+    ))))))
 
   it.effect("builds AES-KW keys from SecureRandom bytes and applies the RFC 3394 length rule", () =>
     Effect.gen(function*() {
