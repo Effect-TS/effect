@@ -411,8 +411,10 @@ export const fromOption: <A>(self: Option.Option<A>) => Array<A> = Option.toArra
  *
  * **Details**
  *
- * `onNonEmpty` receives a `NonEmptyReadonlyArray`. Supports both data-first and
- * data-last usage.
+ * `onNonEmpty` receives a `NonEmptyArray` for mutable arrays and a
+ * `NonEmptyReadonlyArray` otherwise. Data-last calls default to the readonly
+ * callback, so the returned function still accepts `ReadonlyArray`. Supports
+ * both data-first and data-last usage.
  *
  * **Example** (Branching on emptiness)
  *
@@ -442,6 +444,19 @@ export const match: {
       readonly onNonEmpty: (self: NonEmptyReadonlyArray<A>) => C
     }
   ): (self: ReadonlyArray<A>) => B | C
+  <B, A, C = B>(
+    options: {
+      readonly onEmpty: LazyArg<B>
+      readonly onNonEmpty: (self: NonEmptyArray<A>) => C
+    }
+  ): (self: Array<A>) => B | C
+  <A, B, C = B>(
+    self: Array<A>,
+    options: {
+      readonly onEmpty: LazyArg<B>
+      readonly onNonEmpty: (self: NonEmptyArray<A>) => C
+    }
+  ): B | C
   <A, B, C = B>(
     self: ReadonlyArray<A>,
     options: {
