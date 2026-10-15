@@ -8221,6 +8221,69 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.succeed({ a: undefined })
     })
 
+    describe("optionalKeyFromNullOr", () => {
+      it("decodes a missing key or null to a missing key", async () => {
+        const schema = Schema.Struct({
+          a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+        })
+        const asserts = new TestSchema.Asserts(schema)
+
+        if (verifyGeneration) {
+          asserts.arbitrary().verifyGeneration()
+        }
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({}, {})
+        await decoding.succeed({ a: null }, {})
+        await decoding.succeed({ a: "1" }, { a: 1 })
+        await decoding.fail(
+          { a: "a" },
+          `Expected a finite number
+  at ["a"]`
+        )
+        await decoding.fail(
+          { a: 1 },
+          `Expected string | null
+  at ["a"]`
+        )
+        await decoding.fail(
+          { a: undefined },
+          `Expected string | null
+  at ["a"]`
+        )
+      })
+
+      it("never encodes null", async () => {
+        const schema = Schema.Struct({
+          a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+        })
+        const asserts = new TestSchema.Asserts(schema)
+
+        const encoding = asserts.encoding()
+        await encoding.succeed({}, {})
+        await encoding.succeed({ a: 1 }, { a: "1" })
+        await encoding.fail(
+          { a: null },
+          `Expected number
+  at ["a"]`
+        )
+      })
+
+      it("can be applied to all fields with Struct.map", async () => {
+        const schema = Schema.Struct({
+          a: Schema.String,
+          b: Schema.FiniteFromString
+        }).mapFields(Struct.map(Schema.optionalKeyFromNullOr))
+        const asserts = new TestSchema.Asserts(schema)
+
+        const decoding = asserts.decoding()
+        await decoding.succeed({ a: null, b: "1" }, { b: 1 })
+
+        const encoding = asserts.encoding()
+        await encoding.succeed({ b: 1 }, { b: "1" })
+      })
+    })
+
     it("Optional Property to Exact Optional Property", async () => {
       const schema = Schema.Struct({
         a: Schema.optional(Schema.FiniteFromString).pipe(Schema.decodeTo(Schema.optionalKey(Schema.Number), {

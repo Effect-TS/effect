@@ -407,6 +407,28 @@ describe("Struct", () => {
       >()
     })
 
+    it("optionalKeyFromNullOr", () => {
+      const schema = Schema.Struct({
+        a: Schema.String,
+        b: Schema.FiniteFromString
+      }).mapFields(Struct.map(Schema.optionalKeyFromNullOr))
+
+      expect(Schema.revealCodec(schema)).type.toBe<
+        Schema.Codec<
+          { readonly b?: number; readonly a?: string },
+          { readonly b?: string | null; readonly a?: string | null },
+          never,
+          never
+        >
+      >()
+      expect(schema).type.toBe<
+        Schema.Struct<{
+          readonly a: Schema.optionalKeyFromNullOr<Schema.String>
+          readonly b: Schema.optionalKeyFromNullOr<Schema.FiniteFromString>
+        }>
+      >()
+    })
+
     it("mutableKey", () => {
       const schema = Schema.Struct({
         a: Schema.String,

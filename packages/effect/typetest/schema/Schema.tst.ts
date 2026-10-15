@@ -1165,6 +1165,33 @@ describe("Schema", () => {
     }
   })
 
+  it("optionalKeyFromNullOr", () => {
+    {
+      const schema = Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+      expect(Schema.revealCodec(schema)).type.toBe<Schema.Codec<number, string | null, never>>()
+      expect(schema).type.toBe<Schema.optionalKeyFromNullOr<Schema.FiniteFromString>>()
+      expect(schema.annotate({})).type.toBe<Schema.optionalKeyFromNullOr<Schema.FiniteFromString>>()
+    }
+
+    {
+      const schema = Schema.FiniteFromString.pipe(Schema.optionalKeyFromNullOr)
+      expect(schema).type.toBe<Schema.optionalKeyFromNullOr<Schema.FiniteFromString>>()
+    }
+
+    {
+      const schema = Schema.Struct({
+        a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+      })
+      expect(Schema.revealCodec(schema)).type.toBe<
+        Schema.Codec<{ readonly a?: number }, { readonly a?: string | null }, never, never>
+      >()
+      expect(schema.make).type.toBe<
+        (input: { readonly a?: number }, options?: Schema.MakeOptions | undefined) => { readonly a?: number }
+      >()
+      expect(schema.make).type.not.toBeCallableWith({ a: null })
+    }
+  })
+
   it("mutableKey", () => {
     {
       const schema = Schema.mutableKey(Schema.String)

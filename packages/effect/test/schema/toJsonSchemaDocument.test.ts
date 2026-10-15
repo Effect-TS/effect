@@ -2732,6 +2732,30 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
+    describe("optionalKeyFromNullOr", () => {
+      it("FiniteFromString", () => {
+        assertJsonSchemaDocument(
+          Schema.Struct({
+            a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+          }),
+          {
+            schema: {
+              "type": "object",
+              "properties": {
+                "a": {
+                  "anyOf": [
+                    { "type": "string" },
+                    { "type": "null" }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        )
+      })
+    })
+
     describe("optional", () => {
       it("String", () => {
         assertJsonSchemaDocument(

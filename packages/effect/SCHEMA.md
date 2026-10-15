@@ -594,6 +594,41 @@ type Type = {
 type Type = typeof schema.Type
 ```
 
+#### Treating `null` as a Missing Key
+
+Some wire formats send "not set" either as a missing key or as `null` (for example Go's `encoding/json`). `Schema.optionalKeyFromNullOr` accepts both when decoding and turns them into a missing key, so `null` does not appear in the `Type`. Encoding never produces `null`.
+
+```ts
+import { Schema } from "effect"
+
+export const schema = Schema.Struct({
+  a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+})
+
+/*
+type Encoded = {
+    readonly a?: string | null;
+}
+*/
+type Encoded = typeof schema.Encoded
+
+/*
+type Type = {
+    readonly a?: number;
+}
+*/
+type Type = typeof schema.Type
+
+console.log(Schema.decodeUnknownSync(schema)({ a: null }))
+// Output: {}
+
+console.log(Schema.decodeUnknownSync(schema)({ a: "1" }))
+// Output: { a: 1 }
+
+console.log(Schema.encodeSync(schema)({}))
+// Output: {}
+```
+
 #### Representing Optional Fields with never Type
 
 You can use `Schema.Never` inside an optional key to represent a field that should never have a value but may still appear as a key in the type.
@@ -767,6 +802,8 @@ console.log(Schema.decodeUnknownSync(schema)({ a: { b: "2" } }))
 If the defaulting logic is more specific than just handling `undefined` or missing values, you can use `Schema.decodeTo` to apply custom fallback rules.
 
 This is useful when you need to account for values like `null` or other invalid states.
+
+If you only need `null` to count as a missing key, without a default, use `Schema.optionalKeyFromNullOr` (see [Treating `null` as a Missing Key](#treating-null-as-a-missing-key)).
 
 **Example** (Providing a fallback when value is `null` or missing)
 
@@ -959,6 +996,8 @@ console.log(Schema.decodeUnknownSync(Product)({ quantity: "2" }))
 // console.log(Schema.decodeUnknownSync(Product)({ quantity: undefined }))
 // throws
 ```
+
+To keep a plain optional key instead of an `Option`, use `Schema.optionalKeyFromNullOr` (see [Treating `null` as a Missing Key](#treating-null-as-a-missing-key)).
 
 #### Optional Property with Nullability
 

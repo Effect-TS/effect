@@ -2484,6 +2484,80 @@ interface requiredLambda extends Lambda {
  */
 export const required: requiredLambda = Struct_.lambda<requiredLambda>((self) => self.schema.members[0])
 /**
+ * Type-level representation returned by {@link optionalKeyFromNullOr}.
+ *
+ * @stability stable
+ * @category models
+ * @since 4.0.6
+ */
+export interface optionalKeyFromNullOr<S extends Constraint>
+  extends decodeTo<optionalKey<S>, optionalKey<NullOr<toEncoded<S>>>>
+{
+  readonly "Rebuild": optionalKeyFromNullOr<S>
+}
+interface optionalKeyFromNullOrLambda extends Lambda {
+  <S extends Constraint>(self: S): optionalKeyFromNullOr<S>
+  readonly "~lambda.out": this["~lambda.in"] extends Constraint ? optionalKeyFromNullOr<this["~lambda.in"]> : never
+}
+/**
+ * Marks a struct field as an exact optional key that also accepts `null` when
+ * decoding, treating `null` the same as a missing key.
+ *
+ * **When to use**
+ *
+ * Use when a wire format sends "not set" either as a missing key or as `null`
+ * (for example Go's `encoding/json`, which writes a nil pointer, slice, or map
+ * as `null` unless the field has `omitempty`), and the decoded value should not
+ * carry `null`.
+ *
+ * **Details**
+ *
+ * - Decoding: a missing key and `null` both decode to a missing key; any other
+ *   value is decoded by `S`.
+ * - Encoding: a missing key stays missing and a present value is encoded by
+ *   `S`. `null` is never produced.
+ * - The `Type` side is `optionalKey(S)` and the `Encoded` side is
+ *   `optionalKey(NullOr(toEncoded(S)))`, so JSON Schema output describes the
+ *   field as optional and nullable.
+ *
+ * `undefined` is rejected on both sides, as with {@link optionalKey}.
+ *
+ * **Example** (Treating `null` as a missing key)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.Struct({
+ *   a: Schema.optionalKeyFromNullOr(Schema.FiniteFromString)
+ * })
+ *
+ * // { readonly a?: number }
+ * type Type = typeof schema.Type
+ *
+ * // { readonly a?: string | null }
+ * type Encoded = typeof schema.Encoded
+ *
+ * Schema.decodeUnknownSync(schema)({ a: null }) // => {}
+ * Schema.decodeUnknownSync(schema)({ a: "1" }) // => { a: 1 }
+ * Schema.encodeSync(schema)({}) // => {}
+ * ```
+ *
+ * @see {@link optionalKey} for an exact optional key that rejects `null`
+ * @see {@link NullOr} with {@link optionalKey} to keep `null` in the `Type`
+ * @see {@link OptionFromOptionalNullOr} to decode missing, `null`, or `undefined` to `Option`
+ * @stability stable
+ * @category combinators
+ * @since 4.0.6
+ */
+export const optionalKeyFromNullOr: optionalKeyFromNullOrLambda = Struct_.lambda<optionalKeyFromNullOrLambda>((
+  self
+) =>
+  optionalKey(NullOr(toEncoded(self))).pipe(decodeTo(optionalKey(self), {
+    decode: SchemaGetter.transformOptional(Option_.filter(Predicate.isNotNull)),
+    encode: SchemaGetter.passthrough()
+  }))
+)
+/**
  * Type-level representation returned by {@link mutableKey}.
  *
  * @stability stable
