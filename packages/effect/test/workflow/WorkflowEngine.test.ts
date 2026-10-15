@@ -1058,6 +1058,93 @@ describe("WorkflowEngine", () => {
       assert.include(warnings[0], "name")
     }))
 
+  it.effect("layerMemory rejects concurrent compensations with the same name", () =>
+    Effect.gen(function*() {
+      const bothEntered = yield* Latch.make()
+      let entered = 0
+      const Order = Workflow.make("WorkflowEngine/DuplicateCompensationName", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      // Both bodies start before either succeeds, so only the check on
+      // registration can catch the duplicate.
+      const step = Effect.gen(function*() {
+        if (++entered === 2) yield* bothEntered.open
+        yield* bothEntered.await
+      }).pipe(Order.withCompensation(() => Effect.void, { name: "charge" }))
+      const layer = Order.toLayer(() => Effect.all([step, step], { concurrency: "unbounded", discard: true })).pipe(
+        Layer.provideMerge(WorkflowEngine.layerMemory)
+      )
+
+      const exit = yield* Order.execute({ id: "one" }).pipe(Effect.provide(layer), Effect.exit)
+
+      assert.strictEqual(entered, 2)
+      assert(Exit.isFailure(exit))
+      assert(Cause.hasDies(exit.cause))
+      assert.include(String(Cause.squash(exit.cause)), "\"charge\" is used by more than one step")
+    }))
+
+  it.effect("layerMemory replays a named compensation inside an unnamed one", () =>
+    Effect.gen(function*() {
+      const warnings: Array<string> = []
+      const logger = Logger.make<unknown, void>((options) => {
+        if (options.logLevel === "Warn") warnings.push(String(options.message))
+      })
+      const gate = DurableDeferred.make("WorkflowEngine/NamedInUnnamedCompensation/Gate", { error: Schema.String })
+      const events: Array<string> = []
+      let runs = 0
+      const Order = Workflow.make("WorkflowEngine/NamedInUnnamedCompensation", {
+        payload: { id: Schema.String },
+        error: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      const charge = Activity.make({
+        name: "charge",
+        success: Schema.String,
+        execute: Effect.sync(() => {
+          events.push("charge")
+          return "ch_1"
+        })
+      })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          const run = ++runs
+          // The outer step runs no durable operation of its own, so its identity
+          // comes only from the named inner step.
+          yield* charge.pipe(
+            Order.withCompensation((id) => Effect.sync(() => events.push(`undo inner ${id} run ${run}`)), {
+              name: "charge"
+            }),
+            Effect.map((id) => `order(${id})`),
+            Order.withCompensation((value) => Effect.sync(() => events.push(`undo outer ${value} run ${run}`)))
+          )
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
+        const awaitStatus = (tag: "Suspended" | "Complete") =>
+          Effect.gen(function*() {
+            let result = yield* Order.poll(executionId)
+            while (Option.isNone(result) || result.value._tag !== tag) {
+              yield* Effect.yieldNow
+              result = yield* Order.poll(executionId)
+            }
+          })
+        yield* awaitStatus("Suspended")
+        yield* Order.resume(executionId)
+        yield* awaitStatus("Suspended")
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Order, executionId })
+        yield* DurableDeferred.fail(gate, { token, error: "rejected" })
+        yield* awaitStatus("Complete")
+      }).pipe(Effect.provide(layer), Effect.provide(Logger.layer([logger])))
+
+      assert.strictEqual(runs, 3)
+      assert.deepStrictEqual(events, ["charge", "undo outer order(ch_1) run 3", "undo inner ch_1 run 3"])
+      assert.deepStrictEqual(warnings, [])
+    }))
+
   it.effect("layerMemory replays nested compensations while another step is unreached", () =>
     Effect.gen(function*() {
       const prepared = yield* Latch.make()
