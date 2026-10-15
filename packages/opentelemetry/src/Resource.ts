@@ -123,11 +123,16 @@ export const layerFromEnv = (
         Config.map((s) => {
           const attrs = s.split(",")
           return Arr.reduce(attrs, {} as OtelApi.Attributes, (acc, attr) => {
-            const parts = attr.split("=")
-            if (parts.length !== 2) {
+            const eqIndex = attr.indexOf("=")
+            if (eqIndex === -1) {
               return acc
             }
-            Rec.assignProperty(acc, parts[0].trim(), parts[1].trim())
+            const key = attr.substring(0, eqIndex).trim()
+            const value = attr.substring(eqIndex + 1).trim()
+            if (key === "") {
+              return acc
+            }
+            Rec.assignProperty(acc, key, value)
             return acc
           })
         })
