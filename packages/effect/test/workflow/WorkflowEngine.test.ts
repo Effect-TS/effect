@@ -8,6 +8,7 @@ import {
   Fiber,
   Latch,
   Layer,
+  Logger,
   Option,
   Ref,
   Schedule,
@@ -961,7 +962,7 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(events, ["do B", "do A", "undo A run 2", "undo B run 1"])
     }))
 
-  it.effect("layerMemory retains distinct compensations for concurrent steps sharing an activity", () =>
+  it.effect("layerMemory retains named compensations for concurrent steps sharing an activity", () =>
     Effect.gen(function*() {
       const prepared = yield* Latch.make()
       const rebuilt = yield* Latch.make()
@@ -984,11 +985,14 @@ describe("WorkflowEngine", () => {
       const layer = Order.toLayer(() =>
         Effect.gen(function*() {
           const run = ++runs
-          // Both steps run the same durable activity but are different steps.
+          // Both steps run the same durable activity, so only their names
+          // tell them apart.
           const step = (name: string) =>
             shared.pipe(
               Effect.as(name),
-              Order.withCompensation((value) => Effect.sync(() => events.push(`undo ${value} run ${run}`)))
+              Order.withCompensation((value) => Effect.sync(() => events.push(`undo ${value} run ${run}`)), {
+                name: `step ${name}`
+              })
             )
           yield* Effect.all([
             Effect.gen(function*() {
@@ -1022,6 +1026,36 @@ describe("WorkflowEngine", () => {
 
       yield* Scope.close(scope, Exit.void)
       assert.deepStrictEqual(events, ["do shared", "undo A run 2", "undo B run 1"])
+    }))
+
+  it.effect("layerMemory warns when unnamed compensations share durable operations", () =>
+    Effect.gen(function*() {
+      const warnings: Array<string> = []
+      const logger = Logger.make<unknown, void>((options) => {
+        if (options.logLevel === "Warn") warnings.push(String(options.message))
+      })
+      const Order = Workflow.make("WorkflowEngine/UnnamedCompensationCollision", {
+        payload: { id: Schema.String },
+        idempotencyKey: ({ id }) => id
+      })
+      const shared = Activity.make({ name: "shared", success: Schema.String, execute: Effect.succeed("shared") })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          yield* shared.pipe(Effect.as("A"), Order.withCompensation(() => Effect.void))
+          yield* shared.pipe(Effect.as("B"), Order.withCompensation(() => Effect.void))
+          // A named step is never ambiguous, even over the same activity.
+          yield* shared.pipe(Effect.as("C"), Order.withCompensation(() => Effect.void, { name: "C" }))
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Order.execute({ id: "one" }).pipe(
+        Effect.provide(layer),
+        Effect.provide(Logger.layer([logger]))
+      )
+
+      assert.strictEqual(warnings.length, 1)
+      assert.include(warnings[0], "shared")
+      assert.include(warnings[0], "name")
     }))
 
   it.effect("layerMemory replays nested compensations while another step is unreached", () =>
