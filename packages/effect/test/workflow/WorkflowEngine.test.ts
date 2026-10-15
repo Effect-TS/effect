@@ -956,6 +956,51 @@ describe("WorkflowEngine", () => {
       }).pipe(Effect.provide(layer))
     }))
 
+  for (const state of ["running", "suspended"] as const) {
+    it.effect(`layerMemory interruptUnsafe completes a ${state} workflow without an external wake`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const gate = DurableDeferred.make("WorkflowEngine/InterruptUnsafeNoWake/Gate")
+        const workflow = Workflow.make("WorkflowEngine/InterruptUnsafeNoWake", {
+          payload: {},
+          idempotencyKey: () => "one"
+        })
+        const layer = workflow.toLayer(() =>
+          state === "running"
+            ? Activity.make({
+              name: "blocked",
+              execute: Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never))
+            })
+            : DurableDeferred.await(gate)
+        ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+        yield* Effect.gen(function*() {
+          const engine = yield* WorkflowEngine.WorkflowEngine
+          const executionId = yield* workflow.execute({}, { discard: true })
+          if (state === "running") {
+            yield* Deferred.await(started)
+          } else {
+            let result = yield* workflow.poll(executionId)
+            for (let i = 0; i < 1000 && !(Option.isSome(result) && result.value._tag === "Suspended"); i++) {
+              yield* Effect.yieldNow
+              result = yield* workflow.poll(executionId)
+            }
+            assert(Option.isSome(result) && result.value._tag === "Suspended", "workflow must suspend first")
+          }
+
+          yield* engine.interruptUnsafe(workflow, executionId)
+          // Do not complete the gate or explicitly resume: interruption must supply its own wake.
+          let result = yield* workflow.poll(executionId)
+          for (let i = 0; i < 1000 && !(Option.isSome(result) && result.value._tag === "Complete"); i++) {
+            yield* Effect.yieldNow
+            result = yield* workflow.poll(executionId)
+          }
+          assert(Option.isSome(result) && result.value._tag === "Complete", "interruption must complete the workflow")
+          assert(Exit.hasInterrupts(result.value.exit))
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+
   it.effect("layerMemory preserves interruptUnsafe across a suspended replay", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/InterruptUnsafeReplay/Gate")
