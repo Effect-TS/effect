@@ -1262,8 +1262,8 @@ export const fromPubSubTake = <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>): St
  * The stream reads from a `ReadableStreamDefaultReader`, maps read failures
  * with `onError`, and releases the reader lock when the stream finalizes. By
  * default the reader is canceled first; set `releaseLockOnEnd` to skip
- * cancellation. Cancellation failures surface as defects without repeating
- * an already observed read error.
+ * cancellation. A failing cancel hook surfaces as a defect; an already errored
+ * stream does not.
  *
  * **Example** (Creating a stream from a ReadableStream)
  *
