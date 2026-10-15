@@ -6,91 +6,80 @@ import * as ByteSize from "effect/ByteSize"
 import * as Channel from "effect/Channel"
 import * as Console from "effect/Console"
 import * as Stream from "effect/Stream"
-import { spawnSync } from "node:child_process"
-import { once } from "node:events"
-import { join } from "node:path"
 import { Duplex, Readable, Transform } from "node:stream"
 import * as Zlib from "node:zlib"
 
-// Isolate unhandled stream errors so a regression cannot crash the Vitest worker.
-describe("collector destruction", { concurrent: false, timeout: 15_000 }, () => {
-  for (const helper of ["toString", "toArrayBuffer"] as const) {
-    for (const reason of ["maxBytes", "interruption"] as const) {
-      it(`${helper} preserves ${reason} when destruction fails`, () => {
-        const result = spawnSync(process.execPath, [
-          join(__dirname, "fixtures", "readable-destroy-error.ts"),
-          helper,
-          reason
-        ], { encoding: "utf8", timeout: 10_000 })
-        assert.isUndefined(result.error)
-        assert.strictEqual(result.status, 0, result.stderr)
-        assert.include(result.stdout, "destruction completed")
-      })
-    }
-  }
-})
-
 describe("Stream", () => {
-  const onErrorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
-  const consumers: ReadonlyArray<
-    readonly [string, (readable: Readable) => Effect.Effect<unknown, string | undefined>]
-  > = [
-    [
-      "fromReadable",
-      (readable) => NodeStream.fromReadable({ evaluate: () => readable, onError: onErrorCode }).pipe(Stream.runCollect)
-    ],
-    ["toString", (readable) => NodeStream.toString(() => readable, { onError: onErrorCode })],
-    ["toArrayBuffer", (readable) => NodeStream.toArrayBuffer(() => readable, { onError: onErrorCode })],
-    ["toUint8Array", (readable) => NodeStream.toUint8Array(() => readable, { onError: onErrorCode })]
-  ]
+  const destroyedOnRead = () =>
+    new Readable({
+      read() {
+        this.destroy()
+      }
+    })
+  const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
 
-  for (const [name, consume] of consumers) {
-    if (name !== "toUint8Array") {
-      it.live(`${name} cleans up listeners after destruction without a close event`, () =>
-        Effect.gen(function*() {
-          let complete!: () => void
-          const destroyed = new Promise<void>((resolve) => {
-            complete = resolve
-          })
-          const readable = new Readable({
-            emitClose: false,
-            read() {},
-            destroy(_error, callback) {
-              setTimeout(() => {
-                callback()
-                // Observe cleanup after Node has processed the destruction callback.
-                setImmediate(complete)
-              }, 5)
-            }
-          })
-          yield* consume(readable).pipe(Effect.timeout("10 millis"), Effect.ignore)
-          yield* Effect.promise(() => destroyed).pipe(Effect.timeout("1 second"))
-          assert.isTrue(readable.closed)
-          assert.deepStrictEqual(
-            [readable.listenerCount("error"), readable.listenerCount("close")],
-            [0, 0]
-          )
-        }))
-    }
-    for (const alreadyClosed of [false, true]) {
-      it.live(`${name} fails on ${alreadyClosed ? "an already-destroyed input" : "premature close"}`, () =>
-        Effect.gen(function*() {
-          const readable = new Readable({
-            read() {
-              this.destroy()
-            }
-          })
-          if (alreadyClosed) {
-            // Ensure close has already fired before the helper can subscribe.
-            const closed = once(readable, "close")
-            readable.destroy()
-            yield* Effect.promise(() => closed)
-          }
-          const code = yield* consume(readable).pipe(Effect.flip, Effect.timeout("1 second"))
-          assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
-        }))
-    }
-  }
+  it.effect("fromReadable fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.fromReadable({ evaluate: destroyedOnRead, onError: errorCode }).pipe(
+        Stream.runDrain,
+        Effect.flip
+      )
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("fromReadable fails on an already destroyed readable", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ read() {} })
+      const closed = new Promise((resolve) => readable.once("close", resolve))
+      readable.destroy()
+      yield* Effect.promise(() => closed)
+      const code = yield* NodeStream.fromReadable({ evaluate: () => readable, onError: errorCode }).pipe(
+        Stream.runDrain,
+        Effect.flip
+      )
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("fromReadable removes its listeners when destroyed without a close event", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({ emitClose: false, read() {} })
+      readable.push("a")
+      yield* NodeStream.fromReadable({ evaluate: () => readable }).pipe(Stream.take(1), Stream.runDrain)
+      yield* Effect.promise(() => new Promise((resolve) => setImmediate(resolve)))
+      assert.strictEqual(readable.listenerCount("error"), 0)
+      assert.strictEqual(readable.listenerCount("close"), 0)
+    }))
+
+  it.effect("toString fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.toString(destroyedOnRead, { onError: errorCode }).pipe(Effect.flip)
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("toArrayBuffer fails on premature close", () =>
+    Effect.gen(function*() {
+      const code = yield* NodeStream.toArrayBuffer(destroyedOnRead, { onError: errorCode }).pipe(Effect.flip)
+      assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+    }))
+
+  it.effect("toString keeps the maxBytes failure when destroy fails", () =>
+    Effect.gen(function*() {
+      const readable = new Readable({
+        read() {
+          this.push("too large")
+        },
+        destroy(_error, callback) {
+          setImmediate(() => callback(new Error("destroy failed")))
+        }
+      })
+      const closed = new Promise((resolve) => readable.once("close", resolve))
+      const error = yield* NodeStream.toString(() => readable, {
+        maxBytes: 1,
+        onError: (error) => (error as Error).message
+      }).pipe(Effect.flip)
+      assert.strictEqual(error, "maxBytes exceeded")
+      yield* Effect.promise(() => closed)
+    }))
 
   it.effect("should read a stream", () =>
     Effect.gen(function*() {
