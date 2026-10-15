@@ -7826,7 +7826,9 @@ export const mapAccum: {
       for (let index = 0; index < arr.length; index++) {
         const [newState, values] = f(state, arr[index])
         state = newState
-        acc.push(...values)
+        for (let i = 0; i < values.length; i++) {
+          acc.push(values[i])
+        }
       }
       return [state, Arr.isArrayNonEmpty(acc) ? Arr.of(acc) : emptyArr]
     },
