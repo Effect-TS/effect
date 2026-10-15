@@ -10,6 +10,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
+import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as TestClock from "effect/testing/TestClock"
@@ -26,6 +27,33 @@ import {
   tokenBody,
   transport
 } from "./fixtures.ts"
+
+it.effect("provides the OAuth client as a service owned by its layer scope", () =>
+  Effect.gen(function*() {
+    const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+    let requests = 0
+    const context = yield* Layer.build(Layer.effect(OAuth.Client, OAuth.make(options))).pipe(
+      Effect.provideService(Scope.Scope, owner),
+      Effect.provideService(
+        HttpClient.HttpClient,
+        transport(() => {
+          requests++
+          return Response.json(tokenBody)
+        })
+      )
+    )
+    const client = yield* Effect.gen(function*() {
+      const client = yield* OAuth.Client
+      const tokens = yield* OAuth.tokens(yield* client.codeGrant(codeInput))
+      assert.strictEqual(Redacted.value(tokens.accessToken), "private-access")
+      return client
+    }).pipe(Effect.provide(context))
+
+    assert.strictEqual(requests, 1)
+    yield* Scope.close(owner, Exit.void)
+    assert.strictEqual((yield* client.codeGrant(codeInput).pipe(Effect.flip))._tag, "OAuthUnavailable")
+    assert.strictEqual(requests, 1)
+  }))
 
 it.effect("uses RFC7636 S256 and fresh private 32-byte transaction secrets", () =>
   Effect.gen(function*() {

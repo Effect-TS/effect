@@ -4,6 +4,7 @@
  * @stability unstable
  * @since 4.0.5
  */
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Base64 from "effect/encoding/Base64"
 import type { HttpClient } from "effect/http"
@@ -321,6 +322,24 @@ export interface Client {
     input: RevocationInput
   ) => Effect.Effect<void, ConfigurationError | Unavailable>
 }
+
+/**
+ * Service tag for an installed, scoped OAuth client.
+ *
+ * **Details**
+ *
+ * Provide with `Layer.effect(Client, make(options))` to bind the client's lifetime
+ * to the layer scope. Acquire the installed client with `yield* Client`.
+ *
+ * @see {@link make}
+ *
+ * @stability unstable
+ * @category services
+ * @since 4.0.5
+ */
+export const Client: Context.Service<Client, Client> = Context.Service<Client, Client>(
+  "@effect/auth/OAuth/Client"
+)
 
 const ClientOptionsSchema = Schema.Struct({
   metadata: Metadata,

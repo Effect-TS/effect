@@ -1,7 +1,8 @@
 import { OAuth, type OAuthError, Oidc, Pkce } from "@effect/auth"
 import type { Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, Sha2 } from "effect/crypto"
-import type * as Effect from "effect/Effect"
+import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
+import * as Layer from "effect/Layer"
 import type * as Redacted from "effect/Redacted"
 import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
@@ -19,6 +20,23 @@ declare const revocation: OAuth.RevocationInput
 declare const authorization: OAuth.AuthorizationInput
 
 describe("OAuth protocol type contracts", () => {
+  it("acquires and provides the OAuth client service", () => {
+    const acquired = Effect.gen(function*() {
+      return yield* OAuth.Client
+    })
+    expect<Effect.Success<typeof acquired>>().type.toBe<OAuth.Client>()
+    expect<Effect.Error<typeof acquired>>().type.toBe<never>()
+    expect<Effect.Services<typeof acquired>>().type.toBe<OAuth.Client>()
+
+    const supplied = acquired.pipe(Effect.provideService(OAuth.Client, client))
+    expect<Effect.Services<typeof supplied>>().type.toBe<never>()
+    expect<Effect.Success<typeof supplied>>().type.toBe<OAuth.Client>()
+
+    const installed = acquired.pipe(Effect.provide(Layer.effect(OAuth.Client, OAuth.make(clientOptions))))
+    expect<Effect.Services<typeof installed>>().type.toBe<HttpClient.HttpClient>()
+    expect<Effect.Error<typeof installed>>().type.toBe<OAuthError.ConfigurationError | OAuthError.Unavailable>()
+  })
+
   it("requires HTTP and an owning scope only when installing clients", () => {
     const installed = OAuth.make(clientOptions)
     expect<Effect.Services<typeof installed>>().type.toBe<HttpClient.HttpClient | Scope.Scope>()
