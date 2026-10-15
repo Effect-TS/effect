@@ -1010,7 +1010,8 @@ const make = Effect.gen(function*() {
   function sendOutgoing(
     message: Message.Outgoing<any>,
     discard: boolean,
-    retries?: number
+    retries?: number,
+    attempt = 0
   ): Effect.Effect<
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError
@@ -1024,25 +1025,50 @@ const make = Effect.gen(function*() {
         }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
-        if (isPersisted) {
-          return runnerIsLocal
-            ? notifyLocal(message, discard)
-            : runnersService.notify({ address: maybeRunner, message, discard })
-        } else if (Option.isNone(maybeRunner)) {
-          return Effect.fail(new EntityNotAssignedToRunner({ address }))
-        }
-        if (message._tag === "OutgoingRequest") {
-          const entry = clientRequests.get(message.envelope.requestId)
-          if (entry) entry.runner = maybeRunner.value
-        }
-        return sendToRunner(maybeRunner.value, message)
+        const send = (() => {
+          if (isPersisted) {
+            return runnerIsLocal
+              ? notifyLocal(message, discard)
+              : runnersService.notify({ address: maybeRunner, message, discard })
+          } else if (Option.isNone(maybeRunner)) {
+            return Effect.fail(new EntityNotAssignedToRunner({ address }))
+          }
+          if (message._tag === "OutgoingRequest") {
+            const entry = clientRequests.get(message.envelope.requestId)
+            if (entry) entry.runner = maybeRunner.value
+          }
+          return sendToRunner(maybeRunner.value, message)
+        })()
+        return Effect.withSpan(send, "Sharding.sendOutgoing", {
+          attributes: {
+            "cluster.message.kind": message.envelope._tag,
+            "cluster.message.discard": discard,
+            "cluster.message.persisted": isPersisted,
+            "cluster.message.retry_remaining": retries ?? -1,
+            "cluster.message.attempt": attempt,
+            "cluster.entity.type": address.entityType,
+            "cluster.entity.id": String(address.entityId),
+            "cluster.shard.id": String(address.shardId),
+            "cluster.runner.assigned": Option.isSome(maybeRunner),
+            "cluster.runner.local": runnerIsLocal,
+            ...(Option.isSome(maybeRunner)
+              ? {
+                "cluster.runner.host": maybeRunner.value.host,
+                "cluster.runner.port": maybeRunner.value.port
+              }
+              : {})
+          }
+        })
       }),
       (error) => error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable",
       (error) => {
         if (retries === 0) {
           return Effect.die(error)
         }
-        return Effect.delay(sendOutgoing(message, discard, retries && retries - 1), config.sendRetryInterval)
+        return Effect.delay(
+          sendOutgoing(message, discard, retries && retries - 1, attempt + 1),
+          config.sendRetryInterval
+        )
       }
     )
   }
