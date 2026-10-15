@@ -67,6 +67,44 @@ export const suiteWith = <R>(
         }))
       }), testOptions)
 
+    it.effect("delivers lone surrogates without losing concurrent elements", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-lone-surrogate-batch",
+          schema: Schema.Struct({ s: Schema.String })
+        })
+        const surrogate = "😀".slice(0, 1)
+        yield* queue.offer({ s: surrogate })
+        yield* queue.offer({ s: "ok" })
+
+        const fiber = yield* Effect.all([queue.take(Effect.succeed), queue.take(Effect.succeed)], {
+          concurrency: 2
+        }).pipe(Effect.forkScoped)
+
+        const values = yield* awaitDelivery(fiber)
+        assert.deepStrictEqual(values.map(({ s }) => s).sort(), [surrogate, "ok"].sort())
+      }), testOptions)
+
+    it.effect("cleanup releases custom ids after delivering lone surrogates", () =>
+      Effect.gen(function*() {
+        const store = yield* PersistedQueue.PersistedQueueStore
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-lone-surrogate-id",
+          schema: Schema.Struct({ s: Schema.String })
+        })
+        const surrogate = "😀".slice(0, 1)
+        const id = "lone-surrogate-custom-id"
+        yield* queue.offer({ s: surrogate }, { id })
+        const first = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        assert.deepStrictEqual(yield* awaitDelivery(first), { s: surrogate })
+
+        yield* advancePastTtl
+        yield* store.cleanup({ timeToLive: Duration.seconds(1), failedTimeToLive: undefined })
+        yield* queue.offer({ s: "reoffered" }, { id })
+        const second = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        assert.deepStrictEqual(yield* awaitDelivery(second), { s: "reoffered" })
+      }), testOptions)
+
     it.effect("interrupt", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({
