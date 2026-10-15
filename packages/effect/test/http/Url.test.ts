@@ -1,7 +1,8 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Cause, Redacted, Result } from "effect"
 
 import { Url, UrlParams } from "effect/http"
+import { vi } from "vitest"
 import {
   assertFailure,
   assertInstanceOf,
@@ -21,6 +22,30 @@ describe("Url", () => {
   }
 
   describe("make", () => {
+    it("accepts absolute URLs in opaque-origin documents", () => {
+      vi.stubGlobal("location", { origin: "null", pathname: "srcdoc", href: "about:srcdoc" })
+      try {
+        assert.deepStrictEqual(
+          Url.make("https://example.com/api", UrlParams.empty, undefined),
+          Result.succeed(new URL("https://example.com/api"))
+        )
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
+    it("resolves relative URLs against the document location", () => {
+      vi.stubGlobal("location", new URL("https://example.com/app/index.html?existing=true#section"))
+      try {
+        assert.deepStrictEqual(
+          Url.make("api", UrlParams.empty, undefined),
+          Result.succeed(new URL("https://example.com/app/api"))
+        )
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    })
+
     it("appends query parameters and hash", () => {
       assertSuccess(
         Url.make(
