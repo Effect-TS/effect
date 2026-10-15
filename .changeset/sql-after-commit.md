@@ -5,7 +5,7 @@
 
 Add `SqlClient.afterCommit`, which runs an effect after the outermost transaction of the client commits, or immediately when none is open.
 
-Callbacks registered in a transaction that rolls back, or in a savepoint that rolls back, never run. They run in registration order after the connection is released, before `withTransaction` returns, outside the transaction and uninterruptibly. A callback that dies is logged without affecting the transaction's result.
+Callbacks registered in a transaction that rolls back, or in a savepoint that rolls back, never run. They run uninterruptibly, in registration order, after connection cleanup has been attempted and before `withTransaction` returns, in the context surrounding the outermost `withTransaction` call without that transaction in scope. A callback that dies is logged without affecting the transaction's result.
 
 ```ts
 const program = Effect.gen(function*() {

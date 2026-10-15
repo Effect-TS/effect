@@ -93,8 +93,9 @@ export interface SqlClient extends Constructor {
    * A callback registered in a transaction that rolls back, or whose `COMMIT`
    * fails, never runs. One registered in a savepoint that rolls back is
    * discarded, even if the outer transaction commits. Callbacks run in the
-   * order they were registered, after the connection is released and before
-   * `withTransaction` returns, without the transaction in their context: a
+   * order they were registered, after connection cleanup has been attempted
+   * and before `withTransaction` returns. They run in the context surrounding
+   * the outermost `withTransaction` call, without that transaction in scope: a
    * callback that queries uses a new connection. Like finalizers, they run
    * uninterruptibly, so they run whenever `COMMIT` succeeded, even if the
    * fiber was interrupted meanwhile or releasing the connection failed. With
