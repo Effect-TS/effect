@@ -72,8 +72,16 @@ export class Config extends Context.Service<
       /**
        * Whether to use strict JSON schema validation for structured outputs.
        *
-       * Only applies to models that support structured outputs. Defaults to
-       * `true` when structured outputs are supported.
+       * Only applies to models that support structured outputs. When omitted,
+       * schema-backed requests send `strict: null`, leaving strictness unspecified.
+       * Set to `true` to request strict validation for compatible endpoints and
+       * schemas, or `false` to explicitly disable strict validation.
+       *
+       * **Gotchas**
+       *
+       * Support and enforcement depend on the selected model and provider. Strict
+       * mode may restrict supported JSON Schema features; see OpenRouter
+       * [structured output guidance](https://openrouter.ai/docs/guides/features/structured-outputs).
        */
       readonly strictJsonSchema?: boolean | undefined
     }
@@ -1811,7 +1819,7 @@ const getResponseFormat = Effect.fnUntraced(function*({ config, options, transfo
       json_schema: {
         name: options.responseFormat.objectName,
         schema: jsonSchema,
-        strict: config.strictJsonSchema ?? true,
+        strict: config.strictJsonSchema ?? null,
         ...(Predicate.isNotUndefined(description) ? { description } : undefined)
       }
     }

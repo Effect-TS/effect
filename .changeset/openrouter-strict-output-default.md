@@ -2,4 +2,4 @@
 "@effect/ai-openrouter": patch
 ---
 
-Default schema-backed structured outputs to strict JSON schema validation, matching the documented behavior. Explicit `strictJsonSchema: false` continues to disable strict validation.
+Correct the `strictJsonSchema` documentation: omitted configuration sends `strict: null`, leaving strictness unspecified. Recommend explicit `true` for compatible endpoints and schemas, and clarify provider-specific support and schema restrictions without changing runtime behavior.
