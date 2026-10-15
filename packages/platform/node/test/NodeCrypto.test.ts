@@ -164,4 +164,31 @@ describe("NodeCrypto", () => {
     assert.strictEqual(NodeCrypto.layerKeyAgreement, KeyAgreement.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerKeyWrap, KeyWrap.layerWebCrypto)
   })
+
+  it.effect("layer provides every crypto service with the Node.js implementations", () =>
+    Effect.gen(function*() {
+      yield* SecureRandom.SecureRandom
+      yield* Digest.Digest
+      yield* Mac.Mac
+      yield* Aead.Aead
+      yield* Cipher.Cipher
+      yield* Signature.Signature
+      yield* KeyAgreement.KeyAgreement
+      yield* KeyWrap.KeyWrap
+      const kdf = yield* Kdf.Kdf
+      // Argon2id is the capability layerKdf adds over Kdf.layerWebCrypto.
+      // From the Argon2 reference CLI: `argon2 somesalt -id -t 2 -k 64 -p 1 -l 32`.
+      const derive = kdf.derive(Kdf.argon2id({ memory: 64, passes: 2, parallelism: 1 }), encode("password"), {
+        salt: encode("somesalt"),
+        length: 32
+      })
+      if (typeof NodeCryptoModule.argon2 === "function") {
+        assert.strictEqual(
+          Hex.encode(yield* derive),
+          "16a1a498734609dd01456da406de9f3d9da93e6c86c300a12fc1465214ce4922"
+        )
+      } else {
+        assert.strictEqual((yield* Effect.flip(derive)).reason._tag, "Unsupported")
+      }
+    }).pipe(Effect.provide(NodeCrypto.layer)))
 })

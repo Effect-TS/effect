@@ -1,8 +1,14 @@
 import * as BunCrypto from "@effect/platform-bun/BunCrypto"
 import { assert, describe, it } from "@effect/vitest"
 import * as Aead from "effect/crypto/Aead"
+import * as Cipher from "effect/crypto/Cipher"
 import * as Digest from "effect/crypto/Digest"
+import * as Kdf from "effect/crypto/Kdf"
+import * as KeyAgreement from "effect/crypto/KeyAgreement"
+import * as KeyWrap from "effect/crypto/KeyWrap"
+import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Layer from "effect/Layer"
@@ -46,4 +52,27 @@ describe("BunCrypto", () => {
       sealed[0] ^= 1
       assert.strictEqual((yield* Effect.flip(aead.decrypt(key, sealed, options))).reason._tag, "DecryptionFailed")
     }).pipe(Effect.provide(BunCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
+
+  it.effect("layer provides every crypto service", () =>
+    Effect.gen(function*() {
+      yield* SecureRandom.SecureRandom
+      yield* Digest.Digest
+      yield* Mac.Mac
+      yield* Kdf.Kdf
+      yield* Cipher.Cipher
+      yield* Signature.Signature
+      yield* KeyAgreement.KeyAgreement
+      yield* KeyWrap.KeyWrap
+      const aead = yield* Aead.Aead
+      // RFC 8439, section 2.8.2, through the ChaCha20-Poly1305 fallback.
+      const key = yield* Aead.key(
+        Aead.chacha20Poly1305,
+        bytes("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")
+      )
+      const sealed = yield* aead.encrypt(key, new TextEncoder().encode("Ladies"), {
+        nonce: bytes("070000004041424344454647"),
+        aad: bytes("50515253c0c1c2c3c4c5c6c7")
+      })
+      assert.strictEqual(Hex.encode(sealed.subarray(0, 6)), "d31a8d34648e")
+    }).pipe(Effect.provide(BunCrypto.layer)))
 })
