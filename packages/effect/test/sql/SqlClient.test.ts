@@ -120,6 +120,29 @@ const makeHarness = (options: {
   return { calls, withTransaction, afterCommit, after, record, transactionService } as const
 }
 
+const makeCustomHarness = () => {
+  const connection: StubConnection = { id: "custom" }
+  const transactionService = Context.Service<StubTransactionConnection, StubConnection>(
+    `test/SqlClient/CustomTransaction/${harnessIdCounter++}`
+  )
+  const withAfterCommit = SqlClient.withAfterCommit(transactionService)
+  const withTransaction = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    withAfterCommit((level) =>
+      Effect.uninterruptibleMask((restore) =>
+        Effect.tap(
+          restore(effect).pipe(
+            Effect.updateContext((context: Context.Context<R>) =>
+              level.provide(Context.add(context, transactionService, connection))
+            )
+          ),
+          () => level.markCommitted
+        )
+      )
+    )
+
+  return { connection, withTransaction, afterCommit: SqlClient.makeAfterCommit(transactionService) }
+}
+
 const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
   assert.isTrue(Exit.isFailure(exit))
   if (!Exit.isFailure(exit)) {
@@ -441,6 +464,51 @@ describe("SqlClient", () => {
         assert.isTrue(ranInside)
       }))
 
+    it.effect("preserves outer callbacks when a custom driver reuses its transaction value for savepoints", () =>
+      Effect.gen(function*() {
+        const harness = makeCustomHarness()
+        const calls: Array<string> = []
+        const after = (name: string) =>
+          harness.afterCommit(Effect.sync(() => {
+            calls.push(name)
+          }))
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
+          yield* after("outer")
+          yield* harness.withTransaction(after("inner"))
+          yield* after("outer again")
+          assert.deepStrictEqual(calls, [])
+          return "committed"
+        })))
+
+        assert.deepStrictEqual(exit, Exit.succeed("committed"))
+        assert.deepStrictEqual(calls, ["outer", "inner", "outer again"])
+      }))
+
+    it.effect("runs an untracked client callback immediately when different service keys share a transaction value", () =>
+      Effect.gen(function*() {
+        const harness = makeCustomHarness()
+        const otherService = Context.Service<StubTransactionConnection, StubConnection>(
+          `test/SqlClient/OtherTransaction/${harnessIdCounter++}`
+        )
+        const otherAfterCommit = SqlClient.makeAfterCommit(otherService)
+        const calls: Array<string> = []
+
+        const exit = yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
+          yield* harness.afterCommit(Effect.sync(() => {
+            calls.push("discarded")
+          }))
+          yield* otherAfterCommit(Effect.sync(() => {
+            calls.push("immediate")
+          })).pipe(Effect.provideService(otherService, harness.connection))
+          calls.push("rollback")
+          return yield* Effect.fail("boom")
+        })))
+
+        assertTypedFailure(exit, "boom")
+        assert.deepStrictEqual(calls, ["immediate", "rollback"])
+      }))
+
     it.effect("logs a callback that dies and runs the rest", () =>
       Effect.gen(function*() {
         const harness = makeHarness()
@@ -504,6 +572,26 @@ describe("SqlClient", () => {
 
         assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
         assert.isFalse(harness.calls.includes("after(late)"))
+
+        const entered = yield* Deferred.make<void>()
+        const register = yield* Deferred.make<void>()
+        const nested = yield* harness.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkDetach(harness.withTransaction(Effect.gen(function*() {
+            yield* Deferred.succeed(entered, undefined)
+            yield* Deferred.await(register)
+            yield* harness.after("late nested")
+          })))
+          yield* Deferred.await(entered)
+          return child
+        }))
+        yield* Deferred.succeed(register, undefined)
+        const nestedExit = yield* Fiber.await(nested)
+
+        assert.isTrue(Exit.isFailure(nestedExit) && Cause.hasDies(nestedExit.cause))
+        if (Exit.isFailure(nestedExit)) {
+          assert.include(Cause.pretty(nestedExit.cause), "the transaction has already ended")
+        }
+        assert.isFalse(harness.calls.includes("after(late nested)"))
       }))
   })
 })
