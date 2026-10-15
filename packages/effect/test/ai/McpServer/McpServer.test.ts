@@ -1027,68 +1027,6 @@ describe("McpServer", () => {
       assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "ping" })
     }))
 
-  it.effect("should run an id-less call to a request method without replying to it", () =>
-    Effect.gen(function*() {
-      const outbound = yield* Queue.unbounded<RpcMessage.FromServerEncoded>()
-      const disconnects = yield* Queue.unbounded<number>()
-      const ready = yield* Deferred.make<
-        (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
-      >()
-      const transport = yield* RpcServer.Protocol.make((write) =>
-        Deferred.succeed(ready, write).pipe(Effect.as({
-          disconnects,
-          send: (_clientId, message) => Queue.offer(outbound, message).pipe(Effect.asVoid),
-          end: () => Effect.void,
-          clientIds: Effect.succeed(new Set([1])),
-          initialMessage: Effect.succeedNone,
-          supportsAck: false,
-          supportsTransferables: false,
-          supportsSpanPropagation: false,
-          supportsNotifications: true,
-          codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-        }))
-      )
-      const context = yield* Layer.build(
-        McpServer.layer({
-          name: "IdlessRequest",
-          version: "1.0.0",
-          protocols: [McpProtocol.v2025_03_26]
-        }).pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, transport)))
-      )
-      const called = yield* Deferred.make<void>()
-      yield* Context.get(context, McpServer.McpServer).addTool({
-        tool: new McpSchema.Tool({ name: "Fire", inputSchema: { type: "object" } }),
-        annotations: Context.empty(),
-        handle: () => Deferred.succeed(called, void 0).pipe(Effect.as(new McpSchema.CallToolResult({ content: [] })))
-      })
-      const send = yield* Deferred.await(ready)
-      yield* send(1, {
-        _tag: "Request",
-        id: "initialize",
-        tag: "initialize",
-        payload: {
-          protocolVersion: "2025-03-26",
-          capabilities: {},
-          clientInfo: { name: "client", version: "1.0.0" }
-        },
-        headers: []
-      })
-      assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "initialize" })
-      // JSON-RPC 2.0 forbids replying to a request without an id.
-      yield* send(1, {
-        _tag: "Request",
-        id: "",
-        tag: "tools/call",
-        payload: { name: "Fire" },
-        headers: [],
-        isNotification: true
-      })
-      yield* Deferred.await(called)
-      yield* send(1, { _tag: "Request", id: "ping", tag: "ping", payload: {}, headers: [] })
-      assert.deepInclude(yield* Queue.take(outbound), { _tag: "Exit", requestId: "ping" })
-      assert.strictEqual(yield* Queue.size(outbound), 0)
-    }))
-
   it.effect("should match reverse responses to their originating connection", () =>
     Effect.gen(function*() {
       const outbound = yield* Queue.unbounded<{

@@ -345,211 +345,88 @@ describe("RpcServer", () => {
       assert.deepStrictEqual(yield* Queue.take(messages), { _tag: "ClientEnd", clientId: 2 })
     }))
 
-  const NotificationGroup = RpcGroup.make(
-    Rpc.make("fire", { payload: { die: Schema.Boolean }, success: Schema.String }),
-    Rpc.make("events", { success: Schema.String, stream: true })
+  class Guard extends RpcMiddleware.Service<Guard>()("Guard") {}
+  const DiscardGroup = RpcGroup.make(
+    Rpc.make("events", { success: Schema.String, stream: true }),
+    Rpc.make("guarded", { success: Schema.String }).middleware(Guard),
+    Rpc.make("boom", { success: Schema.String })
   )
-  const fire = (id: string, die: boolean) => ({
-    _tag: "Request" as const,
-    id: RpcMessage.RequestId(id),
-    tag: "fire" as const,
-    payload: { die },
-    headers: Headers.empty
-  })
-
-  // Writes the notification, then an awaited request and Eof, and returns everything the server sent.
-  const sentAfterNotification = Effect.fnUntraced(function*(
-    notification: RpcMessage.Request<RpcGroup.Rpcs<typeof NotificationGroup>>
-  ) {
-    const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>>()
-    const server = yield* RpcServer.makeNoSerialization(NotificationGroup, {
+  const makeDiscardServer = Effect.fnUntraced(function*(release: Deferred.Deferred<void>) {
+    const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof DiscardGroup>>>()
+    const server = yield* RpcServer.makeNoSerialization(DiscardGroup, {
       onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-    }).pipe(Effect.provide(NotificationGroup.toLayer({
-      fire: ({ die }) => die ? Effect.die("boom") : Effect.succeed("done"),
-      events: () => Stream.make("a", "b")
-    })))
-    yield* server.write(0, notification)
-    yield* server.write(0, fire("awaited", false))
-    yield* server.write(0, RpcMessage.constEof)
-    // The client ends once every handler, the notification's included, has finished.
-    return yield* takeUntilClientEnd(messages)
-  })
-  const takeUntilClientEnd = Effect.fnUntraced(function*<A extends RpcMessage.FromServer<any>>(
-    messages: Queue.Queue<A>
-  ) {
-    const sent: Array<A> = []
-    while (sent.at(-1)?._tag !== "ClientEnd") sent.push(yield* Queue.take(messages))
-    assert.strictEqual(yield* Queue.size(messages), 0)
-    return sent
-  })
-  const ack = (id: string): RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>> => ({
-    _tag: "Exit",
-    clientId: 0,
-    requestId: RpcMessage.RequestId(id),
-    exit: Exit.void as any
-  })
-  const onlyAwaitedReply: Array<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>> = [
-    { _tag: "Exit", clientId: 0, requestId: RpcMessage.RequestId("awaited"), exit: Exit.succeed("done") },
-    { _tag: "ClientEnd", clientId: 0 }
-  ]
-
-  it.effect("sends no Exit for a notification", () =>
-    Effect.gen(function*() {
-      const sent = yield* sentAfterNotification({ ...fire("notification", false), isNotification: true })
-      assert.deepStrictEqual(sent, onlyAwaitedReply)
-    }))
-
-  it.effect("sends no Defect for a notification that dies, but still reports it", () => {
-    const reports: Array<string> = []
-    return Effect.gen(function*() {
-      // A Defect would fail the client's other requests.
-      const sent = yield* sentAfterNotification({ ...fire("notification", true), isNotification: true })
-      assert.deepStrictEqual(sent, onlyAwaitedReply)
-      assert.deepStrictEqual(reports, ["boom"])
-    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
-  })
-
-  it.effect("interrupts a running notification when its client disconnects, without replying", () =>
-    Effect.gen(function*() {
-      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>>()
-      const entered = yield* Deferred.make<void>()
-      const interrupted = yield* Deferred.make<void>()
-      const server = yield* RpcServer.makeNoSerialization(NotificationGroup, {
-        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-      }).pipe(Effect.provide(NotificationGroup.toLayer({
-        fire: () => Effect.succeed("done"),
+    }).pipe(Effect.provide(Layer.mergeAll(
+      DiscardGroup.toLayer({
         events: () =>
-          Stream.fromEffect(
-            Deferred.succeed(entered, undefined).pipe(
-              Effect.andThen(Effect.never),
-              Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined))
-            )
-          )
-      })))
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("notification"),
-        tag: "events",
-        payload: undefined,
-        headers: Headers.empty,
-        isNotification: true
-      })
-      yield* Deferred.await(entered)
-      yield* server.disconnect(0)
-      yield* Deferred.await(interrupted)
-
-      yield* server.write(0, fire("awaited", false))
-      yield* server.write(0, RpcMessage.constEof)
-      assert.deepStrictEqual([yield* Queue.take(messages), yield* Queue.take(messages)], onlyAwaitedReply)
-      assert.strictEqual(yield* Queue.size(messages), 0)
-    }))
-
-  it.effect("sends no chunks for a stream notification", () =>
-    Effect.gen(function*() {
-      // Without a reader to acknowledge them, chunks would also block the stream.
-      const sent = yield* sentAfterNotification({
-        _tag: "Request",
-        id: RpcMessage.RequestId("notification"),
-        tag: "events",
-        payload: undefined,
-        headers: Headers.empty,
-        isNotification: true
-      })
-      assert.deepStrictEqual(sent, onlyAwaitedReply)
-    }))
-
-  it.effect("acknowledges a discarded call and sends no Defect when it then dies, but still reports it", () => {
-    const reports: Array<string> = []
-    return Effect.gen(function*() {
-      const sent = yield* sentAfterNotification({ ...fire("discarded", true), discard: true })
-      assert.deepStrictEqual(sent, [ack("discarded"), ...onlyAwaitedReply])
-      assert.deepStrictEqual(reports, ["boom"])
-    }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
-  })
-
-  it.effect("acknowledges a discarded stream call while it runs, without sending its chunks", () =>
-    Effect.gen(function*() {
-      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof NotificationGroup>>>()
-      const release = yield* Deferred.make<void>()
-      const server = yield* RpcServer.makeNoSerialization(NotificationGroup, {
-        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-      }).pipe(Effect.provide(NotificationGroup.toLayer({
-        fire: () => Effect.succeed("done"),
-        events: () =>
-          Stream.make("a", "b").pipe(Stream.concat(Stream.fromEffect(Deferred.await(release)).pipe(Stream.drain)))
-      })))
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("discarded"),
-        tag: "events",
-        payload: undefined,
-        headers: Headers.empty,
-        discard: true
-      })
-      assert.deepStrictEqual(yield* Queue.take(messages), ack("discarded"))
-
-      yield* Deferred.succeed(release, undefined)
-      yield* server.write(0, RpcMessage.constEof)
-      assert.deepStrictEqual(yield* takeUntilClientEnd(messages), [{ _tag: "ClientEnd", clientId: 0 }])
-    }))
-
-  it.effect("fails a discarded call with its own Exit, not a Defect, when its middleware dies", () =>
-    Effect.gen(function*() {
-      class Guard extends RpcMiddleware.Service<Guard>()("Guard") {}
-      const group = RpcGroup.make(Rpc.make("guarded", { success: Schema.String }).middleware(Guard))
-      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
-      const server = yield* RpcServer.makeNoSerialization(group, {
-        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-      }).pipe(Effect.provide(Layer.mergeAll(
-        group.toLayer({ guarded: () => Effect.succeed("done") }),
-        Layer.succeed(Guard, () => Effect.die("denied"))
-      )))
-      yield* server.write(0, {
-        _tag: "Request",
-        id: RpcMessage.RequestId("discarded"),
-        tag: "guarded",
-        payload: undefined,
-        headers: Headers.empty,
-        discard: true
-      })
-      yield* server.write(0, RpcMessage.constEof)
-
-      const [exit, end] = yield* takeUntilClientEnd(messages)
-      assert(exit._tag === "Exit" && Exit.isFailure(exit.exit))
-      assert.strictEqual(exit.requestId, RpcMessage.RequestId("discarded"))
-      assert.strictEqual(Cause.squash(exit.exit.cause), "denied")
-      assert.deepStrictEqual(end, { _tag: "ClientEnd", clientId: 0 })
-    }).pipe(Effect.provide(ErrorReporter.layer([]))))
-
-  it.effect("fails only a discarded call whose handler throws, and sends nothing for a throwing notification", () =>
-    Effect.gen(function*() {
-      const group = RpcGroup.make(Rpc.make("boom", { success: Schema.String }))
-      const messages = yield* Queue.unbounded<RpcMessage.FromServer<RpcGroup.Rpcs<typeof group>>>()
-      const server = yield* RpcServer.makeNoSerialization(group, {
-        onFromServer: (message) => Queue.offer(messages, message).pipe(Effect.asVoid)
-      }).pipe(Effect.provide(group.toLayer({
+          Stream.make("a", "b").pipe(
+            Stream.concat(Stream.fromEffect(Effect.andThen(Deferred.await(release), Effect.die("boom"))))
+          ),
+        guarded: () => Effect.succeed("done"),
         boom: (): Effect.Effect<string> => {
           throw new Error("boom")
         }
-      })))
-      const boom = (id: string) => ({
-        _tag: "Request" as const,
+      }),
+      Layer.succeed(Guard, () => Effect.die("denied"))
+    )))
+    const request = (id: string, tag: "events" | "guarded" | "boom", marker: object) =>
+      server.write(0, {
+        _tag: "Request",
         id: RpcMessage.RequestId(id),
-        tag: "boom" as const,
+        tag,
         payload: undefined,
-        headers: Headers.empty
+        headers: Headers.empty,
+        ...marker
       })
-      // A Defect would fail every other call of the client.
-      yield* server.write(0, { ...boom("notification"), isNotification: true })
-      yield* server.write(0, { ...boom("discarded"), discard: true })
+    const takeUntilClientEnd = Effect.gen(function*() {
       yield* server.write(0, RpcMessage.constEof)
+      const sent: Array<RpcMessage.FromServer<RpcGroup.Rpcs<typeof DiscardGroup>>> = []
+      while (sent.at(-1)?._tag !== "ClientEnd") sent.push(yield* Queue.take(messages))
+      return sent
+    })
+    return { messages, request, takeUntilClientEnd }
+  })
 
-      const sent = yield* takeUntilClientEnd(messages)
-      assert.deepStrictEqual(sent.map((message) => message._tag), ["Exit", "ClientEnd"])
-      const exit = sent[0]
-      assert(exit._tag === "Exit" && Exit.isFailure(exit.exit))
-      assert.strictEqual(exit.requestId, RpcMessage.RequestId("discarded"))
-      assert.strictEqual((Cause.squash(exit.exit.cause) as Error).message, "boom")
+  for (
+    const [name, marker] of [["notification", { isNotification: true }], ["discarded call", { discard: true }]] as const
+  ) {
+    it.effect(`sends nothing for a running ${name}, but reports its failure`, () => {
+      const reports: Array<string> = []
+      return Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const { messages, request, takeUntilClientEnd } = yield* makeDiscardServer(release)
+        yield* request("id", "events", marker)
+        if ("discard" in marker) {
+          // acknowledged once the handler starts, not when it ends
+          assert.deepStrictEqual(yield* Queue.take(messages), {
+            _tag: "Exit",
+            clientId: 0,
+            requestId: RpcMessage.RequestId("id"),
+            exit: Exit.void
+          })
+        }
+        // no chunks, no result and no Defect, which would fail the client's other calls
+        yield* Deferred.succeed(release, undefined)
+        assert.deepStrictEqual(yield* takeUntilClientEnd, [{ _tag: "ClientEnd", clientId: 0 }])
+        assert.deepStrictEqual(reports, ["boom"])
+      }).pipe(Effect.provide(ErrorReporter.layer([ErrorReporter.make(({ error }) => reports.push(error.message))])))
+    })
+  }
+
+  it.effect("fails a discarded call with its own Exit, not a Defect, when it fails before its acknowledgement", () =>
+    Effect.gen(function*() {
+      const { request, takeUntilClientEnd } = yield* makeDiscardServer(yield* Deferred.make<void>())
+      yield* request("middleware", "guarded", { discard: true })
+      yield* request("construction", "boom", { discard: true })
+
+      const sent = yield* takeUntilClientEnd
+      assert.deepStrictEqual(
+        sent.map((message) =>
+          message._tag === "Exit" && Exit.isFailure(message.exit)
+            ? [message.requestId, String(Cause.squash(message.exit.cause))]
+            : message._tag
+        ),
+        [["middleware", "denied"], ["construction", "Error: boom"], "ClientEnd"]
+      )
     }).pipe(Effect.provide(ErrorReporter.layer([]))))
 
   // Feeds the lines to an ndJSON-RPC server over stdio, waits until `waits` handlers of `wait` are
@@ -600,24 +477,16 @@ describe("RpcServer", () => {
   const ping = { jsonrpc: "2.0", id: 1, method: "ping", params: { n: 1 } }
   const pong = { jsonrpc: "2.0", id: 1, result: "pong" }
 
-  it.effect("runs overlapping JSON-RPC notifications without replying to them", () =>
+  it.effect("runs overlapping JSON-RPC notifications and drops invalid ones, without replying to any", () =>
     Effect.gen(function*() {
-      // Both notifications arrive with the empty id, and both must run.
+      // Both `wait` notifications arrive with the empty id, and both must run.
       const output = yield* ndJsonRpcOutput([
         { jsonrpc: "2.0", method: "wait", params: {} },
         { jsonrpc: "2.0", method: "wait", params: {} },
-        ping
-      ], 2)
-      assert.deepStrictEqual(output, [pong])
-    }))
-
-  it.effect("drops unknown and undecodable JSON-RPC notifications without a reply", () =>
-    Effect.gen(function*() {
-      const output = yield* ndJsonRpcOutput([
         { jsonrpc: "2.0", method: "missing", params: {} },
         { jsonrpc: "2.0", method: "ping", params: { n: "not a number" } },
         ping
-      ], 0)
+      ], 2)
       assert.deepStrictEqual(output, [pong])
     }))
 

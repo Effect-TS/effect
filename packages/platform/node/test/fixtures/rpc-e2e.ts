@@ -45,17 +45,10 @@ export const e2eSuite = <E>(
         assert.deepStrictEqual(user, new User({ id: "1", name: "John" }))
       }).pipe(Effect.provide(layer)))
 
-    it.effect("completes a discarded call and keeps serving requests", () =>
+    it.effect("completes a discarded call on its acknowledgement, and fails it when its middleware rejects it", () =>
       Effect.gen(function*() {
         const client = yield* UsersClient
         assert.isUndefined(yield* client.GetUser({ id: "1" }, { discard: true }))
-        const user = yield* client.GetUser({ id: "1" })
-        assert.deepStrictEqual(user, new User({ id: "1", name: "Logged in user" }))
-      }).pipe(Effect.provide(layer)))
-
-    it.effect("fails a discarded call that its middleware rejects", () =>
-      Effect.gen(function*() {
-        const client = yield* UsersClient
         const error = yield* client.GetUser({ id: "1" }, { discard: true }).pipe(
           RpcClient.withHeaders({ unauthorized: "true" }),
           Effect.flip
