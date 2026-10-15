@@ -411,10 +411,10 @@ export const fromOption: <A>(self: Option.Option<A>) => Array<A> = Option.toArra
  *
  * **Details**
  *
- * `onNonEmpty` receives a `NonEmptyArray` when the input is a mutable array,
- * and a `NonEmptyReadonlyArray` otherwise. A data-last call defaults to the
- * readonly callback, so the resulting function still accepts `ReadonlyArray`.
- * Supports both data-first and data-last usage.
+ * `onNonEmpty` receives a `NonEmptyArray` for mutable arrays and a
+ * `NonEmptyReadonlyArray` otherwise. Data-last calls default to the readonly
+ * callback, so the returned function still accepts `ReadonlyArray`. Supports
+ * both data-first and data-last usage.
  *
  * **Example** (Branching on emptiness)
  *
