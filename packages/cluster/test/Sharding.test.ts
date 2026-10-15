@@ -1,6 +1,7 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
   ClusterError,
+  ClusterMetrics,
   ClusterSchema,
   Entity,
   EntityAddress,
@@ -35,6 +36,7 @@ import {
   FiberId,
   Layer,
   Mailbox,
+  Metric,
   MutableRef,
   Option,
   Schema,
@@ -57,6 +59,25 @@ import {
 } from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
+  it.scoped("tracks the largest entity mailbox and clears it when requests complete", () =>
+    Effect.gen(function*() {
+      const entity = Entity.make("MailboxMetrics", [Rpc.make("Wait")])
+      const gate = yield* Effect.makeLatch()
+      const mailboxMax = Metric.value(ClusterMetrics.entityMailboxMax.pipe(Metric.tagged("type", entity.type)))
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* entity.client
+        const fibers = yield* Effect.forEach(["1", "1", "2"], (id) => Effect.fork(makeClient(id).Wait()))
+        yield* TestClock.adjust(1000)
+        assert.strictEqual((yield* mailboxMax).value, 2n)
+
+        yield* gate.open
+        yield* Fiber.joinAll(fibers)
+        yield* TestClock.adjust(1000)
+        assert.strictEqual((yield* mailboxMax).value, 0n)
+      }).pipe(Effect.provide(entity.toLayer({ Wait: () => gate.await }).pipe(Layer.provideMerge(TestSharding))))
+    }))
+
   it.scoped("delivers a message", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
