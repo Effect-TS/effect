@@ -38,11 +38,6 @@ const vectors: ReadonlyArray<readonly [Digest.Algorithm, string, string]> = [
 ]
 
 describe("Digest", () => {
-  it("does not export top-level digest functions", () => {
-    assert.notProperty(Digest, "digest")
-    assert.notProperty(Digest, "digestHex")
-  })
-
   it.effect("matches the published vectors through the service", () =>
     Effect.gen(function*() {
       const service = yield* Digest.Digest

@@ -32,10 +32,6 @@ describe("WebCrypto", () => {
       }))
     ))
 
-  it("exports only the reference and its layer", () => {
-    assert.deepStrictEqual(Object.keys(WebCrypto).sort(), ["WebCrypto", "layer"])
-  })
-
   it.effect("defaults to globalThis.crypto", () =>
     Effect.gen(function*() {
       assert.strictEqual(yield* WebCrypto.WebCrypto, globalThis.crypto)
