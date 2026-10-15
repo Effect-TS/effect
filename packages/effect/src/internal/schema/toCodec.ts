@@ -1,8 +1,11 @@
-import { memoize } from "../../Function.ts"
+import * as Arr from "../../Array.ts"
+import { identity, memoize, memoizeIdempotent } from "../../Function.ts"
+import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import type * as PublicSchema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
+import * as SchemaParser from "../../SchemaParser.ts"
 import * as InternalTransformation from "../../SchemaTransformation.ts"
 import * as InternalMake from "./make.ts"
 
@@ -290,6 +293,103 @@ const toCodecArrayFromSingleAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempot
   }
   return out
 }, { stopAt: isCodecArrayFromSingleLink })
+
+/** @internal */
+export function toCodecGoJsonV1<S extends PublicSchema.Constraint>(
+  schema: S
+): PublicSchema.toCodecGoJsonV1<S> {
+  return InternalMake.make(toCodecGoJsonV1AST(schema.ast), { schema })
+}
+
+const toCodecGoJsonV1AST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST =>
+  atEncoded(goNilAST(toCodecJsonAST(ast)), nilAsEmpty)
+)
+
+// Go's `encoding/json` (v1) writes a nil pointer, slice, or map as `null`.
+// Optional keys treat `null` as a missing key; required slices and maps treat
+// it as empty. Nothing is encoded as `null`.
+const nilAsMissingTransformation = new InternalTransformation.Transformation(
+  SchemaGetter.transformOptional(Option.filter(Predicate.isNotNull)),
+  SchemaGetter.passthrough()
+)
+
+const nilAsEmptyArrayTransformation = new InternalTransformation.Transformation(
+  SchemaGetter.transform((input: ReadonlyArray<unknown> | null) => input ?? []),
+  SchemaGetter.passthrough()
+)
+
+const nilAsEmptyRecordTransformation = new InternalTransformation.Transformation(
+  SchemaGetter.transform((input: object | null) => input ?? {}),
+  SchemaGetter.passthrough()
+)
+
+const isGoNilLink = (link: SchemaAST.Link): boolean =>
+  link.transformation === nilAsMissingTransformation ||
+  link.transformation === nilAsEmptyArrayTransformation ||
+  link.transformation === nilAsEmptyRecordTransformation
+
+const goNilAST: (ast: SchemaAST.AST) => SchemaAST.AST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent(
+  (ast) => {
+    switch (ast._tag) {
+      case "Objects":
+        return ast.recur((type) => atEncoded(goNilAST(type), nilAsMissingOrEmpty), identity)
+      case "Arrays":
+        return ast.recur((type) => atEncoded(goNilAST(type), nilAsEmpty))
+      case "Declaration":
+      case "Union":
+      case "Suspend":
+        return ast.recur(goNilAST)
+    }
+    return ast
+  },
+  { stopAt: isGoNilLink }
+)
+
+// Applies `f` to the encoded end of `ast`, unless the Go rules already wrap it.
+function atEncoded(ast: SchemaAST.AST, f: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
+  if (ast.encoding === undefined) return f(ast)
+  const last = ast.encoding[ast.encoding.length - 1]
+  if (isGoNilLink(last)) return ast
+  const link = SchemaAST.mapLink(last, (to) => atEncoded(to, f))
+  return link === last ? ast : SchemaAST.replaceEncoding(ast, Arr.append(ast.encoding.slice(0, -1), link))
+}
+
+function nilAsMissingOrEmpty(ast: SchemaAST.AST): SchemaAST.AST {
+  return SchemaAST.isOptional(ast) ? nilAsMissing(ast) : nilAsEmpty(ast)
+}
+
+function nilAsMissing(ast: SchemaAST.AST): SchemaAST.AST {
+  return acceptsNull(ast) ? ast : decodeFromNullOr(ast, nilAsMissingTransformation)
+}
+
+function nilAsEmpty(ast: SchemaAST.AST): SchemaAST.AST {
+  if (SchemaAST.isArrays(ast) && ast.elements.length === 0 && ast.rest.length === 1) {
+    return decodeFromNullOr(ast, nilAsEmptyArrayTransformation)
+  }
+  if (SchemaAST.isObjects(ast) && ast.propertySignatures.length === 0 && ast.indexSignatures.length > 0) {
+    return decodeFromNullOr(ast, nilAsEmptyRecordTransformation)
+  }
+  return ast
+}
+
+function decodeFromNullOr(
+  ast: SchemaAST.AST,
+  transformation: InternalTransformation.Transformation<any, any>
+): SchemaAST.AST {
+  const encoded = SchemaAST.toEncoded(SchemaAST.replaceContext(ast, undefined))
+  const from = SchemaAST.replaceContext(new SchemaAST.Union([encoded, SchemaAST.null]), ast.context)
+  return SchemaAST.decodeTo(from, ast, transformation)
+}
+
+// A key whose schema already accepts `null` (`NullOr`, `Unknown`, `Json`, ...)
+// keeps `null` as a value.
+function acceptsNull(ast: SchemaAST.AST): boolean {
+  try {
+    return SchemaParser.is(InternalMake.make(SchemaAST.toEncoded(SchemaAST.replaceContext(ast, undefined))))(null)
+  } catch {
+    return false
+  }
+}
 
 function toCodecArrayFromSingleASTStep(ast: SchemaAST.AST): SchemaAST.AST {
   return ast._tag === "Declaration" || ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union" ||

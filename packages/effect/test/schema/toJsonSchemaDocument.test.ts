@@ -4042,4 +4042,35 @@ describe("toJsonSchemaDocument", () => {
       }
     })
   })
+
+  describe("toCodecGoJsonV1", () => {
+    it("describes the nil values written by Go as null", () => {
+      assertJsonSchemaDocument(
+        Schema.toCodecGoJsonV1(Schema.Struct({
+          a: Schema.String,
+          b: Schema.optionalKey(Schema.FiniteFromString),
+          c: Schema.Array(Schema.String),
+          d: Schema.Record(Schema.String, Schema.String)
+        })),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "c": { "anyOf": [{ "type": "array", "items": { "type": "string" } }, { "type": "null" }] },
+              "d": {
+                "anyOf": [
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "required": ["a", "c", "d"],
+            "additionalProperties": false
+          }
+        }
+      )
+    })
+  })
 })

@@ -5136,6 +5136,32 @@ console.log(serialized)
 // date1 uses your custom number format, date2 uses the default ISO string format
 ```
 
+#### Decoding JSON Written by Go
+
+Go's `encoding/json` (v1) writes a nil pointer, slice, or map as `null`, and API documents rarely say which fields can be `null`. `Schema.toCodecGoJsonV1` is `Schema.toCodecJson` with these rules added at every level of the schema:
+
+- an optional key that is `null` decodes as a missing key
+- a required array that is `null` decodes as `[]`
+- a required record that is `null` decodes as `{}`
+
+Encoding never produces `null` for these fields. A key whose schema already accepts `null` (such as `Schema.NullOr(X)`) keeps `null` as a value.
+
+```ts
+import { Schema } from "effect"
+
+const Container = Schema.Struct({
+  Id: Schema.String,
+  Names: Schema.Array(Schema.String),
+  Labels: Schema.Record(Schema.String, Schema.String),
+  Status: Schema.optionalKey(Schema.String)
+})
+
+const codec = Schema.toCodecGoJsonV1(Container)
+
+console.log(Schema.decodeUnknownSync(codec)({ Id: "a", Names: null, Labels: null, Status: null }))
+// Output: { Id: 'a', Names: [], Labels: {} }
+```
+
 ### StringTree Canonical Codec
 
 The `StringTree` codec converts all values to strings, keeping the structure but not the original types.

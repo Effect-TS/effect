@@ -16769,6 +16769,96 @@ export interface toCodecArrayFromSingle<S extends Constraint> extends
 export const toCodecArrayFromSingle: {
   <S extends Constraint>(schema: S): toCodecArrayFromSingle<S>
 } = InternalToCodec.toCodecArrayFromSingle
+/**
+ * Type-level representation returned by {@link toCodecGoJsonV1}.
+ *
+ * @stability unstable
+ * @category converting
+ * @since 4.0.6
+ */
+export interface toCodecGoJsonV1<S extends Constraint> extends
+  BottomLazy<
+    S["ast"],
+    toCodecGoJsonV1<S>,
+    S["~type.parameters"],
+    S["~type.mutability"],
+    S["~type.optionality"],
+    S["~type.constructor.default"],
+    S["~encoded.mutability"],
+    S["~encoded.optionality"]
+  >
+{
+  readonly "Type": S["Type"]
+  readonly "Encoded": Json
+  readonly "DecodingServices": S["DecodingServices"]
+  readonly "EncodingServices": S["EncodingServices"]
+  readonly "~type.make.in": S["~type.make.in"]
+  readonly "~type.make": S["~type.make"]
+  readonly "Iso": S["Iso"]
+  readonly schema: S
+}
+/**
+ * Derives a JSON codec, like {@link toCodecJson}, that also accepts the
+ * `null` values Go's `encoding/json` (v1) writes for nil pointers, slices, and
+ * maps.
+ *
+ * **When to use**
+ *
+ * Use when decoding JSON produced by a Go service (for example the Docker
+ * Engine or Kubernetes APIs), where any field the API document describes as
+ * optional, or any slice or map, may arrive as `null`.
+ *
+ * **Details**
+ *
+ * Decoding applies these rules at every level of the schema:
+ *
+ * - An optional key that is `null` decodes as a missing key.
+ * - A required array (`Schema.Array`) that is `null` decodes as `[]`.
+ * - A required record (`Schema.Record`) that is `null` decodes as `{}`.
+ *
+ * Encoding is the same as {@link toCodecJson}: it never produces `null` for
+ * these fields, and a missing key stays missing. Go decodes a missing key, an
+ * empty slice, and an empty map the same way it decodes `null`.
+ *
+ * **Gotchas**
+ *
+ * - A key whose schema already accepts `null` (for example
+ *   `Schema.NullOr(X)`, `Schema.Unknown`, or `Schema.Json`) keeps `null` as a
+ *   value.
+ * - A required field that is not an array or a record (a nil pointer to a Go
+ *   struct, for example) still fails on `null`. Make it optional if the API
+ *   can omit it.
+ * - Only `null` handling is covered. Other Go conventions, such as `[]byte`
+ *   as base64 or `int64` values beyond `Number.MAX_SAFE_INTEGER`, need the
+ *   matching field schema.
+ * - Go's `encoding/json/v2` writes nil slices and maps as `[]` and `{}`, but
+ *   still writes nil pointers as `null`.
+ *
+ * **Example** (Decoding a Go response with nil fields)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const Container = Schema.Struct({
+ *   Id: Schema.String,
+ *   Names: Schema.Array(Schema.String),
+ *   Labels: Schema.Record(Schema.String, Schema.String),
+ *   Status: Schema.optionalKey(Schema.String)
+ * })
+ *
+ * const decode = Schema.decodeUnknownSync(Schema.toCodecGoJsonV1(Container))
+ *
+ * decode({ Id: "a", Names: null, Labels: null, Status: null }) // => { Id: "a", Names: [], Labels: {} }
+ * ```
+ *
+ * @see {@link toCodecJson} for the canonical JSON codec
+ * @stability unstable
+ * @category converting
+ * @since 4.0.6
+ */
+export const toCodecGoJsonV1: {
+  <S extends Constraint>(schema: S): toCodecGoJsonV1<S>
+} = InternalToCodec.toCodecGoJsonV1
 type XmlEncoderOptions = {
   /** Root element name for the returned XML string. Default: "root" */
   readonly rootName?: string | undefined
