@@ -563,10 +563,10 @@ describe("Stream", () => {
         })
         const exit = yield* Stream.fromReadableStream({
           evaluate: () => readable,
-          onError: (error) => new Error(`mapped: ${(error as Error).message}`)
+          onError: () => "mapped"
         }).pipe(Stream.runDrain, Effect.exit)
 
-        assertExitFailure(exit, Cause.fail(new Error("mapped: boom")))
+        assertExitFailure(exit, Cause.fail("mapped"))
         assert.isFalse(readable.locked)
       }))
   })

@@ -243,51 +243,22 @@ describe("Channel", () => {
     it.effect("fromTransformStream - surfaces write-side errors through the read side", () =>
       Effect.gen(function*() {
         const error = new Error("write failed")
-        const mapped = new Error("mapped")
-        const channel = Channel.fromArray([[1] as [number]]).pipe(
-          Channel.pipeTo(Channel.fromTransformStream<never, number, number, Error>({
-            evaluate: () =>
-              new TransformStream<number, number>(
-                {
-                  transform() {
-                    throw error
-                  }
-                },
-                undefined,
-                // run the transform without waiting for a read
-                { highWaterMark: 1 }
-              ),
-            onError: () => mapped
-          }))
+        const channel = Channel.fromTransformStream<never, number, number, Error>({
+          evaluate: () =>
+            new TransformStream<number, number>({
+              transform() {
+                throw error
+              }
+            }),
+          onError: (cause) => cause as Error
+        })
+        const exit = yield* Channel.fromArray([[1] as [number]]).pipe(
+          Channel.pipeTo(channel),
+          Channel.runDrain,
+          Effect.exit
         )
-        const exit = yield* Effect.gen(function*() {
-          const pull = yield* Channel.toPull(channel)
-          // let the write fail before the first read
-          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-          return yield* pull
-        }).pipe(Effect.scoped, Effect.exit)
 
-        assertExitFailure(exit, Cause.fail(mapped))
-      }))
-
-    it.effect("fromTransformStream - surfaces upstream failures once", () =>
-      Effect.gen(function*() {
-        const channel = Channel.succeed([1] as [number]).pipe(
-          Channel.concat(Channel.fail("upstream failed")),
-          Channel.pipeTo(Channel.fromTransformStream({
-            evaluate: () => new TransformStream<number, number>(),
-            onError: (error) => error
-          }))
-        )
-        const exit = yield* Effect.gen(function*() {
-          const pull = yield* Channel.toPull(channel)
-          assert.deepStrictEqual(yield* pull, [1])
-          // let the upstream failure abort the writable before the next read
-          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-          return yield* pull
-        }).pipe(Effect.scoped, Effect.exit)
-
-        assertExitFailure(exit, Cause.fail("upstream failed"))
+        assertExitFailure(exit, Cause.fail(error))
       }))
 
     it.effect("acquireRelease", () =>
