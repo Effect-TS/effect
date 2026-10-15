@@ -8,9 +8,7 @@ import * as AiError from "effect/ai/AiError"
 import * as DecisionModel from "effect/ai/DecisionModel"
 import * as AiModel from "effect/ai/Model"
 import * as Effect from "effect/Effect"
-import * as Base64 from "effect/encoding/Base64"
 import * as Layer from "effect/Layer"
-import type * as Schema from "effect/Schema"
 import { TypeSafeClient } from "./TypeSafeClient.ts"
 import type * as TypeSafeSchema from "./TypeSafeSchema.ts"
 
@@ -42,12 +40,11 @@ export const model = (
  *
  * **Details**
  *
- * With images, `state` becomes `{ input, images }`: the encoded input, and one
- * placeholder per image in order. Instructions can name an image by path,
- * such as `` `images[0]` ``, and input fields as `` `input.subject` ``. Each
- * image is sent once as a base64 asset, and the request opts in to
- * TypeSafe's preview image support. Locate decisions become Box questions,
- * which need Jev 1.14 (`"jev-preview"` or `"jev-1.14.0"`).
+ * Each `Decision.Image` field is sent as a base64 asset keyed by the reference
+ * that replaces it in `state`, so instructions name an image by its field path,
+ * such as `` `photo` ``. Requests with images opt in to TypeSafe's preview image
+ * support. Locate decisions become Box questions whose instructions end with
+ * the image path; they need Jev 1.14 (`"jev-preview"` or `"jev-1.14.0"`).
  *
  * **Gotchas**
  *
@@ -87,14 +84,14 @@ export const make = Effect.fnUntraced(
               questions[key] = { type: "noul", instructions: decision.instructions, criteria: decision.criteria }
               break
             case "Locate":
-              questions[key] = { type: "box", instructions: decision.instructions }
+              questions[key] = { type: "box", instructions: `${decision.instructions} in \`${decision.image}\`` }
               break
           }
         }
         const response = yield* client.systemOne(
           images === undefined
             ? { model: options.model, state, questions }
-            : { model: options.model, ...yield* withImages(state, questions, images) }
+            : { model: options.model, state, questions, assets: yield* encodeAssets(images) }
         )
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const [key, decision] of Object.entries(decisions)) {
@@ -135,34 +132,14 @@ export const make = Effect.fnUntraced(
   }
 )
 
-const withImages = (
-  state: Schema.Json,
-  questions: Record<string, typeof TypeSafeSchema.Question.Encoded>,
-  images: ReadonlyArray<DecisionModel.Image>
-) =>
-  Effect.map(Effect.forEach(images, encodeImage), (assets) => {
-    const placeholders = makePlaceholders(assets.length, JSON.stringify({ state, questions }))
-    return {
-      state: { input: state, images: placeholders },
-      questions,
-      assets: Object.fromEntries(placeholders.map((placeholder, index) => [placeholder, assets[index]]))
-    }
-  })
-
-// TypeSafe replaces a placeholder anywhere it appears in the request's strings, so pick ones absent from the
-// request. The closing `>` stops `<image:1>` matching inside `<image:10>`.
-const makePlaceholders = (count: number, request: string): Array<string> => {
-  for (let attempt = 0;; attempt++) {
-    const prefix = attempt === 0 ? "<image:" : `<image~${attempt}:`
-    const placeholders = Array.from({ length: count }, (_, index) => `${prefix}${index}>`)
-    if (placeholders.every((placeholder) => !request.includes(placeholder))) {
-      return placeholders
-    }
-  }
-}
+const encodeAssets = (images: ReadonlyArray<DecisionModel.ProviderImage>) =>
+  Effect.map(
+    Effect.forEach(images, ({ image }) => encodeImage(image)),
+    (assets) => Object.fromEntries(images.map(({ reference }, index) => [reference, assets[index]]))
+  )
 
 const encodeImage = (
-  image: DecisionModel.Image
+  image: DecisionModel.ProviderImage["image"]
 ): Effect.Effect<typeof TypeSafeSchema.ImageAsset.Encoded, AiError.AiError> => {
   let mediaType = image.mediaType
   let data: string
@@ -180,7 +157,7 @@ const encodeImage = (
       return invalidUserInput("TypeSafe image data URLs must contain valid percent-encoding")
     }
   } else {
-    data = typeof image.data === "string" ? image.data : Base64.encode(image.data)
+    data = image.data
   }
   switch (mediaType.toLowerCase()) {
     case "image/png":

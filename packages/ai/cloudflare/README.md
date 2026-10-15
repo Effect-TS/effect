@@ -37,14 +37,21 @@ const program = DecisionModel.decide(Triage, {
 }).pipe(Effect.provide(Clef))
 ```
 
-Pass `images` to include pictures with the input. Clef shows them to the model before the state:
+Declare images as input fields with `Decision.Image`. Clef shows them to the model before the state, and the state lists each image's reference in order:
 
 ```ts
 declare const screenshotBytes: Uint8Array
 
-const withScreenshot = DecisionModel.decide(Triage, {
-  input: "Customers report this checkout error.",
-  images: [{ mediaType: "image/png", data: screenshotBytes }]
+const ScreenshotTriage = Decision.make({
+  input: Schema.Struct({ report: Schema.String, screenshot: Decision.Image }),
+  decisions: Triage.decisions
+})
+
+const withScreenshot = DecisionModel.decide(ScreenshotTriage, {
+  input: {
+    report: "Customers report the error in `screenshot`.",
+    screenshot: { mediaType: "image/png", data: screenshotBytes }
+  }
 })
 ```
 

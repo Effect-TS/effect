@@ -108,10 +108,12 @@ describe("Decision", () => {
 
   it("locate answers carry a bounding box and optional confidence", () => {
     const definition = Decision.make({
-      input: Schema.String,
-      decisions: { mug: Decision.locate({ instructions: "the coffee mug in the photo" }) }
+      input: Schema.Struct({ photo: Decision.Image }),
+      decisions: { mug: Decision.locate({ image: "photo", instructions: "the coffee mug" }) }
     })
-    const result = DecisionModel.decide(definition, { input: "kitchen" })
+    const result = DecisionModel.decide(definition, {
+      input: { photo: { mediaType: "image/png", data: "iVBORw0KGgo=" } }
+    })
 
     type Result = typeof result extends Effect.Effect<infer A, any, any> ? A : never
 
@@ -119,6 +121,59 @@ describe("Decision", () => {
       readonly box: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }
       readonly confidence?: number | undefined
     }>()
+  })
+
+  it("image paths follow nested, array, and tuple fields of the encoded input", () => {
+    class Listing extends Schema.Class<Listing>("Listing")({ cover: Decision.Image }) {}
+    const Input = Schema.Struct({
+      photo: Decision.Image,
+      frames: Schema.Array(Schema.Struct({ frame: Decision.Image })),
+      pair: Schema.Tuple([Decision.Image, Schema.String, Decision.Image]),
+      listing: Listing,
+      scan: Schema.Union([
+        Schema.Struct({ front: Decision.Image }),
+        Schema.Struct({ back: Decision.Image })
+      ]),
+      renamed: Schema.Struct({ photo: Decision.Image }).pipe(Schema.encodeKeys({ photo: "image_url" })),
+      deep: Schema.Struct({
+        a: Schema.Struct({ b: Schema.Struct({ c: Decision.Image, d: Schema.Struct({ e: Decision.Image }) }) })
+      }),
+      thumbnail: Schema.optional(Decision.Image),
+      "file.name": Decision.Image,
+      caption: Schema.String
+    })
+
+    expect<Decision.ImagePaths<typeof Input.Encoded>>().type.toBe<
+      | "photo"
+      | `frames[${number}].frame`
+      | "pair[0]"
+      | "pair[2]"
+      | "listing.cover"
+      | "scan.front"
+      | "scan.back"
+      | "renamed.image_url"
+      | "deep.a.b.c"
+    >()
+  })
+
+  it("make accepts locate decisions only for required image paths", () => {
+    const Input = Schema.Struct({
+      photo: Decision.Image,
+      frames: Schema.Array(Schema.Struct({ frame: Decision.Image })),
+      thumbnail: Schema.optional(Decision.Image),
+      caption: Schema.String
+    })
+
+    expect(Decision.make).type.toBeCallableWith({
+      input: Input,
+      decisions: { car: Decision.locate({ image: "frames[2].frame", instructions: "the car" }) }
+    })
+    for (const image of ["thumbnail", "caption", "frames.frame", "missing"] as const) {
+      expect(Decision.make).type.not.toBeCallableWith({
+        input: Input,
+        decisions: { car: Decision.locate({ image, instructions: "the car" }) }
+      })
+    }
   })
 
   it("probability accepts omitted criteria and preserves answer inference", () => {

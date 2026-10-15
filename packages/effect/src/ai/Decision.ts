@@ -8,7 +8,13 @@
  * @stability unstable
  * @since 4.0.0
  */
-import type * as Schema from "../Schema.ts"
+import * as Effect from "../Effect.ts"
+import * as Base64 from "../encoding/Base64.ts"
+import * as Predicate from "../Predicate.ts"
+import * as Schema from "../Schema.ts"
+import * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaTransformation from "../SchemaTransformation.ts"
+import type * as DecisionModel from "./DecisionModel.ts"
 
 /**
  * Brand type for decision definitions.
@@ -99,8 +105,9 @@ export interface Probability {
 }
 
 /**
- * Decision that finds where something is in an image supplied with the input.
- * The answer is a bounding box around one target.
+ * Decision that finds one target in an image field of the input.
+ * `image` is the field's path in the encoded input, such as `"photo"` or
+ * `"frames[2].frame"`. The answer is a bounding box around the target.
  *
  * @see {@link locate} for the constructor
  * @see {@link LocateAnswer} for the answer produced by this decision
@@ -109,10 +116,131 @@ export interface Probability {
  * @category models
  * @since 4.0.5
  */
-export interface Locate {
+export interface Locate<Field extends string = string> {
   readonly _tag: "Locate"
-  readonly instructions: Description
+  readonly image: Field
+  readonly instructions: string
 }
+
+/**
+ * Key that marks an encoded {@link Image}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export const ImageKey = "~effect/ai/Decision/Image"
+
+/**
+ * JSON encoding of an {@link Image}: base64 data or a URL with its media type,
+ * under {@link ImageKey}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface ImageEncoded {
+  readonly [ImageKey]: {
+    readonly mediaType: string
+    readonly base64: string
+  } | {
+    readonly mediaType: string
+    readonly url: string
+  }
+}
+
+const isImage = (u: unknown): u is DecisionModel.Image =>
+  Predicate.isObject(u) && Predicate.isString(u.mediaType) &&
+  (Predicate.isString(u.data) || u.data instanceof globalThis.Uint8Array || u.data instanceof globalThis.URL)
+
+/**
+ * Schema for an image input field. Its type is `DecisionModel.Image`: a
+ * media type with base64 data, bytes, or a URL. Decisions refer to the image
+ * by the field's path, like any other field.
+ *
+ * **Details**
+ *
+ * The field encodes to an {@link ImageEncoded} object. `DecisionModel.decide`
+ * replaces each one in the encoded input with a reference string and sends the
+ * images to the provider separately; an image used in several fields is sent
+ * once. The encoded shape also appears in JSON Schema generated from the input.
+ *
+ * **Example** (Declaring an image field)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { Decision } from "effect/ai"
+ *
+ * const Listing = Schema.Struct({
+ *   title: Schema.String,
+ *   photo: Decision.Image
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.5
+ */
+export const Image: Schema.Codec<DecisionModel.Image, ImageEncoded> = Schema.Struct({
+  [ImageKey]: Schema.Union([
+    Schema.Struct({ mediaType: Schema.String, base64: Schema.String }),
+    Schema.Struct({ mediaType: Schema.String, url: Schema.String })
+  ])
+}).pipe(
+  Schema.decodeTo(
+    Schema.declare(isImage, { expected: "DecisionModel.Image" }),
+    SchemaTransformation.transformEffect<DecisionModel.Image, ImageEncoded>({
+      decode: ({ [ImageKey]: image }, options) => {
+        if ("base64" in image) {
+          return Effect.succeed({ mediaType: image.mediaType, data: image.base64 })
+        }
+        return globalThis.URL.canParse(image.url)
+          ? Effect.succeed({ mediaType: image.mediaType, data: new globalThis.URL(image.url) })
+          : Effect.fail(new SchemaIssue.InvalidValue({ expected: "a valid URL string" }, image.url, options))
+      },
+      encode: ({ mediaType, data }) =>
+        Effect.succeed({
+          [ImageKey]: data instanceof globalThis.URL
+            ? { mediaType, url: data.href }
+            : { mediaType, base64: typeof data === "string" ? data : Base64.encode(data) }
+        })
+    })
+  )
+)
+
+type PrevDepth = [never, 0, 1, 2, 3, 4]
+
+type ImagePathSuffixes<A, Depth extends number> = [Depth] extends [never] ? never
+  : A extends ImageEncoded ? ""
+  : A extends ReadonlyArray<unknown> ?
+    number extends A["length"] ? `[${number}]${ImagePathSuffixes<A[number], PrevDepth[Depth]>}`
+    : {
+      [K in keyof A & `${number}`]: `[${K}]${ImagePathSuffixes<A[K], PrevDepth[Depth]>}`
+    }[keyof A & `${number}`]
+  : A extends object ? {
+      [K in keyof A & string]-?: K extends `${string}.${string}` | `${string}[${string}` ? never
+        : {} extends Pick<A, K> ? never
+        : `.${K}${ImagePathSuffixes<A[K], PrevDepth[Depth]>}`
+    }[keyof A & string]
+  : never
+
+/**
+ * Paths to the required {@link Image} fields of an encoded input type, as
+ * accepted by {@link locate}. Object keys are joined with `.`, and array
+ * elements use `[index]`: exact indices for tuples, any number for arrays.
+ *
+ * **Details**
+ *
+ * Paths reach four levels deep. Optional fields and keys containing `.` or
+ * `[` are excluded.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.5
+ */
+export type ImagePaths<A> = ImagePathSuffixes<A, 4> extends infer Path extends string ?
+  Path extends "" ? never : Path extends `.${infer Rest}` ? Rest : Path :
+  never
 
 /**
  * Union of every decision kind.
@@ -397,10 +525,26 @@ export const probability = (options: {
 })
 
 /**
- * Creates a decision that finds one target in the images passed to
- * `DecisionModel.decide`. Name the target, and the image when there are
- * several. The model must be created with `supportsLocate: true`, and the
- * call must include at least one image.
+ * Creates a decision that finds one target in an image field of the input.
+ * `image` is the field's path in the encoded input: keys joined with `.` and
+ * array indices in brackets, such as `"frames[2].frame"`. The model must be
+ * created with `supportsLocate: true`.
+ *
+ * **Details**
+ *
+ * Paths use encoded key names, so a key renamed with `Schema.encodeKeys` is
+ * targeted by its encoded name. `make` accepts only paths to required
+ * {@link Image} fields, and `DecisionModel.decide` fails with
+ * `AiError.InvalidUserInputError` when the path holds no image, such as an
+ * index past the end of an array.
+ *
+ * The answer is always one box, even when the target is absent. Pair the
+ * decision with a {@link probability} decision that the target is present.
+ *
+ * **Gotchas**
+ *
+ * - For a generic input schema, the compiler error for an invalid path names
+ *   the whole decision type rather than the path.
  *
  * **Example** (Finding a mug in a photo)
  *
@@ -409,10 +553,10 @@ export const probability = (options: {
  * import { Decision } from "effect/ai"
  *
  * const FindMug = Decision.make({
- *   input: Schema.String,
+ *   input: Schema.Struct({ photo: Decision.Image }),
  *   decisions: {
- *     present: Decision.probability({ instructions: "The photo shows a coffee mug" }),
- *     mug: Decision.locate({ instructions: "the coffee mug in the photo" })
+ *     present: Decision.probability({ instructions: "`photo` shows a coffee mug" }),
+ *     mug: Decision.locate({ image: "photo", instructions: "the coffee mug" })
  *   }
  * })
  * ```
@@ -423,10 +567,12 @@ export const probability = (options: {
  * @category constructors
  * @since 4.0.5
  */
-export const locate = (options: {
-  readonly instructions: Description
-}): Locate => ({
+export const locate = <const Field extends string>(options: {
+  readonly image: Field
+  readonly instructions: string
+}): Locate<Field> => ({
   _tag: "Locate",
+  image: options.image,
   instructions: options.instructions
 })
 
@@ -468,7 +614,13 @@ export const locate = (options: {
  * @category constructors
  * @since 4.0.0
  */
-export const make = <Input extends Schema.Constraint, Decisions extends Record<string, Any>>(options: {
+export const make = <
+  Input extends Schema.Constraint,
+  Decisions extends Record<
+    string,
+    Classify<string> | Rate<string> | Probability | Locate<ImagePaths<Input["Encoded"]>>
+  >
+>(options: {
   readonly input: Input
   readonly decisions: Decisions
 }): Definition<Input, Decisions> => {

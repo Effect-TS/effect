@@ -7,10 +7,12 @@
  */
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Uuid from "../internal/uuid.ts"
 import * as Predicate from "../Predicate.ts"
+import * as Random from "../Random.ts"
 import * as Schema from "../Schema.ts"
 import * as AiError from "./AiError.ts"
-import type * as Decision from "./Decision.ts"
+import * as Decision from "./Decision.ts"
 
 /**
  * Service key for answering decisions about an input. Create implementations
@@ -67,14 +69,10 @@ export class DecisionUsage extends Schema.Class<DecisionUsage>(
  */
 export interface DecideOptions<Input extends Schema.Constraint> {
   readonly input: Input["Type"]
-  /**
-   * Images to include with the input.
-   */
-  readonly images?: ReadonlyArray<Image> | undefined
 }
 
 /**
- * An image sent to the provider with the encoded input.
+ * An image in the input, declared with a `Decision.Image` field.
  * `data` is a base64 string, a byte array, or a URL.
  *
  * @stability unstable
@@ -84,6 +82,24 @@ export interface DecideOptions<Input extends Schema.Constraint> {
 export interface Image {
   readonly mediaType: string
   readonly data: string | Uint8Array | URL
+}
+
+/**
+ * An image extracted from the encoded input. `state` holds `reference` where
+ * the image was, and `path` is where it was first found. `data` is a base64
+ * string or a URL.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.5
+ */
+export interface ProviderImage {
+  readonly reference: string
+  readonly path: ReadonlyArray<string | number>
+  readonly image: {
+    readonly mediaType: string
+    readonly data: string | URL
+  }
 }
 
 /**
@@ -104,7 +120,8 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
- * `images` is omitted when no images are supplied.
+ * `images` holds the `Decision.Image` values found in the input and is omitted
+ * when there are none.
  * `Decisions` is the union of decision kinds the provider receives. `make`
  * passes locate decisions only to providers created with `supportsLocate: true`.
  *
@@ -115,7 +132,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 export interface ProviderOptions<Decisions extends Decision.Any = Decision.Any> {
   readonly state: Schema.Json
   readonly decisions: Record<string, Decisions>
-  readonly images?: ReadonlyArray<Image> | undefined
+  readonly images?: ReadonlyArray<ProviderImage> | undefined
 }
 
 /**
@@ -231,6 +248,67 @@ const invalidUserInput = (description: string): AiError.AiError =>
     method: "decide",
     reason: new AiError.InvalidUserInputError({ description })
   })
+
+const toProviderImage = (value: unknown): ProviderImage["image"] | undefined => {
+  if (!Predicate.isObject(value) || Object.keys(value).length !== 1) return undefined
+  const image = value[Decision.ImageKey]
+  if (!Predicate.isObject(image) || Object.keys(image).length !== 2 || !Predicate.isString(image.mediaType)) {
+    return undefined
+  }
+  if (Predicate.isString(image.base64)) return { mediaType: image.mediaType, data: image.base64 }
+  if (Predicate.isString(image.url) && URL.canParse(image.url)) {
+    return { mediaType: image.mediaType, data: new URL(image.url) }
+  }
+  return undefined
+}
+
+const formatPath = (path: ReadonlyArray<string | number>): string =>
+  path.map((segment, index) => typeof segment === "number" ? `[${segment}]` : index === 0 ? segment : `.${segment}`)
+    .join("")
+
+const randomUuid = (random: Random.Random): string => {
+  const bytes = new Uint8Array(16)
+  for (let index = 0; index < bytes.length; index++) {
+    bytes[index] = Math.floor(random.nextDoubleUnsafe() * 256)
+  }
+  return Uuid.v4String(bytes)
+}
+
+/**
+ * Replaces each encoded `Decision.Image` in `state` with a reference. Equal
+ * images share one reference. `paths` holds every path where an image was found.
+ */
+const extractImages = (state: Schema.Json, random: Random.Random) => {
+  const images: Array<ProviderImage> = []
+  const references = new Map<string, string>()
+  const paths = new Set<string>()
+  const walk = (value: Schema.Json, path: ReadonlyArray<string | number>): Schema.Json => {
+    const image = toProviderImage(value)
+    if (image !== undefined) {
+      paths.add(formatPath(path))
+      const key = `${image.mediaType}\n${
+        typeof image.data === "string" ? `base64:${image.data}` : `url:${image.data.href}`
+      }`
+      let reference = references.get(key)
+      if (reference === undefined) {
+        reference = randomUuid(random)
+        references.set(key, reference)
+        images.push({ reference, path, image })
+      }
+      return reference
+    }
+    if (Array.isArray(value)) {
+      return value.map((item, index) => walk(item, [...path, index]))
+    }
+    if (Predicate.isObject(value)) {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, walk(item as Schema.Json, [...path, key])])
+      )
+    }
+    return value
+  }
+  return { state: walk(state, []), images, paths }
+}
 
 const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(value) && Number.isFinite(value)
 
@@ -391,13 +469,15 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  *
  * **Details**
  *
- * Set `supportsImages: true` to accept images. Otherwise, nonempty image input
+ * After encoding, each `Decision.Image` in the input is replaced with a
+ * reference string, and the provider receives the images in `images`. Set
+ * `supportsImages: true` to accept images. Otherwise, an input with images
  * fails with `AiError.InvalidUserInputError`.
  *
  * Set `supportsLocate: true` to accept locate decisions. Otherwise, a
  * definition with a locate decision fails with `AiError.InvalidUserInputError`,
- * as does a locate decision without images. Only a provider created with
- * `supportsLocate: true` receives locate decisions, so only its `decide`
+ * as does a locate decision whose path holds no image. Only a provider created
+ * with `supportsLocate: true` receives locate decisions, so only its `decide`
  * options include `Decision.Locate`.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
@@ -444,17 +524,22 @@ export const make = (
               reason: new AiError.InvalidUserInputError({ description: error.message })
             })
           ),
-          Effect.flatMap((state) => {
-            const images = options.images?.length ? options.images : undefined
-            if (images !== undefined && params.supportsImages !== true) {
+          Effect.flatMap((encoded) =>
+            Effect.withFiber((fiber) => Effect.succeed(extractImages(encoded, fiber.getRef(Random.Random))))
+          ),
+          Effect.flatMap(({ state, images, paths }) => {
+            if (images.length > 0 && params.supportsImages !== true) {
               return Effect.fail(invalidUserInput("This decision model does not accept images"))
             }
-            if (Object.values(definition.decisions).some((decision) => decision._tag === "Locate")) {
+            for (const [key, decision] of Object.entries(definition.decisions)) {
+              if (decision._tag !== "Locate") continue
               if (params.supportsLocate !== true) {
                 return Effect.fail(invalidUserInput("This decision model does not support locate decisions"))
               }
-              if (images === undefined) {
-                return Effect.fail(invalidUserInput("Locate decisions need at least one image"))
+              if (!paths.has(decision.image)) {
+                return Effect.fail(
+                  invalidUserInput(`Locate decision "${key}" targets "${decision.image}", which holds no image`)
+                )
               }
             }
             // The checks above keep locate decisions from providers without `supportsLocate`.
@@ -464,7 +549,7 @@ export const make = (
             return decide({
               state,
               decisions: definition.decisions,
-              ...(images === undefined ? undefined : { images })
+              ...(images.length === 0 ? undefined : { images })
             })
           }),
           Effect.flatMap((response) =>

@@ -696,43 +696,54 @@ describe("TypeSafeDecisionModel", () => {
     ))
 
   describe("images", () => {
+    const Listing = Schema.Struct({
+      message: Schema.String,
+      photo: Decision.Image,
+      gallery: Schema.Array(Decision.Image)
+    })
+
     const FindMug = Decision.make({
-      input: Ticket,
+      input: Listing,
       decisions: {
-        present: Decision.probability({ instructions: "`images[0]` shows a coffee mug" }),
-        mug: Decision.locate({ instructions: "the coffee mug in `images[0]`" })
+        present: Decision.probability({ instructions: "`photo` shows a coffee mug" }),
+        mug: Decision.locate({ image: "photo", instructions: "the coffee mug" })
       }
     })
 
-    it.effect("sends images as assets behind state placeholders and maps box answers onto locate answers", () => {
+    it.effect("sends images as assets keyed by their state references and maps box answers onto locate answers", () => {
       const requests: Array<HttpClientRequest.HttpClientRequest> = []
-      const images: ReadonlyArray<DecisionModel.Image> = [
-        { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
-        { mediaType: "image/jpeg", data: "/9j/4AAQ" },
-        {
-          mediaType: "application/octet-stream",
-          data: new URL("data:image/png;base64,iVBORw0KGgo%2B%2FA%3D%3D#preview")
-        }
-      ]
+      const input = {
+        message: "Kitchen counter",
+        photo: { mediaType: "image/png", data: new Uint8Array([137, 80, 78, 71]) },
+        gallery: [
+          { mediaType: "image/jpeg", data: "/9j/4AAQ" },
+          {
+            mediaType: "application/octet-stream",
+            data: new URL("data:image/png;base64,iVBORw0KGgo%2B%2FA%3D%3D#preview")
+          }
+        ]
+      }
 
       return Effect.gen(function*() {
-        const { answers } = yield* DecisionModel.decide(FindMug, { input: ticket, images })
+        const { answers } = yield* DecisionModel.decide(FindMug, { input })
 
         assert.deepStrictEqual(answers, {
           present: { probability: 0.97 },
           mug: { box: { left: 0.44, top: 0.25, right: 0.84, bottom: 0.82 }, confidence: 0.92 }
         })
-        assert.deepStrictEqual(yield* getRequestBody(requests[0]), {
+        const body = yield* getRequestBody(requests[0])
+        const [photo, jpeg, dataUrl] = [body.state.photo, ...body.state.gallery]
+        assert.deepStrictEqual(body, {
           model: "jev-preview",
-          state: { input: ticket, images: ["<image:0>", "<image:1>", "<image:2>"] },
+          state: { message: "Kitchen counter", photo, gallery: [jpeg, dataUrl] },
           questions: {
-            present: { type: "noul", instructions: "`images[0]` shows a coffee mug" },
-            mug: { type: "box", instructions: "the coffee mug in `images[0]`" }
+            present: { type: "noul", instructions: "`photo` shows a coffee mug" },
+            mug: { type: "box", instructions: "the coffee mug in `photo`" }
           },
           assets: {
-            "<image:0>": { type: "image", format: "png", data_base64: "iVBORw==" },
-            "<image:1>": { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
-            "<image:2>": { type: "image", format: "png", data_base64: "iVBORw0KGgo+/A==" }
+            [photo]: { type: "image", format: "png", data_base64: "iVBORw==" },
+            [jpeg]: { type: "image", format: "jpg", data_base64: "/9j/4AAQ" },
+            [dataUrl]: { type: "image", format: "png", data_base64: "iVBORw0KGgo+/A==" }
           }
         })
       }).pipe(
@@ -751,22 +762,6 @@ describe("TypeSafeDecisionModel", () => {
       )
     })
 
-    it.effect("picks placeholders that do not occur elsewhere in the request", () =>
-      Effect.gen(function*() {
-        const input = { ...ticket, message: "Photo <image:0> attached" }
-        yield* DecisionModel.decide(TicketTriage, { input, images: [{ mediaType: "image/png", data: "iVBORw0KGgo=" }] })
-      }).pipe(
-        Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-latest" })),
-        Effect.provide(makeClientLayer((request) =>
-          Effect.gen(function*() {
-            const body = yield* getRequestBody(request)
-            assert.deepStrictEqual(body.state.images, ["<image~1:0>"])
-            assert.deepStrictEqual(Object.keys(body.assets), ["<image~1:0>"])
-            return jsonResponse(request, systemOneResponse)
-          })
-        ))
-      ))
-
     for (
       const [name, image] of [
         ["a remote URL", { mediaType: "image/png", data: new URL("https://example.com/mug.png") }],
@@ -776,7 +771,10 @@ describe("TypeSafeDecisionModel", () => {
     ) {
       it.effect("rejects " + name + " with InvalidUserInputError before sending", () =>
         Effect.gen(function*() {
-          const error = yield* DecisionModel.decide(FindMug, { input: ticket, images: [image] }).pipe(Effect.flip)
+          const error = yield* DecisionModel.decide(FindMug, { input: { message: "", photo: image, gallery: [] } })
+            .pipe(
+              Effect.flip
+            )
           assert.strictEqual(error.reason._tag, "InvalidUserInputError")
         }).pipe(
           Effect.provide(TypeSafeDecisionModel.layer({ model: "jev-preview" })),
