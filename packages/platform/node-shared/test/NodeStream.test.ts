@@ -6,10 +6,45 @@ import * as ByteSize from "effect/ByteSize"
 import * as Channel from "effect/Channel"
 import * as Console from "effect/Console"
 import * as Stream from "effect/Stream"
+import { once } from "node:events"
 import { Duplex, Readable, Transform } from "node:stream"
 import * as Zlib from "node:zlib"
 
 describe("Stream", () => {
+  const onErrorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
+  const consumers: ReadonlyArray<
+    readonly [string, (readable: Readable) => Effect.Effect<unknown, string | undefined>]
+  > = [
+    [
+      "fromReadable",
+      (readable) => NodeStream.fromReadable({ evaluate: () => readable, onError: onErrorCode }).pipe(Stream.runCollect)
+    ],
+    ["toString", (readable) => NodeStream.toString(() => readable, { onError: onErrorCode })],
+    ["toArrayBuffer", (readable) => NodeStream.toArrayBuffer(() => readable, { onError: onErrorCode })],
+    ["toUint8Array", (readable) => NodeStream.toUint8Array(() => readable, { onError: onErrorCode })]
+  ]
+
+  for (const [name, consume] of consumers) {
+    for (const alreadyClosed of [false, true]) {
+      it.live(`${name} fails on ${alreadyClosed ? "an already-destroyed input" : "premature close"}`, () =>
+        Effect.gen(function*() {
+          const readable = new Readable({
+            read() {
+              this.destroy()
+            }
+          })
+          if (alreadyClosed) {
+            // Ensure close has already fired before the helper can subscribe.
+            const closed = once(readable, "close")
+            readable.destroy()
+            yield* Effect.promise(() => closed)
+          }
+          const code = yield* consume(readable).pipe(Effect.flip, Effect.timeout("1 second"))
+          assert.strictEqual(code, "ERR_STREAM_PREMATURE_CLOSE")
+        }))
+    }
+  }
+
   it.effect("should read a stream", () =>
     Effect.gen(function*() {
       const stream = NodeStream.fromReadable<"error", string>({
