@@ -1,6 +1,7 @@
 import type { Runner, ShardId } from "@effect/cluster"
 import {
   ClusterError,
+  ClusterMetrics,
   ClusterSchema,
   Entity,
   EntityAddress,
@@ -35,6 +36,7 @@ import {
   FiberId,
   Layer,
   Mailbox,
+  Metric,
   MutableRef,
   Option,
   Schema,
@@ -872,7 +874,7 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.onError(() => TestClock.adjust(2000)), Effect.provide(layer), Effect.scoped)
     }))
 
-  it.effect("keeps the graceful timeout for normal shard reassignment", () =>
+  it.effect("records shard release duration after graceful reassignment completes", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
       const runnerStorage = Layer.effect(
@@ -904,6 +906,8 @@ describe("Sharding shard lock failover", () => {
         const makeClient = yield* TestEntity.client
         const client = makeClient("1")
         const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        const metric = ClusterMetrics.shardReleaseDuration
+        const before = yield* Metric.value(metric)
 
         while (!sharding.hasShardId(shardId)) {
           yield* TestClock.adjust(10)
@@ -926,6 +930,7 @@ describe("Sharding shard lock failover", () => {
         yield* TestClock.adjust(900)
         assert.isNull(entityFiber.unsafePoll())
         assert.strictEqual(storageState.releaseCalls.length, 0)
+        assert.strictEqual((yield* Metric.value(metric)).count, before.count)
 
         for (let i = 0; i < 20 && entityFiber.unsafePoll() === null; i++) {
           yield* TestClock.adjust(10)
@@ -933,10 +938,14 @@ describe("Sharding shard lock failover", () => {
         const entityExit = entityFiber.unsafePoll()
         assert(entityExit && Exit.isFailure(entityExit) && Cause.isInterrupted(entityExit.cause))
         assert.strictEqual(storageState.releaseCalls.length, 1)
+        const after = yield* Metric.value(metric)
+        assert.strictEqual(after.count - before.count, 1)
+        assert.strictEqual(after.sum - before.sum, 1000)
       }).pipe(
         Effect.ensuring(TestClock.adjust(2000)),
         Effect.provide(layer),
-        Effect.scoped
+        Effect.scoped,
+        Effect.tagMetrics("test", "graceful-reassignment-duration")
       )
     }), 10_000)
 
