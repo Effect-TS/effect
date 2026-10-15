@@ -851,6 +851,56 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(compensated, ["a"])
     }))
 
+  it.effect("layerMemory compensates a completed activity only once after replay", () =>
+    Effect.gen(function*() {
+      const gate = DurableDeferred.make("WorkflowEngine/CompensationReplay/Gate", { error: Schema.String })
+      const events: Array<string> = []
+      const Order = Workflow.make("WorkflowEngine/CompensationReplay", {
+        payload: { id: Schema.String },
+        error: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          yield* Activity.make({
+            name: "charge",
+            success: Schema.String,
+            execute: Effect.sync(() => {
+              events.push("charge")
+              return "ch_1"
+            })
+          }).pipe(
+            Order.withCompensation((id) => Effect.sync(() => events.push(`refund ${id}`)))
+          )
+          yield* DurableDeferred.await(gate)
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      yield* Effect.gen(function*() {
+        const executionId = yield* Order.execute({ id: "one" }, { discard: true })
+        let result = yield* Order.poll(executionId)
+        while (Option.isNone(result) || result.value._tag !== "Suspended") {
+          yield* Effect.yieldNow
+          result = yield* Order.poll(executionId)
+        }
+        assert.deepStrictEqual(events, ["charge"])
+
+        const token = DurableDeferred.tokenFromExecutionId(gate, { workflow: Order, executionId })
+        yield* DurableDeferred.fail(gate, { token, error: "rejected" })
+        while (Option.isNone(result) || result.value._tag !== "Complete") {
+          yield* Effect.yieldNow
+          result = yield* Order.poll(executionId)
+        }
+
+        assert(Exit.isFailure(result.value.exit))
+        assert.strictEqual(result.value.exit.cause.reasons.length, 1)
+        const reason = result.value.exit.cause.reasons[0]
+        assert(Cause.isFailReason(reason))
+        assert.strictEqual(reason.error, "rejected")
+        assert.deepStrictEqual(events, ["charge", "refund ch_1"])
+      }).pipe(Effect.provide(layer))
+    }))
+
   it.effect("layerMemory closes finalizers registered before suspension", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("WorkflowEngine/SuspendedScope/Gate")
