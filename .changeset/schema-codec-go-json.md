@@ -1,5 +1,5 @@
 ---
-"effect": patch
+"effect": minor
 ---
 
-Add `Schema.toCodecGoJson`, a JSON codec that also decodes the `null` values Go's `encoding/json` writes for nil pointers, slices, and maps. A `null` optional key decodes as missing, and a `null` array or record decodes as empty. Encoding never produces `null` for these fields.
+Add the unstable `Schema.toCodecGoJson` codec for Go JSON responses. It normalizes optional-key `null` values to missing keys and required array or record `null` values to empty collections, while preserving schemas that already accept `null`. Encoding is unchanged from `Schema.toCodecJson`.

@@ -5144,7 +5144,9 @@ Go's `encoding/json` writes a nil pointer, slice, or map as `null`, and API docu
 - a required array that is `null` decodes as `[]`
 - a required record that is `null` decodes as `{}`
 
-Encoding never produces `null` for these fields. A key whose schema already accepts `null` (such as `Schema.NullOr(X)`) keeps `null` as a value. The rules also hold for `encoding/json/v2`, which writes nil slices and maps as `[]` and `{}` but still writes nil pointers as `null`.
+Encoding is unchanged from `Schema.toCodecJson`. A key whose schema already accepts `null` (such as `Schema.NullOr(X)`) keeps that behavior. Array and record rules also apply to top-level and nested collections, but not tuples, non-empty arrays, or structs; collection checks still apply. The codec also accepts `encoding/json/v2` output, which uses `[]` and `{}` for nil slices and maps by default.
+
+This unstable codec deliberately normalizes nil collections to empty ones. Go distinguishes nil from non-nil empty slices and maps, and unmarshalling missing keys, `null`, and empty collections can affect existing values differently. Use `Schema.toCodecJson` with explicit nullable schemas if those distinctions matter.
 
 ```ts
 import { Schema } from "effect"

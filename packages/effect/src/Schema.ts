@@ -16815,19 +16815,24 @@ export interface toCodecGoJson<S extends Constraint> extends
  * - A required array (`Schema.Array`) that is `null` decodes as `[]`.
  * - A required record (`Schema.Record`) that is `null` decodes as `{}`.
  *
- * Encoding is the same as {@link toCodecJson}: it never produces `null` for
- * these fields, and a missing key stays missing. Go decodes a missing key, an
- * empty slice, and an empty map the same way it decodes `null`.
+ * Array and record rules also apply at the top level and to nested collection
+ * values. Tuples, non-empty arrays, and structs are not treated as collections;
+ * collection checks still apply to the empty value.
  *
- * The rules hold for both `encoding/json` and `encoding/json/v2`. Version 2
- * writes nil slices and maps as `[]` and `{}`, which decode unchanged, and
- * still writes `null` for nil pointers, for fields tagged `format:emitnull`,
- * and when `FormatNilSliceAsNull` or `FormatNilMapAsNull` is set. A nil slice
- * or map equals an empty one in Go itself, so decoding `null` as empty is
- * correct for either version.
+ * Encoding is unchanged from {@link toCodecJson}: the added rules only decode
+ * `null` and do not emit it. A missing key stays missing.
+ *
+ * These rules also accept `encoding/json/v2` output. By default, v2 writes
+ * nil slices and maps as `[]` and `{}`, but it can be configured to emit
+ * `null` instead.
  *
  * **Gotchas**
  *
+ * - Normalization deliberately discards the distinction between nil and empty
+ *   Go slices or maps. They are distinguishable in Go, and unmarshalling a
+ *   missing key, `null`, or an empty collection can affect existing values
+ *   differently. Use {@link toCodecJson} with explicit nullable schemas when
+ *   that distinction matters.
  * - A key whose schema already accepts `null` (for example
  *   `Schema.NullOr(X)`, `Schema.Unknown`, or `Schema.Json`) keeps `null` as a
  *   value.
@@ -16838,13 +16843,8 @@ export interface toCodecGoJson<S extends Constraint> extends
  *   version 2), but its schema is a base64 string, not an array. A required
  *   `[]byte` field that is `null` fails; make it optional if the API can send
  *   `null`.
- * - Only the `null` rules are covered, because they are the part of Go's
- *   output that does not depend on field types and is missing from API
- *   documents. Field formats depend on the Go type behind each field (a
- *   `time.Duration` is integer nanoseconds in `encoding/json` unless the type
- *   has its own `MarshalJSON`, `[]byte` is base64, `,string` writes numbers as
- *   strings), so they belong in the field schemas, usually generated from the
- *   API document.
+ * - Only these `null` rules are covered. Field formats such as durations,
+ *   base64 bytes, and numbers encoded as strings belong in the field schemas.
  *
  * **Example** (Decoding a Go response with nil fields)
  *

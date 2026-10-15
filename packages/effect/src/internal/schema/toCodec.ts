@@ -300,12 +300,8 @@ export function toCodecGoJson<S extends PublicSchema.Constraint>(
   return InternalMake.make(toCodecGoJsonAST(schema.ast), { schema })
 }
 
-// Go's `encoding/json` writes a nil pointer, slice, or map as `null`. Each
-// position where Go can write `null` gets the canonical JSON codec unioned
-// with a `null` member: an optional key decodes `null` as a missing key, and a
-// required slice or map decodes it as empty. The canonical member comes
-// first, so a schema that already accepts `null` keeps it, and the `null`
-// members' types (`never`, `[]`, `{}`) add nothing to the decoded type.
+// Keep the canonical member first to preserve accepted nulls and union branch
+// selection. Added members (`never`, `[]`, `{}`) do not widen the decoded type.
 const toCodecGoJsonAST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST =>
   nilAsEmptyAtEncoded(goNilAST(toCodecJsonAST(ast)))
 )
