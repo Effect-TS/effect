@@ -13,30 +13,20 @@ export const stringify = (bytes: Uint8Array): string => {
   return segments.map((segment) => Array.from(segment, hex).join("")).join("-")
 }
 
-const randomBytes = (): Uint8Array<ArrayBuffer> => globalThis.crypto.getRandomValues(new Uint8Array(16))
-
 /** @internal */
-export function v4Bytes(): Uint8Array<ArrayBuffer>
-/** @internal */
-export function v4Bytes<A extends ArrayBufferLike>(bytes: Uint8Array<A>): Uint8Array<A>
-/** @internal */
-export function v4Bytes(bytes: Uint8Array = randomBytes()): Uint8Array {
+export const v4Bytes = <A extends ArrayBufferLike>(bytes: Uint8Array<A>): Uint8Array<A> => {
   bytes[6] = (bytes[6] & 0x0f) | 0x40
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   return bytes
 }
 
 /** @internal */
-export const v4String = (bytes?: Uint8Array): string => stringify(bytes === undefined ? v4Bytes() : v4Bytes(bytes))
+export const v4String = (bytes: Uint8Array): string => stringify(v4Bytes(bytes))
 
 const maxV7Timestamp = 2 ** 48 - 1
 
 /** @internal */
-export function v7Bytes(timestampMillis: number): Uint8Array<ArrayBuffer>
-/** @internal */
-export function v7Bytes<A extends ArrayBufferLike>(timestampMillis: number, bytes: Uint8Array<A>): Uint8Array<A>
-/** @internal */
-export function v7Bytes(timestampMillis: number, bytes: Uint8Array = randomBytes()): Uint8Array {
+export const v7Bytes = <A extends ArrayBufferLike>(timestampMillis: number, bytes: Uint8Array<A>): Uint8Array<A> => {
   const timestamp = Math.min(Math.max(0, Math.trunc(timestampMillis)), maxV7Timestamp)
 
   bytes[0] = Math.floor(timestamp / 2 ** 40)
@@ -51,5 +41,5 @@ export function v7Bytes(timestampMillis: number, bytes: Uint8Array = randomBytes
 }
 
 /** @internal */
-export const v7String = (timestampMillis: number, bytes?: Uint8Array): string =>
-  stringify(bytes === undefined ? v7Bytes(timestampMillis) : v7Bytes(timestampMillis, bytes))
+export const v7String = (timestampMillis: number, bytes: Uint8Array): string =>
+  stringify(v7Bytes(timestampMillis, bytes))

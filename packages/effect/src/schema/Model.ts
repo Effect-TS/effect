@@ -13,6 +13,7 @@
  * @since 4.0.0
  */
 import type { Brand } from "../Brand.ts"
+import * as SecureRandom from "../crypto/SecureRandom.ts"
 import * as DateTime from "../DateTime.ts"
 import * as Effect from "../Effect.ts"
 import * as Uuid from "../internal/uuid.ts"
@@ -808,7 +809,11 @@ export const Uint8Array: Schema.instanceOf<Uint8Array<ArrayBuffer>> = Schema.Uin
 export const UuidV4BytesWithGenerate = <B extends string>(
   schema: Schema.brand<Schema.instanceOf<Uint8Array<ArrayBuffer>>, B>
 ): Schema.withConstructorDefault<Schema.brand<Schema.instanceOf<Uint8Array<ArrayBuffer>>, B>> =>
-  schema.pipe(Schema.withConstructorDefault(Effect.sync(() => Uuid.v4Bytes())))
+  schema.pipe(
+    Schema.withConstructorDefault(
+      Effect.sync(() => Uuid.v4Bytes(SecureRandom.randomBytesUnsafe(16) as Uint8Array<ArrayBuffer>))
+    )
+  )
 
 /**
  * A field that represents a binary UUID v4 that is generated on inserts.
@@ -854,7 +859,7 @@ export interface UuidV4Insert<B extends string> extends
 export const UuidV4WithGenerate = <B extends string>(
   schema: Schema.brand<Schema.String, B>
 ): Schema.withConstructorDefault<Schema.brand<Schema.String, B>> =>
-  schema.pipe(Schema.withConstructorDefault(Effect.sync(Uuid.v4String)))
+  schema.pipe(Schema.withConstructorDefault(Effect.sync(() => Uuid.v4String(SecureRandom.randomBytesUnsafe(16)))))
 
 /**
  * A field that represents a string UUID v4 that is generated on inserts.
@@ -902,7 +907,9 @@ export const UuidV7WithGenerate = <B extends string>(
 ): Schema.withConstructorDefault<Schema.brand<Schema.String, B>> =>
   schema.pipe(
     Schema.withConstructorDefault(
-      Effect.clockWith((clock) => Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe())))
+      Effect.clockWith((clock) =>
+        Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), SecureRandom.randomBytesUnsafe(16)))
+      )
     )
   )
 
