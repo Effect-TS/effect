@@ -54,14 +54,19 @@ describe("Kdf", () => {
 
   it.effect("does not provide Argon2id in the Web Crypto layer", () =>
     Effect.gen(function*() {
-      // RFC 9106's second recommended setting: 64 MiB, 3 passes, 4 lanes.
+      // Omitted costs default to RFC 9106's second recommended setting: 64 MiB,
+      // 3 passes, 4 lanes.
       assert.deepStrictEqual(
-        { memory: Kdf.argon2id.memory, passes: Kdf.argon2id.passes, parallelism: Kdf.argon2id.parallelism },
-        { memory: 65_536, passes: 3, parallelism: 4 }
+        Kdf.argon2id(),
+        { _tag: "Argon2id", name: "argon2id", memory: 65_536, passes: 3, parallelism: 4 }
+      )
+      assert.deepStrictEqual(
+        Kdf.argon2id({ memory: 19_456 }),
+        { _tag: "Argon2id", name: "argon2id", memory: 19_456, passes: 3, parallelism: 4 }
       )
       const kdf = yield* Kdf.Kdf
       const error = yield* Effect.flip(
-        kdf.derive(Kdf.argon2id, encode("password"), { salt: encode("somesalt"), length: 32 })
+        kdf.derive(Kdf.argon2id(), encode("password"), { salt: encode("somesalt"), length: 32 })
       )
       assert.strictEqual(error.module, "Kdf")
       assertReason(error, "Unsupported", "derive")

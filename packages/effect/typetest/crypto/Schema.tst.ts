@@ -12,7 +12,7 @@ describe("Schema crypto keys", () => {
       Schema.Codec<Signature.PublicKey<Signature.Ecdsa<"P-256">>, Signature.PublicKey<Signature.Ecdsa<"P-256">>>
     >()
     expect(Schema.revealCodec(Schema.AeadKeyFromBytes(Aead.aes256Gcm))).type.toBe<
-      Schema.Codec<Aead.Key<Aead.Algorithm<true>>, Uint8Array>
+      Schema.Codec<Aead.Key<Aead.AesGcm>, Uint8Array>
     >()
     expect(Schema.revealCodec(Schema.KeyAgreementPrivateKeyFromBytes(KeyAgreement.x25519))).type.toBe<
       Schema.Codec<KeyAgreement.PrivateKey<KeyAgreement.X25519>, Uint8Array>
