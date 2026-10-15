@@ -51,8 +51,7 @@ const nanosToUnit = (nanos: bigint, divisor: number): number => {
   return Number(nanos / scale) + Number(nanos % scale) / divisor
 }
 
-const fromNanosTerms = (...terms: ReadonlyArray<readonly [value: number, scale: number]>): Duration => {
-  const nanos = terms.reduce((total, [value, scale]) => total + value * scale, 0)
+const fromNanosTerms = (nanos: number, ...terms: ReadonlyArray<readonly [value: number, scale: number]>): Duration => {
   return Number.isFinite(nanos) && terms.every(([value]) => Number.isInteger(value))
     ? make(terms.reduce((total, [value, scale]) => total + BigInt(value) * BigInt(scale), bigint0))
     : fromNanosNumber(nanos)
@@ -335,7 +334,7 @@ export const fromInputUnsafe = (input: Input): Duration => {
         if (input[0] === Infinity || input[1] === Infinity) {
           return infinity
         }
-        return fromNanosTerms([input[0], 1_000_000_000], [input[1], 1])
+        return fromNanosTerms(input[0] * 1_000_000_000 + input[1], [input[0], 1_000_000_000], [input[1], 1])
       }
       const obj = input as DurationObject
       let millis = 0
@@ -347,7 +346,17 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (obj.seconds) millis += obj.seconds * 1_000
       if (obj.milliseconds) millis += obj.milliseconds
       if (!obj.microseconds && !obj.nanoseconds) return make(millis)
-      return fromNanosTerms([millis, 1_000_000], [obj.microseconds ?? 0, 1_000], [obj.nanoseconds ?? 0, 1])
+      return fromNanosTerms(
+        millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0),
+        [obj.weeks || 0, 604_800_000_000_000],
+        [obj.days || 0, 86_400_000_000_000],
+        [obj.hours || 0, 3_600_000_000_000],
+        [obj.minutes || 0, 60_000_000_000],
+        [obj.seconds || 0, 1_000_000_000],
+        [obj.milliseconds || 0, 1_000_000],
+        [obj.microseconds ?? 0, 1_000],
+        [obj.nanoseconds ?? 0, 1]
+      )
     }
   }
   return invalid(input)
