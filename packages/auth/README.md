@@ -82,6 +82,10 @@ are unsupported.
 
 ## OAuth and OpenID Connect
 
+`OAuth.Client` is the service for an installed OAuth client. Provide it with
+`Layer.effect(OAuth.Client, OAuth.make(options))` and acquire it with
+`const oauth = yield* OAuth.Client`. The layer owns the client's scope.
+
 `OAuth.make` installs authorization-code and refresh flows, profile requests, and
 revocation. `client.codeGrant` and `client.refreshGrant` return redacted
 `TokenReceipt` values. Inspect provider-specific extensions before calling
@@ -140,11 +144,12 @@ state comparison, and single-use enforcement for state, nonce, and PKCE verifier
 ```ts
 import { OAuth, Pkce } from "@effect/auth"
 import { NodeCrypto } from "@effect/platform-node"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { FetchHttpClient } from "effect/http"
 
-const authorization = Effect.gen(function*() {
-  const client = yield* OAuth.make({
+const OAuthLive = Layer.effect(
+  OAuth.Client,
+  OAuth.make({
     metadata: {
       issuer: "https://issuer.example",
       authorization_endpoint: "https://issuer.example/authorize",
@@ -154,6 +159,10 @@ const authorization = Effect.gen(function*() {
     authentication: { method: "none", publicClient: true },
     timeoutMs: 5000
   })
+).pipe(Layer.provide(FetchHttpClient.layer))
+
+const authorization = Effect.gen(function*() {
+  const client = yield* OAuth.Client
   const state = yield* Pkce.random()
   const pkce = yield* Pkce.make()
   const url = yield* client.authorizationUrl({
@@ -163,11 +172,9 @@ const authorization = Effect.gen(function*() {
     codeChallenge: pkce.challenge
   })
   // Store state and pkce.verifier in a private, single-use transaction.
-  // Keep the client scope open for any subsequent exchange through this client.
   return { state, pkce, url }
 }).pipe(
-  Effect.scoped,
-  Effect.provide(FetchHttpClient.layer),
+  Effect.provide(OAuthLive),
   Effect.provide(NodeCrypto.layer)
 )
 ```
