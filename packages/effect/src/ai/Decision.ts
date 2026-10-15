@@ -154,6 +154,29 @@ const isImage = (u: unknown): u is DecisionModel.Image =>
   (Predicate.isString(u.data) || u.data instanceof globalThis.Uint8Array || u.data instanceof globalThis.URL)
 
 /**
+ * Type-level representation of the {@link Image} schema.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.1.0
+ */
+export interface Image extends
+  Schema.decodeTo<
+    Schema.declare<DecisionModel.Image>,
+    Schema.Struct<{
+      readonly [ImageKey]: Schema.Union<
+        readonly [
+          Schema.Struct<{ readonly mediaType: Schema.String; readonly base64: Schema.String }>,
+          Schema.Struct<{ readonly mediaType: Schema.String; readonly url: Schema.String }>
+        ]
+      >
+    }>
+  >
+{
+  readonly "Rebuild": Image
+}
+
+/**
  * Schema for an image input field. Its type is `DecisionModel.Image`: a
  * media type with base64 data, bytes, or a URL. Decisions refer to the image
  * by the field's path, like any other field.
@@ -181,7 +204,7 @@ const isImage = (u: unknown): u is DecisionModel.Image =>
  * @category schemas
  * @since 4.1.0
  */
-export const Image: Schema.Codec<DecisionModel.Image, ImageEncoded> = Schema.Struct({
+export const Image: Image = Schema.Struct({
   [ImageKey]: Schema.Union([
     Schema.Struct({ mediaType: Schema.String, base64: Schema.String }),
     Schema.Struct({ mediaType: Schema.String, url: Schema.String })
