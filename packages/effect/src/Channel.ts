@@ -1701,6 +1701,12 @@ export const fromSchedule = <O, E, R>(
 /**
  * Creates a channel from a lazily supplied Web `ReadableStream`.
  *
+ * **Details**
+ *
+ * Read failures are mapped with `onError`. Finalization cancels the reader and
+ * releases its lock, or only releases the lock when `releaseLockOnEnd` is set.
+ * A rejected cancel hook becomes a defect.
+ *
  * **Example** (Reading from a Web stream)
  *
  * ```ts import.meta.vitest
@@ -1918,7 +1924,13 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
       options.scope,
       options.releaseLockOnEnd
         ? Effect.sync(() => reader.releaseLock())
-        : Effect.promise(() => reader.cancel().catch(constVoid))
+        : Effect.promise(() =>
+          reader.cancel().catch((error) =>
+            // `closed` resolves only when the cancel hook failed. An errored
+            // stream rejects it with an error that was already reported.
+            reader.closed.then(() => Promise.reject(error), constVoid)
+          )
+        ).pipe(Effect.ensuring(Effect.sync(() => reader.releaseLock())))
     ),
     pull
   )
