@@ -2,4 +2,4 @@
 "@effect/cluster": patch
 ---
 
-Update the `effect_cluster_shards` gauge when shards are released, not only when they are acquired.
+Keep the `effect_cluster_shards` gauge accurate when shards are released or locks are lost.
