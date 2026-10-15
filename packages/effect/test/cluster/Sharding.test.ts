@@ -12,6 +12,7 @@ import {
   Latch,
   Layer,
   Logger,
+  Metric,
   MutableRef,
   Option,
   Queue,
@@ -3046,7 +3047,7 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
 
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
-      const storageState = makeFailoverStorageState()
+      const storageState = makeFailoverStorageState({ releaseFailures: 2 })
       const unregisterInterrupts: Array<boolean> = []
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
@@ -3086,6 +3087,7 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const makeClient = yield* TestEntity.client
         const client = makeClient("1")
         const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
 
         while (!sharding.hasShardId(shardId)) {
           yield* TestClock.adjust(10)
@@ -3115,7 +3117,13 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         const entityExit = entityFiber.pollUnsafe()
         assert(entityExit && Exit.hasInterrupts(entityExit))
         assert.strictEqual(storageState.releaseCalls.length, 1)
+        assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseCalls.length, 3)
         assert.deepStrictEqual(unregisterInterrupts, [false])
+        const after = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
+        assert.strictEqual(after.count - before.count, 1)
+        assert.strictEqual(after.sum - before.sum, 1100)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
@@ -3628,6 +3636,8 @@ interface FailoverStorageState {
   otherRunnerHealthy: boolean
   /** Test clock duration `releaseAll` stays in flight for. */
   releaseAllDuration: number
+  /** Number of `release` calls that fail before succeeding. */
+  releaseFailures: number
   runner: Runner.Runner | undefined
   /** Shards `acquire` does not grant, as if another runner holds them. */
   readonly acquireDenied: Array<ShardId.ShardId>
@@ -3652,6 +3662,7 @@ const makeFailoverStorageState = (
   lockHeldElsewhere: false,
   otherRunnerHealthy: false,
   releaseAllDuration: 0,
+  releaseFailures: 0,
   runner: undefined,
   acquireDenied: [],
   acquireCalls: [],
@@ -3701,8 +3712,13 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
           : Effect.succeed(shards)
       }),
     release: (_address, shardId) =>
-      Effect.sync(() => {
+      Effect.suspend(() => {
         state.releaseCalls.push(shardId)
+        if (state.releaseFailures > 0) {
+          state.releaseFailures--
+          return Effect.fail(new ClusterError.PersistenceError({ cause: "release failed" }))
+        }
+        return Effect.void
       }),
     releaseAll: () =>
       Effect.suspend(() => {

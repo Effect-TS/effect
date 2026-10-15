@@ -448,6 +448,7 @@ const make = Effect.gen(function*() {
       (effect, shardId) =>
         effect.pipe(
           retryShardRelease({ fiber: "releaseShard", shardId }),
+          Effect.trackDuration(ClusterMetrics.shardReleaseDuration),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
