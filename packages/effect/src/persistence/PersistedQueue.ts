@@ -737,6 +737,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
   )
   const prefix = options?.prefix ?? "effectq:"
   // JSON quoting makes the queue boundary unambiguous even for custom names/ids.
+  // Keep the lock suffix disjoint from cleanup scans for :ids and :failed.
   const lockPrefixFor = (name: string) => `${prefix}locks:v2:${JSON.stringify(name)}:`
   const keysFor = (name: string) => ({
     queue: `${prefix}${name}`,
@@ -789,7 +790,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
                 requeue(
                   keys.queue,
                   keys.pending,
-                  lockPrefix + element.id,
+                  lockPrefix + element.id + ":lock",
                   keys.attempts,
                   element.id,
                   element.payload,
@@ -964,7 +965,7 @@ export const makeStoreRedis = Effect.fnUntraced(function*(
           Effect.scoped,
           Effect.tap((element) => {
             const keys = keysFor(options.name)
-            const lock = lockPrefixFor(options.name) + element.id
+            const lock = lockPrefixFor(options.name) + element.id + ":lock"
             activeLocks.set(element.token, lock)
             const ack = (effect: Effect.Effect<unknown, Redis.RedisError>) =>
               effect.pipe(
@@ -1123,7 +1124,7 @@ local entries = redis.call("HGETALL", key_pending)
 for i = 1, #entries, 2 do
   local id = entries[i]
   local payload = entries[i + 1]
-  local lock_key = prefix .. id
+  local lock_key = prefix .. id .. ":lock"
   local exists = redis.call("EXISTS", lock_key)
   if exists == 0 then
     local attempts = tonumber(redis.call("HGET", key_attempts, id) or "0")
@@ -1333,7 +1334,7 @@ end
 local result = {}
 for i, payload in ipairs(payloads) do
   local id = cjson.decode(payload).id
-  local key_lock = prefix .. id
+  local key_lock = prefix .. id .. ":lock"
   local token = token_prefix .. ":" .. i
   redis.call("SET", key_lock, token, "PX", pttl)
   redis.call("HSET", key_pending, id, payload)
