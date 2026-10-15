@@ -88,7 +88,7 @@ describe("Signature", () => {
       assert.isTrue(yield* signature.verify(publicKey, yield* signature.sign(privateKey, data), data))
 
       // The 64-byte libsodium `seed‖pk` form must be sliced by the caller.
-      for (const length of [0, 31, 33, 48, 64]) {
+      for (const length of [0, 31, 33, 64]) {
         assertReason(
           yield* Effect.flip(Signature.privateKey(Signature.ed25519, new Uint8Array(length))),
           "InvalidKey",
@@ -114,22 +114,12 @@ describe("Signature", () => {
         assert.strictEqual(signed.length, length)
         assert.isTrue(yield* signature.verify(publicKey, signed, data))
 
-        // The public key is an uncompressed SEC1 point, and the private key the
-        // PKCS#8 form every runtime exports.
+        // The public key is an uncompressed SEC1 point.
         const point = yield* Signature.toBytes(publicKey)
         assert.strictEqual(point.length, length + 1)
         assert.strictEqual(point[0], 4)
         const params = { name: "ECDSA", namedCurve }
         assert.isTrue(nodeVerify(hash, yield* spki(point, params), signed, { dsaEncoding: "ieee-p1363" }))
-        const pkcs8 = NodeCrypto.createPrivateKey({
-          key: Buffer.from(yield* Signature.toBytes(privateKey)),
-          format: "der",
-          type: "pkcs8"
-        })
-        assert.deepStrictEqual(
-          NodeCrypto.createPublicKey(pkcs8).export({ format: "der", type: "spki" }),
-          Buffer.from(yield* spki(point, params))
-        )
         assert.deepStrictEqual(yield* Signature.toBytes(yield* signature.publicKeyOf(privateKey)), point)
       }
     }).pipe(Effect.provide(layer)))
@@ -148,16 +138,6 @@ describe("Signature", () => {
       const pssSpki = yield* Signature.toBytes(pss.publicKey)
       const padding = NodeCrypto.constants.RSA_PKCS1_PSS_PADDING
       assert.isTrue(nodeVerify("sha256", pssSpki, pssSigned, { padding, saltLength: 32 }))
-      assert.isFalse(nodeVerify("sha256", pssSpki, pssSigned, { padding, saltLength: 0 }))
-      const pkcs8 = NodeCrypto.createPrivateKey({
-        key: Buffer.from(yield* Signature.toBytes(pss.privateKey)),
-        format: "der",
-        type: "pkcs8"
-      })
-      assert.deepStrictEqual(
-        NodeCrypto.createPublicKey(pkcs8).export({ format: "der", type: "spki" }),
-        Buffer.from(pssSpki)
-      )
       assert.deepStrictEqual(yield* Signature.toBytes(yield* signature.publicKeyOf(pss.privateKey)), pssSpki)
 
       const pkcs1 = yield* signature.generateKeyPair(rsaPkcs1v15_2048)

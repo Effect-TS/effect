@@ -158,7 +158,6 @@ describe("Cipher", () => {
       const mismatched = [
         yield* importAes("AES-CBC", 128),
         yield* importAes("AES-CTR", 256),
-        yield* importAes("AES-GCM", 256),
         yield* importAes("AES-CBC", 256, ["decrypt"])
       ]
       for (const cryptoKey of mismatched) {

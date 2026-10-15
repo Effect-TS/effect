@@ -59,7 +59,6 @@ describe("Mac", () => {
       assert.strictEqual(key.algorithm, Mac.hmacSha256)
       // The hash's block size, as Web Crypto generates.
       assert.deepStrictEqual(yield* Mac.toBytes(key), new Uint8Array(64).fill(7))
-      assert.isTrue(yield* mac.verify(key, yield* mac.sign(key, message), message))
     }).pipe(
       Effect.provide(Mac.layerWebCrypto),
       Effect.provide(

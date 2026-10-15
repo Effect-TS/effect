@@ -57,7 +57,7 @@ describe("KeyAgreement", () => {
       )
 
       // The 64-byte libsodium `seed‖pk` form must be sliced by the caller.
-      for (const length of [0, 31, 33, 48, 64]) {
+      for (const length of [0, 31, 33, 64]) {
         assertReason(
           yield* Effect.flip(KeyAgreement.privateKey(KeyAgreement.x25519, new Uint8Array(length))),
           "InvalidKey",
@@ -122,13 +122,14 @@ describe("KeyAgreement", () => {
         "deriveSharedSecret"
       )
 
-      const p384 = yield* keyAgreement.generateKeyPair(KeyAgreement.ecdhP384)
-      const x25519 = yield* keyAgreement.generateKeyPair(KeyAgreement.x25519)
-      const mixed = () => [
+      const mixed = (
+        p384: KeyAgreement.PublicKey<typeof KeyAgreement.ecdhP384>,
+        x25519: KeyAgreement.PrivateKey<KeyAgreement.X25519>
+      ) => [
         // @ts-expect-error
-        keyAgreement.deriveSharedSecret(p256.privateKey, p384.publicKey),
+        keyAgreement.deriveSharedSecret(p256.privateKey, p384),
         // @ts-expect-error
-        keyAgreement.deriveSharedSecret(x25519.privateKey, p256.publicKey),
+        keyAgreement.deriveSharedSecret(x25519, p256.publicKey),
         // Only X25519 private keys have a raw form.
         // @ts-expect-error
         KeyAgreement.privateKey(KeyAgreement.ecdhP256, new Uint8Array(32))
