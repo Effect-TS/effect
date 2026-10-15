@@ -32,7 +32,9 @@ export const ulidString = (timestampMillis: number, bytes: Uint8Array): string =
 /**
  * Makes a ULID generator in the ULID spec's monotonic mode: within a
  * millisecond, or when the clock moves back, the 80-bit random part of the last
- * ULID is incremented. `randomBytes` is only called for fresh randomness.
+ * ULID is incremented. The ordering ends at the maximum timestamp, 2^48 − 1 ms,
+ * which overflow cannot advance. `randomBytes` is only called for fresh
+ * randomness.
  *
  * @internal
  */

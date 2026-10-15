@@ -17,4 +17,4 @@ Replace `effect/Crypto` with per-family `effect/crypto` modules for secure rando
 
 Workflow execution IDs, activity idempotency keys and event log table names retain their existing encodings.
 
-UUIDv7s and ULIDs are strictly increasing within a millisecond: per instance for the `SecureRandom` service, and per JS realm for `uuidV7Unsafe`, `ulidUnsafe`, `Model.UuidV7Insert` defaults and `EventJournal.makeEntryIdUnsafe()`.
+UUIDv7s and ULIDs are strictly increasing within a millisecond, below the maximum 48-bit timestamp: per instance for the `SecureRandom` service, and per JS realm for `uuidV7Unsafe`, `ulidUnsafe`, `Model.UuidV7Insert` defaults and `EventJournal.makeEntryIdUnsafe()`.

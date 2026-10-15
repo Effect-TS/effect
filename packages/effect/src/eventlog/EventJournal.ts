@@ -262,7 +262,8 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * **Details**
  *
  * Without `msecs`, the id shares its ordering with `SecureRandom.uuidV7Unsafe`,
- * so each id sorts after the previous one in the JS realm. With `msecs`, the id
+ * so below the maximum timestamp each id sorts after the previous one in the JS
+ * realm. With `msecs`, the id
  * encodes exactly that timestamp and has no ordering guarantee.
  *
  * **Gotchas**

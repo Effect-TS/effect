@@ -46,9 +46,10 @@ const clampV7Timestamp = (timestampMillis: number): number =>
 const maxV7Counter = 2 ** 42 - 1
 
 /**
- * Makes a UUIDv7 generator that orders every UUID it returns, following RFC
+ * Makes a UUIDv7 generator that orders the UUIDs it returns, following RFC
  * 9562 §6.2 Method 1. A 42-bit counter fills the 12 bits of `rand_a` and the
- * top 30 bits of `rand_b`; the last 32 bits stay random.
+ * top 30 bits of `rand_b`; the last 32 bits stay random. The ordering ends at
+ * the maximum timestamp, 2^48 − 1 ms, which counter overflow cannot advance.
  *
  * @internal
  */

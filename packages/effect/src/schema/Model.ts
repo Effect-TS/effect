@@ -902,7 +902,8 @@ export interface UuidV7Insert<B extends string> extends
  *
  * The UUID takes its timestamp from the `Clock`, and shares its ordering with
  * `SecureRandom.uuidV7Unsafe` and every other `Model.UuidV7WithGenerate` in the
- * JS realm, so each UUID sorts after the previous one.
+ * JS realm, so below the maximum timestamp each UUID sorts after the previous
+ * one.
  *
  * **Gotchas**
  *

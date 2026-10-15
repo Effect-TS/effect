@@ -94,14 +94,15 @@ export class SecureRandom extends Context.Service<SecureRandom, {
    * and as bytes. Within a millisecond, a 42-bit counter seeded from random
    * bytes orders them. If the `Clock` moves back, the last timestamp is kept,
    * and if the counter overflows, the timestamp advances by 1 ms, so a
-   * timestamp can run slightly ahead of the `Clock`. There is no ordering
-   * between separate services, processes or workers.
+   * timestamp can run slightly ahead of the `Clock`. The ordering ends at the
+   * maximum timestamp, 2^48 − 1 ms (in the year 10889), which overflow cannot
+   * advance. There is no ordering between separate services, processes or
+   * workers.
    *
    * Consecutive UUIDv7s reveal their generation order, so never use them as
    * secrets. Uniqueness between generators is probabilistic: each UUID has 32
-   * fresh random bits on top of the randomly seeded counter, so a 50% chance
-   * of a collision takes two generators about 80 billion UUIDs each in the
-   * same millisecond.
+   * fresh random bits, on top of a counter seeded from 41 random bits each
+   * millisecond.
    */
   readonly uuidV7: UuidGenerator
 
@@ -112,9 +113,11 @@ export class SecureRandom extends Context.Service<SecureRandom, {
    * Every ULID from this service sorts after the previous one, using the ULID
    * spec's monotonic mode: within a millisecond, the 80-bit random part is
    * incremented. If the `Clock` moves back, the last timestamp is kept, and if
-   * the random part overflows, the timestamp advances by 1 ms. There is no
-   * ordering between separate services, processes or workers. Consecutive
-   * ULIDs reveal their generation order, so never use them as secrets.
+   * the random part overflows, the timestamp advances by 1 ms. The ordering
+   * ends at the maximum timestamp, 2^48 − 1 ms (in the year 10889), which
+   * overflow cannot advance. There is no ordering between separate services,
+   * processes or workers. Consecutive ULIDs reveal their generation order, so
+   * never use them as secrets.
    */
   readonly ulid: Effect.Effect<string>
 }>()("effect/crypto/SecureRandom") {}
@@ -334,9 +337,10 @@ export const uuidV4Unsafe: {
  *
  * **Details**
  *
- * Every UUIDv7 generated in this JS realm (process or worker) sorts after the
- * previous one, as a string and as bytes, using the counter described on the
- * `SecureRandom` service's `uuidV7`. The ordering is shared with
+ * Below the maximum timestamp, every UUIDv7 generated in this JS realm
+ * (process or worker) sorts after the previous one, as a string and as bytes,
+ * using the counter described on the `SecureRandom` service's `uuidV7`. The
+ * ordering is shared with
  * `Model.UuidV7WithGenerate` and `EventJournal.makeEntryIdUnsafe`, and does not
  * hold across processes or workers. Consecutive UUIDv7s reveal their
  * generation order, so never use them as secrets.
@@ -365,11 +369,11 @@ export const uuidV7Unsafe: {
  *
  * **Details**
  *
- * Every ULID generated in this JS realm (process or worker) sorts after the
- * previous one, using the monotonic mode described on the `SecureRandom`
- * service's `ulid`. The ordering does not hold across processes or workers.
- * Consecutive ULIDs reveal their generation order, so never use them as
- * secrets.
+ * Below the maximum timestamp, every ULID generated in this JS realm (process
+ * or worker) sorts after the previous one, using the monotonic mode described
+ * on the `SecureRandom` service's `ulid`. The ordering does not hold across
+ * processes or workers. Consecutive ULIDs reveal their generation order, so
+ * never use them as secrets.
  *
  * **Gotchas**
  *
