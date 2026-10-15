@@ -14,8 +14,10 @@ import * as Arr from "../Array.ts"
 import * as Cache from "../Cache.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
+import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
+import * as Exit from "../Exit.ts"
 import * as Hash from "../Hash.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
@@ -103,8 +105,8 @@ export const layerRpcHandlers = (options: {
     })
     let chunkedIdCounter = 0
 
-    const persistedSigningPublicKeys = yield* Cache.make({
-      lookup: (key: SessionAuthCacheKey) =>
+    const persistedSigningPublicKeys = yield* Cache.makeWith(
+      (key: SessionAuthCacheKey) =>
         options.getOrCreateSessionAuthBinding(key.publicKey, key.signingPublicKey).pipe(
           Effect.catchCause((_) =>
             Effect.fail(
@@ -117,8 +119,11 @@ export const layerRpcHandlers = (options: {
             )
           )
         ),
-      capacity: 4096
-    })
+      {
+        capacity: 4096,
+        timeToLive: (exit) => Exit.isSuccess(exit) ? Duration.infinity : Duration.zero
+      }
+    )
 
     return EventLogRemoteRpcs.of({
       "EventLog.Hello": Effect.fnUntraced(function*(_, { client }) {
