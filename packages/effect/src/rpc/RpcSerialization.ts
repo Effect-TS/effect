@@ -353,6 +353,7 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
       payload: request.params ?? null,
       headers: request.headers ?? [],
       ...(Predicate.hasProperty(request, "id") ? {} : { isNotification: true as const }),
+      ...(request.discard === true ? { discard: true as const } : {}),
       ...(request.spanId ?
         {
           traceId: request.traceId,
@@ -469,6 +470,7 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
         // a JSON-RPC notification is a request without an id
         ...(response.isNotification ? {} : { id: response.id }),
         ...(response.headers?.length > 0 ? { headers: response.headers } : {}),
+        ...(response.discard ? { discard: true } : {}),
         traceId: response.traceId,
         spanId: response.spanId,
         sampled: response.sampled
@@ -539,6 +541,7 @@ interface JsonRpcRequest {
   readonly method: string
   readonly params?: unknown
   readonly headers?: ReadonlyArray<[string, string]>
+  readonly discard?: true
   readonly traceId?: string
   readonly spanId?: string
   readonly sampled?: boolean
