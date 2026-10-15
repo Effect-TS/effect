@@ -479,7 +479,7 @@ const skipBlockComment = (source: string, index: number, nested: boolean): numbe
 }
 
 // `$$` or `$tag$`; `$1` is a placeholder
-const dollarTag = /\$(?:[A-Za-z_]\w*)?\$/y
+const dollarTag = /\$(?:[A-Za-z_\u0080-\uffff][\w\u0080-\uffff]*)?\$/y
 
 // Splits a script on top-level semicolons without rewriting statement text, so
 // the database still sees comments such as MySQL `/*! ... */`.
@@ -501,15 +501,20 @@ const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
       (char === "#" && (dialect === "mysql" || (dialect === "clickhouse" && (next === " " || next === "!")))) ||
       (char === "/" && next === "/" && dialect === "clickhouse")
     ) {
-      i = skipPast(source, i, "\n")
+      if (dialect === "pg") {
+        i += 2
+        while (i < source.length && source[i] !== "\n" && source[i] !== "\r") i++
+      } else {
+        i = skipPast(source, i, "\n")
+      }
     } else if (char === "/" && next === "*") {
       if (dialect === "mysql" && source[i + 2] === "!") hasCode = true
       i = skipBlockComment(source, i, dialect === "pg" || dialect === "mssql" || dialect === "clickhouse")
     } else if (char === "'" || char === "\"" || char === "`") {
-      const backslash = char !== "`" && (
-        dialect === "mysql" || dialect === "clickhouse" ||
+      const backslash = dialect === "clickhouse" || (char !== "`" && (
+        dialect === "mysql" ||
         (dialect === "pg" && char === "'" && /[eE]/.test(source[i - 1] ?? "") && !isIdentifierChar(source[i - 2]))
-      )
+      ))
       hasCode = true
       i = skipQuoted(source, i, char, backslash)
     } else if (char === "[" && (dialect === "sqlite" || dialect === "mssql")) {
