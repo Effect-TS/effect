@@ -275,8 +275,6 @@ const familyOf = (algorithm: AsymmetricAlgorithm | SecretAlgorithm): Asymmetric.
   }
 }
 
-// PEM
-
 const labels: Record<Format<Role, Direction, unknown>["_tag"], string> = {
   spki: "PUBLIC KEY",
   pkcs8: "PRIVATE KEY",
@@ -302,8 +300,6 @@ const toPem = (label: string, der: Uint8Array): string => {
   for (let i = 0; i < base64.length; i += 64) lines.push(base64.slice(i, i + 64))
   return `-----BEGIN ${label}-----\n${lines.join("\n")}\n-----END ${label}-----\n`
 }
-
-// DER conversion
 
 // AlgorithmIdentifier for rsaEncryption (1.2.840.113549.1.1.1) with NULL
 // parameters, the OIDs of id-ecPublicKey and the NIST curves, and the EC
@@ -368,9 +364,8 @@ const sec1ToPkcs8 = (sec1: Uint8Array, curve: Asymmetric.Curve): Uint8Array | Pr
   )
 }
 
-// Checks that a PKCS#8 key is an EC key on `curve`, so a key of another
-// algorithm is not reported as missing its point, then finds the `[1]` public
-// point. Other malformed DER is left to the runtime's import, which reports it.
+// Check the algorithm before classifying a missing EC public point.
+// Leave other malformed DER to the runtime's import validation.
 const checkEcPkcs8 = (pkcs8: Uint8Array, curve: Asymmetric.Curve): Problem | undefined => {
   const outer = Der.readOnly(pkcs8, Der.sequence)
   const fields = outer === undefined ? undefined : Der.children(pkcs8, outer)
@@ -386,8 +381,6 @@ const checkEcPkcs8 = (pkcs8: Uint8Array, curve: Asymmetric.Curve): Problem | und
   if (ecFields === undefined) return undefined
   return ecFields.some((field) => field.tag === 0xa1) ? undefined : missingPoint
 }
-
-// JWK
 
 interface Jose {
   readonly kty: string
@@ -454,9 +447,8 @@ const pick = (jwk: JsonWebKey, members: ReadonlyArray<string>): JsonWebKey => {
   return out as JsonWebKey
 }
 
-// Checks a JWK against the algorithm and role, and keeps only the members
-// WebCrypto needs, so JOSE members such as `use`, `key_ops` and `ext` cannot
-// make the import fail.
+// Validate the algorithm and role, then drop JOSE metadata that could reject
+// an otherwise valid import (`use`, `key_ops`, `ext`).
 const checkJwk = (data: unknown, algorithm: AsymmetricAlgorithm | SecretAlgorithm, role: Role): JsonWebKey | string => {
   if (!Predicate.isObject(data)) return "Expected a JWK object"
   const expected = joseOf(algorithm)
@@ -483,8 +475,6 @@ const checkJwk = (data: unknown, algorithm: AsymmetricAlgorithm | SecretAlgorith
       return { kty: "oct", k: data.k }
   }
 }
-
-// Decoding
 
 const decodeAsymmetric = <K>(
   method: string,
@@ -632,8 +622,6 @@ export const decodeSecret = <A extends SecretAlgorithm, Data>(
       Effect.catch(internal.rehome("KeyFormat", "decodeSecret"))
     ) as Effect.Effect<SecretKey<A>, CryptoError.CryptoError>
   })
-
-// Encoding
 
 const encodeAsymmetric = (
   format: Format<Role, Direction, unknown>,

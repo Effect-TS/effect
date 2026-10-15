@@ -6,8 +6,7 @@ import * as KeyModel from "./key.ts"
 import * as internal from "./webCrypto.ts"
 
 /**
- * How an asymmetric algorithm maps onto `crypto.subtle`, and the forms its
- * keys are stored in (section 5 of the design).
+ * WebCrypto parameters and stored key formats for an asymmetric algorithm.
  *
  * @internal
  */
@@ -29,8 +28,7 @@ export interface Spec {
 }
 
 /**
- * What the shared code needs from an asymmetric family: the WebCrypto mapping
- * of each algorithm and the key prototypes.
+ * WebCrypto mappings and key prototypes for an asymmetric family.
  *
  * @internal
  */
@@ -69,8 +67,7 @@ export type Curve = "P-256" | "P-384" | "P-521"
 export const coordinateSizes: Record<Curve, number> = { "P-256": 32, "P-384": 48, "P-521": 66 }
 
 /**
- * Checks the length of a raw Ed25519 or X25519 key. The 64-byte libsodium
- * `seed‖pk` form is named, since slicing it is the fix.
+ * Checks raw Ed25519 or X25519 key length, with guidance for 64-byte seeds.
  *
  * @internal
  */
@@ -115,8 +112,7 @@ export const rsaGenerateParams = (spec: Spec, modulusLength: number): RsaHashedK
 })
 
 /**
- * Builds a key backed by a `CryptoKey`, after checking it against the typed
- * key synchronously.
+ * Synchronously validates and wraps a `CryptoKey`.
  *
  * @internal
  */
@@ -218,7 +214,7 @@ export const toBytes = (
   )
 
 /**
- * The per-layer caches of the `CryptoKey`s imported from byte-backed keys.
+ * Per-layer caches for imported byte-backed keys.
  *
  * @internal
  */

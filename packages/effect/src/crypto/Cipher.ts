@@ -276,10 +276,9 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
  *
  * **Details**
  *
- * The bytes are copied into a new `Uint8Array`, so later changes to the input,
- * including a Node.js `Buffer`, do not reach the key. A length other than the
- * algorithm's key length fails with an `InvalidKey` reason. There is no
- * AES-192.
+ * Copies the bytes, including Node.js `Buffer` inputs. A length other than
+ * the algorithm's key length fails with an `InvalidKey` reason. AES-192 is
+ * not supported.
  *
  * @stability unstable
  * @category constructors

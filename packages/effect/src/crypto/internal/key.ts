@@ -42,8 +42,7 @@ export const copyBytes = (bytes: Uint8Array): Uint8Array => new Uint8Array(bytes
 export const material = (key: object): Material => (key as { readonly [MaterialId]: Material })[MaterialId]
 
 /**
- * Builds the prototype of a secret or private key, which displays only its
- * algorithm.
+ * Builds a key prototype that displays only its algorithm.
  *
  * @internal
  */
@@ -110,10 +109,8 @@ export const fromBytes = <K>(
 /**
  * What a `CryptoKey` must match to back a typed key.
  *
- * With `usages: "all"`, the key must have every expected usage, because the
- * typed key reaches every operation that needs them. `"any"` accepts a key
- * with at least one, which section 5 of the design allows only for RSA-OAEP,
- * where the layer picks the usage that fits the key's role.
+ * `usagePolicy: "all"` requires every expected usage. `"any"` is for RSA-OAEP,
+ * where the layer chooses an available usage for the key's role.
  *
  * @internal
  */
@@ -175,8 +172,7 @@ export const importedAlgorithm = (algorithm: unknown, cryptoKey: CryptoKey): unk
 }
 
 /**
- * Builds a key backed by a `CryptoKey`, after checking it against the typed
- * key synchronously.
+ * Synchronously validates and wraps a `CryptoKey`.
  *
  * @internal
  */

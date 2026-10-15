@@ -14244,10 +14244,8 @@ export const DnsRecord: DnsRecord = Union([
 // Crypto key schemas
 // -----------------------------------------------------------------------------
 
-// The algorithm members a key schema reads. RSA algorithm values come from
-// factories, and a non-standard hash pairing is a copy with another hash, so
-// algorithms match by name, hash and PSS salt length rather than by
-// reference. The modulus length is ignored, as it is on import.
+// Match operation parameters rather than object identity. RSA modulus length
+// affects generation only, so it is ignored here as on import.
 interface CryptoAlgorithm {
   readonly _tag?: string
   readonly name: string
@@ -14327,7 +14325,6 @@ const cryptoForbiddenEncode = (name: string, key: unknown, options: SchemaAST.Pa
     )
   )
 
-// Secret and private key schemas only decode unless `allowEncode` is `true`.
 type CryptoKeyOptions = { readonly allowEncode?: boolean | undefined }
 
 const cryptoKeyFromBytes = <To extends Codec<any>>(

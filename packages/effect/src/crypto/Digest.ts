@@ -104,8 +104,7 @@ export const sha384: Algorithm = { name: "SHA-384", outputLength: 48, implementa
 export const sha512: Algorithm = { name: "SHA-512", outputLength: 64, implementation: undefined }
 
 /**
- * The hash's name as it appears in the names of the pre-made algorithm
- * values of the other families: `"SHA-256"` becomes `"Sha256"`.
+ * Converts a hash name to an algorithm-name suffix: `"SHA-256"` to `"Sha256"`.
  *
  * @internal
  */
