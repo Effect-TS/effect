@@ -573,7 +573,8 @@ export const layerSql = (
   Layer.effect(KeyValueStore)(
     Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-      const table = sql(options.table ?? "effect_key_value_store")
+      const tableName = options.table ?? "effect_key_value_store"
+      const table = sql(tableName)
 
       yield* sql.onDialectOrElse({
         mysql: () =>
@@ -594,7 +595,7 @@ export const layerSql = (
         `,
         mssql: () =>
           sql`
-          IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${table} AND xtype='U')
+          IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
           CREATE TABLE ${table} (
             id NVARCHAR(450) PRIMARY KEY,
             value VARBINARY(MAX) NOT NULL,
