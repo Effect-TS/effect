@@ -201,40 +201,123 @@ describe("Channel", () => {
 
     it.effect("fromReadableStream", () =>
       Effect.gen(function*() {
+        const readable = new ReadableStream<number>({
+          start(controller) {
+            controller.enqueue(1)
+            controller.enqueue(2)
+            controller.close()
+          }
+        })
         const result = yield* Channel.fromReadableStream({
-          evaluate: () =>
-            new ReadableStream<number>({
-              start(controller) {
-                controller.enqueue(1)
-                controller.enqueue(2)
-                controller.close()
-              }
-            }),
+          evaluate: () => readable,
           onError: (error) => error
         }).pipe(Channel.runCollect)
 
         assert.deepStrictEqual(result, [[1], [2]])
+        assert.isFalse(readable.locked)
+      }))
+
+    it.effect("fromReadableStream retains downstream and cancellation failures", () =>
+      Effect.gen(function*() {
+        const error = new Error("cancel failed")
+        const readable = new ReadableStream<number>({
+          start(controller) {
+            controller.enqueue(1)
+          },
+          cancel() {
+            return Promise.reject(error)
+          }
+        })
+        const exit = yield* Channel.fromReadableStream({
+          evaluate: () => readable,
+          onError: (error) => error
+        }).pipe(
+          Channel.mapEffect(() => Effect.fail("downstream failed")),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.combine(Cause.fail("downstream failed"), Cause.die(error)))
+        assert.isFalse(readable.locked)
+      }))
+
+    it.effect("fromReadableStream retains cancellation failures on interruption", () =>
+      Effect.gen(function*() {
+        const started = yield* Latch.make()
+        const error = new Error("cancel failed")
+        const readable = new ReadableStream<number>({
+          pull() {
+            started.openUnsafe()
+          },
+          cancel() {
+            return Promise.reject(error)
+          }
+        }, { highWaterMark: 0 })
+        const fiber = yield* Channel.fromReadableStream({
+          evaluate: () => readable,
+          onError: (error) => error
+        }).pipe(Channel.runDrain, Effect.forkChild)
+
+        yield* started.await
+        yield* Fiber.interrupt(fiber)
+        const exit = yield* Fiber.await(fiber)
+        assert.isTrue(Exit.hasInterrupts(exit))
+        assert.isTrue(Exit.isFailure(exit))
+        if (Exit.isFailure(exit)) {
+          assert.isFalse(Cause.hasFails(exit.cause))
+          assert.deepStrictEqual(exit.cause.reasons.filter(Cause.isDieReason).map((reason) => reason.defect), [error])
+        }
+        assert.isFalse(readable.locked)
       }))
 
     it.effect("fromTransformStream - surfaces write-side errors through the read side", () =>
       Effect.gen(function*() {
         const error = new Error("write failed")
-        const channel = Channel.fromTransformStream<never, number, number, Error>({
-          evaluate: () =>
-            new TransformStream<number, number>({
-              transform() {
-                throw error
-              }
-            }),
-          onError: (cause) => cause as Error
-        })
-        const exit = yield* Channel.fromArray([[1] as [number]]).pipe(
-          Channel.pipeTo(channel),
-          Channel.runDrain,
-          Effect.exit
+        const mapped = new Error("mapped write failure")
+        const transform = new TransformStream<number, number>(
+          {
+            transform() {
+              throw error
+            }
+          },
+          undefined,
+          { highWaterMark: 1 }
         )
+        const channel = Channel.fromTransformStream<never, number, number, Error>({
+          evaluate: () => transform,
+          onError: () => mapped
+        })
+        const exit = yield* Effect.gen(function*() {
+          const pull = yield* Channel.toPull(Channel.fromArray([[1] as [number]]).pipe(Channel.pipeTo(channel)))
+          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+          assert.isFalse(transform.writable.locked)
+          return yield* pull
+        }).pipe(Effect.scoped, Effect.exit)
 
-        assertExitFailure(exit, Cause.fail(error))
+        assertExitFailure(exit, Cause.fail(mapped))
+        assert.isFalse(transform.readable.locked)
+      }))
+
+    it.effect("fromTransformStream does not repeat an upstream failure between pulls", () =>
+      Effect.gen(function*() {
+        const transform = new TransformStream<number, number>()
+        const channel = Channel.succeed([1] as [number]).pipe(
+          Channel.concat(Channel.fail("upstream failed")),
+          Channel.pipeTo(Channel.fromTransformStream({
+            evaluate: () => transform,
+            onError: (error) => error
+          }))
+        )
+        const exit = yield* Effect.gen(function*() {
+          const pull = yield* Channel.toPull(channel)
+          assert.deepStrictEqual(yield* pull, [1])
+          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+          assert.isFalse(transform.writable.locked)
+          return yield* pull
+        }).pipe(Effect.scoped, Effect.exit)
+
+        assertExitFailure(exit, Cause.fail("upstream failed"))
+        assert.isFalse(transform.readable.locked)
       }))
 
     it.effect("acquireRelease", () =>

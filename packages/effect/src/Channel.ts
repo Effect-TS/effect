@@ -1701,6 +1701,12 @@ export const fromSchedule = <O, E, R>(
 /**
  * Creates a channel from a lazily supplied Web `ReadableStream`.
  *
+ * **Details**
+ *
+ * Read failures are mapped with `onError`. Finalization cancels the reader and
+ * releases its lock; set `releaseLockOnEnd` to skip cancellation. Cancellation
+ * failures surface as defects without repeating an already observed read error.
+ *
  * **Example** (Reading from a Web stream)
  *
  * ```ts import.meta.vitest
@@ -1863,10 +1869,14 @@ export const fromTransformStream = <IE, I, O, E>(options: {
   fromTransform((upstream, scope) => {
     const transform = options.evaluate()
     const exit = MutableRef.make<Exit.Exit<never, IE | E | Cause.Done> | undefined>(undefined)
+    let writeError: { readonly value: unknown } | undefined
     return pullIntoWritableStream({
       pull: upstream,
       writable: transform.writable,
-      onError: options.onError,
+      onError: (error) => {
+        writeError = { value: error }
+        return options.onError(error)
+      },
       closeOnDone: options.closeOnDone
     }).pipe(
       Effect.catchCause((cause) => {
@@ -1882,6 +1892,7 @@ export const fromTransformStream = <IE, I, O, E>(options: {
           exit,
           readable: transform.readable,
           onError: options.onError,
+          isWriterError: (error) => writeError !== undefined && Object.is(error, writeError.value),
           releaseLockOnEnd: options.releaseLockOnEnd
         })
       )
@@ -1893,16 +1904,21 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
   readonly exit?: MutableRef.MutableRef<Exit.Exit<never, E | E2 | Cause.Done> | undefined> | undefined
   readonly readable: ReadableStream<A>
   readonly onError: (error: unknown) => E
+  readonly isWriterError?: ((error: unknown) => boolean) | undefined
   readonly releaseLockOnEnd?: boolean | undefined
 }): Effect.Effect<Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E | E2>, never> => {
   const reader = options.readable.getReader()
   const exit = options.exit ?? MutableRef.make(undefined)
+  let readFailed = false
   const pull = Effect.suspend(() => {
     if (exit.current) return exit.current
     return Effect.matchCauseEffect(
       Effect.tryPromise({
         try: () => reader.read(),
-        catch: options.onError
+        catch: (error) => {
+          readFailed = true
+          return options.onError(error)
+        }
       }),
       {
         onFailure: (cause) => exit.current ?? Effect.failCause(cause),
@@ -1916,9 +1932,28 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
   return Effect.as(
     Scope.addFinalizer(
       options.scope,
-      options.releaseLockOnEnd
-        ? Effect.sync(() => reader.releaseLock())
-        : Effect.promise(() => reader.cancel().catch(constVoid))
+      Effect.suspend(() =>
+        // Cancelling an errored stream only repeats its read failure.
+        options.releaseLockOnEnd || readFailed ? Effect.void : Effect.promise(async () => {
+          const failure = exit.current
+          try {
+            await reader.cancel()
+          } catch (error) {
+            if (
+              failure === undefined ||
+              !Exit.isFailure(failure) ||
+              !(Object.is(error, failure.cause) || options.isWriterError?.(error))
+            ) {
+              throw error
+            }
+            // A rejected cancellation hook closes the reader; an existing
+            // stream error rejects `closed` and was already propagated.
+            await reader.closed.then(() => {
+              throw error
+            }, constVoid)
+          }
+        })
+      ).pipe(Effect.ensuring(Effect.sync(() => reader.releaseLock())))
     ),
     pull
   )
