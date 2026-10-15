@@ -207,6 +207,20 @@ export const make: (options: {
           return serveFile(request, resolvedPath, info.size)
         }
         if (info.type === "Directory" && index !== undefined) {
+          let originalUrl = request.originalUrl
+          if (!originalUrl.startsWith("/")) {
+            const url = new URL(originalUrl)
+            originalUrl = url.pathname + url.search
+          }
+          const pathname = stripQueryString(originalUrl)
+          if (!pathname.endsWith("/")) {
+            // Keep the redirect local even when the path starts with multiple separators.
+            const location = pathname.replace(/^\/+/, "/").replace(/\\/g, "%5C")
+            return Effect.succeed(HttpServerResponse.redirect(
+              `${location}/${originalUrl.slice(pathname.length)}`,
+              { status: 301 }
+            ))
+          }
           return serveFile(request, path.join(resolvedPath, index))
         }
         return Effect.fail(toRouteNotFoundError(request))
