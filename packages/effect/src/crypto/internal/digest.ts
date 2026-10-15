@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 import * as Effect from "../../Effect.ts"
 import type { Algorithm } from "../Digest.ts"
 import * as internal from "./webCrypto.ts"
