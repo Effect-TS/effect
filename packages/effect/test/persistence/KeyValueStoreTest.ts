@@ -109,6 +109,20 @@ export const clearPrefixSuite = (name: string, layer: Layer.Layer<KeyValueStore.
         yield* kv.clear
       }))
 
+    it.effect("matches prefixes case-sensitively", () =>
+      Effect.gen(function*() {
+        const kv = yield* KeyValueStore.KeyValueStore
+        yield* kv.clear
+        yield* kv.set("scope/one", "match")
+        yield* kv.set("SCOPE/two", "unrelated")
+
+        yield* kv.clearPrefix("scope/")
+
+        assert.strictEqual(yield* kv.get("scope/one"), undefined)
+        assert.strictEqual(yield* kv.get("SCOPE/two"), "unrelated")
+        yield* kv.clear
+      }))
+
     it.effect("clears keys beyond a prefix followed by U+FFFF", () =>
       Effect.gen(function*() {
         const kv = yield* KeyValueStore.KeyValueStore
