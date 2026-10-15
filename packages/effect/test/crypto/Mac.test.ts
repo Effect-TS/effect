@@ -7,6 +7,7 @@ import * as Hex from "effect/encoding/Hex"
 import * as Equal from "effect/Equal"
 import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
+import { Buffer } from "node:buffer"
 import { inspect } from "node:util"
 import { assertReason, encode } from "../utils/crypto.ts"
 
@@ -28,12 +29,9 @@ const vectors: ReadonlyArray<readonly [Mac.Algorithm, string]> = [
 
 const layer = Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto))
 
-const importHmac = (hash: string, extractable: boolean) =>
+const importHmac = (hash: string, extractable: boolean, usages: Array<KeyUsage> = ["sign", "verify"]) =>
   Effect.promise(() =>
-    globalThis.crypto.subtle.importKey("raw", jefe as BufferSource, { name: "HMAC", hash }, extractable, [
-      "sign",
-      "verify"
-    ])
+    globalThis.crypto.subtle.importKey("raw", jefe as BufferSource, { name: "HMAC", hash }, extractable, usages)
   )
 
 describe("Mac", () => {
@@ -72,14 +70,17 @@ describe("Mac", () => {
   it.effect("copies key bytes in and out, redacts them and compares keys by reference", () =>
     Effect.gen(function*() {
       const mac = yield* Mac.Mac
-      const input = jefe.slice()
-      const key = yield* Mac.key(Mac.hmacSha256, input)
-      input.fill(0)
-      const exported = yield* Mac.toBytes(key)
-      assert.deepStrictEqual(exported, jefe)
-      exported.fill(0)
-      assert.deepStrictEqual(yield* Mac.toBytes(key), jefe)
-      assert.strictEqual(Hex.encode(yield* mac.sign(key, message)), vectors[1][1])
+      // A Buffer's `slice` returns a view, so it must not be how bytes are copied.
+      for (const input of [jefe.slice(), Buffer.from(jefe)]) {
+        const key = yield* Mac.key(Mac.hmacSha256, input)
+        input.fill(0)
+        const exported = yield* Mac.toBytes(key)
+        assert.deepStrictEqual(exported, jefe)
+        exported.fill(0)
+        assert.deepStrictEqual(yield* Mac.toBytes(key), jefe)
+        assert.strictEqual(Hex.encode(yield* mac.sign(key, message)), vectors[1][1])
+      }
+      const key = yield* Mac.key(Mac.hmacSha256, jefe)
 
       // Display shows only the algorithm, so keys with different bytes look the same.
       const other = yield* Mac.key(Mac.hmacSha256, encode("other"))
@@ -102,10 +103,13 @@ describe("Mac", () => {
       assert.deepStrictEqual(yield* Mac.toBytes(extractable), jefe)
 
       const wrongHash = yield* importHmac("SHA-512", false)
+      // A Mac.Key both signs and verifies, so it needs both usages.
+      const signOnly = yield* importHmac("SHA-256", false, ["sign"])
+      const verifyOnly = yield* importHmac("SHA-256", false, ["verify"])
       const aes = yield* Effect.promise(() =>
         globalThis.crypto.subtle.importKey("raw", new Uint8Array(32), "AES-GCM", false, ["encrypt"])
       )
-      for (const cryptoKey of [wrongHash, aes]) {
+      for (const cryptoKey of [wrongHash, signOnly, verifyOnly, aes]) {
         assertReason(yield* Effect.flip(Mac.fromCryptoKey(Mac.hmacSha256, cryptoKey)), "InvalidKey", "fromCryptoKey")
       }
     }).pipe(Effect.provide(layer)))
