@@ -161,8 +161,7 @@ const makeStorageBackedWithTransaction = (
               // Throwing from a child callback can abort its parent.
               resolve()
               const completed = Effect.flatten(Effect.promise(() => promise))
-              // Marked in this finalizer, so an interruption delivered once it
-              // ends can't drop the callbacks of a committed transaction.
+              // Marked in the finalizer so interruption can't drop a committed transaction's callbacks.
               return Exit.isFailure(exit) ? completed : Effect.andThen(completed, level.markCommitted)
             }))
           })
@@ -183,7 +182,7 @@ const makeStorageBackedWithTransaction = (
       return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
     }).pipe(
       // The storage transaction closes the input gate, blocking dispatcher tasks until it completes.
-      // Provided inside `afterCommit` so callbacks run with the caller's scheduling.
+      // Inside `afterCommit`, so callbacks run with the caller's scheduling.
       Effect.provideService(Scheduler.PreventSchedulerYield, true)
     )
   )

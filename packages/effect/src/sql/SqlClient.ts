@@ -80,37 +80,35 @@ export interface SqlClient extends Constructor {
   readonly transactionService: Context.Service<TransactionConnection, TransactionConnection.Service>
 
   /**
-   * Runs `effect` after the outermost transaction of this client commits, or
-   * now if none is open.
+   * Runs `effect` once the outermost transaction of this client commits, or
+   * immediately, and interruptibly, when no transaction is open.
    *
    * **When to use**
    *
-   * Use to signal changes only once they're committed: waking workers,
-   * invalidating caches, completing waiters, or publishing to subscribers.
+   * Use to signal committed changes, such as waking workers, invalidating
+   * caches or notifying subscribers.
    *
    * **Details**
    *
-   * A callback registered in a transaction that rolls back, or whose `COMMIT`
-   * fails, never runs. One registered in a savepoint that rolls back is
-   * discarded, even if the outer transaction commits. Callbacks run in the
-   * order they were registered, after connection cleanup has been attempted
-   * and before `withTransaction` returns. They run in the context surrounding
-   * the outermost `withTransaction` call, without that transaction in scope: a
-   * callback that queries uses a new connection. Like finalizers, they run
-   * uninterruptibly, so they run whenever `COMMIT` succeeded, even if the
-   * fiber was interrupted meanwhile or releasing the connection failed. With
-   * no transaction open, the callback runs now and can be interrupted like any
-   * other effect. A callback that dies is logged, and the rest still run.
+   * Callbacks are discarded if the transaction rolls back or its `COMMIT`
+   * fails. Callbacks registered in a savepoint that rolls back are discarded
+   * even if the outer transaction commits.
+   *
+   * After a successful `COMMIT`, callbacks run in registration order once
+   * releasing the connection has been attempted, before `withTransaction`
+   * returns. They run uninterruptibly, even if the fiber was interrupted or
+   * releasing the connection failed, in the context of the outermost
+   * `withTransaction` call without the transaction, so a callback that
+   * queries uses a new connection. A callback that dies is logged and the
+   * rest still run.
    *
    * **Gotchas**
    *
-   * A callback is lost if the process exits between the commit and the
-   * callback, or if the outcome of `COMMIT` is unknown, so work that must
-   * happen belongs in a table written in the same transaction. A callback
-   * that blocks holds up `withTransaction`, which can't be interrupted until
-   * the callback ends, so keep callbacks short and fork long-running work.
-   * Registering on a transaction that has already ended, from a fiber that
-   * outlived it, is a defect.
+   * Callbacks are lost if the process exits before they run or the outcome of
+   * `COMMIT` is unknown, so work that must happen belongs in a table written
+   * in the same transaction. `withTransaction` waits for callbacks and can't
+   * be interrupted meanwhile, so keep them short and fork long-running work.
+   * Registering after the transaction has ended is a defect.
    */
   readonly afterCommit: (effect: Effect.Effect<void>) => Effect.Effect<void>
 
@@ -436,8 +434,8 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
 
 /**
  * One level of a transaction: the outermost transaction or a savepoint.
- * `committed` records that the level's changes were committed, separately
- * from how the level exits, which also covers releasing the connection.
+ * `committed` is set once the level's changes are committed, regardless of
+ * how the level later exits.
  */
 interface AfterCommitLevel {
   readonly parent: AfterCommitLevel | undefined
@@ -454,19 +452,15 @@ interface AfterCommitCallback {
   readonly effect: Effect.Effect<void>
 }
 
-/**
- * Derived from the client's transaction service key, so each client tracks
- * its own levels.
- */
+/** Keyed by the client's transaction service, so each client tracks its own levels. */
 const afterCommitLevel = <I, S>(transactionService: Context.Key<I, S>) =>
   Context.Service<AfterCommitLevel>(`${transactionService.key}/AfterCommit`)
 
 /**
- * The level of the transaction in scope: `undefined` outside a transaction,
- * `null` in a transaction that doesn't track `afterCommit`. A level counts only
- * while the transaction it was provided with is in scope, so a transaction
- * started outside the surrounding one, with its service removed, is a new
- * outermost level.
+ * `undefined` outside a transaction, `null` in a transaction that doesn't
+ * track `afterCommit`. A level only matches the transaction it was provided
+ * with, so a transaction started after removing the transaction service is a
+ * new outermost level.
  */
 const currentLevel = <I, S>(
   context: Context.Context<never>,
@@ -481,7 +475,7 @@ const currentLevel = <I, S>(
   return level !== undefined && level.transaction === transaction ? level : null
 }
 
-/** A level is open only while every level around it is open. */
+/** A level is open only while it and every enclosing level are open. */
 const isOpen = (level: AfterCommitLevel): boolean => {
   for (let current: AfterCommitLevel | undefined = level; current !== undefined; current = current.parent) {
     if (!current.open) {
@@ -494,7 +488,7 @@ const isOpen = (level: AfterCommitLevel): boolean => {
 const runAfterCommit = (callback: Effect.Effect<void>): Effect.Effect<void> =>
   Effect.catchCause(callback, (cause) => Effect.logError("SqlClient.afterCommit callback failed", cause))
 
-/** A callback runs only if its level and every level around it committed. */
+/** A callback runs only if its level and every enclosing level committed. */
 const isCommitted = (level: AfterCommitLevel | undefined): boolean => {
   for (let current = level; current !== undefined; current = current.parent) {
     if (!current.committed) {
@@ -504,10 +498,7 @@ const isCommitted = (level: AfterCommitLevel | undefined): boolean => {
   return true
 }
 
-/**
- * When the outermost level ends having committed, runs the callbacks of every
- * level that committed, in registration order.
- */
+/** When the outermost level ends committed, runs the callbacks of committed levels in order. */
 const endAfterCommitLevel = (level: AfterCommitLevel): Effect.Effect<void> => {
   level.open = false
   if (level.parent !== undefined || !level.committed) {
@@ -526,8 +517,7 @@ const endAfterCommitLevel = (level: AfterCommitLevel): Effect.Effect<void> => {
  *
  * **When to use**
  *
- * Use when building a `SqlClient` without `make`, which uses it for every
- * client.
+ * Use when building a `SqlClient` without `make`.
  *
  * @stability unstable
  * @category transactions
@@ -562,31 +552,24 @@ const untrackedLevel = {
  *
  * **When to use**
  *
- * Use when a driver implements transactions without `makeWithTransaction`,
- * which uses it.
+ * Use when a driver implements transactions without `makeWithTransaction`.
  *
  * **Details**
  *
- * `transaction` receives the level. Pass the transaction body's context,
- * which must already hold the level's transaction service value, through
- * `level.provide`, and provide the result to the body.
- * Run `level.markCommitted` once the level's changes are committed: after
- * COMMIT for the outermost level, or once a savepoint's body succeeds. When
- * `transaction` ends, the outermost level runs the callbacks of every level
- * that committed, in the order they were registered and in the context
- * `withAfterCommit` was called in, however `transaction` exits.
- *
- * Wrap everything that must finish before the callbacks run, including
- * releasing the connection.
+ * `transaction` receives the level. Pass the body's context, including the
+ * transaction service, through `level.provide` and provide the result to the
+ * body. Run `level.markCommitted` once the level's changes are committed:
+ * after `COMMIT` for the outermost level, or when a savepoint's body
+ * succeeds. However `transaction` exits, the outermost level then runs the
+ * callbacks of every committed level in registration order, in the context
+ * `withAfterCommit` was called in. Wrap everything that must finish first,
+ * including releasing the connection.
  *
  * **Gotchas**
  *
  * Run `level.markCommitted` where it can't be interrupted, such as a
- * finalizer, so it runs whenever the changes are committed.
- *
- * Inside a transaction of the client that wasn't started through
- * `withAfterCommit`, `afterCommit` can't see the commit, so callbacks run
- * immediately.
+ * finalizer. In a transaction of the client that wasn't started through
+ * `withAfterCommit`, callbacks run immediately.
  *
  * @stability unstable
  * @category transactions
@@ -603,8 +586,7 @@ export const withAfterCommit = <I, S>(transactionService: Context.Key<I, S>) => 
     Effect.withFiber((fiber) => {
       const parent = currentLevel(fiber.context, transactionService, levelService)
       if (parent === null) {
-        // Nested in a transaction that doesn't track callbacks, so they run
-        // immediately here too.
+        // The surrounding transaction doesn't track callbacks, so they run immediately.
         return transaction(untrackedLevel)
       }
       const current: AfterCommitLevel = {
