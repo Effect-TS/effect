@@ -169,6 +169,101 @@ export class Mac extends Context.Service<Mac, {
 const importParams = (algorithm: Algorithm): HmacImportParams => ({ name: "HMAC", hash: algorithm.hash.name })
 
 /**
+ * Builds a `Mac` layer on the `WebCrypto` reference that can sign and verify
+ * byte-backed keys with a synchronous HMAC primitive.
+ *
+ * **When to use**
+ *
+ * Use to run HMAC on a runtime's native code, as `NodeCrypto.layerMac` does
+ * with `createHmac` from `node:crypto`.
+ *
+ * **Details**
+ *
+ * `hmac` receives the hash name, the key bytes, and the data, and returns the
+ * tag. It runs only for byte-backed keys. `CryptoKey`-backed keys run on
+ * `crypto.subtle`, and generated keys come from `SecureRandom`, as in
+ * {@link layerWebCrypto}. `verify` computes the tag with `hmac` and compares
+ * it with {@link timingSafeEqual}. Without `hmac`, the layer is
+ * {@link layerWebCrypto}.
+ *
+ * **Gotchas**
+ *
+ * `hmac` receives the key's own bytes, not a copy, so it must not modify or
+ * keep them.
+ *
+ * **Example** (Signing with a native HMAC)
+ *
+ * ```ts
+ * import { Layer } from "effect"
+ * import { Mac, SecureRandom } from "effect/crypto"
+ *
+ * declare const nativeHmac: (hash: string, key: Uint8Array, data: Uint8Array) => Uint8Array
+ *
+ * const layer = Mac.layerWebCryptoWith({ hmac: nativeHmac }).pipe(
+ *   Layer.provide(SecureRandom.layerWebCrypto)
+ * )
+ * ```
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerWebCryptoWith = (options: {
+  readonly hmac?: ((hash: Digest.Algorithm["name"], key: Uint8Array, data: Uint8Array) => Uint8Array) | undefined
+}): Layer.Layer<Mac, never, SecureRandom.SecureRandom> =>
+  Layer.effect(
+    Mac,
+    Effect.gen(function*() {
+      const random = yield* SecureRandom.SecureRandom
+      const crypto = yield* WebCrypto
+      const cryptoKeyFor = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
+        subtle.importKey("raw", bytes as BufferSource, importParams(algorithm), false, ["sign", "verify"])
+      )
+      const hmac = options.hmac
+      // Computes a byte-backed key's tags with `hmac`, or `undefined` to use WebCrypto.
+      const hmacTag = (key: Key): ((data: Uint8Array) => Uint8Array) | undefined => {
+        if (hmac === undefined) return undefined
+        const stored = KeyModel.material(key)
+        return stored._tag === "Bytes" ? (data) => hmac(key.algorithm.hash.name, stored.bytes, data) : undefined
+      }
+      return Mac.of({
+        generateKey: (algorithm) =>
+          Effect.map(
+            random.randomBytes(blockSizes[algorithm.hash.name]),
+            (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)
+          ),
+        sign: (key, data) => {
+          const tagOf = hmacTag(key)
+          return tagOf !== undefined
+            ? Effect.sync(() => tagOf(data))
+            : internal.run(
+              "Mac",
+              "sign",
+              key.algorithm.name,
+              crypto,
+              async (subtle) =>
+                new Uint8Array(await subtle.sign("HMAC", await cryptoKeyFor(subtle, key), data as BufferSource))
+            )
+        },
+        // Both paths compare tags in constant time and reject other lengths.
+        verify: (key, tag, data) => {
+          const tagOf = hmacTag(key)
+          return tagOf !== undefined
+            ? Effect.sync(() => timingSafeEqual(tagOf(data), tag))
+            : internal.run(
+              "Mac",
+              "verify",
+              key.algorithm.name,
+              crypto,
+              async (subtle) =>
+                subtle.verify("HMAC", await cryptoKeyFor(subtle, key), tag as BufferSource, data as BufferSource)
+            )
+        }
+      })
+    })
+  )
+
+/**
  * Layer that provides `Mac` on the `WebCrypto` reference.
  *
  * **Details**
@@ -181,42 +276,7 @@ const importParams = (algorithm: Algorithm): HmacImportParams => ({ name: "HMAC"
  * @category layers
  * @since 4.0.0
  */
-export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> = Layer.effect(
-  Mac,
-  Effect.gen(function*() {
-    const random = yield* SecureRandom.SecureRandom
-    const crypto = yield* WebCrypto
-    const cryptoKeyFor = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
-      subtle.importKey("raw", bytes as BufferSource, importParams(algorithm), false, ["sign", "verify"])
-    )
-    return Mac.of({
-      generateKey: (algorithm) =>
-        Effect.map(
-          random.randomBytes(blockSizes[algorithm.hash.name]),
-          (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)
-        ),
-      sign: (key, data) =>
-        internal.run(
-          "Mac",
-          "sign",
-          key.algorithm.name,
-          crypto,
-          async (subtle) =>
-            new Uint8Array(await subtle.sign("HMAC", await cryptoKeyFor(subtle, key), data as BufferSource))
-        ),
-      // Web Crypto compares HMAC tags in constant time and rejects other lengths.
-      verify: (key, tag, data) =>
-        internal.run(
-          "Mac",
-          "verify",
-          key.algorithm.name,
-          crypto,
-          async (subtle) =>
-            subtle.verify("HMAC", await cryptoKeyFor(subtle, key), tag as BufferSource, data as BufferSource)
-        )
-    })
-  })
-)
+export const layerWebCrypto: Layer.Layer<Mac, never, SecureRandom.SecureRandom> = layerWebCryptoWith({})
 
 /**
  * Builds a key from raw key bytes.

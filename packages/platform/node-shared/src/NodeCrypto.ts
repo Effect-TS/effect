@@ -79,21 +79,9 @@ export const layerDigest: Layer.Layer<Digest.Digest> = Layer.succeed(Digest.Dige
     Effect.sync(() => NodeCrypto.createHash(nodeHashNames[algorithm.name]).update(data).digest("hex"))
 })
 
-// The material of an `effect/crypto` key, shared by `effect` through
-// `Symbol.for`: key bytes, or a `CryptoKey`. This is an internal protocol
-// between `effect` and its platform packages, not a public API.
-const MaterialId = Symbol.for("~effect/crypto/Key/material")
-type Material =
-  | { readonly _tag: "Bytes"; readonly bytes: Uint8Array }
-  | { readonly _tag: "CryptoKey"; readonly cryptoKey: CryptoKey }
-
-const keyBytes = (key: object): Uint8Array | undefined => {
-  const material = (key as { readonly [MaterialId]?: Material })[MaterialId]
-  return material?._tag === "Bytes" ? material.bytes : undefined
-}
-
-const nodeHmac = (key: Mac.Key, bytes: Uint8Array, data: Uint8Array): Uint8Array =>
-  new Uint8Array(NodeCrypto.createHmac(nodeHashNames[key.algorithm.hash.name], bytes).update(data).digest())
+// Copies the Buffer, which may be a view into Node's shared pool.
+const nodeHmac = (hash: Digest.Algorithm["name"], key: Uint8Array, data: Uint8Array): Uint8Array =>
+  new Uint8Array(NodeCrypto.createHmac(nodeHashNames[hash], key).update(data).digest())
 
 /**
  * Layer that provides `Mac` using `createHmac` from `node:crypto`.
@@ -101,35 +89,18 @@ const nodeHmac = (key: Mac.Key, bytes: Uint8Array, data: Uint8Array): Uint8Array
  * **Details**
  *
  * Byte-backed keys sign and verify synchronously on `node:crypto`, since
- * webhook verification is a server hot path. `CryptoKey`-backed keys and key
- * generation go through `Mac.layerWebCrypto`, which runs on Node.js's
- * `crypto.subtle`. Output is identical to `Mac.layerWebCrypto`.
+ * webhook verification is a server hot path. `CryptoKey`-backed keys go
+ * through Node.js's `crypto.subtle`, and generated keys come from
+ * `SecureRandom`. This is `Mac.layerWebCryptoWith` with a `node:crypto`
+ * primitive, so output and errors are identical to `Mac.layerWebCrypto`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerMac: Layer.Layer<Mac.Mac, never, SecureRandom.SecureRandom> = Layer.effect(
-  Mac.Mac,
-  Effect.gen(function*() {
-    const core = yield* Mac.Mac
-    return Mac.Mac.of({
-      generateKey: core.generateKey,
-      sign: (key, data) => {
-        const bytes = keyBytes(key)
-        return bytes === undefined ? core.sign(key, data) : Effect.sync(() => nodeHmac(key, bytes, data))
-      },
-      verify: (key, tag, data) => {
-        const bytes = keyBytes(key)
-        if (bytes === undefined) return core.verify(key, tag, data)
-        return Effect.sync(() => {
-          const expected = nodeHmac(key, bytes, data)
-          return expected.length === tag.length && NodeCrypto.timingSafeEqual(expected, tag)
-        })
-      }
-    })
-  })
-).pipe(Layer.provide(Mac.layerWebCrypto))
+export const layerMac: Layer.Layer<Mac.Mac, never, SecureRandom.SecureRandom> = Mac.layerWebCryptoWith({
+  hmac: nodeHmac
+})
 
 const kdfFailure = (reason: CryptoError.CryptoErrorReason): Effect.Effect<never, CryptoError.CryptoError> =>
   Effect.fail(new CryptoError.CryptoError({ module: "Kdf", method: "derive", reason }))
@@ -228,34 +199,26 @@ const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
   return output
 }
 
-type AeadOptions = Parameters<Aead.Aead["Service"]["encrypt"]>[2]
-
-const chachaEncrypt = (bytes: Uint8Array, plaintext: Uint8Array, options: AeadOptions): Uint8Array => {
-  const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
-  if (options.aad !== undefined) cipher.setAAD(options.aad)
-  return concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
-}
-
-const chachaDecrypt = (
-  bytes: Uint8Array,
-  ciphertext: Uint8Array,
-  options: AeadOptions
-): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
-  Effect.suspend(() => {
-    const decipher = NodeCrypto.createDecipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
-    if (options.aad !== undefined) decipher.setAAD(options.aad)
+const nodeChacha: Aead.Implementation = {
+  encrypt: (key, nonce, plaintext, aad) => {
+    const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", key, nonce, { authTagLength: 16 })
+    cipher.setAAD(aad)
+    return concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+  },
+  decrypt: (key, nonce, ciphertext, aad) => {
+    const decipher = NodeCrypto.createDecipheriv("chacha20-poly1305", key, nonce, { authTagLength: 16 })
+    decipher.setAAD(aad)
     decipher.setAuthTag(ciphertext.subarray(ciphertext.length - 16))
     const plaintext = decipher.update(ciphertext.subarray(0, ciphertext.length - 16))
     try {
       // `final` throws only when the tag does not match.
-      return Effect.succeed(concat([plaintext, decipher.final()]))
+      return concat([plaintext, decipher.final()])
     } catch {
       plaintext.fill(0)
-      return Effect.fail(
-        new CryptoError.CryptoError({ module: "Aead", method: "decrypt", reason: new CryptoError.DecryptionFailed() })
-      )
+      return undefined
     }
-  })
+  }
+}
 
 /**
  * Layer that provides `Aead`, running ChaCha20-Poly1305 on `node:crypto`.
@@ -263,44 +226,20 @@ const chachaDecrypt = (
  * **Details**
  *
  * Byte-backed ChaCha20-Poly1305 keys encrypt and decrypt synchronously on
- * `node:crypto`. Everything else goes through `Aead.layerWebCrypto`: AES-GCM on
- * `crypto.subtle`, XChaCha20-Poly1305 on its pure TypeScript implementation,
- * and arguments that fail a check, so errors are identical to the core layer.
- * Bun's `node:crypto` lacks ChaCha20-Poly1305, so on Bun this layer is the
- * core layer. Output is identical to `Aead.layerWebCrypto`.
+ * `node:crypto`. AES-GCM runs on `crypto.subtle` and XChaCha20-Poly1305 on its
+ * pure TypeScript implementation. This is `Aead.layerWebCryptoWith` with a
+ * `node:crypto` implementation, so arguments are checked and errors reported
+ * as in `Aead.layerWebCrypto`. Bun's `node:crypto` lacks ChaCha20-Poly1305, so
+ * on Bun this layer is the core layer. Output is identical to
+ * `Aead.layerWebCrypto`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom> = Layer.effect(
-  Aead.Aead,
-  Effect.gen(function*() {
-    const core = yield* Aead.Aead
-    if (!NodeCrypto.getCiphers().includes("chacha20-poly1305")) return core
-    // The bytes of a ChaCha20-Poly1305 key whose message passes the core
-    // layer's checks, or `undefined` to hand the message to the core layer.
-    const nativeBytes = (key: Aead.Key, options: AeadOptions) =>
-      key.algorithm.name === "chacha20Poly1305" && options.nonce.length === 12 ? keyBytes(key) : undefined
-    return Aead.Aead.of({
-      generateKey: core.generateKey,
-      encrypt: (key, plaintext, options) =>
-        Effect.suspend(() => {
-          const bytes = nativeBytes(key, options)
-          return bytes === undefined
-            ? core.encrypt(key, plaintext, options)
-            : Effect.sync(() => chachaEncrypt(bytes, plaintext, options))
-        }),
-      decrypt: (key, ciphertext, options) =>
-        Effect.suspend(() => {
-          const bytes = nativeBytes(key, options)
-          return bytes === undefined || ciphertext.length < 16
-            ? core.decrypt(key, ciphertext, options)
-            : chachaDecrypt(bytes, ciphertext, options)
-        })
-    })
-  })
-).pipe(Layer.provide(Aead.layerWebCrypto))
+export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom> = Aead.layerWebCryptoWith(
+  NodeCrypto.getCiphers().includes("chacha20-poly1305") ? { implementations: { chacha20Poly1305: nodeChacha } } : {}
+)
 
 /**
  * Layer that provides `Cipher` from `crypto.subtle` on the `WebCrypto`

@@ -42,7 +42,9 @@ import { WebCrypto } from "./WebCrypto.ts"
 const TypeId = "~effect/crypto/Aead/Key" as const
 
 /**
- * The pure TypeScript code of an algorithm that WebCrypto does not provide.
+ * The synchronous code of an algorithm: the pure TypeScript code of one that
+ * WebCrypto does not provide, or a native implementation passed to
+ * {@link layerWebCryptoWith}.
  *
  * **Details**
  *
@@ -325,6 +327,112 @@ const runImplementation = (
 }
 
 /**
+ * Builds an `Aead` layer on the `WebCrypto` reference that runs the given
+ * implementations for byte-backed keys.
+ *
+ * **When to use**
+ *
+ * Use to run an algorithm on a runtime's native code, as `NodeCrypto.layerAead`
+ * does for ChaCha20-Poly1305 with `node:crypto`.
+ *
+ * **Details**
+ *
+ * `implementations` maps algorithm names to implementations that replace
+ * `crypto.subtle` or the algorithm's pure TypeScript code. They follow the
+ * {@link Implementation} contract and run only for byte-backed keys, after the
+ * layer has checked the nonce, plaintext, and ciphertext lengths, so errors are
+ * those of {@link layerWebCrypto}. `CryptoKey`-backed keys run on
+ * `crypto.subtle`, and generated keys come from `SecureRandom`. Without
+ * `implementations`, the layer is {@link layerWebCrypto}.
+ *
+ * **Gotchas**
+ *
+ * An implementation receives the key's own bytes, not a copy, so it must not
+ * modify or keep them.
+ *
+ * **Example** (Running ChaCha20-Poly1305 natively)
+ *
+ * ```ts
+ * import { Layer } from "effect"
+ * import { Aead, SecureRandom } from "effect/crypto"
+ *
+ * declare const nativeChacha: Aead.Implementation
+ *
+ * const layer = Aead.layerWebCryptoWith({
+ *   implementations: { chacha20Poly1305: nativeChacha }
+ * }).pipe(Layer.provide(SecureRandom.layerWebCrypto))
+ * ```
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerWebCryptoWith = (options: {
+  readonly implementations?: Partial<Record<Algorithm["name"], Implementation>> | undefined
+}): Layer.Layer<Aead, never, SecureRandom.SecureRandom> =>
+  Layer.effect(
+    Aead,
+    Effect.gen(function*() {
+      const random = yield* SecureRandom.SecureRandom
+      const crypto = yield* WebCrypto
+      const cryptoKeyFor = KeyModel.makeCache((subtle, bytes) =>
+        subtle.importKey("raw", bytes as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"])
+      )
+      const implementations = options.implementations
+      // A supplied implementation runs only for byte-backed keys, so CryptoKeys
+      // stay on `crypto.subtle`.
+      const implementationFor = (key: Key): Implementation | undefined => {
+        const supplied = implementations?.[key.algorithm.name]
+        return supplied !== undefined && KeyModel.material(key)._tag === "Bytes"
+          ? supplied
+          : key.algorithm.implementation
+      }
+      const gcm = (method: Method, key: Key, data: Uint8Array, options: Options) => {
+        const params: AesGcmParams = {
+          name: "AES-GCM",
+          iv: options.nonce as BufferSource,
+          tagLength: 128,
+          ...(options.aad === undefined ? {} : { additionalData: options.aad as BufferSource })
+        }
+        return internal.run(
+          "Aead",
+          method,
+          key.algorithm.name,
+          crypto,
+          async (subtle) =>
+            new Uint8Array(await subtle[method](params, await cryptoKeyFor(subtle, key), data as BufferSource)),
+          (cause) =>
+            internal.webCryptoError(
+              "Aead",
+              method,
+              key.algorithm.name,
+              cause,
+              method === "decrypt" ? () => new CryptoError.DecryptionFailed() : undefined
+            )
+        )
+      }
+      const run = (method: Method) => (key: Key, data: Uint8Array, options: Options) =>
+        Effect.suspend(() => {
+          const failure = checkArguments(method, key, data, options)
+          if (failure !== undefined) return failure
+          const implementation = implementationFor(key)
+          return implementation === undefined
+            ? gcm(method, key, data, options)
+            : runImplementation(method, implementation, key, data, options)
+        })
+      return Aead.of({
+        generateKey: (algorithm) =>
+          Effect.map(
+            random.randomBytes(algorithm.keyLength),
+            (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)
+          ),
+        encrypt: run("encrypt"),
+        decrypt: run("decrypt")
+      })
+    })
+  )
+
+/**
  * Layer that provides `Aead` on the `WebCrypto` reference.
  *
  * **Details**
@@ -339,55 +447,7 @@ const runImplementation = (
  * @category layers
  * @since 4.0.0
  */
-export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom> = Layer.effect(
-  Aead,
-  Effect.gen(function*() {
-    const random = yield* SecureRandom.SecureRandom
-    const crypto = yield* WebCrypto
-    const cryptoKeyFor = KeyModel.makeCache((subtle, bytes) =>
-      subtle.importKey("raw", bytes as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"])
-    )
-    const gcm = (method: Method, key: Key, data: Uint8Array, options: Options) => {
-      const params: AesGcmParams = {
-        name: "AES-GCM",
-        iv: options.nonce as BufferSource,
-        tagLength: 128,
-        ...(options.aad === undefined ? {} : { additionalData: options.aad as BufferSource })
-      }
-      return internal.run(
-        "Aead",
-        method,
-        key.algorithm.name,
-        crypto,
-        async (subtle) =>
-          new Uint8Array(await subtle[method](params, await cryptoKeyFor(subtle, key), data as BufferSource)),
-        (cause) =>
-          internal.webCryptoError(
-            "Aead",
-            method,
-            key.algorithm.name,
-            cause,
-            method === "decrypt" ? () => new CryptoError.DecryptionFailed() : undefined
-          )
-      )
-    }
-    const run = (method: Method) => (key: Key, data: Uint8Array, options: Options) =>
-      Effect.suspend(() => {
-        const failure = checkArguments(method, key, data, options)
-        if (failure !== undefined) return failure
-        const implementation = key.algorithm.implementation
-        return implementation === undefined
-          ? gcm(method, key, data, options)
-          : runImplementation(method, implementation, key, data, options)
-      })
-    return Aead.of({
-      generateKey: (algorithm) =>
-        Effect.map(random.randomBytes(algorithm.keyLength), (bytes) => KeyModel.makeBytes(KeyProto, algorithm, bytes)),
-      encrypt: run("encrypt"),
-      decrypt: run("decrypt")
-    })
-  })
-)
+export const layerWebCrypto: Layer.Layer<Aead, never, SecureRandom.SecureRandom> = layerWebCryptoWith({})
 
 /**
  * Builds a key from raw key bytes.

@@ -17,18 +17,17 @@ export type Material =
   | { readonly _tag: "CryptoKey"; readonly cryptoKey: CryptoKey }
 
 /**
- * The property holding a key's material. It is shared through `Symbol.for` so
- * the platform layers, which cannot import this module, can read it.
+ * The property holding a key's material. Only this package reads it: platform
+ * layers pass primitives to a family's `layerWebCryptoWith` instead, and
+ * third-party layers use the family's public `toBytes`.
  *
- * This is an internal protocol between `effect` and its platform packages, not
- * a supported API, and not a secrecy mechanism. Being non-enumerable keeps the
- * material out of `JSON.stringify` and `inspect`, but anyone holding a key can
- * read it through `Symbol.for`. Third-party layers should use the family's
- * public `toBytes`.
+ * This is not a secrecy mechanism. Being non-enumerable keeps the material out
+ * of `JSON.stringify` and `inspect`, but anyone holding a key can reach it
+ * through `Object.getOwnPropertySymbols`.
  *
  * @internal
  */
-export const MaterialId: unique symbol = Symbol.for("~effect/crypto/Key/material") as never
+export const MaterialId: unique symbol = Symbol("~effect/crypto/Key/material") as never
 
 /**
  * Copies bytes into a plain `Uint8Array` with its own buffer. A subclass's
