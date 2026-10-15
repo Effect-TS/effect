@@ -1,12 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import * as Cause from "effect/Cause"
 import * as Aead from "effect/crypto/Aead"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Equal from "effect/Equal"
-import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import { Buffer } from "node:buffer"
 import { inspect } from "node:util"
@@ -121,11 +119,9 @@ describe("Mac", () => {
       }
     }).pipe(Effect.provide(layer)))
 
-  it.effect("compares bytes, dying on unequal lengths", () =>
-    Effect.gen(function*() {
-      assert.isTrue(yield* Mac.timingSafeEqual(encode("tag"), encode("tag")))
-      assert.isFalse(yield* Mac.timingSafeEqual(encode("tag"), encode("tab")))
-      const exit = yield* Effect.exit(Mac.timingSafeEqual(encode("tag"), encode("tags")))
-      assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause), "expected a defect")
-    }))
+  it("compares bytes synchronously, returning false for unequal lengths", () => {
+    assert.isTrue(Mac.timingSafeEqual(encode("tag"), encode("tag")))
+    assert.isFalse(Mac.timingSafeEqual(encode("tag"), encode("tab")))
+    assert.isFalse(Mac.timingSafeEqual(encode("tag"), encode("tags")))
+  })
 })

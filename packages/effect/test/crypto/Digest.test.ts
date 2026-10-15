@@ -38,25 +38,29 @@ const vectors: ReadonlyArray<readonly [Digest.Algorithm, string, string]> = [
 ]
 
 describe("Digest", () => {
-  it.effect("matches the published vectors through the service and the top-level functions", () =>
+  it("does not export top-level digest functions", () => {
+    assert.notProperty(Digest, "digest")
+    assert.notProperty(Digest, "digestHex")
+  })
+
+  it.effect("matches the published vectors through the service", () =>
     Effect.gen(function*() {
       const service = yield* Digest.Digest
       for (const [algorithm, input, hex] of vectors) {
         const data = encode(input)
         assert.strictEqual(yield* service.digestHex(algorithm, data), hex)
         assert.strictEqual(Hex.encode(yield* service.digest(algorithm, data)), hex)
-        assert.strictEqual(yield* Digest.digestHex(algorithm, data), hex)
-        assert.strictEqual(Hex.encode(yield* Digest.digest(algorithm, data)), hex)
       }
     }).pipe(Effect.provide(Digest.layerWebCrypto)))
 
   it.effect("computes MD5 like node:crypto on random inputs", () =>
     Effect.gen(function*() {
+      const digest = yield* Digest.Digest
       // Covers every padding case around the 64-byte block boundary.
       for (let length = 0; length <= 200; length++) {
         const data = new Uint8Array(NodeCrypto.randomBytes(length))
         const expected = NodeCrypto.createHash("md5").update(data).digest("hex")
-        assert.strictEqual(yield* Digest.digestHex(Digest.md5, data), expected, `length ${length}`)
+        assert.strictEqual(yield* digest.digestHex(Digest.md5, data), expected, `length ${length}`)
       }
-    }))
+    }).pipe(Effect.provide(Digest.layerWebCrypto)))
 })

@@ -41,10 +41,12 @@ describe("WebCrypto", () => {
       assert.strictEqual(yield* WebCrypto.WebCrypto, globalThis.crypto)
     }))
 
-  it.effect("swaps the Crypto object the top-level Digest functions run on", () =>
+  it.effect("swaps the Crypto object the Digest service runs on", () =>
     Effect.gen(function*() {
-      assert.deepStrictEqual(yield* Digest.digest(Digest.sha256, encode("abc")), Uint8Array.of(1, 2, 3))
+      const digest = yield* Digest.Digest
+      assert.deepStrictEqual(yield* digest.digest(Digest.sha256, encode("abc")), Uint8Array.of(1, 2, 3))
     }).pipe(
+      Effect.provide(Digest.layerWebCrypto),
       Effect.provide(WebCrypto.layer({
         subtle: { digest: () => Promise.resolve(Uint8Array.of(1, 2, 3).buffer) }
       } as unknown as Crypto))
@@ -56,7 +58,7 @@ describe("WebCrypto", () => {
       // MD5 is pure TypeScript, so it keeps working without crypto.subtle.
       assert.strictEqual(yield* digest.digestHex(Digest.md5, encode("abc")), "900150983cd24fb0d6963f7d28e17f72")
       assertSubtleUnavailable(yield* Effect.exit(digest.digest(Digest.sha256, encode("abc"))))
-      assertSubtleUnavailable(yield* Effect.exit(Digest.digestHex(Digest.sha256, encode("abc"))))
+      assertSubtleUnavailable(yield* Effect.exit(digest.digestHex(Digest.sha256, encode("abc"))))
     }).pipe(
       Effect.provide(Digest.layerWebCrypto),
       // A Crypto object without subtle, as in an insecure browser context.
