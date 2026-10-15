@@ -63,35 +63,13 @@ const PublicKeyTypeId = "~effect/crypto/Signature/PublicKey" as const
 export type Curve = "P-256" | "P-384" | "P-521"
 
 /**
- * The type-level members every signature algorithm carries.
- *
- * **Details**
- *
- * `~flags` and `~keys` exist only in the types. They record whether private
- * and public keys have a raw form, that the algorithm runs on
- * `crypto.subtle`, and which key types the algorithm produces.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Phantom<RawPrivate extends boolean, RawPublic extends boolean> {
-  readonly "~flags"?:
-    | { readonly rawPrivate: RawPrivate; readonly rawPublic: RawPublic; readonly native: true }
-    | undefined
-  readonly "~keys"?:
-    | { readonly privateKey: PrivateKey<Algorithm>; readonly publicKey: PublicKey<Algorithm> }
-    | undefined
-}
-
-/**
  * Ed25519 (RFC 8032), with 64-byte signatures.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface Ed25519 extends Phantom<true, true> {
+export interface Ed25519 {
   readonly _tag: "Ed25519"
   readonly name: "ed25519"
 }
@@ -103,7 +81,7 @@ export interface Ed25519 extends Phantom<true, true> {
  * @category models
  * @since 4.0.0
  */
-export interface Ecdsa<C extends Curve = Curve> extends Phantom<false, true> {
+export interface Ecdsa<C extends Curve = Curve> {
   readonly _tag: "Ecdsa"
   readonly name: { readonly "P-256": "ecdsaP256"; readonly "P-384": "ecdsaP384"; readonly "P-521": "ecdsaP521" }[C]
   readonly namedCurve: C
@@ -122,7 +100,7 @@ export interface Ecdsa<C extends Curve = Curve> extends Phantom<false, true> {
  * @category models
  * @since 4.0.0
  */
-export interface RsaPss extends Phantom<false, false> {
+export interface RsaPss {
   readonly _tag: "RsaPss"
   readonly name: string
   readonly hash: Digest.Algorithm
@@ -142,7 +120,7 @@ export interface RsaPss extends Phantom<false, false> {
  * @category models
  * @since 4.0.0
  */
-export interface RsaPkcs1v15 extends Phantom<false, false> {
+export interface RsaPkcs1v15 {
   readonly _tag: "RsaPkcs1v15"
   readonly name: string
   readonly hash: Digest.Algorithm
@@ -586,7 +564,7 @@ export const layerWebCrypto: Layer.Layer<Signature, never, SecureRandom.SecureRa
  * @since 4.0.0
  */
 export const privateKey = <
-  A extends Algorithm & { readonly "~flags"?: { readonly rawPrivate: true } | undefined }
+  A extends Ed25519
 >(
   algorithm: A,
   bytes: Uint8Array
@@ -618,7 +596,7 @@ export const privateKey = <
  * @since 4.0.0
  */
 export const publicKey = <
-  A extends Algorithm & { readonly "~flags"?: { readonly rawPublic: true } | undefined }
+  A extends Ed25519 | Ecdsa
 >(
   algorithm: A,
   bytes: Uint8Array

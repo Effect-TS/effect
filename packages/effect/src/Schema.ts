@@ -14717,7 +14717,7 @@ export const SignaturePublicKey = <A extends Signature_.Algorithm>(algorithm: A)
  * @since 4.0.0
  */
 export const SignaturePublicKeyFromBytes = <
-  A extends Signature_.Algorithm & { readonly "~flags"?: { readonly rawPublic: true } | undefined }
+  A extends Signature_.Ed25519 | Signature_.Ecdsa
 >(algorithm: A): decodeTo<SignaturePublicKey<A>, Uint8Array> =>
   cryptoKeyFromBytes(
     "SignaturePublicKeyFromBytes",
@@ -14812,7 +14812,7 @@ export const SignaturePrivateKey = <A extends Signature_.Algorithm>(algorithm: A
  * @since 4.0.0
  */
 export const SignaturePrivateKeyFromBytes = <
-  A extends Signature_.Algorithm & { readonly "~flags"?: { readonly rawPrivate: true } | undefined }
+  A extends Signature_.Ed25519
 >(algorithm: A, options?: CryptoKeyOptions): decodeTo<SignaturePrivateKey<A>, Uint8Array> =>
   cryptoKeyFromBytes(
     "SignaturePrivateKeyFromBytes",
@@ -15007,7 +15007,7 @@ export const KeyAgreementPrivateKey = <A extends KeyAgreement_.Algorithm>(
  * @since 4.0.0
  */
 export const KeyAgreementPrivateKeyFromBytes = <
-  A extends KeyAgreement_.Algorithm & { readonly "~flags"?: { readonly rawPrivate: true } | undefined }
+  A extends KeyAgreement_.X25519
 >(algorithm: A, options?: CryptoKeyOptions): decodeTo<KeyAgreementPrivateKey<A>, Uint8Array> =>
   cryptoKeyFromBytes(
     "KeyAgreementPrivateKeyFromBytes",

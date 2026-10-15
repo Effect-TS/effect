@@ -27,27 +27,18 @@ import * as Layer from "../Layer.ts"
 import { WebCrypto } from "./WebCrypto.ts"
 
 /**
- * Output format of the UUID functions: a lowercase, hyphenated string, or the
- * 16 UUID bytes.
+ * Generates a UUID as a lowercase, hyphenated string or, with
+ * `format: "bytes"`, the 16 UUID bytes.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export type UuidFormat = "string" | "bytes"
-
-/**
- * Generates a UUID in the requested format.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface UuidGenerator<R> {
-  (options?: { readonly format?: "string" | undefined }): Effect.Effect<string, never, R>
-  <Format extends UuidFormat>(options: {
+export interface UuidGenerator {
+  (options?: { readonly format?: "string" | undefined }): Effect.Effect<string>
+  <Format extends "string" | "bytes">(options: {
     readonly format: Format
-  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string, never, R>
+  }): Effect.Effect<Format extends "bytes" ? Uint8Array : string>
 }
 
 /**
@@ -93,13 +84,18 @@ export class SecureRandom extends Context.Service<SecureRandom, {
    * Generates a UUIDv4, as a lowercase hyphenated string or, with
    * `format: "bytes"`, the 16 UUID bytes.
    */
-  readonly uuidV4: UuidGenerator<never>
+  readonly uuidV4: UuidGenerator
 
   /**
    * Generates a UUIDv7 from the `Clock` timestamp, as a lowercase hyphenated
    * string or, with `format: "bytes"`, the 16 UUID bytes.
+   *
+   * UUIDv7s sort by timestamp, with no ordering guarantee within a
+   * millisecond. Uniqueness is probabilistic: 74 of the 128 bits are random,
+   * so a 50% chance of a collision takes about 162 billion UUIDs in one
+   * millisecond.
    */
-  readonly uuidV7: UuidGenerator<never>
+  readonly uuidV7: UuidGenerator
 
   /**
    * Generates a ULID from the `Clock` timestamp: 26 uppercase Crockford
@@ -164,7 +160,7 @@ const intBetweenUnsafe = (
 const makeUuid = (
   bytes: (randomBytes: Uint8Array) => Uint8Array,
   randomBytes: (size: number) => Uint8Array,
-  format: UuidFormat | undefined
+  format: "string" | "bytes" | undefined
 ): string | Uint8Array => {
   const uuid = bytes(randomBytes(16))
   return format === "bytes" ? uuid : Uuid.stringify(uuid)
@@ -225,15 +221,15 @@ export const make = (randomBytes: (size: number) => Uint8Array): SecureRandom["S
         return buffer
       }),
     uuidV4:
-      ((options?: { readonly format?: UuidFormat | undefined }) =>
-        Effect.sync(() => makeUuid(Uuid.v4Bytes, randomBytes, options?.format))) as UuidGenerator<never>,
+      ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
+        Effect.sync(() => makeUuid(Uuid.v4Bytes, randomBytes, options?.format))) as UuidGenerator,
     uuidV7:
-      ((options?: { readonly format?: UuidFormat | undefined }) =>
+      ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
         Effect.clockWith((clock) =>
           Effect.sync(() =>
             makeUuid((bytes) => Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
           )
-        )) as UuidGenerator<never>,
+        )) as UuidGenerator,
     ulid: Effect.clockWith((clock) =>
       Effect.sync(() => Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytes(10)))
     )
@@ -307,15 +303,23 @@ export const randomBytesUnsafe = (size: number): Uint8Array => {
  */
 export const uuidV4Unsafe: {
   (options?: { readonly format?: "string" | undefined }): string
-  <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
+  <Format extends "string" | "bytes">(
+    options: { readonly format: Format }
+  ): Format extends "bytes" ? Uint8Array : string
 } =
-  ((options?: { readonly format?: UuidFormat | undefined }) =>
+  ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
     makeUuid(Uuid.v4Bytes, randomBytesUnsafe, options?.format)) as any
 
 /**
  * Synchronously generates a UUIDv7 from `Date.now()` and `globalThis.crypto`,
  * as a lowercase hyphenated string or, with `format: "bytes"`, the 16 UUID
  * bytes.
+ *
+ * **Details**
+ *
+ * UUIDv7s sort by timestamp, with no ordering guarantee within a millisecond.
+ * Uniqueness is probabilistic: 74 of the 128 bits are random, so a 50% chance
+ * of a collision takes about 162 billion UUIDs in one millisecond.
  *
  * **Gotchas**
  *
@@ -328,9 +332,11 @@ export const uuidV4Unsafe: {
  */
 export const uuidV7Unsafe: {
   (options?: { readonly format?: "string" | undefined }): string
-  <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
+  <Format extends "string" | "bytes">(
+    options: { readonly format: Format }
+  ): Format extends "bytes" ? Uint8Array : string
 } =
-  ((options?: { readonly format?: UuidFormat | undefined }) =>
+  ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
     makeUuid((bytes) => Uuid.v7Bytes(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
 
 /**

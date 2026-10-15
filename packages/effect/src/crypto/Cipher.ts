@@ -44,10 +44,7 @@ const TypeId = "~effect/crypto/Cipher/Key" as const
  *
  * **Details**
  *
- * `mode` is the WebCrypto algorithm name and `keyLength` is in bytes. The
- * `~flags` and `~keys` members exist only in the types: they record that keys
- * have a raw form and run on `crypto.subtle`, and which key type the algorithm
- * produces.
+ * `mode` is the WebCrypto algorithm name and `keyLength` is in bytes.
  *
  * @stability unstable
  * @category models
@@ -57,8 +54,6 @@ export interface Algorithm {
   readonly name: "aes128Ctr" | "aes256Ctr" | "aes128Cbc" | "aes256Cbc"
   readonly mode: "AES-CTR" | "AES-CBC"
   readonly keyLength: 16 | 32
-  readonly "~flags"?: { readonly rawPrivate: true; readonly rawPublic: false; readonly native: true } | undefined
-  readonly "~keys"?: { readonly key: Key<Algorithm> } | undefined
 }
 
 /**
@@ -138,22 +133,6 @@ const KeyProto = KeyModel.redactedProto(TypeId, "Cipher.Key")
 export const isKey = (u: unknown): u is Key => Predicate.hasProperty(u, TypeId)
 
 /**
- * Per-message inputs for {@link Cipher}.
- *
- * **Details**
- *
- * `iv` is 16 bytes: the initial counter block for AES-CTR, and the
- * initialization vector for AES-CBC.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Options {
-  readonly iv: Uint8Array
-}
-
-/**
  * Service that generates keys, encrypts, and decrypts without
  * authentication.
  *
@@ -190,11 +169,14 @@ export class Cipher extends Context.Service<Cipher, {
   /**
    * Encrypts `plaintext`. AES-CTR output has the plaintext's length, and
    * AES-CBC output is padded to the next multiple of 16 bytes.
+   *
+   * `iv` is 16 bytes: the initial counter block for AES-CTR, and the
+   * initialization vector for AES-CBC.
    */
   readonly encrypt: (
     key: Key,
     plaintext: Uint8Array,
-    options: Options
+    options: { readonly iv: Uint8Array }
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
   /**
    * Decrypts `ciphertext`. AES-CBC fails with a `DecryptionFailed` reason for
@@ -203,7 +185,7 @@ export class Cipher extends Context.Service<Cipher, {
   readonly decrypt: (
     key: Key,
     ciphertext: Uint8Array,
-    options: Options
+    options: { readonly iv: Uint8Array }
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
 }>()("effect/crypto/Cipher") {}
 
@@ -239,7 +221,7 @@ export const layerWebCrypto: Layer.Layer<Cipher, never, SecureRandom.SecureRando
     const cryptoKeyFor = KeyModel.makeCache((subtle, bytes, algorithm: Algorithm) =>
       subtle.importKey("raw", bytes as BufferSource, algorithm.mode, false, ["encrypt", "decrypt"])
     )
-    const run = (method: "encrypt" | "decrypt") => (key: Key, data: Uint8Array, options: Options) =>
+    const run = (method: "encrypt" | "decrypt") => (key: Key, data: Uint8Array, options: { readonly iv: Uint8Array }) =>
       Effect.suspend(() => {
         if (options.iv.length !== blockLength) {
           return fail(method, new CryptoError.InvalidArgument({ description: "IVs must contain exactly 16 bytes" }))

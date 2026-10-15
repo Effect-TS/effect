@@ -58,35 +58,13 @@ const PublicKeyTypeId = "~effect/crypto/KeyAgreement/PublicKey" as const
 export type Curve = "P-256" | "P-384" | "P-521"
 
 /**
- * The type-level members every key agreement algorithm carries.
- *
- * **Details**
- *
- * `~flags` and `~keys` exist only in the types. They record whether private
- * and public keys have a raw form, that the algorithm runs on
- * `crypto.subtle`, and which key types the algorithm produces.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Phantom<RawPrivate extends boolean> {
-  readonly "~flags"?:
-    | { readonly rawPrivate: RawPrivate; readonly rawPublic: true; readonly native: true }
-    | undefined
-  readonly "~keys"?:
-    | { readonly privateKey: PrivateKey<Algorithm>; readonly publicKey: PublicKey<Algorithm> }
-    | undefined
-}
-
-/**
  * X25519 (RFC 7748), with 32-byte shared secrets.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface X25519 extends Phantom<true> {
+export interface X25519 {
   readonly _tag: "X25519"
   readonly name: "x25519"
 }
@@ -98,7 +76,7 @@ export interface X25519 extends Phantom<true> {
  * @category models
  * @since 4.0.0
  */
-export interface Ecdh<C extends Curve = Curve> extends Phantom<false> {
+export interface Ecdh<C extends Curve = Curve> {
   readonly _tag: "Ecdh"
   readonly name: { readonly "P-256": "ecdhP256"; readonly "P-384": "ecdhP384"; readonly "P-521": "ecdhP521" }[C]
   readonly namedCurve: C
@@ -407,7 +385,7 @@ export const layerWebCrypto: Layer.Layer<KeyAgreement, never, SecureRandom.Secur
  * @since 4.0.0
  */
 export const privateKey = <
-  A extends Algorithm & { readonly "~flags"?: { readonly rawPrivate: true } | undefined }
+  A extends X25519
 >(
   algorithm: A,
   bytes: Uint8Array

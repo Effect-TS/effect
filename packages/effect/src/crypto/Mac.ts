@@ -32,9 +32,7 @@ const TypeId = "~effect/crypto/Mac/Key" as const
  *
  * **Details**
  *
- * `hash` is the digest the HMAC is built on. The `~flags` and `~keys` members
- * exist only in the types: they record that HMAC keys have a raw form and run
- * on `crypto.subtle`, and which key type the algorithm produces.
+ * `hash` is the digest the HMAC is built on.
  *
  * @stability unstable
  * @category models
@@ -43,8 +41,6 @@ const TypeId = "~effect/crypto/Mac/Key" as const
 export interface Algorithm {
   readonly name: "hmacSha1" | "hmacSha256" | "hmacSha384" | "hmacSha512"
   readonly hash: Digest.Algorithm
-  readonly "~flags"?: { readonly rawPrivate: true; readonly rawPublic: false; readonly native: true } | undefined
-  readonly "~keys"?: { readonly key: Key<Algorithm> } | undefined
 }
 
 /**

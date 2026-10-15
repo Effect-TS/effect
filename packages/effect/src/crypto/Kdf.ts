@@ -2,7 +2,7 @@
  * Key derivation: HKDF, PBKDF2, and Argon2id.
  *
  * The {@link Kdf} service derives bytes from a secret with an algorithm value
- * such as {@link hkdfSha256}, {@link pbkdf2Sha256}, or {@link argon2id}. The
+ * such as {@link hkdfSha256}, {@link pbkdf2Sha256}, or `argon2id()`. The
  * output is plain bytes: turn it into a typed key with the target family's raw
  * constructor, such as `Mac.key`.
  *
@@ -84,24 +84,6 @@ export interface Argon2id {
 export type Algorithm = Hkdf | Pbkdf2 | Argon2id
 
 /**
- * The per-call parameters of {@link Kdf}'s `derive`.
- *
- * **Details**
- *
- * `length` is the output size in bytes. `info` only applies to HKDF; passing
- * it with PBKDF2 or Argon2id fails with an `InvalidArgument` reason.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface DeriveOptions {
-  readonly salt: Uint8Array
-  readonly length: number
-  readonly info?: Uint8Array | undefined
-}
-
-/**
  * Builds the HKDF algorithm for a hash.
  *
  * @stability unstable
@@ -175,36 +157,12 @@ export const hkdfSha512: Hkdf = hkdf(Digest.sha512)
 export const pbkdf2Sha256: Pbkdf2 = pbkdf2({ hash: Digest.sha256, iterations: 600_000 })
 
 /**
- * Argon2id, which is both an algorithm value and a factory.
+ * Builds an Argon2id algorithm, with `memory` in KiB.
  *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Argon2idFactory extends Argon2id {
-  (options: {
-    readonly memory: number
-    readonly passes: number
-    readonly parallelism: number
-  }): Argon2id
-}
-
-const makeArgon2id = (options: {
-  readonly memory: number
-  readonly passes: number
-  readonly parallelism: number
-}): Argon2id => ({
-  _tag: "Argon2id",
-  name: "argon2id",
-  memory: options.memory,
-  passes: options.passes,
-  parallelism: options.parallelism
-})
-
-/**
- * Argon2id at RFC 9106's second recommended setting: 64 MiB of memory, 3
- * passes, and 4 lanes. Called with `{ memory, passes, parallelism }`, it
- * builds an Argon2id algorithm with other costs, with `memory` in KiB.
+ * **Details**
+ *
+ * Omitted costs default to RFC 9106's second recommended setting: 64 MiB of
+ * memory (`65_536`), 3 passes, and 4 lanes.
  *
  * **Gotchas**
  *
@@ -215,11 +173,17 @@ const makeArgon2id = (options: {
  * @category algorithms
  * @since 4.0.0
  */
-export const argon2id: Argon2idFactory = Object.defineProperties(
-  (options: { readonly memory: number; readonly passes: number; readonly parallelism: number }) =>
-    makeArgon2id(options),
-  Object.getOwnPropertyDescriptors(makeArgon2id({ memory: 65_536, passes: 3, parallelism: 4 }))
-) as Argon2idFactory
+export const argon2id = (options?: {
+  readonly memory?: number | undefined
+  readonly passes?: number | undefined
+  readonly parallelism?: number | undefined
+}): Argon2id => ({
+  _tag: "Argon2id",
+  name: "argon2id",
+  memory: options?.memory ?? 65_536,
+  passes: options?.passes ?? 3,
+  parallelism: options?.parallelism ?? 4
+})
 
 /**
  * Service that derives bytes from a secret.
@@ -250,13 +214,22 @@ export const argon2id: Argon2idFactory = Object.defineProperties(
 export class Kdf extends Context.Service<Kdf, {
   /**
    * Derives `length` bytes from `secret`.
+   *
+   * `info` only applies to HKDF; passing it with PBKDF2 or Argon2id fails
+   * with an `InvalidArgument` reason.
    */
   readonly derive: (
     algorithm: Algorithm,
     secret: Uint8Array,
-    options: DeriveOptions
+    options: {
+      readonly salt: Uint8Array
+      readonly length: number
+      readonly info?: Uint8Array | undefined
+    }
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
 }>()("effect/crypto/Kdf") {}
+
+type DeriveOptions = Parameters<Kdf["Service"]["derive"]>[2]
 
 const invalidArgument = (description: string) =>
   internal.fail("Kdf", "derive", new CryptoError.InvalidArgument({ description }))

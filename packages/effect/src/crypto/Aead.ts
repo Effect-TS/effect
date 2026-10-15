@@ -71,22 +71,31 @@ export interface Implementation {
  *
  * `keyLength` and `nonceLength` are in bytes. `implementation` is the pure
  * TypeScript code for algorithms that WebCrypto does not provide, which a
- * layer calls when it has no native mapping for `name`. The `~flags` and
- * `~keys` members exist only in the types: they record that keys have a raw
- * form, whether the algorithm runs on `crypto.subtle` (`Native`), and which
- * key type the algorithm produces.
+ * layer calls when it has no native mapping for `name`.
  *
  * @stability unstable
  * @category models
  * @since 4.0.0
  */
-export interface Algorithm<Native extends boolean = boolean> {
+export interface Algorithm {
   readonly name: "aes128Gcm" | "aes256Gcm" | "chacha20Poly1305" | "xchacha20Poly1305"
   readonly keyLength: 16 | 32
   readonly nonceLength: 12 | 24
   readonly implementation: Implementation | undefined
-  readonly "~flags"?: { readonly rawPrivate: true; readonly rawPublic: false; readonly native: Native } | undefined
-  readonly "~keys"?: { readonly key: Key<Algorithm> } | undefined
+}
+
+/**
+ * AES-GCM, from {@link aes128Gcm} or {@link aes256Gcm}: the algorithms that
+ * run on `crypto.subtle`, and the only ones {@link fromCryptoKey} accepts.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.0
+ */
+export interface AesGcm extends Algorithm {
+  readonly name: "aes128Gcm" | "aes256Gcm"
+  readonly nonceLength: 12
+  readonly implementation: undefined
 }
 
 /**
@@ -96,7 +105,7 @@ export interface Algorithm<Native extends boolean = boolean> {
  * @category algorithms
  * @since 4.0.0
  */
-export const aes128Gcm: Algorithm<true> = {
+export const aes128Gcm: AesGcm = {
   name: "aes128Gcm",
   keyLength: 16,
   nonceLength: 12,
@@ -110,7 +119,7 @@ export const aes128Gcm: Algorithm<true> = {
  * @category algorithms
  * @since 4.0.0
  */
-export const aes256Gcm: Algorithm<true> = {
+export const aes256Gcm: AesGcm = {
   name: "aes256Gcm",
   keyLength: 32,
   nonceLength: 12,
@@ -136,7 +145,7 @@ const chachaImplementation = (
  * @category algorithms
  * @since 4.0.0
  */
-export const chacha20Poly1305: Algorithm<false> = {
+export const chacha20Poly1305: Algorithm = {
   name: "chacha20Poly1305",
   keyLength: 32,
   nonceLength: 12,
@@ -157,7 +166,7 @@ export const chacha20Poly1305: Algorithm<false> = {
  * @category algorithms
  * @since 4.0.0
  */
-export const xchacha20Poly1305: Algorithm<false> = {
+export const xchacha20Poly1305: Algorithm = {
   name: "xchacha20Poly1305",
   keyLength: 32,
   nonceLength: 24,
@@ -195,24 +204,6 @@ const KeyProto = KeyModel.redactedProto(TypeId, "Aead.Key")
 export const isKey = (u: unknown): u is Key => Predicate.hasProperty(u, TypeId)
 
 /**
- * Per-message inputs for {@link Aead}.
- *
- * **Details**
- *
- * `nonce` must have the algorithm's nonce length. `aad` is authenticated
- * without being encrypted and defaults to empty. Decryption must use the same
- * nonce and additional data as encryption.
- *
- * @stability unstable
- * @category models
- * @since 4.0.0
- */
-export interface Options {
-  readonly nonce: Uint8Array
-  readonly aad?: Uint8Array | undefined
-}
-
-/**
  * Service that generates keys, encrypts, and decrypts with authentication.
  *
  * **Example** (Encrypting with XChaCha20-Poly1305)
@@ -247,22 +238,29 @@ export class Aead extends Context.Service<Aead, {
   readonly generateKey: <A extends Algorithm>(algorithm: A) => Effect.Effect<Key<A>, CryptoError.CryptoError>
   /**
    * Encrypts `plaintext` and appends the 16-byte tag.
+   *
+   * `nonce` must have the algorithm's nonce length. `aad` is authenticated
+   * without being encrypted and defaults to empty.
    */
   readonly encrypt: (
     key: Key,
     plaintext: Uint8Array,
-    options: Options
+    options: { readonly nonce: Uint8Array; readonly aad?: Uint8Array | undefined }
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
   /**
    * Checks the tag at the end of `ciphertext` and decrypts the rest, failing
    * with a `DecryptionFailed` reason when the tag does not match.
+   *
+   * `nonce` and `aad` must be the ones used to encrypt.
    */
   readonly decrypt: (
     key: Key,
     ciphertext: Uint8Array,
-    options: Options
+    options: { readonly nonce: Uint8Array; readonly aad?: Uint8Array | undefined }
   ) => Effect.Effect<Uint8Array, CryptoError.CryptoError>
 }>()("effect/crypto/Aead") {}
+
+type Options = Parameters<Aead["Service"]["encrypt"]>[2]
 
 type Method = "encrypt" | "decrypt"
 
@@ -428,7 +426,7 @@ export const key = <A extends Algorithm>(
  * @category constructors
  * @since 4.0.0
  */
-export const fromCryptoKey = <A extends Algorithm<true>>(
+export const fromCryptoKey = <A extends AesGcm>(
   algorithm: A,
   cryptoKey: CryptoKey
 ): Effect.Effect<Key<A>, CryptoError.CryptoError> =>

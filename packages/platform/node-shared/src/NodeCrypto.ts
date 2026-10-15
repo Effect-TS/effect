@@ -150,8 +150,10 @@ const argon2Failure = (cause: unknown): Effect.Effect<never, CryptoError.CryptoE
 
 const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
 
+type DeriveOptions = Parameters<Kdf.Kdf["Service"]["derive"]>[2]
+
 // The RFC 9106 bounds, checked before `node:crypto`, which throws on them.
-const argon2Problem = (algorithm: Kdf.Argon2id, options: Kdf.DeriveOptions): string | undefined => {
+const argon2Problem = (algorithm: Kdf.Argon2id, options: DeriveOptions): string | undefined => {
   if (options.info !== undefined) return "info only applies to HKDF"
   const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
   if (!uint32(algorithm.passes) || !isIntegerIn(algorithm.parallelism, 1, 0xff_ffff)) {
@@ -164,7 +166,7 @@ const argon2Problem = (algorithm: Kdf.Argon2id, options: Kdf.DeriveOptions): str
   return isIntegerIn(options.length, 4, 0xffff_ffff) ? undefined : "length must be between 4 and 2^32 - 1 bytes"
 }
 
-const argon2id = (algorithm: Kdf.Argon2id, secret: Uint8Array, options: Kdf.DeriveOptions) =>
+const argon2id = (algorithm: Kdf.Argon2id, secret: Uint8Array, options: DeriveOptions) =>
   Effect.callback<Uint8Array, CryptoError.CryptoError>((resume) => {
     const problem = argon2Problem(algorithm, options)
     if (problem !== undefined) return resume(kdfFailure(new CryptoError.InvalidArgument({ description: problem })))
@@ -226,7 +228,9 @@ const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
   return output
 }
 
-const chachaEncrypt = (bytes: Uint8Array, plaintext: Uint8Array, options: Aead.Options): Uint8Array => {
+type AeadOptions = Parameters<Aead.Aead["Service"]["encrypt"]>[2]
+
+const chachaEncrypt = (bytes: Uint8Array, plaintext: Uint8Array, options: AeadOptions): Uint8Array => {
   const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
   if (options.aad !== undefined) cipher.setAAD(options.aad)
   return concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
@@ -235,7 +239,7 @@ const chachaEncrypt = (bytes: Uint8Array, plaintext: Uint8Array, options: Aead.O
 const chachaDecrypt = (
   bytes: Uint8Array,
   ciphertext: Uint8Array,
-  options: Aead.Options
+  options: AeadOptions
 ): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
   Effect.suspend(() => {
     const decipher = NodeCrypto.createDecipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
@@ -276,7 +280,7 @@ export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom>
     if (!NodeCrypto.getCiphers().includes("chacha20-poly1305")) return core
     // The bytes of a ChaCha20-Poly1305 key whose message passes the core
     // layer's checks, or `undefined` to hand the message to the core layer.
-    const nativeBytes = (key: Aead.Key, options: Aead.Options) =>
+    const nativeBytes = (key: Aead.Key, options: AeadOptions) =>
       key.algorithm.name === "chacha20Poly1305" && options.nonce.length === 12 ? keyBytes(key) : undefined
     return Aead.Aead.of({
       generateKey: core.generateKey,

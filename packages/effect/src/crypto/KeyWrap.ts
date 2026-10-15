@@ -55,9 +55,7 @@ const PublicKeyTypeId = "~effect/crypto/KeyWrap/PublicKey" as const
  *
  * **Details**
  *
- * `keyLength` is in bytes. The `~flags` and `~keys` members exist only in the
- * types: they record that keys have a raw form and run on `crypto.subtle`,
- * and which key type the algorithm produces.
+ * `keyLength` is in bytes.
  *
  * @stability unstable
  * @category models
@@ -67,8 +65,6 @@ export interface AesKw {
   readonly _tag: "AesKw"
   readonly name: "aes128Kw" | "aes256Kw"
   readonly keyLength: 16 | 32
-  readonly "~flags"?: { readonly rawPrivate: true; readonly rawPublic: false; readonly native: true } | undefined
-  readonly "~keys"?: { readonly key: Key<AesKw> } | undefined
 }
 
 /**
@@ -78,8 +74,7 @@ export interface AesKw {
  *
  * MGF1 uses the same hash, and there is no label. `modulusLength` is in bits
  * and is only read by key generation: an imported key's
- * `algorithm.modulusLength` is its real size. The `~flags` and `~keys`
- * members exist only in the types.
+ * `algorithm.modulusLength` is its real size.
  *
  * @stability unstable
  * @category models
@@ -90,8 +85,6 @@ export interface RsaOaep {
   readonly name: string
   readonly hash: Digest.Algorithm
   readonly modulusLength: number
-  readonly "~flags"?: { readonly rawPrivate: false; readonly rawPublic: false; readonly native: true } | undefined
-  readonly "~keys"?: { readonly privateKey: PrivateKey<RsaOaep>; readonly publicKey: PublicKey<RsaOaep> } | undefined
 }
 
 /**
