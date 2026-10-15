@@ -2961,8 +2961,8 @@ export interface Enum<A extends { [x: string]: string | number }>
   readonly enums: A
 }
 /**
- * Creates a schema from a TypeScript enum object. Validates that the input is one of the enum's values.
- * Numeric enum values must be finite.
+ * Creates a schema from a TypeScript enum or an object mapping names to string or number values.
+ * Validates that the input is one of those values. Numeric values must be finite.
  *
  * **Gotchas**
  *
@@ -2986,7 +2986,7 @@ export interface Enum<A extends { [x: string]: string | number }>
  * @category constructors
  * @since 4.0.0
  */
-export function Enum<A extends { [x: string]: string | number }>(enums: A): Enum<A> {
+export function Enum<const A extends { [x: string]: string | number }>(enums: A): Enum<A> {
   return make(
     new SchemaAST.Enum(
       Object.keys(enums).filter(
