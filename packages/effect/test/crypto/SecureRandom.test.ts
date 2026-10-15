@@ -13,6 +13,10 @@ const ulidRegex = /^[0-9A-HJKMNP-TV-Z]{26}$/
 // Returns 0, 1, 2, ... for every request.
 const counting = SecureRandom.make((size) => Uint8Array.from({ length: size }, (_, i) => i & 0xff))
 
+const hex = (bytes: Uint8Array) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+const uuidString = (bytes: Uint8Array) => hex(bytes).replace(/^(.{8})(.{4})(.{4})(.{4})/, "$1-$2-$3-$4-")
+const isStrictlyIncreasing = (ids: ReadonlyArray<string>) => ids.every((id, i) => i === 0 || ids[i - 1] < id)
+
 const assertDies = <A>(exit: Exit.Exit<A>) => assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
 
 describe("SecureRandom", () => {
@@ -34,6 +38,46 @@ describe("SecureRandom", () => {
       assert.match(ulid, ulidRegex)
       assert.isTrue(ulid.startsWith("014D2PF2DB"))
     }).pipe(Effect.provideService(SecureRandom.SecureRandom, counting)))
+
+  it.effect("uuidV7 and ulid increase strictly per instance, even when the Clock moves back", () =>
+    Effect.gen(function*() {
+      // Puts wall-clock time into the state shared by the *Unsafe functions.
+      SecureRandom.uuidV7Unsafe()
+      SecureRandom.ulidUnsafe()
+      const make = () => SecureRandom.make((size) => Uint8Array.from({ length: size }, (_, i) => i & 0xff))
+      const random = make()
+      yield* TestClock.setTime(1000)
+      const uuids: Array<string> = []
+      const ulids: Array<string> = []
+      for (let i = 0; i < 2000; i++) {
+        if (i === 1000) yield* TestClock.setTime(500)
+        uuids.push(yield* random.uuidV7(), uuidString(yield* random.uuidV7({ format: "bytes" })))
+        ulids.push(yield* random.ulid)
+      }
+      assert.isTrue(isStrictlyIncreasing(uuids))
+      assert.isTrue(isStrictlyIncreasing(ulids))
+      assert.isTrue(uuids.every((uuid) => uuidV7Regex.test(uuid) && uuid.startsWith("00000000-03e8-7")))
+      assert.isTrue(ulids.every((ulid) => ulid.startsWith("00000000Z8")))
+
+      const other = make()
+      assert.strictEqual(yield* other.uuidV7(), uuids[0])
+      assert.strictEqual(yield* other.ulid, ulids[0])
+    }))
+
+  it.effect("uuidV7 seeds its counter with headroom, and ulid overflow advances the timestamp", () => {
+    const random = SecureRandom.make((size) => new Uint8Array(size).fill(0xff))
+    return Effect.gen(function*() {
+      yield* TestClock.setTime(1000)
+      assert.deepStrictEqual([yield* random.uuidV7(), yield* random.uuidV7()], [
+        "00000000-03e8-77ff-bfff-ffffffffffff",
+        "00000000-03e8-7800-8000-0000ffffffff"
+      ])
+      assert.deepStrictEqual([yield* random.ulid, yield* random.ulid], [
+        "00000000Z8ZZZZZZZZZZZZZZZZ",
+        "00000000Z9ZZZZZZZZZZZZZZZZ"
+      ])
+    })
+  })
 
   it.effect("intBetween rejects draws that would bias the result", () => {
     // The first request is all 0xff, the top of any draw. Every range that does
@@ -98,5 +142,7 @@ describe("SecureRandom", () => {
     assert.match(SecureRandom.uuidV4Unsafe(), uuidV4Regex)
     assert.match(SecureRandom.uuidV7Unsafe(), uuidV7Regex)
     assert.match(SecureRandom.ulidUnsafe(), ulidRegex)
+    assert.isTrue(isStrictlyIncreasing(Array.from({ length: 2000 }, () => SecureRandom.uuidV7Unsafe())))
+    assert.isTrue(isStrictlyIncreasing(Array.from({ length: 2000 }, () => SecureRandom.ulidUnsafe())))
   })
 })
