@@ -113,6 +113,17 @@ describe("Duration", () => {
     )
   })
 
+  it("fromInputUnsafe preserves nanoseconds in large decimal second strings", () => {
+    strictEqual(
+      Duration.toNanosUnsafe(Duration.fromInputUnsafe("17280000.000000001 seconds")),
+      17_280_000_000_000_001n
+    )
+    strictEqual(
+      Duration.toNanosUnsafe(Duration.fromInputUnsafe("-17280000.000000001 seconds")),
+      -17_280_000_000_000_001n
+    )
+  })
+
   it("fromInputUnsafe normalizes infinite nanosecond totals", () => {
     deepStrictEqual(Duration.fromInputUnsafe([1e300, 1]), Duration.infinity)
     deepStrictEqual(Duration.fromInputUnsafe({ seconds: -Infinity, nanoseconds: 1 }), Duration.negativeInfinity)
