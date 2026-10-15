@@ -1,6 +1,6 @@
 "@effect/sql/SqlEventLogServer#layerStorage":
   replacement: "effect/eventlog/SqlEventLogServerEncrypted#layerStorage"
-  note: "Moved to the encrypted server module with the same options and EventLogEncryption requirement."
+  note: "Moved to the encrypted server module with the same options. It requires the `Digest` service from `effect/crypto/Digest` instead of EventLogEncryption, which hashed the table names in v3."
 "@effect/sql/SqlEventLogServer#makeStorage":
   replacement: "effect/eventlog/SqlEventLogServerEncrypted#makeStorage"
-  note: "Moved to the encrypted server module with the same SQL, encryption, and scope requirements."
+  note: "Moved to the encrypted server module with the same SQL and scope requirements. The EventLogEncryption requirement is replaced by the `Digest` service from `effect/crypto/Digest`."
