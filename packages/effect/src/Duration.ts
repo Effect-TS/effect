@@ -35,10 +35,10 @@ const bigint60 = BigInt(60)
 const bigint1e3 = BigInt(1_000)
 const bigint1e6 = BigInt(1_000_000)
 const bigint1e9 = BigInt(1_000_000_000)
-const bigintMillisPerMinute = BigInt(60_000)
-const bigintMillisPerHour = BigInt(3_600_000)
-const bigintMillisPerDay = BigInt(86_400_000)
-const bigintMillisPerWeek = BigInt(604_800_000)
+const bigintNanosPerMinute = BigInt(60_000_000_000)
+const bigintNanosPerHour = BigInt(3_600_000_000_000)
+const bigintNanosPerDay = BigInt(86_400_000_000_000)
+const bigintNanosPerWeek = BigInt(604_800_000_000_000)
 
 const roundTiesAwayFromZero = (input: number): bigint => BigInt(Math.sign(input) * Math.round(Math.abs(input)))
 
@@ -346,34 +346,39 @@ export const fromInputUnsafe = (input: Input): Duration => {
       if (obj.minutes) millis += obj.minutes * 60_000
       if (obj.seconds) millis += obj.seconds * 1_000
       if (obj.milliseconds) millis += obj.milliseconds
-      const hasNanos = !!(obj.microseconds || obj.nanoseconds)
-      const total = hasNanos ? millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0) : millis
-      if (
-        !Number.isFinite(total) ||
-        !Number.isInteger(obj.weeks || 0) ||
-        !Number.isInteger(obj.days || 0) ||
-        !Number.isInteger(obj.hours || 0) ||
-        !Number.isInteger(obj.minutes || 0) ||
-        !Number.isInteger(obj.seconds || 0) ||
-        !Number.isInteger(obj.milliseconds || 0) ||
-        (hasNanos && (!Number.isInteger(obj.microseconds ?? 0) || !Number.isInteger(obj.nanoseconds ?? 0)))
-      ) {
-        return hasNanos ? fromNanosNumber(total) : make(millis)
+      if (!obj.microseconds && !obj.nanoseconds) {
+        if (!Number.isFinite(millis)) return make(millis)
+        const exact = sumObjectNanos(obj)
+        // keep the Millis representation when the numeric total is already exact
+        return exact === undefined || BigInt(millis) * bigint1e6 === exact ? make(millis) : make(exact)
       }
-      let exactMillis = bigint0
-      if (obj.weeks) exactMillis += BigInt(obj.weeks) * bigintMillisPerWeek
-      if (obj.days) exactMillis += BigInt(obj.days) * bigintMillisPerDay
-      if (obj.hours) exactMillis += BigInt(obj.hours) * bigintMillisPerHour
-      if (obj.minutes) exactMillis += BigInt(obj.minutes) * bigintMillisPerMinute
-      if (obj.seconds) exactMillis += BigInt(obj.seconds) * bigint1e3
-      if (obj.milliseconds) exactMillis += BigInt(obj.milliseconds)
-      if (!hasNanos) {
-        return BigInt(millis) === exactMillis ? make(millis) : make(exactMillis * bigint1e6)
-      }
-      return make(exactMillis * bigint1e6 + BigInt(obj.microseconds ?? 0) * bigint1e3 + BigInt(obj.nanoseconds ?? 0))
+      const nanos = millis * 1_000_000 + (obj.microseconds ?? 0) * 1_000 + (obj.nanoseconds ?? 0)
+      const exact = Number.isFinite(nanos) ? sumObjectNanos(obj) : undefined
+      return exact === undefined ? fromNanosNumber(nanos) : make(exact)
     }
   }
   return invalid(input)
+}
+
+const isIntegerOrUnset = (n: number | undefined): boolean => !n || Number.isInteger(n)
+
+// sums the fields exactly, or returns undefined if any field is fractional
+const sumObjectNanos = (obj: DurationObject): bigint | undefined => {
+  if (
+    !isIntegerOrUnset(obj.weeks) || !isIntegerOrUnset(obj.days) || !isIntegerOrUnset(obj.hours) ||
+    !isIntegerOrUnset(obj.minutes) || !isIntegerOrUnset(obj.seconds) || !isIntegerOrUnset(obj.milliseconds) ||
+    !isIntegerOrUnset(obj.microseconds) || !isIntegerOrUnset(obj.nanoseconds)
+  ) return undefined
+  let nanos = bigint0
+  if (obj.weeks) nanos += BigInt(obj.weeks) * bigintNanosPerWeek
+  if (obj.days) nanos += BigInt(obj.days) * bigintNanosPerDay
+  if (obj.hours) nanos += BigInt(obj.hours) * bigintNanosPerHour
+  if (obj.minutes) nanos += BigInt(obj.minutes) * bigintNanosPerMinute
+  if (obj.seconds) nanos += BigInt(obj.seconds) * bigint1e9
+  if (obj.milliseconds) nanos += BigInt(obj.milliseconds) * bigint1e6
+  if (obj.microseconds) nanos += BigInt(obj.microseconds) * bigint1e3
+  if (obj.nanoseconds) nanos += BigInt(obj.nanoseconds)
+  return nanos
 }
 
 const invalid = (input: unknown): never => {
