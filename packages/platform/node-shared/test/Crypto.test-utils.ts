@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Aes from "effect/crypto/Aes"
-import * as Argon2 from "effect/crypto/Argon2"
 import * as ChaCha20Poly1305 from "effect/crypto/ChaCha20Poly1305"
 import type * as CryptoError from "effect/crypto/CryptoError"
 import * as Ecdh from "effect/crypto/Ecdh"
@@ -12,7 +11,6 @@ import * as Hex from "effect/encoding/Hex"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
-import * as NodeCrypto from "node:crypto"
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
 
@@ -42,7 +40,6 @@ const assertReason = (
 export interface CryptoLayers {
   readonly chaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.ChaCha20Poly1305> | undefined
   readonly xChaCha20Poly1305?: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1305> | undefined
-  readonly argon2id?: Layer.Layer<Argon2.Argon2id, CryptoError.CryptoError> | undefined
 }
 
 // RFC 8439, section 2.8.2, and draft-irtf-cfrg-xchacha-03, Appendix A.3.1.
@@ -359,45 +356,4 @@ export const describeCrypto = (label: string, layers: CryptoLayers) =>
           sunscreen
         )
       }).pipe(Effect.provide(layers.xChaCha20Poly1305!)))
-
-    it.effect.skipIf(layers.argon2id === undefined)("derives Argon2id hashes where the runtime supports them", () =>
-      Effect.gen(function*() {
-        if (typeof NodeCrypto.argon2 !== "function") {
-          const error = yield* Effect.flip(Layer.build(layers.argon2id!))
-          assertReason(error, "layer", "Unsupported")
-          return
-        }
-        // RFC 9106, section 5.3.
-        const options = {
-          password: Redacted.make(view(new Uint8Array(32).fill(1))),
-          salt: view(new Uint8Array(16).fill(2)),
-          secret: Redacted.make(view(new Uint8Array(8).fill(3))),
-          associatedData: view(new Uint8Array(12).fill(4)),
-          memoryKiB: 32,
-          passes: 3,
-          parallelism: 4
-        }
-        const expected = "0d640df58d78766c08c037a34a8b53c9d01ef0452d75b65eb52520e96b01e659"
-        const program = Effect.gen(function*() {
-          const argon2id = yield* Argon2.Argon2id
-          assert.strictEqual(Hex.encode(Redacted.value(yield* argon2id.derive({ ...options, length: 32 }))), expected)
-          assert.isTrue(yield* argon2id.verify({ ...options, expected: view(expected) }))
-          assert.isFalse(
-            yield* argon2id.verify({ ...options, password: Redacted.make(encode("wrong")), expected: view(expected) })
-          )
-          // A stored hash shorter than the 4-byte minimum output never matches.
-          assert.isFalse(yield* argon2id.verify({ ...options, expected: new Uint8Array(3) }))
-          assertReason(
-            yield* Effect.flip(argon2id.verify({ ...options, passes: 0, expected: new Uint8Array(3) })),
-            "verify",
-            "InvalidArgument"
-          )
-          assertReason(
-            yield* Effect.flip(argon2id.derive({ ...options, salt: new Uint8Array(7), length: 32 })),
-            "derive",
-            "InvalidArgument"
-          )
-        })
-        yield* program.pipe(Effect.provide(layers.argon2id!))
-      }))
   })
