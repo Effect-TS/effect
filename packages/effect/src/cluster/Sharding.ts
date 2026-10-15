@@ -276,6 +276,8 @@ const make = Effect.gen(function*() {
 
   // the active shards are the ones that we have acquired the lock for
   const acquiredShards = MutableHashSet.empty<ShardId>()
+  const updateShardsGauge = () =>
+    ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
   const activeShardsLatch = yield* Latch.make(false)
   // open once shutdown starts handing every shard off
   const handoffLatch = Latch.makeUnsafe(false)
@@ -494,6 +496,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.remove(acquiredShards, shardId)
           MutableHashSet.add(releasingShards, shardId)
         }
+        updateShardsGauge()
 
         if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
@@ -555,13 +558,11 @@ const make = Effect.gen(function*() {
           }
           MutableHashSet.add(acquiredShards, shardId)
         }
+        updateShardsGauge()
         if (acquired.length > 0) {
           yield* notifyShardLockWaiters
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
-
-          // update metrics
-          ClusterMetrics.shards.updateUnsafe(BigInt(MutableHashSet.size(acquiredShards)), Context.empty())
         }
         // the shutdown handoff releases the shards acquired here without waiting
         yield* Effect.raceFirst(Effect.sleep(1000), handoffLatch.await)
@@ -589,7 +590,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
           MutableHashSet.add(forceReleasingShards, shardId)
         }
-        ClusterMetrics.shards.updateUnsafe(BigInt(0), Context.empty())
+        updateShardsGauge()
         activeShardsLatch.openUnsafe()
 
         return Effect.gen(function*() {
@@ -632,6 +633,7 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
         }
       }
+      updateShardsGauge()
       if (MutableHashSet.size(releasingShards) > 0) {
         yield* activeShardsLatch.open
       }
