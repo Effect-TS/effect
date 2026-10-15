@@ -18,6 +18,9 @@ describe("PostgreSQL container teardown", () => {
   const server = Http.createServer((request, response) => {
     const url = new URL(request.url!, "http://localhost")
     response.setHeader("Content-Type", "application/json")
+    // Bun re-sends a request that fails on a reused keep-alive socket. Fresh
+    // connections keep one HTTP request per release attempt on every runtime.
+    response.setHeader("Connection", "close")
     if (url.pathname === "/info") {
       infoRequests++
       response.end(JSON.stringify({ ServerVersion: "27.0.0", OperatingSystem: "Docker", OSType: "linux" }))
