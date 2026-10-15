@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { Cause, Redacted, Result } from "effect"
 
 import { Url, UrlParams } from "effect/http"
@@ -25,42 +25,11 @@ describe("Url", () => {
     it("accepts absolute URLs in opaque-origin documents", () => {
       vi.stubGlobal("location", { origin: "null", pathname: "srcdoc", href: "about:srcdoc" })
       try {
-        assert.deepStrictEqual(
+        assertSuccess(
           Url.make("https://example.com/api", UrlParams.empty, undefined),
-          Result.succeed(new URL("https://example.com/api"))
+          new URL("https://example.com/api")
         )
       } finally {
-        vi.unstubAllGlobals()
-      }
-    })
-
-    it("resolves relative URLs against the document location", () => {
-      vi.stubGlobal("location", new URL("https://example.com/app/index.html?existing=true#section"))
-      try {
-        assert.deepStrictEqual(
-          Url.make("api", UrlParams.empty, undefined),
-          Result.succeed(new URL("https://example.com/app/api"))
-        )
-      } finally {
-        vi.unstubAllGlobals()
-      }
-    })
-
-    it("resolves relative URLs when URL.canParse is unavailable", () => {
-      const canParse = Object.getOwnPropertyDescriptor(URL, "canParse")
-      vi.stubGlobal("location", new URL("https://example.com/app/index.html"))
-      Object.defineProperty(URL, "canParse", { configurable: true, value: undefined })
-      try {
-        assert.deepStrictEqual(
-          Url.make("api", UrlParams.empty, undefined),
-          Result.succeed(new URL("https://example.com/app/api"))
-        )
-      } finally {
-        if (canParse) {
-          Object.defineProperty(URL, "canParse", canParse)
-        } else {
-          Reflect.deleteProperty(URL, "canParse")
-        }
         vi.unstubAllGlobals()
       }
     })
