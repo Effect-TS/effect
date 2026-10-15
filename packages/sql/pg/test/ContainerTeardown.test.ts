@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Option } from "effect"
+import { Cause, Effect, Exit, Fiber, Option } from "effect"
+import { TestClock } from "effect/testing"
 import * as Http from "node:http"
 import { getContainerRuntimeClient } from "testcontainers"
 import { afterAll, beforeAll, vi } from "vitest"
@@ -17,6 +18,9 @@ describe("PostgreSQL container teardown", () => {
   const server = Http.createServer((request, response) => {
     const url = new URL(request.url!, "http://localhost")
     response.setHeader("Content-Type", "application/json")
+    // Bun re-sends a request that fails on a reused keep-alive socket. Fresh
+    // connections keep one HTTP request per release attempt on every runtime.
+    response.setHeader("Connection", "close")
     if (url.pathname === "/info") {
       infoRequests++
       response.end(JSON.stringify({ ServerVersion: "27.0.0", OperatingSystem: "Docker", OSType: "linux" }))
@@ -34,6 +38,8 @@ describe("PostgreSQL container teardown", () => {
       steps.push("wait")
       assert.strictEqual(url.searchParams.get("condition"), "not-running")
       const attempt = steps.filter((step) => step === "wait").length
+      // A wait response that never arrives, as observed under Bun in CI.
+      if (id === "wait-hangs") return void response.flushHeaders()
       if (id === "always-interrupted" || attempt === 1) {
         // Docker flushes the wait headers before writing its JSON body. Close
         // after a partial body, deterministically exercising docker-modem's
@@ -130,4 +136,16 @@ describe("PostgreSQL container teardown", () => {
       }),
     testTimeout
   )
+
+  // `it.layer` provides TestClock to fixture layers, so their finalizers
+  // run with it during afterAll.
+  it.effect("bounds a hung wait under the test services used by it.layer", () =>
+    Effect.gen(function*() {
+      const fiber = yield* Effect.forkChild(releasePgContainer(container("wait-hangs")).pipe(Effect.exit))
+      const result = yield* Fiber.join(fiber).pipe(Effect.timeoutOption(cleanupBudget), TestClock.withLive)
+      assert.isTrue(Option.isSome(result), "teardown hung instead of reporting exhausted retries")
+      if (Option.isNone(result)) return yield* Fiber.interrupt(fiber)
+      assert.isTrue(Exit.isFailure(result.value), "cleanup failure was suppressed")
+      assert.isFalse(requests.get("wait-hangs")!.includes("remove"), "remove ran without a successful wait")
+    }), testTimeout)
 })

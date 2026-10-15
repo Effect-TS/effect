@@ -1,6 +1,6 @@
 import { PgClient, type PgConnection } from "@effect/sql-pg"
 import { PostgreSqlContainer } from "@testcontainers/postgresql"
-import { Context, Data, Effect, Layer, Redacted, type Scope, String } from "effect"
+import { Clock, Context, Data, Effect, Layer, Redacted, type Scope, String } from "effect"
 import * as Fs from "node:fs"
 import { inspect } from "node:util"
 import { getContainerRuntimeClient } from "testcontainers"
@@ -95,7 +95,9 @@ export const releasePgContainer = (container: {
     // Bound the entire release below the existing 30s hook limit, including
     // stop and removal. Exhausted retries and timeouts remain visible defects.
     Effect.timeout("20 seconds"),
-    Effect.orDie
+    Effect.orDie,
+    // Fixture finalizers inherit TestClock from it.layer; cleanup must use real deadlines.
+    Effect.provideService(Clock.Clock, Clock.Clock.defaultValue())
   )
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
