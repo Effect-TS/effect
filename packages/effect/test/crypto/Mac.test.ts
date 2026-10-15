@@ -8,7 +8,7 @@ import * as Equal from "effect/Equal"
 import * as Layer from "effect/Layer"
 import { Buffer } from "node:buffer"
 import { inspect } from "node:util"
-import { assertReason, encode } from "../utils/crypto.ts"
+import { assertReason, bytes, encode } from "../utils/crypto.ts"
 
 // RFC 2202 and RFC 4231, test case 2.
 const jefe = encode("Jefe")
@@ -118,6 +118,37 @@ describe("Mac", () => {
         assertReason(yield* Effect.flip(Mac.fromCryptoKey(Mac.hmacSha256, cryptoKey)), "InvalidKey", "fromCryptoKey")
       }
     }).pipe(Effect.provide(layer)))
+
+  it.effect("layerWebCryptoWith runs hmac for byte-backed keys and WebCrypto for CryptoKeys", () => {
+    const calls: Array<readonly [string, Uint8Array, Uint8Array]> = []
+    // Differs from the real tag, so a WebCrypto result cannot pass for it.
+    const marker = new Uint8Array(32).fill(9)
+    return Effect.gen(function*() {
+      const mac = yield* Mac.Mac
+      const key = yield* Mac.key(Mac.hmacSha256, jefe)
+      assert.deepStrictEqual(yield* mac.sign(key, message), marker)
+      assert.isTrue(yield* mac.verify(key, marker, message))
+      assert.isFalse(yield* mac.verify(key, bytes(vectors[1][1]), message))
+      assert.isFalse(yield* mac.verify(key, marker.subarray(1), message))
+      assert.deepStrictEqual(calls[0], ["SHA-256", jefe, message])
+
+      const count = calls.length
+      const cryptoKey = yield* Mac.fromCryptoKey(Mac.hmacSha256, yield* importHmac("SHA-256", false))
+      const tag = yield* mac.sign(cryptoKey, message)
+      assert.strictEqual(Hex.encode(tag), vectors[1][1])
+      assert.isTrue(yield* mac.verify(cryptoKey, tag, message))
+      assert.strictEqual(calls.length, count)
+    }).pipe(
+      Effect.provide(
+        Mac.layerWebCryptoWith({
+          hmac: (hash, key, data) => {
+            calls.push([hash, key.slice(), data.slice()])
+            return marker.slice()
+          }
+        }).pipe(Layer.provide(SecureRandom.layerWebCrypto))
+      )
+    )
+  })
 
   it("compares bytes synchronously, returning false for unequal lengths", () => {
     assert.isTrue(Mac.timingSafeEqual(encode("tag"), encode("tag")))

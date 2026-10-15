@@ -222,6 +222,84 @@ describe("Aead", () => {
       void fromChaCha
     }).pipe(Effect.provide(layer)))
 
+  describe("layerWebCryptoWith", () => {
+    const chachaImplementation = Aead.chacha20Poly1305.implementation!
+    const recorded = () => {
+      const calls: Array<string> = []
+      const implementation: Aead.Implementation = {
+        encrypt: (...args) => {
+          calls.push("encrypt")
+          return chachaImplementation.encrypt(...args)
+        },
+        decrypt: (...args) => {
+          calls.push("decrypt")
+          return chachaImplementation.decrypt(...args)
+        }
+      }
+      const layer = Aead.layerWebCryptoWith({
+        implementations: { chacha20Poly1305: implementation, aes256Gcm: implementation }
+      })
+      return { calls, layer }
+    }
+
+    it.effect("runs implementations for byte-backed keys and WebCrypto for CryptoKeys", () => {
+      const { calls, layer } = recorded()
+      return Effect.gen(function*() {
+        const aead = yield* Aead.Aead
+        const vector = vectors[2]
+        const key = yield* Aead.key(vector.algorithm, bytes(vector.key))
+        const options = { nonce: bytes(vector.nonce), aad: bytes(vector.aad) }
+        assert.strictEqual(Hex.encode(yield* aead.encrypt(key, vector.plaintext, options)), vector.sealed)
+        assert.deepStrictEqual(yield* aead.decrypt(key, bytes(vector.sealed), options), vector.plaintext)
+        assert.deepStrictEqual(calls, ["encrypt", "decrypt"])
+
+        const cryptoKey = yield* Aead.fromCryptoKey(Aead.aes256Gcm, yield* importAes("AES-GCM", 256))
+        const gcmOptions = { nonce: new Uint8Array(12), aad: encode("aad") }
+        const sealed = yield* aead.encrypt(cryptoKey, sunscreen, gcmOptions)
+        assert.deepStrictEqual(yield* aead.decrypt(cryptoKey, sealed, gcmOptions), sunscreen)
+        assert.deepStrictEqual(calls, ["encrypt", "decrypt"])
+      }).pipe(Effect.provide(layer.pipe(Layer.provide(seeded))))
+    })
+
+    it.effect("rejects bad nonces and short ciphertexts before implementations, as layerWebCrypto does", () => {
+      const { calls, layer } = recorded()
+      const failures = (layer: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom>) =>
+        Effect.gen(function*() {
+          const aead = yield* Aead.Aead
+          const errors: Array<readonly [string, string, string]> = []
+          for (const algorithm of [Aead.chacha20Poly1305, Aead.aes256Gcm]) {
+            const key = yield* Aead.key(algorithm, new Uint8Array(32))
+            const nonce = new Uint8Array(algorithm.nonceLength)
+            const badNonce = new Uint8Array(algorithm.nonceLength + 4)
+            for (
+              const effect of [
+                aead.encrypt(key, new Uint8Array(32), { nonce: badNonce }),
+                aead.decrypt(key, new Uint8Array(32), { nonce: badNonce }),
+                aead.decrypt(key, new Uint8Array(15), { nonce })
+              ]
+            ) {
+              const error = yield* Effect.flip(effect)
+              errors.push([error.method, error.reason._tag, error.message])
+            }
+          }
+          return errors
+        }).pipe(Effect.provide(layer.pipe(Layer.provide(Layer.mergeAll(seeded, unreachable)))))
+      return Effect.gen(function*() {
+        const expected = yield* failures(Aead.layerWebCrypto)
+        assert.deepStrictEqual(expected.map(([method, reason]) => [method, reason]), [
+          ["encrypt", "InvalidArgument"],
+          ["decrypt", "InvalidArgument"],
+          ["decrypt", "DecryptionFailed"],
+          ["encrypt", "InvalidArgument"],
+          ["decrypt", "InvalidArgument"],
+          ["decrypt", "DecryptionFailed"]
+        ])
+        assert.deepStrictEqual(yield* failures(layer), expected)
+        assert.deepStrictEqual(calls, [])
+      })
+    })
+  })
+
   it.effect.skipIf(!NodeCrypto.getCiphers().includes("chacha20-poly1305"))(
     "matches node:crypto ChaCha20-Poly1305 on random inputs",
     () =>
