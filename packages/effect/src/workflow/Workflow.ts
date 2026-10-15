@@ -30,7 +30,7 @@ import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
-import { type CompensationStep, CurrentCompensationStep } from "./internal/compensation.ts"
+import { type CompensationStep, CurrentCompensationStep, recordOperation } from "./internal/compensation.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -999,12 +999,13 @@ export const withCompensation: {
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       const instance = yield* InstanceTag
+      const state = runState(instance)
       const name = options?.name
       const parent = yield* CurrentCompensationStep
       // A named step stands for its body in enclosing steps, so the body's
       // operations are not recorded there.
       const step: CompensationStep = { keys: new Set(), parent: name === undefined ? parent : undefined }
-      if (name !== undefined && runState(instance).names.has(name)) {
+      if (name !== undefined && state.names.has(name)) {
         return yield* duplicateCompensationName(instance, name)
       }
       const value = yield* restore(Effect.provideService(effect, CurrentCompensationStep, step))
@@ -1013,49 +1014,44 @@ export const withCompensation: {
         instance.abandoned || Exit.isSuccess(exit)
           ? Effect.void
           : Effect.provideContext(compensation(value, exit.cause), services)
-      let key: string | undefined
-      if (name === undefined) {
-        const identity = compensationKey(instance, step)
-        if (identity?.occurrence === 1) {
+      let key: string
+      if (name !== undefined) {
+        // Concurrent steps can both pass the check above before either succeeds.
+        if (state.names.has(name)) {
+          return yield* duplicateCompensationName(instance, name)
+        }
+        state.names.add(name)
+        key = `Compensation/${name}`
+        recordOperation(parent, key)
+      } else if (step.keys.size > 0) {
+        // Durable operations are the same in every run regardless of
+        // scheduling. Steps sharing them are told apart by completion order.
+        const operations = Array.from(step.keys).sort()
+        const joined = operations.join("\u0000")
+        const occurrence = state.occurrences.get(joined) ?? 0
+        state.occurrences.set(joined, occurrence + 1)
+        if (occurrence === 1) {
           yield* Effect.logWarning(
             `Workflow.withCompensation: unnamed compensations in workflow "${instance.workflow._tag}" ran the same durable operations (${
-              identity.operations.join(", ")
+              operations.join(", ")
             }). Replays match them by completion order, which concurrency can change. Pass a unique name to each.`
           )
         }
-        key = identity?.key
+        key = `${occurrence}\u0000${joined}`
       } else {
-        const names = runState(instance).names
-        if (names.has(name)) {
-          return yield* duplicateCompensationName(instance, name)
-        }
-        names.add(name)
-        key = `Compensation/${name}`
-        for (let current = parent; current; current = current.parent) {
-          current.keys.add(key)
-        }
-      }
-      if (key === undefined) {
         // Without durable operations the step runs again on every replay, so
         // each run compensates its own execution.
         yield* Scope.addFinalizerExit(instance.scope, finalizer)
         return value
       }
-      let registrations = compensationRegistrations.get(instance.scope)
-      if (!registrations) {
-        registrations = new Map()
-        compensationRegistrations.set(instance.scope, registrations)
+      const registrations = compensationRegistrations.get(instance.scope) ?? new Map()
+      compensationRegistrations.set(instance.scope, registrations)
+      // A replay of the same step replaces its compensation in place. Steps
+      // not yet replayed keep theirs, preserving the reverse cleanup order.
+      if (!registrations.has(key)) {
+        yield* Scope.addFinalizerExit(instance.scope, (exit) => registrations.get(key)!(exit))
       }
-      const existing = registrations.get(key)
-      if (existing) {
-        // A replay of the same step replaces its compensation in place. Steps
-        // not yet replayed keep theirs, preserving the reverse cleanup order.
-        existing.finalizer = finalizer
-      } else {
-        const registration = { finalizer }
-        registrations.set(key, registration)
-        yield* Scope.addFinalizerExit(instance.scope, (exit) => registration.finalizer(exit))
-      }
+      registrations.set(key, finalizer)
       return value
     })
   ))
@@ -1065,14 +1061,12 @@ const duplicateCompensationName = (instance: WorkflowInstance["Service"], name: 
     `Workflow.withCompensation: the name "${name}" is used by more than one step in workflow "${instance.workflow._tag}"`
   )
 
-interface CompensationRunState {
+const compensationRunStates = new WeakMap<WorkflowInstance["Service"], {
   readonly names: Set<string>
   readonly occurrences: Map<string, number>
-}
+}>()
 
-const compensationRunStates = new WeakMap<WorkflowInstance["Service"], CompensationRunState>()
-
-const runState = (instance: WorkflowInstance["Service"]): CompensationRunState => {
+const runState = (instance: WorkflowInstance["Service"]) => {
   let state = compensationRunStates.get(instance)
   if (!state) {
     state = { names: new Set(), occurrences: new Map() }
@@ -1081,29 +1075,9 @@ const runState = (instance: WorkflowInstance["Service"]): CompensationRunState =
   return state
 }
 
-/**
- * Identifies an unnamed compensated step by the durable operations it
- * performed, which are the same in every run regardless of scheduling. Steps
- * sharing those operations within a run are told apart by completion order.
- */
-const compensationKey = (
-  instance: WorkflowInstance["Service"],
-  step: CompensationStep
-): { readonly key: string; readonly operations: Array<string>; readonly occurrence: number } | undefined => {
-  if (step.keys.size === 0) return undefined
-  const operations = Array.from(step.keys).sort()
-  const joined = operations.join("\u0000")
-  const occurrences = runState(instance).occurrences
-  const occurrence = occurrences.get(joined) ?? 0
-  occurrences.set(joined, occurrence + 1)
-  return { key: `${occurrence}\u0000${joined}`, operations, occurrence }
-}
-
 const compensationRegistrations = new WeakMap<
   Scope.Closeable,
-  Map<string, {
-    finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
-  }>
+  Map<string, (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>>
 >()
 
 /**

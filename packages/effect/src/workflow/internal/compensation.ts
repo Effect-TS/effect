@@ -21,6 +21,17 @@ export const CurrentCompensationStep = Context.Reference<CompensationStep | unde
 )
 
 /**
+ * Records `key` as a durable operation of `step` and every step enclosing it.
+ *
+ * @internal
+ */
+export const recordOperation = (step: CompensationStep | undefined, key: string): void => {
+  for (let current = step; current; current = current.parent) {
+    current.keys.add(key)
+  }
+}
+
+/**
  * Records `key` as a durable operation of every enclosing compensated step.
  * The operation body is excluded, because replay skips it once its result is
  * stored.
@@ -34,8 +45,6 @@ export const durableOperation = <A, E, R>(
   Effect.contextWith((context: Context.Context<never>) => {
     const step = Context.get(context, CurrentCompensationStep)
     if (step === undefined) return effect
-    for (let current: CompensationStep | undefined = step; current; current = current.parent) {
-      current.keys.add(key)
-    }
+    recordOperation(step, key)
     return Effect.provideService(effect, CurrentCompensationStep, undefined)
   })
