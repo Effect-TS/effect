@@ -456,6 +456,28 @@ const skipPast = (source: string, index: number, terminator: string): number => 
   return end === -1 ? source.length : end + terminator.length
 }
 
+// MySQL only treats `--` as a comment when whitespace or a control character
+// follows, so `1--1` is arithmetic. The end of the script counts too.
+const isSpaceOrControl = (source: string, index: number): boolean => !(source.charCodeAt(index) > 32)
+
+// PostgreSQL, MSSQL, and ClickHouse nest block comments; SQLite and MySQL end at the first `*/`
+const skipBlockComment = (source: string, index: number, nested: boolean): number => {
+  let depth = 1
+  let i = index + 2
+  while (i < source.length) {
+    if (source.startsWith("*/", i)) {
+      if (--depth === 0) return i + 2
+      i += 2
+    } else if (nested && source.startsWith("/*", i)) {
+      depth++
+      i += 2
+    } else {
+      i++
+    }
+  }
+  return source.length
+}
+
 // `$$` or `$tag$`; `$1` is a placeholder
 const dollarTag = /\$(?:[A-Za-z_]\w*)?\$/y
 
@@ -474,11 +496,14 @@ const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
   while (i < source.length) {
     const char = source[i]!
     const next = source[i + 1]
-    if ((char === "-" && next === "-") || (char === "#" && dialect === "mysql")) {
+    if (
+      (char === "-" && next === "-" && (dialect !== "mysql" || isSpaceOrControl(source, i + 2))) ||
+      (char === "#" && dialect === "mysql")
+    ) {
       i = skipPast(source, i, "\n")
     } else if (char === "/" && next === "*") {
       if (dialect === "mysql" && source[i + 2] === "!") hasCode = true
-      i = skipPast(source, i + 2, "*/")
+      i = skipBlockComment(source, i, dialect === "pg" || dialect === "mssql" || dialect === "clickhouse")
     } else if (char === "'" || char === "\"" || char === "`") {
       const backslash = char !== "`" && (
         dialect === "mysql" || dialect === "clickhouse" ||
