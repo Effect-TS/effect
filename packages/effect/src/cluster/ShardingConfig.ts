@@ -85,6 +85,8 @@ export class ShardingConfig extends Context.Service<ShardingConfig, {
   readonly shardLockExpiration: Duration.Input
   /**
    * Disable the use of advisory locks for shard locking.
+   *
+   * Single-session SQL clients, such as PGlite, never use advisory locks.
    */
   readonly shardLockDisableAdvisory: boolean
   /**

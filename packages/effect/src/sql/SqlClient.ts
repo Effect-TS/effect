@@ -56,6 +56,18 @@ export interface SqlClient extends Constructor {
   readonly reserve: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
 
   /**
+   * Whether every statement on this client runs on one shared database
+   * session, as with an embedded database such as PGlite.
+   *
+   * **Details**
+   *
+   * Session state, such as advisory locks, is then shared by every user of the
+   * client, and a connection held by `reserve` blocks all other statements
+   * until its scope closes.
+   */
+  readonly singleSession: boolean
+
+  /**
    * With the given effect, ensure all sql queries are run in a transaction.
    */
   readonly withTransaction: <R, E, A>(
@@ -126,6 +138,11 @@ export declare namespace SqlClient {
     readonly borrower?: Connection.Borrower | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
+    /**
+     * Whether every statement runs on one shared database session. Defaults to
+     * `false`.
+     */
+    readonly singleSession?: boolean | undefined
     readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
     readonly transactionService?: Context.Service<TransactionConnection, TransactionConnection.Service>
     /**
@@ -237,6 +254,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       withTransaction,
       transactionService,
       reserve: transactionAcquirer,
+      singleSession: options.singleSession === true,
       withoutTransforms(): any {
         if (options.transformRows === undefined) {
           return this

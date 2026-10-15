@@ -6,6 +6,8 @@
  * shard. This module migrates the required runner and lock tables, supports an
  * optional table prefix, uses advisory locks for PostgreSQL and MySQL when
  * enabled, and provides constructors and layers for the storage service.
+ * Single-session clients such as PGlite always use lock table rows on the
+ * shared client, so the storage never holds their only connection.
  *
  * `layer`, `layerWith`, and `make` run the migrations before building the
  * storage. To run migrations with a different connection, such as a schema
@@ -53,9 +55,12 @@ const makeStorage = Effect.fnUntraced(function*(options: {
   const config = yield* ShardingConfig.ShardingConfig
   const shardGroups = ShardingConfig.shardGroupConfig(config)
   const availableShardGroups = Array.from(shardGroups.available)
-  const disableAdvisoryLocks = config.shardLockDisableAdvisory
   const lockOperationInterval = effectiveInterval(config)
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  // On a single-session client, advisory locks are shared by every user of
+  // the session and a reserved connection would block all other statements,
+  // so shard locks use table leases on the shared client instead.
+  const disableAdvisoryLocks = config.shardLockDisableAdvisory || sql.singleSession
   const layerScope = yield* Effect.scope
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
@@ -65,7 +70,7 @@ const makeStorage = Effect.fnUntraced(function*(options: {
 
   // Keep all PostgreSQL and MySQL shard-lock operations on a rebuildable
   // reserved connection, including when advisory locks are disabled.
-  const acquireLockConn = sql.onDialectOrElse({
+  const acquireLockConn = sql.singleSession ? undefined : sql.onDialectOrElse({
     pg: () =>
       Effect.fnUntraced(function*(scope: Scope.Scope) {
         const conn = yield* Effect.orDie(sql.reserve).pipe(
@@ -667,8 +672,9 @@ const makeStorage = Effect.fnUntraced(function*(options: {
  * permission to create tables. When `prefix` is omitted, `make` uses the
  * `cluster` prefix, creating `cluster_runners`, `cluster_locks`, and the
  * `cluster_runner_migrations` history table. PostgreSQL and MySQL use advisory
- * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled; other
- * dialects use rows in the locks table.
+ * locks unless `ShardingConfig.shardLockDisableAdvisory` is enabled or the
+ * client is single-session (`SqlClient.singleSession`, such as PGlite); other
+ * dialects and single-session clients use rows in the locks table.
  *
  * **Gotchas**
  *

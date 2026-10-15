@@ -235,6 +235,7 @@ export const fromClient = (
       acquirer,
       compiler,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
+      singleSession: true,
       spanAttributes,
       transformRows
     })
