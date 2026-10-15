@@ -18,6 +18,7 @@ import * as Fiber from "../Fiber.ts"
 import * as Layer from "../Layer.ts"
 import * as Metric from "../Metric.ts"
 import * as Queue from "../Queue.ts"
+import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
 import type * as Scope from "../Scope.ts"
 import * as Socket from "../socket/Socket.ts"
@@ -76,7 +77,11 @@ const makeEffect = Effect.gen(function*() {
       })
     ),
     Stream.onFirst(() => Deferred.completeWith(connected, Effect.void)),
+    // Each run closes its stream scope, including the socket reader and writer,
+    // before retrying with a fresh connection and the same request queue.
     Stream.runForEach(handleResponse),
+    Effect.tapError((error) => Effect.logDebug("DevTools connection failed", error)),
+    Effect.retry(Schedule.spaced("1 second")),
     Effect.forkDetach
   )
 
