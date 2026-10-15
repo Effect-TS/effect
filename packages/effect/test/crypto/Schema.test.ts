@@ -15,6 +15,7 @@ import * as Exit from "effect/Exit"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
 import type * as SchemaIssue from "effect/SchemaIssue"
+import * as SchemaRepresentation from "effect/SchemaRepresentation"
 import * as NodeCrypto from "node:crypto"
 
 // An Ed25519 key pair encoded by node:crypto, independently of the module
@@ -50,6 +51,30 @@ describe("Schema crypto keys", () => {
         new Uint8Array(pair.publicKey.export({ format: "der", type: "spki" }))
       )
       assert.isFalse(Schema.is(Schema.SignaturePublicKey(Signature.ecdsaP256))(key))
+    }))
+
+  it.effect("generated code for a custom-hash schema accepts the same keys", () =>
+    Effect.gen(function*() {
+      const algorithm = { ...Signature.ecdsaP256, hash: Digest.sha512 }
+      const pair = NodeCrypto.generateKeyPairSync("ec", { namedCurve: "P-256" })
+      const key = yield* KeyFormat.decodePublic(
+        KeyFormat.spki,
+        algorithm,
+        new Uint8Array(pair.publicKey.export({ format: "der", type: "spki" }))
+      )
+      const schema = Schema.SignaturePublicKey(algorithm)
+      assert.isTrue(Schema.is(schema)(key))
+
+      const output = SchemaRepresentation.toCodeDocument(SchemaRepresentation.toRepresentations([schema.ast]))
+      assert.includeDeepMembers([...output.artifacts], [
+        { _tag: "Import", importDeclaration: `import * as Digest from "effect/crypto/Digest"` }
+      ])
+      const generated = new Function("Schema", "Signature", "Digest", `return ${output.codes[0].runtime}`)(
+        Schema,
+        Signature,
+        Digest
+      )
+      assert.isTrue(Schema.is(generated)(key))
     }))
 
   it.effect("declared RSA schemas ignore generation-only modulus length", () =>
