@@ -204,7 +204,23 @@ describe("Sink", () => {
       }))
   })
 
+  describe("collect", () => {
+    it.effect("collects a large input chunk", () =>
+      Effect.gen(function*() {
+        const values = Array.makeBy(200000, (i) => i)
+        const result = yield* Stream.fromArray(values).pipe(Stream.run(Sink.collect<number>()))
+        deepStrictEqual(result, values)
+      }))
+  })
+
   describe("take", () => {
+    it.effect("collects a large input chunk", () =>
+      Effect.gen(function*() {
+        const values = Array.makeBy(200000, (i) => i)
+        const result = yield* Stream.fromArray(values).pipe(Stream.run(Sink.take<number>(values.length)))
+        deepStrictEqual(result, values)
+      }))
+
     it.effect("normalizes the element count", () =>
       Effect.gen(function*() {
         const results = yield* Effect.all([
