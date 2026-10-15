@@ -793,6 +793,25 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
+  it.effect("aborts the response when a streamed body fails after it started", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/stream",
+        HttpServerResponse.stream(
+          Stream.make(Buffer.Buffer.from("partial")).pipe(Stream.concat(Stream.fail("boom")))
+        )
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const exit = yield* HttpClient.get("/stream").pipe(
+        Effect.flatMap((response) => response.text),
+        Effect.exit
+      )
+      assert.isTrue(Exit.isFailure(exit))
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
   it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
     const requestStarted = Latch.makeUnsafe()
     const releaseResponse = Latch.makeUnsafe()

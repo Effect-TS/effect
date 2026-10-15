@@ -703,7 +703,9 @@ const handleCause = (
       nodeResponse.writeHead(response.status, response.statusText)
     }
     if (!nodeResponse.writableEnded) {
-      nodeResponse.end()
+      // Ending a started response normally would make a partial body look complete
+      if (headersSent) nodeResponse.destroy()
+      else nodeResponse.end()
     }
     return Effect.failCause(
       headersSent
