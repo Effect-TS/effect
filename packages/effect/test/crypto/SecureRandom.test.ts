@@ -59,6 +59,7 @@ describe("SecureRandom", () => {
       assert.isTrue(uuids.every((uuid) => uuidV7Regex.test(uuid) && uuid.startsWith("00000000-03e8-7")))
       assert.isTrue(ulids.every((ulid) => ulid.startsWith("00000000Z8")))
 
+      yield* TestClock.setTime(1000)
       const other = make()
       assert.strictEqual(yield* other.uuidV7(), uuids[0])
       assert.strictEqual(yield* other.ulid, ulids[0])
