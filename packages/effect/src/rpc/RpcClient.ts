@@ -99,6 +99,14 @@ export declare namespace RpcClient {
         {
           readonly headers?: Headers.Input | undefined
           readonly context?: Context.Context<never> | undefined
+          /**
+           * Completes once the server acknowledges the call as its handler starts,
+           * after the middleware has run, instead of waiting for the result. The
+           * handler's result and error are not returned, but transport errors,
+           * middleware errors and failures before the handler starts still fail the
+           * call. Over HTTP and workers the call completes after the handler has
+           * finished.
+           */
           readonly discard?: Discard | undefined
         }
     ) => Current extends Rpc.Rpc<
@@ -166,6 +174,14 @@ export declare namespace RpcClient {
       {
         readonly headers?: Headers.Input | undefined
         readonly context?: Context.Context<never> | undefined
+        /**
+         * Completes once the server acknowledges the call as its handler starts,
+         * after the middleware has run, instead of waiting for the result. The
+         * handler's result and error are not returned, but transport errors,
+         * middleware errors and failures before the handler starts still fail the
+         * call. Over HTTP and workers the call completes after the handler has
+         * finished.
+         */
         readonly discard?: Discard | undefined
       }
   ) => Rpcs extends Rpc.Rpc<
@@ -234,7 +250,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       options: {
         readonly message: FromClient<Rpcs>
         readonly context: Context.Context<never>
-        readonly discard: boolean
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
@@ -258,7 +273,6 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       options: {
         readonly message: FromClient<Rpcs>
         readonly context: Context.Context<never>
-        readonly discard: boolean
       }
     ) => Effect.Effect<void, E>
     readonly supportsAck?: boolean | undefined
@@ -376,12 +390,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       }
       const id = generateRequestId()
       const send = middleware(
-        (message) =>
-          options.onFromClient({
-            message,
-            context,
-            discard
-          }),
+        (message) => options.onFromClient({ message, context }),
         {
           _tag: "Request",
           id,
@@ -394,20 +403,28 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
               sampled: span.sampled
             } :
             {}),
-          headers: Headers.merge(parentFiber.getRef(CurrentHeaders), headers)
+          headers: Headers.merge(parentFiber.getRef(CurrentHeaders), headers),
+          ...(discard ? { discard: true as const } : {})
         }
       )
-      if (discard) {
-        return send
-      }
       let fiber: Fiber.Fiber<any, any>
       return Effect.onInterrupt(
         Effect.callback<any, any>((resume) => {
+          // the acknowledgement of a discarded call, held until its send has finished
+          let ack: Exit.Exit<any, any> | undefined
           const entry: ClientEntry = {
             _tag: "Effect",
             rpc,
             context,
             resume(exit) {
+              if (discard) {
+                // Interrupting the send could cancel the call, as an HTTP
+                // handler is scoped to its request, so the call completes
+                // once the send has finished too.
+                ack = exit._tag === "Success" ? Exit.void : exit
+                if (fiber?.pollUnsafe()) resume(ack)
+                return
+              }
               resume(exit)
               if (fiber && !fiber.pollUnsafe()) {
                 parentFiber.currentDispatcher.scheduleTask(() => {
@@ -424,6 +441,8 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
           fiber.addObserver((exit) => {
             if (exit._tag === "Failure") {
               return resume(exit)
+            } else if (ack) {
+              return resume(ack)
             }
           })
         }),
@@ -486,12 +505,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
     })
 
     yield* middleware(
-      (message) =>
-        options.onFromClient({
-          message,
-          context,
-          discard: false
-        }),
+      (message) => options.onFromClient({ message, context }),
       {
         _tag: "Request",
         id,
@@ -560,8 +574,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
       const parentFiber = Fiber.getCurrent()!
       const fiber = options.onFromClient({
         message: { _tag: "Interrupt", requestId, interruptors },
-        context,
-        discard: false
+        context
       }).pipe(
         Effect.timeout(1000),
         Effect.runForkWith(parentFiber.context)
@@ -582,8 +595,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
             ? Effect.flatMap(() =>
               options.onFromClient({
                 message: { _tag: "Ack", requestId: message.requestId },
-                context: entry.context,
-                discard: false
+                context: entry.context
               })
             )
             : identity,
@@ -675,6 +687,7 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
     readonly rpc: Rpc.AnyWithProps
     readonly context: Context.Context<never>
     readonly schemas: RpcSchemas
+    readonly discard: boolean
   }
   const entries = new Map<RequestId, ClientEntry>()
 
@@ -698,7 +711,8 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
           const entry: ClientEntry = {
             rpc,
             context: collector ? Context.add(fiber.context, Transferable.Collector, collector) : fiber.context,
-            schemas: rpcSchemas(rpc)
+            schemas: rpcSchemas(rpc),
+            discard: message.discard === true
           }
           entries.set(message.id, entry)
 
@@ -763,7 +777,13 @@ export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>
         const entry = entries.get(requestId)
         if (!entry) return Effect.void
         entries.delete(requestId)
-        return entry.schemas.decodeExit(message.exit).pipe(
+        // the success of a discarded call is its acknowledgement, which has no
+        // value, and an older server may send the handler result instead
+        if (entry.discard && message.exit._tag === "Success") {
+          return write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
+        }
+        const decodeExit = entry.discard ? entry.schemas.decodeDiscardExit : entry.schemas.decodeExit
+        return decodeExit(message.exit).pipe(
           Effect.provideContext(entry.context),
           Effect.orDie,
           Effect.matchCauseEffect({
@@ -801,6 +821,7 @@ interface RpcSchemas {
   >
   readonly encodePayload: (payload: any) => Effect.Effect<any, Schema.SchemaError, unknown>
   readonly decodeExit: (encoded: unknown) => Effect.Effect<Exit.Exit<any, any>, Schema.SchemaError, unknown>
+  readonly decodeDiscardExit: (encoded: unknown) => Effect.Effect<Exit.Exit<any, any>, Schema.SchemaError, unknown>
 }
 // Codecs are compiled per client, because two protocols can fill the message
 // holes with different codecs.
@@ -812,13 +833,20 @@ const makeRpcSchemas = (codecFor: RpcSerialization.CodecFor) => {
       return entry
     }
     const streamSchemas = RpcSchema.getStreamSchemas(rpc.successSchema)
+    const exitSchema = Rpc.exitSchema(rpc as any)
+    let decodeDiscardExit: RpcSchemas["decodeDiscardExit"] | undefined
     entry = {
       decodeChunk: Option.map(
         streamSchemas,
         (streamSchemas) => Schema.decodeUnknownEffect(codecFor(Schema.NonEmptyArray(streamSchemas.success)))
       ),
       encodePayload: Schema.encodeEffect(codecFor(rpc.payloadSchema)),
-      decodeExit: Schema.decodeUnknownEffect(codecFor(Rpc.exitSchema(rpc as any)))
+      decodeExit: Schema.decodeUnknownEffect(codecFor(exitSchema)),
+      // the server encodes the Exits of a discarded call with a void success
+      decodeDiscardExit: (encoded) =>
+        (decodeDiscardExit ??= Schema.decodeUnknownEffect(
+          codecFor(Schema.Exit(Schema.Void, exitSchema.error, exitSchema.defect))
+        ))(encoded)
     }
     cache.set(rpc, entry)
     return entry
@@ -1443,7 +1471,14 @@ export const makeProtocolWorker = (
             Effect.flatMap((worker) => {
               const latch = Latch.makeUnsafe(false)
               entries.set(request.id, { clientId, worker, latch })
-              return Effect.flatMap(worker.send(request, transferables), () => latch.await)
+              // the pool counts a worker as busy until the Exit arrives, so a
+              // discarded call is sent without its marker to get the handler Exit
+              let message = request
+              if (request.discard === true) {
+                const { discard: _, ...rest } = request
+                message = rest
+              }
+              return Effect.flatMap(worker.send(message, transferables), () => latch.await)
             }),
             Effect.scoped,
             Effect.orDie

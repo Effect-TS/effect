@@ -193,6 +193,20 @@ describe("RpcClient", () => {
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
     }))
 
+  it.effect("completes a discarded call on its acknowledgement, not on the write", () =>
+    Effect.gen(function*() {
+      const { client, handle, sent } = yield* makeChunkProtocol()
+      const call = yield* client.Unary(undefined, { discard: true }).pipe(Effect.forkChild)
+      const request = yield* Queue.take(sent)
+      assert(request._tag === "Request" && request.discard === true)
+      yield* Effect.yieldNow
+      assert.isUndefined(call.pollUnsafe())
+
+      // an older server replies with the handler result, which also counts as the acknowledgement
+      yield* handle({ _tag: "Exit", requestId: request.id, exit: { _tag: "Success", value: "ignored" } })
+      assert.isUndefined(yield* Fiber.join(call))
+    }))
+
   it.effect("isolates a malformed stream chunk and interrupts its server request", () =>
     Effect.gen(function*() {
       const { client, handle, sent } = yield* makeChunkProtocol()
@@ -386,6 +400,36 @@ describe("RpcClient", () => {
 
   it.effect("fails request on empty HTTP response for framed serialization", () =>
     assertEmptyResponseFailsRequest(RpcSerialization.layerNdjson, ""))
+
+  it.effect("sends a discarded call to a worker as a request and waits for its Exit", () =>
+    Effect.gen(function*() {
+      const sent: Array<unknown> = []
+      const requestSent = yield* Deferred.make<void>()
+      const reply = yield* Deferred.make<(message: unknown) => Effect.Effect<unknown, unknown>>()
+      const backing: Worker.Worker<any, any> = {
+        send: (message) =>
+          Effect.sync(() => void sent.push(message)).pipe(Effect.andThen(Deferred.succeed(requestSent, void 0))),
+        run: (handler: any) => Deferred.succeed(reply, handler).pipe(Effect.andThen(Effect.never))
+      }
+      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1 }).pipe(
+        Effect.provideService(
+          Worker.WorkerPlatform,
+          Worker.WorkerPlatform.of({ spawn: () => Effect.succeed(backing) })
+        ),
+        Effect.provideService(Worker.Spawner, (() => undefined) as Worker.SpawnerFn)
+      )
+      yield* protocol.run(0, () => Effect.void).pipe(Effect.forkScoped)
+      const request = { _tag: "Request" as const, id: 1, tag: "Test", payload: null, headers: [] }
+
+      const call = yield* protocol.send(0, { ...request, discard: true }).pipe(Effect.forkChild)
+      yield* Deferred.await(requestSent)
+      // The pool counts the worker as busy until the Exit, so the worker must be asked for one.
+      assert.deepStrictEqual(sent, [request])
+      assert.isUndefined(call.pollUnsafe())
+
+      yield* (yield* Deferred.await(reply))({ _tag: "Exit", requestId: 1, exit: { _tag: "Success", value: null } })
+      yield* Fiber.join(call)
+    }))
 
   it.effect("defects request when framed HTTP response closes before request completes", () =>
     Effect.gen(function*() {
