@@ -2,8 +2,8 @@
  * npm-style version ranges over `SemVer` values.
  *
  * A `SemVerRange` keeps the syntax it was parsed from, such as `^1.2`, `~1.2.3`,
- * `1.x`, or `1.2.3 - 2.3.4`, and matches versions with node-semver's rules,
- * including its pre-release matching rule.
+ * `1.x`, or `1.2.3 - 2.3.4`. Matching follows node-semver's pre-release rules,
+ * except that wildcard alternatives preserve the union described in {@link matches}.
  *
  * @stability unstable
  * @since 4.0.6
@@ -35,9 +35,8 @@ const TypeId = "~effect/SemVerRange"
  *
  * **Details**
  *
- * Ranges are opaque. They keep the syntax they were parsed from, so `^1.2`
- * stays a caret comparator rather than being expanded into bounds, and
- * {@link format} returns that syntax in canonical form.
+ * Ranges are opaque. {@link format} preserves parsed operators such as `^1.2`
+ * rather than expanding them into bounds.
  *
  * @see {@link parse} for decoding range strings
  * @see {@link matches} for matching versions
@@ -49,8 +48,7 @@ export interface SemVerRange extends Pipeable, Equal.Equal, Inspectable {
   readonly [TypeId]: typeof TypeId
 }
 
-// A version whose trailing components may be wildcards. Every component after
-// a wildcard is also a wildcard, and only full versions carry a pre-release.
+// Wildcards must be trailing; only full versions carry a pre-release.
 interface PartialVersion {
   readonly major: number | undefined
   readonly minor: number | undefined

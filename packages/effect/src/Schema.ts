@@ -15834,12 +15834,9 @@ export interface SemVerFromString extends decodeTo<SemVer, String> {
  *
  * **Details**
  *
- * Decoding:
- * - A `string` is decoded with `SemVer.parse`, which rejects a `v` prefix,
- *   surrounding whitespace, partial versions, and leading zeros.
- *
- * Encoding:
- * - A `SemVer` is encoded with `SemVer.format`, including build metadata.
+ * Decodes with `SemVer.parse`, rejecting a `v` prefix, surrounding whitespace,
+ * partial versions, and leading zeros. Encodes with `SemVer.format`, including
+ * build metadata.
  *
  * @see {@link SemVer} for validating values that are already SemVer values
  * @stability unstable
@@ -15940,12 +15937,8 @@ export interface SemVerRangeFromString extends decodeTo<SemVerRange, String> {
  *
  * **Details**
  *
- * Decoding:
- * - A `string` is decoded with `SemVerRange.parse`.
- *
- * Encoding:
- * - A `SemVerRange` is encoded with `SemVerRange.format`, which keeps the
- *   parsed operators and normalizes wildcard spellings.
+ * Decodes with `SemVerRange.parse` and encodes with `SemVerRange.format`,
+ * preserving parsed operators and normalizing wildcard spellings.
  *
  * @see {@link SemVerRange} for validating values that are already ranges
  * @stability unstable

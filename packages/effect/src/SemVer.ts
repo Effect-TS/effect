@@ -252,8 +252,7 @@ export interface Components {
   readonly build?: ReadonlyArray<string> | undefined
 }
 
-// Combining these constraints excludes signs, leading zeros, and exponent
-// notation without limiting the number of digits.
+// The intersection excludes signs, leading zeros, and exponent notation.
 type NumericComponent = "0" | (`${bigint}` & `${"1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"}${string}`)
 
 /**
