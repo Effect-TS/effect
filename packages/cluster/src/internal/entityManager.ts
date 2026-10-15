@@ -478,6 +478,9 @@ export const make = Effect.fnUntraced(function*<
     for (const server of activeServers.values()) {
       mailboxMax = Math.max(mailboxMax, server.activeRequests.size)
     }
+    for (const server of drainingServers.values()) {
+      mailboxMax = Math.max(mailboxMax, server.activeRequests.size)
+    }
     mailboxMaxGauge.unsafeUpdate(BigInt(mailboxMax), [])
   }).pipe(
     Effect.andThen(Effect.sleep(1000)),
