@@ -66,6 +66,7 @@ describe("Duration", () => {
     deepStrictEqual(Duration.fromInputUnsafe([0, Infinity]), Duration.infinity)
     deepStrictEqual(Duration.fromInputUnsafe([0, -Infinity]), Duration.negativeInfinity)
     deepStrictEqual(Duration.fromInputUnsafe([0, NaN]), Duration.zero)
+    deepStrictEqual(Duration.fromInputUnsafe([10_368_000, 123_456_789]), Duration.nanos(10_368_000_123_456_789n))
 
     // object input
     deepStrictEqual(Duration.fromInputUnsafe({}), Duration.zero)
@@ -103,6 +104,10 @@ describe("Duration", () => {
     deepStrictEqual(
       Duration.fromInputUnsafe({ milliseconds: 0.0000005, nanoseconds: 0.5 }),
       Duration.nanos(1n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ days: 200, nanoseconds: 1 }),
+      Duration.nanos(17_280_000_000_000_001n)
     )
     deepStrictEqual(
       Duration.fromInputUnsafe({ days: 1, hours: 2, minutes: 30, seconds: 15 }),
