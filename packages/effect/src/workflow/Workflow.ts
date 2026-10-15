@@ -30,7 +30,7 @@ import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as Tranformation from "../SchemaTransformation.ts"
 import * as Scope from "../Scope.ts"
-import { type CompensationStep, CurrentCompensationStep, recordOperation } from "./internal/compensation.ts"
+import { type CompensationStep, CurrentCompensationStep } from "./internal/compensation.ts"
 import { makeHashDigest } from "./internal/crypto.ts"
 import type { WorkflowEngine, WorkflowInstance } from "./WorkflowEngine.ts"
 
@@ -177,16 +177,14 @@ export interface Workflow<
    *
    * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
    *
-   * See {@link withCompensation} for how replays identify a step, and when to
-   * pass `name`.
+   * See {@link withCompensation} for how replays identify a step.
    */
   readonly withCompensation: {
     <A, R2>(
       compensation: (
         value: A,
         cause: Cause.Cause<Error["Type"]>
-      ) => Effect.Effect<void, never, R2>,
-      options?: { readonly name?: string | undefined } | undefined
+      ) => Effect.Effect<void, never, R2>
     ): <E, R>(
       effect: Effect.Effect<A, E, R>
     ) => Effect.Effect<
@@ -199,8 +197,7 @@ export interface Workflow<
       compensation: (
         value: A,
         cause: Cause.Cause<Error["Type"]>
-      ) => Effect.Effect<void, never, R2>,
-      options?: { readonly name?: string | undefined } | undefined
+      ) => Effect.Effect<void, never, R2>
     ): Effect.Effect<
       A,
       E,
@@ -961,14 +958,12 @@ export const addFinalizer: <R>(
  *
  * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
  *
- * Engines that replay a workflow keep one compensation per step. A step passed
- * a `name` is identified by it, and a name may be used by only one step per
- * run. Otherwise a step is identified by the activities, durable deferreds,
- * and child workflows it runs directly. Unnamed steps that run the same
- * durable operations are told apart by completion order, which concurrent
- * replays can change, so a warning is logged; give each a `name`. A step with
- * neither a name nor durable operations runs again on every replay and
- * registers a compensation each time.
+ * Engines that replay a workflow keep one compensation per step, identified
+ * by the activities, durable deferreds, and child workflows it runs directly.
+ * Steps that run the same durable operations are told apart by completion
+ * order, which concurrent replays can change. A step without durable
+ * operations runs again on every replay and registers a compensation each
+ * time.
  *
  * `WorkflowEngine.layerMemory` keeps a completed step's compensation until a
  * replay registers it again, so shutting down mid-replay still compensates
@@ -981,69 +976,45 @@ export const addFinalizer: <R>(
  */
 export const withCompensation: {
   <A, R2>(
-    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>,
-    options?: { readonly name?: string | undefined } | undefined
+    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): <E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
   <A, E, R, R2>(
     effect: Effect.Effect<A, E, R>,
-    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>,
-    options?: { readonly name?: string | undefined } | undefined
+    compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
   ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope>
-} = dual((args) => Effect.isEffect(args[0]), <A, E, R, R2>(
+} = dual(2, <A, E, R, R2>(
   effect: Effect.Effect<A, E, R>,
-  compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>,
-  options?: { readonly name?: string | undefined } | undefined
+  compensation: (value: A, cause: Cause.Cause<unknown>) => Effect.Effect<void, never, R2>
 ): Effect.Effect<A, E, R | R2 | WorkflowInstance | Scope.Scope> =>
   Effect.uninterruptibleMask((restore) =>
     Effect.gen(function*() {
       const instance = yield* InstanceTag
-      const state = runState(instance)
-      const name = options?.name
-      const parent = yield* CurrentCompensationStep
-      // A named step stands for its body in enclosing steps, so the body's
-      // operations are not recorded there.
-      const step: CompensationStep = { keys: new Set(), parent: name === undefined ? parent : undefined }
-      if (name !== undefined && state.names.has(name)) {
-        return yield* duplicateCompensationName(instance, name)
-      }
+      const step: CompensationStep = { keys: new Set(), parent: yield* CurrentCompensationStep }
       const value = yield* restore(Effect.provideService(effect, CurrentCompensationStep, step))
       const services = yield* Effect.context<R2>()
       const finalizer = (exit: Exit.Exit<unknown, unknown>) =>
         instance.abandoned || Exit.isSuccess(exit)
           ? Effect.void
           : Effect.provideContext(compensation(value, exit.cause), services)
-      let key: string
-      if (name !== undefined) {
-        // Concurrent steps can both pass the check above before either succeeds.
-        if (state.names.has(name)) {
-          return yield* duplicateCompensationName(instance, name)
-        }
-        state.names.add(name)
-        key = `Compensation/${name}`
-        recordOperation(parent, key)
-      } else if (step.keys.size > 0) {
-        // Durable operations are the same in every run regardless of
-        // scheduling. Steps sharing them are told apart by completion order.
-        const operations = Array.from(step.keys).sort()
-        const joined = operations.join("\u0000")
-        const occurrence = state.occurrences.get(joined) ?? 0
-        state.occurrences.set(joined, occurrence + 1)
-        if (occurrence === 1) {
-          yield* Effect.logWarning(
-            `Workflow.withCompensation: unnamed compensations in workflow "${instance.workflow._tag}" ran the same durable operations (${
-              operations.join(", ")
-            }). Replays match them by completion order, which concurrency can change. Pass a unique name to each.`
-          )
-        }
-        key = `${occurrence}\u0000${joined}`
-      } else {
+      if (step.keys.size === 0) {
         // Without durable operations the step runs again on every replay, so
         // each run compensates its own execution.
         yield* Scope.addFinalizerExit(instance.scope, finalizer)
         return value
       }
+      // Durable operations are the same in every run regardless of scheduling.
+      // Steps sharing them are told apart by completion order.
+      const operations = Array.from(step.keys).sort().join("\u0000")
+      let occurrences = compensationOccurrences.get(instance)
+      if (!occurrences) {
+        occurrences = new Map()
+        compensationOccurrences.set(instance, occurrences)
+      }
+      const occurrence = occurrences.get(operations) ?? 0
+      occurrences.set(operations, occurrence + 1)
+      const key = `${occurrence}\u0000${operations}`
       const registrations = compensationRegistrations.get(instance.scope) ?? new Map()
       compensationRegistrations.set(instance.scope, registrations)
       // A replay of the same step replaces its compensation in place. Steps
@@ -1057,25 +1028,7 @@ export const withCompensation: {
     })
   ))
 
-const duplicateCompensationName = (instance: WorkflowInstance["Service"], name: string) =>
-  Effect.die(
-    `Workflow.withCompensation: the name "${name}" is used by more than one step in workflow "${instance.workflow._tag}"`
-  )
-
-const compensationRunStates = new WeakMap<WorkflowInstance["Service"], {
-  readonly names: Set<string>
-  readonly occurrences: Map<string, number>
-}>()
-
-const runState = (instance: WorkflowInstance["Service"]) => {
-  let state = compensationRunStates.get(instance)
-  if (!state) {
-    state = { names: new Set(), occurrences: new Map() }
-    compensationRunStates.set(instance, state)
-  }
-  return state
-}
-
+const compensationOccurrences = new WeakMap<WorkflowInstance["Service"], Map<string, number>>()
 const compensationRegistrations = new WeakMap<
   Scope.Closeable,
   Map<string, (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>>
