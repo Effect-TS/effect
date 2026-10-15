@@ -3,8 +3,10 @@ import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, type Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/persistence/KeyValueStore"
 import * as Persistence from "effect/persistence/Persistence"
+import { clearPrefixSuite } from "./KeyValueStoreTest.ts"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
+  clearPrefixSuite("shared backend", layer)
   describe("store operations", { concurrent: false }, () => {
     const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
       Effect.runPromise(Effect.provide(effect, layer))
