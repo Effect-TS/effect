@@ -140,6 +140,21 @@ describe("NodeCrypto", () => {
       }
     }).pipe(Effect.provide(NodeCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
 
+  // An effect may run later than it is built, so node:crypto must not see a
+  // nonce that was valid only when the effect was built.
+  it.effect("layerAead checks the ChaCha20-Poly1305 nonce length when the effect runs", () =>
+    Effect.gen(function*() {
+      const aead = yield* Aead.Aead
+      const key = yield* Aead.key(Aead.chacha20Poly1305, bytes(chachaKey))
+      const options = { nonce: new Uint8Array(12) }
+      const data = new Uint8Array(32)
+      const encrypt = aead.encrypt(key, data, options)
+      const decrypt = aead.decrypt(key, data, options)
+      options.nonce = new Uint8Array(16)
+      assert.strictEqual((yield* Effect.flip(encrypt)).reason._tag, "InvalidArgument")
+      assert.strictEqual((yield* Effect.flip(decrypt)).reason._tag, "InvalidArgument")
+    }).pipe(Effect.provide(NodeCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
+
   it("layerSecureRandom and layerCipher are the core layers", () => {
     assert.strictEqual(NodeCrypto.layerSecureRandom, SecureRandom.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerCipher, Cipher.layerWebCrypto)

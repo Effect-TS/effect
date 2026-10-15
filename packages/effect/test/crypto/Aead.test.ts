@@ -147,6 +147,22 @@ describe("Aead", () => {
       }
     }).pipe(Effect.provide(Aead.layerWebCrypto.pipe(Layer.provide(Layer.mergeAll(seeded, unreachable))))))
 
+  // An effect may run later than it is built, or more than once.
+  it.effect("checks the nonce length when the effect runs", () =>
+    Effect.gen(function*() {
+      const aead = yield* Aead.Aead
+      for (const algorithm of [Aead.aes256Gcm, Aead.chacha20Poly1305, Aead.xchacha20Poly1305]) {
+        const key = yield* Aead.key(algorithm, new Uint8Array(32))
+        const options = { nonce: new Uint8Array(algorithm.nonceLength) }
+        const data = new Uint8Array(32)
+        const encrypt = aead.encrypt(key, data, options)
+        const decrypt = aead.decrypt(key, data, options)
+        options.nonce = new Uint8Array(algorithm.nonceLength + 4)
+        assertReason(yield* Effect.flip(encrypt), "InvalidArgument", "encrypt")
+        assertReason(yield* Effect.flip(decrypt), "InvalidArgument", "decrypt")
+      }
+    }).pipe(Effect.provide(layer)))
+
   it.effect("builds keys of each algorithm's length from bytes and SecureRandom", () =>
     Effect.gen(function*() {
       const aead = yield* Aead.Aead
