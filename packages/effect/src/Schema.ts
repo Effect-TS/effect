@@ -2960,8 +2960,8 @@ export interface Enum<A extends { [x: string]: string | number }>
   readonly enums: A
 }
 /**
- * Creates a schema from a TypeScript enum object. Validates that the input is one of the enum's values.
- * Numeric enum values must be finite.
+ * Creates a schema from a TypeScript enum or an object mapping names to string or number values.
+ * Validates that the input is one of those values. Numeric values must be finite.
  *
  * **Gotchas**
  *
