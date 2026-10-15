@@ -28,6 +28,8 @@ import {
   SchemaIssue,
   SchemaParser,
   SchemaTransformation,
+  SemVer,
+  SemVerRange,
   String as Str,
   Struct,
   Tuple
@@ -5853,6 +5855,48 @@ Expected a value between -2147483648 and 2147483647`
       ByteSize.bytes(BigInt(Number.MAX_SAFE_INTEGER) + 1n),
       "Expected a ByteSize representable as a safe integer"
     )
+  })
+
+  it("SemVer", async () => {
+    const asserts = new TestSchema.Asserts(Schema.SemVer)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+    await asserts.decoding().fail("1.2.3", "Expected SemVer")
+
+    const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.SemVer))
+    await json.decoding().succeed("1.2.3-rc.1+001", SemVer.parseUnsafe("1.2.3-rc.1+001"))
+    await json.encoding().succeed(SemVer.parseUnsafe("1.2.3-rc.1+001"), "1.2.3-rc.1+001")
+  })
+
+  it("SemVerFromString", async () => {
+    const asserts = new TestSchema.Asserts(Schema.SemVerFromString)
+    await asserts.verifyRoundTrip()
+    await asserts.decoding().succeed("1.0.0-beta+exp.sha.5114f85", SemVer.parseUnsafe("1.0.0-beta+exp.sha.5114f85"))
+    await asserts.decoding().fail(
+      "v1.2.3",
+      `Invalid SemVer "v1.2.3": major must be a non-negative integer without leading zeros, received "v1"`
+    )
+    await asserts.encoding().succeed(SemVer.parseUnsafe("1.2.3+build"), "1.2.3+build")
+  })
+
+  it("SemVerRange", async () => {
+    const asserts = new TestSchema.Asserts(Schema.SemVerRange)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+    await asserts.decoding().fail("^1.2.3", "Expected SemVerRange")
+
+    const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.SemVerRange))
+    await json.decoding().succeed("^1.2 || 2.x", SemVerRange.parseUnsafe("^1.2 || 2"))
+    await json.encoding().succeed(SemVerRange.parseUnsafe(">= 1.2.3 <2.x"), ">=1.2.3 <2")
+  })
+
+  it("SemVerRangeFromString", async () => {
+    const asserts = new TestSchema.Asserts(Schema.SemVerRangeFromString)
+    await asserts.verifyRoundTrip()
+    await asserts.decoding().succeed("~1.2.3-beta.1", SemVerRange.parseUnsafe("~1.2.3-beta.1"))
+    await asserts.decoding().fail(
+      "^v1",
+      `Invalid SemVer range "^v1": major must be a non-negative integer without leading zeros, received "v1"`
+    )
+    await asserts.encoding().succeed(SemVerRange.parseUnsafe("1.2.3 - 2.x"), "1.2.3 - 2")
   })
 
   it("BigDecimal", async () => {
