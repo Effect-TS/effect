@@ -210,7 +210,7 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
     case "number":
       return Number.isInteger(value) && value >= -int64Bound && value < int64Bound
         ? {
-          intValue: value
+          intValue: Number.isSafeInteger(value) ? value : String(BigInt(value))
         }
         : {
           doubleValue: value
