@@ -898,6 +898,19 @@ export interface UuidV7Insert<B extends string> extends
 /**
  * Adds a constructor default that generates a string UUID v7.
  *
+ * **Details**
+ *
+ * The UUID takes its timestamp from the `Clock`, and shares its ordering with
+ * `SecureRandom.uuidV7Unsafe` and every other `Model.UuidV7WithGenerate` in the
+ * JS realm, so each UUID sorts after the previous one.
+ *
+ * **Gotchas**
+ *
+ * The shared ordering never moves the timestamp back, so a `Clock` behind the
+ * realm's latest timestamp, such as a `TestClock` after `Date.now()`-based
+ * UUIDs were generated, produces UUIDs with that latest timestamp rather than
+ * the `Clock` time.
+ *
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -908,7 +921,9 @@ export const UuidV7WithGenerate = <B extends string>(
   schema.pipe(
     Schema.withConstructorDefault(
       Effect.clockWith((clock) =>
-        Effect.succeed(Uuid.v7String(clock.currentTimeMillisUnsafe(), SecureRandom.randomBytesUnsafe(16)))
+        Effect.succeed(
+          Uuid.stringify(Uuid.v7Monotonic(clock.currentTimeMillisUnsafe(), SecureRandom.randomBytesUnsafe(16)))
+        )
       )
     )
   )

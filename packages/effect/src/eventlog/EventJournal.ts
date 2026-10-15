@@ -259,6 +259,12 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * Use when generating an event-log entry id internally and the UUID v7 bytes
  * are trusted to satisfy the brand.
  *
+ * **Details**
+ *
+ * Without `msecs`, the id shares its ordering with `SecureRandom.uuidV7Unsafe`,
+ * so each id sorts after the previous one in the JS realm. With `msecs`, the id
+ * encodes exactly that timestamp and has no ordering guarantee.
+ *
  * **Gotchas**
  *
  * This is unsafe because the generated UUID bytes are cast to the brand without
@@ -269,7 +275,9 @@ export const EntryIdOrder = Order.make<EntryId>((a, b) => {
  * @since 4.0.0
  */
 export const makeEntryIdUnsafe = (options: { msecs?: number } = {}): EntryId =>
-  Uuid.v7Bytes(options.msecs ?? DateTime.nowUnsafe().epochMilliseconds, SecureRandom.randomBytesUnsafe(16)) as EntryId
+  (options.msecs === undefined
+    ? Uuid.v7Monotonic(DateTime.nowUnsafe().epochMilliseconds, SecureRandom.randomBytesUnsafe(16))
+    : Uuid.v7Bytes(options.msecs, SecureRandom.randomBytesUnsafe(16))) as EntryId
 
 /**
  * Extracts the millisecond timestamp encoded in a UUID v7 `EntryId`.

@@ -16,3 +16,5 @@ Replace `effect/Crypto` with per-family `effect/crypto` modules for secure rando
 - Provide `Digest.Digest` instead of `Crypto.Crypto` to `SqlMessageStorage` and `SingleRunner`, and instead of `EventLogEncryption` to `SqlEventLogServerEncrypted.makeStorage` and `layerStorage`. Replace `EventLogEncryption.sha256String` with the Digest service's `digestHex` using SHA-256.
 
 Workflow execution IDs, activity idempotency keys and event log table names retain their existing encodings.
+
+UUIDv7s and ULIDs are strictly increasing within a millisecond: per instance for the `SecureRandom` service, and per JS realm for `uuidV7Unsafe`, `ulidUnsafe`, `Model.UuidV7Insert` defaults and `EventJournal.makeEntryIdUnsafe()`.

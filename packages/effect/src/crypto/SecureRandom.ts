@@ -90,17 +90,31 @@ export class SecureRandom extends Context.Service<SecureRandom, {
    * Generates a UUIDv7 from the `Clock` timestamp, as a lowercase hyphenated
    * string or, with `format: "bytes"`, the 16 UUID bytes.
    *
-   * UUIDv7s sort by timestamp, with no ordering guarantee within a
-   * millisecond. Uniqueness is probabilistic: 74 of the 128 bits are random,
-   * so a 50% chance of a collision takes about 162 billion UUIDs in one
-   * millisecond.
+   * Every UUIDv7 from this service sorts after the previous one, as a string
+   * and as bytes. Within a millisecond, a 42-bit counter seeded from random
+   * bytes orders them. If the `Clock` moves back, the last timestamp is kept,
+   * and if the counter overflows, the timestamp advances by 1 ms, so a
+   * timestamp can run slightly ahead of the `Clock`. There is no ordering
+   * between separate services, processes or workers.
+   *
+   * Consecutive UUIDv7s reveal their generation order, so never use them as
+   * secrets. Uniqueness between generators is probabilistic: each UUID has 32
+   * fresh random bits on top of the randomly seeded counter, so a 50% chance
+   * of a collision takes two generators about 80 billion UUIDs each in the
+   * same millisecond.
    */
   readonly uuidV7: UuidGenerator
 
   /**
    * Generates a ULID from the `Clock` timestamp: 26 uppercase Crockford
-   * base32 characters, sorting by timestamp with no ordering guarantee within
-   * a millisecond.
+   * base32 characters.
+   *
+   * Every ULID from this service sorts after the previous one, using the ULID
+   * spec's monotonic mode: within a millisecond, the 80-bit random part is
+   * incremented. If the `Clock` moves back, the last timestamp is kept, and if
+   * the random part overflows, the timestamp advances by 1 ms. There is no
+   * ordering between separate services, processes or workers. Consecutive
+   * ULIDs reveal their generation order, so never use them as secrets.
    */
   readonly ulid: Effect.Effect<string>
 }>()("effect/crypto/SecureRandom") {}
@@ -177,7 +191,9 @@ const makeUuid = (
  * **Details**
  *
  * Every operation is derived from `randomBytes`. Sizes are checked before it
- * is called, and an exception it throws is a defect.
+ * is called, and an exception it throws is a defect. Each service orders its
+ * own UUIDv7s and ULIDs, independently of other services and of the
+ * `*Unsafe` functions.
  *
  * **Gotchas**
  *
@@ -206,6 +222,9 @@ export const make = (randomBytes: (size: number) => Uint8Array): SecureRandom["S
     return randomBytes(size)
   }
   const draw = () => randomBytes(7)
+  const uuidV7 = Uuid.makeV7Monotonic()
+  const ulid = Ulid.makeMonotonic()
+  const ulidRandomBytes = () => randomBytes(10)
   return {
     randomBytes: (size) => Effect.sync(() => randomBytesChecked(size)),
     intBetween: (min, max, options) => Effect.sync(() => intBetweenUnsafe(min, max, options?.halfOpen ?? false, draw)),
@@ -227,12 +246,10 @@ export const make = (randomBytes: (size: number) => Uint8Array): SecureRandom["S
       ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
         Effect.clockWith((clock) =>
           Effect.sync(() =>
-            makeUuid((bytes) => Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
+            makeUuid((bytes) => uuidV7(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
           )
         )) as UuidGenerator,
-    ulid: Effect.clockWith((clock) =>
-      Effect.sync(() => Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytes(10)))
-    )
+    ulid: Effect.clockWith((clock) => Effect.sync(() => ulid(clock.currentTimeMillisUnsafe(), ulidRandomBytes)))
   }
 }
 
@@ -317,14 +334,18 @@ export const uuidV4Unsafe: {
  *
  * **Details**
  *
- * UUIDv7s sort by timestamp, with no ordering guarantee within a millisecond.
- * Uniqueness is probabilistic: 74 of the 128 bits are random, so a 50% chance
- * of a collision takes about 162 billion UUIDs in one millisecond.
+ * Every UUIDv7 generated in this JS realm (process or worker) sorts after the
+ * previous one, as a string and as bytes, using the counter described on the
+ * `SecureRandom` service's `uuidV7`. The ordering is shared with
+ * `Model.UuidV7WithGenerate` and `EventJournal.makeEntryIdUnsafe`, and does not
+ * hold across processes or workers. Consecutive UUIDv7s reveal their
+ * generation order, so never use them as secrets.
  *
  * **Gotchas**
  *
  * Reads `Date.now()` rather than the `Clock`, and `globalThis.crypto` rather
- * than the `WebCrypto` reference.
+ * than the `WebCrypto` reference. A timestamp can run slightly ahead of
+ * `Date.now()` when the clock moves back or the counter overflows.
  *
  * @stability unstable
  * @category unsafe
@@ -337,18 +358,29 @@ export const uuidV7Unsafe: {
   ): Format extends "bytes" ? Uint8Array : string
 } =
   ((options?: { readonly format?: "string" | "bytes" | undefined }) =>
-    makeUuid((bytes) => Uuid.v7Bytes(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
+    makeUuid((bytes) => Uuid.v7Monotonic(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
 
 /**
  * Synchronously generates a ULID from `Date.now()` and `globalThis.crypto`.
  *
+ * **Details**
+ *
+ * Every ULID generated in this JS realm (process or worker) sorts after the
+ * previous one, using the monotonic mode described on the `SecureRandom`
+ * service's `ulid`. The ordering does not hold across processes or workers.
+ * Consecutive ULIDs reveal their generation order, so never use them as
+ * secrets.
+ *
  * **Gotchas**
  *
  * Reads `Date.now()` rather than the `Clock`, and `globalThis.crypto` rather
- * than the `WebCrypto` reference.
+ * than the `WebCrypto` reference. A timestamp can run slightly ahead of
+ * `Date.now()` when the clock moves back or the random part overflows.
  *
  * @stability unstable
  * @category unsafe
  * @since 4.0.0
  */
-export const ulidUnsafe = (): string => Ulid.ulidString(Date.now(), randomBytesUnsafe(10))
+export const ulidUnsafe = (): string => Ulid.monotonic(Date.now(), ulidRandomBytesUnsafe)
+
+const ulidRandomBytesUnsafe = () => randomBytesUnsafe(10)
