@@ -45,6 +45,33 @@ describe("Stream", () => {
   ]
 
   for (const [name, consume] of consumers) {
+    if (name !== "toUint8Array") {
+      it.live(`${name} cleans up listeners after destruction without a close event`, () =>
+        Effect.gen(function*() {
+          let complete!: () => void
+          const destroyed = new Promise<void>((resolve) => {
+            complete = resolve
+          })
+          const readable = new Readable({
+            emitClose: false,
+            read() {},
+            destroy(_error, callback) {
+              setTimeout(() => {
+                callback()
+                // Observe cleanup after Node has processed the destruction callback.
+                setImmediate(complete)
+              }, 5)
+            }
+          })
+          yield* consume(readable).pipe(Effect.timeout("10 millis"), Effect.ignore)
+          yield* Effect.promise(() => destroyed).pipe(Effect.timeout("1 second"))
+          assert.isTrue(readable.closed)
+          assert.deepStrictEqual(
+            [readable.listenerCount("error"), readable.listenerCount("close")],
+            [0, 0]
+          )
+        }))
+    }
     for (const alreadyClosed of [false, true]) {
       it.live(`${name} fails on ${alreadyClosed ? "an already-destroyed input" : "premature close"}`, () =>
         Effect.gen(function*() {
