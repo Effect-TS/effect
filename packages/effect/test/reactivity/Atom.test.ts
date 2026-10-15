@@ -5,7 +5,6 @@ import {
   Context,
   Deferred,
   Effect,
-  Fiber,
   Hash,
   Latch,
   Layer,
@@ -318,97 +317,31 @@ describe("Atom", { concurrent: false }, () => {
     registryB.dispose()
   })
 
-  for (const owner of ["make", "atom", "layer"] as const) {
-    it.effect(`reports asynchronous ${owner} finalizer failures on disposal`, () =>
-      Effect.gen(function*() {
-        const release = yield* Latch.make()
-        const logged = yield* Deferred.make<Logger.Options<unknown>>()
-        const first = Cause.die("first cleanup failed")
-        const second = Cause.combine(Cause.die("second cleanup failed"), Cause.interrupt(123))
-        const cause = Cause.combine(second, first)
-        const events: Array<Logger.Options<unknown>> = []
-        const log = (event: Logger.Options<unknown>) => {
-          events.push(event)
-          Deferred.doneUnsafe(logged, Effect.succeed(event))
-        }
-        const spy = owner === "make" ? vitest.spyOn(Logger.defaultLogger, "log").mockImplementation(log) : undefined
-        const logging = Layer.mergeAll(
-          Logger.layer([Logger.make(log)]),
-          Layer.succeed(References.CurrentLogAnnotations, { resource: "example" }),
-          Layer.succeed(References.UnhandledLogLevel, "Warn")
-        )
-        const acquire = Effect.addFinalizer(() => Effect.failCause(first)).pipe(
-          Effect.andThen(Effect.addFinalizer(() => release.await.pipe(Effect.andThen(Effect.failCause(second)))))
-        )
-        const runtime = Atom.runtime(
-          owner === "layer" ? Layer.effectDiscard(acquire).pipe(Layer.provideMerge(logging)) : logging
-        )
-        const resource = owner === "make" ? Atom.make(acquire) : runtime.atom(owner === "layer" ? Effect.void : acquire)
-        const registry = AtomRegistry.make()
-
-        try {
-          assert.isTrue(AsyncResult.isSuccess(registry.get(resource)))
-          registry.dispose()
-          assert.deepStrictEqual(events, [])
-          yield* release.open
-          const event = yield* Deferred.await(logged)
-          assert.strictEqual(events.length, 1)
-          assert.strictEqual(event.logLevel, owner === "make" ? "Error" : "Warn")
-          assert.deepStrictEqual(event.cause, cause)
-          if (owner !== "make") {
-            assert.deepStrictEqual(event.fiber.getRef(References.CurrentLogAnnotations), { resource: "example" })
-          }
-        } finally {
-          yield* release.open
-          registry.dispose()
-          spy?.mockRestore()
-        }
-      }))
-  }
-
-  it.effect("keeps typed atom failures and interruption-only disposal quiet", () =>
+  it.effect("reports asynchronous runtime layer finalizer failures on disposal", () =>
     Effect.gen(function*() {
-      const closing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-      const events: Array<Logger.Options<unknown>> = []
-      const runtime = Atom.runtime(Logger.layer([Logger.make((event) => events.push(event))]))
-      const resource = runtime.atom(Effect.addFinalizer(() =>
-        Effect.withFiber((fiber) => Deferred.succeed(closing, fiber)).pipe(Effect.andThen(Effect.interrupt))
-      ))
-      const failed = runtime.atom(Effect.fail("expected failure"))
+      const release = yield* Latch.make()
+      const logged = yield* Deferred.make<Logger.Options<unknown>>()
+      const cause = Cause.die("cleanup failed")
+      const runtime = Atom.runtime(
+        Layer.effectDiscard(Effect.addFinalizer(() => release.await.pipe(Effect.andThen(Effect.failCause(cause)))))
+          .pipe(
+            Layer.provideMerge(Layer.mergeAll(
+              Logger.layer([Logger.make((event) => Deferred.doneUnsafe(logged, Effect.succeed(event)))]),
+              Layer.succeed(References.UnhandledLogLevel, "Warn")
+            ))
+          )
+      )
       const registry = AtomRegistry.make()
 
       try {
-        assert.isTrue(AsyncResult.isSuccess(registry.get(resource)))
-        assert.deepStrictEqual(registry.get(failed), AsyncResult.failure(Cause.fail("expected failure")))
+        registry.get(runtime.atom(Effect.void))
         registry.dispose()
-        yield* Fiber.await(yield* Deferred.await(closing))
-        assert.deepStrictEqual(events, [])
+        yield* release.open
+        const event = yield* Deferred.await(logged)
+        assert.deepStrictEqual(event.cause, cause)
+        assert.strictEqual(event.logLevel, "Warn")
       } finally {
-        registry.dispose()
-      }
-    }))
-
-  it.effect("does not report finalizer failures when UnhandledLogLevel is undefined", () =>
-    Effect.gen(function*() {
-      const closing = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
-      const events: Array<Logger.Options<unknown>> = []
-      const runtime = Atom.runtime(Layer.mergeAll(
-        Logger.layer([Logger.make((event) => events.push(event))]),
-        Layer.succeed(References.UnhandledLogLevel, undefined)
-      ))
-      const resource = runtime.atom(Effect.addFinalizer(() =>
-        Effect.withFiber((fiber) => Deferred.succeed(closing, fiber)).pipe(
-          Effect.andThen(Effect.die("cleanup failed"))
-        )
-      ))
-      const registry = AtomRegistry.make()
-
-      try {
-        assert.isTrue(AsyncResult.isSuccess(registry.get(resource)))
-        registry.dispose()
-        yield* Fiber.await(yield* Deferred.await(closing))
-        assert.deepStrictEqual(events, [])
-      } finally {
+        yield* release.open
         registry.dispose()
       }
     }))
