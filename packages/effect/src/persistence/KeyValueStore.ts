@@ -646,13 +646,21 @@ export const layerSql = (
         `.unprepared
       })
 
-      const deleteLike = (prefix: string) => sql`DELETE FROM ${table} WHERE id LIKE ${escapeLike(prefix)} ESCAPE '!'`
+      // The first LIKE uses the primary key index. On mysql and mssql it follows
+      // the column collation, which is usually case / accent-insensitive, so a
+      // second binary LIKE keeps only exact prefix matches.
       const deleteByPrefix = sql.onDialectOrElse({
         // sqlite LIKE is case-insensitive, so compare the leading characters
         orElse: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
-        pg: () => deleteLike,
-        mysql: () => deleteLike,
-        mssql: () => deleteLike
+        pg: () => (prefix: string) => sql`DELETE FROM ${table} WHERE id LIKE ${escapeLike(prefix)} ESCAPE '!'`,
+        mysql: () => (prefix: string) => {
+          const pattern = escapeLike(prefix)
+          return sql`DELETE FROM ${table} WHERE id LIKE ${pattern} ESCAPE '!' AND CONVERT(id USING utf8mb4) COLLATE utf8mb4_bin LIKE ${pattern} ESCAPE '!'`
+        },
+        mssql: () => (prefix: string) => {
+          const pattern = escapeLike(prefix)
+          return sql`DELETE FROM ${table} WHERE id LIKE ${pattern} ESCAPE '!' AND id COLLATE Latin1_General_100_BIN2 LIKE ${pattern} ESCAPE '!'`
+        }
       })
 
       const encoder = new TextEncoder()
