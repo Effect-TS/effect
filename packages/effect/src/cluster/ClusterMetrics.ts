@@ -5,7 +5,7 @@
  * duration.
  *
  * This module only defines the metric handles. The runtime components that
- * manage entities, runners, singletons, and sharding update these gauges while
+ * manage entities, runners, singletons, and sharding update these metrics while
  * the cluster is running.
  *
  * @stability unstable
@@ -120,8 +120,7 @@ export const shards = Metric.gauge("effect_cluster_shards", { bigint: true })
 
 /**
  * Represents a timer tracking how long the current runner takes to release a
- * shard after it is reassigned, its lock is lost, or it is handed off on
- * shutdown.
+ * shard after reassignment, lock loss or shutdown handoff.
  *
  * **When to use**
  *
@@ -130,20 +129,18 @@ export const shards = Metric.gauge("effect_cluster_shards", { bigint: true })
  *
  * **Details**
  *
- * Millisecond timer named `effect_cluster_shard_release`, measured from entity
- * teardown until the release completes. Includes retries and any wait for
- * shard lock storage to recover.
+ * Millisecond timer named `effect_cluster_shard_release`. Each sample covers
+ * entity teardown, retries and any wait for shard lock storage to recover.
  *
  * **Gotchas**
  *
- * Only successful releases are recorded. Forced releases after shard lock
- * storage becomes unhealthy are not.
+ * Only completed releases are recorded. Interrupted releases and forced
+ * releases after lock storage becomes unhealthy are not.
  *
  * @stability unstable
  * @category metrics
  * @since 4.0.0
  */
 export const shardReleaseDuration = Metric.timer("effect_cluster_shard_release", {
-  description:
-    "Time taken to release a shard after reassignment, lock loss or shutdown handoff, including entity teardown, retries and lock storage recovery. Excludes forced releases"
+  description: "Time taken to release a shard, including entity teardown, retries and lock storage recovery"
 })

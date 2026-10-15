@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `ClusterMetrics.shardReleaseDuration`, a timer that records how long a runner takes to release a shard.
+Add `ClusterMetrics.shardReleaseDuration`, a timer recording how long each completed shard release takes.
