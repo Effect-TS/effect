@@ -477,10 +477,9 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(acquiredShards, shardId)
         }
         if (acquired.length > 0) {
+          updateShardsGauge()
           yield* storageReadLatch.open
           yield* Effect.forkIn(syncSingletons, shardingScope)
-
-          updateShardsGauge()
         }
         // the shutdown handoff releases the shards acquired here without waiting
         yield* Effect.raceFirst(Effect.sleep(1000), handoffStarted.await)
