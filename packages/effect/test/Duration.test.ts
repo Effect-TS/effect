@@ -137,6 +137,10 @@ describe("Duration", () => {
       Duration.fromInputUnsafe({ days: 200_000_000, milliseconds: 1, nanoseconds: 1 }),
       Duration.nanos(17_280_000_000_000_001_000_001n)
     )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ days: 200_000_000, milliseconds: 1 }),
+      Duration.nanos(17_280_000_000_000_001_000_000n)
+    )
   })
 
   it("fromInputUnsafe normalizes infinite nanosecond totals", () => {
