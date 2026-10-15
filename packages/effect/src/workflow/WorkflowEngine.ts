@@ -745,6 +745,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       readonly parent: string | undefined
       instance: WorkflowInstance["Service"]
       interrupted: boolean
+      interruptedUnsafe: boolean
       // The strongest wake requested while a run was still finishing.
       resumeRequested: WakeMode | undefined
       fiber: Fiber.Fiber<Workflow.Result<unknown, unknown>> | undefined
@@ -791,8 +792,16 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       )
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(
-        Effect.onExit(() => {
-          if (!state.interrupted) {
+        Effect.onExit((exit) => {
+          // Safe interrupts take effect only when the run would suspend;
+          // unsafe interrupts must also survive a replay that completes normally.
+          if (
+            !state.interrupted ||
+            (!state.interruptedUnsafe &&
+              !instance.suspended &&
+              !instance.abandoned &&
+              !(Context.get(instance.workflow.annotations, Workflow.SuspendOnFailure) && Exit.isFailure(exit)))
+          ) {
             return Effect.void
           }
           instance.interrupted = true
@@ -842,6 +851,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
             execute: entry.execute,
             instance: WorkflowInstance.initial(workflow, options.executionId),
             interrupted: false,
+            interruptedUnsafe: false,
             resumeRequested: undefined,
             fiber: undefined,
             done: Deferred.makeUnsafe(),
@@ -875,6 +885,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         const state = executions.get(executionId)
         if (!state) return
         state.interrupted = true
+        state.interruptedUnsafe = true
         if (state.fiber) {
           yield* Fiber.interrupt(state.fiber)
         }
