@@ -1145,6 +1145,43 @@ describe("WorkflowEngine", () => {
       assert.deepStrictEqual(warnings, [])
     }))
 
+  it.effect("layerMemory runs a named compensation registered while the workflow scope closes", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const Order = Workflow.make("WorkflowEngine/CompensationDuringClose", {
+        payload: { id: Schema.String },
+        error: Schema.String,
+        idempotencyKey: ({ id }) => id
+      })
+      const layer = Order.toLayer(() =>
+        Effect.gen(function*() {
+          // Runs while the workflow scope is closing, so the compensation is
+          // registered on a closed scope and must run straight away.
+          yield* Workflow.addFinalizer(() =>
+            Effect.void.pipe(
+              Workflow.withCompensation(
+                (_, cause) => Effect.sync(() => events.push(`compensate ${Cause.squash(cause)}`)),
+                {
+                  name: "late"
+                }
+              ),
+              Effect.andThen(Effect.sync(() => events.push("finalizer done")))
+            )
+          )
+          return yield* Effect.fail("rejected")
+        })
+      ).pipe(Layer.provideMerge(WorkflowEngine.layerMemory))
+
+      const exit = yield* Order.execute({ id: "one" }).pipe(Effect.provide(layer), Effect.exit)
+
+      assert(Exit.isFailure(exit))
+      assert.strictEqual(exit.cause.reasons.length, 1)
+      const reason = exit.cause.reasons[0]
+      assert(Cause.isFailReason(reason))
+      assert.strictEqual(reason.error, "rejected")
+      assert.deepStrictEqual(events, ["compensate rejected", "finalizer done"])
+    }))
+
   it.effect("layerMemory replays nested compensations while another step is unreached", () =>
     Effect.gen(function*() {
       const prepared = yield* Latch.make()
