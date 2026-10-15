@@ -2,4 +2,4 @@
 "@effect/cluster": patch
 ---
 
-Add `ClusterMetrics.entityMailboxMax` gauge, reporting the largest single-entity mailbox (in-flight requests) per entity type on each runner.
+Add the `ClusterMetrics.entityMailboxMax` gauge, which reports the most in-flight requests held by any single entity of each type on a runner.

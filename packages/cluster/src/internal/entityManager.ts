@@ -469,7 +469,7 @@ export const make = Effect.fnUntraced(function*<
     })
   }
 
-  // update metrics for active servers
+  // update entity metrics
   const gauge = ClusterMetrics.entities.pipe(Metric.tagged("type", entity.type))
   const mailboxMaxGauge = ClusterMetrics.entityMailboxMax.pipe(Metric.tagged("type", entity.type))
   yield* Effect.sync(() => {

@@ -12,8 +12,9 @@ export const entities = Metric.gauge("effect_cluster_entities", {
 })
 
 /**
- * Largest in-flight request count of a single entity of a type on this runner,
- * compared against `mailboxCapacity` when returning `MailboxFull`.
+ * The most in-flight requests held by any single entity of a type on this
+ * runner, including entities that are shutting down. An entity returns
+ * `MailboxFull` once its count reaches `mailboxCapacity`.
  *
  * @since 1.0.0
  * @category metrics
