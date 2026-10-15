@@ -27,6 +27,7 @@ import * as HashRing from "../HashRing.ts"
 import * as InternalRecord from "../internal/record.ts"
 import * as Latch from "../Latch.ts"
 import * as Layer from "../Layer.ts"
+import * as Metric from "../Metric.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as MutableHashSet from "../MutableHashSet.ts"
 import * as MutableRef from "../MutableRef.ts"
@@ -448,6 +449,8 @@ const make = Effect.gen(function*() {
       (effect, shardId) =>
         effect.pipe(
           retryShardRelease({ fiber: "releaseShard", shardId }),
+          Effect.timed,
+          Effect.flatMap(([duration]) => Metric.update(ClusterMetrics.shardReleaseDuration, duration)),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
