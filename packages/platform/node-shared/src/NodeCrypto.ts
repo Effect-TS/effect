@@ -2,19 +2,18 @@
  * Node.js layers for the `effect/crypto` modules, also used by Bun.
  *
  * {@link layerDigest} runs MD5 and SHA on `node:crypto`, {@link layerMac} runs
- * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, and
- * {@link layerSecureRandom} re-exports the core WebCrypto layer. Each Node.js
- * layer handles only the algorithms and keys it exists for and hands the rest
- * to the core WebCrypto implementation. There is no bundled layer: provide
- * each family's layer where it is used.
- *
- * The ChaCha20-Poly1305 and XChaCha20-Poly1305 layers serve the per-algorithm
- * module until the `Aead` module replaces it.
+ * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, {@link layerAead}
+ * runs ChaCha20-Poly1305 on `node:crypto`, and {@link layerSecureRandom} and
+ * {@link layerCipher} re-export the core WebCrypto layers. Each Node.js layer
+ * handles only the algorithms and keys it exists for and hands the rest to
+ * the core WebCrypto implementation. There is no bundled layer: provide each
+ * family's layer where it is used.
  *
  * @stability unstable
  * @since 1.0.0
  */
-import * as ChaCha20Poly1305 from "effect/crypto/ChaCha20Poly1305"
+import * as Aead from "effect/crypto/Aead"
+import * as Cipher from "effect/crypto/Cipher"
 import * as CryptoError from "effect/crypto/CryptoError"
 import * as Digest from "effect/crypto/Digest"
 import * as Kdf from "effect/crypto/Kdf"
@@ -23,7 +22,6 @@ import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NodeCrypto from "node:crypto"
-import * as Chacha from "./internal/chacha.ts"
 
 /**
  * Layer that provides `SecureRandom` from `getRandomValues` on the `WebCrypto`
@@ -71,35 +69,6 @@ export const layerDigest: Layer.Layer<Digest.Digest> = Layer.succeed(Digest.Dige
   digestHex: (algorithm, data) =>
     Effect.sync(() => NodeCrypto.createHash(nodeHashNames[algorithm.name]).update(data).digest("hex"))
 })
-
-/**
- * Layer that provides `ChaCha20Poly1305.ChaCha20Poly1305` using `node:crypto`.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerChaCha20Poly1305: Layer.Layer<ChaCha20Poly1305.ChaCha20Poly1305> = Layer.sync(
-  ChaCha20Poly1305.ChaCha20Poly1305,
-  Chacha.makeChaCha20Poly1305
-)
-
-/**
- * Layer that provides `ChaCha20Poly1305.XChaCha20Poly1305` using `node:crypto`.
- *
- * **Details**
- *
- * HChaCha20 derives each message subkey in JavaScript, and `node:crypto`
- * performs ChaCha20-Poly1305 encryption and authentication.
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerXChaCha20Poly1305: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1305> = Layer.sync(
-  ChaCha20Poly1305.XChaCha20Poly1305,
-  Chacha.makeXChaCha20Poly1305
-)
 
 // The material of an `effect/crypto` key, shared by `effect` through
 // `Symbol.for`: key bytes, or a `CryptoKey`. This is an internal protocol
@@ -234,3 +203,102 @@ export const layerKdf: Layer.Layer<Kdf.Kdf> = Layer.effect(
     })
   })
 ).pipe(Layer.provide(Kdf.layerWebCrypto))
+
+// Copies into a fresh array, wiping the parts, so no plaintext stays in
+// Node.js's shared Buffer pool.
+const concat = (parts: ReadonlyArray<Uint8Array>): Uint8Array => {
+  const output = new Uint8Array(parts.reduce((length, part) => length + part.length, 0))
+  let offset = 0
+  for (const part of parts) {
+    output.set(part, offset)
+    offset += part.length
+    part.fill(0)
+  }
+  return output
+}
+
+const chachaEncrypt = (bytes: Uint8Array, plaintext: Uint8Array, options: Aead.Options): Uint8Array => {
+  const cipher = NodeCrypto.createCipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
+  if (options.aad !== undefined) cipher.setAAD(options.aad)
+  return concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()])
+}
+
+const chachaDecrypt = (
+  bytes: Uint8Array,
+  ciphertext: Uint8Array,
+  options: Aead.Options
+): Effect.Effect<Uint8Array, CryptoError.CryptoError> =>
+  Effect.suspend(() => {
+    const decipher = NodeCrypto.createDecipheriv("chacha20-poly1305", bytes, options.nonce, { authTagLength: 16 })
+    if (options.aad !== undefined) decipher.setAAD(options.aad)
+    decipher.setAuthTag(ciphertext.subarray(ciphertext.length - 16))
+    const plaintext = decipher.update(ciphertext.subarray(0, ciphertext.length - 16))
+    try {
+      // `final` throws only when the tag does not match.
+      return Effect.succeed(concat([plaintext, decipher.final()]))
+    } catch {
+      plaintext.fill(0)
+      return Effect.fail(
+        new CryptoError.CryptoError({ module: "Aead", method: "decrypt", reason: new CryptoError.DecryptionFailed() })
+      )
+    }
+  })
+
+/**
+ * Layer that provides `Aead`, running ChaCha20-Poly1305 on `node:crypto`.
+ *
+ * **Details**
+ *
+ * Byte-backed ChaCha20-Poly1305 keys encrypt and decrypt synchronously on
+ * `node:crypto`. Everything else goes through `Aead.layerWebCrypto`: AES-GCM on
+ * `crypto.subtle`, XChaCha20-Poly1305 on its pure TypeScript implementation,
+ * and arguments that fail a check, so errors are identical to the core layer.
+ * Bun's `node:crypto` lacks ChaCha20-Poly1305, so on Bun this layer is the
+ * core layer. Output is identical to `Aead.layerWebCrypto`.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom> = Layer.effect(
+  Aead.Aead,
+  Effect.gen(function*() {
+    const core = yield* Aead.Aead
+    if (!NodeCrypto.getCiphers().includes("chacha20-poly1305")) return core
+    // The bytes of a ChaCha20-Poly1305 key whose message passes the core
+    // layer's checks, or `undefined` to hand the message to the core layer.
+    const nativeBytes = (key: Aead.Key, options: Aead.Options) =>
+      key.algorithm.name === "chacha20Poly1305" && options.nonce.length === 12 ? keyBytes(key) : undefined
+    return Aead.Aead.of({
+      generateKey: core.generateKey,
+      encrypt: (key, plaintext, options) => {
+        const bytes = nativeBytes(key, options)
+        return bytes === undefined
+          ? core.encrypt(key, plaintext, options)
+          : Effect.sync(() => chachaEncrypt(bytes, plaintext, options))
+      },
+      decrypt: (key, ciphertext, options) => {
+        const bytes = nativeBytes(key, options)
+        return bytes === undefined || ciphertext.length < 16
+          ? core.decrypt(key, ciphertext, options)
+          : chachaDecrypt(bytes, ciphertext, options)
+      }
+    })
+  })
+).pipe(Layer.provide(Aead.layerWebCrypto))
+
+/**
+ * Layer that provides `Cipher` from `crypto.subtle` on the `WebCrypto`
+ * reference.
+ *
+ * **Details**
+ *
+ * This is `Cipher.layerWebCrypto`, re-exported so that Node.js programs take
+ * every crypto layer from `NodeCrypto`. Node.js's `crypto.subtle` already
+ * runs AES-CTR and AES-CBC on OpenSSL.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerCipher: Layer.Layer<Cipher.Cipher, never, SecureRandom.SecureRandom> = Cipher.layerWebCrypto

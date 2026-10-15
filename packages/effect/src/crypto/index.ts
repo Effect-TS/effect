@@ -15,13 +15,7 @@ export * as Aead from "./Aead.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Aes from "./Aes.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as ChaCha20Poly1305 from "./ChaCha20Poly1305.ts"
+export * as Cipher from "./Cipher.ts"
 
 /**
  * @stability unstable
