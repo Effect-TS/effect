@@ -7,7 +7,8 @@
  * fixed signatures that cannot add a requirement.
  *
  * MD5 runs a pure TypeScript implementation vendored from `@noble/hashes`
- * 2.4.0, because WebCrypto does not provide it. The SHA algorithms run on
+ * 2.4.0, because WebCrypto does not provide it. Whether the `@noble/hashes`
+ * audit covers its MD5 code has not been confirmed. The SHA algorithms run on
  * `crypto.subtle`.
  *
  * Output is stable byte for byte, so digests can be persisted.
