@@ -21,12 +21,6 @@ export * as Aes from "./Aes.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Argon2 from "./Argon2.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
 export * as ChaCha20Poly1305 from "./ChaCha20Poly1305.ts"
 
 /**
@@ -63,19 +57,13 @@ export * as Ed25519 from "./Ed25519.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Hkdf from "./Hkdf.ts"
+export * as Kdf from "./Kdf.ts"
 
 /**
  * @stability unstable
  * @since 4.0.0
  */
-export * as Hmac from "./Hmac.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Pbkdf2 from "./Pbkdf2.ts"
+export * as Mac from "./Mac.ts"
 
 /**
  * @stability unstable

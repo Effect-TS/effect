@@ -54,7 +54,7 @@ export interface CtrOptions {
  *
  * **Gotchas**
  *
- * AES-CTR output is malleable: authenticate it with `Hmac`, or prefer
+ * AES-CTR output is malleable: authenticate it with `Mac`, or prefer
  * AES-GCM. It exists for protocols such as SSH that pair it with a MAC.
  * Chromium-based browsers do not support 24-byte keys.
  *

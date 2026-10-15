@@ -57,7 +57,7 @@ export type PublicKey = Uint8Array<ArrayBuffer> & Brand.Brand<"EcdhPublicKey">
  * Each operation names the curve of both keys. Public keys are the raw bytes
  * protocols such as TLS and SSH exchange. Shared secrets are `Redacted` raw
  * key-agreement output with the curve's length: 32 bytes for X25519 and P-256,
- * 48 for P-384, and 66 for P-521. Derive keys from them with `Hkdf`.
+ * 48 for P-384, and 66 for P-521. Derive keys from them with `Kdf`.
  *
  * **Gotchas**
  *

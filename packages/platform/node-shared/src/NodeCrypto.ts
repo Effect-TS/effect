@@ -1,24 +1,27 @@
 /**
  * Node.js layers for the `effect/crypto` modules, also used by Bun.
  *
- * {@link layerDigest} runs MD5 and SHA on `node:crypto`, and
- * {@link layerSecureRandom} re-exports the core WebCrypto layer. There is no
- * bundled layer: provide each family's layer where it is used.
+ * {@link layerDigest} runs MD5 and SHA on `node:crypto`, {@link layerMac} runs
+ * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, and
+ * {@link layerSecureRandom} re-exports the core WebCrypto layer. Each Node.js
+ * layer handles only the algorithms and keys it exists for and hands the rest
+ * to the core WebCrypto implementation. There is no bundled layer: provide
+ * each family's layer where it is used.
  *
- * The ChaCha20-Poly1305, XChaCha20-Poly1305, and Argon2id layers serve the
- * per-algorithm modules until the `Aead` and `Kdf` modules replace them.
+ * The ChaCha20-Poly1305 and XChaCha20-Poly1305 layers serve the per-algorithm
+ * module until the `Aead` module replaces it.
  *
  * @stability unstable
  * @since 1.0.0
  */
-import * as Argon2 from "effect/crypto/Argon2"
 import * as ChaCha20Poly1305 from "effect/crypto/ChaCha20Poly1305"
 import * as CryptoError from "effect/crypto/CryptoError"
 import * as Digest from "effect/crypto/Digest"
+import * as Kdf from "effect/crypto/Kdf"
+import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
-import * as Redacted from "effect/Redacted"
 import * as NodeCrypto from "node:crypto"
 import * as Chacha from "./internal/chacha.ts"
 
@@ -98,97 +101,135 @@ export const layerXChaCha20Poly1305: Layer.Layer<ChaCha20Poly1305.XChaCha20Poly1
   Chacha.makeXChaCha20Poly1305
 )
 
-// Only a missing Argon2id engine is a typed failure; anything else is a defect.
-const argon2Failure = (method: string, cause: unknown): Effect.Effect<never, CryptoError.CryptoError> =>
-  typeof cause === "object" && cause !== null && "code" in cause && cause.code === "ERR_CRYPTO_ARGON2_NOT_SUPPORTED"
-    ? Effect.fail(
-      new CryptoError.CryptoError({
-        module: "Argon2",
-        method,
-        reason: new CryptoError.Unsupported({ description: "Argon2id is not supported by this runtime", cause })
-      })
-    )
-    : Effect.die(cause)
+// The material of an `effect/crypto` key, shared by `effect` through
+// `Symbol.for`: key bytes, or a `CryptoKey`.
+const MaterialId = Symbol.for("~effect/crypto/Key/material")
+type Material =
+  | { readonly _tag: "Bytes"; readonly bytes: Uint8Array }
+  | { readonly _tag: "CryptoKey"; readonly cryptoKey: CryptoKey }
 
-const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
-
-const validArgon2Parameters = (options: Omit<Argon2.Options, "length">): boolean => {
-  const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
-  return uint32(options.memoryKiB) && uint32(options.passes) && isIntegerIn(options.parallelism, 1, 0xff_ffff) &&
-    options.memoryKiB >= 8 * options.parallelism && options.salt.length >= 8
+const keyBytes = (key: object): Uint8Array | undefined => {
+  const material = (key as { readonly [MaterialId]?: Material })[MaterialId]
+  return material?._tag === "Bytes" ? material.bytes : undefined
 }
 
-const validArgon2Length = (length: number): boolean => isIntegerIn(length, 4, 0xffff_ffff)
-
-const argon2id = (method: string, options: Argon2.Options) =>
-  Effect.callback<Uint8Array, CryptoError.CryptoError>((resume) => {
-    if (!validArgon2Parameters(options) || !validArgon2Length(options.length)) {
-      return resume(Effect.fail(
-        new CryptoError.CryptoError({
-          module: "Argon2",
-          method,
-          reason: new CryptoError.InvalidArgument({
-            description: "invalid Argon2id memory, passes, parallelism, output length, or salt"
-          })
-        })
-      ))
-    }
-    try {
-      NodeCrypto.argon2("argon2id", {
-        message: Redacted.value(options.password),
-        nonce: options.salt,
-        memory: options.memoryKiB,
-        passes: options.passes,
-        parallelism: options.parallelism,
-        tagLength: options.length,
-        ...(options.secret === undefined ? {} : { secret: Redacted.value(options.secret) }),
-        ...(options.associatedData === undefined ? {} : { associatedData: options.associatedData })
-      }, (cause, key) => {
-        if (cause) resume(argon2Failure(method, cause))
-        else resume(Effect.succeed(new Uint8Array(key.buffer, key.byteOffset, key.length)))
-      })
-    } catch (cause) {
-      resume(argon2Failure(method, cause))
-    }
-  }).pipe(Effect.uninterruptible)
+const nodeHmac = (key: Mac.Key, bytes: Uint8Array, data: Uint8Array): Uint8Array =>
+  new Uint8Array(NodeCrypto.createHmac(nodeHashNames[key.algorithm.hash.name], bytes).update(data).digest())
 
 /**
- * Layer that provides `Argon2.Argon2id` using native `node:crypto`
- * Argon2id.
+ * Layer that provides `Mac` using `createHmac` from `node:crypto`.
  *
  * **Details**
  *
- * The layer fails to build with an `Unsupported` reason on runtimes without
- * `argon2` in `node:crypto`, such as Node.js before 24.7. Runtimes that provide
- * the function without engine support fail each operation with an
- * `Unsupported` reason instead.
+ * Byte-backed keys sign and verify synchronously on `node:crypto`, since
+ * webhook verification is a server hot path. `CryptoKey`-backed keys and key
+ * generation go through `Mac.layerWebCrypto`, which runs on Node.js's
+ * `crypto.subtle`. Output is identical to `Mac.layerWebCrypto`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerArgon2id: Layer.Layer<Argon2.Argon2id, CryptoError.CryptoError> = Layer.effect(
-  Argon2.Argon2id,
-  Effect.suspend(() =>
-    typeof NodeCrypto.argon2 === "function"
-      ? Effect.succeed(Argon2.Argon2id.of({
-        derive: (options) => Effect.map(argon2id("derive", options), (bytes) => Redacted.make(bytes)),
-        verify: ({ expected, ...options }) =>
-          Effect.suspend(() => {
-            if (validArgon2Parameters(options) && !validArgon2Length(expected.length)) return Effect.succeed(false)
-            return Effect.map(argon2id("verify", { ...options, length: expected.length }), (actual) => {
-              const equal = NodeCrypto.timingSafeEqual(actual, expected)
-              actual.fill(0)
-              return equal
-            })
-          })
-      }))
-      : Effect.fail(
-        new CryptoError.CryptoError({
-          module: "Argon2",
-          method: "layer",
-          reason: new CryptoError.Unsupported({ description: "Argon2id is not supported by this runtime" })
+export const layerMac: Layer.Layer<Mac.Mac, never, SecureRandom.SecureRandom> = Layer.effect(
+  Mac.Mac,
+  Effect.gen(function*() {
+    const core = yield* Mac.Mac
+    return Mac.Mac.of({
+      generateKey: core.generateKey,
+      sign: (key, data) => {
+        const bytes = keyBytes(key)
+        return bytes === undefined ? core.sign(key, data) : Effect.sync(() => nodeHmac(key, bytes, data))
+      },
+      verify: (key, tag, data) => {
+        const bytes = keyBytes(key)
+        if (bytes === undefined) return core.verify(key, tag, data)
+        return Effect.sync(() => {
+          const expected = nodeHmac(key, bytes, data)
+          return expected.length === tag.length && NodeCrypto.timingSafeEqual(expected, tag)
         })
-      )
+      }
+    })
+  })
+).pipe(Layer.provide(Mac.layerWebCrypto))
+
+const kdfFailure = (reason: CryptoError.CryptoErrorReason): Effect.Effect<never, CryptoError.CryptoError> =>
+  Effect.fail(new CryptoError.CryptoError({ module: "Kdf", method: "derive", reason }))
+
+const argon2Unsupported = (cause?: unknown) =>
+  kdfFailure(
+    new CryptoError.Unsupported({
+      description: "NodeCrypto.layerKdf does not provide argon2id on this runtime",
+      ...(cause === undefined ? {} : { cause })
+    })
   )
-)
+
+// Only a missing Argon2id engine is a typed failure; anything else is a defect.
+const argon2Failure = (cause: unknown): Effect.Effect<never, CryptoError.CryptoError> =>
+  typeof cause === "object" && cause !== null && "code" in cause && cause.code === "ERR_CRYPTO_ARGON2_NOT_SUPPORTED"
+    ? argon2Unsupported(cause)
+    : Effect.die(cause)
+
+const isIntegerIn = (n: number, min: number, max: number): boolean => Number.isSafeInteger(n) && n >= min && n <= max
+
+// The RFC 9106 bounds, checked before `node:crypto`, which throws on them.
+const argon2Problem = (algorithm: Kdf.Argon2id, options: Kdf.DeriveOptions): string | undefined => {
+  if (options.info !== undefined) return "info only applies to HKDF"
+  const uint32 = (n: number) => isIntegerIn(n, 1, 0xffff_ffff)
+  if (!uint32(algorithm.passes) || !isIntegerIn(algorithm.parallelism, 1, 0xff_ffff)) {
+    return "passes must be between 1 and 2^32 - 1 and parallelism between 1 and 2^24 - 1"
+  }
+  if (!uint32(algorithm.memory) || algorithm.memory < 8 * algorithm.parallelism) {
+    return "memory must be at least 8 KiB per lane and below 2^32 KiB"
+  }
+  if (options.salt.length < 8) return "salt must be at least 8 bytes"
+  return isIntegerIn(options.length, 4, 0xffff_ffff) ? undefined : "length must be between 4 and 2^32 - 1 bytes"
+}
+
+const argon2id = (algorithm: Kdf.Argon2id, secret: Uint8Array, options: Kdf.DeriveOptions) =>
+  Effect.callback<Uint8Array, CryptoError.CryptoError>((resume) => {
+    const problem = argon2Problem(algorithm, options)
+    if (problem !== undefined) return resume(kdfFailure(new CryptoError.InvalidArgument({ description: problem })))
+    // Checked at call time, since Node.js added `argon2` in 24.7.
+    if (typeof NodeCrypto.argon2 !== "function") return resume(argon2Unsupported())
+    try {
+      NodeCrypto.argon2("argon2id", {
+        message: secret,
+        nonce: options.salt,
+        memory: algorithm.memory,
+        passes: algorithm.passes,
+        parallelism: algorithm.parallelism,
+        tagLength: options.length
+      }, (cause, key) => {
+        if (cause) resume(argon2Failure(cause))
+        else resume(Effect.succeed(new Uint8Array(key.buffer, key.byteOffset, key.length)))
+      })
+    } catch (cause) {
+      resume(argon2Failure(cause))
+    }
+  }).pipe(Effect.uninterruptible)
+
+/**
+ * Layer that provides `Kdf`, adding Argon2id from `node:crypto`.
+ *
+ * **Details**
+ *
+ * Argon2id runs on `argon2` from `node:crypto`, which needs Node.js 24.7 or
+ * later linked against OpenSSL 3.2, or Bun 1.4. Support is checked at call
+ * time: on other runtimes, deriving with Argon2id fails with an `Unsupported`
+ * reason. HKDF and PBKDF2 go through `Kdf.layerWebCrypto`, which keeps them
+ * off the event loop.
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerKdf: Layer.Layer<Kdf.Kdf> = Layer.effect(
+  Kdf.Kdf,
+  Effect.gen(function*() {
+    const core = yield* Kdf.Kdf
+    return Kdf.Kdf.of({
+      derive: (algorithm, secret, options) =>
+        algorithm._tag === "Argon2id" ? argon2id(algorithm, secret, options) : core.derive(algorithm, secret, options)
+    })
+  })
+).pipe(Layer.provide(Kdf.layerWebCrypto))
