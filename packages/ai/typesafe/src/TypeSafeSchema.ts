@@ -53,7 +53,7 @@ export const NoulQuestion = Schema.Struct({
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const BoxQuestion = Schema.Struct({
   type: Schema.Literal("box"),
@@ -75,7 +75,7 @@ export const Question = Schema.Union([ChoiceQuestion, ScoreQuestion, NoulQuestio
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const ImageAsset = Schema.Struct({
   type: Schema.optional(Schema.Literal("image")),
@@ -142,7 +142,7 @@ export const NoulAnswer = Schema.Struct({ type: Schema.Literal("noul"), noul: Sc
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const BoxAnswer = Schema.Struct({
   type: Schema.Literal("box"),

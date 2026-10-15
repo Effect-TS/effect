@@ -91,7 +91,7 @@ export interface Image {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface ProviderImage {
   readonly reference: string
@@ -122,8 +122,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
  * All `decisions` must be answered in one call.
  * `images` holds the `Decision.Image` values found in the input and is omitted
  * when there are none.
- * `Decisions` is the union of decision kinds the provider receives. `make`
- * passes locate decisions only to providers created with `supportsLocate: true`.
+ * `Decisions` is the union of decision kinds the provider receives.
  *
  * @stability unstable
  * @category options
@@ -182,7 +181,7 @@ export interface ProviderProbabilityAnswer {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface ProviderLocateAnswer {
   readonly _tag: "Locate"
@@ -474,11 +473,10 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * `supportsImages: true` to accept images. Otherwise, an input with images
  * fails with `AiError.InvalidUserInputError`.
  *
- * Set `supportsLocate: true` to accept locate decisions. Otherwise, a
- * definition with a locate decision fails with `AiError.InvalidUserInputError`,
- * as does a locate decision whose path holds no image. Only a provider created
- * with `supportsLocate: true` receives locate decisions, so only its `decide`
- * options include `Decision.Locate`.
+ * Set `supportsLocate: true` to accept locate decisions; only then does
+ * `decide` receive them. Otherwise, a definition with a locate decision fails
+ * with `AiError.InvalidUserInputError`, as does a locate decision whose path
+ * holds no image.
  *
  * Providers that round each probability to `probabilityPrecision` decimal
  * places may return distributions whose sum drifts from 1 by up to half a unit
@@ -542,7 +540,7 @@ export const make = (
                 )
               }
             }
-            // The checks above keep locate decisions from providers without `supportsLocate`.
+            // Locate decisions were rejected above unless `supportsLocate` is true.
             const decide = params.decide as (
               options: ProviderOptions
             ) => Effect.Effect<ProviderResponse, AiError.AiError>

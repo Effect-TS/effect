@@ -114,7 +114,7 @@ export interface Probability {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface Locate<Field extends string = string> {
   readonly _tag: "Locate"
@@ -127,7 +127,7 @@ export interface Locate<Field extends string = string> {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const ImageKey = "~effect/ai/Decision/Image"
 
@@ -137,7 +137,7 @@ export const ImageKey = "~effect/ai/Decision/Image"
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface ImageEncoded {
   readonly [ImageKey]: {
@@ -179,7 +179,7 @@ const isImage = (u: unknown): u is DecisionModel.Image =>
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const Image: Schema.Codec<DecisionModel.Image, ImageEncoded> = Schema.Struct({
   [ImageKey]: Schema.Union([
@@ -236,7 +236,7 @@ type ImagePathSuffixes<A, Depth extends number> = [Depth] extends [never] ? neve
  *
  * @stability unstable
  * @category utility types
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type ImagePaths<A> = ImagePathSuffixes<A, 4> extends infer Path extends string ?
   Path extends "" ? never : Path extends `.${infer Rest}` ? Rest : Path :
@@ -304,7 +304,7 @@ export interface ProbabilityAnswer {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface BoundingBox {
   readonly left: number
@@ -321,7 +321,7 @@ export interface BoundingBox {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface LocateAnswer {
   readonly box: BoundingBox
@@ -565,7 +565,7 @@ export const probability = (options: {
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const locate = <const Field extends string>(options: {
   readonly image: Field

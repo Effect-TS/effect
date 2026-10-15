@@ -134,7 +134,6 @@ export const make = Effect.fnUntraced(
 const encodeImage = (image: DecisionModel.ProviderImage["image"]): typeof CloudflareSchema.Image.Encoded =>
   image.data instanceof URL ? image.data.href : { content_type: image.mediaType, base64: image.data }
 
-// Clef shows the images before the state and cannot label them, so the state text names them in order.
 const labelImages = (state: Schema.Json, images: ReadonlyArray<DecisionModel.ProviderImage>): string =>
   [
     ...images.map(({ reference }, index) => `Image ${index + 1}: ${reference}`),
