@@ -3,6 +3,7 @@ import type {
   ArrayOptions,
   CheckOptions,
   CheckResult,
+  Falsified,
   GlobalOptions,
   PropertyError,
   PropertyFailure,
@@ -583,6 +584,43 @@ const followReplay = Effect.fnUntraced(function*<A, E, R>(
   return { _tag: "Replayed", current, failure } as const
 })
 
+/** The size of the value generated after `passed` passing runs: it grows from `0` to `size` over the runs. */
+const sizeAfter = (passed: number, size: number, runsTarget: number): number =>
+  runsTarget === 1 ? size : Math.round(passed * size / (runsTarget - 1))
+
+/** Shrinks the value that falsified the property, and reports it. */
+const falsified = Effect.fnUntraced(function*<A, E, R>(
+  sample: Model.Sample<A>,
+  outcome: PropertyFailure<E>,
+  property: (value: A) => boolean | Effect.Effect<boolean, E, R>,
+  found: {
+    readonly seed: string | number
+    readonly attempt: number
+    readonly size: number
+    readonly runs: number
+    readonly discards: number
+    readonly maxShrinks: number
+  }
+): Effect.fn.Return<Falsified<A, E>, never, R> {
+  const minimized = yield* shrink(sample, outcome, property, found.maxShrinks)
+  return {
+    _tag: "Falsified",
+    initialInput: sample.value,
+    shrunkInput: minimized.current.value,
+    failure: minimized.failure,
+    runs: found.runs,
+    discards: found.discards,
+    shrinks: minimized.shrinks,
+    replay: makeReplay({
+      seed: found.seed,
+      attempt: found.attempt,
+      size: found.size,
+      path: minimized.path,
+      failureTag: outcome._tag
+    })
+  }
+})
+
 interface InFlight<A, E> {
   readonly sample: Model.Sample<A>
   readonly attempt: number
@@ -613,17 +651,18 @@ const checkConcurrently = Effect.fnUntraced(function*<A, E, R>(
   const { concurrency, maxDiscards, maxOpsBeforeYield, maxShrinks, runsTarget, seed, size } = settings
   const seedState = hashSeed(seed)
   const inFlight: Array<InFlight<A, E>> = []
+  // a sequential check would never have evaluated the values after a failing one
+  const interruptRest = Effect.suspend(() => Fiber.interruptAll(inFlight.map((entry) => entry.fiber)))
   let generated = 0
   let runs = 0
   let discards = 0
   let attemptIndex = 0
   let exhausted = false
   while (runs < runsTarget) {
-    // A sequential check sizes a value by the runs that passed before it, which are exactly the values generated
-    // before it.
     while (!exhausted && generated < runsTarget && inFlight.length < concurrency) {
       const currentAttempt = attemptIndex++
-      const currentSize = runsTarget === 1 ? size : Math.round(generated * size / (runsTarget - 1))
+      // a sequential check sizes a value by the runs before it, which are the values generated before it
+      const currentSize = sizeAfter(generated, size, runsTarget)
       const attempt = yield* generateAttempt(self.gen, seedState, currentAttempt, currentSize, true)
       if (attempt._tag === "Discarded") {
         if (++discards > maxDiscards) exhausted = true
@@ -637,35 +676,20 @@ const checkConcurrently = Effect.fnUntraced(function*<A, E, R>(
     const next = inFlight.shift()
     // nothing left in flight and nothing more to generate: the discards ran out
     if (next === undefined) return { _tag: "Exhausted", runs, discards, seed }
-    // a sequential check would never have evaluated the values after a failing one
-    const exit = yield* Fiber.await(next.fiber)
-    if (exit._tag === "Failure") {
-      yield* Fiber.interruptAll(inFlight.map((entry) => entry.fiber))
-      return yield* Effect.failCause(exit.cause)
-    }
-    const outcome = exit.value
+    const outcome = yield* Effect.onError(Fiber.join(next.fiber), () => interruptRest)
     if (outcome._tag === "Passed") {
       runs++
       continue
     }
-    yield* Fiber.interruptAll(inFlight.map((entry) => entry.fiber))
-    const minimized = yield* shrink(next.sample, outcome, property, maxShrinks)
-    return {
-      _tag: "Falsified",
-      initialInput: next.sample.value,
-      shrunkInput: minimized.current.value,
-      failure: minimized.failure,
+    yield* interruptRest
+    return yield* falsified(next.sample, outcome, property, {
+      seed,
+      attempt: next.attempt,
+      size: next.size,
       runs: runs + 1,
       discards: next.discards,
-      shrinks: minimized.shrinks,
-      replay: makeReplay({
-        seed,
-        attempt: next.attempt,
-        size: next.size,
-        path: minimized.path,
-        failureTag: outcome._tag
-      })
-    }
+      maxShrinks
+    })
   }
   return { _tag: "Passed", runs, discards }
 })
@@ -731,7 +755,7 @@ export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
   let attemptIndex = 0
   while (runs < runsTarget) {
     const currentAttempt = attemptIndex++
-    const currentSize = runsTarget === 1 ? size : Math.round(runs * size / (runsTarget - 1))
+    const currentSize = sizeAfter(runs, size, runsTarget)
     const attempt = yield* generateAttempt(self.gen, seedState, currentAttempt, currentSize, true)
     if (attempt._tag === "Discarded") {
       if (++discards > maxDiscards) return { _tag: "Exhausted", runs, discards, seed }
@@ -743,23 +767,14 @@ export const checkEffect = Effect.fnUntraced(function*<A, E, R>(
       runs++
       continue
     }
-    const minimized = yield* shrink(attempt, outcome, property, maxShrinks)
-    return {
-      _tag: "Falsified",
-      initialInput: attempt.value,
-      shrunkInput: minimized.current.value,
-      failure: minimized.failure,
+    return yield* falsified(attempt, outcome, property, {
+      seed,
+      attempt: currentAttempt,
+      size: currentSize,
       runs: runs + 1,
       discards,
-      shrinks: minimized.shrinks,
-      replay: makeReplay({
-        seed,
-        attempt: currentAttempt,
-        size: currentSize,
-        path: minimized.path,
-        failureTag: outcome._tag
-      })
-    }
+      maxShrinks
+    })
   }
   return { _tag: "Passed", runs, discards }
 })
