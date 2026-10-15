@@ -14,14 +14,25 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
       catch: (cause) => new ContainerError({ cause })
     }),
     (container) =>
-      Effect.promise(async () => {
-        await container.stop({ remove: false })
-        const client = await getContainerRuntimeClient()
+      Effect.gen(function*() {
+        yield* Effect.promise(() => container.stop({ remove: false }))
+        const client = yield* Effect.promise(() => getContainerRuntimeClient())
         const handle = client.container.getById(container.getId())
         // Stop can return before the daemon processes the exit event; wait before removing.
-        await handle.wait({ condition: "not-running" })
-        await client.container.remove(handle, { removeVolumes: true })
-      })
+        // docker-modem can leave an aborted response pending forever. Abort each
+        // timed-out request and retry only this read-only wait, not stop or remove.
+        yield* Effect.tryPromise((signal) => handle.wait({ condition: "not-running", abortSignal: signal })).pipe(
+          Effect.timeout("2 seconds"),
+          Effect.retry({ times: 2 })
+        )
+        yield* Effect.promise(() => client.container.remove(handle, { removeVolumes: true }))
+      }).pipe(
+        // Allow up to six seconds of waits within an eight-second release budget,
+        // leaving headroom under Vitest's ten-second cancellation-hook deadline.
+        // Cleanup failures remain visible defects rather than being suppressed.
+        Effect.timeout("8 seconds"),
+        Effect.orDie
+      )
   )
 }) {
   static readonly layer = Layer.effect(this)(this.make)
