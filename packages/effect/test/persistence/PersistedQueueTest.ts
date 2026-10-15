@@ -85,6 +85,18 @@ export const suiteWith = <R>(
         assert.deepStrictEqual(values.map(({ s }) => s).sort(), [surrogate, "ok"].sort())
       }), testOptions)
 
+    it.effect("delivers elements with lone-surrogate custom ids", () =>
+      Effect.gen(function*() {
+        const queue = yield* PersistedQueue.make({
+          name: "test-queue-lone-surrogate-custom-id",
+          schema: Item
+        })
+        yield* queue.offer({ n: 42n }, { id: "😀".slice(0, 1) })
+
+        const fiber = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+        assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 42n })
+      }), testOptions)
+
     it.effect("cleanup releases custom ids after delivering lone surrogates", () =>
       Effect.gen(function*() {
         const store = yield* PersistedQueue.PersistedQueueStore
