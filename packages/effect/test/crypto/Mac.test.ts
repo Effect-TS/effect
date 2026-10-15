@@ -30,7 +30,10 @@ const layer = Mac.layerWebCrypto.pipe(Layer.provide(SecureRandom.layerWebCrypto)
 
 const importHmac = (hash: string, extractable: boolean) =>
   Effect.promise(() =>
-    globalThis.crypto.subtle.importKey("raw", jefe, { name: "HMAC", hash }, extractable, ["sign", "verify"])
+    globalThis.crypto.subtle.importKey("raw", jefe as BufferSource, { name: "HMAC", hash }, extractable, [
+      "sign",
+      "verify"
+    ])
   )
 
 describe("Mac", () => {

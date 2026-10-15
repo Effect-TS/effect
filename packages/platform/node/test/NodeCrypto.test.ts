@@ -35,7 +35,10 @@ describe("NodeCrypto", () => {
       const message = encode("what do ya want for nothing?")
       const expected = "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
       const cryptoKey = yield* Effect.promise(() =>
-        globalThis.crypto.subtle.importKey("raw", secret, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"])
+        globalThis.crypto.subtle.importKey("raw", secret as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, [
+          "sign",
+          "verify"
+        ])
       )
       for (const key of [yield* Mac.key(Mac.hmacSha256, secret), yield* Mac.fromCryptoKey(Mac.hmacSha256, cryptoKey)]) {
         const tag = yield* mac.sign(key, message)
