@@ -418,29 +418,27 @@ const toConflicts = (
   history: ReadonlyArray<Entry>,
   originEntry: Entry
 ): [duplicate: boolean, conflicts: Array<Entry>, newHistory: Array<Entry>] => {
-  let duplicate = false
+  const newHistory: Array<Entry> = []
+  const conflicts: Array<Entry> = []
 
+  // Storage returns sequence order, which need not match entry timestamps.
+  // Scan all relevant history, including entries sharing the same timestamp.
   for (let i = 0; i < history.length; i++) {
     const entry = history[i]
+    if (entry.idString === originEntry.idString) {
+      return [true, [], []]
+    }
     if (entry.createdAtMillis < originEntry.createdAtMillis) {
       continue
-    } else if (entry.idString === originEntry.idString) {
-      duplicate = true
-      continue
     }
 
-    const newHistory = history.slice(i)
-    let conflicts: Array<Entry> = []
-    for (let j = 0; j < newHistory.length; j++) {
-      const scannedEntry = newHistory[j]!
-      if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
-        conflicts.push(scannedEntry)
-      }
+    newHistory.push(entry)
+    if (entry.event === originEntry.event && entry.primaryKey === originEntry.primaryKey) {
+      conflicts.push(entry)
     }
-    return [duplicate, conflicts, newHistory]
   }
 
-  return [duplicate, [], []]
+  return [false, conflicts, newHistory]
 }
 
 type RegisteredCompactor = {
