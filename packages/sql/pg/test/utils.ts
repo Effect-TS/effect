@@ -33,13 +33,18 @@ const lifecycleLog = (id: string, step: string, state: string, ms: number, error
   }
 }
 
-const lifecycle = async <A>(id: string, step: string, run: () => Promise<A>): Promise<A> => {
+const lifecycle = async <A>(id: string, step: string, run: () => Promise<A>, signal?: AbortSignal): Promise<A> => {
   if (!lifecycleEnabled) return run()
   const started = Date.now()
   const log = (state: string) => lifecycleLog(id, step, state, Date.now() - started)
   log("start")
   const pending = setInterval(() => log("pending"), 5_000)
   pending.unref()
+  const interrupted = () => {
+    clearInterval(pending)
+    log("interrupted")
+  }
+  signal?.addEventListener("abort", interrupted, { once: true })
   try {
     const value = await run()
     log("done")
@@ -49,6 +54,7 @@ const lifecycle = async <A>(id: string, step: string, run: () => Promise<A>): Pr
     throw error
   } finally {
     clearInterval(pending)
+    signal?.removeEventListener("abort", interrupted)
   }
 }
 
@@ -71,17 +77,26 @@ export const releasePgContainer = (container: {
   getId(): string
   stop(options: { remove: boolean }): Promise<unknown>
 }) =>
-  Effect.promise(async () => {
+  Effect.gen(function*() {
     const id = container.getId()
     lifecycleLog(id, "container-release", "start", 0)
-    await lifecycle(id, "stop", () => container.stop({ remove: false }))
-    const client = await lifecycle(id, "runtime-client", () => getContainerRuntimeClient())
+    yield* Effect.promise(() => lifecycle(id, "stop", () => container.stop({ remove: false })))
+    const client = yield* Effect.promise(() => lifecycle(id, "runtime-client", () => getContainerRuntimeClient()))
     const handle = client.container.getById(container.getId())
     // Stop can return before the daemon processes the exit event; wait before removing.
-    await lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running" }))
-    await lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true }))
+    // docker-modem can leave an aborted response pending forever. Abort each
+    // timed-out request and retry this read-only wait, never the whole release.
+    yield* Effect.tryPromise((signal) =>
+      lifecycle(id, "wait-not-running", () => handle.wait({ condition: "not-running", abortSignal: signal }), signal)
+    ).pipe(Effect.timeout("5 seconds"), Effect.retry({ times: 2 }))
+    yield* Effect.promise(() => lifecycle(id, "remove", () => client.container.remove(handle, { removeVolumes: true })))
     lifecycleLog(id, "container-release", "done", 0)
-  })
+  }).pipe(
+    // Bound the entire release below the existing 30s hook limit, including
+    // stop and removal. Exhausted retries and timeouts remain visible defects.
+    Effect.timeout("20 seconds"),
+    Effect.orDie
+  )
 
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
