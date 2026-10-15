@@ -68,7 +68,8 @@ const baseUrl = (): string | undefined => {
     globalThis.location.origin !== undefined &&
     globalThis.location.pathname !== undefined
   ) {
-    return location.origin + location.pathname
+    const base = location.origin + location.pathname
+    return URL.canParse(base) ? base : undefined
   }
   return undefined
 }
