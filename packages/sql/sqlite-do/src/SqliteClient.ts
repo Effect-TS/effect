@@ -122,60 +122,67 @@ const makeUnsupportedWithTransaction =
   <R, E, A>(_effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.fail(unsupportedTransaction(message, "transaction"))
 
+const afterCommit = Client.withAfterCommit(SqliteTransaction)
+
 const makeStorageBackedWithTransaction = (
   storage: DurableObjectStorage,
   connection: Connection,
   semaphore: Semaphore.Semaphore
 ): Client.SqlClient["withTransaction"] =>
 <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
-  Effect.withFiber((fiber) => {
-    const services = fiber.context
-    const connOption = Context.getOption(services, SqliteTransaction)
-    if (connOption._tag === "Some" && connOption.value[0] !== connection) {
-      return Effect.fail(
-        unsupportedTransaction(
-          "Transactions cannot use a connection from a different SQLite client",
-          "transaction"
+  afterCommit((level) =>
+    Effect.withFiber((fiber) => {
+      const services = fiber.context
+      const connOption = Context.getOption(services, SqliteTransaction)
+      if (connOption._tag === "Some" && connOption.value[0] !== connection) {
+        return Effect.fail(
+          unsupportedTransaction(
+            "Transactions cannot use a connection from a different SQLite client",
+            "transaction"
+          )
         )
+      }
+      const depth = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+
+      const effectWithTxn = Effect.provideContext(
+        effect,
+        level.provide(Context.add(services, SqliteTransaction, [connection, depth] as const))
       )
-    }
-    const depth = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
 
-    const effectWithTxn = Effect.provideContext(
-      effect,
-      Context.add(services, SqliteTransaction, [connection, depth] as const)
-    )
-
-    const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
-      let interrupted = false
-      const promise = storage.transaction((txn) =>
-        new Promise<void>((resolve) => {
-          if (interrupted) return resolve()
-          resume(Effect.onExit(effectWithTxn, (exit) => {
-            if (Exit.isFailure(exit)) {
-              txn.rollback()
-            }
-            // Throwing from a child callback can abort its parent.
-            resolve()
-            return Effect.flatten(Effect.promise(() => promise))
-          }))
+      const transaction = Effect.callback<A, E | SqlError, R>((resume) => {
+        let interrupted = false
+        const promise = storage.transaction((txn) =>
+          new Promise<void>((resolve) => {
+            if (interrupted) return resolve()
+            resume(Effect.onExit(effectWithTxn, (exit) => {
+              if (Exit.isFailure(exit)) {
+                txn.rollback()
+              }
+              // Throwing from a child callback can abort its parent.
+              resolve()
+              const completed = Effect.flatten(Effect.promise(() => promise))
+              // Marked in this finalizer, so an interruption delivered once it
+              // ends can't drop the callbacks of a committed transaction.
+              return Exit.isFailure(exit) ? completed : Effect.andThen(completed, level.markCommitted)
+            }))
+          })
+        ).then(
+          () => Exit.void,
+          (cause) => {
+            const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
+            // Report rejection before the transaction callback starts; later resumes are ignored.
+            resume(exit)
+            return exit
+          }
+        )
+        return Effect.suspend(() => {
+          interrupted = true
+          return Effect.asVoid(Effect.promise(() => promise))
         })
-      ).then(
-        () => Exit.void,
-        (cause) => {
-          const exit = Exit.fail(new SqlError({ reason: classifyError(cause, "Failed transaction", "transaction") }))
-          // Report rejection before the transaction callback starts; later resumes are ignored.
-          resume(exit)
-          return exit
-        }
-      )
-      return Effect.suspend(() => {
-        interrupted = true
-        return Effect.asVoid(Effect.promise(() => promise))
       })
+      return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
     })
-    return connOption._tag === "Some" ? transaction : semaphore.withPermits(1)(transaction)
-  }).pipe(
+  ).pipe(
     // The storage transaction closes the input gate, blocking dispatcher tasks until it completes.
     Effect.provideService(Scheduler.PreventSchedulerYield, true)
   )

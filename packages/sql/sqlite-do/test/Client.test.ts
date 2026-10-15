@@ -396,6 +396,98 @@ describe("Client", () => {
       assert.strictEqual(hasForbiddenTransactionSql(storage.sql), false)
     }))
 
+  it.effect("afterCommit runs callbacks once the storage transaction has committed and released the connection", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const seen: Array<unknown> = []
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* sql`INSERT INTO test (name) VALUES ('outer')`
+          yield* sql.afterCommit(Effect.sync(() => {
+            seen.push(`open transactions: ${storage.snapshots.length}`)
+          }))
+          yield* sql.withTransaction(sql.afterCommit(
+            sql`SELECT * FROM test`.pipe(
+              Effect.flatMap((rows) =>
+                Effect.sync(() => {
+                  seen.push(rows)
+                })
+              ),
+              Effect.orDie
+            )
+          ))
+          assert.deepStrictEqual(seen, [])
+        })
+      )
+
+      assert.deepStrictEqual(seen, ["open transactions: 0", [{ id: 1, name: "outer" }]])
+    }))
+
+  it.effect("afterCommit drops callbacks of rolled back transactions and savepoints", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const sql = yield* makeClient({ storage: storage as unknown as DurableObjectStorage })
+      const seen: Array<string> = []
+      const after = (name: string) =>
+        sql.afterCommit(Effect.sync(() => {
+          seen.push(name)
+        }))
+
+      yield* sql.withTransaction(Effect.andThen(after("rolled back"), Effect.fail("boom"))).pipe(Effect.exit)
+      yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* after("outer")
+          yield* sql.withTransaction(Effect.andThen(after("inner"), Effect.fail("boom"))).pipe(Effect.exit)
+        })
+      )
+
+      assert.deepStrictEqual(seen, ["outer"])
+    }))
+
+  it.effect("afterCommit runs callbacks when the fiber is interrupted while the storage transaction completes", () =>
+    Effect.gen(function*() {
+      const storage = new FakeDurableObjectStorage()
+      const bodyCompleted = yield* Deferred.make<void>()
+      let complete!: () => void
+      const completion = new Promise<void>((resolve) => {
+        complete = resolve
+      })
+      const sql = yield* makeClient({
+        storage: {
+          sql: storage.sql,
+          transaction: <T>(body: (txn: { rollback: () => void }) => Promise<T>) =>
+            storage.transaction(async (txn) => {
+              const value = await body(txn)
+              Deferred.doneUnsafe(bodyCompleted, Effect.void)
+              await completion
+              return value
+            })
+        } as unknown as DurableObjectStorage
+      })
+      const seen: Array<string> = []
+
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const fiber = yield* sql`INSERT INTO test (name) VALUES ('hello')`.pipe(
+        Effect.andThen(sql.afterCommit(Effect.sync(() => {
+          seen.push("after")
+        }))),
+        sql.withTransaction,
+        Effect.forkChild
+      )
+      yield* Deferred.await(bodyCompleted)
+      const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber))
+      yield* Effect.yieldNow
+      complete()
+      yield* Fiber.join(interrupting)
+      const rows = yield* sql`SELECT * FROM test`
+
+      assert.deepStrictEqual(rows, [{ id: 1, name: "hello" }])
+      assert.deepStrictEqual(seen, ["after"])
+    }))
+
   it.effect("cross-client nested transactions fail before opening storage or running the body", () =>
     Effect.gen(function*() {
       const storageA = new FakeDurableObjectStorage()
