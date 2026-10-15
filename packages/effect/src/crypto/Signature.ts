@@ -444,6 +444,9 @@ const signatureLength = (algorithm: Algorithm, cryptoKey: CryptoKey): number => 
 // and two more bytes.
 const checkSaltLength = (algorithm: Algorithm, cryptoKey: CryptoKey): string | undefined => {
   if (algorithm._tag !== "RsaPss") return undefined
+  if (!Number.isSafeInteger(algorithm.saltLength) || algorithm.saltLength < 0) {
+    return "PSS salt length must be a non-negative safe integer"
+  }
   const modulusLength = (cryptoKey.algorithm as RsaHashedKeyAlgorithm).modulusLength
   const encodedLength = Math.ceil((modulusLength - 1) / 8)
   return algorithm.hash.outputLength + algorithm.saltLength + 2 <= encodedLength
