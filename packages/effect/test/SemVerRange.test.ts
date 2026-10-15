@@ -95,7 +95,9 @@ describe("SemVerRange", () => {
       ["<*", [], ["0.0.0"]],
       ["1.2 - 2.3", ["1.2.0", "2.3.9"], ["1.1.9", "2.4.0"]],
       [">=1.2.3 <2 || >=3", ["1.5.0", "3.1.0"], ["2.5.0"]],
-      [">1.2.3-alpha.3", ["1.2.3-alpha.7", "3.4.5"], ["3.4.5-alpha.9"]]
+      [">1.2.3-alpha.3", ["1.2.3-alpha.7", "3.4.5"], ["3.4.5-alpha.9"]],
+      // Unlike node-semver, a `*` alternative keeps pre-releases admitted by another alternative
+      ["* || ^1.2.3-beta.1", ["1.2.3-beta.2"], ["1.2.4-beta"]]
     ]
     for (const [input, included, excluded] of cases) {
       for (const version of included) assertTrue(SemVerRange.matches(range(input), $(version)), `${version} ${input}`)
