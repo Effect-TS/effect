@@ -7,6 +7,33 @@ import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientRes
 
 describe("OpenRouterLanguageModel", () => {
   describe("strictJsonSchema", () => {
+    for (
+      const [model, strict] of [
+        ["openai/gpt-4o-mini", true],
+        ["google/gemini-2.5-flash", null]
+      ] as const
+    ) {
+      it.effect(`defaults response strictness to ${strict} for ${model}`, () =>
+        Effect.gen(function*() {
+          yield* LanguageModel.generateObject({
+            prompt: "Give me a name",
+            schema: Schema.Struct({ name: Schema.String })
+          }).pipe(Effect.provide(OpenRouterLanguageModel.model(model)))
+
+          const requests = yield* MockHttpClient.requests
+          const body = yield* getRequestBody(requests[0])
+          strictEqual(body.response_format.json_schema.strict, strict)
+        }).pipe(Effect.provide(makeTestLayer({
+          body: {
+            choices: [{
+              finish_reason: "stop",
+              index: 0,
+              message: { role: "assistant", content: JSON.stringify({ name: "Alice" }) }
+            }]
+          }
+        }))))
+    }
+
     it.effect("omits false from requests while preserving response strictness", () =>
       Effect.gen(function*() {
         yield* LanguageModel.generateObject({
