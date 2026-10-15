@@ -16770,16 +16770,16 @@ export const toCodecArrayFromSingle: {
   <S extends Constraint>(schema: S): toCodecArrayFromSingle<S>
 } = InternalToCodec.toCodecArrayFromSingle
 /**
- * Type-level representation returned by {@link toCodecGoJsonV1}.
+ * Type-level representation returned by {@link toCodecGoJson}.
  *
  * @stability unstable
  * @category converting
  * @since 4.0.6
  */
-export interface toCodecGoJsonV1<S extends Constraint> extends
+export interface toCodecGoJson<S extends Constraint> extends
   BottomLazy<
     S["ast"],
-    toCodecGoJsonV1<S>,
+    toCodecGoJson<S>,
     S["~type.parameters"],
     S["~type.mutability"],
     S["~type.optionality"],
@@ -16799,8 +16799,7 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
 }
 /**
  * Derives a JSON codec, like {@link toCodecJson}, that also accepts the
- * `null` values Go's `encoding/json` (v1) writes for nil pointers, slices, and
- * maps.
+ * `null` values Go's `encoding/json` writes for nil pointers, slices, and maps.
  *
  * **When to use**
  *
@@ -16820,6 +16819,13 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
  * these fields, and a missing key stays missing. Go decodes a missing key, an
  * empty slice, and an empty map the same way it decodes `null`.
  *
+ * The rules hold for both `encoding/json` and `encoding/json/v2`. Version 2
+ * writes nil slices and maps as `[]` and `{}`, which decode unchanged, and
+ * still writes `null` for nil pointers, for fields tagged `format:emitnull`,
+ * and when `FormatNilSliceAsNull` or `FormatNilMapAsNull` is set. A nil slice
+ * or map equals an empty one in Go itself, so decoding `null` as empty is
+ * correct for either version.
+ *
  * **Gotchas**
  *
  * - A key whose schema already accepts `null` (for example
@@ -16828,15 +16834,17 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
  * - A required field that is not an array or a record (a nil pointer to a Go
  *   struct, for example) still fails on `null`. Make it optional if the API
  *   can omit it.
- * - Only the `null` rules are covered, because they are the part of Go's v1
+ * - A nil `[]byte` is written as `null` by `encoding/json` (and as `""` by
+ *   version 2), but its schema is a base64 string, not an array. A required
+ *   `[]byte` field that is `null` fails; make it optional if the API can send
+ *   `null`.
+ * - Only the `null` rules are covered, because they are the part of Go's
  *   output that does not depend on field types and is missing from API
  *   documents. Field formats depend on the Go type behind each field (a
- *   `time.Duration` is integer nanoseconds unless the type has its own
- *   `MarshalJSON`, `[]byte` is base64, `,string` writes numbers as strings),
- *   so they belong in the field schemas, usually generated from the API
- *   document.
- * - Go's `encoding/json/v2` writes nil slices and maps as `[]` and `{}`, but
- *   still writes nil pointers as `null`.
+ *   `time.Duration` is integer nanoseconds in `encoding/json` unless the type
+ *   has its own `MarshalJSON`, `[]byte` is base64, `,string` writes numbers as
+ *   strings), so they belong in the field schemas, usually generated from the
+ *   API document.
  *
  * **Example** (Decoding a Go response with nil fields)
  *
@@ -16850,7 +16858,7 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
  *   Status: Schema.optionalKey(Schema.String)
  * })
  *
- * const decode = Schema.decodeUnknownSync(Schema.toCodecGoJsonV1(Container))
+ * const decode = Schema.decodeUnknownSync(Schema.toCodecGoJson(Container))
  *
  * decode({ Id: "a", Names: null, Labels: null, Status: null }) // => { Id: "a", Names: [], Labels: {} }
  * ```
@@ -16860,9 +16868,9 @@ export interface toCodecGoJsonV1<S extends Constraint> extends
  * @category converting
  * @since 4.0.6
  */
-export const toCodecGoJsonV1: {
-  <S extends Constraint>(schema: S): toCodecGoJsonV1<S>
-} = InternalToCodec.toCodecGoJsonV1
+export const toCodecGoJson: {
+  <S extends Constraint>(schema: S): toCodecGoJson<S>
+} = InternalToCodec.toCodecGoJson
 type XmlEncoderOptions = {
   /** Root element name for the returned XML string. Default: "root" */
   readonly rootName?: string | undefined

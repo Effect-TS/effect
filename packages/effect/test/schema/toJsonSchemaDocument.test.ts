@@ -4043,10 +4043,10 @@ describe("toJsonSchemaDocument", () => {
     })
   })
 
-  describe("toCodecGoJsonV1", () => {
+  describe("toCodecGoJson", () => {
     it("describes the nil values written by Go as null", () => {
       assertJsonSchemaDocument(
-        Schema.toCodecGoJsonV1(Schema.Struct({
+        Schema.toCodecGoJson(Schema.Struct({
           a: Schema.String,
           b: Schema.optionalKey(Schema.FiniteFromString),
           c: Schema.Array(Schema.String),

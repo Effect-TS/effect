@@ -566,19 +566,19 @@ describe("Schema", () => {
     })
   })
 
-  describe("toCodecGoJsonV1", () => {
+  describe("toCodecGoJson", () => {
     it("revealCodec + annotate", () => {
       const source = Schema.Struct({
         a: Schema.optionalKey(Schema.FiniteFromString),
         b: Schema.Array(Schema.String)
       })
-      const schema = Schema.toCodecGoJsonV1(source)
+      const schema = Schema.toCodecGoJson(source)
       expect(Schema.revealCodec(schema)).type.toBe<
         Schema.Codec<{ readonly a?: number; readonly b: ReadonlyArray<string> }, Schema.Json, never, never>
       >()
-      expect(schema).type.toBe<Schema.toCodecGoJsonV1<typeof source>>()
+      expect(schema).type.toBe<Schema.toCodecGoJson<typeof source>>()
       expect(schema.schema).type.toBe<typeof source>()
-      expect(schema.annotate({})).type.toBe<Schema.toCodecGoJsonV1<typeof source>>()
+      expect(schema.annotate({})).type.toBe<Schema.toCodecGoJson<typeof source>>()
     })
   })
 

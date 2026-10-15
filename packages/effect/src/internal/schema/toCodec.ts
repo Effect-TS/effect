@@ -295,17 +295,18 @@ const toCodecArrayFromSingleAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempot
 }, { stopAt: isCodecArrayFromSingleLink })
 
 /** @internal */
-export function toCodecGoJsonV1<S extends PublicSchema.Constraint>(
+export function toCodecGoJson<S extends PublicSchema.Constraint>(
   schema: S
-): PublicSchema.toCodecGoJsonV1<S> {
-  return InternalMake.make(toCodecGoJsonV1AST(schema.ast), { schema })
+): PublicSchema.toCodecGoJson<S> {
+  return InternalMake.make(toCodecGoJsonAST(schema.ast), { schema })
 }
 
-const toCodecGoJsonV1AST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST =>
+const toCodecGoJsonAST = memoizeIdempotent((ast: SchemaAST.AST): SchemaAST.AST =>
   atEncoded(goNilAST(toCodecJsonAST(ast)), nilAsEmpty)
 )
 
-// Go's `encoding/json` (v1) writes a nil pointer, slice, or map as `null`.
+// Go's `encoding/json` writes a nil pointer, slice, or map as `null` (v2 only
+// nil pointers, unless asked to keep v1's behaviour).
 // Optional keys treat `null` as a missing key; required slices and maps treat
 // it as empty. Nothing is encoded as `null`.
 const nilAsMissingTransformation = new InternalTransformation.Transformation(

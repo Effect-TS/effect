@@ -5138,13 +5138,13 @@ console.log(serialized)
 
 #### Decoding JSON Written by Go
 
-Go's `encoding/json` (v1) writes a nil pointer, slice, or map as `null`, and API documents rarely say which fields can be `null`. `Schema.toCodecGoJsonV1` is `Schema.toCodecJson` with these rules added at every level of the schema:
+Go's `encoding/json` writes a nil pointer, slice, or map as `null`, and API documents rarely say which fields can be `null`. `Schema.toCodecGoJson` is `Schema.toCodecJson` with these rules added at every level of the schema:
 
 - an optional key that is `null` decodes as a missing key
 - a required array that is `null` decodes as `[]`
 - a required record that is `null` decodes as `{}`
 
-Encoding never produces `null` for these fields. A key whose schema already accepts `null` (such as `Schema.NullOr(X)`) keeps `null` as a value.
+Encoding never produces `null` for these fields. A key whose schema already accepts `null` (such as `Schema.NullOr(X)`) keeps `null` as a value. The rules also hold for `encoding/json/v2`, which writes nil slices and maps as `[]` and `{}` but still writes nil pointers as `null`.
 
 ```ts
 import { Schema } from "effect"
@@ -5156,7 +5156,7 @@ const Container = Schema.Struct({
   Status: Schema.optionalKey(Schema.String)
 })
 
-const codec = Schema.toCodecGoJsonV1(Container)
+const codec = Schema.toCodecGoJson(Container)
 
 console.log(Schema.decodeUnknownSync(codec)({ Id: "a", Names: null, Labels: null, Status: null }))
 // Output: { Id: 'a', Names: [], Labels: {} }

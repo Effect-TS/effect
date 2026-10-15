@@ -2891,7 +2891,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
   })
 
-  describe("toCodecGoJsonV1", () => {
+  describe("toCodecGoJson", () => {
     const HostConfig = Schema.Struct({ NetworkMode: Schema.String })
     const Container = Schema.Struct({
       Id: Schema.String,
@@ -2904,11 +2904,11 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
 
     it("exposes the source schema", () => {
-      strictEqual(Schema.toCodecGoJsonV1(Container).schema, Container)
+      strictEqual(Schema.toCodecGoJson(Container).schema, Container)
     })
 
     it("decodes the nil values written by Go's encoding/json", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecGoJsonV1(Container))
+      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
 
       const decoding = asserts.decoding()
       // json.Marshal(Container{Id: "abc", Ports: [][]string{nil}}) with Go 1.26
@@ -2926,8 +2926,19 @@ Expected "Infinity" | "-Infinity" | "NaN"`
       )
     })
 
+    it("decodes the output of Go's encoding/json/v2", async () => {
+      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
+
+      const decoding = asserts.decoding()
+      // json.Marshal(Container{Id: "abc", Ports: [][]string{nil}}) with Go 1.26 and GOEXPERIMENT=jsonv2
+      await decoding.succeed(
+        { Id: "abc", Names: [], Labels: {}, HostConfig: null, Ports: [[]] },
+        { Id: "abc", Names: [], Labels: {}, Ports: [[]] }
+      )
+    })
+
     it("never encodes null", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecGoJsonV1(Container))
+      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
 
       const encoding = asserts.encoding()
       await encoding.succeed({ Id: "abc", Names: [], Labels: {}, Ports: [[]] })
@@ -2943,7 +2954,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
 
     it("rejects null where Go would not write it", async () => {
-      const schema = Schema.toCodecGoJsonV1(Schema.Struct({
+      const schema = Schema.toCodecGoJson(Schema.Struct({
         a: Schema.String,
         b: Schema.optionalKey(Schema.NonEmptyArray(Schema.String)),
         c: Schema.Struct({ d: Schema.String })
@@ -2965,7 +2976,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
 
     it("keeps null where the schema accepts it", async () => {
-      const schema = Schema.toCodecGoJsonV1(Schema.Struct({
+      const schema = Schema.toCodecGoJson(Schema.Struct({
         a: Schema.optionalKey(Schema.NullOr(Schema.String)),
         b: Schema.optionalKey(Schema.Unknown),
         c: Schema.optionalKey(Schema.Json),
@@ -2978,7 +2989,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
 
     it("applies decoding defaults to null optional keys", async () => {
-      const schema = Schema.toCodecGoJsonV1(Schema.Struct({
+      const schema = Schema.toCodecGoJson(Schema.Struct({
         a: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("a"))),
         b: Schema.OptionFromOptionalKey(Schema.String)
       }))
@@ -3001,7 +3012,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         Name: Schema.String,
         Children: Schema.Array(Schema.suspend(() => Node))
       })
-      const schema = Schema.toCodecGoJsonV1(Schema.Struct({
+      const schema = Schema.toCodecGoJson(Schema.Struct({
         mount: Schema.optionalKey(Mount),
         mounts: Schema.Array(Mount),
         node: Node,
@@ -3026,18 +3037,18 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     })
 
     it("decodes a top-level null array or record as empty", async () => {
-      await new TestSchema.Asserts(Schema.toCodecGoJsonV1(Schema.Array(Schema.String))).decoding().succeed(null, [])
-      await new TestSchema.Asserts(Schema.toCodecGoJsonV1(Schema.Record(Schema.String, Schema.String))).decoding()
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Array(Schema.String))).decoding().succeed(null, [])
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Record(Schema.String, Schema.String))).decoding()
         .succeed(null, {})
     })
 
     it("is idempotent", () => {
-      const schema = Schema.toCodecGoJsonV1(Container)
-      strictEqual(Schema.toCodecGoJsonV1(schema).ast, schema.ast)
+      const schema = Schema.toCodecGoJson(Container)
+      strictEqual(Schema.toCodecGoJson(schema).ast, schema.ast)
     })
 
     it("keeps its rules when converted to JSON again", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecJson(Schema.toCodecGoJsonV1(Container)))
+      const asserts = new TestSchema.Asserts(Schema.toCodecJson(Schema.toCodecGoJson(Container)))
 
       const decoding = asserts.decoding()
       await decoding.succeed(
