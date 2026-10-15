@@ -65,6 +65,11 @@ export interface KeyValueStore {
   readonly clear: Effect.Effect<void, KeyValueStoreError>
 
   /**
+   * Removes all entries whose key starts with the specified prefix.
+   */
+  readonly clearPrefix: (prefix: string) => Effect.Effect<void, KeyValueStoreError>
+
+  /**
    * Returns the number of entries.
    */
   readonly size: Effect.Effect<number, KeyValueStoreError>
@@ -225,6 +230,9 @@ export const KeyValueStore: Context.Service<
  * Default implementations are derived for `has`, `isEmpty`, `modify`, and
  * `modifyUint8Array` unless they are provided in the options.
  *
+ * If `clearPrefix` is not provided, it delegates to `clear` for an empty prefix
+ * and fails for any other prefix, rather than removing unrelated entries.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -234,6 +242,13 @@ export const make = (options: MakeOptions): KeyValueStore =>
     [TypeId]: TypeId,
     has: (key) => Effect.map(options.get(key), Predicate.isNotUndefined),
     isEmpty: Effect.map(options.size, (size) => size === 0),
+    clearPrefix: (prefix) =>
+      prefix.length === 0 ? options.clear : Effect.fail(
+        new KeyValueStoreError({
+          method: "clearPrefix",
+          message: `clearPrefix is not supported by this store`
+        })
+      ),
     modify: (key, f) =>
       Effect.flatMap(
         options.get(key),
@@ -300,6 +315,11 @@ export const makeStringOnly = (
  * Returns a view of a `KeyValueStore` that prepends the given prefix to every
  * key.
  *
+ * **Details**
+ *
+ * `clear` only removes keys that start with the prefix. `size` and `isEmpty`
+ * still report on the whole backing store.
+ *
  * @stability unstable
  * @category combinators
  * @since 4.0.0
@@ -313,6 +333,8 @@ export const prefix: {
   getUint8Array: (key) => self.getUint8Array(`${prefix}${key}`),
   set: (key, value) => self.set(`${prefix}${key}`, value),
   remove: (key) => self.remove(`${prefix}${key}`),
+  clear: self.clearPrefix(prefix),
+  clearPrefix: (key) => self.clearPrefix(`${prefix}${key}`),
   has: (key) => self.has(`${prefix}${key}`),
   modify: (key, f) => self.modify(`${prefix}${key}`, f),
   modifyUint8Array: (key, f) => self.modifyUint8Array(`${prefix}${key}`, f)
@@ -343,6 +365,12 @@ export const layerMemory: Layer.Layer<KeyValueStore> = Layer.sync(KeyValueStore)
     set: (key: string, value: string | Uint8Array) => Effect.sync(() => store.set(key, value)),
     remove: (key: string) => Effect.sync(() => store.delete(key)),
     clear: Effect.sync(() => store.clear()),
+    clearPrefix: (prefix: string) =>
+      Effect.sync(() => {
+        for (const key of store.keys()) {
+          if (key.startsWith(prefix)) store.delete(key)
+        }
+      }),
     size: Effect.sync(() => store.size)
   })
 })
@@ -461,6 +489,29 @@ export const layerFileSystem = (
             cause
           })
       ),
+      clearPrefix: (prefix: string) =>
+        fs.readDirectory(directory).pipe(
+          Effect.flatMap((files) =>
+            Effect.forEach(
+              files.filter((file) => decodeFileKey(file)?.startsWith(prefix)),
+              (file) =>
+                Effect.catchTag(
+                  fs.remove(path.join(directory, file)),
+                  "PlatformError",
+                  (cause) => cause.reason._tag === "NotFound" ? Effect.void : Effect.fail(cause)
+                ),
+              { discard: true }
+            )
+          ),
+          Effect.mapError((cause) =>
+            new KeyValueStoreError({
+              method: "clearPrefix",
+              key: prefix,
+              message: `Unable to clear items with prefix ${prefix}`,
+              cause
+            })
+          )
+        ),
       size: Effect.matchEffect(
         fs.readDirectory(directory),
         {
@@ -477,6 +528,16 @@ export const layerFileSystem = (
       )
     })
   }))
+
+const decodeFileKey = (file: string): string | undefined => {
+  try {
+    return decodeURIComponent(file)
+  } catch {
+    return undefined
+  }
+}
+
+const escapeLike = (prefix: string): string => `${prefix.replace(/[!%_[\]]/g, "!$&")}%`
 
 /**
  * Options for configuring the SQL-backed `KeyValueStore` layer.
@@ -512,7 +573,8 @@ export const layerSql = (
   Layer.effect(KeyValueStore)(
     Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-      const table = sql(options.table ?? "effect_key_value_store")
+      const tableName = options.table ?? "effect_key_value_store"
+      const table = sql(tableName)
 
       yield* sql.onDialectOrElse({
         mysql: () =>
@@ -533,7 +595,7 @@ export const layerSql = (
         `,
         mssql: () =>
           sql`
-          IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${table} AND xtype='U')
+          IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
           CREATE TABLE ${table} (
             id NVARCHAR(450) PRIMARY KEY,
             value VARBINARY(MAX) NOT NULL,
@@ -583,6 +645,23 @@ export const layerSql = (
           INSERT INTO ${table} (id, value, value_type) VALUES (${entry.id}, ${entry.value}, ${entry.value_type})
           ON CONFLICT(id) DO UPDATE SET value=excluded.value, value_type=excluded.value_type
         `.unprepared
+      })
+
+      // The first LIKE uses the primary key index. On mysql and mssql it follows
+      // the column collation, which is usually case / accent-insensitive, so a
+      // second binary LIKE keeps only exact prefix matches.
+      const deleteByPrefix = sql.onDialectOrElse({
+        // sqlite LIKE is case-insensitive, so compare the leading characters
+        orElse: () => (prefix: string) => sql`DELETE FROM ${table} WHERE substr(id, 1, length(${prefix})) = ${prefix}`,
+        pg: () => (prefix: string) => sql`DELETE FROM ${table} WHERE id LIKE ${escapeLike(prefix)} ESCAPE '!'`,
+        mysql: () => (prefix: string) => {
+          const pattern = escapeLike(prefix)
+          return sql`DELETE FROM ${table} WHERE id LIKE ${pattern} ESCAPE '!' AND CONVERT(id USING utf8mb4) COLLATE utf8mb4_bin LIKE ${pattern} ESCAPE '!'`
+        },
+        mssql: () => (prefix: string) => {
+          const pattern = escapeLike(prefix)
+          return sql`DELETE FROM ${table} WHERE id LIKE ${pattern} ESCAPE '!' AND id COLLATE Latin1_General_100_BIN2 LIKE ${pattern} ESCAPE '!'`
+        }
       })
 
       const encoder = new TextEncoder()
@@ -696,6 +775,18 @@ export const layerSql = (
           ),
           Effect.asVoid
         ),
+        clearPrefix: (prefix: string) =>
+          deleteByPrefix(prefix).pipe(
+            Effect.mapError((cause) =>
+              new KeyValueStoreError({
+                method: "clearPrefix",
+                key: prefix,
+                message: `Unable to clear items with prefix ${prefix}`,
+                cause
+              })
+            ),
+            Effect.asVoid
+          ),
         size: sql<{ count: number }>`SELECT COUNT(*) as count FROM ${table}`.pipe(
           Effect.mapError((cause) =>
             new KeyValueStoreError({
@@ -890,6 +981,25 @@ export const layerStorage = (
             cause
           })
       }),
+
+      clearPrefix: (prefix: string) =>
+        Effect.try({
+          try: () => {
+            const keys: Array<string> = []
+            for (let i = 0; i < storage.length; i++) {
+              const key = storage.key(i)
+              if (key !== null && key.startsWith(prefix)) keys.push(key)
+            }
+            for (const key of keys) storage.removeItem(key)
+          },
+          catch: (cause) =>
+            new KeyValueStoreError({
+              key: prefix,
+              method: "clearPrefix",
+              message: `Unable to clear items with prefix ${prefix}`,
+              cause
+            })
+        }),
 
       size: Effect.try({
         try: () => storage.length,
