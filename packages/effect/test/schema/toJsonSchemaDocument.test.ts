@@ -4042,4 +4042,51 @@ describe("toJsonSchemaDocument", () => {
       }
     })
   })
+
+  describe("toCodecGoJson", () => {
+    it("describes the nil values written by Go as null", () => {
+      assertJsonSchemaDocument(
+        Schema.toCodecGoJson(Schema.Struct({
+          a: Schema.String,
+          b: Schema.optionalKey(Schema.FiniteFromString),
+          c: Schema.Array(Schema.String)
+        })),
+        {
+          schema: {
+            "type": "object",
+            "properties": {
+              "a": { "type": "string" },
+              "b": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+              "c": { "anyOf": [{ "type": "array", "items": { "type": "string" } }, { "type": "null" }] }
+            },
+            "required": ["a", "c"],
+            "additionalProperties": false
+          }
+        }
+      )
+    })
+
+    it("describes recursive schemas", () => {
+      interface Node {
+        readonly Children: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({
+        Children: Schema.Array(Schema.suspend(() => Node))
+      }).annotate({ identifier: "Node" })
+
+      assertJsonSchemaDocument(Schema.toCodecGoJson(Node), {
+        schema: { "$ref": "#/$defs/Node" },
+        definitions: {
+          Node: {
+            "type": "object",
+            "properties": {
+              "Children": { "anyOf": [{ "type": "array", "items": { "$ref": "#/$defs/Node" } }, { "type": "null" }] }
+            },
+            "required": ["Children"],
+            "additionalProperties": false
+          }
+        }
+      })
+    })
+  })
 })
