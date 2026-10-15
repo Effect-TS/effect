@@ -25,7 +25,7 @@ import * as Pull from "effect/Pull"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import type { Duplex } from "node:stream"
-import { Readable } from "node:stream"
+import { finished, Readable } from "node:stream"
 import { pullIntoWritable } from "./NodeSink.ts"
 
 /**
@@ -236,29 +236,36 @@ export const toString = <E = Cause.UnknownError>(
     const stream = readable() as Readable
     stream.setEncoding(encoding)
 
-    stream.once("error", (err) => {
-      if ("closed" in stream && !stream.closed) {
-        stream.destroy()
-      }
-      resume(Effect.fail(onError(err) as E))
-    })
-
     let string = ""
     let bytes = 0
-    stream.once("end", () => {
-      resume(Effect.succeed(string))
+    const cleanup = finished(stream, { readable: true, writable: false }, (err) => {
+      cleanup()
+      stream.off("data", onData)
+      if (err) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
+        resume(Effect.fail(onError(err) as E))
+      } else {
+        resume(Effect.succeed(string))
+      }
     })
-    stream.on("data", (chunk) => {
+    function onData(chunk: string) {
       string += chunk
       bytes += Buffer.byteLength(chunk)
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        cleanup()
+        stream.off("data", onData)
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
-    })
+    }
+    stream.on("data", onData)
     return Effect.sync(() => {
+      cleanup()
+      stream.off("data", onData)
       if ("closed" in stream && !stream.closed) {
         stream.destroy()
       }
@@ -288,13 +295,15 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
     const stream = readable() as Readable
     const buffers: Array<Uint8Array> = []
     let bytes = 0
-    stream.once("error", (err) => {
-      if ("closed" in stream && !stream.closed) {
-        stream.destroy()
+    const cleanup = finished(stream, { readable: true, writable: false }, (err) => {
+      cleanup()
+      stream.off("data", onData)
+      if (err) {
+        if ("closed" in stream && !stream.closed) {
+          stream.destroy()
+        }
+        return resume(Effect.fail(onError(err) as E))
       }
-      resume(Effect.fail(onError(err) as E))
-    })
-    stream.once("end", () => {
       const buffer = buffers.length === 1 ? buffers[0] : Buffer.concat(buffers)
       if (buffer.byteOffset === 0 && buffer.buffer.byteLength === buffer.byteLength) {
         return resume(Effect.succeed(buffer.buffer as ArrayBuffer))
@@ -303,17 +312,22 @@ export const toArrayBuffer = <E = Cause.UnknownError>(
         Effect.succeed(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer)
       )
     })
-    stream.on("data", (chunk) => {
+    function onData(chunk: Uint8Array) {
       buffers.push(chunk)
       bytes += chunk.length
       if (maxBytesNumber !== undefined && bytes > maxBytesNumber) {
+        cleanup()
+        stream.off("data", onData)
         if ("closed" in stream && !stream.closed) {
           stream.destroy()
         }
         resume(Effect.fail(onError(new Error("maxBytes exceeded")) as E))
       }
-    })
+    }
+    stream.on("data", onData)
     return Effect.sync(() => {
+      cleanup()
+      stream.off("data", onData)
       if ("closed" in stream && !stream.closed) {
         stream.destroy()
       }
@@ -358,17 +372,11 @@ const readableToPullUnsafe = <A, E>(options: {
   function onReadable() {
     latch.openUnsafe()
   }
-  function onError(error: unknown) {
-    exit.current = Exit.fail(options.onError(error))
-    latch.openUnsafe()
-  }
-  function onEnd() {
-    exit.current = Exit.fail(Cause.Done())
-    latch.openUnsafe()
-  }
   readable.on("readable", onReadable)
-  readable.once("error", onError)
-  readable.once("end", onEnd)
+  const cleanup = finished(readable, { readable: true, writable: false }, (error) => {
+    exit.current ??= Exit.fail(error ? options.onError(error) : Cause.Done())
+    latch.openUnsafe()
+  })
 
   const pull = Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E> {
     let item = options.readable.read(options.chunkSize) as A | null
@@ -396,8 +404,7 @@ const readableToPullUnsafe = <A, E>(options: {
       options.scope,
       Effect.sync(() => {
         readable.off("readable", onReadable)
-        readable.off("error", onError)
-        readable.off("end", onEnd)
+        cleanup()
         if (closeOnDone && "closed" in options.readable && !options.readable.closed) {
           options.readable.destroy()
         }
