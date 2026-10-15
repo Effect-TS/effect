@@ -1,10 +1,8 @@
-/**
- * @internal
- */
 import * as Effect from "../../Effect.ts"
 import type { Algorithm } from "../Digest.ts"
 import * as internal from "./webCrypto.ts"
 
+/** @internal */
 export const webCryptoDigest = (crypto: Crypto, algorithm: Algorithm, data: Uint8Array): Effect.Effect<Uint8Array> => {
   const implementation = algorithm.implementation
   if (implementation !== undefined) {
