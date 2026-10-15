@@ -40,7 +40,8 @@ import {
   Schema,
   Scope,
   Stream,
-  TestClock
+  TestClock,
+  Tracer
 } from "effect"
 import type { Clock } from "effect"
 import * as EntityManager from "../src/internal/entityManager.js"
@@ -57,14 +58,29 @@ import {
 } from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
-  it.scoped("delivers a message", () =>
+  it.scoped("delivers a message with an outgoing routing span", () =>
     Effect.gen(function*() {
-      yield* TestClock.adjust(1)
-      const makeClient = yield* TestEntity.client
-      const client = makeClient("1")
-      const user = yield* client.GetUserVolatile({ id: 1 })
-      expect(user).toEqual(new User({ id: 1, name: "User 1" }))
-    }).pipe(Effect.provide(TestSharding)))
+      const base = yield* Effect.tracer
+      const spans: globalThis.Array<Tracer.Span> = []
+      const tracer = Tracer.make({
+        context: base.context,
+        span(...args) {
+          const span = base.span(...args)
+          spans.push(span)
+          return span
+        }
+      })
+      yield* Effect.gen(function*() {
+        yield* TestClock.adjust(1)
+        const makeClient = yield* TestEntity.client
+        const user = yield* makeClient("1").GetUserVolatile({ id: 1 })
+        assert.deepStrictEqual(user, new User({ id: 1, name: "User 1" }))
+      }).pipe(Effect.provide(TestSharding), Effect.withTracer(tracer))
+      const span = spans.find((span) => span.name === "Sharding.sendOutgoing")
+      assert.isDefined(span)
+      assert.strictEqual(span!.attributes.get("cluster.entity.type"), TestEntity.type)
+      assert.strictEqual(span!.attributes.get("cluster.runner.local"), true)
+    }))
 
   it.scoped("does not freeze the first caller's context into the entity server", () =>
     Effect.gen(function*() {
