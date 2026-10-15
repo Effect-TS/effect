@@ -1829,10 +1829,12 @@ export const makeStoreSql: (
             })
           )
       ).pipe(
+        // Nudge once the offer commits, which may be later than now if the
+        // caller opened a transaction.
         Effect.tap(() =>
-          Effect.sync(() => {
+          sql.afterCommit(Effect.sync(() => {
             queueStates.peek(name)?.nudge.openUnsafe()
-          })
+          }))
         )
       ),
     take: (options) => {

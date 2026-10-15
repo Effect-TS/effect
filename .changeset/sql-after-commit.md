@@ -18,4 +18,6 @@ const program = Effect.gen(function*() {
 })
 ```
 
+The SQL `PersistedQueue` store now wakes its local takers once an offer commits. An offer made inside a transaction used to wake them before the commit, so they found nothing and waited for the next poll.
+
 Drivers that implement transactions without `makeWithTransaction` can support it with `SqlClient.withAfterCommit`. Hand-written `SqlClient` implementations can use `SqlClient.makeAfterCommit`. The Durable Object SQLite driver supports it.
