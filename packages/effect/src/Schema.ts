@@ -79,6 +79,8 @@ import * as SchemaIssue from "./SchemaIssue.ts"
 import * as SchemaParser from "./SchemaParser.ts"
 import type * as SchemaRepresentation from "./SchemaRepresentation.ts"
 import * as SchemaTransformation from "./SchemaTransformation.ts"
+import * as SemVer_ from "./SemVer.ts"
+import * as SemVerRange_ from "./SemVerRange.ts"
 import type { StandardJSONSchemaV1, StandardSchemaV1 } from "./StandardSchema.ts"
 import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
@@ -15742,6 +15744,197 @@ export function Result<A extends Constraint, E extends Constraint>(
   )
   return make(schema.ast, { success, failure })
 }
+
+// -----------------------------------------------------------------------------
+// SemVer schemas
+// -----------------------------------------------------------------------------
+
+const semVerFromString: SchemaTransformation.Transformation<SemVer_.SemVer, string> = SchemaTransformation
+  .transformEffect<SemVer_.SemVer, string>({
+    decode: (s, options) => {
+      const result = SemVer_.parse(s)
+      return Result_.isFailure(result)
+        ? Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, s, options))
+        : Effect.succeed(result.success)
+    },
+    encode: (version) => Effect.succeed(SemVer_.format(version))
+  })
+const SemVerString = String.annotate({ expected: "a string that will be decoded as a SemVer" })
+/**
+ * Type-level representation of {@link SemVer}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface SemVer extends declare<SemVer_.SemVer> {
+  readonly "Rebuild": SemVer
+}
+/**
+ * Schema for `SemVer` values.
+ *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a version as its canonical string,
+ * including build metadata.
+ *
+ * @see {@link SemVerFromString} for parsing version strings
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVer: SemVer = declare(
+  SemVer_.isSemVer,
+  {
+    representation: {
+      id: "effect/schema/SemVer",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.SemVer`,
+      Type: `SemVer.SemVer`,
+      importDeclarations: [`import * as SemVer from "effect/SemVer"`]
+    }),
+    expected: "SemVer",
+    toCodecArbitrary: () =>
+      linkDecoding<SemVer_.SemVer>()(
+        Struct({
+          major: Natural,
+          minor: Natural,
+          patch: Natural,
+          prerelease: ArraySchema(Union([Natural, Literals(["alpha", "beta", "rc", "x-1", "0a"])])),
+          build: ArraySchema(Literals(["build", "001", "sha-5114f85"]))
+        }),
+        SchemaGetter.transform(SemVer_.make)
+      ),
+    toCodecJson: () =>
+      link<SemVer_.SemVer>()(
+        SemVerString,
+        semVerFromString
+      ),
+    toFormatter: () => SemVer_.format
+  }
+)
+/**
+ * Type-level representation of {@link SemVerFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface SemVerFromString extends decodeTo<SemVer, String> {
+  readonly "Rebuild": SemVerFromString
+}
+/**
+ * Schema that parses a Semantic Versioning 2.0.0 string into a `SemVer`.
+ *
+ * **Details**
+ *
+ * Decoding:
+ * - A `string` is decoded with `SemVer.parse`, which rejects a `v` prefix,
+ *   surrounding whitespace, partial versions, and leading zeros.
+ *
+ * Encoding:
+ * - A `SemVer` is encoded with `SemVer.format`, including build metadata.
+ *
+ * @see {@link SemVer} for validating values that are already SemVer values
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVerFromString: SemVerFromString = SemVerString.pipe(
+  decodeTo(SemVer, semVerFromString)
+)
+const semVerRangeFromString: SchemaTransformation.Transformation<SemVerRange_.SemVerRange, string> =
+  SchemaTransformation
+    .transformEffect<SemVerRange_.SemVerRange, string>({
+      decode: (s, options) => {
+        const result = SemVerRange_.parse(s)
+        return Result_.isFailure(result)
+          ? Effect.fail(new SchemaIssue.InvalidValue({ message: result.failure.message }, s, options))
+          : Effect.succeed(result.success)
+      },
+      encode: (range) => Effect.succeed(SemVerRange_.format(range))
+    })
+const SemVerRangeString = String.annotate({ expected: "a string that will be decoded as a SemVer range" })
+/**
+ * Type-level representation of {@link SemVerRange}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface SemVerRange extends declare<SemVerRange_.SemVerRange> {
+  readonly "Rebuild": SemVerRange
+}
+/**
+ * Schema for `SemVerRange` values.
+ *
+ * **Details**
+ *
+ * The JSON and StringTree codecs encode a range with `SemVerRange.format`.
+ *
+ * @see {@link SemVerRangeFromString} for parsing range strings
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVerRange: SemVerRange = declare(
+  SemVerRange_.isSemVerRange,
+  {
+    representation: {
+      id: "effect/schema/SemVerRange",
+      payload: null
+    },
+    toCode: () => ({
+      runtime: `Schema.SemVerRange`,
+      Type: `SemVerRange.SemVerRange`,
+      importDeclarations: [`import * as SemVerRange from "effect/SemVerRange"`]
+    }),
+    expected: "SemVerRange",
+    toCodecArbitrary: () =>
+      linkDecoding<SemVerRange_.SemVerRange>()(
+        Literals(["*", "1.2.3", "^1.2.3", "~1.2", "1.x || >=2.0.0-rc.1 <3", "1.2.3 - 2", "<=0.0.1-0"]),
+        SchemaGetter.transform(SemVerRange_.parseUnsafe)
+      ),
+    toCodecJson: () =>
+      link<SemVerRange_.SemVerRange>()(
+        SemVerRangeString,
+        semVerRangeFromString
+      ),
+    toFormatter: () => SemVerRange_.format
+  }
+)
+/**
+ * Type-level representation of {@link SemVerRangeFromString}.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface SemVerRangeFromString extends decodeTo<SemVerRange, String> {
+  readonly "Rebuild": SemVerRangeFromString
+}
+/**
+ * Schema that parses an npm-style version range string into a `SemVerRange`.
+ *
+ * **Details**
+ *
+ * Decoding:
+ * - A `string` is decoded with `SemVerRange.parse`.
+ *
+ * Encoding:
+ * - A `SemVerRange` is encoded with `SemVerRange.format`, which keeps the
+ *   parsed operators and normalizes wildcard spellings.
+ *
+ * @see {@link SemVerRange} for validating values that are already ranges
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVerRangeFromString: SemVerRangeFromString = SemVerRangeString.pipe(
+  decodeTo(SemVerRange, semVerRangeFromString)
+)
 
 /**
  * Type-level representation returned by {@link Class}.

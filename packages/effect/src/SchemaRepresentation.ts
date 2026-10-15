@@ -1945,6 +1945,32 @@ export const BigDecimalReviver: DeclarationReviver<null> = makeFixedDeclarationR
 )
 
 /**
+ * Reviver for persisted {@link Schema.SemVer} declarations.
+ *
+ * @see {@link Schema.SemVer} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVerReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/SemVer",
+  Schema.SemVer
+)
+
+/**
+ * Reviver for persisted {@link Schema.SemVerRange} declarations.
+ *
+ * @see {@link Schema.SemVerRange} for the corresponding schema
+ * @stability unstable
+ * @category schemas
+ * @since 4.0.6
+ */
+export const SemVerRangeReviver: DeclarationReviver<null> = makeFixedDeclarationReviver(
+  "effect/schema/SemVerRange",
+  Schema.SemVerRange
+)
+
+/**
  * Reviver for persisted `File` declarations.
  *
  * **When to use**

@@ -699,6 +699,18 @@ export * as ScopedRef from "./ScopedRef.ts"
 export * as Semaphore from "./Semaphore.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as SemVer from "./SemVer.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as SemVerRange from "./SemVerRange.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
