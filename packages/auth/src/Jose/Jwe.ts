@@ -2,9 +2,9 @@
  * Compact direct A256GCM encryption with authenticated protected headers and redacted plaintext.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
-import * as Aes from "effect/crypto/Aes"
+import * as Aead from "effect/crypto/Aead"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
@@ -21,7 +21,7 @@ import type { SecretKey } from "./Jwk.ts"
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const Header = Schema.Struct({
   alg: Schema.Literal("dir"),
@@ -36,7 +36,7 @@ export const Header = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type Header = typeof Header.Type
 /**
@@ -44,7 +44,7 @@ export type Header = typeof Header.Type
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type JweError = InvalidToken | InvalidKey | OperationError | DecryptionFailed
 
@@ -83,7 +83,10 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  *   )
  *   const decrypted = yield* Jwe.decrypt(token, key)
  *   return new TextDecoder().decode(Redacted.value(decrypted.plaintext))
- * }).pipe(Effect.provide(NodeCrypto.layer)))
+ * }).pipe(
+ *   Effect.provide(NodeCrypto.layerAead),
+ *   Effect.provide(NodeCrypto.layerSecureRandom)
+ * ))
  * plaintext // => "private message"
  * ```
  *
@@ -91,13 +94,13 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const encrypt = Effect.fnUntraced(function*(
   plaintext: Redacted.Redacted<Uint8Array>,
   key: SecretKey,
   input: Header
-): Effect.fn.Return<Redacted.Redacted<string>, JweError, Aes.Aes | SecureRandom.SecureRandom> {
+): Effect.fn.Return<Redacted.Redacted<string>, JweError, Aead.Aead | SecureRandom.SecureRandom> {
   const header = yield* readHeader(input)
 
   if (key.algorithm !== "dir") return yield* InvalidKey.make({})
@@ -113,21 +116,21 @@ export const encrypt = Effect.fnUntraced(function*(
   )
 
   if (protectedPart.length > 4096) return yield* InvalidToken.make({ reason: "header" })
-  const nonce = yield* SecureRandom.randomBytes(12).pipe(
-    Effect.mapError(() => CryptoUnavailable.make({})),
+  const random = yield* SecureRandom.SecureRandom
+  const nonce = yield* random.randomBytes(12).pipe(
+    Effect.catchDefect(() => CryptoUnavailable.make({})),
+    Effect.uninterruptible,
     Effect.flatMap(copy)
   )
   yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(12, 12)), nonce, "nonce")
-  const aes = yield* Aes.Aes
+  const aead = yield* Aead.Aead
   const sealed = yield* withSecret(plaintext, (data) =>
     withSecret(key.material, (owned) =>
       Effect.gen(function*() {
         yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
-        return yield* native(aes.encryptGcm({
-          key: Redacted.make(owned),
-          nonce,
-          data,
-          additionalData: utf8(protectedPart)
+        return yield* native(Effect.gen(function*() {
+          const secretKey = yield* Aead.key(Aead.aes256Gcm, owned)
+          return yield* aead.encrypt(secretKey, data, { nonce, aad: utf8(protectedPart) })
         }))
       })))
 
@@ -145,7 +148,7 @@ export const encrypt = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category cryptography
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const decrypt = Effect.fnUntraced(function*(
   token: Redacted.Redacted<string>,
@@ -172,19 +175,16 @@ export const decrypt = Effect.fnUntraced(function*(
   sealed.set(data)
   sealed.set(authTag, data.length)
 
-  const aes = yield* Aes.Aes
+  const aead = yield* Aead.Aead
   const plaintext = yield* withSecret(key.material, (owned) =>
     Effect.gen(function*() {
       yield* decodeInput(Schema.Uint8Array.check(Schema.isBetweenLength(32, 32)), owned, "key")
-      return yield* aes.decryptGcm({
-        key: Redacted.make(owned),
-        nonce,
-        data: sealed,
-        additionalData: utf8(protectedPart)
-      }).pipe(
+      const secretKey = yield* native(Aead.key(Aead.aes256Gcm, owned))
+      return yield* aead.decrypt(secretKey, sealed, { nonce, aad: utf8(protectedPart) }).pipe(
         Effect.mapError((error) =>
-          error.reason._tag === "AuthenticationFailed" ? DecryptionFailed.make({}) : operationError(error)
+          error.reason._tag === "DecryptionFailed" ? DecryptionFailed.make({}) : operationError(error)
         ),
+        Effect.catchDefect(() => CryptoUnavailable.make({})),
         Effect.map(Redacted.make)
       )
     }))

@@ -2,9 +2,10 @@ import type { JoseError } from "@effect/auth"
 import { Jwe, Jwk, Jws } from "@effect/auth/Jose"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Redacted, Scope } from "effect"
-import { Aes, Hmac, type SecureRandom } from "effect/crypto"
+import { Aead, type CryptoError, Mac, type SecureRandom } from "effect/crypto"
+import { webCryptoLayer as cryptoLayer } from "../utils/crypto.ts"
 import { withNativeGate } from "../utils/nativeGate.ts"
-import { cryptoLayer, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
+import { privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
 
 describe("native operation lifecycle", { concurrent: false }, () => {
   for (
@@ -39,7 +40,7 @@ describe("native operation lifecycle", { concurrent: false }, () => {
             let work: Effect.Effect<
               unknown,
               JoseError.VerifyError | Jwe.JweError,
-              Jws.Requirements | Aes.Aes | SecureRandom.SecureRandom
+              Jws.Requirements | Aead.Aead | SecureRandom.SecureRandom
             >
             switch (operation) {
               case "public key encoding":
@@ -109,39 +110,39 @@ describe("native operation lifecycle", { concurrent: false }, () => {
   }
 
   for (const algorithm of ["HMAC", "AES"] as const) {
-    it.effect(`keeps owned ${algorithm} inputs alive until interrupted native work settles, then wipes them`, () =>
+    it.effect(`isolates ${algorithm} inputs until interrupted native work settles`, () =>
       Effect.gen(function*() {
         const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
         const key = yield* Jwk.importSecret(Redacted.make(secretJwk), algorithm === "HMAC" ? "HS256" : "dir")
-        const hmac = yield* Hmac.Hmac
-        const aes = yield* Aes.Aes
+        const mac = yield* Mac.Mac
+        const aead = yield* Aead.Aead
         const plaintext = utf8("owned plaintext")
         const expected = plaintext.slice()
-        let ownedKey: Uint8Array | undefined
+        let readKey: Effect.Effect<Uint8Array, CryptoError.CryptoError> = Effect.die("Key not yet provided")
         let ownedPlaintext: Uint8Array | undefined
         let finalized = false
         const operation: Effect.Effect<
           Redacted.Redacted<string>,
           Jwe.JweError,
-          Jws.Requirements | Aes.Aes | SecureRandom.SecureRandom
+          Jws.Requirements | Aead.Aead | SecureRandom.SecureRandom
         > = algorithm === "HMAC"
           ? Jws.sign(Redacted.make(plaintext), key, { alg: "HS256" })
           : Jwe.encrypt(Redacted.make(plaintext), key, { alg: "dir", enc: "A256GCM" })
         const work = operation.pipe(
-          Effect.provideService(Hmac.Hmac, {
-            ...hmac,
-            compute(options) {
-              ownedKey = Redacted.value(options.key)
-              return hmac.compute(options)
-            }
+          Effect.provideService(Mac.Mac, {
+            ...mac,
+            sign: Effect.fnUntraced(function*(key, data) {
+              readKey = Mac.toBytes(key)
+              return yield* mac.sign(key, data)
+            })
           }),
-          Effect.provideService(Aes.Aes, {
-            ...aes,
-            encryptGcm(options) {
-              ownedKey = Redacted.value(options.key)
-              ownedPlaintext = options.data
-              return aes.encryptGcm(options)
-            }
+          Effect.provideService(Aead.Aead, {
+            ...aead,
+            encrypt: Effect.fnUntraced(function*(key, data, options) {
+              readKey = Aead.toBytes(key)
+              ownedPlaintext = data
+              return yield* aead.encrypt(key, data, options)
+            })
           }),
           Effect.ensuring(Effect.sync(() => {
             finalized = true
@@ -151,22 +152,22 @@ describe("native operation lifecycle", { concurrent: false }, () => {
           Effect.gen(function*() {
             const active = yield* Effect.forkIn(work, owner)
             yield* gate.entered
-            assert.isDefined(ownedKey)
+            const ownedKey = yield* readKey
             assert.notStrictEqual(ownedKey, Redacted.value(key.material))
-            assert.deepStrictEqual(ownedKey, new Uint8Array(32).fill(7))
+            assert.deepStrictEqual(yield* readKey, new Uint8Array(32).fill(7))
             Redacted.value(key.material).fill(11)
             plaintext.fill(0)
-            assert.deepStrictEqual(ownedKey, new Uint8Array(32).fill(7))
+            assert.deepStrictEqual(yield* readKey, new Uint8Array(32).fill(7))
             if (algorithm === "AES") assert.deepStrictEqual(ownedPlaintext, expected)
             const stopping = yield* Effect.forkChild(Fiber.interrupt(active), { startImmediately: true })
             yield* Effect.yieldNow
             assert.isFalse(finalized)
             assert.isUndefined(stopping.pollUnsafe())
-            assert.deepStrictEqual(ownedKey, new Uint8Array(32).fill(7))
+            assert.deepStrictEqual(yield* readKey, new Uint8Array(32).fill(7))
             yield* gate.release
             yield* Fiber.join(stopping)
             assert.isTrue(finalized)
-            assert.isTrue(ownedKey?.every((byte) => byte === 0))
+            assert.deepStrictEqual(yield* readKey, new Uint8Array(32).fill(7))
             if (algorithm === "AES") assert.isTrue(ownedPlaintext?.every((byte) => byte === 0))
             assert.deepStrictEqual(Redacted.value(key.material), new Uint8Array(32).fill(11))
           }))

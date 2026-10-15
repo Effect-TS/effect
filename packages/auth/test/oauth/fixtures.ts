@@ -1,4 +1,3 @@
-import * as NodeCrypto from "@effect/platform-node/NodeCrypto"
 import { assert } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
@@ -8,7 +7,7 @@ import * as Redacted from "effect/Redacted"
 
 import type { OAuth } from "@effect/auth"
 
-export const cryptoLayer = NodeCrypto.layer
+export { cryptoLayer } from "../utils/crypto.ts"
 
 export const metadata: OAuth.Metadata = {
   issuer: "https://issuer.example/tenant/",

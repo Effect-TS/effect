@@ -1,6 +1,6 @@
 {
   "name": "@effect/auth",
-  "version": "4.0.4",
+  "version": "4.0.5",
   "type": "module",
   "license": "MIT",
   "description": "JOSE, OAuth, and OpenID Connect protocols for Effect",

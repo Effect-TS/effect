@@ -1,12 +1,11 @@
 /**
- * Fresh private transaction secrets and RFC 7636 S256 PKCE challenges backed by Effect's SecureRandom and Sha2 services.
+ * Fresh private transaction secrets and RFC 7636 S256 PKCE challenges backed by Effect's SecureRandom and Digest services.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
-import type * as CryptoError from "effect/crypto/CryptoError"
+import * as Digest from "effect/crypto/Digest"
 import * as SecureRandom from "effect/crypto/SecureRandom"
-import * as Sha2 from "effect/crypto/Sha2"
 import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
@@ -28,7 +27,7 @@ import { Unavailable } from "./OAuthError.ts"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted } from "effect"
  *
- * const state = await Effect.runPromise(Pkce.random().pipe(Effect.provide(NodeCrypto.layer)))
+ * const state = await Effect.runPromise(Pkce.random().pipe(Effect.provide(NodeCrypto.layerSecureRandom)))
  * Redacted.value(state).length // => 43
  * ```
  *
@@ -36,22 +35,22 @@ import { Unavailable } from "./OAuthError.ts"
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const random = Effect.fnUntraced(
   function*(): Effect.fn.Return<
     Redacted.Redacted<string>,
-    Unavailable | CryptoError.CryptoError,
+    Unavailable,
     SecureRandom.SecureRandom
   > {
     const random = yield* SecureRandom.SecureRandom
-    const bytes = yield* random.randomBytes(32)
+    const bytes = yield* random.randomBytes(32).pipe(Effect.uninterruptible)
 
     if (bytes.length !== 32) return yield* Unavailable.make({})
 
     return Redacted.make(Base64Url.encode(bytes))
   },
-  Effect.mapError(() => Unavailable.make({}))
+  Effect.catchDefect(() => Unavailable.make({}))
 )
 
 /**
@@ -59,7 +58,7 @@ export const random = Effect.fnUntraced(
  *
  * **Details**
  *
- * Requires the Sha2 service for SHA-256 hashing.
+ * Requires the Digest service for SHA-256 hashing.
  *
  * **Example** (Checking the RFC 7636 Appendix B vector)
  *
@@ -70,7 +69,7 @@ export const random = Effect.fnUntraced(
  *
  * const challenge = await Effect.runPromise(
  *   Pkce.challenge(Redacted.make("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).pipe(
- *     Effect.provide(NodeCrypto.layer)
+ *     Effect.provide(NodeCrypto.layerDigest)
  *   )
  * )
  * challenge // => "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
@@ -80,25 +79,25 @@ export const random = Effect.fnUntraced(
  *
  * @stability unstable
  * @category encoding
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const challenge = Effect.fnUntraced(
   function*(
     input: Redacted.Redacted<string>
-  ): Effect.fn.Return<string, Unavailable | CryptoError.CryptoError, Sha2.Sha2> {
+  ): Effect.fn.Return<string, Unavailable, Digest.Digest> {
     const verifier = yield* Validation.reveal(yield* Validation.decode(Validation.Verifier, input))
-    const sha2 = yield* Sha2.Sha2
-    const digest = yield* sha2.digest("SHA-256", new TextEncoder().encode(verifier)).pipe(Effect.uninterruptible)
+    const digests = yield* Digest.Digest
+    const digest = yield* digests.digest(Digest.sha256, new TextEncoder().encode(verifier)).pipe(Effect.uninterruptible)
 
     if (digest.length !== 32) return yield* Unavailable.make({})
 
     return Base64Url.encode(digest)
   },
-  Effect.mapError(() => Unavailable.make({}))
+  Effect.catchDefect(() => Unavailable.make({}))
 )
 
 /**
- * Generates a fresh private PKCE verifier and its public S256 challenge using the SecureRandom and Sha2 services.
+ * Generates a fresh private PKCE verifier and its public S256 challenge using the SecureRandom and Digest services.
  *
  * **Example** (Creating an S256 transaction)
  *
@@ -107,7 +106,7 @@ export const challenge = Effect.fnUntraced(
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted } from "effect"
  *
- * const transaction = await Effect.runPromise(Pkce.make().pipe(Effect.provide(NodeCrypto.layer)))
+ * const transaction = await Effect.runPromise(Pkce.make().pipe(Effect.provide([NodeCrypto.layerDigest, NodeCrypto.layerSecureRandom])))
  * Redacted.value(transaction.verifier).length // => 43
  * transaction.challenge.length // => 43
  * ```
@@ -117,12 +116,12 @@ export const challenge = Effect.fnUntraced(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const make = Effect.fnUntraced(function*(): Effect.fn.Return<
   { verifier: Redacted.Redacted<string>; challenge: string },
   Unavailable,
-  SecureRandom.SecureRandom | Sha2.Sha2
+  SecureRandom.SecureRandom | Digest.Digest
 > {
   const verifier = yield* random()
 

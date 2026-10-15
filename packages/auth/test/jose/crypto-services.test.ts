@@ -2,148 +2,98 @@ import { JoseError } from "@effect/auth"
 import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
-import { Aes, CryptoError, Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, WebCrypto } from "effect/crypto"
+import { Aead, CryptoError, Digest, Mac, SecureRandom, Signature, WebCrypto } from "effect/crypto"
 import * as Base64Url from "effect/encoding/Base64Url"
+import { webCryptoLayer, withSubtle } from "../utils/crypto.ts"
 import { cryptoLayer, privateJwk, publicJwk, secretJwk, utf8 } from "./fixtures.ts"
 
 for (const algorithm of ["RS256", "PS256", "ES256", "EdDSA"] as const) {
   it.effect(`uses injected services for ${algorithm} generation, signing and key-set verification`, () =>
     Effect.gen(function*() {
-      const rsa = yield* Rsa.Rsa
-      const ecdsa = yield* Ecdsa.Ecdsa
-      const ed25519 = yield* Ed25519.Ed25519
+      const signature = yield* Signature.Signature
       const calls: Array<string> = []
-      const privateInputs: Array<Uint8Array> = []
+      const expected = algorithm === "RS256"
+        ? Signature.rsaPkcs1v15({ hash: Digest.sha256, modulusLength: 2048 })
+        : algorithm === "PS256"
+        ? Signature.rsaPss({ hash: Digest.sha256, modulusLength: 2048, saltLength: 32 })
+        : algorithm === "ES256"
+        ? Signature.ecdsaP256
+        : Signature.ed25519
       const program = Effect.gen(function*() {
         const pair = yield* Jwk.generateKeyPair({ algorithm })
         const key = yield* Jwk.importPrivate(pair.privateKey, algorithm)
+        const original = Redacted.value(key.material).slice()
         const token = yield* Jws.sign(Redacted.make(utf8("provider")), key, { alg: algorithm })
         const verified = yield* Jws.verifyWithKeySet(token, { algorithms: [algorithm] }).pipe(
           Effect.provide(Jwks.layerLocal({ keys: [pair.publicKey] }))
         )
         assert.deepStrictEqual(Redacted.value(verified.payload), utf8("provider"))
-        assert.isTrue(Redacted.value(key.material).some((byte) => byte !== 0))
+        assert.deepStrictEqual(Redacted.value(key.material), original)
       })
       yield* program.pipe(
-        Effect.provideService(Rsa.Rsa, {
-          ...rsa,
-          generateKeyPair(options) {
-            calls.push("RSA.generate")
-            assert.strictEqual(options?.modulusLength, 2048)
-            return rsa.generateKeyPair(options)
+        Effect.provideService(Signature.Signature, {
+          ...signature,
+          generateKeyPair(algorithm) {
+            calls.push("generate")
+            assert.deepStrictEqual<Signature.Algorithm>(algorithm, expected)
+            return signature.generateKeyPair(algorithm)
           },
-          signPss(options) {
-            calls.push("PS256.sign")
-            assert.strictEqual(options.hash, "SHA-256")
-            assert.strictEqual(options.saltLength, 32)
-            privateInputs.push(Redacted.value(options.privateKey))
-            return rsa.signPss(options)
+          sign(key, data) {
+            calls.push("sign")
+            assert.deepStrictEqual(key.algorithm, expected)
+            return signature.sign(key, data)
           },
-          verifyPss(options) {
-            calls.push("PS256.verify")
-            assert.strictEqual(options.hash, "SHA-256")
-            assert.strictEqual(options.saltLength, 32)
-            return rsa.verifyPss(options)
-          },
-          signPkcs1v15(options) {
-            calls.push("RS256.sign")
-            assert.strictEqual(options.hash, "SHA-256")
-            privateInputs.push(Redacted.value(options.privateKey))
-            return rsa.signPkcs1v15(options)
-          },
-          verifyPkcs1v15(options) {
-            calls.push("RS256.verify")
-            assert.strictEqual(options.hash, "SHA-256")
-            return rsa.verifyPkcs1v15(options)
-          }
-        }),
-        Effect.provideService(Ecdsa.Ecdsa, {
-          ...ecdsa,
-          generateKeyPair(options) {
-            calls.push("ES256.generate")
-            assert.strictEqual(options.curve, "P-256")
-            return ecdsa.generateKeyPair(options)
-          },
-          sign(options) {
-            calls.push("ES256.sign")
-            assert.strictEqual(options.curve, "P-256")
-            assert.strictEqual(options.hash, "SHA-256")
-            privateInputs.push(Redacted.value(options.privateKey))
-            return ecdsa.sign(options)
-          },
-          verify(options) {
-            calls.push("ES256.verify")
-            assert.strictEqual(options.curve, "P-256")
-            assert.strictEqual(options.hash, "SHA-256")
-            assert.strictEqual(options.signature.length, 64)
-            return ecdsa.verify(options)
-          }
-        }),
-        Effect.provideService(Ed25519.Ed25519, {
-          ...ed25519,
-          generateKeyPair() {
-            calls.push("EdDSA.generate")
-            return ed25519.generateKeyPair()
-          },
-          sign(options) {
-            calls.push("EdDSA.sign")
-            privateInputs.push(Redacted.value(options.privateKey))
-            return ed25519.sign(options)
-          },
-          verify(options) {
-            calls.push("EdDSA.verify")
-            assert.strictEqual(options.signature.length, 64)
-            return ed25519.verify(options)
+          verify(key, signatureBytes, data) {
+            calls.push("verify")
+            assert.deepStrictEqual(key.algorithm, expected)
+            if (algorithm === "ES256" || algorithm === "EdDSA") assert.lengthOf(signatureBytes, 64)
+            return signature.verify(key, signatureBytes, data)
           }
         })
       )
-      const generation = algorithm === "RS256" || algorithm === "PS256" ? "RSA" : algorithm
-      assert.deepStrictEqual(calls, [`${generation}.generate`, `${algorithm}.sign`, `${algorithm}.verify`])
-      assert.lengthOf(privateInputs, 1)
-      assert.isTrue(privateInputs[0].every((byte) => byte === 0))
+      assert.deepStrictEqual(calls, ["generate", "sign", "verify"])
     }).pipe(Effect.provide(cryptoLayer)))
 }
 
-it.effect("uses injected HMAC operations with owned keys and SHA-256", () =>
+it.effect("uses injected HMAC operations with isolated keys and SHA-256", () =>
   Effect.gen(function*() {
-    const hmac = yield* Hmac.Hmac
+    const mac = yield* Mac.Mac
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
     const original = Redacted.value(key.material).slice()
-    const inputs: Array<Uint8Array> = []
     const calls: Array<string> = []
     yield* Effect.gen(function*() {
       const token = yield* Jws.sign(Redacted.make(utf8("provider")), key, { alg: "HS256" })
       const verified = yield* Jws.verify(token, key, { algorithms: ["HS256"] })
       assert.deepStrictEqual(Redacted.value(verified.payload), utf8("provider"))
-    }).pipe(Effect.provideService(Hmac.Hmac, {
-      ...hmac,
-      compute(options) {
-        calls.push("compute")
-        assert.strictEqual(options.hash, "SHA-256")
-        inputs.push(Redacted.value(options.key))
-        assert.notStrictEqual(inputs[0], Redacted.value(key.material))
-        return hmac.compute(options)
-      },
-      verify(options) {
+    }).pipe(Effect.provideService(Mac.Mac, {
+      ...mac,
+      sign: Effect.fnUntraced(function*(input, data) {
+        calls.push("sign")
+        assert.strictEqual(input.algorithm, Mac.hmacSha256)
+        const bytes = yield* Mac.toBytes(input)
+        assert.notStrictEqual(bytes, Redacted.value(key.material))
+        assert.deepStrictEqual(bytes, original)
+        return yield* mac.sign(input, data)
+      }),
+      verify: Effect.fnUntraced(function*(input, tag, data) {
         calls.push("verify")
-        assert.strictEqual(options.hash, "SHA-256")
-        inputs.push(Redacted.value(options.key))
-        return hmac.verify(options)
-      }
+        assert.strictEqual(input.algorithm, Mac.hmacSha256)
+        assert.deepStrictEqual(yield* Mac.toBytes(input), original)
+        return yield* mac.verify(input, tag, data)
+      })
     }))
-    assert.deepStrictEqual(calls, ["compute", "verify"])
-    assert.isTrue(inputs.every((input) => input.every((byte) => byte === 0)))
+    assert.deepStrictEqual(calls, ["sign", "verify"])
     assert.deepStrictEqual(Redacted.value(key.material), original)
   }).pipe(Effect.provide(cryptoLayer)))
 
-it.effect("uses injected AES-GCM and SecureRandom with owned plaintext, keys and a 96-bit IV", () =>
+it.effect("uses injected AES-GCM and SecureRandom with owned plaintext, isolated keys and a 96-bit IV", () =>
   Effect.gen(function*() {
-    const aes = yield* Aes.Aes
+    const aead = yield* Aead.Aead
     const random = yield* SecureRandom.SecureRandom
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
+    const original = Redacted.value(key.material).slice()
     const plaintext = utf8("provider")
     const nonce = new Uint8Array(12).fill(9)
-    const keys: Array<Uint8Array> = []
     let ownedPlaintext: Uint8Array | undefined
     const calls: Array<string> = []
     yield* Effect.gen(function*() {
@@ -162,36 +112,36 @@ it.effect("uses injected AES-GCM and SecureRandom with owned plaintext, keys and
           return Effect.succeed(nonce)
         }
       }),
-      Effect.provideService(Aes.Aes, {
-        ...aes,
-        encryptGcm(options) {
+      Effect.provideService(Aead.Aead, {
+        ...aead,
+        encrypt: Effect.fnUntraced(function*(input, data, options) {
           calls.push("encrypt")
-          ownedPlaintext = options.data
-          assert.notStrictEqual(options.data, plaintext)
+          ownedPlaintext = data
+          assert.notStrictEqual(data, plaintext)
           assert.notStrictEqual(options.nonce, nonce)
-          assert.strictEqual(Redacted.value(options.key).length, 32)
-          keys.push(Redacted.value(options.key))
-          assert.isDefined(options.additionalData)
-          return aes.encryptGcm(options)
-        },
-        decryptGcm(options) {
+          assert.strictEqual(input.algorithm, Aead.aes256Gcm)
+          assert.deepStrictEqual(yield* Aead.toBytes(input), original)
+          assert.isDefined(options.aad)
+          return yield* aead.encrypt(input, data, options)
+        }),
+        decrypt: Effect.fnUntraced(function*(input, data, options) {
           calls.push("decrypt")
-          keys.push(Redacted.value(options.key))
-          assert.strictEqual(Redacted.value(options.key).length, 32)
-          return aes.decryptGcm(options)
-        }
+          assert.strictEqual(input.algorithm, Aead.aes256Gcm)
+          assert.deepStrictEqual(yield* Aead.toBytes(input), original)
+          return yield* aead.decrypt(input, data, options)
+        })
       })
     )
     assert.deepStrictEqual(calls, ["random", "encrypt", "decrypt"])
-    assert.isTrue(keys.every((input) => input.every((byte) => byte === 0)))
     assert.isTrue(ownedPlaintext?.every((byte) => byte === 0))
     assert.deepStrictEqual(plaintext, utf8("provider"))
-    assert.isTrue(Redacted.value(key.material).some((byte) => byte !== 0))
+    assert.deepStrictEqual(Redacted.value(key.material), original)
   }).pipe(Effect.provide(cryptoLayer)))
 
 it.effect("routes key helpers and algorithm layers through the injected WebCrypto backend", () =>
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const crypto = yield* WebCrypto.WebCrypto
+    const subtle = crypto.subtle
     const key = yield* Jwk.importPrivate(Redacted.make(privateJwk), "ES256")
     const calls: Array<string> = []
     const backend = new Proxy(subtle, {
@@ -204,25 +154,29 @@ it.effect("routes key helpers and algorithm layers through the injected WebCrypt
         }
       }
     })
-    const layer = Layer.mergeAll(Hmac.layer, Ecdsa.layer, Rsa.layer, Ed25519.layer, Aes.layer).pipe(
-      Layer.provideMerge(Layer.succeed(WebCrypto.SubtleCrypto, backend)),
+    const layer = webCryptoLayer.pipe(
+      Layer.provideMerge(WebCrypto.layer(withSubtle(crypto, backend))),
       Layer.fresh
     )
     yield* Effect.gen(function*() {
-      yield* Jwk.importPublic(publicJwk, "ES256")
-      assert.deepStrictEqual(calls, ["importKey", "exportKey", "importKey", "exportKey"])
-      calls.length = 0
-      yield* Jwk.importPrivate(Redacted.make(privateJwk), "ES256")
-      assert.deepStrictEqual(calls, ["importKey", "exportKey"])
-      calls.length = 0
-      yield* Jwk.importPkcs8(key.material, "ES256")
-      assert.deepStrictEqual(calls, ["importKey", "exportKey", "importKey", "exportKey", "importKey", "exportKey"])
-      calls.length = 0
+      for (
+        const imported of [
+          Jwk.importPublic(publicJwk, "ES256"),
+          Jwk.importPrivate(Redacted.make(privateJwk), "ES256"),
+          Jwk.importPkcs8(key.material, "ES256")
+        ]
+      ) {
+        yield* imported
+        assert.include(calls, "importKey")
+        assert.include(calls, "exportKey")
+        calls.length = 0
+      }
       yield* Jwk.generateKeyPair({ algorithm: "ES256" })
-      assert.deepStrictEqual(calls, ["generateKey", "exportKey", "exportKey", "importKey", "exportKey"])
+      assert.include(calls, "generateKey")
+      assert.include(calls, "exportKey")
       calls.length = 0
       const secret = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
-      assert.deepStrictEqual(calls, ["importKey", "exportKey"])
+      assert.deepStrictEqual(calls, [])
       calls.length = 0
       const token = yield* Jws.sign(Redacted.make(utf8("backend")), secret, { alg: "HS256" })
       yield* Jws.verify(token, secret, { algorithms: ["HS256"] })
@@ -231,7 +185,7 @@ it.effect("routes key helpers and algorithm layers through the injected WebCrypt
       const encryption = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
       const encrypted = yield* Jwe.encrypt(Redacted.make(utf8("backend")), encryption, { alg: "dir", enc: "A256GCM" })
       yield* Jwe.decrypt(encrypted, encryption)
-      assert.deepStrictEqual(calls, ["importKey", "exportKey", "importKey", "encrypt", "importKey", "decrypt"])
+      assert.deepStrictEqual(calls, ["importKey", "encrypt", "importKey", "decrypt"])
     }).pipe(Effect.provide(layer))
   }).pipe(Effect.provide(cryptoLayer)))
 
@@ -242,9 +196,9 @@ for (
       new CryptoError.Unsupported({ description: "secret-canary", cause: "secret-canary" }),
       "JoseUnsupportedAlgorithm"
     ],
-    [new CryptoError.Unknown({ description: "secret-canary", cause: "secret-canary" }), "JoseCryptoUnavailable"],
+    [new CryptoError.NotExtractable({ description: "secret-canary", cause: "secret-canary" }), "JoseCryptoUnavailable"],
     [
-      new CryptoError.BadArgument({ description: "secret-canary", cause: new SyntaxError("secret-canary") }),
+      new CryptoError.InvalidArgument({ description: "secret-canary", cause: new SyntaxError("secret-canary") }),
       "JoseInvalidInput"
     ]
   ] as const
@@ -252,11 +206,11 @@ for (
   it.effect(`sanitizes injected ${reason._tag} failures before exposing ${tag}`, () =>
     Effect.gen(function*() {
       const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "HS256")
-      const hmac = yield* Hmac.Hmac
+      const mac = yield* Mac.Mac
       const error = yield* Jws.sign(Redacted.make(utf8("payload")), key, { alg: "HS256" }).pipe(
-        Effect.provideService(Hmac.Hmac, {
-          ...hmac,
-          compute: () => Effect.fail(new CryptoError.CryptoError({ algorithm: "HMAC", method: "compute", reason }))
+        Effect.provideService(Mac.Mac, {
+          ...mac,
+          sign: () => Effect.fail(new CryptoError.CryptoError({ module: "Mac", method: "sign", reason }))
         }),
         Effect.flip
       )
@@ -278,7 +232,8 @@ it.effect.each([
   "preserves $name key import failures across serialization formats",
   ({ cause, error: ErrorClass }) =>
     Effect.gen(function*() {
-      const subtle = yield* WebCrypto.subtleCrypto
+      const crypto = yield* WebCrypto.WebCrypto
+      const subtle = crypto.subtle
       const key = yield* Jwk.importPrivate(Redacted.make(privateJwk), "ES256")
       const backend = new Proxy(subtle, {
         get(target, name) {
@@ -290,13 +245,14 @@ it.effect.each([
       const imports: ReadonlyArray<Effect.Effect<unknown, JoseError.KeyError>> = [
         Jwk.importPublic(publicJwk, "ES256"),
         Jwk.importPrivate(Redacted.make(privateJwk), "ES256"),
-        Jwk.importPkcs8(key.material, "ES256"),
-        Jwk.importSecret(Redacted.make(secretJwk), "HS256"),
-        Jwk.importSecret(Redacted.make(secretJwk), "dir")
+        Jwk.importPkcs8(key.material, "ES256")
       ]
 
       for (const effect of imports) {
-        const error = yield* effect.pipe(Effect.provideService(WebCrypto.SubtleCrypto, backend), Effect.flip)
+        const error = yield* effect.pipe(
+          Effect.provideService(WebCrypto.WebCrypto, withSubtle(crypto, backend)),
+          Effect.flip
+        )
         assert.ok(error instanceof ErrorClass)
         assert.notInclude(JSON.stringify(error), "secret-canary")
         assert.notProperty(error, "cause")
@@ -306,18 +262,18 @@ it.effect.each([
 
 it.effect("sanitizes authentication failures from the injected AES service", () =>
   Effect.gen(function*() {
-    const aes = yield* Aes.Aes
+    const aead = yield* Aead.Aead
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
     const token = yield* Jwe.encrypt(Redacted.make(utf8("plaintext")), key, { alg: "dir", enc: "A256GCM" })
     const error = yield* Jwe.decrypt(token, key).pipe(
-      Effect.provideService(Aes.Aes, {
-        ...aes,
-        decryptGcm: () =>
+      Effect.provideService(Aead.Aead, {
+        ...aead,
+        decrypt: () =>
           Effect.fail(
             new CryptoError.CryptoError({
-              algorithm: "AES-GCM",
-              method: "decryptGcm",
-              reason: new CryptoError.AuthenticationFailed({ description: "secret-canary", cause: "secret-canary" })
+              module: "Aead",
+              method: "decrypt",
+              reason: new CryptoError.DecryptionFailed()
             })
           )
       }),
@@ -330,7 +286,8 @@ it.effect("sanitizes authentication failures from the injected AES service", () 
 
 it.effect("classifies deferred EC point rejection without exposing backend diagnostics", () =>
   Effect.gen(function*() {
-    const subtle = yield* WebCrypto.subtleCrypto
+    const crypto = yield* WebCrypto.WebCrypto
+    const subtle = crypto.subtle
     const backend = new Proxy(subtle, {
       get(target, name) {
         const value = Reflect.get(target, name, target)
@@ -344,7 +301,7 @@ it.effect("classifies deferred EC point rejection without exposing backend diagn
       }
     })
     const error = yield* Jwk.importPublic(publicJwk, "ES256").pipe(
-      Effect.provideService(WebCrypto.SubtleCrypto, backend),
+      Effect.provideService(WebCrypto.WebCrypto, withSubtle(crypto, backend)),
       Effect.flip
     )
     assert.strictEqual(error._tag, "JoseInvalidKey")

@@ -2,7 +2,7 @@
  * Typed JOSE failures with fixed diagnostics that never contain tokens, claims, keys, URLs, or native causes.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
 import * as Schema from "effect/Schema"
 
@@ -11,7 +11,7 @@ import * as Schema from "effect/Schema"
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class InvalidInput extends Schema.TaggedError<InvalidInput>()("JoseInvalidInput", {
   reason: Schema.Literals(["key", "nonce", "parameters", "data"])
@@ -22,7 +22,7 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()("JoseInvali
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class UnsupportedAlgorithm extends Schema.TaggedError<UnsupportedAlgorithm>()(
   "JoseUnsupportedAlgorithm",
@@ -34,7 +34,7 @@ export class UnsupportedAlgorithm extends Schema.TaggedError<UnsupportedAlgorith
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class CryptoUnavailable extends Schema.TaggedError<CryptoUnavailable>()(
   "JoseCryptoUnavailable",
@@ -46,7 +46,7 @@ export class CryptoUnavailable extends Schema.TaggedError<CryptoUnavailable>()(
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type OperationError = InvalidInput | UnsupportedAlgorithm | CryptoUnavailable
 
@@ -55,7 +55,7 @@ export type OperationError = InvalidInput | UnsupportedAlgorithm | CryptoUnavail
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class InvalidToken extends Schema.TaggedError<InvalidToken>()("JoseInvalidToken", {
   reason: Schema.Literals(["serialization", "header", "payload", "parameters"])
@@ -66,7 +66,7 @@ export class InvalidToken extends Schema.TaggedError<InvalidToken>()("JoseInvali
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class AlgorithmNotAllowed extends Schema.TaggedError<AlgorithmNotAllowed>()(
   "JoseAlgorithmNotAllowed",
@@ -78,7 +78,7 @@ export class AlgorithmNotAllowed extends Schema.TaggedError<AlgorithmNotAllowed>
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class InvalidKey extends Schema.TaggedError<InvalidKey>()("JoseInvalidKey", {}) {}
 
@@ -87,7 +87,7 @@ export class InvalidKey extends Schema.TaggedError<InvalidKey>()("JoseInvalidKey
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class SignatureVerificationFailed extends Schema.TaggedError<SignatureVerificationFailed>()(
   "JoseSignatureVerificationFailed",
@@ -99,7 +99,7 @@ export class SignatureVerificationFailed extends Schema.TaggedError<SignatureVer
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class DecryptionFailed extends Schema.TaggedError<DecryptionFailed>()(
   "JoseDecryptionFailed",
@@ -111,7 +111,7 @@ export class DecryptionFailed extends Schema.TaggedError<DecryptionFailed>()(
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class KeyNotFound extends Schema.TaggedError<KeyNotFound>()("JoseKeyNotFound", {}) {}
 
@@ -120,7 +120,7 @@ export class KeyNotFound extends Schema.TaggedError<KeyNotFound>()("JoseKeyNotFo
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class AmbiguousKey extends Schema.TaggedError<AmbiguousKey>()("JoseAmbiguousKey", {}) {}
 
@@ -129,7 +129,7 @@ export class AmbiguousKey extends Schema.TaggedError<AmbiguousKey>()("JoseAmbigu
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class JwksUnavailable extends Schema.TaggedError<JwksUnavailable>()("JoseJwksUnavailable", {
   reason: Schema.Literals(["configuration", "transport", "response", "cooldown", "busy", "closed"])
@@ -140,7 +140,7 @@ export class JwksUnavailable extends Schema.TaggedError<JwksUnavailable>()("Jose
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class ClaimValidationFailed extends Schema.TaggedError<ClaimValidationFailed>()(
   "JoseClaimValidationFailed",
@@ -163,7 +163,7 @@ export class ClaimValidationFailed extends Schema.TaggedError<ClaimValidationFai
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type KeyError = InvalidKey | KeyNotFound | AmbiguousKey | JwksUnavailable | OperationError
 
@@ -172,7 +172,7 @@ export type KeyError = InvalidKey | KeyNotFound | AmbiguousKey | JwksUnavailable
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type VerifyError =
   | KeyError

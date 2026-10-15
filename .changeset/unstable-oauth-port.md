@@ -1,6 +1,5 @@
 ---
-"effect": patch
-"@effect/auth": patch
+"@effect/auth": minor
 ---
 
-Add unstable `@effect/auth` APIs for JOSE tokens, a scoped OAuth client service, and signed OpenID Connect using Effect's crypto services. Add redacted private-key JWK exports for ECDSA, Ed25519, and RSA.
+Add the unstable `@effect/auth` package with JOSE tokens and key sets, a scoped OAuth 2.0 client, PKCE helpers, and signed OpenID Connect verification backed by Effect's crypto services.

@@ -1,5 +1,4 @@
 import type { Jwk } from "@effect/auth/Jose"
-import { NodeCrypto } from "@effect/platform-node"
 import { Effect, Redacted } from "effect"
 import * as jose from "jose"
 
@@ -18,7 +17,7 @@ export const secretJwk = { kty: "oct", k: jose.base64url.encode(secret) }
 export const utf8 = (input: string) => new TextEncoder().encode(input)
 export const text = (input: Uint8Array) => new TextDecoder().decode(input)
 
-export const cryptoLayer = NodeCrypto.layer
+export { cryptoLayer } from "../utils/crypto.ts"
 
 export const independentJws = (
   payload: Uint8Array,

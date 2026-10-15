@@ -62,7 +62,7 @@ export function withNativeGate<A, E, R>(
   method: NativeMethod,
   use: (gate: NativeGate) => Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> {
-  return Effect.flatMap(Effect.orDie(WebCrypto.subtleCrypto), (subtle) =>
+  return Effect.flatMap(WebCrypto.WebCrypto, ({ subtle }) =>
     Effect.acquireUseRelease(
       Effect.sync(() => {
         const entered = Promise.withResolvers<void>()

@@ -2,7 +2,7 @@
  * Local and scoped remote public-key resolvers with explicit selection policy and bounded HTTPS retrieval.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
@@ -44,7 +44,7 @@ const isPublicJwk = Schema.is(PublicJwk)
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const KeySet = Schema.Struct({
   keys: Schema.Array(Schema.Union([PublicJwk, UnsupportedPublicJwk])).check(Schema.isMaxLength(KeyInput.maxArrayLength))
@@ -55,7 +55,7 @@ export const KeySet = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type KeySet = typeof KeySet.Type
 
@@ -64,7 +64,7 @@ export type KeySet = typeof KeySet.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const Selection = Schema.Struct({
   algorithm: AsymmetricAlgorithm,
@@ -76,7 +76,7 @@ export const Selection = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type Selection = typeof Selection.Type
 
@@ -85,7 +85,7 @@ export type Selection = typeof Selection.Type
  *
  * @stability unstable
  * @category services
- * @since 4.0.5
+ * @since 4.1.0
  */
 export class Jwks extends Context.Service<
   Jwks,
@@ -113,13 +113,16 @@ export class Jwks extends Context.Service<
  *   const resolver = yield* Jwks.makeLocal({ keys: [pair.publicKey] })
  *   const key = yield* resolver.resolve({ algorithm: "ES256", kid: "signing-1" })
  *   return key.algorithm
- * }).pipe(Effect.provide(NodeCrypto.layer)))
+ * }).pipe(
+ *   Effect.provide(NodeCrypto.layerSignature),
+ *   Effect.provide(NodeCrypto.layerSecureRandom)
+ * ))
  * algorithm // => "ES256"
  * ```
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const makeLocal = Effect.fnUntraced(function*(input: unknown) {
   const set = yield* readSet(input)
@@ -139,7 +142,7 @@ export const makeLocal = Effect.fnUntraced(function*(input: unknown) {
  *
  * @stability unstable
  * @category layers
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const layerLocal = (input: unknown): Layer.Layer<Jwks, InvalidKey> => Layer.effect(Jwks, makeLocal(input))
 
@@ -148,7 +151,7 @@ export const layerLocal = (input: unknown): Layer.Layer<Jwks, InvalidKey> => Lay
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface RemoteOptions {
   /**
@@ -315,7 +318,7 @@ type Admission =
  *
  * @stability unstable
  * @category layers
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const layerRemote = (
   input: RemoteOptions

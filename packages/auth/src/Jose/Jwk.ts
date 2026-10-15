@@ -2,28 +2,32 @@
  * Schemas, generation, import, and export for algorithm-bound JOSE keys. Private and symmetric material remains redacted.
  *
  * @stability unstable
- * @since 4.0.5
+ * @since 4.1.0
  */
-import * as Aes from "effect/crypto/Aes"
-import * as Ecdsa from "effect/crypto/Ecdsa"
-import * as Ed25519 from "effect/crypto/Ed25519"
-import * as Hmac from "effect/crypto/Hmac"
-import * as Rsa from "effect/crypto/Rsa"
+import * as KeyFormat from "effect/crypto/KeyFormat"
+import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
+import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { decode as decodeInput, derBytes, native, withPrivateKey, withSecret } from "../internal/crypto.ts"
+import { decode as decodeInput, defectError, derBytes, native, withSecret } from "../internal/crypto.ts"
 import { decode, reveal } from "../internal/encoding.ts"
 import * as KeyInput from "../internal/keyInput.ts"
 import * as KeyPolicy from "../internal/keyPolicy.ts"
-import { type CryptoUnavailable, InvalidKey, type OperationError, type UnsupportedAlgorithm } from "../JoseError.ts"
+import {
+  type CryptoUnavailable,
+  InvalidInput,
+  InvalidKey,
+  type OperationError,
+  type UnsupportedAlgorithm
+} from "../JoseError.ts"
 
 /**
  * Schema for the supported asymmetric signing algorithms: RS256, PS256, ES256, and EdDSA.
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const AsymmetricAlgorithm = Schema.Literals(["RS256", "PS256", "ES256", "EdDSA"])
 /**
@@ -31,7 +35,7 @@ export const AsymmetricAlgorithm = Schema.Literals(["RS256", "PS256", "ES256", "
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type AsymmetricAlgorithm = typeof AsymmetricAlgorithm.Type
 /**
@@ -39,7 +43,7 @@ export type AsymmetricAlgorithm = typeof AsymmetricAlgorithm.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const Algorithm = Schema.Literals(["HS256", "RS256", "PS256", "ES256", "EdDSA"])
 /**
@@ -47,7 +51,7 @@ export const Algorithm = Schema.Literals(["HS256", "RS256", "PS256", "ES256", "E
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type Algorithm = typeof Algorithm.Type
 
@@ -96,7 +100,7 @@ const noSecret = { d: Schema.optionalKey(Schema.Never), k: Schema.optionalKey(Sc
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const PublicJwk = Schema.Union([
   Schema.Struct({ ...rsa, ...noSecret }),
@@ -109,7 +113,7 @@ export const PublicJwk = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type PublicJwk = typeof PublicJwk.Type
 
@@ -118,7 +122,7 @@ export type PublicJwk = typeof PublicJwk.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const PrivateJwk = Schema.Union([
   Schema.Struct({
@@ -140,7 +144,7 @@ export const PrivateJwk = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type PrivateJwk = typeof PrivateJwk.Type
 
@@ -149,7 +153,7 @@ export type PrivateJwk = typeof PrivateJwk.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const SecretJwk = Schema.Struct({
   ...metadata,
@@ -162,7 +166,7 @@ export const SecretJwk = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type SecretJwk = typeof SecretJwk.Type
 
@@ -171,7 +175,7 @@ export type SecretJwk = typeof SecretJwk.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const GenerateKeyPairInput = Schema.Union([
   Schema.Struct({
@@ -187,7 +191,7 @@ export const GenerateKeyPairInput = Schema.Union([
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type GenerateKeyPairInput = typeof GenerateKeyPairInput.Type
 
@@ -196,7 +200,7 @@ export type GenerateKeyPairInput = typeof GenerateKeyPairInput.Type
  *
  * @stability unstable
  * @category schemas
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const GeneratedKeyPair = Schema.Struct({
   publicKey: PublicJwk,
@@ -208,7 +212,7 @@ export const GeneratedKeyPair = Schema.Struct({
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type GeneratedKeyPair = typeof GeneratedKeyPair.Type
 
@@ -217,7 +221,7 @@ export type GeneratedKeyPair = typeof GeneratedKeyPair.Type
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface PublicKey {
   readonly _tag: "PublicKey"
@@ -231,7 +235,7 @@ export interface PublicKey {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface PrivateKey {
   readonly _tag: "PrivateKey"
@@ -245,7 +249,7 @@ export interface PrivateKey {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export interface SecretKey {
   readonly _tag: "SecretKey"
@@ -259,7 +263,7 @@ export interface SecretKey {
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type SigningKey = PrivateKey | SecretKey
 /**
@@ -267,7 +271,7 @@ export type SigningKey = PrivateKey | SecretKey
  *
  * @stability unstable
  * @category models
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type VerificationKey = PublicKey | SecretKey
 
@@ -276,52 +280,38 @@ export type VerificationKey = PublicKey | SecretKey
  *
  * @stability unstable
  * @category errors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export type ImportError = InvalidKey | CryptoUnavailable | UnsupportedAlgorithm
 
 /**
- * Generates asymmetric signing JWKs through the Rsa, Ecdsa, or Ed25519 service, keeping private material redacted.
+ * Generates asymmetric signing JWKs through the Signature service, keeping private material redacted.
  *
  * @see {@link importPrivate} for preparing the generated key for signing
  * @see {@link importPublic} for preparing the generated key for verification
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const generateKeyPair = Effect.fnUntraced(function*(
   input: GenerateKeyPairInput
-): Effect.fn.Return<GeneratedKeyPair, InvalidKey | OperationError, Rsa.Rsa | Ecdsa.Ecdsa | Ed25519.Ed25519> {
+): Effect.fn.Return<GeneratedKeyPair, InvalidKey | OperationError, Signature.Signature> {
   const value = yield* Schema.decodeEffect(GenerateKeyPairInput)(input).pipe(
     Effect.mapError(() => InvalidKey.make({}))
   )
-  let exported: Redacted.Redacted<JsonWebKey>
-  switch (value.algorithm) {
-    case "ES256": {
-      const ecdsa = yield* Ecdsa.Ecdsa
-      exported = yield* native(withPrivateKey(
-        ecdsa.generateKeyPair({ curve: "P-256" }).pipe(Effect.map((pair) => pair.privateKey)),
-        (key) => Ecdsa.privateKeyToJwk("P-256", key)
-      ))
-      break
-    }
-    case "EdDSA": {
-      const ed25519 = yield* Ed25519.Ed25519
-      exported = yield* native(withPrivateKey(
-        ed25519.generateKeyPair().pipe(Effect.map((pair) => pair.privateKey)),
-        Ed25519.privateKeyToJwk
-      ))
-      break
-    }
-    default: {
-      const rsa = yield* Rsa.Rsa
-      exported = yield* native(withPrivateKey(
-        rsa.generateKeyPair({ modulusLength: value.modulusLength ?? 2048 }).pipe(Effect.map((pair) => pair.privateKey)),
-        Rsa.privateKeyToJwk
-      ))
-    }
-  }
+  const signature = yield* Signature.Signature
+  const exported = yield* native(Effect.gen(function*() {
+    const pair = yield* signature.generateKeyPair(
+      KeyPolicy.signatureAlgorithm(value.algorithm, "modulusLength" in value ? value.modulusLength : undefined)
+    )
+    return Redacted.make(
+      yield* KeyFormat.encode(
+        KeyFormat.jwk,
+        pair.privateKey as KeyFormat.PrivateKey<Signature.Algorithm>
+      )
+    )
+  }))
   const privateJwk = yield* read(PrivateJwk, {
     ...Redacted.value(exported),
     alg: value.algorithm,
@@ -395,7 +385,7 @@ const checkComponents = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const importPublic = Effect.fnUntraced(function*(
   input: unknown,
@@ -405,19 +395,18 @@ export const importPublic = Effect.fnUntraced(function*(
   const jwk = yield* read(PublicJwk, input)
   yield* checkComponents(jwk, algorithm)
   const { key_ops, ...inputJwk } = jwk
-  const material = yield* Effect.gen(function*() {
-    switch (algorithm) {
-      case "ES256":
-        return yield* Ecdsa.publicKeyToSpki("P-256", yield* Ecdsa.publicKeyFromJwk("P-256", inputJwk))
-      case "EdDSA":
-        return yield* Ed25519.publicKeyToSpki(yield* Ed25519.publicKeyFromJwk(inputJwk))
-      default: {
-        const key = yield* Rsa.publicKeyFromJwk(inputJwk)
-        yield* KeyPolicy.checkRsa(key)
-        return key
-      }
-    }
-  }).pipe(native, Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
+  const material = yield* native(
+    Effect.gen(function*() {
+      const key = yield* KeyFormat.decodePublic(KeyFormat.jwk, KeyPolicy.signatureAlgorithm(algorithm), inputJwk)
+      yield* KeyPolicy.checkRsa(key)
+      return yield* KeyFormat.encode(KeyFormat.spki, key)
+    }),
+    (cause) =>
+      // Deno may defer rejecting an invalid EC point until key export.
+      algorithm === "ES256" && Predicate.hasProperty(cause, "name") && cause.name === "OperationError"
+        ? InvalidInput.make({ reason: "key" })
+        : defectError(cause)
+  ).pipe(Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return Object.freeze({
     _tag: "PublicKey",
@@ -435,7 +424,7 @@ export const importPublic = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const importPrivate = Effect.fnUntraced(function*(
   input: Redacted.Redacted<unknown>,
@@ -451,19 +440,9 @@ export const importPrivate = Effect.fnUntraced(function*(
   yield* checkComponents(jwk, algorithm)
   const { key_ops, ...inputJwk } = jwk
   const material = yield* Effect.gen(function*() {
-    switch (algorithm) {
-      case "ES256":
-        return yield* Ecdsa.privateKeyFromJwk("P-256", inputJwk)
-      case "EdDSA":
-        return yield* Ed25519.privateKeyFromJwk(inputJwk)
-      default:
-        return yield* withPrivateKey(Rsa.privateKeyFromJwk(inputJwk), (key) =>
-          Effect.gen(function*() {
-            yield* KeyPolicy.checkRsa(yield* Rsa.publicKeyFromPrivateKey(key))
-            // The temporary branded key is wiped after copying the retained material.
-            return Redacted.make(new Uint8Array(Redacted.value(key)))
-          }))
-    }
+    const key = yield* KeyFormat.decodePrivate(KeyFormat.jwk, KeyPolicy.signatureAlgorithm(algorithm), inputJwk)
+    yield* KeyPolicy.checkRsa(key)
+    return Redacted.make(yield* KeyFormat.encode(KeyFormat.pkcs8, key))
   }).pipe(native, Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return Object.freeze({
@@ -481,7 +460,7 @@ export const importPrivate = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const importPkcs8 = Effect.fnUntraced(function*(
   input: Redacted.Redacted<Uint8Array>,
@@ -493,17 +472,10 @@ export const importPkcs8 = Effect.fnUntraced(function*(
   const exported = yield* withSecret(input, (owned) =>
     Effect.gen(function*() {
       yield* decodeInput(derBytes, owned, "key")
-      switch (algorithm) {
-        case "ES256":
-          return yield* native(withPrivateKey(
-            Ecdsa.privateKeyFromPkcs8("P-256", owned),
-            (key) => Ecdsa.privateKeyToJwk("P-256", key)
-          ))
-        case "EdDSA":
-          return yield* native(withPrivateKey(Ed25519.privateKeyFromPkcs8(owned), Ed25519.privateKeyToJwk))
-        default:
-          return yield* native(withPrivateKey(Rsa.privateKeyFromPkcs8(owned), Rsa.privateKeyToJwk))
-      }
+      return yield* native(Effect.gen(function*() {
+        const key = yield* KeyFormat.decodePrivate(KeyFormat.pkcs8, KeyPolicy.signatureAlgorithm(algorithm), owned)
+        return Redacted.make(yield* KeyFormat.encode(KeyFormat.jwk, key))
+      }))
     })).pipe(Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
 
   return yield* importPrivate(
@@ -537,7 +509,7 @@ export const importPkcs8 = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category constructors
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const importSecret = Effect.fnUntraced(function*(
   input: Redacted.Redacted<unknown>,
@@ -562,18 +534,11 @@ export const importSecret = Effect.fnUntraced(function*(
     return yield* InvalidKey.make({})
   }
 
-  material.fill(0)
-  const imported = yield* native(
-    algorithm === "HS256"
-      ? Hmac.keyFromJwk({ kty: "oct", k: jwk.k })
-      : Aes.keyFromJwk({ kty: "oct", k: jwk.k })
-  ).pipe(Effect.catchTag("JoseInvalidInput", () => InvalidKey.make({})))
-
   return Object.freeze({
     _tag: "SecretKey",
     algorithm,
     jwk: Redacted.make(snapshot(jwk)),
-    material: imported
+    material: Redacted.make(material)
   }) satisfies SecretKey
 })
 
@@ -584,7 +549,7 @@ export const importSecret = Effect.fnUntraced(function*(
  *
  * @stability unstable
  * @category encoding
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const exportPublic = Effect.fnUntraced(function*(key: PublicKey) {
   return yield* read(PublicJwk, key.jwk)
@@ -598,7 +563,7 @@ export const exportPublic = Effect.fnUntraced(function*(key: PublicKey) {
  *
  * @stability unstable
  * @category encoding
- * @since 4.0.5
+ * @since 4.1.0
  */
 export const exportPrivate = Effect.fnUntraced(function*(key: PrivateKey | SecretKey) {
   const value = yield* reveal<PrivateJwk | SecretJwk>(key.jwk).pipe(
