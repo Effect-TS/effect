@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Option, Scope } from "effect"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, Scope } from "effect"
 import { SqlClient, SqlError } from "effect/sql"
 
 interface StubConnection {
@@ -30,6 +30,7 @@ let harnessIdCounter = 0
  */
 const makeHarness = (options: {
   readonly begin?: SqlError.SqlError | undefined
+  readonly closeConnection?: Effect.Effect<void> | undefined
   readonly commit?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly onCommitFailure?: (() => Effect.Effect<void, SqlError.SqlError>) | undefined
   readonly savepoint?: SqlError.SqlError | undefined
@@ -57,7 +58,8 @@ const makeHarness = (options: {
       Effect.as(
         Effect.flatMap(
           record("acquireConnection"),
-          () => Scope.addFinalizer(scope, record("closeConnection"))
+          () =>
+            Scope.addFinalizer(scope, Effect.andThen(record("closeConnection"), options.closeConnection ?? Effect.void))
         ),
         [scope, conn] as const
       )),
@@ -111,7 +113,11 @@ const makeHarness = (options: {
         Effect.flatMap(record(`releaseSavepoint(${id})`), () => release === true ? Effect.void : Effect.fail(release))
   })
 
-  return { calls, withTransaction } as const
+  const afterCommit = SqlClient.makeAfterCommit(transactionService)
+  /** Registers a callback that records `after(name)` when it runs. */
+  const after = (name: string) => afterCommit(record(`after(${name})`))
+
+  return { calls, withTransaction, afterCommit, after, record, transactionService } as const
 }
 
 const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
@@ -306,6 +312,236 @@ describe("SqlClient", () => {
 
         assert.strictEqual(result, 1)
         assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
+      }))
+  })
+
+  describe("afterCommit", () => {
+    it.effect("runs callbacks in order after the commit and the connection's release", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        const result = yield* harness.withTransaction(
+          Effect.andThen(Effect.andThen(harness.after("1"), harness.after("2")), Effect.succeed("body"))
+        )
+
+        assert.strictEqual(result, "body")
+        assert.deepStrictEqual(harness.calls, [
+          "acquireConnection",
+          "begin",
+          "commit",
+          "closeConnection",
+          "after(1)",
+          "after(2)"
+        ])
+      }))
+
+    it.effect("runs nothing when the transaction rolls back", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        yield* Effect.exit(harness.withTransaction(Effect.andThen(harness.after("1"), Effect.fail("boom"))))
+
+        assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "rollback", "closeConnection"])
+      }))
+
+    it.effect("runs nothing when COMMIT fails", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ commit: () => Effect.fail(sqlError("commit rejected")) })
+
+        yield* Effect.exit(harness.withTransaction(harness.after("1")))
+
+        assert.isFalse(harness.calls.includes("after(1)"))
+      }))
+
+    it.effect("keeps registration order across savepoints", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+
+        yield* harness.withTransaction(Effect.gen(function*() {
+          yield* harness.after("1")
+          yield* harness.withTransaction(harness.after("2"))
+          yield* harness.after("3")
+        }))
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("after")), [
+          "after(1)",
+          "after(2)",
+          "after(3)"
+        ])
+      }))
+
+    it.effect("keeps registration order across fibers and savepoints", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+        const registered = yield* Deferred.make<void>()
+        const finish = yield* Deferred.make<void>()
+
+        yield* harness.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkChild(harness.withTransaction(Effect.gen(function*() {
+            yield* harness.after("1")
+            yield* Deferred.succeed(registered, undefined)
+            yield* Deferred.await(finish)
+          })))
+          yield* Deferred.await(registered)
+          yield* harness.after("2")
+          yield* Deferred.succeed(finish, undefined)
+          yield* Fiber.join(child)
+        }))
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("after")), ["after(1)", "after(2)"])
+      }))
+
+    it.effect("discards the callbacks of a savepoint that rolls back, and runs the rest", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+
+        yield* harness.withTransaction(Effect.gen(function*() {
+          yield* harness.after("outer")
+          yield* Effect.exit(harness.withTransaction(Effect.andThen(harness.after("inner"), Effect.fail("boom"))))
+        }))
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("after")), ["after(outer)"])
+      }))
+
+    it.effect("discards the callbacks of a savepoint inside a savepoint that rolls back", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+
+        yield* harness.withTransaction(Effect.gen(function*() {
+          yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
+            yield* harness.withTransaction(harness.after("inner"))
+            return yield* Effect.fail("boom")
+          })))
+          yield* harness.after("outer")
+        }))
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("after")), ["after(outer)"])
+      }))
+
+    it.effect("runs nothing when the outer transaction rolls back after a savepoint commits", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ releaseSavepoint: true })
+
+        yield* Effect.exit(harness.withTransaction(Effect.gen(function*() {
+          yield* harness.withTransaction(harness.after("inner"))
+          return yield* Effect.fail("boom")
+        })))
+
+        assert.isFalse(harness.calls.includes("after(inner)"))
+      }))
+
+    it.effect("runs immediately when no transaction is open", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        yield* harness.after("1")
+
+        assert.deepStrictEqual(harness.calls, ["after(1)"])
+      }))
+
+    it.effect("runs immediately in another client's transaction", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+        const other = makeHarness()
+
+        const ranInside = yield* other.withTransaction(
+          Effect.andThen(harness.after("1"), Effect.sync(() => harness.calls.includes("after(1)")))
+        )
+
+        assert.isTrue(ranInside)
+      }))
+
+    it.effect("runs callbacks without the transaction in their context", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+        const seen: Array<boolean> = []
+
+        yield* harness.withTransaction(harness.afterCommit(
+          Effect.flatMap(Effect.serviceOption(harness.transactionService), (transaction) =>
+            Effect.sync(() => {
+              seen.push(Option.isSome(transaction))
+            }))
+        ))
+
+        assert.deepStrictEqual(seen, [false])
+      }))
+
+    it.effect("runs a callback registered by a callback immediately", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+
+        yield* harness.withTransaction(harness.afterCommit(
+          Effect.andThen(harness.after("nested"), harness.record("after(outer)"))
+        ))
+
+        assert.deepStrictEqual(harness.calls.filter((call) => call.startsWith("after")), [
+          "after(nested)",
+          "after(outer)"
+        ])
+      }))
+
+    it.effect("logs a callback that dies and runs the rest", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+        const logged: Array<string> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logged.push(`${options.logLevel}: ${Cause.pretty(options.cause)}`)
+        })
+
+        const result = yield* harness.withTransaction(Effect.gen(function*() {
+          yield* harness.afterCommit(Effect.die("callback defect"))
+          yield* harness.after("2")
+          return "body"
+        })).pipe(Effect.provide(Logger.layer([logger])))
+
+        assert.strictEqual(result, "body")
+        assert.isTrue(harness.calls.includes("after(2)"))
+        assert.strictEqual(logged.length, 1)
+        assert.include(logged[0], "Error")
+        assert.include(logged[0], "callback defect")
+      }))
+
+    it.effect("runs callbacks after COMMIT even if the fiber is interrupted during it", () =>
+      Effect.gen(function*() {
+        const committing = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const harness = makeHarness({
+          commit: () => Effect.andThen(Deferred.succeed(committing, undefined), Deferred.await(release))
+        })
+
+        const fiber = yield* Effect.forkChild(harness.withTransaction(harness.after("1")))
+        yield* Deferred.await(committing)
+        const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber))
+        yield* Effect.yieldNow
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(interrupting)
+
+        assert.isTrue(harness.calls.includes("after(1)"))
+      }))
+
+    it.effect("runs callbacks after COMMIT even if releasing the connection fails", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness({ closeConnection: Effect.die("release defect") })
+
+        const exit = yield* Effect.exit(harness.withTransaction(harness.after("1")))
+
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection", "after(1)"])
+      }))
+
+    it.effect("dies when registering on a transaction that has ended", () =>
+      Effect.gen(function*() {
+        const harness = makeHarness()
+        const go = yield* Deferred.make<void>()
+
+        const late = yield* harness.withTransaction(
+          Effect.forkDetach(Effect.andThen(Deferred.await(go), harness.after("late")))
+        )
+        yield* Deferred.succeed(go, undefined)
+        const exit = yield* Fiber.await(late)
+
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
+        assert.isFalse(harness.calls.includes("after(late)"))
       }))
   })
 })
