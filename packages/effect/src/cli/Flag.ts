@@ -619,7 +619,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *
  * **When to use**
  *
- * Use with {@link Command.withSharedFlags} when a flag should be documented
+ * Use with `Command.withSharedFlags` when a flag should be documented
  * once at the root level without repeating it in every subcommand's help
  * output. The flag is still parsed and accepted in subcommands — only the
  * help rendering for descendant commands is affected.
