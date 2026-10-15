@@ -416,12 +416,10 @@ describe("nextPow2", () => {
     assert.strictEqual(N.nextPow2(2 ** 52 + 1), 2 ** 53)
   })
 
-  it.each([2 ** 29, 2 ** 1023])("preserves the exact power of two %s", (n) => {
-    assert.strictEqual(N.nextPow2(n), n)
-  })
-
   it("returns the same value for powers of two and a minimum of two otherwise", () => {
     assert.strictEqual(N.nextPow2(8), 8)
+    assert.strictEqual(N.nextPow2(2 ** 29), 2 ** 29)
+    assert.strictEqual(N.nextPow2(2 ** 1023), 2 ** 1023)
     assert.strictEqual(N.nextPow2(1), 2)
     assert.strictEqual(N.nextPow2(0), 2)
     assert.strictEqual(N.nextPow2(1.5), 2)
