@@ -1,11 +1,49 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem, Layer, Path, PlatformError } from "effect"
+import { Effect, FileSystem, Layer, Path, PlatformError, Stream } from "effect"
+import * as Reactivity from "effect/reactivity/Reactivity"
 import * as Migrator from "effect/sql/Migrator"
 import * as SqlClient from "effect/sql/SqlClient"
+import type { Connection } from "effect/sql/SqlConnection"
+import * as Statement from "effect/sql/Statement"
 
 const migrationNames = (
   migrations: ReadonlyArray<Migrator.ResolvedMigration>
 ): ReadonlyArray<readonly [id: number, name: string]> => migrations.map(([id, name]) => [id, name] as const)
+
+// runs a single `fromSql` script against a client that records each statement
+const runSqlScript = (dialect: Statement.Dialect, script: string) =>
+  Effect.gen(function*() {
+    const ran: Array<string> = []
+    const execute = (sql: string) =>
+      Effect.sync(() => {
+        ran.push(sql)
+        return []
+      })
+    const connection: Connection = {
+      execute,
+      executeRaw: execute,
+      executeValues: execute,
+      executeUnprepared: execute,
+      executeValuesUnprepared: execute,
+      executeStream: (sql) => Stream.fromEffect(execute(sql))
+    }
+    const sql = yield* SqlClient.make({
+      driver: "test",
+      acquirer: Effect.succeed(connection),
+      compiler: Statement.makeCompiler({
+        dialect,
+        placeholder: () => "?",
+        onIdentifier: Statement.defaultEscape("\""),
+        onRecordUpdate: () => ["", []],
+        onCustom: () => ["", []]
+      }),
+      spanAttributes: []
+    })
+    const migrations = yield* Migrator.fromSql({ "1_script.sql": script })
+    const migration = yield* (migrations[0]![2] as Effect.Effect<Effect.Effect<void, unknown, SqlClient.SqlClient>>)
+    yield* Effect.provideService(migration, SqlClient.SqlClient, sql)
+    return ran
+  }).pipe(Effect.provide(Reactivity.layer))
 
 describe("Migrator", () => {
   describe("loaders", () => {
@@ -44,44 +82,62 @@ describe("Migrator", () => {
         ])
       }))
 
-    it.effect("fromSql runs numbered scripts one statement at a time", () =>
+    it.effect("fromSql accepts numbered scripts with or without a directory and extension", () =>
       Effect.gen(function*() {
-        const ran: Array<string> = []
-        const sql = {
-          unsafe: (statement: string) =>
-            Effect.sync(() => {
-              ran.push(statement)
-            })
-        } as any as SqlClient.SqlClient
         const migrations = yield* Migrator.fromSql({
-          "0002_second.sql": "insert into t values ('a;b');",
-          "1_init.sql": "-- drop table old;\ncreate table t (id int);\n/* ;\n*/\ncreate index t_id on t (id);",
-          "3_fn.sql":
-            "select/**/1; select $1; create function f() returns void as $$ begin perform 1; end $$ language sql; create function g() returns void as $body$ begin perform 1; end $body$ language sql;",
-          "notes.txt": "select 1"
+          "./migrations/0003_third.sql": "select 3",
+          "0002_second": "select 2",
+          "1_first.sql": "select 1",
+          "./migrations/notes.txt": "select 4"
         })
 
         assert.deepStrictEqual(migrationNames(migrations), [
-          [1, "init"],
+          [1, "first"],
           [2, "second"],
-          [3, "fn"]
+          [3, "third"]
         ])
+      }))
 
-        const first = yield* migrations[0]![2] as Effect.Effect<Effect.Effect<void>>
-        const second = yield* migrations[1]![2] as Effect.Effect<Effect.Effect<void>>
-        const third = yield* migrations[2]![2] as Effect.Effect<Effect.Effect<void>>
-        yield* first.pipe(Effect.provideService(SqlClient.SqlClient, sql))
-        yield* second.pipe(Effect.provideService(SqlClient.SqlClient, sql))
-        yield* third.pipe(Effect.provideService(SqlClient.SqlClient, sql))
-        assert.deepStrictEqual(ran, [
-          "create table t (id int)",
-          "create index t_id on t (id)",
-          "insert into t values ('a;b')",
-          "select 1",
-          "select $1",
-          "create function f() returns void as $$ begin perform 1; end $$ language sql",
-          "create function g() returns void as $body$ begin perform 1; end $body$ language sql"
-        ])
+    it.effect.each(
+      [
+        [
+          "sqlite",
+          "-- drop table old;\ncreate table t (id int);\n/* ; */ insert into t values ('a;b', 'it''s', \"c;d\");\n" +
+          "select/**/1;\ncreate table price$usd$ (id int);\n-- done;\n",
+          [
+            "-- drop table old;\ncreate table t (id int)",
+            "/* ; */ insert into t values ('a;b', 'it''s', \"c;d\")",
+            "select/**/1",
+            "create table price$usd$ (id int)"
+          ]
+        ],
+        [
+          "pg",
+          "select E'a\\';b'; select 'c\\'; select $1;\n" +
+          "create function f() returns int as $$ select 1; $$ language sql;\n" +
+          "create function g() returns int as $body$ select 2; $body$ language sql;",
+          [
+            "select E'a\\';b'",
+            "select 'c\\'",
+            "select $1",
+            "create function f() returns int as $$ select 1; $$ language sql",
+            "create function g() returns int as $body$ select 2; $body$ language sql"
+          ]
+        ],
+        [
+          "mysql",
+          "/*! CREATE TABLE t (id INT) */;\ninsert into t values ('it\\'s; fine', \"a\\\";b\");\nselect `x;y`",
+          [
+            "/*! CREATE TABLE t (id INT) */",
+            "insert into t values ('it\\'s; fine', \"a\\\";b\")",
+            "select `x;y`"
+          ]
+        ]
+      ] as const
+    )("fromSql runs each top-level %s statement verbatim", ([dialect, script, expected]) =>
+      Effect.gen(function*() {
+        const ran: ReadonlyArray<string> = yield* runSqlScript(dialect, script)
+        assert.deepStrictEqual(ran, expected)
       }))
 
     it.effect("fromFileSystem accepts js, ts, mjs, and mts files", () =>
