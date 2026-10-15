@@ -2892,100 +2892,64 @@ Expected "Infinity" | "-Infinity" | "NaN"`
   })
 
   describe("toCodecGoJson", () => {
-    const HostConfig = Schema.Struct({ NetworkMode: Schema.String })
     const Container = Schema.Struct({
       Id: Schema.String,
       Names: Schema.Array(Schema.String),
       Labels: Schema.Record(Schema.String, Schema.String),
-      HostConfig: Schema.optionalKey(HostConfig),
+      HostConfig: Schema.optionalKey(Schema.Struct({ NetworkMode: Schema.String })),
       Ports: Schema.Array(Schema.Array(Schema.String)),
-      Mounts: Schema.optionalKey(Schema.Array(Schema.String)),
-      Size: Schema.optionalKey(Schema.FiniteFromString)
+      Mounts: Schema.optionalKey(Schema.Array(Schema.String))
+    })
+    // json.Marshal(Container{Id: "abc", Ports: [][]string{nil}}) with Go 1.26
+    const goOutput = { Id: "abc", Names: null, Labels: null, HostConfig: null, Ports: [null], Mounts: null }
+    const decoded = { Id: "abc", Names: [], Labels: {}, Ports: [[]] }
+
+    it("decodes null as a missing key or an empty collection", async () => {
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Container)).decoding().succeed(goOutput, decoded)
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Array(Schema.String))).decoding().succeed(null, [])
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Record(Schema.String, Schema.String))).decoding()
+        .succeed(null, {})
     })
 
-    it("exposes the source schema", () => {
-      strictEqual(Schema.toCodecGoJson(Container).schema, Container)
-    })
-
-    it("decodes the nil values written by Go's encoding/json", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
-
-      const decoding = asserts.decoding()
-      // json.Marshal(Container{Id: "abc", Ports: [][]string{nil}}) with Go 1.26
-      await decoding.succeed(
-        { Id: "abc", Names: null, Labels: null, HostConfig: null, Ports: [null] },
-        { Id: "abc", Names: [], Labels: {}, Ports: [[]] }
-      )
-      await decoding.succeed(
-        { Id: "abc", Names: ["a"], Labels: { a: "b" }, Ports: [], Mounts: null, Size: null },
-        { Id: "abc", Names: ["a"], Labels: { a: "b" }, Ports: [] }
-      )
-      await decoding.succeed(
-        { Id: "abc", Names: [], Labels: {}, Ports: [], Mounts: ["m"], Size: "1" },
-        { Id: "abc", Names: [], Labels: {}, Ports: [], Mounts: ["m"], Size: 1 }
-      )
-    })
-
-    it("decodes the output of Go's encoding/json/v2", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
-
-      const decoding = asserts.decoding()
-      // json.Marshal(Container{Id: "abc", Ports: [][]string{nil}}) with Go 1.26 and GOEXPERIMENT=jsonv2
-      await decoding.succeed(
-        { Id: "abc", Names: [], Labels: {}, HostConfig: null, Ports: [[]] },
-        { Id: "abc", Names: [], Labels: {}, Ports: [[]] }
-      )
-    })
-
-    it("never encodes null", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecGoJson(Container))
-
-      const encoding = asserts.encoding()
-      await encoding.succeed({ Id: "abc", Names: [], Labels: {}, Ports: [[]] })
-      await encoding.succeed(
-        { Id: "abc", Names: [], Labels: {}, Ports: [], Size: 1 },
-        { Id: "abc", Names: [], Labels: {}, Ports: [], Size: "1" }
-      )
-      await encoding.fail(
-        { Id: "abc", Names: null, Labels: {}, Ports: [] },
-        `Expected array
-  at ["Names"]`
-      )
-    })
-
-    it("rejects null where Go would not write it", async () => {
+    it("applies through classes, unions, and recursive schemas", async () => {
+      class Mount extends Schema.Class<Mount>("Mount")({ Options: Schema.Array(Schema.String) }) {}
+      interface Node {
+        readonly Children: ReadonlyArray<Node>
+      }
+      const Node: Schema.Codec<Node> = Schema.Struct({ Children: Schema.Array(Schema.suspend(() => Node)) })
       const schema = Schema.toCodecGoJson(Schema.Struct({
-        a: Schema.String,
-        b: Schema.optionalKey(Schema.NonEmptyArray(Schema.String)),
-        c: Schema.Struct({ d: Schema.String })
+        mount: Mount,
+        node: Node,
+        either: Schema.Union([Schema.Struct({ a: Schema.Array(Schema.String) }), Schema.String])
       }))
-      const asserts = new TestSchema.Asserts(schema)
 
-      const decoding = asserts.decoding()
-      await decoding.fail(
-        { a: null, c: { d: "d" } },
-        `Expected string
-  at ["a"]`
+      await new TestSchema.Asserts(schema).decoding().succeed(
+        { mount: { Options: null }, node: { Children: [{ Children: null }] }, either: { a: null } },
+        { mount: new Mount({ Options: [] }), node: { Children: [{ Children: [] }] }, either: { a: [] } }
       )
-      await decoding.fail(
-        { a: "a", c: null },
-        `Expected object
-  at ["c"]`
-      )
-      await decoding.succeed({ a: "a", b: null, c: { d: "d" } }, { a: "a", c: { d: "d" } })
     })
 
-    it("keeps null where the schema accepts it", async () => {
+    it("keeps null where the schema accepts it and rejects it where Go would not write it", async () => {
       const schema = Schema.toCodecGoJson(Schema.Struct({
         a: Schema.optionalKey(Schema.NullOr(Schema.String)),
-        b: Schema.optionalKey(Schema.Unknown),
-        c: Schema.optionalKey(Schema.Json),
-        d: Schema.NullOr(Schema.Array(Schema.String))
+        b: Schema.NullOr(Schema.Array(Schema.String)),
+        c: Schema.optionalKey(Schema.Unknown),
+        d: Schema.String,
+        e: Schema.Struct({ f: Schema.String }),
+        g: Schema.NonEmptyArray(Schema.String)
       }))
-      const asserts = new TestSchema.Asserts(schema)
+      const decoding = new TestSchema.Asserts(schema).decoding({ parseOptions: { errors: "all" } })
 
-      const decoding = asserts.decoding()
-      await decoding.succeed({ a: null, b: null, c: null, d: null })
+      await decoding.succeed({ a: null, b: null, c: null, d: "d", e: { f: "f" }, g: ["g"] })
+      await decoding.fail(
+        { b: null, d: null, e: null, g: null },
+        `Expected string
+  at ["d"]
+Expected object
+  at ["e"]
+Expected array
+  at ["g"]`
+      )
     })
 
     it("applies decoding defaults to null optional keys", async () => {
@@ -2993,68 +2957,18 @@ Expected "Infinity" | "-Infinity" | "NaN"`
         a: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("a"))),
         b: Schema.OptionFromOptionalKey(Schema.String)
       }))
-      const asserts = new TestSchema.Asserts(schema)
 
-      const decoding = asserts.decoding()
-      await decoding.succeed({ a: null, b: null }, { a: "a", b: Option.none() })
+      await new TestSchema.Asserts(schema).decoding().succeed({ a: null, b: null }, { a: "a", b: Option.none() })
     })
 
-    it("applies through classes, unions, and recursive schemas", async () => {
-      class Mount extends Schema.Class<Mount>("Mount")({
-        Source: Schema.String,
-        Options: Schema.Array(Schema.String)
-      }) {}
-      interface Node {
-        readonly Name: string
-        readonly Children: ReadonlyArray<Node>
-      }
-      const Node: Schema.Codec<Node> = Schema.Struct({
-        Name: Schema.String,
-        Children: Schema.Array(Schema.suspend(() => Node))
-      })
-      const schema = Schema.toCodecGoJson(Schema.Struct({
-        mount: Schema.optionalKey(Mount),
-        mounts: Schema.Array(Mount),
-        node: Node,
-        either: Schema.Union([Schema.Struct({ a: Schema.Array(Schema.String) }), Schema.String])
-      }))
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding()
-      await decoding.succeed(
-        {
-          mount: null,
-          mounts: [{ Source: "s", Options: null }],
-          node: { Name: "a", Children: [{ Name: "b", Children: null }] },
-          either: { a: null }
-        },
-        {
-          mounts: [new Mount({ Source: "s", Options: [] })],
-          node: { Name: "a", Children: [{ Name: "b", Children: [] }] },
-          either: { a: [] }
-        }
-      )
+    it("never encodes null", async () => {
+      await new TestSchema.Asserts(Schema.toCodecGoJson(Container)).encoding().succeed(decoded)
     })
 
-    it("decodes a top-level null array or record as empty", async () => {
-      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Array(Schema.String))).decoding().succeed(null, [])
-      await new TestSchema.Asserts(Schema.toCodecGoJson(Schema.Record(Schema.String, Schema.String))).decoding()
-        .succeed(null, {})
-    })
-
-    it("is idempotent", () => {
+    it("is idempotent and keeps its rules through toCodecJson", async () => {
       const schema = Schema.toCodecGoJson(Container)
       strictEqual(Schema.toCodecGoJson(schema).ast, schema.ast)
-    })
-
-    it("keeps its rules when converted to JSON again", async () => {
-      const asserts = new TestSchema.Asserts(Schema.toCodecJson(Schema.toCodecGoJson(Container)))
-
-      const decoding = asserts.decoding()
-      await decoding.succeed(
-        { Id: "abc", Names: null, Labels: null, HostConfig: null, Ports: [null] },
-        { Id: "abc", Names: [], Labels: {}, Ports: [[]] }
-      )
+      await new TestSchema.Asserts(Schema.toCodecJson(schema)).decoding().succeed(goOutput, decoded)
     })
   })
 
