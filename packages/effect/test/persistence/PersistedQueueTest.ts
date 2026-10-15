@@ -249,6 +249,22 @@ export const suiteWith = <R>(
         assert.deepStrictEqual(yield* awaitDelivery(fiber), { n: 2n })
       }), testOptions)
 
+    it.effect("settling a custom id does not release the same id in another queue", () =>
+      Effect.gen(function*() {
+        const emails = yield* PersistedQueue.make({ name: "isolated-emails", schema: Item })
+        const invoices = yield* PersistedQueue.make({ name: "isolated-invoices", schema: Item })
+        yield* emails.offer({ n: 1n }, { id: "order-1" })
+        yield* invoices.offer({ n: 2n }, { id: "order-1" })
+
+        const taken = Latch.makeUnsafe()
+        yield* invoices.take(() => Effect.andThen(taken.open, Effect.never)).pipe(Effect.forkScoped)
+        yield* taken.await
+
+        yield* emails.take(Effect.succeed)
+        const duplicate = yield* invoices.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* assertNotDelivered(duplicate)
+      }), testOptions)
+
     it.effect("does not redeliver in-flight elements", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({

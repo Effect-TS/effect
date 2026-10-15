@@ -1,7 +1,7 @@
 import { NodeRedis } from "@effect/platform-node"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Clock, Duration, Effect, Layer, Queue, Schema } from "effect"
+import { Clock, Duration, Effect, Fiber, Latch, Layer, Queue, Schedule, Schema } from "effect"
 import * as PersistedCacheTest from "effect-test/persistence/PersistedCacheTest"
 import * as PersistedQueueTest from "effect-test/persistence/PersistedQueueTest"
 import * as RateLimiterTest from "effect-test/persistence/RateLimiterTest"
@@ -196,6 +196,67 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const pending = yield* redis.use((client) => client.hLen(`effectq:${queueName}:pending`))
         assert.strictEqual(pending, 0)
       }))
+
+    for (const settlement of ["failure", "interruption"] as const) {
+      it.effect(`stale-owner ${settlement} does not release a live claim`, () =>
+        Effect.gen(function*() {
+          const makeQueue = Effect.fnUntraced(function*(lockRefreshInterval: Duration.Input) {
+            const store = yield* PersistedQueue.makeStoreRedis({
+              prefix: `effectq-stale-${settlement}:`,
+              pollInterval: "50 millis",
+              lockExpiration: "1 second",
+              lockRefreshInterval
+            })
+            const factory = yield* PersistedQueue.makeFactory.pipe(
+              Effect.provideService(PersistedQueue.PersistedQueueStore, store)
+            )
+            return yield* factory.make({
+              name: "ownership",
+              schema: RedisItem,
+              retrySchedule: Schedule.spaced(0)
+            })
+          })
+          const a = yield* makeQueue("1 hour")
+          const b = yield* makeQueue("100 millis")
+          const c = yield* makeQueue("100 millis")
+          yield* a.offer({ n: 42 }, { id: "order-1" })
+
+          const aTaken = Latch.makeUnsafe()
+          const releaseA = Latch.makeUnsafe()
+          const stale = yield* a.take(() =>
+            Effect.gen(function*() {
+              yield* aTaken.open
+              yield* releaseA.await
+              return yield* Effect.fail("stale failure")
+            })
+          ).pipe(Effect.forkScoped)
+          yield* aTaken.await
+
+          const bTaken = Latch.makeUnsafe()
+          yield* b.take((_value, { attempts }) =>
+            Effect.gen(function*() {
+              assert.strictEqual(attempts, 2)
+              yield* bTaken.open
+              return yield* Effect.never
+            })
+          ).pipe(Effect.forkScoped)
+          // Redis owns the expiry clock. Wait for B to actually reclaim A's
+          // expired lease before allowing the stale finalizer to run.
+          yield* bTaken.await
+
+          if (settlement === "failure") {
+            yield* releaseA.open
+            assert.strictEqual(yield* Fiber.join(stale).pipe(Effect.flip), "stale failure")
+          } else {
+            yield* Fiber.interrupt(stale)
+          }
+
+          const duplicate = yield* c.take((_value, metadata) => Effect.succeed(metadata)).pipe(Effect.forkScoped)
+          // Longer than a lease: B must keep its claim while C polls and resets.
+          yield* Effect.sleep("1500 millis")
+          assert.isUndefined(duplicate.pollUnsafe())
+        }).pipe(TestClock.withLive), { timeout: 20000 })
+    }
 
     it.effect("recovers elements from crashed workers", () =>
       Effect.gen(function*() {
