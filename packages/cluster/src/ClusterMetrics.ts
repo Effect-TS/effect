@@ -42,3 +42,19 @@ export const runnersHealthy = Metric.gauge("effect_cluster_runners_healthy", {
 export const shards = Metric.gauge("effect_cluster_shards", {
   bigint: true
 })
+
+/**
+ * Time taken to release a shard after it is reassigned or its lock is lost,
+ * from entity teardown until the release completes. Includes retries and any
+ * wait for shard lock storage to recover.
+ *
+ * Only successful releases are recorded. Shutdown handoff and forced releases
+ * are not.
+ *
+ * @since 1.0.0
+ * @category metrics
+ */
+export const shardReleaseDuration = Metric.timer(
+  "effect_cluster_shard_release",
+  "Time taken to release a shard after reassignment or lock loss, including entity teardown, retries and lock storage recovery. Excludes shutdown handoff and forced releases"
+)
