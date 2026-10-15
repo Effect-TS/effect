@@ -1,42 +1,47 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Latch, Layer } from "effect"
+import { Deferred, type Duration, Effect, Fiber, Latch, Layer } from "effect"
 import { DevToolsClient } from "effect/devtools"
 import { Socket } from "effect/socket"
 import { TestClock } from "effect/testing"
+
+const refused = Effect.fail(
+  new Socket.SocketError({
+    reason: new Socket.SocketOpenError({ kind: "Unknown", cause: "connection refused" })
+  })
+)
+
+// Sends a Pong, then stays idle until the reader scope closes or the
+// connection drops.
+const connection = (options?: { readonly dropAfter?: Duration.Input }) =>
+  Effect.gen(function*() {
+    const closed = Latch.makeUnsafe(false)
+    yield* Effect.addFinalizer(() => closed.open)
+    let sent = false
+    return {
+      pull: Effect.suspend(() => {
+        if (!sent) {
+          sent = true
+          return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
+        }
+        const disconnected = options?.dropAfter === undefined
+          ? closed.await
+          : Effect.raceFirst(Effect.sleep(options.dropAfter), closed.await)
+        return Effect.andThen(
+          disconnected,
+          Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1006 }) }))
+        )
+      }),
+      upgrade: () => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketUpgradeError({}) }))
+    }
+  })
 
 describe("DevToolsClient", () => {
   it.effect("closes its scope while the endpoint remains unavailable", () =>
     Effect.gen(function*() {
       let unavailable = true
       const socket = Socket.make({
-        reader: Effect.suspend(() => {
-          if (unavailable) {
-            return Effect.fail(
-              new Socket.SocketError({
-                reason: new Socket.SocketOpenError({ kind: "Unknown", cause: "connection refused" })
-              })
-            )
-          }
-          // Restore connectivity only for cleanup after observing shutdown.
-          return Effect.gen(function*() {
-            const closed = Latch.makeUnsafe(false)
-            yield* Effect.addFinalizer(() => closed.open)
-            let sent = false
-            return {
-              pull: Effect.suspend(() => {
-                if (!sent) {
-                  sent = true
-                  return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
-                }
-                return Effect.andThen(
-                  closed.await,
-                  Effect.fail(new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
-                )
-              }),
-              upgrade: () => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketUpgradeError({}) }))
-            }
-          })
-        }),
+        // Restore connectivity only for cleanup after observing shutdown.
+        reader: Effect.suspend(() => unavailable ? refused : connection()),
         writer: Effect.succeed({ write: () => Effect.void, writeAll: () => Effect.void })
       })
       const closed = yield* Deferred.make<void>()
@@ -72,34 +77,17 @@ describe("DevToolsClient", () => {
             }
           })
         const socket = Socket.make({
-          reader: Effect.gen(function*() {
+          reader: Effect.suspend(() => {
             const first = firstConnection
             firstConnection = false
-            if (first && scenario === "startup refusal") {
-              return yield* Effect.fail(
-                new Socket.SocketError({
-                  reason: new Socket.SocketOpenError({ kind: "Unknown", cause: "connection refused" })
-                })
-              )
-            }
-            const closed = Latch.makeUnsafe(false)
-            yield* Effect.addFinalizer(() => closed.open)
-            const closeError = new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1006 }) })
-            let sent = false
-            return {
-              pull: Effect.suspend(() => {
-                if (!sent) {
-                  sent = true
-                  return Effect.succeed(["{\"_tag\":\"Pong\"}\n"] as const)
-                }
-                // The first connection drops after its successful handshake;
-                // every subsequent connection stays healthy until scope closure.
-                const disconnected = first && scenario === "connection loss"
-                  ? Effect.raceFirst(Effect.sleep("10 seconds"), closed.await)
-                  : closed.await
-                return Effect.andThen(disconnected, Effect.fail(closeError))
-              }),
-              upgrade: () => Effect.fail(new Socket.SocketError({ reason: new Socket.SocketUpgradeError({}) }))
+            if (!first) return connection()
+            switch (scenario) {
+              case "healthy":
+                return connection()
+              case "startup refusal":
+                return refused
+              case "connection loss":
+                return connection({ dropAfter: "10 seconds" })
             }
           }),
           writer: Effect.succeed({

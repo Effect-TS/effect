@@ -9,7 +9,6 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Deferred from "../Deferred.ts"
 import * as Effect from "../Effect.ts"
@@ -53,12 +52,15 @@ const makeEffect = Effect.gen(function*() {
   const connected = yield* Deferred.make<void>()
   let closing = false
   let writable = false
+  const setWritable = (value: boolean) =>
+    Effect.sync(() => {
+      writable = value
+    })
+  // Tracks whether the current connection has a writer that can drain the
+  // queue on shutdown.
   const transport = Socket.make({
     reader: socket.reader,
-    writer: Effect.tap(socket.writer, () =>
-      Effect.sync(() => {
-        writable = true
-      }))
+    writer: Effect.tap(socket.writer, Effect.acquireRelease(setWritable(true), () => setWritable(false)))
   })
 
   const offerMetricsSnapshot = Effect.sync(() => {
@@ -89,28 +91,19 @@ const makeEffect = Effect.gen(function*() {
     // Each run closes its stream scope, including the socket reader and writer,
     // before retrying with a fresh connection and the same request queue.
     Stream.runForEach(handleResponse),
-    Effect.onExit(() => {
-      writable = false
-      return Effect.void
-    }),
     Effect.tapError((error) => Effect.logDebug("DevTools connection failed", error)),
     Effect.retry({ schedule: Schedule.spaced("1 second"), while: () => !closing }),
     Effect.forkDetach
   )
 
-  yield* Effect.addFinalizer(() =>
-    Effect.sync(() => {
-      closing = true
-    }).pipe(
-      Effect.andThen(offerMetricsSnapshot),
-      Effect.andThen(
-        Effect.flatMap(Effect.fiberId, (id) => Queue.failCause(requests, Cause.interrupt(id)))
-      ),
-      // A ready writer drains the queue before stopping. Failed or pending
-      // acquisition cannot observe the queue interruption, so stop it directly.
-      Effect.andThen(Effect.suspend(() => writable ? Fiber.await(fiber) : Fiber.interrupt(fiber)))
-    )
-  )
+  yield* Effect.addFinalizer(Effect.fnUntraced(function*() {
+    closing = true
+    yield* offerMetricsSnapshot
+    yield* Queue.interrupt(requests)
+    // A ready writer drains the queue before stopping. Failed or pending
+    // acquisition cannot observe the queue interruption, so stop it directly.
+    yield* writable ? Fiber.await(fiber) : Fiber.interrupt(fiber)
+  }))
 
   yield* Effect.suspend(() => Queue.offer(requests, { _tag: "Ping" })).pipe(
     Effect.delay("3 seconds"),
