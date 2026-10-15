@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `Migrator.fromSql`, a loader for numbered SQL scripts. Each script is split on top-level semicolons and its statements run verbatim with `SqlClient.unsafe`.
+Add `Migrator.fromSql`, which loads migrations from numbered SQL scripts and runs each statement with `SqlClient.unsafe`.

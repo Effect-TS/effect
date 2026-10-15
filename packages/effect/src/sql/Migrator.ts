@@ -456,11 +456,11 @@ const skipPast = (source: string, index: number, terminator: string): number => 
   return end === -1 ? source.length : end + terminator.length
 }
 
-// MySQL only treats `--` as a comment when whitespace or a control character
-// follows, so `1--1` is arithmetic. The end of the script counts too.
+// MySQL needs whitespace, a control character, or the end of input after `--`,
+// so `1--1` is arithmetic
 const isSpaceOrControl = (source: string, index: number): boolean => !(source.charCodeAt(index) > 32)
 
-// PostgreSQL, MSSQL, and ClickHouse nest block comments; SQLite and MySQL end at the first `*/`
+// PostgreSQL, MSSQL, and ClickHouse nest block comments
 const skipBlockComment = (source: string, index: number, nested: boolean): number => {
   let depth = 1
   let i = index + 2
@@ -481,8 +481,8 @@ const skipBlockComment = (source: string, index: number, nested: boolean): numbe
 // `$$` or `$tag$`; `$1` is a placeholder
 const dollarTag = /\$(?:[A-Za-z_\u0080-\uffff][\w\u0080-\uffff]*)?\$/y
 
-// Splits a script on top-level semicolons without rewriting statement text, so
-// the database still sees comments such as MySQL `/*! ... */`.
+// Splits on top-level semicolons without rewriting statement text, so comments
+// such as MySQL `/*! ... */` reach the database
 const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
   const statements: Array<string> = []
   let start = 0
@@ -539,20 +539,21 @@ const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
 
 /**
  * Creates a migration loader from SQL scripts keyed by `<id>_<name>` or
- * `<id>_<name>.sql`, optionally prefixed by a directory as produced by
- * `import.meta.glob`, and sorts migrations by id.
+ * `<id>_<name>.sql`, sorted by id. Keys may include a directory, as produced by
+ * `import.meta.glob`.
  *
  * **Details**
  *
  * Each script is split on semicolons outside quotes, comments, and PostgreSQL
- * dollar quotes. Statements are sent verbatim, comments included, one at a time
- * with `SqlClient.unsafe`; comment-only statements are skipped. Backslash
- * escapes are recognized in MySQL and ClickHouse strings and in PostgreSQL
+ * dollar quotes, using the comment syntax of the client's dialect. Statements
+ * run one at a time with `SqlClient.unsafe`, verbatim and with comments intact.
+ * Comment-only statements are skipped. Backslash escapes are recognized in
+ * MySQL strings, ClickHouse strings and quoted identifiers, and PostgreSQL
  * `E'...'` strings.
  *
- * Procedural bodies delimited by `BEGIN ... END` (SQLite triggers, MySQL
- * routines, PostgreSQL `BEGIN ATOMIC`), client commands such as `DELIMITER` or
- * `GO`, and MySQL's `NO_BACKSLASH_ESCAPES` mode are not supported. Use
+ * Not supported: procedural bodies delimited by `BEGIN ... END` (SQLite
+ * triggers, MySQL routines, PostgreSQL `BEGIN ATOMIC`), client commands such as
+ * `DELIMITER` or `GO`, and MySQL's `NO_BACKSLASH_ESCAPES` mode. Use
  * `fromRecord` for those migrations.
  *
  * @stability unstable
