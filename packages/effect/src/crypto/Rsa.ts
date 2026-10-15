@@ -27,7 +27,6 @@ import * as WebCrypto from "./internal/webCrypto.ts"
  */
 export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
 
-
 /**
  * An RSA private key: `Redacted` PKCS8 bytes.
  *

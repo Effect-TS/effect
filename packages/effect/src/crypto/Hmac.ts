@@ -25,7 +25,6 @@ import * as WebCrypto from "./internal/webCrypto.ts"
  */
 export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
 
-
 /**
  * Service that computes and verifies HMAC tags.
  *

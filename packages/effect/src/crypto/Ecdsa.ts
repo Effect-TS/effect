@@ -28,7 +28,6 @@ import * as WebCrypto from "./internal/webCrypto.ts"
  */
 export type HashAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
 
-
 /**
  * The NIST elliptic curves supported for ECDSA and ECDH keys.
  *

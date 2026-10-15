@@ -10,8 +10,8 @@
  * @stability unstable
  * @since 4.0.0
  */
-import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
 import { layerClientProtocol, layerSocketServer } from "@effect/platform-node-shared/NodeClusterSocket"
+import * as NodeCrypto from "@effect/platform-node-shared/NodeCrypto"
 import * as K8sHttpClient from "effect/cluster/K8sHttpClient"
 import * as MessageStorage from "effect/cluster/MessageStorage"
 import * as RunnerHealth from "effect/cluster/RunnerHealth"

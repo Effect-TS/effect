@@ -224,14 +224,16 @@ export const make = (randomBytes: (size: number) => Uint8Array): SecureRandom["S
         }
         return buffer
       }),
-    uuidV4: ((options?: { readonly format?: UuidFormat | undefined }) =>
-      Effect.sync(() => makeUuid(Uuid.v4Bytes, randomBytes, options?.format))) as UuidGenerator<never>,
-    uuidV7: ((options?: { readonly format?: UuidFormat | undefined }) =>
-      Effect.clockWith((clock) =>
-        Effect.sync(() =>
-          makeUuid((bytes) => Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
-        )
-      )) as UuidGenerator<never>,
+    uuidV4:
+      ((options?: { readonly format?: UuidFormat | undefined }) =>
+        Effect.sync(() => makeUuid(Uuid.v4Bytes, randomBytes, options?.format))) as UuidGenerator<never>,
+    uuidV7:
+      ((options?: { readonly format?: UuidFormat | undefined }) =>
+        Effect.clockWith((clock) =>
+          Effect.sync(() =>
+            makeUuid((bytes) => Uuid.v7Bytes(clock.currentTimeMillisUnsafe(), bytes), randomBytes, options?.format)
+          )
+        )) as UuidGenerator<never>,
     ulid: Effect.clockWith((clock) =>
       Effect.sync(() => Ulid.ulidString(clock.currentTimeMillisUnsafe(), randomBytes(10)))
     )
@@ -306,8 +308,9 @@ export const randomBytesUnsafe = (size: number): Uint8Array => {
 export const uuidV4Unsafe: {
   (options?: { readonly format?: "string" | undefined }): string
   <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
-} = ((options?: { readonly format?: UuidFormat | undefined }) =>
-  makeUuid(Uuid.v4Bytes, randomBytesUnsafe, options?.format)) as any
+} =
+  ((options?: { readonly format?: UuidFormat | undefined }) =>
+    makeUuid(Uuid.v4Bytes, randomBytesUnsafe, options?.format)) as any
 
 /**
  * Synchronously generates a UUIDv7 from `Date.now()` and `globalThis.crypto`,
@@ -326,8 +329,9 @@ export const uuidV4Unsafe: {
 export const uuidV7Unsafe: {
   (options?: { readonly format?: "string" | undefined }): string
   <Format extends UuidFormat>(options: { readonly format: Format }): Format extends "bytes" ? Uint8Array : string
-} = ((options?: { readonly format?: UuidFormat | undefined }) =>
-  makeUuid((bytes) => Uuid.v7Bytes(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
+} =
+  ((options?: { readonly format?: UuidFormat | undefined }) =>
+    makeUuid((bytes) => Uuid.v7Bytes(Date.now(), bytes), randomBytesUnsafe, options?.format)) as any
 
 /**
  * Synchronously generates a ULID from `Date.now()` and `globalThis.crypto`.
