@@ -11,6 +11,7 @@ import {
   Queue,
   Schedule,
   Schema,
+  Scope,
   Stream,
   Tracer
 } from "effect"
@@ -123,6 +124,49 @@ describe("RpcClient", () => {
       const retryRequestId = takeRequestId(yield* Queue.take(sent))
       yield* handle({ _tag: "Exit", requestId: retryRequestId, exit: { _tag: "Success", value: "ok" } })
       assert.deepStrictEqual(yield* Fiber.join(caller), Exit.succeed("ok"))
+    }))
+
+  it.effect("releases pending calls when connection defect delivery is interrupted and the client closes", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
+      const sent = yield* Queue.unbounded<void>()
+      const delivery = yield* Deferred.make<Fiber.Fiber<unknown, unknown>>()
+      const { client, write } = yield* RpcClient.makeNoSerialization(TestGroup, {
+        onFromClient: ({ message }) =>
+          message._tag === "Request" ? Queue.offer(sent, undefined).pipe(Effect.asVoid) : Effect.void
+      }).pipe(Effect.provideService(Scope.Scope, scope))
+
+      const first = yield* client.Ping().pipe(
+        Effect.catchDefect(() =>
+          Effect.gen(function*() {
+            const receiver = yield* Deferred.await(delivery)
+            yield* Effect.withFiber((fiber) => Effect.sync(() => receiver.interruptUnsafe(fiber.id)))
+          })
+        ),
+        Effect.forkChild
+      )
+      yield* Queue.take(sent)
+      // A queue completion introduces an interruption boundary between the unary calls.
+      yield* client.Events(undefined, { asQueue: true })
+      yield* Queue.take(sent)
+      const last = yield* client.Ping().pipe(Effect.forkChild)
+      yield* Queue.take(sent)
+      yield* Effect.yieldNow
+
+      const receiver = yield* Effect.withFiber((fiber) =>
+        Deferred.succeed(delivery, fiber).pipe(
+          Effect.andThen(write({ _tag: "Defect", clientId: 0, defect: "connection defect" }))
+        )
+      ).pipe(Effect.forkChild)
+      const receiveExit = yield* Fiber.await(receiver)
+      assert(Exit.isFailure(receiveExit) && Cause.hasInterruptsOnly(receiveExit.cause))
+      yield* Fiber.join(first)
+      yield* Scope.close(scope, Exit.void)
+
+      const lastExit = last.pollUnsafe()
+      assert(lastExit !== undefined, "client shutdown must not leave a pending call stranded")
+      assert(Exit.isFailure(lastExit))
     }))
 
   it.effect("does not fail a new request started synchronously during protocol error delivery", () =>
