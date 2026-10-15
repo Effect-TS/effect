@@ -5,22 +5,12 @@ import { Arbitrary, Array, Effect, Equal, Hash, HashSet, Option, pipe, Result, S
 const $ = SemVer.parseUnsafe
 const fmt = SemVer.format
 
-// Small components make equal cores and shared identifiers likely, which is
-// where precedence, equality, and bump edge cases live.
-const between = (minimum: number, maximum: number) => Schema.Int.check(Schema.isBetween({ minimum, maximum }))
-const semver = Arbitrary.map(
-  Arbitrary.schema(Schema.Struct({
-    major: between(0, 3),
-    minor: between(0, 3),
-    patch: between(0, 3),
-    prerelease: Schema.Array(
-      Schema.Union([between(0, 20), Schema.Literals(["alpha", "beta", "rc", "x-y", "0a", "-", "A"])])
-    )
-      .check(Schema.isMaxLength(3)),
-    build: Schema.Array(Schema.Literals(["build", "001", "sha-1"])).check(Schema.isMaxLength(2))
-  })),
-  SemVer.make
-)
+const semver = Arbitrary.schema(Schema.SemVer)
+
+// The regular expression suggested by https://semver.org/spec/v2.0.0.html, used
+// as an independent oracle for generated versions.
+const officialPattern =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
 const checkProperty = <A>(arbitrary: Arbitrary.Arbitrary<A>, property: (value: A) => boolean) =>
   Effect.gen(function*() {
@@ -107,6 +97,9 @@ describe("SemVer", () => {
       )
       throws(() => $("1.2"))
     })
+
+    it.effect("Schema.SemVer generates spec-valid versions", () =>
+      checkProperty(semver, (version) => officialPattern.test(fmt(version))))
 
     it.effect("round-trips formatted versions", () =>
       checkProperty(semver, (version) => Equal.equals($(fmt(version)), version)))

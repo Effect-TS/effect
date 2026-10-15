@@ -15749,6 +15749,10 @@ export function Result<A extends Constraint, E extends Constraint>(
 // SemVer schemas
 // -----------------------------------------------------------------------------
 
+// Alphanumeric identifiers contain at least one non-digit.
+const SemVerPrereleaseArbitrary = ArraySchema(
+  Union([Natural, String.check(isPattern(/^[0-9]*[A-Za-z-][0-9A-Za-z-]*$/))])
+)
 const semVerFromString: SchemaTransformation.Transformation<SemVer_.SemVer, string> = SchemaTransformation
   .transformEffect<SemVer_.SemVer, string>({
     decode: (s, options) => {
@@ -15802,8 +15806,8 @@ export const SemVer: SemVer = declare(
           major: Natural,
           minor: Natural,
           patch: Natural,
-          prerelease: ArraySchema(Union([Natural, Literals(["alpha", "beta", "rc", "x-1", "0a"])])),
-          build: ArraySchema(Literals(["build", "001", "sha-5114f85"]))
+          prerelease: SemVerPrereleaseArbitrary,
+          build: ArraySchema(String.check(isPattern(/^[0-9A-Za-z-]+$/)))
         }),
         SchemaGetter.transform(SemVer_.make)
       ),
@@ -15894,8 +15898,24 @@ export const SemVerRange: SemVerRange = declare(
     expected: "SemVerRange",
     toCodecArbitrary: () =>
       linkDecoding<SemVerRange_.SemVerRange>()(
-        Literals(["*", "1.2.3", "^1.2.3", "~1.2", "1.x || >=2.0.0-rc.1 <3", "1.2.3 - 2", "<=0.0.1-0"]),
-        SchemaGetter.transform(SemVerRange_.parseUnsafe)
+        ArraySchema(
+          ArraySchema(Struct({
+            operator: String.check(isPattern(/^(?:<=|>=|<|>|=|~|\^)?$/)),
+            version: Struct({
+              major: Natural,
+              minor: Natural,
+              patch: Natural,
+              prerelease: SemVerPrereleaseArbitrary
+            })
+          })).check(isMinLength(1))
+        ),
+        SchemaGetter.transform((sets) =>
+          SemVerRange_.parseUnsafe(
+            sets.map((set) =>
+              set.map(({ operator, version }) => `${operator}${SemVer_.format(SemVer_.make(version))}`).join(" ")
+            ).join(" || ")
+          )
+        )
       ),
     toCodecJson: () =>
       link<SemVerRange_.SemVerRange>()(
