@@ -22,14 +22,15 @@ export class PgContainer extends Context.Service<PgContainer>()("test/PgContaine
         // docker-modem can leave an aborted response pending forever. Abort each
         // timed-out request and retry only this read-only wait, not stop or remove.
         yield* Effect.tryPromise((signal) => handle.wait({ condition: "not-running", abortSignal: signal })).pipe(
-          Effect.timeout("5 seconds"),
+          Effect.timeout("2 seconds"),
           Effect.retry({ times: 2 })
         )
         yield* Effect.promise(() => client.container.remove(handle, { removeVolumes: true }))
       }).pipe(
-        // Bound the entire release, including stop and removal. Cleanup failures
-        // remain visible defects rather than being silently suppressed.
-        Effect.timeout("20 seconds"),
+        // Allow up to six seconds of waits within an eight-second release budget,
+        // leaving headroom under Vitest's ten-second cancellation-hook deadline.
+        // Cleanup failures remain visible defects rather than being suppressed.
+        Effect.timeout("8 seconds"),
         Effect.orDie
       )
   )
