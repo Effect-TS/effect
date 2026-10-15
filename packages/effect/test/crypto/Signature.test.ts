@@ -154,6 +154,36 @@ describe("Signature", () => {
       assert.isTrue(nodeVerify("sha256", yield* Signature.toBytes(pkcs1.publicKey), pkcs1Signed))
     }).pipe(Effect.provide(layer)))
 
+  it.effect("checks the RSA-PSS salt length before signing or verifying", () =>
+    Effect.gen(function*() {
+      const signature = yield* Signature.Signature
+      const pair = yield* Effect.promise(() =>
+        globalThis.crypto.subtle.generateKey(
+          { name: "RSA-PSS", hash: "SHA-256", modulusLength: 2048, publicExponent: Uint8Array.of(1, 0, 1) },
+          false,
+          ["sign", "verify"]
+        )
+      )
+      const keys = (saltLength: number) => {
+        const algorithm = Signature.rsaPss({ hash: Digest.sha256, modulusLength: 2048, saltLength })
+        return Effect.all({
+          privateKey: Signature.privateKeyFromCryptoKey(algorithm, pair.privateKey),
+          publicKey: Signature.publicKeyFromCryptoKey(algorithm, pair.publicKey)
+        })
+      }
+
+      const unsalted = yield* keys(0)
+      const signed = yield* signature.sign(unsalted.privateKey, data)
+      assert.isTrue(yield* signature.verify(unsalted.publicKey, signed, data))
+
+      // A 2048-bit key with SHA-256 fits at most 256 - 32 - 2 = 222 bytes of salt.
+      for (const saltLength of [-1, -0.5, 1.5, 223]) {
+        const { privateKey, publicKey } = yield* keys(saltLength)
+        assertReason(yield* Effect.flip(signature.sign(privateKey, data)), "InvalidArgument", "sign")
+        assertReason(yield* Effect.flip(signature.verify(publicKey, signed, data)), "InvalidArgument", "verify")
+      }
+    }).pipe(Effect.provide(layer)))
+
   it.effect("returns false for any problem with the signature bytes", () =>
     Effect.gen(function*() {
       const signature = yield* Signature.Signature
