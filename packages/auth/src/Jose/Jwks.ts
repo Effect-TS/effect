@@ -18,9 +18,9 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import * as SynchronizedRef from "effect/SynchronizedRef"
-import { json } from "./internal/encoding.ts"
-import * as KeyInput from "./internal/keyInput.ts"
-import { AmbiguousKey, InvalidKey, JwksUnavailable, type KeyError, KeyNotFound } from "./JoseError.ts"
+import { json } from "../internal/encoding.ts"
+import * as KeyInput from "../internal/keyInput.ts"
+import { AmbiguousKey, InvalidKey, JwksUnavailable, type KeyError, KeyNotFound } from "../JoseError.ts"
 import { AsymmetricAlgorithm, importPublic, PublicJwk, type PublicKey } from "./Jwk.ts"
 
 /**
@@ -88,7 +88,7 @@ export class Jwks extends Context.Service<
  * **Example** (Resolving one trusted public key)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwks } from "@effect/auth"
+ * import { Jwk, Jwks } from "@effect/auth/Jose"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect } from "effect"
  *

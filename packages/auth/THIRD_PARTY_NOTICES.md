@@ -32,8 +32,8 @@ policy capture, scoped cancellation and bounded-waiter regressions. This is not
 a full upstream suite port or a claim of full upstream compatibility.
 
 The source implementation informs claim validation, protected-header policy, and
-key selection in `src/Jwt.ts`, `src/Jws.ts`, `src/Jwk.ts`, `src/Jwks.ts`, and
-`src/Jwe.ts`; these implementations are written for Effect services and Schema.
+key selection in `src/Jose/Jwt.ts`, `src/Jose/Jws.ts`, `src/Jose/Jwk.ts`, `src/Jose/Jwks.ts`, and
+`src/Jose/Jwe.ts`; these implementations are written for Effect services and Schema.
 No panva/jose runtime implementation is bundled or required.
 
 The wire formats follow RFC 7515, RFC 7516, RFC 7517, RFC 7518, RFC 7519,

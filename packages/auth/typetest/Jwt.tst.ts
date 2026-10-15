@@ -1,4 +1,5 @@
-import { Jwe, Jwk, type Jwks, Jws, Jwt } from "@effect/auth"
+import type * as Auth from "@effect/auth"
+import { Jwe, Jwk, type Jwks, Jws, Jwt } from "@effect/auth/Jose"
 import { Context, Effect, Redacted, Schema, SchemaGetter } from "effect"
 import type { Aes, CryptoError, Ecdsa, Ed25519, Hmac, Rsa, SecureRandom } from "effect/crypto"
 import { describe, expect, it } from "tstyche"
@@ -15,6 +16,23 @@ const Claims = Schema.Struct({
     encode: SchemaGetter.transformEffect((value) => Effect.map(Encode, (service) => value.slice(service.prefix.length)))
   })),
   quota: Schema.FiniteFromString
+})
+
+describe("grouped JOSE exports", () => {
+  it("preserves all five module types through the root namespace", () => {
+    expect<typeof Auth.Jose.Jwe>().type.toBe<typeof Jwe>()
+    expect<typeof Auth.Jose.Jwk>().type.toBe<typeof Jwk>()
+    expect<typeof Auth.Jose.Jwks>().type.toBe<typeof Jwks>()
+    expect<typeof Auth.Jose.Jws>().type.toBe<typeof Jws>()
+    expect<typeof Auth.Jose.Jwt>().type.toBe<typeof Jwt>()
+  })
+
+  it("exports JOSE only through its group while keeping root protocols and errors", () => {
+    expect<keyof typeof Auth>().type.toBe<
+      "Jose" | "JoseError" | "OAuth" | "OAuthError" | "Oidc" | "Pkce"
+    >()
+    expect<keyof typeof Auth.Jose>().type.toBe<"Jwe" | "Jwk" | "Jwks" | "Jws" | "Jwt">()
+  })
 })
 
 describe("JWT schema inference", () => {

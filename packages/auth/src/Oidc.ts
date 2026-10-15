@@ -20,9 +20,9 @@ import type * as Scope from "effect/Scope"
 import * as Ownership from "./internal/ownership.ts"
 import * as Transport from "./internal/transport.ts"
 import * as V from "./internal/validation.ts"
-import * as Jwk from "./Jwk.ts"
-import * as Jwks from "./Jwks.ts"
-import * as Jwt from "./Jwt.ts"
+import * as Jwk from "./Jose/Jwk.ts"
+import * as Jwks from "./Jose/Jwks.ts"
+import * as Jwt from "./Jose/Jwt.ts"
 import { JsonObject, Metadata, type RequestOptions } from "./OAuth.ts"
 import { ConfigurationError, Rejected, Unavailable } from "./OAuthError.ts"
 
@@ -525,7 +525,8 @@ function claimFailure(): Rejected {
  * **Example** (Verifying a signed ID token with explicit HS256 policy)
  *
  * ```ts import.meta.vitest
- * import { Jwk, Jwt, Oidc } from "@effect/auth"
+ * import { Oidc } from "@effect/auth"
+ * import { Jwk, Jwt } from "@effect/auth/Jose"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { DateTime, Effect, Redacted, Schema } from "effect"
  * import { Base64Url } from "effect/encoding"

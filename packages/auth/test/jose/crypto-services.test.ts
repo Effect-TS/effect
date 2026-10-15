@@ -1,4 +1,4 @@
-import { Jwe, Jwk, Jwks, Jws } from "@effect/auth"
+import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted } from "effect"
 import { Aes, CryptoError, Ecdsa, Ed25519, Hmac, Rsa, SecureRandom, WebCrypto } from "effect/crypto"

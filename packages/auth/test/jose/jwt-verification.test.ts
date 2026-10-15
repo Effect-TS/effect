@@ -1,4 +1,5 @@
-import { type JoseError, Jwk, Jwks, Jwt } from "@effect/auth"
+import type { JoseError } from "@effect/auth"
+import { Jwk, Jwks, Jwt } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Redacted, Schema } from "effect"
 import { TestClock } from "effect/testing"

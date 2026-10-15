@@ -1,4 +1,4 @@
-import { Jwe, Jwk, Jwks, Jws } from "@effect/auth"
+import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import * as jose from "jose"

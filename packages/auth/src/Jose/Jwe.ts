@@ -10,11 +10,11 @@ import * as Effect from "effect/Effect"
 import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { copy, decode as decodeInput, native, operationError, withSecret } from "./internal/crypto.ts"
-import { CryptoUnavailable, type OperationError } from "./internal/cryptoErrors.ts"
-import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "./internal/encoding.ts"
-import * as KeyPolicy from "./internal/keyPolicy.ts"
-import { DecryptionFailed, InvalidKey, InvalidToken } from "./JoseError.ts"
+import { copy, decode as decodeInput, native, operationError, withSecret } from "../internal/crypto.ts"
+import { CryptoUnavailable, type OperationError } from "../internal/cryptoErrors.ts"
+import { decode, json, JsonObject, parse, reveal, split, stringify, utf8 } from "../internal/encoding.ts"
+import * as KeyPolicy from "../internal/keyPolicy.ts"
+import { DecryptionFailed, InvalidKey, InvalidToken } from "../JoseError.ts"
 import type { SecretKey } from "./Jwk.ts"
 
 /**
@@ -69,7 +69,7 @@ const readHeader = Effect.fnUntraced(function*(input: unknown) {
  * **Example** (Encrypting and authenticating plaintext)
  *
  * ```ts import.meta.vitest
- * import { Jwe, Jwk } from "@effect/auth"
+ * import { Jwe, Jwk } from "@effect/auth/Jose"
  * import { NodeCrypto } from "@effect/platform-node"
  * import { Effect, Redacted } from "effect"
  *
