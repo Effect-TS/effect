@@ -4,6 +4,7 @@ import * as Config from "effect/Config"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as Aead from "effect/crypto/Aead"
 import * as CryptoError from "effect/crypto/CryptoError"
+import * as Digest from "effect/crypto/Digest"
 import * as KeyFormat from "effect/crypto/KeyFormat"
 import * as Mac from "effect/crypto/Mac"
 import * as Signature from "effect/crypto/Signature"
@@ -40,6 +41,28 @@ const failure = <A>(exit: Exit.Exit<A, Schema.SchemaError>): SchemaIssue.Leaf =>
 }
 
 describe("Schema crypto keys", () => {
+  it.effect("declared schemas reject a key with a different operation-defining hash", () =>
+    Effect.gen(function*() {
+      const pair = NodeCrypto.generateKeyPairSync("ec", { namedCurve: "P-256" })
+      const key = yield* KeyFormat.decodePublic(
+        KeyFormat.spki,
+        { ...Signature.ecdsaP256, hash: Digest.sha512 },
+        new Uint8Array(pair.publicKey.export({ format: "der", type: "spki" }))
+      )
+      assert.isFalse(Schema.is(Schema.SignaturePublicKey(Signature.ecdsaP256))(key))
+    }))
+
+  it.effect("declared RSA schemas ignore generation-only modulus length", () =>
+    Effect.gen(function*() {
+      const pair = NodeCrypto.generateKeyPairSync("rsa", { modulusLength: 2048 })
+      const key = yield* KeyFormat.decodePublic(
+        KeyFormat.spki,
+        Signature.rsaPss({ hash: Digest.sha256, modulusLength: 2048 }),
+        new Uint8Array(pair.publicKey.export({ format: "der", type: "spki" }))
+      )
+      assert.isTrue(Schema.is(Schema.SignaturePublicKey(Signature.rsaPssSha256))(key))
+    }))
+
   it.effect("FromBytes decodes synchronously and maps a CryptoError to InvalidValue", () =>
     Effect.gen(function*() {
       const bytes = new Uint8Array(32).fill(7)

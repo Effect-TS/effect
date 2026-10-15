@@ -33,6 +33,35 @@ const nodeJwk = (pkcs8: Uint8Array) =>
 const rsaPss2048 = Signature.rsaPss({ hash: Digest.sha256, modulusLength: 2048 })
 
 describe("KeyFormat", () => {
+  it.effect("rejects RSA PKCS#8 decoded as ECDSA with InvalidKey", () =>
+    Effect.gen(function*() {
+      assertReason(
+        yield* Effect.flip(KeyFormat.decodePrivate(KeyFormat.pkcs8, Signature.ecdsaP256, der(rsa.privateKey, "pkcs8"))),
+        "InvalidKey",
+        "decodePrivate"
+      )
+    }))
+
+  it.effect("rejects a point-less P-384 PKCS#8 decoded as P-256 with InvalidKey", () =>
+    Effect.gen(function*() {
+      const d = Result.getOrThrow(Base64Url.decode(jwk(p384.privateKey).d!))
+      const pkcs8 = Uint8Array.of(
+        ...bytes("304e020100301006072a8648ce3d020106052b81040022043730350201010430"),
+        ...d
+      )
+      assertReason(
+        yield* Effect.flip(KeyFormat.decodePrivate(KeyFormat.pkcs8, Signature.ecdsaP256, pkcs8)),
+        "InvalidKey",
+        "decodePrivate"
+      )
+    }))
+
+  it.effect("reports the imported RSA PKCS#8 modulus rather than the generation default", () =>
+    Effect.gen(function*() {
+      const key = yield* KeyFormat.decodePrivate(KeyFormat.pkcs8, Signature.rsaPssSha256, der(rsa.privateKey, "pkcs8"))
+      assert.strictEqual(key.algorithm.modulusLength, 2048)
+    }))
+
   it.effect("decodes and encodes SPKI and PKCS#8 for every asymmetric family", () =>
     Effect.gen(function*() {
       const cases = [

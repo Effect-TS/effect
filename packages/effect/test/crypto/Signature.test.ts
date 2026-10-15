@@ -50,6 +50,19 @@ const nodeVerify = (
   )
 
 describe("Signature", () => {
+  it.effect("reports the imported RSA CryptoKey modulus rather than the generation default", () =>
+    Effect.gen(function*() {
+      const pair = yield* Effect.promise(() =>
+        globalThis.crypto.subtle.generateKey(
+          { name: "RSA-PSS", hash: "SHA-256", modulusLength: 2048, publicExponent: Uint8Array.of(1, 0, 1) },
+          false,
+          ["sign", "verify"]
+        )
+      )
+      const key = yield* Signature.privateKeyFromCryptoKey(Signature.rsaPssSha256, pair.privateKey)
+      assert.strictEqual(key.algorithm.modulusLength, 2048)
+    }))
+
   it.effect("signs and verifies the RFC 8032 Ed25519 vector, deriving the public key from the seed", () =>
     Effect.gen(function*() {
       const signature = yield* Signature.Signature

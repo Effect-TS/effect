@@ -1,10 +1,12 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Digest from "effect/crypto/Digest"
+import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Signature from "effect/crypto/Signature"
 import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
-import { encode } from "../utils/crypto.ts"
+import { assertReason, encode, fakeSubtle } from "../utils/crypto.ts"
 
 const assertSubtleUnavailable = <A, E>(exit: Exit.Exit<A, E>) => {
   assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause), "expected a defect")
@@ -14,6 +16,22 @@ const assertSubtleUnavailable = <A, E>(exit: Exit.Exit<A, E>) => {
 }
 
 describe("WebCrypto", () => {
+  it.effect("identifies the algorithm and declining layer in native Unsupported errors", () =>
+    Effect.gen(function*() {
+      const key = yield* Signature.privateKey(Signature.ed25519, new Uint8Array(32).fill(7))
+      const signature = yield* Signature.Signature
+      const error = yield* Effect.flip(signature.sign(key, encode("message")))
+      assertReason(error, "Unsupported", "sign")
+      assert.include(error.reason.message, "ed25519")
+      assert.include(error.reason.message, "Signature.layerWebCrypto")
+    }).pipe(
+      Effect.provide(Signature.layerWebCrypto),
+      Effect.provideService(SecureRandom.SecureRandom, SecureRandom.make((size) => new Uint8Array(size).fill(7))),
+      Effect.provide(fakeSubtle({
+        importKey: () => Promise.reject(new DOMException("not supported", "NotSupportedError"))
+      }))
+    ))
+
   it("exports only the reference and its layer", () => {
     assert.deepStrictEqual(Object.keys(WebCrypto).sort(), ["WebCrypto", "layer"])
   })

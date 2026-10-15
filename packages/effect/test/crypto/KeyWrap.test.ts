@@ -42,6 +42,19 @@ const layer = KeyWrap.layerWebCrypto.pipe(Layer.provide(seeded))
 const subtle = globalThis.crypto.subtle
 
 describe("KeyWrap", () => {
+  it.effect("reports the imported RSA CryptoKey modulus rather than the generation default", () =>
+    Effect.gen(function*() {
+      const pair = yield* Effect.promise(() =>
+        globalThis.crypto.subtle.generateKey(
+          { name: "RSA-OAEP", hash: "SHA-256", modulusLength: 2048, publicExponent: Uint8Array.of(1, 0, 1) },
+          false,
+          ["encrypt", "decrypt"]
+        )
+      )
+      const key = yield* KeyWrap.privateKeyFromCryptoKey(KeyWrap.rsaOaepSha256, pair.privateKey)
+      assert.strictEqual(key.algorithm.modulusLength, 2048)
+    }))
+
   it.effect("wraps and unwraps the RFC 3394 AES-KW vectors into typed keys", () =>
     Effect.gen(function*() {
       const keyWrap = yield* KeyWrap.KeyWrap
