@@ -5,6 +5,7 @@ import * as Cipher from "effect/crypto/Cipher"
 import * as Digest from "effect/crypto/Digest"
 import * as Kdf from "effect/crypto/Kdf"
 import * as KeyAgreement from "effect/crypto/KeyAgreement"
+import * as KeyWrap from "effect/crypto/KeyWrap"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
 import * as Signature from "effect/crypto/Signature"
@@ -156,10 +157,11 @@ describe("NodeCrypto", () => {
       assert.strictEqual((yield* Effect.flip(decrypt)).reason._tag, "InvalidArgument")
     }).pipe(Effect.provide(NodeCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
 
-  it("layerSecureRandom, layerCipher, layerSignature and layerKeyAgreement are the core layers", () => {
+  it("layerSecureRandom, layerCipher, layerSignature, layerKeyAgreement and layerKeyWrap are the core layers", () => {
     assert.strictEqual(NodeCrypto.layerSecureRandom, SecureRandom.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerCipher, Cipher.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerSignature, Signature.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerKeyAgreement, KeyAgreement.layerWebCrypto)
+    assert.strictEqual(NodeCrypto.layerKeyWrap, KeyWrap.layerWebCrypto)
   })
 })
