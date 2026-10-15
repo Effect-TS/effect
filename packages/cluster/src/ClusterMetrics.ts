@@ -44,12 +44,16 @@ export const shards = Metric.gauge("effect_cluster_shards", {
 })
 
 /**
- * Time taken to release a single shard, including entity shutdown and retries.
+ * Duration of successful single-shard releases during graceful reassignment,
+ * lock loss, or release of acquired-but-unwanted shards. Includes entity teardown,
+ * singleton shutdown, lock release, reply-handler cleanup, retries, and any wait
+ * for shard lock storage to recover. Interrupted releases, shutdown handoff, and
+ * forced releases are not recorded.
  *
  * @since 1.0.0
  * @category metrics
  */
 export const shardReleaseDuration = Metric.timer(
   "effect_cluster_shard_release_duration_ms",
-  "Time taken to release a single shard, including entity shutdown and retries"
+  "Duration of successful single-shard releases (reassignment, lock loss, or acquired-but-unwanted shards), including teardown, retries, reply-handler cleanup, and waiting for shard lock storage recovery; excludes interrupted releases, shutdown handoff, and forced releases"
 )
