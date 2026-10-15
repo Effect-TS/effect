@@ -29,7 +29,7 @@ import * as PubSub from "effect/PubSub"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
-import type { MailboxFull, PersistenceError } from "./ClusterError.js"
+import type { MailboxFull, PersistenceError, RunnerUnavailable } from "./ClusterError.js"
 import { AlreadyProcessingMessage, EntityNotAssignedToRunner } from "./ClusterError.js"
 import * as ClusterMetrics from "./ClusterMetrics.js"
 import { Persisted, Uninterruptible } from "./ClusterSchema.js"
@@ -1011,66 +1011,74 @@ const make = Effect.gen(function*() {
     message: Message.Outgoing<any>,
     discard: boolean,
     retries?: number,
-    attempt = 0
+    tracingEnabled = true
   ): Effect.Effect<
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError
   > {
-    return Effect.catchIf(
-      Effect.suspend(() => {
-        const address = message.envelope.address
-        const isPersisted = Context.get(message.rpc.annotations, Persisted)
-        if (isPersisted && !storageEnabled) {
-          return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
-        }
-        const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
-        const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
-        const send = (() => {
+    const loop = (retries: number | undefined, attempt: number): Effect.Effect<
+      void,
+      MailboxFull | AlreadyProcessingMessage | PersistenceError
+    > =>
+      Effect.catchIf(
+        Effect.suspend(() => {
+          const address = message.envelope.address
+          const isPersisted = Context.get(message.rpc.annotations, Persisted)
+          if (isPersisted && !storageEnabled) {
+            return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
+          }
+          const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
+          const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
+          let send: Effect.Effect<
+            void,
+            EntityNotAssignedToRunner | RunnerUnavailable | MailboxFull | AlreadyProcessingMessage | PersistenceError
+          >
           if (isPersisted) {
-            return runnerIsLocal
+            send = runnerIsLocal
               ? notifyLocal(message, discard)
               : runnersService.notify({ address: maybeRunner, message, discard })
           } else if (Option.isNone(maybeRunner)) {
-            return Effect.fail(new EntityNotAssignedToRunner({ address }))
+            send = Effect.fail(new EntityNotAssignedToRunner({ address }))
+          } else {
+            if (message._tag === "OutgoingRequest") {
+              const entry = clientRequests.get(message.envelope.requestId)
+              if (entry) entry.runner = maybeRunner.value
+            }
+            send = sendToRunner(maybeRunner.value, message)
           }
-          if (message._tag === "OutgoingRequest") {
-            const entry = clientRequests.get(message.envelope.requestId)
-            if (entry) entry.runner = maybeRunner.value
+          // Acks and interrupts are high-volume control messages, so only
+          // requests are traced.
+          if (!tracingEnabled || message._tag !== "OutgoingRequest") {
+            return send
           }
-          return sendToRunner(maybeRunner.value, message)
-        })()
-        return Effect.withSpan(send, "Sharding.sendOutgoing", {
-          attributes: {
-            "cluster.message.kind": message.envelope._tag,
-            "cluster.message.discard": discard,
-            "cluster.message.persisted": isPersisted,
-            "cluster.message.retry_remaining": retries ?? -1,
-            "cluster.message.attempt": attempt,
-            "cluster.entity.type": address.entityType,
-            "cluster.entity.id": String(address.entityId),
-            "cluster.shard.id": String(address.shardId),
-            "cluster.runner.assigned": Option.isSome(maybeRunner),
-            "cluster.runner.local": runnerIsLocal,
-            ...(Option.isSome(maybeRunner)
-              ? {
+          return Effect.withSpan(send, "Sharding.sendOutgoing", {
+            captureStackTrace: false,
+            attributes: {
+              "cluster.message.tag": message.envelope.tag,
+              "cluster.message.discard": discard,
+              "cluster.message.persisted": isPersisted,
+              "cluster.message.attempt": attempt,
+              "cluster.entity.type": address.entityType,
+              "cluster.entity.id": address.entityId,
+              "cluster.shard.id": address.shardId.toString(),
+              "cluster.runner.assigned": Option.isSome(maybeRunner),
+              "cluster.runner.local": runnerIsLocal,
+              ...(Option.isSome(maybeRunner) && {
                 "cluster.runner.host": maybeRunner.value.host,
                 "cluster.runner.port": maybeRunner.value.port
-              }
-              : {})
+              })
+            }
+          })
+        }),
+        (error) => error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable",
+        (error) => {
+          if (retries === 0) {
+            return Effect.die(error)
           }
-        })
-      }),
-      (error) => error._tag === "EntityNotAssignedToRunner" || error._tag === "RunnerUnavailable",
-      (error) => {
-        if (retries === 0) {
-          return Effect.die(error)
+          return Effect.delay(loop(retries && retries - 1, attempt + 1), config.sendRetryInterval)
         }
-        return Effect.delay(
-          sendOutgoing(message, discard, retries && retries - 1, attempt + 1),
-          config.sendRetryInterval
-        )
-      }
-    )
+      )
+    return loop(retries, 0)
   }
 
   const reset: Sharding["Type"]["reset"] = (requestId) =>
@@ -1242,9 +1250,10 @@ const make = Effect.gen(function*() {
     never
   > = yield* ResourceMap.make(
     Effect.fnUntraced(function*(entity: Entity<string, any>) {
+      const tracingEnabled = Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled)
       const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
         spanPrefix: `${entity.type}.client`,
-        disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
+        disableTracing: !tracingEnabled,
         supportsAck: true,
         generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
         flatten: true,
@@ -1286,7 +1295,9 @@ const make = Effect.gen(function*() {
                   context: fiber.currentContext as Context.Context<any>,
                   respond
                 }),
-                options.discard
+                options.discard,
+                undefined,
+                tracingEnabled
               )
             }
             case "Ack": {

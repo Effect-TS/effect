@@ -2,4 +2,4 @@
 "@effect/cluster": patch
 ---
 
-Trace `Sharding.sendOutgoing` with message, entity, shard and routing attributes, including the retry attempt.
+Trace each outgoing entity request routing attempt in a `Sharding.sendOutgoing` span with entity, shard, runner and attempt attributes.
