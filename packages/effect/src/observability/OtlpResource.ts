@@ -170,6 +170,7 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
   return attributes
 }
 
+// OTLP `intValue` is a signed 64-bit integer
 const int64Bound = 2 ** 63
 
 /**
@@ -179,7 +180,8 @@ const int64Bound = 2 ** 63
  *
  * Arrays are converted recursively, primitive values use their matching OTLP
  * fields, and unsupported values are formatted as strings. Integers outside the
- * signed 64-bit range use `doubleValue`, or `stringValue` for a `bigint`.
+ * signed 64-bit range fall back to `doubleValue` for numbers and `stringValue`
+ * for bigints.
  *
  * @stability unstable
  * @category attributes
@@ -199,7 +201,6 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
         stringValue: value
       }
     case "bigint":
-      // OTLP intValue is a signed 64-bit integer
       return BigInt.asIntN(64, value) === value
         ? {
           intValue: String(value)
@@ -210,6 +211,7 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
     case "number":
       return Number.isInteger(value) && value >= -int64Bound && value < int64Bound
         ? {
+          // Unsafe integers would be rounded when written as JSON numbers
           intValue: Number.isSafeInteger(value) ? value : String(BigInt(value))
         }
         : {
