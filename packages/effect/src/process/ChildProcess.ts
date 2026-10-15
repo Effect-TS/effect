@@ -259,7 +259,8 @@ export interface KillOptions {
   /**
    * The duration of time to wait after the child process has been terminated
    * before forcefully killing the child process by sending it the `"SIGKILL"`
-   * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent.
+   * signal. Defaults to `undefined`, so `"SIGKILL"` is never sent and termination
+   * waits for the process to exit with no time limit.
    *
    * **Details**
    *
