@@ -614,13 +614,15 @@ export const withMetavar: {
 export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
 
 /**
- * Marks a flag so that it appears in the declaring command's `--help` but is
- * hidden when the flag is inherited by subcommands.
+ * Hides a shared flag from subcommand help output while keeping it visible in
+ * the declaring command's own `--help` and fully parseable everywhere.
  *
- * The flag is still parsed and accepted everywhere — only help rendering for
- * descendant commands is affected. Use this with {@link Command.withSharedFlags}
- * to document a shared flag once at the root level without repeating it in
- * every subcommand's help output.
+ * **When to use**
+ *
+ * Use with {@link Command.withSharedFlags} when a flag should be documented
+ * once at the root level without repeating it in every subcommand's help
+ * output. The flag is still parsed and accepted in subcommands — only the
+ * help rendering for descendant commands is affected.
  *
  * **Example** (Showing a shared flag only at the root)
  *

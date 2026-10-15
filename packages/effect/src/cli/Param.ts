@@ -1071,13 +1071,15 @@ export const withHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Par
     }))
 
 /**
- * Marks a parameter so that it appears in the declaring command's `--help`
- * but is hidden when inherited by subcommands.
+ * Hides a parameter from subcommand help output while keeping it visible in
+ * the declaring command's own `--help` and fully parseable everywhere.
  *
- * The parameter is still parsed and accepted everywhere — only help rendering
- * for descendant commands is affected. This is useful for shared flags that
- * should be documented once at the root level without cluttering every
- * subcommand's help output.
+ * **When to use**
+ *
+ * Use when a shared flag should be documented once at the root level without
+ * cluttering every subcommand's help output. The parameter is still parsed
+ * and accepted in subcommands — only help rendering for descendant commands
+ * is affected.
  *
  * **Example** (Hiding a shared flag from subcommand help)
  *
