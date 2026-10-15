@@ -3554,6 +3554,24 @@ describe("Sharding shard handoff", { concurrent: false }, () => {
       assert.deepStrictEqual(storageState.releaseAllCalls.map((call) => call.releases), [1])
     }).pipe(Effect.scoped))
 
+  it.effect("does not record a release cancelled when shutdown handoff times out", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState({ releaseFailures: Infinity })
+      const { scope, sharding } = yield* buildSharding(storageState, {
+        shardsPerGroup: 1,
+        shardLockRefreshInterval: 100
+      })
+      yield* advanceUntil(() => sharding.hasShardId(allShards[0]))
+      const before = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
+
+      const closing = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* advanceUntil(() => storageState.releaseCalls.length > 0)
+      yield* advanceUntil(() => closing.pollUnsafe() !== undefined)
+
+      assert.deepStrictEqual(closing.pollUnsafe(), Exit.void)
+      assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
+    }))
+
   it.effect("waits for singleton teardown before handing off their shards", () =>
     Effect.gen(function*() {
       const storageState = makeFailoverStorageState()
