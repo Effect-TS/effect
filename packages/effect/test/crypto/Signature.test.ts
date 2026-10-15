@@ -231,12 +231,12 @@ describe("Signature", () => {
 
       const p384 = yield* generate({ name: "ECDSA", namedCurve: "P-384" })
       const ecdh = yield* generate({ name: "ECDH", namedCurve: "P-256" }, ["deriveBits"])
-      const verifyOnly = yield* generate({ name: "ECDSA", namedCurve: "P-256" }, ["verify"])
+      // A private key must allow signing, but its public key can lack verify usage.
+      const signOnly = yield* generate({ name: "ECDSA", namedCurve: "P-256" }, ["sign"])
       const mismatched: ReadonlyArray<readonly [Signature.Algorithm, CryptoKey]> = [
         [Signature.ecdsaP256, p384.privateKey],
         [Signature.ecdsaP256, ecdh.privateKey],
         [Signature.ecdsaP256, ec.publicKey],
-        [Signature.ecdsaP256, verifyOnly.privateKey],
         // The hash is part of an RSA algorithm.
         [Signature.rsaPss({ hash: Digest.sha384, modulusLength: 2048 }), rsa.privateKey],
         [Signature.rsaPkcs1v15Sha256, rsa.privateKey]
@@ -248,6 +248,11 @@ describe("Signature", () => {
           "privateKeyFromCryptoKey"
         )
       }
+      assertReason(
+        yield* Effect.flip(Signature.publicKeyFromCryptoKey(Signature.ecdsaP256, signOnly.publicKey)),
+        "InvalidKey",
+        "publicKeyFromCryptoKey"
+      )
       assertReason(
         yield* Effect.flip(Signature.publicKeyFromCryptoKey(Signature.ecdsaP256, ec.privateKey)),
         "InvalidKey",

@@ -147,7 +147,7 @@ describe("KeyAgreement", () => {
       for (const provided of [seeded, zeros]) {
         const error = yield* Effect.gen(function*() {
           const keyAgreement = yield* KeyAgreement.KeyAgreement
-          const { privateKey } = yield* keyAgreement.generateKeyPair(KeyAgreement.x25519)
+          const privateKey = yield* KeyAgreement.privateKey(KeyAgreement.x25519, new Uint8Array(32).fill(7))
           return yield* Effect.flip(keyAgreement.deriveSharedSecret(privateKey, lowOrder))
         }).pipe(Effect.provide(KeyAgreement.layerWebCrypto.pipe(Layer.provideMerge(provided))))
         assertReason(error, "InvalidKey", "deriveSharedSecret")
