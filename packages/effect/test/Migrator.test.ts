@@ -132,6 +132,16 @@ describe("Migrator", () => {
           ["/* outer /* inner; */ -- */ create table t (id int)"]
         ],
         [
+          "clickhouse",
+          "/* outer /* inner; */ -- */ select 1;\n// skipped;\nselect 2;\n# skipped;\n#!shebang;\nselect 3 #x; select 4",
+          [
+            "/* outer /* inner; */ -- */ select 1",
+            "// skipped;\nselect 2",
+            "# skipped;\n#!shebang;\nselect 3 #x",
+            "select 4"
+          ]
+        ],
+        [
           "mysql",
           "/*! CREATE TABLE t (id INT) */;\ninsert into t values ('it\\'s; fine', \"a\\\";b\");\nselect `x;y`;\n" +
           "select 1--1;\n# skipped;\nselect 2; -- done;",
