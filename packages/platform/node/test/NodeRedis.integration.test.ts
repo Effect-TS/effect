@@ -229,6 +229,8 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         assert.isUndefined(duplicate.pollUnsafe())
       }).pipe(TestClock.withLive), { timeout: 20000 })
 
+    // it.layer shares its TestClock across concurrent tests. Each paused worker
+    // needs a private clock so another test cannot renew its lease before recovery.
     it.effect("renews an expired lease before recovery revokes ownership", () =>
       Effect.gen(function*() {
         const queue = yield* makeOwnershipQueue("effectq-late-renewal:", "100 millis")
@@ -255,7 +257,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         yield* Fiber.join(claim)
         yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
         assert.isUndefined(duplicate.pollUnsafe())
-      }), { timeout: 20000 })
+      }).pipe(Effect.provide(TestClock.layer())), { timeout: 20000 })
 
     it.effect("revoked ownership cannot settle recovered work before reacquisition", () =>
       Effect.gen(function*() {
@@ -283,7 +285,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
         const duplicate = yield* recovery.take(Effect.succeed).pipe(TestClock.withLive, Effect.forkScoped)
         yield* Effect.sleep("1500 millis").pipe(TestClock.withLive)
         assert.isUndefined(duplicate.pollUnsafe())
-      }), { timeout: 20000 })
+      }).pipe(Effect.provide(TestClock.layer())), { timeout: 20000 })
 
     for (const settlement of ["failure", "interruption", "success", "dead-letter"] as const) {
       it.effect(`stale-owner ${settlement} does not release a live claim`, () =>
@@ -456,7 +458,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
           assert.isUndefined(duplicate.pollUnsafe())
           yield* Fiber.interrupt(replacement)
           assert.strictEqual((yield* Fiber.join(duplicate)).attempts, 2)
-        }),
+        }).pipe(Effect.provide(TestClock.layer())),
       { timeout: 20000 }
     )
 
