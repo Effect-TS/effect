@@ -4,14 +4,15 @@ import * as Aead from "effect/crypto/Aead"
 import * as Cipher from "effect/crypto/Cipher"
 import * as Digest from "effect/crypto/Digest"
 import * as Kdf from "effect/crypto/Kdf"
+import * as KeyAgreement from "effect/crypto/KeyAgreement"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
 import * as Layer from "effect/Layer"
 import * as Result from "effect/Result"
 import * as NodeCryptoModule from "node:crypto"
-import { describeCrypto } from "../../node-shared/test/Crypto.test-utils.ts"
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
 const bytes = (hex: string): Uint8Array => Result.getOrThrow(Hex.decode(hex))
@@ -155,10 +156,10 @@ describe("NodeCrypto", () => {
       assert.strictEqual((yield* Effect.flip(decrypt)).reason._tag, "InvalidArgument")
     }).pipe(Effect.provide(NodeCrypto.layerAead.pipe(Layer.provide(SecureRandom.layerWebCrypto)))))
 
-  it("layerSecureRandom and layerCipher are the core layers", () => {
+  it("layerSecureRandom, layerCipher, layerSignature and layerKeyAgreement are the core layers", () => {
     assert.strictEqual(NodeCrypto.layerSecureRandom, SecureRandom.layerWebCrypto)
     assert.strictEqual(NodeCrypto.layerCipher, Cipher.layerWebCrypto)
+    assert.strictEqual(NodeCrypto.layerSignature, Signature.layerWebCrypto)
+    assert.strictEqual(NodeCrypto.layerKeyAgreement, KeyAgreement.layerWebCrypto)
   })
 })
-
-describeCrypto("NodeCrypto services")

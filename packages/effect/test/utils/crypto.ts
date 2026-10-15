@@ -3,7 +3,6 @@ import type * as CryptoError from "effect/crypto/CryptoError"
 import * as WebCrypto from "effect/crypto/WebCrypto"
 import * as Effect from "effect/Effect"
 import * as Hex from "effect/encoding/Hex"
-import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 
 export const encode = (text: string): Uint8Array => new TextEncoder().encode(text)
@@ -27,9 +26,6 @@ export const assertReason = (
   if (method !== undefined) assert.strictEqual(error.method, method)
 }
 
-// An exception as Web Crypto raises it, identified by its name.
-export const raise = (name: string) => () => Promise.reject(Object.assign(new Error(`${name} from fixture`), { name }))
-
 // A `SubtleCrypto` whose key imports succeed and whose other methods are
 // supplied by the test.
 export const fakeSubtle = (methods: Partial<Record<keyof SubtleCrypto, () => Promise<unknown>>>) =>
@@ -47,18 +43,8 @@ export const unreachable = WebCrypto.layer({
   })
 } as Crypto)
 
-// Encodings produced with Web Crypto directly, independently of the conversion
-// functions under test.
-export const privateJwk = (
-  pkcs8: Redacted.Redacted<Uint8Array>,
-  params: AlgorithmIdentifier | RsaHashedImportParams | EcKeyImportParams,
-  usage: KeyUsage = "sign"
-) =>
-  Effect.promise(async () => {
-    const subtle = globalThis.crypto.subtle
-    const handle = await subtle.importKey("pkcs8", new Uint8Array(Redacted.value(pkcs8)), params, true, [usage])
-    return await subtle.exportKey("jwk", handle)
-  })
+// An SPKI encoding produced with Web Crypto directly, independently of the
+// layers under test.
 export const spki = (raw: Uint8Array, params: AlgorithmIdentifier | EcKeyImportParams) =>
   Effect.promise(async () => {
     const subtle = globalThis.crypto.subtle
