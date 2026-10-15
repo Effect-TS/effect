@@ -1704,8 +1704,8 @@ export const fromSchedule = <O, E, R>(
  * **Details**
  *
  * Read failures are mapped with `onError`. Finalization cancels the reader and
- * releases its lock; set `releaseLockOnEnd` to skip cancellation. A failing
- * cancel hook surfaces as a defect; an already errored stream does not.
+ * releases its lock, or only releases the lock when `releaseLockOnEnd` is set.
+ * A rejected cancel hook becomes a defect.
  *
  * **Example** (Reading from a Web stream)
  *
@@ -1926,8 +1926,8 @@ const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
         ? Effect.sync(() => reader.releaseLock())
         : Effect.promise(() =>
           reader.cancel().catch((error) =>
-            // An errored stream rejects with the error it already reported;
-            // only a failed cancel hook leaves the reader closed normally.
+            // `closed` resolves only when the cancel hook failed. An errored
+            // stream rejects it with an error that was already reported.
             reader.closed.then(() => Promise.reject(error), constVoid)
           )
         ).pipe(Effect.ensuring(Effect.sync(() => reader.releaseLock())))
