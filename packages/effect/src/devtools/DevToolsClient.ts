@@ -51,6 +51,15 @@ const makeEffect = Effect.gen(function*() {
   const services = yield* Effect.context<never>()
   const requests = yield* Queue.unbounded<DevToolsSchema.Request>()
   const connected = yield* Deferred.make<void>()
+  let closing = false
+  let writable = false
+  const transport = Socket.make({
+    reader: socket.reader,
+    writer: Effect.tap(socket.writer, () =>
+      Effect.sync(() => {
+        writable = true
+      }))
+  })
 
   const offerMetricsSnapshot = Effect.sync(() => {
     Queue.offerUnsafe(requests, toMetricsSnapshot(services))
@@ -71,7 +80,7 @@ const makeEffect = Effect.gen(function*() {
 
   const fiber = yield* Stream.fromQueue(requests).pipe(
     Stream.pipeThroughChannel(
-      Ndjson.duplexSchemaString(Socket.toChannelString(socket), {
+      Ndjson.duplexSchemaString(Socket.toChannelString(transport), {
         inputSchema: RequestSchema,
         outputSchema: ResponseSchema
       })
@@ -80,17 +89,26 @@ const makeEffect = Effect.gen(function*() {
     // Each run closes its stream scope, including the socket reader and writer,
     // before retrying with a fresh connection and the same request queue.
     Stream.runForEach(handleResponse),
+    Effect.onExit(() => {
+      writable = false
+      return Effect.void
+    }),
     Effect.tapError((error) => Effect.logDebug("DevTools connection failed", error)),
-    Effect.retry(Schedule.spaced("1 second")),
+    Effect.retry({ schedule: Schedule.spaced("1 second"), while: () => !closing }),
     Effect.forkDetach
   )
 
   yield* Effect.addFinalizer(() =>
-    offerMetricsSnapshot.pipe(
+    Effect.sync(() => {
+      closing = true
+    }).pipe(
+      Effect.andThen(offerMetricsSnapshot),
       Effect.andThen(
         Effect.flatMap(Effect.fiberId, (id) => Queue.failCause(requests, Cause.interrupt(id)))
       ),
-      Effect.andThen(Fiber.await(fiber))
+      // A ready writer drains the queue before stopping. Failed or pending
+      // acquisition cannot observe the queue interruption, so stop it directly.
+      Effect.andThen(Effect.suspend(() => writable ? Fiber.await(fiber) : Fiber.interrupt(fiber)))
     )
   )
 
