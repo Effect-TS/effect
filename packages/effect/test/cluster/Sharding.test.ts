@@ -3045,9 +3045,9 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
       }).pipe(Effect.provide(TerminationSharding(entityLayer, storageState)), Effect.scoped)
     }))
 
-  it.effect("keeps the graceful timeout for normal shard reassignment", () =>
+  it.effect("keeps the graceful timeout and records release duration across retries for shard reassignment", () =>
     Effect.gen(function*() {
-      const storageState = makeFailoverStorageState({ releaseFailures: 2 })
+      const storageState = makeFailoverStorageState({ releaseFailures: 1 })
       const unregisterInterrupts: Array<boolean> = []
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
@@ -3118,12 +3118,12 @@ describe("Sharding shard lock failover", { concurrent: false }, () => {
         assert(entityExit && Exit.hasInterrupts(entityExit))
         assert.strictEqual(storageState.releaseCalls.length, 1)
         assert.strictEqual((yield* Metric.value(ClusterMetrics.shardReleaseDuration)).count, before.count)
-        yield* TestClock.adjust(100)
-        assert.strictEqual(storageState.releaseCalls.length, 3)
+        yield* TestClock.adjust(50)
+        assert.strictEqual(storageState.releaseCalls.length, 2)
         assert.deepStrictEqual(unregisterInterrupts, [false])
         const after = yield* Metric.value(ClusterMetrics.shardReleaseDuration)
         assert.strictEqual(after.count - before.count, 1)
-        assert.strictEqual(after.sum - before.sum, 1100)
+        assert.strictEqual(after.sum - before.sum, 1050)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
