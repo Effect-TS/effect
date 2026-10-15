@@ -33,25 +33,13 @@ export * as Digest from "./Digest.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Ecdh from "./Ecdh.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Ecdsa from "./Ecdsa.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
-export * as Ed25519 from "./Ed25519.ts"
-
-/**
- * @stability unstable
- * @since 4.0.0
- */
 export * as Kdf from "./Kdf.ts"
+
+/**
+ * @stability unstable
+ * @since 4.0.0
+ */
+export * as KeyAgreement from "./KeyAgreement.ts"
 
 /**
  * @stability unstable
@@ -63,13 +51,13 @@ export * as Mac from "./Mac.ts"
  * @stability unstable
  * @since 4.0.0
  */
-export * as Rsa from "./Rsa.ts"
+export * as SecureRandom from "./SecureRandom.ts"
 
 /**
  * @stability unstable
  * @since 4.0.0
  */
-export * as SecureRandom from "./SecureRandom.ts"
+export * as Signature from "./Signature.ts"
 
 /**
  * @stability unstable

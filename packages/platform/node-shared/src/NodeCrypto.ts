@@ -3,8 +3,9 @@
  *
  * {@link layerDigest} runs MD5 and SHA on `node:crypto`, {@link layerMac} runs
  * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, {@link layerAead}
- * runs ChaCha20-Poly1305 on `node:crypto`, and {@link layerSecureRandom} and
- * {@link layerCipher} re-export the core WebCrypto layers. Each Node.js layer
+ * runs ChaCha20-Poly1305 on `node:crypto`, and {@link layerSecureRandom},
+ * {@link layerCipher}, {@link layerSignature}, and {@link layerKeyAgreement}
+ * re-export the core WebCrypto layers. Each Node.js layer
  * handles only the algorithms and keys it exists for and hands the rest to
  * the core WebCrypto implementation. There is no bundled layer: provide each
  * family's layer where it is used.
@@ -17,8 +18,10 @@ import * as Cipher from "effect/crypto/Cipher"
 import * as CryptoError from "effect/crypto/CryptoError"
 import * as Digest from "effect/crypto/Digest"
 import * as Kdf from "effect/crypto/Kdf"
+import * as KeyAgreement from "effect/crypto/KeyAgreement"
 import * as Mac from "effect/crypto/Mac"
 import * as SecureRandom from "effect/crypto/SecureRandom"
+import * as Signature from "effect/crypto/Signature"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as NodeCrypto from "node:crypto"
@@ -304,3 +307,37 @@ export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom>
  * @since 4.0.0
  */
 export const layerCipher: Layer.Layer<Cipher.Cipher, never, SecureRandom.SecureRandom> = Cipher.layerWebCrypto
+
+/**
+ * Layer that provides `Signature` on Node.js's `crypto.subtle`.
+ *
+ * **Details**
+ *
+ * This is `Signature.layerWebCrypto`, re-exported so that Node.js programs
+ * take every crypto layer from `NodeCrypto`. `CryptoKey`-backed keys go
+ * through Node.js's `crypto.subtle`, because `KeyObject.from(cryptoKey)` is
+ * deprecated (DEP0204).
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerSignature: Layer.Layer<Signature.Signature, never, SecureRandom.SecureRandom> =
+  Signature.layerWebCrypto
+
+/**
+ * Layer that provides `KeyAgreement` on Node.js's `crypto.subtle`.
+ *
+ * **Details**
+ *
+ * This is `KeyAgreement.layerWebCrypto`, re-exported so that Node.js programs
+ * take every crypto layer from `NodeCrypto`. `CryptoKey`-backed keys go
+ * through Node.js's `crypto.subtle`, because `KeyObject.from(cryptoKey)` is
+ * deprecated (DEP0204).
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement, never, SecureRandom.SecureRandom> =
+  KeyAgreement.layerWebCrypto
