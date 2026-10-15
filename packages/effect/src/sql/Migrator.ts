@@ -19,6 +19,7 @@ import * as Order from "../Order.ts"
 import { Path } from "../Path.ts"
 import * as Client from "./SqlClient.ts"
 import type { SqlError } from "./SqlError.ts"
+import type { Dialect } from "./Statement.ts"
 
 /**
  * Options for running SQL migrations, including the migration loader, optional
@@ -434,93 +435,94 @@ export const fromRecord = (migrations: Record<string, Effect.Effect<void, unknow
     Effect.succeed
   )
 
-// `$tag$` or `$$`. a digit after `$` is a placeholder, not a tag.
-const dollarTagAt = (source: string, index: number): string | undefined => {
-  if (source[index] !== "$") return undefined
-  let end = index + 1
-  const first = source[end]
-  if (first !== "$" && !/[A-Za-z_]/.test(first ?? "")) return undefined
-  if (first !== "$") {
-    end++
-    while (/[A-Za-z0-9_]/.test(source[end] ?? "")) end++
+const isIdentifierChar = (char: string | undefined): boolean => char !== undefined && /[\w$\u0080-\uffff]/.test(char)
+
+// index just past the closing `quote`, or the end of `source` when unterminated
+const skipQuoted = (source: string, index: number, quote: string, backslash: boolean): number => {
+  for (let i = index + 1; i < source.length; i++) {
+    const char = source[i]
+    if (backslash && char === "\\") {
+      i++
+    } else if (char === quote) {
+      if (source[i + 1] !== quote) return i + 1
+      i++
+    }
   }
-  if (source[end] !== "$") return undefined
-  return source.slice(index, end + 1)
+  return source.length
 }
 
-// a dropped comment has to leave a space, or SELECT/**/1 becomes SELECT1
-const sqlStatements = (source: string): Array<string> => {
+const skipPast = (source: string, index: number, terminator: string): number => {
+  const end = source.indexOf(terminator, index)
+  return end === -1 ? source.length : end + terminator.length
+}
+
+// `$$` or `$tag$`; `$1` is a placeholder
+const dollarTag = /\$(?:[A-Za-z_]\w*)?\$/y
+
+// Splits a script on top-level semicolons without rewriting statement text, so
+// the database still sees comments such as MySQL `/*! ... */`.
+const sqlStatements = (source: string, dialect: Dialect): Array<string> => {
   const statements: Array<string> = []
-  let current = ""
-  let quote: string | undefined
-  let dollar: string | undefined
-  for (let i = 0; i < source.length; i++) {
+  let start = 0
+  let hasCode = false
+  const push = (end: number) => {
+    if (hasCode) statements.push(source.slice(start, end).trim())
+    start = end + 1
+    hasCode = false
+  }
+  let i = 0
+  while (i < source.length) {
     const char = source[i]!
     const next = source[i + 1]
-    if (dollar !== undefined) {
-      if (source.startsWith(dollar, i)) {
-        current += dollar
-        i += dollar.length - 1
-        dollar = undefined
-      } else {
-        current += char
-      }
-      continue
+    if ((char === "-" && next === "-") || (char === "#" && dialect === "mysql")) {
+      i = skipPast(source, i, "\n")
+    } else if (char === "/" && next === "*") {
+      if (dialect === "mysql" && source[i + 2] === "!") hasCode = true
+      i = skipPast(source, i + 2, "*/")
+    } else if (char === "'" || char === "\"" || char === "`") {
+      const backslash = char !== "`" && (
+        dialect === "mysql" || dialect === "clickhouse" ||
+        (dialect === "pg" && char === "'" && /[eE]/.test(source[i - 1] ?? "") && !isIdentifierChar(source[i - 2]))
+      )
+      hasCode = true
+      i = skipQuoted(source, i, char, backslash)
+    } else if (char === "[" && (dialect === "sqlite" || dialect === "mssql")) {
+      hasCode = true
+      i = skipQuoted(source, i, "]", false)
+    } else if (char === "$" && dialect === "pg" && !isIdentifierChar(source[i - 1])) {
+      dollarTag.lastIndex = i
+      const tag = dollarTag.exec(source)?.[0]
+      hasCode = true
+      i = tag === undefined ? i + 1 : skipPast(source, i + tag.length, tag)
+    } else if (char === ";") {
+      push(i)
+      i++
+    } else {
+      if (!/\s/.test(char)) hasCode = true
+      i++
     }
-    if (quote === undefined && char === "-" && next === "-") {
-      current += " "
-      const end = source.indexOf("\n", i)
-      i = end === -1 ? source.length : end
-      continue
-    }
-    if (quote === undefined && char === "/" && next === "*") {
-      current += " "
-      const end = source.indexOf("*/", i + 2)
-      i = end === -1 ? source.length : end + 1
-      continue
-    }
-    if (quote !== undefined) {
-      current += char
-      if (char === quote) {
-        if (next === quote) {
-          current += next
-          i++
-        } else {
-          quote = undefined
-        }
-      }
-      continue
-    }
-    if (char === "'" || char === "\"" || char === "`") {
-      quote = char
-      current += char
-      continue
-    }
-    const tag = char === "$" ? dollarTagAt(source, i) : undefined
-    if (tag !== undefined) {
-      current += tag
-      i += tag.length - 1
-      dollar = tag
-      continue
-    }
-    if (char === ";") {
-      const statement = current.trim()
-      if (statement.length > 0) statements.push(statement)
-      current = ""
-      continue
-    }
-    current += char
   }
-  const statement = current.trim()
-  if (statement.length > 0) statements.push(statement)
+  push(source.length)
   return statements
 }
 
 /**
- * Creates a migration loader from SQL text keyed by `<id>_<name>` or
- * `<id>_<name>.sql`, sorted by migration id. Each script is run with
- * `SqlClient.unsafe`, one statement at a time. Comments become a space, and
- * PostgreSQL dollar quotes stay one statement.
+ * Creates a migration loader from SQL scripts keyed by `<id>_<name>` or
+ * `<id>_<name>.sql`, optionally prefixed by a directory as produced by
+ * `import.meta.glob`, and sorts migrations by id.
+ *
+ * **Details**
+ *
+ * Each script is split on semicolons outside quotes, comments, and PostgreSQL
+ * dollar quotes. Statements are sent verbatim, comments included, one at a time
+ * with `SqlClient.unsafe`; comment-only statements are skipped. Backslash
+ * escapes are recognized in MySQL and ClickHouse strings and in PostgreSQL
+ * `E'...'` strings.
+ *
+ * Procedural bodies delimited by `BEGIN ... END` (SQLite triggers, MySQL
+ * routines, PostgreSQL `BEGIN ATOMIC`), client commands such as `DELIMITER` or
+ * `GO`, and MySQL's `NO_BACKSLASH_ESCAPES` mode are not supported. Use
+ * `fromRecord` for those migrations.
  *
  * @stability unstable
  * @category loaders
@@ -529,14 +531,21 @@ const sqlStatements = (source: string): Array<string> => {
 export const fromSql = (migrations: Record<string, string>): Loader =>
   pipe(
     Object.keys(migrations),
-    Arr.flatMapNullishOr((_) => _.match(/^(\d+)_(.+?)(?:\.sql)?$/)),
+    Arr.flatMapNullishOr((_) => _.match(/^(?:.*\/)?(\d+)_(.+?)(?:\.sql)?$/)),
     Arr.map(
       ([key, id, name]): ResolvedMigration => [
         Number(id),
         name,
         Effect.succeed(Effect.gen(function*() {
           const sql = yield* Client.SqlClient
-          for (const statement of sqlStatements(migrations[key]!)) {
+          const dialect = sql.onDialect({
+            sqlite: () => "sqlite" as const,
+            pg: () => "pg" as const,
+            mysql: () => "mysql" as const,
+            mssql: () => "mssql" as const,
+            clickhouse: () => "clickhouse" as const
+          })
+          for (const statement of sqlStatements(migrations[key]!, dialect)) {
             yield* sql.unsafe(statement)
           }
         }))
