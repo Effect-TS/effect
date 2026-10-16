@@ -270,8 +270,8 @@ describe("Xml", () => {
             )
           }
         }
-        // Errors do not depend on chunking: a malformed token longer than the limit fails at an error in its first
-        // maxTokenSize + 1 characters, and otherwise with a Limit error
+        // Errors do not depend on chunking: a token longer than the limit fails with the first error found in its
+        // first maxTokenSize + 1 characters, or else with a Limit error
         const errors: ReadonlyArray<readonly [string, number, Xml.XmlError["kind"], number]> = [
           ["<a b='1' b='2'/>", 13, "Syntax", 10],
           ["<a b='1' b='2'/>", 12, "Limit", 1],

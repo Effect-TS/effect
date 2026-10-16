@@ -37,12 +37,12 @@ const XmlErrorTypeId = "~effect/encoding/Xml/XmlError"
  * - `Unsupported`: the input uses a feature this module does not process, such
  *   as an entity declared in a DOCTYPE or a byte encoding other than UTF-8.
  * - `Limit`: the input exceeds `maxTokenSize`, `maxDepth` or `maxElementSize`.
- * - `InvalidEvent`: events cannot be written as a well-formed document, such as
- *   an end tag that does not match its start tag.
+ * - `InvalidEvent`: the events do not form a well-formed document, such as an
+ *   end tag that does not match its start tag.
  *
- * Decoding errors carry the one-based `line` and `column` where the problem
- * was found, also appended to `message`. Columns count UTF-16 code units, and
- * lines end at LF, CR or CRLF.
+ * Errors from `decode` and `decodeString` carry the one-based `line` and
+ * `column` where the problem was found, also appended to `message`. Columns
+ * count UTF-16 code units, and lines end at LF, CR or CRLF.
  *
  * @stability unstable
  * @category errors
@@ -98,7 +98,7 @@ export interface Declaration {
  *
  * `publicId` and `systemId` are present only when the declaration names an
  * external DTD; the DTD is never read. Whitespace in `publicId` is collapsed
- * to single spaces. The internal subset is not reported.
+ * to single spaces and trimmed. The internal subset is not reported.
  *
  * @stability unstable
  * @category models
@@ -287,12 +287,13 @@ export interface ElementsOptions {
  *   attribute values are not added, and parameter entities are not expanded.
  * - References to entities other than `&lt;`, `&gt;`, `&amp;`, `&apos;` and
  *   `&quot;` fail with an `Unsupported` `XmlError` when the document has a
- *   DOCTYPE that could declare them, and with a `Syntax` `XmlError` otherwise.
+ *   DOCTYPE, and with a `Syntax` `XmlError` otherwise.
  *   Character references such as `&#233;` are always decoded.
  * - Names are reported as written, including namespace prefixes, and `xmlns`
  *   declarations are ordinary attributes.
  * - Tokens longer than `maxTokenSize` and elements nested deeper than
- *   `maxDepth` fail with a `Limit` `XmlError`.
+ *   `maxDepth` fail with a `Limit` `XmlError`. A long token can instead fail
+ *   with an error found in its first `maxTokenSize + 1` characters.
  * - Strings in events can share memory with the input chunk they were read
  *   from, so keeping short strings, such as an id from each record, can keep
  *   whole chunks in memory. Copy strings that are kept for long, for example
@@ -465,11 +466,11 @@ export const elements = <IE = never, Done = unknown>(
  * **Gotchas**
  *
  * Events that do not form one well-formed document fail with an
- * `InvalidEvent` `XmlError`: an end tag that does not match the open element,
- * a second root element, non-whitespace text outside the root element, invalid
- * names or characters, `--` in a comment, `?>` in processing instruction data,
- * a declaration that is not the first event, or a DOCTYPE after the root
- * element. The stream must end with the root element closed.
+ * `InvalidEvent` `XmlError`, such as an end tag that does not match the open
+ * element, a second root element, non-whitespace text outside the root
+ * element, invalid names or characters, `--` in a comment, `?>` in processing
+ * instruction data, or a declaration that is not the first event. The stream
+ * must end with the root element closed.
  *
  * **Example** (Writing a document)
  *
@@ -1108,8 +1109,8 @@ class Parser {
     this.base = base
   }
 
-  // Fails an incomplete token that exceeds maxTokenSize, with the error in the
-  // first maxTokenSize + 1 characters of markup if there is one, as in parse
+  // Fails an incomplete token that exceeds maxTokenSize, with an error found in
+  // the first maxTokenSize + 1 characters of markup if there is one, as in parse
   private checkPending(): void {
     const text = this.scanner.state === S_TEXT
     if (this.pendingLength + (text ? this.textSize : 0) <= this.maxTokenSize) return
