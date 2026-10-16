@@ -95,6 +95,7 @@ describe("LanguageModel", () => {
         )
         const error = yield* run(changed, "unused", true).pipe(Effect.flip)
         strictEqual(error.reason._tag, "InvalidOutputError")
+        strictEqual(error.isRetryable, true)
       }).pipe(TestUtils.withLanguageModel({
         generateText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }],
         streamText: [{ type: "tool-call", id: "call", name: "MyTool", params: { testParam: "test-param" } }]
