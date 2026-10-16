@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
+import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scheduler, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
 describe("Scope", () => {
@@ -220,6 +220,39 @@ describe("Scope", () => {
         yield* Fiber.join(first)
         yield* Fiber.join(second)
         expect(events).toEqual(["finalized", "second close done"])
+      }))
+
+    it.effect("a second close that yields while finalization completes still finishes", () =>
+      Effect.gen(function*() {
+        // Yield the second close once at each step in turn, so one run yields
+        // between its completion check and registering as a waiter.
+        for (let yieldAt = 1; yieldAt <= 6; yieldAt++) {
+          const tasks: Array<() => void> = []
+          let checks = 0
+          const scheduler: Scheduler.Scheduler = {
+            executionMode: "async",
+            makeDispatcher: () => ({
+              scheduleTask(task) {
+                tasks.push(task)
+              },
+              flush() {}
+            }),
+            shouldYield: () => ++checks === yieldAt
+          }
+          const scope = Scope.makeUnsafe()
+          const release = yield* Deferred.make<void>()
+          yield* Scope.addFinalizer(scope, Deferred.await(release))
+
+          const first = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+          const second = yield* Scope.close(scope, Exit.void).pipe(
+            Effect.provideService(Scheduler.Scheduler, scheduler),
+            Effect.forkChild({ startImmediately: true })
+          )
+          yield* Deferred.succeed(release, undefined)
+          yield* Fiber.join(first)
+          while (tasks.length > 0) tasks.shift()!()
+          expect({ yieldAt, done: second.pollUnsafe() !== undefined }).toEqual({ yieldAt, done: true })
+        }
       }))
 
     it.effect("a finalizer can close its own scope", () =>
