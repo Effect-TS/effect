@@ -164,6 +164,19 @@ describe("Zip", () => {
         }
       }))
 
+    it.effect("deflates in-memory content that the compressor outputs in several chunks", () =>
+      Effect.gen(function*() {
+        let x = 1
+        const noise = Uint8Array.from({ length: 100_000 }, () => {
+          x ^= x << 13
+          x ^= x >>> 17
+          x ^= x << 5
+          return x & 0xff
+        })
+        const output = yield* decode(yield* encode([Zip.file("noise", noise), Zip.file("next", "next")]))
+        assert.deepStrictEqual(output.map(({ body }) => body), [noise, textEncoder.encode("next")])
+      }))
+
     it.effect("writes Unix modes, directory attributes and UTF-8 flags", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([

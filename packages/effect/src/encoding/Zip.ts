@@ -588,8 +588,36 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
     return Stream.merge(output, Stream.fromEffectDrain(feed))
   })
 
+// In-memory content is deflated in one promise, which costs less per entry
+// than a stream
 const deflateBytes = (bytes: Uint8Array): Effect.Effect<Uint8Array, ZipError> =>
-  Stream.mkUint8Array(deflate(bytes.length === 0 ? Stream.empty : Stream.succeed(bytes)))
+  Effect.tryPromise({
+    try: async () => {
+      const compressor = new CompressionStream("deflate-raw")
+      const writer = compressor.writable.getWriter()
+      // A failed write errors the readable, so the reads report it
+      if (bytes.length > 0) writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => {})
+      writer.close().catch(() => {})
+      const reader = compressor.readable.getReader()
+      const chunks: Array<Uint8Array> = []
+      let length = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        length += value.length
+      }
+      if (chunks.length === 1) return chunks[0]
+      const out = new Uint8Array(length)
+      let at = 0
+      for (const chunk of chunks) {
+        out.set(chunk, at)
+        at += chunk.length
+      }
+      return out
+    },
+    catch: (cause) => invalidData(`deflate failed: ${String(cause)}`)
+  })
 
 // Errors
 
