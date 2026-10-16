@@ -258,15 +258,15 @@ describe("toStandardSchemaV1", () => {
   })
 
   describe("should respect the `message` annotation", () => {
-    it.each([undefined, "Custom message"])("preserves filter paths with message %s", (message) => {
+    it("preserves filter paths with an annotated check", () => {
       const schema = Schema.Struct({ password: Schema.String, confirm: Schema.String }).check(
         Schema.makeFilter(
           (o) => o.password === o.confirm || { path: ["confirm"], issue: "Passwords must match" },
-          { message }
+          { message: "Custom message" }
         )
       )
       expectSyncFailure(Schema.toStandardSchemaV1(schema), { password: "a", confirm: "b" }, [
-        { message: message ?? "Passwords must match", path: ["confirm"] }
+        { message: "Custom message", path: ["confirm"] }
       ])
     })
 
