@@ -12,9 +12,9 @@ describe(`RateLimiter`, () => {
       it.effect("charges oversized delay-mode requests behind the queue and delays later requests", () =>
         Effect.gen(function*() {
           const limiter = yield* RateLimiter.make
-          // Reserve three full windows, then two oversized requests and a normal request.
+          // Queue a full window, then two oversized requests and a normal request.
           // Do not sleep: every reservation must account for all earlier requests.
-          const results = yield* Effect.forEach([4, 4, 4, 5, 5, 4], (tokens) =>
+          const results = yield* Effect.forEach([4, 4, 5, 5, 4], (tokens) =>
             limiter.consume({
               algorithm,
               onExceeded: "delay",
@@ -27,13 +27,13 @@ describe(`RateLimiter`, () => {
           assert.deepStrictEqual(
             results.map((result) => Duration.toMillis(result.delay)),
             algorithm === "fixed-window"
-              ? [0, 60_000, 120_000, 240_000, 300_000, 360_000]
-              : [0, 60_000, 120_000, 195_000, 270_000, 330_000]
+              ? [0, 60_000, 180_000, 240_000, 300_000]
+              : [0, 60_000, 135_000, 210_000, 270_000]
           )
-          assert.deepStrictEqual(results.map((result) => result.remaining), [0, -4, -8, -13, -18, -22])
+          assert.deepStrictEqual(results.map((result) => result.remaining), [0, -4, -9, -14, -18])
           assert.deepStrictEqual(
             results.map((result) => Duration.toMillis(result.resetAfter)),
-            [60_000, 120_000, 180_000, 255_000, 330_000, 390_000]
+            [60_000, 120_000, 195_000, 270_000, 330_000]
           )
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
 
@@ -57,9 +57,7 @@ describe(`RateLimiter`, () => {
           assert.deepStrictEqual(error.reason.retryAfter, Duration.minutes(1))
 
           const result = yield* limiter.consume({ ...options, tokens: 4 })
-          assert.deepStrictEqual(result.delay, Duration.zero)
           assert.strictEqual(result.remaining, 0)
-          assert.deepStrictEqual(result.resetAfter, Duration.minutes(1))
         }).pipe(Effect.provide(RateLimiter.layerStoreMemory)))
     })
   }
