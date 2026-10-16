@@ -4,6 +4,7 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import {
   HttpBody,
   HttpClient,
@@ -18,7 +19,128 @@ import {
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import { spawnSync } from "node:child_process"
 import * as Http from "node:http"
+import type { AddressInfo, Socket } from "node:net"
+import { fileURLToPath } from "node:url"
+
+// spawnSync must not consume the deadlines of concurrently running tests.
+describe("failing FormData file streams (isolated)", { concurrent: false, timeout: 30000 }, () => {
+  const probe = (mode: string) => {
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL("./fixtures/failing-form-data.ts", import.meta.url)),
+      mode
+    ], { encoding: "utf8", timeout: 10000 })
+    assert.ifError(result.error)
+    assert.strictEqual(result.status, 0, result.stderr)
+    return JSON.parse(result.stdout)
+  }
+
+  let native: unknown
+  it.each(["node:http", "undici"])("%s fails promptly and releases upload resources", (adapter) => {
+    // Diagnostic only: an upstream fix must not make the adapter regression fail.
+    native ??= probe("native")
+    const result = probe(adapter)
+    const diagnostic = JSON.stringify({ adapter, native, result })
+    assert.strictEqual(result.outcome.tag, "HttpClientError", diagnostic)
+    assert.include(["EncodeError", "TransportError"], result.outcome.reason, diagnostic)
+    assert.isAbove(result.streamsRead, 0, diagnostic)
+    assert.deepStrictEqual(result.unhandled, [], diagnostic)
+    assert.strictEqual(result.lockedStreams, 0, diagnostic)
+    assert.strictEqual(result.openSockets, 0, diagnostic)
+  })
+})
+
+describe("FormData upload cancellation", () => {
+  for (
+    const [name, layer] of [
+      ["node:http", NodeClient.layerNodeHttp],
+      ["undici", NodeClient.layerUndici]
+    ] as const
+  ) {
+    it.live.each(["early response", "pending read"] as const)(
+      `${name} cancels and unlocks the file after %s`,
+      (scenario) =>
+        Effect.gen(function*() {
+          let reading!: () => void
+          const readStarted = new Promise<void>((resolve) => {
+            reading = resolve
+          })
+          let cancelled = false
+          let fileStream!: ReadableStream<Uint8Array<ArrayBuffer>>
+          class PendingFile extends File {
+            override stream() {
+              fileStream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+                pull() {
+                  reading()
+                  // No data or EOF: cancellation must interrupt reader.read().
+                },
+                cancel() {
+                  cancelled = true
+                }
+              })
+              return fileStream
+            }
+          }
+          const data = new FormData()
+          data.append("file", new PendingFile(["contents"], "pending.txt"))
+          const sockets = new Set<Socket>()
+          const server = yield* Effect.acquireRelease(
+            Effect.promise(() =>
+              new Promise<Http.Server>((resolve) => {
+                const server = Http.createServer((request, response) => {
+                  request.on("error", () => {})
+                  request.resume()
+                  if (scenario === "early response") {
+                    response.writeHead(200)
+                    response.flushHeaders()
+                  }
+                })
+                server.on("connection", (socket) => {
+                  sockets.add(socket)
+                  socket.on("close", () => sockets.delete(socket))
+                })
+                server.listen(0, "127.0.0.1", () => resolve(server))
+              })
+            ),
+            (server) =>
+              Effect.promise(() =>
+                new Promise<void>((resolve) => {
+                  server.closeAllConnections()
+                  server.close(() => resolve())
+                })
+              )
+          )
+          const client = yield* HttpClient.HttpClient
+          const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`
+          if (scenario === "early response") {
+            yield* Effect.scoped(Effect.gen(function*() {
+              const response = yield* HttpClient.withScope(client).post(url, { body: HttpBody.formData(data) })
+              assert.strictEqual(response.status, 200)
+              yield* Effect.promise(() => readStarted)
+              // Receiving headers alone must not cancel the still-active upload.
+              assert.isFalse(cancelled)
+              assert.isTrue(fileStream.locked)
+            }))
+          } else {
+            const fiber = yield* client.post(url, { body: HttpBody.formData(data) }).pipe(Effect.forkChild)
+            yield* Effect.promise(() => readStarted)
+            assert.isTrue(fileStream.locked)
+            assert.isFalse(cancelled)
+            yield* Fiber.interrupt(fiber)
+          }
+          // Observe cleanup before the client layer/agent is finalized.
+          yield* Effect.sleep(10).pipe(
+            Effect.repeat({ while: () => !cancelled || fileStream.locked || sockets.size > 0 }),
+            Effect.timeout("1 second")
+          )
+          assert.isTrue(cancelled)
+          assert.isFalse(fileStream.locked)
+          assert.strictEqual(sockets.size, 0)
+        }).pipe(Effect.provide(layer), Effect.timeout("3 seconds"))
+    )
+  }
+})
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -201,21 +323,28 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.deepStrictEqual(yield* response.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
-    if (name === "undici") {
+    if (name !== "fetch") {
       it.live("sends form data request bodies as multipart", () =>
         Effect.gen(function*() {
           const formData = new FormData()
-          formData.append("title", "effect")
-          formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
+          formData.append("title\"\nline", "héllo\n世界\rlast\r\nend")
+          formData.append("file\"\rname", new Blob(["file contents"], { type: "text/plain" }), "notes\"\r\nfile.txt")
           const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
             Effect.timeout("2 seconds")
           )
           assert.deepStrictEqual(yield* response.json, [
-            { key: "title", value: "effect" },
-            { key: "file", name: "notes.txt", contentType: "text/plain", content: "file contents" }
+            { key: "title%22%0D%0Aline", value: "héllo\r\n世界\r\nlast\r\nend" },
+            {
+              key: "file%22%0D%0Aname",
+              name: "notes%22%0D%0Afile.txt",
+              contentType: "text/plain",
+              content: "file contents"
+            }
           ])
         }).pipe(Effect.provide(localServerTestLayer)))
+    }
 
+    if (name === "undici") {
       it.effect.each(formDataResponses)("parses $name response form data", ({ path }) =>
         Effect.gen(function*() {
           const response = yield* HttpClient.get(path)
