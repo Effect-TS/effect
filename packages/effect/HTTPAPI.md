@@ -2056,8 +2056,8 @@ const reader = yield * socket.reader
 
 Things to know:
 
-- The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` or `NodeHttpClient.layerUndici`. Fetch and `XMLHttpRequest` clients fail with an `UpgradeNotSupportedError`.
-- The Node server supports these upgrades. `Bun.serve` only upgrades to WebSocket, so the Bun server fails them.
+- The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` (Node, Bun 1.4+, Deno) or `NodeHttpClient.layerUndici` (Node, Deno). Fetch and `XMLHttpRequest` clients fail with an `UpgradeNotSupportedError`.
+- Serve upgrade endpoints with `NodeHttpServer`, which also works on Bun 1.4+ and Deno. `Bun.serve` and `Deno.serve` only upgrade to WebSocket, so `BunHttpServer` and `DenoHttpServer` fail these upgrades.
 - Requests that do not ask for the declared protocol get `426 Upgrade Required`.
 - An upgrade endpoint cannot declare a payload or other success schemas, and upgrades are not supported in error responses. For WebSocket, use `HttpServerRequest.upgrade` and `Socket.makeWebSocket` instead.
 - Releasing the writer's scope half-closes the connection, and releasing the reader's scope closes it.
