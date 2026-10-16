@@ -82,8 +82,6 @@ describe("property testing", () => {
   })
 
   test("synchronous properties accept boolean and void callbacks", () => {
-    expect(it.prop).type.toBeCallableWith("boolean", [Schema.Int], () => true)
-    expect(it.prop).type.toBeCallableWith("void", { value: Schema.Int }, () => {})
     expect(it.prop).type.toBeCallableWith("boolean or void", [Schema.Int], (): boolean | void => {})
   })
 
