@@ -5,10 +5,12 @@
  * HMAC on `node:crypto`, {@link layerKdf} adds Argon2id, {@link layerAead}
  * runs ChaCha20-Poly1305 on `node:crypto`, and {@link layerSecureRandom},
  * {@link layerCipher}, {@link layerSignature}, {@link layerKeyAgreement}, and
- * {@link layerKeyWrap} re-export the core WebCrypto layers. Each Node.js layer
+ * {@link layerKeyWrap} run the core WebCrypto layers. Each Node.js layer
  * handles only the algorithms and keys it exists for and hands the rest to
- * the core WebCrypto implementation. {@link layer} provides every family at
- * once; provide a family's own layer to pick services selectively.
+ * the core WebCrypto implementation. Layers that need `SecureRandom` get it
+ * from {@link layerSecureRandom}, so no layer here has requirements.
+ * {@link layer} provides every family at once; provide a family's own layer to
+ * pick services selectively.
  *
  * `CryptoKey`-backed keys go through Node.js's `crypto.subtle`, because
  * `KeyObject.from(cryptoKey)` is deprecated (DEP0204). A `CryptoKey` must
@@ -91,16 +93,17 @@ const nodeHmac = (hash: Digest.Algorithm["name"], key: Uint8Array, data: Uint8Ar
  * Byte-backed keys sign and verify synchronously on `node:crypto`, since
  * webhook verification is a server hot path. `CryptoKey`-backed keys go
  * through Node.js's `crypto.subtle`, and generated keys come from
- * `SecureRandom`. This is `Mac.layerWebCryptoWith` with a `node:crypto`
- * primitive, so output and errors are identical to `Mac.layerWebCrypto`.
+ * {@link layerSecureRandom}. This is `Mac.layerWebCryptoWith` with a
+ * `node:crypto` primitive, so output and errors are identical to
+ * `Mac.layerWebCrypto`.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerMac: Layer.Layer<Mac.Mac, never, SecureRandom.SecureRandom> = Mac.layerWebCryptoWith({
+export const layerMac: Layer.Layer<Mac.Mac> = Mac.layerWebCryptoWith({
   hmac: nodeHmac
-})
+}).pipe(Layer.provide(layerSecureRandom))
 
 const kdfFailure = (reason: CryptoError.CryptoErrorReason): Effect.Effect<never, CryptoError.CryptoError> =>
   Effect.fail(new CryptoError.CryptoError({ module: "Kdf", method: "derive", reason }))
@@ -230,16 +233,16 @@ const nodeChacha: Aead.Implementation = {
  * pure TypeScript implementation. This is `Aead.layerWebCryptoWith` with a
  * `node:crypto` implementation, so arguments are checked and errors reported
  * as in `Aead.layerWebCrypto`. Bun's `node:crypto` lacks ChaCha20-Poly1305, so
- * on Bun this layer is the core layer. Output is identical to
- * `Aead.layerWebCrypto`.
+ * on Bun this layer runs the core implementation. Output is identical to
+ * `Aead.layerWebCrypto`. Generated keys come from {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom> = Aead.layerWebCryptoWith(
+export const layerAead: Layer.Layer<Aead.Aead> = Aead.layerWebCryptoWith(
   NodeCrypto.getCiphers().includes("chacha20-poly1305") ? { implementations: { chacha20Poly1305: nodeChacha } } : {}
-)
+).pipe(Layer.provide(layerSecureRandom))
 
 /**
  * Layer that provides `Cipher` from `crypto.subtle` on the `WebCrypto`
@@ -247,65 +250,72 @@ export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom>
  *
  * **Details**
  *
- * This is `Cipher.layerWebCrypto`, re-exported so that Node.js programs take
- * every crypto layer from `NodeCrypto`. Node.js's `crypto.subtle` already
- * runs AES-CTR and AES-CBC on OpenSSL.
+ * This is `Cipher.layerWebCrypto` with {@link layerSecureRandom}, so that
+ * Node.js programs take every crypto layer from `NodeCrypto`. Node.js's
+ * `crypto.subtle` already runs AES-CTR and AES-CBC on OpenSSL.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerCipher: Layer.Layer<Cipher.Cipher, never, SecureRandom.SecureRandom> = Cipher.layerWebCrypto
+export const layerCipher: Layer.Layer<Cipher.Cipher> = Cipher.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
 
 /**
  * Layer that provides `Signature` on Node.js's `crypto.subtle`.
  *
  * **Details**
  *
- * This is `Signature.layerWebCrypto`, re-exported so that Node.js programs
- * take every crypto layer from `NodeCrypto`. `CryptoKey`-backed keys go
- * through Node.js's `crypto.subtle`, because `KeyObject.from(cryptoKey)` is
- * deprecated (DEP0204).
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerSignature: Layer.Layer<Signature.Signature, never, SecureRandom.SecureRandom> =
-  Signature.layerWebCrypto
-
-/**
- * Layer that provides `KeyAgreement` on Node.js's `crypto.subtle`.
- *
- * **Details**
- *
- * This is `KeyAgreement.layerWebCrypto`, re-exported so that Node.js programs
- * take every crypto layer from `NodeCrypto`. `CryptoKey`-backed keys go
- * through Node.js's `crypto.subtle`, because `KeyObject.from(cryptoKey)` is
- * deprecated (DEP0204).
- *
- * @stability unstable
- * @category layers
- * @since 4.0.0
- */
-export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement, never, SecureRandom.SecureRandom> =
-  KeyAgreement.layerWebCrypto
-
-/**
- * Layer that provides `KeyWrap` on Node.js's `crypto.subtle`.
- *
- * **Details**
- *
- * This is `KeyWrap.layerWebCrypto`, re-exported so that Node.js programs take
- * every crypto layer from `NodeCrypto`. Node.js's `crypto.subtle` runs AES-KW
- * and RSA-OAEP on OpenSSL. `CryptoKey`-backed keys go through it, because
+ * This is `Signature.layerWebCrypto` with {@link layerSecureRandom}, so that
+ * Node.js programs take every crypto layer from `NodeCrypto`.
+ * `CryptoKey`-backed keys go through Node.js's `crypto.subtle`, because
  * `KeyObject.from(cryptoKey)` is deprecated (DEP0204).
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap, never, SecureRandom.SecureRandom> = KeyWrap.layerWebCrypto
+export const layerSignature: Layer.Layer<Signature.Signature> = Signature.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
+
+/**
+ * Layer that provides `KeyAgreement` on Node.js's `crypto.subtle`.
+ *
+ * **Details**
+ *
+ * This is `KeyAgreement.layerWebCrypto` with {@link layerSecureRandom}, so
+ * that Node.js programs take every crypto layer from `NodeCrypto`.
+ * `CryptoKey`-backed keys go through Node.js's `crypto.subtle`, because
+ * `KeyObject.from(cryptoKey)` is deprecated (DEP0204).
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement> = KeyAgreement.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
+
+/**
+ * Layer that provides `KeyWrap` on Node.js's `crypto.subtle`.
+ *
+ * **Details**
+ *
+ * This is `KeyWrap.layerWebCrypto` with {@link layerSecureRandom}, so that
+ * Node.js programs take every crypto layer from `NodeCrypto`. Node.js's
+ * `crypto.subtle` runs AES-KW and RSA-OAEP on OpenSSL. `CryptoKey`-backed
+ * keys go through it, because `KeyObject.from(cryptoKey)` is deprecated
+ * (DEP0204).
+ *
+ * @stability unstable
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap> = KeyWrap.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
 
 /**
  * Layer that provides every `effect/crypto` service with the Node.js
@@ -313,10 +323,9 @@ export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap, never, SecureRandom.Secu
  *
  * **Details**
  *
- * This merges the family layers of this module and provides them with
- * {@link layerSecureRandom}, so it requires nothing. It keeps the `node:crypto`
- * implementations of {@link layerDigest}, {@link layerMac}, {@link layerKdf},
- * and {@link layerAead}.
+ * This merges the family layers of this module, so it requires nothing. It
+ * keeps the `node:crypto` implementations of {@link layerDigest},
+ * {@link layerMac}, {@link layerKdf}, and {@link layerAead}.
  *
  * @stability unstable
  * @category layers
@@ -333,6 +342,7 @@ export const layer: Layer.Layer<
   | KeyAgreement.KeyAgreement
   | KeyWrap.KeyWrap
 > = Layer.mergeAll(
+  layerSecureRandom,
   layerDigest,
   layerMac,
   layerKdf,
@@ -341,4 +351,4 @@ export const layer: Layer.Layer<
   layerSignature,
   layerKeyAgreement,
   layerKeyWrap
-).pipe(Layer.provideMerge(layerSecureRandom))
+)

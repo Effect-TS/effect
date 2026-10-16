@@ -1,11 +1,12 @@
 /**
  * Browser layers for the `effect/crypto` modules.
  *
- * Every layer here is the core WebCrypto layer of its family, re-exported so
- * that browser programs take every crypto layer from `BrowserCrypto`. They run
- * on the `WebCrypto` reference, which defaults to the browser's `globalThis.crypto`.
- * {@link layer} provides every family at once; provide a family's own layer
- * to pick services selectively.
+ * Every layer here runs the core WebCrypto layer of its family, so that browser
+ * programs take every crypto layer from `BrowserCrypto`. They use the
+ * `WebCrypto` reference, which defaults to the browser's `globalThis.crypto`. Layers
+ * that need `SecureRandom` get it from {@link layerSecureRandom}, so no layer
+ * here has requirements. {@link layer} provides every family at once; provide
+ * a family's own layer to pick services selectively.
  *
  * @stability unstable
  * @since 1.0.0
@@ -52,13 +53,13 @@ export const layerDigest: Layer.Layer<Digest.Digest> = Digest.layerWebCrypto
  *
  * **Details**
  *
- * This is `Mac.layerWebCrypto`, re-exported for browser programs.
+ * This is `Mac.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerMac: Layer.Layer<Mac.Mac, never, SecureRandom.SecureRandom> = Mac.layerWebCrypto
+export const layerMac: Layer.Layer<Mac.Mac> = Mac.layerWebCrypto.pipe(Layer.provide(layerSecureRandom))
 
 /**
  * Layer that provides `Kdf` on the `WebCrypto` reference.
@@ -78,67 +79,69 @@ export const layerKdf: Layer.Layer<Kdf.Kdf> = Kdf.layerWebCrypto
  *
  * **Details**
  *
- * This is `Aead.layerWebCrypto`, re-exported for browser programs.
+ * This is `Aead.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerAead: Layer.Layer<Aead.Aead, never, SecureRandom.SecureRandom> = Aead.layerWebCrypto
+export const layerAead: Layer.Layer<Aead.Aead> = Aead.layerWebCrypto.pipe(Layer.provide(layerSecureRandom))
 
 /**
  * Layer that provides `Cipher` on the `WebCrypto` reference.
  *
  * **Details**
  *
- * This is `Cipher.layerWebCrypto`, re-exported for browser programs.
+ * This is `Cipher.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerCipher: Layer.Layer<Cipher.Cipher, never, SecureRandom.SecureRandom> = Cipher.layerWebCrypto
+export const layerCipher: Layer.Layer<Cipher.Cipher> = Cipher.layerWebCrypto.pipe(Layer.provide(layerSecureRandom))
 
 /**
  * Layer that provides `Signature` on the `WebCrypto` reference.
  *
  * **Details**
  *
- * This is `Signature.layerWebCrypto`, re-exported for browser programs.
+ * This is `Signature.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerSignature: Layer.Layer<Signature.Signature, never, SecureRandom.SecureRandom> =
-  Signature.layerWebCrypto
+export const layerSignature: Layer.Layer<Signature.Signature> = Signature.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
 
 /**
  * Layer that provides `KeyAgreement` on the `WebCrypto` reference.
  *
  * **Details**
  *
- * This is `KeyAgreement.layerWebCrypto`, re-exported for browser programs.
+ * This is `KeyAgreement.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement, never, SecureRandom.SecureRandom> =
-  KeyAgreement.layerWebCrypto
+export const layerKeyAgreement: Layer.Layer<KeyAgreement.KeyAgreement> = KeyAgreement.layerWebCrypto.pipe(
+  Layer.provide(layerSecureRandom)
+)
 
 /**
  * Layer that provides `KeyWrap` on the `WebCrypto` reference.
  *
  * **Details**
  *
- * This is `KeyWrap.layerWebCrypto`, re-exported for browser programs.
+ * This is `KeyWrap.layerWebCrypto` with {@link layerSecureRandom}.
  *
  * @stability unstable
  * @category layers
  * @since 4.0.0
  */
-export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap, never, SecureRandom.SecureRandom> = KeyWrap.layerWebCrypto
+export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap> = KeyWrap.layerWebCrypto.pipe(Layer.provide(layerSecureRandom))
 
 /**
  * Layer that provides every `effect/crypto` service on the `WebCrypto`
@@ -146,8 +149,7 @@ export const layerKeyWrap: Layer.Layer<KeyWrap.KeyWrap, never, SecureRandom.Secu
  *
  * **Details**
  *
- * This merges the family layers of this module and provides them with
- * {@link layerSecureRandom}, so it requires nothing.
+ * This merges the family layers of this module, so it requires nothing.
  *
  * @stability unstable
  * @category layers
@@ -164,6 +166,7 @@ export const layer: Layer.Layer<
   | KeyAgreement.KeyAgreement
   | KeyWrap.KeyWrap
 > = Layer.mergeAll(
+  layerSecureRandom,
   layerDigest,
   layerMac,
   layerKdf,
@@ -172,4 +175,4 @@ export const layer: Layer.Layer<
   layerSignature,
   layerKeyAgreement,
   layerKeyWrap
-).pipe(Layer.provideMerge(layerSecureRandom))
+)
