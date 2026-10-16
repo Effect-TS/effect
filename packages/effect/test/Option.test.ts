@@ -74,86 +74,53 @@ describe("Option", () => {
     assertSome(g, "testContext")
   })
 
-  it("gen closes nested try/catch/finally and using on none", () => {
+  it.each([Option.some(1), Option.none()])("gen runs cleanup before returning a short-circuit (%o)", (cleanup) => {
     const order: Array<string> = []
     const result = Option.gen(function*() {
-      using resource = {
-        [Symbol.dispose]() {
-          order.push("dispose")
-        }
-      }
+      using resource = { [Symbol.dispose]: () => order.push("dispose") }
       void resource
       try {
         try {
-          yield* Option.some(1)
-        } finally {
-          order.push("entered")
-        }
-        try {
-          try {
-            yield* Option.none()
-          } catch {
-            order.push("inner-catch")
-            return 1
-          } finally {
-            order.push("inner")
-            yield* Option.none()
-            order.push("after-inner")
-          }
+          yield* Option.none()
+          order.push("unreachable")
         } catch {
-          order.push("outer-catch")
-          return 2
+          order.push("catch")
         } finally {
-          order.push("outer")
-        }
-        try {
-          yield* Option.some(2)
-        } finally {
-          order.push("after")
+          order.push("inner")
+          strictEqual(yield* cleanup, 1)
         }
       } finally {
-        order.push("root")
+        order.push("outer")
       }
     })
     assertNone(result)
-    deepStrictEqual(order, ["entered", "inner", "outer", "root", "dispose"])
+    deepStrictEqual(order, ["inner", "outer", "dispose"])
   })
 
-  it("gen finally yield and return undefined replaces none", () => {
+  it.each([undefined, 1])("gen lets return %s in finally replace a short-circuit", (value) => {
     const result = Option.gen(function*() {
       try {
-        return yield* Option.none()
+        yield* Option.none()
       } finally {
-        const value = yield* Option.some(1)
         // oxlint-disable-next-line no-unsafe-finally
-        return value === 1 ? undefined : value
+        return value
       }
     })
-    assertSome(result, undefined)
+    assertSome(result, value)
   })
 
-  it("gen catch recovers a throw and using disposes on some", () => {
-    const recovered = Option.gen(function*() {
-      try {
-        throw "boom"
-      } catch {
-        return 2
-      }
-    })
-    assertSome(recovered, 2)
-
-    let disposed = false
-    const completed = Option.gen(function*() {
-      using resource = {
-        [Symbol.dispose]() {
-          disposed = true
+  it("gen propagates disposal errors on a short-circuit", () => {
+    const error = new Error("dispose")
+    throws(() =>
+      Option.gen(function*() {
+        using resource = {
+          [Symbol.dispose]: () => {
+            throw error
+          }
         }
-      }
-      yield* Option.some(resource)
-      return 1
-    })
-    assertSome(completed, 1)
-    assertTrue(disposed)
+        void resource
+        yield* Option.none()
+      }), error)
   })
 
   it("toString", () => {

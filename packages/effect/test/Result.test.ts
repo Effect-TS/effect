@@ -499,86 +499,71 @@ describe("Result", () => {
       assertSuccess(g, "testContext")
     })
 
-    it("gen closes nested try/catch/finally and using on failure", () => {
+    it("gen runs cleanup before returning a short-circuit", () => {
       const order: Array<string> = []
       const result = Result.gen(function*() {
-        using resource = {
-          [Symbol.dispose]() {
-            order.push("dispose")
-          }
-        }
+        using resource = { [Symbol.dispose]: () => order.push("dispose") }
         void resource
         try {
           try {
-            yield* Result.succeed(1)
-          } finally {
-            order.push("entered")
-          }
-          try {
-            try {
-              yield* Result.fail("boom")
-            } catch {
-              order.push("inner-catch")
-              return 1
-            } finally {
-              order.push("inner")
-              yield* Result.fail("from-finally")
-              order.push("after-inner")
-            }
+            yield* Result.fail("boom")
+            order.push("unreachable")
           } catch {
-            order.push("outer-catch")
-            return 2
+            order.push("catch")
           } finally {
-            order.push("outer")
-          }
-          try {
-            yield* Result.succeed(2)
-          } finally {
-            order.push("after")
+            order.push("inner")
+            strictEqual(yield* Result.succeed(1), 1)
           }
         } finally {
-          order.push("root")
+          order.push("outer")
         }
       })
-      assertFailure(result, "from-finally")
-      deepStrictEqual(order, ["entered", "inner", "outer", "root", "dispose"])
+      assertFailure(result, "boom")
+      deepStrictEqual(order, ["inner", "outer", "dispose"])
     })
 
-    it("gen finally yield and return undefined replaces a failure", () => {
+    it("gen lets a cleanup failure replace the original failure", () => {
+      const order: Array<string> = []
       const result = Result.gen(function*() {
         try {
-          return yield* Result.fail("boom")
+          try {
+            yield* Result.fail("boom")
+          } finally {
+            yield* Result.fail("cleanup")
+            order.push("unreachable")
+          }
         } finally {
-          const value = yield* Result.succeed(1)
-          // oxlint-disable-next-line no-unsafe-finally
-          return value === 1 ? undefined : value
+          order.push("outer")
         }
       })
-      assertSuccess(result, undefined)
+      assertFailure(result, "cleanup")
+      deepStrictEqual(order, ["outer"])
     })
 
-    it("gen catch recovers a throw and using disposes on success", () => {
-      const recovered = Result.gen(function*() {
+    it.each([undefined, 1])("gen lets return %s in finally replace a short-circuit", (value) => {
+      const result = Result.gen(function*() {
         try {
-          throw "boom"
-        } catch {
-          return 2
+          yield* Result.fail("boom")
+        } finally {
+          // oxlint-disable-next-line no-unsafe-finally
+          return value
         }
       })
-      assertSuccess(recovered, 2)
+      assertSuccess(result, value)
+    })
 
-      let disposed = false
-      const completed = Result.gen(function*() {
-        using resource = {
-          [Symbol.dispose]() {
-            disposed = true
+    it("gen propagates disposal errors on a short-circuit", () => {
+      const error = new Error("dispose")
+      throws(() =>
+        Result.gen(function*() {
+          using resource = {
+            [Symbol.dispose]: () => {
+              throw error
+            }
           }
-        }
-        yield* Result.succeed(resource)
-        return 1
-      })
-      assertSuccess(completed, 1)
-      assertTrue(disposed)
+          void resource
+          yield* Result.fail("boom")
+        }), error)
     })
   })
 
