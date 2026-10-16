@@ -165,7 +165,9 @@ export interface DecodeSchemaOptions extends DecodeOptions {
 export type EncodeSchemaOptions<S extends Schema.Constraint> = Omit<EncodeOptions, "columns"> & {
   readonly columns?:
     | (S["Encoded"] extends ReadonlyArray<unknown> ? ReadonlyArray<string>
-      : ReadonlyArray<Extract<keyof S["Encoded"], string>>)
+      : ReadonlyArray<
+        S["Encoded"] extends infer E ? E extends unknown ? Extract<keyof E, string> : never : never
+      >)
     | undefined
   readonly disableCodecs?: boolean | undefined
 }
@@ -544,7 +546,7 @@ export const decode: {
   >
 } =
   (<IE, Done>(options?: DecodeOptions) =>
-    Channel.pipeTo(Channel.decodeText<IE, Done>(), decodeString<IE, Done>(options))) as any
+    Channel.pipeTo(Channel.decodeText<IE, Done>("utf-8", { ignoreBOM: true }), decodeString<IE, Done>(options))) as any
 
 // Rewrites the chunk index at the head of each top-level issue path to the
 // record number, keeping the rest of the issue unchanged.
@@ -585,8 +587,12 @@ const isStringLeaf = (ast: SchemaAST.AST): boolean => {
   }
 }
 
+const resolveSuspend = (ast: SchemaAST.AST): SchemaAST.AST =>
+  SchemaAST.isSuspend(ast) ? resolveSuspend(ast.thunk()) : ast
+
 // Throws unless every selected cell of an encoded struct or tuple is a string.
 const checkCells = (ast: SchemaAST.AST, columns: ReadonlyArray<string> | undefined): void => {
+  ast = resolveSuspend(ast)
   const check = (name: string, type: SchemaAST.AST) => {
     if (!isStringLeaf(type)) {
       throw new Error(
@@ -605,6 +611,13 @@ const checkCells = (ast: SchemaAST.AST, columns: ReadonlyArray<string> | undefin
   } else if (SchemaAST.isArrays(ast)) {
     ast.elements.forEach((type, i) => check(`column ${i + 1}`, type))
     for (const type of ast.rest) check("rest element", type)
+  } else if (SchemaAST.isUnion(ast)) {
+    for (const type of ast.types) checkCells(type, columns)
+  } else {
+    throw new Error(
+      `Csv: cannot verify string cells for ${ast._tag}. ` +
+        "Encode it as a flat struct or tuple with a transformation"
+    )
   }
 }
 
@@ -675,7 +688,7 @@ export const decodeSchemaString =
     S["DecodingServices"]
   > => {
     const codec = toCodec(schema, options?.disableCodecs)
-    const ast = SchemaAST.toEncoded(codec.ast)
+    const ast = resolveSuspend(SchemaAST.toEncoded(codec.ast))
     checkCells(ast, undefined)
     // CSV cannot tell an empty cell from a missing one, so empty cells of
     // optional properties are decoded as missing keys.
@@ -719,7 +732,11 @@ export const decodeSchema =
     IE,
     Done,
     S["DecodingServices"]
-  > => Channel.pipeTo(Channel.decodeText<IE, Done>(), decodeSchemaString(schema)<IE, Done>(options, parseOptions))
+  > =>
+    Channel.pipeTo(
+      Channel.decodeText<IE, Done>("utf-8", { ignoreBOM: true }),
+      decodeSchemaString(schema)<IE, Done>(options, parseOptions)
+    )
 
 const textEncoder = new TextEncoder()
 
