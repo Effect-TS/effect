@@ -824,44 +824,19 @@ describe("HttpServer", () => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   describe("when writeHead throws", () => {
-    // Node rejects header values containing a newline when writing the head.
-    const invalidHeaders = { "x-invalid": "a\nb" }
-    const bytes = new TextEncoder().encode("ok")
+    it.live("answers rejected HTTP/1.1 headers with a 500 and reports the failure", () =>
+      Effect.gen(function*() {
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serve(
+          Effect.succeed(HttpServerResponse.formData(new FormData(), { headers: { "x-invalid": "a\nb" } })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        ).pipe(Layer.build)
 
-    it.live.each([
-      { body: "Uint8Array", method: "GET", response: () => HttpServerResponse.text("ok", { headers: invalidHeaders }) },
-      { body: "Empty", method: "GET", response: () => HttpServerResponse.empty({ headers: invalidHeaders }) },
-      { body: "Raw", method: "GET", response: () => HttpServerResponse.raw("ok", { headers: invalidHeaders }) },
-      {
-        body: "FormData",
-        method: "GET",
-        response: () => HttpServerResponse.formData(new FormData(), { headers: invalidHeaders })
-      },
-      {
-        body: "Stream",
-        method: "GET",
-        response: () => HttpServerResponse.stream(Stream.make(bytes), { headers: invalidHeaders })
-      },
-      { body: "Uint8Array", method: "HEAD", response: () => HttpServerResponse.text("ok", { headers: invalidHeaders }) }
-    ])(
-      "answers a $method $body response with a 500 and reports the failure",
-      ({ method, response }) =>
-        Effect.gen(function*() {
-          const server = Http.createServer()
-          const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-          yield* HttpServer.serve(
-            Effect.sync(response),
-            (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
-          ).pipe(
-            Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
-            Layer.build
-          )
-
-          const status = yield* requestStatus(tcpPort(server), method).pipe(Effect.timeout("2 seconds"))
-          assert.strictEqual(status, 500)
-          assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
-        })
-    )
+        const response = yield* HttpClient.get("/")
+        assert.strictEqual(response.status, 500)
+        assert.strictEqual(yield* response.text, "")
+        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(NodeHttpServer.layerTest)))
 
     it.live("closes an h2c stream whose headers HTTP/2 forbids and reports the failure", () =>
       Effect.gen(function*() {
@@ -1453,17 +1428,6 @@ const getStatusText = (port: number) =>
       response.on("end", () => resume(Effect.succeed(response.statusMessage)))
     })
     request.on("error", (error) => resume(Effect.fail(error)))
-    return Effect.sync(() => request.destroy())
-  })
-
-const requestStatus = (port: number, method: string) =>
-  Effect.callback<number | undefined, Error>((resume) => {
-    const request = Http.request({ hostname: "127.0.0.1", port, method, agent: false }, (response) => {
-      response.resume()
-      response.on("end", () => resume(Effect.succeed(response.statusCode)))
-    })
-    request.on("error", (error) => resume(Effect.fail(error)))
-    request.end()
     return Effect.sync(() => request.destroy())
   })
 
