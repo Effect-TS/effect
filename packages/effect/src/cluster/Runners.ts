@@ -251,6 +251,8 @@ export const make: (
     readonly messages: Set<Message.OutgoingRequest<any>>
     readonly pump: Fiber.Fiber<void>
     replies: Array<Reply.Reply<any>>
+    // false while only polls may read the first replies
+    readNow: boolean
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
   const waitingStorageRequests = new Map<Snowflake.Snowflake, Message.OutgoingRequest<any>>()
@@ -275,7 +277,8 @@ export const make: (
       const message = entry.messages.values().next().value
       if (!message) return
       waitingStorageRequests.set(requestId, message)
-      storageLatch.openUnsafe()
+      if (entry.readNow) storageLatch.openUnsafe()
+      entry.readNow = true
       yield* entry.latch.await
 
       // send the replies back
@@ -303,19 +306,33 @@ export const make: (
     }
   })
 
-  const replyFromStorage = (message: Message.OutgoingRequest<any>) =>
+  // Wakes the storage loop for a request, including one that so far only
+  // waited for polls.
+  const readStorageRequest = (requestId: Snowflake.Snowflake) => {
+    const entry = storageRequests.get(requestId)
+    if (entry) entry.readNow = true
+    storageLatch.openUnsafe()
+  }
+
+  // With `readNow: false`, the first replies are left to the next poll, which
+  // reads all waiting requests at once.
+  const replyFromStorage = (message: Message.OutgoingRequest<any>, options?: { readonly readNow?: boolean }) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         const requestId = message.envelope.requestId
+        const readNow = options?.readNow ?? true
         let entry = storageRequests.get(requestId)
         if (!entry) {
           const state = {
             latch: Latch.makeUnsafe(false),
             messages: new Set<Message.OutgoingRequest<any>>(),
-            replies: [] as Array<Reply.Reply<any>>
+            replies: [] as Array<Reply.Reply<any>>,
+            readNow
           }
           entry = Object.assign(state, { pump: yield* Effect.forkIn(pumpReplies(requestId, state), runnersScope) })
           storageRequests.set(requestId, entry)
+        } else if (readNow && !entry.readNow) {
+          readStorageRequest(requestId)
         }
         const current = entry
         current.messages.add(message)
@@ -358,6 +375,10 @@ export const make: (
   // A request can be processed as soon as it is saved, so its reply handler is
   // registered first. A fresh request then gets its reply from the handler,
   // without reading it back from storage.
+  //
+  // `registerReplyHandler` can suspend before it registers, for example in a
+  // storage wrapper, so a reply may still be saved first. The request also
+  // waits for the next poll, which finds such a reply.
   const notifyLocalRequest = (
     message: Message.OutgoingRequest<any>,
     notify: (message: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotAssignedToRunner>
@@ -392,9 +413,15 @@ export const make: (
         }
         // The handler can be dropped, for example when its shard moves or a
         // commit error hides the notification. The reply is then in storage.
+        const awaitHandler = Effect.flatMap(Fiber.await(handler), (exit) => {
+          if (Exit.isSuccess(exit)) return Effect.void
+          readStorageRequest(outgoing.envelope.requestId)
+          return Effect.never
+        })
+        // The storage waiter starts first, so a handler that has already failed
+        // finds its entry to read.
         return notifyEntity.pipe(
-          Effect.andThen(Fiber.await(handler)),
-          Effect.flatMap((exit) => Exit.isFailure(exit) && !replied ? replyFromStorage(outgoing) : Effect.void)
+          Effect.andThen(Effect.raceFirst(replyFromStorage(outgoing, { readNow: false }), awaitHandler))
         )
       })
     }).pipe(Effect.scoped)
