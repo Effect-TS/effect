@@ -10,6 +10,73 @@ The npm `jose` package is used only for tests and independent interoperation.
 Public failures are exposed through [JoseError](src/jose/JoseError.ts) and
 [OAuthError](src/oauth/OAuthError.ts).
 
+## Generated provider schemas
+
+The GitHub profile schema in `src/oauth/providers/internal/generated/github.ts`
+is derived from the `private-user` component of
+[GitHub's REST API description](https://github.com/github/rest-api-description/blob/798498bd7d7350b26597b07cdcbb075d2eb0fa8a/descriptions/api.github.com/api.github.com.2026-03-10.json),
+commit `798498bd7d7350b26597b07cdcbb075d2eb0fa8a`, API version `2026-03-10`.
+
+The Linear schemas in `src/oauth/providers/internal/generated/linear*.ts` are
+derived from the selected `Query.viewer` and `User` fields in
+[Linear's SDK schema](https://github.com/linear/linear/blob/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/packages/sdk/src/schema.json),
+commit `9dd2ed80f93ae596f4f7fa21aa7cf80895c58514`.
+
+Both inputs are MIT licensed. Auth-specific bounds, optionality, identity and
+error policies are maintained separately from the upstream field definitions.
+
+### github/rest-api-description — MIT
+
+```text
+MIT License
+
+Copyright (c) 2020 GitHub
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### linear/linear — MIT
+
+```text
+MIT License
+
+Copyright (c) 2019 Linear
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## Yielded Auth provider integrations
 
 Provider configuration, profile schemas, receipt handling, client-secret signing,

@@ -343,6 +343,12 @@ importers:
 
   packages/auth:
     devDependencies:
+      '@effect/graphql-generator':
+        specifier: workspace:^
+        version: link:../tools/graphql-generator
+      '@effect/openapi-generator':
+        specifier: workspace:^
+        version: link:../tools/openapi-generator
       '@effect/platform-node':
         specifier: workspace:^
         version: link:../platform/node

@@ -18,10 +18,8 @@ import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/linear.graphql.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
 
 /**
  * Schema for Linear's GraphQL viewer. The id identifies the account; email is not evidence of a verified address.
@@ -31,12 +29,14 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  id: Validation.text(256),
-  name: Schema.optionalKey(Schema.NullOr(text)),
-  email: Schema.optionalKey(Schema.NullOr(Schema.String.check(Schema.isMaxLength(320)))),
-  avatarUrl: Schema.optionalKey(Schema.NullOr(url)),
-  displayName: Schema.optionalKey(Schema.NullOr(text)),
-  url: Schema.optionalKey(Schema.NullOr(url))
+  id: Generated.User.fields.id.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
+  name: Schema.optionalKey(Schema.NullOr(Generated.User.fields.name.check(Schema.isMaxLength(256)))),
+  email: Schema.optionalKey(Schema.NullOr(Generated.User.fields.email.check(Schema.isMaxLength(320)))),
+  avatarUrl: Schema.optionalKey(
+    Schema.NullOr(Generated.User.fields.avatarUrl.members[0].check(Schema.isMaxLength(2048)))
+  ),
+  displayName: Schema.optionalKey(Schema.NullOr(Generated.User.fields.displayName.check(Schema.isMaxLength(256)))),
+  url: Schema.optionalKey(Schema.NullOr(Generated.User.fields.url.check(Schema.isMaxLength(2048))))
 })
 
 /**
@@ -126,7 +126,7 @@ export const make = Effect.fnUntraced(function*(
         profile: {
           url: "https://api.linear.app/graphql",
           method: "POST",
-          body: JSON.stringify({ query: "{ viewer { id name email avatarUrl displayName url } }" })
+          body: JSON.stringify({ query: Generated.Viewer.document })
         }
       },
       redirectUri: options.redirectUri,
