@@ -320,7 +320,7 @@ describe.concurrent("Runners.makeRpc", () => {
       Layer.provideMerge(
         Layer.effect(MessageStorage.MessageStorage)(
           Effect.map(MessageStorage.MessageStorage, wrap)
-        ).pipe(Layer.provideMerge(MessageStorage.layerMemory))
+        ).pipe(Layer.provide(MessageStorage.layerMemory))
       ),
       Layer.provideMerge(Snowflake.layerGenerator),
       Layer.provide(ShardingConfig.layer({ entityReplyPollInterval: "1 hour" }))
@@ -364,32 +364,7 @@ describe.concurrent("Runners.makeRpc", () => {
     }))))
   })
 
-  it.effect("answers a fresh local request from its saved reply without a storage readback", () =>
-    Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const storage = yield* MessageStorage.MessageStorage
-      const snowflake = yield* Snowflake.Generator
-      const replies: Array<Exit.Exit<number>> = []
-      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
-        Effect.sync(() => {
-          if (reply._tag === "WithExit") replies.push(reply.exit)
-        }))
-      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
-        Effect.timeoutOption("1 second"),
-        Effect.forkScoped
-      )
-      yield* TestClock.adjust(0)
-      yield* saveReply(storage, message, snowflake.nextUnsafe())
-      yield* TestClock.adjust("1 second")
-      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
-      assert.deepStrictEqual(replies, [Exit.succeed(42)])
-    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
-      ...storage,
-      // Under load, the readback lags the reply saved in this process.
-      repliesFor: () => Effect.succeed([])
-    })))))
-
-  it.effect("does not poll storage for a parked fresh local request", () => {
+  it.effect("answers a fresh local request without reading or polling storage", () => {
     let reads = 0
     return Effect.gen(function*() {
       const runners = yield* Runners.Runners
@@ -411,6 +386,7 @@ describe.concurrent("Runners.makeRpc", () => {
       yield* TestClock.adjust(0)
       assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
       assert.deepStrictEqual(replies, [Exit.succeed(42)])
+      assert.strictEqual(reads, 0, "reply delivery must not read storage")
     }).pipe(Effect.provide(layerLocalRunners((storage) => ({
       ...storage,
       repliesFor: (messages) =>
@@ -418,88 +394,6 @@ describe.concurrent("Runners.makeRpc", () => {
           reads++
           return storage.repliesFor(messages)
         })
-    }))))
-  })
-
-  it.effect("reads a committed local reply from storage when its reply handler is dropped", () =>
-    Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const storage = yield* MessageStorage.MessageStorage
-      const driver = yield* MessageStorage.MemoryDriver
-      const snowflake = yield* Snowflake.Generator
-      const replies: Array<Exit.Exit<number>> = []
-      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
-        Effect.sync(() => {
-          if (reply._tag === "WithExit") replies.push(reply.exit)
-        }))
-      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
-        Effect.timeoutOption("1 second"),
-        Effect.forkScoped
-      )
-      yield* TestClock.adjust(0)
-      // The reply commits but its notification is lost, as when the entity
-      // manager sees a commit error and unregisters the handlers instead.
-      const encoded = yield* Reply.serialize(
-        new Reply.ReplyWithContext({
-          reply: new Reply.WithExit<SendRpc>({
-            id: snowflake.nextUnsafe(),
-            requestId: message.envelope.requestId,
-            exit: Exit.succeed(42)
-          }),
-          rpc: message.rpc,
-          context: message.context
-        }),
-        Schema.toCodecJson as RpcSerialization.CodecFor
-      )
-      yield* driver.encoded.saveReply(encoded)
-      yield* storage.unregisterReplyHandler(message.envelope.requestId)
-      yield* TestClock.adjust("1 second")
-      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete without polling")
-      assert.deepStrictEqual(replies, [Exit.succeed(42)])
-    }).pipe(Effect.provide(layerLocalRunners())))
-
-  it.effect("reads storage when a storage-only waiter joins a parked local request", () => {
-    let onDuplicate: Effect.Effect<void> = Effect.void
-    return Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const driver = yield* MessageStorage.MemoryDriver
-      const snowflake = yield* Snowflake.Generator
-      const replies: Array<Exit.Exit<number>> = []
-      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), () => Effect.void)
-      yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(Effect.forkScoped)
-      yield* TestClock.adjust(0)
-      // The reply commits after the storage-only caller saw a duplicate without
-      // it, and no handler is notified.
-      onDuplicate = Reply.serialize(
-        new Reply.ReplyWithContext({
-          reply: new Reply.WithExit<SendRpc>({
-            id: snowflake.nextUnsafe(),
-            requestId: message.envelope.requestId,
-            exit: Exit.succeed(42)
-          }),
-          rpc: message.rpc,
-          context: message.context
-        }),
-        Schema.toCodecJson as RpcSerialization.CodecFor
-      ).pipe(Effect.flatMap(driver.encoded.saveReply), Effect.orDie)
-      const storageOnly = yield* runners.notifyLocal({
-        message: makeOutgoingRequest(TestRpcPersisted, message.envelope.requestId, (reply) =>
-          Effect.sync(() => {
-            if (reply._tag === "WithExit") replies.push(reply.exit)
-          })),
-        discard: false,
-        notify: () => Effect.void,
-        storageOnly: true
-      }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
-      yield* TestClock.adjust("1 second")
-      assert.isTrue(Option.isSome(yield* Fiber.join(storageOnly)), "the storage-only caller must complete")
-      assert.deepStrictEqual(replies, [Exit.succeed(42)])
-    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
-      ...storage,
-      saveRequest: (message) =>
-        storage.saveRequest(message).pipe(
-          Effect.tap((result) => result._tag === "Duplicate" ? onDuplicate : Effect.void)
-        )
     }))))
   })
 
