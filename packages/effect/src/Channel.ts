@@ -2247,7 +2247,7 @@ const mapEffectConcurrent = <
       const pull = yield* toTransform(self)(upstream, scope)
       const concurrencyN = options.concurrency === "unbounded"
         ? Number.MAX_SAFE_INTEGER
-        : options.concurrency
+        : Math.min(options.concurrency, Number.MAX_SAFE_INTEGER)
       const queue = yield* Queue.bounded<OutElem2, OutErr | EX | Cause.Done<OutDone>>(0)
       yield* Scope.addFinalizer(forkedScope, Queue.shutdown(queue))
 
