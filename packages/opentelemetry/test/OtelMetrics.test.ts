@@ -4,13 +4,67 @@ import { assert, describe, it } from "@effect/vitest"
 import { ValueType } from "@opentelemetry/api"
 import { resourceFromAttributes } from "@opentelemetry/resources"
 import { MetricReader } from "@opentelemetry/sdk-metrics"
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Metric from "effect/Metric"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
 
+class ShutdownTrackingReader extends MetricReader {
+  shutdowns = 0
+
+  protected onShutdown(): Promise<void> {
+    this.shutdowns++
+    return Promise.resolve()
+  }
+
+  protected onForceFlush(): Promise<void> {
+    return Promise.resolve()
+  }
+}
+
 describe("Metrics", () => {
+  it.effect("shuts down bound readers when a later reader fails to bind", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const fresh = new ShutdownTrackingReader()
+      const alreadyBound = new ShutdownTrackingReader()
+      alreadyBound.setMetricProducer(producer)
+
+      const exit = yield* OtelMetrics.registerProducer(producer, () => [fresh, alreadyBound]).pipe(
+        Effect.scoped,
+        Effect.exit
+      )
+
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        assert.isTrue(Cause.hasDies(exit.cause))
+        const defect = Cause.squash(exit.cause)
+        assert.instanceOf(defect, Error)
+        assert.strictEqual((defect as Error).message, "MetricReader can not be bound to a MeterProvider again.")
+      }
+      assert.strictEqual(alreadyBound.shutdowns, 0)
+      assert.strictEqual(fresh.shutdowns, 1)
+    }))
+
+  it.effect("shuts down all registered readers once when their scope closes", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const first = new ShutdownTrackingReader()
+      const second = new ShutdownTrackingReader()
+
+      yield* Effect.gen(function*() {
+        yield* OtelMetrics.registerProducer(producer, () => [first, second])
+        assert.deepStrictEqual([first.shutdowns, second.shutdowns], [0, 0])
+      }).pipe(Effect.scoped)
+
+      assert.deepStrictEqual([first.shutdowns, second.shutdowns], [1, 1])
+    }))
+
   it.effect("gauge", () =>
     Effect.gen(function*() {
       const services = yield* Effect.context<never>()
