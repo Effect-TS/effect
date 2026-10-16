@@ -133,12 +133,12 @@ export const request: {
   2,
   <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R> => {
     const resolveUrl = urlResolvers.get(resolver.batchKey)
-    if (resolveUrl === undefined) return Effect.request(makeRequest<K, A, E, R>(key), resolver)
+    if (resolveUrl === undefined) return queue(makeRequest<K, A, E, R>(key), resolver)
     // Resolve in the caller's fiber, so the URL is part of the pending batch's key.
     return Effect.flatMap(resolveUrl, (url) => {
       const request = makeRequest<K, A, E, R>(key)
       requestUrls.set(request, url)
-      return Effect.request(request, resolver)
+      return queue(request, resolver)
     })
   }
 )
@@ -655,7 +655,7 @@ const makeResolver = <A extends Request.Any>(
     key: (entry) => keyOf(entry, requestUrls.get(entry.request)),
     resolver: (entries) =>
       Effect.contextWith((current: Context.Context<never>) => {
-        const span = batchSpan(current, entries)
+        const span = batchSpan(current)
         return Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
           const batches = MutableHashMap.empty<
             readonly [string | undefined, unknown],
@@ -685,14 +685,29 @@ const makeResolver = <A extends Request.Any>(
 const runIn = <A, E>(effect: Effect.Effect<A, E, any>, context: Context.Context<any>): Effect.Effect<A, E> =>
   Effect.updateContext(effect, (_: Context.Context<never>) => context)
 
-// A span opened around the batch, such as `RequestResolver.withSpan`'s. The
-// batch fiber otherwise holds the span of the lookup that started or filled it.
-const batchSpan = (context: Context.Context<never>, entries: ReadonlyArray<Request.Entry<any>>) => {
+// The caller's span when it queued a lookup. A batch fiber inherits it from the
+// caller that started or filled the batch, even if that caller was interrupted.
+const QueuedSpan = Context.Reference<Tracer.AnySpan | undefined>("effect/graphql/GraphQLResolver/QueuedSpan", {
+  defaultValue: () => undefined
+})
+
+const queue = <K, A, E, R>(
+  request: KeyRequest<K, A, E, R>,
+  resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>
+): Effect.Effect<A, E, R> =>
+  Effect.contextWith((context: Context.Context<never>) =>
+    Effect.provideService(
+      Effect.request(request, resolver),
+      QueuedSpan,
+      Context.getOrUndefined(context, Tracer.ParentSpan)
+    )
+  )
+
+// A span opened around the batch, such as `RequestResolver.withSpan`'s, rather
+// than the one the batch fiber inherited from a caller.
+const batchSpan = (context: Context.Context<never>) => {
   const span = Context.getOrUndefined(context, Tracer.ParentSpan)
-  return span === undefined ||
-      entries.some((entry) => Context.getOrUndefined(entry.context, Tracer.ParentSpan) === span)
-    ? undefined
-    : span
+  return span === Context.get(context, QueuedSpan) ? undefined : span
 }
 
 /**
