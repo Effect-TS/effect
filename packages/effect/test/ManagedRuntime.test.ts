@@ -199,6 +199,53 @@ describe("ManagedRuntime", () => {
     })
   }
 
+  it("overlapping disposeEffect waits for the layer release", async () => {
+    const events = await Effect.runPromise(Effect.gen(function*() {
+      const started = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      const events: Array<string> = []
+      const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+        Effect.gen(function*() {
+          yield* Deferred.succeed(started, undefined)
+          yield* Deferred.await(release)
+          events.push("layer released")
+        })
+      )))
+      yield* runtime.contextEffect
+
+      const first = yield* Effect.forkChild(runtime.disposeEffect, { startImmediately: true })
+      yield* Deferred.await(started)
+      const second = yield* Effect.forkChild(
+        runtime.disposeEffect.pipe(Effect.andThen(Effect.sync(() => events.push("second disposeEffect done")))),
+        { startImmediately: true }
+      )
+      yield* Deferred.succeed(release, undefined)
+      yield* Fiber.join(first)
+      yield* Fiber.join(second)
+      return events
+    }))
+
+    assert.deepEqual(events, ["layer released", "second disposeEffect done"])
+  })
+
+  test("a managed fiber interrupted by dispose can dispose the runtime", async () => {
+    let released = false
+    const runtime = ManagedRuntime.make(Layer.effectDiscard(Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        released = true
+      })
+    )))
+    await runtime.runPromise(Effect.void)
+    runtime.runFork(Effect.never.pipe(Effect.ensuring(runtime.disposeEffect)))
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtime.dispose().then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, released }, { result: "settled", released: true })
+  })
+
   it("completes sequential layer finalizers when disposeEffect is interrupted", async () => {
     const ran = await Effect.runPromise(Effect.gen(function*() {
       const started = yield* Deferred.make<void>()

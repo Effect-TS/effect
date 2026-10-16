@@ -111,6 +111,64 @@ describe("Scope", () => {
       }))
   })
 
+  describe("overlapping close", () => {
+    it.effect("a second close waits for in-progress finalizers", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const events: Array<string> = []
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(release)
+            events.push("finalized")
+          })
+        )
+
+        const first = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+        yield* Deferred.await(started)
+        const second = yield* Effect.forkChild(
+          Scope.close(scope, Exit.void).pipe(Effect.andThen(Effect.sync(() => events.push("second close done")))),
+          { startImmediately: true }
+        )
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(first)
+        yield* Fiber.join(second)
+        expect(events).toEqual(["finalized", "second close done"])
+      }))
+
+    it.effect("a finalizer can close its own scope", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const events: Array<string> = []
+        yield* Scope.addFinalizer(
+          scope,
+          Scope.close(scope, Exit.void).pipe(Effect.andThen(Effect.sync(() => events.push("inner close done"))))
+        )
+        yield* Scope.close(scope, Exit.void)
+        expect(events).toEqual(["inner close done"])
+      }))
+
+    it.effect("a fiber interrupted by the close can close the scope", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const started = yield* Deferred.make<void>()
+        const events: Array<string> = []
+        yield* Deferred.succeed(started, undefined).pipe(
+          Effect.andThen(Effect.never),
+          Effect.ensuring(
+            Scope.close(scope, Exit.void).pipe(Effect.andThen(Effect.sync(() => events.push("inner close done"))))
+          ),
+          Effect.forkIn(scope)
+        )
+        yield* Deferred.await(started)
+        yield* Scope.close(scope, Exit.void)
+        expect(events).toEqual(["inner close done"])
+      }))
+  })
+
   describe("finalizers that throw", () => {
     const reasons = (exit: Exit.Exit<unknown, unknown>) =>
       Exit.isSuccess(exit) ? [] : exit.cause.reasons.map((reason) =>
