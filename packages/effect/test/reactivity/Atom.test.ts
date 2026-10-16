@@ -404,6 +404,35 @@ describe("Atom", { concurrent: false }, () => {
     )
   })
 
+  it.effect("registry layer scope waits for concurrent fn effects still acquiring", () => {
+    const acquire = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const events: Array<string> = []
+      const fn = Atom.fn(() =>
+        Effect.acquireRelease(
+          acquire.await.pipe(Effect.andThen(Effect.sync(() => events.push("acquired")))),
+          () => Effect.sync(() => events.push("released"))
+        ), { concurrent: true })
+      const scope = yield* Scope.make()
+      const registry = Context.get(yield* Layer.buildWithScope(AtomRegistry.layer, scope), AtomRegistry.AtomRegistry)
+      registry.mount(fn)
+      registry.set(fn, void 0)
+
+      const closing = yield* Scope.close(scope, Exit.void).pipe(
+        Effect.andThen(Effect.sync(() => events.push("scope closed"))),
+        Effect.forkChild
+      )
+      yield* Effect.yieldNow
+      yield* acquire.open
+      yield* Fiber.join(closing)
+
+      assert.deepStrictEqual(events, ["acquired", "released", "scope closed"])
+    }).pipe(
+      // Closing the scope is uninterruptible, so the acquisition must always finish.
+      Effect.ensuring(acquire.open)
+    )
+  })
+
   it("default runtime factories build layers once per registry", () => {
     const Service = Context.Service<number>("Atom.test/DefaultRegistryScopedService")
     let builds = 0
