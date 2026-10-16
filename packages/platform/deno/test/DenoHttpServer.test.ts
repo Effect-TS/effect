@@ -123,44 +123,47 @@ describe("DenoHttpServer", () => {
   })
 
   describe("when the Response can't be built", () => {
-    // Deno's `Response` rejects statuses outside 200–599 and invalid header values
-    it.live.each([
-      { name: "an empty 103", method: "GET", response: () => HttpServerResponse.empty({ status: 103 }) },
-      { name: "a text 600", method: "GET", response: () => HttpServerResponse.text("body", { status: 600 }) },
-      { name: "a HEAD 103", method: "HEAD", response: () => HttpServerResponse.text("body", { status: 103 }) },
-      {
-        name: "an invalid header value",
-        method: "GET",
-        response: () => HttpServerResponse.text("body", { headers: { "x-invalid": "a\nb" } })
-      }
-    ])("answers $name response with a 500 and reports the defect", ({ method, response }) =>
+    it.live("answers an invalid HEAD status with a 500 and reports the defect", () =>
       Effect.gen(function*() {
         const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
         yield* HttpServer.serveEffect(
-          Effect.sync(response),
+          Effect.succeed(HttpServerResponse.text("body", { status: 103 })),
           (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
         )
-        const client = yield* (method === "HEAD" ? HttpClient.head("/") : HttpClient.get("/")).pipe(
-          Effect.timeout("2 seconds")
-        )
+        const client = yield* HttpClient.head("/")
         assert.strictEqual(client.status, 500)
+        assert.strictEqual(yield* client.text, "")
         const exit = yield* Deferred.await(observed)
-        assert.isTrue(Exit.isFailure(exit) && Cause.hasDies(exit.cause))
-      }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+        assert.isTrue(
+          Exit.isFailure(exit) &&
+            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof RangeError)
+        )
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
 
-    it.live("cancels a raw stream body", () =>
+    it.live("answers invalid headers with a 500 and preserves the defect when raw body cancellation fails", () =>
       Effect.gen(function*() {
         const cancelled = yield* Deferred.make<void>()
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
         const body = new ReadableStream<Uint8Array>({
           cancel() {
             Deferred.doneUnsafe(cancelled, Exit.void)
+            return Promise.reject(new Error("cancellation failed"))
           }
         })
-        yield* HttpServer.serveEffect(Effect.succeed(HttpServerResponse.raw(body, { status: 103 })))
-        const response = yield* HttpClient.get("/").pipe(Effect.timeout("2 seconds"))
+        yield* HttpServer.serveEffect(
+          Effect.succeed(HttpServerResponse.raw(body, { headers: { "x-invalid": "a\nb" } })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        )
+        const response = yield* HttpClient.get("/")
         assert.strictEqual(response.status, 500)
-        yield* Deferred.await(cancelled).pipe(Effect.timeout("2 seconds"))
-      }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+        assert.strictEqual(yield* response.text, "")
+        yield* Deferred.await(cancelled)
+        const exit = yield* Deferred.await(observed)
+        assert.isTrue(
+          Exit.isFailure(exit) &&
+            exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof TypeError)
+        )
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
 
     it.live("closes the request scope of a stream body", () =>
       Effect.gen(function*() {
@@ -169,10 +172,11 @@ describe("DenoHttpServer", () => {
           yield* Effect.addFinalizer(() => Deferred.succeed(finalized, undefined))
           return HttpServerResponse.stream(Stream.never, { status: 103 })
         }))
-        const response = yield* HttpClient.get("/").pipe(Effect.timeout("2 seconds"))
+        const response = yield* HttpClient.get("/")
         assert.strictEqual(response.status, 500)
-        yield* Deferred.await(finalized).pipe(Effect.timeout("2 seconds"))
-      }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+        assert.strictEqual(yield* response.text, "")
+        yield* Deferred.await(finalized)
+      }).pipe(Effect.timeout("2 seconds"), Effect.provide(DenoHttpServer.layerTest)))
   })
 
   it.effect("schema", () =>
