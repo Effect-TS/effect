@@ -4254,7 +4254,7 @@ Effect.runPromiseExit(program).then((exit) => console.log(JSON.stringify(exit, n
   "_tag": "Failure",
   "cause": {
     "_id": "Cause",
-    "failures": [
+    "reasons": [
       {
         "_tag": "Fail",
         "error": {
@@ -6822,9 +6822,9 @@ const schema = Schema.Struct({
 const r = SchemaParser.decodeUnknownExit(schema)({ a: "", c: [] }, { errors: "all" })
 
 if (r._tag === "Failure") {
-  const failures = r.cause.failures
-  if (failures[0]?._tag === "Fail") {
-    const failureResult = SchemaIssue.makeFormatterStandardSchemaV1()(failures[0].error)
+  const reasons = r.cause.reasons
+  if (reasons[0]?._tag === "Fail") {
+    const failureResult = SchemaIssue.makeFormatterStandardSchemaV1()(reasons[0].error)
     const serializer = Schema.toCodecJson(Schema.StandardSchemaV1FailureResult)
     console.dir(Schema.encodeSync(serializer)(failureResult), { depth: null })
   }

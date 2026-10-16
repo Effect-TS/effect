@@ -3465,12 +3465,12 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.fail(
         Cause.fail("a"),
         `Expected a finite number
-  at ["failures"][0]["error"]`
+  at ["reasons"][0]["error"]`
       )
       await decoding.fail(
         Cause.die("a"),
         `Expected a finite number
-  at ["failures"][0]["defect"]`
+  at ["reasons"][0]["defect"]`
       )
 
       const encoding = asserts.encoding()
@@ -3481,12 +3481,12 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.fail(
         Cause.fail("a"),
         `Expected number
-  at ["failures"][0]["error"]`
+  at ["reasons"][0]["error"]`
       )
       await encoding.fail(
         Cause.die("a"),
         `Expected number
-  at ["failures"][0]["defect"]`
+  at ["reasons"][0]["defect"]`
       )
     })
   })
@@ -3563,7 +3563,7 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.fail(
         Exit.fail(null),
         `Expected string
-  at ["cause"]["failures"][0]["error"]`
+  at ["cause"]["reasons"][0]["error"]`
       )
     })
 
