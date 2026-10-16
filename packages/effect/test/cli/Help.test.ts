@@ -1,6 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
-import { Argument, CliOutput, Command, Flag } from "effect/cli"
+import { Argument, CliOutput, Command, Flag, GlobalFlag } from "effect/cli"
 import { toImpl } from "effect/cli/internal/command"
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner"
 import { TestConsole } from "effect/testing"
@@ -295,6 +295,31 @@ describe("Command help output", () => {
       expect(deployHelp).not.toContain("--log-level")
       expect(deployHelp).not.toContain("Run 'app --help'")
     }).pipe(withFormatter({ inheritedFlags: "none", globalFlags: "none" })))
+
+  it.effect("global flag summary points at the nearest command that declares global flags", () =>
+    Effect.gen(function*() {
+      const Region = GlobalFlag.Setting("region")({ flag: Flag.String("region").pipe(Flag.optional) })
+      const run = Command.runWith(
+        Command.make("app").pipe(
+          Command.withSubcommands([
+            Command.make("admin").pipe(
+              Command.withGlobalFlags([Region]),
+              Command.withSubcommands([Command.make("leaf")])
+            )
+          ])
+        ),
+        { version: "1.0.0" }
+      )
+
+      yield* run(["admin", "--help"])
+      const adminHelp = (yield* TestConsole.logLines).join("\n")
+      yield* run(["admin", "leaf", "--help"])
+      const leafHelp = (yield* TestConsole.logLines).join("\n").slice(adminHelp.length)
+
+      expect(adminHelp).toContain("--region")
+      expect(leafHelp).not.toContain("--region")
+      expect(leafHelp).toContain("Run 'app admin --help' for global flags")
+    }).pipe(withFormatter({ globalFlags: "summary" })))
 
   it.effect("hides unlisted subcommands from help output", () =>
     Effect.gen(function*() {
