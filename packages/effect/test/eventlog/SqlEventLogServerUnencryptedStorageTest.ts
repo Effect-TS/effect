@@ -484,13 +484,13 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
         // `second` overtakes `first`, and reading `first` back fails, so
-        // `second` is not published until the next commit.
+        // `second` is not delivered until the next commit.
         const release = yield* writeWithHeldPublication(storage, storeId, [first])
         failEntryRead = true
         yield* storage.write(storeId, [second])
-        assert.isFalse(failEntryRead)
         yield* release
         assertEntries([yield* Queue.take(changes)], [first], 2)
+        assert.isFalse(failEntryRead)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
 
@@ -498,5 +498,37 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assertEntries(yield* Queue.takeN(changes, 2), [second, third], 3)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+      }))
+
+    it.effect("streams later commits to other subscribers after a subscriber's transaction rolls back", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const options = makeOptions("subscriber_rollback")
+        const storage = yield* makeStorage(options)
+        const storeId = makeStoreId("subscriber_rollback")
+        const backlog = makeEntry("Ada")
+        const rolledBack = makeEntry("Grace")
+        const first = makeEntry("Margaret")
+        const second = makeEntry("Linus")
+        // Another instance writes the backlog, so `storage` has no live state
+        // for the store yet.
+        yield* (yield* makeStorage(options)).write(storeId, [backlog])
+
+        // The first subscriber opens inside the transaction, so it sees the
+        // write that is later rolled back, and keeps the store's live state.
+        const error = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [rolledBack])
+          const inside = yield* openChanges(storage, storeId)
+          assertEntries(yield* Queue.takeN(inside, 2), [backlog, rolledBack], 1)
+          return yield* Effect.fail("rollback")
+        })).pipe(Effect.flip)
+        assert.strictEqual(error, "rollback")
+
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+        yield* storage.write(storeId, [first])
+        yield* storage.write(storeId, [second])
+        assertEntries([yield* Queue.take(changes)], [first], 2)
+        assertEntries([yield* Queue.take(changes)], [second], 3)
       }))
   })

@@ -615,6 +615,32 @@ describe("SqlClient", () => {
         assert.strictEqual(calls.at(-1), "invalidate(late)")
       }))
 
+    it.effect("batches committed invalidations into an enclosing batch that is still open", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, record, sql } = client
+        yield* watch(client, ["outer", "inner"])
+
+        yield* reactivity.withBatch(Effect.gen(function*() {
+          yield* sql.withTransaction(Effect.gen(function*() {
+            yield* Reactivity.invalidate(["outer"])
+            yield* Reactivity.invalidate(["outer"])
+          }))
+          yield* record("batch end")
+        })).pipe(Effect.provideService(Reactivity.Reactivity, reactivity))
+        assert.deepStrictEqual(calls.filter((call) => !/^(BEGIN|COMMIT|release)$/.test(call)), [
+          "batch end",
+          "invalidate(outer)"
+        ])
+
+        // A batch inside the transaction has ended by the time it commits.
+        calls.length = 0
+        yield* sql.withTransaction(reactivity.withBatch(Reactivity.invalidate(["inner"]))).pipe(
+          Effect.provideService(Reactivity.Reactivity, reactivity)
+        )
+        assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "invalidate(inner)"])
+      }))
+
     it.effect("invalidates immediately outside a transaction", () =>
       Effect.gen(function*() {
         const client = yield* makeClient()
