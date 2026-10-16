@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix HTTP RPC cancellation before the first response chunk, allowing server-side requests and their resources to be cleaned up when the client aborts. Buffered HTTP RPC responses also honor cancellation while waiting for completion.
+Fix HTTP RPC cancellation before the first response chunk and during buffered response collection so client aborts interrupt server-side requests and release their resources.
