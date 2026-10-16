@@ -6,10 +6,11 @@
  * headers. Neither buffers an entire entry body.
  *
  * Entries are stored or compressed with deflate, the methods every zip tool
- * reads. Compression uses the runtime's `CompressionStream`; decompression is
- * implemented here, so that `decode` can find the end of entries whose sizes
- * follow their data. ZIP64 fields are written when sizes, offsets or the entry
- * count need them, and read from local headers and data descriptors.
+ * reads. Compression uses the runtime's `CompressionStream("deflate-raw")`;
+ * decompression is implemented here, so that `decode` can find the end of
+ * entries whose sizes follow their data. ZIP64 fields are written when sizes,
+ * offsets or the entry count need them, and read from local headers and data
+ * descriptors.
  * Encryption, other compression methods and archives split across files are
  * not supported.
  *
@@ -46,7 +47,8 @@ const ZipErrorTypeId = "~effect/encoding/Zip/ZipError"
  * - `SizeMismatch`: an entry body produced a byte count other than its declared
  *   `size`, or the data of an entry does not match the sizes in the archive.
  * - `Unsupported`: the archive uses a feature this module does not read, such
- *   as encryption or a compression method other than store and deflate.
+ *   as encryption or a compression method other than store and deflate, or
+ *   the runtime cannot deflate an entry being encoded.
  * - `BodyConsumed`: an entry body was read after the decoder had moved past it.
  *
  * @stability unstable
@@ -432,8 +434,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * written as UTF-8, with the UTF-8 flag set when they are not ASCII. `mtime`
  * is written both as a DOS time in UTC, which keeps two-second resolution and
  * covers 1980 to 2107, and as an extended timestamp in whole seconds when it
- * falls between 1970 and 2038. ZIP64 fields are added only when a size, an
- * offset or the entry count does not fit the classic fields.
+ * falls between 1970 and 2038. ZIP64 fields are added when a size, an offset
+ * or the entry count does not fit the classic fields, and to the local header
+ * of a deflated entry streamed without a `size` or with one near 4 GiB, so
+ * that readers know the width of the sizes after its data.
  *
  * Headers and body chunks below 16 KiB are gathered into output chunks of
  * about 64 KiB, and larger body chunks pass through without copying. Output is
@@ -442,6 +446,8 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * **Gotchas**
  *
+ * - Deflated entries need `CompressionStream("deflate-raw")`, which older
+ *   runtimes lack; there they fail with an `Unsupported` `ZipError`.
  * - Deflated bytes come from the runtime's `CompressionStream`, so they can
  *   differ between runtimes. Archives of stored entries are byte-identical
  *   everywhere.
@@ -560,7 +566,7 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
                 deflates[index - 1] = undefined
                 data = yield* Effect.tryPromise({
                   try: () => deflate,
-                  catch: (cause) => invalidData(`deflate failed: ${String(cause)}`)
+                  catch: (cause) => isZipError(cause) ? cause : invalidData(`deflate failed: ${String(cause)}`)
                 })
               }
               yield* write(() => writer.entry(header, bytes, data))
@@ -594,27 +600,32 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   )
 }
 
+// Runtimes without `CompressionStream("deflate-raw")` throw when it is created
+const cannotDeflate = (cause: unknown) => unsupported(`the runtime cannot deflate: ${String(cause)}`)
+
 const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Uint8Array, E | ZipError, R> =>
-  Stream.suspend(() => {
-    const compressor = new CompressionStream("deflate-raw")
-    const writer = compressor.writable.getWriter()
-    const feed = Stream.runForEach(
-      input,
-      (chunk) => Effect.promise(() => writer.write(compressible(chunk)))
-    ).pipe(
-      Effect.andThen(Effect.promise(() => writer.close())),
-      Effect.onError(() =>
-        Effect.sync(() => {
-          writer.abort().catch(() => {})
-        })
+  Stream.unwrap(Effect.map(
+    Effect.try({ try: () => new CompressionStream("deflate-raw"), catch: cannotDeflate }),
+    (compressor) => {
+      const writer = compressor.writable.getWriter()
+      const feed = Stream.runForEach(
+        input,
+        (chunk) => Effect.promise(() => writer.write(compressible(chunk)))
+      ).pipe(
+        Effect.andThen(Effect.promise(() => writer.close())),
+        Effect.onError(() =>
+          Effect.sync(() => {
+            writer.abort().catch(() => {})
+          })
+        )
       )
-    )
-    const output = Stream.fromReadableStream({
-      evaluate: () => compressor.readable,
-      onError: (cause) => invalidData(`deflate failed: ${String(cause)}`)
-    })
-    return Stream.merge(output, Stream.fromEffectDrain(feed))
-  })
+      const output = Stream.fromReadableStream({
+        evaluate: () => compressor.readable,
+        onError: (cause) => invalidData(`deflate failed: ${String(cause)}`)
+      })
+      return Stream.merge(output, Stream.fromEffectDrain(feed))
+    }
+  ))
 
 // CompressionStream rejects views of a SharedArrayBuffer
 const compressible = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
@@ -628,7 +639,12 @@ const DEFLATE_AHEAD_SIZE = 64 * 1024
 // In-memory content is deflated in one promise, which costs less per entry
 // than a stream
 const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
-  const compressor = new CompressionStream("deflate-raw")
+  let compressor: CompressionStream
+  try {
+    compressor = new CompressionStream("deflate-raw")
+  } catch (cause) {
+    throw cannotDeflate(cause)
+  }
   const writer = compressor.writable.getWriter()
   // A failed write errors the readable, so the reads report it
   if (bytes.length > 0) writer.write(compressible(bytes)).catch(() => {})
@@ -837,6 +853,8 @@ interface EntryRecord {
   readonly seconds: number | undefined
   readonly external: number
   readonly offset: number
+  // Whether the local header has ZIP64 sizes, which then also follow the data
+  zip64: boolean
   crc: number
   compressedSize: number
   size: number
@@ -846,7 +864,6 @@ interface EntryRecord {
 interface Streaming {
   readonly header: Header
   readonly record: EntryRecord
-  readonly zip64: boolean
   readonly descriptor: boolean
 }
 
@@ -860,7 +877,8 @@ const writeTimestamp = (bytes: Uint8Array, view: DataView, at: number, record: E
   view.setUint32(at + 5, record.seconds, true)
 }
 
-const localHeader = (record: EntryRecord, zip64: boolean): Uint8Array => {
+const localHeader = (record: EntryRecord): Uint8Array => {
+  const { zip64 } = record
   const extraLength = (zip64 ? 20 : 0) + timestampLength(record)
   const bytes = new Uint8Array(30 + record.name.length + extraLength)
   const view = new DataView(bytes.buffer)
@@ -888,7 +906,8 @@ const localHeader = (record: EntryRecord, zip64: boolean): Uint8Array => {
   return bytes
 }
 
-const dataDescriptor = (record: EntryRecord, wide: boolean): Uint8Array => {
+const dataDescriptor = (record: EntryRecord): Uint8Array => {
+  const wide = record.zip64
   const bytes = new Uint8Array(wide ? 24 : 16)
   const view = new DataView(bytes.buffer)
   view.setUint32(0, DESCRIPTOR, true)
@@ -911,7 +930,7 @@ const centralHeader = (record: EntryRecord): Uint8Array => {
   if (record.offset >= MAX32) wide.push(record.offset)
   const zip64Length = wide.length === 0 ? 0 : 4 + 8 * wide.length
   const extraLength = zip64Length + timestampLength(record)
-  const version = wide.length === 0 ? VERSION : VERSION_ZIP64
+  const version = wide.length === 0 && !record.zip64 ? VERSION : VERSION_ZIP64
   const bytes = new Uint8Array(46 + record.name.length + extraLength)
   const view = new DataView(bytes.buffer)
   view.setUint32(0, CENTRAL, true)
@@ -941,6 +960,9 @@ const centralHeader = (record: EntryRecord): Uint8Array => {
 }
 
 const SLAB_SIZE = 64 * 1024
+
+// Deflate adds at most a few bytes per 64 KiB block to data that does not compress
+const DEFLATE_HEADROOM = 16 * 1024 * 1024
 
 // Chunks below this size are copied together instead of being handed out alone
 const COPY_LIMIT = 16 * 1024
@@ -1012,6 +1034,7 @@ class Writer {
       seconds: seconds >= 0 && seconds <= 0x7fffffff ? seconds : undefined,
       external: (((directory ? S_IFDIR : S_IFREG) | mode) * 0x10000 + (directory ? DOS_DIRECTORY : 0)) >>> 0,
       offset: this.offset,
+      zip64: false,
       crc: 0,
       compressedSize: 0,
       size: 0
@@ -1026,7 +1049,8 @@ class Writer {
     record.crc = crc32(0, content)
     record.size = content.length
     record.compressedSize = data.length
-    this.push(localHeader(record, record.size >= MAX32 || record.compressedSize >= MAX32))
+    record.zip64 = record.size >= MAX32 || record.compressedSize >= MAX32
+    this.push(localHeader(record))
     if (data.length > 0) this.push(data)
     this.records.push(record)
   }
@@ -1048,11 +1072,14 @@ class Writer {
       record.size = size!
       record.compressedSize = size!
     }
-    const zip64 = size !== undefined && size >= MAX32
-    this.push(localHeader(record, zip64))
+    // The local header decides the width of the sizes after the data, so it
+    // declares ZIP64 whenever they could reach 4 GiB. Deflate can make data
+    // slightly larger.
+    record.zip64 = size === undefined || size >= (stored ? MAX32 : MAX32 - DEFLATE_HEADROOM)
+    this.push(localHeader(record))
     record.size = 0
     record.compressedSize = 0
-    this.current = { header, record, zip64, descriptor }
+    this.current = { header, record, descriptor }
   }
 
   // Accounts for uncompressed body bytes
@@ -1073,17 +1100,22 @@ class Writer {
     }
     const size = header.type === "Directory" ? 0 : header.size
     if (size !== undefined && record.size > size) throw sizeMismatch(header.path, record.size, size)
+    if (!record.zip64 && record.compressedSize >= MAX32) {
+      throw new ZipError({
+        kind: "SizeMismatch",
+        message: `compressed data of ${JSON.stringify(header.path)} reached 4 GiB, ` +
+          `but its local header has no ZIP64 sizes`
+      })
+    }
   }
 
   end(): void {
-    const { descriptor, header, record, zip64 } = this.current!
+    const { descriptor, header, record } = this.current!
     this.current = undefined
     if (header.size !== undefined && record.size !== header.size) {
       throw sizeMismatch(header.path, record.size, header.size)
     }
-    if (descriptor) {
-      this.push(dataDescriptor(record, zip64 || record.size >= MAX32 || record.compressedSize >= MAX32))
-    }
+    if (descriptor) this.push(dataDescriptor(record))
     this.records.push(record)
   }
 
