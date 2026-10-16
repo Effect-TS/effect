@@ -73,7 +73,10 @@ export interface Target {
  * asynchronous continuation helpers with the interpreter. A single synchronous
  * transformation between supported leaf types can use generated orchestration.
  * Other detailed traversals, transformations, and middleware use the interpreter
- * with registry-resolved children. Transformations and middleware are not replayed.
+ * with registry-resolved children. Transformations and middleware are not replayed,
+ * except the library's own conversions of primitive values, such as those built
+ * by `Schema.toCodecStringTree`, which run no user code. A failing input can run
+ * a check twice: once in the synchronous fast path and once while building issues.
  * Only the requested operation families and their static dependencies are
  * emitted. Installation registers roots and dependencies in the same registry;
  * each generated operation initializes on first use. Missing operations retain
