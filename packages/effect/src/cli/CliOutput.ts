@@ -284,8 +284,9 @@ const escapeControlCharacters = (text: string): string =>
  *   `"summary"` replaces the section with a pointer to the parent command's
  *   help, and `"none"` omits it.
  * - `globalFlags`: the same choice for `GLOBAL FLAGS`, with the summary
- *   pointing at the root command's help. The root command's help always lists
- *   global flags in full.
+ *   pointing at the help of the nearest command that declares global flags
+ *   (the root command for built-in flags). Commands that declare global flags
+ *   always list them in full.
  *
  * **Example** (Creating default formatters)
  *
@@ -603,10 +604,16 @@ const formatHelpDocImpl = (doc: HelpDoc, colors: ColorFunctions, options: HelpOp
   }
 
   const commandPath = doc.commandPath
-  const isRoot = commandPath === undefined || commandPath.length <= 1
   renderFlagSection("INHERITED FLAGS", doc.inheritedFlags, options.inheritedFlags, commandPath?.slice(0, -1))
-  // Global flags are always listed in full on the root page so they stay discoverable
-  renderFlagSection("GLOBAL FLAGS", doc.globalFlags, isRoot ? "full" : options.globalFlags, commandPath?.slice(0, 1))
+  // Global flags are always listed in full where they are declared, so they stay discoverable
+  const globalFlagsScope = doc.globalFlagsScope ?? commandPath?.slice(0, 1)
+  const declaresGlobalFlags = commandPath === undefined || globalFlagsScope?.length === commandPath.length
+  renderFlagSection(
+    "GLOBAL FLAGS",
+    doc.globalFlags,
+    declaresGlobalFlags ? "full" : options.globalFlags,
+    globalFlagsScope
+  )
   if (summaries.length > 0) {
     sections.push(...summaries, "")
   }

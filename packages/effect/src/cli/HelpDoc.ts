@@ -93,6 +93,12 @@ export interface HelpDoc {
   readonly globalFlags?: ReadonlyArray<FlagDoc>
 
   /**
+   * Command path of the nearest command, from this command up to the root,
+   * that declares global flags. Its help lists every global flag active here.
+   */
+  readonly globalFlagsScope?: ReadonlyArray<string>
+
+  /**
    * Command names from the root command to this command, e.g.
    * `["myapp", "deploy"]`.
    */

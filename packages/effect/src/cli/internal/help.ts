@@ -178,5 +178,21 @@ export const getHelpForCommandPath = <Name extends string, Input, E, R, ContextI
       }
     }
 
-    return { ...baseDoc, inheritedFlags, globalFlags: globalFlagDocs, commandPath }
+    // The deepest command on the path that declares global flags lists every
+    // global active here, since globals only accumulate along the path
+    let scopeLength = 1
+    for (let i = commands.length - 1; i > 0; i--) {
+      if (toImpl(commands[i]).globalFlags.length > 0) {
+        scopeLength = i + 1
+        break
+      }
+    }
+
+    return {
+      ...baseDoc,
+      inheritedFlags,
+      globalFlags: globalFlagDocs,
+      globalFlagsScope: commandPath.slice(0, scopeLength),
+      commandPath
+    }
   })
