@@ -58,6 +58,15 @@ const byteSplits = (bytes: Uint8Array): Array<Array<Uint8Array>> => {
   return out
 }
 
+// Chunks with lengths cycling through `sizes`
+const chunksOf = <A extends string | Uint8Array>(input: A, sizes: ReadonlyArray<number>): Array<A> => {
+  const chunks: Array<A> = []
+  for (let i = 0, k = 0; i < input.length; i += sizes[k++ % sizes.length]) {
+    chunks.push(input.slice(i, i + sizes[k % sizes.length]) as A)
+  }
+  return chunks
+}
+
 describe("Xml", () => {
   it("identifies Xml errors", () => {
     assert.isTrue(Xml.isXmlError(new Xml.XmlError({ kind: "Syntax", message: "boom" })))
@@ -318,19 +327,17 @@ describe("Xml", () => {
         const part = "a&amp;\r\nb".repeat(300)
         const valid = `<a b="${part}"><!--${part}--><?p ${part}?><![CDATA[${part}]]>${part}</a>`
         const invalid = `<a>${part}&b;</a>`
-        const split = (xml: string, size: number) =>
-          Array.from({ length: Math.ceil(xml.length / size) }, (_, i) => xml.slice(i * size, i * size + size))
         for (const size of [1, 2, 3, 5]) {
-          assert.deepStrictEqual(yield* decodeString(split(valid, size)), [
+          assert.deepStrictEqual(yield* decodeString(chunksOf(valid, [size])), [
             start("a", { b: "a& b".repeat(300) }),
             comment("a&amp;\nb".repeat(300)),
             pi("p", "a&amp;\nb".repeat(300)),
             text("a&amp;\nb".repeat(300) + "a&\nb".repeat(300)),
             end("a")
           ])
-          assert.deepStrictEqual(yield* failure(decodeString(split(invalid, size))), ["Syntax", 301, 2])
+          assert.deepStrictEqual(yield* failure(decodeString(chunksOf(invalid, [size]))), ["Syntax", 301, 2])
           assert.deepStrictEqual(
-            yield* failure(decodeString(split(valid, size), { maxTokenSize: part.length })),
+            yield* failure(decodeString(chunksOf(valid, [size]), { maxTokenSize: part.length })),
             ["Limit", 1, 1]
           )
         }
@@ -347,18 +354,14 @@ describe("Xml", () => {
         const invalidText = xml.slice(0, at) + String.fromCharCode(1) + xml.slice(at + 1)
         const invalidBytes = bytes.slice()
         invalidBytes[bytes.indexOf(38, 50_000)] = 0xFF
-        // One pull of chunks with lengths cycling through `sizes`
-        const split = <A extends string | Uint8Array>(input: A, sizes: ReadonlyArray<number>) => {
-          const chunks: Array<A> = []
-          for (let i = 0, k = 0; i < input.length; i += sizes[k++ % sizes.length]) {
-            chunks.push(input.slice(i, i + sizes[k % sizes.length]) as A)
-          }
-          return Stream.fromIterable(chunks)
-        }
+        // All chunks in one pull
         const text = (input: string, sizes: ReadonlyArray<number>) =>
-          split(input, sizes).pipe(Stream.pipeThroughChannel(Xml.decodeString()), Stream.runCollect)
+          Stream.fromIterable(chunksOf(input, sizes)).pipe(
+            Stream.pipeThroughChannel(Xml.decodeString()),
+            Stream.runCollect
+          )
         const utf8 = (input: Uint8Array, sizes: ReadonlyArray<number>) =>
-          split(input, sizes).pipe(Stream.pipeThroughChannel(Xml.decode()), Stream.runCollect)
+          Stream.fromIterable(chunksOf(input, sizes)).pipe(Stream.pipeThroughChannel(Xml.decode()), Stream.runCollect)
         const expected = yield* text(xml, [xml.length])
         const textFailure = yield* failure(text(invalidText, [xml.length]))
         const bytesFailure = yield* failure(utf8(invalidBytes, [bytes.length]))
