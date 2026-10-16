@@ -47,8 +47,16 @@ const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
 
 // Marked conversions are only pure for primitive inputs: an object input can
 // run user code through coercion hooks.
-const isReplaySafeSource = (ast: SchemaAST.AST): boolean => {
-  if (ast.encoding !== undefined || ast.checks !== undefined && !ast.checks.every(isReplaySafe)) return false
+const isReplaySafeSource = (
+  ast: SchemaAST.AST,
+  depth = 0,
+  budget = { remaining: maxGeneratedNodes }
+): boolean => {
+  if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+  if (
+    ast.encoding !== undefined || getEncodingChecks(ast) !== undefined ||
+    ast.checks !== undefined && !ast.checks.every(isReplaySafe)
+  ) return false
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -64,7 +72,7 @@ const isReplaySafeSource = (ast: SchemaAST.AST): boolean => {
     case "Enum":
       return true
     case "Union":
-      return ast.types.every(isReplaySafeSource)
+      return ast.types.every((type) => isReplaySafeSource(type, depth + 1, budget))
     default:
       return false
   }
@@ -76,8 +84,6 @@ const isReplaySafeLink = (link: SchemaAST.Link): boolean =>
     link.transformation.decode._tag === "Transform" && isReplaySafe(link.transformation))
 
 // Every encoding step must be safe to replay after a failed fast-path attempt.
-// Sources share the decoded node's generation budget, which also bounds the
-// source safety walk that follows it.
 const addEncoding = (
   facts: Facts,
   ast: SchemaAST.AST,
@@ -92,11 +98,11 @@ const addEncoding = (
   }
   facts.outputFree = false
   for (const link of links) {
-    if (!addChild(facts, link.to, depth, budget)) return false
     if (!isReplaySafeSource(link.to)) {
       facts.supported = false
       return false
     }
+    if (!addChild(facts, link.to, depth, budget)) return false
   }
   return true
 }
