@@ -162,15 +162,27 @@ export const hydrate = (
     // and we should wait for it to resolve to a non-Initial state, then update the registry
     if (!datom.resultPromise) continue
     datom.resultPromise.then((resolvedValue) => {
-      if (resolvedValue === Skipped) return
       // Try to update the existing node directly instead of using setSerializable
       const nodes = registry.getNodes()
       const node = nodes.get(datom.key)
+      if (resolvedValue === Skipped) {
+        // Release the preloaded Initial even if the client has not read the atom yet.
+        registry.preloadedSerializable.delete(datom.key)
+        if (node) registry.refresh(node.atom)
+        return
+      }
       if (node) {
         // Decode the resolved value using the node's atom serializable decoder
         const atom = node.atom as any
         if (atom[Atom.SerializableTypeId]) {
-          const decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
+          let decoded: unknown
+          try {
+            decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
+          } catch (error) {
+            if (!Schema.isSchemaError(error)) throw error
+            registry.refresh(node.atom)
+            return
+          }
           if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
             ;(node as any).setValue(decoded)
           }
