@@ -754,7 +754,7 @@ const validate = (header: Header): void => {
   if (mode !== undefined && !(Number.isInteger(mode) && mode >= 0 && mode <= 0o7777)) {
     throw invalidHeader(`mode of ${quoted} is not a permission mode`)
   }
-  if (!(mtime instanceof Date) || Number.isNaN(mtime.getTime())) {
+  if (Number.isNaN(mtime.getTime())) {
     throw invalidHeader(`mtime of ${quoted} is not a valid date`)
   }
 }
