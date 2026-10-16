@@ -11279,7 +11279,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
         }
         return Effect.mapBothEager(SchemaParser.decodeUnknownEffect(failures)(input.reasons, options), {
           onSuccess: Cause_.fromReasons,
-          onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "failures", issue, input, options)
+          onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "reasons", issue, input, options)
         })
       }
     },
