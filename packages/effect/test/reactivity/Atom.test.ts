@@ -2905,6 +2905,27 @@ describe("Atom", { concurrent: false }, () => {
         assert.strictEqual(runs, 1)
       }))
 
+    for (const batch of [false, true]) {
+      it.effect(`skips handlers cancelled during ${batch ? "batch flushing" : "direct invalidation"}`, () =>
+        Effect.gen(function*() {
+          const reactivity = yield* Reactivity.make
+          const calls: Array<string> = []
+          reactivity.registerUnsafe(["a"], () => {
+            calls.push("a")
+            cancelB()
+          })
+          const cancelB = reactivity.registerUnsafe(["a"], () => calls.push("b"))
+
+          if (batch) {
+            yield* reactivity.withBatch(reactivity.invalidate(["a"]))
+          } else {
+            reactivity.invalidateUnsafe(["a"])
+          }
+
+          assert.deepStrictEqual(calls, ["a"])
+        }))
+    }
+
     it.effect("reruns a query once per invalidation with matching collection and member keys", () =>
       Effect.gen(function*() {
         const reactivity = yield* Reactivity.make
