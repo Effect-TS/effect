@@ -12069,10 +12069,10 @@ export interface MacAddress extends declare<NetAddress_.MacAddress> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its canonical
- * lowercase colon-separated hexadecimal string.
+ * The JSON and StringTree codecs encode an address as a lowercase
+ * colon-separated string.
  *
- * @see {@link MacAddressFromString} for parsing MAC address strings
+ * @see {@link MacAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -12144,10 +12144,9 @@ export interface Ipv4Address extends declare<NetAddress_.Ipv4Address> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its canonical
- * dotted-decimal string.
+ * The JSON and StringTree codecs encode an address as a dotted-decimal string.
  *
- * @see {@link Ipv4AddressFromString} for parsing IPv4 address strings
+ * @see {@link Ipv4AddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -12212,10 +12211,9 @@ export interface Ipv6Address extends declare<NetAddress_.Ipv6Address> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its canonical RFC 5952
- * string.
+ * The JSON and StringTree codecs encode an address as an RFC 5952 string.
  *
- * @see {@link Ipv6AddressFromString} for parsing IPv6 address strings
+ * @see {@link Ipv6AddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -12289,10 +12287,9 @@ export interface IpAddress extends declare<NetAddress_.IpAddress> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its canonical
- * dotted-decimal or RFC 5952 string.
+ * The JSON and StringTree codecs encode an address as a canonical string.
  *
- * @see {@link IpAddressFromString} for parsing IP address strings
+ * @see {@link IpAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13064,10 +13061,9 @@ const ipInterfaceFromString = netStringTransformation(IpInterface_.fromString, I
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an interface address in CIDR notation,
- * preserving host bits. Decoding defaults a missing prefix length to 32.
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
  *
- * @see {@link Ipv4InterfaceFromString} for parsing IPv4 interface strings
+ * @see {@link Ipv4InterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13132,10 +13128,9 @@ export interface Ipv6Interface extends declare<IpInterface_.Ipv6Interface> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an interface address in CIDR notation,
- * preserving host bits. Decoding defaults a missing prefix length to 128.
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
  *
- * @see {@link Ipv6InterfaceFromString} for parsing IPv6 interface strings
+ * @see {@link Ipv6InterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13200,11 +13195,9 @@ export interface IpInterface extends declare<IpInterface_.IpInterface> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an interface address in CIDR notation,
- * preserving host bits. Decoding defaults a missing prefix length to the
- * address width.
+ * The JSON and StringTree codecs encode an interface in CIDR notation.
  *
- * @see {@link IpInterfaceFromString} for parsing interface strings
+ * @see {@link IpInterfaceFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13273,10 +13266,9 @@ const ipNetworkFromString = netStringTransformation(IpNetwork_.fromString, IpNet
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode a network in CIDR notation. Decoding
- * rejects addresses with host bits set.
+ * The JSON and StringTree codecs encode a network in CIDR notation.
  *
- * @see {@link Ipv4NetworkFromString} for parsing IPv4 CIDR strings
+ * @see {@link Ipv4NetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13341,10 +13333,9 @@ export interface Ipv6Network extends declare<IpNetwork_.Ipv6Network> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode a network in CIDR notation. Decoding
- * rejects addresses with host bits set.
+ * The JSON and StringTree codecs encode a network in CIDR notation.
  *
- * @see {@link Ipv6NetworkFromString} for parsing IPv6 CIDR strings
+ * @see {@link Ipv6NetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13409,10 +13400,9 @@ export interface IpNetwork extends declare<IpNetwork_.IpNetwork> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode a network in CIDR notation. Decoding
- * rejects addresses with host bits set.
+ * The JSON and StringTree codecs encode a network in CIDR notation.
  *
- * @see {@link IpNetworkFromString} for parsing CIDR strings
+ * @see {@link IpNetworkFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13499,7 +13489,7 @@ const inetAddressV6FromString = inetAddressFamilyFromString(NetAddress_.isInetAd
  *
  * The JSON and StringTree codecs encode an address as `address:port`.
  *
- * @see {@link InetAddressFromString} for parsing IPv4 or IPv6 socket address strings
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13540,10 +13530,9 @@ export interface InetAddressV6 extends declare<NetAddress_.InetAddressV6> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as `[address]:port`, or
- * `[address%scopeId]:port` when the scope identifier is nonzero.
+ * The JSON and StringTree codecs encode an address as `[address]:port`.
  *
- * @see {@link InetAddressFromString} for parsing IPv4 or IPv6 socket address strings
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13586,10 +13575,10 @@ export interface InetAddress extends declare<NetAddress_.InetAddress> {
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as `address:port` for
- * IPv4 and `[address]:port` or `[address%scopeId]:port` for IPv6.
+ * The JSON and StringTree codecs encode an address as `address:port` or
+ * `[address]:port`.
  *
- * @see {@link InetAddressFromString} for parsing socket address strings
+ * @see {@link InetAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13659,10 +13648,9 @@ const unixPathAddressFromString = SchemaTransformation.transform<NetAddress_.Uni
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode an address as its raw path, without
- * a `unix://` prefix, URL encoding, or normalization.
+ * The JSON and StringTree codecs encode an address as its raw path.
  *
- * @see {@link UnixPathAddressFromString} for decoding path strings
+ * @see {@link UnixPathAddressFromString}
  * @stability unstable
  * @category schemas
  * @since 4.0.0
@@ -13746,17 +13734,9 @@ const socketAddressFromString = netStringTransformation<NetAddress_.SocketAddres
  * **Details**
  *
  * The JSON and StringTree codecs encode an internet address like
- * {@link InetAddress} (`address:port` or `[address]:port`) and a Unix-domain
- * address as `unix://` followed by its raw path, as formatted by
- * `NetAddress.formatUnixPath`. Decoding strips the `unix://` prefix without
- * URL decoding, so `unix:///var/run/docker.sock` has the path
- * `/var/run/docker.sock`. Any other string must be a numeric internet address.
- *
- * **Gotchas**
- *
- * The Unix-domain form differs from the raw path used by
- * {@link UnixPathAddress}, because a raw path such as `127.0.0.1:80` could not
- * be told apart from an internet address.
+ * {@link InetAddress} and a Unix-domain address as `unix://<path>`. Unlike
+ * {@link UnixPathAddress}, the prefix keeps a path such as `127.0.0.1:80`
+ * distinct from an internet address.
  *
  * @stability unstable
  * @category schemas
@@ -13967,11 +13947,10 @@ const hostPortFromString = netStringTransformation(Host_.hostPortFromString, Hos
  *
  * **Details**
  *
- * The JSON and StringTree codecs encode a value as `host:port`, bracketing
- * IPv6 hosts as `[IPv6]:port` or `[IPv6%zone]:port`. Decoding normalizes the
- * host like {@link HostPortFromString}.
+ * The JSON and StringTree codecs encode a value as `host:port` or
+ * `[IPv6]:port`.
  *
- * @see {@link HostPortFromString} for parsing `host:port` strings
+ * @see {@link HostPortFromString}
  * @stability experimental
  * @category schemas
  * @since 4.0.0
