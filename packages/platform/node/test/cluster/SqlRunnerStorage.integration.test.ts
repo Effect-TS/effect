@@ -1,4 +1,5 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
+import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
@@ -593,6 +594,72 @@ describe("SqlRunnerStorage", () => {
       }
     })
   })
+})
+
+describe("SqlRunnerStorage with a one-connection client", () => {
+  const sharesTheConnection = <R>(
+    client: Layer.Layer<SqlClient.SqlClient, unknown, R>,
+    prefix: string,
+    shardLockDisableAdvisory: boolean
+  ) =>
+    Effect.gen(function*() {
+      const sql = yield* SqlClient.SqlClient
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 })
+      const shards = [ShardId.make("default", 1)]
+
+      expect(yield* storage.getRunners).toEqual([])
+      yield* storage.register(runner, true)
+      expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
+      expect(yield* sql`SELECT 1 AS n`).toEqual([{ n: 1 }])
+    }).pipe(
+      Effect.provide(
+        SqlRunnerStorage.layerWith({ prefix }).pipe(
+          Layer.provideMerge(Layer.orDie(client)),
+          Layer.provide(ShardingConfig.layer({ shardLockDisableAdvisory }))
+        )
+      ),
+      Effect.timeout("5 seconds"),
+      TestClock.withLive
+    )
+
+  const pgClients = {
+    pool: Layer.unwrap(Effect.gen(function*() {
+      const container = yield* PgContainer
+      return PgClient.layer({ url: Redacted.make(container.getConnectionUri()), maxConnections: 1 })
+    })),
+    client: Layer.unwrap(Effect.gen(function*() {
+      const container = yield* PgContainer
+      return PgClient.layerFrom(PgClient.makeClient({ url: Redacted.make(container.getConnectionUri()) }))
+    }))
+  }
+  const mysqlPool = Layer.unwrap(Effect.gen(function*() {
+    const container = yield* MysqlContainer
+    return MysqlClient.layer({ url: Redacted.make(container.getConnectionUri()), maxConnections: 1 })
+  }))
+
+  for (const shardLockDisableAdvisory of [false, true]) {
+    const mode = shardLockDisableAdvisory ? "no advisory" : "advisory"
+    const suffix = shardLockDisableAdvisory ? "lease" : "advisory"
+
+    it.layer(PgContainer.layer, { timeout: 120_000 })(`pg (${mode})`, (it) => {
+      for (const [name, client] of Object.entries(pgClients)) {
+        it.effect(
+          `${name} with one connection`,
+          () => sharesTheConnection(client, `one_${name}_${suffix}`, shardLockDisableAdvisory),
+          30_000
+        )
+      }
+    })
+
+    it.layer(MysqlContainer.layer, { timeout: 120_000 })(`mysql (${mode})`, (it) => {
+      it.effect(
+        "pool with one connection",
+        () => sharesTheConnection(mysqlPool, `one_pool_${suffix}`, shardLockDisableAdvisory),
+        30_000
+      )
+    })
+  }
 })
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
