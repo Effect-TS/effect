@@ -641,6 +641,21 @@ describe("SqlClient", () => {
         assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "invalidate(inner)"])
       }))
 
+    it.effect("invalidates immediately from a detached fiber that inherited an ended batch", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        yield* watch(client, ["late"])
+        const release = yield* Deferred.make<void>()
+        const detached = yield* client.reactivity.withBatch(
+          Effect.forkDetach(Effect.andThen(Deferred.await(release), client.reactivity.invalidate(["late"])))
+        )
+        assert.deepStrictEqual(client.calls, [])
+
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(detached)
+        assert.deepStrictEqual(client.calls, ["invalidate(late)"])
+      }))
+
     it.effect("invalidates immediately outside a transaction", () =>
       Effect.gen(function*() {
         const client = yield* makeClient()

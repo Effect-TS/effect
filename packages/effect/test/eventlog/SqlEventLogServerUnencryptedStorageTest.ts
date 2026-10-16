@@ -451,6 +451,32 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
       }))
 
+    it.effect("does not redeliver entries removed by backlog compaction when startup publication resumes", () =>
+      Effect.gen(function*() {
+        const storage = yield* makeStorage(makeOptions("compacted_startup"))
+        const storeId = makeStoreId("compacted_startup")
+        const folded = makeEntry("Ada")
+        const sentinel = makeEntry("Grace")
+        const compacted = yield* Deferred.make<void>()
+        const release = yield* writeWithHeldPublication(storage, storeId, [folded])
+        const changes = yield* storage.changes({
+          storeId,
+          startSequence: 0,
+          compactors: new Map([["UserNameSet", {
+            events: new Set(["UserNameSet"]),
+            effect: ({ entries }) =>
+              Effect.sync(() => {
+                assert.deepStrictEqual(entries.map((entry) => entry.idString), [folded.idString])
+              }).pipe(Effect.andThen(Deferred.succeed(compacted, undefined)))
+          }]])
+        }).pipe(Stream.toQueue({ capacity: "unbounded" }))
+        yield* Deferred.await(compacted)
+
+        yield* release
+        yield* storage.write(storeId, [sentinel])
+        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
+      }))
+
     it.effect("catches up a failed publication on the store's next commit", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
