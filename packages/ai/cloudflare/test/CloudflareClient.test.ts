@@ -148,10 +148,11 @@ describe("CloudflareClient", () => {
         }
       }).pipe(Effect.provide(clientLayer(() => new Response("Bad gateway", { status: 502 })))))
 
-    it.effect("maps a success body without a result envelope to InvalidOutputError", () =>
+    it.effect("maps a success body without a result envelope to a non-retryable InvalidOutputError", () =>
       Effect.gen(function*() {
         const error = yield* Effect.flip(createDecisions)
         assert.strictEqual(error.reason._tag, "InvalidOutputError")
+        assert.isFalse(error.isRetryable)
       }).pipe(Effect.provide(clientLayer(() => Response.json(result)))))
 
     it.effect("maps TransportError to NetworkError", () =>
