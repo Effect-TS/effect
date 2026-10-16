@@ -3,9 +3,16 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
-  it.each(["invalid", "skipped"] as const)(
-    "computes derived atoms on the client after %s streamed hydration",
-    async (kind) => {
+  it.each(
+    [
+      ["invalid", "derived", 1],
+      ["skipped", "derived", 1],
+      ["invalid", "refresh wrapper", 0],
+      ["skipped", "refresh wrapper", 0]
+    ] as const
+  )(
+    "computes on the client after %s streamed hydration for a %s atom",
+    async (kind, variant, expected) => {
       const { promise, resolve } = Promise.withResolvers<number>()
       const serverAtom = Atom.make(Effect.promise(() => promise)).pipe(
         Atom.serializable({
@@ -13,10 +20,12 @@ describe("Hydration", () => {
           schema: AsyncResult.Schema({ success: kind === "invalid" ? Schema.Number : Schema.Int })
         })
       )
-      const clientAtom = Atom.make(Effect.succeed(0)).pipe(
-        Atom.mapResult((n) => n + 1),
-        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
-      )
+      const clientSource = Atom.make(Effect.succeed(0))
+      const clientAtom = (variant === "derived"
+        ? clientSource.pipe(Atom.mapResult((n) => n + 1))
+        : clientSource.pipe(Atom.withRefresh("1 hour"))).pipe(
+          Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+        )
       const server = AtomRegistry.make()
       const client = AtomRegistry.make()
       try {
@@ -33,8 +42,8 @@ describe("Hydration", () => {
         await Effect.runPromise(Effect.yieldNow)
 
         const result = client.get(clientAtom)
-        assert(AsyncResult.isSuccess(result), `Expected client Success(1), got ${JSON.stringify(result)}`)
-        assert.strictEqual(result.value, 1)
+        assert(AsyncResult.isSuccess(result), `Expected client Success(${expected}), got ${JSON.stringify(result)}`)
+        assert.strictEqual(result.value, expected)
         assert.strictEqual(result.waiting, false)
       } finally {
         server.dispose()
