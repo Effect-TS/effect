@@ -5,6 +5,7 @@ import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
@@ -44,6 +45,20 @@ const startWatch = <E, R>(
     )
     return fiber
   })
+
+// A file system built with `FileSystem.make` without typed directory listings
+// derives `glob` from `readDirectory`, `stat`, and `readLink` alone.
+const untypedLayer = Layer.effect(
+  FileSystem.FileSystem,
+  Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    return FileSystem.make({ ...fs, glob: undefined })
+  })
+).pipe(Layer.provide(NodeFileSystem.layer))
+
+describe("FileSystem without typed directory listings", { concurrent: false }, () => {
+  testLayer(untypedLayer, { noFollow: process.platform !== "win32" })
+})
 
 describe("FileSystem", { concurrent: false }, () => {
   testLayer(NodeFileSystem.layer, { noFollow: process.platform !== "win32" })
