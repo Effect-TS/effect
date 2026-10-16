@@ -1,13 +1,57 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Clock from "effect/Clock"
+import * as Console from "effect/Console"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Scheduler from "effect/Scheduler"
 import * as TestClock from "effect/testing/TestClock"
+import * as TestConsole from "effect/testing/TestConsole"
+import { vi } from "vitest"
 
 describe("TestClock", () => {
+  describe("warnings", { concurrent: false }, () => {
+    for (const warning of ["not advancing the test clock", "still running without suspending"] as const) {
+      it.effect(`warnings bypass TestConsole - ${warning}`, () =>
+        Effect.gen(function*() {
+          const output: Array<unknown> = []
+          yield* Effect.acquireRelease(
+            Effect.sync(() =>
+              (["log", "warn", "error"] as const).map((method) =>
+                vi.spyOn(globalThis.console, method).mockImplementation((...args) => {
+                  output.push(...args)
+                })
+              )
+            ),
+            (spies) => Effect.sync(() => spies.forEach((spy) => spy.mockRestore()))
+          )
+          yield* Console.log("ordinary output")
+          yield* Effect.sleep("1 minute").pipe(
+            Effect.andThen(
+              warning === "still running without suspending" ? Effect.forever(Effect.yieldNow) : Effect.void
+            ),
+            Effect.forkChild
+          )
+          if (warning === "still running without suspending") {
+            yield* TestClock.adjust("1 minute")
+          }
+          const containsWarning = (lines: ReadonlyArray<unknown>) =>
+            lines.some((line) => String(line).includes(warning))
+          // Stop when the diagnostic reaches either destination, rather than timing out on the regression.
+          const captured = yield* Effect.gen(function*() {
+            while (true) {
+              const lines = yield* TestConsole.logLines
+              if (containsWarning(output) || containsWarning(lines)) return lines
+              yield* Effect.sleep("10 millis")
+            }
+          }).pipe(Effect.timeout("3 seconds"), TestClock.withLive)
+          assert.deepStrictEqual(captured, ["ordinary output"])
+          assert.isTrue(containsWarning(output))
+        }))
+    }
+  })
+
   for (const cancellation of ["interrupted sleep", "successful timeout"] as const) {
     it.effect(`adjust - skips the cancelled deadline (${cancellation})`, () =>
       Effect.gen(function*() {
