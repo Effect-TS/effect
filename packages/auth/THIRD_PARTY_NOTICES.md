@@ -19,7 +19,7 @@ commit `798498bd7d7350b26597b07cdcbb075d2eb0fa8a`, API version `2026-03-10`.
 
 The Linear schemas in `src/oauth/providers/internal/generated/linear*.ts` are
 derived from the selected `Query.viewer` and `User` fields in
-[Linear's SDK schema](https://github.com/linear/linear/blob/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/packages/sdk/src/schema.json),
+[Linear's SDK schema](https://github.com/linear/linear/blob/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/packages/sdk/src/schema.graphql),
 commit `9dd2ed80f93ae596f4f7fa21aa7cf80895c58514`.
 
 Both inputs are MIT licensed. Auth-specific bounds, optionality, identity and

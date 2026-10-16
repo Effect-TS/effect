@@ -77,9 +77,9 @@
   },
   "scripts": {
     "codegen": "effect-utils codegen && pnpm codegen:providers",
-    "codegen:providers": "node codegen/providers.mjs generate",
-    "codegen:providers:check": "node codegen/providers.mjs check",
-    "codegen:providers:import": "node codegen/providers.mjs import",
+    "codegen:providers": "node codegen/bin.ts generate",
+    "codegen:providers:check": "node codegen/bin.ts check",
+    "codegen:providers:import": "node codegen/bin.ts import",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json"

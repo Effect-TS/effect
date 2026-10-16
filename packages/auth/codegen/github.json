@@ -1,11 +1,8 @@
 {
-  "title": "Private User",
-  "description": "Private User",
   "type": "object",
   "properties": {
-    "id": { "type": "integer", "format": "int64", "example": 1 },
     "login": { "type": "string", "example": "octocat" },
-    "name": { "type": "string", "example": "monalisa octocat", "nullable": true },
+    "id": { "type": "integer", "format": "int64", "example": 1 },
     "user_view_type": { "type": "string" },
     "node_id": { "type": "string", "example": "MDQ6VXNlcjE=" },
     "avatar_url": { "type": "string", "format": "uri", "example": "https://github.com/images/error/octocat_happy.gif" },
@@ -31,6 +28,7 @@
     },
     "type": { "type": "string", "example": "User" },
     "site_admin": { "type": "boolean" },
+    "name": { "type": "string", "example": "monalisa octocat", "nullable": true },
     "company": { "type": "string", "example": "GitHub", "nullable": true },
     "blog": { "type": "string", "example": "https://github.com/blog", "nullable": true },
     "location": { "type": "string", "example": "San Francisco", "nullable": true },
@@ -64,6 +62,8 @@
     "business_plus": { "type": "boolean" },
     "ldap_dn": { "type": "string" }
   },
+  "title": "Private User",
+  "description": "Private User",
   "required": [
     "avatar_url",
     "events_url",
