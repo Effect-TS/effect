@@ -47,7 +47,7 @@ export const mapSchemaError = dual<
   AiError.make({
     module: "OpenAiClient",
     method,
-    reason: AiError.InvalidOutputError.fromSchemaError(error)
+    reason: AiError.InvalidOutputError.fromSchemaError(error, { retryable: false })
   }))
 
 /** @internal */
@@ -58,7 +58,7 @@ export const mapSseError = dual<
   AiError.make({
     module: "OpenAiClient",
     method,
-    reason: new AiError.InvalidOutputError({ description: error.message })
+    reason: new AiError.InvalidOutputError({ description: error.message, retryable: false })
   }))
 
 /** @internal */
