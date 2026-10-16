@@ -124,4 +124,22 @@ describe("SemVerRange", () => {
     )
     deepStrictEqual(SemVerRange.maxSatisfying(range("^3"), versions), Option.none())
   })
+
+  it("accepts SemVer.Input in place of versions", () => {
+    assertTrue(Equal.equals(SemVerRange.caret("1.2.3+build"), range("^1.2.3")))
+    assertTrue(
+      Equal.equals(
+        SemVerRange.between({ minimum: "1.0.0", maximum: { major: 2, minor: 0, patch: 0 } }),
+        range(">=1.0.0 <=2.0.0")
+      )
+    )
+    assertTrue(SemVerRange.matches(range("^1.2.3"), "1.5.0"))
+    assertTrue(pipe(range("^1.2.3"), SemVerRange.matches({ major: 1, minor: 5, patch: 0 })))
+    deepStrictEqual(SemVerRange.maxSatisfying(range("^1.2.0"), ["1.2.0", $("1.4.1"), "2.0.0"]), Option.some($("1.4.1")))
+    deepStrictEqual(SemVerRange.minSatisfying(range("^1.2.0"), ["1.4.1", "1.2.0+b"]), Option.some($("1.2.0+b")))
+    throws(() => SemVerRange.caret({ major: -1, minor: 0, patch: 0 }), (error) => {
+      assertTrue(SemVer.isSemVerError(error))
+    })
+    throws(() => SemVerRange.matches(range("*"), "1.2.3-"))
+  })
 })

@@ -19,6 +19,8 @@ import * as Result from "./Result.ts"
 import {
   compareCore,
   type Core,
+  fromInputUnsafe as versionFromInputUnsafe,
+  type Input as VersionInput,
   invalid,
   parseComponent,
   prereleaseIdentifier,
@@ -207,13 +209,13 @@ const parseOrThrow = (input: string): SemVerRange => {
  * **Example** (Parsing and matching a caret range)
  *
  * ```ts import.meta.vitest
- * import { Result, SemVer, SemVerRange } from "effect"
+ * import { Result, SemVerRange } from "effect"
  *
  * const range = SemVerRange.parseUnsafe("^1.2.0 || >=3.0.0-rc.1")
  *
- * SemVerRange.matches(range, SemVer.parseUnsafe("1.9.0")) // => true
- * SemVerRange.matches(range, SemVer.parseUnsafe("2.0.0")) // => false
- * SemVerRange.matches(range, SemVer.parseUnsafe("3.0.0-rc.2")) // => true
+ * SemVerRange.matches(range, "1.9.0") // => true
+ * SemVerRange.matches(range, "2.0.0") // => false
+ * SemVerRange.matches(range, "3.0.0-rc.2") // => true
  * Result.isFailure(SemVerRange.parse("^v1.2.0")) // => true
  * ```
  *
@@ -279,13 +281,13 @@ const toPartial = (version: SemVer): PartialVersion => ({
   prerelease: version.prerelease
 })
 
-const comparator = (operator: Operator, version: SemVer): Comparator => ({
+const comparator = (operator: Operator, version: VersionInput): Comparator => ({
   _tag: "Comparator",
   operator,
-  version: toPartial(version)
+  version: toPartial(versionFromInputUnsafe(version))
 })
 
-const fromComparator = (operator: Operator, version: SemVer): SemVerRange =>
+const fromComparator = (operator: Operator, version: VersionInput): SemVerRange =>
   makeRange([[comparator(operator, version)]])
 
 /**
@@ -307,7 +309,7 @@ export const any: SemVerRange = makeRange([[{ _tag: "Comparator", operator: "=",
  * **Details**
  *
  * Build metadata is dropped because ranges cannot express it and it does not
- * affect matching, so `1.2.3+a` and `1.2.3+b` both match.
+ * affect matching, so `1.2.3+a` and `1.2.3+b` both match. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * **Example** (Building ranges from versions)
  *
@@ -318,67 +320,67 @@ export const any: SemVerRange = makeRange([[{ _tag: "Comparator", operator: "=",
  *
  * SemVerRange.format(SemVerRange.exact(version)) // => "1.2.3"
  * SemVerRange.format(SemVerRange.greaterThanOrEqualTo(version)) // => ">=1.2.3"
- * SemVerRange.format(SemVerRange.caret(version)) // => "^1.2.3"
- * SemVerRange.matches(SemVerRange.greaterThan(version), SemVer.parseUnsafe("1.2.4")) // => true
+ * SemVerRange.format(SemVerRange.caret("1.2.3")) // => "^1.2.3"
+ * SemVerRange.matches(SemVerRange.greaterThan(version), "1.2.4") // => true
  * ```
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const exact = (version: SemVer): SemVerRange => fromComparator("=", version)
+export const exact = (version: VersionInput): SemVerRange => fromComparator("=", version)
 
 /**
  * Creates a range matching versions with higher precedence, written `>1.2.3`.
  *
  * **Details**
  *
- * Build metadata is dropped.
+ * Build metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const greaterThan = (version: SemVer): SemVerRange => fromComparator(">", version)
+export const greaterThan = (version: VersionInput): SemVerRange => fromComparator(">", version)
 
 /**
  * Creates a range matching versions with at least the given precedence, written `>=1.2.3`.
  *
  * **Details**
  *
- * Build metadata is dropped.
+ * Build metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const greaterThanOrEqualTo = (version: SemVer): SemVerRange => fromComparator(">=", version)
+export const greaterThanOrEqualTo = (version: VersionInput): SemVerRange => fromComparator(">=", version)
 
 /**
  * Creates a range matching versions with lower precedence, written `<1.2.3`.
  *
  * **Details**
  *
- * Build metadata is dropped.
+ * Build metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const lessThan = (version: SemVer): SemVerRange => fromComparator("<", version)
+export const lessThan = (version: VersionInput): SemVerRange => fromComparator("<", version)
 
 /**
  * Creates a range matching versions with at most the given precedence, written `<=1.2.3`.
  *
  * **Details**
  *
- * Build metadata is dropped.
+ * Build metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const lessThanOrEqualTo = (version: SemVer): SemVerRange => fromComparator("<=", version)
+export const lessThanOrEqualTo = (version: VersionInput): SemVerRange => fromComparator("<=", version)
 
 /**
  * Creates a range matching versions compatible with a version, written `^1.2.3`.
@@ -387,13 +389,13 @@ export const lessThanOrEqualTo = (version: SemVer): SemVerRange => fromComparato
  *
  * Allows changes that do not modify the left-most non-zero component: `^1.2.3`
  * means `>=1.2.3 <2.0.0-0` and `^0.2.3` means `>=0.2.3 <0.3.0-0`. Build
- * metadata is dropped.
+ * metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const caret = (version: SemVer): SemVerRange => fromComparator("^", version)
+export const caret = (version: VersionInput): SemVerRange => fromComparator("^", version)
 
 /**
  * Creates a range matching patch-level changes of a version, written `~1.2.3`.
@@ -401,12 +403,13 @@ export const caret = (version: SemVer): SemVerRange => fromComparator("^", versi
  * **Details**
  *
  * `~1.2.3` means `>=1.2.3 <1.3.0-0`. Build metadata is dropped.
+ * Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const tilde = (version: SemVer): SemVerRange => fromComparator("~", version)
+export const tilde = (version: VersionInput): SemVerRange => fromComparator("~", version)
 
 /**
  * Creates a range matching versions within inclusive bounds, written
@@ -415,13 +418,13 @@ export const tilde = (version: SemVer): SemVerRange => fromComparator("~", versi
  * **Details**
  *
  * Matches the same versions as `SemVer.between`, subject to the pre-release
- * rule. Build metadata is dropped.
+ * rule. Build metadata is dropped. Throws `SemVerError` for an invalid `SemVer.Input`.
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.6
  */
-export const between = (options: { readonly minimum: SemVer; readonly maximum: SemVer }): SemVerRange =>
+export const between = (options: { readonly minimum: VersionInput; readonly maximum: VersionInput }): SemVerRange =>
   makeRange([[comparator(">=", options.minimum), comparator("<=", options.maximum)]])
 
 const formatPartial = (self: PartialVersion): string => {
@@ -576,7 +579,8 @@ const matcher = (range: SemVerRange, options: MatchOptions | undefined): (versio
  *
  * Partial versions, tilde, caret, and hyphen ranges expand to bounds following
  * node-semver. For example, `^1.2.3` means `>=1.2.3 <2.0.0-0`, `~1.2` means
- * `>=1.2.0 <1.3.0-0`, and `<=1.2` means `<1.3.0-0`.
+ * `>=1.2.0 <1.3.0-0`, and `<=1.2` means `<1.3.0-0`. Throws `SemVerError` when
+ * `version` is an invalid `SemVer.Input`.
  *
  * **Gotchas**
  *
@@ -591,13 +595,13 @@ const matcher = (range: SemVerRange, options: MatchOptions | undefined): (versio
  * **Example** (Matching pre-releases)
  *
  * ```ts import.meta.vitest
- * import { SemVer, SemVerRange } from "effect"
+ * import { SemVerRange } from "effect"
  *
  * const range = SemVerRange.parseUnsafe("^1.2.3-beta.1")
  *
- * SemVerRange.matches(range, SemVer.parseUnsafe("1.2.3-beta.2")) // => true
- * SemVerRange.matches(range, SemVer.parseUnsafe("1.3.0-rc.1")) // => false
- * SemVerRange.matches(range, SemVer.parseUnsafe("1.3.0-rc.1"), { includePrerelease: true }) // => true
+ * SemVerRange.matches(range, "1.2.3-beta.2") // => true
+ * SemVerRange.matches(range, "1.3.0-rc.1") // => false
+ * SemVerRange.matches(range, "1.3.0-rc.1", { includePrerelease: true }) // => true
  * ```
  *
  * **Example** (Filtering versions)
@@ -617,22 +621,24 @@ const matcher = (range: SemVerRange, options: MatchOptions | undefined): (versio
  * @since 4.0.6
  */
 export const matches: {
-  (version: SemVer, options?: MatchOptions): (self: SemVerRange) => boolean
-  (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean
+  (version: VersionInput, options?: MatchOptions): (self: SemVerRange) => boolean
+  (self: SemVerRange, version: VersionInput, options?: MatchOptions): boolean
 } = dual(
   isRangeArgs,
-  (self: SemVerRange, version: SemVer, options?: MatchOptions): boolean => matcher(self, options)(version)
+  (self: SemVerRange, version: VersionInput, options?: MatchOptions): boolean =>
+    matcher(self, options)(versionFromInputUnsafe(version))
 )
 
 const select = (
   self: SemVerRange,
-  versions: Iterable<SemVer>,
+  versions: Iterable<VersionInput>,
   options: MatchOptions | undefined,
   better: -1 | 1
 ): Option.Option<SemVer> => {
   const test = matcher(self, options)
   let selected: SemVer | undefined
-  for (const version of versions) {
+  for (const input of versions) {
+    const version = versionFromInputUnsafe(input)
     if (test(version) && (selected === undefined || compareCore(version, selected) === better)) {
       selected = version
     }
@@ -646,16 +652,17 @@ const select = (
  * **Details**
  *
  * Returns `None` when no version matches. When several versions share the
- * highest precedence, the first one is returned.
+ * highest precedence, the first one is returned. Throws `SemVerError` when a
+ * version is an invalid `SemVer.Input`.
  *
  * **Example** (Selecting the newest compatible version)
  *
  * ```ts import.meta.vitest
  * import { Option, SemVer, SemVerRange } from "effect"
  *
- * const versions = ["1.2.0", "1.4.1", "2.0.0", "1.5.0-rc.1"].map(SemVer.parseUnsafe)
+ * const range = SemVerRange.parseUnsafe("^1.2.0")
  *
- * SemVerRange.maxSatisfying(SemVerRange.parseUnsafe("^1.2.0"), versions).pipe(Option.map(SemVer.format)) // => Option.some("1.4.1")
+ * SemVerRange.maxSatisfying(range, ["1.2.0", "1.4.1", "2.0.0", "1.5.0-rc.1"]).pipe(Option.map(SemVer.format)) // => Option.some("1.4.1")
  * ```
  *
  * @see {@link minSatisfying} for the lowest matching version
@@ -664,11 +671,11 @@ const select = (
  * @since 4.0.6
  */
 export const maxSatisfying: {
-  (versions: Iterable<SemVer>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
-  (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer>
+  (versions: Iterable<VersionInput>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
+  (self: SemVerRange, versions: Iterable<VersionInput>, options?: MatchOptions): Option.Option<SemVer>
 } = dual(
   isRangeArgs,
-  (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer> =>
+  (self: SemVerRange, versions: Iterable<VersionInput>, options?: MatchOptions): Option.Option<SemVer> =>
     select(self, versions, options, 1)
 )
 
@@ -678,7 +685,8 @@ export const maxSatisfying: {
  * **Details**
  *
  * Returns `None` when no version matches. When several versions share the
- * lowest precedence, the first one is returned.
+ * lowest precedence, the first one is returned. Throws `SemVerError` when a
+ * version is an invalid `SemVer.Input`.
  *
  * @see {@link maxSatisfying} for the highest matching version
  * @stability unstable
@@ -686,10 +694,10 @@ export const maxSatisfying: {
  * @since 4.0.6
  */
 export const minSatisfying: {
-  (versions: Iterable<SemVer>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
-  (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer>
+  (versions: Iterable<VersionInput>, options?: MatchOptions): (self: SemVerRange) => Option.Option<SemVer>
+  (self: SemVerRange, versions: Iterable<VersionInput>, options?: MatchOptions): Option.Option<SemVer>
 } = dual(
   isRangeArgs,
-  (self: SemVerRange, versions: Iterable<SemVer>, options?: MatchOptions): Option.Option<SemVer> =>
+  (self: SemVerRange, versions: Iterable<VersionInput>, options?: MatchOptions): Option.Option<SemVer> =>
     select(self, versions, options, -1)
 )
