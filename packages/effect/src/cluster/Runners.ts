@@ -331,7 +331,9 @@ export const make: (
           }
           entry = Object.assign(state, { pump: yield* Effect.forkIn(pumpReplies(requestId, state), runnersScope) })
           storageRequests.set(requestId, entry)
-        } else if (readNow && !entry.readNow) {
+        } else if (readNow) {
+          // The pump may already be parked, and a reply committed without a
+          // notification would otherwise wait for the next poll.
           readStorageRequest(requestId)
         }
         const current = entry
