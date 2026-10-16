@@ -176,8 +176,22 @@ describe("Zip", () => {
           x ^= x << 5
           return x & 0xff
         })
-        const output = yield* decode(yield* encode([Zip.file("noise", noise), Zip.file("next", "next")]))
-        assert.deepStrictEqual(output.map(({ body }) => body), [noise, textEncoder.encode("next")])
+        // Deflates start ahead of the entries being written, except for large content
+        const output = yield* decode(yield* encode([Zip.file("a", "a"), Zip.file("noise", noise), Zip.file("b", "b")]))
+        assert.deepStrictEqual(output.map(({ body }) => body), [
+          textEncoder.encode("a"),
+          noise,
+          textEncoder.encode("b")
+        ])
+      }))
+
+    it.effect("deflates in-memory entries that arrive over several pulls", () =>
+      Effect.gen(function*() {
+        const contents = Array.from({ length: 20 }, (_, i) => `${i},`.repeat(i + 1))
+        const bytes = yield* Stream.fromIterable(contents.map((content, i) => Zip.file(`${i}`, content)), {
+          chunkSize: 3
+        }).pipe(Stream.pipeThroughChannel(Zip.encode()), Stream.mkUint8Array)
+        assert.deepStrictEqual((yield* decode(bytes)).map(({ body }) => text(body)), contents)
       }))
 
     it.effect("writes Unix modes, directory attributes and UTF-8 flags", () =>

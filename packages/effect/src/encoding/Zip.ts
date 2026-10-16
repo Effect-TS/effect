@@ -502,6 +502,23 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       let done: { readonly value: Done } | undefined
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E | ZipError, void, R> | undefined
       let bodyScope: Scope.Closeable | undefined
+      // Deflates of in-memory entries, started ahead of the entry being written
+      // so that they overlap
+      let deflates: Array<Promise<Uint8Array> | undefined> = []
+
+      const startDeflates = (from: number): void => {
+        for (let i = from; i < Math.min(entries.length, from + DEFLATE_AHEAD); i++) {
+          if (deflates[i] !== undefined) continue
+          const { body, header } = entries[i]
+          if (header.type !== "File" || header.method !== "Deflate") continue
+          const bytes = body === Stream.empty ? emptyBody : inMemoryBodies.get(body)
+          if (bytes === undefined || (i > from && bytes.length > DEFLATE_AHEAD_SIZE)) continue
+          const deflate = deflateBytes(bytes)
+          // Failures are reported when the entry is written
+          deflate.catch(() => {})
+          deflates[i] = deflate
+        }
+      }
 
       const write = (f: () => void): Effect.Effect<void, ZipError> => {
         try {
@@ -533,7 +550,16 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
             // Directories and in-memory files have nothing to stream
             const bytes = content === Stream.empty ? emptyBody : inMemoryBodies.get(content)
             if (bytes !== undefined) {
-              const data = compress ? yield* deflateBytes(bytes) : bytes
+              let data = bytes
+              if (compress) {
+                startDeflates(index - 1)
+                const deflate = deflates[index - 1]!
+                deflates[index - 1] = undefined
+                data = yield* Effect.tryPromise({
+                  try: () => deflate,
+                  catch: (cause) => invalidData(`deflate failed: ${String(cause)}`)
+                })
+              }
               yield* write(() => writer.entry(header, bytes, data))
               continue
             }
@@ -558,6 +584,7 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
           }
           entries = next
           index = 0
+          deflates = []
         }
       })
     })
@@ -588,36 +615,36 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
     return Stream.merge(output, Stream.fromEffectDrain(feed))
   })
 
+// In-memory entries deflated ahead, and the largest content deflated ahead
+const DEFLATE_AHEAD = 16
+const DEFLATE_AHEAD_SIZE = 64 * 1024
+
 // In-memory content is deflated in one promise, which costs less per entry
 // than a stream
-const deflateBytes = (bytes: Uint8Array): Effect.Effect<Uint8Array, ZipError> =>
-  Effect.tryPromise({
-    try: async () => {
-      const compressor = new CompressionStream("deflate-raw")
-      const writer = compressor.writable.getWriter()
-      // A failed write errors the readable, so the reads report it
-      if (bytes.length > 0) writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => {})
-      writer.close().catch(() => {})
-      const reader = compressor.readable.getReader()
-      const chunks: Array<Uint8Array> = []
-      let length = 0
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        chunks.push(value)
-        length += value.length
-      }
-      if (chunks.length === 1) return chunks[0]
-      const out = new Uint8Array(length)
-      let at = 0
-      for (const chunk of chunks) {
-        out.set(chunk, at)
-        at += chunk.length
-      }
-      return out
-    },
-    catch: (cause) => invalidData(`deflate failed: ${String(cause)}`)
-  })
+const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
+  const compressor = new CompressionStream("deflate-raw")
+  const writer = compressor.writable.getWriter()
+  // A failed write errors the readable, so the reads report it
+  if (bytes.length > 0) writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => {})
+  writer.close().catch(() => {})
+  const reader = compressor.readable.getReader()
+  const chunks: Array<Uint8Array> = []
+  let length = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    length += value.length
+  }
+  if (chunks.length === 1) return chunks[0]
+  const out = new Uint8Array(length)
+  let at = 0
+  for (const chunk of chunks) {
+    out.set(chunk, at)
+    at += chunk.length
+  }
+  return out
+}
 
 // Errors
 
