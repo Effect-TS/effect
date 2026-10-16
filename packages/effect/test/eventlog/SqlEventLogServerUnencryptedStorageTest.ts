@@ -6,6 +6,7 @@ import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerU
 import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
+import * as SqlError from "effect/sql/SqlError"
 
 let nextNamespace = 0
 
@@ -58,6 +59,27 @@ const assertEntries = (
   assert.deepStrictEqual(rows.map((row) => row.remoteSequence), expected.map((_, index) => startSequence + index))
   assert.deepStrictEqual(rows.map((row) => row.entry.idString), expected.map((entry) => entry.idString))
 }
+
+/**
+ * Writes `entries` in a caller-owned transaction whose earlier after-commit
+ * callback holds it between COMMIT and the storage's publication until
+ * `release` runs.
+ */
+const writeWithHeldPublication = Effect.fnUntraced(function*(
+  storage: EventLogServerUnencrypted.Storage["Service"],
+  storeId: StoreId,
+  entries: ReadonlyArray<EventJournal.Entry>
+) {
+  const sql = yield* SqlClient.SqlClient
+  const committed = yield* Deferred.make<void>()
+  const released = yield* Deferred.make<void>()
+  const writer = yield* sql.withTransaction(Effect.gen(function*() {
+    yield* sql.afterCommit(Deferred.succeed(committed, undefined).pipe(Effect.andThen(Deferred.await(released))))
+    yield* storage.write(storeId, entries)
+  })).pipe(Effect.forkChild)
+  yield* Deferred.await(committed)
+  return Deferred.succeed(released, undefined).pipe(Effect.andThen(Fiber.join(writer)))
+})
 
 export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unknown>) =>
   it.layer(
@@ -390,7 +412,6 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
 
     it.effect("streams in sequence order when a later commit publishes before a caller-owned commit", () =>
       Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
         const storage = yield* makeStorage(makeOptions("sql_outer_ordering"))
         const storeId = makeStoreId("sql_outer_ordering")
         const backlog = makeEntry("Ada")
@@ -400,22 +421,82 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const changes = yield* openChanges(storage, storeId)
         assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
-        // The caller's earlier callback holds its transaction between COMMIT
-        // and the storage's publication of `first`.
-        const committed = yield* Deferred.make<void>()
-        const release = yield* Deferred.make<void>()
-        const writer = yield* sql.withTransaction(Effect.gen(function*() {
-          yield* sql.afterCommit(Deferred.succeed(committed, undefined).pipe(Effect.andThen(Deferred.await(release))))
-          yield* storage.write(storeId, [first])
-        })).pipe(Effect.forkChild)
-        yield* Deferred.await(committed)
+        const release = yield* writeWithHeldPublication(storage, storeId, [first])
         yield* storage.write(storeId, [second])
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(writer)
+        yield* release
 
         assertEntries(yield* Queue.takeN(changes, 2), [first, second], 2)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
         assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, first, second], 1)
+      }))
+
+    it.effect("streams each entry once to a subscriber that opens while a committed write awaits publication", () =>
+      Effect.gen(function*() {
+        const storage = yield* makeStorage(makeOptions("subscriber_startup"))
+        const storeId = makeStoreId("subscriber_startup")
+        const first = makeEntry("Ada")
+        const second = makeEntry("Grace")
+
+        // No subscriber or publication has touched the store yet, so the
+        // subscriber starts its live state after `first` has committed.
+        const release = yield* writeWithHeldPublication(storage, storeId, [first])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [first], 1)
+
+        yield* storage.write(storeId, [second])
+        yield* release
+        assertEntries([yield* Queue.take(changes)], [second], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+      }))
+
+    it.effect("catches up a failed publication on the store's next commit", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        let failEntryRead = false
+        // Fails the next read of entry rows once armed.
+        const failingSql: SqlClient.SqlClient = Object.assign(
+          (...args: Parameters<SqlClient.SqlClient>) => {
+            const [strings] = args
+            if (failEntryRead && Array.isArray(strings) && strings[0].trim().startsWith("SELECT sequence")) {
+              failEntryRead = false
+              return Effect.fail(
+                new SqlError.SqlError({
+                  reason: new SqlError.UnknownError({ cause: new Error("read failed"), message: "read failed" })
+                })
+              )
+            }
+            return sql(...args)
+          },
+          sql
+        )
+        const storage = yield* makeStorage(makeOptions("publication_catch_up")).pipe(
+          Effect.provideService(SqlClient.SqlClient, failingSql)
+        )
+        const storeId = makeStoreId("publication_catch_up")
+        const backlog = makeEntry("Ada")
+        const first = makeEntry("Grace")
+        const second = makeEntry("Margaret")
+        const third = makeEntry("Linus")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        // `second` overtakes `first`, and reading `first` back fails, so
+        // `second` is not published until the next commit.
+        const release = yield* writeWithHeldPublication(storage, storeId, [first])
+        failEntryRead = true
+        yield* storage.write(storeId, [second])
+        assert.isFalse(failEntryRead)
+        yield* release
+        assertEntries([yield* Queue.take(changes)], [first], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+
+        yield* storage.write(storeId, [third])
+        assertEntries(yield* Queue.takeN(changes, 2), [second, third], 3)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
       }))
   })

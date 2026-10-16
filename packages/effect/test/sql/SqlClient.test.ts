@@ -578,6 +578,28 @@ describe("SqlClient", () => {
         assert.isFalse(calls.includes("invalidate(late)"))
       }))
 
+    it.effect("defers a detached fiber's invalidation from a rolled-back savepoint to the outer commit", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, sql } = client
+        yield* watch(client, ["late"])
+        const release = yield* Deferred.make<void>()
+
+        yield* sql.withTransaction(Effect.gen(function*() {
+          let detached: Fiber.Fiber<void> | undefined
+          yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+            detached = yield* Effect.forkDetach(
+              Effect.andThen(Deferred.await(release), Reactivity.invalidate(["late"]))
+            )
+            return yield* Effect.fail("boom")
+          })))
+          yield* Deferred.succeed(release, undefined)
+          yield* Fiber.join(detached!)
+          assert.isFalse(calls.includes("invalidate(late)"))
+        })).pipe(Effect.provideService(Reactivity.Reactivity, reactivity))
+        assert.isAbove(calls.indexOf("invalidate(late)"), calls.indexOf("COMMIT"))
+      }))
+
     it.effect("invalidates immediately from a detached fiber once the outermost transaction has ended", () =>
       Effect.gen(function*() {
         const client = yield* makeClient()
