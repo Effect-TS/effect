@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Wait for the outermost SQL transaction to commit before notifying `SqlMessageStorage` reply handlers, publishing `SqlEventLogServerUnencrypted` changes and running `Reactivity` invalidations, including when the transaction was opened outside those services. Rolled-back work no longer notifies.
+Defer `SqlMessageStorage` reply notifications, `SqlEventLogServerUnencrypted` changes and `Reactivity` invalidations until the outermost SQL commit, suppressing them on rollback. Preserve event-log sequence order across concurrent commits and reactivity batching across transaction boundaries.

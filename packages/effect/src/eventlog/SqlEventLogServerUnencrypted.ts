@@ -44,17 +44,14 @@ type StorageOptions = {
  * entries, and session authentication bindings, then persists and streams
  * plaintext remote entries.
  *
- * Writes are streamed to `changes` subscribers once the outermost SQL
- * transaction commits, in sequence order, including writes made inside a
- * transaction the caller opened.
+ * Streams writes to `changes` subscribers in sequence order after the outermost
+ * SQL commit, including caller-owned transactions.
  *
  * **Gotchas**
  *
- * A `changes` subscription opened inside a SQL transaction reads its backlog
- * in that transaction, so it can include writes that later roll back. When a
- * subscriber has to read back entries that a later commit overtook, it does so
- * outside the transaction, which on single-connection drivers such as SQLite
- * waits for that transaction to end.
+ * A subscription opened inside a SQL transaction can read backlog entries that
+ * later roll back. Gap reads run outside that transaction; on single-connection
+ * drivers such as SQLite, they wait for it to end.
  *
  * @stability unstable
  * @category constructors
@@ -257,10 +254,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     const pubsub = yield* RcMap.get(pubsubs, storeId)
     return yield* PubSub.publishAll(pubsub, entries)
   }, Effect.scoped)
-  // Merge nested buffers on success; publish only after the outermost SQL
-  // commit, which may belong to a transaction the caller opened. Commits can
-  // still publish out of order, such as when a caller's earlier after-commit
-  // callback delays this one, so subscribers restore sequence order.
+  // After-commit callbacks can publish out of order; subscribers recover gaps.
   const withTransaction = Effect.fnUntraced(function*<A, E, R>(
     effect: Effect.Effect<A, E, R>
   ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
@@ -497,8 +491,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
           ? remoteEntries[remoteEntries.length - 1]!.remoteSequence
           : startSequence - 1
 
-        // Skip entries already delivered, and read back committed entries that
-        // a later commit overtook. A failed read is retried by the next entry.
+        // Leave the position unchanged on read failure so the next entry retries.
         const deliver = (entry: RemoteEntry): Effect.Effect<ReadonlyArray<RemoteEntry>> => {
           if (entry.remoteSequence <= delivered) {
             return Effect.succeed([])

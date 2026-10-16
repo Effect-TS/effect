@@ -110,7 +110,6 @@ export const make = Effect.sync(() => {
   ): Effect.Effect<void> =>
     Effect.contextWith((services) => {
       const run = () => {
-        // Join the enclosing batch while it is still collecting.
         const pending = Context.getOrUndefined(services, PendingInvalidation)
         if (pending?.open) {
           keysToHashes(keys, (hash) => {
@@ -335,11 +334,9 @@ export const stream: {
  *
  * **Details**
  *
- * Registered queries for matching keys are rerun immediately, or collected until
- * the enclosing reactivity batch completes. Inside a SQL transaction, the
- * invalidation waits for the outermost transaction to commit, then joins an
- * enclosing batch that is still open, and is dropped if the transaction rolls
- * back.
+ * Registered queries rerun immediately or when the enclosing batch completes.
+ * Inside a SQL transaction, invalidations wait for the outermost commit and join
+ * the captured batch only if it is still open. Rollback drops the invalidations.
  *
  * @stability unstable
  * @category accessors

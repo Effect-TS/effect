@@ -482,17 +482,15 @@ export type Encoded = {
   ) => Effect.Effect<A, E, R>
 
   /**
-   * Runs `effect` once the outermost transaction the storage participates in
-   * commits.
+   * Runs `effect` after the outermost transaction commits, including caller-owned
+   * transactions.
    *
    * **Details**
    *
-   * Outside a transaction, `effect` runs immediately and its failures reach
-   * the caller. Once a transaction has committed, no caller is waiting for a
-   * deferred effect, so its failures are reported as defects, such as the
-   * logging of `SqlClient.afterCommit`, and `withTransaction` still succeeds.
-   * When omitted, reply notifications wait only for the outermost
-   * `withTransaction` of this storage.
+   * Outside a transaction, `effect` runs immediately and failures reach the caller. Deferred
+   * failures are reported as defects without failing `withTransaction`. When
+   * omitted, reply notifications wait only for this storage's outermost
+   * `withTransaction`.
    */
   readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
 }
@@ -568,16 +566,14 @@ export const make = (
       ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
 
       /**
-       * Runs `effect` once the outermost transaction the storage participates
-       * in commits.
+       * Defers reply notifications until the outermost commit, including
+       * caller-owned transactions.
        *
        * **Details**
        *
-       * Outside a transaction, `effect` runs immediately and its failures reach
-       * the caller; after a commit they are reported as defects instead. When
-       * provided, reply notifications use it instead of waiting for the
-       * outermost `withTransaction` of this storage, so they also wait for
-       * transactions opened outside the storage.
+       * Outside a transaction, `effect` runs immediately and failures reach the caller. Deferred
+       * failures are reported as defects without failing `withTransaction`. When
+       * omitted, notifications wait only for this storage's outermost transaction.
        */
       readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
     }
@@ -594,7 +590,6 @@ export const make = (
     const { afterCommit, ...service } = storage
     return MessageStorage.of({
       ...service,
-      // Nested transactions defer notifications to the outermost commit.
       withTransaction: afterCommit ? storage.withTransaction : (effect) =>
         TransactionNotifications.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []

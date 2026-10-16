@@ -522,13 +522,12 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
-  // Holds Reactivity invalidations until the outermost transaction commits.
   const deferInvalidation = (invalidate: Effect.Effect<void>): Effect.Effect<void> =>
     Effect.withFiber((fiber) => {
       const transaction = Context.getOrUndefined(fiber.context, options.transactionService)
       let buffer = transaction && afterCommitBuffers.get(transaction)
-      // A detached fiber can outlive its savepoint, so use the nearest level
-      // still open, and invalidate now once the outermost one has ended.
+      // Detached fibers may outlive savepoints. Use the nearest open ancestor,
+      // or invalidate immediately if the transaction has ended.
       while (buffer !== undefined && !buffer.open) {
         buffer = buffer.parent
       }
