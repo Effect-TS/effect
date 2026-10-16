@@ -13,11 +13,12 @@
 import type { NonEmptyReadonlyArray } from "effect/Array"
 import * as Cause from "effect/Cause"
 import * as Channel from "effect/Channel"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import { identity, type LazyArg } from "effect/Function"
 import * as Pull from "effect/Pull"
 import * as Sink from "effect/Sink"
-import type { Writable } from "node:stream"
+import { finished, type Writable } from "node:stream"
 
 /**
  * Creates a `Sink` that writes chunks to a Node writable stream, respecting
@@ -84,56 +85,60 @@ export const pullIntoWritable = <A, IE, E>(options: {
   readonly endOnDone?: boolean | undefined
   readonly encoding?: BufferEncoding | undefined
 }): Pull.Pull<never, IE | E, unknown> =>
-  options.pull.pipe(
-    Effect.flatMap((chunk) => {
-      let i = 0
-      return Effect.callback<void, E>((resume) => {
-        let cancelled = false
-        const loop = () => {
-          for (; i < chunk.length;) {
-            if (cancelled) {
-              return
-            }
-            const success = options.writable.write(chunk[i++], options.encoding as any)
-            if (!success) {
-              if (!cancelled) {
-                options.writable.once("drain", loop)
+  Effect.suspend(() => {
+    const completion = Deferred.makeUnsafe<void>()
+    const failure = Deferred.makeUnsafe<never, E>()
+    const onError = (error: unknown) => Deferred.doneUnsafe(failure, Effect.failSync(() => options.onError(error)))
+    // finished() only reports once, so keep listening for errors from writes
+    // made after the writable has finished.
+    options.writable.on("error", onError)
+    const cleanup = finished(options.writable, { readable: false }, (error) => {
+      if (error) {
+        onError(error)
+      } else {
+        Deferred.doneUnsafe(completion, Effect.void)
+      }
+    })
+    return options.pull.pipe(
+      Effect.flatMap((chunk) => {
+        let i = 0
+        return Effect.callback<void, E>((resume) => {
+          let cancelled = false
+          const loop = () => {
+            for (; i < chunk.length;) {
+              if (cancelled) {
+                return
               }
-              return
+              const success = options.writable.write(chunk[i++], options.encoding as any)
+              if (!success) {
+                if (!cancelled) {
+                  options.writable.once("drain", loop)
+                }
+                return
+              }
+            }
+            if (!cancelled) {
+              resume(Effect.void)
             }
           }
-          if (!cancelled) {
-            resume(Effect.void)
-          }
-        }
-        loop()
-        return Effect.sync(() => {
-          cancelled = true
-          options.writable.off("drain", loop)
-        })
-      })
-    }),
-    Effect.forever({ disableYield: true }),
-    options.endOnDone !== false ?
-      Pull.catchDone((_) => {
-        if ("closed" in options.writable && options.writable.closed) {
-          return Cause.done(_)
-        }
-        return Effect.callback<never, E | Cause.Done<unknown>>((resume) => {
-          const onFinish = () => resume(Cause.done(_))
-          options.writable.once("finish", onFinish)
-          options.writable.end()
+          loop()
           return Effect.sync(() => {
-            options.writable.off("finish", onFinish)
+            cancelled = true
+            options.writable.off("drain", loop)
           })
         })
-      }) :
-      identity,
-    Effect.raceFirst(Effect.callback<never, E>((resume) => {
-      const onError = (error: unknown) => resume(Effect.fail(options.onError(error)))
-      options.writable.once("error", onError)
-      return Effect.sync(() => {
+      }),
+      Effect.forever({ disableYield: true }),
+      options.endOnDone !== false ?
+        Pull.catchDone((_) => {
+          options.writable.end()
+          return Effect.andThen(Deferred.await(completion), Cause.done(_))
+        }) :
+        identity,
+      Effect.raceFirst(Deferred.await(failure)),
+      Effect.ensuring(Effect.sync(() => {
+        cleanup()
         options.writable.off("error", onError)
-      })
-    }))
-  )
+      }))
+    )
+  })
