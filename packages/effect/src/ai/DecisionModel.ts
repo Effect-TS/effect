@@ -88,8 +88,8 @@ export interface Image {
 }
 
 /**
- * Provider-specific metadata returned with a decision response, keyed by
- * provider name. Provider packages augment this interface with their own keys.
+ * Provider-specific response metadata keyed by provider name. Provider
+ * packages augment this interface.
  *
  * @stability unstable
  * @category models
@@ -98,8 +98,7 @@ export interface Image {
 export interface DecideResponseMetadata extends Response.ProviderMetadata {}
 
 /**
- * Answers for every decision in a definition together with usage and response
- * metadata.
+ * Answers for every decision in a definition with usage and response metadata.
  *
  * @see {@link DecisionUsage} for token usage metadata
  *
@@ -111,20 +110,20 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
   readonly answers: Decision.Answers<Decisions>
   readonly usage: DecisionUsage
   /**
-   * Provider identifier for the response, when reported.
+   * Response id reported by the provider.
    *
    * @since 4.0.6
    */
   readonly id?: string | undefined
   /**
-   * Model that answered the request, when reported. Can differ from the
-   * requested model when the provider resolves an alias or routes the request.
+   * Model that answered. Can differ from the requested model when the
+   * provider resolves an alias.
    *
    * @since 4.0.6
    */
   readonly modelId?: string | undefined
   /**
-   * Provider-specific response metadata, such as reported cost.
+   * Provider-specific metadata, such as reported cost.
    *
    * @since 4.0.6
    */
@@ -201,8 +200,8 @@ export type ProviderAnswer = ProviderClassifyAnswer | ProviderRateAnswer | Provi
 /**
  * Provider response for a decision request.
  * `answers` is keyed like the requested decisions. Each answer is validated
- * against its decision before it is returned to the caller. `id`, `modelId`,
- * and `metadata` are returned to the caller unchanged.
+ * against its decision before it is returned to the caller. `id`, `modelId`
+ * and `metadata` are passed through; `metadata` defaults to `{}`.
  *
  * @stability unstable
  * @category models

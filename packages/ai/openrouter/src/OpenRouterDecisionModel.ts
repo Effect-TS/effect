@@ -22,16 +22,13 @@ declare module "effect/ai/DecisionModel" {
    * @since 4.0.6
    */
   export interface DecideResponseMetadata {
-    /**
-     * Provider-specific metadata returned by the OpenRouter Decisions API.
-     */
     readonly openrouter?: {
       /**
-       * What OpenRouter charged for the request, in credits, when reported.
+       * Credits charged for the request.
        */
       readonly cost?: number
       /**
-       * The OpenRouter provider that served the request, when reported.
+       * Upstream provider that served the request.
        */
       readonly provider?: string
     }
@@ -68,9 +65,8 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
- * Score indices map to criteria labels. The response id and resolved model are
- * returned as `id` and `modelId`; the reported `cost` and the serving provider
- * are returned under `metadata.openrouter`.
+ * Score indices map to criteria labels. Reported `cost` and the serving
+ * provider are returned under `metadata.openrouter`.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
  * @stability unstable
