@@ -351,7 +351,7 @@ describe("SqlClient", () => {
   })
 
   describe("afterCommit", () => {
-    it.effect("runs callbacks in order after commit and release, in the outer caller's context", () =>
+    it.effect("runs callbacks in order after commit and release, with the services they were registered with", () =>
       Effect.gen(function*() {
         const { after, calls, record, sql } = yield* makeClient()
         const Caller = Context.Service<string>("test/afterCommit/Caller")
@@ -362,7 +362,7 @@ describe("SqlClient", () => {
             yield* after("1")
             yield* sql.afterCommit(Effect.gen(function*() {
               seen.push(yield* Effect.serviceOption(sql.transactionService))
-              seen.push(yield* Effect.serviceOption(Caller))
+              seen.push(yield* Caller)
               yield* record("after(2)")
             }))
             return "body"
@@ -370,7 +370,7 @@ describe("SqlClient", () => {
         ).pipe(Effect.provideService(Caller, "caller"))
 
         assert.strictEqual(result, "body")
-        assert.deepStrictEqual(seen, [Option.none(), Option.some("caller")])
+        assert.deepStrictEqual(seen, [Option.none(), "body"])
         assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "after(1)", "after(2)"])
       }))
 
@@ -443,7 +443,7 @@ describe("SqlClient", () => {
         assert.deepStrictEqual(failedRelease.calls, ["BEGIN", "COMMIT", "release", "after(1)"])
       }))
 
-    it.effect("logs a callback that dies and runs the rest", () =>
+    it.effect("logs a callback that fails or dies and runs the rest", () =>
       Effect.gen(function*() {
         const { after, calls, sql } = yield* makeClient()
         const logged: Array<string> = []
@@ -452,15 +452,17 @@ describe("SqlClient", () => {
         })
 
         const result = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* sql.afterCommit(Effect.fail("callback error"))
           yield* sql.afterCommit(Effect.die("callback defect"))
-          yield* after("2")
+          yield* after("3")
           return "body"
         })).pipe(Effect.provide(Logger.layer([logger])))
 
         assert.strictEqual(result, "body")
-        assert.isTrue(calls.includes("after(2)"))
-        assert.strictEqual(logged.length, 1)
-        assert.include(logged[0], "callback defect")
+        assert.isTrue(calls.includes("after(3)"))
+        assert.strictEqual(logged.length, 2)
+        assert.include(logged[0], "callback error")
+        assert.include(logged[1], "callback defect")
       }))
 
     it.effect("dies when a detached fiber registers after the transaction has ended", () =>
