@@ -37,10 +37,14 @@ import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import { createReadStream } from "node:fs"
+import * as Fs from "node:fs"
 import * as Http from "node:http"
 import * as Http2 from "node:http2"
+import * as Https from "node:https"
 import * as Net from "node:net"
 import { Readable } from "node:stream"
+import * as Tls from "node:tls"
+import { fileURLToPath } from "node:url"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -149,7 +153,7 @@ describe("HttpServer", () => {
       )) as { readonly url: string; readonly json: string; readonly formatted: string }
 
       assert.strictEqual(result.url, "/inspect?token=token-secret&sig=sig-visible")
-      assert.include(result.json, `"url":"/inspect?token=REDACTED&sig=sig-visible"`)
+      assert.match(result.json, /"url":"http:\/\/[^/"]+\/inspect\?token=REDACTED&sig=sig-visible"/)
       assert.include(result.formatted, "/inspect?token=REDACTED&sig=sig-visible")
       assert.notInclude(result.formatted, "token-secret")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
@@ -1500,7 +1504,82 @@ describe("HttpServer", () => {
       assert.match(response, /^HTTP\/1\.1 426/)
       assert.match(response, /upgrade refused/)
     }).pipe(Effect.provide(layerTestWebsocket)))
+
+  describe("request URL", () => {
+    it.effect("toURL reports https over TLS", () =>
+      Effect.gen(function*() {
+        const port = yield* serveUrlEcho(Https.createServer({ cert: tlsCert, key: tlsKey }))
+        assert.strictEqual(
+          yield* rawRequest(port, `GET /x?y=1 HTTP/1.1\r\nHost: 127.0.0.1:${port}`, { tls: true }),
+          `127.0.0.1:${port} /x?y=1 https://127.0.0.1:${port}/x?y=1`
+        )
+      }))
+
+    it.effect("absolute-form request-target replaces the host (RFC 9112 §3.2.2)", () =>
+      Effect.gen(function*() {
+        const port = yield* serveUrlEcho(Http.createServer())
+        const cases: ReadonlyArray<[target: string, expected: string]> = [
+          ["http://abs.test/x?y=1", "abs.test /x?y=1 http://abs.test/x?y=1"],
+          ["HTTPS://abs.test:8443/x", "abs.test:8443 /x https://abs.test:8443/x"],
+          ["http://user@abs.test/x", "abs.test /x http://abs.test/x"]
+        ]
+        for (const [target, expected] of cases) {
+          assert.strictEqual(yield* rawRequest(port, `GET ${target} HTTP/1.1\r\nHost: other.test`), expected, target)
+        }
+      }))
+
+    it.effect("searchParamsParser parses the query", () =>
+      Effect.gen(function*() {
+        yield* HttpRouter.add(
+          "GET",
+          "/search",
+          Effect.map(HttpServerRequest.ParsedSearchParams, (params) => HttpServerResponse.jsonUnsafe(params)).pipe(
+            HttpMiddleware.searchParamsParser
+          )
+        ).pipe(HttpRouter.serve, Layer.build)
+        const body = yield* HttpClient.get("/search?a=1&a=2&b=3").pipe(Effect.flatMap((response) => response.json))
+        assert.deepStrictEqual(body, { a: ["1", "2"], b: "3" })
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  })
 })
+
+const tlsCert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
+const tlsKey = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
+
+// Serves `GET /x`, answering with the request's host header, url and `toURL`.
+const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
+  yield* HttpRouter.add(
+    "GET",
+    "/x",
+    HttpServerRequest.HttpServerRequest.use((request) =>
+      Effect.succeed(HttpServerResponse.text(
+        `${request.headers.host} ${request.url} ${Option.getOrThrow(HttpServerRequest.toURL(request)).href}`
+      ))
+    )
+  ).pipe(
+    HttpRouter.serve,
+    Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+    Layer.build
+  )
+  return tcpPort(server)
+})
+
+// Sends a raw HTTP/1.1 request head and resolves with the response body.
+const rawRequest = (port: number, head: string, options?: { readonly tls?: boolean }) =>
+  Effect.callback<string, Error>((resume) => {
+    const socket = options?.tls
+      ? Tls.connect({ host: "127.0.0.1", port, rejectUnauthorized: false })
+      : Net.createConnection({ host: "127.0.0.1", port })
+    let response = ""
+    socket.setEncoding("utf8")
+    socket.write(`${head}\r\nConnection: close\r\n\r\n`)
+    socket.on("data", (chunk: string) => {
+      response += chunk
+    })
+    socket.on("error", (error) => resume(Effect.fail(error)))
+    socket.on("close", () => resume(Effect.succeed(response.slice(response.indexOf("\r\n\r\n") + 4))))
+    return Effect.sync(() => socket.destroy())
+  })
 
 const layerTestWebsocket = HttpServer.layerTestClient.pipe(
   Layer.provide(

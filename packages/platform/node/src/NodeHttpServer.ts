@@ -61,6 +61,7 @@ import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import type * as Tls from "node:tls"
 import { http } from "./internal/http.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
@@ -318,6 +319,18 @@ export const makeUpgradeHandler = <
   })
 }
 
+// An absolute-form request-target (RFC 9112 §3.2.2), as sent to proxies.
+const absoluteTarget = (url: string): URL | undefined => {
+  if (url[0] === "/" || !/^[a-z][a-z\d+.-]*:\/\//i.test(url)) {
+    return undefined
+  }
+  try {
+    return new URL(url)
+  } catch {
+    return undefined
+  }
+}
+
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
   readonly [Request.TypeId]: typeof Request.TypeId
   readonly response: Http.ServerResponse | LazyArg<Http.ServerResponse>
@@ -330,7 +343,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     source: Http.IncomingMessage,
     response: Http.ServerResponse | LazyArg<Http.ServerResponse>,
     upgradeEffect?: Effect.Effect<Socket.Socket, HttpServerError>,
-    url = source.url!,
+    url?: string,
     headersOverride?: Headers.Headers,
     remoteAddressOverride?: Option.Option<string>
   ) {
@@ -344,6 +357,10 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     this[Request.TypeId] = Request.TypeId
     this.response = response
     this.upgradeEffect = upgradeEffect
+    if (url === undefined) {
+      const target = absoluteTarget(source.url!)
+      url = target === undefined ? source.url! : (target.pathname || "/") + target.search
+    }
     this.url = url
     this.headersOverride = headersOverride
   }
@@ -377,8 +394,17 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     )
   }
 
+  private cachedOriginalUrl: string | undefined
   get originalUrl(): string {
-    return this.source.url!
+    if (this.cachedOriginalUrl !== undefined) {
+      return this.cachedOriginalUrl
+    }
+    // The target URI, reconstructed per RFC 9112 §3.3.
+    const url = this.source.url!
+    const host = this.source.headers.host
+    return this.cachedOriginalUrl = url[0] === "/" && host !== undefined
+      ? `${(this.source.socket as Tls.TLSSocket | null)?.encrypted ? "https" : "http"}://${host}${url}`
+      : url
   }
 
   private cachedMethod: HttpMethod | undefined
@@ -387,7 +413,14 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
   }
 
   override get headers(): Headers.Headers {
-    this.headersOverride ??= this.source.headers as Headers.Headers
+    if (this.headersOverride === undefined) {
+      const headers = this.source.headers
+      // The authority of an absolute-form target replaces any `host` header.
+      const host = absoluteTarget(this.source.url!)?.host
+      this.headersOverride = (host === undefined || host === "" || headers.host === host
+        ? headers
+        : { ...headers, host }) as Headers.Headers
+    }
     return this.headersOverride
   }
 

@@ -26,6 +26,7 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as ManagedRuntime from "effect/ManagedRuntime"
 import type * as NetAddress from "effect/net/NetAddress"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as References from "effect/References"
 import * as Schema from "effect/Schema"
@@ -33,6 +34,8 @@ import type * as Scope from "effect/Scope"
 import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
+
+const tlsFixture = (name: string) => Deno.readTextFileSync(new URL(`./fixtures/tls/${name}`, import.meta.url))
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -654,6 +657,28 @@ describe("DenoHttpServer", () => {
       const disposed = yield* Effect.promise(() => runtime.dispose()).pipe(Effect.timeoutOption("2 seconds"))
       assert.strictEqual(disposed._tag, "Some")
     }))
+
+  it.effect("toURL reports https over TLS", () =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(Option.getOrThrow(HttpServerRequest.toURL(request)).href))
+        )
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      const client = Deno.createHttpClient({ caCerts: [tlsFixture("ca.pem")], http2: false })
+      const body = yield* Effect.promise(() =>
+        fetch(`https://localhost:${port}/x?y=1`, { client }).then((response) => response.text())
+      ).pipe(Effect.ensuring(Effect.sync(() => client.close())))
+      assert.strictEqual(body, `https://localhost:${port}/x?y=1`)
+    }).pipe(Effect.provide(DenoHttpServer.layer({
+      hostname: "127.0.0.1",
+      port: 0,
+      onListen: () => {},
+      cert: tlsFixture("cert.pem"),
+      key: tlsFixture("key.pem")
+    }))))
 
   describe("HttpServerRespondable", () => {
     it.effect("error/schema", () =>
