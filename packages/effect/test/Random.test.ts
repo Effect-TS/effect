@@ -230,6 +230,17 @@ describe("Random", () => {
   })
 
   describe("withSeed", () => {
+    it.effect("restarts the sequence on each evaluation of a reused effect", () =>
+      Effect.gen(function*() {
+        const seeded = Effect.all([Random.next, Random.next]).pipe(Random.withSeed("my-seed"))
+
+        const first = yield* seeded
+        const second = yield* seeded
+
+        assert.notStrictEqual(first[0], first[1])
+        assert.deepStrictEqual(second, first)
+      }))
+
     it.effect("produces deterministic sequence with same seed", () =>
       Effect.gen(function*() {
         const program = Effect.gen(function*() {
