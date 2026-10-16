@@ -128,30 +128,46 @@ export interface EncodeOptions {
 }
 
 /**
- * Schemas whose encoded side is a row or a record of string cells.
+ * Schema decoding options.
  *
- * @stability unstable
- * @category models
- * @since 4.1.0
- */
-export interface RowCodec
-  extends Schema.ConstraintCodec<any, Row | Record.ReadonlyRecord<string, string | undefined>, unknown, unknown>
-{}
-
-/**
- * Schema encoding options. `columns` defaults to the encoded keys of a struct
- * schema; for other object schemas it is required. Tuple and array schemas
- * write cells by position and use `columns` only as header names.
+ * **Details**
+ *
+ * By default the schema is wrapped in `Schema.toCodecStringTree`, so columns
+ * can use schemas such as `Schema.Number`, `Schema.Boolean` or `Schema.Date`.
+ * With header records, an empty cell for a property that is optional in the
+ * encoded schema is decoded as a missing key. Set `disableCodecs` to decode
+ * with the schema exactly as given.
  *
  * @stability unstable
  * @category configuration
  * @since 4.1.0
  */
-export type EncodeSchemaOptions<S extends RowCodec> = Omit<EncodeOptions, "columns"> & {
+export interface DecodeSchemaOptions extends DecodeOptions {
+  readonly disableCodecs?: boolean | undefined
+}
+
+/**
+ * Schema encoding options.
+ *
+ * **Details**
+ *
+ * By default the schema is wrapped in `Schema.toCodecStringTree`, so every
+ * column encodes to a string; set `disableCodecs` to encode with the schema
+ * exactly as given. `columns` defaults to the encoded keys of a struct schema
+ * and is required for other object schemas. Tuple and array schemas write
+ * cells by position and use `columns` only as header names. Every column must
+ * encode to a string, otherwise the channel throws when it is created.
+ *
+ * @stability unstable
+ * @category configuration
+ * @since 4.1.0
+ */
+export type EncodeSchemaOptions<S extends Schema.Constraint> = Omit<EncodeOptions, "columns"> & {
   readonly columns?:
     | (S["Encoded"] extends ReadonlyArray<unknown> ? ReadonlyArray<string>
       : ReadonlyArray<Extract<keyof S["Encoded"], string>>)
     | undefined
+  readonly disableCodecs?: boolean | undefined
 }
 
 const defaultMaxRecordSize = 1024 * 1024
@@ -548,15 +564,60 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
   )
 }
 
+// The schema used for CSV cells. `toCodecStringTree` keeps the decoded type and
+// services and only changes the encoded side, which is treated as unknown here.
+const toCodec = <S extends Schema.Constraint>(schema: S, disableCodecs: boolean | undefined): S =>
+  disableCodecs === true ? schema : Schema.toCodecStringTree(schema) as Schema.Constraint as S
+
+const isStringLeaf = (ast: SchemaAST.AST): boolean => {
+  switch (ast._tag) {
+    case "String":
+    case "TemplateLiteral":
+      return true
+    case "Literal":
+      return typeof ast.literal === "string"
+    case "Enum":
+      return ast.enums.every(([, value]) => typeof value === "string")
+    case "Union":
+      return ast.types.every((type) => type._tag === "Undefined" || isStringLeaf(type))
+    default:
+      return false
+  }
+}
+
+// Throws unless every selected cell of an encoded struct or tuple is a string.
+const checkCells = (ast: SchemaAST.AST, columns: ReadonlyArray<string> | undefined): void => {
+  const check = (name: string, type: SchemaAST.AST) => {
+    if (!isStringLeaf(type)) {
+      throw new Error(
+        `Csv: ${name} encodes to ${type._tag}, not a string. ` +
+          "Encode it as a single cell with a transformation, such as SchemaGetter.split for arrays"
+      )
+    }
+  }
+  if (SchemaAST.isObjects(ast)) {
+    for (const ps of ast.propertySignatures) {
+      if (typeof ps.name === "string" && (columns === undefined || columns.includes(ps.name))) {
+        check(`column ${JSON.stringify(ps.name)}`, ps.type)
+      }
+    }
+    for (const is of ast.indexSignatures) check("index signature", is.type)
+  } else if (SchemaAST.isArrays(ast)) {
+    ast.elements.forEach((type, i) => check(`column ${i + 1}`, type))
+    for (const type of ast.rest) check("rest element", type)
+  }
+}
+
 /**
  * Creates a channel that parses CSV text and decodes each record with a schema.
  *
  * **Details**
  *
  * With `headers: true` the schema receives objects keyed by header name;
- * otherwise it receives arrays of cells. Each chunk is decoded in one pass.
- * Schema failures are `SchemaError`s whose issue paths start with the record
- * number.
+ * otherwise it receives arrays of cells. Columns that do not encode to a string,
+ * such as arrays or nested structs, throw when the channel is created. Each
+ * chunk is decoded in one pass. Schema failures are `SchemaError`s whose issue
+ * paths start with the record number.
  *
  * **Example** (Decoding renamed headers)
  *
@@ -566,7 +627,7 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
  *
  * const Person = Schema.Struct({
  *   name: Schema.String,
- *   age: Schema.FiniteFromString
+ *   age: Schema.Number
  * }).pipe(Schema.encodeKeys({ name: "Full Name", age: "Age (years)" }))
  *
  * const people = Stream.make("Full Name,Age (years)\nAlice,32").pipe(
@@ -582,7 +643,7 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
  * import { Effect, Schema, SchemaGetter, Stream } from "effect"
  * import { Csv } from "effect/encoding"
  *
- * const Person = Schema.Tuple([Schema.String, Schema.FiniteFromString]).pipe(
+ * const Person = Schema.Tuple([Schema.String, Schema.Number]).pipe(
  *   Schema.decodeTo(Schema.Struct({ name: Schema.String, age: Schema.Number }), {
  *     decode: SchemaGetter.transform(([name, age]) => ({ name, age })),
  *     encode: SchemaGetter.transform(({ name, age }) => [name, age] as const)
@@ -603,8 +664,8 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
  * @since 4.1.0
  */
 export const decodeSchemaString =
-  <S extends RowCodec>(schema: S) =>
-  <IE = never, Done = unknown>(options?: DecodeOptions, parseOptions?: SchemaAST.ParseOptions): Channel.Channel<
+  <S extends Schema.Constraint>(schema: S) =>
+  <IE = never, Done = unknown>(options?: DecodeSchemaOptions, parseOptions?: SchemaAST.ParseOptions): Channel.Channel<
     Arr.NonEmptyReadonlyArray<S["Type"]>,
     IE | CsvError | Schema.SchemaError,
     Done,
@@ -613,10 +674,29 @@ export const decodeSchemaString =
     Done,
     S["DecodingServices"]
   > => {
-    const decode = Schema.decodeUnknownEffect(Schema.NonEmptyArray(schema), parseOptions)
+    const codec = toCodec(schema, options?.disableCodecs)
+    const ast = SchemaAST.toEncoded(codec.ast)
+    checkCells(ast, undefined)
+    // CSV cannot tell an empty cell from a missing one, so empty cells of
+    // optional properties are decoded as missing keys.
+    const optional = options?.disableCodecs !== true && options?.headers === true && SchemaAST.isObjects(ast)
+      ? ast.propertySignatures.flatMap((ps) =>
+        typeof ps.name === "string" && SchemaAST.isOptional(ps.type) ? [ps.name] : []
+      )
+      : []
+    const input = (record: Decoded) => {
+      if (optional.length === 0) return record.value
+      // Header records are created per row, so they can be updated in place.
+      const value = record.value as globalThis.Record<string, string>
+      for (const key of optional) {
+        if (value[key] === "") delete value[key]
+      }
+      return value
+    }
+    const decode = Schema.decodeUnknownEffect(Schema.NonEmptyArray(codec), parseOptions)
     return Channel.mapEffect(decodeRecords<IE, Done>(options), (records) =>
       Effect.mapError(
-        decode(Arr.map(records, (record) => record.value)),
+        decode(Arr.map(records, input)),
         (error) => rebaseIssue(error, (index) => records[index].record)
       ))
   }
@@ -630,8 +710,8 @@ export const decodeSchemaString =
  * @since 4.1.0
  */
 export const decodeSchema =
-  <S extends RowCodec>(schema: S) =>
-  <IE = never, Done = unknown>(options?: DecodeOptions, parseOptions?: SchemaAST.ParseOptions): Channel.Channel<
+  <S extends Schema.Constraint>(schema: S) =>
+  <IE = never, Done = unknown>(options?: DecodeSchemaOptions, parseOptions?: SchemaAST.ParseOptions): Channel.Channel<
     Arr.NonEmptyReadonlyArray<S["Type"]>,
     IE | CsvError | Schema.SchemaError,
     Done,
@@ -801,22 +881,27 @@ export const encode: {
 // array schemas encode by position. Other schemas, including records with
 // index signatures, need explicit columns.
 const schemaColumns = (
-  schema: RowCodec,
+  ast: SchemaAST.AST,
   options: Pick<EncodeOptions, "columns" | "headers"> | undefined
 ): ReadonlyArray<string> | undefined => {
-  if (options?.columns !== undefined) return options.columns
-  const ast = SchemaAST.toEncoded(schema.ast)
+  if (options?.columns !== undefined) {
+    checkCells(ast, options.columns)
+    return options.columns
+  }
   if (SchemaAST.isObjects(ast) && ast.indexSignatures.length === 0) {
-    return ast.propertySignatures.flatMap((ps) => typeof ps.name === "string" ? [ps.name] : [])
+    const columns = ast.propertySignatures.flatMap((ps) => typeof ps.name === "string" ? [ps.name] : [])
+    checkCells(ast, columns)
+    return columns
   }
   if (SchemaAST.isArrays(ast)) {
     if (options?.headers === true) throw new Error("Csv: headers for tuple or array schemas require columns")
+    checkCells(ast, undefined)
     return undefined
   }
   throw new Error(`Csv: columns are required to encode ${ast._tag} schemas`)
 }
 
-const encodeSchemaRecords = <S extends RowCodec, IE, Done>(
+const encodeSchemaRecords = <S extends Schema.Constraint, IE, Done>(
   schema: S,
   options: EncodeSchemaOptions<S> | undefined
 ): Channel.Channel<
@@ -828,9 +913,10 @@ const encodeSchemaRecords = <S extends RowCodec, IE, Done>(
   Done,
   S["EncodingServices"]
 > => {
-  const columns = schemaColumns(schema, options)
+  const codec = toCodec(schema, options?.disableCodecs)
+  const columns = schemaColumns(SchemaAST.toEncoded(codec.ast), options)
   const writer = encodeRecords<S["Encoded"], IE | Schema.SchemaError, Done>({ ...options, columns })
-  const encode = Schema.encodeEffect(Schema.NonEmptyArray(schema))
+  const encode = Schema.encodeEffect(Schema.NonEmptyArray(codec))
   const firstRecord = options?.headers === true ? 2 : 1
   const values = Channel.fromTransform((
     upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, IE, Done>,
@@ -855,8 +941,9 @@ const encodeSchemaRecords = <S extends RowCodec, IE, Done>(
  * **Details**
  *
  * Columns default to the encoded keys of a struct schema, including keys
- * renamed with `Schema.encodeKeys`. Schema failures are `SchemaError`s whose
- * issue paths start with the output record number, counting the header row.
+ * renamed with `Schema.encodeKeys`. Missing or `undefined` values become empty
+ * cells. Schema failures are `SchemaError`s whose issue paths start with the
+ * output record number, counting the header row.
  *
  * **Example** (Encoding renamed headers)
  *
@@ -866,15 +953,18 @@ const encodeSchemaRecords = <S extends RowCodec, IE, Done>(
  *
  * const Person = Schema.Struct({
  *   name: Schema.String,
- *   age: Schema.FiniteFromString
+ *   age: Schema.Number,
+ *   joined: Schema.Date
  * }).pipe(Schema.encodeKeys({ name: "Full Name", age: "Age (years)" }))
  *
- * const csv = Stream.make({ name: "Alice", age: 32 }).pipe(
- *   Stream.pipeThroughChannel(Csv.encodeSchemaString(Person)({ headers: true })),
- *   Stream.runCollect,
- *   Effect.map((parts) => parts.join(""))
+ * const csv = await Effect.runPromise(
+ *   Stream.make({ name: "Alice", age: 32, joined: new Date(0) }).pipe(
+ *     Stream.pipeThroughChannel(Csv.encodeSchemaString(Person)({ headers: true, newline: "\n" })),
+ *     Stream.runCollect,
+ *     Effect.map((parts) => parts.join(""))
+ *   )
  * )
- * await Effect.runPromise(csv) // => "Full Name,Age (years)\r\nAlice,32\r\n"
+ * csv.split("\n") // => ["Full Name,Age (years),joined", "Alice,32,1970-01-01T00:00:00.000Z", ""]
  * ```
  *
  * @see decodeSchemaString
@@ -884,7 +974,7 @@ const encodeSchemaRecords = <S extends RowCodec, IE, Done>(
  * @since 4.1.0
  */
 export const encodeSchemaString =
-  <S extends RowCodec>(schema: S) =>
+  <S extends Schema.Constraint>(schema: S) =>
   <IE = never, Done = unknown>(options?: EncodeSchemaOptions<S>): Channel.Channel<
     Arr.NonEmptyReadonlyArray<string>,
     IE | Schema.SchemaError,
@@ -911,7 +1001,7 @@ export const encodeSchemaString =
  * @since 4.1.0
  */
 export const encodeSchema =
-  <S extends RowCodec>(schema: S) =>
+  <S extends Schema.Constraint>(schema: S) =>
   <IE = never, Done = unknown>(options?: EncodeSchemaOptions<S>): Channel.Channel<
     Arr.NonEmptyReadonlyArray<Uint8Array>,
     IE | Schema.SchemaError,
