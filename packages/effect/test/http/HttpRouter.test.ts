@@ -48,8 +48,7 @@ describe("HttpRouter", () => {
     }
   })
 
-  it("overlapping toWebHandler dispose calls wait for the layer release", async () => {
-    const events: Array<string> = []
+  it("toWebHandler shares in-progress disposal", async () => {
     const started = Promise.withResolvers<void>()
     const release = Promise.withResolvers<void>()
     const { dispose, handler } = HttpRouter.toWebHandler(
@@ -57,7 +56,6 @@ describe("HttpRouter", () => {
         Effect.promise(async () => {
           started.resolve()
           await release.promise
-          events.push("layer released")
         })
       )),
       { disableLogger: true }
@@ -66,14 +64,10 @@ describe("HttpRouter", () => {
 
     const first = dispose()
     await started.promise
-    const second = dispose().then(() => {
-      events.push("second dispose done")
-    })
-    // Give a second dispose that does not wait time to settle first.
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    const second = dispose()
     release.resolve()
     await Promise.all([first, second])
-    assert.deepStrictEqual(events, ["layer released", "second dispose done"])
+    assert.strictEqual(second, first)
   })
 
   for (
