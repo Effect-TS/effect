@@ -4,4 +4,4 @@
 "@effect/platform-node": patch
 ---
 
-Fix WorkerRunner `onError` handler reading `error.data` instead of `error.error` on ErrorEvent, and correct grammar in messageerror error messages.
+Keep the thrown error as the cause when a Browser or Deno worker runner receives an `error` event, and fix the grammar of the `messageerror` failure message.
