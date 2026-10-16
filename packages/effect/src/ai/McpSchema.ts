@@ -179,7 +179,7 @@ export const JsonRpcResponse = Schema.Union([
   }),
   Schema.Struct({
     jsonrpc: Schema.Literal("2.0"),
-    id: Schema.Union([RequestId, Schema.Null]),
+    id: Schema.optional(Schema.Union([RequestId, Schema.Null])),
     error: Schema.Struct({
       code: Schema.Int,
       message: Schema.String,

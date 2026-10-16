@@ -920,7 +920,7 @@ export const http = Effect.fnUntraced(function*(options: {
       for (const annotation of descriptor) {
         let value: unknown = message.params.arguments
 
-        for (const key of annotation.path) value = record(value) ? value[key] : undefined
+        for (const key of annotation.path) value = record(value) && Object.hasOwn(value, key) ? value[key] : undefined
 
         if (value === undefined || value === null) continue
 
@@ -1472,7 +1472,7 @@ const connectClient = Effect.fnUntraced(function*(
       return
     }
 
-    if (message.id === null) {
+    if (message.id === null || message.id === undefined) {
       return yield* new McpClientError({
         reason: { _tag: "ProtocolError", message: "Server returned an uncorrelated JSON-RPC error" }
       })

@@ -1390,6 +1390,7 @@ describe("McpClient HTTP delivery", () => {
   for (
     const [status, filtered, body] of [
       [401, false, "json-rpc"],
+      [400, false, "json-rpc-no-id"],
       [403, true, "json-rpc"],
       [401, true, "plain"],
       [403, false, "malformed"],
@@ -1400,11 +1401,15 @@ describe("McpClient HTTP delivery", () => {
     it.effect(`should preserve safe rejection details when HTTP ${status} has ${body} content and filtered=${filtered}`, () =>
       Effect.gen(function*() {
         let attempts = 0
-        const remote = { jsonrpc: "2.0", id: 1, error: { code: -32000, message: "Denied", data: { scope: "tools" } } }
+        const remote = {
+          jsonrpc: "2.0",
+          ...(body === "json-rpc-no-id" ? {} : { id: 1 }),
+          error: { code: -32000, message: "Denied", data: { scope: "tools" } }
+        }
         const client = HttpClient.make((request) =>
           Effect.sync(() => {
             attempts++
-            const content = body === "json-rpc" ? JSON.stringify(remote) : body === "non-envelope" ?
+            const content = body.startsWith("json-rpc") ? JSON.stringify(remote) : body === "non-envelope" ?
               JSON.stringify({ error: remote.error })
               : body === "oversized"
               ? "x".repeat(2000)
@@ -1443,13 +1448,41 @@ describe("McpClient HTTP delivery", () => {
         assert.strictEqual(error.reason.status, status)
         assert.strictEqual(error.reason.wwwAuthenticate, "Bearer realm=\"tools\"")
         assert.strictEqual(error.reason.retryAfter, "30")
-        assert.strictEqual(error.reason.code, body === "json-rpc" ? -32000 : undefined)
-        assert.deepStrictEqual(error.reason.data, body === "json-rpc" ? { scope: "tools" } : undefined)
-        assert.strictEqual(error.message, body === "json-rpc" ? "Denied" : `MCP HTTP status ${status}`)
+        assert.strictEqual(error.reason.code, body.startsWith("json-rpc") ? -32000 : undefined)
+        assert.deepStrictEqual(error.reason.data, body.startsWith("json-rpc") ? { scope: "tools" } : undefined)
+        assert.strictEqual(error.message, body.startsWith("json-rpc") ? "Denied" : `MCP HTTP status ${status}`)
         assert.isFalse(JSON.stringify(error).includes("secret-"))
         assert.strictEqual(attempts, 1)
       }))
   }
+
+  it.effect("should recover HTTP discovery when the unsupported-version error omits its ID", () =>
+    Effect.gen(function*() {
+      const requests: Array<McpSchema.JsonRpcRequest> = []
+      const transport = yield* httpTransport((request) => {
+        const message = httpMessage(request)
+        requests.push(message)
+        return Effect.succeed(
+          requests.length === 1
+            ? new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                error: { code: -32022, message: "Unsupported protocol version", data: rejectedVersion }
+              }),
+              { status: 400, headers: { "content-type": "application/json" } }
+            )
+            : jsonResponse({ jsonrpc: "2.0", id: message.id, result: modernProfile })
+        )
+      })
+      const client = yield* McpClient.make({ clientInfo }).pipe(
+        Effect.provideService(McpClient.Transport, transport)
+      )
+      assert.deepStrictEqual(client.serverInfo, serverInfo)
+      assert.strictEqual(requests.length, 2)
+      assert.strictEqual(requests[0].method, "server/discover")
+      assert.strictEqual(requests[1].method, "server/discover")
+      assert.notStrictEqual(requests[0].id, requests[1].id)
+    }))
 
   for (const phase of ["initialization", "discovery"] as const) {
     it.effect(`should retain HTTP status when optional error details stall during ${phase}`, () =>
@@ -1618,6 +1651,36 @@ describe("McpClient HTTP tool routing", () => {
       assert.strictEqual(headers["mcp-name"], "valid")
       assert.strictEqual(headers.authorization, "Bearer application-token")
     }))
+
+  for (const key of ["constructor", "toString", "__proto__"]) {
+    for (const path of [[key], ["nested", key], [key, "region"]]) {
+      it.effect(`should omit inherited header arguments and send own values at ${path.join(".")}`, () =>
+        Effect.gen(function*() {
+          let property: Record<string, unknown> = { type: "string", "x-mcp-header": "Region" }
+          for (const part of path.slice().reverse()) property = { type: "object", properties: { [part]: property } }
+          const definition = { name: "prototype", inputSchema: property }
+          const headers: Array<Readonly<Record<string, string>>> = []
+          const peer = yield* connectHttp((message, request) => {
+            if (message.method === "tools/call") headers.push(request.headers)
+            return Effect.succeed(jsonResponse({
+              jsonrpc: "2.0",
+              id: message.id,
+              result: message.method === "tools/list"
+                ? { ttlMs: 0, cacheScope: "private", tools: [definition] }
+                : { content: [] }
+            }))
+          })
+          const [tool] = yield* peer.client.listTools()
+          yield* peer.client.callTool({ tool, arguments: {} })
+          if (path[0] === "nested") yield* peer.client.callTool({ tool, arguments: { nested: {} } })
+          let own: Schema.JsonObject = { [path[path.length - 1]]: "own value" }
+          for (const part of path.slice(0, -1).reverse()) own = { [part]: own }
+          yield* peer.client.callTool({ tool, arguments: own })
+          for (const absent of headers.slice(0, -1)) assert.isUndefined(absent["mcp-param-region"])
+          assert.strictEqual(headers.at(-1)!["mcp-param-region"], "own value")
+        }))
+    }
+  }
 
   it.effect("should retain ordinary tools when defaults and examples contain header-like instance data", () =>
     Effect.gen(function*() {
@@ -1881,6 +1944,28 @@ describe("McpClient HTTP lifecycle", () => {
 })
 
 describe("McpClient stdio delivery", () => {
+  for (const version of ["2025-11-25", "2026-07-28"] as const) {
+    for (const id of [undefined, null]) {
+      it.effect(`should close pending calls on an uncorrelated ${version} error with ID ${id}`, () =>
+        Effect.gen(function*() {
+          const peer = yield* connect(version)
+          const pending = yield* peer.client.listTools().pipe(Effect.flip, Effect.forkChild)
+          yield* peer.nextRequest
+          yield* Queue.offer(peer.incoming, {
+            jsonrpc: "2.0",
+            ...(id === undefined ? {} : { id }),
+            error: { code: -32700, message: "Parse error" }
+          })
+          const error = yield* Fiber.join(pending)
+          assert.strictEqual(error.reason._tag, "ProtocolError")
+          assert.strictEqual(error.message, "Server returned an uncorrelated JSON-RPC error")
+          const next = yield* peer.client.listTools().pipe(Effect.flip)
+          assert.strictEqual(next, error)
+          assert.strictEqual(yield* Queue.size(peer.outgoing), 0)
+        }))
+    }
+  }
+
   it.effect("should provide a connected stdio client and close its process when the layer scope ends", () =>
     Effect.gen(function*() {
       const peer = yield* makeStdioPeer()
