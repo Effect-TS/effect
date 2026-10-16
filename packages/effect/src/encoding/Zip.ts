@@ -599,7 +599,7 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
     const writer = compressor.writable.getWriter()
     const feed = Stream.runForEach(
       input,
-      (chunk) => Effect.promise(() => writer.write(chunk as Uint8Array<ArrayBuffer>))
+      (chunk) => Effect.promise(() => writer.write(compressible(chunk)))
     ).pipe(
       Effect.andThen(Effect.promise(() => writer.close())),
       Effect.onError(() =>
@@ -615,6 +615,10 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
     return Stream.merge(output, Stream.fromEffectDrain(feed))
   })
 
+// CompressionStream rejects views of a SharedArrayBuffer
+const compressible = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
+  bytes.buffer instanceof ArrayBuffer ? bytes as Uint8Array<ArrayBuffer> : bytes.slice()
+
 // In-memory entries deflated ahead, and the largest content deflated ahead
 const DEFLATE_AHEAD = 16
 const DEFLATE_AHEAD_SIZE = 64 * 1024
@@ -625,7 +629,7 @@ const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
   const compressor = new CompressionStream("deflate-raw")
   const writer = compressor.writable.getWriter()
   // A failed write errors the readable, so the reads report it
-  if (bytes.length > 0) writer.write(bytes as Uint8Array<ArrayBuffer>).catch(() => {})
+  if (bytes.length > 0) writer.write(compressible(bytes)).catch(() => {})
   writer.close().catch(() => {})
   const reader = compressor.readable.getReader()
   const chunks: Array<Uint8Array> = []
