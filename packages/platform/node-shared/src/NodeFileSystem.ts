@@ -303,8 +303,6 @@ const makeFile = (() => {
     handleBadArgument("sync")
   )
 
-  // Bun ignores the position unless the offset and length are passed explicitly:
-  // https://github.com/oven-sh/bun/pull/37647
   const nodeWriteFactory = (method: string) =>
     effectify(
       NFS.write,
@@ -427,7 +425,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
           (nodePosition) =>
             Effect.map(
-              nodeWrite(this.fd, buffer, 0, buffer.length, nodePosition),
+              nodeWrite(this.fd, buffer, undefined, undefined, nodePosition),
               (bytesWritten) => {
                 if (!this.append) {
                   this.position = position + BigInt(bytesWritten)
@@ -446,7 +444,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
           (nodePosition) =>
             Effect.flatMap(
-              nodeWriteAll(this.fd, buffer, 0, buffer.length, nodePosition),
+              nodeWriteAll(this.fd, buffer, undefined, undefined, nodePosition),
               (bytesWritten) => {
                 if (bytesWritten === 0) {
                   return Effect.fail(
