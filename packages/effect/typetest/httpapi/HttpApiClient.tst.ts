@@ -874,6 +874,25 @@ describe("HttpApiClient", () => {
       >()
     })
 
+    it("returns the response headers and socket for Upgrade successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.post("a", "/a", {
+                success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+
+      expect(client.group.a()).type.toBe<
+        Effect.Effect<HttpApiClient.Upgraded, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+    })
+
     it("returns decoded streams for StreamUint8Array successes", () => {
       const Api = HttpApi.make("Api")
         .add(
