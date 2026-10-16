@@ -594,10 +594,12 @@ describe("Zip", () => {
 
     it.effect("does not resolve matches against the output of earlier entries", () =>
       Effect.gen(function*() {
-        // "b" refers to a preset dictionary holding the end of "a", so that a
-        // decoder that kept the output of "a" would reproduce it
+        // "b" is one fixed-code block copying 258 bytes from 1000 bytes back,
+        // which only the output of "a" could supply, so a decoder that kept
+        // that output would reproduce these bytes and pass the CRC-32 check
         const a = Uint8Array.from({ length: 65_536 }, (_, i) => (i * i) % 251)
-        const b = a.subarray(-1000)
+        const b = a.slice(-1000, -1000 + 258)
+        const copy = bits([[1, 1], [1, 2], [0xc5, 8, true], [19, 5, true], [1000 - 769, 8], [0, 7, true]])
         const entry = (name: string, content: Uint8Array, data: Uint8Array) =>
           concat(
             localHeader(textEncoder.encode(name), {
@@ -610,7 +612,7 @@ describe("Zip", () => {
           )
         const archive = concat(
           entry("a", a, deflateRawSync(a)),
-          entry("b", b, deflateRawSync(b, { dictionary: a.subarray(-32_768) })),
+          entry("b", b, copy),
           endRecord
         )
         for (const chunkSize of [7, archive.length]) {
