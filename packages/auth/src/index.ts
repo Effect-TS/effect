@@ -1,5 +1,5 @@
 /**
- * JOSE keys, signatures, encryption, schema-typed JWTs, OAuth clients, PKCE, and signed OpenID Connect verification.
+ * JOSE keys, signatures, encryption, schema-typed JWTs, OAuth provider clients, PKCE, and signed OpenID Connect verification.
  * OAuth receipts require explicit token normalization; ID tokens require signature and claim verification.
  *
  * @stability unstable
@@ -18,7 +18,25 @@ export * as Jose from "./Jose/index.ts"
  * @stability unstable
  * @since 4.1.0
  */
+export * as GitHub from "./GitHub.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as Google from "./Google.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
 export * as JoseError from "./JoseError.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as Microsoft from "./Microsoft.ts"
 
 /**
  * @stability unstable
@@ -31,6 +49,12 @@ export * as OAuth from "./OAuth.ts"
  * @since 4.1.0
  */
 export * as OAuthError from "./OAuthError.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as OAuthProvider from "./OAuthProvider.ts"
 
 /**
  * @stability unstable

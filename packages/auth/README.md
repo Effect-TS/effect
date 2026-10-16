@@ -1,7 +1,7 @@
 # @effect/auth
 
-JOSE keys, signatures, encryption, schema-typed JWTs, OAuth client protocols, PKCE
-S256, and signed OpenID Connect verification for Effect. All public APIs are
+JOSE keys, signatures, encryption, schema-typed JWTs, OAuth client protocols and
+provider integrations, PKCE S256, and signed OpenID Connect verification for Effect. All public APIs are
 unstable and may change in minor releases.
 
 ```sh
@@ -9,7 +9,7 @@ pnpm add @effect/auth effect
 ```
 
 The root namespace exports are `Jose`, `JoseError`, `OAuth`, `OAuthError`, `Oidc`,
-and `Pkce`, each with a matching public subpath. Use
+`Pkce`, `GitHub`, `Google`, `Microsoft`, and `OAuthProvider`, each with a matching public subpath. Use
 `import { Jose, OAuth } from "@effect/auth"` for `Jose.Jwt.verify(...)` and
 `OAuth.make(...)`.
 
@@ -195,15 +195,73 @@ const authorization = Effect.gen(function*() {
 )
 ```
 
+## Provider clients
+
+`GitHub`, `Google`, and `Microsoft` each expose `make`, `layer`, a distinct `Client`
+service, and a `Profile` schema. Configure a client ID, a redacted client secret,
+one registered `redirectUri`, and optional scopes and request bounds. Requests
+default to a 10-second timeout. Each client exposes `authorizationUrl` and
+`exchangeCode`, with the callback and scopes fixed when the client is installed.
+
+| Client      | Default scopes         | Identity subject                    |
+| ----------- | ---------------------- | ----------------------------------- |
+| `GitHub`    | `read:user`            | Numeric GitHub user ID, as a string |
+| `Google`    | `openid profile email` | Verified ID-token `sub`             |
+| `Microsoft` | `openid profile`       | Verified `oid:tid`                  |
+
+Authorization requires private state and an S256 challenge. Exchange requires
+the original PKCE verifier; Google and Microsoft also require the original nonce
+for both operations. Supply an optional `maxAge` consistently from the saved
+transaction. Before exchange, validate callback state and issuer and consume the
+single-use transaction. Microsoft needs a distinct callback because Entra does
+not advertise authorization response issuers.
+
+`exchangeCode` returns an `OAuthProvider.ExchangeResult`: the original redacted
+receipt, normalized tokens, and an identity with `issuer`, `subject`, and a
+redacted typed profile. Use both issuer and subject for account lookup. Google
+and Microsoft verify signed RS256 ID tokens before projecting profile claims;
+their exchange operations require `Oidc.VerificationRequirements`. GitHub fetches
+the authenticated `/user` profile after validating its token receipt. Decoding a
+`Profile` schema by itself does not authenticate an identity.
+
+GitHub validates the exact returned scope set and normalizes its comma-separated
+receipt into space-separated scopes. Requesting `offline_access` also requires
+an expiring access token, a refresh token, and its lifetime in the receipt;
+`offline_access` itself must be absent from the returned scope set. This client
+supports GitHub.com OAuth Apps. It does not implement GitHub App installation
+tokens or verified-primary-email lookup.
+
+Google always requests `openid`, defaults to account selection, and requests
+offline access without guaranteeing a refresh token. Its optional `hostedDomain`
+is an authorization hint; enforce Workspace policy against the verified `hd`
+claim. Google accepts the `none`, `consent`, and `select_account` prompts. With
+`maxAge`, it also requests the `auth_time` claim needed for age verification.
+This client requires the canonical `https://accounts.google.com` issuer;
+legacy `accounts.google.com` ID tokens are rejected.
+
+Microsoft always requests `openid profile`, defaults to the `common`
+tenant and Basic client authentication, and accepts `organizations`, `consumers`,
+or a tenant GUID. Microsoft identity uses the concrete verified issuer and the
+same `oid:tid` format for every authority. Profile email and display names never
+authorize account linking.
+
+The underlying `client.oauth` remains available for protocol operations with
+application-owned receipt handling. The provider helpers do not manage sessions,
+durable login transactions, account linking, token storage, or refresh scheduling.
+An exchange can consume its code before a later profile request or verification
+fails; such a failure does not authorize retrying the code.
+
 ## Errors and attribution
 
 [JoseError](src/JoseError.ts) and [OAuthError](src/OAuthError.ts) expose typed
 failures with fixed diagnostics that omit native causes and secrets. JOSE key
 imports distinguish invalid key material from `JoseError.UnsupportedAlgorithm`
-and `JoseError.CryptoUnavailable` across supported input formats. Only a
-complete JSON HTTP 400 `invalid_grant` without conflicting success fields becomes
-`OAuthError.Rejected`; authenticated invalid ID-token claims also become
-`OAuthError.Rejected`, with reason `claims`. Malformed tokens, key/signature faults,
+and `JoseError.CryptoUnavailable` across supported input formats. Generic OAuth
+normalization recognizes only a complete JSON HTTP 400 `invalid_grant` without
+conflicting success fields as `OAuthError.Rejected`. The GitHub client also recognizes
+a complete JSON HTTP 200 or 400 `bad_verification_code` response. Authenticated
+invalid ID-token claims or provider profiles become `OAuthError.Rejected`, with
+reason `claims`. Malformed tokens, key/signature faults,
 mixed receipts, other-status, transport, and timeout failures remain
 `OAuthError.Unavailable`: an unknown outcome is not permission to retry a single-use
 code or rotating refresh token. Keep receipts and revealed secrets out of logs
