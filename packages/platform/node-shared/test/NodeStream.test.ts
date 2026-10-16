@@ -18,8 +18,8 @@ describe("Stream", () => {
     })
   const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
 
-  for (const [chunkSize, expectedSize] of [[undefined, 4096], [2, 2], [Infinity, 4096]] as const) {
-    it.effect(`fromReadable bounds synchronous draining (${chunkSize ?? "default 4096"})`, () =>
+  for (const [chunkSize, expectedSize] of [[undefined, 4096], [2, 2], [Infinity, 10_000]] as const) {
+    it.effect(`fromReadable batches synchronous draining (${chunkSize ?? "default 4096"})`, () =>
       Effect.gen(function*() {
         let reads = 0
         const readable = new Readable({

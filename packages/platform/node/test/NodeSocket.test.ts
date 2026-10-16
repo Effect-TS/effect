@@ -191,8 +191,8 @@ describe("Socket", { concurrent: false }, () => {
       assert.strictEqual(text, "HelloWorld")
     }))
 
-  for (const chunkSize of [undefined, 2]) {
-    it.effect(`bounds synchronous duplex drains and completes in order (${chunkSize ?? "default 4096"})`, () =>
+  for (const chunkSize of [undefined, 2, Infinity]) {
+    it.effect(`batches synchronous duplex drains and completes in order (${chunkSize ?? "default 4096"})`, () =>
       Effect.gen(function*() {
         const input = "abcdefghij".repeat(1000)
         let reads = 0
@@ -214,7 +214,7 @@ describe("Socket", { concurrent: false }, () => {
         )
         const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex), { chunkSize })
         const { pull } = yield* socket.reader
-        const limit = chunkSize ?? 4096
+        const limit = chunkSize === Infinity ? input.length : chunkSize ?? 4096
         const first = yield* pull
         assert.strictEqual(first.length, limit)
         // Node may prefetch one object into its own buffer.
