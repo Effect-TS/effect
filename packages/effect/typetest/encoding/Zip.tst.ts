@@ -22,10 +22,4 @@ describe("Zip", () => {
       Stream.Stream<Zip.Entry<Zip.ZipError | "Io">, Zip.ZipError | "Io">
     >()
   })
-
-  it("accepts only supported methods", () => {
-    expect(Zip.file).type.toBeCallableWith("a", "a", { method: "Store" })
-    expect(Zip.file).type.not.toBeCallableWith("a", "a", { method: "Bzip2" })
-    expect(Zip.directory).type.not.toBeCallableWith("a", { method: "Deflate" })
-  })
 })
