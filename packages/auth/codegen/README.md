@@ -13,10 +13,11 @@ pnpm --filter @effect/auth codegen:providers:check
 pnpm --filter @effect/auth exec node codegen/bin.ts --help
 ```
 
-Generation is offline. `check` verifies the pinned local inputs and compares the
-three generated modules without writing files. Root `pnpm codegen` also regenerates
-them. Output lives under `src/oauth/providers/internal/generated/`, behind the
-package's existing private export boundary.
+Both commands fetch the pinned source URLs and verify their SHA-256 digests.
+They require network access. `check` compares the three generated modules without
+changing repository files. Root `pnpm codegen` also regenerates them. Output lives
+under `src/oauth/providers/internal/generated/`, behind the package's existing
+private export boundary. Builds and consumers use the checked-in generated modules.
 
 The Effect CLI runs through `NodeRuntime` with `NodeServices`, `NodeHttpClient`
 and `NodeCrypto` layers for file access, scoped formatter processes, downloads
@@ -25,31 +26,28 @@ and digests. Root `pnpm check` also checks the maintenance command's TypeScript.
 ## Updating upstream inputs
 
 `sources.json` records immutable upstream URLs, full-source SHA-256 digests and
-licenses. To reproduce the local inputs from those sources:
+licenses. For an upstream update, review the new commit, license and digest,
+update the manifest, then regenerate:
 
 ```sh
-pnpm --filter @effect/auth codegen:providers:import
 pnpm --filter @effect/auth codegen:providers
 ```
 
-Only `import` uses the network. It verifies both full-source digests before
-writing the inputs and their digests. For an upstream update, review the new
-commit, license and full-source digest, change `sources.json`, then run these
-commands. Review the input and output diffs together. Do not edit the inputs
-or generated modules by hand.
+Review the manifest and generated output diffs together. Do not edit generated
+modules by hand. Source verification, generation and formatting finish before
+any generated module is written.
 
-The importer takes GitHub's complete `private-user` schema, including nested
+Generation takes GitHub's complete `private-user` schema, including nested
 fields. The upstream schema is the field inventory; no local allowlist duplicates
 it. Updating the pin makes upstream field additions visible in the generated diff.
 Unknown response fields outside the pinned schema are still omitted at runtime.
 
-For Linear, the complete upstream SDL is a development input. The operation in
+For Linear, the complete upstream SDL is fetched during generation. The operation in
 `src/oauth/providers/internal/generated/linear.graphql` is the sole selection of
-fields requested from the API. The GraphQL generator validates it against the pinned schema and
-emits only the types it uses. Keeping the full schema lets query edits work
-without synchronizing a second field list. Neither input ships in the package.
-The local inputs grew from 7,110 to 1,357,440 bytes when the pruned Linear input
-was replaced with its complete schema.
+fields requested from the API. The GraphQL generator validates it against the
+pinned schema and emits only the types it uses. It reads the SDL from a scoped
+temporary file that is removed when the command finishes. GitHub's schema stays
+in memory. Neither upstream source snapshot is checked in or shipped.
 
 ## Auth policy remains local
 
@@ -93,7 +91,7 @@ generated operation and shared scalar module. Neither generator ships to consume
 An ad hoc comparison against the previous decoders matched 1,507 GitHub and 194
 Linear boundary cases. Committed provider tests cover the compatibility policy,
 and type tests preserve the consumer profile shapes. Isolated CLI probes verified
-that invalid local/upstream digests, stale output, invalid queries and formatter
+that invalid upstream digests, stale output, invalid queries and formatter
 failures leave files unchanged. Additional probes generated new top-level and
 nested GitHub fields and a new Linear query field without updating another field
 list.

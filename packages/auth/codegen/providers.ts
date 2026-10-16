@@ -18,13 +18,11 @@ class ProviderCodegenError extends Schema.TaggedError<ProviderCodegenError>()("P
 
 const Source = Schema.Struct({
   project: Schema.String,
-  input: Schema.String,
   version: Schema.optionalKey(Schema.String),
   commit: Schema.String,
   url: Schema.String,
   sha256: Schema.String,
-  license: Schema.String,
-  inputSha256: Schema.String
+  license: Schema.String
 })
 const Sources = Schema.Struct({ github: Source, linear: Source })
 const names = ["github", "linear"] as const
@@ -48,7 +46,6 @@ const OpenApiNode: Schema.Codec<OpenApiNode> = Schema.StructWithRest(
 const GitHubDocument = Schema.Struct({
   components: Schema.Struct({ schemas: Schema.Struct({ "private-user": OpenApiNode }) })
 })
-const decodeProfile = Schema.decodeUnknownEffect(Schema.fromJsonString(OpenApiNode))
 const decodeGitHub = Schema.decodeUnknownEffect(Schema.fromJsonString(GitHubDocument))
 
 const locations = Effect.gen(function*() {
@@ -66,14 +63,9 @@ const readSources = Effect.gen(function*() {
   return yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Sources))(contents)
 })
 
-const sha256 = Effect.fnUntraced(function*(bytes: Uint8Array) {
-  const digest = yield* Digest.Digest
-  return yield* digest.digestHex(Digest.sha256, bytes)
-})
-
-const format = Effect.fnUntraced(function*(contents: string, extension: "json" | "ts") {
+const format = Effect.fnUntraced(function*(contents: string) {
   const { repositoryRoot } = yield* locations
-  const handle = yield* ChildProcess.make("pnpm", ["exec", "dprint", "fmt", "--stdin", extension], {
+  const handle = yield* ChildProcess.make("pnpm", ["exec", "dprint", "fmt", "--stdin", "ts"], {
     cwd: repositoryRoot,
     stdin: Stream.make(new TextEncoder().encode(contents)),
     stderr: "inherit"
@@ -85,38 +77,6 @@ const format = Effect.fnUntraced(function*(contents: string, extension: "json" |
   }
   return output
 }, Effect.scoped)
-
-const json = (value: unknown) => format(JSON.stringify(value), "json")
-
-const importSources = Effect.gen(function*() {
-  const fs = yield* FileSystem.FileSystem
-  const path = yield* Path.Path
-  const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
-  const { directory } = yield* locations
-  const sources = { ...yield* readSources }
-  const inputs: Array<GraphQLGenerator.GeneratedFile> = []
-  for (const name of names) {
-    const source = sources[name]
-    const buffer = yield* client.get(source.url).pipe(
-      Effect.flatMap((response) => response.arrayBuffer),
-      Effect.timeout("60 seconds")
-    )
-    const bytes = new Uint8Array(buffer)
-    if ((yield* sha256(bytes)) !== source.sha256) {
-      return yield* new ProviderCodegenError({ message: `Upstream digest mismatch: ${name}` })
-    }
-    const text = new TextDecoder().decode(bytes)
-    const contents = name === "github"
-      ? yield* json((yield* decodeGitHub(text)).components.schemas["private-user"])
-      : text
-    inputs.push({ path: path.resolve(directory, source.input), contents })
-    sources[name] = { ...source, inputSha256: yield* sha256(new TextEncoder().encode(contents)) }
-  }
-  const manifest = yield* json(sources)
-  for (const input of inputs) yield* fs.writeFileString(input.path, input.contents)
-  yield* fs.writeFileString(path.resolve(directory, "sources.json"), manifest)
-  yield* Console.log("Imported the pinned GitHub and Linear schemas.")
-})
 
 // Auth owns optionality, bounds and string handling. Upstream owns field types.
 function applyPolicy(schema: OpenApiNode, path: ReadonlyArray<string> = []): void {
@@ -140,18 +100,25 @@ function applyPolicy(schema: OpenApiNode, path: ReadonlyArray<string> = []): voi
 const generate = Effect.fnUntraced(function*(check: boolean) {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
-  const { directory, packageRoot } = yield* locations
+  const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+  const digest = yield* Digest.Digest
+  const { packageRoot } = yield* locations
   const sources = yield* readSources
   const inputs = { github: "", linear: "" }
   for (const name of names) {
-    const bytes = yield* fs.readFile(path.resolve(directory, sources[name].input))
-    if ((yield* sha256(bytes)) !== sources[name].inputSha256) {
-      return yield* new ProviderCodegenError({ message: `Local input digest mismatch: ${name}` })
+    const source = sources[name]
+    const buffer = yield* client.get(source.url).pipe(
+      Effect.flatMap((response) => response.arrayBuffer),
+      Effect.timeout("60 seconds")
+    )
+    const bytes = new Uint8Array(buffer)
+    if ((yield* digest.digestHex(Digest.sha256, bytes)) !== source.sha256) {
+      return yield* new ProviderCodegenError({ message: `Upstream digest mismatch: ${name}` })
     }
     inputs[name] = new TextDecoder().decode(bytes)
   }
 
-  const profile = yield* decodeProfile(inputs.github)
+  const profile = (yield* decodeGitHub(inputs.github)).components.schemas["private-user"]
   profile.required = ["id"]
   applyPolicy(profile)
   const github = yield* Effect.try({
@@ -169,8 +136,11 @@ const generate = Effect.fnUntraced(function*(check: boolean) {
     path: path.resolve(packageRoot, generated, "github.ts"),
     contents: header + "import * as Schema from \"effect/Schema\"\n\n" + github
   }]
+  const temporary = yield* fs.makeTempDirectoryScoped({ prefix: "effect-auth-codegen-" })
+  const linearSchema = path.join(temporary, "linear.graphql")
+  yield* fs.writeFileString(linearSchema, inputs.linear)
   const linear = yield* GraphQLGenerator.generate({
-    schema: path.resolve(directory, sources.linear.input),
+    schema: linearSchema,
     documents: [`${generated}/linear.graphql`],
     shared: `${generated}/linear.shared.ts`,
     importExtension: ".ts"
@@ -196,7 +166,7 @@ const generate = Effect.fnUntraced(function*(check: boolean) {
   const formatted = yield* Effect.forEach(
     files,
     Effect.fnUntraced(function*(file) {
-      return { ...file, contents: yield* format(file.contents, "ts") }
+      return { ...file, contents: yield* format(file.contents) }
     })
   )
   for (const file of formatted) {
@@ -210,20 +180,19 @@ const generate = Effect.fnUntraced(function*(check: boolean) {
     }
   }
   yield* Console.log(`${check ? "Checked" : "Generated"} ${files.length} provider schema modules.`)
-})
+}, Effect.scoped)
 
 /** @internal */
 export const cli = Command.make("auth-providers").pipe(
-  Command.withDescription("Import, generate and check the pinned OAuth provider schemas"),
+  Command.withDescription("Generate and check OAuth provider schemas from pinned upstream sources"),
   Command.withSubcommands([
-    Command.make("import", {}, () => importSources).pipe(
-      Command.withDescription("Download and verify the pinned upstream schemas")
-    ),
     Command.make("generate", {}, () => generate(false)).pipe(
-      Command.withDescription("Generate provider modules from the verified local schemas")
+      Command.withDescription("Fetch pinned upstream schemas and generate provider modules")
     ),
     Command.make("check", {}, () => generate(true)).pipe(
-      Command.withDescription("Check local schema digests and generated modules without writing files")
+      Command.withDescription(
+        "Fetch pinned upstream schemas and check generated modules without changing repository files"
+      )
     )
   ])
 )
