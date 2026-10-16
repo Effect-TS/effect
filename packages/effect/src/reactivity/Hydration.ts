@@ -63,6 +63,18 @@ const encodeOrSkip = (
   }
 }
 
+const decodeOrSkip = (
+  atom: Atom.Serializable<any>,
+  value: unknown
+): unknown => {
+  try {
+    return atom[Atom.SerializableTypeId].decode(value)
+  } catch (error) {
+    if (Schema.isSchemaError(error)) return Skipped
+    throw error
+  }
+}
+
 /**
  * Encodes the serializable atoms currently stored in a registry into dehydrated
  * state.
@@ -162,23 +174,44 @@ export const hydrate = (
     // and we should wait for it to resolve to a non-Initial state, then update the registry
     if (!datom.resultPromise) continue
     datom.resultPromise.then((resolvedValue) => {
-      if (resolvedValue === Skipped) return
       // Try to update the existing node directly instead of using setSerializable
-      const nodes = registry.getNodes()
-      const node = nodes.get(datom.key)
-      if (node) {
-        // Decode the resolved value using the node's atom serializable decoder
-        const atom = node.atom as any
-        if (atom[Atom.SerializableTypeId]) {
-          const decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
+      const node = registry.getNodes().get(datom.key)
+      if (resolvedValue !== Skipped) {
+        if (node === undefined) {
+          // Fallback to setSerializable if node doesn't exist yet
+          registry.setSerializable(datom.key, resolvedValue)
+          return
+        }
+        const decoded = decodeOrSkip(node.atom as any, resolvedValue)
+        if (decoded !== Skipped) {
           if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
             ;(node as any).setValue(decoded)
           }
+          return
         }
-      } else {
-        // Fallback to setSerializable if node doesn't exist yet
-        registry.setSerializable(datom.key, resolvedValue)
       }
+
+      // The result is unusable, so release the hydrated Initial and compute on the client
+      registry.preloadedSerializable.delete(datom.key)
+      if (node === undefined) return
+      let target = node.atom
+      while (target.initialValueTarget) {
+        target = target.initialValueTarget
+      }
+      if (target !== node.atom) {
+        releaseInitial(registry.ensureNode(target))
+      } // Derived atoms may not have read their source yet, so invalidate them directly too
+
+      releaseInitial(node)
     })
   }
+}
+
+const releaseInitial = (node: AtomRegistry.Node<any>): void => {
+  const internal = node as any
+  // An unbuilt target can hold hydration through preserveInitialValueOnBuild,
+  // which valueOption does not expose. Only release an Initial, not newer client results.
+  if (!AsyncResult.isAsyncResult(internal._value) || !AsyncResult.isInitial(internal._value)) return
+  internal.preserveInitialValueOnBuild = false
+  internal.invalidate()
 }
