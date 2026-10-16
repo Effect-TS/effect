@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `SchemaTransformation.bigintFromString` and `Snowflake.SnowflakeFromString` to reject invalid bigint strings with a typed schema error instead of a defect.
+Fix `SchemaGetter.BigInt` to return `SchemaIssue.InvalidValue` for inputs that cannot be converted to a bigint. This also makes `SchemaTransformation.bigintFromString` and `Snowflake.SnowflakeFromString` reject invalid strings with typed schema errors instead of defects.
