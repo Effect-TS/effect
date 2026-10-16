@@ -37,6 +37,12 @@ export * as Ini from "./Ini.ts"
 
 /**
  * @stability unstable
+ * @since 4.0.6
+ */
+export * as JsonArray from "./JsonArray.ts"
+
+/**
+ * @stability unstable
  * @since 4.0.0
  */
 export * as Ndjson from "./Ndjson.ts"
