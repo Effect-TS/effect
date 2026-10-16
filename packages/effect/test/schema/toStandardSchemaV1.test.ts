@@ -141,10 +141,13 @@ describe("toStandardSchemaV1", () => {
 
   it("preserves class construction, fields, extension and custom statics", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
+      static #label = "Parent"
+
       static label() {
-        return "Parent"
+        return this.#label
       }
     }
+    strictEqual(Parent.label(), "Parent")
     const adapted = Schema.toStandardSchemaV1(Parent)
     strictEqual(adapted.fields.a, Schema.String)
     strictEqual(adapted.label(), "Parent")
