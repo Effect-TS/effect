@@ -15,6 +15,45 @@ import * as Tar from "tar"
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
+  it.effect("maps write errors after the writable has finished", () =>
+    Effect.gen(function*() {
+      const finished = yield* Deferred.make<void>()
+      const errored = yield* Deferred.make<Error>()
+      const mapped = { _tag: "WritableError" }
+      const errors: Array<unknown> = []
+      const writable = new Writable({
+        autoDestroy: false,
+        write(_chunk, _encoding, callback) {
+          callback()
+        }
+      })
+      yield* Effect.addFinalizer(() => Effect.sync(() => writable.destroy()))
+      writable.once("finish", () => Deferred.doneUnsafe(finished, Effect.void))
+      writable.once("error", (error) => Deferred.doneUnsafe(errored, Effect.succeed(error)))
+      writable.end()
+      yield* Deferred.await(finished)
+      const fiber = yield* Stream.make("a").pipe(
+        Stream.run(NodeSink.fromWritable({
+          evaluate: () => writable,
+          onError: (error) => {
+            errors.push(error)
+            return mapped
+          }
+        })),
+        Effect.exit,
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      const error = yield* Deferred.await(errored)
+      assert.strictEqual((error as NodeJS.ErrnoException).code, "ERR_STREAM_WRITE_AFTER_END")
+      // Node has emitted the write error; advance only the non-completion guard.
+      yield* TestClock.adjust("1 second")
+      assert.deepEqual({ result: yield* Fiber.join(fiber), errors }, {
+        result: Option.some(Exit.fail(mapped)),
+        errors: [error]
+      })
+    }))
+
   it.effect.each(["drain", "final", "already_closed"] as const)(
     "settles when destroyed without an error: %s",
     (phase) =>
