@@ -72,9 +72,12 @@ export interface Is {
  * use this same fallback. Omit this operation
  * when the fast path is unsupported or replay would be unsafe.
  *
- * Replay runs the checks this operation already ran, so a failing input can
- * run each check twice: once here and once in `decodeEffect`. A successful input
- * runs each check once. Transformations, getters and middleware must not run
+ * Replay runs the checks this operation already ran. When this operation
+ * returns a value, it has run each check once. When it returns {@link invalid},
+ * `decodeEffect` runs them once more to build issues. This bound applies to
+ * each attempt, not to the overall result: an enclosing Union or middleware
+ * can recover from that failure, so a successful decode may still have run a
+ * check twice. Transformations, getters and middleware must not run
  * again, so omit this operation for ASTs containing them. The built-in
  * compilers make one exception: the library's own conversions of primitive
  * values, such as those built by `Schema.toCodecStringTree`, run no user code
