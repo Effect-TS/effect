@@ -1,5 +1,15 @@
 # @effect/cluster
 
+## 0.60.4
+
+### Patch Changes
+
+- [#9194](https://github.com/Effect-TS/effect/pull/9194) [`b2f7614`](https://github.com/Effect-TS/effect/commit/b2f76143e82c844137904772b86e1da62058df88) Thanks @Tanner-Scadden! - Add `ClusterMetrics.shardReleaseDuration`, a timer that records how long a runner takes to release a shard after it is reassigned.
+
+- [#9200](https://github.com/Effect-TS/effect/pull/9200) [`a524079`](https://github.com/Effect-TS/effect/commit/a524079f5a29e8be86b3410e06090b0dcb66b848) Thanks @Tanner-Scadden! - Keep the `effect_cluster_shards` gauge accurate when shards are released or locks are lost.
+
+- [#9192](https://github.com/Effect-TS/effect/pull/9192) [`f250a87`](https://github.com/Effect-TS/effect/commit/f250a871fc2847235e4c2a14c5598052d6c09e61) Thanks @Tanner-Scadden! - Drop the entity id from server-side entity RPC span names to keep span name cardinality bounded. The id remains available as the `entity.id` span attribute.
+
 ## 0.60.3
 
 ### Patch Changes
