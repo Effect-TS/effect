@@ -2,7 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Effect, Exit, FileSystem, Path, Queue, Stream } from "effect"
 import * as Zip from "effect/encoding/Zip"
-import { constants, deflateRawSync } from "node:zlib"
+import { deflateRawSync } from "node:zlib"
 
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
@@ -207,8 +207,9 @@ describe("Zip", () => {
       Effect.gen(function*() {
         const directory = Zip.directory("d")
         const invalid: Array<Zip.Entry> = [
-          Zip.file("", "x"),
+          Zip.directory(""),
           Zip.file("/etc/passwd", "x"),
+          Zip.file("a\0b", "x"),
           Zip.file("dir/", "x"),
           { ...directory, header: { ...directory.header, path: "d" } },
           Zip.fileStream("f", Stream.empty, { size: -1 }),
@@ -228,6 +229,8 @@ describe("Zip", () => {
           const failing = Stream.concat(body, Stream.fail("Boom"))
           assert.strictEqual(yield* failure(encode([Zip.fileStream("f", failing, { method, size: 4 })])), "Boom")
         }
+        const file = Zip.file("f", "abc")
+        assert.strictEqual(yield* failure(encode([{ ...file, header: { ...file.header, size: 5 } }])), "SizeMismatch")
         const directory = { ...Zip.directory("d"), body }
         assert.strictEqual(yield* failure(encode([directory])), "SizeMismatch")
       }))
@@ -300,12 +303,20 @@ describe("Zip", () => {
         }))
     }
 
-    it.effect("reads data descriptors without a signature or with ZIP64 sizes", () =>
+    it.effect("reads ZIP64 sizes and data descriptors without a signature", () =>
       Effect.gen(function*() {
         const content = textEncoder.encode("descriptor ".repeat(40))
         const data = deflateRawSync(content)
         const name = textEncoder.encode("f")
+        const zip64 = concat(le(0x0001, 2), le(16, 2), le(content.length, 8), le(data.length, 8))
         const variants = [
+          [localHeader(name, {
+            method: 8,
+            crc: crc32(content),
+            compressedSize: 0xffffffff,
+            size: 0xffffffff,
+            extra: zip64
+          })],
           [
             localHeader(name, { flags: 8, method: 8 }),
             le(crc32(content), 4),
@@ -406,13 +417,26 @@ describe("Zip", () => {
         ])
       }))
 
-    it.effect("decodes Huffman codes longer than the lookup table", () =>
+    it.effect("inflates stored blocks and Huffman codes longer than the lookup table", () =>
       Effect.gen(function*() {
-        // Symbol k occurs 2^k times, so rare symbols get codes of up to 15 bits
-        const content = Uint8Array.from(
-          Array.from({ length: 16 }, (_, k) => Array.from({ length: 2 ** k }, () => k)).flat().sort(() => 0)
-        )
-        const data = deflateRawSync(content, { strategy: constants.Z_HUFFMAN_ONLY })
+        // Noise, which deflate stores, then copies from it at distances that are
+        // rarer the nearer they are, so that some codes are longer than the table
+        let x = 1
+        const random = () => {
+          x ^= x << 13
+          x ^= x >>> 17
+          x ^= x << 5
+          return x >>> 0
+        }
+        const bytes = Array.from({ length: 32_768 }, () => random() & 0xff)
+        for (let i = 0; i < 4000; i++) {
+          const bits = 14 - Math.min(Math.clz32(random()), 12)
+          const distance = 2 ** bits + random() % 2 ** bits
+          for (let j = 0; j < 8; j++) bytes.push(bytes[bytes.length - distance])
+          bytes.push(random() & 0xff)
+        }
+        const content = Uint8Array.from(bytes)
+        const data = deflateRawSync(content)
         const archive = concat(
           localHeader(textEncoder.encode("f"), {
             method: 8,
@@ -463,7 +487,10 @@ describe("Zip", () => {
             ),
             Stream.runCollect
           )
-        const bytes = yield* encode([Zip.file("a", "aaaa", { method: "Store" }), Zip.file("b", "bbbb")])
+        const bytes = yield* encode([
+          Zip.fileStream("a", Stream.make(textEncoder.encode("aaaa")), { method: "Store", size: 4 }),
+          Zip.file("b", "bbbb")
+        ])
         // The data of "a" follows its 30-byte header, its name and a 9-byte timestamp field
         bytes[30 + 1 + 9] ^= 1
         assert.deepStrictEqual(yield* read(bytes), ["Checksum", "bbbb"])
@@ -515,13 +542,15 @@ describe("Zip", () => {
         }
       }))
 
-    it.effect("fails body reads after the next entry is pulled", () =>
+    it.effect("fails body reads after the next entry is pulled or the entries end", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Zip.file("a", "a"), Zip.file("b", "b")])
         const pull = yield* Stream.toPull(entries(bytes, 512))
         const [a] = yield* pull
         yield* pull
         assert.strictEqual(yield* failure(Stream.runDrain(a.body)), "BodyConsumed")
+        const [first] = yield* Stream.runCollect(Stream.take(entries(bytes, 512), 1))
+        assert.strictEqual(yield* failure(Stream.runDrain(first.body)), "BodyConsumed")
       }))
 
     it.effect("reads empty archives and ignores input after the central directory", () =>
@@ -564,6 +593,8 @@ describe("Zip", () => {
         assert.strictEqual(yield* failure(decode(deflated({ size: content.length + 1 }))), "SizeMismatch")
         assert.strictEqual(yield* failure(decode(deflated({ flags: 1 }))), "Unsupported")
         assert.strictEqual(yield* failure(decode(deflated({ method: 12 }))), "Unsupported")
+        // Stored entries need equal sizes
+        assert.strictEqual(yield* failure(decode(deflated({ method: 0 }))), "InvalidHeader")
       }))
   })
 })
