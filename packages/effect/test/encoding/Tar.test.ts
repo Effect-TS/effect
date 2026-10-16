@@ -176,19 +176,25 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(Stream.runDrain(a.body)), "BodyConsumed")
       }))
 
-    it.effect("keeps a leading byte order mark in names", () =>
+    it.effect("keeps leading byte order marks in PAX paths, link targets and keys", () =>
       Effect.gen(function*() {
         const name = "\uFEFF/etc/passwd"
-        const pax = yield* decode(yield* encode([Tar.file(name, "")]))
-        assert.strictEqual(pax[0].header.path, name)
+        const pax = { "\uFEFFpath": "other" }
+        const [{ header }] = yield* decode(yield* encode([Tar.symlink(name, name, { pax })]))
+        assert.strictEqual(header.path, name)
+        assert.strictEqual(header.linkTarget, name)
+        assert.deepStrictEqual(header.pax, pax)
+      }))
 
+    it.effect("keeps a leading byte order mark in a USTAR name", () =>
+      Effect.gen(function*() {
         // A USTAR name field holding the BOM bytes, with its checksum recomputed
         const ustar = yield* encode([Tar.file("___/etc/passwd", "")])
         ustar.set([0xef, 0xbb, 0xbf], 0)
         ustar.fill(0x20, 148, 156)
         const checksum = ustar.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
         ustar.set(textEncoder.encode(`${checksum.toString(8).padStart(6, "0")}\0 `), 148)
-        assert.strictEqual((yield* decode(ustar))[0].header.path, name)
+        assert.strictEqual((yield* decode(ustar))[0].header.path, "\uFEFF/etc/passwd")
       }))
 
     it.effect("fails on truncated or corrupt archives", () =>
