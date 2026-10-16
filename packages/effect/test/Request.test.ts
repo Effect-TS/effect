@@ -794,4 +794,25 @@ describe("Request", { concurrent: false }, () => {
       assert.strictEqual(delayServiceValue, "provided")
     })
   )
+
+  for (const [clock, test] of [["live clock", it.live], ["TestClock", it.effect]] as const) {
+    test(`setDelay(0) resolves a non-empty grouped batch with ${clock}`, () =>
+      Effect.gen(function*() {
+        const batches: Array<Array<number>> = []
+        const resolver = Resolver.makeGrouped<GetNameById, string>({
+          key: () => "all",
+          resolver: (entries) =>
+            Effect.sync(() => {
+              batches.push(entries.map(({ request }) => request.id))
+              for (const entry of entries) entry.completeUnsafe(Exit.succeed(String(entry.request.id)))
+            })
+        }).pipe(Resolver.setDelay(0), Resolver.batchN(2))
+
+        // Resume after a microtask, as in callers awaiting external work before requesting.
+        yield* Effect.promise(() => Promise.resolve())
+        const exit = yield* Effect.exit(Effect.request(new GetNameById({ id: 1 }), resolver))
+
+        assert.deepStrictEqual({ exit, batches }, { exit: Exit.succeed("1"), batches: [[1]] })
+      }))
+  }
 })
