@@ -130,19 +130,21 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         } else {
           const decision = decisions[key]
-          let probabilities: Record<string, number> | undefined
-          if (answer.probabilities !== undefined) {
-            probabilities = Object.create(null) as Record<string, number>
-            if (decision?._tag === "Rate") {
-              for (const [index, { label }] of decision.criteria.entries()) {
-                const probability = answer.probabilities[String(index)]
-                if (probability !== undefined) {
-                  probabilities[label] = probability
-                }
+          const probabilities: Record<string, number> = Object.create(null)
+          if (decision?._tag === "Rate") {
+            for (const [index, { label }] of decision.criteria.entries()) {
+              const probability = answer.probabilities?.[String(index)]
+              if (probability !== undefined) {
+                probabilities[label] = probability
               }
             }
           }
-          answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+          answers[key] = {
+            _tag: "Rate",
+            rating: answer.score,
+            probabilities: answer.probabilities === undefined ? undefined : probabilities,
+            confidence: answer.confidence
+          }
         }
       }
       return {
