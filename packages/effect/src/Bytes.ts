@@ -93,8 +93,8 @@ export const Equivalence: Equ.Equivalence<Uint8Array> = Equ.make((self, that) =>
  *
  * **When to use**
  *
- * Use instead of `===`, which only checks whether both values are the same
- * `Uint8Array` instance.
+ * Use to compare byte contents. `===` only checks whether both values are the
+ * same `Uint8Array` instance.
  *
  * **Gotchas**
  *
