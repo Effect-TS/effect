@@ -176,6 +176,21 @@ describe("Tar", () => {
         assert.strictEqual(yield* failure(Stream.runDrain(a.body)), "BodyConsumed")
       }))
 
+    it.effect("keeps a leading byte order mark in names", () =>
+      Effect.gen(function*() {
+        const name = "\uFEFF/etc/passwd"
+        const pax = yield* decode(yield* encode([Tar.file(name, "")]))
+        assert.strictEqual(pax[0].header.path, name)
+
+        // A USTAR name field holding the BOM bytes, with its checksum recomputed
+        const ustar = yield* encode([Tar.file("___/etc/passwd", "")])
+        ustar.set([0xef, 0xbb, 0xbf], 0)
+        ustar.fill(0x20, 148, 156)
+        const checksum = ustar.subarray(0, 512).reduce((sum, byte) => sum + byte, 0)
+        ustar.set(textEncoder.encode(`${checksum.toString(8).padStart(6, "0")}\0 `), 148)
+        assert.strictEqual((yield* decode(ustar))[0].header.path, name)
+      }))
+
     it.effect("fails on truncated or corrupt archives", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Tar.file("a", "a".repeat(600))])

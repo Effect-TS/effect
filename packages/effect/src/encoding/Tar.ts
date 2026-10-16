@@ -597,7 +597,8 @@ const typeflagOf = (header: Header): string => header.type === "Other" ? header.
 const isHeaderOnly = (type: EntryType): boolean => type !== "File" && type !== "Other"
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder()
+// Keeps a leading byte order mark, so that a name decodes to what other tools see
+const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
 
 const isAscii = (s: string): boolean => {
   for (let i = 0; i < s.length; i++) {
