@@ -104,15 +104,26 @@ export const pullIntoWritable = <A, IE, E>(options: {
         let i = 0
         return Effect.callback<void, E>((resume) => {
           let cancelled = false
+          // Let Node finish auto-destruction before attempting another write.
+          const onFinish = () => queueMicrotask(loop)
           const loop = () => {
+            options.writable.off("drain", loop)
+            options.writable.off("finish", onFinish)
             for (; i < chunk.length;) {
               if (cancelled) {
                 return
               }
-              const success = options.writable.write(chunk[i++], options.encoding as any)
+              const success = options.writable.write(chunk[i++], options.encoding as any, (error) => {
+                // Node may emit the same error after invoking the callback. Let
+                // that event run before failure can remove our error listener.
+                if (error) queueMicrotask(() => onError(error))
+              })
               if (!success) {
                 if (!cancelled) {
                   options.writable.once("drain", loop)
+                  // A normally finished writable will never emit drain. Resume
+                  // the loop so any remaining writes can report their errors.
+                  options.writable.once("finish", onFinish)
                 }
                 return
               }
@@ -125,6 +136,7 @@ export const pullIntoWritable = <A, IE, E>(options: {
           return Effect.sync(() => {
             cancelled = true
             options.writable.off("drain", loop)
+            options.writable.off("finish", onFinish)
           })
         })
       }),
