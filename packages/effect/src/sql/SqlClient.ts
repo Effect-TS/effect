@@ -80,6 +80,46 @@ export interface SqlClient extends Constructor {
   readonly transactionService: Context.Service<TransactionConnection, TransactionConnection.Service>
 
   /**
+   * Runs `effect` once the outermost transaction of this client commits, or
+   * immediately, and interruptibly, when no transaction is open.
+   *
+   * **When to use**
+   *
+   * Use to signal committed changes, such as waking workers, invalidating
+   * caches or notifying subscribers.
+   *
+   * **Details**
+   *
+   * Callbacks are discarded if the transaction rolls back or its `COMMIT`
+   * fails. Callbacks registered in a savepoint that rolls back are discarded
+   * even if the outer transaction commits.
+   *
+   * After a successful `COMMIT`, callbacks run once releasing the connection
+   * has been attempted, before `withTransaction` returns. They run
+   * uninterruptibly, even if the fiber was interrupted or releasing the
+   * connection failed, in the context of the outermost `withTransaction` call
+   * without the transaction, so a callback that queries uses a new
+   * connection. A callback that dies is logged and the rest still run.
+   *
+   * Callbacks run in registration order within a transaction or savepoint,
+   * and a savepoint's callbacks follow those already registered in the
+   * enclosing level when it commits. Callbacks registered concurrently from
+   * several fibers are not guaranteed to run in registration order.
+   *
+   * **Gotchas**
+   *
+   * Callbacks are lost if the process exits before they run or the outcome of
+   * `COMMIT` is unknown, so work that must happen belongs in a table written
+   * in the same transaction. `withTransaction` waits for callbacks and can't
+   * be interrupted meanwhile, so keep them short and fork long-running work.
+   * Registering after the transaction has ended is a defect.
+   *
+   * Transactions that don't go through `makeWithTransaction`, such as those
+   * of `@effect/sql-sqlite-do`, run callbacks immediately.
+   */
+  readonly afterCommit: (effect: Effect.Effect<void>) => Effect.Effect<void>
+
+  /**
    * Use the Reactivity service to create a reactive query.
    */
   readonly reactive: <A, E, R>(
@@ -233,6 +273,24 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
 
+  const afterCommitBuffer = AfterCommitBuffer(transactionService)
+  const afterCommit = (effect: Effect.Effect<void>): Effect.Effect<void> =>
+    Effect.withFiber((fiber) => {
+      const transaction = Context.getOrUndefined(fiber.context, transactionService)
+      const buffer = Context.getOrUndefined(fiber.context, afterCommitBuffer)
+      // Outside a transaction, or in one that doesn't buffer callbacks.
+      if (transaction === undefined || buffer === undefined) {
+        return runAfterCommit(effect)
+      }
+      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+        if (!current.open) {
+          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+        }
+      }
+      buffer.callbacks.push(effect)
+      return Effect.void
+    })
+
   const reactivity = yield* Reactivity
   // A statement inside a transaction has to run on that transaction's
   // connection, so borrowing is only for statements that reach the pool.
@@ -252,6 +310,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       safe: undefined as any,
       withTransaction,
       transactionService,
+      afterCommit,
       reserve: transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {
@@ -399,6 +458,27 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
   ))
 
 /**
+ * Callbacks registered with `afterCommit` in one transaction level. A
+ * committed savepoint hands its callbacks to its parent, and the outermost
+ * level runs them after it commits.
+ */
+interface AfterCommitBuffer {
+  readonly callbacks: Array<Effect.Effect<void>>
+  readonly parent: AfterCommitBuffer | undefined
+  open: boolean
+}
+
+/**
+ * Keyed by the transaction service, so a client whose driver replaces
+ * `withTransaction` but shares the transaction service still sees the buffers.
+ */
+const AfterCommitBuffer = (transactionService: Context.Key<any, any>) =>
+  Context.Service<AfterCommitBuffer>(`${transactionService.key}/AfterCommit`)
+
+const runAfterCommit = (effect: Effect.Effect<void>): Effect.Effect<void> =>
+  Effect.catchCause(effect, (cause) => Effect.logError("SqlClient.afterCommit callback failed", cause))
+
+/**
  * Builds a transaction wrapper that begins top-level transactions, uses
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption. Releases nested savepoints when `releaseSavepoint`
@@ -429,6 +509,7 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  const afterCommitBuffer = AfterCommitBuffer(options.transactionService)
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -446,6 +527,12 @@ export const makeWithTransaction = <I, S>(options: {
               ? Effect.succeed([undefined, connOption.value[0]] as const)
               : options.acquireConnection
             const id = connOption._tag === "Some" ? connOption.value[1] + 1 : 0
+            const buffer: AfterCommitBuffer = {
+              callbacks: [],
+              parent: id === 0 ? undefined : Context.getOrUndefined(services, afterCommitBuffer),
+              open: true
+            }
+            let committed = false
             const transaction = Effect.flatMap(
               conn,
               (
@@ -458,6 +545,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, [conn, id]),
+                          Context.add(afterCommitBuffer, buffer),
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )
@@ -491,7 +579,10 @@ export const makeWithTransaction = <I, S>(options: {
                         if (id > 0 && options.releaseSavepoint) {
                           effect = Effect.andThen(effect, Effect.orDie(options.releaseSavepoint(conn, id)))
                         }
-                        return Effect.flatMap(effect, () => exit)
+                        return Effect.flatMap(effect, () => {
+                          committed = Exit.isSuccess(exit)
+                          return exit
+                        })
                       },
                       true
                     )
@@ -499,9 +590,21 @@ export const makeWithTransaction = <I, S>(options: {
                   scope ? (eff) => Effect.onExitPrimitive(eff, (exit) => Scope.close(scope, exit), true) : identity
                 )
             )
+            // Runs once the connection is released, whether or not that succeeded.
+            const settled = Effect.onExitPrimitive(transaction, () => {
+              buffer.open = false
+              if (!committed || buffer.callbacks.length === 0) {
+                return undefined
+              }
+              if (buffer.parent !== undefined) {
+                buffer.parent.callbacks.push(...buffer.callbacks)
+                return undefined
+              }
+              return Effect.forEach(buffer.callbacks, runAfterCommit, { discard: true })
+            }, true)
             return id === 0
-              ? transaction
-              : Context.getUnsafe(services, transactionSemaphore).withPermit(transaction)
+              ? settled
+              : Context.getUnsafe(services, transactionSemaphore).withPermit(settled)
           })
       )
     )
