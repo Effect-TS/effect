@@ -33,7 +33,7 @@ const CsvErrorTypeId = "~effect/encoding/Csv/CsvError"
  *
  * `record` is one-based and counts the header row and blank lines. `line` is
  * the one-based physical line where the record starts. `column` is the
- * one-based cell index of a syntax error.
+ * one-based cell index of a syntax error, and `undefined` otherwise.
  *
  * @stability unstable
  * @category errors
@@ -225,6 +225,8 @@ class Parser {
     this.ignoreEmptyLines = ignoreEmptyLines
   }
 
+  // JavaScriptCore gives every Error its own source `column`, which would pass
+  // for a cell index, so errors without one set it to undefined
   fail(kind: "Syntax" | "RecordSize", message: string): CsvError {
     return new CsvError({
       kind,
@@ -416,7 +418,8 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
             kind: "Header",
             message: `Expected ${headers!.length} cells, got ${row.cells.length}`,
             record: row.record,
-            line: row.line
+            line: row.line,
+            column: undefined
           })
         }
         if (!assignable) {
@@ -441,7 +444,8 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
                   kind: "Header",
                   message: "Duplicate header name",
                   record: row.record,
-                  line: row.line
+                  line: row.line,
+                  column: undefined
                 })
               }
               headers = row.cells
