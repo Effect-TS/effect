@@ -389,6 +389,19 @@ describe("Xml", () => {
           const error = yield* Effect.flip(encodeString(events))
           assert.strictEqual(error.kind, "InvalidEvent", JSON.stringify(events))
         }
+        // Invalid values are quoted in messages, so that they cannot forge log lines
+        const forged: ReadonlyArray<ReadonlyArray<Xml.Event>> = [
+          [start("a"), end("a"), start("b\n")],
+          [start("a"), end("b\n")],
+          [end("a\n")],
+          [{ _tag: "Declaration", version: "1\n" }],
+          [{ _tag: "Declaration", version: "1.0", encoding: "\n" }],
+          [{ _tag: "Doctype", name: "a", publicId: "\n\"", systemId: "" }]
+        ]
+        for (const events of forged) {
+          const { message } = yield* Effect.flip(encodeString(events))
+          assert.notInclude(message, "\n", message)
+        }
         // Byte output can only declare UTF-8 or US-ASCII
         const latin1 = Stream.make<ReadonlyArray<Xml.Event>>(
           { _tag: "Declaration", version: "1.0", encoding: "ISO-8859-1" },
