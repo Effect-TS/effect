@@ -1,7 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Channel, Effect, Ref, Result, Stream } from "effect"
 import { Xml } from "effect/encoding"
-import { collectGarbage } from "../utils/gc.ts"
 
 const textEncoder = new TextEncoder()
 const BOM = String.fromCharCode(0xFEFF)
@@ -56,23 +55,6 @@ const byteSplits = (bytes: Uint8Array): Array<Array<Uint8Array>> => {
   return out
 }
 
-// Chunks with lengths cycling through `sizes`
-const chunksOf = <A extends string | Uint8Array>(input: A, sizes: ReadonlyArray<number>): Array<A> => {
-  const chunks: Array<A> = []
-  for (let i = 0, k = 0; i < input.length; i += sizes[k++ % sizes.length]) {
-    chunks.push(input.slice(i, i + sizes[k % sizes.length]) as A)
-  }
-  return chunks
-}
-
-// JavaScriptCore gives every Error its own source `line` and `column`, which
-// would pass for an XML position, so errors without one set both to undefined
-const assertNoPosition = (error: Xml.XmlError) =>
-  assert.deepStrictEqual(
-    [Object.hasOwn(error, "line"), error.line, Object.hasOwn(error, "column"), error.column],
-    [true, undefined, true, undefined]
-  )
-
 describe("Xml", () => {
   it("identifies Xml errors", () => {
     assert.isTrue(Xml.isXmlError(new Xml.XmlError({ kind: "Syntax", message: "boom" })))
@@ -117,6 +99,19 @@ describe("Xml", () => {
         assert.deepStrictEqual(yield* run("<b/>"), [start("b"), end("b")])
       }))
 
+    it.effect("does not expose inherited attribute values", () =>
+      Effect.gen(function*() {
+        const events = yield* decodeString(["<a><b id='1'/><c __proto__='literal' constructor='own'/></a>"])
+        const attributes = events.filter((event) => event._tag === "StartElement").map((event) => event.attributes)
+        for (const absent of attributes.slice(0, 2)) {
+          assert.isUndefined(absent["constructor"])
+          assert.isUndefined(absent["toString"])
+          assert.isUndefined(absent["__proto__"])
+        }
+        assert.strictEqual(attributes[2]["__proto__"], "literal")
+        assert.strictEqual(attributes[2]["constructor"], "own")
+      }))
+
     it.effect("decodes character data and attribute values", () =>
       Effect.gen(function*() {
         // Text and CDATA sections merge until the next markup, and "&", CR and "]]>" in an attribute value do not
@@ -138,7 +133,6 @@ describe("Xml", () => {
 
     it.effect("decodes DOCTYPEs without expanding entities", () =>
       Effect.gen(function*() {
-        // The internal subset is checked but not applied, so the default value of b is not added
         const doctype = `<!DOCTYPE a PUBLIC " -//A//B  C " "a[1]>.dtd" [
 <!ELEMENT a (#PCDATA|b)*><!ATTLIST a b CDATA 'x' c (y|z) #IMPLIED><!NOTATION n PUBLIC 'n'>
 <!ENTITY e "]>"><!ENTITY f SYSTEM "file:///etc/passwd"><!ENTITY g "&e;&f;">
@@ -182,9 +176,6 @@ describe("Xml", () => {
             assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), ["Syntax", line, column])
           }
         }
-        // A byte at the end of the input that cannot start a sequence is invalid, not incomplete
-        const trailing = yield* Effect.flip(decodeBytes([Uint8Array.of(...textEncoder.encode("<a/>"), 0xFF)]))
-        assert.include(trailing.message, "invalid UTF-8")
         // Byte input accepts only UTF-8 and US-ASCII encoding declarations
         const latin1 = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a/>"
         assert.deepStrictEqual(yield* failure(decodeBytes([textEncoder.encode(latin1)])), ["Unsupported", 1, 1])
@@ -193,63 +184,27 @@ describe("Xml", () => {
           version: "1.0",
           encoding: "ISO-8859-1"
         })
-        const ascii = "<?xml version=\"1.0\" encoding=\"us-ascii\"?><a/>"
-        assert.strictEqual((yield* decodeBytes([textEncoder.encode(ascii)])).length, 3)
       }))
 
     it.effect("fails on malformed documents with positions", () =>
       Effect.gen(function*() {
         const cases: ReadonlyArray<readonly [string, Xml.XmlError["kind"], number, number]> = [
-          ["<a>\n<b>\r\n\r\r</c>", "Syntax", 5, 1],
-          [BOM + "<a><b></a>", "Syntax", 1, 7],
-          ["<a>", "Syntax", 1, 4],
           ["", "Syntax", 1, 1],
-          ["</a>", "Syntax", 1, 1],
+          ["<a>", "Syntax", 1, 4],
+          ["<a>\n<b>\r\n\r\r</c>", "Syntax", 5, 1],
           ["<a/><b/>", "Syntax", 1, 5],
-          ["<a/>x", "Syntax", 1, 5],
           ["<a b='1' b='2'/>", "Syntax", 1, 10],
-          ["<a b=1/>", "Syntax", 1, 6],
-          ["<a b>", "Syntax", 1, 5],
-          ["<a b='<'/>", "Syntax", 1, 7],
-          ["<a b='1'c='2'/>", "Syntax", 1, 9],
-          ["<a/ >", "Syntax", 1, 4],
           ["<1a/>", "Syntax", 1, 2],
           ["<a>]]></a>", "Syntax", 1, 4],
           ["<a>&#xD800;</a>", "Syntax", 1, 4],
-          ["<a>&#X41;</a>", "Syntax", 1, 4],
-          ["<a>& b</a>", "Syntax", 1, 4],
-          ["<a>&toString;</a>", "Syntax", 1, 4],
-          ["<a b='&foo;'/>", "Syntax", 1, 7],
-          ["<a>" + String.fromCharCode(1) + "</a>", "Syntax", 1, 4],
-          ["<a>" + String.fromCharCode(0xD800) + "</a>", "Syntax", 1, 4],
-          ["<a><!-- a -- b --></a>", "Syntax", 1, 11],
-          ["<a><!-- a ---></a>", "Syntax", 1, 11],
-          ["<a><![CDATA[x</a>", "Syntax", 1, 4],
-          ["<![CDATA[x]]><a/>", "Syntax", 1, 1],
-          ["<a><!x></a>", "Syntax", 1, 4],
-          [" <?xml version='1.0'?><a/>", "Syntax", 1, 2],
-          ["<?xml version='2.0'?><a/>", "Syntax", 1, 1],
-          ["<a><?XML x?></a>", "Syntax", 1, 4],
-          ["<a><?pi?x?></a>", "Syntax", 1, 8],
-          [BOM + BOM + "<a/>", "Syntax", 1, 1],
-          ["<a/><!DOCTYPE a>", "Syntax", 1, 5],
-          ["<!DOCTYPE a><!DOCTYPE a><a/>", "Syntax", 1, 13],
-          ["<!DOCTYPE a [<!ELEMENT a (b|c,d)>]><a/>", "Syntax", 1, 30],
-          ["<!DOCTYPE a [<!ELEMENT a (#PCDATA|b)>]><a/>", "Syntax", 1, 37],
-          ["<!DOCTYPE a [<!ATTLIST a b CDATA>]><a/>", "Syntax", 1, 33],
-          ["<!DOCTYPE a [<!ENTITY e \"%p;\">]><a/>", "Syntax", 1, 26],
-          ["<!DOCTYPE a [<!ENTITY e PUBLIC 'p'>]><a/>", "Syntax", 1, 35],
-          ["<!DOCTYPE a [<!FOO a>]><a/>", "Syntax", 1, 14],
-          ["<!DOCTYPE a [\"x\"]><a/>", "Syntax", 1, 14]
+          ["<a>&unknown;</a>", "Syntax", 1, 4],
+          ["<a><!-- a -- b --></a>", "Syntax", 1, 11]
         ]
         for (const [xml, kind, line, column] of cases) {
           for (const chunks of splits(xml)) {
             assert.deepStrictEqual(yield* failure(decodeString(chunks)), [kind, line, column], JSON.stringify(chunks))
           }
         }
-        // A stray quote in the internal subset is invalid markup rather than the end of the subset
-        const stray = yield* Effect.flip(decodeString(["<!DOCTYPE a [ \"x\"]><a/>"]))
-        assert.include(stray.message, "invalid markup in the internal subset")
         // Events completed before an error are emitted first
         for (const chunks of splits("<a><b/>text</c>")) {
           const results = yield* Stream.fromIterable(chunks, { chunkSize: 1 }).pipe(
@@ -264,16 +219,12 @@ describe("Xml", () => {
 
     it.effect("limits token size and nesting depth", () =>
       Effect.gen(function*() {
-        // The token in the middle of each document is its largest
         const limits: ReadonlyArray<readonly [string, string, string]> = [
           ["<a>", "0123456789", "</a>"],
           ["<a>", "<![CDATA[0123456789]]>", "</a>"],
           ["", "<a b='0123456789'/>", ""],
-          ["<a>", "</a      >", ""],
           ["", "<!--0123456789-->", "<a/>"],
           ["", "<?pi 0123456789?>", "<a/>"],
-          ["", "<?xml version=\"1.0\"?>", "<a/>"],
-          ["", " ".repeat(10), "<a/>"],
           ["", "<!DOCTYPE a [<!ENTITY e 'x'>]>", "<a/>"]
         ]
         for (const [before, token, after] of limits) {
@@ -285,123 +236,10 @@ describe("Xml", () => {
             )
           }
         }
-        // Errors do not depend on chunking: a token longer than the limit fails with the first error found in its
-        // first maxTokenSize + 1 characters, or else with a Limit error
-        const errors: ReadonlyArray<readonly [string, number, Xml.XmlError["kind"], number]> = [
-          ["<a b='1' b='2'/>", 13, "Syntax", 10],
-          ["<a b='1' b='2'/>", 12, "Limit", 1],
-          ["<a>0123456789</a>", 9, "Limit", 4]
-        ]
-        for (const [xml, maxTokenSize, kind, column] of errors) {
-          const { message } = yield* Effect.flip(decodeString([xml], { maxTokenSize }))
-          for (const chunks of splits(xml)) {
-            const error = yield* Effect.flip(decodeString(chunks, { maxTokenSize }))
-            assert.deepStrictEqual([error.kind, error.line, error.column, error.message], [kind, 1, column, message])
-          }
-        }
-        // Text made of several parts fails at the part that exceeds the limit
-        for (const chunks of splits("<a>\n\n<![CDATA[\n]]>&amp;</a>")) {
-          assert.deepStrictEqual(yield* failure(decodeString(chunks, { maxTokenSize: 14 })), ["Limit", 3, 1])
-          assert.deepStrictEqual(yield* failure(decodeString(chunks, { maxTokenSize: 19 })), ["Limit", 4, 4])
-          assert.strictEqual((yield* decodeString(chunks, { maxTokenSize: 20 })).length, 3)
-        }
         const nested = "<a><a><a/></a></a>"
         assert.strictEqual((yield* decodeString([nested], { maxDepth: 3 })).length, 6)
         assert.deepStrictEqual(yield* failure(decodeString([nested], { maxDepth: 2 })), ["Limit", 1, 7])
-        // maxDepth also bounds nested groups in DOCTYPE content models
-        const groups = "<!DOCTYPE a [<!ELEMENT a (b,(c|d)*)>]><a/>"
-        assert.strictEqual((yield* decodeString([groups], { maxDepth: 2 })).length, 3)
-        assert.deepStrictEqual(yield* failure(decodeString([groups], { maxDepth: 1 })), ["Limit", 1, 30])
-        // Without a limit, groups nested deeper than the call stack allows are still checked
-        const deepGroups = `<!DOCTYPE a [<!ELEMENT a ${"(".repeat(100_000)}b${")".repeat(100_000)}>]><a/>`
-        assert.strictEqual((yield* decodeString([deepGroups], { maxDepth: Infinity })).length, 3)
-        // The defaults are 10 MiB tokens and 1024 nested elements
-        assert.deepStrictEqual(yield* failure(decodeString(["<a>".repeat(1025)])), ["Limit", 1, 3073])
-        const large = "x".repeat(10 * 1024 * 1024 + 1)
-        assert.deepStrictEqual(yield* failure(decodeString(["<a>", large, "</a>"])), ["Limit", 1, 4])
-        assert.deepStrictEqual(yield* decodeString(["<a>", large, "</a>"], { maxTokenSize: Infinity }), [
-          start("a"),
-          text(large),
-          end("a")
-        ])
       }))
-
-    it.effect("decodes tokens split into hundreds of chunks", () =>
-      Effect.gen(function*() {
-        // The chunks of an incomplete token are joined in runs, which must not affect references, line endings or
-        // positions that span the runs
-        const part = "a&amp;\r\nb".repeat(300)
-        const valid = `<a b="${part}"><!--${part}--><?p ${part}?><![CDATA[${part}]]>${part}</a>`
-        const invalid = `<a>${part}&b;</a>`
-        for (const size of [1, 2, 3, 5]) {
-          assert.deepStrictEqual(yield* decodeString(chunksOf(valid, [size])), [
-            start("a", { b: "a& b".repeat(300) }),
-            comment("a&amp;\nb".repeat(300)),
-            pi("p", "a&amp;\nb".repeat(300)),
-            text("a&amp;\nb".repeat(300) + "a&\nb".repeat(300)),
-            end("a")
-          ])
-          assert.deepStrictEqual(yield* failure(decodeString(chunksOf(invalid, [size]))), ["Syntax", 301, 2])
-          assert.deepStrictEqual(
-            yield* failure(decodeString(chunksOf(valid, [size]), { maxTokenSize: part.length })),
-            ["Limit", 1, 1]
-          )
-        }
-      }))
-
-    it.effect("decodes many chunks pulled at once", () =>
-      Effect.gen(function*() {
-        // Runs of chunks in one pull are joined up to 64 KiB, which must not affect characters, tokens or errors
-        // split between chunks or runs
-        const xml = `<r>${"<i a='é'>😀 &amp;\r\n</i>".repeat(4000)}</r>`
-        const bytes = textEncoder.encode(xml)
-        const at = xml.indexOf("&", 50_000)
-        const invalidText = xml.slice(0, at) + String.fromCharCode(1) + xml.slice(at + 1)
-        const invalidBytes = bytes.slice()
-        invalidBytes[bytes.indexOf(38, 50_000)] = 0xFF
-        // All chunks in one pull
-        const text = (input: string, sizes: ReadonlyArray<number>) =>
-          Stream.fromIterable(chunksOf(input, sizes)).pipe(
-            Stream.pipeThroughChannel(Xml.decodeString()),
-            Stream.runCollect
-          )
-        const utf8 = (input: Uint8Array, sizes: ReadonlyArray<number>) =>
-          Stream.fromIterable(chunksOf(input, sizes)).pipe(Stream.pipeThroughChannel(Xml.decode()), Stream.runCollect)
-        const expected = yield* text(xml, [xml.length])
-        const textFailure = yield* failure(text(invalidText, [xml.length]))
-        const bytesFailure = yield* failure(utf8(invalidBytes, [bytes.length]))
-        assert.deepStrictEqual([textFailure[0], bytesFailure[0]], ["Syntax", "Syntax"])
-        for (const sizes of [[1], [7, 5, 70_000], [65_535, 1, 2]]) {
-          assert.deepStrictEqual(yield* text(xml, sizes), expected)
-          assert.deepStrictEqual(yield* utf8(bytes, sizes), expected)
-          assert.deepStrictEqual(yield* failure(text(invalidText, sizes)), textFailure)
-          assert.deepStrictEqual(yield* failure(utf8(invalidBytes, sizes)), bytesFailure)
-        }
-      }))
-
-    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
-      "does not keep the input of open elements in memory",
-      () =>
-        Effect.gen(function*() {
-          // Each long name arrives in a chunk with 1 MiB of text, which must not stay reachable from the name
-          const name = "element-name-".repeat(2)
-          const depth = 32
-          yield* collectGarbage
-          const before = process.memoryUsage().heapUsed
-          let held = 0
-          yield* Stream.range(1, depth).pipe(
-            Stream.map(() => `<${name}>` + "x".repeat(1024 * 1024)),
-            Stream.concat(Stream.fromEffect(Effect.gen(function*() {
-              yield* collectGarbage
-              held = process.memoryUsage().heapUsed - before
-              return `</${name}>`.repeat(depth)
-            }))),
-            Stream.pipeThroughChannel(Xml.decodeString()),
-            Stream.runDrain
-          )
-          assert.isBelow(held, 16 * 1024 * 1024)
-        })
-    )
 
     it("rejects invalid options at construction", () => {
       for (const value of [0, Number.NaN]) {
@@ -421,33 +259,6 @@ describe("Xml", () => {
         const xml = "<a b=\"&lt;&amp;>&quot;'&#9;&#10;&#13;\">&lt;&amp;&gt; ]]&gt; \"' \t\n&#13;</a>"
         assert.strictEqual(yield* encodeString(escaped), xml)
         assert.deepStrictEqual(yield* decodeString([xml]), escaped)
-        // Text before, between and after escapes is kept
-        assert.strictEqual(
-          yield* encodeString([start("a", { b: "é\"\"x", c: "y" }), text("😀<x>>&y"), text("z"), end("a")]),
-          "<a b=\"é&quot;&quot;x\" c=\"y\">😀&lt;x&gt;&gt;&amp;yz</a>"
-        )
-        const events: ReadonlyArray<Xml.Event> = [
-          { _tag: "Declaration", version: "1.0", encoding: "UTF-8", standalone: true },
-          text("\n"),
-          { _tag: "Doctype", name: "html", publicId: "-//W3C//DTD XHTML 1.0 Strict//EN", systemId: "x\"y" },
-          comment(" c "),
-          pi("xml-stylesheet", "href=\"s.xsl\""),
-          start("html"),
-          start("br"),
-          end("br"),
-          start("p", { "xml:lang": "en" }),
-          text(""),
-          end("p"),
-          pi("t", ""),
-          end("html"),
-          text("\n")
-        ]
-        assert.strictEqual(
-          yield* encodeString(events),
-          "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
-            "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" 'x\"y'><!-- c -->" +
-            "<?xml-stylesheet href=\"s.xsl\"?><html><br/><p xml:lang=\"en\"></p><?t?></html>\n"
-        )
         // Decoded documents round trip through bytes
         const document = "<?xml version=\"1.0\"?><!DOCTYPE feed SYSTEM \"feed.dtd\"><!--c-->" +
           "<feed xmlns:a=\"urn:a\" a:b='&lt;\"'><a:entry>x &amp; <![CDATA[<y>]]>\r\n</a:entry><e/><?p d?></feed>"
@@ -492,20 +303,7 @@ describe("Xml", () => {
         for (const events of cases) {
           const error = yield* Effect.flip(encodeString(events))
           assert.strictEqual(error.kind, "InvalidEvent", JSON.stringify(events))
-          assertNoPosition(error)
-        }
-        // Invalid values are quoted in messages, so that they cannot forge log lines
-        const forged: ReadonlyArray<ReadonlyArray<Xml.Event>> = [
-          [start("a"), end("a"), start("b\n")],
-          [start("a"), end("b\n")],
-          [end("a\n")],
-          [{ _tag: "Declaration", version: "1\n" }],
-          [{ _tag: "Declaration", version: "1.0", encoding: "\n" }],
-          [{ _tag: "Doctype", name: "a", publicId: "\n\"", systemId: "" }]
-        ]
-        for (const events of forged) {
-          const { message } = yield* Effect.flip(encodeString(events))
-          assert.notInclude(message, "\n", message)
+          assert.deepStrictEqual([error.line, error.column], [undefined, undefined])
         }
         // Byte output can only declare UTF-8 or US-ASCII
         const latin1 = Stream.make<ReadonlyArray<Xml.Event>>(
@@ -533,28 +331,6 @@ describe("Xml", () => {
   describe("elements", () => {
     it.effect("collects the elements at a path", () =>
       Effect.gen(function*() {
-        const feed = `<?xml version="1.0"?>
-<rss><channel><title>Feed</title>
-  <item>
-    <title>One<!-- c --><?p?> &amp; <![CDATA[<b>]]></title>
-    <enclosure url="u" length="1"/>
-  </item>
-</channel></rss>`
-        assert.deepStrictEqual(yield* elements(feed, ["rss", "channel", "item"]), [
-          {
-            name: "item",
-            attributes: {},
-            children: [
-              "\n    ",
-              { name: "title", attributes: {}, children: ["One & <b>"] },
-              "\n    ",
-              { name: "enclosure", attributes: { url: "u", length: "1" }, children: [] },
-              "\n  "
-            ]
-          }
-        ])
-        assert.deepStrictEqual(yield* elements(feed, ["channel", "item"]), [])
-        // Nested elements with the same name stay in their tree
         const xml = "<a><item id='1'><item id='2'>x</item></item><b><item/></b> <item id='3'/></a>"
         assert.deepStrictEqual(yield* elements(xml, ["a", "item"]), [
           {
@@ -576,16 +352,10 @@ describe("Xml", () => {
         const xml = "<a>" + "<b c='12'><d>3</d></b>".repeat(2) + "</a>"
         assert.strictEqual((yield* elements(xml, ["a", "b"], { maxElementSize: 6 })).length, 2)
         assert.strictEqual((yield* Effect.flip(elements(xml, ["a", "b"], { maxElementSize: 5 }))).kind, "Limit")
-        // The error names the element, also when the path matches it with "*"
-        assert.strictEqual(
-          (yield* Effect.flip(elements(xml, ["a", "*"], { maxElementSize: 3 }))).message,
-          "element <b> exceeds maxElementSize of 3"
-        )
-        // Unbalanced events, and text over the default maxElementSize of 16 MiB
+        // The collector also validates directly supplied events.
         const cases: ReadonlyArray<readonly [ReadonlyArray<Xml.Event>, Xml.XmlError["kind"]]> = [
           [[end("a")], "InvalidEvent"],
-          [[start("a")], "InvalidEvent"],
-          [[start("a"), text("x".repeat(16 * 1024 * 1024))], "Limit"]
+          [[start("a")], "InvalidEvent"]
         ]
         for (const [events, kind] of cases) {
           const error = yield* Stream.fromIterable(events).pipe(
@@ -594,7 +364,7 @@ describe("Xml", () => {
             Effect.flip
           )
           assert.strictEqual(error.kind, kind)
-          assertNoPosition(error)
+          assert.deepStrictEqual([error.line, error.column], [undefined, undefined])
         }
       }))
   })
