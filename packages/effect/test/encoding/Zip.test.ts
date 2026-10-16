@@ -653,6 +653,9 @@ describe("Zip", () => {
         assert.strictEqual(yield* failure(decode(deflated({ method: 12 }))), "Unsupported")
         // Stored entries need equal sizes
         assert.strictEqual(yield* failure(decode(deflated({ method: 0 }))), "InvalidHeader")
+        // Other tools end names at a NUL character, or reject them
+        const nul = concat(storedEntry(textEncoder.encode("a.txt\0../b"), new Uint8Array(0)), endRecord)
+        assert.strictEqual(yield* failure(decode(nul)), "InvalidHeader")
       }))
   })
 })
