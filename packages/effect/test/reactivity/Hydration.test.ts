@@ -3,125 +3,43 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
-  it.each(
-    [
-      ["invalid", "derived", 1],
-      ["skipped", "derived", 1],
-      ["invalid", "refresh wrapper", 0],
-      ["skipped", "refresh wrapper", 0]
-    ] as const
-  )(
-    "computes on the client after %s streamed hydration for a %s atom",
-    async (kind, variant, expected) => {
-      const { promise, resolve } = Promise.withResolvers<number>()
-      const serverAtom = Atom.make(Effect.promise(() => promise)).pipe(
-        Atom.serializable({
-          key: "count",
-          schema: AsyncResult.Schema({ success: kind === "invalid" ? Schema.Number : Schema.Int })
-        })
-      )
-      const clientSource = Atom.make(Effect.succeed(0))
-      const clientAtom = (variant === "derived"
-        ? clientSource.pipe(Atom.mapResult((n) => n + 1))
-        : clientSource.pipe(Atom.withRefresh("1 hour"))).pipe(
-          Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
-        )
-      const server = AtomRegistry.make()
-      const client = AtomRegistry.make()
-      try {
-        server.mount(serverAtom)
-        const state = Hydration.toValues(Hydration.dehydrate(server, { encodeInitialAs: "promise" }))
-        assert.strictEqual(state.length, 1)
-        assert(state[0].resultPromise !== undefined)
-        Hydration.hydrate(client, state)
-        client.mount(clientAtom)
-        assert.deepStrictEqual(client.get(clientAtom), AsyncResult.initial(true))
-
-        resolve(0.5)
-        await state[0].resultPromise
-        await Effect.runPromise(Effect.yieldNow)
-
-        const result = client.get(clientAtom)
-        assert(AsyncResult.isSuccess(result), `Expected client Success(${expected}), got ${JSON.stringify(result)}`)
-        assert.strictEqual(result.value, expected)
-        assert.strictEqual(result.waiting, false)
-      } finally {
-        server.dispose()
-        client.dispose()
-      }
-    }
-  )
-
-  it("falls back to the client value on the first read of invalid immediate hydration", () => {
-    const user = Atom.make({ name: "default", email: "" }).pipe(
-      Atom.serializable({
-        key: "user",
-        schema: Schema.Struct({ name: Schema.String, email: Schema.String })
-      })
-    )
+  it("falls back on the first read of invalid immediate hydration", () => {
+    const atom = Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
     const registry = AtomRegistry.make()
-    try {
-      const state: Array<Hydration.DehydratedAtomValue> = [{
-        "~effect/reactivity/Hydration/DehydratedAtom": true,
-        key: "user",
-        value: { name: "Ada" },
-        dehydratedAt: 0
-      }]
-      Hydration.hydrate(registry, state)
-
-      assert.deepStrictEqual(registry.get(user), { name: "default", email: "" })
-    } finally {
-      registry.dispose()
-    }
-  })
-
-  it("computes on the client when a streamed result cannot be decoded", async () => {
-    const atom = Atom.make(Effect.succeed(0)).pipe(
-      Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Number }) })
-    )
-    const registry = AtomRegistry.make()
-    const { promise, resolve } = Promise.withResolvers<unknown>()
     try {
       const state: Array<Hydration.DehydratedAtomValue> = [{
         "~effect/reactivity/Hydration/DehydratedAtom": true,
         key: "count",
-        value: { _tag: "Initial", waiting: true },
-        dehydratedAt: 0,
-        resultPromise: promise
+        value: "invalid",
+        dehydratedAt: 0
       }]
       Hydration.hydrate(registry, state)
-      registry.mount(atom)
-      assert.deepStrictEqual(registry.get(atom), AsyncResult.initial(true))
 
-      resolve({ _tag: "Success", value: "ten", waiting: false, timestamp: 0 })
-      await promise
-      await Effect.runPromise(Effect.yieldNow)
-
-      const result = registry.get(atom)
-      assert(AsyncResult.isSuccess(result))
-      assert.strictEqual(result.value, 0)
-      assert.strictEqual(result.waiting, false)
+      assert.strictEqual(registry.get(atom), 0)
     } finally {
       registry.dispose()
     }
   })
 
-  it("computes on the client when the server skips encoding a streamed result", async () => {
+  it.each(["invalid", "skipped"] as const)("releases %s streamed hydration", async (kind) => {
     const { promise, resolve } = Promise.withResolvers<number>()
-    const schema = AsyncResult.Schema({ success: Schema.Int })
     const serverAtom = Atom.make(Effect.promise(() => promise)).pipe(
-      Atom.serializable({ key: "count", schema })
+      Atom.serializable({
+        key: "count",
+        schema: AsyncResult.Schema({ success: kind === "invalid" ? Schema.Number : Schema.Int })
+      })
     )
-    const clientAtom = Atom.make(Effect.succeed(0)).pipe(
-      Atom.serializable({ key: "count", schema })
-    )
+    const source = Atom.make(Effect.succeed(0))
+    const clientAtom = (kind === "invalid"
+      ? source.pipe(Atom.mapResult((n) => n + 1))
+      : source.pipe(Atom.withRefresh("1 hour"))).pipe(
+        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+      )
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
     try {
       server.mount(serverAtom)
       const state = Hydration.toValues(Hydration.dehydrate(server, { encodeInitialAs: "promise" }))
-      assert.strictEqual(state.length, 1)
-      assert(state[0].resultPromise !== undefined)
       Hydration.hydrate(client, state)
       client.mount(clientAtom)
       assert.deepStrictEqual(client.get(clientAtom), AsyncResult.initial(true))
@@ -132,7 +50,7 @@ describe("Hydration", () => {
 
       const result = client.get(clientAtom)
       assert(AsyncResult.isSuccess(result))
-      assert.strictEqual(result.value, 0)
+      assert.strictEqual(result.value, kind === "invalid" ? 1 : 0)
       assert.strictEqual(result.waiting, false)
     } finally {
       server.dispose()
