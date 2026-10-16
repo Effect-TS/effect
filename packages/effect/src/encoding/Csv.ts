@@ -3,10 +3,11 @@
  *
  * **Details**
  *
- * Follows RFC 4180 with a configurable delimiter. Cells are strings: whitespace
- * and empty cells are preserved and schemas own value conversion. Quoted fields
- * support embedded delimiters, line breaks and doubled quotes. Decoders accept
- * LF, CRLF and CR record separators and strip an initial BOM.
+ * Follows RFC 4180 with a configurable delimiter. Cells are strings, and
+ * whitespace and empty cells are kept as they are. Quoted fields can contain
+ * delimiters, line breaks and doubled quotes. Decoders accept LF, CRLF and CR
+ * line endings and strip a leading BOM. Schema adapters convert cells to and
+ * from typed values.
  *
  * @stability unstable
  * @since 4.1.0
@@ -185,14 +186,11 @@ const QUOTE = 34
 const CR = 13
 const LF = 10
 
-// Parser states
-// At the start of a field.
+// Parser states. QUOTE_IN_QUOTED follows a quote inside a quoted field, which
+// either closes the field or starts an escaped quote.
 const FIELD_START = 0
-// Inside an unquoted field.
 const UNQUOTED = 1
-// Inside a quoted field.
 const QUOTED = 2
-// After a quote inside a quoted field: a closing or an escaped quote.
 const QUOTE_IN_QUOTED = 3
 
 interface Parsed {
@@ -406,8 +404,8 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
     Effect.sync(() => {
       const parser = new Parser(delimiter, maxRecordSize, ignoreEmptyLines)
       let headers: Row | undefined
-      // Plain assignment is much faster than `Object.fromEntries`, but would
-      // set the prototype for a `__proto__` header.
+      // Plain assignment is faster than `Object.fromEntries`, but a `__proto__`
+      // header would set the prototype instead of a property.
       let assignable = false
       let done: Pull.Pull<never, never, Done> | undefined
 
