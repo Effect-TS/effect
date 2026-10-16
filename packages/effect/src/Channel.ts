@@ -4728,6 +4728,26 @@ export const catchCauseFilter: {
     }
   ))
 
+// Recovers like `catch_`, but when a cause mixes typed failures with defects or
+// interruption, keeps the typed failures the operator would re-fail (as the
+// value returned by `unmatched`) next to the defects and interruption.
+const catchSelective = (
+  self: Channel<any, any, any, any, any, any, any>,
+  unmatched: (error: any) => Option.Option<unknown>,
+  f: (error: any) => Channel<any, any, any, any, any, any, any>
+): Channel<any, any, any, any, any, any, any> =>
+  catchCause(self, (cause) => {
+    const error = findErrorOnly(cause)
+    if (Result.isSuccess(error)) return f(error.success)
+    if (error.failure === cause) return failCause(cause)
+    return failCause(Cause.fromReasons(cause.reasons.flatMap((reason): Array<Cause.Reason<unknown>> => {
+      if (reason._tag !== "Fail") return [reason]
+      const kept = unmatched(reason.error)
+      if (Option.isNone(kept)) return []
+      return [kept.value === reason.error ? reason : Cause.makeFailReason(kept.value)]
+    })))
+  })
+
 const catch_: {
   <OutErr, OutElem1, OutErr1, OutDone1, InElem1, InErr1, InDone1, Env1>(
     f: (d: OutErr) => Channel<OutElem1, OutErr1, OutDone1, InElem1, InErr1, InDone1, Env1>
@@ -5126,8 +5146,9 @@ export const catchIf: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catch_(
+  catchSelective(
     self,
+    (err) => orElse || predicate(err) ? Option.none() : Option.some(err),
     (err): Channel<
       OutElem1 | OutElem2,
       OutErr1 | OutErr2,
@@ -5294,8 +5315,13 @@ export const catchFilter: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catch_(
+  catchSelective(
     self,
+    (err) => {
+      if (orElse) return Option.none()
+      const result = filter(err)
+      return Result.isFailure(result) ? Option.some(result.failure) : Option.none()
+    },
     (err): Channel<
       OutElem1 | OutElem2,
       OutErr1 | OutErr2,
@@ -5659,8 +5685,12 @@ export const catchReason: {
   InDone & InDone1 & InDone2,
   Env | Env1 | Env2
 > =>
-  catch_(
+  catchSelective(
     self,
+    (error) =>
+      isTagged(error, errorTag) && hasProperty(error, "reason") && (orElse || isTagged(error.reason, reasonTag))
+        ? Option.none()
+        : Option.some(error),
     (error): Channel<
       OutElem1 | Exclude<OutElem2, Types.unassigned>,
       OutErr1 | OutErr2,
@@ -5840,14 +5870,18 @@ export const catchReasons: {
   >
 } = dual((args) => isChannel(args[0]), (self, errorTag, cases, orElse) => {
   let keys: Set<string>
-  return catch_(self, (error) => {
-    if (
-      isTagged(error, errorTag) &&
-      hasProperty(error, "reason") &&
-      hasProperty(error.reason, "_tag") &&
-      String.isString(error.reason._tag)
-    ) {
-      const reason = error.reason as { readonly _tag: string }
+  const isTaggedReason = (error: unknown): error is { readonly reason: { readonly _tag: string } } =>
+    isTagged(error, errorTag) &&
+    hasProperty(error, "reason") &&
+    hasProperty(error.reason, "_tag") &&
+    String.isString(error.reason._tag)
+  return catchSelective(self, (error) => {
+    if (!isTaggedReason(error)) return Option.some(error)
+    keys ??= new Set(Object.keys(cases))
+    return orElse || keys.has(error.reason._tag) ? Option.none() : Option.some(error)
+  }, (error) => {
+    if (isTaggedReason(error)) {
+      const reason = error.reason
       keys ??= new Set(Object.keys(cases))
       if (keys.has(reason._tag)) {
         return (cases as any)[reason._tag](reason as any, error)
