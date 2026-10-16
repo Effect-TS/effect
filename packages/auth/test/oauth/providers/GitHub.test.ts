@@ -3,6 +3,7 @@ import { assert, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import { codeInput, tokenBody } from "../fixtures.ts"
 import { authorization, form, transport } from "./fixtures.ts"
 
@@ -11,6 +12,31 @@ const providerOptions = {
   clientSecret: Redacted.make("client-secret"),
   redirectUri: codeInput.redirectUri
 }
+
+it("preserves the bounded GitHub profile projection", () => {
+  const decode = Schema.decodeUnknownSync(GitHub.Profile)
+  assert.isFalse(Schema.is(GitHub.Profile)({}))
+  assert.deepStrictEqual(decode({ id: 42, private_extension: true }), { id: 42 })
+  const plan = { collaborators: 0, name: "x".repeat(2048), space: 1, private_repos: 2 }
+  const profile = { id: Number.MAX_SAFE_INTEGER, login: "x".repeat(256), name: null, email: null, plan }
+  assert.deepStrictEqual(decode({ ...profile, plan: { ...plan, private_extension: true } }), profile)
+  for (
+    const fields of [
+      { id: 0 },
+      { id: Number.MAX_SAFE_INTEGER + 1 },
+      { id: 1.5 },
+      { login: "" },
+      { name: "😀".repeat(129) },
+      { email: "x".repeat(321) },
+      { avatar_url: "x".repeat(2049) },
+      { followers: -1 },
+      { plan: { ...plan, name: "😀".repeat(1025) } },
+      { plan: { name: "free", space: 1, private_repos: 2 } }
+    ]
+  ) {
+    assert.isFalse(Schema.is(GitHub.Profile)({ id: 42, ...fields }))
+  }
+})
 
 it.effect("exchanges GitHub codes with pinned scopes and a private typed profile", () =>
   Effect.gen(function*() {
@@ -42,7 +68,7 @@ it.effect("exchanges GitHub codes with pinned scopes and a private typed profile
           assert.strictEqual(request.headers.authorization, "Bearer private-access")
           assert.strictEqual(request.headers.accept, "application/vnd.github+json")
           assert.isString(request.headers["user-agent"])
-          assert.isString(request.headers["x-github-api-version"])
+          assert.strictEqual(request.headers["x-github-api-version"], "2026-03-10")
           return Response.json(user)
         })
       )

@@ -3,6 +3,7 @@ import { assert, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"
 import * as Redacted from "effect/Redacted"
+import * as Schema from "effect/Schema"
 import { codeInput, cryptoLayer, form, receipt, transport } from "../fixtures.ts"
 
 const options = {
@@ -14,6 +15,25 @@ const authorization = {
   state: Redacted.make("saved-state"),
   codeChallenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
 }
+
+it("preserves the optional and bounded Linear profile fields", () => {
+  const decode = Schema.decodeUnknownSync(Linear.Profile)
+  assert.isFalse(Schema.is(Linear.Profile)({}))
+  assert.deepStrictEqual(decode({ id: "linear-user", private_extension: true }), { id: "linear-user" })
+  const profile = { id: "x".repeat(256), name: null, email: null, avatarUrl: null, displayName: null, url: null }
+  assert.deepStrictEqual(decode(profile), profile)
+  for (
+    const fields of [
+      { id: "" },
+      { id: "x".repeat(257) },
+      { name: "😀".repeat(129) },
+      { email: "x".repeat(321) },
+      { avatarUrl: "x".repeat(2049) }
+    ]
+  ) {
+    assert.isFalse(Schema.is(Linear.Profile)({ id: "linear-user", ...fields }))
+  }
+})
 
 it.effect("uses Linear's authorization, token and profile contract", () =>
   Effect.gen(function*() {
@@ -56,7 +76,7 @@ it.effect("uses Linear's authorization, token and profile contract", () =>
           assert.strictEqual(request.body._tag, "Uint8Array")
           if (request.body._tag === "Uint8Array") {
             assert.deepStrictEqual(JSON.parse(new TextDecoder().decode(request.body.body)), {
-              query: "{ viewer { id name email avatarUrl displayName url } }"
+              query: "query Viewer{viewer{id name email avatarUrl displayName url}}"
             })
           }
           return Response.json({ data: { viewer: profile } })

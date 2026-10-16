@@ -19,12 +19,8 @@ import * as Validation from "../../internal/validation.ts"
 import * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/github.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(2048))
-const optionalText = Schema.optionalKey(text)
-const nullableText = Schema.optionalKey(Schema.NullOr(text))
-const count = Validation.integer(0, Number.MAX_SAFE_INTEGER)
 
 /**
  * Schema for a GitHub user response. Only the numeric id identifies the account;
@@ -34,51 +30,7 @@ const count = Validation.integer(0, Number.MAX_SAFE_INTEGER)
  * @category schemas
  * @since 4.1.0
  */
-export const Profile = Schema.Struct({
-  id: Validation.integer(1, Number.MAX_SAFE_INTEGER),
-  login: Schema.optionalKey(Validation.text(256)),
-  name: Schema.optionalKey(Schema.NullOr(Schema.String.check(Schema.isMaxLength(256)))),
-  user_view_type: optionalText,
-  node_id: optionalText,
-  avatar_url: optionalText,
-  gravatar_id: nullableText,
-  url: optionalText,
-  html_url: optionalText,
-  followers_url: optionalText,
-  following_url: optionalText,
-  gists_url: optionalText,
-  starred_url: optionalText,
-  subscriptions_url: optionalText,
-  organizations_url: optionalText,
-  repos_url: optionalText,
-  events_url: optionalText,
-  received_events_url: optionalText,
-  type: optionalText,
-  site_admin: Schema.optionalKey(Schema.Boolean),
-  company: nullableText,
-  blog: nullableText,
-  location: nullableText,
-  email: Schema.optionalKey(Schema.NullOr(Schema.String.check(Schema.isMaxLength(320)))),
-  notification_email: Schema.optionalKey(Schema.NullOr(Schema.String.check(Schema.isMaxLength(320)))),
-  hireable: Schema.optionalKey(Schema.NullOr(Schema.Boolean)),
-  bio: nullableText,
-  twitter_username: nullableText,
-  public_repos: Schema.optionalKey(count),
-  public_gists: Schema.optionalKey(count),
-  followers: Schema.optionalKey(count),
-  following: Schema.optionalKey(count),
-  created_at: optionalText,
-  updated_at: optionalText,
-  private_gists: Schema.optionalKey(count),
-  total_private_repos: Schema.optionalKey(count),
-  owned_private_repos: Schema.optionalKey(count),
-  disk_usage: Schema.optionalKey(count),
-  collaborators: Schema.optionalKey(count),
-  two_factor_authentication: Schema.optionalKey(Schema.Boolean),
-  plan: Schema.optionalKey(Schema.Struct({ collaborators: count, name: text, space: count, private_repos: count })),
-  business_plus: Schema.optionalKey(Schema.Boolean),
-  ldap_dn: optionalText
-})
+export const Profile = Generated.Profile
 
 /**
  * Value described by the Profile schema.

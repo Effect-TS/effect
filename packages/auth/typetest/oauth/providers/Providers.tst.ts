@@ -1,5 +1,13 @@
 import type { OAuth, OAuthError, OAuthProvider, Oidc } from "@effect/auth/oauth"
-import { type Apple, GitHub, Google, Microsoft, type Notion, type Strava } from "@effect/auth/oauth/providers"
+import {
+  type Apple,
+  GitHub,
+  Google,
+  type Linear,
+  Microsoft,
+  type Notion,
+  type Strava
+} from "@effect/auth/oauth/providers"
 import * as Effect from "effect/Effect"
 import type * as HttpClient from "effect/http/HttpClient"
 import * as Layer from "effect/Layer"
@@ -25,6 +33,27 @@ declare const oidcExchange: OAuthProvider.OidcExchangeInput
 declare const secret: Redacted.Redacted<string>
 
 describe("OAuth provider type contracts", () => {
+  it("keeps generated profiles optional outside their identity fields", () => {
+    expect<{ readonly id: number }>().type.toBeAssignableTo<GitHub.Profile>()
+    expect<GitHub.Profile["name"]>().type.toBe<string | null | undefined>()
+    expect<GitHub.Profile["plan"]>().type.toBe<
+      {
+        readonly collaborators: number
+        readonly name: string
+        readonly space: number
+        readonly private_repos: number
+      } | undefined
+    >()
+    expect<Linear.Profile>().type.toBe<{
+      readonly id: string
+      readonly name?: string | null
+      readonly email?: string | null
+      readonly avatarUrl?: string | null
+      readonly displayName?: string | null
+      readonly url?: string | null
+    }>()
+  })
+
   it("requires PKCE and OIDC nonces and restricts provider prompts", () => {
     expect(github.authorizationUrl).type.toBeCallableWith(githubAuthorization)
     expect(github.exchangeCode).type.toBeCallableWith(exchange)

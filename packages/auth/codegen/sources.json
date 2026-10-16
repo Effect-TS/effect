@@ -1,0 +1,19 @@
+{
+  "github": {
+    "project": "github/rest-api-description",
+    "version": "2026-03-10",
+    "commit": "798498bd7d7350b26597b07cdcbb075d2eb0fa8a",
+    "url": "https://raw.githubusercontent.com/github/rest-api-description/798498bd7d7350b26597b07cdcbb075d2eb0fa8a/descriptions/api.github.com/api.github.com.2026-03-10.json",
+    "sha256": "548823880e13bec3f4c104ae7f791f5bf34ed084b863e31bf7cb689eb1eb05a4",
+    "license": "https://github.com/github/rest-api-description/blob/798498bd7d7350b26597b07cdcbb075d2eb0fa8a/LICENSE.md",
+    "inputSha256": "f94afd290430dd1ac0f271cb092fca3eaaa1fd90ff21d95dfe7636a3a032ff98"
+  },
+  "linear": {
+    "project": "linear/linear",
+    "commit": "9dd2ed80f93ae596f4f7fa21aa7cf80895c58514",
+    "url": "https://raw.githubusercontent.com/linear/linear/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/packages/sdk/src/schema.json",
+    "sha256": "7cd85855d4a131ea3e8b8b283855bbd22ba02ca91ace6cd18d1f9c8372c2e868",
+    "license": "https://github.com/linear/linear/blob/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/LICENSE",
+    "inputSha256": "fefc1d572bc64acf9ca441882bdf626b15183613731527c75875355281dd457a"
+  }
+}
