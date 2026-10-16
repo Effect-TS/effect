@@ -39,6 +39,7 @@ import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Http2 from "node:http2"
 import * as Net from "node:net"
+import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -900,6 +901,31 @@ describe("HttpServer", () => {
         const answer = yield* requestStatus(tcpPort(server), "GET").pipe(Effect.timeout("2 seconds"))
         assert.strictEqual(answer, 500)
         assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+      })
+  )
+
+  it.live.each(["GET", "HEAD"])(
+    "destroys a raw Readable when rejecting a %s response status",
+    (method) =>
+      Effect.gen(function*() {
+        const body = yield* Effect.acquireRelease(
+          Effect.sync(() => Readable.from(["ok"])),
+          (body) => Effect.sync(() => body.destroy())
+        )
+        const server = Http.createServer()
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serve(
+          Effect.succeed(HttpServerResponse.raw(body, { status: 600 })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+          Layer.build
+        )
+
+        const status = yield* requestStatus(tcpPort(server), method).pipe(Effect.timeout("2 seconds"))
+        assert.strictEqual(status, 500)
+        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+        assert.isTrue(body.destroyed)
       })
   )
 
