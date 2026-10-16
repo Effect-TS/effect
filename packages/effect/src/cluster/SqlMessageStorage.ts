@@ -11,7 +11,7 @@
  * `layer`, `layerWith`, `make`, and `makeEncoded` run the migrations before
  * building the storage. To run migrations with a different connection, such as
  * a schema owner in a deploy step, use `layerMigrations` there and
- * `layerStorage` in the runtime.
+ * `layerStorage` or `makeEncodedStorage` in the runtime.
  *
  * Request deduplication keys that exceed the 255-character `message_id`
  * column are hashed with the `Crypto` service before they are written, so
@@ -66,6 +66,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * tables, including the migration history table.
  *
  * @see {@link make} for the decoded `MessageStorage` constructor
+ * @see {@link makeEncodedStorage} for construction without migrations
  *
  * @stability unstable
  * @category constructors
@@ -79,10 +80,43 @@ export const makeEncoded: (options?: {
   SqlClient.SqlClient | Crypto.Crypto
 > = (options) => Effect.andThen(runMessageMigrations(options), makeEncodedStorage(options))
 
-const makeEncodedStorage = Effect.fnUntraced(function*(
-  options: {
+/**
+ * Creates a SQL-backed encoded message storage driver without running migrations
+ * or executing startup SQL.
+ *
+ * **When to use**
+ *
+ * Use when composing a custom encoded adapter with a runtime SQL connection
+ * that does not have schema-management privileges.
+ *
+ * **Details**
+ *
+ * The optional `prefix` controls the message and reply table names; when omitted,
+ * `cluster` is used.
+ *
+ * **Gotchas**
+ *
+ * Run `layerMigrations` separately with the same prefix before using the driver.
+ * This constructor does not create tables or check that the schema is up to date.
+ *
+ * @see {@link makeEncoded} for construction that runs migrations
+ * @see {@link layerMigrations} for running migrations separately
+ * @see {@link layerStorage} for providing decoded storage without migrations
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.1.0
+ */
+export const makeEncodedStorage: (options?: {
+  readonly prefix?: string | undefined
+}) => Effect.Effect<
+  MessageStorage.Encoded,
+  never,
+  SqlClient.SqlClient | Crypto.Crypto
+> = Effect.fnUntraced(function*(
+  options?: {
     readonly prefix?: string | undefined
-  } | undefined
+  }
 ) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const crypto = yield* Crypto.Crypto
