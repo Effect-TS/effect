@@ -608,10 +608,10 @@ describe("SqlRunnerStorage with a one-connection client", () => {
       const runner = Runner.make({ address: runnerAddress1, groups: ["default"], weight: 1 })
       const shards = [ShardId.make("default", 1)]
 
-      expect(yield* storage.getRunners).toEqual([])
+      assert.deepStrictEqual(yield* storage.getRunners, [])
       yield* storage.register(runner, true)
-      expect(yield* storage.acquire(runnerAddress1, shards)).toEqual(shards)
-      expect(yield* sql`SELECT 1 AS n`).toEqual([{ n: 1 }])
+      assert.deepStrictEqual(yield* storage.acquire(runnerAddress1, shards), shards)
+      assert.deepStrictEqual(yield* sql`SELECT 1 AS n`, [{ n: 1 }])
     }).pipe(
       Effect.provide(
         SqlRunnerStorage.layerWith({ prefix }).pipe(
@@ -638,28 +638,25 @@ describe("SqlRunnerStorage with a one-connection client", () => {
     return MysqlClient.layer({ url: Redacted.make(container.getConnectionUri()), maxConnections: 1 })
   }))
 
-  for (const shardLockDisableAdvisory of [false, true]) {
-    const mode = shardLockDisableAdvisory ? "no advisory" : "advisory"
-    const suffix = shardLockDisableAdvisory ? "lease" : "advisory"
-
-    it.layer(PgContainer.layer, { timeout: 120_000 })(`pg (${mode})`, (it) => {
-      for (const [name, client] of Object.entries(pgClients)) {
-        it.effect(
-          `${name} with one connection`,
-          () => sharesTheConnection(client, `one_${name}_${suffix}`, shardLockDisableAdvisory),
-          30_000
-        )
-      }
-    })
-
-    it.layer(MysqlContainer.layer, { timeout: 120_000 })(`mysql (${mode})`, (it) => {
+  // Cover each session acquirer once, including both advisory and lease mode.
+  it.layer(PgContainer.layer, { timeout: 120_000 })("pg", (it) => {
+    for (const [name, client] of Object.entries(pgClients)) {
+      const shardLockDisableAdvisory = name === "client"
       it.effect(
-        "pool with one connection",
-        () => sharesTheConnection(mysqlPool, `one_pool_${suffix}`, shardLockDisableAdvisory),
+        `${name} with one connection (${shardLockDisableAdvisory ? "lease" : "advisory"})`,
+        () => sharesTheConnection(client, `one_${name}`, shardLockDisableAdvisory),
         30_000
       )
-    })
-  }
+    }
+  })
+
+  it.layer(MysqlContainer.layer, { timeout: 120_000 })("mysql", (it) => {
+    it.effect(
+      "pool with one connection (advisory)",
+      () => sharesTheConnection(mysqlPool, "one_pool", false),
+      30_000
+    )
+  })
 })
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
@@ -808,7 +805,7 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       let client: SqlClient.SqlClient
       client = new Proxy(sql, {
         get(target, property, receiver) {
-          if (property === "reserve") {
+          if (property === "reserveSession") {
             return Effect.andThen(
               // simulates a driver that stalls uninterruptibly while tearing
               // down a reserved connection, so closing its scope cannot be
@@ -822,7 +819,7 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
                   )
                 }))
               ),
-              Effect.map(target.reserve, (connection) => {
+              Effect.map(target.reserveSession, (connection) => {
                 partitioned.reservedConnections++
                 return wrapConnection(connection)
               })

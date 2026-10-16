@@ -192,7 +192,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
   const transformFreeSql = sql.withoutTransforms()
   const client: SqlClient.SqlClient = new Proxy(transformFreeSql, {
     get(target, property, receiver) {
-      if (property === "reserve") {
+      if (property === "reserveSession") {
         return Effect.gen(function*() {
           const session: LockSession = { fault: undefined }
           currentSession = session
@@ -201,7 +201,7 @@ const makeLockFaultController = (sql: SqlClient.SqlClient) => {
               Effect.suspend(() => persistentFault === "hangRelease" ? releaseGate.await : Effect.void)
             )
           )
-          return wrapConnection(yield* target.reserve, session)
+          return wrapConnection(yield* target.reserveSession, session)
         })
       }
       if (property === "withoutTransforms") {
