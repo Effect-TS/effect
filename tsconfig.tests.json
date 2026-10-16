@@ -14,11 +14,7 @@
     "./packages/**/typetest/**/*.ts",
     "./packages/**/benchmark/**/*.ts"
   ],
-  "exclude": [
-    "**/node_modules/**",
-    "**/dist/**",
-    "./packages/platform/deno/**"
-  ],
+  "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
