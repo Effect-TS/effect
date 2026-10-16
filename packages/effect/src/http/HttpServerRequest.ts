@@ -1039,9 +1039,11 @@ const textDecoder = new TextDecoder()
  *
  * **Details**
  *
- * The host comes from the `host` header, defaulting to `localhost`, and the
- * protocol is `https` only when `x-forwarded-proto` is `https`; invalid URLs
- * return `Option.none`.
+ * The host comes from the `host` header, defaulting to `localhost`. The
+ * protocol is `x-forwarded-proto` when it is exactly `http` or `https`;
+ * otherwise it is `https` if `originalUrl` starts with `https:` and `http` if
+ * not. An absolute `url` keeps its own protocol and host. Invalid URLs return
+ * `Option.none`.
  *
  * @stability unstable
  * @category converting
@@ -1049,9 +1051,15 @@ const textDecoder = new TextDecoder()
  */
 export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
   const host = self.headers.host ?? "localhost"
-  const protocol = self.headers["x-forwarded-proto"] === "https" ? "https" : "http"
+  const forwardedProto = self.headers["x-forwarded-proto"]
+  const protocol = forwardedProto === "http" || forwardedProto === "https"
+    ? forwardedProto
+    : /^https:/i.test(self.originalUrl)
+    ? "https"
+    : "http"
   try {
-    return Option.some(new URL(self.url, `${protocol}://${host}`))
+    // The `.` prefix stops a path starting with `//` from replacing the host
+    return Option.some(new URL(self.url.startsWith("/") ? `.${self.url}` : self.url, `${protocol}://${host}`))
   } catch {
     return Option.none()
   }
