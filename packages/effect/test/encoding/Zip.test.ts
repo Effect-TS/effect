@@ -504,6 +504,9 @@ describe("Zip", () => {
           Uint8Array.from({ length: size }, () => random() & 63),
           Uint8Array.from({ length: size }, (_, i) => block[i % block.length])
         ])
+        // A match that copies from before a chunk that stored blocks filled
+        const noise = Uint8Array.from({ length: 90_000 }, random)
+        contents.push(concat(noise, noise.subarray(60_000, 70_000)))
         const archive = concat(
           ...contents.map((content) => {
             const data = deflateRawSync(content)
@@ -521,6 +524,37 @@ describe("Zip", () => {
         )
         for (const chunkSize of [7, archive.length]) {
           assert.deepStrictEqual((yield* decode(archive, chunkSize)).map(({ body }) => body), contents)
+        }
+      }))
+
+    it.effect("does not resolve matches against the output of earlier entries", () =>
+      Effect.gen(function*() {
+        // "b" refers to a preset dictionary holding the end of "a", so that a
+        // decoder that kept the output of "a" would reproduce it
+        const a = Uint8Array.from({ length: 65_536 }, (_, i) => (i * i) % 251)
+        const b = a.subarray(-1000)
+        const entry = (name: string, content: Uint8Array, data: Uint8Array) =>
+          concat(
+            localHeader(textEncoder.encode(name), {
+              method: 8,
+              crc: crc32(content),
+              compressedSize: data.length,
+              size: content.length
+            }),
+            data
+          )
+        const archive = concat(
+          entry("a", a, deflateRawSync(a)),
+          entry("b", b, deflateRawSync(b, { dictionary: a.subarray(-32_768) })),
+          endRecord
+        )
+        for (const chunkSize of [7, archive.length]) {
+          const output = yield* entries(archive, chunkSize).pipe(
+            Stream.mapEffect((entry) => Effect.map(Stream.mkUint8Array(entry.body), (body) => body.length)),
+            Stream.catch((error) => Stream.succeed(Zip.isZipError(error) ? error.kind : "defect")),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(output, [a.length, "InvalidData"])
         }
       }))
 

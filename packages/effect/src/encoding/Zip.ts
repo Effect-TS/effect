@@ -1198,6 +1198,8 @@ class Decoder {
   // Incremented whenever the current body is invalidated
   generation = 0
   private current: Current | undefined
+  // Shared by the inflaters of deflated entries
+  private inflateBuffer: Uint8Array | undefined
   // An error after which entry boundaries are lost, repeated by every call
   private failure: ZipError | undefined
   // Set when the current entry was read to its end but failed its checks
@@ -1464,7 +1466,9 @@ class Decoder {
     }
     return {
       header,
-      inflater: method === 8 ? new Inflater(this.queue) : undefined,
+      inflater: method === 8
+        ? new Inflater(this.queue, this.inflateBuffer ??= new Uint8Array(INFLATE_BUFFER_SIZE))
+        : undefined,
       descriptor,
       zip64,
       crc,
@@ -1503,7 +1507,8 @@ const isHeaderSignature = (signature: number): boolean =>
 
 const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
-const WINDOW_MASK = WINDOW_SIZE - 1
+// The window of earlier output, followed by up to OUTPUT_SIZE bytes of new output
+const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
 
 const LENGTH_BASE = [
   3,
@@ -1696,37 +1701,49 @@ const FIXED_LITERALS = (() => {
 // Distance codes 30 and 31 complete the fixed code but are invalid
 const FIXED_DISTANCES = huffman(new Uint8Array(32).fill(5), false)
 
-// Decompresses one deflate stream from the queue, reading no byte past its end
+// Decompresses one deflate stream from the queue, reading no byte past its end.
+// A decoder passes the same buffer to each of its inflaters, as only one runs
+// at a time.
 class Inflater {
-  private buffer = new Uint8Array(OUTPUT_SIZE)
+  private readonly buffer: Uint8Array
+  // Start of the output not handed out yet
+  private start = WINDOW_SIZE
   private readonly generator: Generator<number, number, void>
 
-  constructor(queue: ByteQueue) {
+  constructor(queue: ByteQueue, buffer: Uint8Array) {
+    this.buffer = buffer
     this.generator = this.run(queue)
   }
 
   // Returns decompressed bytes, `NeedInput`, or `undefined` once the stream has ended
   pull(): Uint8Array | undefined | typeof NeedInput {
+    const start = this.start
     // A finished generator returns `undefined` from later calls
-    const { done, value: position = 0 } = this.generator.next()
-    if (position === 0) return done ? undefined : NeedInput
-    if (position < OUTPUT_SIZE) return this.buffer.slice(0, position)
-    const out = this.buffer
-    this.buffer = new Uint8Array(OUTPUT_SIZE)
+    const { done, value: end = start } = this.generator.next()
+    if (end === start) return done ? undefined : NeedInput
+    const out = this.buffer.slice(start, end)
+    if (end === INFLATE_BUFFER_SIZE) {
+      // Keep the last output as the window
+      this.buffer.copyWithin(0, OUTPUT_SIZE)
+      this.start = WINDOW_SIZE
+    } else {
+      this.start = end
+    }
     return out
   }
 
-  // Yields the output position when the queue is empty or the output buffer is
-  // full, and returns it at the end; `pull` hands out the output, so each
-  // resumption starts at position zero. Bits are pulled one byte at a time only
-  // when a code needs them, so fewer than eight bits are held between codes and
-  // the final padding bits are the only ones dropped.
+  // Yields the output position when the queue is empty or the buffer is full,
+  // and returns it at the end. Output is written after the window, so matches
+  // copy within the buffer, and continues there once `pull` has handed out a
+  // full buffer. Bits are pulled one byte at a time only when a code needs
+  // them, so fewer than eight bits are held between codes and the final padding
+  // bits are the only ones dropped.
   private *run(queue: ByteQueue): Generator<number, number, void> {
-    const window = new Uint8Array(WINDOW_SIZE)
-    let buffer = this.buffer
-    let position = 0
-    let windowPosition = 0
-    let total = 0
+    const buffer = this.buffer
+    let position = WINDOW_SIZE
+    // Matches cannot reach before this index: until the buffer is first full,
+    // the window holds no output of this stream
+    let floor = WINDOW_SIZE
     let bitBuffer = 0
     let bitCount = 0
     let final = 0
@@ -1735,7 +1752,6 @@ class Inflater {
         const byte = queue.readByte()
         if (byte < 0) {
           yield position
-          position = 0
           continue
         }
         bitBuffer |= byte << bitCount
@@ -1749,10 +1765,7 @@ class Inflater {
         // Stored block: drop the bits up to the byte boundary
         bitBuffer = 0
         bitCount = 0
-        while (queue.length < 4) {
-          yield position
-          position = 0
-        }
+        while (queue.length < 4) yield position
         const length = queue.readByte() | (queue.readByte() << 8)
         const inverse = queue.readByte() | (queue.readByte() << 8)
         if (length !== (~inverse & 0xffff)) throw invalidData("stored block length is corrupt")
@@ -1760,27 +1773,16 @@ class Inflater {
         while (left > 0) {
           if (queue.length === 0) {
             yield position
-            position = 0
             continue
           }
-          const chunk = queue.takeSome(Math.min(left, OUTPUT_SIZE - position))
+          const chunk = queue.takeSome(Math.min(left, INFLATE_BUFFER_SIZE - position))
           buffer.set(chunk, position)
           position += chunk.length
-          if (chunk.length >= WINDOW_SIZE) {
-            window.set(chunk.subarray(chunk.length - WINDOW_SIZE))
-            windowPosition = 0
-          } else {
-            const first = Math.min(chunk.length, WINDOW_SIZE - windowPosition)
-            window.set(chunk.subarray(0, first), windowPosition)
-            if (first < chunk.length) window.set(chunk.subarray(first), 0)
-            windowPosition = (windowPosition + chunk.length) & WINDOW_MASK
-          }
-          total += chunk.length
           left -= chunk.length
-          if (position === OUTPUT_SIZE) {
+          if (position === INFLATE_BUFFER_SIZE) {
             yield position
-            position = 0
-            buffer = this.buffer
+            position = WINDOW_SIZE
+            floor = 0
           }
         }
         continue
@@ -1795,7 +1797,6 @@ class Inflater {
           const byte = queue.readByte()
           if (byte < 0) {
             yield position
-            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1813,7 +1814,6 @@ class Inflater {
             const byte = queue.readByte()
             if (byte < 0) {
               yield position
-              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1836,7 +1836,6 @@ class Inflater {
             const byte = queue.readByte()
             if (byte < 0) {
               yield position
-              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1854,7 +1853,6 @@ class Inflater {
             const byte = queue.readByte()
             if (byte < 0) {
               yield position
-              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1892,7 +1890,6 @@ class Inflater {
           const byte = queue.readByte()
           if (byte < 0) {
             yield position
-            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1903,14 +1900,11 @@ class Inflater {
         bitCount -= entry & 15
         const symbol = entry >>> 4
         if (symbol < 256) {
-          window[windowPosition] = symbol
-          windowPosition = (windowPosition + 1) & WINDOW_MASK
           buffer[position++] = symbol
-          total++
-          if (position === OUTPUT_SIZE) {
+          if (position === INFLATE_BUFFER_SIZE) {
             yield position
-            position = 0
-            buffer = this.buffer
+            position = WINDOW_SIZE
+            floor = 0
           }
           continue
         }
@@ -1924,7 +1918,6 @@ class Inflater {
             const byte = queue.readByte()
             if (byte < 0) {
               yield position
-              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1944,7 +1937,6 @@ class Inflater {
           const byte = queue.readByte()
           if (byte < 0) {
             yield position
-            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1962,7 +1954,6 @@ class Inflater {
             const byte = queue.readByte()
             if (byte < 0) {
               yield position
-              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1972,19 +1963,17 @@ class Inflater {
           bitBuffer >>>= distanceExtra
           bitCount -= distanceExtra
         }
-        if (distance > total) throw invalidData("distance is beyond the start of the data")
-        total += length
-        let from = (windowPosition - distance) & WINDOW_MASK
-        while (length-- > 0) {
-          const byte = window[from]
-          from = (from + 1) & WINDOW_MASK
-          window[windowPosition] = byte
-          windowPosition = (windowPosition + 1) & WINDOW_MASK
-          buffer[position++] = byte
-          if (position === OUTPUT_SIZE) {
+        if (distance > position - floor) throw invalidData("distance is beyond the start of the data")
+        while (length > 0) {
+          const end = Math.min(position + length, INFLATE_BUFFER_SIZE)
+          length -= end - position
+          // One byte at a time, as a match can repeat the bytes it writes
+          let from = position - distance
+          while (position < end) buffer[position++] = buffer[from++]
+          if (position === INFLATE_BUFFER_SIZE) {
             yield position
-            position = 0
-            buffer = this.buffer
+            position = WINDOW_SIZE
+            floor = 0
           }
         }
       }
