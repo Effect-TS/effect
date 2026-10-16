@@ -1722,6 +1722,19 @@ describe("Stream", () => {
 
   describe("mapEffect with concurrency", () => {
     for (const unordered of [false, true]) {
+      for (const concurrency of ["unbounded", Infinity] as const) {
+        it.effect(`waits for in-flight effects after upstream ends (concurrency: ${concurrency}, unordered: ${unordered})`, () =>
+          Effect.gen(function*() {
+            const fiber = yield* Stream.range(1, 5).pipe(
+              Stream.mapEffect((n) => Effect.as(Effect.sleep("10 millis"), n), { concurrency, unordered }),
+              Stream.runCollect,
+              Effect.forkChild
+            )
+            yield* TestClock.adjust("10 millis")
+            assert.deepStrictEqual((yield* Fiber.join(fiber)).sort(), [1, 2, 3, 4, 5])
+          }))
+      }
+
       it.effect(`fails when the mapping function throws (unordered: ${unordered})`, () =>
         Effect.gen(function*() {
           const boom = new Error("boom")
