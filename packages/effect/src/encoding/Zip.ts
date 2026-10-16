@@ -346,7 +346,8 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   without one, and end the stream at an entry that is too large rather than
  *   skip it.
  * - A `Checksum` or `SizeMismatch` `ZipError` raised when a body ends leaves
- *   the decoder at the next entry; other errors end the archive.
+ *   the decoder at the next entry if the data ended at its recorded compressed
+ *   size; other errors end the archive.
  * - The channel completes only when its input ends: input after the central
  *   directory is read and discarded, so that the upstream done value can be
  *   passed on.
@@ -1295,8 +1296,8 @@ class Decoder {
   }
 
   // Remembers errors that leave the decoder without entry boundaries. A
-  // checksum or size error of a fully read entry is not one of them, so the
-  // next entry can still be read.
+  // checksum or size error of an entry whose data ended at its compressed
+  // size is not one of them, so the next entry can still be read.
   private guard<A>(f: () => A): A {
     if (this.failure !== undefined) throw this.failure
     try {
@@ -1402,9 +1403,10 @@ class Decoder {
       return
     }
     const path = JSON.stringify(current.header.path)
-    // The entry was read to its end, so the next one can still be found
     this.current = undefined
-    this.recoverable = true
+    // Corrupt data can end elsewhere, where the next entry would be read from
+    // the content of this one
+    this.recoverable = current.actualCompressedSize === compressedSize
     if (current.actualCrc !== crc) {
       throw new ZipError({
         kind: "Checksum",
