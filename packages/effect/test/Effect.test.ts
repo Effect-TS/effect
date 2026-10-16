@@ -427,6 +427,28 @@ describe("Effect", () => {
         assert.strictEqual(cause, error)
       }))
 
+    it.effect("evaluates the error factory on each execution, not at construction", () =>
+      Effect.gen(function*() {
+        let calls = 0
+        const effect = Effect.fromOption(Option.none(), () => new Error(`Missing value ${++calls}`))
+        assert.strictEqual(calls, 0)
+        const first = yield* Effect.flip(effect)
+        const second = yield* Effect.flip(effect)
+        assert.strictEqual(calls, 2)
+        assert.notStrictEqual(first, second)
+      }))
+
+    it.effect("captures a throwing error factory as a runtime defect", () => {
+      const defect = new Error("Error factory failed")
+      const effect = Effect.fromOption(Option.none(), () => {
+        throw defect
+      })
+      return Effect.gen(function*() {
+        const exit = yield* Effect.exit(effect)
+        assertExitDefect(exit, defect)
+      })
+    })
+
     it.effect("from a none with a custom error data-last", () =>
       Effect.gen(function*() {
         const error = new Error("Missing value")

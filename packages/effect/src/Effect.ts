@@ -1889,7 +1889,9 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect<A, E> = i
  * `Option.some` becomes a successful effect with the contained value, while
  * `Option.none` becomes a failed effect. By default the failure is a
  * `NoSuchElementError`, but you can provide an `onNone` callback to customize
- * the error value.
+ * the error value. For `Option.none`, `onNone` is evaluated on each execution,
+ * not when the effect is constructed. It is never called for `Option.some`.
+ * If `onNone` throws, the effect dies with the thrown value as a defect.
  *
  * **Example** (Converting an Option into an Effect)
  *
