@@ -750,7 +750,7 @@ const validate = (header: Header): void => {
   }
 }
 
-interface Record {
+interface EntryRecord {
   readonly name: Uint8Array
   readonly flags: number
   readonly method: number
@@ -766,7 +766,7 @@ interface Record {
 
 interface Streaming {
   readonly header: Header
-  readonly record: Record
+  readonly record: EntryRecord
   readonly zip64: boolean
   readonly descriptor: boolean
   crc: number
@@ -774,9 +774,9 @@ interface Streaming {
   compressedSize: number
 }
 
-const timestampLength = (record: Record): number => record.seconds === undefined ? 0 : 9
+const timestampLength = (record: EntryRecord): number => record.seconds === undefined ? 0 : 9
 
-const writeTimestamp = (bytes: Uint8Array, view: DataView, at: number, record: Record): void => {
+const writeTimestamp = (bytes: Uint8Array, view: DataView, at: number, record: EntryRecord): void => {
   if (record.seconds === undefined) return
   view.setUint16(at, EXTRA_TIMESTAMP, true)
   view.setUint16(at + 2, 5, true)
@@ -784,7 +784,7 @@ const writeTimestamp = (bytes: Uint8Array, view: DataView, at: number, record: R
   view.setUint32(at + 5, record.seconds, true)
 }
 
-const localHeader = (record: Record, zip64: boolean): Uint8Array => {
+const localHeader = (record: EntryRecord, zip64: boolean): Uint8Array => {
   const extraLength = (zip64 ? 20 : 0) + timestampLength(record)
   const bytes = new Uint8Array(30 + record.name.length + extraLength)
   const view = new DataView(bytes.buffer)
@@ -812,7 +812,7 @@ const localHeader = (record: Record, zip64: boolean): Uint8Array => {
   return bytes
 }
 
-const dataDescriptor = (record: Record, wide: boolean): Uint8Array => {
+const dataDescriptor = (record: EntryRecord, wide: boolean): Uint8Array => {
   const bytes = new Uint8Array(wide ? 24 : 16)
   const view = new DataView(bytes.buffer)
   view.setUint32(0, DESCRIPTOR, true)
@@ -827,7 +827,7 @@ const dataDescriptor = (record: Record, wide: boolean): Uint8Array => {
   return bytes
 }
 
-const centralHeader = (record: Record): Uint8Array => {
+const centralHeader = (record: EntryRecord): Uint8Array => {
   // ZIP64 holds only the fields that overflow, in this order
   const wide: Array<number> = []
   if (record.size >= MAX32) wide.push(record.size)
@@ -873,7 +873,7 @@ class Writer {
   private chunks: Array<Uint8Array> = []
   buffered = 0
   private offset = 0
-  private readonly records: Array<Record> = []
+  private readonly records: Array<EntryRecord> = []
   private current: Streaming | undefined
 
   // Hands out the buffered output, joining runs of small chunks; call only
@@ -919,7 +919,7 @@ class Writer {
     this.buffered += bytes.length
   }
 
-  private record(header: Header, flags: number): Record {
+  private record(header: Header, flags: number): EntryRecord {
     const name = textEncoder.encode(header.path)
     if (name.length > MAX16) throw invalidHeader(`path ${JSON.stringify(header.path)} is longer than 65535 bytes`)
     const { date, time } = toDos(header.mtime)
