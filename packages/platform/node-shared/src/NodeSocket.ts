@@ -95,7 +95,8 @@ export const makeNet = (
   options: Net.NetConnectOpts & {
     readonly openTimeout?: Duration.Input | undefined
     /**
-     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer is supplied.
+     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer or Infinity is supplied.
+     * Use Infinity for unbounded batching.
      */
     readonly chunkSize?: number | undefined
   }
@@ -158,7 +159,8 @@ export const fromDuplex = <RO>(
   options?: {
     readonly openTimeout?: Duration.Input | undefined
     /**
-     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer is supplied.
+     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer or Infinity is supplied.
+     * Use Infinity for unbounded batching.
      */
     readonly chunkSize?: number | undefined
     readonly tlsServer?: boolean | undefined
@@ -170,7 +172,8 @@ export const fromDuplex = <RO>(
     const openServices = fiber.context as Context.Context<RO>
     const isServer = options?.tlsServer === true
     const requestedChunkSize = options?.chunkSize ?? 4096
-    const chunkSize = Number.isSafeInteger(requestedChunkSize) && requestedChunkSize > 0
+    const chunkSize = requestedChunkSize === Infinity ||
+        (Number.isSafeInteger(requestedChunkSize) && requestedChunkSize > 0)
       ? requestedChunkSize
       : 4096
     const secureEvent = isServer ? "secure" : "secureConnect"
@@ -580,7 +583,8 @@ export const makeTls = (
   options: Tls.ConnectionOptions & {
     readonly openTimeout?: Duration.Input | undefined
     /**
-     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer is supplied.
+     * Maximum chunks per pull. Defaults to 4096 unless a positive safe integer or Infinity is supplied.
+     * Use Infinity for unbounded batching.
      */
     readonly chunkSize?: number | undefined
   }
