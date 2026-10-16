@@ -814,7 +814,13 @@ export const Declaration: new(
     let run: ReturnType<typeof this.run>
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
-      return (run ??= this.run(this.typeParameters))(input, this, options)
+      // Keep lazy factory failures throwable and retryable.
+      run ??= this.run(this.typeParameters)
+      try {
+        return run(input, this, options)
+      } catch (error) {
+        return Effect.die(error)
+      }
     }
   }
   private _rebuild(
