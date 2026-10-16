@@ -28,9 +28,10 @@ runtime dependencies other than the application's Effect peer.
 
 On Node.js, compose the individual layers from
 `@effect/platform-node/NodeCrypto`: `layerMac`, `layerSignature`, `layerAead`,
-`layerDigest`, and `layerSecureRandom`. The Mac, Signature, and Aead layers require
+`layerDigest`, and `layerSecureRandom`. These platform layers provide their own
 SecureRandom. For other runtimes, compose the corresponding `layerWebCrypto`
-layers from `effect/crypto`. Key import/export uses `KeyFormat` and the
+layers from `effect/crypto`, providing SecureRandom to Mac, Signature, and Aead.
+Key import/export uses `KeyFormat` and the
 `WebCrypto.WebCrypto` reference, which defaults to `globalThis.crypto`. When
 injecting a different backend with `WebCrypto.layer(crypto)`, provide it both to
 the service layers and to the program so key helpers use the same backend.
