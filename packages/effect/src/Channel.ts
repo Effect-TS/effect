@@ -6884,7 +6884,23 @@ export const decodeText = <Err, Done>(
     Effect.sync(() => {
       const decoder = new TextDecoder(encoding, options)
       const streamOptions = { stream: true }
-      return Effect.map(upstream, Arr.map((line) => decoder.decode(line, streamOptions)))
+      let done: Option.Option<Done> = Option.none()
+      return Effect.suspend(() => {
+        if (done._tag === "Some") {
+          return Cause.done(done.value)
+        }
+        return Pull.matchEffect(upstream, {
+          onSuccess: (chunk) => Effect.sync(() => Arr.map(chunk, (line) => decoder.decode(line, streamOptions))),
+          onFailure: Effect.failCause,
+          onDone: (value) => {
+            done = Option.some(value)
+            const remaining = decoder.decode()
+            return remaining.length > 0
+              ? Effect.succeed([remaining] as Arr.NonEmptyReadonlyArray<string>)
+              : Cause.done(value)
+          }
+        })
+      })
     })
   )
 
