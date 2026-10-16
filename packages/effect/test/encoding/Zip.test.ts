@@ -208,6 +208,15 @@ describe("Zip", () => {
         assert.deepStrictEqual((yield* decode(bytes)).map(({ body }) => text(body)), contents)
       }))
 
+    it.effect("deflates content held in a SharedArrayBuffer", () =>
+      Effect.gen(function*() {
+        // CompressionStream rejects views of a SharedArrayBuffer
+        const content = new Uint8Array(new SharedArrayBuffer(3))
+        content.set(textEncoder.encode("abc"))
+        const output = yield* decode(yield* encode([Zip.file("a", content), Zip.fileStream("b", Stream.make(content))]))
+        assert.deepStrictEqual(output.map(({ body }) => text(body)), ["abc", "abc"])
+      }))
+
     it.effect("writes Unix modes, directory attributes and UTF-8 flags", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([
