@@ -154,70 +154,62 @@ export function compile(
     return parser
   }
   let encodingParsers: ReadonlyArray<Parser> | undefined
-  const applyChecks = (
-    result: Effect.Effect<unknown, SchemaIssue.Issue, any>,
-    input: unknown,
-    options: SchemaAST.ParseOptions
-  ) => {
-    if (encodingChecks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const output = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (input !== InternalParser.missing && output !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
+  const parseChecks: Parser = (input, options) => {
+    // Keep lazy child compilation outside the callback exception boundary.
+    let result = parser(input, options)
+    try {
+      if (encodingChecks && !options.disableChecks) {
+        if (effectIsExit(result)) {
+          if (result._tag === "Success") {
+            const output = result === InternalParser.sameExit
+              ? input
+              : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+            if (input !== InternalParser.missing && output !== InternalParser.missing) {
+              const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
+              if (issues) {
+                result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
+              }
             }
           }
+        } else {
+          result = Effect.flatMap(result, (value) => {
+            if (input !== InternalParser.missing && value !== InternalParser.missing) {
+              const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
+              if (issues) {
+                return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
+              }
+            }
+            return Effect.succeed(value)
+          })
         }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (input !== InternalParser.missing && value !== InternalParser.missing) {
-            const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
-            }
-          }
-          return Effect.succeed(value)
-        })
       }
-    }
 
-    if (checks && !options.disableChecks) {
-      if (effectIsExit(result)) {
-        if (result._tag === "Success") {
-          const value = result === InternalParser.sameExit
-            ? input
-            : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
-          if (value === InternalParser.missing) return result
-          const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-          if (issues) {
-            result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
-          }
-        }
-      } else {
-        result = Effect.flatMap(result, (value) => {
-          if (value !== InternalParser.missing) {
+      if (checks && !options.disableChecks) {
+        if (effectIsExit(result)) {
+          if (result._tag === "Success") {
+            const value = result === InternalParser.sameExit
+              ? input
+              : (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+            if (value === InternalParser.missing) return result
             const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
             if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
+              result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
             }
           }
-          return Effect.succeed(value)
-        })
+        } else {
+          result = Effect.flatMap(result, (value) => {
+            if (value !== InternalParser.missing) {
+              const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
+              if (issues) {
+                return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
+              }
+            }
+            return Effect.succeed(value)
+          })
+        }
       }
-    }
 
-    return result
-  }
-  const parseChecks: Parser = (input, options) => {
-    // Child parsing may compile lazy schemas. Only catch check callbacks here,
-    // so compilation failures still throw and can be retried.
-    const result = parser(input, options)
-    try {
-      return applyChecks(result, input, options)
+      return result
     } catch (error) {
       return Effect.die(error)
     }

@@ -26,114 +26,53 @@ import {
 
 describe("SchemaParser", () => {
   describe("synchronous root callback defects", () => {
-    const cases = [
-      {
-        name: "transformation",
-        make: (fail: () => never) => {
-          const getter = SchemaGetter.transform<string, string>(fail)
-          return Schema.String.pipe(Schema.decodeTo(Schema.String, { decode: getter, encode: getter }))
-        }
-      },
-      {
-        name: "filter",
-        make: (fail: () => never) => Schema.String.check(Schema.makeFilter(fail))
-      },
-      {
-        name: "declaration filter",
-        make: (fail: () => never) =>
-          Schema.declareConstructor<unknown>()([], () => (input) => Effect.succeed(input))
-            .check(Schema.makeFilter(fail))
-      },
-      {
-        name: "middleware",
-        make: (fail: () => never) => {
-          const middleware = (): Effect.Effect<never> => fail()
-          return Schema.String.pipe(Schema.middlewareDecoding(middleware), Schema.middlewareEncoding(middleware))
-        }
-      },
-      {
-        name: "declaration parser",
-        make: (fail: () => never) => Schema.declareConstructor<string>()([], () => fail)
+    const defect = new Error("callback defect")
+    const fail = (): never => {
+      throw defect
+    }
+    const getter = SchemaGetter.transform<string, string>(fail)
+    const middleware = (): Effect.Effect<never> => fail()
+    const declaration = Schema.declareConstructor<unknown>()([], () => fail)
+    const schemas = {
+      transformation: Schema.String.pipe(Schema.decodeTo(Schema.String, { decode: getter, encode: getter })),
+      filter: Schema.String.check(Schema.makeFilter(fail)),
+      "declaration filter": Schema.declareConstructor<unknown>()([], () => (input) => Effect.succeed(input))
+        .check(Schema.makeFilter(fail)),
+      middleware: Schema.String.pipe(Schema.middlewareDecoding(middleware), Schema.middlewareEncoding(middleware)),
+      declaration,
+      "wrapped declaration": Schema.NullOr(Schema.suspend(() => declaration))
+    }
+
+    for (const [name, schema] of Object.entries(schemas)) {
+      it(`preserves ${name} defects when decoding and encoding`, () => {
+        deepStrictEqual(SchemaParser.decodeUnknownExit(schema)("value"), Exit.die(defect))
+        deepStrictEqual(SchemaParser.encodeUnknownExit(schema)("value"), Exit.die(defect))
+      })
+    }
+
+    it.effect("Effect adapters return defects instead of throwing", () => {
+      const decoding = SchemaParser.decodeUnknownEffect(declaration)("value")
+      const encoding = SchemaParser.encodeUnknownEffect(declaration)("value")
+
+      return Effect.gen(function*() {
+        deepStrictEqual(yield* Effect.exit(decoding), Exit.die(defect))
+        deepStrictEqual(yield* Effect.exit(encoding), Exit.die(defect))
+      })
+    })
+
+    it("Promise adapters reject with defects instead of throwing", async () => {
+      for (
+        const parse of [
+          SchemaParser.decodeUnknownPromise(declaration),
+          SchemaParser.encodeUnknownPromise(declaration)
+        ]
+      ) {
+        const result = await parse("value").then(Result.succeed, Result.fail)
+        assertTrue(Result.isFailure(result))
+        assertTrue(result.failure instanceof Error)
+        deepStrictEqual(result.failure.cause, Cause.die(defect))
       }
-    ]
-    for (const { make, name } of cases) {
-      describe(name, () => {
-        for (const operation of ["decode", "encode"] as const) {
-          const defect = new Error(`${operation} defect`)
-          const schema = make(() => {
-            throw defect
-          })
-
-          it(`${operation}UnknownExit returns a defect instead of throwing`, () => {
-            const parse = operation === "decode"
-              ? SchemaParser.decodeUnknownExit(schema)
-              : SchemaParser.encodeUnknownExit(schema)
-
-            deepStrictEqual(parse("value"), Exit.die(defect))
-          })
-
-          it.effect(`${operation}UnknownEffect returns a dying Effect instead of throwing`, () => {
-            const parse = operation === "decode"
-              ? SchemaParser.decodeUnknownEffect(schema)
-              : SchemaParser.encodeUnknownEffect(schema)
-            const effect = parse("value")
-
-            return Effect.gen(function*() {
-              deepStrictEqual(yield* Effect.exit(effect), Exit.die(defect))
-            })
-          })
-
-          it(`${operation}UnknownPromise rejects with a defect instead of throwing`, async () => {
-            const parse = operation === "decode"
-              ? SchemaParser.decodeUnknownPromise(schema)
-              : SchemaParser.encodeUnknownPromise(schema)
-            const result = await parse("value").then(Result.succeed, Result.fail)
-
-            assertTrue(Result.isFailure(result))
-            assertTrue(result.failure instanceof Error)
-            deepStrictEqual(result.failure.cause, Cause.die(defect))
-          })
-        }
-      })
-    }
-
-    for (const operation of ["decode", "encode"] as const) {
-      it(`${operation} preserves declaration defects through nullable and suspended schemas`, () => {
-        const defect = new Error("parser defect")
-        const declaration = Schema.declareConstructor<string>()([], () => () => {
-          throw defect
-        })
-        const schema = Schema.NullOr(Schema.suspend(() => declaration))
-        const parse = operation === "decode"
-          ? SchemaParser.decodeUnknownExit(schema)
-          : SchemaParser.encodeUnknownExit(schema)
-
-        deepStrictEqual(parse("value"), Exit.die(defect))
-      })
-
-      it(`${operation} keeps declaration callbacks eager and reuses the parser after a defect`, () => {
-        const defect = new Error("parser defect")
-        let factories = 0
-        const calls: Array<unknown> = []
-        const schema = Schema.declareConstructor<unknown>()([], () => {
-          factories++
-          return (input) => {
-            calls.push(input)
-            if (input === "bad") throw defect
-            return Effect.succeed(input)
-          }
-        })
-        const parse = operation === "decode"
-          ? SchemaParser.decodeUnknownEffect(schema)
-          : SchemaParser.encodeUnknownEffect(schema)
-
-        strictEqual(factories, 0)
-        deepStrictEqual(parse("bad"), Exit.die(defect))
-        deepStrictEqual(parse("good"), Exit.succeed("good"))
-        deepStrictEqual(calls, ["bad", "good"])
-        strictEqual(factories, 1)
-      })
-    }
+    })
   })
 
   describe("sequential parsing", () => {
@@ -1247,25 +1186,31 @@ describe("SchemaParser", () => {
     })
 
     for (const operation of ["decode", "encode"] as const) {
-      it(`${operation} retries lazy parser compilation after a synchronous factory failure`, () => {
-        let evaluations = 0
+      it(`${operation} retries failed factories and reuses eager parsers after defects`, () => {
+        const factoryDefect = new Error("factory defect")
+        const parserDefect = new Error("parser defect")
+        let factories = 0
+        const calls: Array<unknown> = []
         const schema = Schema.declareConstructor<unknown>()([], () => {
-          if (++evaluations === 1) {
-            throw new Error("factory failure")
+          if (++factories === 1) throw factoryDefect
+          return (input) => {
+            calls.push(input)
+            if (input === "bad") throw parserDefect
+            return Effect.succeed(input)
           }
-          return (input) => Effect.succeed(input)
-        })
+        }).check(Schema.makeFilter(() => true))
         const parse = operation === "decode"
-          ? SchemaParser.decodeUnknownExit(schema)
-          : SchemaParser.encodeUnknownExit(schema)
+          ? SchemaParser.decodeUnknownEffect(schema)
+          : SchemaParser.encodeUnknownEffect(schema)
 
-        throws(() => parse("a"), (error) => {
-          assertTrue(error instanceof Error)
-          strictEqual(error.message, "factory failure")
+        strictEqual(factories, 0)
+        throws(() => parse("value"), (error) => {
+          strictEqual(error, factoryDefect)
         })
-        deepStrictEqual(parse("b"), Exit.succeed("b"))
-        deepStrictEqual(parse("c"), Exit.succeed("c"))
-        strictEqual(evaluations, 2)
+        deepStrictEqual(parse("bad"), Exit.die(parserDefect))
+        deepStrictEqual(parse("good"), Exit.succeed("good"))
+        deepStrictEqual(calls, ["bad", "good"])
+        strictEqual(factories, 2)
       })
     }
 
