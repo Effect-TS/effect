@@ -1125,10 +1125,9 @@ class Parser {
       this.pending = [rest]
       this.pendingStart = this.base + i
       this.pendingLength = rest.length
+      // Brings the scanner to the end of the incomplete token
       this.scanner.reset(S_START)
-      if (this.scanner.scan(rest, 0) !== -1) {
-        throw new Error("Xml: the token scanner and parser disagree")
-      }
+      this.scanner.scan(rest, 0)
       this.checkPending()
     }
   }
