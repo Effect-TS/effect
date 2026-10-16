@@ -58,6 +58,29 @@ describe("Hydration", () => {
     }
   })
 
+  it("preserves client state when a superseded stream cannot be encoded", async () => {
+    const atom = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.initial()).pipe(
+      Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+    )
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      server.mount(atom)
+      const state = Hydration.dehydrate(server, { encodeInitialAs: "promise" })
+      Hydration.hydrate(client, state)
+      const result = AsyncResult.success(42)
+      client.set(atom, result)
+
+      server.set(atom, AsyncResult.success(0.5))
+      await Hydration.toValues(state)[0].resultPromise
+
+      assert.deepStrictEqual(client.get(atom), result)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
     Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
   )
