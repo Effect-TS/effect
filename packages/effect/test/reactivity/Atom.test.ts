@@ -5,6 +5,8 @@ import {
   Context,
   Deferred,
   Effect,
+  Exit,
+  Fiber,
   Hash,
   Latch,
   Layer,
@@ -14,6 +16,7 @@ import {
   References,
   Result,
   Schema,
+  Scope,
   Stream,
   SubscriptionRef
 } from "effect"
@@ -344,6 +347,34 @@ describe("Atom", { concurrent: false }, () => {
         yield* release.open
         registry.dispose()
       }
+    }))
+
+  it.effect("registry layer scope waits for asynchronous runtime layer finalizers", () =>
+    Effect.gen(function*() {
+      const events: Array<string> = []
+      const started = yield* Deferred.make<void>()
+      const release = yield* Latch.make()
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.addFinalizer(() =>
+        Deferred.succeed(started, void 0).pipe(
+          Effect.andThen(release.await),
+          Effect.andThen(Effect.sync(() => events.push("layer released")))
+        )
+      )))
+      const scope = yield* Scope.make()
+      const registry = Context.get(yield* Layer.buildWithScope(AtomRegistry.layer, scope), AtomRegistry.AtomRegistry)
+      registry.mount(runtime.atom(Effect.void))
+
+      const closing = yield* Scope.close(scope, Exit.void).pipe(
+        Effect.andThen(Effect.sync(() => events.push("scope closed"))),
+        Effect.forkChild
+      )
+      yield* Deferred.await(started)
+      // `started` resumes this fiber inside the closing call stack
+      yield* Effect.yieldNow
+      yield* release.open
+      yield* Fiber.join(closing)
+
+      assert.deepStrictEqual(events, ["layer released", "scope closed"])
     }))
 
   it("default runtime factories build layers once per registry", () => {
