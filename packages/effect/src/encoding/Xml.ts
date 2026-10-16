@@ -1041,7 +1041,10 @@ class Parser {
         this.checkPending()
         return
       }
-      this.load(this.pending.join("") + chunk, this.pendingStart)
+      // Joining makes a flat string, which V8 reads faster than the rope that
+      // concatenation makes
+      this.pending.push(chunk)
+      this.load(this.pending.join(""), this.pendingStart)
       this.pending = undefined
     } else {
       this.load(chunk, this.received - chunk.length)
