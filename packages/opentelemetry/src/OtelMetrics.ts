@@ -80,12 +80,8 @@ export const registerProducer = (
   }
 ): Effect.Effect<Array<any>, never, Scope.Scope> =>
   Effect.acquireRelease(
-    Effect.sync(() => {
-      const reader = metricReader()
-      const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
-      readers.forEach((reader) => reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self))
-      return readers
-    }),
+    // Install cleanup before binding so a later failure cannot leak earlier readers.
+    Effect.sync(() => [] as Array<MetricReader>),
     (readers) =>
       Effect.promise(() =>
         Promise.all(
@@ -96,6 +92,17 @@ export const registerProducer = (
         Effect.interruptible,
         Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
       )
+  ).pipe(
+    Effect.tap((readers) =>
+      Effect.sync(() => {
+        const reader = metricReader()
+        const pending: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
+        for (const reader of pending) {
+          reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self)
+          readers.push(reader)
+        }
+      })
+    )
   )
 
 /**
