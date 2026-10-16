@@ -15,6 +15,7 @@ import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { constVoid, dual } from "../Function.ts"
+import { shouldHydrate } from "../internal/hydration.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
@@ -479,10 +480,13 @@ class RegistryImpl implements AtomRegistry {
       while (target.initialValueTarget) {
         target = target.initialValueTarget
       }
-      if (target === atom) {
-        node.setValue(decoded)
-      } else {
-        this.ensureNode(target).setInitialValue(decoded)
+      const targetNode = target === atom ? node : this.ensureNode(target)
+      if (shouldHydrate(targetNode._value, decoded)) {
+        if (target === atom) {
+          node.setValue(decoded)
+        } else {
+          targetNode.setInitialValue(decoded)
+        }
       }
     }
     return node
