@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Return typed request failures and release upload resources when FormData file streams fail in the Node HTTP and Undici clients.
+Fix `NodeHttpClient.layerNodeHttp` and `layerUndici` leaving a request pending with an unhandled rejection when an `HttpBody.formData` file stream fails. The request now fails with a typed `HttpClientError` and releases its file streams and socket.

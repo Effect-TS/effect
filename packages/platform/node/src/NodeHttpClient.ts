@@ -231,11 +231,7 @@ export const makeUndici = Effect.gen(function*() {
                 cause
               })
             })
-        }).pipe(Effect.onError(() =>
-          Effect.sync(() => {
-            if (request.body._tag === "FormData" && body instanceof Readable) body.destroy()
-          })
-        ))
+        })
       ),
       Effect.map((response) => new UndiciResponse(request, response, url.href.split("#")[0]))
     )
@@ -270,8 +266,8 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
 }
 
 const encodeFormData = (formData: FormData): { readonly body: Readable; readonly contentType: string } => {
-  // Do not use Response(FormData): some Node versions detach file read errors
-  // from the encoded stream, leaving the request pending with an unhandled rejection.
+  // Not Response(FormData): on some Node versions a failing file stream leaves
+  // its body pending and rejects a detached promise instead.
   const boundary = `----effect-${randomUUID()}`
   const encoder = new TextEncoder()
   const normalize = (value: string) => value.replace(/\r?\n|\r/g, "\r\n")
@@ -296,7 +292,6 @@ const encodeFormData = (formData: FormData): { readonly body: Readable; readonly
             yield chunk.value
           }
         } finally {
-          // Cancellation also covers a consumer stopping midway through a file.
           await reader.cancel().catch(() => {})
           reader.releaseLock()
           reader = undefined
@@ -314,7 +309,7 @@ const encodeFormData = (formData: FormData): { readonly body: Readable; readonly
         else controller.enqueue(chunk.value)
       },
       async cancel() {
-        // Interrupt a pending read before waiting for the generator to finish.
+        // A pending file read would otherwise block the generator from finishing.
         await reader?.cancel().catch(() => {})
         await chunks.return(undefined)
       }
@@ -666,17 +661,13 @@ const sendBody = (
 
         return Effect.tryPromise({
           try: async () => {
-            // Use the request signal, not the sending fiber: raceFirst stops
-            // that fiber when headers arrive, but the upload may still be active.
-            // Destroying a connecting socket can leave the peer with an idle
-            // connection. Finish connecting before consuming a fallible upload.
-            try {
-              const socket = nodeRequest.socket ?? (await once(nodeRequest, "socket", { signal }))[0]
-              if (socket.connecting) await once(socket, "connect", { signal })
-              await pipeline(encoded.body, nodeRequest, { signal })
-            } finally {
-              encoded.body.destroy()
-            }
+            // The sending fiber is interrupted once headers arrive, so the upload
+            // follows the request signal instead. Wait for the socket to connect
+            // first: destroying a connecting socket can leave the server with an
+            // idle connection.
+            const socket = nodeRequest.socket ?? (await once(nodeRequest, "socket", { signal }))[0]
+            if (socket.connecting) await once(socket, "connect", { signal })
+            await pipeline(encoded.body, nodeRequest, { signal })
           },
           catch: (cause) =>
             new Error.HttpClientError({
