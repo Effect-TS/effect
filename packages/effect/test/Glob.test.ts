@@ -22,12 +22,18 @@ const cases: ReadonlyArray<{
   { pattern: "{a,{b,c}d}", matches: ["a", "bd", "cd"], rejects: ["b", "d"] },
   { pattern: "{a,b/c}/x", matches: ["a/x", "b/c/x"], rejects: ["b/x"] },
   { pattern: "{a}", matches: ["{a}"], rejects: ["a"] },
+  { pattern: "[{a,b}]", matches: ["{", ",", "}", "a", "b"], rejects: ["[a]", "c"] },
+  { pattern: "[]{a,b}]", matches: ["]", "{", "b"], rejects: ["[]a]", "c"] },
+  { pattern: "{[,]x,b}", matches: [",x", "b"], rejects: ["[", "]x"] },
   { pattern: "[ab", matches: ["[ab"], rejects: ["a"] },
   { pattern: "\\*.ts", matches: ["*.ts"], rejects: ["a.ts"] },
   { pattern: "!(a)", matches: ["!(a)"], rejects: ["b"] },
   { pattern: "dir/", matches: ["dir/"], rejects: ["dir", "dir/a"] },
+  { pattern: "**/.", matches: [], rejects: ["a", "a/", "a/b"] },
+  { pattern: "**/..", matches: [], rejects: ["..", "a/.."] },
   { pattern: "/abs/*.ts", matches: ["/abs/a.ts"], rejects: ["abs/a.ts"] },
   { pattern: "C:/x/*", matches: ["C:/x/a"], rejects: ["x/a"] },
+  { pattern: "//server/share/*", matches: [], rejects: ["//server/share/a", "/server/share/a"] },
   { pattern: "**", matches: ["a/b"], rejects: ["/a", "C:/a"] }
 ]
 
@@ -51,6 +57,13 @@ describe("Glob", () => {
       const glob = Glob.make(pattern)
       assertFalse(Glob.match(glob, "a".repeat(20)))
       assertTrue(Glob.match(glob, pattern))
+    })
+
+    it("matches repeated wildcards without exponential backtracking", () => {
+      const glob = Glob.make("*a".repeat(15) + "b")
+      const start = performance.now()
+      assertFalse(Glob.match(glob, "a".repeat(30)))
+      assertTrue(performance.now() - start < 500)
     })
 
     it("compiles adversarial patterns without overflowing", () => {
