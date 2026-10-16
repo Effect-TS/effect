@@ -20,7 +20,6 @@ import { constNull, constUndefined, dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
-import { closeOnShortCircuit } from "./internal/generator.ts"
 import * as option from "./internal/option.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
@@ -2433,19 +2432,16 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
   let state: IteratorResult<any> = iterator.next()
   while (!state.done) {
     const current = state.value
-    if (isNone(current)) {
-      return closeOnShortCircuit(
-        iterator,
-        current,
-        isNone,
-        (yielded) => yielded.value,
-        some
-      )
-    }
-    state = iterator.next(current.value as never)
+    state = isNone(current)
+      ? iterator.return(genCloseSentinel as never)
+      : iterator.next(current.value as never)
   }
-  return some(state.value)
+  return state.value === genCloseSentinel ? none() : some(state.value)
 }
+
+// Passed to `iterator.return` on `None`. Reaching completion unchanged means no
+// `finally` returned; any other value, including `undefined`, is a `finally` return.
+const genCloseSentinel = Symbol("~effect/Option/gen/CloseSentinel")
 
 /**
  * Creates a `Reducer` for `Option<A>` that prioritizes the first non-`None`

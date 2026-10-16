@@ -17,7 +17,6 @@ import { constNull, constUndefined, dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
-import { closeOnShortCircuit } from "./internal/generator.ts"
 import * as option_ from "./internal/option.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
@@ -1537,22 +1536,23 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
 export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
   const f = args.length === 1 ? args[0] : args[1].bind(args[0])
   const iterator = f()
+  let failure: Result<any, any> | undefined
   let state: IteratorResult<any> = iterator.next()
   while (!state.done) {
     const current = state.value
     if (isFailure(current)) {
-      return closeOnShortCircuit(
-        iterator,
-        current,
-        isFailure,
-        (yielded) => yielded.success,
-        succeed
-      )
+      failure = current
+      state = iterator.return(genCloseSentinel as never)
+    } else {
+      state = iterator.next(current.success as never)
     }
-    state = iterator.next(current.success as never)
   }
-  return succeed(state.value) as any
+  return (state.value === genCloseSentinel ? failure : succeed(state.value)) as any
 }
+
+// Passed to `iterator.return` on a failure. Reaching completion unchanged means no
+// `finally` returned; any other value, including `undefined`, is a `finally` return.
+const genCloseSentinel = Symbol("~effect/Result/gen/CloseSentinel")
 
 // -------------------------------------------------------------------------------------
 // do notation
