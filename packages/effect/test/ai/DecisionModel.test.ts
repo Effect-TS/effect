@@ -262,7 +262,7 @@ describe("DecisionModel", () => {
 
   it.effect("decide returns answers keyed by decision with usage", () =>
     Effect.gen(function*() {
-      const { answers, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+      const { answers, metadata, usage } = yield* DecisionModel.decide(TicketTriage, { input: ticket })
 
       assert.deepStrictEqual(Object.keys(answers).sort(), ["department", "frustration", "urgent"])
 
@@ -281,6 +281,7 @@ describe("DecisionModel", () => {
 
       assert.strictEqual(usage.inputTokens, 12)
       assert.strictEqual(usage.outputTokens, undefined)
+      assert.deepStrictEqual(metadata, {})
     }).pipe(
       Effect.provide(succeedWith(triageAnswers, { inputTokens: 12, outputTokens: undefined }))
     ))
@@ -302,17 +303,6 @@ describe("DecisionModel", () => {
           metadata: { provider: { cost: 0.002 } }
         })
       ))
-    ))
-
-  it.effect("decide returns empty metadata when the provider reports none", () =>
-    Effect.gen(function*() {
-      const response = yield* DecisionModel.decide(TicketTriage, { input: ticket })
-
-      assert.isFalse("id" in response)
-      assert.isFalse("modelId" in response)
-      assert.deepStrictEqual(response.metadata, {})
-    }).pipe(
-      Effect.provide(succeedWith(triageAnswers))
     ))
 
   it.effect("classify and rate retain distributions when the provider omits confidence", () =>
