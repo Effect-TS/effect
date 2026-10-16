@@ -21,7 +21,6 @@ const failureExpression = (operation: Operation): string => operation === "decod
 
 type Facts = {
   supported: boolean
-  replaySafeSource: boolean
   outputFree: boolean
   makeSafe: boolean
   hasOneOf: boolean
@@ -33,7 +32,6 @@ const factsCache = new WeakMap<SchemaAST.AST, Facts>()
 
 const unsupportedFacts: Facts = {
   supported: false,
-  replaySafeSource: false,
   outputFree: false,
   makeSafe: false,
   hasOneOf: false,
@@ -47,14 +45,10 @@ const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast.encoding === undefined &&
   ast.context?.constructorDefault === undefined
 
-const isReplaySafeNode = (ast: SchemaAST.AST): boolean =>
-  ast.encoding === undefined &&
-  getEncodingChecks(ast) === undefined &&
-  (ast.checks === undefined || ast.checks.every(isReplaySafe))
-
 // Marked conversions are only pure for primitive inputs: an object input can
 // run user code through coercion hooks.
-const isReplaySafeLeaf = (ast: SchemaAST.AST): boolean => {
+const isReplaySafeSource = (ast: SchemaAST.AST): boolean => {
+  if (ast.encoding !== undefined || ast.checks !== undefined && !ast.checks.every(isReplaySafe)) return false
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -68,7 +62,9 @@ const isReplaySafeLeaf = (ast: SchemaAST.AST): boolean => {
     case "Literal":
     case "UniqueSymbol":
     case "Enum":
-      return isReplaySafeNode(ast)
+      return true
+    case "Union":
+      return ast.types.every(isReplaySafeSource)
     default:
       return false
   }
@@ -80,27 +76,24 @@ const isReplaySafeLink = (link: SchemaAST.Link): boolean =>
     link.transformation.decode._tag === "Transform" && isReplaySafe(link.transformation))
 
 // Every encoding step must be safe to replay after a failed fast-path attempt.
-// Sources share the decoded node's generation budget.
+// Sources share the decoded node's generation budget, which also bounds the
+// source safety walk that follows it.
 const addEncoding = (
   facts: Facts,
   ast: SchemaAST.AST,
-  links: SchemaAST.Encoding,
   depth: number,
   budget: { remaining: number }
 ): boolean => {
+  const links = ast.encoding
+  if (links === undefined) return true
   if (getEncodingChecks(ast) !== undefined || !links.every(isReplaySafeLink)) {
     facts.supported = false
     return false
   }
   facts.outputFree = false
   for (const link of links) {
-    const source = link.to
-    if (source._tag !== "Union" && !isReplaySafeLeaf(source)) {
-      facts.supported = false
-      return false
-    }
-    if (!addChild(facts, source, depth, budget)) return false
-    if (source._tag === "Union" && !factsCache.get(source)!.replaySafeSource) {
+    if (!addChild(facts, link.to, depth, budget)) return false
+    if (!isReplaySafeSource(link.to)) {
       facts.supported = false
       return false
     }
@@ -118,7 +111,7 @@ const addChild = (
     facts.supported = false
     return false
   }
-  if (child.encoding !== undefined && !addEncoding(facts, child, child.encoding, depth, budget)) return false
+  if (!addEncoding(facts, child, depth, budget)) return false
   switch (child._tag) {
     case "TemplateLiteral":
     case "Arrays":
@@ -130,7 +123,6 @@ const addChild = (
         facts.supported = false
         return false
       }
-      if (!childFacts.replaySafeSource) facts.replaySafeSource = false
       if (!childFacts.outputFree) facts.outputFree = false
       if (!childFacts.makeSafe) facts.makeSafe = false
       if (childFacts.hasOneOf) facts.hasOneOf = true
@@ -140,7 +132,6 @@ const addChild = (
     }
     default:
       if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
-      if (!isReplaySafeLeaf(child)) facts.replaySafeSource = false
       if (!isMakeSafeNode(child)) facts.makeSafe = false
       facts.nodes++
       if (facts.height === 0) facts.height = 1
@@ -167,7 +158,6 @@ const getFacts = (
   if (--budget.remaining < 0 || depth > maxGeneratedDepth) return undefined
   const facts: Facts = {
     supported: true,
-    replaySafeSource: ast._tag === "Union" && isReplaySafeNode(ast),
     outputFree: true,
     makeSafe: true,
     hasOneOf: ast._tag === "Union" && ast.options?.mode === "oneOf",
@@ -227,7 +217,7 @@ const getEmission = (ast: SchemaAST.AST, depth = 0, local = false): Emission => 
   if (facts === undefined || !facts.supported) return "unsupported"
   if (local || ast.encoding === undefined) return facts.outputFree ? "is" : "decode"
   // Cached facts describe the node without its own encoding.
-  return addEncoding({ ...facts }, ast, ast.encoding, depth, budget) ? "decode" : "unsupported"
+  return addEncoding({ ...facts }, ast, depth, budget) ? "decode" : "unsupported"
 }
 
 const isMakeSafe = (ast: SchemaAST.AST): boolean => getFacts(ast)?.makeSafe ?? false
