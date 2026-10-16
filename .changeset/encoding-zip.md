@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Add `effect/encoding/Zip` for streaming zip encoding and decoding. Encode stored and deflated entries with data descriptors for streamed bodies and ZIP64 fields when needed; decode entries from their local headers as they arrive, with a built-in inflater and CRC-32 checks. Entry constructors use reproducible defaults.
+Add `effect/encoding/Zip` for streaming zip encoding and decoding. Encode and decode stored and deflated entries, with ZIP64 fields when needed; decoding reads entries from their local headers as the archive arrives and checks each body against its CRC-32 and sizes. Entry constructors use reproducible defaults.
