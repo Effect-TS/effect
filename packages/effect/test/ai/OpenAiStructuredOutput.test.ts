@@ -664,6 +664,17 @@ describe("toCodecOpenAI", () => {
     })
   })
 
+  it("drops JSON content checks inside filter groups", () => {
+    const content = Schema.Struct({ [Symbol.for("metadata")]: Schema.optionalKey(Schema.String) })
+    const payload = Schema.String.check(Schema.makeFilterGroup([Schema.isJsonContent(content)]))
+    assert.deepStrictEqual(toCodecOpenAI(Schema.Struct({ payload })).jsonSchema, {
+      type: "object",
+      properties: { payload: { type: "string" } },
+      required: ["payload"],
+      additionalProperties: false
+    })
+  })
+
   it("Class", () => {
     class Person extends Schema.Class<Person>("Person")({
       name: Schema.String
