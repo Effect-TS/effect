@@ -39,7 +39,7 @@ export * as Ini from "./Ini.ts"
  * @stability unstable
  * @since 4.0.6
  */
-export * as Json from "./Json.ts"
+export * as JsonArray from "./JsonArray.ts"
 
 /**
  * @stability unstable

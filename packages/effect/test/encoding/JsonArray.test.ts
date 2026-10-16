@@ -1,14 +1,14 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Array as Arr, Channel, Effect, Schema, Stream } from "effect"
-import * as Json from "effect/encoding/Json"
+import * as JsonArray from "effect/encoding/JsonArray"
 
-const decodeChunks = (chunks: ReadonlyArray<string>, options?: Json.DecodeOptions) =>
+const decodeChunks = (chunks: ReadonlyArray<string>, options?: JsonArray.DecodeOptions) =>
   Stream.fromArrays(...chunks.map((chunk) => [chunk])).pipe(
-    Stream.pipeThroughChannel(Json.decodeString(options)),
+    Stream.pipeThroughChannel(JsonArray.decodeString(options)),
     Stream.runCollect
   )
 
-const decodeError = (chunks: ReadonlyArray<string>, options?: Json.DecodeOptions) =>
+const decodeError = (chunks: ReadonlyArray<string>, options?: JsonArray.DecodeOptions) =>
   Effect.flip(decodeChunks(chunks, options))
 
 // Every way of splitting `text` into two chunks, plus one-character chunks.
@@ -20,7 +20,7 @@ const splits = (text: string): Array<Array<string>> => {
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
-describe("Json", () => {
+describe("JsonArray", () => {
   it.effect("agrees with JSON.parse across chunk boundaries", () =>
     Effect.gen(function*() {
       const valid = [
@@ -49,7 +49,7 @@ describe("Json", () => {
       Effect.gen(function*() {
         const chunks = yield* Stream.make("[1,2,", "3", ",4]").pipe(
           Stream.rechunk(1),
-          Stream.pipeThroughChannel(Json.decodeString()),
+          Stream.pipeThroughChannel(JsonArray.decodeString()),
           Stream.chunks,
           Stream.runCollect
         )
@@ -108,7 +108,7 @@ describe("Json", () => {
           }),
           [[1], "abc"]
         )
-        const cases: ReadonlyArray<readonly [string, Json.DecodeOptions]> = [
+        const cases: ReadonlyArray<readonly [string, JsonArray.DecodeOptions]> = [
           ["[[[1]]]", { maxDepth: 1 }],
           ["{\"x\": [[1]], \"a\": []}", { pointer: "/a", maxDepth: 1 }],
           ["[\"abcde\"]", { maxElementSize: 6 }],
@@ -121,18 +121,18 @@ describe("Json", () => {
       }))
 
     it("rejects invalid options", () => {
-      assert.throws(() => Json.decodeString({ pointer: "a" }))
-      assert.throws(() => Json.decodeString({ pointer: "/a~2" }))
-      assert.throws(() => Json.decodeString({ maxDepth: -1 }))
-      assert.throws(() => Json.decodeString({ maxDepth: 1.5 }))
-      assert.throws(() => Json.decodeString({ maxElementSize: 0.5 }))
+      assert.throws(() => JsonArray.decodeString({ pointer: "a" }))
+      assert.throws(() => JsonArray.decodeString({ pointer: "/a~2" }))
+      assert.throws(() => JsonArray.decodeString({ maxDepth: -1 }))
+      assert.throws(() => JsonArray.decodeString({ maxDepth: 1.5 }))
+      assert.throws(() => JsonArray.decodeString({ maxElementSize: 0.5 }))
     })
 
     it.effect("passes through upstream failures and the done value", () =>
       Effect.gen(function*() {
         const error = yield* Stream.make("[1,").pipe(
           Stream.concat(Stream.fail("upstream")),
-          Stream.pipeThroughChannel(Json.decodeString()),
+          Stream.pipeThroughChannel(JsonArray.decodeString()),
           Stream.runCollect,
           Effect.flip
         )
@@ -141,7 +141,7 @@ describe("Json", () => {
           yield Arr.of("[1]")
           return "done"
         })())
-        const done = yield* Channel.runDrain(Channel.pipeTo(upstream, Json.decodeString()))
+        const done = yield* Channel.runDrain(Channel.pipeTo(upstream, JsonArray.decodeString()))
         assert.strictEqual(done, "done")
       }))
   })
@@ -152,7 +152,7 @@ describe("Json", () => {
         const encoded = bytes("\uFEFF[\"é\", \"😀\", {\"ключ\": \"値\"}]")
         for (let i = 0; i <= encoded.length; i++) {
           const values = yield* Stream.make(encoded.slice(0, i), encoded.slice(i)).pipe(
-            Stream.pipeThroughChannel(Json.decode()),
+            Stream.pipeThroughChannel(JsonArray.decode()),
             Stream.runCollect
           )
           assert.deepStrictEqual(values, ["é", "😀", { "ключ": "値" }])
@@ -164,12 +164,12 @@ describe("Json", () => {
     it.effect("writes one JSON array", () =>
       Effect.gen(function*() {
         assert.strictEqual(
-          yield* Stream.empty.pipe(Stream.pipeThroughChannel(Json.encodeString()), Stream.mkString),
+          yield* Stream.empty.pipe(Stream.pipeThroughChannel(JsonArray.encodeString()), Stream.mkString),
           "[]"
         )
         const chunks = yield* Stream.make(1, 2, 3).pipe(
           Stream.rechunk(2),
-          Stream.pipeThroughChannel(Json.encodeString()),
+          Stream.pipeThroughChannel(JsonArray.encodeString()),
           Stream.runCollect
         )
         assert.deepStrictEqual(JSON.parse(chunks.join("")), [1, 2, 3])
@@ -179,11 +179,11 @@ describe("Json", () => {
       Effect.gen(function*() {
         for (const input of [undefined, () => {}, 1n]) {
           const error = yield* Stream.make(input).pipe(
-            Stream.pipeThroughChannel(Json.encodeString()),
+            Stream.pipeThroughChannel(JsonArray.encodeString()),
             Stream.runCollect,
             Effect.flip
           )
-          assert.isTrue(Json.isJsonError(error))
+          assert.isTrue(JsonArray.isJsonArrayError(error))
           assert.strictEqual(error.kind, "Encode")
           assert.isUndefined(error.offset)
         }
@@ -196,7 +196,7 @@ describe("Json", () => {
     it.effect("decodeSchema decodes elements", () =>
       Effect.gen(function*() {
         const values = yield* Stream.make(bytes("{\"items\": [{\"id\": 1, \"at\": \"2024-01-01T00:00:00Z\"}]}")).pipe(
-          Stream.pipeThroughChannel(Json.decodeSchema(Item)({ pointer: "/items" })),
+          Stream.pipeThroughChannel(JsonArray.decodeSchema(Item)({ pointer: "/items" })),
           Stream.runCollect
         )
         assert.strictEqual(values[0].id, 1)
@@ -206,7 +206,7 @@ describe("Json", () => {
     it.effect("decodeSchemaString fails with a SchemaError", () =>
       Effect.gen(function*() {
         const error = yield* Stream.make("[{\"id\": \"1\", \"at\": \"2024-01-01T00:00:00Z\"}]").pipe(
-          Stream.pipeThroughChannel(Json.decodeSchemaString(Item)()),
+          Stream.pipeThroughChannel(JsonArray.decodeSchemaString(Item)()),
           Stream.runCollect,
           Effect.flip
         )
@@ -217,13 +217,13 @@ describe("Json", () => {
       Effect.gen(function*() {
         const value = { id: 1, at: (yield* Schema.decodeEffect(Item)({ id: 1, at: "2024-01-01T00:00:00Z" })).at }
         const text = yield* Stream.make(value).pipe(
-          Stream.pipeThroughChannel(Json.encodeSchemaString(Item)()),
+          Stream.pipeThroughChannel(JsonArray.encodeSchemaString(Item)()),
           Stream.mkString
         )
         assert.strictEqual(text, "[{\"id\":1,\"at\":\"2024-01-01T00:00:00.000Z\"}]")
         const values = yield* Stream.make(value).pipe(
-          Stream.pipeThroughChannel(Json.encodeSchema(Item)()),
-          Stream.pipeThroughChannel(Json.decodeSchema(Item)()),
+          Stream.pipeThroughChannel(JsonArray.encodeSchema(Item)()),
+          Stream.pipeThroughChannel(JsonArray.decodeSchema(Item)()),
           Stream.runCollect
         )
         assert.deepStrictEqual(values, [value])
