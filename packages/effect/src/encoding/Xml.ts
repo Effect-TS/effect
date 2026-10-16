@@ -1533,7 +1533,7 @@ class Parser {
   private contentModel(s: string, i: number, end: number): number {
     if (s.charCodeAt(i) !== LPAREN) throw this.syntax("invalid content specification", i)
     let j = skipSpace(s, i + 1, end)
-    if (!s.startsWith("#PCDATA", j)) return this.contentGroup(s, j, end, 1)
+    if (!s.startsWith("#PCDATA", j)) return this.contentGroup(s, i, end)
     j = skipSpace(s, j + 7, end)
     let names = false
     while (s.charCodeAt(j) === PIPE) {
@@ -1546,23 +1546,33 @@ class Parser {
     return j + 1
   }
 
-  // Checks a choice or sequence after its "(", and returns the index after it
-  private contentGroup(s: string, i: number, end: number, depth: number): number {
-    if (depth > this.maxDepth) {
-      throw this.error("Limit", `content model nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
-    }
-    let separator = 0
+  // Checks the choice or sequence starting with the "(" at `i`, and returns the
+  // index after it. Open groups are kept in an array rather than on the call
+  // stack, which an unlimited maxDepth would let input overflow.
+  private contentGroup(s: string, i: number, end: number): number {
+    // The separator of each open group, or 0 before its first one
+    const separators: Array<number> = []
     while (true) {
-      i = s.charCodeAt(i) === LPAREN ?
-        this.contentGroup(s, skipSpace(s, i + 1, end), end, depth + 1) :
-        quantified(s, this.name(s, i, end))
-      i = skipSpace(s, i, end)
+      if (s.charCodeAt(i) === LPAREN) {
+        i = skipSpace(s, i + 1, end)
+        if (separators.push(0) > this.maxDepth) {
+          throw this.error("Limit", `content model nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
+        }
+        continue
+      }
+      i = skipSpace(s, quantified(s, this.name(s, i, end)), end)
+      while (s.charCodeAt(i) === RPAREN) {
+        i = quantified(s, i + 1)
+        separators.pop()
+        if (separators.length === 0) return i
+        i = skipSpace(s, i, end)
+      }
       const c = s.charCodeAt(i)
-      if (c === RPAREN) return quantified(s, i + 1)
+      const separator = separators[separators.length - 1]
       if ((c !== PIPE && c !== COMMA) || (separator !== 0 && c !== separator)) {
         throw this.syntax("expected \")\"", i)
       }
-      separator = c
+      separators[separators.length - 1] = c
       i = skipSpace(s, i + 1, end)
     }
   }
