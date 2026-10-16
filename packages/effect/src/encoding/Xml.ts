@@ -329,7 +329,7 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
   Done
 > => {
   const parser = makeParser(options, false)
-  return makeChannel<string, Event, IE, Done>(() => new TextInput(parser()))
+  return makeChannel<string, Event, IE, Done>(() => new TextInput(parser()), joinText)
 }
 
 /**
@@ -363,7 +363,7 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
   Done
 > => {
   const parser = makeParser(options, true)
-  return makeChannel<Uint8Array, Event, IE, Done>(() => new Utf8Input(parser()))
+  return makeChannel<Uint8Array, Event, IE, Done>(() => new Utf8Input(parser()), joinBytes)
 }
 
 /**
@@ -555,7 +555,11 @@ interface Machine<In, Out> {
   end(): void
 }
 
-const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.Channel<
+// `join` can replace the inputs of a pull with fewer inputs of the same content
+const makeChannel = <In, Out, IE, Done>(
+  make: () => Machine<In, Out>,
+  join?: (inputs: ReadonlyArray<In>) => ReadonlyArray<In>
+): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Out>,
   XmlError | IE,
   Done,
@@ -576,7 +580,7 @@ const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.C
       ): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
         try {
           if (inputs === undefined) machine.end()
-          else for (const input of inputs) machine.push(input)
+          else for (const input of join === undefined ? inputs : join(inputs)) machine.push(input)
         } catch (error) {
           if (!isXmlError(error)) throw error
           failure = error
@@ -604,6 +608,38 @@ const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.C
       return pull
     })
   )
+
+// Joins runs of chunks up to 65536 bytes or characters long, as one chunk is
+// decoded and parsed much faster than many small ones
+const joinRuns = <A extends string | Uint8Array>(
+  chunks: ReadonlyArray<A>,
+  join: (run: ReadonlyArray<A>, length: number) => A
+): ReadonlyArray<A> => {
+  if (chunks.length === 1) return chunks
+  const out: Array<A> = []
+  let i = 0
+  while (i < chunks.length) {
+    let length = chunks[i].length
+    let j = i + 1
+    while (j < chunks.length && length + chunks[j].length <= 65536) length += chunks[j++].length
+    out.push(j === i + 1 ? chunks[i] : join(chunks.slice(i, j), length))
+    i = j
+  }
+  return out
+}
+
+const joinText = (chunks: ReadonlyArray<string>): ReadonlyArray<string> => joinRuns(chunks, (run) => run.join(""))
+
+const joinBytes = (chunks: ReadonlyArray<Uint8Array>): ReadonlyArray<Uint8Array> =>
+  joinRuns(chunks, (run, length) => {
+    const bytes = new Uint8Array(length)
+    let offset = 0
+    for (const chunk of run) {
+      bytes.set(chunk, offset)
+      offset += chunk.length
+    }
+    return bytes
+  })
 
 // Checks the options, and returns a function that makes a parser for each run
 const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
