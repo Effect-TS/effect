@@ -54,8 +54,7 @@ export const model = (
  *
  * - Remote URLs fail with `AiError.InvalidUserInputError` because OpenAI only
  *   accepts inline images.
- * - A refused decision is reported as `"Refused"` by `decideSettled`. With
- *   `decide`, any refusal fails the whole call with
+ * - Refusals yield `"Refused"` with `decideSettled`; `decide` fails with
  *   `AiError.ContentPolicyError` naming the refused decisions.
  *
  * @stability unstable

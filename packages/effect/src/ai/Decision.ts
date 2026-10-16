@@ -178,16 +178,13 @@ export type Answers<Decisions extends Record<string, Any>> = {
 }
 
 /**
- * Why a decision has no valid answer. `reason` names the first validation
- * check that failed and `description` explains it.
+ * Reason and description of the first failed answer validation check.
  *
  * **Details**
  *
  * - `"Missing"`: the provider returned no answer for the decision.
  * - `"Refused"`: the provider declined to answer the decision.
- * - `"Invalid"`: the answer has the wrong kind, an unknown label, a rating or
- *   confidence out of range, or a distribution with missing entries, values
- *   outside `[0, 1]`, or a sum outside tolerance.
+ * - `"Invalid"`: the answer has an invalid kind, value, confidence, or distribution.
  * - `"NoDistribution"`: a classify or rate answer is otherwise valid but has
  *   no probabilities.
  *
@@ -205,8 +202,7 @@ export interface Unanswered {
 }
 
 /**
- * Settled result for a single decision: the validated answer, or why there is
- * none.
+ * Validated answer or the reason the decision is unanswered.
  *
  * @see {@link Unanswered} for the failure reasons
  *
