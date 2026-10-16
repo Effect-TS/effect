@@ -620,8 +620,11 @@ export const walk = (
   const isUnlisted = (value: string, relative: string): boolean =>
     value === "." || value === ".." || (relative === "" && isRoot(value))
 
-  const exists = (relative: string): Effect.Effect<boolean> =>
-    Effect.map(Effect.exit(fs.stat(toFsPath(relative))), (exit) => exit._tag === "Success")
+  const exists = (relative: string): Effect.Effect<boolean, PlatformError> =>
+    Effect.matchEffect(fs.stat(toFsPath(relative)), {
+      onFailure: (error) => isIgnorable(error) ? Effect.succeed(false) : Effect.fail(error),
+      onSuccess: () => Effect.succeed(true)
+    })
 
   const entries = (
     relative: string,
@@ -680,10 +683,14 @@ export const walk = (
       // alone does not traverse it
       const followed = canDescend(compiled, result.explicit) ? result.explicit : undefined
       return type === "Unknown"
-        ? Effect.map(
-          Effect.exit(fs.readLink(toFsPath(relative))),
-          (exit) => ({ relative, accepted, next: exit._tag === "Success" ? followed : next })
-        )
+        ? Effect.matchEffect(fs.readLink(toFsPath(relative)), {
+          // Node and Deno report EINVAL for non-links as Unknown.
+          onFailure: (error) =>
+            isIgnorable(error) || error.reason._tag === "Unknown"
+              ? Effect.succeed({ relative, accepted, next })
+              : Effect.fail(error),
+          onSuccess: () => Effect.succeed({ relative, accepted, next: followed })
+        })
         : { relative, accepted, next: type === "SymbolicLink" ? followed : next }
     }
     if (!descend && !needsDirectory(compiled, next) && !excludeNeedsDirectory) {
