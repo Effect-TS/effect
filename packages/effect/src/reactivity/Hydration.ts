@@ -51,6 +51,23 @@ export interface DehydratedAtomValue extends DehydratedAtom {
 
 const Skipped = Symbol.for("effect/reactivity/Hydration/Skipped")
 
+const releaseInitial = (registry: AtomRegistry.AtomRegistry, node: AtomRegistry.Node<any>): void => {
+  let target = node.atom
+  while (target.initialValueTarget) {
+    target = target.initialValueTarget
+  }
+  if (target !== node.atom) {
+    const targetNode = registry.ensureNode(target) as any
+    // Hydration may have seeded the target before its first build.
+    targetNode.preserveInitialValueOnBuild = false
+    targetNode.invalidate()
+  }
+
+  // Derived atoms may not have read their source yet, so invalidate them directly too.
+  const hydratedNode = node as any
+  hydratedNode.invalidate()
+}
+
 const encodeOrSkip = (
   atom: Atom.Atom<any> & Atom.Serializable<any>,
   value: unknown
@@ -168,8 +185,7 @@ export const hydrate = (
       if (resolvedValue === Skipped) {
         // Release the preloaded Initial even if the client has not read the atom yet.
         registry.preloadedSerializable.delete(datom.key)
-        // Invalidate the hydrated node itself: custom refresh handlers may only refresh its source.
-        if (node) (node as any).invalidate()
+        if (node) releaseInitial(registry, node)
         return
       }
       if (node) {
@@ -181,7 +197,7 @@ export const hydrate = (
             decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
           } catch (error) {
             if (!Schema.isSchemaError(error)) throw error
-            ;(node as any).invalidate()
+            releaseInitial(registry, node)
             return
           }
           if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
