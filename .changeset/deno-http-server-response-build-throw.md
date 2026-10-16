@@ -2,4 +2,4 @@
 "@effect/platform-deno": patch
 ---
 
-Fix `DenoHttpServer` leaving a request unanswered when the web `Response` can't be built, for example for a status outside 200–599 or an invalid header value. The server now answers a 500, cancels the response body, and still reports the failure.
+Fix `DenoHttpServer` leaving requests unanswered when the web `Response` can't be built, such as for a rejected status or invalid header value. It now responds with a 500, cancels the unused body and reports the original failure.

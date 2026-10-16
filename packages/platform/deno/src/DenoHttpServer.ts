@@ -124,7 +124,7 @@ export const make = Effect.fnUntraced(function*(
         }
         return Effect.matchCauseEffect(makeResponse(request, response, services, scope), {
           onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
-          // `Response` throws on input it rejects, e.g. a status outside 200–599
+          // Always answer the request, without waiting for body cleanup
           onFailure: (cause) =>
             Effect.suspend(() => {
               denoRequest.resolve(new Response(undefined, { status: 500 }))
@@ -216,7 +216,7 @@ const makeResponse = Effect.fnUntraced(function*(
       try {
         return new Response(stream, fields)
       } catch (defect) {
-        // The body already runs and owns the request scope, so stop it
+        // The stream owns the request scope, so cancel it to let the scope close
         cancelFailedResponseBody(stream)
         throw defect
       }
