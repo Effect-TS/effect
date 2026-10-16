@@ -1505,10 +1505,6 @@ const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
 const WINDOW_MASK = WINDOW_SIZE - 1
 
-// Signals of the inflate generator
-const NEED = 0
-const FULL = 1
-
 const LENGTH_BASE = [
   3,
   4,
@@ -1703,8 +1699,7 @@ const FIXED_DISTANCES = huffman(new Uint8Array(32).fill(5), false)
 // Decompresses one deflate stream from the queue, reading no byte past its end
 class Inflater {
   private buffer = new Uint8Array(OUTPUT_SIZE)
-  private position = 0
-  private readonly generator: Generator<number, void, void>
+  private readonly generator: Generator<number, number, void>
 
   constructor(queue: ByteQueue) {
     this.generator = this.run(queue)
@@ -1712,26 +1707,24 @@ class Inflater {
 
   // Returns decompressed bytes, `NeedInput`, or `undefined` once the stream has ended
   pull(): Uint8Array | undefined | typeof NeedInput {
-    const result = this.generator.next()
-    if (!result.done && result.value === NEED && this.position === 0) return NeedInput
-    if (this.position === 0) return undefined
-    let out: Uint8Array
-    if (this.position === OUTPUT_SIZE) {
-      out = this.buffer
-      this.buffer = new Uint8Array(OUTPUT_SIZE)
-    } else {
-      out = this.buffer.slice(0, this.position)
-    }
-    this.position = 0
+    // A finished generator returns `undefined` from later calls
+    const { done, value: position = 0 } = this.generator.next()
+    if (position === 0) return done ? undefined : NeedInput
+    if (position < OUTPUT_SIZE) return this.buffer.slice(0, position)
+    const out = this.buffer
+    this.buffer = new Uint8Array(OUTPUT_SIZE)
     return out
   }
 
-  // Yields `NEED` when the queue is empty and `FULL` when the output buffer is
-  // full. Bits are pulled one byte at a time only when a code needs them, so
-  // fewer than eight bits are held between codes and the final padding bits are
-  // the only ones dropped.
-  private *run(queue: ByteQueue): Generator<number, void, void> {
+  // Yields the output position when the queue is empty or the output buffer is
+  // full, and returns it at the end; `pull` hands out the output, so each
+  // resumption starts at position zero. Bits are pulled one byte at a time only
+  // when a code needs them, so fewer than eight bits are held between codes and
+  // the final padding bits are the only ones dropped.
+  private *run(queue: ByteQueue): Generator<number, number, void> {
     const window = new Uint8Array(WINDOW_SIZE)
+    let buffer = this.buffer
+    let position = 0
     let windowPosition = 0
     let total = 0
     let bitBuffer = 0
@@ -1741,7 +1734,8 @@ class Inflater {
       while (bitCount < 3) {
         const byte = queue.readByte()
         if (byte < 0) {
-          yield NEED
+          yield position
+          position = 0
           continue
         }
         bitBuffer |= byte << bitCount
@@ -1755,19 +1749,23 @@ class Inflater {
         // Stored block: drop the bits up to the byte boundary
         bitBuffer = 0
         bitCount = 0
-        while (queue.length < 4) yield NEED
+        while (queue.length < 4) {
+          yield position
+          position = 0
+        }
         const length = queue.readByte() | (queue.readByte() << 8)
         const inverse = queue.readByte() | (queue.readByte() << 8)
         if (length !== (~inverse & 0xffff)) throw invalidData("stored block length is corrupt")
         let left = length
         while (left > 0) {
           if (queue.length === 0) {
-            yield NEED
+            yield position
+            position = 0
             continue
           }
-          const chunk = queue.takeSome(Math.min(left, OUTPUT_SIZE - this.position))
-          this.buffer.set(chunk, this.position)
-          this.position += chunk.length
+          const chunk = queue.takeSome(Math.min(left, OUTPUT_SIZE - position))
+          buffer.set(chunk, position)
+          position += chunk.length
           if (chunk.length >= WINDOW_SIZE) {
             window.set(chunk.subarray(chunk.length - WINDOW_SIZE))
             windowPosition = 0
@@ -1779,7 +1777,11 @@ class Inflater {
           }
           total += chunk.length
           left -= chunk.length
-          if (this.position === OUTPUT_SIZE) yield FULL
+          if (position === OUTPUT_SIZE) {
+            yield position
+            position = 0
+            buffer = this.buffer
+          }
         }
         continue
       }
@@ -1792,7 +1794,8 @@ class Inflater {
         while (bitCount < 14) {
           const byte = queue.readByte()
           if (byte < 0) {
-            yield NEED
+            yield position
+            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1809,7 +1812,8 @@ class Inflater {
           while (bitCount < 3) {
             const byte = queue.readByte()
             if (byte < 0) {
-              yield NEED
+              yield position
+              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1831,7 +1835,8 @@ class Inflater {
             if (bitCount >= lengthCodes.bits) throw invalidData("invalid code length code")
             const byte = queue.readByte()
             if (byte < 0) {
-              yield NEED
+              yield position
+              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1848,7 +1853,8 @@ class Inflater {
           while (bitCount < extra) {
             const byte = queue.readByte()
             if (byte < 0) {
-              yield NEED
+              yield position
+              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1885,7 +1891,8 @@ class Inflater {
           }
           const byte = queue.readByte()
           if (byte < 0) {
-            yield NEED
+            yield position
+            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1898,9 +1905,13 @@ class Inflater {
         if (symbol < 256) {
           window[windowPosition] = symbol
           windowPosition = (windowPosition + 1) & WINDOW_MASK
-          this.buffer[this.position++] = symbol
+          buffer[position++] = symbol
           total++
-          if (this.position === OUTPUT_SIZE) yield FULL
+          if (position === OUTPUT_SIZE) {
+            yield position
+            position = 0
+            buffer = this.buffer
+          }
           continue
         }
         if (symbol === 256) break
@@ -1912,7 +1923,8 @@ class Inflater {
           while (bitCount < lengthExtra) {
             const byte = queue.readByte()
             if (byte < 0) {
-              yield NEED
+              yield position
+              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1931,7 +1943,8 @@ class Inflater {
           }
           const byte = queue.readByte()
           if (byte < 0) {
-            yield NEED
+            yield position
+            position = 0
             continue
           }
           bitBuffer |= byte << bitCount
@@ -1948,7 +1961,8 @@ class Inflater {
           while (bitCount < distanceExtra) {
             const byte = queue.readByte()
             if (byte < 0) {
-              yield NEED
+              yield position
+              position = 0
               continue
             }
             bitBuffer |= byte << bitCount
@@ -1966,10 +1980,15 @@ class Inflater {
           from = (from + 1) & WINDOW_MASK
           window[windowPosition] = byte
           windowPosition = (windowPosition + 1) & WINDOW_MASK
-          this.buffer[this.position++] = byte
-          if (this.position === OUTPUT_SIZE) yield FULL
+          buffer[position++] = byte
+          if (position === OUTPUT_SIZE) {
+            yield position
+            position = 0
+            buffer = this.buffer
+          }
         }
       }
     } while (final === 0)
+    return position
   }
 }

@@ -486,6 +486,44 @@ describe("Zip", () => {
         }
       }))
 
+    it.effect("inflates output that ends at or crosses the output buffer boundary", () =>
+      Effect.gen(function*() {
+        let x = 7
+        const random = () => {
+          x ^= x << 13
+          x ^= x >>> 17
+          x ^= x << 5
+          return x & 0xff
+        }
+        // Output is handed out in 64 KiB chunks. Noise is stored, noise in 64
+        // symbols is mostly literals, and repeats of a block nearly as long as
+        // the window copy across chunks.
+        const block = Uint8Array.from({ length: 32_500 }, random)
+        const contents = [65_535, 65_536, 65_537, 131_073].flatMap((size) => [
+          Uint8Array.from({ length: size }, random),
+          Uint8Array.from({ length: size }, () => random() & 63),
+          Uint8Array.from({ length: size }, (_, i) => block[i % block.length])
+        ])
+        const archive = concat(
+          ...contents.map((content) => {
+            const data = deflateRawSync(content)
+            return concat(
+              localHeader(textEncoder.encode("f"), {
+                method: 8,
+                crc: crc32(content),
+                compressedSize: data.length,
+                size: content.length
+              }),
+              data
+            )
+          }),
+          endRecord
+        )
+        for (const chunkSize of [7, archive.length]) {
+          assert.deepStrictEqual((yield* decode(archive, chunkSize)).map(({ body }) => body), contents)
+        }
+      }))
+
     it.effect("re-encodes deflated directories as stored", () =>
       Effect.gen(function*() {
         // Java's ZipOutputStream deflates directories
