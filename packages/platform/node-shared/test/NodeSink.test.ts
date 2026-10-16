@@ -15,6 +15,72 @@ import * as Tar from "tar"
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
+  it.effect.each(["already_finished", "finished_while_pulling", "finished_while_draining", "empty"] as const)(
+    "settles after normal writable finish: %s",
+    (phase) =>
+      Effect.gen(function*() {
+        const entered = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const closed = yield* Deferred.make<void>()
+        const writing = yield* Deferred.make<() => void>()
+        const mapped = { _tag: "WritableError" }
+        const errors: Array<unknown> = []
+        const writable = new Writable({
+          highWaterMark: phase === "finished_while_draining" ? 1 : 16384,
+          write(_chunk, _encoding, callback) {
+            if (phase === "finished_while_draining") {
+              // Resume the test only after write() returns and the sink waits for drain.
+              queueMicrotask(() => Deferred.doneUnsafe(writing, Effect.succeed(callback)))
+            } else {
+              callback()
+            }
+          }
+        })
+        writable.once("close", () => Deferred.doneUnsafe(closed, Effect.void))
+        yield* Effect.addFinalizer(() => Effect.sync(() => writable.destroy()))
+        if (phase === "already_finished" || phase === "empty") {
+          writable.end()
+          yield* Deferred.await(closed)
+        }
+        const upstream = phase === "empty" ?
+          Stream.empty :
+          phase === "finished_while_pulling" ?
+          Stream.fromEffect(Effect.gen(function*() {
+            yield* Deferred.succeed(entered, undefined)
+            yield* Deferred.await(release)
+            return "a"
+          })) :
+          Stream.make("a", "b")
+        const fiber = yield* upstream.pipe(
+          Stream.run(NodeSink.fromWritable({
+            evaluate: () => writable,
+            onError: (error) => {
+              errors.push(error)
+              return mapped
+            }
+          })),
+          Effect.exit,
+          Effect.timeoutOption("1 second"),
+          Effect.forkScoped
+        )
+        if (phase === "finished_while_pulling") {
+          yield* Deferred.await(entered)
+          writable.end()
+          yield* Deferred.await(closed)
+          yield* Deferred.succeed(release, undefined)
+        } else if (phase === "finished_while_draining") {
+          const completeWrite = yield* Deferred.await(writing)
+          writable.end()
+          yield* Effect.sync(completeWrite)
+          yield* Deferred.await(closed)
+        }
+        // Node has finished and auto-destroyed; advance only the non-completion guard.
+        yield* TestClock.adjust("1 second")
+        assert.deepEqual(yield* Fiber.join(fiber), Option.some(phase === "empty" ? Exit.void : Exit.fail(mapped)))
+        assert.strictEqual(errors.length, phase === "empty" ? 0 : 1)
+      })
+  )
+
   it.effect("maps write errors after the writable has finished", () =>
     Effect.gen(function*() {
       const finished = yield* Deferred.make<void>()
