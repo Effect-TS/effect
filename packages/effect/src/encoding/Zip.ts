@@ -177,9 +177,9 @@ export interface FileOptions extends EntryOptions {
  *
  * **Details**
  *
- * `size` is the exact byte length of the body. It is required for the `Store`
- * method, whose data streaming readers can only delimit by its size, and
- * optional for `Deflate`, where it is checked against the body.
+ * `size` is the exact byte length of the body. It is required for `Store`,
+ * because streaming readers can only find the end of stored data from its
+ * size, and optional for `Deflate`, where it is checked against the body.
  *
  * @stability unstable
  * @category models
@@ -256,13 +256,12 @@ const inMemoryContent = (body: Stream.Stream<Uint8Array, unknown, unknown>): Uin
  * - A stored entry without `size` fails with an `InvalidHeader` `ZipError`.
  * - When `size` is set, `encode` fails with a `SizeMismatch` `ZipError` if the
  *   body produces fewer or more bytes.
- * - Non-empty stored entries are followed by a data descriptor, which readers
- *   that do not use the central directory can mishandle: Java's
- *   `ZipInputStream` rejects them, and libarchive, as in `bsdtar` reading from
- *   a pipe, ends them at the first descriptor in the data that matches the
- *   bytes before it, so content can cut the entry short and add entries. Use
- *   `Deflate` or an in-memory `file` for untrusted content and for those
- *   readers.
+ * - Non-empty stored entries are followed by a data descriptor, which streaming
+ *   readers can mishandle: Java's `ZipInputStream` rejects them, and
+ *   libarchive, as in `bsdtar` reading from a pipe, ends them at the first bytes
+ *   in the data that form a descriptor of the data before them, so content can
+ *   cut the entry short and add entries. Use `Deflate` or an in-memory `file`
+ *   for untrusted content and for those readers.
  *
  * @see {@link file} for in-memory content
  * @see {@link encode} for writing entries to an archive
@@ -307,8 +306,8 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  * be decoded as they arrive, for example from an HTTP response. Each output
  * chunk holds one entry, and each body streams the uncompressed bytes of the
  * entry. Pulling the next entry skips whatever is left of the current body.
- * Stored and deflated entries are read, including deflated entries whose
- * sizes follow their data in a data descriptor, and ZIP64 sizes. Every body is
+ * Stored and deflated entries are read, including ZIP64 sizes and deflated
+ * entries whose sizes follow their data in a data descriptor. Every body is
  * checked against its CRC-32 and sizes. Reading stops at the central directory.
  *
  * Paths use the UTF-8 flag when set, and otherwise the first Info-ZIP Unicode
@@ -596,8 +595,6 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
   )
 }
 
-// Compression
-
 const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Uint8Array, E | ZipError, R> =>
   Stream.suspend(() => {
     const compressor = new CompressionStream("deflate-raw")
@@ -656,8 +653,6 @@ const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
   return out
 }
 
-// Errors
-
 const invalidHeader = (message: string) => new ZipError({ kind: "InvalidHeader", message })
 
 const invalidData = (message: string) => new ZipError({ kind: "InvalidData", message })
@@ -674,8 +669,6 @@ const sizeMismatch = (path: string, actual: number, expected: number) =>
       actual > expected ? "at least" : "only"
     } ${actual} bytes, but its size is ${expected}`
   })
-
-// Format constants
 
 const LOCAL = 0x04034b50
 const CENTRAL = 0x02014b50
@@ -771,8 +764,7 @@ const decodeName = (bytes: Uint8Array, utf8: boolean): string => {
   }
 }
 
-// CRC-32 (IEEE), sixteen bytes at a time
-
+// CRC-32 (IEEE) lookup tables for sixteen bytes at a time
 const CRC_TABLE = (() => {
   const table = new Int32Array(16 * 256)
   for (let n = 0; n < 256; n++) {
@@ -806,8 +798,6 @@ const crc32 = (crc: number, bytes: Uint8Array): number => {
   for (; i < length; i++) c = t[(c ^ bytes[i]) & 0xff] ^ (c >>> 8)
   return ~c >>> 0
 }
-
-// Encoding
 
 const validate = (header: Header): void => {
   const { method, mode, mtime, path, size, type } = header
@@ -1135,8 +1125,6 @@ class Writer {
   }
 }
 
-// Decoding
-
 class ByteQueue {
   private chunks: Array<Uint8Array | undefined> = []
   private head = 0
@@ -1271,7 +1259,8 @@ class Decoder {
   private inflateMemory: InflateMemory | undefined
   // An error after which entry boundaries are lost, repeated by every call
   private failure: ZipError | undefined
-  // Set when the current entry was read to its end but failed its checks
+  // Set when an entry fails its checks but its data ended at its compressed
+  // size, so the next entry can still be read
   private recoverable = false
 
   push(chunk: Uint8Array): void {
@@ -1295,9 +1284,7 @@ class Decoder {
     return this.guard(() => this.advance())
   }
 
-  // Remembers errors that leave the decoder without entry boundaries. A
-  // checksum or size error of an entry whose data ended at its compressed
-  // size is not one of them, so the next entry can still be read.
+  // Remembers errors that leave the decoder without entry boundaries
   private guard<A>(f: () => A): A {
     if (this.failure !== undefined) throw this.failure
     try {
@@ -1573,8 +1560,6 @@ const DESCRIPTOR_PEEK = 28
 const isHeaderSignature = (signature: number): boolean =>
   signature === LOCAL || signature === CENTRAL || signature === END || signature === END64
 
-// Inflate (RFC 1951)
-
 const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
 const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
@@ -1798,7 +1783,8 @@ class InflateMemory {
   readonly distances = makeHuffman()
 }
 
-// Decompresses one deflate stream from the queue, reading no byte past its end
+// Decompresses one deflate (RFC 1951) stream from the queue, reading no byte
+// past its end
 class Inflater {
   private readonly memory: InflateMemory
   // Start of the output not handed out yet
@@ -1831,11 +1817,9 @@ class Inflater {
   // Yields the output position when the queue is empty or the buffer is full,
   // and returns it at the end. Output is written after the window, so matches
   // copy within the buffer, and continues there once `pull` has handed out a
-  // full buffer. Codes that need more bits take two bytes at a time while the
-  // input chunk has them, and otherwise one byte at a time. A chunk is only left
-  // for the next once the bits held are all needed, so whole bytes held are
-  // always from the current chunk, and are given back before stored blocks and
-  // at the end.
+  // full buffer. A new chunk is only taken when the bits held are all needed,
+  // so whole bytes held always come from the current chunk and can be given
+  // back before stored blocks and at the end.
   private *run(queue: ByteQueue): Generator<number, number, void> {
     const { buffer } = this.memory
     let position = WINDOW_SIZE
@@ -2024,7 +2008,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          // The code needs more bits, so fewer than 15 are held
+          // The code needs more bits, so fewer than 15 are held and two more bytes fit
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
@@ -2083,7 +2067,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          // The code needs more bits, so fewer than 15 are held
+          // The code needs more bits, so fewer than 15 are held and two more bytes fit
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
