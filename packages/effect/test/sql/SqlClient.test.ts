@@ -119,7 +119,7 @@ const makeHarness = (options: {
 /**
  * Builds a client over a stub connection that records the transaction control
  * statements, the connection release, and `after(name)` for each callback
- * registered with `after`.
+ * registered with `after`, along with the `Reactivity` service the client uses.
  */
 const makeClient = (options: {
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
@@ -150,7 +150,15 @@ const makeClient = (options: {
     spanAttributes: [],
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
-    Effect.map((sql) => ({ sql, calls, record, after: (name: string) => sql.afterCommit(record(`after(${name})`)) })),
+    Effect.flatMap((sql) =>
+      Effect.map(Effect.service(Reactivity.Reactivity), (reactivity) => ({
+        sql,
+        reactivity,
+        calls,
+        record,
+        after: (name: string) => sql.afterCommit(record(`after(${name})`))
+      }))
+    ),
     Effect.provide(Reactivity.layer)
   )
 }
@@ -491,6 +499,83 @@ describe("SqlClient", () => {
           Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
         )
         assert.isFalse(calls.some((call) => call.startsWith("after")))
+      }))
+  })
+
+  describe("Reactivity.mutation", () => {
+    // Records `invalidate(key)` when a mutation invalidates one of `keys`.
+    const watch = (
+      client: Effect.Success<ReturnType<typeof makeClient>>,
+      keys: ReadonlyArray<string>
+    ) =>
+      Effect.sync(() => {
+        for (const key of keys) {
+          client.reactivity.registerUnsafe([key], () => {
+            client.calls.push(`invalidate(${key})`)
+          })
+        }
+      })
+
+    it.effect("invalidates after the outermost commit and not on rollback", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, sql } = client
+        yield* watch(client, ["users"])
+
+        yield* Effect.exit(sql.withTransaction(
+          Effect.andThen(reactivity.mutation(["users"], sql`UPDATE users`), Effect.fail("boom"))
+        ))
+        assert.isFalse(calls.includes("invalidate(users)"))
+
+        yield* sql.withTransaction(reactivity.mutation(["users"], sql`UPDATE users`))
+        assert.deepStrictEqual(calls.slice(-3), ["COMMIT", "release", "invalidate(users)"])
+      }))
+
+    it.effect("defers a detached fiber's invalidation to the nearest open transaction", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, sql } = client
+        yield* watch(client, ["inside", "after"])
+        const inside = yield* Deferred.make<void>()
+        const invalidated = yield* Deferred.make<void>()
+        const after = yield* Deferred.make<void>()
+
+        // The fiber outlives its savepoint, then the outer transaction.
+        const detached = yield* sql.withTransaction(Effect.gen(function*() {
+          const detached = yield* sql.withTransaction(Effect.forkDetach(Effect.gen(function*() {
+            yield* Deferred.await(inside)
+            yield* reactivity.invalidate(["inside"])
+            yield* Deferred.succeed(invalidated, undefined)
+            yield* Deferred.await(after)
+            yield* reactivity.invalidate(["after"])
+          })))
+          yield* Deferred.succeed(inside, undefined)
+          yield* Deferred.await(invalidated)
+          assert.isFalse(calls.includes("invalidate(inside)"))
+          return detached
+        }))
+        assert.isAbove(calls.indexOf("invalidate(inside)"), calls.indexOf("COMMIT"))
+
+        yield* Deferred.succeed(after, undefined)
+        yield* Fiber.join(detached)
+        assert.strictEqual(calls.at(-1), "invalidate(after)")
+      }))
+
+    it.effect("joins an enclosing batch that is still open when the transaction commits", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, record, sql } = client
+        yield* watch(client, ["outer", "inner"])
+
+        yield* reactivity.withBatch(Effect.gen(function*() {
+          yield* sql.withTransaction(Effect.andThen(reactivity.invalidate(["outer"]), reactivity.invalidate(["outer"])))
+          yield* record("batch end")
+        }))
+        assert.deepStrictEqual(calls.slice(-2), ["batch end", "invalidate(outer)"])
+
+        // A batch inside the transaction has ended by the time it commits.
+        yield* sql.withTransaction(reactivity.withBatch(reactivity.invalidate(["inner"])))
+        assert.deepStrictEqual(calls.slice(-2), ["release", "invalidate(inner)"])
       }))
   })
 })

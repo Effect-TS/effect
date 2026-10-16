@@ -1,8 +1,9 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Schema } from "effect"
 import {
+  ClusterError,
   Entity,
   EntityAddress,
   EntityId,
@@ -19,6 +20,7 @@ import {
   Snowflake,
   SqlMessageStorage
 } from "effect/cluster"
+import type { RpcSerialization } from "effect/rpc"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
@@ -629,6 +631,59 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           yield* latch.await
           yield* Fiber.await(fiber)
+        }))
+
+      it.effect("notifies reply handlers only after an enclosing SQL transaction commits", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const notified: Array<string> = []
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const handler = yield* storage.registerReplyHandler(
+            new Message.OutgoingRequest({
+              ...request,
+              respond: (reply) =>
+                Effect.sync(() => {
+                  notified.push(String(reply.id))
+                })
+            })
+          ).pipe(Effect.forkChild)
+          yield* TestClock.adjust(1)
+
+          yield* Effect.exit(sql.withTransaction(
+            Effect.andThen(storage.saveReply(yield* makeReply(request)), Effect.fail("rollback"))
+          ))
+          const committed = yield* makeReply(request)
+          yield* sql.withTransaction(Effect.gen(function*() {
+            yield* storage.saveReply(committed)
+            assert.deepStrictEqual(notified, [])
+          }))
+          assert.deepStrictEqual(notified, [String(committed.reply.id)])
+          yield* Fiber.await(handler)
+        }))
+
+      it.effect("fails saveReply with a reply handler failure outside a transaction", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const storage = yield* MessageStorage.MessageStorage
+          const failure = new ClusterError.MalformedMessage({ cause: new Error("respond failed") })
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const handler = yield* storage.registerReplyHandler(
+            new Message.IncomingRequest({
+              envelope: request.envelope,
+              lastSentReply: Option.none(),
+              respond: () => Effect.fail(failure),
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+            })
+          ).pipe(Effect.forkChild)
+          yield* TestClock.adjust(1)
+
+          const error = yield* storage.saveReply(yield* makeReply(request)).pipe(Effect.flip)
+          assert.strictEqual(error, failure)
+          yield* Fiber.await(handler)
         }))
 
       it.effect("unprocessedMessagesById", () =>

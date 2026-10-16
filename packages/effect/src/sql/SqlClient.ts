@@ -15,6 +15,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { DeferInvalidation } from "../internal/reactivity.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -521,6 +522,21 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  const deferInvalidation = (invalidate: Effect.Effect<void>): Effect.Effect<void> =>
+    Effect.withFiber((fiber) => {
+      const transaction = Context.getOrUndefined(fiber.context, options.transactionService)
+      let buffer = transaction && afterCommitBuffers.get(transaction)
+      // Detached fibers may outlive savepoints. Use the nearest open ancestor,
+      // or invalidate immediately if the transaction has ended.
+      while (buffer !== undefined && !buffer.open) {
+        buffer = buffer.parent
+      }
+      if (buffer === undefined) {
+        return invalidate
+      }
+      buffer.callbacks.push(invalidate)
+      return Effect.void
+    })
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -558,6 +574,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(DeferInvalidation, deferInvalidation),
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )

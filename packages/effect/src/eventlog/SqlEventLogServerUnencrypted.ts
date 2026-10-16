@@ -44,6 +44,15 @@ type StorageOptions = {
  * entries, and session authentication bindings, then persists and streams
  * plaintext remote entries.
  *
+ * Streams writes to `changes` subscribers in sequence order after the outermost
+ * SQL commit, including caller-owned transactions.
+ *
+ * **Gotchas**
+ *
+ * A subscription opened inside a SQL transaction can read backlog entries that
+ * later roll back. Gap reads run outside that transaction; on single-connection
+ * drivers such as SQLite, they wait for it to end.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -245,8 +254,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     const pubsub = yield* RcMap.get(pubsubs, storeId)
     return yield* PubSub.publishAll(pubsub, entries)
   }, Effect.scoped)
-  // Merge nested buffers on success; publish only after the outer commit.
-  // Hold the outer permit through publication to prevent later commits from overtaking it.
+  // After-commit callbacks can publish out of order; subscribers recover gaps.
   const withTransaction = Effect.fnUntraced(function*<A, E, R>(
     effect: Effect.Effect<A, E, R>
   ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
@@ -259,7 +267,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       )
       if (parent._tag === "Some") {
         parent.value.push(...writes)
-      } else {
+      } else if (writes.length > 0) {
         const stores = new Map<string, Array<RemoteEntry>>()
         for (const [storeId, entries] of writes) {
           const existing = stores.get(storeId)
@@ -273,7 +281,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         for (const entries of stores.values()) {
           entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
         }
-        yield* Effect.forEach(stores, publish, { discard: true })
+        yield* sql.afterCommit(Effect.forEach(stores, publish, { discard: true }))
       }
       return result
     }))
@@ -352,11 +360,12 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         WHERE store_id = ${storeId}
       `
 
-  const selectEntriesAfter = (storeId: string, startSequence: number) =>
+  const selectEntries = (storeId: string, startSequence: number, endSequence?: number) =>
     sql`
         SELECT sequence, entry_id, event, primary_key, payload
         FROM ${entriesTableSql}
         WHERE store_id = ${storeId} AND sequence >= ${startSequence}
+        ${endSequence === undefined ? sql.literal("") : sql`AND sequence < ${endSequence}`}
         ORDER BY sequence ASC
       `.pipe(
       Effect.flatMap(decodeRemoteEntries)
@@ -467,16 +476,39 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       function*({ storeId, startSequence, compactors }) {
         const pubsub = yield* RcMap.get(pubsubs, storeId)
         const subscription = yield* PubSub.subscribe(pubsub)
-        const backlog = yield* EventLogServerUnencrypted.compactBacklog({
-          compactors,
-          remoteEntries: yield* selectEntriesAfter(storeId, startSequence)
-        })
-        let watermark = backlog.length > 0 ? backlog[backlog.length - 1]!.remoteSequence : startSequence - 1
+        const remoteEntries = yield* selectEntries(storeId, startSequence)
+        const backlog = yield* EventLogServerUnencrypted.compactBacklog({ compactors, remoteEntries })
+        let delivered = remoteEntries.length > 0
+          ? remoteEntries[remoteEntries.length - 1]!.remoteSequence
+          : startSequence - 1
+
+        // Leave the position unchanged on read failure so the next entry retries.
+        const deliver = (entry: RemoteEntry): Effect.Effect<ReadonlyArray<RemoteEntry>> => {
+          if (entry.remoteSequence <= delivered) {
+            return Effect.succeed([])
+          }
+          if (entry.remoteSequence === delivered + 1) {
+            delivered = entry.remoteSequence
+            return Effect.succeed([entry])
+          }
+          return selectEntries(storeId, delivered + 1, entry.remoteSequence).pipe(
+            Effect.map((missing) => {
+              delivered = entry.remoteSequence
+              return [...missing, entry]
+            }),
+            // Read committed rows, not those of a transaction the caller opened.
+            Effect.updateContext((context: Context.Context<never>) => Context.omit(sql.transactionService)(context)),
+            Effect.catch((error) =>
+              Effect.as(Effect.logWarning("Failed to read event log entries that a later commit overtook", error), [])
+            )
+          )
+        }
 
         return Stream.fromArray(backlog).pipe(
           Stream.concat(
             Stream.fromSubscription(subscription).pipe(
-              Stream.filter((entry) => entry.remoteSequence > watermark)
+              Stream.mapEffect(deliver),
+              Stream.flattenIterable
             )
           )
         )

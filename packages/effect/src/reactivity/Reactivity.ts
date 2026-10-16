@@ -16,6 +16,7 @@ import type * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { dual, flow } from "../Function.ts"
 import * as Hash from "../Hash.ts"
+import { DeferInvalidation } from "../internal/reactivity.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import type { ReadonlyRecord } from "../Record.ts"
@@ -96,27 +97,33 @@ export const Reactivity: Context.Service<Reactivity, Reactivity> = Context.Servi
 export const make = Effect.sync(() => {
   const handlers = new Map<number | string, Set<() => void>>()
 
+  const runHandlers = (hash: string | number): void => {
+    const set = handlers.get(hash)
+    if (set === undefined) return
+    set.forEach((run) => run())
+  }
+
   const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
-    keysToHashes(keys, (hash) => {
-      const set = handlers.get(hash)
-      if (set === undefined) return
-      set.forEach((run) => run())
-    })
+    keysToHashes(keys, runHandlers)
   }
 
   const invalidate = (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): Effect.Effect<void> =>
     Effect.contextWith((services) => {
-      const pending = Context.getOrUndefined(services, PendingInvalidation)
-      if (pending) {
-        keysToHashes(keys, (hash) => {
-          pending.add(hash)
-        })
-      } else {
-        invalidateUnsafe(keys)
-      }
-      return Effect.void
+      // A captured batch collects the keys only while it is still open.
+      const run = Effect.sync(() => {
+        const pending = Context.getOrUndefined(services, PendingInvalidation)
+        if (pending?.open) {
+          keysToHashes(keys, (hash) => {
+            pending.hashes.add(hash)
+          })
+        } else {
+          invalidateUnsafe(keys)
+        }
+      })
+      const defer = Context.get(services, DeferInvalidation)
+      return defer ? defer(run) : run
     })
 
   const mutation = <A, E, R>(
@@ -203,16 +210,13 @@ export const make = Effect.sync(() => {
 
   const withBatch = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.suspend(() => {
-      const pending = new Set<string | number>()
+      const pending = { hashes: new Set<string | number>(), open: true }
       return effect.pipe(
         Effect.provideService(PendingInvalidation, pending),
         Effect.onExit((_) =>
           Effect.sync(() => {
-            pending.forEach((hash) => {
-              const set = handlers.get(hash)
-              if (set === undefined) return
-              set.forEach((run) => run())
-            })
+            pending.open = false
+            pending.hashes.forEach(runHandlers)
           })
         )
       )
@@ -230,7 +234,10 @@ export const make = Effect.sync(() => {
   })
 })
 
-class PendingInvalidation extends Context.Service<PendingInvalidation, Set<string | number>>()(
+class PendingInvalidation extends Context.Service<PendingInvalidation, {
+  readonly hashes: Set<string | number>
+  open: boolean
+}>()(
   "effect/reactivity/Reactivity/PendingInvalidation"
 ) {}
 
@@ -239,7 +246,9 @@ class PendingInvalidation extends Context.Service<PendingInvalidation, Set<strin
  *
  * **Gotchas**
  *
- * If the effect fails, the keys are not invalidated.
+ * If the effect fails, the keys are not invalidated. Inside a SQL transaction,
+ * the keys are invalidated once the outermost transaction commits, and not at
+ * all if it rolls back.
  *
  * @stability unstable
  * @category accessors
@@ -320,8 +329,9 @@ export const stream: {
  *
  * **Details**
  *
- * Registered queries for matching keys are rerun immediately, or collected until
- * the enclosing reactivity batch completes.
+ * Registered queries rerun immediately or when the enclosing batch completes.
+ * Inside a SQL transaction, invalidations wait for the outermost commit and join
+ * the captured batch only if it is still open. Rollback drops the invalidations.
  *
  * @stability unstable
  * @category accessors
