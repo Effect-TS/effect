@@ -364,6 +364,31 @@ describe.concurrent("Runners.makeRpc", () => {
     }))))
   })
 
+  it.effect("answers a fresh local request from its saved reply without a storage readback", () =>
+    Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Exit.Exit<number>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          if (reply._tag === "WithExit") replies.push(reply.exit)
+        }))
+      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      yield* TestClock.adjust(0)
+      yield* saveReply(storage, message, snowflake.nextUnsafe())
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
+      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      // Under load, the readback lags the reply saved in this process.
+      repliesFor: () => Effect.succeed([])
+    })))))
+
   it.effect("keeps a duplicate local waiter alive when the first caller cancels", () =>
     Effect.gen(function*() {
       const runners = yield* Runners.Runners
