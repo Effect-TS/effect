@@ -734,10 +734,10 @@ const decodeName = (bytes: Uint8Array, utf8: boolean): string => {
   }
 }
 
-// CRC-32 (IEEE), eight bytes at a time
+// CRC-32 (IEEE), sixteen bytes at a time
 
 const CRC_TABLE = (() => {
-  const table = new Int32Array(8 * 256)
+  const table = new Int32Array(16 * 256)
   for (let n = 0; n < 256; n++) {
     let c = n
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
@@ -745,7 +745,7 @@ const CRC_TABLE = (() => {
   }
   for (let n = 0; n < 256; n++) {
     let c = table[n]
-    for (let k = 1; k < 8; k++) {
+    for (let k = 1; k < 16; k++) {
       c = table[c & 0xff] ^ (c >>> 8)
       table[k * 256 + n] = c
     }
@@ -758,11 +758,13 @@ const crc32 = (crc: number, bytes: Uint8Array): number => {
   let c = ~crc
   let i = 0
   const length = bytes.length
-  for (; i + 8 <= length; i += 8) {
+  for (; i + 16 <= length; i += 16) {
     const a = c ^ (bytes[i] | (bytes[i + 1] << 8) | (bytes[i + 2] << 16) | (bytes[i + 3] << 24))
-    c = t[1792 + (a & 0xff)] ^ t[1536 + ((a >>> 8) & 0xff)] ^ t[1280 + ((a >>> 16) & 0xff)] ^
-      t[1024 + (a >>> 24)] ^ t[768 + bytes[i + 4]] ^ t[512 + bytes[i + 5]] ^ t[256 + bytes[i + 6]] ^
-      t[bytes[i + 7]]
+    c = t[3840 + (a & 0xff)] ^ t[3584 + ((a >>> 8) & 0xff)] ^ t[3328 + ((a >>> 16) & 0xff)] ^
+      t[3072 + (a >>> 24)] ^ t[2816 + bytes[i + 4]] ^ t[2560 + bytes[i + 5]] ^ t[2304 + bytes[i + 6]] ^
+      t[2048 + bytes[i + 7]] ^ t[1792 + bytes[i + 8]] ^ t[1536 + bytes[i + 9]] ^ t[1280 + bytes[i + 10]] ^
+      t[1024 + bytes[i + 11]] ^ t[768 + bytes[i + 12]] ^ t[512 + bytes[i + 13]] ^ t[256 + bytes[i + 14]] ^
+      t[bytes[i + 15]]
   }
   for (; i < length; i++) c = t[(c ^ bytes[i]) & 0xff] ^ (c >>> 8)
   return ~c >>> 0

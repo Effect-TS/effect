@@ -109,6 +109,7 @@ const centralDirectory = (bytes: Uint8Array) => {
       path: text(bytes.subarray(at + 46, at + 46 + nameLength)),
       host: view.getUint8(at + 5),
       flags: view.getUint16(at + 8, true),
+      crc: view.getUint32(at + 16, true),
       external: view.getUint32(at + 38, true)
     }
     at += 46 + nameLength + view.getUint16(at + 30, true) + view.getUint16(at + 32, true)
@@ -137,6 +138,16 @@ describe("Zip", () => {
           })
         ]
         const bytes = yield* encode(input)
+        const bodies = [
+          new Uint8Array(0),
+          textEncoder.encode("hello\n".repeat(100)),
+          big,
+          new Uint8Array(0),
+          textEncoder.encode("unicode"),
+          big,
+          big
+        ]
+        assert.deepStrictEqual(centralDirectory(bytes).map(({ crc }) => crc), bodies.map(crc32))
         for (const chunkSize of [7, bytes.length]) {
           const output = yield* decode(bytes, chunkSize)
           assert.deepStrictEqual(
@@ -152,15 +163,7 @@ describe("Zip", () => {
               ["stream-stored.bin", "File", "Store", Date.UTC(1980, 0, 1), big.length]
             ]
           )
-          assert.deepStrictEqual(output.map(({ body }) => body), [
-            new Uint8Array(0),
-            textEncoder.encode("hello\n".repeat(100)),
-            big,
-            new Uint8Array(0),
-            textEncoder.encode("unicode"),
-            big,
-            big
-          ])
+          assert.deepStrictEqual(output.map(({ body }) => body), bodies)
         }
       }))
 
