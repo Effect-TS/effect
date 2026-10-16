@@ -207,6 +207,31 @@ describe("GraphQLResolver", () => {
           assert.strictEqual(result.reason._tag, "ResponseError")
         }
       }))
+
+    it.effect("a traced caller's batch is sent under the RequestResolver.withSpan span", () =>
+      Effect.gen(function*() {
+        const spans: Array<string> = []
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(protocolLayer({
+          execute: (request) =>
+            Effect.map(Effect.currentSpan, (span) => {
+              spans.push(span.name)
+              return { body: { data: { nodes: (request.variables as { ids: Array<string> }).ids.map(repo) } } }
+            }).pipe(Effect.orDie)
+        })))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"]
+          }).pipe(RequestResolver.withSpan("resolver"))
+        )
+
+        const results = yield* Effect.all([get("R_1"), get("R_2")], { concurrency: "unbounded" }).pipe(
+          Effect.withSpan("caller")
+        )
+
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2")])
+        assert.deepStrictEqual(spans, ["resolver"])
+      }))
   })
 
   describe("ordered, when an error nulls the whole list", () => {
