@@ -771,6 +771,27 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
     }))
 
+  it.effect("decideSettled reports choice and score answers without probabilities as NoDistribution", () =>
+    Effect.gen(function*() {
+      const { probabilities: _choice, ...department } = decisionsResponse.answers.department
+      const { probabilities: _score, ...frustration } = decisionsResponse.answers.frustration
+      const { outcomes } = yield* DecisionModel.decideSettled(TicketTriage, { input: ticket }).pipe(
+        Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
+        Effect.provide(makeClientLayer((request) =>
+          Effect.succeed(jsonResponse(request, {
+            ...decisionsResponse,
+            answers: { ...decisionsResponse.answers, department, frustration }
+          }))
+        ))
+      )
+
+      assert.isTrue(Result.isFailure(outcomes.department) && outcomes.department.failure.reason === "NoDistribution")
+      assert.isTrue(
+        Result.isFailure(outcomes.frustration) && outcomes.frustration.failure.reason === "NoDistribution"
+      )
+      assert.isTrue(Result.isSuccess(outcomes.urgent))
+    }))
+
   it.effect("fails with InvalidOutputError when a score distribution skips a level index", () =>
     Effect.gen(function*() {
       const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
