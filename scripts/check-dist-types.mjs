@@ -1,4 +1,4 @@
-// Type-checks the built `effect` declarations the way a consumer with
+// Type-checks the built `effect` and AI provider declarations the way a consumer with
 // `skipLibCheck: false` does. Run after `pnpm build` with `stripInternal`
 // enabled to catch public declarations that reference `@internal` symbols
 // (see Effect-TS/effect#6431, #7187, #8161).
@@ -55,6 +55,37 @@ try {
   config.compilerOptions.lib = ["ES2022", "DOM", "DOM.Iterable"]
   Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
   execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
+
+  // Provider augmentations and generated open-object types must also work
+  // with default optional-property checking (see Effect-TS/effect#9355).
+  const providers = ["openai", "openai-compat", "anthropic", "openrouter"]
+  for (const provider of providers) {
+    const name = `@effect/ai-${provider}`
+    const providerDist = Path.join(root, "packages", "ai", provider, "dist")
+    if (!Fs.existsSync(Path.join(providerDist, "index.d.ts"))) {
+      throw new Error(`${name}/dist is missing; run pnpm build first`)
+    }
+    config.compilerOptions.paths[name] = [Path.join(providerDist, "index.d.ts")]
+    config.compilerOptions.paths[`${name}/*`] = [Path.join(providerDist, "*.d.ts")]
+  }
+  config.compilerOptions.target = "ESNext"
+  config.compilerOptions.paths[`${pkg.name}/*`] = [Path.join(dist, "*.d.ts")]
+  config.compilerOptions.module = "NodeNext"
+  config.compilerOptions.moduleResolution = "NodeNext"
+  config.compilerOptions.lib = ["ESNext", "DOM", "DOM.Iterable"]
+  config.compilerOptions.exactOptionalPropertyTypes = false
+  Fs.writeFileSync(Path.join(dir, "tsconfig.json"), JSON.stringify(config))
+  for (const provider of providers) {
+    const name = `@effect/ai-${provider}`
+    Fs.writeFileSync(Path.join(dir, "index.ts"), `export * from "${name}"\n`)
+    console.log(`Checking ${name} declarations without exactOptionalPropertyTypes`)
+    try {
+      execFileSync("pnpm", ["exec", "tsc", "-p", Path.join(dir, "tsconfig.json")], { cwd: root, stdio: "inherit" })
+    } catch (error) {
+      // Check every provider, even when an earlier provider fails.
+      process.exitCode = typeof error.status === "number" ? error.status : 1
+    }
+  }
 } catch (error) {
   process.exitCode = typeof error.status === "number" ? error.status : 1
 } finally {
