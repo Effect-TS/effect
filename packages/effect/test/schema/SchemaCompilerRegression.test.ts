@@ -291,6 +291,37 @@ describe("compiler regression contracts", () => {
     assert.isTrue(compiles(Schema.Struct({ a: field, b: field, c: field })))
   })
 
+  it("applies generation limits to encoding sources", () => {
+    const literals = Array.from({ length: Codegen.maxGeneratedNodes + 1 }, (_, i) => String(i))
+    const schema = Schema.Literals(literals).pipe(Schema.decodeTo(Schema.Number, SchemaTransformation.numberFromString))
+    assert.isUndefined(Codegen.generate(schema.ast, "decode"))
+  })
+
+  it("generates a synchronous decoder for StringTree codec Structs", () => {
+    const schema = Schema.toCodecStringTree(
+      Schema.Struct({ id: Schema.Number, ok: Schema.Boolean, name: Schema.String })
+    )
+    assert.isDefined(Codegen.generate(schema.ast, "decode"))
+    // Encodings are not part of the type side.
+    assert.isUndefined(Codegen.generate(schema.ast, "is"))
+  })
+
+  it("does not replay library conversions of values that can run user code", () => {
+    let calls = 0
+    const schema = Schema.Struct({
+      n: Schema.Any.pipe(
+        Schema.decodeTo(Schema.Number.check(Schema.isGreaterThan(0)), SchemaTransformation.numberFromString)
+      )
+    })
+    const input = { n: { valueOf: () => ++calls === 1 ? -1 : 1 } }
+    for (const compiled of [false, true]) {
+      if (compiled) SchemaJITCompiler.enable(schema.ast)
+      calls = 0
+      assert.isTrue(Result.isFailure(SchemaParser.decodeUnknownResult(schema)(input)))
+      strictEqual(calls, 1)
+    }
+  })
+
   it("does not generate code for schemas nesting a declaration or suspension", () => {
     const Recursive: Schema.Top = Schema.Struct({ next: Schema.optionalKey(Schema.suspend(() => Recursive)) })
     for (const field of [Schema.Date, Recursive]) {

@@ -30,10 +30,10 @@ const makeFixtures = () => {
     return f(a)
   }
   // Every source check is counted.
-  const countedFilter = (predicate: (s: string) => boolean, expected: string) =>
-    Schema.makeFilter((s: string) => {
+  const countedFilter = <T = string>(predicate: (value: T) => boolean, expected: string) =>
+    Schema.makeFilter((value: T) => {
       counters.checks++
-      return predicate(s)
+      return predicate(value)
     }, { expected })
   const Digits = Schema.String.check(countedFilter((s) => /^[0-9]{1,6}$/.test(s), "digits"))
   const Short = Schema.String.check(
@@ -74,6 +74,8 @@ const makeFixtures = () => {
       prefixed
     )),
     countedFilter,
+    // Codecs of shared leaves are memoized, so every case annotates its own.
+    fresh: <S extends Schema.Top>(schema: S): S => schema.annotate({}) as S,
     toNumber,
     prefixed
   }
@@ -257,6 +259,67 @@ const cases: ReadonlyArray<Case> = [
       JSON.parse(`{"a":"2"}`),
       { a: "2" }
     ]
+  },
+  // Library conversions that the synchronous fast path may replay.
+  ...inLayouts(
+    "StringTree Number",
+    (f) => Schema.toCodecStringTree(f.fresh(Schema.Number)),
+    ["1", "-1.5", "NaN", "Infinity", "", "x", 1, null]
+  ),
+  ...inLayouts(
+    "library conversion from a checked source",
+    (f) => f.Digits.pipe(Schema.decodeTo(Schema.Number, SchemaTransformation.numberFromString)),
+    values
+  ),
+  {
+    name: "StringTree Struct",
+    schema: (f) =>
+      Schema.toCodecStringTree(Schema.Struct({
+        id: f.fresh(Schema.Number),
+        ok: f.fresh(Schema.Boolean),
+        name: Schema.String,
+        finite: f.fresh(Schema.Finite),
+        kind: f.fresh(Schema.Literals(["a", 1, true])),
+        opt: Schema.optional(f.fresh(Schema.Number)),
+        key: Schema.optionalKey(f.fresh(Schema.Boolean))
+      })),
+    inputs: [
+      { id: "1", ok: "true", name: "a", finite: "2", kind: "a" },
+      { id: "NaN", ok: "false", name: "", finite: "-1.5", kind: "1", opt: "3", key: "true" },
+      { id: "1", ok: "true", name: "a", finite: "2", kind: "true", opt: undefined },
+      { id: "x", ok: "yes", name: 1, finite: "Infinity", kind: "b", opt: "x", key: "x" },
+      { id: 1, ok: true, name: "a", finite: 2, kind: 1 },
+      { ok: "true", name: "a", finite: "2", kind: "a", extra: "x" },
+      null
+    ]
+  },
+  {
+    name: "StringTree Struct with encoded keys",
+    schema: (f) =>
+      Schema.toCodecStringTree(
+        Schema.Struct({ id: f.fresh(Schema.Number), ok: f.fresh(Schema.Boolean) }).pipe(
+          Schema.encodeKeys({ id: "ID" })
+        )
+      ),
+    inputs: [{ ID: "1", ok: "true" }, { id: "1", ok: "true" }, { ID: "x", ok: "x" }]
+  },
+  {
+    name: "StringTree __proto__ key",
+    schema: (f) =>
+      Schema.toCodecStringTree(
+        Schema.Struct({ ["__proto__"]: f.fresh(Schema.Number), ok: f.fresh(Schema.Boolean) })
+      ),
+    inputs: [
+      JSON.parse(`{"__proto__":"1","ok":"true"}`),
+      JSON.parse(`{"__proto__":"x","ok":"true"}`),
+      JSON.parse(`{"ok":"true"}`),
+      { ok: "true" }
+    ]
+  },
+  {
+    name: "library conversions in Record values and Array elements",
+    schema: (f) => Schema.Record(Schema.String, Schema.Array(f.fresh(Schema.NumberFromString))),
+    inputs: [{ a: ["1", "2"], b: [] }, { a: ["1", "x"] }, { a: "1" }, {}]
   },
   {
     name: "symbol key",
@@ -509,6 +572,27 @@ describe("Schema compilers: transformations with checked sources", { concurrent:
           assert.strictEqual(Result.isSuccess(decode(input(value))), succeeds)
           assert.strictEqual(counters.checks, 1)
         }
+      }
+    })
+  }
+
+  for (const compiler of ["jit", "aot"] as const) {
+    it(`${compiler} runs decoded-side checks of library conversions once per decoding pass`, async () => {
+      const f = makeFixtures()
+      const schema = Schema.toCodecStringTree(Schema.Struct({
+        n: Schema.Number.check(f.countedFilter((n: number) => n < 100, "less than 100")),
+        s: Schema.String
+      }))
+      await install[compiler](schema)
+      const decode = SchemaParser.decodeUnknownResult(schema)
+      counters.checks = 0
+      assert.isTrue(Result.isSuccess(decode({ n: "1", s: "a" })))
+      assert.strictEqual(counters.checks, 1)
+      // A failure may repeat the synchronous pass's checks once in the detailed pass.
+      for (const input of [{ n: "100", s: "a" }, { n: "1", s: 1 }]) {
+        counters.checks = 0
+        assert.isTrue(Result.isFailure(decode(input)))
+        assert.isAtMost(counters.checks, 2)
       }
     })
   }
