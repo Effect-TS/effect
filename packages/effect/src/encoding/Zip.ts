@@ -556,20 +556,19 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
     const feed = Stream.runForEach(
       input,
       (chunk) => Effect.promise(() => writer.write(chunk as Uint8Array<ArrayBuffer>))
-    )
-      .pipe(
-        Effect.andThen(Effect.promise(() => writer.close())),
-        Effect.onExit((exit) =>
-          Exit.isSuccess(exit) ? Effect.void : Effect.sync(() => {
-            writer.abort().catch(() => {})
-          })
-        )
+    ).pipe(
+      Effect.andThen(Effect.promise(() => writer.close())),
+      Effect.onError(() =>
+        Effect.sync(() => {
+          writer.abort().catch(() => {})
+        })
       )
+    )
     const output = Stream.fromReadableStream({
       evaluate: () => compressor.readable,
-      onError: (cause) => new ZipError({ kind: "InvalidData", message: `deflate failed: ${String(cause)}` })
+      onError: (cause) => invalidData(`deflate failed: ${String(cause)}`)
     })
-    return Stream.merge(output, Stream.drain(Stream.fromEffect(feed)))
+    return Stream.merge(output, Stream.fromEffectDrain(feed))
   })
 
 const deflateBytes = (bytes: Uint8Array): Effect.Effect<Uint8Array, ZipError> =>
