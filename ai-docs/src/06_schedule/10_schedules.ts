@@ -5,7 +5,7 @@
  */
 import { Duration, Effect, Random, Schedule, Schema } from "effect"
 
-// Production pattern: capped exponential backoff with jitter and max attempts.
+// Production pattern: capped exponential backoff with jitter and at most 5 retries (6 attempts).
 // Delays start at 250ms, grow exponentially with jitter, and are capped at 10s.
 export const productionRetrySchedule = Schedule.min([
   Schedule.exponential("250 millis"),
@@ -13,6 +13,7 @@ export const productionRetrySchedule = Schedule.min([
   Schedule.spaced("10 seconds")
 ]).pipe(
   Schedule.jittered,
+  Schedule.upTo({ times: 5 }),
   Schedule.setInputType<HttpError>(),
   Schedule.while(({ input }) => input.retryable)
 )
@@ -44,8 +45,8 @@ export const fetchUserProfile = Effect.fn("fetchUserProfile")(
 // Use the schedule with `Effect.retry` to retry failures.
 export const loadUserWithRetry = fetchUserProfile("user-123").pipe(
   Effect.retry(productionRetrySchedule),
-  // If the effect still fails after exhausting the schedule, turn the error
-  // into a fatal one.
+  // Turn the final error into a defect, either after exhausting the retries
+  // or immediately for a non-retryable error.
   Effect.orDie
 )
 

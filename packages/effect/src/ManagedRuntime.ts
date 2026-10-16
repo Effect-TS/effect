@@ -254,6 +254,11 @@ export interface ManagedRuntime<in R, out ER> {
  * Dispose the runtime when it is no longer needed. A runtime cannot be reused
  * after disposal.
  *
+ * A failed layer build is also cached: subsequent runs return the same build
+ * failure without rebuilding the layer. For transient failures, retry inside
+ * the layer before passing it to `make`, or dispose the runtime and create a
+ * new one to attempt a fresh build.
+ *
  * **Example** (Creating a managed runtime)
  *
  * ```ts import.meta.vitest
