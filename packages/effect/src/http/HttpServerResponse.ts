@@ -77,8 +77,7 @@ export interface Options {
   readonly cookies?: Cookies.Cookies | undefined
   readonly contentType?: string | undefined
   /**
-   * The exact byte length of the body, sent as `content-length`. Like a
-   * `content-length` header, it must match the body.
+   * Sent as `content-length`, so it must equal the body's byte length.
    */
   readonly contentLength?: number | undefined
 }
@@ -1032,9 +1031,9 @@ export const setStatus: {
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
 
-// 204 and 205 have no content, so `content-length` could only describe the
-// omitted body. RFC 9110 §8.6 forbids it on 204, and HTTP/2 clients reset the
-// stream. 304 and HEAD keep it, because there it describes the representation.
+// 204 and 205 have no content, so `content-length` could only describe a body
+// that isn't sent (HTTP/2 clients reset the stream). 304 and HEAD keep it
+// because there it describes the representation.
 const omitsContentLength = (status: number): boolean => status === 204 || status === 205
 
 const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): globalThis.Headers => {
@@ -1062,12 +1061,11 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
  * awaiting completion, and cancellation errors are ignored.
  *
  * A raw `Response` is returned as-is when there are no outer headers or cookies
- * to merge and no `content-length` to remove. Otherwise, headers are normalized
- * in a copy without modifying the raw
- * response: outer headers replace native ones, and cookies are appended. When
- * its body is omitted, the bodyless `Response` keeps those merged
- * headers and uses the outer status for 204, 205 and 304, or the raw `Response`
- * status otherwise.
+ * to merge and no `content-length` to remove. Otherwise, a copy is returned and
+ * the raw response is left unmodified: outer headers replace native ones, and
+ * cookies are appended. When its body is omitted, the bodyless `Response` keeps
+ * those merged headers and uses the outer status for 204, 205 and 304, or the
+ * raw `Response` status otherwise.
  *
  * @stability unstable
  * @category converting
@@ -1504,10 +1502,10 @@ const makeResponse = (options: {
  *
  * **Gotchas**
  *
- * The `content-length` header is kept and must match the body. A proxied
- * `fetch` response can break this: `fetch` decodes a compressed body but keeps
- * the upstream `content-length`. Remove that header from a copy of the Web
- * `Response` (`new Response(response.body, response)`) before converting it.
+ * The `content-length` header is kept, so it must match the body. `fetch`
+ * decodes compressed bodies but keeps the upstream `content-length`, so remove
+ * it from a copy (`new Response(response.body, response)`) before converting a
+ * proxied response.
  *
  * @stability unstable
  * @category converting

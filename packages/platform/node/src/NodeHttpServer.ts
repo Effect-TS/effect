@@ -596,8 +596,7 @@ const handleResponse = (
     nodeResponse.end()
     return cancelResponseBody(response.body)
   }
-  // A body that doesn't match `content-length` would desync a keep-alive
-  // connection, so Node throws `ERR_HTTP_CONTENT_LENGTH_MISMATCH` instead
+  // Throw on a body that doesn't match `content-length` instead of desyncing the connection
   nodeResponse.strictContentLength = true
   const body = response.body
   switch (body._tag) {
@@ -708,8 +707,8 @@ const end = (
   }
 }
 
-// `pipeline` would rethrow a `strictContentLength` error from an event handler,
-// so a mismatch is caught before Node sees the bytes and fails the pipeline
+// Fails the pipeline on a length mismatch before Node sees the bytes, because a
+// `strictContentLength` error thrown inside `pipeline` would be uncaught
 const pipeTo = (
   readable: Readable,
   nodeResponse: Http.ServerResponse,
