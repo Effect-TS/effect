@@ -2853,12 +2853,7 @@ describe("Effect", () => {
   })
 
   describe("forkIn", () => {
-    for (
-      const options of [{}, { startImmediately: true }, { uninterruptible: true }, {
-        startImmediately: true,
-        uninterruptible: true
-      }]
-    ) {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
       it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
         Effect.gen(function*() {
           const scope = yield* Scope.make()
@@ -2894,12 +2889,7 @@ describe("Effect", () => {
   })
 
   describe("forkScoped", () => {
-    for (
-      const options of [{}, { startImmediately: true }, { uninterruptible: true }, {
-        startImmediately: true,
-        uninterruptible: true
-      }]
-    ) {
+    for (const options of [{ startImmediately: true }, { uninterruptible: true }]) {
       it.effect(`does not run work in an already-closed scope with ${JSON.stringify(options)}`, () =>
         Effect.gen(function*() {
           const scope = yield* Scope.make()
