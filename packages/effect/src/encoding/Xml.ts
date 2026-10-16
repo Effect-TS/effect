@@ -949,6 +949,8 @@ class Parser {
     this.bytes = bytes
   }
 
+  // `force` parses a pending token without waiting for its end, so that an
+  // error found before invalid input is reported however the input is chunked
   feed(chunk: string, force = false): void {
     if (chunk.length === 0 && !force) return
     if (!this.started) {
@@ -1672,7 +1674,7 @@ class Collector implements Machine<Event, Element> {
 }
 
 // JavaScriptCore gives every Error its own source `line` and `column`, which
-// would pass for an XML position, so errors without one set both
+// would pass for an XML position, so errors without one set both to undefined
 const positionless = (kind: XmlError["kind"], message: string) =>
   new XmlError({ kind, message, line: undefined, column: undefined })
 
