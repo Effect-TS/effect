@@ -233,7 +233,7 @@ export const file = (path: string, content: string | Uint8Array, options?: FileO
   return { header, body }
 }
 
-// Key by body identity so replacing an entry body bypasses the encode fast path.
+// Keyed by body, so an entry whose body is replaced is streamed instead
 const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, Uint8Array>()
 
 // Directories and in-memory files have nothing to stream
@@ -258,12 +258,12 @@ const inMemoryContent = (body: Stream.Stream<Uint8Array, unknown, unknown>): Uin
  * - A stored entry without `size` fails with an `InvalidHeader` `ZipError`.
  * - When `size` is set, `encode` fails with a `SizeMismatch` `ZipError` if the
  *   body produces fewer or more bytes.
- * - Non-empty stored entries are followed by a data descriptor, which streaming
- *   readers can mishandle: Java's `ZipInputStream` rejects them, and
- *   libarchive, as in `bsdtar` reading from a pipe, ends them at the first bytes
- *   in the data that form a descriptor of the data before them, so content can
- *   cut the entry short and add entries. Use `Deflate` or an in-memory `file`
- *   for untrusted content and for those readers.
+ * - Non-empty stored entries are followed by a data descriptor, which some
+ *   streaming readers mishandle. Java's `ZipInputStream` rejects them, and
+ *   libarchive reading from a pipe (as `bsdtar` does) ends them at the first
+ *   bytes that look like a descriptor, so content can cut the entry short and
+ *   add entries. Use `Deflate` or an in-memory `file` for untrusted content
+ *   and for those readers.
  *
  * @see {@link file} for in-memory content
  * @see {@link encode} for writing entries to an archive
@@ -511,8 +511,8 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
       let done: { readonly value: Done } | undefined
       let body: Pull.Pull<Arr.NonEmptyReadonlyArray<Uint8Array>, E | ZipError, void, R> | undefined
       let bodyScope: Scope.Closeable | undefined
-      // Deflates of in-memory entries, started ahead of the entry being written
-      // so that they overlap
+      // In-memory entries are deflated ahead of the one being written, so the
+      // deflates overlap
       let deflates: Array<Promise<Uint8Array> | undefined> = []
 
       const startDeflates = (from: number): void => {
@@ -523,8 +523,8 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
           const bytes = inMemoryContent(body)
           if (bytes === undefined || (i > from && bytes.length > DEFLATE_AHEAD_SIZE)) continue
           const deflate = deflateBytes(bytes)
-          // Failures are reported when the entry is written. Deflates left by a
-          // failed or interrupted encode finish on their own.
+          // Failures surface when the entry is written; deflates left behind by
+          // a failed encode finish on their own
           deflate.catch(() => {})
           deflates[i] = deflate
         }
@@ -631,13 +631,12 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
 const compressible = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
   bytes.buffer instanceof ArrayBuffer ? bytes as Uint8Array<ArrayBuffer> : bytes.slice()
 
-// How many in-memory entries are deflated at once, and the largest content
-// deflated ahead of the entry being written
+// How many in-memory entries are deflated at once, and the largest one that
+// is deflated before its turn
 const DEFLATE_AHEAD = 16
 const DEFLATE_AHEAD_SIZE = 64 * 1024
 
-// In-memory content is deflated in one promise, which costs less per entry
-// than a stream
+// One promise per in-memory entry costs less than a stream
 const deflateBytes = async (bytes: Uint8Array): Promise<Uint8Array> => {
   let compressor: CompressionStream
   try {
@@ -819,8 +818,7 @@ const validate = (header: Header): void => {
   if (path === "") throw invalidHeader("path is empty")
   const quoted = JSON.stringify(path)
   if (path.startsWith("/")) throw invalidHeader(`path ${quoted} is absolute`)
-  // The zip format forbids these, and tools such as libarchive read them as
-  // separators and roots
+  // The zip format forbids these, and libarchive reads them as separators and roots
   if (path.includes("\\")) throw invalidHeader(`path ${quoted} contains a backslash`)
   if (/^[A-Za-z]:/.test(path)) throw invalidHeader(`path ${quoted} starts with a drive letter`)
   if (path.includes("\0")) throw invalidHeader(`path ${quoted} contains a NUL character`)
@@ -961,7 +959,7 @@ const centralHeader = (record: EntryRecord): Uint8Array => {
 
 const SLAB_SIZE = 64 * 1024
 
-// Deflate adds at most a few bytes per 64 KiB block to data that does not compress
+// Room for deflate to grow data that does not compress, when choosing ZIP64
 const DEFLATE_HEADROOM = 16 * 1024 * 1024
 
 // Chunks below this size are copied together instead of being handed out alone
@@ -974,8 +972,7 @@ class Writer {
   private readonly records: Array<EntryRecord> = []
   private current: Streaming | undefined
 
-  // Hands out the buffered output, joining runs of small chunks; call only
-  // when `buffered` is positive
+  // Hands out the buffered output, joining runs of small chunks; needs `buffered > 0`
   flush(): Arr.NonEmptyArray<Uint8Array> {
     const out: Array<Uint8Array> = []
     let run: Array<Uint8Array> = []
@@ -1063,18 +1060,17 @@ class Writer {
     if (stored && size === undefined) {
       throw invalidHeader(`stored file ${JSON.stringify(header.path)} is streamed without a size`)
     }
-    // An empty stored entry has a known CRC-32 too, so it needs no data
-    // descriptor; readers could not tell its zero sizes from missing ones
+    // An empty stored entry needs no descriptor: readers would take its zero
+    // sizes for missing ones
     const descriptor = !(stored && size === 0)
     const record = this.record(header, descriptor ? FLAG_DESCRIPTOR : 0)
-    // Stored sizes are written, so that streaming readers can find the end of the data
+    // Streaming readers find the end of stored data from its size
     if (stored) {
       record.size = size!
       record.compressedSize = size!
     }
-    // The local header decides the width of the sizes after the data, so it
-    // declares ZIP64 whenever they could reach 4 GiB. Deflate can make data
-    // slightly larger.
+    // The local header fixes the width of the sizes after the data, so declare
+    // ZIP64 whenever they could reach 4 GiB
     record.zip64 = size === undefined || size >= (stored ? MAX32 : MAX32 - DEFLATE_HEADROOM)
     this.push(localHeader(record))
     record.size = 0
@@ -1163,8 +1159,7 @@ class ByteQueue {
 
   push(chunk: Uint8Array): void {
     if (chunk.length === 0) return
-    // Compacting only once half of the slots are free keeps the copies linear
-    // in the number of chunks
+    // Compacting once half the slots are free keeps copying linear
     if (this.head >= 1024 && this.head * 2 >= this.chunks.length) {
       this.chunks = this.chunks.slice(this.head)
       this.head = 0
@@ -1236,8 +1231,7 @@ class ByteQueue {
     while (n > 0) n -= this.takeSome(n).length
   }
 
-  // Puts back the end of a chunk that the last `takeSome` returned whole, into
-  // the slot that it freed or the empty queue
+  // Puts back the tail of the chunk that the last `takeSome` returned whole
   unread(bytes: Uint8Array): void {
     if (bytes.length === 0) return
     if (this.head > 0) this.chunks[--this.head] = bytes
@@ -1427,11 +1421,10 @@ class Decoder {
     })
   }
 
-  // Reads a data descriptor. Its signature is optional, and its sizes have
-  // four bytes unless the local header has a ZIP64 field. Writers that switch
-  // to ZIP64 sizes only when they overflow are accepted by matching the
-  // descriptor against the data that was read; when several layouts match,
-  // the one followed by a header signature wins.
+  // Reads a data descriptor, whose signature is optional and whose sizes are
+  // 4 bytes unless the local header has a ZIP64 field. Writers that widen the
+  // sizes only on overflow are handled by matching each layout against the
+  // data read; among several matches, one followed by a header signature wins.
   private descriptor(
     current: Current
   ): { readonly crc: number; readonly compressedSize: number; readonly size: number } | typeof NeedInput {
@@ -1528,8 +1521,8 @@ class Decoder {
     const descriptor = (flags & FLAG_DESCRIPTOR) !== 0
     // Writers that put sizes after the data usually leave zeros here
     const known = !descriptor || compressedSize !== 0 || size !== 0
-    // The end of stored data is only known from its size: searching for the
-    // data descriptor would let the content of an entry forge the entries after it
+    // Searching for the descriptor of stored data would let its content forge
+    // the entries after it
     if (method === 0 && !known) throw unsupported(`stored entry ${quoted} has no size before its data`)
     if (method === 0 && compressedSize !== size) {
       throw invalidHeader(`stored entry ${quoted} has different sizes`)
@@ -1604,11 +1597,10 @@ const DISTANCE_BASE = bases(1, DISTANCE_EXTRA)
 
 const CODE_LENGTH_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
 
-// Codes of up to `bits` bits are found with one lookup in `table`, indexed by
-// the next input bits and holding `symbol << 4 | length`, zero for codes not
-// in use, or LONG for the prefixes of longer codes. Those are rare, and are
-// decoded bit by bit from the canonical code in `counts` and `symbols` by
-// `decodeLong`, so a table never costs more than 2^PRIMARY_BITS entries to build.
+// `table` decodes codes of up to `bits` bits in one lookup on the next input
+// bits. Entries hold `symbol << 4 | length`, zero for unused codes, or LONG for
+// prefixes of longer codes, which `decodeLong` reads bit by bit from `counts`
+// and `symbols`. This caps a table at 2^PRIMARY_BITS entries.
 interface Huffman {
   readonly table: Int32Array
   bits: number
@@ -1713,8 +1705,7 @@ const FIXED_LITERALS = (() => {
 // Distance codes 30 and 31 complete the fixed code but are invalid
 const FIXED_DISTANCES = huffman(makeHuffman(), new Uint8Array(32).fill(5), 0, 32, false)
 
-// The arrays of an inflater, which a decoder reuses for each of its entries, as
-// only one is inflated at a time
+// Inflater arrays, reused across a decoder's entries as only one inflates at a time
 class InflateMemory {
   // The window of earlier output, followed by up to OUTPUT_SIZE bytes of new output
   readonly buffer = new Uint8Array(INFLATE_BUFFER_SIZE)
@@ -1757,19 +1748,17 @@ class Inflater {
   }
 
   // Yields the output position when the queue is empty or the buffer is full,
-  // and returns it at the end. Output is written after the window, so matches
-  // copy within the buffer, and continues there once `pull` has handed out a
-  // full buffer. A new chunk is only taken when the bits held are all needed,
-  // so whole bytes held always come from the current chunk and can be given
-  // back before stored blocks and at the end.
+  // and returns it at the end. Output follows the window, so matches copy
+  // within the buffer. A new chunk is only taken when every held bit is
+  // needed, so held whole bytes always belong to the current chunk and can be
+  // given back before stored blocks and at the end.
   private *run(queue: ByteQueue): Generator<number, number, void> {
     const { buffer } = this.memory
     let position = WINDOW_SIZE
     // Matches cannot reach before this index: until the buffer is first full,
     // the window holds no output of this stream
     let floor = WINDOW_SIZE
-    // Input is read from a chunk taken from the queue, and what is left of it
-    // is put back at the end
+    // The chunk being read; what is left of it goes back to the queue at the end
     let input: Uint8Array = emptyBody
     let inputPosition = 0
     let bitBuffer = 0
@@ -1950,7 +1939,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          // The code needs more bits, so fewer than 15 are held and two more bytes fit
+          // A longer code means fewer than 15 bits are held, so two bytes fit
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
@@ -2009,7 +1998,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          // The code needs more bits, so fewer than 15 are held and two more bytes fit
+          // A longer code means fewer than 15 bits are held, so two bytes fit
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
