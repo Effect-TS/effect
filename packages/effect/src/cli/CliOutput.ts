@@ -15,7 +15,7 @@ import * as Context from "../Context.ts"
 import * as Layer from "../Layer.ts"
 import * as Option from "../Option.ts"
 import type * as CliError from "./CliError.ts"
-import type { HelpDoc } from "./HelpDoc.ts"
+import type { FlagDoc, HelpDoc } from "./HelpDoc.ts"
 import * as Ansi from "./internal/ansi.ts"
 
 /**
@@ -276,6 +276,17 @@ const escapeControlCharacters = (text: string): string =>
 /**
  * Creates a default formatter with configurable options.
  *
+ * **Details**
+ *
+ * - `colors`: force ANSI colors on or off. Defaults to terminal detection.
+ * - `inheritedFlags`: how subcommand help renders flags inherited from
+ *   ancestor commands. `"full"` (default) lists them under `INHERITED FLAGS`,
+ *   `"summary"` replaces the section with a pointer to the parent command's
+ *   help, and `"none"` omits it.
+ * - `globalFlags`: the same choice for `GLOBAL FLAGS`, with the summary
+ *   pointing at the root command's help. The root command's help always lists
+ *   global flags in full.
+ *
  * **Example** (Creating default formatters)
  *
  * ```ts import.meta.vitest
@@ -290,6 +301,9 @@ const escapeControlCharacters = (text: string): string =>
  * // Auto-detect colors based on terminal support (default behavior)
  * const autoFormatter = CliOutput.defaultFormatter()
  *
+ * // Point subcommand help at the root help for global flags
+ * const compactFormatter = CliOutput.defaultFormatter({ globalFlags: "summary" })
+ *
  * const error = new CliError.InvalidValue({
  *   option: "foo",
  *   value: "bar",
@@ -300,14 +314,23 @@ const escapeControlCharacters = (text: string): string =>
  * noColorFormatter.formatError(error).includes("Invalid value") // => true
  * colorFormatter.formatVersion("my-tool", "1.2.3").includes("my-tool") // => true
  * autoFormatter.formatVersion("my-tool", "1.2.3").includes("1.2.3") // => true
+ * compactFormatter.formatVersion("my-tool", "1.2.3").includes("my-tool") // => true
  * ```
  *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
  */
-export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
+export const defaultFormatter = (options?: {
+  readonly colors?: boolean | undefined
+  readonly inheritedFlags?: "full" | "summary" | "none" | undefined
+  readonly globalFlags?: "full" | "summary" | "none" | undefined
+}): Formatter => {
   const useColor = options?.colors ?? Ansi.detectColors()
+  const helpOptions: HelpOptions = {
+    inheritedFlags: options?.inheritedFlags ?? "full",
+    globalFlags: options?.globalFlags ?? "full"
+  }
 
   // Color palette using ANSI escape codes
   const colors = useColor
@@ -335,7 +358,7 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
   const bold = useColor ? "\x1b[1m" : ""
 
   return {
-    formatHelpDoc: (doc: HelpDoc): string => formatHelpDocImpl(doc, colors),
+    formatHelpDoc: (doc: HelpDoc): string => formatHelpDocImpl(doc, colors, helpOptions),
     formatCliError: (error): string => escapeControlCharacters(error.message),
     formatError: (error): string => {
       return `\n${bold}${red}ERROR${reset}\n  ${escapeControlCharacters(error.message)}${reset}`
@@ -494,11 +517,18 @@ interface ColorFunctions {
   readonly magenta: (text: string) => string
 }
 
+type FlagSectionMode = "full" | "summary" | "none"
+
+interface HelpOptions {
+  readonly inheritedFlags: FlagSectionMode
+  readonly globalFlags: FlagSectionMode
+}
+
 /**
  * Internal implementation of help formatting that accepts configurable color functions.
  * @internal
  */
-const formatHelpDocImpl = (doc: HelpDoc, colors: ColorFunctions): string => {
+const formatHelpDocImpl = (doc: HelpDoc, colors: ColorFunctions, options: HelpOptions): string => {
   const sections: Array<string> = []
 
   // Description section
@@ -540,60 +570,45 @@ const formatHelpDocImpl = (doc: HelpDoc, colors: ColorFunctions): string => {
     sections.push("")
   }
 
-  // Flags section
-  if (doc.flags.length > 0) {
-    sections.push(colors.bold("FLAGS"))
-
-    const flagRows: Array<Row> = doc.flags.map((flag) => {
-      const names: Array<string> = []
-
-      // Add main name with -- prefix first
-      names.push(colors.green(`--${flag.name}`))
-
-      // Add aliases after (like -f) to match expected ordering
-      for (const alias of flag.aliases) {
-        names.push(colors.green(alias))
-      }
-
-      const namesPart = names.join(", ")
+  const renderFlags = (title: string, flags: ReadonlyArray<FlagDoc>) => {
+    sections.push(colors.bold(title))
+    sections.push(renderTable(flags.map((flag) => {
+      const names = [`--${flag.name}`, ...flag.aliases].map(colors.green).join(", ")
       const typePart = flag.type !== "boolean" ? ` ${colors.dim(flag.type)}` : ""
-
       return {
-        left: namesPart + typePart,
+        left: names + typePart,
         right: Option.getOrElse(flag.description, () => "")
       }
-    })
-
-    sections.push(renderTable(flagRows))
+    })))
     sections.push("")
   }
 
-  // Global Flags section
-  if (doc.globalFlags && doc.globalFlags.length > 0) {
-    sections.push(colors.bold("GLOBAL FLAGS"))
+  const summaries: Array<string> = []
+  const renderFlagSection = (
+    title: string,
+    flags: ReadonlyArray<FlagDoc> | undefined,
+    mode: FlagSectionMode,
+    summaryPath: ReadonlyArray<string> | undefined
+  ) => {
+    if (!flags || flags.length === 0 || mode === "none") return
+    if (mode === "summary" && summaryPath && summaryPath.length > 0) {
+      summaries.push(`Run '${summaryPath.join(" ")} --help' for ${title.toLowerCase()}`)
+    } else {
+      renderFlags(title, flags)
+    }
+  }
 
-    const globalFlagRows: Array<Row> = doc.globalFlags.map((flag) => {
-      const names: Array<string> = []
+  if (doc.flags.length > 0) {
+    renderFlags("FLAGS", doc.flags)
+  }
 
-      // Add main name with -- prefix first
-      names.push(colors.green(`--${flag.name}`))
-
-      // Add aliases after (like -f) to match expected ordering
-      for (const alias of flag.aliases) {
-        names.push(colors.green(alias))
-      }
-
-      const namesPart = names.join(", ")
-      const typePart = flag.type !== "boolean" ? ` ${colors.dim(flag.type)}` : ""
-
-      return {
-        left: namesPart + typePart,
-        right: Option.getOrElse(flag.description, () => "")
-      }
-    })
-
-    sections.push(renderTable(globalFlagRows))
-    sections.push("")
+  const commandPath = doc.commandPath
+  const isRoot = commandPath === undefined || commandPath.length <= 1
+  renderFlagSection("INHERITED FLAGS", doc.inheritedFlags, options.inheritedFlags, commandPath?.slice(0, -1))
+  // Global flags are always listed in full on the root page so they stay discoverable
+  renderFlagSection("GLOBAL FLAGS", doc.globalFlags, isRoot ? "full" : options.globalFlags, commandPath?.slice(0, 1))
+  if (summaries.length > 0) {
+    sections.push(...summaries, "")
   }
 
   // Subcommands section

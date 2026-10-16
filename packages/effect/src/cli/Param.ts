@@ -213,7 +213,6 @@ export interface Single<Kind extends ParamKind, out A> extends Param<Kind, A> {
   readonly primitiveType: Primitive.Primitive<A>
   readonly typeName?: string | undefined
   readonly hidden: boolean
-  readonly inheritedHidden: boolean
   /**
    * Raw value used for a bare flag. See `withOptionalValue`.
    */
@@ -367,7 +366,6 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
   readonly description?: Option.Option<string> | undefined
   readonly aliases?: ReadonlyArray<string> | undefined
   readonly hidden?: boolean | undefined
-  readonly inheritedHidden?: boolean | undefined
   readonly optionalValue?: string | undefined
 }): Single<Kind, A> => {
   const parse: Parse<A> = (args) =>
@@ -380,7 +378,6 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
     description: params.description ?? Option.none(),
     aliases: params.aliases ?? [],
     hidden: params.hidden ?? false,
-    inheritedHidden: params.inheritedHidden ?? false,
     parse
   }, Proto)
 }
@@ -1068,39 +1065,6 @@ export const withHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Par
     makeSingle({
       ...single,
       hidden: true
-    }))
-
-/**
- * Hides a parameter from subcommand help output while keeping it visible in
- * the declaring command's own `--help` and fully parseable everywhere.
- *
- * **When to use**
- *
- * Use when a shared flag should be documented once at the root level without
- * cluttering every subcommand's help output. The parameter is still parsed
- * and accepted in subcommands — only help rendering for descendant commands
- * is affected.
- *
- * **Example** (Hiding a shared flag from subcommand help)
- *
- * ```ts import.meta.vitest
- * import { Param } from "effect/cli"
- *
- * const profile = Param.String(Param.flagKind, "profile").pipe(
- *   Param.withInheritedHidden
- * )
- * profile.kind // => "flag"
- * ```
- *
- * @stability unstable
- * @category metadata
- * @since 4.0.0
- */
-export const withInheritedHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Param<Kind, A> =>
-  transformSingle(self, <X>(single: Single<Kind, X>) =>
-    makeSingle({
-      ...single,
-      inheritedHidden: true
     }))
 
 /**

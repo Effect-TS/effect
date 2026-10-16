@@ -614,36 +614,6 @@ export const withMetavar: {
 export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
 
 /**
- * Hides a shared flag from subcommand help output while keeping it visible in
- * the declaring command's own `--help` and fully parseable everywhere.
- *
- * **When to use**
- *
- * Use with `Command.withSharedFlags` when a flag should be documented
- * once at the root level without repeating it in every subcommand's help
- * output. The flag is still parsed and accepted in subcommands — only the
- * help rendering for descendant commands is affected.
- *
- * **Example** (Showing a shared flag only at the root)
- *
- * ```ts import.meta.vitest
- * import { Flag } from "effect/cli"
- *
- * const profile = Flag.String("profile").pipe(
- *   Flag.withDescription("Profile to use"),
- *   Flag.withDefault("default"),
- *   Flag.withInheritedHidden
- * )
- * profile.kind // => "flag"
- * ```
- *
- * @stability unstable
- * @category metadata
- * @since 4.0.0
- */
-export const withInheritedHidden = <A>(self: Flag<A>): Flag<A> => Param.withInheritedHidden(self)
-
-/**
  * Makes a flag optional, returning an Option type that can be None if not provided.
  *
  * **Example** (Making flags optional)

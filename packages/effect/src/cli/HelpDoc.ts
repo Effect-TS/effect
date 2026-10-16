@@ -82,9 +82,21 @@ export interface HelpDoc {
   readonly flags: ReadonlyArray<FlagDoc>
 
   /**
+   * Flags declared on ancestor commands with `Command.withSharedFlags` that
+   * are also accepted by this command.
+   */
+  readonly inheritedFlags?: ReadonlyArray<FlagDoc>
+
+  /**
    * Global flags available to all commands (e.g., --help, --version).
    */
   readonly globalFlags?: ReadonlyArray<FlagDoc>
+
+  /**
+   * Command names from the root command to this command, e.g.
+   * `["myapp", "deploy"]`.
+   */
+  readonly commandPath?: ReadonlyArray<string>
 
   /**
    * Custom command annotations.

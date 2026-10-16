@@ -96,7 +96,7 @@ const collectDeclaredGlobalFlags = (command: Command.Any): ReadonlyArray<GlobalF
   return dedupeGlobalFlags(collected)
 }
 
-const getSharedFlagsForCommandPath = (
+const getInheritedFlagsForCommandPath = (
   commands: ReadonlyArray<Command.Any>,
   currentFlags: ReadonlyArray<FlagDoc>
 ): ReadonlyArray<FlagDoc> => {
@@ -105,7 +105,7 @@ const getSharedFlagsForCommandPath = (
   }
 
   const seen = new Set(currentFlags.map((flag) => flag.name))
-  const sharedFlags: Array<FlagDoc> = []
+  const inheritedFlags: Array<FlagDoc> = []
 
   for (const ancestor of commands.slice(0, -1)) {
     const ancestorImpl = toImpl(ancestor)
@@ -116,24 +116,18 @@ const getSharedFlagsForCommandPath = (
         if (seen.has(single.name)) {
           continue
         }
-        // Hidden ancestor flags are excluded from the shared-flags section
-        // of subcommand help, the same way they're excluded from the owning
-        // command's own help output.
+        // Hidden ancestor flags are excluded from inherited flags, the same
+        // way they're excluded from the owning command's own help output.
         if (single.hidden) {
           continue
         }
-        // Flags marked with `withInheritedHidden` are shown at their
-        // declaring command but excluded from descendant help output.
-        if (single.inheritedHidden) {
-          continue
-        }
         seen.add(single.name)
-        sharedFlags.push(toFlagDoc(single, metadata))
+        inheritedFlags.push(toFlagDoc(single, metadata))
       }
     }
   }
 
-  return sharedFlags
+  return inheritedFlags
 }
 
 /**
@@ -165,7 +159,7 @@ export const getHelpForCommandPath = <Name extends string, Input, E, R, ContextI
 
     const baseDoc = toImpl(currentCommand).buildHelpDoc(commandPath)
 
-    const sharedFlags = getSharedFlagsForCommandPath(commands, baseDoc.flags)
+    const inheritedFlags = getInheritedFlagsForCommandPath(commands, baseDoc.flags)
 
     const flags = getGlobalFlagsForCommandPath(command, commandPath, builtIns)
     const globalFlagDocs: Array<FlagDoc> = []
@@ -184,5 +178,5 @@ export const getHelpForCommandPath = <Name extends string, Input, E, R, ContextI
       }
     }
 
-    return { ...baseDoc, flags: [...sharedFlags, ...baseDoc.flags], globalFlags: globalFlagDocs }
+    return { ...baseDoc, inheritedFlags, globalFlags: globalFlagDocs, commandPath }
   })
