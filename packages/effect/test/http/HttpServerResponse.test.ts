@@ -146,6 +146,18 @@ describe("HttpServerResponse", () => {
     })
 
     it.each([
+      { status: 204, headers: undefined },
+      { status: 205, headers: { "x-outer": "outer" } }
+    ])("drops content-length from a raw Response with status $status", ({ status, headers }) => {
+      const raw = new Response(null, { status, headers: { "content-length": "4" } })
+      const web = HttpServerResponse.toWeb(HttpServerResponse.raw(raw, { headers }))
+
+      assert.strictEqual(web.status, status)
+      assert.strictEqual(web.headers.get("content-length"), null)
+      assert.strictEqual(raw.headers.get("content-length"), "4")
+    })
+
+    it.each([
       { status: 200, withoutBody: true },
       { status: 204, withoutBody: false },
       { status: 205, withoutBody: false },
