@@ -408,7 +408,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.reason._tag, "InvalidUserInputError")
     }))
 
-  it.effect("maps a malformed successful response to a client InvalidOutputError", () =>
+  it.effect("maps a malformed successful response to a non-retryable client InvalidOutputError", () =>
     Effect.gen(function*() {
       const error = yield* DecisionModel.decide(TicketTriage, { input: ticket }).pipe(
         Effect.provide(OpenRouterDecisionModel.layer({ model: "test/decision-model" })),
@@ -424,6 +424,7 @@ describe("OpenRouterDecisionModel", () => {
       assert.strictEqual(error.module, "OpenRouterClient")
       assert.strictEqual(error.method, "createDecisions")
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.isFalse(error.isRetryable)
     }))
 
   it.effect("make constructs a DecisionModel service", () =>
@@ -740,6 +741,8 @@ describe("OpenRouterDecisionModel", () => {
 
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.module, "DecisionModel")
+      assert.isTrue(error.isRetryable)
     }))
 
   it.effect("fails with InvalidOutputError when an answer is missing", () =>
@@ -755,6 +758,8 @@ describe("OpenRouterDecisionModel", () => {
 
       assert.strictEqual(error._tag, "AiError")
       assert.strictEqual(error.reason._tag, "InvalidOutputError")
+      assert.strictEqual(error.module, "DecisionModel")
+      assert.isTrue(error.isRetryable)
     }))
 
   it.effect("fails with InvalidOutputError when a score answer omits probabilities", () =>
