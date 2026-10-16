@@ -113,13 +113,14 @@ export const decode = (input: DurationInput): Duration => {
     if (match) {
       const [_, valueStr, unit] = match
       const value = Number(valueStr)
+      const isFractional = valueStr.includes(".")
       switch (unit) {
         case "nano":
         case "nanos":
-          return nanos(BigInt(valueStr))
+          return isFractional ? make(BigInt(Math.round(value))) : nanos(BigInt(valueStr))
         case "micro":
         case "micros":
-          return micros(BigInt(valueStr))
+          return isFractional ? make(BigInt(Math.round(value * 1_000))) : micros(BigInt(valueStr))
         case "milli":
         case "millis":
           return millis(value)
@@ -651,7 +652,10 @@ export const times: {
   (self: DurationInput, times: number): Duration =>
     match(self, {
       onMillis: (millis) => make(millis * times),
-      onNanos: (nanos) => make(nanos * BigInt(times))
+      onNanos: (nanos) =>
+        Number.isInteger(times)
+          ? make(nanos * BigInt(times))
+          : make(BigInt(Math.round(Number(nanos) * times)))
     })
 )
 
