@@ -3465,12 +3465,12 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.fail(
         Cause.fail("a"),
         `Expected a finite number
-  at ["failures"][0]["error"]`
+  at ["reasons"][0]["error"]`
       )
       await decoding.fail(
         Cause.die("a"),
         `Expected a finite number
-  at ["failures"][0]["defect"]`
+  at ["reasons"][0]["defect"]`
       )
 
       const encoding = asserts.encoding()
@@ -3481,12 +3481,12 @@ Expected a value between -2147483648 and 2147483647`
       await encoding.fail(
         Cause.fail("a"),
         `Expected number
-  at ["failures"][0]["error"]`
+  at ["reasons"][0]["error"]`
       )
       await encoding.fail(
         Cause.die("a"),
         `Expected number
-  at ["failures"][0]["defect"]`
+  at ["reasons"][0]["defect"]`
       )
     })
   })
@@ -3530,6 +3530,22 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   describe("Exit", () => {
+    it("preserves the JSON wire format independently of runtime JSON", () => {
+      const schema = Schema.fromJsonString(Schema.toCodecJson(Schema.Exit(Schema.String, Schema.String, Schema.Number)))
+      const exit = Exit.failCause(Cause.fromReasons([
+        Cause.makeFailReason("boom"),
+        Cause.makeDieReason(42),
+        Cause.makeInterruptReason(7),
+        Cause.makeInterruptReason()
+      ]))
+      const wire =
+        "{\"_tag\":\"Failure\",\"cause\":[{\"_tag\":\"Fail\",\"error\":\"boom\"},{\"_tag\":\"Die\",\"defect\":42},{\"_tag\":\"Interrupt\",\"fiberId\":7},{\"_tag\":\"Interrupt\",\"fiberId\":null}]}"
+      strictEqual(Schema.encodeSync(schema)(exit), wire)
+      assert.deepStrictEqual(Schema.decodeSync(schema)(wire), exit)
+      strictEqual(Schema.encodeSync(schema)(Exit.succeed("ok")), "{\"_tag\":\"Success\",\"value\":\"ok\"}")
+      assert.deepStrictEqual(Schema.decodeSync(schema)("{\"_tag\":\"Success\",\"value\":\"ok\"}"), Exit.succeed("ok"))
+    })
+
     it("should expose the values", () => {
       const schema = Schema.Exit(Schema.String, Schema.Number, Schema.Boolean)
       strictEqual(schema.value, Schema.String)
@@ -3563,7 +3579,7 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.fail(
         Exit.fail(null),
         `Expected string
-  at ["cause"]["failures"][0]["error"]`
+  at ["cause"]["reasons"][0]["error"]`
       )
     })
 

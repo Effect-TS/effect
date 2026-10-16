@@ -1,3 +1,4 @@
+import { assert as runtimeAssert } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -8,9 +9,21 @@ import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import assert from "node:assert/strict"
+import { inspect } from "node:util"
 import { describe, it } from "vitest"
 
 describe("Cause", () => {
+  it("uses reasons in runtime JSON and Node inspection", () => {
+    const cause = Cause.combine(Cause.fail("boom"), Cause.die("bad"))
+    const json = {
+      _id: "Cause",
+      reasons: [{ _tag: "Fail", error: "boom" }, { _tag: "Die", defect: "bad" }]
+    }
+    runtimeAssert.deepStrictEqual(cause.toJSON(), json)
+    runtimeAssert.strictEqual(JSON.stringify(cause), JSON.stringify(json))
+    runtimeAssert.strictEqual(inspect(cause), inspect(json))
+  })
+
   describe("TypeId", () => {
     it("is a string constant", () => {
       assert.strictEqual(Cause.TypeId, "~effect/Cause")
