@@ -168,7 +168,8 @@ export const hydrate = (
       if (resolvedValue === Skipped) {
         // Release the preloaded Initial even if the client has not read the atom yet.
         registry.preloadedSerializable.delete(datom.key)
-        if (node) registry.refresh(node.atom)
+        // Invalidate the hydrated node itself: custom refresh handlers may only refresh its source.
+        if (node) (node as any).invalidate()
         return
       }
       if (node) {
@@ -180,7 +181,7 @@ export const hydrate = (
             decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
           } catch (error) {
             if (!Schema.isSchemaError(error)) throw error
-            registry.refresh(node.atom)
+            ;(node as any).invalidate()
             return
           }
           if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
