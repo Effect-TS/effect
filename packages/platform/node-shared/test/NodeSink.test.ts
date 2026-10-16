@@ -120,6 +120,54 @@ describe("Sink", () => {
       })
     }))
 
+  it.effect("handles write errors until asynchronous destruction completes", () =>
+    Effect.gen(function*() {
+      const destroying = yield* Deferred.make<() => void>()
+      const closed = yield* Deferred.make<void>()
+      const error = new Error("write failed")
+      const mapped = { _tag: "WritableError" }
+      const errors: Array<unknown> = []
+      let handled = false
+      const writable = new Writable({
+        write(_chunk, _encoding, callback) {
+          callback(error)
+        },
+        destroy(error, callback) {
+          Deferred.doneUnsafe(destroying, Effect.succeed(() => callback(error)))
+        }
+      })
+      // Prevent an unhandled error from crashing the test worker, but check that
+      // the sink itself still handles the event when destruction finally ends.
+      writable.on("error", () => {
+        handled = writable.listenerCount("error") > 1
+      })
+      writable.once("close", () => Deferred.doneUnsafe(closed, Effect.void))
+      const fiber = yield* Stream.make("a").pipe(
+        Stream.run(NodeSink.fromWritable({
+          evaluate: () => writable,
+          onError: (error) => {
+            errors.push(error)
+            return mapped
+          }
+        })),
+        Effect.exit,
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      const release = yield* Deferred.await(destroying)
+      // Cross an event-loop turn with _destroy still gated, allowing callback
+      // failure and any sink cleanup to run before Node emits the error.
+      yield* Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)))
+      yield* Effect.sync(release)
+      yield* Deferred.await(closed)
+      yield* TestClock.adjust("1 second")
+      assert.deepEqual({ result: yield* Fiber.join(fiber), errors }, {
+        result: Option.some(Exit.fail(mapped)),
+        errors: [error]
+      })
+      assert.isTrue(handled, "the sink must handle the delayed Node error event")
+    }))
+
   it.effect.each(["drain", "final", "already_closed"] as const)(
     "settles when destroyed without an error: %s",
     (phase) =>
