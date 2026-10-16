@@ -441,6 +441,11 @@ describe("Xml", () => {
         const xml = "<a>" + "<b c='12'><d>3</d></b>".repeat(2) + "</a>"
         assert.strictEqual((yield* elements(xml, ["a", "b"], { maxElementSize: 6 })).length, 2)
         assert.strictEqual((yield* Effect.flip(elements(xml, ["a", "b"], { maxElementSize: 5 }))).kind, "Limit")
+        // The error names the element, also when the path matches it with "*"
+        assert.strictEqual(
+          (yield* Effect.flip(elements(xml, ["a", "*"], { maxElementSize: 3 }))).message,
+          "element <b> exceeds maxElementSize of 3"
+        )
         // The default maxElementSize is 16 MiB
         const cases: ReadonlyArray<readonly [ReadonlyArray<Xml.Event>, Xml.XmlError["kind"]]> = [
           [[end("a")], "InvalidEvent"],
