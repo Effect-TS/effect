@@ -609,9 +609,10 @@ interface Slice<Op extends GraphQL.Any> {
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Resolves each entry's URL in its own context, then splits the entries by URL
- * and `batchKey`. Each batch runs in its first entry's context, carrying the
- * URL it was grouped by, so the transport doesn't resolve it again.
+ * Groups pending entries by `batchKey` before collection limits apply, then
+ * resolves each entry's URL in its own context and splits by URL. Each batch
+ * runs in its first entry's context, carrying the URL it was grouped by, so
+ * the transport doesn't resolve it again.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
@@ -622,28 +623,30 @@ const makeResolver = <A extends Request.Any>(
   const operation = { kind: method.operation.kind, operationName: method.operation.name }
   const urlOf = (entry: Request.Entry<A>) =>
     resolve === undefined ? Effect.succeed(undefined) : Effect.provideContext(resolve(operation), entry.context)
-  return RequestResolver.make((entries) =>
-    Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
-      // Arrays are compared structurally, so equal keys share a batch.
-      const batches = MutableHashMap.empty<
-        readonly [string | undefined, unknown],
-        Arr.NonEmptyArray<Request.Entry<A>>
-      >()
-      entries.forEach((entry, i) => {
-        const key = [urls[i], batchKey?.(entry.context)] as const
-        const batch = MutableHashMap.get(batches, key)
-        if (batch._tag === "Some") batch.value.push(entry)
-        else MutableHashMap.set(batches, key, [entry])
+  return RequestResolver.makeGrouped<A, unknown>({
+    key: (entry) => batchKey?.(entry.context),
+    resolver: (entries) =>
+      Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
+        // Arrays are compared structurally, so equal keys share a batch.
+        const batches = MutableHashMap.empty<
+          readonly [string | undefined, unknown],
+          Arr.NonEmptyArray<Request.Entry<A>>
+        >()
+        entries.forEach((entry, i) => {
+          const key = [urls[i], batchKey?.(entry.context)] as const
+          const batch = MutableHashMap.get(batches, key)
+          if (batch._tag === "Some") batch.value.push(entry)
+          else MutableHashMap.set(batches, key, [entry])
+        })
+        return Effect.forEach(batches, ([[url], entries]) => {
+          const context: Context.Context<any> = entries[0].context
+          return Effect.provideContext(
+            runAll(entries),
+            url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
+          )
+        }, { concurrency: "unbounded", discard: true })
       })
-      return Effect.forEach(batches, ([[url], entries]) => {
-        const context: Context.Context<any> = entries[0].context
-        return Effect.provideContext(
-          runAll(entries),
-          url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
-        )
-      }, { concurrency: "unbounded", discard: true })
-    })
-  )
+  })
 }
 
 /**
