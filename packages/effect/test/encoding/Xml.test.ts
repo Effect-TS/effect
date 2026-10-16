@@ -372,6 +372,11 @@ describe("Xml", () => {
         const xml = "<a b=\"&lt;&amp;>&quot;'&#9;&#10;&#13;\">&lt;&amp;&gt; ]]&gt; \"' \t\n&#13;</a>"
         assert.strictEqual(yield* encodeString(escaped), xml)
         assert.deepStrictEqual(yield* decodeString([xml]), escaped)
+        // Text before, between and after escapes is kept
+        assert.strictEqual(
+          yield* encodeString([start("a", { b: "é\"\"x", c: "y" }), text("😀<x>>&y"), text("z"), end("a")]),
+          "<a b=\"é&quot;&quot;x\" c=\"y\">😀&lt;x&gt;&gt;&amp;yz</a>"
+        )
         const events: ReadonlyArray<Xml.Event> = [
           { _tag: "Declaration", version: "1.0", encoding: "UTF-8", standalone: true },
           text("\n"),
