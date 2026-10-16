@@ -361,7 +361,13 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
       : Option.none())
   }
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers)
+    if (this.headersOverride === undefined) {
+      const headers = Headers.fromInput(this.source.headers)
+      // HTTP/2 requests carry the authority in the URL instead of `host` (RFC 9113 §8.3.1).
+      this.headersOverride = headers.host === undefined && this.source.url[0] !== "/"
+        ? Headers.set(headers, "host", new URL(this.source.url).host)
+        : headers
+    }
     return this.headersOverride
   }
 

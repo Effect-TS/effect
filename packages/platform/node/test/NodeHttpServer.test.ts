@@ -37,6 +37,7 @@ import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
+import * as Http2 from "node:http2"
 import * as Net from "node:net"
 import * as Zlib from "node:zlib"
 
@@ -87,6 +88,31 @@ describe("HttpServer", () => {
       assert.strictEqual(yield* status(tcpPort(internalServer), "/health"), 200)
       assert.strictEqual(yield* status(tcpPort(publicServer), "/internal"), 404)
       assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
+    }))
+
+  it.effect("derives the host header from the HTTP/2 authority", () =>
+    Effect.gen(function*() {
+      const server = Http2.createServer()
+      yield* HttpServer.serve(
+        HttpServerRequest.HttpServerRequest.use((request) =>
+          Effect.succeed(HttpServerResponse.text(
+            `${request.headers.host} ${Option.getOrThrow(HttpServerRequest.toURL(request)).href}`
+          ))
+        )
+      ).pipe(
+        Layer.provide(NodeHttpServer.layer(() => server as unknown as Http.Server, { port: 0 })),
+        Layer.build
+      )
+      const port = tcpPort(server as unknown as Http.Server)
+
+      assert.strictEqual(
+        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573" }),
+        "example.test:4573 http://example.test:4573/info"
+      )
+      assert.strictEqual(
+        yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
+        "client.test http://client.test/info"
+      )
     }))
 
   it.effect("schema", () =>
@@ -1523,3 +1549,20 @@ const rawUpgradeRequest = (port: number, path: string): Promise<string> =>
       resolve(stream.toString())
     })
   })
+
+const http2Get = (port: number, headers: Http2.OutgoingHttpHeaders) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => Http2.connect(`http://127.0.0.1:${port}`)),
+    (session) =>
+      Effect.callback<string, Error>((resume) => {
+        const stream = session.request(headers)
+        let body = ""
+        stream.setEncoding("utf8")
+        stream.on("data", (chunk: string) => {
+          body += chunk
+        })
+        stream.on("end", () => resume(Effect.succeed(body)))
+        stream.on("error", (error) => resume(Effect.fail(error)))
+      }),
+    (session) => Effect.callback<void>((resume) => session.close(() => resume(Effect.void)))
+  )
