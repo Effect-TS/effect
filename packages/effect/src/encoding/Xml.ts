@@ -520,7 +520,7 @@ export const encodeString = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * **Gotchas**
  *
- * A `Declaration` event naming an encoding other than UTF-8 or US-ASCII fails
+ * A `Declaration` event naming an encoding other than UTF-8 fails
  * with an `InvalidEvent` `XmlError`.
  *
  * @see {@link encodeString} for text output and the shared gotchas
@@ -1815,7 +1815,7 @@ class Writer implements Machine<Event, string> {
           if (!encodingPattern.test(event.encoding)) {
             throw invalidEvent(`invalid encoding name ${JSON.stringify(event.encoding)}`)
           }
-          if (this.bytes && !isUtf8(event.encoding)) {
+          if (this.bytes && event.encoding.toLowerCase() !== "utf-8") {
             throw invalidEvent(`encoding ${event.encoding} cannot be declared for UTF-8 output`)
           }
           declaration += ` encoding="${event.encoding}"`
