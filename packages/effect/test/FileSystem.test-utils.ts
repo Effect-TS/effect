@@ -676,6 +676,8 @@ export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
     { pattern: "{a,b}/*.ts", expected: ["a/x.ts", "b/y.ts"] },
     { pattern: "src/index.ts", expected: ["src/index.ts"] },
     { pattern: "readme.md", expected: [] },
+    { pattern: "**/.", expected: [] },
+    { pattern: "src/index.ts/.", expected: [] },
     {
       pattern: "**/*.ts",
       exclude: ["node_modules"],
