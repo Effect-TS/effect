@@ -580,6 +580,23 @@ describe("HttpApiEndpoint", () => {
       expect<"socket" extends keyof HttpApiEndpoint.Request<typeof plain> ? true : false>().type.toBe<false>()
     })
 
+    it("passes a MessageSocket to handlers of upgrades with messages", () => {
+      const endpoint = HttpApiEndpoint.get("a", "/a", {
+        success: HttpApiSchema.Upgrade({
+          protocol: "chat",
+          client: Schema.Struct({ text: Schema.String }),
+          server: Schema.Struct({ count: Schema.Number })
+        })
+      })
+
+      expect<HttpApiEndpoint.Request<typeof endpoint>["socket"]>().type.toBe<
+        HttpApiSchema.MessageSocket<{ readonly text: string }, { readonly count: number }>
+      >()
+      expect<ReturnType<HttpApiEndpoint.Handler<typeof endpoint, never, never>>>().type.toBe<
+        Effect.Effect<void | HttpServerResponse, never>
+      >()
+    })
+
     it("includes StreamSse event and error schema services", () => {
       type Event = { readonly event: "user.created"; readonly data: string }
       type StreamError = { readonly reason: string }

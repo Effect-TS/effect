@@ -885,13 +885,26 @@ function handlerToHttpEffect(
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
       }
+      let messageScope: Scope.Closeable | undefined
       if (upgrade !== undefined) {
         if (httpRequest.headers.upgrade?.toLowerCase() !== upgrade.protocol.toLowerCase()) {
           return upgradeRequired(upgrade.protocol)
         }
-        request.socket = yield* Effect.orDie(httpRequest.upgrade)
+        const socket = yield* Effect.orDie(httpRequest.upgrade)
+        if (HttpApiSchema.isUpgradeWithMessages(upgrade)) {
+          // The typed connection lives as long as the handler.
+          messageScope = yield* Scope.make()
+          request.socket = yield* Scope.provide(
+            HttpApiSchema.makeMessageSocket(socket, { receive: upgrade.client, send: upgrade.server }),
+            messageScope
+          )
+        } else {
+          request.socket = socket
+        }
       }
-      let response = yield* handler(request)
+      let response = yield* messageScope === undefined
+        ? handler(request)
+        : Effect.onExit(handler(request), (exit) => Scope.close(messageScope, exit))
       if (Response.isHttpServerResponse(response)) {
         return response
       }
@@ -1119,7 +1132,9 @@ function makeStreamEncoder(
   }
 }
 
-function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
+function getUpgradeSuccessSchema(
+  endpoint: HttpApiEndpoint.Top
+): HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<Schema.Top, Schema.Top> | undefined {
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isUpgrade(schema)) return schema
   }

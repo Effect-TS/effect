@@ -2054,6 +2054,60 @@ const { headers, socket } = yield * client.containers.attach({ params: { id: "ab
 const reader = yield * socket.reader
 ```
 
+### Typed Messages
+
+Give `client` and `server` message schemas to exchange typed messages instead of raw bytes. `client` describes the messages the client sends, and `server` the messages the server sends. Each message travels as one line of JSON.
+
+The handler and the derived client then receive a `HttpApiSchema.MessageSocket` as `socket`:
+
+- `messages` is a `Stream` of the messages from the other side. It ends when the other side ends its messages. Read it once.
+- `send(message)` writes one message.
+- `end` stops sending (a half-close), while `messages` can still be read.
+
+On the server the connection lives as long as the handler. On the client it lives as long as the scope the method runs in.
+
+**Example** (Implementing a Typed Chat Endpoint)
+
+```ts
+import { Effect, Schema, Stream } from "effect"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/http-api"
+
+const Api = HttpApi.make("myApi").add(
+  HttpApiGroup.make("rooms").add(
+    HttpApiEndpoint.get("chat", "/rooms/:room/chat", {
+      params: { room: Schema.String },
+      success: HttpApiSchema.Upgrade({
+        protocol: "chat",
+        client: Schema.Struct({ text: Schema.String }),
+        server: Schema.Struct({ room: Schema.String, text: Schema.String })
+      })
+    })
+  )
+)
+
+const GroupLayer = HttpApiBuilder.group(
+  Api,
+  "rooms",
+  (handlers) =>
+    handlers.handle("chat", ({ params, socket }) =>
+      // Answer every message until the client ends its messages
+      Stream.runForEach(socket.messages, (message) => socket.send({ room: params.room, text: message.text })).pipe(
+        Effect.orDie
+      ))
+)
+```
+
+On the client:
+
+```ts
+const { socket } = yield * client.rooms.chat({ params: { room: "effect" } })
+yield * socket.send({ text: "hello" })
+yield * socket.end
+const replies = yield * Stream.runCollect(socket.messages)
+```
+
+The OpenAPI document describes both message schemas in an `x-effect-socket` extension on the `101` response.
+
 Things to know:
 
 - The client needs a backend that can hand over the connection: `NodeHttpClient.layerNodeHttp` (Node, Bun 1.4+, Deno) or `NodeHttpClient.layerUndici` (Node, Deno). Fetch and `XMLHttpRequest` clients fail with an `UpgradeNotSupportedError`.

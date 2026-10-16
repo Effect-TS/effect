@@ -432,11 +432,18 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
       const operationKey = isQuery ? "QUERY" : method
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
-        for (const [status, { content, descriptions, headers, streamContent }] of bodies) {
+        for (const [status, { content, descriptions, headers, messages, streamContent }] of bodies) {
           const description = descriptions.size > 0 ? Array.from(descriptions).join(" | ") : defaultDescription()
           InternalRecord.assignProperty(op.responses, status, {
             description
           })
+          if (messages !== undefined) {
+            op.responses[status]["x-effect-socket"] = {
+              encoding: "ndjson",
+              clientSchema: registerSchema(messages.client.ast),
+              serverSchema: registerSchema(messages.server.ast)
+            }
+          }
           for (const schema of headers) {
             schemaOps.push({
               _tag: "properties",
@@ -826,6 +833,7 @@ type ResponseBodies = Map<
     content: Content | undefined // undefined means no content
     headers: Array<Schema.Constraint>
     streamContent: StreamContent | undefined
+    messages: HttpApiSchema.UpgradeWithMessages<Schema.Top, Schema.Top> | undefined
   }
 >
 
@@ -849,6 +857,7 @@ function extractResponseBodies(
     content: Content | undefined
     headers: Array<Schema.Constraint>
     streamContent: StreamContent | undefined
+    messages: HttpApiSchema.UpgradeWithMessages<Schema.Top, Schema.Top> | undefined
   }>()
 
   schemas.forEach(process)
@@ -863,9 +872,11 @@ function extractResponseBodies(
     const ast = body.ast
     if (HttpApiSchema.isUpgrade(body)) {
       addNoContent(status, getDescription(ast) ?? "Switching Protocols")
-      map.get(status)!.headers.push(
+      const entry = map.get(status)!
+      entry.headers.push(
         Schema.Struct({ connection: Schema.Literal("Upgrade"), upgrade: Schema.Literal(body.protocol) })
       )
+      if (HttpApiSchema.isUpgradeWithMessages(body)) entry.messages = body
     } else if (HttpApiSchema.isStreamSchema(body)) {
       addStreamContent(body, status)
     } else if (HttpApiSchema.isNoContent(ast)) {
@@ -890,7 +901,8 @@ function extractResponseBodies(
         descriptions: new Set([description]),
         content: undefined,
         headers: [],
-        streamContent: undefined
+        streamContent: undefined,
+        messages: undefined
       })
     } else {
       if (description !== undefined) {
@@ -912,7 +924,8 @@ function extractResponseBodies(
         descriptions: new Set(description !== undefined ? [description] : []),
         content: new Map([[_tag, new Map([[contentType, new Set([schema])]])]]),
         headers: [],
-        streamContent: undefined
+        streamContent: undefined,
+        messages: undefined
       })
     } else {
       // concat descriptions
@@ -948,7 +961,8 @@ function extractResponseBodies(
         descriptions: new Set(),
         content: undefined,
         headers: [],
-        streamContent: new Map([[stream.contentType, stream]])
+        streamContent: new Map([[stream.contentType, stream]]),
+        messages: undefined
       })
     } else {
       if (statusMap.streamContent === undefined) {
@@ -1240,6 +1254,22 @@ export interface OpenApiSpecResponse {
   description: string
   content?: OpenApiSpecContent
   headers?: Record<string, OpenAPISpecHeader>
+  "x-effect-socket"?: OpenApiSpecEffectSocket
+}
+
+/**
+ * Effect-specific metadata for the `101` response of an upgrade with typed
+ * messages: each message is one line of JSON, `clientSchema` describes the
+ * messages the client sends, and `serverSchema` the messages the server sends.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface OpenApiSpecEffectSocket {
+  encoding: "ndjson"
+  clientSchema: JsonSchema.JsonSchema
+  serverSchema: JsonSchema.JsonSchema
 }
 
 /**

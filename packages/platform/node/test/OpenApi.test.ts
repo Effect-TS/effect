@@ -1095,6 +1095,38 @@ describe("OpenAPI spec", () => {
           assert.strictEqual(spec.paths["/a"].post?.responses["200"], undefined)
         })
 
+        it("Upgrade with messages", () => {
+          const Api = HttpApi.make("api")
+            .add(
+              HttpApiGroup.make("group")
+                .add(
+                  HttpApiEndpoint.get("a", "/a", {
+                    success: HttpApiSchema.Upgrade({
+                      protocol: "chat",
+                      client: Schema.Struct({ text: Schema.String }),
+                      server: Schema.Struct({ at: Schema.Date })
+                    })
+                  })
+                )
+            )
+          const spec = OpenApi.fromApi(Api)
+          assert.deepStrictEqual(spec.paths["/a"].get?.responses["101"]["x-effect-socket"], {
+            encoding: "ndjson",
+            clientSchema: {
+              type: "object",
+              properties: { text: { type: "string" } },
+              required: ["text"],
+              additionalProperties: false
+            },
+            serverSchema: {
+              type: "object",
+              properties: { at: { type: "string" } },
+              required: ["at"],
+              additionalProperties: false
+            }
+          })
+        })
+
         it("StreamUint8Array with annotated status", () => {
           const Api = HttpApi.make("api")
             .add(

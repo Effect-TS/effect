@@ -505,6 +505,11 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
         message: "Upgrade schemas are not supported in error responses"
       },
       {
+        name: "with only client messages",
+        make: () => HttpApiSchema.Upgrade({ protocol: "chat", client: Schema.String } as any),
+        message: "Upgrade requires both client and server message schemas"
+      },
+      {
         name: "to WebSocket",
         make: () => HttpApiSchema.Upgrade({ protocol: "WebSocket" }),
         message: "Upgrade does not support WebSocket"

@@ -32,6 +32,7 @@ import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import type * as Scope from "../Scope.ts"
 import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import type { Simplify } from "../Types.ts"
@@ -98,6 +99,13 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
       never
     >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
+  : S extends HttpApiSchema.UpgradeWithMessages<infer _Client, infer _Server> ? Upgraded<
+      HttpApiSchema.MessageSocket<
+        _Server["Type"],
+        _Client["Type"],
+        _Server["DecodingServices"] | _Client["EncodingServices"]
+      >
+    >
   : S extends HttpApiSchema.Upgrade ? Upgraded
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -109,17 +117,24 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
  *
  * **Details**
  *
- * See `HttpClientResponse.upgrade` for how the connection behaves and when it
- * closes.
+ * Without message schemas, `socket` is the raw `Socket`; see
+ * `HttpClientResponse.upgrade` for how it behaves and when it closes. With
+ * them, `socket` is an `HttpApiSchema.MessageSocket` that receives the
+ * endpoint's `server` messages and sends its `client` messages. It closes with
+ * the scope the method runs in.
  *
  * @stability unstable
  * @category models
  * @since 4.0.6
  */
-export interface Upgraded {
+export interface Upgraded<S = Socket.Socket> {
   readonly headers: Headers.Headers
-  readonly socket: Socket.Socket
+  readonly socket: S
 }
+
+// Typed upgrades open their connection in the caller's scope.
+type SuccessScope<S> = [Extract<S, HttpApiSchema.UpgradeWithMessages<any, any>>] extends [never] ? never
+  : Scope.Scope
 
 type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Events,
@@ -199,7 +214,8 @@ export declare namespace Client {
     | ([Mode] extends ["response-only"] ? never
       :
         | SuccessDecodingServices<Endpoint["~Success"]>
-        | Endpoint["~Error"]["DecodingServices"])
+        | Endpoint["~Error"]["DecodingServices"]
+        | SuccessScope<Endpoint["~Success"]>)
   >
 
   /**
@@ -436,8 +452,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
         const upgrade = getUpgradeSuccessSchema(endpoint)
         if (upgrade !== undefined) {
-          decodeMap[101] = (response) =>
-            Effect.map(response.upgrade, (socket): Upgraded => ({ headers: response.headers, socket }))
+          decodeMap[101] = HttpApiSchema.isUpgradeWithMessages(upgrade)
+            ? (response) =>
+              Effect.flatMap(response.upgrade, (socket) =>
+                Effect.map(
+                  HttpApiSchema.makeMessageSocket(socket, { receive: upgrade.server, send: upgrade.client }),
+                  (socket): Upgraded<unknown> => ({ headers: response.headers, socket })
+                ))
+            : (response) => Effect.map(response.upgrade, (socket): Upgraded => ({ headers: response.headers, socket }))
         }
 
         const encodeParams = UndefinedOr.map(
@@ -963,7 +985,9 @@ const isWithHeadersStreamSuccess = (
   schema: StreamSuccessSchema
 ): schema is HttpApiSchema.WithHeaders<HttpApiSchema.StreamSchema, Schema.Top> => HttpApiSchema.isWithHeaders(schema)
 
-function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
+function getUpgradeSuccessSchema(
+  endpoint: HttpApiEndpoint.Top
+): HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<Schema.Top, Schema.Top> | undefined {
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isUpgrade(schema)) return schema
   }

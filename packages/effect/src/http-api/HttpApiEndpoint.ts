@@ -58,7 +58,7 @@ type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
     infer _Value
   > ? Stream.Stream<_Value, _Error["Type"], never>
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, unknown, never>
-  : S extends HttpApiSchema.Upgrade ? void
+  : S extends HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<infer _Client, infer _Server> ? void
   : S extends Schema.Constraint ? S["Type"]
   : never
 
@@ -84,14 +84,32 @@ type UnwrapReadonlyArray<S> = S extends ReadonlyArray<infer A> ? A : S
 
 type ExtractBufferedSuccess<S extends SuccessConstraint> = Exclude<
   Extract<UnwrapReadonlyArray<S>, Schema.Top>,
-  HttpApiSchema.StreamSchema | HttpApiSchema.Upgrade | HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
+  | HttpApiSchema.StreamSchema
+  | HttpApiSchema.Upgrade
+  | HttpApiSchema.UpgradeWithMessages<any, any>
+  | HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
 >
 
 type ExtractStreamSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.StreamSchema ? Success : never
   : never
 
-type ExtractUpgradeSuccess<S extends SuccessConstraint> = Extract<UnwrapReadonlyArray<S>, HttpApiSchema.Upgrade>
+type ExtractUpgradeSuccess<S extends SuccessConstraint> = Extract<
+  UnwrapReadonlyArray<S>,
+  HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<any, any>
+>
+
+type UpgradeSocket<Success> = [Extract<Success, HttpApiSchema.UpgradeWithMessages<any, any>>] extends [never] ?
+  [Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {} : { readonly socket: Socket.Socket }
+  : Extract<Success, HttpApiSchema.UpgradeWithMessages<any, any>> extends
+    HttpApiSchema.UpgradeWithMessages<infer Client, infer Server> ? {
+      readonly socket: HttpApiSchema.MessageSocket<
+        Client["Type"],
+        Server["Type"],
+        Client["DecodingServices"] | Server["EncodingServices"]
+      >
+    }
+  : never
 
 type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.WithHeaders<infer _Inner, infer _Headers> ? HttpApiSchema.WithHeaders<
@@ -119,7 +137,7 @@ type ToStringTreeCodec<S> = [S] extends [never] ? never
   : never
 
 type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType, Success> =
-  & ([Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {} : { readonly socket: Socket.Socket })
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([PayloadType] extends [never] ? {}
@@ -134,7 +152,7 @@ type RequestFromParts<Endpoint, ParamsType, QueryType, PayloadType, HeadersType,
   }
 
 type RequestRawFromParts<Endpoint, ParamsType, QueryType, HeadersType, Success> =
-  & ([Extract<Success, HttpApiSchema.Upgrade>] extends [never] ? {} : { readonly socket: Socket.Socket })
+  & UpgradeSocket<Success>
   & ([ParamsType] extends [never] ? {} : { readonly params: Simplify<ParamsType> })
   & ([QueryType] extends [never] ? {} : { readonly query: Simplify<QueryType> })
   & ([HeadersType] extends [never] ? {} : { readonly headers: Simplify<HeadersType> })
@@ -1048,7 +1066,7 @@ type ErrorSchema<S> = S extends HttpApiSchema.WithHeaders<infer Inner, Schema.To
 type ErrorNoStream<S extends ErrorConstraint> = [
   Extract<
     ErrorSchema<S extends ReadonlyArray<Schema.Constraint> ? S[number] : S>,
-    HttpApiSchema.StreamSchema | HttpApiSchema.Upgrade
+    HttpApiSchema.StreamSchema | HttpApiSchema.Upgrade | HttpApiSchema.UpgradeWithMessages<any, any>
   >
 ] extends [never] ? S : never
 
@@ -1248,6 +1266,13 @@ function getSuccessResponse(
 }
 
 const transformResponseSchema = memoize((schema: Schema.Top): Schema.Top => {
+  if (HttpApiSchema.isUpgradeWithMessages(schema)) {
+    return HttpApiSchema.rebuildUpgradeWithMessages(
+      schema,
+      Schema.toCodecJson(schema.client),
+      Schema.toCodecJson(schema.server)
+    )
+  }
   if (HttpApiSchema.isStreamSchema(schema) || HttpApiSchema.isUpgrade(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)

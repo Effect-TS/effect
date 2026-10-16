@@ -991,6 +991,57 @@ describe("HttpApi", () => {
       }).pipe(Effect.scoped, Effect.provide(ApiLayer))
     })
 
+    it.effect("upgrade with messages", () => {
+      const Api = HttpApi.make("api")
+        .add(
+          HttpApiGroup.make("rooms")
+            .add(
+              HttpApiEndpoint.get("chat", "/rooms/:room/chat", {
+                params: { room: Schema.String },
+                success: HttpApiSchema.Upgrade({
+                  protocol: "chat",
+                  client: Schema.Struct({ text: Schema.String }),
+                  // Date is not JSON, so this checks the messages use JSON codecs
+                  server: Schema.Struct({ room: Schema.String, text: Schema.String, at: Schema.Date })
+                })
+              })
+            )
+        )
+      const at = new Date(0)
+      const GroupLayer = HttpApiBuilder.group(
+        Api,
+        "rooms",
+        (handlers) =>
+          handlers.handle("chat", ({ params, socket }) =>
+            Stream.runForEach(
+              socket.messages,
+              (message) => socket.send({ room: params.room, text: message.text.toUpperCase(), at })
+            ).pipe(Effect.orDie))
+      )
+      const ApiLayer = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLayer)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(
+        Layer.provideMerge(HttpServer.layerTestClient),
+        Layer.provide(NodeHttpClient.layerNodeHttp),
+        Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+      )
+
+      return Effect.gen(function*() {
+        const client = yield* HttpApiClient.make(Api)
+        const { headers, socket } = yield* client.rooms.chat({ params: { room: "effect" } })
+        assert.strictEqual(headers.upgrade, "chat")
+        yield* socket.send({ text: "hello" })
+        yield* socket.send({ text: "world" })
+        // the server's messages end after it handles ours
+        yield* socket.end
+        assert.deepStrictEqual(yield* Stream.runCollect(socket.messages), [
+          { room: "effect", text: "HELLO", at },
+          { room: "effect", text: "WORLD", at }
+        ])
+      }).pipe(Effect.scoped, Effect.provide(ApiLayer))
+    })
+
     it("no content via toWebHandler", async () => {
       const Api = HttpApi.make("api")
         .add(
