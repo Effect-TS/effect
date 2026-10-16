@@ -624,7 +624,7 @@ describe("DenoHttpServer", () => {
       }).pipe(Effect.provide(DenoHttpServer.layerTest)))
   })
 
-  it.effect("derives the host header from the HTTP/2 authority", () =>
+  it.effect("takes the host header from the HTTP/2 authority", () =>
     Effect.gen(function*() {
       yield* HttpServer.serveEffect(
         HttpServerRequest.HttpServerRequest.use((request) =>
@@ -642,7 +642,7 @@ describe("DenoHttpServer", () => {
       )
       assert.strictEqual(
         yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
-        "client.test http://client.test/info"
+        "example.test:4573 http://example.test:4573/info"
       )
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 

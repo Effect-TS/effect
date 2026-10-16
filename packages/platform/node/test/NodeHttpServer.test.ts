@@ -90,7 +90,7 @@ describe("HttpServer", () => {
       assert.strictEqual(yield* status(tcpPort(internalServer), "/public"), 404)
     }))
 
-  it.effect("derives the host header from the HTTP/2 authority", () =>
+  it.effect("takes the host header from the HTTP/2 authority", () =>
     Effect.gen(function*() {
       const server = Http2.createServer()
       yield* HttpServer.serve(
@@ -111,7 +111,7 @@ describe("HttpServer", () => {
       )
       assert.strictEqual(
         yield* http2Get(port, { ":path": "/info", ":authority": "example.test:4573", host: "client.test" }),
-        "client.test http://client.test/info"
+        "example.test:4573 http://example.test:4573/info"
       )
     }))
 

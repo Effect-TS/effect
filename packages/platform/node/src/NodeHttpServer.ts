@@ -317,10 +317,11 @@ export const makeUpgradeHandler = <
   })
 }
 
-// HTTP/2 requests carry `:authority` instead of `host` (RFC 9113 §8.3.1).
+// HTTP/2 carries the target authority in `:authority`, which takes precedence
+// over any `host` header (RFC 9113 §8.3.1).
 const withAuthorityHost = (headers: Http.IncomingHttpHeaders): Http.IncomingHttpHeaders => {
   const authority = headers[":authority"]
-  return headers.host === undefined && typeof authority === "string" ? { ...headers, host: authority } : headers
+  return typeof authority === "string" && headers.host !== authority ? { ...headers, host: authority } : headers
 }
 
 class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> implements HttpServerRequest {
