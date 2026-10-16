@@ -265,17 +265,15 @@ export const make: (
 
   // The pump is owned by the shared entry rather than the first caller, so any
   // waiter can be interrupted without stopping delivery to the others.
+  //
+  // `replyFromStorage` registers the request with the storage loop before the
+  // pump starts, so the pump only re-registers after a stream chunk is acked.
   const pumpReplies = Effect.fnUntraced(function*(
     requestId: Snowflake.Snowflake,
     entry: Omit<StorageRequestEntry, "pump">
   ) {
     while (true) {
       // wait for the storage loop to notify us
-      entry.latch.closeUnsafe()
-      const message = entry.messages.values().next().value
-      if (!message) return
-      waitingStorageRequests.set(requestId, message)
-      storageLatch.openUnsafe()
       yield* entry.latch.await
 
       // send the replies back
@@ -300,6 +298,13 @@ export const make: (
         yield* entry.latch.await
       }
       entry.replies = []
+
+      // ask the storage loop for the next chunk
+      entry.latch.closeUnsafe()
+      const message = entry.messages.values().next().value
+      if (!message) return
+      waitingStorageRequests.set(requestId, message)
+      storageLatch.openUnsafe()
     }
   })
 
@@ -316,9 +321,14 @@ export const make: (
           }
           entry = Object.assign(state, { pump: yield* Effect.forkIn(pumpReplies(requestId, state), runnersScope) })
           storageRequests.set(requestId, entry)
+          waitingStorageRequests.set(requestId, message)
         }
         const current = entry
         current.messages.add(message)
+        // A waiter that joins an existing entry, such as a duplicate, reads
+        // now. A reply committed without a notification would otherwise wait
+        // for the next poll.
+        storageLatch.openUnsafe()
         return yield* restore(Fiber.join(current.pump)).pipe(
           Effect.ensuring(Effect.suspend(() => {
             current.messages.delete(message)
@@ -335,6 +345,52 @@ export const make: (
         )
       })
     )
+
+  // A request that may already be processing has to read its replies back
+  // from storage. A local reply handler wakes the storage loop, so streams do
+  // not have to wait for the next poll.
+  const replyFromStorageWithWake = (message: Message.OutgoingRequest<any>) =>
+    Effect.raceFirst(
+      replyFromStorage(message),
+      storage.registerReplyHandler(
+        new Message.OutgoingRequest({ ...message, respond: () => storageLatch.open })
+      ).pipe(Effect.ignore, Effect.andThen(Effect.never))
+    )
+
+  // Stream replies stay on the storage loop, which delivers chunks in order
+  // and waits for their acks.
+  const canReplyLocally = (message: Message.OutgoingRequest<any>) => {
+    const rpc = message.rpc as any as Rpc.AnyWithProps
+    return storage !== MessageStorage.noop && Context.get(rpc.annotations, Persisted) &&
+      !RpcSchema.isStreamSchema(rpc.successSchema)
+  }
+
+  // A request can be processed as soon as it is saved, so its reply handler is
+  // registered first. `registerReplyHandler` registers as soon as it starts,
+  // so a fresh request gets its reply from the handler without reading it
+  // back from storage.
+  const notifyLocalRequest = Effect.fnUntraced(function*(
+    message: Message.OutgoingRequest<any>,
+    notifyEntity: (message: Message.Outgoing<any>) => Effect.Effect<void>
+  ) {
+    const handler = yield* Effect.forkScoped(storage.registerReplyHandler(message), { startImmediately: true })
+    return yield* notifyWith(message, (message, duplicate) => {
+      const outgoing = message as Message.OutgoingRequest<any>
+      // A duplicate is answered under its original request id.
+      if (duplicate) {
+        return Fiber.interrupt(handler).pipe(
+          Effect.andThen(notifyEntity(message)),
+          Effect.andThen(replyFromStorageWithWake(outgoing))
+        )
+      }
+      // The handler can be dropped, for example when its shard moves or a
+      // commit error hides the notification. The reply is then in storage.
+      return notifyEntity(message).pipe(
+        Effect.andThen(Fiber.join(handler)),
+        Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(outgoing))
+      )
+    })
+  }, Effect.scoped)
 
   const storageLatch = Latch.makeUnsafe(false)
   if (storage !== MessageStorage.noop) {
@@ -431,28 +487,23 @@ export const make: (
       })
     },
     notifyLocal(options) {
-      return notifyWith(options.message, (message) => {
+      const message = options.message
+      const notifyEntity = (message: Message.Outgoing<any>) =>
+        Effect.catchTag(
+          options.notify(Message.incomingLocalFromOutgoing(message)),
+          "EntityNotAssignedToRunner",
+          () => Effect.void
+        )
+      if (message._tag === "OutgoingRequest" && !options.discard && !options.storageOnly && canReplyLocally(message)) {
+        return notifyLocalRequest(message, notifyEntity)
+      }
+      return notifyWith(message, (message) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
-          return Effect.catchTag(
-            options.notify(Message.incomingLocalFromOutgoing(message)),
-            "EntityNotAssignedToRunner",
-            () => Effect.void
-          )
+          return notifyEntity(message)
         }
-        // The request can be processed as soon as it is saved, so replies are
-        // always read back from storage. The local reply handler only wakes the
-        // storage loop, so streams do not have to wait for the next poll.
-        const readReplies = options.storageOnly
-          ? replyFromStorage(message)
-          : Effect.raceFirst(
-            replyFromStorage(message),
-            storage.registerReplyHandler(
-              new Message.OutgoingRequest({ ...message, respond: () => storageLatch.open })
-            ).pipe(Effect.ignore, Effect.andThen(Effect.never))
-          )
-        return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
-          Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-          Effect.andThen(readReplies)
+        return Effect.andThen(
+          notifyEntity(message),
+          options.storageOnly ? replyFromStorage(message) : replyFromStorageWithWake(message)
         )
       })
     }

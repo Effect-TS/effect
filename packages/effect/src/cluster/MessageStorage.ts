@@ -119,6 +119,13 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * For locally sent messages, register a handler to process the replies.
+   *
+   * **Details**
+   *
+   * The handler must be registered as soon as the effect starts, before it
+   * first suspends. Callers fork it with `startImmediately` before saving or
+   * notifying the request, and rely on it to see every reply saved after that
+   * point. The effect completes when a `WithExit` reply arrives.
    */
   readonly registerReplyHandler: <R extends Rpc.Any>(
     message: Message.OutgoingRequest<R> | Message.IncomingRequest<R>

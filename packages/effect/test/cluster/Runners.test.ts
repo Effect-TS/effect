@@ -364,6 +364,39 @@ describe.concurrent("Runners.makeRpc", () => {
     }))))
   })
 
+  it.effect("answers a fresh local request without reading or polling storage", () => {
+    let reads = 0
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const storage = yield* MessageStorage.MessageStorage
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Exit.Exit<number>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          if (reply._tag === "WithExit") replies.push(reply.exit)
+        }))
+      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("4 hours"),
+        Effect.forkScoped
+      )
+      // Pass three one-hour poll intervals while the request waits.
+      yield* TestClock.adjust("3 hours")
+      assert.strictEqual(reads, 0, "a parked fresh local request must not be read from storage")
+      yield* saveReply(storage, message, snowflake.nextUnsafe())
+      yield* TestClock.adjust(0)
+      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
+      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+      assert.strictEqual(reads, 0, "reply delivery must not read storage")
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      repliesFor: (messages) =>
+        Effect.suspend(() => {
+          reads++
+          return storage.repliesFor(messages)
+        })
+    }))))
+  })
+
   it.effect("keeps a duplicate local waiter alive when the first caller cancels", () =>
     Effect.gen(function*() {
       const runners = yield* Runners.Runners
