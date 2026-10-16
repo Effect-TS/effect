@@ -288,6 +288,11 @@ const escapeControlCharacters = (text: string): string =>
  *   (the root command for built-in flags). Commands that declare global flags
  *   always list them in full.
  *
+ * **Gotchas**
+ *
+ * Per-flag filtering in a custom formatter matches names, not flag identities.
+ * Renaming a flag without updating the filter silently stops it from matching.
+ *
  * **Example** (Creating default formatters)
  *
  * ```ts import.meta.vitest
@@ -316,6 +321,47 @@ const escapeControlCharacters = (text: string): string =>
  * colorFormatter.formatVersion("my-tool", "1.2.3").includes("my-tool") // => true
  * autoFormatter.formatVersion("my-tool", "1.2.3").includes("1.2.3") // => true
  * compactFormatter.formatVersion("my-tool", "1.2.3").includes("my-tool") // => true
+ * ```
+ *
+ * **Example** (Hiding one inherited flag)
+ *
+ * Filter only `inheritedFlags` to keep `--profile` visible on its declaring
+ * command while hiding it on descendants. Other inherited flags still render.
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Option } from "effect"
+ * import { CliOutput } from "effect/cli"
+ *
+ * const base = CliOutput.defaultFormatter({ colors: false })
+ * const formatter: CliOutput.Formatter = {
+ *   ...base,
+ *   formatHelpDoc: (doc) =>
+ *     base.formatHelpDoc({
+ *       ...doc,
+ *       inheritedFlags: doc.inheritedFlags?.filter((flag) => flag.name !== "profile")
+ *     })
+ * }
+ *
+ * const program = Effect.gen(function*() {
+ *   const output = yield* CliOutput.Formatter
+ *   return output.formatHelpDoc({
+ *     description: "Deploy the application",
+ *     usage: "app deploy",
+ *     annotations: Context.empty(),
+ *     flags: [],
+ *     inheritedFlags: ["profile", "region"].map((name) => ({
+ *       name,
+ *       aliases: [],
+ *       type: "string",
+ *       description: Option.none(),
+ *       required: false
+ *     }))
+ *   })
+ * }).pipe(Effect.provide(CliOutput.layer(formatter)))
+ *
+ * const help = await Effect.runPromise(program)
+ * help.includes("--profile") // => false
+ * help.includes("--region") // => true
  * ```
  *
  * @stability unstable
