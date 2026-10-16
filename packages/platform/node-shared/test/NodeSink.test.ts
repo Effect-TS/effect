@@ -15,6 +15,63 @@ import * as Tar from "tar"
 const TEST_TARBALL = join(__dirname, "fixtures", "helloworld.tar.gz")
 
 describe("Sink", () => {
+  it.effect.each(["drain", "final", "already_closed"] as const)(
+    "settles when destroyed without an error: %s",
+    (phase) =>
+      Effect.gen(function*() {
+        const entered = yield* Deferred.make<void>()
+        const closed = yield* Deferred.make<void>()
+        const mapped = { _tag: "WritableError" }
+        const errors: Array<unknown> = []
+        const writable = new Writable({
+          highWaterMark: 1,
+          write(_chunk, _encoding, callback) {
+            if (phase === "drain") {
+              queueMicrotask(() => Deferred.doneUnsafe(entered, Effect.void))
+            } else {
+              callback()
+            }
+          },
+          final() {
+            queueMicrotask(() => Deferred.doneUnsafe(entered, Effect.void))
+          }
+        })
+        writable.once("close", () => Deferred.doneUnsafe(closed, Effect.void))
+        yield* Effect.addFinalizer(() => Effect.sync(() => writable.destroy()))
+        if (phase === "already_closed") {
+          writable.destroy()
+          yield* Deferred.await(closed)
+        }
+        const fiber = yield* Stream.make("a", "b").pipe(
+          Stream.run(NodeSink.fromWritable({
+            evaluate: () => writable,
+            onError: (error) => {
+              errors.push(error)
+              return mapped
+            }
+          })),
+          Effect.exit,
+          Effect.timeoutOption("1 second"),
+          Effect.forkScoped
+        )
+        if (phase !== "already_closed") {
+          // Let the sink enter its drain/finish wait before destroying the stream.
+          yield* Deferred.await(entered)
+          writable.destroy()
+          yield* Deferred.await(closed)
+        }
+        // Node has closed; advance only the virtual non-completion guard.
+        yield* TestClock.adjust("1 second")
+        assert.deepEqual(yield* Fiber.join(fiber), Option.some(phase === "final" ? Exit.void : Exit.fail(mapped)))
+        if (phase === "final") {
+          assert.deepEqual(errors, [])
+        } else {
+          assert.strictEqual(errors.length, 1)
+          assert.strictEqual((errors[0] as NodeJS.ErrnoException).code, "ERR_STREAM_PREMATURE_CLOSE")
+        }
+      })
+  )
+
   it.effect("does not resume a selected drain callback after interruption", () =>
     Effect.gen(function*() {
       const items: Array<string> = []
