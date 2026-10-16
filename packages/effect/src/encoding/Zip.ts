@@ -1821,9 +1821,11 @@ class Inflater {
   // Yields the output position when the queue is empty or the buffer is full,
   // and returns it at the end. Output is written after the window, so matches
   // copy within the buffer, and continues there once `pull` has handed out a
-  // full buffer. Bits are pulled one byte at a time only when a code needs
-  // them, so fewer than eight bits are held between codes and the final padding
-  // bits are the only ones dropped.
+  // full buffer. Codes that need more bits take two bytes at a time while the
+  // input chunk has them, and otherwise one byte at a time. A chunk is only left
+  // for the next once the bits held are all needed, so whole bytes held are
+  // always from the current chunk, and are given back before stored blocks and
+  // at the end.
   private *run(queue: ByteQueue): Generator<number, number, void> {
     const buffer = this.buffer
     let position = WINDOW_SIZE
@@ -1857,6 +1859,7 @@ class Inflater {
       if (type === 0) {
         // Stored block: drop the bits up to the byte boundary, then read the
         // length and its complement
+        inputPosition -= bitCount >>> 3
         bitBuffer = 0
         bitCount = 0
         while (bitCount < 32) {
@@ -2011,6 +2014,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
+          // The code needs more bits, so fewer than 15 are held
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
@@ -2018,6 +2022,11 @@ class Inflater {
             }
             input = queue.takeSome(queue.length)
             inputPosition = 0
+          } else if (inputPosition + 1 < input.length) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+            continue
           }
           bitBuffer |= input[inputPosition++] << bitCount
           bitCount += 8
@@ -2064,6 +2073,7 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
+          // The code needs more bits, so fewer than 15 are held
           if (inputPosition === input.length) {
             if (queue.length === 0) {
               yield position
@@ -2071,6 +2081,11 @@ class Inflater {
             }
             input = queue.takeSome(queue.length)
             inputPosition = 0
+          } else if (inputPosition + 1 < input.length) {
+            bitBuffer |= (input[inputPosition] | (input[inputPosition + 1] << 8)) << bitCount
+            inputPosition += 2
+            bitCount += 16
+            continue
           }
           bitBuffer |= input[inputPosition++] << bitCount
           bitCount += 8
@@ -2114,7 +2129,7 @@ class Inflater {
         }
       }
     } while (final === 0)
-    queue.unread(input.subarray(inputPosition))
+    queue.unread(input.subarray(inputPosition - (bitCount >>> 3)))
     return position
   }
 }

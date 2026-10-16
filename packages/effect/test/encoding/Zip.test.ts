@@ -66,6 +66,20 @@ const concat = (...parts: ReadonlyArray<ArrayLike<number>>) => {
 
 const endRecord = concat(le(0x06054b50, 4), new Uint8Array(18))
 
+// Deflate data: fields are written least significant bit first, Huffman codes
+// most significant bit first, and the last byte is padded with zeros
+const bits = (fields: ReadonlyArray<readonly [value: number, length: number, code?: boolean]>) => {
+  const bytes: Array<number> = []
+  let count = 0
+  for (const [value, length, code] of fields) {
+    for (let i = 0; i < length; i++) {
+      if (count % 8 === 0) bytes.push(0)
+      bytes[bytes.length - 1] |= ((value >> (code ? length - 1 - i : i)) & 1) << (count++ % 8)
+    }
+  }
+  return Uint8Array.from(bytes)
+}
+
 const localHeader = (name: ArrayLike<number>, fields: {
   readonly flags?: number
   readonly method?: number
@@ -516,6 +530,34 @@ describe("Zip", () => {
         }
       }))
 
+    it.effect("inflates stored blocks after Huffman-coded blocks", () =>
+      Effect.gen(function*() {
+        // A fixed Huffman block with "ab" and a stored block with "c". The end
+        // code reads input ahead of the stored block, which starts at a byte
+        // boundary.
+        const data = concat(
+          bits([[0, 1], [1, 2], [0x30 + 97, 8, true], [0x30 + 98, 8, true], [0, 7, true], [1, 1], [0, 2]]),
+          le(1, 2),
+          le(0xfffe, 2),
+          textEncoder.encode("c")
+        )
+        const content = textEncoder.encode("abc")
+        const archive = concat(
+          localHeader(textEncoder.encode("f"), {
+            method: 8,
+            crc: crc32(content),
+            compressedSize: data.length,
+            size: content.length
+          }),
+          data,
+          storedEntry(textEncoder.encode("g"), textEncoder.encode("next")),
+          endRecord
+        )
+        for (const chunkSize of [1, archive.length]) {
+          assert.deepStrictEqual((yield* decode(archive, chunkSize)).map(({ body }) => text(body)), ["abc", "next"])
+        }
+      }))
+
     it.effect("inflates output that ends at or crosses the output buffer boundary", () =>
       Effect.gen(function*() {
         let x = 7
@@ -590,19 +632,6 @@ describe("Zip", () => {
 
     it.effect("does not decode unused codes with the codes of earlier entries", () =>
       Effect.gen(function*() {
-        // Fields are written least significant bit first, and Huffman codes
-        // most significant bit first
-        const bits = (fields: ReadonlyArray<readonly [value: number, length: number, code?: boolean]>) => {
-          const bytes: Array<number> = []
-          let count = 0
-          for (const [value, length, code] of fields) {
-            for (let i = 0; i < length; i++) {
-              if (count % 8 === 0) bytes.push(0)
-              bytes[bytes.length - 1] |= ((value >> (code ? length - 1 - i : i)) & 1) << (count++ % 8)
-            }
-          }
-          return Uint8Array.from(bytes)
-        }
         // A dynamic block with 2-bit codes for "x", "y", the end and a 3-byte
         // copy, which writes "xy" and copies them from the distance of
         // `distanceCode`
