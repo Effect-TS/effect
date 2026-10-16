@@ -97,11 +97,23 @@ describe("Option", () => {
     deepStrictEqual(order, ["inner", "outer", "dispose"])
   })
 
-  it.each([undefined, 1])("gen lets return %s in finally replace a short-circuit", (value) => {
+  it("gen lets cleanup short-circuit a pending normal return", () => {
+    const result = Option.gen(function*() {
+      try {
+        return 1
+      } finally {
+        yield* Option.none()
+      }
+    })
+    assertNone(result)
+  })
+
+  it.each([undefined, 1])("gen lets return %s after a cleanup yield replace a short-circuit", (value) => {
     const result = Option.gen(function*() {
       try {
         yield* Option.none()
       } finally {
+        yield* Option.some(1)
         // oxlint-disable-next-line no-unsafe-finally
         return value
       }

@@ -540,11 +540,23 @@ describe("Result", () => {
       deepStrictEqual(order, ["outer"])
     })
 
-    it.each([undefined, 1])("gen lets return %s in finally replace a short-circuit", (value) => {
+    it("gen lets a cleanup failure replace a pending normal return", () => {
+      const result = Result.gen(function*() {
+        try {
+          return 1
+        } finally {
+          yield* Result.fail("cleanup")
+        }
+      })
+      assertFailure(result, "cleanup")
+    })
+
+    it.each([undefined, 1])("gen lets return %s after a cleanup yield replace a short-circuit", (value) => {
       const result = Result.gen(function*() {
         try {
           yield* Result.fail("boom")
         } finally {
+          yield* Result.succeed(1)
           // oxlint-disable-next-line no-unsafe-finally
           return value
         }
