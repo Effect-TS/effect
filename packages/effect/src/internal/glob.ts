@@ -6,14 +6,19 @@ import type { PlatformError } from "../PlatformError.ts"
 export type Segment =
   | { readonly _tag: "Globstar" }
   | { readonly _tag: "Literal"; readonly value: string }
-  | { readonly _tag: "Wildcard"; readonly regex: RegExp }
+  | { readonly _tag: "Wildcard"; readonly tokens: ReadonlyArray<Token>; readonly leadingDot: boolean }
+
+/** @internal */
+export type Token =
+  | { readonly _tag: "Char"; readonly code: number }
+  | { readonly _tag: "Any" }
+  | { readonly _tag: "Star" }
+  | { readonly _tag: "Class"; readonly regex: RegExp }
 
 /** @internal */
 export interface CompiledPattern {
   readonly segments: ReadonlyArray<Segment>
   readonly directoryOnly: boolean
-  /** Index of the first `**` segment, or the segment count when there is none. */
-  readonly firstGlobstar: number
 }
 
 /** @internal */
@@ -37,7 +42,7 @@ const STRIDE = 2 ** 21
 export const compile = (pattern: string, dot: boolean): Compiled => {
   const patterns: Array<CompiledPattern> = []
   for (const expanded of expandBraces(pattern)) {
-    const compiled = expanded === "" ? undefined : compilePattern(expanded, dot)
+    const compiled = expanded === "" ? undefined : compilePattern(expanded)
     if (compiled !== undefined && compiled.segments.length < STRIDE) {
       patterns.push(compiled)
     }
@@ -71,14 +76,27 @@ export const expandBraces = (pattern: string): Array<string> => {
 }
 
 // Matches every brace group in one pass, keyed by the index of its `{`. Only
-// groups with a top-level comma expand; `{a}` and unmatched braces are literal.
+// groups with a top-level comma expand; `{a}` and unmatched braces are literal,
+// as are braces and commas inside a bracket class.
 const matchBraceGroups = (pattern: string): Map<number, BraceGroup> => {
   const groups = new Map<number, BraceGroup>()
   const stack: Array<{ readonly open: number; readonly commas: Array<number> }> = []
+  // mirrors `compileSegment`: after an unclosed `[`, the rest of the segment
+  // has no classes
+  let classes = true
   for (let i = 0; i < pattern.length; i++) {
     const char = pattern[i]
     if (char === "\\") {
       i++
+    } else if (char === "/") {
+      classes = true
+    } else if (char === "[" && classes) {
+      const close = classClose(pattern, i)
+      if (close === -1) {
+        classes = false
+      } else {
+        i = close
+      }
     } else if (char === "{") {
       stack.push({ open: i, commas: [] })
     } else if (char === ",") {
@@ -91,6 +109,34 @@ const matchBraceGroups = (pattern: string): Map<number, BraceGroup> => {
     }
   }
   return groups
+}
+
+// Finds the `]` closing the class opened at `open` with the same rules as
+// `parseClass`, or -1 when the class does not close within the segment.
+const classClose = (pattern: string, open: number): number => {
+  let i = open + 1
+  if (pattern[i] === "!" || pattern[i] === "^") {
+    i++
+  }
+  for (let first = true; i < pattern.length; i++, first = false) {
+    const char = pattern[i]
+    if (char === "/") {
+      return -1
+    }
+    if (char === "]" && !first) {
+      return i
+    }
+    if (char === "\\") {
+      i++
+    } else if (char === "[" && pattern[i + 1] === ":") {
+      // `[:name:]` ends at the first `]`; class names are at most six characters
+      const close = pattern.slice(i + 2, i + 10).indexOf("]") + i + 2
+      if (close > i + 2 && pattern[close - 1] === ":" && pattern.slice(i + 2, close - 1) in posixClasses) {
+        i = close
+      }
+    }
+  }
+  return -1
 }
 
 const parseBraceSequence = (
@@ -187,13 +233,14 @@ const splitSegments = (pattern: string): Array<string> => {
 const markDrive = (raw: Array<string>): Array<string> =>
   raw.length > 1 && /^[A-Za-z]:$/.test(raw[0]) ? [`${raw[0]}/`, ...raw.slice(1)] : raw
 
+// Keeps the leading empty segment of an absolute path and drops `//` and a
+// `.` followed by another segment; a final `.` names the directory itself.
 /** @internal */
 export const normalizeSegments = (raw: ReadonlyArray<string>): Array<string> => {
   const out: Array<string> = []
   for (let i = 0; i < raw.length; i++) {
     const segment = raw[i]
-    // keep the leading empty segment of an absolute path, drop `//` and `./`
-    if ((segment === "" && i > 0) || (segment === "." && (out.length > 0 || i < raw.length - 1))) {
+    if ((segment === "" && i > 0) || (segment === "." && i < raw.length - 1)) {
       continue
     }
     out.push(segment)
@@ -201,12 +248,17 @@ export const normalizeSegments = (raw: ReadonlyArray<string>): Array<string> => 
   return out
 }
 
-const compilePattern = (pattern: string, dot: boolean): CompiledPattern => {
+const compilePattern = (pattern: string): CompiledPattern | undefined => {
   let raw = markDrive(splitSegments(pattern))
   let directoryOnly = false
   while (raw.length > 1 && raw[raw.length - 1] === "") {
     directoryOnly = true
     raw = raw.slice(0, -1)
+  }
+  // `.` and `..` after a `**` would name every ancestor, so they match nothing
+  const globstarAt = raw.indexOf("**")
+  if (globstarAt !== -1 && raw.slice(globstarAt + 1).some((segment) => segment === "." || segment === "..")) {
+    return undefined
   }
   const segments: Array<Segment> = []
   for (const segment of normalizeSegments(raw)) {
@@ -215,16 +267,18 @@ const compilePattern = (pattern: string, dot: boolean): CompiledPattern => {
         segments.push(globstar)
       }
     } else {
-      segments.push(compileSegment(segment, dot))
+      segments.push(compileSegment(segment))
     }
   }
-  const firstGlobstar = segments.indexOf(globstar)
-  return { segments, directoryOnly, firstGlobstar: firstGlobstar === -1 ? segments.length : firstGlobstar }
+  return { segments, directoryOnly }
 }
 
 const globstar: Segment = { _tag: "Globstar" }
 
-const compileSegment = (segment: string, dot: boolean): Segment => {
+const star: Token = { _tag: "Star" }
+const any: Token = { _tag: "Any" }
+
+const compileSegment = (segment: string): Segment => {
   // iterate by code point so classes and `?` treat astral characters as one
   const chars = Array.from(segment)
   const nextClose = new Array<number>(chars.length + 1).fill(-1)
@@ -233,50 +287,83 @@ const compileSegment = (segment: string, dot: boolean): Segment => {
   }
   // once a class fails to close, every later `[` in the segment is literal
   let classes = true
-  let source = ""
+  const tokens: Array<Token> = []
   let literal = ""
   let magic = false
   for (let i = 0; i < chars.length; i++) {
-    const char = chars[i]
-    if (char === "\\" && i + 1 < chars.length) {
-      i++
-      literal += chars[i]
-      source += escapeRegExp(chars[i])
-    } else if (char === "*") {
+    let char = chars[i]
+    if (char === "*") {
       magic = true
-      if (!source.endsWith("[^/]*")) {
-        source += "[^/]*"
+      if (tokens[tokens.length - 1] !== star) {
+        tokens.push(star)
       }
-    } else if (char === "?") {
-      magic = true
-      source += "[^/]"
-    } else if (char === "[") {
-      const parsed = classes ? parseClass(chars, i, nextClose) : undefined
-      if (parsed === undefined) {
-        classes = false
-        literal += char
-        source += escapeRegExp(char)
-      } else {
-        magic = true
-        source += parsed.source
-        i = parsed.end
-      }
-    } else {
-      literal += char
-      source += escapeRegExp(char)
+      continue
     }
+    if (char === "?") {
+      magic = true
+      tokens.push(any)
+      continue
+    }
+    if (char === "[" && classes) {
+      const parsed = parseClass(chars, i, nextClose)
+      if (parsed !== undefined) {
+        magic = true
+        tokens.push({ _tag: "Class", regex: new RegExp(`^${parsed.source}$`, "u") })
+        i = parsed.end
+        continue
+      }
+      classes = false
+    }
+    if (char === "\\" && i + 1 < chars.length) {
+      char = chars[++i]
+    }
+    literal += char
+    tokens.push({ _tag: "Char", code: char.codePointAt(0)! })
   }
   if (!magic) {
     return { _tag: "Literal", value: literal }
   }
-  // wildcards never match `.` or `..`, and only match a leading dot when the
-  // segment itself starts with one or `dot` is enabled
-  const leadingDot = chars[0] === "." || (chars[0] === "\\" && chars[1] === ".")
-  const guard = dot || leadingDot ? "(?!\\.\\.?$)" : "(?!\\.)"
-  return { _tag: "Wildcard", regex: new RegExp(`^${guard}${source}$`, "u") }
+  return { _tag: "Wildcard", tokens, leadingDot: chars[0] === "." || (chars[0] === "\\" && chars[1] === ".") }
 }
 
-const escapeRegExp = (char: string): string => /[\\^$.*+?()[\]{}|/]/.test(char) ? `\\${char}` : char
+// Matches one segment with a single backtracking point per `*`, which keeps
+// the cost proportional to the name length times the token count.
+const matchWildcard = (tokens: ReadonlyArray<Token>, name: string): boolean => {
+  let token = 0
+  let index = 0
+  let starToken = -1
+  let starIndex = 0
+  while (index < name.length) {
+    const code = name.codePointAt(index)!
+    const width = code > 0xffff ? 2 : 1
+    const current = tokens[token]
+    if (current === star) {
+      starToken = token++
+      starIndex = index
+      continue
+    }
+    if (
+      current !== undefined &&
+      (current._tag === "Any" ||
+        (current._tag === "Char" && current.code === code) ||
+        (current._tag === "Class" && current.regex.test(String.fromCodePoint(code))))
+    ) {
+      token++
+      index += width
+      continue
+    }
+    if (starToken === -1) {
+      return false
+    }
+    token = starToken + 1
+    starIndex += name.codePointAt(starIndex)! > 0xffff ? 2 : 1
+    index = starIndex
+  }
+  while (tokens[token] === star) {
+    token++
+  }
+  return token === tokens.length
+}
 
 const codePoint = (char: string): string => `\\u{${char.codePointAt(0)!.toString(16)}}`
 
@@ -424,7 +511,13 @@ export const step = (compiled: Compiled, states: States, name: string): Step => 
         break
       }
       case "Wildcard": {
-        if (name !== "" && segment.regex.test(name)) {
+        // wildcards never match `.` or `..`, and only match a leading dot when
+        // the segment itself starts with one or `dot` is enabled
+        if (
+          name !== "" && name !== "." && name !== ".." &&
+          (compiled.dot || segment.leadingDot || !name.startsWith(".")) &&
+          matchWildcard(segment.tokens, name)
+        ) {
           explicit.add(state + 1)
         }
         break
@@ -561,8 +654,7 @@ export const walk = (
 
   // Directory listings never contain `.` and `..`, nor the root segment that
   // starts an absolute pattern (`""` or a drive such as `C:/`), so literal
-  // segments naming them are added when they exist. `.` and `..` after a `**`
-  // are not added, since they would revisit every ancestor.
+  // segments naming them are added when they exist.
   const isUnlisted = (value: string, relative: string): boolean =>
     value === "." || value === ".." || (relative === "" && (value === "" || /^[A-Za-z]:\/$/.test(value)))
 
@@ -578,9 +670,7 @@ export const walk = (
         continue
       }
       if (segment._tag === "Literal" && isUnlisted(segment.value, relative)) {
-        if (state % STRIDE < patternAt(compiled, state).firstGlobstar) {
-          unlisted.add(segment.value)
-        }
+        unlisted.add(segment.value)
       } else {
         listed = true
       }
