@@ -30,6 +30,8 @@ import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
+import { randomUUID } from "node:crypto"
+import { once } from "node:events"
 import * as Http from "node:http"
 import * as Https from "node:https"
 import { Readable } from "node:stream"
@@ -228,7 +230,11 @@ export const makeUndici = Effect.gen(function*() {
                 cause
               })
             })
-        })
+        }).pipe(Effect.onError(() =>
+          Effect.sync(() => {
+            if (request.body._tag === "FormData" && body instanceof Readable) body.destroy()
+          })
+        ))
       ),
       Effect.map((response) => new UndiciResponse(request, response, url.href.split("#")[0]))
     )
@@ -263,10 +269,59 @@ function convertBody(request: HttpClientRequest): Effect.Effect<{
 }
 
 const encodeFormData = (formData: FormData): { readonly body: Readable; readonly contentType: string } => {
-  const response = new globalThis.Response(formData)
+  // Do not use Response(FormData): some Node versions detach file read errors
+  // from the encoded stream, leaving the request pending with an unhandled rejection.
+  const boundary = `----effect-${randomUUID()}`
+  const encoder = new TextEncoder()
+  const normalize = (value: string) => value.replace(/\r?\n|\r/g, "\r\n")
+  const escape = (value: string) => value.replace(/\r/g, "%0D").replace(/\n/g, "%0A").replace(/"/g, "%22")
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
+  const chunks = (async function*() {
+    for (const [name, value] of formData) {
+      const disposition = `--${boundary}\r\nContent-Disposition: form-data; name="${escape(normalize(name))}"`
+      if (typeof value === "string") {
+        yield encoder.encode(`${disposition}\r\n\r\n${normalize(value)}\r\n`)
+      } else {
+        yield encoder.encode(
+          `${disposition}; filename="${escape(value.name)}"\r\nContent-Type: ${
+            value.type || "application/octet-stream"
+          }\r\n\r\n`
+        )
+        reader = value.stream().getReader()
+        try {
+          while (true) {
+            const chunk = await reader.read()
+            if (chunk.done) break
+            yield chunk.value
+          }
+        } finally {
+          // Cancellation also covers a consumer stopping midway through a file.
+          await reader.cancel().catch(() => {})
+          reader.releaseLock()
+          reader = undefined
+        }
+        yield encoder.encode("\r\n")
+      }
+    }
+    yield encoder.encode(`--${boundary}--\r\n`)
+  })()
+  const body = Readable.fromWeb(
+    new ReadableStream({
+      async pull(controller) {
+        const chunk = await chunks.next()
+        if (chunk.done) controller.close()
+        else controller.enqueue(chunk.value)
+      },
+      async cancel() {
+        // Interrupt a pending read before waiting for the generator to finish.
+        await reader?.cancel().catch(() => {})
+        await chunks.return(undefined)
+      }
+    }) as any
+  )
   return {
-    body: Readable.fromWeb(response.body! as any),
-    contentType: response.headers.get("content-type")!
+    body,
+    contentType: `multipart/form-data; boundary=${boundary}`
   }
 }
 
@@ -579,7 +634,7 @@ export const makeNodeHttp = Effect.gen(function*() {
       })
     return Effect.raceFirst(
       waitForResponse(nodeRequest, request),
-      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
+      sendBody(nodeRequest, request, request.body, signal).pipe(Effect.andThen(Effect.never))
     ).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
@@ -590,7 +645,8 @@ export const makeNodeHttp = Effect.gen(function*() {
 const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: HttpClientRequest,
-  body: Body.HttpBody
+  body: Body.HttpBody,
+  signal: AbortSignal
 ): Effect.Effect<void, Error.HttpClientError> =>
   Effect.suspend((): Effect.Effect<void, Error.HttpClientError> => {
     switch (body._tag) {
@@ -608,7 +664,19 @@ const sendBody = (
         nodeRequest.setHeader("content-type", encoded.contentType)
 
         return Effect.tryPromise({
-          try: () => pipeline(encoded.body, nodeRequest),
+          try: async () => {
+            // Use the request signal, not the sending fiber: raceFirst stops
+            // that fiber when headers arrive, but the upload may still be active.
+            // Destroying a connecting socket can leave the peer with an idle
+            // connection. Finish connecting before consuming a fallible upload.
+            try {
+              const socket = nodeRequest.socket ?? (await once(nodeRequest, "socket", { signal }))[0]
+              if (socket.connecting) await once(socket, "connect", { signal })
+              await pipeline(encoded.body, nodeRequest, { signal })
+            } finally {
+              encoded.body.destroy()
+            }
+          },
           catch: (cause) =>
             new Error.HttpClientError({
               reason: new Error.TransportError({
