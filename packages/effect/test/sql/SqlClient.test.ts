@@ -443,7 +443,7 @@ describe("SqlClient", () => {
         assert.deepStrictEqual(failedRelease.calls, ["BEGIN", "COMMIT", "release", "after(1)"])
       }))
 
-    it.effect("logs a callback that fails or dies and runs the rest", () =>
+    it.effect("logs a callback that dies and runs the rest", () =>
       Effect.gen(function*() {
         const { after, calls, sql } = yield* makeClient()
         const logged: Array<string> = []
@@ -452,7 +452,6 @@ describe("SqlClient", () => {
         })
 
         const result = yield* sql.withTransaction(Effect.gen(function*() {
-          yield* sql.afterCommit(Effect.fail("callback error"))
           yield* sql.afterCommit(Effect.die("callback defect"))
           yield* after("3")
           return "body"
@@ -460,9 +459,8 @@ describe("SqlClient", () => {
 
         assert.strictEqual(result, "body")
         assert.isTrue(calls.includes("after(3)"))
-        assert.strictEqual(logged.length, 2)
-        assert.include(logged[0], "callback error")
-        assert.include(logged[1], "callback defect")
+        assert.strictEqual(logged.length, 1)
+        assert.include(logged[0], "callback defect")
       }))
 
     it.effect("dies when a detached fiber registers after the transaction has ended", () =>

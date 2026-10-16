@@ -20,6 +20,7 @@ import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
 import { Reactivity } from "../reactivity/Reactivity.ts"
 import type { ReadonlyRecord } from "../Record.ts"
+import { UnhandledLogLevel } from "../References.ts"
 import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Stream from "../Stream.ts"
@@ -98,8 +99,8 @@ export interface SqlClient extends Constructor {
    *
    * A callback runs with the services that were in scope when it was
    * registered, minus this client's transaction, so a callback that queries
-   * uses a new connection. A callback that fails or dies is logged and the
-   * rest still run.
+   * uses a new connection. A callback that dies is logged at
+   * `References.UnhandledLogLevel` and the rest still run.
    *
    * Callbacks run in registration order within a transaction or savepoint,
    * and a committed savepoint's callbacks follow those already registered in
@@ -119,7 +120,7 @@ export interface SqlClient extends Constructor {
    * Transactions that don't go through `makeWithTransaction`, such as those
    * of `@effect/sql-sqlite-do`, run callbacks immediately.
    */
-  readonly afterCommit: <E, R>(effect: Effect.Effect<void, E, R>) => Effect.Effect<void, never, R>
+  readonly afterCommit: <R>(effect: Effect.Effect<void, never, R>) => Effect.Effect<void, never, R>
 
   /**
    * Use the Reactivity service to create a reactive query.
@@ -275,7 +276,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
     rollbackSavepoint: (conn, id) => control(conn, rollbackSavepoint(`effect_sql_${id}`))
   })
 
-  const afterCommit = <E, R>(effect: Effect.Effect<void, E, R>): Effect.Effect<void, never, R> =>
+  const afterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
       const transaction = Context.getOrUndefined(fiber.context, transactionService)
       const buffer = transaction && afterCommitBuffers.get(transaction)
@@ -467,7 +468,7 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
  * level runs them after it commits.
  */
 interface AfterCommitBuffer {
-  readonly callbacks: Array<Effect.Effect<void, unknown>>
+  readonly callbacks: Array<Effect.Effect<void>>
   readonly parent: AfterCommitBuffer | undefined
   open: boolean
 }
@@ -479,8 +480,15 @@ interface AfterCommitBuffer {
  */
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
-const runAfterCommit = <E, R>(effect: Effect.Effect<void, E, R>): Effect.Effect<void, never, R> =>
-  Effect.ignoreCause(effect, { log: "Error", message: "SqlClient.afterCommit callback failed" })
+const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
+  Effect.catchCause(effect, (cause) =>
+    Effect.withFiber((fiber) => {
+      const unhandledLogLevel = fiber.getRef(UnhandledLogLevel)
+      if (unhandledLogLevel) {
+        return Effect.logWithLevel(unhandledLogLevel)("Unhandled error in SqlClient.afterCommit callback", cause)
+      }
+      return Effect.void
+    }))
 
 /**
  * Builds a transaction wrapper that begins top-level transactions, uses

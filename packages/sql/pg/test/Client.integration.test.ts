@@ -392,7 +392,8 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
           sql<{ count: number }>`SELECT count(*)::integer AS count FROM after_commit_visibility`.pipe(
             Effect.map((rows) => {
               seen = rows
-            })
+            }),
+            Effect.orDie
           )
         )
       }))
