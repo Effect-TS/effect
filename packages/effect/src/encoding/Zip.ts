@@ -339,6 +339,8 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   passed on.
  * - Paths are returned as written in the archive, so they can be absolute or
  *   contain `..`. Validate them before writing entries to disk.
+ * - Paths with a NUL character, which other tools take as the end of the name,
+ *   fail with an `InvalidHeader` `ZipError`.
  *
  * @see {@link encode} for the inverse operation
  *
@@ -1425,6 +1427,8 @@ class Decoder {
       at = end
     }
     const quoted = JSON.stringify(path)
+    // Other tools end the name at a NUL character, or reject it
+    if (path.includes("\0")) throw invalidHeader(`path ${quoted} contains a NUL character`)
     if ((flags & (FLAG_ENCRYPTED | FLAG_STRONG_ENCRYPTION)) !== 0) throw unsupported(`entry ${quoted} is encrypted`)
     if (method !== 0 && method !== 8) throw unsupported(`entry ${quoted} uses compression method ${method}`)
     const descriptor = (flags & FLAG_DESCRIPTOR) !== 0
