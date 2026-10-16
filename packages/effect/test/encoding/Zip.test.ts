@@ -395,15 +395,26 @@ describe("Zip", () => {
         const unicodePath = (name: string, crc: number) =>
           concat(le(0x7075, 2), le(5 + textEncoder.encode(name).length, 2), [1], le(crc, 4), textEncoder.encode(name))
         const empty = new Uint8Array(0)
+        // Other tools keep a leading byte order mark, which makes these paths relative
+        const bom = textEncoder.encode("﻿/b")
         const archive = concat(
           storedEntry([0x81, 0x41], empty),
           storedEntry(textEncoder.encode("é"), empty),
           storedEntry(textEncoder.encode("x"), empty, { extra: unicodePath("ÿ.txt", crc32(textEncoder.encode("x"))) }),
           storedEntry(textEncoder.encode("y"), empty, { extra: unicodePath("ignored", 0) }),
+          storedEntry(bom, empty),
+          storedEntry(bom, empty, { flags: 0x800 }),
           endRecord
         )
         const output = yield* decode(archive)
-        assert.deepStrictEqual(output.map(({ header }) => header.path), ["üA", "é", "ÿ.txt", "y"])
+        assert.deepStrictEqual(output.map(({ header }) => header.path), [
+          "üA",
+          "é",
+          "ÿ.txt",
+          "y",
+          "﻿/b",
+          "﻿/b"
+        ])
       }))
 
     it.effect("reads extended timestamps before 1970 and after 2038", () =>
