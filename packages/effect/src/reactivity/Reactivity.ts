@@ -96,14 +96,30 @@ export const Reactivity: Context.Service<Reactivity, Reactivity> = Context.Servi
 export const make = Effect.sync(() => {
   const handlers = new Map<number | string, Set<() => void>>()
 
-  const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
-    const pending = new Set<() => void>()
-    keysToHashes(keys, (hash) => {
+  const runHandlers = (hashes: Iterable<string | number>): void => {
+    const pending = new Map<() => void, Array<Set<() => void>>>()
+    for (const hash of hashes) {
       const set = handlers.get(hash)
-      if (set === undefined) return
-      set.forEach((run) => pending.add(run))
+      if (set === undefined) continue
+      set.forEach((run) => {
+        const sets = pending.get(run)
+        if (sets === undefined) {
+          pending.set(run, [set])
+        } else {
+          sets.push(set)
+        }
+      })
+    }
+    pending.forEach((sets, run) => {
+      // Earlier handlers may cancel registrations during this dispatch.
+      if (sets.some((set) => set.has(run))) run()
     })
-    pending.forEach((run) => run())
+  }
+
+  const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
+    const hashes = new Set<string | number>()
+    keysToHashes(keys, (hash) => hashes.add(hash))
+    runHandlers(hashes)
   }
 
   const invalidate = (
@@ -215,17 +231,7 @@ export const make = Effect.sync(() => {
       const pending = new Set<string | number>()
       return effect.pipe(
         Effect.provideService(PendingInvalidation, pending),
-        Effect.onExit((_) =>
-          Effect.sync(() => {
-            const pendingHandlers = new Set<() => void>()
-            pending.forEach((hash) => {
-              const set = handlers.get(hash)
-              if (set === undefined) return
-              set.forEach((run) => pendingHandlers.add(run))
-            })
-            pendingHandlers.forEach((run) => run())
-          })
-        )
+        Effect.onExit((_) => Effect.sync(() => runHandlers(pending)))
       )
     })
 
