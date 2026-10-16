@@ -44,6 +44,18 @@ type StorageOptions = {
  * entries, and session authentication bindings, then persists and streams
  * plaintext remote entries.
  *
+ * Writes are streamed to `changes` subscribers once the outermost SQL
+ * transaction commits, in sequence order, including writes made inside a
+ * transaction the caller opened.
+ *
+ * **Gotchas**
+ *
+ * A `changes` subscription opened inside a SQL transaction reads its backlog
+ * in that transaction, so it can include writes that later roll back. When a
+ * subscriber has to read back entries that a later commit overtook, it does so
+ * outside the transaction, which on single-connection drivers such as SQLite
+ * waits for that transaction to end.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -227,26 +239,12 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     })
   )
 
-  // Live changes for a store, published in sequence order. `published` starts
-  // at the last committed sequence: earlier entries are in the backlog of
-  // every subscriber, which subscribes after this lookup.
-  const liveStores = yield* RcMap.make({
-    lookup: Effect.fnUntraced(function*(storeId: string) {
-      const pubsub = yield* Effect.acquireRelease(
+  const pubsubs = yield* RcMap.make({
+    lookup: (_storeId: string) =>
+      Effect.acquireRelease(
         PubSub.unbounded<RemoteEntry>(),
         PubSub.shutdown
-      )
-      const rows = yield* sql`
-          SELECT next_sequence
-          FROM ${storesTableSql}
-          WHERE store_id = ${storeId}
-        `.pipe(Effect.flatMap(decodeStoreSequenceRows))
-      return {
-        pubsub,
-        published: (rows[0]?.next_sequence ?? 1) - 1,
-        semaphore: Semaphore.makeUnsafe(1)
-      }
-    }),
+      ),
     idleTimeToLive: "5 minutes"
   })
 
@@ -255,28 +253,14 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   const pendingWrites = Context.Service<PendingWrites>(
     `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${storageIdCounter++}`
   )
-  // Commits can publish out of order, such as when a caller's earlier
-  // after-commit callback delays this storage's. Entries a later commit
-  // overtook are read back, as allocating its sequence under the store lock
-  // means they have committed, and entries already published are skipped.
   const publish = Effect.fnUntraced(function*([storeId, entries]: PendingWrites[number]) {
-    const store = yield* RcMap.get(liveStores, storeId)
-    yield* store.semaphore.withPermit(Effect.gen(function*() {
-      const pending = entries.filter((entry) => entry.remoteSequence > store.published)
-      if (pending.length === 0) {
-        return
-      }
-      const first = pending[0].remoteSequence
-      const missing = first > store.published + 1
-        ? yield* selectEntriesBetween(storeId, store.published + 1, first)
-        : []
-      yield* PubSub.publishAll(store.pubsub, missing.length > 0 ? [...missing, ...pending] : pending)
-      store.published = pending[pending.length - 1].remoteSequence
-    }))
+    const pubsub = yield* RcMap.get(pubsubs, storeId)
+    return yield* PubSub.publishAll(pubsub, entries)
   }, Effect.scoped)
   // Merge nested buffers on success; publish only after the outermost SQL
-  // commit, which may belong to a transaction the caller opened. Without one,
-  // the outer permit is held through publication.
+  // commit, which may belong to a transaction the caller opened. Commits can
+  // still publish out of order, such as when a caller's earlier after-commit
+  // callback delays this one, so subscribers restore sequence order.
   const withTransaction = Effect.fnUntraced(function*<A, E, R>(
     effect: Effect.Effect<A, E, R>
   ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
@@ -303,8 +287,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         for (const entries of stores.values()) {
           entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
         }
-        // A store that fails to publish is caught up by its next commit.
-        yield* Effect.forEach(stores, (write) => sql.afterCommit(Effect.orDie(publish(write))), { discard: true })
+        yield* sql.afterCommit(Effect.forEach(stores, publish, { discard: true }))
       }
       return result
     }))
@@ -506,18 +489,41 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     ),
     changes: Effect.fnUntraced(
       function*({ storeId, startSequence, compactors }) {
-        const { pubsub } = yield* RcMap.get(liveStores, storeId)
+        const pubsub = yield* RcMap.get(pubsubs, storeId)
         const subscription = yield* PubSub.subscribe(pubsub)
-        const backlog = yield* EventLogServerUnencrypted.compactBacklog({
-          compactors,
-          remoteEntries: yield* selectEntriesAfter(storeId, startSequence)
-        })
-        let watermark = backlog.length > 0 ? backlog[backlog.length - 1]!.remoteSequence : startSequence - 1
+        const remoteEntries = yield* selectEntriesAfter(storeId, startSequence)
+        const backlog = yield* EventLogServerUnencrypted.compactBacklog({ compactors, remoteEntries })
+        let delivered = remoteEntries.length > 0
+          ? remoteEntries[remoteEntries.length - 1]!.remoteSequence
+          : startSequence - 1
+
+        // Skip entries already delivered, and read back committed entries that
+        // a later commit overtook. A failed read is retried by the next entry.
+        const deliver = (entry: RemoteEntry): Effect.Effect<ReadonlyArray<RemoteEntry>> => {
+          if (entry.remoteSequence <= delivered) {
+            return Effect.succeed([])
+          } else if (entry.remoteSequence === delivered + 1) {
+            delivered = entry.remoteSequence
+            return Effect.succeed([entry])
+          }
+          return selectEntriesBetween(storeId, delivered + 1, entry.remoteSequence).pipe(
+            Effect.map((missing) => {
+              delivered = entry.remoteSequence
+              return [...missing, entry]
+            }),
+            // Read committed rows, not those of a transaction the caller opened.
+            Effect.updateContext((context: Context.Context<never>) => Context.omit(sql.transactionService)(context)),
+            Effect.catch((error) =>
+              Effect.as(Effect.logWarning("Failed to read event log entries that a later commit overtook", error), [])
+            )
+          )
+        }
 
         return Stream.fromArray(backlog).pipe(
           Stream.concat(
             Stream.fromSubscription(subscription).pipe(
-              Stream.filter((entry) => entry.remoteSequence > watermark)
+              Stream.mapEffect(deliver),
+              Stream.flattenIterable
             )
           )
         )

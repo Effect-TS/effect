@@ -109,18 +109,22 @@ export const make = Effect.sync(() => {
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): Effect.Effect<void> =>
     Effect.contextWith((services) => {
+      const run = () => {
+        // Join the enclosing batch while it is still collecting.
+        const pending = Context.getOrUndefined(services, PendingInvalidation)
+        if (pending?.open) {
+          keysToHashes(keys, (hash) => {
+            pending.hashes.add(hash)
+          })
+        } else {
+          invalidateUnsafe(keys)
+        }
+      }
       const defer = Context.get(services, DeferInvalidation)
       if (defer) {
-        return defer(Effect.sync(() => invalidateUnsafe(keys)))
+        return defer(Effect.sync(run))
       }
-      const pending = Context.getOrUndefined(services, PendingInvalidation)
-      if (pending) {
-        keysToHashes(keys, (hash) => {
-          pending.add(hash)
-        })
-      } else {
-        invalidateUnsafe(keys)
-      }
+      run()
       return Effect.void
     })
 
@@ -208,12 +212,13 @@ export const make = Effect.sync(() => {
 
   const withBatch = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.suspend(() => {
-      const pending = new Set<string | number>()
+      const pending = { hashes: new Set<string | number>(), open: true }
       return effect.pipe(
         Effect.provideService(PendingInvalidation, pending),
         Effect.onExit((_) =>
           Effect.sync(() => {
-            pending.forEach((hash) => {
+            pending.open = false
+            pending.hashes.forEach((hash) => {
               const set = handlers.get(hash)
               if (set === undefined) return
               set.forEach((run) => run())
@@ -235,7 +240,10 @@ export const make = Effect.sync(() => {
   })
 })
 
-class PendingInvalidation extends Context.Service<PendingInvalidation, Set<string | number>>()(
+class PendingInvalidation extends Context.Service<PendingInvalidation, {
+  readonly hashes: Set<string | number>
+  open: boolean
+}>()(
   "effect/reactivity/Reactivity/PendingInvalidation"
 ) {}
 
@@ -328,8 +336,9 @@ export const stream: {
  * **Details**
  *
  * Registered queries for matching keys are rerun immediately, or collected until
- * the enclosing reactivity batch completes. Inside a SQL transaction, they are
- * rerun once the outermost transaction commits, and not at all if it rolls
+ * the enclosing reactivity batch completes. Inside a SQL transaction, the
+ * invalidation waits for the outermost transaction to commit, then joins an
+ * enclosing batch that is still open, and is dropped if the transaction rolls
  * back.
  *
  * @stability unstable
