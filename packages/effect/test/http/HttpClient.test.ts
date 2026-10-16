@@ -53,6 +53,25 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  it.effect("logging a response leaves the body readable", () =>
+    Effect.gen(function*() {
+      const request = HttpClientRequest.get("https://example.com")
+      const stream = HttpClientResponse.fromWeb(
+        request,
+        new Response("data: hi\n\n", { headers: { "content-type": "text/event-stream" } })
+      )
+      const json = HttpClientResponse.fromWeb(
+        request,
+        new Response("{\"ok\":true}", { headers: { "content-type": "application/json" } })
+      )
+
+      JSON.stringify(stream)
+      JSON.stringify(json)
+
+      strictEqual(yield* stream.text, "data: hi\n\n")
+      assert.deepStrictEqual(yield* json.json, { ok: true })
+    }))
+
   it.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
     "does not retain unread responses without FinalizationRegistry",
     async () => {
