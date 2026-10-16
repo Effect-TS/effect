@@ -401,6 +401,43 @@ describe("Atom", { concurrent: false }, () => {
     registryB.dispose()
   })
 
+  it("runtime replacement preserves Reactivity and shared invalidation", () => {
+    const count = counterRuntime.atom(Counter.use((_) => _.get)).pipe(
+      Atom.withReactivity(["counter"])
+    )
+    const inc = counterRuntime.fn(() => Counter.use((_) => _.inc), {
+      reactivityKeys: ["counter"]
+    })
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(counterRuntime.layer, CounterTest)]
+    })
+    try {
+      r.mount(count)
+      assert.deepStrictEqual(r.get(count), AsyncResult.success(10))
+      r.set(inc, void 0)
+      assert.deepStrictEqual(r.get(inc), AsyncResult.success(undefined))
+      assert.deepStrictEqual(r.get(count), AsyncResult.success(11))
+    } finally {
+      r.dispose()
+    }
+  })
+
+  it("runtime replacement preserves global layers", () => {
+    const Global = Context.Service<string>("Atom.test/ReplacementGlobal")
+    const factory = Atom.context()
+    factory.addGlobalLayer(Layer.succeed(Global, "global"))
+    const runtime = factory(CounterLayer)
+    const global = runtime.atom(Effect.serviceOption(Global))
+    const r = AtomRegistry.make({
+      initialValues: [Atom.initialValue(runtime.layer, CounterTest)]
+    })
+    try {
+      assert.deepStrictEqual(r.get(global), AsyncResult.success(Option.some("global")))
+    } finally {
+      r.dispose()
+    }
+  })
+
   it("runtime replacement", async () => {
     const count = counterRuntime.atom(Counter.use((_) => _.get))
     const r = AtomRegistry.make({
