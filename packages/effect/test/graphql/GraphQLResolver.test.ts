@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Layer, Ref, RequestResolver, Schema } from "effect"
+import { Cause, Context, Effect, Fiber, Layer, Ref, RequestResolver, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
 import * as Headers from "effect/http/Headers"
+import { TestClock } from "effect/testing"
 import { graphqlResponse, httpClientLayer, protocolLayer } from "./fixtures.ts"
 
 const Repository = Schema.Struct({ __typename: Schema.Literal("Repository"), nameWithOwner: Schema.String })
@@ -231,6 +232,35 @@ describe("GraphQLResolver", () => {
 
         assert.deepStrictEqual(results, [repo("R_1"), repo("R_2")])
         assert.deepStrictEqual(spans, ["resolver"])
+      }))
+
+    it.effect("a batch whose first caller was interrupted is sent under the remaining caller's span", () =>
+      Effect.gen(function*() {
+        const spans: Array<string> = []
+        const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes)).pipe(Effect.provide(protocolLayer({
+          execute: (request) =>
+            Effect.map(Effect.currentSpan, (span) => {
+              spans.push(span.name)
+              return { body: { data: { nodes: (request.variables as { ids: Array<string> }).ids.map(repo) } } }
+            }).pipe(Effect.orDie)
+        })))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"]
+          }).pipe(RequestResolver.setDelay("100 millis"))
+        )
+
+        // The first caller starts the batch, so the batch fiber inherits its span.
+        const first = yield* Effect.forkChild(Effect.withSpan(get("R_1"), "first"))
+        yield* Effect.yieldNow
+        const second = yield* Effect.forkChild(Effect.withSpan(get("R_2"), "second"))
+        yield* Effect.yieldNow
+        yield* Fiber.interrupt(first)
+        yield* TestClock.adjust("100 millis")
+
+        assert.deepStrictEqual(yield* Fiber.join(second), repo("R_2"))
+        assert.deepStrictEqual(spans, ["second"])
       }))
   })
 
