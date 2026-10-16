@@ -44,28 +44,6 @@ const IdParams = Schema.Struct({
 const todoResponse = HttpServerResponse.schemaJson(Todo)
 const fixture = `${import.meta.dirname}/fixtures/text.txt`
 
-// fetch can't send CONNECT, so write the request on a raw TCP connection.
-const readConnectStatusLine = (port: number) =>
-  Effect.acquireUseRelease(
-    Effect.promise(() => Deno.connect({ hostname: "127.0.0.1", port })),
-    (conn) =>
-      Effect.promise(async () => {
-        await conn.write(
-          new TextEncoder().encode("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n")
-        )
-        const decoder = new TextDecoder()
-        const buffer = new Uint8Array(1024)
-        let received = ""
-        while (!received.includes("\r\n")) {
-          const read = await conn.read(buffer)
-          if (read === null) break
-          received += decoder.decode(buffer.subarray(0, read), { stream: true })
-        }
-        return received.split("\r\n")[0]
-      }),
-    (conn) => Effect.sync(() => conn.close())
-  )
-
 describe("DenoHttpServer", () => {
   describe("body omission", () => {
     for (const status of [204, 205, 304]) {
@@ -310,11 +288,31 @@ describe("DenoHttpServer", () => {
         "*",
         Effect.sync(() => {
           calls++
-          return HttpServerResponse.text("tunnel")
+          return HttpServerResponse.empty()
         })
       ).pipe(HttpRouter.serve, Layer.build)
       const server = yield* HttpServer.HttpServer
-      const statusLine = yield* readConnectStatusLine((server.address as NetAddress.InetAddress).port)
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.acquireUseRelease(
+        Effect.promise(() => Deno.connect({ hostname: "127.0.0.1", port })),
+        (conn) =>
+          Effect.promise(async () => {
+            await conn.write(
+              new TextEncoder().encode("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n")
+            )
+            const decoder = new TextDecoder()
+            const buffer = new Uint8Array(1024)
+            let received = ""
+            while (!received.includes("\r\n")) {
+              const read = await conn.read(buffer)
+              if (read === null) break
+              received += decoder.decode(buffer.subarray(0, read), { stream: true })
+            }
+            return received.split("\r\n")[0]
+          }),
+        (conn) => Effect.sync(() => conn.close())
+      )
       assert.strictEqual(statusLine.split(" ")[1], "501")
       assert.strictEqual(calls, 0)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))

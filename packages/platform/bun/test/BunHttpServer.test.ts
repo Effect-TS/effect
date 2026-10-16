@@ -26,22 +26,6 @@ import { join } from "node:path"
 const fetchText = (url: string) =>
   Effect.promise(() => fetch(url, { headers: { connection: "close" } }).then((response) => response.text()))
 
-// fetch can't send CONNECT, so write the request on a raw TCP connection.
-const readConnectStatusLine = (port: number) =>
-  Effect.callback<string, Error>((resume) => {
-    const socket = Net.createConnection({ host: "127.0.0.1", port })
-    let received = ""
-    socket.on("connect", () => socket.write("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n"))
-    socket.on("error", (error) => resume(Effect.fail(error)))
-    socket.on("data", (chunk) => {
-      received += chunk.toString()
-      const lineEnd = received.indexOf("\r\n")
-      if (lineEnd !== -1) resume(Effect.succeed(received.slice(0, lineEnd)))
-    })
-    socket.on("close", () => resume(Effect.succeed(received)))
-    return Effect.sync(() => socket.destroy())
-  })
-
 const readWebSocketClose = (port: number, opened: Deferred.Deferred<void>, path = "/") =>
   Effect.callback<number, Error>((resume) => {
     const socket = Net.createConnection({ host: "127.0.0.1", port })
@@ -339,11 +323,25 @@ describe("BunHttpServer", () => {
         "*",
         Effect.sync(() => {
           calls++
-          return HttpServerResponse.text("tunnel")
+          return HttpServerResponse.empty()
         })
       ).pipe(HttpRouter.serve, Layer.build)
       const server = yield* HttpServer.HttpServer
-      const statusLine = yield* readConnectStatusLine((server.address as NetAddress.InetAddress).port)
+      const port = (server.address as NetAddress.InetAddress).port
+      // fetch cannot send CONNECT.
+      const statusLine = yield* Effect.callback<string, Error>((resume) => {
+        const socket = Net.createConnection({ host: "127.0.0.1", port })
+        let received = ""
+        socket.on("connect", () => socket.write("CONNECT example.test:443 HTTP/1.1\r\nHost: example.test:443\r\n\r\n"))
+        socket.on("error", (error) => resume(Effect.fail(error)))
+        socket.on("data", (chunk) => {
+          received += chunk.toString()
+          const lineEnd = received.indexOf("\r\n")
+          if (lineEnd !== -1) resume(Effect.succeed(received.slice(0, lineEnd)))
+        })
+        socket.on("close", () => resume(Effect.succeed(received)))
+        return Effect.sync(() => socket.destroy())
+      })
       assert.strictEqual(statusLine.split(" ")[1], "501")
       assert.strictEqual(calls, 0)
     }).pipe(Effect.provide(BunHttpServer.layerTest)))
