@@ -25,6 +25,49 @@ import {
 } from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
+  describe("synchronous root callback defects", () => {
+    for (const operation of ["decode", "encode"] as const) {
+      const defect = new Error(`${operation} defect`)
+      const getter = SchemaGetter.transform<string, string>(() => {
+        throw defect
+      })
+      const schema = Schema.String.pipe(Schema.decodeTo(Schema.String, {
+        decode: getter,
+        encode: getter
+      }))
+
+      it(`${operation}UnknownExit returns a defect instead of throwing`, () => {
+        const parse = operation === "decode"
+          ? SchemaParser.decodeUnknownExit(schema)
+          : SchemaParser.encodeUnknownExit(schema)
+
+        deepStrictEqual(parse("value"), Exit.die(defect))
+      })
+
+      it.effect(`${operation}UnknownEffect returns a dying Effect instead of throwing`, () => {
+        const parse = operation === "decode"
+          ? SchemaParser.decodeUnknownEffect(schema)
+          : SchemaParser.encodeUnknownEffect(schema)
+        const effect = parse("value")
+
+        return Effect.gen(function*() {
+          deepStrictEqual(yield* Effect.exit(effect), Exit.die(defect))
+        })
+      })
+
+      it(`${operation}UnknownPromise rejects with a defect instead of throwing`, async () => {
+        const parse = operation === "decode"
+          ? SchemaParser.decodeUnknownPromise(schema)
+          : SchemaParser.encodeUnknownPromise(schema)
+        const result = await parse("value").then(Result.succeed, Result.fail)
+
+        assertTrue(Result.isFailure(result))
+        assertTrue(result.failure instanceof Error)
+        deepStrictEqual(result.failure.cause, Cause.die(defect))
+      })
+    }
+  })
+
   describe("sequential parsing", () => {
     const cases = [
       {
