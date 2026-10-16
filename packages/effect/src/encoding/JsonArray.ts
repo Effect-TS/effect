@@ -170,10 +170,10 @@ const isValueStart = (c: number): boolean =>
   c === QUOTE || c === LBRACKET || c === LBRACE || c === 45 || (c >= 48 && c <= 57) || c === 102 || c === 110 ||
   c === 116
 
-// The scanner walks the containers along the pointer and the selected array
-// itself. Every other value is captured whole, then parsed with `JSON.parse`:
-// elements of the selected array are emitted, keys along the pointer are
-// compared with the pointer, and anything else is validated and discarded.
+// The scanner walks the containers along the pointer and the selected array.
+// Every other value is captured whole and parsed with `JSON.parse`: elements
+// are emitted, keys are matched against the pointer, and the rest is
+// discarded.
 
 // Structural states.
 const VALUE = 0 // the value at the current pointer prefix
