@@ -392,6 +392,9 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
     Effect.sync(() => {
       const parser = new Parser(delimiter, maxRecordSize, ignoreEmptyLines)
       let headers: Row | undefined
+      // Plain assignment is much faster than `Object.fromEntries`, but would
+      // set the prototype for a `__proto__` header.
+      let assignable = false
       let done: Pull.Pull<never, never, Done> | undefined
 
       const toRecord = (row: Parsed): Decoded => {
@@ -404,7 +407,12 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
             line: row.line
           })
         }
-        return { value: Object.fromEntries(headers!.map((name, i) => [name, row.cells[i]])), record: row.record }
+        if (!assignable) {
+          return { value: Object.fromEntries(headers!.map((name, i) => [name, row.cells[i]])), record: row.record }
+        }
+        const value: globalThis.Record<string, string> = {}
+        for (let i = 0; i < headers!.length; i++) value[headers![i]] = row.cells[i]
+        return { value, record: row.record }
       }
 
       const emit = (
@@ -425,6 +433,7 @@ const decodeRecords = <IE, Done>(options: DecodeOptions | undefined): Channel.Ch
                 })
               }
               headers = row.cells
+              assignable = !headers.includes("__proto__")
             } else {
               out.push(toRecord(row))
             }
@@ -857,7 +866,8 @@ export const encodeString: {
 } = <IE, Done>(options?: EncodeOptions) => encodeRecords<unknown, IE, Done>(options)
 
 /**
- * Creates a channel that writes CSV records as UTF-8 bytes.
+ * Creates a channel that writes CSV records as UTF-8 bytes, one byte array per
+ * input chunk.
  *
  * @see encodeString
  * @stability unstable
@@ -892,7 +902,7 @@ export const encode: {
     Done
   >
 } = <IE, Done>(options?: EncodeOptions) =>
-  Channel.map(encodeRecords<unknown, IE, Done>(options), Arr.map((text) => textEncoder.encode(text)))
+  Channel.map(encodeRecords<unknown, IE, Done>(options), (texts) => Arr.of(textEncoder.encode(texts.join(""))))
 
 // Struct schemas encode by their encoded keys in declaration order. Tuple and
 // array schemas encode by position. Other schemas, including records with
@@ -1030,5 +1040,5 @@ export const encodeSchema =
   > =>
     Channel.map(
       encodeSchemaRecords<S, IE, Done>(schema, options),
-      Arr.map((text) => textEncoder.encode(text))
+      (texts) => Arr.of(textEncoder.encode(texts.join("")))
     )
