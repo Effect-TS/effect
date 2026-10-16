@@ -835,11 +835,13 @@ export class InternalProviderError extends Schema.Error<InternalProviderError>(
 }
 
 /**
- * Error indicating failure to parse or validate LLM output.
+ * Error indicating failure to parse or validate AI output or a provider response.
  *
  * **Details**
  *
- * Invalid output errors are retryable since LLM outputs are non-deterministic.
+ * Invalid output errors are retryable by default since LLM outputs are
+ * non-deterministic. Provider response decoding failures set `retryable` to
+ * `false` because retrying does not resolve an incompatible response format.
  *
  * **Example** (Creating an invalid output error)
  *
@@ -862,6 +864,7 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
 )({
   _tag: Schema.tag("InvalidOutputError"),
   description: Schema.String,
+  retryable: Schema.optional(Schema.Boolean),
   metadata: providerMetadataWithDefaults<InvalidOutputErrorMetadata>(),
   usage: Schema.optional(UsageInfo)
 }) {
@@ -874,17 +877,19 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
   readonly [ReasonTypeId] = ReasonTypeId
 
   /**
-   * Invalid output errors are retryable since LLM outputs are non-deterministic.
+   * Returns whether the failure is retryable, defaulting to `true` for
+   * non-deterministic LLM output failures.
    *
    * @stability unstable
    * @since 4.0.0
    */
   get isRetryable(): boolean {
-    return true
+    return this.retryable ?? true
   }
 
   /**
-   * Creates an InvalidOutputError from a Schema error.
+   * Creates an InvalidOutputError from a Schema error, optionally overriding
+   * retryability for deterministic provider response decoding failures.
    *
    * **Example** (Creating an invalid output error from a schema error)
    *
@@ -902,9 +907,13 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
    * @stability unstable
    * @since 4.0.0
    */
-  static fromSchemaError(error: Schema.SchemaError): InvalidOutputError {
+  static fromSchemaError(
+    error: Schema.SchemaError,
+    options?: { readonly retryable?: boolean | undefined }
+  ): InvalidOutputError {
     return new InvalidOutputError({
-      description: error.message
+      description: error.message,
+      retryable: options?.retryable
     })
   }
 
