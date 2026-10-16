@@ -241,7 +241,7 @@ export class Asserts<S extends Schema.Constraint> {
     }
   }
   /**
-   * Runs a property-based test that encodes arbitrary values and then decodes them, asserting the decoded value equals the original.
+   * Runs a property-based test that encodes arbitrary values and then decodes them, asserting the decoded value is equivalent to the original.
    *
    * **When to use**
    *
@@ -252,6 +252,9 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * The native Schema arbitrary generates values matching the schema's `Type`. The assertion fails with the minimized
    * shrunk input and replay token if any generated value does not round-trip.
+   *
+   * Uses {@link Schema.toEquivalence}, including custom equivalence annotations,
+   * to compare each decoded value with the original.
    *
    * **Example** (Verifying round trips)
    *
@@ -283,6 +286,9 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Details**
    *
+   * Uses {@link Schema.toEquivalence}, including custom equivalence annotations,
+   * to compare each decoded value with the original.
+   *
    * Assertion mismatches are defects containing the shrunk input and replay token.
    * Schema defects and interruption propagate without becoming assertion failures.
    *
@@ -309,7 +315,6 @@ export class Asserts<S extends Schema.Constraint> {
     return Effect.suspend(() => {
       const decodeUnknownEffect = SchemaParser.decodeUnknownEffect(this.schema)
       const encodeEffect = SchemaParser.encodeEffect(this.schema)
-      // Null-prototype samples and -0 are valid schema values. Strict equality rejects both.
       const equivalence = Schema.toEquivalence(this.schema as unknown as Schema.Schema<S["Type"]>)
       const arbitrary = Arbitrary.schema(this.schema)
       return Arbitrary.checkEffect(
