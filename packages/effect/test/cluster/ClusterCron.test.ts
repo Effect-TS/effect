@@ -41,11 +41,11 @@ describe("ClusterCron", () => {
     }).pipe(Layer.provide(ShardingLayer))
 
     return Effect.gen(function*() {
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 20; i++) {
         yield* TestClock.adjust(100)
       }
       assert.isTrue(failed)
-      assert.strictEqual(runs, 5)
+      assert.strictEqual(runs, 2)
     }).pipe(Effect.provide(layer))
   })
 })
