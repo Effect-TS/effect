@@ -14,6 +14,7 @@ import type * as Cause from "../Cause.ts"
 import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Base64 from "../encoding/Base64.ts"
+import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import * as Fiber from "../Fiber.ts"
 import type { FileSystem } from "../FileSystem.ts"
@@ -1071,25 +1072,7 @@ function makeStreamEncoder(
   const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
-  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
-    return (response, context) => {
-      if (!Stream.isStream(response)) {
-        return hasBuffered ? undefined : new Schema.SchemaError(
-          new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
-        )
-      }
-
-      return Effect.succeed(Response.stream(
-        Stream.provideContext(
-          response as Stream.Stream<Uint8Array, unknown, unknown>,
-          context as Context.Context<unknown>
-        ),
-        { status, contentType }
-      ))
-    }
-  }
-
-  const sseEncoder = makeSseEncoder(streamSchema, options)
+  const encodeBody = makeStreamBodyEncoder(streamSchema, options)
 
   return (response, context) => {
     if (!Stream.isStream(response)) {
@@ -1100,12 +1083,27 @@ function makeStreamEncoder(
 
     return Effect.succeed(Response.stream(
       Stream.provideContext(
-        encodeSseStream(response, sseEncoder),
+        encodeBody(response as Stream.Stream<unknown, unknown, unknown>),
         context as Context.Context<unknown>
       ),
       { status, contentType }
     ))
   }
+}
+
+function makeStreamBodyEncoder(
+  streamSchema: HttpApiSchema.StreamSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (stream: Stream.Stream<unknown, unknown, unknown>) => Stream.Stream<Uint8Array, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
+    return (stream) => stream as Stream.Stream<Uint8Array, unknown, unknown>
+  }
+  if (HttpApiSchema.isStreamNdjson(streamSchema)) {
+    const ndjsonEncoder = makeNdjsonEncoder(streamSchema, options)
+    return (stream) => encodeNdjsonStream(stream, ndjsonEncoder)
+  }
+  const sseEncoder = makeSseEncoder(streamSchema, options)
+  return (stream) => encodeSseStream(stream, sseEncoder)
 }
 
 function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
@@ -1176,6 +1174,44 @@ function encodeFailureEvent(cause: Cause.Cause<unknown>, encoder: SseStreamEncod
 }
 
 const reservedStreamFailureEvent = "effect/http-api/stream/failure"
+
+interface NdjsonStreamEncoder {
+  readonly encodeValues: (
+    input: NonEmptyReadonlyArray<unknown>
+  ) => Effect.Effect<NonEmptyReadonlyArray<unknown>, Schema.SchemaError, unknown>
+  readonly encodeCause: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
+}
+
+function makeNdjsonEncoder<S extends Schema.Top, Error extends Schema.Top>(
+  streamSchema: HttpApiSchema.StreamNdjson<S, Error>,
+  options: SchemaAST.ParseOptions | undefined
+): NdjsonStreamEncoder {
+  return {
+    encodeValues: Schema.encodeUnknownEffect(Schema.Array(Schema.toCodecJson(streamSchema.schema)), options) as any,
+    encodeCause: Schema.encodeUnknownEffect(
+      Schema.toCodecJson(Schema.Cause(streamSchema.error, Schema.Defect())),
+      options
+    )
+  }
+}
+
+function encodeNdjsonStream(
+  stream: Stream.Stream<unknown, unknown, unknown>,
+  encoder: NdjsonStreamEncoder
+): Stream.Stream<Uint8Array, unknown, unknown> {
+  return stream.pipe(
+    Stream.mapArrayEffect((chunk) => Effect.orDie(encoder.encodeValues(chunk))),
+    Stream.catchCause((cause) =>
+      Stream.fromEffect(
+        encoder.encodeCause(cause).pipe(
+          Effect.orDie,
+          Effect.map((encodedCause) => ({ _tag: reservedStreamFailureEvent, cause: encodedCause }))
+        )
+      )
+    ),
+    Stream.pipeThroughChannel(Ndjson.encode())
+  )
+}
 
 function renderSseEvent(event: Sse.EventEncoded) {
   return Sse.encoder.write({

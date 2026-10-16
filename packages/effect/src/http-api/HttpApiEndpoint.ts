@@ -56,6 +56,8 @@ type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
     infer _Error,
     infer _Value
   > ? Stream.Stream<_Value, _Error["Type"], never>
+  : S extends HttpApiSchema.StreamNdjson<infer _Schema, infer _Error> ?
+    Stream.Stream<_Schema["Type"], _Error["Type"], never>
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, unknown, never>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -65,6 +67,8 @@ type SuccessEncodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Error,
   infer _Value
 > ? _Events["EncodingServices"] | _Error["EncodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _Schema, infer _Error> ?
+    _Schema["EncodingServices"] | _Error["EncodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends Schema.Constraint ? S["EncodingServices"]
   : never
@@ -74,6 +78,8 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Error,
   infer _Value
 > ? _Events["DecodingServices"] | _Error["DecodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _Schema, infer _Error> ?
+    _Schema["DecodingServices"] | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
@@ -1372,44 +1378,47 @@ function validateStreamSuccess(schema: HttpApiSchema.StreamSchema, method: HttpM
   if (method === "HEAD") {
     throw new Error("HEAD endpoints cannot declare streaming success responses")
   }
-  if (HttpApiSchema.isStreamSse(schema) && hasReservedSseEventName(schema.events.ast)) {
+  if (HttpApiSchema.isStreamSse(schema) && hasReservedProperty(schema.events.ast, "event")) {
     throw new Error(`SSE event name is reserved: ${reservedStreamFailureEvent}`)
+  }
+  if (HttpApiSchema.isStreamNdjson(schema) && hasReservedProperty(schema.schema.ast, "_tag")) {
+    throw new Error(`NDJSON _tag is reserved: ${reservedStreamFailureEvent}`)
   }
 }
 
-function hasReservedSseEventName(ast: AST.AST): boolean {
-  return hasReservedEventName(AST.toEncoded(ast), new Set())
+function hasReservedProperty(ast: AST.AST, name: string): boolean {
+  return hasReservedPropertyLiteral(AST.toEncoded(ast), name, new Set())
 }
 
-function hasReservedEventName(ast: AST.AST, seen: Set<AST.AST>): boolean {
+function hasReservedPropertyLiteral(ast: AST.AST, name: string, seen: Set<AST.AST>): boolean {
   if (seen.has(ast)) return false
   seen.add(ast)
   if (AST.isUnion(ast)) {
-    return ast.types.some((type) => hasReservedEventName(type, seen))
+    return ast.types.some((type) => hasReservedPropertyLiteral(type, name, seen))
   }
   if (AST.isSuspend(ast)) {
-    return hasReservedEventName(ast.thunk(), seen)
+    return hasReservedPropertyLiteral(ast.thunk(), name, seen)
   }
   if (!AST.isObjects(ast)) return false
-  const event = ast.propertySignatures.find((ps) => ps.name === "event")
-  return event !== undefined && hasReservedEventLiteral(event.type, seen)
+  const property = ast.propertySignatures.find((ps) => ps.name === name)
+  return property !== undefined && hasReservedLiteral(property.type, seen)
 }
 
-function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
+function hasReservedLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
   if (seen.has(ast)) return false
   seen.add(ast)
   const encoded = AST.toEncoded(ast)
   if (encoded !== ast) {
-    return hasReservedEventLiteral(encoded, seen)
+    return hasReservedLiteral(encoded, seen)
   }
   if (AST.isLiteral(ast)) {
     return ast.literal === reservedStreamFailureEvent
   }
   if (AST.isUnion(ast)) {
-    return ast.types.some((type) => hasReservedEventLiteral(type, seen))
+    return ast.types.some((type) => hasReservedLiteral(type, seen))
   }
   if (AST.isSuspend(ast)) {
-    return hasReservedEventLiteral(ast.thunk(), seen)
+    return hasReservedLiteral(ast.thunk(), seen)
   }
   return false
 }

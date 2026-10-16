@@ -477,6 +477,16 @@ function makeOpenApi<Id extends string, Groups extends HttpApiGroup.Constraint>(
                     failureEvent: reservedStreamFailureEvent
                   }
                 })
+              } else if (HttpApiSchema.isStreamNdjson(stream)) {
+                InternalRecord.assignProperty(op.responses[status].content, contentType, {
+                  schema: registerSchema(stream.schema.ast),
+                  "x-effect-stream": {
+                    encoding: "ndjson",
+                    causeSchema: registerSchema(Schema.Cause(stream.error, Schema.Defect()).ast),
+                    errorSchema: registerSchema(stream.error.ast),
+                    failureTag: reservedStreamFailureEvent
+                  }
+                })
               } else {
                 InternalRecord.assignProperty(op.responses[status].content, contentType, {
                   schema: {
@@ -1271,6 +1281,12 @@ export type OpenApiSpecEffectStream =
     causeSchema: JsonSchema.JsonSchema
     errorSchema: JsonSchema.JsonSchema
     failureEvent: "effect/http-api/stream/failure"
+  }
+  | {
+    encoding: "ndjson"
+    causeSchema: JsonSchema.JsonSchema
+    errorSchema: JsonSchema.JsonSchema
+    failureTag: "effect/http-api/stream/failure"
   }
   | {
     encoding: "uint8array"

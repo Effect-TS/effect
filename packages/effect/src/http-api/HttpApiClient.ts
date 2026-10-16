@@ -13,8 +13,11 @@
  */
 import * as Arr from "../Array.ts"
 import * as Cause from "../Cause.ts"
+import * as Channel from "../Channel.ts"
+import * as ChannelSchema from "../ChannelSchema.ts"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Ndjson from "../encoding/Ndjson.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
 import * as HttpBody from "../http/HttpBody.ts"
@@ -75,8 +78,8 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
 
 /**
  * Computes the decoded success value a client receives for an endpoint
- * success schema, including headers, streaming Server-Sent Events, and
- * streaming byte responses.
+ * success schema, including headers, streaming Server-Sent Events, NDJSON
+ * streams, and streaming byte responses.
  *
  * @stability unstable
  * @category utility types
@@ -95,6 +98,11 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
       _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
       never
     >
+  : S extends HttpApiSchema.StreamNdjson<infer _Schema, infer _Error> ? Stream.Stream<
+      _Schema["Type"],
+      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Ndjson.NdjsonError,
+      never
+    >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -106,6 +114,9 @@ type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
 > ?
     | _Events["DecodingServices"]
     | _Error["DecodingServices"]
+  : S extends HttpApiSchema.StreamNdjson<infer _Schema, infer _Error> ?
+      | _Schema["DecodingServices"]
+      | _Error["DecodingServices"]
   : S extends HttpApiSchema.StreamUint8Array ? never
   : S extends Schema.Constraint ? S["DecodingServices"]
   : never
@@ -950,18 +961,11 @@ function streamToResponse(
 ) {
   const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
   const streamSchema = isWithHeaders ? successSchema.schema : successSchema
-  const sse = HttpApiSchema.isStreamUint8Array(streamSchema)
-    ? undefined
-    : {
-      declaration: streamSchema,
-      decoder: makeSseDecoder(streamSchema, options)
-    }
+  const decodeBody = makeStreamBodyDecoder(streamSchema, options)
   const toStream: ResponseDecoder = (response, sseOptions) =>
     Effect.map(Effect.context<never>(), (context) =>
       Stream.provideContext(
-        sse === undefined ?
-          response.stream :
-          decodeSseStream(response.stream, sse.declaration, sse.decoder(sseOptions)),
+        decodeBody(response.stream, sseOptions),
         context as Context.Context<unknown>
       ))
   if (!isWithHeaders) return toStream
@@ -972,6 +976,24 @@ function streamToResponse(
       decodeHeaders(response.headers),
       (headers) => Effect.map(toStream(response, sseOptions), (body) => HttpApiSchema.withHeaders({ body, headers }))
     )
+}
+
+function makeStreamBodyDecoder(
+  streamSchema: HttpApiSchema.StreamSchema,
+  options: SchemaAST.ParseOptions | undefined
+): (
+  stream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
+  sseOptions: Sse.DecodeOptions | undefined
+) => Stream.Stream<unknown, unknown, unknown> {
+  if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
+    return (stream) => stream
+  }
+  if (HttpApiSchema.isStreamNdjson(streamSchema)) {
+    const decoder = makeNdjsonDecoder(streamSchema, options)
+    return (stream) => decodeNdjsonStream(stream, decoder)
+  }
+  const decoder = makeSseDecoder(streamSchema, options)
+  return (stream, sseOptions) => decodeSseStream(stream, streamSchema, decoder(sseOptions))
 }
 
 function makeSseDecoder(
@@ -996,11 +1018,60 @@ function decodeSseStream(
   declaration: HttpApiSchema.StreamSse<Sse.EventCodec, Schema.Constraint, unknown>,
   decoder: ReturnType<ReturnType<typeof makeSseDecoder>>
 ): Stream.Stream<unknown, unknown, unknown> {
-  const events = Stream.transformPull(
+  const events = failOnStreamFailure(
     stream.pipe(
       Stream.decodeText,
       Stream.pipeThroughChannel(decoder)
     ),
+    (event) => event.event === reservedStreamFailureEvent && Cause.isCause(event.data) ? event.data : undefined
+  )
+  if (declaration.sseMode === "data") {
+    return Stream.map(events, (event) => event.data)
+  }
+  return events
+}
+
+function makeNdjsonDecoder(
+  declaration: HttpApiSchema.StreamNdjson<Schema.Top, Schema.Top>,
+  parseOptions: SchemaAST.ParseOptions | undefined
+) {
+  const Line = Schema.Union([
+    Schema.Struct({
+      _tag: Schema.Literal(reservedStreamFailureEvent),
+      cause: Schema.toCodecJson(Schema.Cause(declaration.error, Schema.Defect()))
+    }),
+    Schema.toCodecJson(declaration.schema)
+  ])
+  return Channel.pipeTo(
+    Ndjson.decode<HttpClientError.HttpClientError>({ ignoreEmptyLines: true }),
+    ChannelSchema.decodeUnknown(Line, parseOptions)()
+  )
+}
+
+function decodeNdjsonStream(
+  stream: Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
+  decoder: ReturnType<typeof makeNdjsonDecoder>
+): Stream.Stream<unknown, unknown, unknown> {
+  return failOnStreamFailure(
+    Stream.pipeThroughChannel(stream, decoder),
+    (line) =>
+      Predicate.hasProperty(line, "_tag") && line._tag === reservedStreamFailureEvent &&
+        Predicate.hasProperty(line, "cause") && Cause.isCause(line.cause)
+        ? line.cause
+        : undefined
+  )
+}
+
+/**
+ * Ends a decoded stream with the reserved failure cause, emitting the values
+ * received before it.
+ */
+function failOnStreamFailure<A, E, R>(
+  stream: Stream.Stream<A, E, R>,
+  getFailureCause: (value: A) => Cause.Cause<unknown> | undefined
+): Stream.Stream<A, unknown, R> {
+  return Stream.transformPull(
+    stream,
     (pull) =>
       Effect.sync(() => {
         let pendingFailureCause: Cause.Cause<unknown> | undefined = undefined
@@ -1008,27 +1079,23 @@ function decodeSseStream(
           if (pendingFailureCause !== undefined) {
             return Effect.failCause(pendingFailureCause)
           }
-          return Effect.flatMap(pull, (events) => {
-            for (let i = 0; i < events.length; i++) {
-              const event = events[i]
-              if (event.event === reservedStreamFailureEvent && Cause.isCause(event.data)) {
+          return Effect.flatMap(pull, (values) => {
+            for (let i = 0; i < values.length; i++) {
+              const cause = getFailureCause(values[i])
+              if (cause !== undefined) {
                 if (i === 0) {
-                  return Effect.failCause(event.data)
+                  return Effect.failCause(cause)
                 }
-                pendingFailureCause = event.data
-                events = events.slice(0, i) as any
+                pendingFailureCause = cause
+                values = values.slice(0, i) as any
                 break
               }
             }
-            return Effect.succeed(events)
+            return Effect.succeed(values)
           })
         })
       })
   )
-  if (declaration.sseMode === "data") {
-    return Stream.map(events, (event) => event.data)
-  }
-  return events
 }
 
 const ArrayBuffer = Schema.instanceOf(globalThis.ArrayBuffer, {

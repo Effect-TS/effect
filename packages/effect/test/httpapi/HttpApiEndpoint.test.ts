@@ -205,6 +205,20 @@ describe("HttpApiEndpoint streaming success schemas", () => {
       })
     )
   })
+
+  it("statically detectable NDJSON reserved failure _tag throws", () => {
+    const stream = HttpApiSchema.StreamNdjson(
+      Schema.Union([
+        Schema.Struct({ _tag: Schema.Literal("progress") }),
+        Schema.Struct({ _tag: Schema.Literal("effect/http-api/stream/failure") })
+      ])
+    )
+
+    assert.throws(
+      () => HttpApiEndpoint.get("events", "/events", { success: stream }),
+      "NDJSON _tag is reserved: effect/http-api/stream/failure"
+    )
+  })
 })
 
 describe("HttpApiEndpoint WithHeaders schemas", () => {
