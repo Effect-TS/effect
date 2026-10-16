@@ -246,6 +246,31 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("a layer finalizer shared through a MemoMap can dispose the runtime releasing it", async () => {
+    let released = false
+    let runtimeB: ManagedRuntime.ManagedRuntime<never, never> | undefined
+    const layer = Layer.effectDiscard(
+      Effect.addFinalizer(() =>
+        runtimeB!.disposeEffect.pipe(Effect.andThen(Effect.sync(() => {
+          released = true
+        })))
+      )
+    )
+    // runtimeA builds the layer, but runtimeB holds the last reference to it.
+    const runtimeA = ManagedRuntime.make(layer)
+    runtimeB = ManagedRuntime.make(layer, { memoMap: runtimeA.memoMap })
+    await runtimeA.runPromise(Effect.void)
+    await runtimeB.runPromise(Effect.void)
+    await runtimeA.dispose()
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtimeB.dispose().then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.deepEqual({ result, released }, { result: "settled", released: true })
+  })
+
   it("completes sequential layer finalizers when disposeEffect is interrupted", async () => {
     const ran = await Effect.runPromise(Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
