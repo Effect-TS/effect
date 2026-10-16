@@ -84,10 +84,10 @@ describe("Csv", () => {
     expect(Csv.encodeSchemaString(schema)).type.toBeCallableWith({ columns: ["name", "age"], headers: true })
   })
 
-  it("rejects schemas with non-string encoded cells", () => {
+  it("accepts schemas with non-string encoded leaves", () => {
     const schema = Schema.Struct({ age: Schema.Number })
-    expect(Csv.decodeSchemaString).type.not.toBeCallableWith(schema)
-    expect(Csv.encodeSchemaString).type.not.toBeCallableWith(schema)
+    expect(Csv.decodeSchemaString).type.toBeCallableWith(schema)
+    expect(Csv.encodeSchemaString(schema)).type.toBeCallableWith({ columns: ["age"], disableCodecs: true })
   })
 
   it("keeps SchemaError and independent services", () => {

@@ -90,6 +90,11 @@ describe("Csv", () => {
     assert.throws(() => Csv.encodeString({ headers: true }))
     const Tuple = Schema.Tuple([Schema.String])
     assert.throws(() => Csv.encodeSchemaString(Tuple)({ headers: true }))
+    const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
+    assert.throws(() => Csv.decodeSchemaString(Tags)({ headers: true }))
+    assert.throws(() => Csv.encodeSchemaString(Tags)())
+    const Count = Schema.Struct({ n: Schema.Number })
+    assert.throws(() => Csv.decodeSchemaString(Count)({ headers: true, disableCodecs: true }))
   })
 
   it.effect("encodes rows and header records", () =>
@@ -152,6 +157,21 @@ describe("Csv", () => {
       const Positive = Schema.Struct({ n: Schema.NumberFromString.pipe(Schema.check(Schema.isGreaterThan(0))) })
       const error = yield* Effect.flip(run([{ n: 1 }, { n: -1 }], Csv.encodeSchemaString(Positive)()))
       assert.deepStrictEqual(issuePaths(error), [[2, "n"]])
+    }))
+
+  it.effect("converts non-string columns with the StringTree codec", () =>
+    Effect.gen(function*() {
+      const Entry = Schema.Struct({
+        n: Schema.Number,
+        b: Schema.Boolean,
+        d: Schema.Date,
+        score: Schema.optional(Schema.Number),
+        note: Schema.String
+      })
+      const text = "n,b,d,score,note\r\n1,true,1970-01-01T00:00:00.000Z,,\r\n"
+      const entries = yield* run([text], Csv.decodeSchemaString(Entry)({ headers: true }))
+      assert.deepStrictEqual(entries, [{ n: 1, b: true, d: new Date(0), note: "" }])
+      assert.strictEqual((yield* run(entries, Csv.encodeSchemaString(Entry)({ headers: true }))).join(""), text)
     }))
 
   it.effect("round trips tuple schemas by position", () =>
