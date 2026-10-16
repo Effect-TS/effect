@@ -29,11 +29,13 @@ const cases: ReadonlyArray<{
   { pattern: "\\*.ts", matches: ["*.ts"], rejects: ["a.ts"] },
   { pattern: "!(a)", matches: ["!(a)"], rejects: ["b"] },
   { pattern: "dir/", matches: ["dir/"], rejects: ["dir", "dir/a"] },
+  { pattern: "a/.", matches: ["a/"], rejects: ["a"] },
   { pattern: "**/.", matches: [], rejects: ["a", "a/", "a/b"] },
   { pattern: "**/..", matches: [], rejects: ["..", "a/.."] },
   { pattern: "/abs/*.ts", matches: ["/abs/a.ts"], rejects: ["abs/a.ts"] },
   { pattern: "C:/x/*", matches: ["C:/x/a"], rejects: ["x/a"] },
   { pattern: "//server/share/*", matches: [], rejects: ["//server/share/a", "/server/share/a"] },
+  { pattern: "/server/share/*", matches: ["/server/share/a"], rejects: ["//server/share/a"] },
   { pattern: "**", matches: ["a/b"], rejects: ["/a", "C:/a"] }
 ]
 
