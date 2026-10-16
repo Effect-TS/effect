@@ -81,7 +81,7 @@ export interface SqlClient extends Constructor {
 
   /**
    * Runs `effect` once the outermost transaction of this client commits, or
-   * immediately when no transaction is open.
+   * immediately, and interruptibly, when no transaction is open.
    *
    * **When to use**
    *
@@ -110,9 +110,10 @@ export interface SqlClient extends Constructor {
    *
    * Callbacks are lost if the process exits before they run or the outcome of
    * `COMMIT` is unknown, so work that must happen belongs in a table written
-   * in the same transaction. Callbacks run uninterruptibly, even if the fiber
-   * was interrupted or releasing the connection failed, and `withTransaction`
-   * waits for them, so keep them short and fork long-running work.
+   * in the same transaction. After `COMMIT`, callbacks run uninterruptibly,
+   * even if the fiber was interrupted or releasing the connection failed, and
+   * `withTransaction` waits for them, so keep them short and fork
+   * long-running work.
    * Registering after the transaction has ended is a defect.
    *
    * Transactions that don't go through `makeWithTransaction`, such as those
