@@ -329,8 +329,10 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   entries on unseekable output, and Info-ZIP's `zip` for empty files when
  *   writing to a pipe. Searching for their end would let the content of an
  *   entry forge the entries after it.
- * - A `Checksum` or `SizeMismatch` `ZipError` from a body leaves the decoder
- *   at the next entry; other errors end the archive.
+ * - A body that grows past its `size` fails with a `SizeMismatch` `ZipError`
+ *   before the extra bytes are emitted, so `size` can be checked before reading.
+ * - A `Checksum` or `SizeMismatch` `ZipError` raised when a body ends leaves
+ *   the decoder at the next entry; other errors end the archive.
  * - The channel completes only when its input ends: input after the central
  *   directory is read and discarded, so that the upstream done value can be
  *   passed on.
@@ -1283,8 +1285,12 @@ class Decoder {
         const chunk = current.inflater.pull()
         if (chunk === NeedInput) return this.needInput()
         if (chunk !== undefined) {
-          current.actualCrc = crc32(current.actualCrc, chunk)
           current.actualSize += chunk.length
+          // Fail before handing out bytes past the reported size, so that
+          // consumers can limit what a small compressed entry inflates to
+          const { path, size } = current.header
+          if (size !== undefined && current.actualSize > size) throw sizeMismatch(path, current.actualSize, size)
+          current.actualCrc = crc32(current.actualCrc, chunk)
           return [chunk]
         }
         current.actualCompressedSize = queue.consumed - current.start
