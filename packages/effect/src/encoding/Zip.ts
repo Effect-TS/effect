@@ -1589,8 +1589,8 @@ const CODE_LENGTH_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2
 // Codes of up to `bits` bits are found with one lookup in `table`, indexed by
 // the next input bits and holding `symbol << 4 | length`, zero for codes not
 // in use, or LONG for the prefixes of longer codes. Those are rare, and are
-// decoded bit by bit from the canonical code in `counts` and `symbols`, so a
-// table never costs more than 2^PRIMARY_BITS entries to build.
+// decoded bit by bit from the canonical code in `counts` and `symbols` by
+// `decodeLong`, so a table never costs more than 2^PRIMARY_BITS entries to build.
 interface Huffman {
   readonly table: Int32Array
   readonly bits: number
@@ -1647,6 +1647,24 @@ const huffman = (lengths: Uint8Array, complete: boolean): Huffman => {
     for (let i = reversed; i < size; i += 1 << length) table[i] = entry
   }
   return { table, bits, mask: size - 1, counts, symbols }
+}
+
+// Returns the table entry of the code in the low `bitCount` bits of
+// `bitBuffer`, LONG when the code needs more bits, or zero when no code matches
+const decodeLong = (codes: Huffman, bitBuffer: number, bitCount: number): number => {
+  let code = 0
+  let first = 0
+  let index = 0
+  for (let length = 1; length <= 15; length++) {
+    if (length > bitCount) return LONG
+    code |= (bitBuffer >>> (length - 1)) & 1
+    const count = codes.counts[length]
+    if (code - count < first) return (codes.symbols[index + code - first] << 4) | length
+    index += count
+    first = (first + count) << 1
+    code <<= 1
+  }
+  return 0
 }
 
 const FIXED_LITERALS = (() => {
@@ -1844,7 +1862,10 @@ class Inflater {
         while (true) {
           entry = literalTable[bitBuffer & literalMask]
           if (entry > 0 && (entry & 15) <= bitCount) break
-          if (bitCount >= literalBits) break
+          if (bitCount >= literalBits) {
+            if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
+            if (entry !== LONG) break
+          }
           const byte = queue.readByte()
           if (byte < 0) {
             yield NEED
@@ -1853,35 +1874,7 @@ class Inflater {
           bitBuffer |= byte << bitCount
           bitCount += 8
         }
-        if (entry <= 0) {
-          if (entry === 0) throw invalidData("invalid literal or length code")
-          // A code longer than the table, read one bit at a time
-          let code = 0
-          let first = 0
-          let index = 0
-          let codeLength = 1
-          while (true) {
-            while (bitCount < codeLength) {
-              const byte = queue.readByte()
-              if (byte < 0) {
-                yield NEED
-                continue
-              }
-              bitBuffer |= byte << bitCount
-              bitCount += 8
-            }
-            code |= (bitBuffer >>> (codeLength - 1)) & 1
-            const count = literals.counts[codeLength]
-            if (code - count < first) {
-              entry = (literals.symbols[index + code - first] << 4) | codeLength
-              break
-            }
-            index += count
-            first = (first + count) << 1
-            code <<= 1
-            if (++codeLength > 15) throw invalidData("invalid literal or length code")
-          }
-        }
+        if (entry === 0) throw invalidData("invalid literal or length code")
         bitBuffer >>>= entry & 15
         bitCount -= entry & 15
         const symbol = entry >>> 4
@@ -1915,7 +1908,10 @@ class Inflater {
         while (true) {
           entry = distanceTable[bitBuffer & distanceMask]
           if (entry > 0 && (entry & 15) <= bitCount) break
-          if (bitCount >= distanceBits) break
+          if (bitCount >= distanceBits) {
+            if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
+            if (entry !== LONG) break
+          }
           const byte = queue.readByte()
           if (byte < 0) {
             yield NEED
@@ -1924,35 +1920,7 @@ class Inflater {
           bitBuffer |= byte << bitCount
           bitCount += 8
         }
-        if (entry <= 0) {
-          if (entry === 0) throw invalidData("invalid distance code")
-          // A code longer than the table, read one bit at a time
-          let code = 0
-          let first = 0
-          let index = 0
-          let codeLength = 1
-          while (true) {
-            while (bitCount < codeLength) {
-              const byte = queue.readByte()
-              if (byte < 0) {
-                yield NEED
-                continue
-              }
-              bitBuffer |= byte << bitCount
-              bitCount += 8
-            }
-            code |= (bitBuffer >>> (codeLength - 1)) & 1
-            const count = distances.counts[codeLength]
-            if (code - count < first) {
-              entry = (distances.symbols[index + code - first] << 4) | codeLength
-              break
-            }
-            index += count
-            first = (first + count) << 1
-            code <<= 1
-            if (++codeLength > 15) throw invalidData("invalid distance code")
-          }
-        }
+        if (entry === 0) throw invalidData("invalid distance code")
         bitBuffer >>>= entry & 15
         bitCount -= entry & 15
         const distanceIndex = entry >>> 4
