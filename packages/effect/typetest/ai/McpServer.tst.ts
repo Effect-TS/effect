@@ -1,6 +1,5 @@
 import { hole } from "effect"
 import { McpProtocol, McpSchema, McpServer, Tool, Toolkit } from "effect/ai"
-import * as McpProtocolInternal from "effect/ai/internal/mcpProtocol"
 import type * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -11,6 +10,9 @@ import * as RpcGroup from "effect/rpc/RpcGroup"
 import * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import { describe, expect, it } from "tstyche"
+// Cross-project imports cannot use .ts with rewriteRelativeImportExtensions (TS2878).
+// oxlint-disable-next-line effect/no-js-extension-imports
+import * as McpProtocolInternal from "../../src/ai/internal/mcpProtocol.js"
 
 const serverOptions = {
   name: "TestServer",
