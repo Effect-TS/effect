@@ -250,6 +250,8 @@ describe("Xml", () => {
           ["<a>", "</a      >", ""],
           ["", "<!--0123456789-->", "<a/>"],
           ["", "<?pi 0123456789?>", "<a/>"],
+          ["", "<?xml version=\"1.0\"?>", "<a/>"],
+          ["", " ".repeat(10), "<a/>"],
           ["", "<!DOCTYPE a [<!ENTITY e 'x'>]>", "<a/>"]
         ]
         for (const [before, token, after] of limits) {
