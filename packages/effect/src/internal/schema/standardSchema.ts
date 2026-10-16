@@ -74,8 +74,8 @@ function preserveClassReceiver(self: any): any {
   const methods = new WeakMap<object, unknown>()
   return new Proxy(class extends self {}, {
     get(target, key, receiver) {
-      // Adapter metadata belongs to the wrapper; existing statics belong to self.
-      if (Object.hasOwn(target, key)) return Reflect.get(target, key, receiver)
+      // Metadata and pipelines belong to the wrapper; other statics belong to self.
+      if (key === "pipe" || Object.hasOwn(target, key)) return Reflect.get(target, key, receiver)
       const value = Reflect.get(self, key, self)
       if (typeof value !== "function") return value
       if (!methods.has(value)) methods.set(value, value.bind(self))
