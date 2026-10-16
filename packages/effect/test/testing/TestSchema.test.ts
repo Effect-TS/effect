@@ -155,6 +155,28 @@ describe("TestSchema", () => {
     await asserts.verifyRoundTrip({ runs: 20, seed: "lossless" })
   })
 
+  for (
+    const [name, schema] of [
+      ["struct", Schema.Struct({ a: Schema.String })],
+      ["record", Schema.Record(Schema.String, Schema.String)],
+      [
+        "tagged union",
+        Schema.Union([
+          Schema.TaggedStruct("A", { a: Schema.String }),
+          Schema.TaggedStruct("B", { b: Schema.String })
+        ])
+      ]
+    ] as const
+  ) {
+    it.effect(`round trips accept equivalent ${name} objects regardless of prototype`, () =>
+      new TestSchema.Asserts(schema).verifyRoundTripEffect({ runs: 100, seed: 1 }))
+  }
+
+  for (const seed of [1, 2, 3, "x"]) {
+    it.effect(`NumberFromString round trips accept equivalent signed zeros (seed ${seed})`, () =>
+      new TestSchema.Asserts(Schema.NumberFromString).verifyRoundTripEffect({ runs: 100, seed }))
+  }
+
   it("verifyRoundTrip reports a shrunk input and replay", async () => {
     const schema = Schema.Number.pipe(
       Schema.decodeTo(
