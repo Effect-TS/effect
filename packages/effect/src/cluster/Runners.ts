@@ -369,29 +369,28 @@ export const make: (
   // registered first. `registerReplyHandler` registers as soon as it starts,
   // so a fresh request gets its reply from the handler without reading it
   // back from storage.
-  const notifyLocalRequest = (
+  const notifyLocalRequest = Effect.fnUntraced(function*(
     message: Message.OutgoingRequest<any>,
     notifyEntity: (message: Message.Outgoing<any>) => Effect.Effect<void>
-  ) =>
-    Effect.gen(function*() {
-      const handler = yield* Effect.forkScoped(storage.registerReplyHandler(message), { startImmediately: true })
-      return yield* notifyWith(message, (message, duplicate) => {
-        const outgoing = message as Message.OutgoingRequest<any>
-        // A duplicate is answered under its original request id.
-        if (duplicate) {
-          return Fiber.interrupt(handler).pipe(
-            Effect.andThen(notifyEntity(message)),
-            Effect.andThen(replyFromStorageWithWake(outgoing))
-          )
-        }
-        // The handler can be dropped, for example when its shard moves or a
-        // commit error hides the notification. The reply is then in storage.
-        return notifyEntity(message).pipe(
-          Effect.andThen(Fiber.join(handler)),
-          Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(outgoing))
+  ) {
+    const handler = yield* Effect.forkScoped(storage.registerReplyHandler(message), { startImmediately: true })
+    return yield* notifyWith(message, (message, duplicate) => {
+      const outgoing = message as Message.OutgoingRequest<any>
+      // A duplicate is answered under its original request id.
+      if (duplicate) {
+        return Fiber.interrupt(handler).pipe(
+          Effect.andThen(notifyEntity(message)),
+          Effect.andThen(replyFromStorageWithWake(outgoing))
         )
-      })
-    }).pipe(Effect.scoped)
+      }
+      // The handler can be dropped, for example when its shard moves or a
+      // commit error hides the notification. The reply is then in storage.
+      return notifyEntity(message).pipe(
+        Effect.andThen(Fiber.join(handler)),
+        Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(outgoing))
+      )
+    })
+  }, Effect.scoped)
 
   const storageLatch = Latch.makeUnsafe(false)
   if (storage !== MessageStorage.noop) {
