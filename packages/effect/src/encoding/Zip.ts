@@ -1297,7 +1297,7 @@ class Decoder {
     try {
       return f()
     } catch (error) {
-      if (isZipError(error) && !this.recoverable && error.kind !== "BodyConsumed") this.failure = error
+      if (isZipError(error) && !this.recoverable) this.failure = error
       this.recoverable = false
       throw error
     }
