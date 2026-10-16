@@ -285,6 +285,36 @@ describe("DecisionModel", () => {
       Effect.provide(succeedWith(triageAnswers, { inputTokens: 12, outputTokens: undefined }))
     ))
 
+  it.effect("decide returns the provider's response id, model id and metadata", () =>
+    Effect.gen(function*() {
+      const response = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+
+      assert.strictEqual(response.id, "decision-1")
+      assert.strictEqual(response.modelId, "provider/model-2026")
+      assert.deepStrictEqual(response.metadata, { provider: { cost: 0.002 } })
+    }).pipe(
+      Effect.provide(makeLayer(() =>
+        Effect.succeed({
+          answers: triageAnswers,
+          usage: { inputTokens: 12, outputTokens: 3 },
+          id: "decision-1",
+          modelId: "provider/model-2026",
+          metadata: { provider: { cost: 0.002 } }
+        })
+      ))
+    ))
+
+  it.effect("decide returns empty metadata when the provider reports none", () =>
+    Effect.gen(function*() {
+      const response = yield* DecisionModel.decide(TicketTriage, { input: ticket })
+
+      assert.isFalse("id" in response)
+      assert.isFalse("modelId" in response)
+      assert.deepStrictEqual(response.metadata, {})
+    }).pipe(
+      Effect.provide(succeedWith(triageAnswers))
+    ))
+
   it.effect("classify and rate retain distributions when the provider omits confidence", () =>
     Effect.gen(function*() {
       const { answers } = yield* DecisionModel.decide(TicketTriage, { input: ticket })

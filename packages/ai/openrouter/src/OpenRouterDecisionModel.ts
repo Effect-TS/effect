@@ -13,6 +13,31 @@ import * as Layer from "effect/Layer"
 import { OpenRouterClient } from "./OpenRouterClient.ts"
 import type * as OpenRouterSchema from "./OpenRouterSchema.ts"
 
+declare module "effect/ai/DecisionModel" {
+  /**
+   * OpenRouter metadata returned with a decision response.
+   *
+   * @stability unstable
+   * @category models
+   * @since 4.0.6
+   */
+  export interface DecideResponseMetadata {
+    /**
+     * Provider-specific metadata returned by the OpenRouter Decisions API.
+     */
+    readonly openrouter?: {
+      /**
+       * What OpenRouter charged for the request, in credits, when reported.
+       */
+      readonly cost?: number | null
+      /**
+       * The OpenRouter provider that served the request, when reported.
+       */
+      readonly provider?: string | null
+    } | null
+  }
+}
+
 /**
  * Request options that override model defaults at call time.
  *
@@ -43,7 +68,9 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
- * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
+ * Score indices map to criteria labels. The response id and resolved model are
+ * returned as `id` and `modelId`; the reported `cost` and the serving provider
+ * are returned under `metadata.openrouter`.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
  * @stability unstable
@@ -127,7 +154,15 @@ export const make = Effect.fnUntraced(function*(options: {
       }
       return {
         answers,
-        usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }
+        usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
+        ...(response.id === undefined ? undefined : { id: response.id }),
+        modelId: response.model,
+        metadata: {
+          openrouter: {
+            ...(response.usage.cost === undefined ? undefined : { cost: response.usage.cost }),
+            ...(response.provider === undefined ? undefined : { provider: response.provider })
+          }
+        }
       }
     })
   })

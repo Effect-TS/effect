@@ -11,6 +11,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as AiError from "./AiError.ts"
 import type * as Decision from "./Decision.ts"
+import type * as Response from "./Response.ts"
 
 /**
  * Service key for answering decisions about an input. Create implementations
@@ -87,7 +88,18 @@ export interface Image {
 }
 
 /**
- * Answers for every decision in a definition together with usage metadata.
+ * Provider-specific metadata returned with a decision response, keyed by
+ * provider name. Provider packages augment this interface with their own keys.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface DecideResponseMetadata extends Response.ProviderMetadata {}
+
+/**
+ * Answers for every decision in a definition together with usage and response
+ * metadata.
  *
  * @see {@link DecisionUsage} for token usage metadata
  *
@@ -98,6 +110,25 @@ export interface Image {
 export interface DecideResponse<Decisions extends Record<string, Decision.Any>> {
   readonly answers: Decision.Answers<Decisions>
   readonly usage: DecisionUsage
+  /**
+   * Provider identifier for the response, when reported.
+   *
+   * @since 4.0.6
+   */
+  readonly id?: string | undefined
+  /**
+   * Model that answered the request, when reported. Can differ from the
+   * requested model when the provider resolves an alias or routes the request.
+   *
+   * @since 4.0.6
+   */
+  readonly modelId?: string | undefined
+  /**
+   * Provider-specific response metadata, such as reported cost.
+   *
+   * @since 4.0.6
+   */
+  readonly metadata: DecideResponseMetadata
 }
 
 /**
@@ -170,7 +201,8 @@ export type ProviderAnswer = ProviderClassifyAnswer | ProviderRateAnswer | Provi
 /**
  * Provider response for a decision request.
  * `answers` is keyed like the requested decisions. Each answer is validated
- * against its decision before it is returned to the caller.
+ * against its decision before it is returned to the caller. `id`, `modelId`,
+ * and `metadata` are returned to the caller unchanged.
  *
  * @stability unstable
  * @category models
@@ -182,6 +214,9 @@ export interface ProviderResponse {
     readonly inputTokens: number | undefined
     readonly outputTokens: number | undefined
   }
+  readonly id?: string | undefined
+  readonly modelId?: string | undefined
+  readonly metadata?: DecideResponseMetadata | undefined
 }
 
 /**
@@ -408,7 +443,10 @@ export const make = (params: {
                 usage: new DecisionUsage({
                   inputTokens: response.usage.inputTokens,
                   outputTokens: response.usage.outputTokens
-                })
+                }),
+                ...(response.id === undefined ? undefined : { id: response.id }),
+                ...(response.modelId === undefined ? undefined : { modelId: response.modelId }),
+                metadata: response.metadata ?? {}
               })
             )
           ),
