@@ -689,6 +689,37 @@ describe("Effect", () => {
   })
 
   describe("effectify", () => {
+    for (const callbackError of [null, new Error("callback")]) {
+      const callbackResult = callbackError === null ? "success" : "failure"
+
+      it.effect(`preserves a synchronous throw after callback ${callbackResult} as a defect`, () =>
+        Effect.gen(function*() {
+          const defect = new Error("boom")
+          const effectified = Effect.effectify((cb: (error: Error | null, value?: string) => void) => {
+            cb(callbackError, "value")
+            throw defect
+          })
+          assertExitDefect(yield* Effect.exit(effectified()), defect)
+        }))
+
+      it.effect(`maps a synchronous throw after callback ${callbackResult} with onSyncError`, () =>
+        Effect.gen(function*() {
+          const defect = new Error("boom")
+          const effectified = Effect.effectify(
+            (cb: (error: Error | null, value?: string) => void) => {
+              cb(callbackError, "value")
+              throw defect
+            },
+            (error) => error,
+            (error) => {
+              assert.strictEqual(error, defect)
+              return "SyncError" as const
+            }
+          )
+          assertExitFailure(yield* Effect.exit(effectified()), Cause.fail("SyncError" as const))
+        }))
+    }
+
     it.effect("turns a throwing onError mapper in an async callback into a defect", () =>
       Effect.gen(function*() {
         let callback!: (error: Error | null, value?: string) => void
