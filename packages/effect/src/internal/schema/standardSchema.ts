@@ -53,18 +53,20 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
       })
     })
   }
-  if (Object.hasOwn(self, "~standard")) {
-    const out = self as any
-    if ("validate" in out["~standard"]) return out
-    Object.assign(out["~standard"], { validate })
-    return out
-  }
-  return Object.assign(self, {
-    "~standard": {
+  // Preserve class construction and statics as well as ordinary schema members,
+  // without attaching per-call validation options to the original schema.
+  const out = typeof self === "function" ? class extends (self as any) {} : Object.create(self)
+  return Object.defineProperty(out, "~standard", {
+    value: {
       version: 1,
       vendor: "effect",
+      // Inherited adapters may describe a parent class rather than this schema.
+      ...(Object.hasOwn(self, "~standard") ? (self as any)["~standard"] : undefined),
       validate
-    } as const
+    },
+    writable: true,
+    enumerable: true,
+    configurable: true
   })
 }
 
