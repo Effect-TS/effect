@@ -287,17 +287,17 @@ export interface ElementsOptions {
  *   attribute values are not added, and parameter entities are not expanded.
  * - References to entities other than `&lt;`, `&gt;`, `&amp;`, `&apos;` and
  *   `&quot;` fail with an `Unsupported` `XmlError` when the document has a
- *   DOCTYPE, and with a `Syntax` `XmlError` otherwise.
- *   Character references such as `&#233;` are always decoded.
+ *   DOCTYPE, and with a `Syntax` `XmlError` otherwise. Character references
+ *   such as `&#233;` are always decoded.
  * - Names are reported as written, including namespace prefixes, and `xmlns`
  *   declarations are ordinary attributes.
  * - Tokens longer than `maxTokenSize` and elements nested deeper than
  *   `maxDepth` fail with a `Limit` `XmlError`. A long token can instead fail
  *   with an error found in its first `maxTokenSize + 1` characters.
- * - Strings in events can share memory with the input chunk they were read
- *   from, so keeping short strings, such as an id from each record, can keep
- *   whole chunks in memory. Copy strings that are kept for long, for example
- *   with `structuredClone`.
+ * - Strings in events can share memory with their input chunk, so keeping a
+ *   short string, such as an id from each record, can keep the whole chunk in
+ *   memory. Copy strings that are kept long, for example with
+ *   `structuredClone`.
  *
  * **Example** (Decoding events)
  *
@@ -512,9 +512,12 @@ export const encodeString = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * **Details**
  *
- * Works like `encodeString`, with one byte array per input chunk. A
- * `Declaration` event may only name the UTF-8 or US-ASCII encoding, otherwise
- * encoding fails with an `InvalidEvent` `XmlError`.
+ * Works like `encodeString`, with one byte array per input chunk.
+ *
+ * **Gotchas**
+ *
+ * A `Declaration` event naming an encoding other than UTF-8 or US-ASCII fails
+ * with an `InvalidEvent` `XmlError`.
  *
  * @see {@link encodeString} for text output and the shared gotchas
  *
@@ -531,10 +534,6 @@ export const encode = <IE = never, Done = unknown>(): Channel.Channel<
   Done
 > =>
   Channel.map(makeChannel<Event, string, IE, Done>(() => new Writer(true)), Arr.map((text) => textEncoder.encode(text)))
-
-// -----------------------------------------------------------------------------
-// Channels
-// -----------------------------------------------------------------------------
 
 const defaultMaxTokenSize = 10 * 1024 * 1024
 const defaultMaxDepth = 1024
@@ -574,8 +573,7 @@ const makeChannel = <In, Out, IE, Done>(
       let done: Pull.Pull<never, never, Done> | undefined
       let failure: XmlError | undefined
 
-      // Pushes the inputs to the machine, or ends it when there are none.
-      // Output completed before an error is emitted before the failure.
+      // Output completed before an error is emitted before the failure
       const emit = (
         inputs: ReadonlyArray<In> | undefined
       ): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
@@ -594,7 +592,6 @@ const makeChannel = <In, Out, IE, Done>(
         return pull
       }
 
-      // Built once rather than on each pull
       const step = Pull.matchEffect(upstream, {
         onSuccess: emit,
         onFailure: Effect.failCause,
@@ -610,8 +607,8 @@ const makeChannel = <In, Out, IE, Done>(
     })
   )
 
-// Joins runs of chunks up to 65536 bytes or characters long, as one chunk is
-// decoded and parsed much faster than many small ones
+// Joins runs of chunks up to 65536 bytes or characters long, since one chunk
+// decodes and parses much faster than many small ones
 const joinRuns = <A extends string | Uint8Array>(
   chunks: ReadonlyArray<A>,
   join: (run: ReadonlyArray<A>, length: number) => A
@@ -642,7 +639,6 @@ const joinBytes = (chunks: ReadonlyArray<Uint8Array>): ReadonlyArray<Uint8Array>
     return bytes
   })
 
-// Checks the options, and returns a function that makes a parser for each run
 const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
   const maxTokenSize = checkLimit("maxTokenSize", options?.maxTokenSize, defaultMaxTokenSize)
   const maxDepth = checkLimit("maxDepth", options?.maxDepth, defaultMaxDepth)
@@ -650,10 +646,6 @@ const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => P
 }
 
 const textEncoder = new TextEncoder()
-
-// -----------------------------------------------------------------------------
-// Characters
-// -----------------------------------------------------------------------------
 
 const TAB = 9
 const LF = 10
@@ -744,7 +736,6 @@ const hexDigits = /^[0-9a-fA-F]+$/
 const versionPattern = /^1\.[0-9]+$/
 const encodingPattern = /^[A-Za-z][A-Za-z0-9._-]*$/
 
-// Normalizes CRLF and CR line endings to LF
 const normalizeLines = (s: string): string => s.indexOf("\r") === -1 ? s : s.replace(lineEndings, "\n")
 
 // Normalizes the line endings and whitespace of a literal attribute value part
@@ -763,10 +754,6 @@ const declarationPattern =
 const pubidPattern = /^[ \r\na-zA-Z0-9\-'()+,./:=?;!*#@$_%]*$/
 
 const predefinedEntities = new Map([["lt", "<"], ["gt", ">"], ["amp", "&"], ["apos", "'"], ["quot", "\""]])
-
-// -----------------------------------------------------------------------------
-// Token scanner
-// -----------------------------------------------------------------------------
 
 // States of `Scanner`, which finds where a token split between chunks ends
 const S_START = 0
@@ -938,10 +925,6 @@ class Scanner {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Decoder
-// -----------------------------------------------------------------------------
-
 const PROLOG = 0
 const CONTENT = 1
 const EPILOG = 2
@@ -1110,8 +1093,8 @@ class Parser {
     this.base = base
   }
 
-  // Fails an incomplete token that exceeds maxTokenSize, with an error found in
-  // the first maxTokenSize + 1 characters of markup if there is one, as in parse
+  // Fails an incomplete token over maxTokenSize, preferring an error in the
+  // first maxTokenSize + 1 characters of markup, as `parse` does
   private checkPending(): void {
     const text = this.scanner.state === S_TEXT
     if (this.pendingLength + (text ? this.textSize : 0) <= this.maxTokenSize) return
@@ -1277,9 +1260,9 @@ class Parser {
     let j = scanName(s, i + 1, n)
     if (j === i + 1) throw this.syntax("invalid element name", i + 1)
     if (j >= n) return -1
-    // In V8, a slice of 13 or more characters keeps the whole input chunk
-    // alive, which an open element would do until its end tag, so long names
-    // are copied
+    // In V8, a slice of 13 or more characters keeps its whole input chunk
+    // alive, and the name of an open element is held until its end tag, so
+    // long names are copied
     const name = j - i - 1 < 13 ? s.slice(i + 1, j) : (" " + s.slice(i + 1, j)).slice(1)
     let attributes: Record<string, string> | undefined
     let selfClosing = false
@@ -1462,7 +1445,8 @@ class Parser {
     const end = scanner.scan(s, i + 9)
     if (end === -1) return -1
     this.checkSize(i, end)
-    // Entity references in attribute defaults are unsupported, as in content
+    // Set before the internal subset is checked, so that entity references in
+    // attribute defaults are unsupported, as in content
     this.doctype = true
     let j = this.space(s, i + 9, end)
     const nameEnd = this.name(s, j, end)
@@ -1503,6 +1487,9 @@ class Parser {
     const quote = s.charCodeAt(i)
     if (quote !== DQUOTE && quote !== SQUOTE) throw this.syntax("expected a quoted literal", i)
     const close = s.indexOf(quote === DQUOTE ? "\"" : "'", i + 1)
+    // Unreachable while the scanner ends a DOCTYPE only after its literals
+    // close, but kept so that a disagreement fails instead of continuing from a
+    // wrong index, which could loop on untrusted input
     if (close === -1 || close >= end) throw this.syntax("unterminated literal", i)
     this.literalEnd = close + 1
     return s.slice(i + 1, close)
@@ -1514,7 +1501,9 @@ class Parser {
     return literal
   }
 
-  // Checks the internal subset starting at `i`, and returns the index after "]"
+  // Checks the internal subset starting at `i`, and returns the index after "]".
+  // As in `literal`, the unterminated comment and processing instruction checks
+  // are unreachable, and guard against a disagreement with the scanner.
   private internalSubset(s: string, i: number, end: number): number {
     while (i < end) {
       const c = s.charCodeAt(i)
@@ -1849,10 +1838,6 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Elements
-// -----------------------------------------------------------------------------
-
 interface MutableElement {
   readonly name: string
   readonly attributes: Readonly<Record<string, string>>
@@ -1930,10 +1915,6 @@ class Collector implements Machine<Event, Element> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Encoder
-// -----------------------------------------------------------------------------
-
 const invalidEvent = (message: string) => new XmlError({ kind: "InvalidEvent", message })
 
 const textEscapes: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\r": "&#13;" }
@@ -1948,8 +1929,8 @@ const attributeEscapes: Record<string, string> = {
 
 const textSpecials = /[&<>\r]/g
 const attributeSpecials = /[&<"\t\n\r]/g
-// Replaces the characters that `specials` matches with their escapes. Unlike
-// a replace callback, `test` finds each one without allocating a match.
+// Uses `test` rather than a replace callback, which allocates a match for each
+// escaped character
 const escape = (s: string, specials: RegExp, escapes: Record<string, string>): string => {
   // The expressions are shared, so a call that threw must not affect the next
   specials.lastIndex = 0

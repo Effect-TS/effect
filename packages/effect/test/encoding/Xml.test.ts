@@ -41,11 +41,9 @@ const elements = (xml: string, path: ReadonlyArray<string>, options?: Xml.Elemen
     Stream.runCollect
   )
 
-// The kind and position of an XML error
 const failure = <A>(effect: Effect.Effect<A, Xml.XmlError>) =>
   Effect.map(Effect.flip(effect), (error) => [error.kind, error.line, error.column])
 
-// One-character chunks, and every split into two chunks
 const splits = (input: string): Array<Array<string>> => {
   const out: Array<Array<string>> = [input.split("")]
   for (let i = 0; i <= input.length; i++) out.push([input.slice(0, i), input.slice(i)])
@@ -349,7 +347,6 @@ describe("Xml", () => {
         // split between chunks or runs
         const xml = `<r>${"<i a='é'>😀 &amp;\r\n</i>".repeat(4000)}</r>`
         const bytes = textEncoder.encode(xml)
-        // A control character, and a byte that is not UTF-8, in the middle of the document
         const at = xml.indexOf("&", 50_000)
         const invalidText = xml.slice(0, at) + String.fromCharCode(1) + xml.slice(at + 1)
         const invalidBytes = bytes.slice()
@@ -575,7 +572,7 @@ describe("Xml", () => {
           (yield* Effect.flip(elements(xml, ["a", "*"], { maxElementSize: 3 }))).message,
           "element <b> exceeds maxElementSize of 3"
         )
-        // The default maxElementSize is 16 MiB
+        // Unbalanced events, and text over the default maxElementSize of 16 MiB
         const cases: ReadonlyArray<readonly [ReadonlyArray<Xml.Event>, Xml.XmlError["kind"]]> = [
           [[end("a")], "InvalidEvent"],
           [[start("a")], "InvalidEvent"],
