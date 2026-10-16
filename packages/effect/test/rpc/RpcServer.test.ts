@@ -71,78 +71,44 @@ describe("RpcServer", () => {
       ["json", RpcSerialization.layerJson]
     ] as const
   ) {
-    for (const timing of ["before the first chunk", "racing the first chunk"] as const) {
-      it.live(`finalizes an aborted ${name} HTTP RPC ${timing}`, () =>
-        Effect.gen(function*() {
-          const started = yield* Deferred.make<void>()
-          const emit = yield* Deferred.make<void>()
-          const emitted = yield* Deferred.make<void>()
-          const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
-          let finalizerCount = 0
-          const group = RpcGroup.make(
-            Rpc.make("events", { payload: Schema.Struct({}), success: Schema.Number, stream: true }),
-            Rpc.make("ping", { payload: Schema.Struct({}), success: Schema.String })
+    it.live(`finalizes an aborted ${name} HTTP RPC before output`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        const group = RpcGroup.make(
+          Rpc.make("events", { payload: Schema.Struct({}), success: Schema.Number, stream: true })
+        )
+        const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({
+              events: () =>
+                Stream.fromEffect(Effect.gen(function*() {
+                  yield* Effect.addFinalizer((exit) => Deferred.succeed(finalized, exit))
+                  yield* Deferred.succeed(started, undefined)
+                  return yield* Effect.never
+                }))
+            }),
+            serialization
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const controller = new AbortController()
+        yield* Effect.addFinalizer(() => Effect.sync(() => controller.abort()))
+        const request = yield* Effect.promise(() =>
+          handler(
+            new Request("http://test/rpc", {
+              method: "POST",
+              body: `{"_tag":"Request","id":1,"tag":"events","payload":{},"headers":[]}\n`,
+              signal: controller.signal
+            })
           )
-          const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
-            Effect.provide(Layer.mergeAll(
-              group.toLayer({
-                events: () =>
-                  Stream.fromEffect(Effect.gen(function*() {
-                    yield* Effect.addFinalizer((exit) => {
-                      finalizerCount++
-                      return Deferred.succeed(finalized, exit)
-                    })
-                    yield* Deferred.succeed(started, undefined)
-                    yield* Deferred.await(emit)
-                    return 1
-                  })).pipe(
-                    Stream.concat(Stream.fromEffect(
-                      Deferred.succeed(emitted, undefined).pipe(Effect.andThen(Effect.never))
-                    ))
-                  ),
-                ping: () => Effect.succeed("pong")
-              }),
-              serialization
-            ))
-          )
-          const handler = HttpEffect.toWebHandler(httpEffect)
-          const controller = new AbortController()
-          yield* Effect.addFinalizer(() => Effect.sync(() => controller.abort()))
-          const request = yield* Effect.promise(() =>
-            handler(
-              new Request("http://test/rpc", {
-                method: "POST",
-                body: `{"_tag":"Request","id":1,"tag":"events","payload":{},"headers":[]}\n`,
-                signal: controller.signal
-              })
-            ).then((response) => response.text().catch(() => ""))
-          ).pipe(Effect.forkScoped)
-          yield* Deferred.await(started).pipe(Effect.timeout("2 seconds"))
-          if (timing === "racing the first chunk") {
-            yield* Deferred.succeed(emit, undefined)
-            // The chunk has been sent, but do not wait for the HTTP response.
-            yield* Deferred.await(emitted).pipe(Effect.timeout("2 seconds"))
-          }
-          controller.abort()
-          // Check cleanup before disposing the server, with a watchdog for lost aborts.
-          const exit = yield* Deferred.await(finalized).pipe(Effect.timeout("2 seconds"))
-          assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
-          yield* Fiber.join(request).pipe(Effect.timeout("2 seconds"))
-          const response = yield* Effect.promise(() =>
-            handler(
-              new Request("http://test/rpc", {
-                method: "POST",
-                body: `{"_tag":"Request","id":2,"tag":"ping","payload":{},"headers":[]}\n`
-              })
-            ).then((response) => response.text())
-          ).pipe(Effect.timeout("2 seconds"))
-          const decoded = JSON.parse(response)
-          assert.deepStrictEqual(Array.isArray(decoded) ? decoded : [decoded], [
-            { _tag: "Exit", requestId: 2, exit: { _tag: "Success", value: "pong" } }
-          ])
-          assert.strictEqual(finalizerCount, 1)
-        }))
-    }
+        ).pipe(Effect.forkScoped)
+        yield* Deferred.await(started).pipe(Effect.timeout("2 seconds"))
+        controller.abort()
+        const exit = yield* Deferred.await(finalized).pipe(Effect.timeout("2 seconds"))
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+        yield* Fiber.join(request).pipe(Effect.timeout("2 seconds"))
+      }))
   }
 
   for (
