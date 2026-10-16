@@ -539,8 +539,8 @@ declare module "effect/ai/Response" {
 export const model = (
   model: string,
   config?: Omit<typeof Config.Service, "model">
-): AiModel.Model<"openai", LanguageModel.LanguageModel, OpenRouterClient> =>
-  AiModel.make("openai", model, layer({ model, config }))
+): AiModel.Model<"openrouter", LanguageModel.LanguageModel, OpenRouterClient> =>
+  AiModel.make("openrouter", model, layer({ model, config }))
 
 /**
  * Creates an OpenRouter `LanguageModel` service from a model identifier and
