@@ -593,6 +593,15 @@ describe("Stream", () => {
         assert.strictEqual(result, "Hello 🌍!")
       }))
 
+    it.effect("decodeText decodes a truncated character at the end of the input", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.make(Uint8Array.of(0x61, 0xC3)).pipe(
+          Stream.decodeText(),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, ["a", "\uFFFD"])
+      }))
+
     describe("splitLines", () => {
       const splitLines = (chunks: ReadonlyArray<string>) =>
         Stream.fromIterable(chunks).pipe(
