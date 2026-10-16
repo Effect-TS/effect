@@ -33,6 +33,16 @@ describe("Lexer", () => {
     ])
   })
 
+  it("gives an inline value to the last flag of a short option cluster", () => {
+    const result = Lexer.lex(["-vn=3", "-n=4"])
+
+    assert.deepStrictEqual(result.tokens, [
+      { _tag: "ShortOption", flag: "v", raw: "-v" },
+      { _tag: "ShortOption", flag: "n", raw: "-n", value: "3" },
+      { _tag: "ShortOption", flag: "n", raw: "-n", value: "4" }
+    ])
+  })
+
   it("still lexes short options that are not negative numbers", () => {
     const result = Lexer.lex(["-1a", "-e"])
 
