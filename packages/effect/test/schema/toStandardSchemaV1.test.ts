@@ -258,6 +258,42 @@ describe("toStandardSchemaV1", () => {
   })
 
   describe("should respect the `message` annotation", () => {
+    it.each([undefined, "Custom message"])("preserves filter paths with message %s", (message) => {
+      const schema = Schema.Struct({ password: Schema.String, confirm: Schema.String }).check(
+        Schema.makeFilter(
+          (o) => o.password === o.confirm || { path: ["confirm"], issue: "Passwords must match" },
+          { message }
+        )
+      )
+      expectSyncFailure(Schema.toStandardSchemaV1(schema), { password: "a", confirm: "b" }, [
+        { message: message ?? "Passwords must match", path: ["confirm"] }
+      ])
+    })
+
+    it("preserves property-name paths with an annotated check", () => {
+      const schema = Schema.Record(Schema.String, Schema.Number).check(
+        Schema.isPropertyNames(Schema.String.check(Schema.isMaxLength(2)), { message: "Custom message" })
+      )
+      expectSyncFailure(Schema.toStandardSchemaV1(schema), { abc: 1 }, [
+        { message: "Custom message", path: ["abc"] }
+      ])
+    })
+
+    it("does not apply a struct message to multiple filter failures", () => {
+      const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+        .annotate({ message: "Struct message" })
+        .check(Schema.makeFilter(() => [
+          { path: ["a"], issue: "Invalid a" },
+          { path: ["b"], issue: "Invalid b" }
+        ]))
+      const standardSchema = Schema.toStandardSchemaV1(schema)
+      expectSyncFailure(standardSchema, null, [{ message: "Struct message", path: [] }])
+      expectSyncFailure(standardSchema, { a: "a", b: "b" }, [
+        { message: "Invalid a", path: ["a"] },
+        { message: "Invalid b", path: ["b"] }
+      ])
+    })
+
     describe("String", () => {
       it("String & annotation", () => {
         const schema = Schema.String.annotate({ message: "Custom message" })
