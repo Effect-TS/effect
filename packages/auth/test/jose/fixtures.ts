@@ -1,4 +1,4 @@
-import type { Jwk } from "@effect/auth/Jose"
+import type { Jwk } from "@effect/auth/jose"
 import { Effect, Redacted } from "effect"
 import * as jose from "jose"
 

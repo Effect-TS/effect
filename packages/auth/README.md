@@ -8,15 +8,18 @@ unstable and may change in minor releases.
 pnpm add @effect/auth effect
 ```
 
-The root namespace exports are `Jose`, `JoseError`, `OAuth`, `OAuthError`, `Oidc`,
-`Pkce`, `GitHub`, `Google`, `Microsoft`, and `OAuthProvider`, each with a matching public subpath. Use
-`import { Jose, OAuth } from "@effect/auth"` for `Jose.Jwt.verify(...)` and
-`OAuth.make(...)`.
+Public modules are grouped by capability:
 
-`Jose` groups [Jwe](src/Jose/Jwe.ts), [Jwk](src/Jose/Jwk.ts),
-[Jwks](src/Jose/Jwks.ts), [Jws](src/Jose/Jws.ts), and [Jwt](src/Jose/Jwt.ts).
-Individual JOSE namespaces are available with
-`import { Jwk } from "@effect/auth/Jose"`.
+```ts
+import { Jwk, Jwt } from "@effect/auth/jose"
+import { OAuth, OAuthError, Oidc, Pkce } from "@effect/auth/oauth"
+import { GitHub, Google, Microsoft } from "@effect/auth/oauth/providers"
+```
+
+Individual modules are also available at paths such as
+`@effect/auth/oauth/providers/GitHub` and `@effect/auth/jose/Jwt`.
+The package root exports only the `Jose` and `OAuth` capability namespaces;
+provider names live in the provider entrypoint. Implementation helpers are private.
 
 ## Native Effect services
 
@@ -161,7 +164,7 @@ and safe custom headers. Applications own callback parsing, transaction storage,
 state comparison, and single-use enforcement for state, nonce, and PKCE verifiers.
 
 ```ts
-import { OAuth, Pkce } from "@effect/auth"
+import { OAuth, Pkce } from "@effect/auth/oauth"
 import { NodeCrypto } from "@effect/platform-node"
 import { Effect, Layer } from "effect"
 import { FetchHttpClient } from "effect/http"
@@ -197,32 +200,82 @@ const authorization = Effect.gen(function*() {
 
 ## Provider clients
 
-`GitHub`, `Google`, and `Microsoft` each expose `make`, `layer`, a distinct `Client`
-service, and a `Profile` schema. Configure a client ID, a redacted client secret,
-one registered `redirectUri`, and optional scopes and request bounds. Requests
-default to a 10-second timeout. Each client exposes `authorizationUrl` and
-`exchangeCode`, with the callback and scopes fixed when the client is installed.
+All 25 provider clients expose `make`, `layer`, a distinct `Client` service, and
+a `Profile` schema. Configure a client ID, a redacted client secret, one registered
+`redirectUri`, and provider-specific options. Apple uses a redacted signing key,
+team ID, and key ID to generate its client secrets. Requests default to a
+10-second timeout. Each client exposes `authorizationUrl` and `exchangeCode`,
+with the callback and scopes fixed when the client is installed.
 
-| Client      | Default scopes         | Identity subject                    |
-| ----------- | ---------------------- | ----------------------------------- |
-| `GitHub`    | `read:user`            | Numeric GitHub user ID, as a string |
-| `Google`    | `openid profile email` | Verified ID-token `sub`             |
-| `Microsoft` | `openid profile`       | Verified `oid:tid`                  |
+| Client        | Default scopes          | Identity subject                                |
+| ------------- | ----------------------- | ----------------------------------------------- |
+| `Apple`       | `openid`                | Verified ID-token `sub`                         |
+| `Atlassian`   | `read:me`               | Profile `account_id`                            |
+| `Auth0`       | `openid`                | Verified ID-token `sub`                         |
+| `Cognito`     | `openid`                | Verified ID-token `sub`                         |
+| `Dropbox`     | `account_info.read`     | Profile `account_id`                            |
+| `Figma`       | `current_user:read`     | Profile `id`                                    |
+| `GitHub`      | `read:user`             | Numeric user ID, as a string                    |
+| `GitLab`      | `openid`                | Verified ID-token `sub`                         |
+| `Google`      | `openid profile email`  | Verified ID-token `sub`                         |
+| `HuggingFace` | `openid`                | Verified ID-token `sub`                         |
+| `Keycloak`    | `openid`                | Verified ID-token `sub`                         |
+| `Kick`        | `user:read`             | Numeric user ID, as a string                    |
+| `Line`        | `openid`                | Verified ID-token `sub`                         |
+| `Linear`      | `read`                  | GraphQL viewer `id`                             |
+| `Microsoft`   | `openid profile`        | Verified `oid:tid`                              |
+| `Notion`      | None                    | Token receipt's `owner.user.id`                 |
+| `Okta`        | `openid`                | Verified ID-token `sub`                         |
+| `Railway`     | `openid`                | Verified ID-token `sub`, bound to UserInfo      |
+| `Roblox`      | `openid`                | Verified ID-token `sub`                         |
+| `Slack`       | `openid`                | Verified ID-token `sub`                         |
+| `Strava`      | `read`                  | Token receipt's numeric athlete ID, as a string |
+| `Vercel`      | `openid`                | Verified ID-token `sub`                         |
+| `X`           | `users.read tweet.read` | Profile `data.id`                               |
+| `Zitadel`     | `openid`                | Verified ID-token `sub`                         |
+| `Zoom`        | `openid`                | Verified ID-token `sub`                         |
 
-Authorization requires private state and an S256 challenge. Exchange requires
-the original PKCE verifier; Google and Microsoft also require the original nonce
-for both operations. Supply an optional `maxAge` consistently from the saved
-transaction. Before exchange, validate callback state and issuer and consume the
-single-use transaction. Microsoft needs a distinct callback because Entra does
-not advertise authorization response issuers.
+Authorization requires private state. Every provider except Apple, Notion, and
+Strava also requires an S256 challenge and the original verifier at exchange.
+All OIDC clients require the original nonce for both operations. Supply an
+optional `maxAge` consistently from the saved transaction. Before exchange,
+validate callback state and issuer and consume the single-use transaction.
+Providers without authorization response issuers need distinct callback routing;
+Keycloak, Railway, and Zoom require advertised response issuer support and the
+caller must validate the callback's `iss`.
 
 `exchangeCode` returns an `OAuthProvider.ExchangeResult`: the original redacted
 receipt, normalized tokens, and an identity with `issuer`, `subject`, and a
-redacted typed profile. Use both issuer and subject for account lookup. Google
-and Microsoft verify signed RS256 ID tokens before projecting profile claims;
-their exchange operations require `Oidc.VerificationRequirements`. GitHub fetches
-the authenticated `/user` profile after validating its token receipt. Decoding a
-`Profile` schema by itself does not authenticate an identity.
+redacted typed profile. Use both issuer and subject for account lookup. OIDC
+clients verify signed ID tokens before projecting profile claims, and exchange
+requires `Oidc.VerificationRequirements`. Google, Microsoft, and Apple use RS256;
+LINE uses HS256 with its channel secret; Railway and Roblox use ES256. Other
+OIDC clients accept the advertised intersection of RS256, PS256, ES256, and EdDSA.
+Decoding a `Profile` schema by itself does not authenticate an identity.
+
+Auth0 retains the tenant issuer's trailing slash. Cognito derives its issuer from
+the region and user pool. Keycloak accepts a server URL and realm, Okta accepts
+an authorization server ID or `org`, and Zitadel accepts an instance domain.
+GitLab can use an explicitly configured self-hosted issuer. Discovery supplements
+are limited to known provider metadata and validate their issuer and endpoint pins.
+
+Apple sends `form_post` authorization responses and mints a fresh ES256 client-secret
+JWT for each code exchange. Its optional first-consent `user` callback value supplies
+display names only; verified token claims remain authoritative. The explicitly
+named client-secret lifetime options are in seconds.
+
+Notion sends JSON token requests and identifies the authorizing person from the
+token receipt, rather than the integration bot. Strava checks granted scopes from
+the token receipt, falling back to the already validated callback's `scope` when
+the receipt omits it. Pass that callback value as `Strava.ExchangeInput.scope`.
+Strava's absolute access-token expiry is normalized to remaining seconds. Neither
+Notion nor Strava sends PKCE parameters.
+
+Railway fetches UserInfo after ID-token verification and requires the same `sub`;
+verified token claims take precedence when merging profile fields. Linear fetches
+the GraphQL viewer and rejects responses containing GraphQL errors. Dropbox rejects
+disabled accounts. Profile names, email addresses, and provider hints do not
+authorize account linking or establish application membership.
 
 GitHub validates the exact returned scope set and normalizes its comma-separated
 receipt into space-separated scopes. Requesting `offline_access` also requires
@@ -246,26 +299,33 @@ same `oid:tid` format for every authority. Profile email and display names never
 authorize account linking.
 
 The underlying `client.oauth` remains available for protocol operations with
-application-owned receipt handling. The provider helpers do not manage sessions,
-durable login transactions, account linking, token storage, or refresh scheduling.
-An exchange can consume its code before a later profile request or verification
-fails; such a failure does not authorize retrying the code.
+application-owned receipt handling. The provider helpers cover initial sign-in;
+they do not manage sessions, durable login transactions, account linking, token
+storage, registration rotation, or connected-grant refresh workflows. In particular,
+calling Strava's raw refresh operation does not check continuity of the athlete
+identity. An exchange can consume its code before a later profile request or
+verification fails; such a failure does not authorize retrying the code.
 
 ## Errors and attribution
 
-[JoseError](src/JoseError.ts) and [OAuthError](src/OAuthError.ts) expose typed
+[JoseError](src/jose/JoseError.ts) and [OAuthError](src/oauth/OAuthError.ts) expose typed
 failures with fixed diagnostics that omit native causes and secrets. JOSE key
 imports distinguish invalid key material from `JoseError.UnsupportedAlgorithm`
 and `JoseError.CryptoUnavailable` across supported input formats. Generic OAuth
 normalization recognizes only a complete JSON HTTP 400 `invalid_grant` without
 conflicting success fields as `OAuthError.Rejected`. The GitHub client also recognizes
-a complete JSON HTTP 200 or 400 `bad_verification_code` response. Authenticated
-invalid ID-token claims or provider profiles become `OAuthError.Rejected`, with
-reason `claims`. Malformed tokens, key/signature faults,
-mixed receipts, other-status, transport, and timeout failures remain
+a complete JSON HTTP 200 or 400 `bad_verification_code` response. Strava recognizes
+its documented JSON HTTP 400 `Bad Request` response when every error is
+`AuthorizationCode` / `code` / `invalid` and no conflicting fields are present.
+Authenticated invalid ID-token claims or provider profiles become
+`OAuthError.Rejected`, with reason `claims`. Malformed tokens, key/signature faults,
+mixed receipts, Linear GraphQL errors, other-status, transport, and timeout failures remain
 `OAuthError.Unavailable`: an unknown outcome is not permission to retry a single-use
-code or rotating refresh token. Keep receipts and revealed secrets out of logs
-and telemetry.
+code or rotating refresh token. Expected failures remain typed. Composed failures,
+interruption, and cleanup defects remain observable when requests time out or
+clients close; empty-body recovery applies only to an entirely expected empty-body
+failure. Keep receipts and revealed secrets out of logs and telemetry, and project
+safe diagnostics before reporting defects outside the application.
 
 See the [third-party notices](THIRD_PARTY_NOTICES.md) for adapted contracts and
 fixtures in [test/jose](test/jose) and [test/oauth](test/oauth).

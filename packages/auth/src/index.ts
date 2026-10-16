@@ -10,60 +10,12 @@
  * @stability unstable
  * @since 4.1.0
  */
-export * as Jose from "./Jose/index.ts"
+export * as Jose from "./jose/index.ts"
+
+/**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as OAuth from "./oauth/index.ts"
 
 // @barrel
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as GitHub from "./GitHub.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as Google from "./Google.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as JoseError from "./JoseError.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as Microsoft from "./Microsoft.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as OAuth from "./OAuth.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as OAuthError from "./OAuthError.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as OAuthProvider from "./OAuthProvider.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as Oidc from "./Oidc.ts"
-
-/**
- * @stability unstable
- * @since 4.1.0
- */
-export * as Pkce from "./Pkce.ts"

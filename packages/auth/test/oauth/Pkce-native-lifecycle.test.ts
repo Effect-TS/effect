@@ -1,4 +1,4 @@
-import { Pkce } from "@effect/auth"
+import { Pkce } from "@effect/auth/oauth"
 import { assert, describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Fiber, Scope } from "effect"
 import { webCryptoLayer as cryptoLayer } from "../utils/crypto.ts"

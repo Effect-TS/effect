@@ -1,4 +1,6 @@
+import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as FetchHttpClient from "effect/http/FetchHttpClient"
 import * as HttpClient from "effect/http/HttpClient"
 import type * as HttpClientRequest from "effect/http/HttpClientRequest"
@@ -7,7 +9,7 @@ import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 
-import { Unavailable } from "../OAuthError.ts"
+import { Unavailable } from "../oauth/OAuthError.ts"
 import * as Validation from "./validation.ts"
 
 /** @internal */
@@ -51,7 +53,18 @@ export const request = Effect.fnUntraced(
 
         return Effect.succeed(length + chunk.byteLength)
       }
-    ).pipe(Effect.catchReason("HttpClientError", "EmptyBodyError", () => Effect.succeed(0)))
+    ).pipe(
+      Effect.catchCauseIf(
+        (cause) =>
+          cause.reasons.length > 0 &&
+          cause.reasons.every((reason) =>
+            Cause.isFailReason(reason) &&
+            reason.error._tag === "HttpClientError" &&
+            reason.error.reason._tag === "EmptyBodyError"
+          ),
+        () => Effect.succeed(0)
+      )
+    )
 
     return {
       status: response.status,
@@ -60,18 +73,38 @@ export const request = Effect.fnUntraced(
     }
   },
   (effect, _client, _request, options) =>
-    effect.pipe(
-      Effect.scoped,
-      Effect.provideService(FetchHttpClient.RequestInit, {
-        // Workers supports manual redirects; the status check above rejects them.
-        redirect: "manual",
-        credentials: "omit",
-        cache: "no-store"
-      }),
-      Effect.provideService(Tracer.DisablePropagation, true),
-      Effect.mapError(() => Unavailable.make({})),
-      Effect.timeoutOrElse({ duration: options.timeout, orElse: () => Unavailable.make({}) })
-    )
+    Effect.suspend(() => {
+      let failure: Cause.Cause<Unavailable> | undefined
+
+      return effect.pipe(
+        Effect.scoped,
+        Effect.provideService(FetchHttpClient.RequestInit, {
+          // Workers supports manual redirects; the status check above rejects them.
+          redirect: "manual",
+          credentials: "omit",
+          cache: "no-store"
+        }),
+        Effect.provideService(Tracer.DisablePropagation, true),
+        Effect.catchCause((cause) => Effect.failCause(Cause.map(cause, () => Unavailable.make({})))),
+        // timeoutOrElse joins its loser but discards that Exit. Retain cleanup
+        // failures before the race, including when the caller cancels the race.
+        Effect.onExit((exit) =>
+          Effect.sync(() => {
+            if (Exit.isFailure(exit) && !Cause.hasInterruptsOnly(exit.cause)) failure = exit.cause
+          })
+        ),
+        Effect.timeoutOrElse({
+          duration: options.timeout,
+          orElse: () =>
+            Effect.failCause(
+              failure === undefined
+                ? Cause.fail(Unavailable.make({}))
+                : Cause.combine(Cause.fail(Unavailable.make({})), failure)
+            )
+        }),
+        Effect.onInterrupt(() => failure === undefined ? Effect.void : Effect.failCause(failure))
+      )
+    })
 )
 
 /** @internal */

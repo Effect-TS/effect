@@ -21,7 +21,7 @@ import * as Struct from "effect/Struct"
 import * as TestClock from "effect/testing/TestClock"
 import * as jose from "jose"
 
-import { Oidc } from "@effect/auth"
+import { Oidc } from "@effect/auth/oauth"
 import { cryptoLayer, metadata, transport } from "./fixtures.ts"
 
 const seconds = 2_000_000_000

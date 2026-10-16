@@ -16,7 +16,7 @@ import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as TestClock from "effect/testing/TestClock"
 
-import { OAuth, Oidc, Pkce } from "@effect/auth"
+import { OAuth, Oidc, Pkce } from "@effect/auth/oauth"
 import {
   codeInput,
   cryptoLayer,
