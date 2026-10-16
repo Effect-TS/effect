@@ -625,8 +625,9 @@ const S_IFREG = 0o100000
 const DOS_DIRECTORY = 0x10
 
 const textEncoder = new TextEncoder()
-const textDecoder = new TextDecoder()
-const strictTextDecoder = new TextDecoder("utf-8", { fatal: true })
+// Paths keep a leading byte order mark, as other zip tools do
+const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true })
+const strictTextDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
 
 const emptyBody = new Uint8Array(0)
 
