@@ -238,20 +238,24 @@ export interface ManagedRuntime<in R, out ER> {
    *
    * Disposal runs uninterruptibly. Calls made while a disposal is in progress
    * wait for it to finish, and interrupting a waiting call only stops the wait.
-   * Effects run by this runtime, and the runtime's finalizers, do not wait:
-   * the disposal interrupts or runs them, so waiting would deadlock.
+   * Fibers started by this runtime, their child fibers, and the runtime's
+   * finalizers do not wait: the disposal interrupts or runs them, so waiting
+   * would deadlock.
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 }
 
-// Marks the fibers that belong to a runtime: those running with its services,
-// and those running its disposal and finalizers. It is deliberately not provided
-// to the layer build, because finalizers of layers shared through a MemoMap run
-// with the context of the runtime that built them, which may not be the
+// The runtime whose disposal the current fiber is running. Finalizers and their
+// parallel fibers inherit it from the disposing fiber. It is not provided to the
+// layer build, because finalizers of layers shared through a MemoMap run with
+// the build context of the runtime that built them, which may not be the
 // runtime disposing them.
-const RuntimeOwner = Context.Reference<ManagedRuntime<any, any> | undefined>("effect/ManagedRuntime/RuntimeOwner", {
-  defaultValue: () => undefined
-})
+const DisposingRuntime = Context.Reference<ManagedRuntime<any, any> | undefined>(
+  "effect/ManagedRuntime/DisposingRuntime",
+  {
+    defaultValue: () => undefined
+  }
+)
 
 /**
  * Creates a `ManagedRuntime` from a layer.
@@ -319,8 +323,15 @@ export const make = <R, ER>(
   const scope = Scope.makeUnsafe("sequential")
   const layerScope = Scope.forkUnsafe(scope, "sequential")
   const fiberScope = Scope.forkUnsafe(scope, "parallel")
+  // Fibers started by the runtime, including the layer build, are interrupted
+  // and awaited by its disposal, so they and their child fibers must not wait
+  // for it.
+  const managedFibers = new WeakSet<Fiber.Fiber<any, any>>()
   const defaultRunOptions: Effect.RunOptions = {
-    onFiberStart: Fiber.runIn(fiberScope)
+    onFiberStart(fiber) {
+      managedFibers.add(fiber)
+      Fiber.runIn(fiber, fiberScope)
+    }
   }
   const mergeRunOptions = <O extends Effect.RunOptions>(options?: O): O =>
     options
@@ -339,9 +350,12 @@ export const make = <R, ER>(
   const contextEffect = Effect.withFiber<Context.Context<R>, ER>((fiber) => {
     if (!buildFiber) {
       buildFiber = Effect.runFork(
-        Effect.map(
+        Effect.tap(
           Layer.buildWithMemoMap(layer, memoMap, layerScope),
-          (context) => self.cachedContext = Context.add(context, RuntimeOwner, self)
+          (context) =>
+            Effect.sync(() => {
+              self.cachedContext = context
+            })
         ),
         { ...defaultRunOptions, scheduler: fiber.cache.scheduler }
       )
@@ -367,7 +381,11 @@ export const make = <R, ER>(
     },
     disposeEffect: Effect.withFiber((fiber) => {
       if (disposed !== undefined) {
-        return fiber.getRef(RuntimeOwner) === self ? Effect.void : Deferred.await(disposed)
+        if (fiber.getRef(DisposingRuntime) === self) return Effect.void
+        for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
+          if (managedFibers.has(current)) return Effect.void
+        }
+        return Deferred.await(disposed)
       }
       // Once `disposed` is set the close must run, or later calls would wait forever.
       fiberEnterUninterruptibleUnsafe(fiber)
@@ -380,7 +398,7 @@ export const make = <R, ER>(
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void).pipe(
-        Effect.provideService(RuntimeOwner, self),
+        Effect.provideService(DisposingRuntime, self),
         Effect.ensuring(Deferred.done(done, Exit.void))
       )
     }),
