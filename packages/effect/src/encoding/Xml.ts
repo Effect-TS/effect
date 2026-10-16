@@ -1829,9 +1829,8 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   }
 
   end(): void {
-    if (this.carry !== undefined) {
-      throw this.parser.error("Syntax", "incomplete UTF-8 sequence at the end of the input", this.parser.received)
-    }
+    // The carried bytes may also be an invalid sequence, such as a single 0xFF
+    if (this.carry !== undefined) throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
     this.parser.end()
   }
 
