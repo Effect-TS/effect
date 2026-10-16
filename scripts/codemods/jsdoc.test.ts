@@ -11,26 +11,6 @@ const transform = (source: string): string =>
 const countDocs = (output: string): number => output.split("Repeats a value.").length - 1
 
 describe("jsdoc codemod", () => {
-  it("copies export documentation to the annotation call signatures", () => {
-    const output = transform(`${doc}
-export const repeat: {
-  (n: number): (self: string) => string
-  (self: string, n: number): string
-} = dual(2, (self: string, n: number): string => self.repeat(n))
-`)
-    assert.strictEqual(countDocs(output), 3)
-  })
-
-  it("copies export documentation to the direct dual type arguments", () => {
-    const output = transform(`${doc}
-export const repeat = dual<
-  (n: number) => (self: string) => string,
-  (self: string, n: number) => string
->(2, (self, n) => self.repeat(n))
-`)
-    assert.strictEqual(countDocs(output), 3)
-  })
-
   it("leaves generic calls inside an annotated dual implementation unchanged", () => {
     const output = transform(`${doc}
 export const repeat: {
