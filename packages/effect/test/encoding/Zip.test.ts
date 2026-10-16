@@ -402,6 +402,14 @@ describe("Zip", () => {
           storedEntry(textEncoder.encode("é"), empty),
           storedEntry(textEncoder.encode("x"), empty, { extra: unicodePath("ÿ.txt", crc32(textEncoder.encode("x"))) }),
           storedEntry(textEncoder.encode("y"), empty, { extra: unicodePath("ignored", 0) }),
+          // As in Info-ZIP and 7-Zip, only the first field applies, and only without the UTF-8 flag
+          storedEntry(textEncoder.encode("z"), empty, {
+            extra: concat(unicodePath("ignored", 0), unicodePath("ignored", crc32(textEncoder.encode("z"))))
+          }),
+          storedEntry(textEncoder.encode("w"), empty, {
+            flags: 0x800,
+            extra: unicodePath("ignored", crc32(textEncoder.encode("w")))
+          }),
           storedEntry(bom, empty),
           storedEntry(bom, empty, { flags: 0x800 }),
           endRecord
@@ -412,6 +420,8 @@ describe("Zip", () => {
           "é",
           "ÿ.txt",
           "y",
+          "z",
+          "w",
           "﻿/b",
           "﻿/b"
         ])
