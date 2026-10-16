@@ -4277,6 +4277,16 @@ describe("Effect", () => {
           assert.strictEqual(error, "release-error")
         }))
 
+      it.effect("should drop only the retry interruption when cleanup fails in a child fiber", () =>
+        Effect.gen(function*() {
+          const cleanup = Cause.combine(Cause.fail("cleanup"), Cause.interrupt(999))
+          const exit = yield* Effect.tx(Effect.gen(function*() {
+            const child = yield* Effect.forkChild(Effect.txRetry.pipe(Effect.ensuring(Effect.failCause(cleanup))))
+            return yield* Fiber.join(child)
+          })).pipe(Effect.exit)
+          assert.deepStrictEqual(exit, Exit.failCause(cleanup))
+        }))
+
       it.effect("should rerun when a read ref changed while the transaction was suspended", () =>
         Effect.gen(function*() {
           const ref = TxRef.makeUnsafe(0)
