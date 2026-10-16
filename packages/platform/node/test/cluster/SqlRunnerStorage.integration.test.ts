@@ -415,6 +415,30 @@ describe("SqlRunnerStorage", () => {
     60_000
   )
 
+  it.effect("retries a lock session acquisition that failed before any operation waited", () => {
+    const partitioned = makePartitionState()
+    const layer = StorageLayer.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
+      Layer.provide(ShardingConfig.layer(partitionConfig))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const shards = [ShardId.make("default", 1)]
+      assert.deepStrictEqual(yield* storage.acquire(runnerAddress1, shards), shards)
+      const reserved = partitioned.reservedConnections
+
+      // Fail the lock query, the old session's unlock and the replacement's setup query.
+      partitioned.failNextQueries = 3
+      assert(Exit.isFailure(yield* storage.acquire(runnerAddress1, shards).pipe(Effect.exit)))
+      // Reservation alone is too early: wait until the replacement setup has failed.
+      yield* waitUntil(() => partitioned.reservedConnections > reserved && partitioned.failNextQueries === 0)
+      yield* Effect.yieldNow
+
+      assert.deepStrictEqual(yield* storage.acquire(runnerAddress1, shards), shards)
+    }).pipe(Effect.provide(layer), TestClock.withLive)
+  }, 60_000)
+
   it.effect("isolates advisory shard locks by prefix", () =>
     Effect.gen(function*() {
       const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
