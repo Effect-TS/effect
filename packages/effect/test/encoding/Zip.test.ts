@@ -41,6 +41,17 @@ const decode = (bytes: Uint8Array, chunkSize = 4096) =>
 const failure = <A>(effect: Effect.Effect<A, unknown>) =>
   Effect.map(Effect.flip(effect), (error) => Zip.isZipError(error) ? error.kind : error)
 
+// Xorshift, for reproducible noise
+const xorshift = (seed: number) => {
+  let x = seed
+  return () => {
+    x ^= x << 13
+    x ^= x >>> 17
+    x ^= x << 5
+    return x >>> 0
+  }
+}
+
 // Hand-built archives, for fields that the fixture tools do not write
 
 const crc32 = (bytes: Uint8Array) => {
@@ -183,15 +194,9 @@ describe("Zip", () => {
 
     it.effect("deflates in-memory entries that arrive over several pulls", () =>
       Effect.gen(function*() {
-        let x = 1
         // Noise, which the compressor outputs in several chunks, is too large
         // to deflate ahead of the entries before it
-        const noise = Uint8Array.from({ length: 100_000 }, () => {
-          x ^= x << 13
-          x ^= x >>> 17
-          x ^= x << 5
-          return x & 0xff
-        })
+        const noise = Uint8Array.from({ length: 100_000 }, xorshift(1))
         const contents = [...Array.from({ length: 20 }, (_, i) => textEncoder.encode(`${i},`.repeat(i + 1))), noise]
         const bytes = yield* Stream.fromIterable(contents.map((content, i) => Zip.file(`${i}`, content)), {
           chunkSize: 3
@@ -499,13 +504,7 @@ describe("Zip", () => {
       Effect.gen(function*() {
         // Noise, which deflate stores, then copies from it at distances that are
         // rarer the nearer they are, so that some codes are longer than the table
-        let x = 1
-        const random = () => {
-          x ^= x << 13
-          x ^= x >>> 17
-          x ^= x << 5
-          return x >>> 0
-        }
+        const random = xorshift(1)
         const bytes = Array.from({ length: 32_768 }, () => random() & 0xff)
         for (let i = 0; i < 4000; i++) {
           const bits = 14 - Math.min(Math.clz32(random()), 12)
@@ -560,13 +559,7 @@ describe("Zip", () => {
 
     it.effect("inflates output that ends at or crosses the output buffer boundary", () =>
       Effect.gen(function*() {
-        let x = 7
-        const random = () => {
-          x ^= x << 13
-          x ^= x >>> 17
-          x ^= x << 5
-          return x & 0xff
-        }
+        const random = xorshift(7)
         // Output is handed out in 64 KiB chunks. Noise is stored, noise in 64
         // symbols is mostly literals, and repeats of a block nearly as long as
         // the window copy across chunks.
