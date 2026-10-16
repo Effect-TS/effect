@@ -278,6 +278,24 @@ describe("ManagedRuntime", () => {
     assert.deepEqual({ result, released }, { result: "settled", released: true })
   })
 
+  test("runtimes whose layer finalizers dispose each other can be disposed", async () => {
+    const runtimeA: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(
+      Layer.effectDiscard(Effect.addFinalizer(() => runtimeB.disposeEffect))
+    )
+    const runtimeB: ManagedRuntime.ManagedRuntime<never, never> = ManagedRuntime.make(
+      Layer.effectDiscard(Effect.addFinalizer(() => runtimeA.disposeEffect))
+    )
+    await runtimeA.runPromise(Effect.void)
+    await runtimeB.runPromise(Effect.void)
+
+    // Bound the deadlock without waiting for the uninterruptible disposal fiber.
+    const result = await Promise.race([
+      runtimeA.dispose().then(() => "settled"),
+      new Promise<string>((resolve) => setTimeout(() => resolve("timed out"), 500))
+    ])
+    assert.strictEqual(result, "settled")
+  })
+
   it("completes sequential layer finalizers when disposeEffect is interrupted", async () => {
     const ran = await Effect.runPromise(Effect.gen(function*() {
       const started = yield* Deferred.make<void>()
