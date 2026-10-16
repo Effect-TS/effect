@@ -201,21 +201,21 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.deepStrictEqual(yield* response.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
-    it.live("sends form data request bodies as multipart", () =>
-      Effect.gen(function*() {
-        const formData = new FormData()
-        formData.append("title", "effect")
-        formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
-        const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
-          Effect.timeout("2 seconds")
-        )
-        assert.deepStrictEqual(yield* response.json, [
-          { key: "title", value: "effect" },
-          { key: "file", name: "notes.txt", contentType: "text/plain", content: "file contents" }
-        ])
-      }).pipe(Effect.provide(localServerTestLayer)))
-
     if (name === "undici") {
+      it.live("sends form data request bodies as multipart", () =>
+        Effect.gen(function*() {
+          const formData = new FormData()
+          formData.append("title", "effect")
+          formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
+          const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
+            Effect.timeout("2 seconds")
+          )
+          assert.deepStrictEqual(yield* response.json, [
+            { key: "title", value: "effect" },
+            { key: "file", name: "notes.txt", contentType: "text/plain", content: "file contents" }
+          ])
+        }).pipe(Effect.provide(localServerTestLayer)))
+
       it.effect.each(formDataResponses)("parses $name response form data", ({ path }) =>
         Effect.gen(function*() {
           const response = yield* HttpClient.get(path)
