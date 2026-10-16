@@ -19,7 +19,7 @@ import type { Input } from "../Duration.ts"
 import * as Duration from "../Duration.ts"
 import * as Effect from "../Effect.ts"
 import * as Equal from "../Equal.ts"
-import type * as Exit from "../Exit.ts"
+import * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import * as FiberMap from "../FiberMap.ts"
 import { constant, flow } from "../Function.ts"
@@ -1525,18 +1525,23 @@ const make = Effect.gen(function*() {
                   envelope as any
                 )
               })
-              if (!options.discard) {
-                const entry: ClientRequestEntry = {
-                  rpc: rpc as any,
-                  context: fiber.context,
-                  message
-                }
-                clientRequests.set(id, entry)
-                respond = makeClientRespond(entry, client.write)
-              } else {
+              if (options.message.discard === true) {
                 respond = clientRespondDiscard
+                // a discarded call is acknowledged once its message is sent
+                const requestId = options.message.id
+                return Effect.flatMap(
+                  sendOutgoing(message, true),
+                  () => client.write({ _tag: "Exit", clientId: 0, requestId, exit: Exit.void as any })
+                )
               }
-              return sendOutgoing(message, options.discard)
+              const entry: ClientRequestEntry = {
+                rpc: rpc as any,
+                context: fiber.context,
+                message
+              }
+              clientRequests.set(id, entry)
+              respond = makeClientRespond(entry, client.write)
+              return sendOutgoing(message, false)
             }
             case "Ack": {
               const requestId = Snowflake.Snowflake(options.message.requestId)
