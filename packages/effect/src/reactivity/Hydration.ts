@@ -11,6 +11,8 @@
  * @stability unstable
  * @since 4.0.0
  */
+import { shouldHydrate } from "../internal/hydration.ts"
+import * as Option from "../Option.ts"
 import * as Schema from "../Schema.ts"
 import * as AsyncResult from "./AsyncResult.ts"
 import * as Atom from "./Atom.ts"
@@ -169,7 +171,9 @@ export const hydrate = (
         const atom = node.atom as any
         if (atom[Atom.SerializableTypeId]) {
           const decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
-          ;(node as any).setValue(decoded)
+          if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
+            ;(node as any).setValue(decoded)
+          }
         }
       } else {
         // Fallback to setSerializable if node doesn't exist yet
