@@ -61,6 +61,20 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
   .pipe(Layer.provide(FetchHttpClient.layer))
 
 describe("HttpClient", () => {
+  it.effect("preserves the response stream after JSON serialization", () =>
+    Effect.gen(function*() {
+      const response = HttpClientResponse.fromWeb(
+        HttpClientRequest.get("https://example.com"),
+        new Response("data: hello\n\n", { headers: { "content-type": "text/event-stream" } })
+      )
+
+      JSON.stringify(response)
+
+      const bytes = yield* Stream.runFold(response.stream, Array<number>(), (bytes, chunk) =>
+        bytes.concat(Array.from(chunk)))
+      deepStrictEqual(bytes, Array.from(new TextEncoder().encode("data: hello\n\n")))
+    }))
+
   it.effect("google", () =>
     Effect.gen(function*() {
       const response = yield* pipe(
