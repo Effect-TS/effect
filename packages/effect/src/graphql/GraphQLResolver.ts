@@ -9,7 +9,8 @@
  * in separate batches. Compose `RequestResolver.setDelay` and
  * `RequestResolver.batchN` with `.pipe` to control batching.
  *
- * Lookups with different protocol URLs are batched separately. See
+ * Lookups with different protocol URLs are batched separately, and
+ * `RequestResolver.batchN` limits each URL's batches. See
  * `GraphQLProtocol.layerHttp` for middleware and caching constraints.
  *
  * @stability experimental
@@ -129,8 +130,16 @@ export const request: {
   <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R>
 } = dual(
   2,
-  <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R> =>
-    Effect.request(makeRequest<K, A, E, R>(key), resolver)
+  <K, A, E, R>(key: K, resolver: RequestResolver.RequestResolver<KeyRequest<K, A, E, R>>): Effect.Effect<A, E, R> => {
+    const resolveUrl = urlResolvers.get(resolver.batchKey)
+    if (resolveUrl === undefined) return Effect.request(makeRequest<K, A, E, R>(key), resolver)
+    // Resolve in the caller's fiber, so the URL is part of the pending batch's key.
+    return Effect.flatMap(resolveUrl, (url) => {
+      const request = makeRequest<K, A, E, R>(key)
+      requestUrls.set(request, url)
+      return Effect.request(request, resolver)
+    })
+  }
 )
 
 // -----------------------------------------------------------------------------
@@ -609,10 +618,22 @@ interface Slice<Op extends GraphQL.Any> {
 const constNoSuchElement = Exit.fail(new Cause.NoSuchElementError())
 
 /**
- * Groups pending entries by `batchKey` before collection limits apply, then
- * resolves each entry's URL in its own context and splits by URL. Each batch
- * runs in its first entry's context, carrying the URL it was grouped by, so
- * the transport doesn't resolve it again.
+ * URL resolvers by resolver `batchKey`, which `RequestResolver.batchN` and
+ * `setDelay` keep, so {@link request} can resolve a lookup's URL before it is
+ * queued.
+ */
+const urlResolvers = new WeakMap<Function, Effect.Effect<string>>()
+
+// URLs resolved by `request`, one per request object.
+const requestUrls = new WeakMap<Request.Any, string>()
+
+/**
+ * Groups pending entries by URL and `batchKey`, so collection limits apply to
+ * each group. A URL that `request` couldn't resolve, for example after
+ * `RequestResolver.grouped` replaced the key, is resolved here in the entry's
+ * context, and the batch is split again. Each batch runs in its first entry's
+ * context, carrying the URL it was grouped by, so the transport doesn't
+ * resolve it again.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
@@ -621,33 +642,45 @@ const makeResolver = <A extends Request.Any>(
 ): RequestResolver.RequestResolver<A> => {
   const resolve = internalGraphQL.rawExecutors.get(method)?.url
   const operation = { kind: method.operation.kind, operationName: method.operation.name }
-  const urlOf = (entry: Request.Entry<A>) =>
-    resolve === undefined ? Effect.succeed(undefined) : Effect.provideContext(resolve(operation), entry.context)
-  return RequestResolver.makeGrouped<A, unknown>({
-    key: (entry) => batchKey?.(entry.context),
+  // Arrays are compared structurally, so equal keys share a batch.
+  const keyOf = (entry: Request.Entry<A>, url: string | undefined) => [url, batchKey?.(entry.context)] as const
+  const urlOf = (entry: Request.Entry<A>) => {
+    const url = requestUrls.get(entry.request)
+    return url !== undefined || resolve === undefined
+      ? Effect.succeed(url)
+      : runIn(resolve(operation), entry.context)
+  }
+  const resolver = RequestResolver.makeGrouped<A, unknown>({
+    key: (entry) => keyOf(entry, requestUrls.get(entry.request)),
     resolver: (entries) =>
       Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
-        // Arrays are compared structurally, so equal keys share a batch.
         const batches = MutableHashMap.empty<
           readonly [string | undefined, unknown],
           Arr.NonEmptyArray<Request.Entry<A>>
         >()
         entries.forEach((entry, i) => {
-          const key = [urls[i], batchKey?.(entry.context)] as const
+          const key = keyOf(entry, urls[i])
           const batch = MutableHashMap.get(batches, key)
           if (batch._tag === "Some") batch.value.push(entry)
           else MutableHashMap.set(batches, key, [entry])
         })
         return Effect.forEach(batches, ([[url], entries]) => {
           const context: Context.Context<any> = entries[0].context
-          return Effect.provideContext(
+          return runIn(
             runAll(entries),
             url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
           )
         }, { concurrency: "unbounded", discard: true })
       })
   })
+  if (resolve !== undefined) urlResolvers.set(resolver.batchKey, resolve(operation))
+  return resolver
 }
+
+// Replaces, rather than merges into, the batch fiber's context, which may
+// belong to a lookup with other services or `Context.Reference` values.
+const runIn = <A, E>(effect: Effect.Effect<A, E, any>, context: Context.Context<any>): Effect.Effect<A, E> =>
+  Effect.updateContext(effect, (_: Context.Context<never>) => context)
 
 /**
  * Calls the method with deduplicated keys. Each target completes all entries
