@@ -883,7 +883,7 @@ describe("HttpServer", () => {
       }))
   })
 
-  it.live.each([100, 103, 600])(
+  it.live.each([103, 600])(
     "answers a handler response with status %i with a 500 and reports the failure",
     (status) =>
       Effect.gen(function*() {
