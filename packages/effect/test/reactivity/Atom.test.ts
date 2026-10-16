@@ -3016,6 +3016,49 @@ describe("Atom", { concurrent: false }, () => {
       assert.strictEqual(r.get(atom), 3)
     })
 
+    for (const termination of ["success", "failure", "defect", "interruption", "replacement"] as const) {
+      it.effect(`Stream mutation invalidation on ${termination}`, () =>
+        Effect.gen(function*() {
+          const r = AtomRegistry.make()
+          yield* Effect.addFinalizer(() => Effect.sync(() => r.dispose()))
+          let rebuilds = 0
+          const query = Atom.make(() => rebuilds++).pipe(
+            Atom.withReactivity(["counter"]),
+            Atom.keepAlive
+          )
+          const mutation = counterRuntime.fn(
+            () => {
+              switch (termination) {
+                case "success":
+                  return Stream.make(1, 2)
+                case "failure":
+                  return Stream.fail("boom")
+                case "defect":
+                  return Stream.die("boom")
+                default:
+                  return Stream.never
+              }
+            },
+            { reactivityKeys: ["counter"] }
+          )
+          assert.strictEqual(r.get(query), 0)
+          r.mount(mutation)
+          r.set(mutation, void 0)
+          yield* Effect.yieldNow
+
+          if (termination === "interruption") {
+            r.set(mutation, Atom.Interrupt)
+          } else if (termination === "replacement") {
+            r.set(mutation, void 0)
+          }
+          yield* Effect.yieldNow
+
+          assert.strictEqual(r.get(mutation).waiting, termination === "replacement")
+          assert.strictEqual(r.get(query), termination === "success" ? 1 : 0)
+          assert.strictEqual(rebuilds, termination === "success" ? 2 : 1)
+        }))
+    }
+
     it("rebuilds on mutation with a registry initial value", async () => {
       let rebuilds = 0
       let value = 0
