@@ -232,6 +232,9 @@ describe("Xml", () => {
             assert.deepStrictEqual(yield* failure(decodeString(chunks)), [kind, line, column], JSON.stringify(chunks))
           }
         }
+        // A stray quote in the internal subset is invalid markup rather than the end of the subset
+        const stray = yield* Effect.flip(decodeString(["<!DOCTYPE a [ \"x\"]><a/>"]))
+        assert.include(stray.message, "invalid markup in the internal subset")
         // Events completed before an error are emitted first
         for (const chunks of splits("<a><b/>text</c>")) {
           const results = yield* Stream.fromIterable(chunks, { chunkSize: 1 }).pipe(
