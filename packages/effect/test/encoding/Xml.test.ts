@@ -330,6 +330,41 @@ describe("Xml", () => {
         }
       }))
 
+    it.effect("decodes many chunks pulled at once", () =>
+      Effect.gen(function*() {
+        // Runs of chunks in one pull are joined up to 64 KiB, which must not affect characters, tokens or errors
+        // split between chunks or runs
+        const xml = `<r>${"<i a='é'>😀 &amp;\r\n</i>".repeat(4000)}</r>`
+        const bytes = textEncoder.encode(xml)
+        // A control character, and a byte that is not UTF-8, in the middle of the document
+        const at = xml.indexOf("&", 50_000)
+        const invalidText = xml.slice(0, at) + String.fromCharCode(1) + xml.slice(at + 1)
+        const invalidBytes = bytes.slice()
+        invalidBytes[bytes.indexOf(38, 50_000)] = 0xFF
+        // One pull of chunks with lengths cycling through `sizes`
+        const split = <A extends string | Uint8Array>(input: A, sizes: ReadonlyArray<number>) => {
+          const chunks: Array<A> = []
+          for (let i = 0, k = 0; i < input.length; i += sizes[k++ % sizes.length]) {
+            chunks.push(input.slice(i, i + sizes[k % sizes.length]) as A)
+          }
+          return Stream.fromIterable(chunks)
+        }
+        const text = (input: string, sizes: ReadonlyArray<number>) =>
+          split(input, sizes).pipe(Stream.pipeThroughChannel(Xml.decodeString()), Stream.runCollect)
+        const utf8 = (input: Uint8Array, sizes: ReadonlyArray<number>) =>
+          split(input, sizes).pipe(Stream.pipeThroughChannel(Xml.decode()), Stream.runCollect)
+        const expected = yield* text(xml, [xml.length])
+        const textFailure = yield* failure(text(invalidText, [xml.length]))
+        const bytesFailure = yield* failure(utf8(invalidBytes, [bytes.length]))
+        assert.deepStrictEqual([textFailure[0], bytesFailure[0]], ["Syntax", "Syntax"])
+        for (const sizes of [[1], [7, 5, 70_000], [65_535, 1, 2]]) {
+          assert.deepStrictEqual(yield* text(xml, sizes), expected)
+          assert.deepStrictEqual(yield* utf8(bytes, sizes), expected)
+          assert.deepStrictEqual(yield* failure(text(invalidText, sizes)), textFailure)
+          assert.deepStrictEqual(yield* failure(utf8(invalidBytes, sizes)), bytesFailure)
+        }
+      }))
+
     it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
       "does not keep the input of open elements in memory",
       () =>
