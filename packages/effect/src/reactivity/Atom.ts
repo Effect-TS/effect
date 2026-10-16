@@ -812,13 +812,13 @@ export function context(options?: {
 
     const layerAtom = keepAlive(
       typeof create === "function"
-        ? readable((get) => Layer.provideMerge(create(get), globalLayer))
-        : readable(() => Layer.provideMerge(create, globalLayer))
+        ? readable(create)
+        : readable(() => create)
     )
     self.layer = layerAtom
 
     self.read = function read(get: AtomContext) {
-      const layer = get(layerAtom)
+      const layer = Layer.provideMerge(get(layerAtom), globalLayer)
       // Teardown failures are logged with the built services. A scoped logger
       // from this layer is closed by then, so those reports may be dropped.
       let services = Context.empty()
