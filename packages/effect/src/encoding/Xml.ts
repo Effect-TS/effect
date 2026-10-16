@@ -1803,12 +1803,12 @@ class Collector implements Machine<Event, Element> {
           if (++this.matched < this.path.length) return
           this.size = 0
         }
-        let size = event.name.length
-        for (const key in event.attributes) size += key.length + event.attributes[key].length
-        this.grow(size)
         const element: MutableElement = { name: event.name, attributes: event.attributes, children: [] }
         if (this.stack.length > 0) this.stack[this.stack.length - 1].children.push(element)
         this.stack.push(element)
+        let size = event.name.length
+        for (const key in event.attributes) size += key.length + event.attributes[key].length
+        this.grow(size)
         return
       }
       case "EndElement": {
@@ -1842,9 +1842,7 @@ class Collector implements Machine<Event, Element> {
     if (this.size > this.maxElementSize) {
       throw new XmlError({
         kind: "Limit",
-        message: `element <${
-          this.stack.length > 0 ? this.stack[0].name : this.path[this.path.length - 1]
-        }> exceeds maxElementSize of ${this.maxElementSize}`
+        message: `element <${this.stack[0].name}> exceeds maxElementSize of ${this.maxElementSize}`
       })
     }
   }
