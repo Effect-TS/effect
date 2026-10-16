@@ -7,6 +7,7 @@ import * as EventLogEncryption from "effect/eventlog/EventLogEncryption"
 import * as EventLogRemote from "effect/eventlog/EventLogRemote"
 import { Reactivity } from "effect/reactivity"
 import { TestClock } from "effect/testing"
+import { vi } from "vitest"
 
 const UserPayload = Schema.Struct({
   id: Schema.String
@@ -19,6 +20,89 @@ const UserGroup = EventGroup.empty.add({
 })
 
 const schema = EventLog.schema(UserGroup)
+
+const ItemPayload = Schema.Struct({ list: Schema.String, item: Schema.Number })
+const ItemGroup = EventGroup.empty.add({
+  tag: "ItemAdded",
+  primaryKey: (payload) => payload.list,
+  payload: ItemPayload
+})
+const UncompactedItemGroup = EventGroup.empty.add({
+  tag: "ItemObserved",
+  primaryKey: (payload) => payload.list,
+  payload: ItemPayload
+})
+
+const replayItems = Effect.fnUntraced(function*(
+  input: ReadonlyArray<
+    { readonly event: "ItemAdded" | "ItemObserved"; readonly msecs: number; readonly suffix: number }
+  >
+) {
+  const handled = yield* Queue.unbounded<number>()
+  const changes = yield* Queue.unbounded<EventJournal.RemoteEntry, EventLogRemote.EventLogRemoteError>()
+  const entries = yield* Effect.forEach(input, ({ event, msecs, suffix }, item) =>
+    Effect.gen(function*() {
+      const id = EventJournal.makeEntryIdUnsafe({ msecs })
+      // Fixed UUID tails deliberately disagree with remote sequence order.
+      id.fill(0, 6)
+      id[6] = 0x70
+      id[8] = 0x80
+      id[15] = suffix
+      return new EventJournal.RemoteEntry({
+        remoteSequence: item,
+        entry: new EventJournal.Entry({
+          id,
+          event,
+          primaryKey: "list-1",
+          payload: yield* Schema.encodeUnknownEffect(ItemGroup.events.ItemAdded.payloadSchemaBinary)({
+            list: "list-1",
+            item
+          })
+        }, { disableChecks: true })
+      })
+    }))
+  yield* Queue.offerAll(changes, entries)
+  const remote = EventLogRemote.EventLogRemote.of({
+    id: EventJournal.makeRemoteIdUnsafe(),
+    changes: () => Effect.succeed(changes),
+    write: () => Effect.void,
+    whenAuthenticated: (effect) => effect
+  })
+  const handlers = Layer.mergeAll(
+    EventLog.group(
+      ItemGroup,
+      (handlers) => handlers.handle("ItemAdded", ({ payload }) => Queue.offer(handled, payload.item))
+    ),
+    EventLog.group(
+      UncompactedItemGroup,
+      (handlers) => handlers.handle("ItemObserved", ({ payload }) => Queue.offer(handled, payload.item))
+    ),
+    EventLog.groupCompaction(
+      ItemGroup,
+      ({ events, write }) => Effect.forEach(events, (event) => write(event._tag, event.payload), { discard: true })
+    )
+  ).pipe(Layer.provide(EventLog.layerRegistry))
+  const layer = EventLog.layer(EventLog.schema(ItemGroup, UncompactedItemGroup), handlers).pipe(
+    Layer.provide(EventJournal.layerMemory),
+    Layer.provide(
+      Layer.effect(EventLog.Identity, EventLog.makeIdentity).pipe(Layer.provide(EventLogEncryption.layerSubtle))
+    )
+  )
+  return yield* Effect.gen(function*() {
+    const registry = yield* EventLog.Registry
+    // Control only the randomness boundary: successive replacement UUIDs sort
+    // opposite to compactor write order, without relying on chance or retries.
+    let randomByte = 255
+    const random = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation((bytes) => {
+      new Uint8Array(bytes!.buffer, bytes!.byteOffset, bytes!.byteLength).fill(randomByte--)
+      return bytes
+    })
+    return yield* registry.registerRemote(remote).pipe(
+      Effect.andThen(Effect.forEach(input, () => Queue.take(handled))),
+      Effect.ensuring(Effect.sync(() => random.mockRestore()))
+    )
+  }).pipe(Effect.provide(layer))
+})
 
 const CurrentUserGroup = EventGroup.empty.add({
   tag: "UserCreated",
@@ -61,6 +145,29 @@ const logLayer = (
   )
 
 describe("EventLog", () => {
+  it.effect("replays compacted outputs in compactor write order", () =>
+    Effect.gen(function*() {
+      const handled = yield* replayItems([
+        { event: "ItemAdded", msecs: 1000, suffix: 0 },
+        { event: "ItemAdded", msecs: 1001, suffix: 0 }
+      ])
+      assert.deepStrictEqual(handled, [0, 1])
+    }), { concurrent: false })
+
+  it.effect(
+    "preserves remote order for uncompacted entries sharing a millisecond in a mixed batch",
+    () =>
+      Effect.gen(function*() {
+        const handled = yield* replayItems([
+          { event: "ItemObserved", msecs: 1000, suffix: 2 },
+          { event: "ItemObserved", msecs: 1000, suffix: 1 },
+          { event: "ItemAdded", msecs: 1000, suffix: 3 }
+        ])
+        assert.deepStrictEqual(handled, [0, 1, 2])
+      }),
+    { concurrent: false }
+  )
+
   it.effect("compacts valid events while preserving undecodable entries unchanged", () =>
     Effect.gen(function*() {
       const first = yield* makeCompactionEntry({ id: "user-1", name: "before" })
