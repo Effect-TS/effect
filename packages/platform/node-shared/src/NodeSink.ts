@@ -19,6 +19,7 @@ import { identity, type LazyArg } from "effect/Function"
 import * as Pull from "effect/Pull"
 import * as Sink from "effect/Sink"
 import { finished, type Writable } from "node:stream"
+import { destroyStream } from "./internal/stream.ts"
 
 /**
  * Creates a `Sink` that writes chunks to a Node writable stream, respecting
@@ -58,7 +59,28 @@ export const fromWritableChannel = <IE, E, A = Uint8Array | string>(
 ): Channel.Channel<never, IE | E, void, NonEmptyReadonlyArray<A>, IE> =>
   Channel.fromTransform((pull: Pull.Pull<NonEmptyReadonlyArray<A>, IE, unknown>) => {
     const writable = options.evaluate() as Writable
-    return Effect.succeed(pullIntoWritable({ ...options, writable, pull }))
+    return Effect.succeed(
+      pullIntoWritable({ ...options, writable, pull }).pipe(
+        Effect.onExit((exit) => {
+          if (
+            options.endOnDone === false || (exit._tag === "Failure" && Pull.isDoneCause(exit.cause))
+          ) {
+            return Effect.void
+          }
+          return Effect.callback<void>((resume) => {
+            if (writable.closed) {
+              // Destruction may be complete with its error still queued.
+              const cleanup = finished(writable, { readable: false }, () => {
+                cleanup()
+                resume(Effect.void)
+              })
+              return
+            }
+            destroyStream(writable, () => {}, () => resume(Effect.void))
+          })
+        })
+      )
+    )
   })
 
 /**
