@@ -28,6 +28,7 @@ import * as internalGraphQL from "../internal/graphql.ts"
 import * as MutableHashMap from "../MutableHashMap.ts"
 import * as Request from "../Request.ts"
 import * as RequestResolver from "../RequestResolver.ts"
+import * as Tracer from "../Tracer.ts"
 import type * as Types from "../Types.ts"
 import type * as GraphQL from "./GraphQL.ts"
 import type { OperationMethod, PartialResult } from "./GraphQLClient.ts"
@@ -632,8 +633,8 @@ const requestUrls = new WeakMap<Request.Any, string>()
  * each group. A URL that `request` couldn't resolve, for example after
  * `RequestResolver.grouped` replaced the key, is resolved here in the entry's
  * context, and the batch is split again. Each batch runs in its first entry's
- * context, carrying the URL it was grouped by, so the transport doesn't
- * resolve it again.
+ * context, under any span opened around the batch, carrying the URL it was
+ * grouped by, so the transport doesn't resolve it again.
  */
 const makeResolver = <A extends Request.Any>(
   method: OperationMethod<any>,
@@ -653,24 +654,26 @@ const makeResolver = <A extends Request.Any>(
   const resolver = RequestResolver.makeGrouped<A, unknown>({
     key: (entry) => keyOf(entry, requestUrls.get(entry.request)),
     resolver: (entries) =>
-      Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
-        const batches = MutableHashMap.empty<
-          readonly [string | undefined, unknown],
-          Arr.NonEmptyArray<Request.Entry<A>>
-        >()
-        entries.forEach((entry, i) => {
-          const key = keyOf(entry, urls[i])
-          const batch = MutableHashMap.get(batches, key)
-          if (batch._tag === "Some") batch.value.push(entry)
-          else MutableHashMap.set(batches, key, [entry])
+      Effect.contextWith((current: Context.Context<never>) => {
+        const span = batchSpan(current, entries)
+        return Effect.flatMap(Effect.forEach(entries, urlOf, { concurrency: "unbounded" }), (urls) => {
+          const batches = MutableHashMap.empty<
+            readonly [string | undefined, unknown],
+            Arr.NonEmptyArray<Request.Entry<A>>
+          >()
+          entries.forEach((entry, i) => {
+            const key = keyOf(entry, urls[i])
+            const batch = MutableHashMap.get(batches, key)
+            if (batch._tag === "Some") batch.value.push(entry)
+            else MutableHashMap.set(batches, key, [entry])
+          })
+          return Effect.forEach(batches, ([[url], entries]) => {
+            let context: Context.Context<any> = entries[0].context
+            if (url !== undefined) context = Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
+            if (span !== undefined) context = Context.add(context, Tracer.ParentSpan, span)
+            return runIn(runAll(entries), context)
+          }, { concurrency: "unbounded", discard: true })
         })
-        return Effect.forEach(batches, ([[url], entries]) => {
-          const context: Context.Context<any> = entries[0].context
-          return runIn(
-            runAll(entries),
-            url === undefined ? context : Context.add(context, internalGraphQL.ResolvedUrl, { resolve, url })
-          )
-        }, { concurrency: "unbounded", discard: true })
       })
   })
   if (resolve !== undefined) urlResolvers.set(resolver.batchKey, resolve(operation))
@@ -681,6 +684,16 @@ const makeResolver = <A extends Request.Any>(
 // belong to a lookup with other services or `Context.Reference` values.
 const runIn = <A, E>(effect: Effect.Effect<A, E, any>, context: Context.Context<any>): Effect.Effect<A, E> =>
   Effect.updateContext(effect, (_: Context.Context<never>) => context)
+
+// A span opened around the batch, such as `RequestResolver.withSpan`'s. The
+// batch fiber otherwise holds the span of the lookup that started or filled it.
+const batchSpan = (context: Context.Context<never>, entries: ReadonlyArray<Request.Entry<any>>) => {
+  const span = Context.getOrUndefined(context, Tracer.ParentSpan)
+  return span === undefined ||
+      entries.some((entry) => Context.getOrUndefined(entry.context, Tracer.ParentSpan) === span)
+    ? undefined
+    : span
+}
 
 /**
  * Calls the method with deduplicated keys. Each target completes all entries
