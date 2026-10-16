@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix request resolvers with synchronously completing delays, including `RequestResolver.setDelay(0)` under `TestClock`, running an empty batch and failing instead of resolving the request.
+Fix `Effect.request` failing when a resolver's batch delay completes synchronously, such as `RequestResolver.setDelay(0)` under `TestClock`, by registering the request before the delay starts.
