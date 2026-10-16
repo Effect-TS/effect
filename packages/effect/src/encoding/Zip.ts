@@ -1794,14 +1794,12 @@ class InflateMemory {
 // Decompresses one deflate stream from the queue, reading no byte past its end
 class Inflater {
   private readonly memory: InflateMemory
-  private readonly buffer: Uint8Array
   // Start of the output not handed out yet
   private start = WINDOW_SIZE
   private readonly generator: Generator<number, number, void>
 
   constructor(queue: ByteQueue, memory: InflateMemory) {
     this.memory = memory
-    this.buffer = memory.buffer
     this.generator = this.run(queue)
   }
 
@@ -1811,10 +1809,11 @@ class Inflater {
     // A finished generator returns `undefined` from later calls
     const { done, value: end = start } = this.generator.next()
     if (end === start) return done ? undefined : NeedInput
-    const out = this.buffer.slice(start, end)
+    const { buffer } = this.memory
+    const out = buffer.slice(start, end)
     if (end === INFLATE_BUFFER_SIZE) {
       // Keep the last output as the window
-      this.buffer.copyWithin(0, OUTPUT_SIZE)
+      buffer.copyWithin(0, OUTPUT_SIZE)
       this.start = WINDOW_SIZE
     } else {
       this.start = end
@@ -1831,7 +1830,7 @@ class Inflater {
   // always from the current chunk, and are given back before stored blocks and
   // at the end.
   private *run(queue: ByteQueue): Generator<number, number, void> {
-    const buffer = this.buffer
+    const { buffer } = this.memory
     let position = WINDOW_SIZE
     // Matches cannot reach before this index: until the buffer is first full,
     // the window holds no output of this stream
