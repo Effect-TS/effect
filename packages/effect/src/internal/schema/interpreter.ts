@@ -22,6 +22,17 @@ const flatMapTransformation = (
   result === InternalParser.sameExit ? f(current) : Effect.flatMapEager(result, f)
 
 function compileTransformation(transformation: SchemaAST.Link["transformation"]): ApplyTransformation {
+  const apply = compileTransformationUnsafe(transformation)
+  return (result, current, options) => {
+    try {
+      return apply(result, current, options)
+    } catch (error) {
+      return Effect.die(error)
+    }
+  }
+}
+
+function compileTransformationUnsafe(transformation: SchemaAST.Link["transformation"]): ApplyTransformation {
   if (transformation._tag === "Middleware") {
     return (result, current, options) => {
       const transformed = result === InternalParser.sameExit
@@ -143,11 +154,11 @@ export function compile(
     return parser
   }
   let encodingParsers: ReadonlyArray<Parser> | undefined
-  const parseChecks = (
+  const applyChecks = (
+    result: Effect.Effect<unknown, SchemaIssue.Issue, any>,
     input: unknown,
     options: SchemaAST.ParseOptions
   ) => {
-    let result = parser(input, options)
     if (encodingChecks && !options.disableChecks) {
       if (effectIsExit(result)) {
         if (result._tag === "Success") {
@@ -200,6 +211,16 @@ export function compile(
     }
 
     return result
+  }
+  const parseChecks: Parser = (input, options) => {
+    // Child parsing may compile lazy schemas. Only catch check callbacks here,
+    // so compilation failures still throw and can be retried.
+    const result = parser(input, options)
+    try {
+      return applyChecks(result, input, options)
+    } catch (error) {
+      return Effect.die(error)
+    }
   }
   const parseLocal = specialize === undefined ? parseChecks : specialize(parseChecks)
   if (!links) {
