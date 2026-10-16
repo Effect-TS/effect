@@ -40,6 +40,10 @@ import { pullIntoWritable } from "./NodeSink.ts"
 export const fromReadable = <A = Uint8Array, E = Cause.UnknownError>(options: {
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
+  /**
+   * Maximum number of Node reads per pull (default 4096). When supplied,
+   * also passed to Node's `read(size)` to preserve byte read sizes.
+   */
   readonly chunkSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Stream.Stream<A, E> => Stream.fromChannel(fromReadableChannel<A, E>(options))
@@ -56,6 +60,10 @@ export const fromReadable = <A = Uint8Array, E = Cause.UnknownError>(options: {
 export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(options: {
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
+  /**
+   * Maximum number of Node reads per pull (default 4096). When supplied,
+   * also passed to Node's `read(size)` to preserve byte read sizes.
+   */
   readonly chunkSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Channel.Channel<Arr.NonEmptyReadonlyArray<A>, E> =>
@@ -82,6 +90,10 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
   options: {
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E
+    /**
+     * Maximum number of Node reads per pull (default 4096). When supplied,
+     * also passed to Node's `read(size)` to preserve byte read sizes.
+     */
     readonly chunkSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
@@ -132,6 +144,10 @@ export const pipeThroughDuplex: {
     options: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
+      /**
+       * Maximum number of Node reads per pull (default 4096). When supplied,
+       * also passed to Node's `read(size)` to preserve byte read sizes.
+       */
       readonly chunkSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
@@ -142,6 +158,10 @@ export const pipeThroughDuplex: {
     options: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
+      /**
+       * Maximum number of Node reads per pull (default 4096). When supplied,
+       * also passed to Node's `read(size)` to preserve byte read sizes.
+       */
       readonly chunkSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
@@ -152,6 +172,10 @@ export const pipeThroughDuplex: {
   options: {
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E2
+    /**
+     * Maximum number of Node reads per pull (default 4096). When supplied,
+     * also passed to Node's `read(size)` to preserve byte read sizes.
+     */
     readonly chunkSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
@@ -382,6 +406,7 @@ const readableToPullUnsafe = <A, E>(options: {
   readonly closeOnDone?: boolean | undefined
 }) => {
   const readable = options.readable as Readable
+  const chunkSize = options.chunkSize ?? 4096
 
   const closeOnDone = options.closeOnDone ?? true
   const exit = options.exit ?? MutableRef.make(undefined)
@@ -408,7 +433,8 @@ const readableToPullUnsafe = <A, E>(options: {
       return Effect.flatMap(latch.await, loop)
     }
     const chunk = Arr.of(item as A)
-    while (true) {
+    // read() can synchronously refill the buffer, so null is not a batch bound.
+    while (chunk.length < chunkSize) {
       item = options.readable.read(options.chunkSize)
       if (item === null) break
       chunk.push(item)
