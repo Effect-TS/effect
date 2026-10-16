@@ -136,6 +136,57 @@ describe("Stream", () => {
       assert.strictEqual(result, "ABC")
     }))
 
+  for (const adapter of ["fromDuplex", "pipeThroughDuplex"] as const) {
+    it.effect(`${adapter} bounds byte drains and completes in order`, () =>
+      Effect.gen(function*() {
+        const input = Buffer.from("abcdefghijk")
+        let offset = 0
+        let reads = 0
+        const options = {
+          evaluate: () =>
+            new Duplex({
+              highWaterMark: 1,
+              read() {
+                reads++
+                if (offset === input.length) {
+                  this.push(null)
+                } else {
+                  const next = Math.min(offset + 2, input.length)
+                  this.push(input.subarray(offset, next))
+                  offset = next
+                }
+              },
+              write(_chunk, _encoding, callback) {
+                callback()
+              }
+            }),
+          chunkSize: 2
+        }
+        const stream = adapter === "fromDuplex"
+          ? Stream.empty.pipe(Stream.pipeThroughChannelOrFail(NodeStream.fromDuplex(options)))
+          : Stream.empty.pipe(NodeStream.pipeThroughDuplex(options))
+        let batches = 0
+        const chunks = yield* stream.pipe(
+          Stream.chunks,
+          Stream.tap((batch) =>
+            Effect.sync(() => {
+              assert.isAtMost(batch.length, 2)
+              if (batches++ === 0) {
+                assert.deepEqual(batch.map((bytes) => Buffer.from(bytes).toString()), ["ab", "cd"])
+                // Allow one Node-prefetched buffer, but not the entire source.
+                assert.isAtMost(reads, 3)
+              }
+            })
+          ),
+          Stream.runCollect
+        )
+        assert.isAbove(batches, 1)
+        const bytes = chunks.flat()
+        assert.deepEqual(bytes.map((chunk) => chunk.length), [2, 2, 2, 2, 2, 1])
+        assert.strictEqual(Buffer.concat(bytes).toString(), "abcdefghijk")
+      }))
+  }
+
   it.effect("fromDuplex failure", () =>
     Effect.gen(function*() {
       const result = yield* Stream.fromArray(["a", "b", "c"]).pipe(
