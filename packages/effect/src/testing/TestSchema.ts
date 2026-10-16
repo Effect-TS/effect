@@ -15,7 +15,6 @@
  * @since 4.0.0
  */
 import * as assert from "node:assert"
-import { isDeepStrictEqual } from "node:util"
 import * as Arbitrary from "../Arbitrary.ts"
 import * as Cause from "../Cause.ts"
 import type * as Context from "../Context.ts"
@@ -310,6 +309,8 @@ export class Asserts<S extends Schema.Constraint> {
     return Effect.suspend(() => {
       const decodeUnknownEffect = SchemaParser.decodeUnknownEffect(this.schema)
       const encodeEffect = SchemaParser.encodeEffect(this.schema)
+      // Null-prototype samples and -0 are valid schema values. Strict equality rejects both.
+      const equivalence = Schema.toEquivalence(this.schema as unknown as Schema.Schema<S["Type"]>)
       const arbitrary = Arbitrary.schema(this.schema)
       return Arbitrary.checkEffect(
         arbitrary,
@@ -317,7 +318,7 @@ export class Asserts<S extends Schema.Constraint> {
           Effect.suspend(() => encodeEffect(value)).pipe(
             Effect.flatMapEager((encoded) => decodeUnknownEffect(encoded)),
             schemaResult,
-            Effect.mapEager((result) => isDeepStrictEqual(result, Result.succeed(value)))
+            Effect.mapEager((result) => Result.isSuccess(result) && equivalence(result.success, value))
           ),
         options
       ).pipe(Effect.mapEager(assertPropertyPassed))

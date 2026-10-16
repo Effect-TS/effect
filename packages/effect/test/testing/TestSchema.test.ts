@@ -155,6 +155,13 @@ describe("TestSchema", () => {
     await asserts.verifyRoundTrip({ runs: 20, seed: "lossless" })
   })
 
+  it("verifyRoundTrip accepts lossless object and number schemas", async () => {
+    await new TestSchema.Asserts(Schema.Struct({ a: Schema.String })).verifyRoundTrip({ runs: 100, seed: 1 })
+    for (const seed of [1, 2, 3, "x"]) {
+      await new TestSchema.Asserts(Schema.NumberFromString).verifyRoundTrip({ runs: 100, seed })
+    }
+  })
+
   it("verifyRoundTrip reports a shrunk input and replay", async () => {
     const schema = Schema.Number.pipe(
       Schema.decodeTo(
