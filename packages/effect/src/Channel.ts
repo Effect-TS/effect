@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan } from "./internal/effect.ts"
+import { causeMap, causeOrDie, ClockRef, endSpan, findErrorOnly } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -4800,7 +4800,7 @@ const catch_: {
   InErr & InErr1,
   InDone & InDone1,
   Env | Env1
-> => catchCauseFilter(self, Cause.findError, (e) => f(e)))
+> => catchCauseFilter(self, findErrorOnly, (e) => f(e)))
 
 export {
   /**
@@ -5977,7 +5977,8 @@ export const mapError: {
 } = dual(2, <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env, OutErr2>(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>,
   f: (err: OutErr) => OutErr2
-): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> => catch_(self, (err) => fail(f(err))))
+): Channel<OutElem, OutErr2, OutDone, InElem, InErr, InDone, Env> =>
+  catchCause(self, (cause) => failCauseSync(() => causeMap(cause, f))))
 
 /**
  * Converts all errors in the channel to defects (unrecoverable failures).
@@ -6016,7 +6017,8 @@ export const orDie = <
   Env
 >(
   self: Channel<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>
-): Channel<OutElem, never, OutDone, InElem, InErr, InDone, Env> => catch_(self, die)
+): Channel<OutElem, never, OutDone, InElem, InErr, InDone, Env> =>
+  catchCause(self, (cause) => failCause(causeOrDie(cause)))
 
 /**
  * Ignores all errors in the channel, converting them to an empty channel.

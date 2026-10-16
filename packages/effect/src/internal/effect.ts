@@ -59,6 +59,7 @@ import {
   contA,
   contAll,
   contE,
+  Die,
   evaluate,
   exitDie,
   exitFail,
@@ -167,6 +168,37 @@ export const findError = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause
 
 /** @internal */
 export const findErrorOption = Filter.toOption(findError)
+
+/**
+ * Finds the first typed error when the cause contains only `Fail` reasons.
+ * Otherwise returns the `Die` and `Interrupt` reasons, so typed-error
+ * recovery cannot swallow defects or interruption.
+ *
+ * @internal
+ */
+export const findErrorOnly = <E>(self: Cause.Cause<E>): Result.Result<E, Cause.Cause<never>> => {
+  let fail: Cause.Fail<E> | undefined
+  let hasOthers = false
+  for (let i = 0; i < self.reasons.length; i++) {
+    const reason = self.reasons[i]
+    if (reason._tag === "Fail") fail ??= reason
+    else hasOthers = true
+  }
+  if (fail === undefined) return Result.fail(self as Cause.Cause<never>)
+  if (!hasOthers) return Result.succeed(fail.error)
+  return Result.fail(causeFromReasons(self.reasons.filter((reason) => reason._tag !== "Fail")) as Cause.Cause<never>)
+}
+
+const causeFilterFails = <E>(self: Cause.Cause<E>, keep: (error: E) => boolean): Cause.Cause<E> =>
+  causeFromReasons(self.reasons.filter((reason) => reason._tag !== "Fail" || keep(reason.error)))
+
+/** @internal */
+export const causeOrDie = <E>(self: Cause.Cause<E>): Cause.Cause<never> =>
+  hasFails(self)
+    ? causeFromReasons(
+      self.reasons.map((reason) => reason._tag === "Fail" ? new Die(reason.error, reason.annotations) : reason)
+    )
+    : self as Cause.Cause<never>
 
 /** @internal */
 export const hasDies = <E>(self: Cause.Cause<E>): boolean => self.reasons.some(isDieReason)
@@ -1953,8 +1985,12 @@ export const catchEager: {
   ): Effect.Effect<A | B, E2, R | R2> => {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return self as Exit.Exit<A>
-      const error = findError(self.cause)
-      if (Result.isFailure(error)) return self as Exit.Exit<never>
+      const error = findErrorOnly(self.cause)
+      if (Result.isFailure(error)) {
+        return error.failure === self.cause
+          ? self as Exit.Exit<never>
+          : exitFailCause(error.failure)
+      }
       return f(error.success)
     }
     return catch_(self, f)
@@ -2050,9 +2086,7 @@ export const exitMapError: {
   2,
   <A, E, E2>(self: Exit.Exit<A, E>, f: (a: NoInfer<E>) => E2): Exit.Exit<A, E2> => {
     if (self._tag === "Success") return self as Exit.Exit<A>
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(f(error.success))
+    return hasFails(self.cause) ? exitFailCause(causeMap(self.cause, f)) : self as Exit.Exit<never>
   }
 )
 
@@ -2072,9 +2106,7 @@ export const exitMapBoth: {
     options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
   ): Exit.Exit<A2, E2> => {
     if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
-    const error = findError(self.cause)
-    if (Result.isFailure(error)) return self as Exit.Exit<never>
-    return exitFail(options.onFailure(error.success))
+    return hasFails(self.cause) ? exitFailCause(causeMap(self.cause, options.onFailure)) : self as Exit.Exit<never>
   }
 )
 
@@ -2682,7 +2714,7 @@ export const catch_: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (a: NoInfer<E>) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E2, R | R2> => catchCauseFilter(self, findError as any, (e: any) => f(e)) as any
+  ): Effect.Effect<A | B, E2, R | R2> => catchCauseFilter(self, findErrorOnly as any, (e: any) => f(e)) as any
 )
 
 /** @internal */
@@ -2914,8 +2946,13 @@ export const catchIf: {
     orElse?: ((e: E) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findError(cause)
-      if (Result.isFailure(error)) return failCause(error.failure)
+      const error = findErrorOnly(cause)
+      if (Result.isFailure(error)) {
+        // Unmatched failures stay in the error channel when there is no orElse
+        return failCause(
+          orElse ? error.failure : causeFilterFails(cause, (e) => !predicate(e)) as any as Cause.Cause<E3>
+        )
+      }
       if (!predicate(error.success)) {
         return orElse ? orElse(error.success as any) : failCause(cause as any as Cause.Cause<E3>)
       }
@@ -2947,8 +2984,13 @@ export const catchFilter: {
     orElse?: ((e: X) => Effect.Effect<A3, E3, R3>) | undefined
   ): Effect.Effect<A | A2 | A3, E2 | E3, R | R2 | R3> =>
     catchCause(self, (cause): Effect.Effect<A2 | A3, E2 | E3, R2 | R3> => {
-      const error = findError(cause)
-      if (Result.isFailure(error)) return failCause(error.failure)
+      const error = findErrorOnly(cause)
+      if (Result.isFailure(error)) {
+        // Unmatched failures stay in the error channel when there is no orElse
+        return failCause(
+          orElse ? error.failure : causeFilterFails(cause, (e) => Result.isFailure(filter(e))) as any as Cause.Cause<E3>
+        )
+      }
       const result = filter(error.success)
       if (Result.isFailure(result)) {
         return orElse ? orElse(result.failure as any) : failCause(cause as any as Cause.Cause<E3>)
@@ -3381,7 +3423,7 @@ export const mapError: {
   <A, E, R, E2>(
     self: Effect.Effect<A, E, R>,
     f: (e: E) => E2
-  ): Effect.Effect<A, E2, R> => catch_(self, (error) => failSync(() => f(error)))
+  ): Effect.Effect<A, E2, R> => catchCause(self, (cause) => failCauseSync(() => causeMap(cause, f)))
 )
 
 /** @internal */
@@ -3397,15 +3439,15 @@ export const mapBoth: {
   self: Effect.Effect<A, E, R>,
   options: { readonly onFailure: (e: E) => E2; readonly onSuccess: (a: A) => A2 }
 ): Effect.Effect<A2, E2, R> =>
-  matchEffect(self, {
-    onFailure: (e) => failSync(() => options.onFailure(e)),
+  matchCauseEffect(self, {
+    onFailure: (cause) => failCauseSync(() => causeMap(cause, options.onFailure)),
     onSuccess: (a) => sync(() => options.onSuccess(a))
   }))
 
 /** @internal */
 export const orDie = <A, E, R>(
   self: Effect.Effect<A, E, R>
-): Effect.Effect<A, never, R> => catch_(self, die)
+): Effect.Effect<A, never, R> => catchCause(self, (cause) => failCause(causeOrDie(cause)))
 
 /** @internal */
 export const orElseSucceed: {
@@ -3477,9 +3519,9 @@ export const ignore: <
       const logEffect = logWithLevel(options.log === true ? undefined : options.log)
       return matchCauseEffect(self, {
         onFailure(cause) {
-          const failure = findFail(cause)
-          return Result.isFailure(failure)
-            ? failCause(failure.failure)
+          const error = findErrorOnly(cause)
+          return Result.isFailure(error)
+            ? failCause(error.failure)
             : options.message === undefined
             ? logEffect(cause)
             : logEffect(options.message, cause)
@@ -3617,11 +3659,11 @@ const makeMatch = (
   return MatchImpl
 }
 const MatchImpl = makeMatch("Match", function(cause, fiber) {
-  const fail = cause.reasons.find(isFailReason)
-  if (fail === undefined) return failCause(cause) as any
+  const error = findErrorOnly(cause)
+  if (Result.isFailure(error)) return failCause(error.failure) as any
   const handlers = this.payload
   return fiber.succeedWith(
-    continuationMarksStack ? handlers.onFailure(fail.error) : internalCall(() => handlers.onFailure(fail.error))
+    continuationMarksStack ? handlers.onFailure(error.success) : internalCall(() => handlers.onFailure(error.success))
   )
 })
 const MatchCauseImpl = makeMatch("MatchCause", function(cause, fiber) {
@@ -3681,10 +3723,10 @@ export const matchEffect: {
   ): Effect.Effect<A2 | A3, E2 | E3, R2 | R3 | R> =>
     matchCauseEffect(self, {
       onFailure: (cause) => {
-        const fail = cause.reasons.find(isFailReason)
-        return fail
-          ? options.onFailure(fail.error)
-          : failCause(cause as Cause.Cause<never>)
+        const error = findErrorOnly(cause)
+        return Result.isFailure(error)
+          ? failCause(error.failure)
+          : options.onFailure(error.success)
       },
       onSuccess: options.onSuccess
     })
@@ -3738,8 +3780,12 @@ export const matchEager: {
   ): Effect.Effect<A2 | A3, never, R> => {
     if (effectIsExit(self)) {
       if (self._tag === "Success") return exitSucceed(options.onSuccess(self.value))
-      const error = findError(self.cause)
-      if (Result.isFailure(error)) return self as Exit.Exit<never>
+      const error = findErrorOnly(self.cause)
+      if (Result.isFailure(error)) {
+        return error.failure === self.cause
+          ? self as Exit.Exit<never>
+          : exitFailCause(error.failure)
+      }
       return exitSucceed(options.onFailure(error.success))
     }
     return match(self, options)

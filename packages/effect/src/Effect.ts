@@ -14956,12 +14956,18 @@ export const tx = <A, E, R>(
     return uninterruptibleMask((restore) => {
       const run = restore(effect).pipe(
         provideService(Transaction, mutable),
-        tapCause((cause) => {
-          if (!mutable.retry) return void_
+        catchCause((cause) => {
+          if (!mutable.retry) return failCause(cause)
           // txRetry interrupts the body; any other reason in the cause is a real failure.
-          // Roll back now so the step below fails instead of waiting or rerunning.
-          if (!internal.hasInterruptsOnly(cause)) return sync(() => clearTransaction(mutable))
-          return restore(awaitPendingTransaction(mutable))
+          // Roll back now and drop the retry interruption so the step below fails
+          // with the real failure instead of waiting or rerunning.
+          if (!internal.hasInterruptsOnly(cause)) {
+            return suspend(() => {
+              clearTransaction(mutable)
+              return failCause(removeRetryInterrupt(cause, fiber.id))
+            })
+          }
+          return andThen(restore(awaitPendingTransaction(mutable)), failCause(cause))
         }),
         exit
       )
@@ -15050,6 +15056,11 @@ function commitTransaction(fiber: Fiber<unknown, unknown>, state: TransactionMet
     ref.pending.clear()
   }
 }
+
+const removeRetryInterrupt = <E>(cause: Cause.Cause<E>, fiberId: number): Cause.Cause<E> =>
+  core.causeFromReasons(
+    cause.reasons.filter((reason) => !core.isInterruptReason(reason) || reason.fiberId !== fiberId)
+  )
 
 function clearTransaction(state: TransactionMetaInner) {
   state.retry = false
