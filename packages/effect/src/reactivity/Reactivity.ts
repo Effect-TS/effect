@@ -162,9 +162,15 @@ export const make = Effect.sync(() => {
 
       let running = false
       let pending = false
+      let stopped = false
       const handleExit = (exit: Exit.Exit<A, E>) => {
         if (exit._tag === "Failure") {
+          stopped = true
+          pending = false
+          running = false
+          cancel()
           Queue.failCauseUnsafe(results, exit.cause)
+          return
         } else {
           Queue.offerUnsafe(results, exit.value)
         }
@@ -177,6 +183,7 @@ export const make = Effect.sync(() => {
       }
 
       function run() {
+        if (stopped) return
         if (running) {
           pending = true
           return
