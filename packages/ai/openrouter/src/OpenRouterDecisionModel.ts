@@ -65,6 +65,9 @@ export const model = (
 
 /**
  * Creates a decision service that requires full choice and score distributions.
+ * Choice and score answers without a distribution are passed to the core,
+ * which reports them as `"NoDistribution"` from `decideSettled` and fails
+ * `decide` with `AiError.InvalidOutputError`.
  * Score indices map to criteria labels. Reported `cost` and the serving
  * provider are returned under `metadata.openrouter`.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
@@ -118,15 +121,6 @@ export const make = Effect.fnUntraced(function*(options: {
           answers[key] = { _tag: "Probability", probability: answer.noul }
           continue
         }
-        if (answer.probabilities === undefined) {
-          return yield* AiError.make({
-            module: "OpenRouterDecisionModel",
-            method: "decide",
-            reason: new AiError.InvalidOutputError({
-              description: `Provider returned no probabilities for decision "${key}"`
-            })
-          })
-        }
         if (answer.type === "choice") {
           answers[key] = {
             _tag: "Classify",
@@ -136,12 +130,15 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         } else {
           const decision = decisions[key]
-          const probabilities: Record<string, number> = Object.create(null)
-          if (decision?._tag === "Rate") {
-            for (const [index, { label }] of decision.criteria.entries()) {
-              const probability = answer.probabilities[String(index)]
-              if (probability !== undefined) {
-                probabilities[label] = probability
+          let probabilities: Record<string, number> | undefined
+          if (answer.probabilities !== undefined) {
+            probabilities = Object.create(null) as Record<string, number>
+            if (decision?._tag === "Rate") {
+              for (const [index, { label }] of decision.criteria.entries()) {
+                const probability = answer.probabilities[String(index)]
+                if (probability !== undefined) {
+                  probabilities[label] = probability
+                }
               }
             }
           }

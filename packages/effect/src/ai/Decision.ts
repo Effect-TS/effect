@@ -1,13 +1,15 @@
 /**
  * Defines decisions that a `DecisionModel` answers over a single input.
  * Pair an input schema with named classification, rating, or probability
- * decisions using `make`, then answer them with `DecisionModel.decide`.
+ * decisions using `make`, then answer them with `DecisionModel.decide`, or
+ * with `DecisionModel.decideSettled` to keep valid answers when others fail.
  *
  * @see {@link make} for building a definition from an input schema and decisions
  *
  * @stability unstable
  * @since 4.0.0
  */
+import type * as Result from "../Result.ts"
 import type * as Schema from "../Schema.ts"
 
 /**
@@ -173,6 +175,56 @@ export type Answer<D extends Any> = D extends Classify<infer Label> ? ClassifyAn
  */
 export type Answers<Decisions extends Record<string, Any>> = {
   readonly [K in keyof Decisions]: Answer<Decisions[K]>
+}
+
+/**
+ * Why a decision has no valid answer. `reason` names the first validation
+ * check that failed and `description` explains it.
+ *
+ * **Details**
+ *
+ * - `"Missing"`: the provider returned no answer for the decision.
+ * - `"Refused"`: the provider declined to answer the decision.
+ * - `"Invalid"`: the answer has the wrong kind, an unknown label, a rating or
+ *   confidence out of range, or a distribution with missing entries, values
+ *   outside `[0, 1]`, or a sum outside tolerance.
+ * - `"NoDistribution"`: a classify or rate answer is otherwise valid but has
+ *   no probabilities.
+ *
+ * Except for refusals, `description` is the message `DecisionModel.decide`
+ * fails with for the same answer.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Unanswered {
+  readonly _tag: "Unanswered"
+  readonly reason: "Missing" | "Refused" | "NoDistribution" | "Invalid"
+  readonly description: string
+}
+
+/**
+ * Settled result for a single decision: the validated answer, or why there is
+ * none.
+ *
+ * @see {@link Unanswered} for the failure reasons
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type Outcome<D extends Any> = Result.Result<Answer<D>, Unanswered>
+
+/**
+ * Settled results keyed by decision name.
+ *
+ * @stability unstable
+ * @category utility types
+ * @since 4.0.6
+ */
+export type Outcomes<Decisions extends Record<string, Any>> = {
+  readonly [K in keyof Decisions]: Outcome<Decisions[K]>
 }
 
 /**
