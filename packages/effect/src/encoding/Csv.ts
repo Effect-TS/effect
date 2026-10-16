@@ -225,8 +225,6 @@ class Parser {
     this.ignoreEmptyLines = ignoreEmptyLines
   }
 
-  // JavaScriptCore gives every Error its own source `column`, which would pass
-  // for a cell index, so errors without one set it to undefined
   fail(kind: "Syntax" | "RecordSize", message: string): CsvError {
     return new CsvError({
       kind,
