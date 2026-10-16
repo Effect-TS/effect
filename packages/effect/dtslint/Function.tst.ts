@@ -55,4 +55,11 @@ describe("Function", () => {
     expect(apply2(arg2)).type.toBe<string>()
     expect(apply1).type.not.toBeCallableWith(arg3)
   })
+
+  it("constant preserves argument literals", () => {
+    expect(Function.constant("other")).type.toBe<Function.LazyArg<"other">>()
+    expect(Function.constant(1)).type.toBe<Function.LazyArg<1>>()
+    expect(Function.constant(true)).type.toBe<Function.LazyArg<true>>()
+    expect(Function.constant([1, "a"])).type.toBe<Function.LazyArg<readonly [1, "a"]>>()
+  })
 })

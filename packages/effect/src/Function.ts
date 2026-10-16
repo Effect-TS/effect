@@ -289,7 +289,7 @@ export const unsafeCoerce: <A, B>(a: A) => B = identity as any
  *
  * @since 2.0.0
  */
-export const constant = <A>(value: A): LazyArg<A> => () => value
+export const constant = <const A>(value: A): LazyArg<A> => () => value
 
 /**
  * A thunk that returns always `true`.
