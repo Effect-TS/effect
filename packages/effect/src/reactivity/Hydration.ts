@@ -199,13 +199,19 @@ export const hydrate = (
         target = target.initialValueTarget
       }
       if (target !== node.atom) {
-        const targetNode = registry.ensureNode(target) as any
-        // Hydration may have seeded the target before its first build
-        targetNode.preserveInitialValueOnBuild = false
-        targetNode.invalidate()
+        releaseInitial(registry.ensureNode(target))
       } // Derived atoms may not have read their source yet, so invalidate them directly too
 
-      ;(node as any).invalidate()
+      releaseInitial(node)
     })
   }
+}
+
+const releaseInitial = (node: AtomRegistry.Node<any>): void => {
+  const internal = node as any
+  // An unbuilt target can hold hydration through preserveInitialValueOnBuild,
+  // which valueOption does not expose. Only release an Initial, not newer client results.
+  if (!AsyncResult.isAsyncResult(internal._value) || !AsyncResult.isInitial(internal._value)) return
+  internal.preserveInitialValueOnBuild = false
+  internal.invalidate()
 }
