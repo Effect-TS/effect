@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Channel, Effect, Ref, Result, Stream } from "effect"
 import { Xml } from "effect/encoding"
+import { collectGarbage } from "../utils/gc.ts"
 
 const textEncoder = new TextEncoder()
 const BOM = String.fromCharCode(0xFEFF)
@@ -303,6 +304,30 @@ describe("Xml", () => {
           end("a")
         ])
       }))
+
+    it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
+      "does not keep the input of open elements in memory",
+      () =>
+        Effect.gen(function*() {
+          // Each long name arrives in a chunk with 1 MiB of text, which must not stay reachable from the name
+          const name = "element-name-".repeat(2)
+          const depth = 32
+          yield* collectGarbage
+          const before = process.memoryUsage().heapUsed
+          let held = 0
+          yield* Stream.range(1, depth).pipe(
+            Stream.map(() => `<${name}>` + "x".repeat(1024 * 1024)),
+            Stream.concat(Stream.fromEffect(Effect.gen(function*() {
+              yield* collectGarbage
+              held = process.memoryUsage().heapUsed - before
+              return `</${name}>`.repeat(depth)
+            }))),
+            Stream.pipeThroughChannel(Xml.decodeString()),
+            Stream.runDrain
+          )
+          assert.isBelow(held, 16 * 1024 * 1024)
+        })
+    )
 
     it("rejects invalid options at construction", () => {
       for (const value of [0, Number.NaN]) {
