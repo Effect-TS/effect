@@ -91,10 +91,13 @@ describe("Csv", () => {
     const Tuple = Schema.Tuple([Schema.String])
     assert.throws(() => Csv.encodeSchemaString(Tuple)({ headers: true }))
     const Tags = Schema.Struct({ tags: Schema.Array(Schema.String) })
-    assert.throws(() => Csv.decodeSchemaString(Tags)({ headers: true }))
-    assert.throws(() => Csv.encodeSchemaString(Tags)())
+    assert.throws(() => Csv.decodeSchemaString(Tags)({ headers: true }), /column "tags".*not a string/)
+    assert.throws(() => Csv.encodeSchemaString(Tags)(), /column "tags".*not a string/)
     const Count = Schema.Struct({ n: Schema.Number })
-    assert.throws(() => Csv.decodeSchemaString(Count)({ headers: true, disableCodecs: true }))
+    assert.throws(
+      () => Csv.decodeSchemaString(Count)({ headers: true, disableCodecs: true }),
+      /column "n".*not a string/
+    )
   })
 
   it.effect("encodes rows and header records", () =>
