@@ -199,8 +199,6 @@ export const make = Effect.fnUntraced(
           }), middleware)
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
-          // The HTTP interface has no tunnel API, so a 2xx would leave a dead
-          // tunnel (RFC 9110 §9.3.6); answer 501 before the app sees it (§15.6.2).
           if (request.method === "CONNECT") {
             return Promise.resolve(new Response(null, { status: 501 }))
           }
