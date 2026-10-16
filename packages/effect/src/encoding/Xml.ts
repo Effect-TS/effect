@@ -117,8 +117,9 @@ export interface Doctype {
  * **Details**
  *
  * Attribute values have their references replaced and whitespace normalized as
- * XML requires. A self-closing tag such as `<br/>` is decoded as a
- * `StartElement` followed by an `EndElement`.
+ * XML requires. Decoded attributes are objects without a prototype, so only
+ * the attributes of the tag are present. A self-closing tag such as `<br/>` is
+ * decoded as a `StartElement` followed by an `EndElement`.
  *
  * @stability unstable
  * @category models
@@ -234,11 +235,13 @@ export interface Element {
  *   as written in the input: a tag with its attributes, a comment, a processing
  *   instruction, a DOCTYPE, or a text node including its references and CDATA
  *   sections. Defaults to 10 MiB; `Infinity` disables the limit.
- * - `maxDepth`: the maximum number of nested elements, which also bounds nested
- *   groups in DOCTYPE content models. Defaults to 1024; `Infinity` disables
- *   the limit.
+ * - `maxDepth`: the maximum number of nested elements. Defaults to 1024;
+ *   `Infinity` disables the limit.
  *
- * Invalid options throw when the channel is created.
+ * The names of open elements are kept until their end tags, so they can take
+ * up to `maxDepth` times `maxTokenSize` of memory. Lower both for untrusted
+ * input that is not otherwise bounded. Invalid options throw when the channel
+ * is created.
  *
  * @stability unstable
  * @category configuration
@@ -283,8 +286,9 @@ export interface ElementsOptions {
  * **Gotchas**
  *
  * - A DOCTYPE is reported as a `Doctype` event, and its internal subset is
- *   checked and skipped: its declarations are not applied, so default
- *   attribute values are not added, and parameter entities are not expanded.
+ *   skipped without checking its declarations. They are not applied, so
+ *   default attribute values are not added, and parameter entities are not
+ *   expanded.
  * - References to entities other than `&lt;`, `&gt;`, `&amp;`, `&apos;` and
  *   `&quot;` fail with an `Unsupported` `XmlError` when the document has a
  *   DOCTYPE, and with a `Syntax` `XmlError` otherwise. Character references
@@ -330,7 +334,7 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
   Done
 > => {
   const parser = makeParser(options, false)
-  return makeChannel<string, Event, IE, Done>(() => new TextInput(parser()), joinText)
+  return makeChannel<string, Event, IE, Done>(() => new TextInput(parser()))
 }
 
 /**
@@ -364,7 +368,7 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
   Done
 > => {
   const parser = makeParser(options, true)
-  return makeChannel<Uint8Array, Event, IE, Done>(() => new Utf8Input(parser()), joinBytes)
+  return makeChannel<Uint8Array, Event, IE, Done>(() => new Utf8Input(parser()))
 }
 
 /**
@@ -555,10 +559,8 @@ interface Machine<In, Out> {
   end(): void
 }
 
-// `join` can replace the inputs of a pull with fewer inputs of the same content
 const makeChannel = <In, Out, IE, Done>(
-  make: () => Machine<In, Out>,
-  join?: (inputs: ReadonlyArray<In>) => ReadonlyArray<In>
+  make: () => Machine<In, Out>
 ): Channel.Channel<
   Arr.NonEmptyReadonlyArray<Out>,
   XmlError | IE,
@@ -579,7 +581,7 @@ const makeChannel = <In, Out, IE, Done>(
       ): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
         try {
           if (inputs === undefined) machine.end()
-          else for (const input of join === undefined ? inputs : join(inputs)) machine.push(input)
+          else for (const input of inputs) machine.push(input)
         } catch (error) {
           if (!isXmlError(error)) throw error
           failure = error
@@ -607,38 +609,6 @@ const makeChannel = <In, Out, IE, Done>(
     })
   )
 
-// Joins runs of chunks up to 65536 bytes or characters long, since one chunk
-// decodes and parses much faster than many small ones
-const joinRuns = <A extends string | Uint8Array>(
-  chunks: ReadonlyArray<A>,
-  join: (run: ReadonlyArray<A>, length: number) => A
-): ReadonlyArray<A> => {
-  if (chunks.length === 1) return chunks
-  const out: Array<A> = []
-  let i = 0
-  while (i < chunks.length) {
-    let length = chunks[i].length
-    let j = i + 1
-    while (j < chunks.length && length + chunks[j].length <= 65536) length += chunks[j++].length
-    out.push(j === i + 1 ? chunks[i] : join(chunks.slice(i, j), length))
-    i = j
-  }
-  return out
-}
-
-const joinText = (chunks: ReadonlyArray<string>): ReadonlyArray<string> => joinRuns(chunks, (run) => run.join(""))
-
-const joinBytes = (chunks: ReadonlyArray<Uint8Array>): ReadonlyArray<Uint8Array> =>
-  joinRuns(chunks, (run, length) => {
-    const bytes = new Uint8Array(length)
-    let offset = 0
-    for (const chunk of run) {
-      bytes.set(chunk, offset)
-      offset += chunk.length
-    }
-    return bytes
-  })
-
 const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
   const maxTokenSize = checkLimit("maxTokenSize", options?.maxTokenSize, defaultMaxTokenSize)
   const maxDepth = checkLimit("maxDepth", options?.maxDepth, defaultMaxDepth)
@@ -654,24 +624,16 @@ const SPACE = 32
 const BANG = 33
 const DQUOTE = 34
 const HASH = 35
-const PERCENT = 37
 const AMPERSAND = 38
 const SQUOTE = 39
-const LPAREN = 40
-const RPAREN = 41
-const STAR = 42
-const PLUS = 43
-const COMMA = 44
 const DASH = 45
 const SLASH = 47
-const SEMICOLON = 59
 const LT = 60
 const EQUALS = 61
 const GT = 62
 const QUESTION = 63
 const LBRACKET = 91
 const RBRACKET = 93
-const PIPE = 124
 const LOWER_X = 120
 
 const isSpace = (c: number): boolean => c === SPACE || c === LF || c === TAB || c === CR
@@ -942,7 +904,7 @@ const describeToken = (s: string, i: number): string =>
     "end tag" :
     "start tag"
 
-const emptyAttributes: Readonly<Record<string, string>> = Object.freeze({})
+const emptyAttributes: Readonly<Record<string, string>> = Object.freeze(Object.create(null))
 
 const pendingRun = 256
 
@@ -1305,16 +1267,14 @@ class Parser {
         return -1
       }
       const value = this.attributeValue(s, j + 1, close)
+      // Without a prototype, no attribute is inherited and "__proto__" is an
+      // ordinary key
       if (attributes === undefined) {
-        attributes = {}
+        attributes = Object.create(null) as Record<string, string>
       } else if (Object.hasOwn(attributes, attribute)) {
         throw this.syntax(`duplicate attribute ${attribute}`, nameStart)
       }
-      if (attribute === "__proto__") {
-        Object.defineProperty(attributes, attribute, { value, enumerable: true, writable: true, configurable: true })
-      } else {
-        attributes[attribute] = value
-      }
+      attributes[attribute] = value
       j = close + 1
       if (j >= n) return -1
     }
@@ -1445,8 +1405,6 @@ class Parser {
     const end = scanner.scan(s, i + 9)
     if (end === -1) return -1
     this.checkSize(i, end)
-    // Set before the internal subset is checked, so that entity references in
-    // attribute defaults are unsupported, as in content
     this.doctype = true
     let j = this.space(s, i + 9, end)
     const nameEnd = this.name(s, j, end)
@@ -1463,7 +1421,12 @@ class Parser {
       )
       j = skipSpace(s, this.literalEnd, end)
     }
-    if (s.charCodeAt(j) === LBRACKET) j = skipSpace(s, this.internalSubset(s, j + 1, end), end)
+    if (s.charCodeAt(j) === LBRACKET) {
+      // The scanner skips the internal subset, whose declarations are not
+      // checked, and ends the token early only at malformed markup
+      if (scanner.state !== S_AFTER_SUBSET) throw this.syntax("invalid markup in the internal subset", end)
+      j = skipSpace(s, s.lastIndexOf("]", end - 1) + 1, end)
+    }
     if (j !== end - 1 || s.charCodeAt(j) !== GT) throw this.syntax("invalid DOCTYPE", j)
     this.out.push(event)
     return end
@@ -1487,9 +1450,7 @@ class Parser {
     const quote = s.charCodeAt(i)
     if (quote !== DQUOTE && quote !== SQUOTE) throw this.syntax("expected a quoted literal", i)
     const close = s.indexOf(quote === DQUOTE ? "\"" : "'", i + 1)
-    // Unreachable while the scanner ends a DOCTYPE only after its literals
-    // close, but kept so that a disagreement fails instead of continuing from a
-    // wrong index, which could loop on untrusted input
+    // Unreachable while the scanner ends a DOCTYPE only after its literals close
     if (close === -1 || close >= end) throw this.syntax("unterminated literal", i)
     this.literalEnd = close + 1
     return s.slice(i + 1, close)
@@ -1500,211 +1461,6 @@ class Parser {
     if (!pubidPattern.test(literal)) throw this.syntax("invalid public identifier", i)
     return literal
   }
-
-  // Checks the internal subset starting at `i`, and returns the index after "]".
-  // As in `literal`, the unterminated comment and processing instruction checks
-  // are unreachable, and guard against a disagreement with the scanner.
-  private internalSubset(s: string, i: number, end: number): number {
-    while (i < end) {
-      const c = s.charCodeAt(i)
-      if (isSpace(c)) {
-        i++
-      } else if (c === RBRACKET) {
-        return i + 1
-      } else if (c === PERCENT) {
-        const nameEnd = this.name(s, i + 1, end)
-        if (s.charCodeAt(nameEnd) !== SEMICOLON) throw this.syntax("expected \";\"", nameEnd)
-        i = nameEnd + 1
-      } else if (s.startsWith("<!--", i)) {
-        const close = s.indexOf("-->", i + 4)
-        const dashes = s.indexOf("--", i + 4)
-        if (close === -1 || close >= end) throw this.syntax("unterminated comment", i)
-        if (dashes < close) throw this.syntax("\"--\" is not allowed in comments", dashes)
-        i = close + 3
-      } else if (s.startsWith("<?", i)) {
-        const close = s.indexOf("?>", i + 2)
-        if (close === -1 || close >= end) throw this.syntax("unterminated processing instruction", i)
-        const t = scanName(s, i + 2, close)
-        if (t === i + 2 || isReservedTarget(s.slice(i + 2, t)) || (t < close && !isSpace(s.charCodeAt(t)))) {
-          throw this.syntax("invalid processing instruction", i)
-        }
-        i = close + 2
-      } else if (s.startsWith("<!", i)) {
-        i = this.markupDeclaration(s, i, end)
-      } else {
-        break
-      }
-    }
-    // Before "]", the scanner ends the token only at a stray quote or ">"
-    throw this.syntax("invalid markup in the internal subset", i)
-  }
-
-  // Checks the element, attribute list, entity or notation declaration at `i`,
-  // and returns the index after it. Declarations are not applied.
-  private markupDeclaration(s: string, i: number, end: number): number {
-    let j: number
-    if (s.startsWith("<!ELEMENT", i)) {
-      j = this.space(s, this.name(s, this.space(s, i + 9, end), end), end)
-      if (s.startsWith("EMPTY", j)) j += 5
-      else if (s.startsWith("ANY", j)) j += 3
-      else j = this.contentModel(s, j, end)
-    } else if (s.startsWith("<!ATTLIST", i)) {
-      j = this.name(s, this.space(s, i + 9, end), end)
-      while (true) {
-        const k = skipSpace(s, j, end)
-        if (k === j || s.charCodeAt(k) === GT) break
-        j = this.space(s, this.name(s, k, end), end)
-        j = this.space(s, this.attributeType(s, j, end), end)
-        j = this.defaultDeclaration(s, j, end)
-      }
-    } else if (s.startsWith("<!ENTITY", i)) {
-      j = this.space(s, i + 8, end)
-      const parameter = s.charCodeAt(j) === PERCENT
-      if (parameter) j = this.space(s, j + 1, end)
-      j = this.space(s, this.name(s, j, end), end)
-      const quote = s.charCodeAt(j)
-      if (quote === DQUOTE || quote === SQUOTE) {
-        j = this.entityValue(s, j, end)
-      } else {
-        j = this.externalId(s, j, end, false)
-        const k = skipSpace(s, j, end)
-        if (!parameter && k > j && s.startsWith("NDATA", k)) j = this.name(s, this.space(s, k + 5, end), end)
-      }
-    } else if (s.startsWith("<!NOTATION", i)) {
-      j = this.space(s, this.name(s, this.space(s, i + 10, end), end), end)
-      j = this.externalId(s, j, end, true)
-    } else {
-      throw this.syntax("invalid markup declaration", i)
-    }
-    j = skipSpace(s, j, end)
-    if (s.charCodeAt(j) !== GT) throw this.syntax("expected \">\"", j)
-    return j + 1
-  }
-
-  // Checks a content model of an element declaration, such as `(a, (b | c)*)`
-  private contentModel(s: string, i: number, end: number): number {
-    if (s.charCodeAt(i) !== LPAREN) throw this.syntax("invalid content specification", i)
-    let j = skipSpace(s, i + 1, end)
-    if (!s.startsWith("#PCDATA", j)) return this.contentGroup(s, i, end)
-    j = skipSpace(s, j + 7, end)
-    let names = false
-    while (s.charCodeAt(j) === PIPE) {
-      j = skipSpace(s, this.name(s, skipSpace(s, j + 1, end), end), end)
-      names = true
-    }
-    if (s.charCodeAt(j) !== RPAREN) throw this.syntax("expected \")\"", j)
-    if (s.charCodeAt(j + 1) === STAR) return j + 2
-    if (names) throw this.syntax("expected \"*\"", j + 1)
-    return j + 1
-  }
-
-  // Checks the choice or sequence starting with the "(" at `i`, and returns the
-  // index after it. Open groups are kept in an array rather than on the call
-  // stack, which an unlimited maxDepth would let input overflow.
-  private contentGroup(s: string, i: number, end: number): number {
-    // The separator of each open group, or 0 before its first one
-    const separators: Array<number> = []
-    while (true) {
-      if (s.charCodeAt(i) === LPAREN) {
-        i = skipSpace(s, i + 1, end)
-        if (separators.push(0) > this.maxDepth) {
-          throw this.error("Limit", `content model nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
-        }
-        continue
-      }
-      i = skipSpace(s, quantified(s, this.name(s, i, end)), end)
-      while (s.charCodeAt(i) === RPAREN) {
-        i = quantified(s, i + 1)
-        separators.pop()
-        if (separators.length === 0) return i
-        i = skipSpace(s, i, end)
-      }
-      const c = s.charCodeAt(i)
-      const separator = separators[separators.length - 1]
-      if ((c !== PIPE && c !== COMMA) || (separator !== 0 && c !== separator)) {
-        throw this.syntax("expected \")\"", i)
-      }
-      separators[separators.length - 1] = c
-      i = skipSpace(s, i + 1, end)
-    }
-  }
-
-  private attributeType(s: string, i: number, end: number): number {
-    if (s.charCodeAt(i) === LPAREN) return this.enumeration(s, i, end, false)
-    if (s.startsWith("NOTATION", i)) return this.enumeration(s, this.space(s, i + 8, end), end, true)
-    const typeEnd = scanName(s, i, end)
-    if (!attributeTypes.has(s.slice(i, typeEnd))) throw this.syntax("invalid attribute type", i)
-    return typeEnd
-  }
-
-  // Checks `(a | b)`, where the alternatives are names or name tokens
-  private enumeration(s: string, i: number, end: number, names: boolean): number {
-    if (s.charCodeAt(i) !== LPAREN) throw this.syntax("expected \"(\"", i)
-    do {
-      i = skipSpace(s, i + 1, end)
-      const tokenEnd = names ? scanName(s, i, end) : scanNameToken(s, i, end)
-      if (tokenEnd === i) throw this.syntax("expected a name", i)
-      i = skipSpace(s, tokenEnd, end)
-    } while (s.charCodeAt(i) === PIPE)
-    if (s.charCodeAt(i) !== RPAREN) throw this.syntax("expected \")\"", i)
-    return i + 1
-  }
-
-  private defaultDeclaration(s: string, i: number, end: number): number {
-    if (s.startsWith("#REQUIRED", i)) return i + 9
-    if (s.startsWith("#IMPLIED", i)) return i + 8
-    if (s.startsWith("#FIXED", i)) i = this.space(s, i + 6, end)
-    const value = this.literal(s, i, end)
-    this.attributeValue(s, i + 1, i + 1 + value.length)
-    return this.literalEnd
-  }
-
-  // Checks an entity value, whose references are not replaced
-  private entityValue(s: string, i: number, end: number): number {
-    const value = this.literal(s, i, end)
-    for (let k = 0; k < value.length; k++) {
-      const c = value.charCodeAt(k)
-      if (c === PERCENT) {
-        throw this.syntax("parameter entity references are not allowed in internal subset declarations", i + 1 + k)
-      }
-      if (c === AMPERSAND) {
-        const semicolon = value.indexOf(";", k + 1)
-        if (semicolon === -1) throw this.syntax("unterminated reference", i + 1 + k)
-        if (value.charCodeAt(k + 1) === HASH) this.reference(value, k, semicolon, i + 1)
-        else if (!isName(value.slice(k + 1, semicolon))) throw this.syntax("invalid reference", i + 1 + k)
-        k = semicolon
-      }
-    }
-    return this.literalEnd
-  }
-
-  private externalId(s: string, i: number, end: number, notation: boolean): number {
-    if (s.startsWith("SYSTEM", i)) {
-      this.literal(s, this.space(s, i + 6, end), end)
-      return this.literalEnd
-    }
-    if (!s.startsWith("PUBLIC", i)) throw this.syntax("expected an external identifier", i)
-    this.publicLiteral(s, this.space(s, i + 6, end), end)
-    const j = this.literalEnd
-    // Notations may have a public identifier alone
-    const k = skipSpace(s, j, end)
-    const quote = s.charCodeAt(k)
-    if (notation && (k === j || (quote !== DQUOTE && quote !== SQUOTE))) return j
-    this.literal(s, this.space(s, j, end), end)
-    return this.literalEnd
-  }
-}
-
-const attributeTypes = new Set(["CDATA", "ID", "IDREF", "IDREFS", "ENTITY", "ENTITIES", "NMTOKEN", "NMTOKENS"])
-
-const scanNameToken = (s: string, i: number, end: number): number => {
-  while (i < end && isNameCode(s.charCodeAt(i))) i++
-  return i
-}
-
-const quantified = (s: string, i: number): number => {
-  const c = s.charCodeAt(i)
-  return c === QUESTION || c === STAR || c === PLUS ? i + 1 : i
 }
 
 const indexOrEnd = (s: string, search: string, from: number): number => {
@@ -1931,22 +1687,8 @@ const attributeEscapes: Record<string, string> = {
 
 const textSpecials = /[&<>\r]/g
 const attributeSpecials = /[&<"\t\n\r]/g
-// Uses `test` rather than a replace callback, which allocates a match for each
-// escaped character
-const escape = (s: string, specials: RegExp, escapes: Record<string, string>): string => {
-  // The expressions are shared, so a call that threw must not affect the next
-  specials.lastIndex = 0
-  let out = ""
-  let last = 0
-  while (specials.test(s)) {
-    const i = specials.lastIndex - 1
-    out += s.slice(last, i) + escapes[s[i]]
-    last = i + 1
-  }
-  return last === 0 ? s : out + s.slice(last)
-}
-const escapeText = (s: string): string => escape(s, textSpecials, textEscapes)
-const escapeAttribute = (s: string): string => escape(s, attributeSpecials, attributeEscapes)
+const escapeText = (s: string): string => s.replace(textSpecials, (c) => textEscapes[c])
+const escapeAttribute = (s: string): string => s.replace(attributeSpecials, (c) => attributeEscapes[c])
 
 const checkChars = (what: string, s: string): void => {
   const invalid = s.search(invalidChar)
