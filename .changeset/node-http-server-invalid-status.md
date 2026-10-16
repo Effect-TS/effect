@@ -2,4 +2,4 @@
 "@effect/platform-node": patch
 ---
 
-Answer with a 500 when a handler responds with a status outside 200–599 in `NodeHttpServer`, instead of leaving the client without a final response.
+`NodeHttpServer` now responds with a 500 when a handler returns a status outside 200-599. Previously a 1xx status left the client without a final response, and statuses above 599 were sent as is.

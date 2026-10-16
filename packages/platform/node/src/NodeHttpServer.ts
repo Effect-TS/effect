@@ -572,7 +572,7 @@ const handleResponse = (
   try {
     return writeResponse(request, response, nodeResponse, headers)
   } catch (defect) {
-    // `writeHead` throws synchronously on headers Node rejects and on non-final statuses
+    // `writeHead` throws synchronously on headers Node rejects and on statuses outside 200-599
     return Effect.andThen(
       cancelResponseBody(response.body),
       handleCause(nodeResponse, response)(Cause.die(defect))
@@ -699,7 +699,7 @@ const writeResponse = (
   }
 }
 
-// Node sends a 1xx as an interim response on HTTP/1.1 and then never answers
+// On HTTP/1.1 Node sends a 1xx as an interim response, so the client never gets a final one
 const isFinalStatus = (status: number): boolean => status >= 200 && status <= 599
 
 const internalServerError = Response.empty({ status: 500 })
