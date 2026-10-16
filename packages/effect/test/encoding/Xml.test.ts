@@ -65,6 +65,14 @@ const chunksOf = <A extends string | Uint8Array>(input: A, sizes: ReadonlyArray<
   return chunks
 }
 
+// JavaScriptCore gives every Error its own source `line` and `column`, which
+// would pass for an XML position, so errors without one set both to undefined
+const assertNoPosition = (error: Xml.XmlError) =>
+  assert.deepStrictEqual(
+    [Object.hasOwn(error, "line"), error.line, Object.hasOwn(error, "column"), error.column],
+    [true, undefined, true, undefined]
+  )
+
 describe("Xml", () => {
   it("identifies Xml errors", () => {
     assert.isTrue(Xml.isXmlError(new Xml.XmlError({ kind: "Syntax", message: "boom" })))
@@ -484,6 +492,7 @@ describe("Xml", () => {
         for (const events of cases) {
           const error = yield* Effect.flip(encodeString(events))
           assert.strictEqual(error.kind, "InvalidEvent", JSON.stringify(events))
+          assertNoPosition(error)
         }
         // Invalid values are quoted in messages, so that they cannot forge log lines
         const forged: ReadonlyArray<ReadonlyArray<Xml.Event>> = [
@@ -585,6 +594,7 @@ describe("Xml", () => {
             Effect.flip
           )
           assert.strictEqual(error.kind, kind)
+          assertNoPosition(error)
         }
       }))
   })
