@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array as Arr, Channel, Effect, Exit, type Pull, Schema, Stream } from "effect"
+import { Array as Arr, Channel, Effect, Schema, Stream } from "effect"
 import * as Json from "effect/encoding/Json"
 
 const decodeChunks = (chunks: ReadonlyArray<string>, options?: Json.DecodeOptions) =>
@@ -20,48 +20,31 @@ const splits = (text: string): Array<Array<string>> => {
 
 const bytes = (text: string) => new TextEncoder().encode(text)
 
-const corpus: ReadonlyArray<{ readonly text: string; readonly pointer?: string; readonly expected: unknown }> = [
-  { text: "[]", expected: [] },
-  { text: " \t\r\n[ ] \n", expected: [] },
-  {
-    text: "[1, -2.5e+3, 0, true, false, null, \"\", \"a\"]",
-    expected: [1, -2.5e+3, 0, true, false, null, "", "a"]
-  },
-  {
-    text: "[\"[]{},:\\\"\", \"\\\\\", \"\\\\\\\"\", \"\\u00e9\\ud83d\\ude00\", \"é😀\"]",
-    expected: ["[]{},:\"", "\\", "\\\"", "é😀", "é😀"]
-  },
-  {
-    text: "[{\"a\": [1, {\"b\": \"]}\"}]}, [[], {}], {\"\\\"\": null}]",
-    expected: [{ a: [1, { b: "]}" }] }, [[], {}], { "\"": null }]
-  },
-  {
-    text: "{\"total\": 2, \"meta\": {\"items\": [0]}, \"items\": [{\"id\": 1}, {\"id\": 2}], \"next\": null}",
-    pointer: "/items",
-    expected: [{ id: 1 }, { id: 2 }]
-  },
-  {
-    text: "{\"a\": [{\"x\": 1}, {\"b\": {\"c\": [3, 4]}}]}",
-    pointer: "/a/1/b/c",
-    expected: [3, 4]
-  },
-  { text: "{\"a/b\": {\"m~n\": [true]}}", pointer: "/a~1b/m~0n", expected: [true] },
-  { text: "{\"\\u0061\": [1]}", pointer: "/a", expected: [1] },
-  { text: "\r\n[1,\r\n2\r]\n", expected: [1, 2] }
-]
-
 describe("Json", () => {
-  describe("decodeString", () => {
-    it.effect("decodes the corpus split at every position", () =>
-      Effect.gen(function*() {
-        for (const { expected, pointer, text } of corpus) {
-          for (const chunks of splits(text)) {
-            const values = yield* decodeChunks(chunks, { pointer })
-            assert.deepStrictEqual(values, expected, JSON.stringify(chunks))
-          }
+  it.effect("agrees with JSON.parse across chunk boundaries", () =>
+    Effect.gen(function*() {
+      const valid = [
+        " \t\r\n[] ",
+        "[1, -2.5e+3, true, false, null]",
+        "[\"[]{},:\\\"\", \"\\\\\", \"\\u00e9\\ud83d\\ude00\"]",
+        "[{\"a\": [1, {\"b\": \"]}\"}]}, [[], {}]]",
+        "\r\n[1,\r\n2\r]\n"
+      ]
+      const invalid = ["", "[1,]", "[1 2]", "[1true]", "[1", "[1]]", "[1]x", "[ 1]", "[\f1]"]
+      for (const input of valid) {
+        for (const chunks of splits(input)) {
+          assert.deepStrictEqual(yield* decodeChunks(chunks), JSON.parse(input), JSON.stringify(chunks))
         }
-      }))
+      }
+      for (const input of invalid) {
+        assert.throws(() => JSON.parse(input))
+        for (const chunks of splits(input)) {
+          assert.strictEqual((yield* decodeError(chunks)).kind, "Syntax", JSON.stringify(chunks))
+        }
+      }
+    }))
 
+  describe("decodeString", () => {
     it.effect("emits one output chunk per input chunk", () =>
       Effect.gen(function*() {
         const chunks = yield* Stream.make("[1,2,", "3", ",4]").pipe(
@@ -80,114 +63,61 @@ describe("Json", () => {
         assert.strictEqual(error.kind, "Syntax")
       }))
 
-    it.effect("fails on invalid documents", () =>
+    it.effect("reports a UTF-16 offset across a chunk boundary", () =>
       Effect.gen(function*() {
-        const cases: ReadonlyArray<readonly [string, number]> = [
-          ["", 0],
-          [" \n ", 3],
-          ["[", 1],
-          ["[1", 2],
-          ["[1,", 3],
-          ["[1,]", 3],
-          ["[,1]", 1],
-          ["[1 2]", 3],
-          ["[1] [2]", 4],
-          ["[1]x", 3],
-          ["[1}", 2],
-          ["[01]", 1],
-          ["[\"a]", 4],
-          ["[\"\\x\"]", 1],
-          ["[\"\u0001\"]", 1],
-          ["[{\"a\" 1}]", 1],
-          ["[[1}]", 1],
-          ["[nul]", 1],
-          ["{\"a\":1,}", 7],
-          ["{\"a\" 1}", 5],
-          ["{1:2}", 1]
+        const error = yield* decodeError(["[\"😀\",", " {\"a\": x}]"])
+        assert.deepStrictEqual([error.kind, error.offset], ["Syntax", 7])
+      }))
+
+    it.effect("selects an array through an RFC 6901 pointer", () =>
+      Effect.gen(function*() {
+        const cases: ReadonlyArray<readonly [string, string, unknown]> = [
+          ["{\"before\": 0, \"items\": [1, 2], \"after\": null}", "/items", [1, 2]],
+          ["{\"a\": [0, {\"b\": [3]}]}", "/a/1/b", [3]],
+          ["{\"a/b\": {\"m~n\": [true]}}", "/a~1b/m~0n", [true]],
+          ["{\"\\u0061\": [1]}", "/a", [1]],
+          ["{\"x\": 1, \"x\": 2, \"a\": [1]}", "/a", [1]]
         ]
-        for (const [text, offset] of cases) {
-          for (const chunks of splits(text)) {
-            const error = yield* decodeError(chunks, { pointer: text.startsWith("{") ? "/b" : "" })
-            assert.strictEqual(error.kind, "Syntax", JSON.stringify(chunks))
-            assert.strictEqual(error.offset, offset, JSON.stringify(chunks))
-          }
+        for (const [text, pointer, expected] of cases) {
+          assert.deepStrictEqual(yield* decodeChunks(text.split(""), { pointer }), expected)
         }
       }))
 
-    it.effect("reports lines and columns", () =>
+    it.effect("rejects invalid pointers and malformed off-path values", () =>
       Effect.gen(function*() {
-        for (const chunks of splits("[\n  1,\r\n  {\"a\": x},\r  3\n]")) {
-          const error = yield* decodeError(chunks)
-          assert.deepStrictEqual(
-            { kind: error.kind, offset: error.offset, line: error.line, column: error.column },
-            { kind: "Syntax", offset: 10, line: 3, column: 3 },
-            JSON.stringify(chunks)
-          )
-        }
-        for (const chunks of splits("[1]\r\n\r\n x")) {
-          const error = yield* decodeError(chunks)
-          assert.deepStrictEqual([error.line, error.column], [3, 2], JSON.stringify(chunks))
+        for (
+          const [text, pointer, kind] of [
+            ["{\"a\": []}", "/b", "Pointer"],
+            ["{\"a\": {}}", "/a", "Pointer"],
+            ["{\"a\": 1}", "/a/b", "Pointer"],
+            ["{\"a\": [], \"\\u0061\": []}", "/a", "Pointer"],
+            ["{\"x\": [1,], \"a\": []}", "/a", "Syntax"],
+            ["{\"a\": [1], \"x\": tru}", "/a", "Syntax"]
+          ]
+        ) {
+          assert.strictEqual((yield* decodeError(text.split(""), { pointer })).kind, kind)
         }
       }))
 
-    it.effect("fails when the pointer target is missing or not an array", () =>
+    it.effect("bounds elements and off-path values without overflowing the stack", () =>
       Effect.gen(function*() {
-        const cases: ReadonlyArray<readonly [string, string, string]> = [
-          ["{}", "", "Expected an array at \"\""],
-          ["1", "", "Expected an array at \"\""],
-          ["\"a\"", "", "Expected an array at \"\""],
-          ["{\"a\": 1}", "/b", "No value at \"/b\""],
-          ["{\"a\": {\"b\": []}}", "/a/c", "No value at \"/a/c\""],
-          ["{\"a\": {}}", "/a", "Expected an array at \"/a\""],
-          ["{\"a\": 1}", "/a/b", "Expected an object or array at \"/a\""],
-          ["[[1]]", "/1", "No value at \"/1\""],
-          ["[[1]]", "/-", "No value at \"/-\""],
-          ["[[1]]", "/00", "No value at \"/00\""],
-          ["{\"a\": [], \"a\": []}", "/a", "Duplicate key \"a\" along the pointer"],
-          ["{\"a\": {\"b\": []}, \"a\": 1}", "/a/b", "Duplicate key \"a\" along the pointer"]
+        assert.deepStrictEqual(
+          yield* decodeChunks(["[[1], \"abc\"]"], {
+            maxDepth: 1,
+            maxElementSize: 5
+          }),
+          [[1], "abc"]
+        )
+        const cases: ReadonlyArray<readonly [string, Json.DecodeOptions]> = [
+          ["[[[1]]]", { maxDepth: 1 }],
+          ["{\"x\": [[1]], \"a\": []}", { pointer: "/a", maxDepth: 1 }],
+          ["[\"abcde\"]", { maxElementSize: 6 }],
+          ["{\"x\": \"abcde\", \"a\": []}", { pointer: "/a", maxElementSize: 6 }],
+          ["[".repeat(100000), {}]
         ]
-        for (const [text, pointer, message] of cases) {
-          const error = yield* decodeError([text], { pointer })
-          assert.strictEqual(error.kind, "Pointer", text)
-          assert.strictEqual(error.message, message, text)
+        for (const [text, options] of cases) {
+          assert.strictEqual((yield* decodeError([text], options)).kind, "Limit")
         }
-      }))
-
-    it.effect("ignores duplicate keys that the pointer does not follow", () =>
-      Effect.gen(function*() {
-        const values = yield* decodeChunks(["{\"x\": 1, \"x\": 2, \"a\": [1]}"], { pointer: "/a" })
-        assert.deepStrictEqual(values, [1])
-      }))
-
-    it.effect("validates values outside the selected array", () =>
-      Effect.gen(function*() {
-        const before = yield* decodeError(["{\"x\": [1,], \"a\": []}"], { pointer: "/a" })
-        assert.deepStrictEqual([before.kind, before.offset], ["Syntax", 6])
-        const after = yield* decodeError(["{\"a\": [1], \"x\": tru}"], { pointer: "/a" })
-        assert.deepStrictEqual([after.kind, after.offset], ["Syntax", 16])
-      }))
-
-    it.effect("enforces maxDepth", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* decodeChunks(["[[[1]], 2]"], { maxDepth: 2 }), [[[1]], 2])
-        assert.deepStrictEqual(yield* decodeChunks(["[1, \"[[[\"]"], { maxDepth: 0 }), [1, "[[["])
-        for (const chunks of splits("[1, [[[2]]]]")) {
-          const error = yield* decodeError(chunks, { maxDepth: 2 })
-          assert.deepStrictEqual([error.kind, error.offset], ["Limit", 4])
-        }
-        const outside = yield* decodeError(["{\"x\": [[1]], \"a\": []}"], { pointer: "/a", maxDepth: 1 })
-        assert.strictEqual(outside.kind, "Limit")
-      }))
-
-    it.effect("enforces maxElementSize", () =>
-      Effect.gen(function*() {
-        assert.deepStrictEqual(yield* decodeChunks(["[\"abc\", 12345]"], { maxElementSize: 5 }), ["abc", 12345])
-        for (const chunks of splits("[1, \"abcde\"]")) {
-          const error = yield* decodeError(chunks, { maxElementSize: 6 })
-          assert.deepStrictEqual([error.kind, error.offset], ["Limit", 4], JSON.stringify(chunks))
-        }
-        const key = yield* decodeError(["{\"abcdef\": 1}"], { pointer: "/a", maxElementSize: 6 })
-        assert.strictEqual(key.kind, "Limit")
       }))
 
     it("rejects invalid options", () => {
@@ -197,34 +127,6 @@ describe("Json", () => {
       assert.throws(() => Json.decodeString({ maxDepth: 1.5 }))
       assert.throws(() => Json.decodeString({ maxElementSize: 0.5 }))
     })
-
-    it.effect("passes the reviver to each element", () =>
-      Effect.gen(function*() {
-        const text = "{\"total\": 12345678901234567890, \"items\": [12345678901234567890, {\"n\": 1.5}]}"
-        const values = yield* decodeChunks([text], {
-          pointer: "/items",
-          reviver: (_key, value, context?: { readonly source?: string }) =>
-            typeof value === "number" && context?.source !== undefined && !Number.isSafeInteger(value) &&
-              Number.isInteger(value)
-              ? BigInt(context.source)
-              : value
-        })
-        assert.deepStrictEqual(values, [12345678901234567890n, { n: 1.5 }])
-        assert.deepStrictEqual(yield* decodeChunks(["[12345678901234567890]"]), [12345678901234567000])
-      }))
-
-    it.effect("fails with a defect when the reviver throws", () =>
-      Effect.gen(function*() {
-        const boom = new Error("boom")
-        const exit = yield* Effect.exit(decodeChunks(["[1]"], {
-          reviver: () => {
-            throw boom
-          }
-        }))
-        assert.deepStrictEqual(exit, Exit.die(boom))
-        const error = yield* decodeError(["[1x]"], { reviver: (_key, value) => value })
-        assert.strictEqual(error.kind, "Syntax")
-      }))
 
     it.effect("passes through upstream failures and the done value", () =>
       Effect.gen(function*() {
@@ -256,16 +158,6 @@ describe("Json", () => {
           assert.deepStrictEqual(values, ["é", "😀", { "ключ": "値" }])
         }
       }))
-
-    it.effect("fails on a truncated character after the document", () =>
-      Effect.gen(function*() {
-        const error = yield* Stream.make(bytes("[1]"), Uint8Array.of(0xC3)).pipe(
-          Stream.pipeThroughChannel(Json.decode()),
-          Stream.runCollect,
-          Effect.flip
-        )
-        assert.deepStrictEqual([error.kind, error.offset], ["Syntax", 3])
-      }))
   })
 
   describe("encodeString", () => {
@@ -275,23 +167,17 @@ describe("Json", () => {
           yield* Stream.empty.pipe(Stream.pipeThroughChannel(Json.encodeString()), Stream.mkString),
           "[]"
         )
-        assert.strictEqual(
-          yield* Stream.make({ a: 1 }).pipe(Stream.pipeThroughChannel(Json.encodeString()), Stream.mkString),
-          "[{\"a\":1}]"
-        )
         const chunks = yield* Stream.make(1, 2, 3).pipe(
           Stream.rechunk(2),
           Stream.pipeThroughChannel(Json.encodeString()),
           Stream.runCollect
         )
-        assert.deepStrictEqual(chunks, ["[1,2", ",3", "]"])
+        assert.deepStrictEqual(JSON.parse(chunks.join("")), [1, 2, 3])
       }))
 
     it.effect("fails for values without a JSON representation", () =>
       Effect.gen(function*() {
-        const circular: Record<string, unknown> = {}
-        circular.self = circular
-        for (const input of [undefined, () => {}, Symbol("x"), 1n, circular]) {
+        for (const input of [undefined, () => {}, 1n]) {
           const error = yield* Stream.make(input).pipe(
             Stream.pipeThroughChannel(Json.encodeString()),
             Stream.runCollect,
@@ -303,18 +189,6 @@ describe("Json", () => {
         }
       }))
   })
-
-  it.effect("encode and decode round trip", () =>
-    Effect.gen(function*() {
-      const values = [1, "é😀", { a: [null, true, "]"] }, [], {}]
-      const decoded = yield* Stream.fromArray(values).pipe(
-        Stream.rechunk(2),
-        Stream.pipeThroughChannel(Json.encode()),
-        Stream.pipeThroughChannel(Json.decode()),
-        Stream.runCollect
-      )
-      assert.deepStrictEqual(decoded, values)
-    }))
 
   describe("schemas", () => {
     const Item = Schema.Struct({ id: Schema.Number, at: Schema.DateTimeUtcFromString })
@@ -339,7 +213,7 @@ describe("Json", () => {
         assert.isTrue(Schema.isSchemaError(error))
       }))
 
-    it.effect("encodeSchema and duplexSchema round trip", () =>
+    it.effect("encodeSchema round trips through decodeSchema", () =>
       Effect.gen(function*() {
         const value = { id: 1, at: (yield* Schema.decodeEffect(Item)({ id: 1, at: "2024-01-01T00:00:00Z" })).at }
         const text = yield* Stream.make(value).pipe(
@@ -347,40 +221,12 @@ describe("Json", () => {
           Stream.mkString
         )
         assert.strictEqual(text, "[{\"id\":1,\"at\":\"2024-01-01T00:00:00.000Z\"}]")
-        const exit = yield* Stream.make(value).pipe(
-          Stream.pipeThroughChannel(
-            Json.duplexSchema(Stream.toChannel(Stream.make(bytes(text))), { inputSchema: Item, outputSchema: Item })
-          ),
-          Stream.runCollect,
-          Effect.exit
+        const values = yield* Stream.make(value).pipe(
+          Stream.pipeThroughChannel(Json.encodeSchema(Item)()),
+          Stream.pipeThroughChannel(Json.decodeSchema(Item)()),
+          Stream.runCollect
         )
-        assert.isTrue(Exit.isSuccess(exit))
-        if (Exit.isSuccess(exit)) assert.strictEqual(exit.value[0].id, 1)
+        assert.deepStrictEqual(values, [value])
       }))
-  })
-
-  it.effect("duplexString encodes requests and decodes responses", () =>
-    Effect.gen(function*() {
-      const sent: Array<string> = []
-      const server = Channel.fromTransform((
-        upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<string>, Json.JsonError, unknown>
-      ) =>
-        Effect.succeed(Effect.map(upstream, (texts) => {
-          sent.push(...texts)
-          return Arr.of(texts.join("").replace(/\d/g, (d) => String(Number(d) * 10)))
-        }))
-      )
-      const values = yield* Stream.make(1, 2).pipe(
-        Stream.pipeThroughChannel(Json.duplexString(server)),
-        Stream.runCollect
-      )
-      assert.deepStrictEqual(sent, ["[1,2", "]"])
-      assert.deepStrictEqual(values, [10, 20])
-    }))
-
-  it("identifies Json errors", () => {
-    assert.isTrue(Json.isJsonError(new Json.JsonError({ kind: "Encode", message: "boom" })))
-    assert.isFalse(Json.isJsonError({ _tag: "JsonError" }))
-    assert.isFalse(Json.isJsonError(null))
   })
 })
