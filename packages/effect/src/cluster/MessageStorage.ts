@@ -488,9 +488,11 @@ export type Encoded = {
    * **Details**
    *
    * Outside a transaction, `effect` runs immediately and its failures reach
-   * the caller. Failures of a deferred effect become defects, as no caller is
-   * waiting for them. When omitted, reply notifications wait only for the
-   * outermost `withTransaction` of this storage.
+   * the caller. Once a transaction has committed, no caller is waiting for a
+   * deferred effect, so its failures are reported as defects, such as the
+   * logging of `SqlClient.afterCommit`, and `withTransaction` still succeeds.
+   * When omitted, reply notifications wait only for the outermost
+   * `withTransaction` of this storage.
    */
   readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
 }
@@ -571,10 +573,11 @@ export const make = (
        *
        * **Details**
        *
-       * Outside a transaction, `effect` runs immediately. When provided, reply
-       * notifications use it instead of waiting for the outermost
-       * `withTransaction` of this storage, so they also wait for transactions
-       * opened outside the storage.
+       * Outside a transaction, `effect` runs immediately and its failures reach
+       * the caller; after a commit they are reported as defects instead. When
+       * provided, reply notifications use it instead of waiting for the
+       * outermost `withTransaction` of this storage, so they also wait for
+       * transactions opened outside the storage.
        */
       readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
     }

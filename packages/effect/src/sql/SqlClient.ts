@@ -279,13 +279,16 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
 
   const afterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
-      const buffer = currentAfterCommitBuffer(fiber.context, transactionService)
+      const transaction = Context.getOrUndefined(fiber.context, transactionService)
+      const buffer = transaction && afterCommitBuffers.get(transaction)
       // Outside a transaction, or in one that doesn't buffer callbacks.
       if (buffer === undefined) {
         return runAfterCommit(effect)
       }
-      if (buffer === false) {
-        return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+        if (!current.open) {
+          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
+        }
       }
       // Runs later with the services in scope now, without the transaction.
       buffer.callbacks.push(
@@ -478,25 +481,6 @@ interface AfterCommitBuffer {
  */
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
-/**
- * The buffer of the innermost transaction level of `transactionService` in
- * `context`: `undefined` outside a transaction or in one that doesn't buffer
- * callbacks, and `false` once that level or an enclosing one has ended.
- */
-const currentAfterCommitBuffer = (
-  context: Context.Context<never>,
-  transactionService: Context.Key<any, any>
-): AfterCommitBuffer | false | undefined => {
-  const transaction = Context.getOrUndefined(context, transactionService)
-  const buffer = transaction && afterCommitBuffers.get(transaction)
-  for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
-    if (!current.open) {
-      return false
-    }
-  }
-  return buffer
-}
-
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
   Effect.catchCause(effect, (cause) =>
     Effect.withFiber((fiber) => {
@@ -541,9 +525,14 @@ export const makeWithTransaction = <I, S>(options: {
   // Holds Reactivity invalidations until the outermost transaction commits.
   const deferInvalidation = (invalidate: Effect.Effect<void>): Effect.Effect<void> =>
     Effect.withFiber((fiber) => {
-      const buffer = currentAfterCommitBuffer(fiber.context, options.transactionService)
-      // Once the transaction has ended, such as in a detached fiber, invalidate now.
-      if (!buffer) {
+      const transaction = Context.getOrUndefined(fiber.context, options.transactionService)
+      let buffer = transaction && afterCommitBuffers.get(transaction)
+      // A detached fiber can outlive its savepoint, so use the nearest level
+      // still open, and invalidate now once the outermost one has ended.
+      while (buffer !== undefined && !buffer.open) {
+        buffer = buffer.parent
+      }
+      if (buffer === undefined) {
         return invalidate
       }
       buffer.callbacks.push(invalidate)

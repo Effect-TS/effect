@@ -227,12 +227,26 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     })
   )
 
-  const pubsubs = yield* RcMap.make({
-    lookup: (_storeId: string) =>
-      Effect.acquireRelease(
+  // Live changes for a store, published in sequence order. `published` starts
+  // at the last committed sequence: earlier entries are in the backlog of
+  // every subscriber, which subscribes after this lookup.
+  const liveStores = yield* RcMap.make({
+    lookup: Effect.fnUntraced(function*(storeId: string) {
+      const pubsub = yield* Effect.acquireRelease(
         PubSub.unbounded<RemoteEntry>(),
         PubSub.shutdown
-      ),
+      )
+      const rows = yield* sql`
+          SELECT next_sequence
+          FROM ${storesTableSql}
+          WHERE store_id = ${storeId}
+        `.pipe(Effect.flatMap(decodeStoreSequenceRows))
+      return {
+        pubsub,
+        published: (rows[0]?.next_sequence ?? 1) - 1,
+        semaphore: Semaphore.makeUnsafe(1)
+      }
+    }),
     idleTimeToLive: "5 minutes"
   })
 
@@ -241,14 +255,28 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
   const pendingWrites = Context.Service<PendingWrites>(
     `effect/eventlog/SqlEventLogServerUnencrypted/PendingWrites/${storageIdCounter++}`
   )
+  // Commits can publish out of order, such as when a caller's earlier
+  // after-commit callback delays this storage's. Entries a later commit
+  // overtook are read back, as allocating its sequence under the store lock
+  // means they have committed, and entries already published are skipped.
   const publish = Effect.fnUntraced(function*([storeId, entries]: PendingWrites[number]) {
-    const pubsub = yield* RcMap.get(pubsubs, storeId)
-    return yield* PubSub.publishAll(pubsub, entries)
+    const store = yield* RcMap.get(liveStores, storeId)
+    yield* store.semaphore.withPermit(Effect.gen(function*() {
+      const pending = entries.filter((entry) => entry.remoteSequence > store.published)
+      if (pending.length === 0) {
+        return
+      }
+      const first = pending[0].remoteSequence
+      const missing = first > store.published + 1
+        ? yield* selectEntriesBetween(storeId, store.published + 1, first)
+        : []
+      yield* PubSub.publishAll(store.pubsub, missing.length > 0 ? [...missing, ...pending] : pending)
+      store.published = pending[pending.length - 1].remoteSequence
+    }))
   }, Effect.scoped)
   // Merge nested buffers on success; publish only after the outermost SQL
   // commit, which may belong to a transaction the caller opened. Without one,
-  // the outer permit is held through publication to prevent later commits from
-  // overtaking it.
+  // the outer permit is held through publication.
   const withTransaction = Effect.fnUntraced(function*<A, E, R>(
     effect: Effect.Effect<A, E, R>
   ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
@@ -275,7 +303,8 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         for (const entries of stores.values()) {
           entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
         }
-        yield* sql.afterCommit(Effect.forEach(stores, publish, { discard: true }))
+        // A store that fails to publish is caught up by its next commit.
+        yield* Effect.forEach(stores, (write) => sql.afterCommit(Effect.orDie(publish(write))), { discard: true })
       }
       return result
     }))
@@ -359,6 +388,16 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         SELECT sequence, entry_id, event, primary_key, payload
         FROM ${entriesTableSql}
         WHERE store_id = ${storeId} AND sequence >= ${startSequence}
+        ORDER BY sequence ASC
+      `.pipe(
+      Effect.flatMap(decodeRemoteEntries)
+    )
+
+  const selectEntriesBetween = (storeId: string, startSequence: number, endSequence: number) =>
+    sql`
+        SELECT sequence, entry_id, event, primary_key, payload
+        FROM ${entriesTableSql}
+        WHERE store_id = ${storeId} AND sequence >= ${startSequence} AND sequence < ${endSequence}
         ORDER BY sequence ASC
       `.pipe(
       Effect.flatMap(decodeRemoteEntries)
@@ -467,7 +506,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     ),
     changes: Effect.fnUntraced(
       function*({ storeId, startSequence, compactors }) {
-        const pubsub = yield* RcMap.get(pubsubs, storeId)
+        const { pubsub } = yield* RcMap.get(liveStores, storeId)
         const subscription = yield* PubSub.subscribe(pubsub)
         const backlog = yield* EventLogServerUnencrypted.compactBacklog({
           compactors,
