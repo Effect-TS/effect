@@ -29,12 +29,12 @@ declare module "effect/ai/DecisionModel" {
       /**
        * What OpenRouter charged for the request, in credits, when reported.
        */
-      readonly cost?: number | null
+      readonly cost?: number
       /**
        * The OpenRouter provider that served the request, when reported.
        */
-      readonly provider?: string | null
-    } | null
+      readonly provider?: string
+    }
   }
 }
 
@@ -155,7 +155,7 @@ export const make = Effect.fnUntraced(function*(options: {
       return {
         answers,
         usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
-        ...(response.id === undefined ? undefined : { id: response.id }),
+        id: response.id,
         modelId: response.model,
         metadata: {
           openrouter: {
