@@ -98,6 +98,13 @@ describe("Csv", () => {
       () => Csv.decodeSchemaString(Count)({ headers: true, disableCodecs: true }),
       /column "n".*not a string/
     )
+    const Lazy = Schema.suspend(() => Tags)
+    assert.throws(() => Csv.encodeSchemaString(Lazy)({ columns: ["tags"] }), /column "tags".*not a string/)
+    const Tagged = Schema.Union([
+      Schema.Struct({ kind: Schema.Literal("one"), tags: Schema.String }),
+      Schema.Struct({ kind: Schema.Literal("many"), tags: Schema.Array(Schema.String) })
+    ])
+    assert.throws(() => Csv.encodeSchemaString(Tagged)({ columns: ["kind", "tags"] }), /column "tags".*not a string/)
   })
 
   it.effect("encodes rows and header records", () =>
@@ -126,6 +133,10 @@ describe("Csv", () => {
       assert.deepStrictEqual(rows, [["Zoë", "東京"]])
       const encoded = yield* Stream.fromArray(rows).pipe(Stream.pipeThroughChannel(Csv.encode()), Stream.runCollect)
       assert.strictEqual(new TextDecoder().decode(encoded[0]), "Zoë,東京\r\n")
+      const boms = new TextEncoder().encode("\uFEFF\uFEFFa\n")
+      assert.deepStrictEqual(yield* run([boms.subarray(0, 2), boms.subarray(2, 4), boms.subarray(4)], Csv.decode()), [[
+        "\uFEFFa"
+      ]])
     }))
 
   it.effect("decodes schemas and rebases issue paths onto record numbers", () =>
@@ -175,6 +186,8 @@ describe("Csv", () => {
       const entries = yield* run([text], Csv.decodeSchemaString(Entry)({ headers: true }))
       assert.deepStrictEqual(entries, [{ n: 1, b: true, d: new Date(0), note: "" }])
       assert.strictEqual((yield* run(entries, Csv.encodeSchemaString(Entry)({ headers: true }))).join(""), text)
+      const Lazy = Schema.suspend(() => Schema.Struct({ score: Schema.optional(Schema.Number) }))
+      assert.deepStrictEqual(yield* run(["score\n\"\"\n"], Csv.decodeSchemaString(Lazy)({ headers: true })), [{}])
     }))
 
   it.effect("round trips tuple schemas by position", () =>

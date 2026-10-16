@@ -72,6 +72,9 @@ describe("Csv", () => {
     expect(encode).type.toBeCallableWith({ headers: true })
     expect(encode).type.toBeCallableWith({ columns: ["Age (years)"], headers: true })
     expect(encode).type.not.toBeCallableWith({ columns: ["name"] })
+    const union = Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })])
+    expect(Csv.encodeSchemaString(union)).type.toBeCallableWith({ columns: ["a", "b"] })
+    expect(Csv.encodeSchemaString(union)).type.not.toBeCallableWith({ columns: ["c"] })
   })
 
   it("accepts any column names for positional schemas", () => {
