@@ -1541,10 +1541,11 @@ class Parser {
       } else if (s.startsWith("<!", i)) {
         i = this.markupDeclaration(s, i, end)
       } else {
-        throw this.syntax("invalid markup in the internal subset", i)
+        break
       }
     }
-    throw this.syntax("unterminated internal subset", i)
+    // Before "]", the scanner ends the token only at a stray quote or ">"
+    throw this.syntax("invalid markup in the internal subset", i)
   }
 
   // Checks the element, attribute list, entity or notation declaration at `i`,
