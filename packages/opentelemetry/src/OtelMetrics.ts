@@ -79,21 +79,18 @@ export const registerProducer = (
     readonly shutdownTimeout?: Duration.Input | undefined
   }
 ): Effect.Effect<Array<any>, never, Scope.Scope> =>
-  Effect.acquireRelease(
-    // Install cleanup before binding so a later failure cannot leak earlier readers.
-    Effect.sync(() => [] as Array<MetricReader>),
-    (readers) =>
-      Effect.promise(() =>
-        Promise.all(
-          readers.map((reader) => reader.shutdown())
-        )
-      ).pipe(
-        Effect.ignore,
-        Effect.interruptible,
-        Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
+  Effect.suspend(() => {
+    const readers: Array<MetricReader> = []
+    const shutdown = Effect.promise(() =>
+      Promise.all(
+        readers.map((reader) => reader.shutdown())
       )
-  ).pipe(
-    Effect.tap((readers) =>
+    ).pipe(
+      Effect.ignore,
+      Effect.interruptible,
+      Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
+    )
+    return Effect.acquireRelease(
       Effect.sync(() => {
         const reader = metricReader()
         const pending: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
@@ -101,9 +98,14 @@ export const registerProducer = (
           reader.setMetricProducer(self instanceof MetricProducerImpl ? self.fork() : self)
           readers.push(reader)
         }
-      })
+        return readers
+      }).pipe(
+        // Roll back only readers bound by this acquisition if a later binding fails.
+        Effect.onError(() => shutdown)
+      ),
+      () => shutdown
     )
-  )
+  })
 
 /**
  * Creates a Layer that registers a metric producer with metric readers.
