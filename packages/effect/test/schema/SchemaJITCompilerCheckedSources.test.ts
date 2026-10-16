@@ -275,7 +275,7 @@ const cases: ReadonlyArray<Case> = [
     "library conversion from a Union source with encoding checks",
     (f) =>
       Schema.flip(
-        Schema.Union([Schema.String, Schema.Number]).check(f.countedFilter<string | number>(() => true, "any"))
+        Schema.Union([Schema.String, Schema.Literal("0")]).check(f.countedFilter<string>(() => true, "any"))
       )
         .pipe(Schema.decodeTo(Schema.Number.check(Schema.isGreaterThan(0)), SchemaTransformation.numberFromString)),
     ["1", "-1", "x", 1, null]
