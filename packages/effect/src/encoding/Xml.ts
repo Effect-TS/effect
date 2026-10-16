@@ -918,6 +918,8 @@ const describeToken = (s: string, i: number): string =>
 
 const emptyAttributes: Readonly<Record<string, string>> = Object.freeze({})
 
+const pendingRun = 256
+
 class Parser {
   out: Array<Event> = []
 
@@ -932,6 +934,8 @@ class Parser {
   private pending: Array<string> | undefined
   private pendingStart = 0
   private pendingLength = 0
+  // Number of chunks added to `pending` since its last chunks were joined
+  private pendingAdded = 0
   private readonly scanner = new Scanner()
 
   // Line and column of document offset `counted`
@@ -1038,6 +1042,12 @@ class Parser {
       if (!force && this.scanner.scan(chunk, 0) === -1) {
         this.pending.push(chunk)
         this.pendingLength += chunk.length
+        // Joins runs of chunks, so that a token split into many tiny chunks
+        // does not take an array slot for each
+        if (++this.pendingAdded === pendingRun) {
+          this.pending.push(this.pending.splice(-pendingRun).join(""))
+          this.pendingAdded = 0
+        }
         this.checkPending()
         return
       }
@@ -1118,6 +1128,7 @@ class Parser {
       this.pending = [rest]
       this.pendingStart = this.base + i
       this.pendingLength = rest.length
+      this.pendingAdded = 0
       // Brings the scanner to the end of the incomplete token
       this.scanner.reset(S_START)
       this.scanner.scan(rest, 0)
