@@ -301,6 +301,24 @@ export const layerBackingMemory: Layer.Layer<BackingPersistence> = Layer.sync(Ba
  * Each table is created if needed and stores JSON-encoded values with optional
  * expiration timestamps.
  *
+ * **Gotchas**
+ *
+ * Store ids are used directly in `effect_persistence_${storeId}` table names,
+ * without encoding or collision detection. Choose ids whose full table names
+ * are distinct under the database's identifier rules:
+ *
+ * - Do not use dots: they are interpreted as schema separators.
+ * - Do not rely on case alone to distinguish stores: SQLite treats ASCII-case
+ *   variants such as `Users` and `users` as the same table.
+ * - Stay within the database's identifier length limit, including the prefix.
+ *   PostgreSQL normally truncates identifiers to 63 bytes, leaving 44 bytes
+ *   for the store id. Ids sharing those first 44 bytes can alias the same table.
+ *
+ * Aliased stores share entries: writes can overwrite another store's values,
+ * and clearing one clears the other. For arbitrary store ids, prefer
+ * `layerBackingSql`, which stores ids as row values rather than table names.
+ *
+ * @see layerBackingSql
  * @stability unstable
  * @category layers
  * @since 4.0.0
@@ -1180,6 +1198,16 @@ export const layerRedis: Layer.Layer<Persistence, never, Redis.Redis> = layer.pi
 /**
  * Provides `Persistence` backed by SQL with one table per store id.
  *
+ * **Gotchas**
+ *
+ * Store ids become `effect_persistence_${storeId}` table names and must obey
+ * the database's identifier rules. Avoid dots, case-only distinctions, and
+ * names exceeding the database's identifier length limit (including the
+ * prefix). Colliding names share data, including writes and clears.
+ * Prefer `layerSql` for arbitrary store ids.
+ *
+ * @see layerBackingSqlMultiTable for database-specific store-id restrictions
+ * @see layerSql
  * @stability unstable
  * @category layers
  * @since 4.0.0
