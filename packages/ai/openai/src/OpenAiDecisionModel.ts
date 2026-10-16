@@ -92,6 +92,7 @@ export const make = Effect.fnUntraced(
         })
         const answers: Record<string, DecisionModel.ProviderAnswer> = Object.create(null)
         for (const answer of response.answers) {
+          if (answers[answer.name]?._tag === "Refusal") continue
           switch (answer.type) {
             case "refusal":
               answers[answer.name] = { _tag: "Refusal" }
