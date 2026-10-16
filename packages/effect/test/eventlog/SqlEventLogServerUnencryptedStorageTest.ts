@@ -387,4 +387,35 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
         assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, sentinel], 1)
       }))
+
+    it.effect("streams in sequence order when a later commit publishes before a caller-owned commit", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storage = yield* makeStorage(makeOptions("sql_outer_ordering"))
+        const storeId = makeStoreId("sql_outer_ordering")
+        const backlog = makeEntry("Ada")
+        const first = makeEntry("Grace")
+        const second = makeEntry("Margaret")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        // The caller's earlier callback holds its transaction between COMMIT
+        // and the storage's publication of `first`.
+        const committed = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const writer = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* sql.afterCommit(Deferred.succeed(committed, undefined).pipe(Effect.andThen(Deferred.await(release))))
+          yield* storage.write(storeId, [first])
+        })).pipe(Effect.forkChild)
+        yield* Deferred.await(committed)
+        yield* storage.write(storeId, [second])
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(writer)
+
+        assertEntries(yield* Queue.takeN(changes, 2), [first, second], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, first, second], 1)
+      }))
   })

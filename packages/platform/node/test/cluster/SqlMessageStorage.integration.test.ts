@@ -1,8 +1,9 @@
 import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option } from "effect"
+import { Effect, Exit, Fiber, FileSystem, Latch, Layer, Option, Schema } from "effect"
 import {
+  ClusterError,
   Entity,
   EntityAddress,
   EntityId,
@@ -19,6 +20,7 @@ import {
   Snowflake,
   SqlMessageStorage
 } from "effect/cluster"
+import type { RpcSerialization } from "effect/rpc"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
@@ -706,6 +708,40 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(committed)
           assert.deepStrictEqual(notified, [String(committed.reply.id)])
           yield* Fiber.await(handler)
+        }))
+
+      it.effect("fails saveReply with a handler failure outside a transaction but commits inside one", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const failure = new ClusterError.MalformedMessage({ cause: new Error("respond failed") })
+          const registerFailingHandler = (request: Message.OutgoingRequest<any>) =>
+            storage.registerReplyHandler(
+              new Message.IncomingRequest({
+                envelope: request.envelope,
+                lastSentReply: Option.none(),
+                respond: () => Effect.fail(failure),
+                codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+              })
+            ).pipe(Effect.forkChild)
+
+          const outside = yield* makeRequest()
+          yield* storage.saveRequest(outside)
+          const outsideHandler = yield* registerFailingHandler(outside)
+          yield* TestClock.adjust(1)
+          const error = yield* storage.saveReply(yield* makeReply(outside)).pipe(Effect.flip)
+          assert.strictEqual(error, failure)
+          yield* Fiber.await(outsideHandler)
+
+          // After COMMIT the failure has no caller, so the transaction succeeds.
+          const inside = yield* makeRequest()
+          yield* storage.saveRequest(inside)
+          const insideHandler = yield* registerFailingHandler(inside)
+          yield* TestClock.adjust(1)
+          yield* sql.withTransaction(storage.saveReply(yield* makeReply(inside)))
+          expect(yield* storage.repliesFor([inside])).toHaveLength(1)
+          yield* Fiber.await(insideHandler)
         }))
 
       it.effect("unprocessedMessagesById", () =>
