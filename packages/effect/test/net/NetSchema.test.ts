@@ -3,7 +3,7 @@ import { Config, ConfigProvider, Effect, Schema } from "effect"
 
 describe("effect/net schemas", () => {
   it("encode canonical strings", () => {
-    const cases: ReadonlyArray<readonly [Schema.Top, string, string]> = [
+    const cases: ReadonlyArray<readonly [Schema.Codec<unknown>, string, string]> = [
       [Schema.MacAddress, "02:0A:0b:0C:0d:0E", "02:0a:0b:0c:0d:0e"],
       [Schema.IpAddress, "2001:0DB8:0:0:0:0:0:1", "2001:db8::1"],
       [Schema.IpInterface, "192.0.2.1", "192.0.2.1/32"],
@@ -20,7 +20,7 @@ describe("effect/net schemas", () => {
   })
 
   it("reject invalid strings", () => {
-    const cases: ReadonlyArray<readonly [Schema.Top, string, string]> = [
+    const cases: ReadonlyArray<readonly [Schema.Codec<unknown>, string, string]> = [
       [Schema.IpMulticastAddress, "127.0.0.1", "Expected a multicast address"],
       [Schema.Ipv4Network, "192.0.2.1/24", "address has non-zero host bits"],
       [Schema.InetAddressV4, "[::1]:80", "expected an IPv4 address:port"],
@@ -44,7 +44,7 @@ describe("effect/net schemas", () => {
       assert.strictEqual(String(socket), "/var/run/docker.sock")
     }))
 
-  const schemas = {
+  const schemas: Record<string, Schema.Codec<unknown>> = {
     MacAddress: Schema.MacAddress,
     IpAddress: Schema.IpAddress,
     IpInterface: Schema.IpInterface,
