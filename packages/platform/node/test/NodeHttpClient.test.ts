@@ -17,7 +17,35 @@ import {
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import { spawnSync } from "node:child_process"
 import * as Http from "node:http"
+import { fileURLToPath } from "node:url"
+
+// spawnSync must not consume the deadlines of concurrently running tests.
+describe("failing FormData file streams (isolated)", { concurrent: false, timeout: 30000 }, () => {
+  const probe = (mode: string) => {
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL("./fixtures/failing-form-data.ts", import.meta.url)),
+      mode
+    ], { encoding: "utf8", timeout: 10000 })
+    assert.ifError(result.error)
+    assert.strictEqual(result.status, 0, result.stderr)
+    return JSON.parse(result.stdout)
+  }
+
+  it.each(["node:http", "undici"])("%s fails promptly and releases upload resources", (adapter) => {
+    // Diagnostic only: an upstream fix must not make the adapter regression fail.
+    const native = probe("native")
+    const result = probe(adapter)
+    const diagnostic = JSON.stringify({ adapter, native, result })
+    assert.strictEqual(result.outcome.tag, "HttpClientError", diagnostic)
+    assert.include(["EncodeError", "TransportError"], result.outcome.reason, diagnostic)
+    assert.isAbove(result.streamsRead, 0, diagnostic)
+    assert.deepStrictEqual(result.unhandled, [], diagnostic)
+    assert.strictEqual(result.lockedStreams, 0, diagnostic)
+    assert.strictEqual(result.openSockets, 0, diagnostic)
+  })
+})
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
