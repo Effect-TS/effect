@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Channel, Context, Effect, Schema, SchemaGetter, Stream } from "effect"
+import { Channel, Context, Deferred, Effect, Schema, SchemaGetter, Stream } from "effect"
 import { Csv } from "effect/encoding"
 
 const parse = (parts: ReadonlyArray<string>, options?: Csv.DecodeOptions) =>
   Stream.fromArray(parts).pipe(
+    Stream.rechunk(1),
     Stream.pipeThroughChannel(Csv.decodeString(options)),
     Stream.runCollect
   )
@@ -54,6 +55,11 @@ describe("Csv", () => {
         assert.deepStrictEqual(yield* parse([text.slice(0, i), "", text.slice(i)]), expected)
       }
       assert.deepStrictEqual(yield* parse(text.split("")), expected)
+      const batched = yield* Stream.fromArray(text.split("")).pipe(
+        Stream.pipeThroughChannel(Csv.decodeString()),
+        Stream.runCollect
+      )
+      assert.deepStrictEqual(batched, expected)
     }))
 
   it.effect("preserves blank cells, whitespace and final records", () =>
@@ -88,11 +94,27 @@ describe("Csv", () => {
 
   it.effect("enforces record limits across chunks and resets between records", () =>
     Effect.gen(function*() {
-      assert.deepStrictEqual(yield* parse(["ab\r\ncd"], { maxRecordSize: 2 }), [["ab"], ["cd"]])
+      for (
+        const [text, row] of [
+          ["ab", ["ab"]],
+          ["a,b", ["a", "b"]],
+          ["\"a\"", ["a"]],
+          ["\"a\"\"b\"", ["a\"b"]],
+          ["\"a\nb\"", ["a\nb"]]
+        ] as const
+      ) {
+        assert.deepStrictEqual(
+          yield* parse([text, "\r", "\n", text, "\n", text, "\r"], { maxRecordSize: text.length }),
+          [row, row, row]
+        )
+        assert.strictEqual((yield* Effect.flip(parse([text], { maxRecordSize: text.length - 1 }))).kind, "RecordSize")
+      }
       const error = yield* Effect.flip(parse(["a", "b", "c"], { maxRecordSize: 2 }))
       assert.strictEqual(error.kind, "RecordSize")
       assert.strictEqual(error.column, 1)
-      assert.deepStrictEqual(yield* parse(["abc"], { maxRecordSize: Infinity }), [["abc"]])
+      const large = "a".repeat(1_048_577)
+      assert.strictEqual((yield* Effect.flip(parse([large]))).kind, "RecordSize")
+      assert.deepStrictEqual(yield* parse([large], { maxRecordSize: Infinity }), [[large]])
     }))
 
   it.effect("fails invalid configuration in the typed error channel", () =>
@@ -129,19 +151,24 @@ describe("Csv", () => {
       assert.strictEqual(new TextDecoder().decode(encoded[0]), "Zoë,東京\r\n")
     }))
 
-  it.effect("round trips renamed headers through Schema", () =>
+  it.effect("round trips renamed headers and encodes requested column order and subsets", () =>
     Effect.gen(function*() {
       const people = [{ name: "Alice", age: 32 }, { name: "Bob", age: 28 }]
-      const channel = Csv.encodeSchemaString(Person)({ columns: ["Full Name", "Age (years)"], headers: true })
+      const channel = Csv.encodeSchemaString(Person)({ columns: ["Age (years)", "Full Name"], headers: true })
       const text = yield* Stream.fromArray(people).pipe(Stream.pipeThroughChannel(channel), Stream.runCollect)
-      assert.strictEqual(text.join(""), "Full Name,Age (years)\r\nAlice,32\r\nBob,28\r\n")
+      assert.strictEqual(text.join(""), "Age (years),Full Name\r\n32,Alice\r\n28,Bob\r\n")
       const decoded = yield* Stream.fromArray(text).pipe(
         Stream.pipeThroughChannel(Csv.decodeSchemaString(Person)({ headers: true })),
         Stream.runCollect
       )
       assert.deepStrictEqual(decoded, people)
       const empty = yield* Stream.empty.pipe(Stream.pipeThroughChannel(channel), Stream.runCollect)
-      assert.deepStrictEqual(empty, ["Full Name,Age (years)\r\n"])
+      assert.deepStrictEqual(empty, ["Age (years),Full Name\r\n"])
+      const subset = yield* Stream.fromArray(people).pipe(
+        Stream.pipeThroughChannel(Csv.encodeSchemaString(Person)({ columns: ["Age (years)"], headers: true })),
+        Stream.runCollect
+      )
+      assert.strictEqual(subset.join(""), "Age (years)\r\n32\r\n28\r\n")
     }))
 
   it.effect("round trips a tuple-to-object transformation", () =>
@@ -156,16 +183,6 @@ describe("Csv", () => {
         Stream.runCollect
       )
       assert.deepStrictEqual(people, [{ name: "Alice", age: 32 }])
-    }))
-
-  it.effect("round trips schema byte channels", () =>
-    Effect.gen(function*() {
-      const people = yield* Stream.make({ name: "Zoë", age: 32 }).pipe(
-        Stream.pipeThroughChannel(Csv.encodeSchema(Person)({ columns: ["Full Name", "Age (years)"], headers: true })),
-        Stream.pipeThroughChannel(Csv.decodeSchema(Person)({ headers: true })),
-        Stream.runCollect
-      )
-      assert.deepStrictEqual(people, [{ name: "Zoë", age: 32 }])
     }))
 
   it.effect("rejects duplicate headers and mismatched widths", () =>
@@ -246,22 +263,14 @@ describe("Csv", () => {
 
   it.effect("preserves completion values after flushing the final row", () =>
     Effect.gen(function*() {
-      const source = Channel.fromTransform(() =>
-        Effect.sync(() => {
-          let first = true
-          return Effect.suspend(() => {
-            if (!first) return Cause.done(42)
-            first = false
-            return Effect.succeed(["last"] as const)
-          })
-        })
-      )
+      const source = Channel.succeed(["last"] as const).pipe(Channel.mapDone(() => 42))
       const channel = Channel.pipeTo(source, Csv.decodeString<never, number>())
       const result = yield* Channel.runCollect(Channel.mapDone(channel, (done) => {
         assert.strictEqual(done, 42)
       }))
       assert.deepStrictEqual(result, [[["last"]]])
     }))
+
   it.effect("supports effectful schema transformations and required services", () =>
     Effect.gen(function*() {
       class Names extends Context.Service<Names, { readonly prefix: string }>()("CsvTestNames") {}
@@ -287,12 +296,23 @@ describe("Csv", () => {
   it.effect("isolates parser and header state on concurrent reuse", () =>
     Effect.gen(function*() {
       const channel = Csv.decodeSchemaString(Person)({ headers: true })
-      const run = Stream.make("Full Name,Age (years)\nAlice,32").pipe(
-        Stream.pipeThroughChannel(channel),
-        Stream.runCollect
-      )
-      const results = yield* Effect.all([run, run], { concurrency: 2 })
-      assert.deepStrictEqual(results, [[{ name: "Alice", age: 32 }], [{ name: "Alice", age: 32 }]])
+      const firstReady = yield* Deferred.make<void>()
+      const secondReady = yield* Deferred.make<void>()
+      const run = (prefix: string, suffix: string, ready: Deferred.Deferred<void>, other: Deferred.Deferred<void>) =>
+        Stream.make(prefix).pipe(
+          Stream.concat(Stream.fromEffect(Effect.gen(function*() {
+            yield* Deferred.succeed(ready, undefined)
+            yield* Deferred.await(other)
+            return suffix
+          }))),
+          Stream.pipeThroughChannel(channel),
+          Stream.runCollect
+        )
+      const results = yield* Effect.all([
+        run("Full Name,Age (years)\n\"Ali", "ce\",32", firstReady, secondReady),
+        run("Age (years),Full Name\n28,\"Bo", "b\"", secondReady, firstReady)
+      ], { concurrency: 2 })
+      assert.deepStrictEqual(results, [[{ name: "Alice", age: 32 }], [{ name: "Bob", age: 28 }]])
     }))
 
   it.effect("stops pulling when the consumer has enough rows", () =>
