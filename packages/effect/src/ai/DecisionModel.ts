@@ -2,6 +2,8 @@
  * Defines the provider-neutral service for structured decisions.
  * `decide` encodes one input as JSON, sends its named decisions in one provider
  * call, and validates the answers. Failures are reported as `AiError` values.
+ * `decideSettled` makes the same call but reports each decision separately, so
+ * valid answers survive when others are missing, refused, or invalid.
  * @stability unstable
  * @since 4.0.0
  */
@@ -10,6 +12,7 @@ import * as Effect from "../Effect.ts"
 import * as Uuid from "../internal/uuid.ts"
 import * as Predicate from "../Predicate.ts"
 import * as Random from "../Random.ts"
+import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as AiError from "./AiError.ts"
 import * as Decision from "./Decision.ts"
@@ -117,6 +120,20 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 }
 
 /**
+ * Per-decision outcomes and token usage for the whole request.
+ *
+ * @see {@link decideSettled} for producing this response
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface DecideSettledResponse<Decisions extends Record<string, Decision.Any>> {
+  readonly outcomes: Decision.Outcomes<Decisions>
+  readonly usage: DecisionUsage
+}
+
+/**
  * Provider input options for a decision request.
  * `state` is encoded with `Schema.toCodecJson`, not stringified.
  * All `decisions` must be answered in one call.
@@ -135,7 +152,7 @@ export interface ProviderOptions<Decisions extends Decision.Any = Decision.Any> 
 }
 
 /**
- * Provider answer for a classify decision.
+ * Provider classify answer. Omit `probabilities` when no distribution is available.
  *
  * @stability unstable
  * @category models
@@ -144,14 +161,13 @@ export interface ProviderOptions<Decisions extends Decision.Any = Decision.Any> 
 export interface ProviderClassifyAnswer {
   readonly _tag: "Classify"
   readonly label: string
-  readonly probabilities: Readonly<Record<string, number>>
+  readonly probabilities?: Readonly<Record<string, number>> | undefined
   readonly confidence?: number | undefined
 }
 
 /**
- * Provider answer for a rate decision.
- * The core derives the label from the highest probability, choosing the
- * first criteria entry on ties.
+ * Provider rate answer. The highest probability determines the label, with
+ * ties going to the first criterion. Omit `probabilities` when unavailable.
  *
  * @stability unstable
  * @category models
@@ -160,7 +176,7 @@ export interface ProviderClassifyAnswer {
 export interface ProviderRateAnswer {
   readonly _tag: "Rate"
   readonly rating: number
-  readonly probabilities: Readonly<Record<string, number>>
+  readonly probabilities?: Readonly<Record<string, number>> | undefined
   readonly confidence?: number | undefined
 }
 
@@ -174,6 +190,17 @@ export interface ProviderRateAnswer {
 export interface ProviderProbabilityAnswer {
   readonly _tag: "Probability"
   readonly probability: number
+}
+
+/**
+ * Provider refusal to answer a decision.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface ProviderRefusalAnswer {
+  readonly _tag: "Refusal"
 }
 
 /**
@@ -200,12 +227,14 @@ export type ProviderAnswer =
   | ProviderClassifyAnswer
   | ProviderRateAnswer
   | ProviderProbabilityAnswer
+  | ProviderRefusalAnswer
   | ProviderLocateAnswer
 
 /**
  * Provider response for a decision request.
  * `answers` is keyed like the requested decisions. Each answer is validated
- * against its decision before it is returned to the caller.
+ * against its decision before it is returned to the caller. Omit the key of a
+ * decision the provider did not answer.
  *
  * @stability unstable
  * @category models
@@ -232,21 +261,21 @@ export interface DecisionModel {
     definition: Decision.Definition<Input, Decisions>,
     options: DecideOptions<Input>
   ) => Effect.Effect<DecideResponse<Decisions>, AiError.AiError, Input["EncodingServices"]>
+  readonly decideSettled: <Input extends Schema.Constraint, Decisions extends Record<string, Decision.Any>>(
+    definition: Decision.Definition<Input, Decisions>,
+    options: DecideOptions<Input>
+  ) => Effect.Effect<DecideSettledResponse<Decisions>, AiError.AiError, Input["EncodingServices"]>
 }
 
-const invalidOutput = (description: string): AiError.AiError =>
-  AiError.make({
-    module: "DecisionModel",
-    method: "decide",
-    reason: new AiError.InvalidOutputError({ description })
-  })
+const unanswered = (
+  reason: Decision.Unanswered["reason"],
+  description: string
+): Result.Result<never, Decision.Unanswered> => Result.fail({ _tag: "Unanswered", reason, description })
 
-const invalidUserInput = (description: string): AiError.AiError =>
-  AiError.make({
-    module: "DecisionModel",
-    method: "decide",
-    reason: new AiError.InvalidUserInputError({ description })
-  })
+const invalid = (description: string) => unanswered("Invalid", description)
+
+const aiError = (method: "decide" | "decideSettled", reason: AiError.AiErrorReason): AiError.AiError =>
+  AiError.make({ module: "DecisionModel", method, reason })
 
 const toProviderImage = (value: unknown): ProviderImage["image"] | undefined => {
   if (!Predicate.isObject(value) || Object.keys(value).length !== 1) return undefined
@@ -325,41 +354,41 @@ const validateDistribution = (
   labels: ReadonlyArray<string>,
   answer: Record<string, unknown>,
   roundingError: number
-): Record<string, number> | AiError.AiError => {
+): Result.Result<Record<string, number>, Decision.Unanswered> => {
   const raw = answer.probabilities
   if (!Predicate.isObject(raw)) {
-    return invalidOutput(`Provider returned no probabilities for decision "${key}"`)
+    return unanswered("NoDistribution", `Provider returned no probabilities for decision "${key}"`)
   }
   const probabilities: Record<string, number> = Object.create(null)
   let total = 0
   for (const label of labels) {
     const value = raw[label]
     if (!isUnitInterval(value)) {
-      return invalidOutput(`Provider returned no probability for label "${label}" of decision "${key}"`)
+      return invalid(`Provider returned no probability for label "${label}" of decision "${key}"`)
     }
     probabilities[label] = value
     total += value
   }
   const drift = Math.abs(total - 1)
   if (total === 0 || drift > labels.length * roundingError + sumTolerance) {
-    return invalidOutput(`Provider returned probabilities that do not sum to 1 for decision "${key}"`)
+    return invalid(`Provider returned probabilities that do not sum to 1 for decision "${key}"`)
   }
   if (drift > sumTolerance) {
     for (const label of labels) probabilities[label] /= total
   }
-  return probabilities
+  return Result.succeed(probabilities)
 }
 
 const validateConfidence = (
   key: string,
   answer: Record<string, unknown>
-): number | undefined | AiError.AiError => {
+): Result.Result<number | undefined, Decision.Unanswered> => {
   if (answer.confidence === undefined) {
-    return undefined
+    return Result.succeed(undefined)
   }
   return isUnitInterval(answer.confidence)
-    ? answer.confidence
-    : invalidOutput(`Provider returned confidence outside [0, 1] for decision "${key}"`)
+    ? Result.succeed(answer.confidence)
+    : invalid(`Provider returned confidence outside [0, 1] for decision "${key}"`)
 }
 
 const validateAnswer = (
@@ -367,57 +396,54 @@ const validateAnswer = (
   decision: Decision.Any,
   answer: unknown,
   roundingError: number
-): Decision.Answer<Decision.Any> | AiError.AiError => {
+): Decision.Outcome<Decision.Any> => {
   if (!Predicate.isObject(answer)) {
-    return invalidOutput(`Provider returned no answer for decision "${key}"`)
+    return unanswered("Missing", `Provider returned no answer for decision "${key}"`)
+  }
+  if (answer._tag === "Refusal") {
+    return unanswered("Refused", `Provider refused to answer decision "${key}"`)
   }
   if (answer._tag !== decision._tag) {
-    return invalidOutput(
+    return invalid(
       `Provider returned a "${String(answer._tag)}" answer for decision "${key}", expected "${decision._tag}"`
     )
   }
   switch (decision._tag) {
     case "Classify": {
       const labels = Object.keys(decision.criteria)
-      if (!Predicate.isString(answer.label) || !labels.includes(answer.label)) {
-        return invalidOutput(`Provider returned an unknown label for decision "${key}"`)
+      const label = answer.label
+      if (!Predicate.isString(label) || !labels.includes(label)) {
+        return invalid(`Provider returned an unknown label for decision "${key}"`)
       }
-      const confidence = validateConfidence(key, answer)
-      if (AiError.isAiError(confidence)) {
-        return confidence
-      }
-      const probabilities = validateDistribution(key, labels, answer, roundingError)
-      if (AiError.isAiError(probabilities)) {
-        return probabilities
-      }
-      return { label: answer.label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
+      return Result.gen(function*() {
+        const confidence = yield* validateConfidence(key, answer)
+        const probabilities = yield* validateDistribution(key, labels, answer, roundingError)
+        return { label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
+      })
     }
     case "Rate": {
       const levels = decision.criteria.map((level) => level.label)
-      if (!isFiniteNumber(answer.rating) || answer.rating < 0 || answer.rating > levels.length - 1) {
-        return invalidOutput(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
+      const rating = answer.rating
+      if (!isFiniteNumber(rating) || rating < 0 || rating > levels.length - 1) {
+        return invalid(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
       }
-      const confidence = validateConfidence(key, answer)
-      if (AiError.isAiError(confidence)) {
-        return confidence
-      }
-      const probabilities = validateDistribution(key, levels, answer, roundingError)
-      if (AiError.isAiError(probabilities)) {
-        return probabilities
-      }
-      let label = levels[0]
-      for (let i = 1; i < levels.length; i++) {
-        if (probabilities[levels[i]] > probabilities[label]) {
-          label = levels[i]
+      return Result.gen(function*() {
+        const confidence = yield* validateConfidence(key, answer)
+        const probabilities = yield* validateDistribution(key, levels, answer, roundingError)
+        let label = levels[0]
+        for (let i = 1; i < levels.length; i++) {
+          if (probabilities[levels[i]] > probabilities[label]) {
+            label = levels[i]
+          }
         }
-      }
-      return { rating: answer.rating, label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
+        return { rating, label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
+      })
     }
     case "Probability": {
       if (!isUnitInterval(answer.probability)) {
-        return invalidOutput(`Provider returned a probability outside [0, 1] for decision "${key}"`)
+        return invalid(`Provider returned a probability outside [0, 1] for decision "${key}"`)
       }
-      return { probability: answer.probability }
+      return Result.succeed({ probability: answer.probability })
     }
     case "Locate": {
       const box = answer.box
@@ -425,37 +451,57 @@ const validateAnswer = (
         !Predicate.isObject(box) || !isUnitInterval(box.left) || !isUnitInterval(box.top) ||
         !isUnitInterval(box.right) || !isUnitInterval(box.bottom)
       ) {
-        return invalidOutput(`Provider returned a box with edges outside [0, 1] for decision "${key}"`)
+        return invalid(`Provider returned a box with edges outside [0, 1] for decision "${key}"`)
       }
       if (box.left > box.right || box.top > box.bottom) {
-        return invalidOutput(`Provider returned a box with crossed edges for decision "${key}"`)
+        return invalid(`Provider returned a box with crossed edges for decision "${key}"`)
       }
-      const confidence = validateConfidence(key, answer)
-      if (AiError.isAiError(confidence)) {
-        return confidence
-      }
-      return {
-        box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },
+      const validatedBox = { left: box.left, top: box.top, right: box.right, bottom: box.bottom }
+      return Result.map(validateConfidence(key, answer), (confidence) => ({
+        box: validatedBox,
         ...(confidence === undefined ? undefined : { confidence })
-      }
+      }))
     }
   }
 }
 
-const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
+const settleAnswers = <Decisions extends Record<string, Decision.Any>>(
   decisions: Decisions,
   answers: Readonly<Record<string, ProviderAnswer>>,
   roundingError: number
-): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
-  const validated: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
+): Decision.Outcomes<Decisions> => {
+  const outcomes: Record<string, Decision.Outcome<Decision.Any>> = Object.create(null)
   for (const key of Object.keys(decisions)) {
-    const answer = validateAnswer(key, decisions[key], answers[key], roundingError)
-    if (AiError.isAiError(answer)) {
-      return Effect.fail(answer)
-    }
-    validated[key] = answer
+    outcomes[key] = validateAnswer(key, decisions[key], answers[key], roundingError)
   }
-  return Effect.succeed(validated as Decision.Answers<Decisions>)
+  return outcomes as Decision.Outcomes<Decisions>
+}
+
+const requireAnswers = <Decisions extends Record<string, Decision.Any>>(
+  outcomes: Decision.Outcomes<Decisions>
+): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
+  const answers: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
+  const refused: Array<string> = []
+  let firstUnanswered: Decision.Unanswered | undefined
+  for (const [key, outcome] of Object.entries(outcomes) as Array<[string, Decision.Outcome<Decision.Any>]>) {
+    if (Result.isSuccess(outcome)) {
+      answers[key] = outcome.success
+    } else if (outcome.failure.reason === "Refused") {
+      refused.push(`"${key}"`)
+    } else {
+      firstUnanswered ??= outcome.failure
+    }
+  }
+  if (refused.length > 0) {
+    return Effect.fail(aiError(
+      "decide",
+      new AiError.ContentPolicyError({ description: `Provider refused to answer decisions ${refused.join(", ")}` })
+    ))
+  }
+  if (firstUnanswered !== undefined) {
+    return Effect.fail(aiError("decide", new AiError.InvalidOutputError({ description: firstUnanswered.description })))
+  }
+  return Effect.succeed(answers as Decision.Answers<Decisions>)
 }
 
 /**
@@ -463,8 +509,10 @@ const validateAnswers = <Decisions extends Record<string, Decision.Any>>(
  * Answers must cover every decision and use its labels. Distributions must
  * sum to 1 within `1e-6`, optional confidence must be in `[0, 1]`, and ratings must be
  * in `[0, criteria.length - 1]`. Boxes must have edges in `[0, 1]` that do not
- * cross. Invalid answers fail with `AiError.InvalidOutputError`; encoding
- * failures use `AiError.InvalidUserInputError`.
+ * cross. With `decide`, refused decisions fail with
+ * `AiError.ContentPolicyError` and other unanswered decisions fail with
+ * `AiError.InvalidOutputError`; `decideSettled` reports them per decision
+ * instead. Encoding failures use `AiError.InvalidUserInputError`.
  *
  * **Details**
  *
@@ -508,61 +556,78 @@ export const make = (
 ): Effect.Effect<DecisionModel> =>
   Effect.sync(() => {
     const roundingError = params.probabilityPrecision === undefined ? 0 : 0.5 * 10 ** -params.probabilityPrecision
+    const settle = <Input extends Schema.Constraint, Decisions extends Record<string, Decision.Any>>(
+      method: "decide" | "decideSettled",
+      definition: Decision.Definition<Input, Decisions>,
+      options: DecideOptions<Input>
+    ): Effect.Effect<DecideSettledResponse<Decisions>, AiError.AiError, Input["EncodingServices"]> =>
+      Schema.encodeEffect(Schema.toCodecJson(definition.input))(options.input).pipe(
+        Effect.mapError((error) => aiError(method, new AiError.InvalidUserInputError({ description: error.message }))),
+        Effect.flatMap((encoded) =>
+          Effect.withFiber((fiber) => Effect.succeed(extractImages(encoded, fiber.getRef(Random.Random))))
+        ),
+        Effect.flatMap(({ state, images, paths }) => {
+          if (images.length > 0 && params.supportsImages !== true) {
+            return Effect.fail(
+              aiError(
+                method,
+                new AiError.InvalidUserInputError({ description: "This decision model does not accept images" })
+              )
+            )
+          }
+          for (const [key, decision] of Object.entries(definition.decisions)) {
+            if (decision._tag !== "Locate") continue
+            if (params.supportsLocate !== true) {
+              return Effect.fail(
+                aiError(
+                  method,
+                  new AiError.InvalidUserInputError({
+                    description: "This decision model does not support locate decisions"
+                  })
+                )
+              )
+            }
+            if (!paths.has(decision.image)) {
+              return Effect.fail(
+                aiError(
+                  method,
+                  new AiError.InvalidUserInputError({
+                    description: `Locate decision "${key}" targets "${decision.image}", which holds no image`
+                  })
+                )
+              )
+            }
+          }
+          // Locate decisions were rejected above unless `supportsLocate` is true.
+          const decide = params.decide as (
+            options: ProviderOptions
+          ) => Effect.Effect<ProviderResponse, AiError.AiError>
+          return decide({
+            state,
+            decisions: definition.decisions,
+            ...(images.length === 0 ? undefined : { images })
+          })
+        }),
+        Effect.map((response): DecideSettledResponse<Decisions> => ({
+          outcomes: settleAnswers(definition.decisions, response.answers, roundingError),
+          usage: new DecisionUsage({
+            inputTokens: response.usage.inputTokens,
+            outputTokens: response.usage.outputTokens
+          })
+        }))
+      )
     return DecisionModel.of({
       [TypeId]: TypeId,
-      decide: <Input extends Schema.Constraint, Decisions extends Record<string, Decision.Any>>(
-        definition: Decision.Definition<Input, Decisions>,
-        options: DecideOptions<Input>
-      ): Effect.Effect<DecideResponse<Decisions>, AiError.AiError, Input["EncodingServices"]> =>
-        Schema.encodeEffect(Schema.toCodecJson(definition.input))(options.input).pipe(
-          Effect.mapError((error) =>
-            AiError.make({
-              module: "DecisionModel",
-              method: "decide",
-              reason: new AiError.InvalidUserInputError({ description: error.message })
-            })
-          ),
-          Effect.flatMap((encoded) =>
-            Effect.withFiber((fiber) => Effect.succeed(extractImages(encoded, fiber.getRef(Random.Random))))
-          ),
-          Effect.flatMap(({ state, images, paths }) => {
-            if (images.length > 0 && params.supportsImages !== true) {
-              return Effect.fail(invalidUserInput("This decision model does not accept images"))
-            }
-            for (const [key, decision] of Object.entries(definition.decisions)) {
-              if (decision._tag !== "Locate") continue
-              if (params.supportsLocate !== true) {
-                return Effect.fail(invalidUserInput("This decision model does not support locate decisions"))
-              }
-              if (!paths.has(decision.image)) {
-                return Effect.fail(
-                  invalidUserInput(`Locate decision "${key}" targets "${decision.image}", which holds no image`)
-                )
-              }
-            }
-            // Locate decisions were rejected above unless `supportsLocate` is true.
-            const decide = params.decide as (
-              options: ProviderOptions
-            ) => Effect.Effect<ProviderResponse, AiError.AiError>
-            return decide({
-              state,
-              decisions: definition.decisions,
-              ...(images.length === 0 ? undefined : { images })
-            })
-          }),
-          Effect.flatMap((response) =>
-            Effect.map(
-              validateAnswers(definition.decisions, response.answers, roundingError),
-              (answers): DecideResponse<Decisions> => ({
-                answers,
-                usage: new DecisionUsage({
-                  inputTokens: response.usage.inputTokens,
-                  outputTokens: response.usage.outputTokens
-                })
-              })
-            )
+      decide: (definition, options) =>
+        settle("decide", definition, options).pipe(
+          Effect.flatMap(({ outcomes, usage }) =>
+            Effect.map(requireAnswers(outcomes), (answers) => ({ answers, usage }))
           ),
           (effect) => Effect.withSpan(effect, "DecisionModel.decide", { captureStackTrace: false })
+        ),
+      decideSettled: (definition, options) =>
+        settle("decideSettled", definition, options).pipe(
+          (effect) => Effect.withSpan(effect, "DecisionModel.decideSettled", { captureStackTrace: false })
         )
     })
   })
@@ -573,6 +638,9 @@ export const make = (
  * Explicit `undefined` fields become `null`; absent fields stay absent.
  * Custom declarations need a JSON codec annotation or encoding fails.
  * Returned answers and probability dictionaries have null prototypes.
+ * Fails with `AiError.ContentPolicyError` if the provider refuses any decision,
+ * and otherwise with `AiError.InvalidOutputError` for the first unanswered
+ * decision in definition order.
  *
  * **Example** (Triaging a ticket)
  *
@@ -599,6 +667,7 @@ export const make = (
  * ```
  *
  * @see {@link DecisionModel} for the service this function requires
+ * @see {@link decideSettled} for keeping valid answers when others fail
  *
  * @stability unstable
  * @category decisions
@@ -609,3 +678,56 @@ export const decide = <Input extends Schema.Constraint, Decisions extends Record
   options: DecideOptions<Input>
 ): Effect.Effect<DecideResponse<Decisions>, AiError.AiError, DecisionModel | Input["EncodingServices"]> =>
   DecisionModel.use((model) => model.decide(definition, options))
+
+/**
+ * Answers each decision with a `Result` containing a validated answer or a
+ * `Decision.Unanswered` reason. Input encoding and provider failures still
+ * fail the effect. Token usage covers the whole call.
+ *
+ * **Details**
+ *
+ * Provider response decoding errors fail the whole call. Per-decision reasons
+ * reflect the first failed validation check; `"NoDistribution"` requires an
+ * otherwise valid answer.
+ *
+ * **Example** (Falling back for unanswered decisions)
+ *
+ * ```ts
+ * import { Effect, Result, Schema } from "effect"
+ * import { Decision, DecisionModel } from "effect/ai"
+ *
+ * const TicketTriage = Decision.make({
+ *   input: Schema.String,
+ *   decisions: {
+ *     department: Decision.classify({
+ *       instructions: "Which team should handle this",
+ *       criteria: { billing: "payments", technical: "bugs" }
+ *     }),
+ *     urgent: Decision.probability({ instructions: "The message is time-sensitive" })
+ *   }
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const { outcomes } = yield* DecisionModel.decideSettled(TicketTriage, {
+ *     input: "My card was charged twice, please fix this today"
+ *   })
+ *   const department = Result.isSuccess(outcomes.department) &&
+ *       outcomes.department.success.probabilities.billing >= 0.8
+ *     ? "billing"
+ *     : "needs review"
+ *   const urgent = Result.isSuccess(outcomes.urgent) ? outcomes.urgent.success.probability : undefined
+ *   return { department, urgent }
+ * })
+ * ```
+ *
+ * @see {@link decide} for failing unless every decision is answered
+ *
+ * @stability unstable
+ * @category decisions
+ * @since 4.0.6
+ */
+export const decideSettled = <Input extends Schema.Constraint, Decisions extends Record<string, Decision.Any>>(
+  definition: Decision.Definition<Input, Decisions>,
+  options: DecideOptions<Input>
+): Effect.Effect<DecideSettledResponse<Decisions>, AiError.AiError, DecisionModel | Input["EncodingServices"]> =>
+  DecisionModel.use((model) => model.decideSettled(definition, options))

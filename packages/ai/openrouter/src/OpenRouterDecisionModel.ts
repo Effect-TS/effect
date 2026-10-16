@@ -42,7 +42,9 @@ export const model = (
   Model.make("openrouter", model, layer({ model, config }))
 
 /**
- * Creates a decision service that requires full choice and score distributions.
+ * Creates a decision service that validates full choice and score distributions.
+ * Missing distributions yield `"NoDistribution"` with `decideSettled` or
+ * `AiError.InvalidOutputError` with `decide`.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
@@ -95,15 +97,6 @@ export const make = Effect.fnUntraced(function*(options: {
           answers[key] = { _tag: "Probability", probability: answer.noul }
           continue
         }
-        if (answer.probabilities === undefined) {
-          return yield* AiError.make({
-            module: "OpenRouterDecisionModel",
-            method: "decide",
-            reason: new AiError.InvalidOutputError({
-              description: `Provider returned no probabilities for decision "${key}"`
-            })
-          })
-        }
         if (answer.type === "choice") {
           answers[key] = {
             _tag: "Classify",
@@ -116,13 +109,18 @@ export const make = Effect.fnUntraced(function*(options: {
           const probabilities: Record<string, number> = Object.create(null)
           if (decision?._tag === "Rate") {
             for (const [index, { label }] of decision.criteria.entries()) {
-              const probability = answer.probabilities[String(index)]
+              const probability = answer.probabilities?.[String(index)]
               if (probability !== undefined) {
                 probabilities[label] = probability
               }
             }
           }
-          answers[key] = { _tag: "Rate", rating: answer.score, probabilities, confidence: answer.confidence }
+          answers[key] = {
+            _tag: "Rate",
+            rating: answer.score,
+            probabilities: answer.probabilities === undefined ? undefined : probabilities,
+            confidence: answer.confidence
+          }
         }
       }
       return {

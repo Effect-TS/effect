@@ -1,8 +1,86 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
-import * as Schema from "effect/Schema"
 
 describe("Hydration", () => {
+  it("falls back on the first read of invalid immediate hydration", () => {
+    const atom = Atom.make(0).pipe(Atom.serializable({ key: "count", schema: Schema.Number }))
+    const registry = AtomRegistry.make()
+    try {
+      const state: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/Hydration/DehydratedAtom": true,
+        key: "count",
+        value: "invalid",
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(registry, state)
+
+      assert.strictEqual(registry.get(atom), 0)
+    } finally {
+      registry.dispose()
+    }
+  })
+
+  it.each(["invalid", "skipped"] as const)("releases %s streamed hydration", async (kind) => {
+    const { promise, resolve } = Promise.withResolvers<number>()
+    const serverAtom = Atom.make(Effect.promise(() => promise)).pipe(
+      Atom.serializable({
+        key: "count",
+        schema: AsyncResult.Schema({ success: kind === "invalid" ? Schema.Number : Schema.Int })
+      })
+    )
+    const source = Atom.make(Effect.succeed(0))
+    const clientAtom = (kind === "invalid"
+      ? source.pipe(Atom.mapResult((n) => n + 1))
+      : source.pipe(Atom.withRefresh("1 hour"))).pipe(
+        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+      )
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      server.mount(serverAtom)
+      const state = Hydration.toValues(Hydration.dehydrate(server, { encodeInitialAs: "promise" }))
+      Hydration.hydrate(client, state)
+      client.mount(clientAtom)
+      assert.deepStrictEqual(client.get(clientAtom), AsyncResult.initial(true))
+
+      resolve(0.5)
+      await state[0].resultPromise
+      await Effect.runPromise(Effect.yieldNow)
+
+      const result = client.get(clientAtom)
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, kind === "invalid" ? 1 : 0)
+      assert.strictEqual(result.waiting, false)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
+  it("preserves client state when a superseded stream cannot be encoded", async () => {
+    const atom = Atom.make<AsyncResult.AsyncResult<number>>(AsyncResult.initial()).pipe(
+      Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+    )
+    const server = AtomRegistry.make()
+    const client = AtomRegistry.make()
+    try {
+      server.mount(atom)
+      const state = Hydration.dehydrate(server, { encodeInitialAs: "promise" })
+      Hydration.hydrate(client, state)
+      const result = AsyncResult.success(42)
+      client.set(atom, result)
+
+      server.set(atom, AsyncResult.success(0.5))
+      await Hydration.toValues(state)[0].resultPromise
+
+      assert.deepStrictEqual(client.get(atom), result)
+    } finally {
+      server.dispose()
+      client.dispose()
+    }
+  })
+
   const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
     Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
   )

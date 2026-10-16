@@ -102,12 +102,37 @@ const AsyncString = Schema.String.pipe(Schema.decode({
 const AsyncNonEmptyString = AsyncString.check(Schema.isNonEmpty())
 
 describe("toStandardSchemaV1", () => {
+  it("can re-adapt a frozen adapter with a custom hook", () => {
+    const frozen = Object.freeze(Schema.toStandardSchemaV1(Schema.String))
+    const custom = Schema.toStandardSchemaV1(frozen, { leafHook: () => "Custom message" })
+
+    expectSyncFailure(custom, null, [{ message: "Custom message", path: [] }])
+  })
+
+  it("isolates leafHook between adaptations of the same schema", () => {
+    const schema = Schema.String.annotate({})
+    const standard = Schema.toStandardSchemaV1(schema)
+    const custom = Schema.toStandardSchemaV1(schema, { leafHook: () => "Custom message" })
+
+    expectSyncFailure(custom, null, [{ message: "Custom message", path: [] }])
+    expectSyncFailure(standard, null, [{ message: "Expected string", path: [] }])
+  })
+
+  it("retains validation when piping a class adapter into the JSON-schema adapter", () => {
+    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
+    const adapted = Schema.toStandardSchemaV1(Parent, { leafHook: () => "Custom message" })
+    const both = adapted.pipe(Schema.toStandardJSONSchemaV1)
+
+    expectSyncFailure(both, { a: null }, [{ message: "Custom message", path: ["a"] }])
+  })
+
   it("validates subclass fields when the parent already has a Standard Schema adapter", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
-    const parent = Schema.toStandardSchemaV1(Parent)
-    class Child extends Parent.extend<Child>("Child")({ b: Schema.Number }) {}
+    const parent = Schema.toStandardJSONSchemaV1(Schema.toStandardSchemaV1(Parent))
+    class Child extends parent.extend<Child>("Child")({ b: Schema.Number }) {}
     const child = Schema.toStandardSchemaV1(Child)
 
+    strictEqual("jsonSchema" in child["~standard"], false)
     expectSyncSuccess(parent, { a: "a" }, new Parent({ a: "a" }))
     expectSyncFailure(child, { a: "a" }, [{ path: ["b"], message: "Missing key" }])
     expectSyncSuccess(child, { a: "a", b: 1 }, new Child({ a: "a", b: 1 }))

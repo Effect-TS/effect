@@ -1,4 +1,4 @@
-import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
+import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Schema } from "effect"
 import type { StandardJSONSchemaV1 } from "effect/StandardSchema"
 import { describe, it } from "vitest"
@@ -24,10 +24,11 @@ function standardConvertToJSONSchemaOutput(
 describe("toStandardJSONSchemaV1", () => {
   it("describes subclass fields when the parent already has a Standard JSON Schema adapter", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
-    Schema.toStandardJSONSchemaV1(Parent)
-    class Child extends Parent.extend<Child>("Child")({ b: Schema.FiniteFromString }) {}
+    const parent = Schema.toStandardSchemaV1(Schema.toStandardJSONSchemaV1(Parent))
+    class Child extends parent.extend<Child>("Child")({ b: Schema.FiniteFromString }) {}
     const child = Schema.toStandardJSONSchemaV1(Child)
 
+    strictEqual("validate" in child["~standard"], false)
     deepStrictEqual(standardConvertToJSONSchemaInput(child), {
       $ref: "#/$defs/Child",
       $defs: {

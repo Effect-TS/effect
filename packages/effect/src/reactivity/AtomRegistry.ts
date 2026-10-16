@@ -22,7 +22,7 @@ import { hasProperty } from "../Predicate.ts"
 import * as Queue from "../Queue.ts"
 import type { Scheduler, SchedulerDispatcher } from "../Scheduler.ts"
 import { MixedScheduler } from "../Scheduler.ts"
-import type * as Schema from "../Schema.ts"
+import * as Schema from "../Schema.ts"
 import * as Scope from "../Scope.ts"
 import * as Stream from "../Stream.ts"
 import * as Result from "./AsyncResult.ts"
@@ -476,7 +476,13 @@ class RegistryImpl implements AtomRegistry {
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
       const encoded = this.preloadedSerializable.get(key) as Schema.Json
       this.preloadedSerializable.delete(key)
-      const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
+      let decoded: A
+      try {
+        decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
+      } catch (error) {
+        if (Schema.isSchemaError(error)) return node
+        throw error
+      }
       let target = atom
       while (target.initialValueTarget) {
         target = target.initialValueTarget
