@@ -55,7 +55,7 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
   }
   // Preserve class construction and statics as well as ordinary schema members,
   // without attaching per-call validation options to the original schema.
-  const out = typeof self === "function" ? class extends (self as any) {} : Object.create(self)
+  const out = typeof self === "function" ? preserveClassReceiver(self) : Object.create(self)
   return Object.defineProperty(out, "~standard", {
     value: {
       version: 1,
@@ -67,6 +67,20 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
     writable: true,
     enumerable: true,
     configurable: true
+  })
+}
+
+function preserveClassReceiver(self: any): any {
+  const methods = new WeakMap<object, unknown>()
+  return new Proxy(class extends self {}, {
+    get(target, key, receiver) {
+      // Adapter metadata belongs to the wrapper; existing statics belong to self.
+      if (Object.hasOwn(target, key)) return Reflect.get(target, key, receiver)
+      const value = Reflect.get(self, key, self)
+      if (typeof value !== "function") return value
+      if (!methods.has(value)) methods.set(value, value.bind(self))
+      return methods.get(value)
+    }
   })
 }
 
