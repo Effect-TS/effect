@@ -307,15 +307,15 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  * be decoded as they arrive, for example from an HTTP response. Each output
  * chunk holds one entry, and each body streams the uncompressed bytes of the
  * entry. Pulling the next entry skips whatever is left of the current body.
- * Stored and deflated entries are read, including entries whose sizes follow
- * their data in a data descriptor, and ZIP64 sizes. Every body is checked
- * against its CRC-32 and sizes. Reading stops at the central directory.
+ * Stored and deflated entries are read, including deflated entries whose
+ * sizes follow their data in a data descriptor, and ZIP64 sizes. Every body is
+ * checked against its CRC-32 and sizes. Reading stops at the central directory.
  *
  * Paths use the UTF-8 flag when set, and otherwise the first Info-ZIP Unicode
  * path field when it matches the name, as Info-ZIP and 7-Zip do; other paths
- * are read as UTF-8 when valid and as CP437 otherwise. Times are
- * read from the extended timestamp field when present, and otherwise from the
- * DOS time and date, which have no time zone and are read as UTC.
+ * are read as UTF-8 when valid and as CP437 otherwise. Times are read from the
+ * extended timestamp field when present, and otherwise from the DOS time and
+ * date, which have no time zone and are read as UTC.
  *
  * **Gotchas**
  *
@@ -353,8 +353,9 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  * - Paths are returned as written in the archive: they can be absolute,
  *   contain `..`, drive letters, control characters or backslashes, which some
  *   tools read as separators, and can repeat. Validate them before writing
- *   entries to disk. Paths with a NUL character, which other tools take as the
- *   end of the name, fail with an `InvalidHeader` `ZipError`.
+ *   entries to disk; `encode` rejects absolute paths, drive letters and
+ *   backslashes. Paths with a NUL character, which other tools take as the end
+ *   of the name, fail with an `InvalidHeader` `ZipError`.
  *
  * @see {@link encode} for the inverse operation
  *
@@ -428,32 +429,31 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  *
  * Each entry is written as soon as it arrives: a local header, the stored or
  * deflated body and, for streamed bodies, a data descriptor with the CRC-32
- * and sizes. The central directory is written once the input ends. Headers and
- * body chunks below 16 KiB are gathered into output chunks of about 64 KiB,
- * and larger body chunks pass through without copying. Output is handed out
- * before waiting for more entries, but up to 64 KiB of it can be held while a
- * body is pulled. Paths are
+ * and sizes. The central directory is written once the input ends. Paths are
  * written as UTF-8, with the UTF-8 flag set when they are not ASCII. `mtime`
  * is written both as a DOS time in UTC, which keeps two-second resolution and
  * covers 1980 to 2107, and as an extended timestamp in whole seconds when it
  * falls between 1970 and 2038. ZIP64 fields are added only when a size, an
  * offset or the entry count does not fit the classic fields.
  *
+ * Headers and body chunks below 16 KiB are gathered into output chunks of
+ * about 64 KiB, and larger body chunks pass through without copying. Output is
+ * handed out before waiting for more entries, but up to 64 KiB of it can be
+ * held while a body is pulled.
+ *
  * **Gotchas**
  *
  * - Deflated bytes come from the runtime's `CompressionStream`, so they can
  *   differ between runtimes. Archives of stored entries are byte-identical
  *   everywhere.
- * - A body that produces a byte count other than a set `header.size` fails with
- *   a `SizeMismatch` `ZipError`.
+ * - A body that produces a byte count other than a set `header.size`, or any
+ *   bytes for a directory, fails with a `SizeMismatch` `ZipError`.
  * - Directories are always stored, whatever their `method`.
  * - Empty paths, paths starting with `/` or a drive letter such as `C:`, paths
  *   containing `\` or NUL, `File` paths ending with `/`, `Directory` paths not
  *   ending with `/`, and invalid modes, sizes or times fail with an
  *   `InvalidHeader` `ZipError`. Other paths are written as given, including
  *   `..` segments, so validate untrusted paths before encoding them.
- * - A directory whose body produces bytes fails with a `SizeMismatch`
- *   `ZipError`.
  *
  * **Example** (Writing and reading an archive)
  *
