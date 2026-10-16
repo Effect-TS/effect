@@ -79,9 +79,8 @@ const isReplaySafeLink = (link: SchemaAST.Link): boolean =>
   (link.transformation.decode._tag === "Passthrough" ||
     link.transformation.decode._tag === "Transform" && isReplaySafe(link.transformation))
 
-// A failed `decode` is replayed by `decodeEffect`, so an encoding is only
-// emitted when every step it runs before a possible failure is replay safe.
-// Its sources count toward the same limits as the decoded node.
+// Every encoding step must be safe to replay after a failed fast-path attempt.
+// Sources share the decoded node's generation budget.
 const addEncoding = (
   facts: Facts,
   ast: SchemaAST.AST,
@@ -272,7 +271,6 @@ const constant = (emitter: Emitter, value: unknown, reference: string): string =
 }
 
 const needsPresenceCheck = (ast: SchemaAST.AST): boolean => {
-  // A missing encoded value is not decoded from its source.
   if (ast.encoding !== undefined) return true
   switch (ast._tag) {
     case "Undefined":

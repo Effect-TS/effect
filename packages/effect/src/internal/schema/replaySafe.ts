@@ -1,6 +1,5 @@
-// Library transformations and checks that are deterministic and run no user
-// code for primitive inputs. Compiled `decode` operations may run them on such
-// inputs and still return `invalid`, because replaying them is unobservable.
+// Library transformations and checks that can be replayed on primitive inputs
+// without side effects or user code.
 const replaySafe = new WeakSet<object>()
 
 /** @internal */

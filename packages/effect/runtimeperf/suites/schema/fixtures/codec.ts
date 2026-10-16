@@ -3,7 +3,6 @@ import { enable } from "effect/schema/SchemaJITCompiler"
 import * as SchemaParser from "effect/SchemaParser"
 import assert from "node:assert/strict"
 
-// Rows as a CSV decoder produces them: every property is a string.
 const fixture = (jit: boolean) => {
   const schema = Schema.Array(Schema.toCodecStringTree(Schema.Struct({
     name: Schema.String,
