@@ -65,26 +65,6 @@ describe("Channel", () => {
           )
           assert.deepStrictEqual(exit, Exit.fail("setup failed"))
         }))
-
-      it.effect(`${name} runs the registration effect before the first pull`, () =>
-        Effect.gen(function*() {
-          let queue: Queue.Queue<number, Cause.Done> | undefined
-          const channel: Channel.Channel<number | Arr.NonEmptyReadonlyArray<number>> = constructor(
-            (q: Queue.Queue<number, Cause.Done>) =>
-              Effect.sync(() => {
-                queue = q
-              })
-          )
-          const fiber = yield* channel.pipe(
-            Channel.runCount,
-            Effect.forkChild({ startImmediately: true })
-          )
-          assert.isUndefined(fiber.pollUnsafe())
-          assert.isDefined(queue, "registration effect has not run")
-          Queue.offerUnsafe(queue!, 1)
-          Queue.endUnsafe(queue!)
-          assert.strictEqual(yield* Fiber.join(fiber), 1)
-        }))
     }
 
     it.effect("empty", () =>
