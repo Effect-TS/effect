@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.97.3
+
+### Patch Changes
+
+- [#9294](https://github.com/Effect-TS/effect/pull/9294) [`cab7f2e`](https://github.com/Effect-TS/effect/commit/cab7f2e3493e4a3dceda27cb1b6d28c4599cb939) Thanks @effect-bot! - Keep HTTP message bodies unread during inspection.
+
 ## 0.97.2
 
 ### Patch Changes
