@@ -22,7 +22,7 @@ import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity as identity_ } from "./Function.ts"
 import * as Count from "./internal/count.ts"
-import { ClockRef, endSpan } from "./internal/effect.ts"
+import { ClockRef, endSpan, findDefectOnly } from "./internal/effect.ts"
 import { addSpanStackTrace } from "./internal/tracer.ts"
 import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
@@ -4372,7 +4372,7 @@ export const catchDefect: {
   InErr & InErr1,
   InDone & InDone1,
   Env | Env1
-> => catchCauseFilter(self, Cause.findDefect, f))
+> => catchCauseFilter(self, findDefectOnly, f))
 
 /**
  * Runs an effect with the full failure `Cause` when the channel fails, then

@@ -184,6 +184,10 @@ export const findDefect = <E>(self: Cause.Cause<E>): Result.Result<unknown, Caus
 }
 
 /** @internal */
+export const findDefectOnly = <E>(self: Cause.Cause<E>): Result.Result<unknown, Cause.Cause<E>> =>
+  self.reasons.every(isDieReason) ? findDefect(self) : Result.fail(self)
+
+/** @internal */
 export const hasInterrupts = <E>(self: Cause.Cause<E>): boolean => self.reasons.some(isInterruptReason)
 
 /** @internal */
@@ -2713,7 +2717,7 @@ export const catchDefect: {
   <A, E, R, B, E2, R2>(
     self: Effect.Effect<A, E, R>,
     f: (defect: unknown) => Effect.Effect<B, E2, R2>
-  ): Effect.Effect<A | B, E | E2, R | R2> => catchCauseFilter(self, findDefect as any, f as any) as any
+  ): Effect.Effect<A | B, E | E2, R | R2> => catchCauseFilter(self, findDefectOnly as any, f as any) as any
 )
 
 /** @internal */
