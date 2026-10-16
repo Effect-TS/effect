@@ -25,6 +25,7 @@ import * as MutableHashMap from "./MutableHashMap.ts"
 import type * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
+import { UnhandledLogLevel } from "./References.ts"
 import * as Scope from "./Scope.ts"
 
 const TypeId = "~effect/RcMap"
@@ -476,6 +477,7 @@ const removeInterrupted = <K, A, E>(
   // Borrowers close the entry on release; an idle entry has none left.
   if (entry.refCount > 0) return
   closeEntry(entry).pipe(
+    Effect.catchCause(reportUnhandledError),
     Effect.runForkWith(context),
     Fiber.runIn(self.scope)
   )
@@ -485,6 +487,12 @@ const closeEntry = <A, E>(entry: State.Entry<A, E>) =>
   entry.fiber
     ? Fiber.interrupt(entry.fiber).pipe(Effect.andThen(Scope.close(entry.scope, Exit.void)))
     : Scope.close(entry.scope, Exit.void)
+
+const reportUnhandledError = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
+  Effect.withFiber((fiber) => {
+    const level = fiber.getRef(UnhandledLogLevel)
+    return level ? Effect.logWithLevel(level)("Unhandled error in RcMap finalizer", cause) : Effect.void
+  })
 
 const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>) =>
   Effect.withFiber((fiber) => {
@@ -517,7 +525,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
         const o = MutableHashMap.get(self.state.map, key)
         if (o._tag === "None" || o.value !== entry) return Effect.void
         MutableHashMap.remove(self.state.map, key)
-        return Scope.close(entry.scope, Exit.void)
+        return Effect.catchCause(Scope.close(entry.scope, Exit.void), reportUnhandledError)
       }
       return Effect.flatMap(restore(clock.sleep(Duration.millis(remaining))), () => loop(restore))
     }).pipe(
