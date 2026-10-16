@@ -10,11 +10,12 @@
  * @stability stable
  * @since 2.0.0
  */
-import type * as Context from "./Context.ts"
+import * as Context from "./Context.ts"
+import * as Deferred from "./Deferred.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
-import { type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
+import { fiberEnterUninterruptibleUnsafe, type FiberImpl, scopeRemoveFinalizerUnsafe } from "./internal/effect.ts"
 import * as Layer from "./Layer.ts"
 import { hasProperty } from "./Predicate.ts"
 import * as Scope from "./Scope.ts"
@@ -209,6 +210,10 @@ export interface ManagedRuntime<in R, out ER> {
    * **When to use**
    *
    * Use to release this runtime's layer resources from Promise-based code.
+   *
+   * **Details**
+   *
+   * Calls made while a disposal is in progress wait for it to finish.
    */
   readonly dispose: () => Promise<void>
 
@@ -228,9 +233,25 @@ export interface ManagedRuntime<in R, out ER> {
    * **When to use**
    *
    * Use to release this runtime's layer resources from an `Effect` workflow.
+   *
+   * **Details**
+   *
+   * Disposal runs uninterruptibly. Calls made while a disposal is in progress
+   * wait for it to finish, and interrupting a waiting call only stops the wait.
+   * Effects run by this runtime, and the runtime's finalizers, do not wait:
+   * the disposal interrupts or runs them, so waiting would deadlock.
    */
   readonly disposeEffect: Effect.Effect<void, never, never>
 }
+
+// Marks the fibers that belong to a runtime: those running with its services,
+// and those running its disposal and finalizers. It is deliberately not provided
+// to the layer build, because finalizers of layers shared through a MemoMap run
+// with the context of the runtime that built them, which may not be the
+// runtime disposing them.
+const RuntimeOwner = Context.Reference<ManagedRuntime<any, any> | undefined>("effect/ManagedRuntime/RuntimeOwner", {
+  defaultValue: () => undefined
+})
 
 /**
  * Creates a `ManagedRuntime` from a layer.
@@ -314,15 +335,13 @@ export const make = <R, ER>(
       }
       : defaultRunOptions as O
   let buildFiber: Fiber.Fiber<Context.Context<R>, ER> | undefined
+  let disposed: Deferred.Deferred<void> | undefined
   const contextEffect = Effect.withFiber<Context.Context<R>, ER>((fiber) => {
     if (!buildFiber) {
       buildFiber = Effect.runFork(
-        Effect.tap(
+        Effect.map(
           Layer.buildWithMemoMap(layer, memoMap, layerScope),
-          (context) =>
-            Effect.sync(() => {
-              self.cachedContext = context
-            })
+          (context) => self.cachedContext = Context.add(context, RuntimeOwner, self)
         ),
         { ...defaultRunOptions, scheduler: fiber.cache.scheduler }
       )
@@ -347,6 +366,12 @@ export const make = <R, ER>(
       return self.dispose()
     },
     disposeEffect: Effect.withFiber((fiber) => {
+      if (disposed !== undefined) {
+        return fiber.getRef(RuntimeOwner) === self ? Effect.void : Deferred.await(disposed)
+      }
+      // Once `disposed` is set the close must run, or later calls would wait forever.
+      fiberEnterUninterruptibleUnsafe(fiber)
+      const done = disposed = Deferred.makeUnsafe<void>()
       // Closing fiberScope interrupts and awaits every managed fiber. Skip the
       // disposing fiber and its ancestors, which would otherwise await themselves.
       for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
@@ -354,7 +379,10 @@ export const make = <R, ER>(
       }
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
-      return Scope.close(self.scope, Exit.void)
+      return Scope.close(self.scope, Exit.void).pipe(
+        Effect.provideService(RuntimeOwner, self),
+        Effect.ensuring(Deferred.done(done, Exit.void))
+      )
     }),
     runFork<A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions): Fiber.Fiber<A, E | ER> {
       return self.cachedContext === undefined ?

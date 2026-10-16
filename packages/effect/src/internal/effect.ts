@@ -3939,153 +3939,28 @@ export const scopeTag: Context.Service<Scope.Scope, Scope.Scope> = Context.Servi
 /** @internal */
 export const scopeClose = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
   withFiber((fiber) => {
-    // Waiting for another close keeps the caller's interruptibility, because
-    // interrupting a waiter cannot skip any finalizers.
-    if (self.state._tag === "Closed") return scopeAwaitClose(self.state as ScopeClosed, fiber) ?? void_
     fiberEnterUninterruptibleUnsafe(fiber)
-    return scopeCloseFiberUnsafe(fiber, self, exit_) ?? void_
+    return scopeCloseUnsafe(self, exit_) ?? void_
   })
 
 /** @internal */
 export const scopeCloseUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
-  if (self.state._tag === "Closed") {
-    const state = self.state as ScopeClosed
-    return state.open === undefined ? undefined : withFiber((fiber) => scopeAwaitClose(state, fiber) ?? void_)
-  }
-  const finalize = scopeCloseStart(self, exit_)
-  return finalize && new ScopeFinalize(scopeClosedState(self), finalize) as any as Effect.Effect<unknown>
-}
-
-/**
- * Closes the scope on `fiber`, which must run the returned effect next. Only
- * call inside `withFiber` or an `onExitUnsafe` finalizer.
- */
-const scopeCloseFiberUnsafe = <A, E>(fiber: FiberImpl, self: Scope.Scope, exit_: Exit.Exit<A, E>) => {
-  if (self.state._tag === "Closed") return scopeAwaitClose(self.state as ScopeClosed, fiber)
-  const finalize = scopeCloseStart(self, exit_)
-  if (finalize === undefined) return
-  const state = scopeClosedState(self)
-  state.closer = fiber
-  fiber._stack.push(state as any)
-  return finalize
-}
-
-/**
- * Closes a scope that is only closed by the combinator that created it, so no
- * other close can overlap with it and its finalization needs no tracking.
- */
-const scopeCloseOwnedUnsafe = <A, E>(self: Scope.Scope, exit_: Exit.Exit<A, E>) =>
-  self.state._tag === "Closed" ? undefined : scopeCloseStart(self, exit_, false)
-
-/**
- * The `Closed` state of a scope. While its finalizers are running, `open`
- * keeps the finalizers that were registered when the scope closed. The state
- * is pushed onto the closing fiber's stack, and is popped once finalization
- * completes to release the closes waiting for it.
- */
-class ScopeClosed implements Scope.State.Closed {
-  readonly _tag = "Closed"
-  readonly exit: Exit.Exit<any, any>
-  open: Scope.State.Open | undefined
-  closer: FiberImpl | undefined = undefined
-  fibers: Array<FiberImpl> | undefined = undefined
-  waiters: Array<() => void> | undefined = undefined
-  constructor(exit: Exit.Exit<any, any>, open: Scope.State.Open | undefined) {
-    this.exit = exit
-    this.open = open
-  }
-  [contAll]() {
-    const waiters = this.waiters
-    this.open =
-      this.closer =
-      this.fibers =
-      this.waiters =
-        undefined
-    if (waiters !== undefined) {
-      for (let i = 0; i < waiters.length; i++) waiters[i]()
-    }
-  }
-}
-
-const ScopeFinalize = (function() {
-  const ScopeFinalize = function(this: any, state: ScopeClosed, finalize: Effect.Effect<unknown>) {
-    this.state = state
-    this.finalize = finalize
-  } as unknown as PrimitiveCtor<[state: ScopeClosed, finalize: Effect.Effect<unknown>]>
-  ScopeFinalize.prototype = makePrimitiveProto({
-    op: "ScopeFinalize",
-    [evaluate](this: any, fiber: FiberImpl) {
-      this.state.closer = fiber
-      fiber._stack.push(this.state)
-      return this.finalize
-    }
-  })
-  return ScopeFinalize
-})()
-
-const scopeClosedState = (self: Scope.Scope): ScopeClosed => self.state as ScopeClosed
-
-const scopeCloseStart = <A, E>(
-  self: Scope.Scope,
-  exit_: Exit.Exit<A, E>,
-  track = true
-): Effect.Effect<unknown> | undefined => {
-  const state = self.state as Scope.State.Open | Scope.State.Empty
+  const state = self.state
+  if (state._tag === "Closed") return
+  self.state = { _tag: "Closed", exit: exit_ }
   if (self.parent !== undefined) {
     scopeRemoveFinalizerUnsafe(self.parent, self)
   }
-  if (state._tag === "Empty") {
-    self.state = new ScopeClosed(exit_, undefined)
-    return
-  }
-  const closed = new ScopeClosed(exit_, track ? state : undefined)
-  self.state = closed
+  if (state._tag === "Empty") return
   if (state.finalizer !== undefined) {
     return runFinalizer(state.finalizer, exit_)
-  } else if (state.finalizers!.size === 1) {
-    return runFinalizer(state.finalizers!.values().next().value!, exit_)
   }
-  return scopeCloseFinalizers(self, closed, state.finalizers!, exit_)
-}
-
-const scopeAwaitClose = (state: ScopeClosed, fiber: FiberImpl): Effect.Effect<void> | undefined => {
-  if (state.open === undefined || scopeCloseIsReentrant(state, fiber)) return
-  return callback<void>((resume) => {
-    if (state.open === undefined) return resume(void_)
-    const waiter = () => resume(void_)
-    ;(state.waiters ??= []).push(waiter)
-    return sync(() => {
-      const index = state.waiters?.indexOf(waiter) ?? -1
-      if (index >= 0) state.waiters!.splice(index, 1)
-    })
-  })
-}
-
-// A close is reentrant when the caller, or one of its ancestors, takes part
-// in the close in progress. Waiting would then deadlock the close on itself.
-const scopeCloseIsReentrant = (state: ScopeClosed, fiber: FiberImpl): boolean => {
-  for (let current: FiberImpl | undefined = fiber; current !== undefined; current = current._parent) {
-    if (scopeCloseOwns(state, current)) return true
+  const finalizers = state.finalizers!
+  if (finalizers.size === 1) {
+    return runFinalizer(finalizers.values().next().value!, exit_)
   }
-  return false
+  return scopeCloseFinalizers(self, finalizers, exit_)
 }
-
-// The fibers taking part in a close are the fiber running it, the fibers
-// running its parallel finalizers, the fibers registered in the scope, and
-// those taking part in the close of a child scope.
-const scopeCloseOwns = (state: ScopeClosed, fiber: FiberImpl): boolean => {
-  const open = state.open
-  if (open === undefined) return false
-  if (state.closer === fiber || state.fibers?.includes(fiber)) return true
-  if (open.finalizerKey !== undefined) return scopeFinalizerKeyOwns(open.finalizerKey, fiber)
-  for (const key of open.finalizers!.keys()) {
-    if (scopeFinalizerKeyOwns(key, fiber)) return true
-  }
-  return false
-}
-
-const scopeFinalizerKeyOwns = (key: {}, fiber: FiberImpl): boolean =>
-  key === fiber || (ScopeTypeId in key && scopeCloseOwns((key as Scope.Scope).state as ScopeClosed, fiber))
 
 const runFinalizer = (
   finalizer: (exit: Exit.Exit<any, any>) => Effect.Effect<unknown>,
@@ -4106,7 +3981,6 @@ const combineFinalizerCause = <A, E, XE, XR>(
 
 const scopeCloseFinalizers = fnUntraced(function*<A, E>(
   self: Scope.Scope,
-  closed: ScopeClosed,
   finalizers: NonNullable<Scope.State.Open["finalizers"]>,
   exit_: Exit.Exit<A, E>
 ) {
@@ -4119,12 +3993,7 @@ const scopeCloseFinalizers = fnUntraced(function*<A, E>(
     if (self.strategy === "sequential") {
       exits.push(yield* exit(runFinalizer(finalizer, exit_)))
     } else {
-      const finalize = closed.open === undefined ? runFinalizer(finalizer, exit_) : withFiber((fiber) => {
-        // Register before running, as the fiber starts before it is returned.
-        ;(closed.fibers ??= []).push(fiber)
-        return runFinalizer(finalizer, exit_)
-      })
-      fibers.push(forkUnsafe(parent, finalize, true, true, "inherit"))
+      fibers.push(forkUnsafe(parent, runFinalizer(finalizer, exit_), true, true, "inherit"))
     }
   }
   if (fibers.length > 0) {
@@ -4141,7 +4010,7 @@ export const scopeFork = (scope: Scope.Scope, finalizerStrategy?: "sequential" |
 export const scopeForkUnsafe = (scope: Scope.Scope, finalizerStrategy?: "sequential" | "parallel") => {
   const child = makeScope(finalizerStrategy, scope)
   if (scope.state._tag === "Closed") {
-    child.state = new ScopeClosed(scope.state.exit, undefined)
+    child.state = scope.state
     return child
   }
   scopeAddFinalizerUnsafe(scope, child, (exit) => scopeClose(child, exit))
@@ -4244,7 +4113,7 @@ export const scoped = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, 
     fiber.setContext(Context.add(fiber.context, scopeTag, scope))
     onExitUnsafe<A, E>(fiber, (exit) => {
       fiber.setContext(prev)
-      return scopeCloseOwnedUnsafe(scope, exit)
+      return scopeCloseUnsafe(scope, exit)
     })
     return self
   }) as any
@@ -4258,10 +4127,7 @@ export const scopeUse: {
 } = dual(
   2,
   <A, E, R>(self: Effect.Effect<A, E, R>, scope: Scope.Closeable): Effect.Effect<A, E, Exclude<R, Scope.Scope>> =>
-    onExit(
-      provideScope(self, scope),
-      (exit) => withFiber((fiber) => scopeCloseFiberUnsafe(fiber, scope, exit) ?? void_)
-    )
+    onExit(provideScope(self, scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
 )
 
 /** @internal */
@@ -4270,7 +4136,7 @@ export const scopedWith = <A, E, R>(
 ): Effect.Effect<A, E, R> =>
   suspend(() => {
     const scope = scopeMakeUnsafe()
-    return onExit(f(scope), (exit) => suspend(() => scopeCloseOwnedUnsafe(scope, exit) ?? void_))
+    return onExit(f(scope), (exit) => suspend(() => scopeCloseUnsafe(scope, exit) ?? void_))
   })
 
 /** @internal */
@@ -5767,8 +5633,7 @@ export const forkIn: {
       const fiber = forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
-          // Keyed by the fiber so a close it takes part in can recognise it.
-          const key = fiber
+          const key = {}
           const finalizer = () => withFiberId((interruptor) => interruptor === fiber.id ? void_ : fiberInterrupt(fiber))
           scopeAddFinalizerUnsafe(scope, key, finalizer)
           fiber.addObserver(() => scopeRemoveFinalizerUnsafe(scope, key))
