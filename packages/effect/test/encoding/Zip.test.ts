@@ -692,7 +692,7 @@ describe("Zip", () => {
         ])
       }))
 
-    it.effect("continues after a checksum error and stops after corrupt data", () =>
+    it.effect("continues after a checksum error only when the data ends at its compressed size", () =>
       Effect.gen(function*() {
         const read = (bytes: Uint8Array) =>
           entries(bytes, 4096).pipe(
@@ -718,6 +718,21 @@ describe("Zip", () => {
           endRecord
         )
         assert.strictEqual(yield* failure(read(corrupt)), "InvalidData")
+        // A stored block whose length was corrupted to 4 ends the data early,
+        // and the rest of it holds an entry
+        const content = concat(textEncoder.encode("data"), storedEntry(textEncoder.encode("forged"), new Uint8Array(0)))
+        const data = concat([1], le(4, 2), le(0xfffb, 2), content)
+        const short = concat(
+          localHeader(textEncoder.encode("a"), {
+            method: 8,
+            crc: crc32(content),
+            compressedSize: data.length,
+            size: content.length
+          }),
+          data,
+          endRecord
+        )
+        assert.strictEqual(yield* failure(read(short)), "Checksum")
       }))
 
     it.effect("stops a body that grows past its size and the archive with it", () =>
