@@ -24,6 +24,7 @@ type Facts = {
   outputFree: boolean
   makeSafe: boolean
   hasOneOf: boolean
+  primitive: boolean
   nodes: number
   height: number
 }
@@ -35,6 +36,7 @@ const unsupportedFacts: Facts = {
   outputFree: false,
   makeSafe: false,
   hasOneOf: false,
+  primitive: false,
   nodes: 1,
   height: 0
 }
@@ -45,18 +47,13 @@ const isMakeSafeNode = (ast: SchemaAST.AST): boolean =>
   ast.encoding === undefined &&
   ast.context?.constructorDefault === undefined
 
+const isPrimitiveNode = (ast: SchemaAST.AST): boolean =>
+  ast.encoding === undefined && getEncodingChecks(ast) === undefined &&
+  (ast.checks === undefined || ast.checks.every(isReplaySafe))
+
 // Marked conversions are only pure for primitive inputs: an object input can
 // run user code through coercion hooks.
-const isReplaySafeSource = (
-  ast: SchemaAST.AST,
-  depth = 0,
-  budget = { remaining: maxGeneratedNodes }
-): boolean => {
-  if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
-  if (
-    ast.encoding !== undefined || getEncodingChecks(ast) !== undefined ||
-    ast.checks !== undefined && !ast.checks.every(isReplaySafe)
-  ) return false
+const isPrimitiveLeaf = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
     case "Null":
     case "Undefined":
@@ -70,9 +67,7 @@ const isReplaySafeSource = (
     case "Literal":
     case "UniqueSymbol":
     case "Enum":
-      return true
-    case "Union":
-      return ast.types.every((type) => isReplaySafeSource(type, depth + 1, budget))
+      return isPrimitiveNode(ast)
     default:
       return false
   }
@@ -83,6 +78,11 @@ const isReplaySafeLink = (link: SchemaAST.Link): boolean =>
   (link.transformation.decode._tag === "Passthrough" ||
     link.transformation.decode._tag === "Transform" && isReplaySafe(link.transformation))
 
+const unsupported = (facts: Facts): false => {
+  facts.supported = false
+  return false
+}
+
 // Every encoding step must be safe to replay after a failed fast-path attempt.
 const addEncoding = (
   facts: Facts,
@@ -92,32 +92,21 @@ const addEncoding = (
 ): boolean => {
   const links = ast.encoding
   if (links === undefined) return true
-  if (getEncodingChecks(ast) !== undefined || !links.every(isReplaySafeLink)) {
-    facts.supported = false
-    return false
-  }
+  if (getEncodingChecks(ast) !== undefined || !links.every(isReplaySafeLink)) return unsupported(facts)
   facts.outputFree = false
-  for (const link of links) {
-    if (!isReplaySafeSource(link.to)) {
-      facts.supported = false
-      return false
-    }
-    if (!addChild(facts, link.to, depth, budget)) return false
-  }
-  return true
+  return links.every((link) => addChild(facts, link.to, depth, budget, true))
 }
 
+// The child is charged before its encoding is followed, and a source must be
+// primitive, so encoding sources never recurse into further encodings.
 const addChild = (
   facts: Facts,
   child: SchemaAST.AST,
   depth: number,
-  budget: { remaining: number }
+  budget: { remaining: number },
+  source = false
 ): boolean => {
-  if (child._tag === "Declaration" || child._tag === "Suspend") {
-    facts.supported = false
-    return false
-  }
-  if (!addEncoding(facts, child, depth, budget)) return false
+  if (child._tag === "Declaration" || child._tag === "Suspend") return unsupported(facts)
   switch (child._tag) {
     case "TemplateLiteral":
     case "Arrays":
@@ -125,24 +114,26 @@ const addChild = (
     case "Union": {
       const childFacts = getFacts(child, depth, budget)
       if (childFacts === undefined) return false
-      if (!childFacts.supported) {
-        facts.supported = false
-        return false
-      }
+      if (!childFacts.supported || source && !childFacts.primitive) return unsupported(facts)
+      if (!childFacts.primitive) facts.primitive = false
       if (!childFacts.outputFree) facts.outputFree = false
       if (!childFacts.makeSafe) facts.makeSafe = false
       if (childFacts.hasOneOf) facts.hasOneOf = true
       facts.nodes += childFacts.nodes
       if (childFacts.height >= facts.height) facts.height = childFacts.height + 1
-      return true
+      break
     }
-    default:
+    default: {
       if (--budget.remaining < 0 || depth > maxGeneratedDepth) return false
+      const primitive = isPrimitiveLeaf(child)
+      if (source && !primitive) return unsupported(facts)
+      if (!primitive) facts.primitive = false
       if (!isMakeSafeNode(child)) facts.makeSafe = false
       facts.nodes++
       if (facts.height === 0) facts.height = 1
-      return true
+    }
   }
+  return addEncoding(facts, child, depth, budget)
 }
 
 const stop = (ast: SchemaAST.AST, facts: Facts): Facts | undefined => {
@@ -167,6 +158,7 @@ const getFacts = (
     outputFree: true,
     makeSafe: true,
     hasOneOf: ast._tag === "Union" && ast.options?.mode === "oneOf",
+    primitive: ast._tag === "Union" && isPrimitiveNode(ast),
     nodes: 1,
     height: 0
   }
