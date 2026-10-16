@@ -974,6 +974,34 @@ describe("Stream", () => {
         assertExitFailure(failed, Cause.fail("failure"))
       }))
 
+    it.effect("typed-error operators keep finalizer defects", () =>
+      Effect.gen(function*() {
+        let handled = 0
+        const source = Stream.fail("typed").pipe(Stream.ensuring(Effect.die("finalizer defect")))
+        const operators: Record<string, [Stream.Stream<unknown, unknown>, Cause.Cause<unknown>]> = {
+          catch: [
+            Stream.catch(source, () => Stream.sync(() => handled++)),
+            Cause.die("finalizer defect")
+          ],
+          orElseSucceed: [
+            Stream.orElseSucceed(source, () => handled++),
+            Cause.die("finalizer defect")
+          ],
+          mapError: [
+            Stream.mapError(source, () => "mapped"),
+            Cause.combine(Cause.fail("mapped"), Cause.die("finalizer defect"))
+          ],
+          orDie: [
+            Stream.orDie(source),
+            Cause.combine(Cause.die("typed"), Cause.die("finalizer defect"))
+          ]
+        }
+        for (const [name, [stream, cause]] of Object.entries(operators)) {
+          assert.deepStrictEqual(yield* Effect.exit(Stream.runCollect(stream)), Exit.failCause(cause), name)
+        }
+        assert.strictEqual(handled, 0)
+      }))
+
     it.effect("catchIf with refinement", () =>
       Effect.gen(function*() {
         interface ErrorA {

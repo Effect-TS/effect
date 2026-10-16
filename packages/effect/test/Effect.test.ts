@@ -3458,6 +3458,90 @@ describe("Effect", () => {
         const result = yield* Effect.fail(error).pipe(Effect.catchNoSuchElement, Effect.exit)
         assert.deepStrictEqual(result, Exit.fail(error))
       }))
+
+    describe("typed failures accompanied by defects or interruption", () => {
+      const error = new ErrorA()
+      const residuals = [Cause.die("finalizer defect"), Cause.interrupt()]
+      const sources = (residual: Cause.Cause<never>) => {
+        const cause = Cause.combine(Cause.fail(error), residual)
+        return [Effect.failCause(cause), Effect.suspend(() => Effect.failCause(cause))]
+      }
+
+      it.effect("recovery operators propagate the defects and interruption without calling handlers", () =>
+        Effect.gen(function*() {
+          let handled = 0
+          const recover = () =>
+            Effect.sync(() => {
+              handled++
+              return "recovered"
+            })
+          const handle = () => {
+            handled++
+            return "recovered"
+          }
+          const operators: Record<string, (self: Effect.Effect<never, ErrorA>) => Effect.Effect<unknown, unknown>> = {
+            catch: (self) => Effect.catch(self, recover),
+            catchEager: (self) => Effect.catchEager(self, recover),
+            catchIf: (self) => Effect.catchIf(self, () => true, recover),
+            catchFilter: (self) => Effect.catchFilter(self, Result.succeed, recover),
+            catchTag: (self) => Effect.catchTag(self, "A", recover),
+            catchTags: (self) => Effect.catchTags(self, { A: recover }),
+            orElseSucceed: (self) => Effect.orElseSucceed(self, handle),
+            firstSuccessOf: (self) => Effect.firstSuccessOf([self, recover()]),
+            eventually: (self) => {
+              let attempts = 0
+              return Effect.eventually(Effect.suspend(() => attempts++ === 0 ? self : recover()))
+            },
+            result: Effect.result,
+            option: Effect.option,
+            ignore: Effect.ignore,
+            ignoreLog: (self) => Effect.ignore(self, { log: true }),
+            isFailure: Effect.isFailure,
+            isSuccess: Effect.isSuccess,
+            match: (self) => Effect.match(self, { onFailure: handle, onSuccess: handle }),
+            matchEager: (self) => Effect.matchEager(self, { onFailure: handle, onSuccess: handle }),
+            matchEffect: (self) => Effect.matchEffect(self, { onFailure: recover, onSuccess: recover })
+          }
+          for (const residual of residuals) {
+            for (const source of sources(residual)) {
+              for (const [name, operator] of Object.entries(operators)) {
+                const exit = yield* Effect.exit(operator(source))
+                assert.deepStrictEqual(exit, Exit.failCause(residual), name)
+              }
+            }
+          }
+          assert.strictEqual(handled, 0)
+        }))
+
+      it.effect("error-transforming operators keep the defects and interruption", () =>
+        Effect.gen(function*() {
+          const mapBoth = { onFailure: () => "mapped", onSuccess: () => "mapped" }
+          const operators: Record<
+            string,
+            [(self: Effect.Effect<never, ErrorA>) => Effect.Effect<unknown, unknown>, Cause.Cause<unknown>]
+          > = {
+            mapError: [(self) => Effect.mapError(self, () => "mapped"), Cause.fail("mapped")],
+            mapErrorEager: [(self) => Effect.mapErrorEager(self, () => "mapped"), Cause.fail("mapped")],
+            mapBoth: [(self) => Effect.mapBoth(self, mapBoth), Cause.fail("mapped")],
+            mapBothEager: [(self) => Effect.mapBothEager(self, mapBoth), Cause.fail("mapped")],
+            orDie: [Effect.orDie, Cause.die(error)]
+          }
+          for (const residual of residuals) {
+            for (const source of sources(residual)) {
+              for (const [name, [operator, mapped]] of Object.entries(operators)) {
+                const exit = yield* Effect.exit(operator(source))
+                assert.deepStrictEqual(exit, Exit.failCause(Cause.combine(mapped, residual)), name)
+              }
+            }
+          }
+        }))
+
+      it.effect("typed failures alone are still recovered", () =>
+        Effect.gen(function*() {
+          const cause = Cause.combine(Cause.fail(error), Cause.fail(new ErrorA()))
+          assert.strictEqual(yield* Effect.catch(Effect.failCause(cause), () => Effect.succeed(1)), 1)
+        }))
+    })
   })
 
   describe("match", () => {
