@@ -36,9 +36,10 @@ describe("failing FormData file streams (isolated)", { concurrent: false, timeou
     return JSON.parse(result.stdout)
   }
 
+  let native: unknown
   it.each(["node:http", "undici"])("%s fails promptly and releases upload resources", (adapter) => {
     // Diagnostic only: an upstream fix must not make the adapter regression fail.
-    const native = probe("native")
+    native ??= probe("native")
     const result = probe(adapter)
     const diagnostic = JSON.stringify({ adapter, native, result })
     assert.strictEqual(result.outcome.tag, "HttpClientError", diagnostic)
@@ -322,21 +323,28 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         assert.deepStrictEqual(yield* response.json, { a: 1 })
       }).pipe(Effect.provide(localServerTestLayer)))
 
-    if (name === "undici") {
+    if (name !== "fetch") {
       it.live("sends form data request bodies as multipart", () =>
         Effect.gen(function*() {
           const formData = new FormData()
-          formData.append("title", "effect")
-          formData.append("file", new Blob(["file contents"], { type: "text/plain" }), "notes.txt")
+          formData.append("title\"\nline", "héllo\n世界\rlast\r\nend")
+          formData.append("file\"\rname", new Blob(["file contents"], { type: "text/plain" }), "notes\"\r\nfile.txt")
           const response = yield* HttpClient.post("/multipart", { body: HttpBody.formData(formData) }).pipe(
             Effect.timeout("2 seconds")
           )
           assert.deepStrictEqual(yield* response.json, [
-            { key: "title", value: "effect" },
-            { key: "file", name: "notes.txt", contentType: "text/plain", content: "file contents" }
+            { key: "title%22%0D%0Aline", value: "héllo\r\n世界\r\nlast\r\nend" },
+            {
+              key: "file%22%0D%0Aname",
+              name: "notes%22%0D%0Afile.txt",
+              contentType: "text/plain",
+              content: "file contents"
+            }
           ])
         }).pipe(Effect.provide(localServerTestLayer)))
+    }
 
+    if (name === "undici") {
       it.effect.each(formDataResponses)("parses $name response form data", ({ path }) =>
         Effect.gen(function*() {
           const response = yield* HttpClient.get(path)
