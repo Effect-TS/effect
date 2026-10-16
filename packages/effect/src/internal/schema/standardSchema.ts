@@ -56,9 +56,6 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
   return attach(self, { validate })
 }
 
-// Returns a shallow copy of `self` that owns its `~standard` object, so
-// per-call options never land on the shared schema. An adapter `self` already
-// owns is kept, letting the two converters compose in either order.
 function attach(self: any, members: object): any {
   const standard = {
     version: 1,
@@ -68,8 +65,10 @@ function attach(self: any, members: object): any {
     ...members
   }
   // A bound function preserves construction; private static brands are not copied.
-  const out = typeof self === "function" ? Function.prototype.bind.call(self, undefined) : {}
-  return Object.defineProperties(Object.setPrototypeOf(out, Object.getPrototypeOf(self)), {
+  const out = typeof self === "function"
+    ? Function.prototype.bind.call(self, undefined)
+    : Object.create(Object.getPrototypeOf(self))
+  return Object.defineProperties(out, {
     ...Object.getOwnPropertyDescriptors(self),
     // Initialize a class's lazy AST with the original constructor as its receiver.
     ast: { value: self.ast, enumerable: true, configurable: true },
@@ -123,6 +122,6 @@ export function toStandardJSONSchemaV1<S extends Schema.Constraint>(
       output(options) {
         return toBaseStandardJSONSchemaV1(SchemaAST.toType(self.ast), options.target)
       }
-    } satisfies StandardJSONSchemaV1.Props<S["Encoded"], S["Type"]>["jsonSchema"]
+    } satisfies StandardJSONSchemaV1.Converter
   })
 }

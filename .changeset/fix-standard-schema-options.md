@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Schema.toStandardSchemaV1` so hooks and parse options no longer leak between callers sharing a schema. Both `Schema.toStandardSchemaV1` and `Schema.toStandardJSONSchemaV1` now return a fresh wrapper instead of mutating the input schema, while preserving schema members, class construction and statics, and composing with each other in either order.
+Fix hooks and parse options being ignored or reused across calls to `Schema.toStandardSchemaV1`. Both `Schema.toStandardSchemaV1` and `Schema.toStandardJSONSchemaV1` now return fresh shallow copies and compose in either order. Access statics that use `this.#field` through the original class.

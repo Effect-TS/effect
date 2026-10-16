@@ -14,58 +14,40 @@ describe.each(
     assert.strictEqual(adapted.value, schema.value)
   })
 
-  it.each(["key", "value"] as const)("preserves Record.%s", (key) => {
+  it("preserves Record.key and Record.value", () => {
     const schema = Schema.Record(Schema.String, Schema.Number)
     const adapted = adapt(schema)
 
-    assert.strictEqual(adapted[key], schema[key])
+    assert.strictEqual(adapted.key, schema.key)
+    assert.strictEqual(adapted.value, schema.value)
   })
 
-  it("preserves properties of class-valued statics", () => {
+  it("preserves properties of class- and function-valued statics", () => {
     class Item extends Schema.Class<Item>("Item")({ value: Schema.String }) {
       static custom = "item"
     }
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
       static Item = Item
-    }
-    const adapted = adapt(Parent)
-
-    assert.strictEqual(adapted.Item.custom, "item")
-  })
-
-  it("preserves properties of function-valued statics", () => {
-    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
       static increment = Object.assign((value: number) => value + 1, { description: "increment" })
     }
     const adapted = adapt(Parent)
 
+    assert.strictEqual(adapted.Item.custom, "item")
     assert.strictEqual(adapted.increment.description, "increment")
     assert.strictEqual(adapted.increment(1), 2)
   })
 
-  it("keeps static accessor writes local to the copy", () => {
-    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
-      static labelValue = "Parent"
-
-      static get label() {
-        return this.labelValue
-      }
-
-      static set label(value: string) {
-        this.labelValue = value
-      }
-    }
-    const adapted = adapt(Parent)
-
-    adapted.label = "Updated"
-
-    assert.strictEqual(adapted.label, "Updated")
-    assert.strictEqual(Parent.label, "Parent")
-  })
-
-  it("keeps static writes and method reads consistent", () => {
+  it("keeps static writes, accessors, and method reads local to the copy", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
       static count = 0
+
+      static get currentCount() {
+        return this.count
+      }
+
+      static set currentCount(value: number) {
+        this.count = value
+      }
 
       static getCount() {
         return this.count
@@ -78,6 +60,11 @@ describe.each(
     assert.strictEqual(adapted.count, 1)
     assert.strictEqual(adapted.getCount(), 1)
     assert.strictEqual(Parent.count, 0)
+
+    adapted.currentCount = 2
+
+    assert.strictEqual(adapted.currentCount, 2)
+    assert.strictEqual(Parent.currentCount, 0)
   })
 
   it("preserves class construction and decoding", () => {

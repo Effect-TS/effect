@@ -128,10 +128,11 @@ describe("toStandardSchemaV1", () => {
 
   it("validates subclass fields when the parent already has a Standard Schema adapter", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
-    const parent = Schema.toStandardSchemaV1(Parent)
-    class Child extends Parent.extend<Child>("Child")({ b: Schema.Number }) {}
+    const parent = Schema.toStandardJSONSchemaV1(Schema.toStandardSchemaV1(Parent))
+    class Child extends parent.extend<Child>("Child")({ b: Schema.Number }) {}
     const child = Schema.toStandardSchemaV1(Child)
 
+    strictEqual("jsonSchema" in child["~standard"], false)
     expectSyncSuccess(parent, { a: "a" }, new Parent({ a: "a" }))
     expectSyncFailure(child, { a: "a" }, [{ path: ["b"], message: "Missing key" }])
     expectSyncSuccess(child, { a: "a", b: 1 }, new Child({ a: "a", b: 1 }))
