@@ -303,8 +303,9 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  * their data in a data descriptor, and ZIP64 sizes. Every body is checked
  * against its CRC-32 and sizes. Reading stops at the central directory.
  *
- * Paths use the UTF-8 flag, or the Info-ZIP Unicode path field, when set;
- * other paths are read as UTF-8 when valid and as CP437 otherwise. Times are
+ * Paths use the UTF-8 flag when set, and otherwise the first Info-ZIP Unicode
+ * path field when it matches the name, as Info-ZIP and 7-Zip do; other paths
+ * are read as UTF-8 when valid and as CP437 otherwise. Times are
  * read from the extended timestamp field when present, and otherwise from the
  * DOS time and date, which have no time zone and are read as UTC.
  *
@@ -1387,7 +1388,11 @@ class Decoder {
     const date = view.getUint16(12, true)
     const nameLength = view.getUint16(26, true)
     const rawName = bytes.subarray(30, 30 + nameLength)
-    let path = decodeName(rawName, (flags & FLAG_UTF8) !== 0)
+    const utf8 = (flags & FLAG_UTF8) !== 0
+    let path = decodeName(rawName, utf8)
+    // As in Info-ZIP and 7-Zip, only the first Unicode path field is read, and
+    // only without the UTF-8 flag
+    let readUnicodePath = !utf8
     let seconds: number | undefined
     let zip64 = false
     let at = 30 + nameLength
@@ -1411,8 +1416,9 @@ class Decoder {
         // write times after 2038 as unsigned ones; the DOS date tells them apart
         const value = view.getUint32(start + 1, true)
         seconds = value >= 0x80000000 && (date >> 9) + 1980 < 2038 ? value - 0x100000000 : value
-      } else if (id === EXTRA_UNICODE_PATH && end - start >= 5 && bytes[start] === 1) {
-        if (view.getUint32(start + 1, true) === crc32(0, rawName)) {
+      } else if (id === EXTRA_UNICODE_PATH && readUnicodePath) {
+        readUnicodePath = false
+        if (end - start >= 5 && bytes[start] === 1 && view.getUint32(start + 1, true) === crc32(0, rawName)) {
           path = textDecoder.decode(bytes.subarray(start + 5, end))
         }
       }
