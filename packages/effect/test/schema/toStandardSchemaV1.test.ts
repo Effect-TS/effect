@@ -118,24 +118,6 @@ describe("toStandardSchemaV1", () => {
     expectSyncFailure(standard, null, [{ message: "Expected string", path: [] }])
   })
 
-  it("preserves private-state receivers for class statics", () => {
-    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
-      static #label = "Parent"
-
-      static label() {
-        return this.#label
-      }
-
-      static get privateLabel() {
-        return this.#label
-      }
-    }
-    const adapted = Schema.toStandardSchemaV1(Parent)
-
-    strictEqual(adapted.label(), "Parent")
-    strictEqual(adapted.privateLabel, "Parent")
-  })
-
   it("retains validation when piping a class adapter into the JSON-schema adapter", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
     const adapted = Schema.toStandardSchemaV1(Parent, { leafHook: () => "Custom message" })

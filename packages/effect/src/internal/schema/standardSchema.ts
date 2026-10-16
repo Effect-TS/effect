@@ -56,7 +56,7 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
   return attach(self, { validate })
 }
 
-// Returns a fresh wrapper around `self` that owns its `~standard` object, so
+// Returns a shallow copy of `self` that owns its `~standard` object, so
 // per-call options never land on the shared schema. An adapter `self` already
 // owns is kept, letting the two converters compose in either order.
 function attach(self: any, members: object): any {
@@ -67,27 +67,17 @@ function attach(self: any, members: object): any {
     ...(Object.hasOwn(self, "~standard") ? self["~standard"] : undefined),
     ...members
   }
-  const out = typeof self === "function" ? extend(self) : Object.create(self)
-  return Object.defineProperty(out, "~standard", {
-    value: standard,
-    writable: true,
-    enumerable: true,
-    configurable: true
-  })
-}
-
-// Subclassing keeps `new` and the statics, but statics touching private state
-// need the original class as receiver. `pipe` is the exception: a pipeline must
-// receive the wrapper or the adapter is lost.
-function extend(self: any): any {
-  const bound = new WeakMap<Function, Function>()
-  return new Proxy(class extends self {}, {
-    get(target, key, receiver) {
-      if (key === "pipe" || Object.hasOwn(target, key)) return Reflect.get(target, key, receiver)
-      const value = Reflect.get(self, key, self)
-      if (typeof value !== "function") return value
-      if (!bound.has(value)) bound.set(value, value.bind(self))
-      return bound.get(value)
+  // A bound function preserves construction; private static brands are not copied.
+  const out = typeof self === "function" ? Function.prototype.bind.call(self, undefined) : {}
+  return Object.defineProperties(Object.setPrototypeOf(out, Object.getPrototypeOf(self)), {
+    ...Object.getOwnPropertyDescriptors(self),
+    // Initialize a class's lazy AST with the original constructor as its receiver.
+    ast: { value: self.ast, enumerable: true, configurable: true },
+    "~standard": {
+      value: standard,
+      writable: true,
+      enumerable: true,
+      configurable: true
     }
   })
 }
