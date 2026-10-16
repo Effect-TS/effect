@@ -151,7 +151,9 @@ const centralDirectory = (bytes: Uint8Array) => {
       path: text(bytes.subarray(at + 46, at + 46 + nameLength)),
       host: view.getUint8(at + 5),
       flags: view.getUint16(at + 8, true),
-      external: view.getUint32(at + 38, true)
+      compressedSize: view.getUint32(at + 20, true),
+      external: view.getUint32(at + 38, true),
+      offset: view.getUint32(at + 42, true)
     }
     at += 46 + nameLength + view.getUint16(at + 30, true) + view.getUint16(at + 32, true)
     return record
@@ -263,6 +265,23 @@ describe("Zip", () => {
         for (const entry of invalid) assert.strictEqual(yield* failure(encode([entry])), "InvalidHeader")
       }))
 
+    it.effect("fails when the runtime cannot deflate", () =>
+      Effect.gen(function*() {
+        yield* Effect.acquireRelease(
+          Effect.sync(() => {
+            const original = globalThis.CompressionStream
+            globalThis.CompressionStream = function() {
+              throw new TypeError("unsupported format")
+            } as unknown as typeof CompressionStream
+            return original
+          }),
+          (original) => Effect.sync(() => (globalThis.CompressionStream = original))
+        )
+        const body = Stream.make(textEncoder.encode("a"))
+        assert.strictEqual(yield* failure(encode([Zip.file("a", "a")])), "Unsupported")
+        assert.strictEqual(yield* failure(encode([Zip.fileStream("a", body)])), "Unsupported")
+      }))
+
     it.effect("fails on body errors and bodies that do not match their size", () =>
       Effect.gen(function*() {
         const body = Stream.make(textEncoder.encode("abc"))
@@ -273,6 +292,29 @@ describe("Zip", () => {
           assert.strictEqual(yield* failure(encode([Zip.fileStream("f", failing, { method, size: 4 })])), "Boom")
         }
         assert.strictEqual(yield* failure(encode([{ ...Zip.directory("d"), body }])), "SizeMismatch")
+      }))
+
+    it.effect("declares ZIP64 in the local header of streamed entries without a size", () =>
+      Effect.gen(function*() {
+        // Readers that stream an archive learn the width of the descriptor
+        // sizes from the local header, before any data
+        const content = textEncoder.encode("a".repeat(300))
+        const bytes = yield* encode([
+          Zip.fileStream("unknown", Stream.make(content)),
+          Zip.fileStream("known", Stream.make(content), { size: content.length })
+        ])
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length)
+        const records = centralDirectory(bytes)
+        const ends = [...records.slice(1).map(({ offset }) => offset), view.getUint32(bytes.length - 22 + 16, true)]
+        const layouts = records.map(({ compressedSize, offset }, i) => {
+          const extra = offset + 30 + view.getUint16(offset + 26, true)
+          const extraEnd = extra + view.getUint16(offset + 28, true)
+          const ids: Array<number> = []
+          for (let at = extra; at < extraEnd; at += 4 + view.getUint16(at + 2, true)) ids.push(view.getUint16(at, true))
+          // Version needed, ZIP64 field and data descriptor length
+          return [view.getUint16(offset + 4, true), ids.includes(0x0001), ends[i] - extraEnd - compressedSize]
+        })
+        assert.deepStrictEqual(layouts, [[45, true, 24], [20, false, 16]])
       }))
 
     it.effect("writes ZIP64 end records for 65535 entries or more", () =>
