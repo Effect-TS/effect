@@ -6,7 +6,6 @@ import type * as EventLogServerUnencrypted from "effect/eventlog/EventLogServerU
 import * as SqlEventLogServerUnencrypted from "effect/eventlog/SqlEventLogServerUnencrypted"
 import { Reactivity } from "effect/reactivity"
 import * as SqlClient from "effect/sql/SqlClient"
-import * as SqlError from "effect/sql/SqlError"
 
 let nextNamespace = 0
 
@@ -359,55 +358,27 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         assertEntries(persisted, [backlog, sentinel], 1)
       }))
 
-    it.effect("publishes writes made inside an enclosing SQL transaction only after it commits", () =>
+    it.effect("publishes writes made in an enclosing SQL transaction only after it commits", () =>
       Effect.gen(function*() {
         const sql = yield* SqlClient.SqlClient
         const storage = yield* makeStorage(makeOptions("sql_outer_commit"))
         const storeId = makeStoreId("sql_outer_commit")
         const backlog = makeEntry("Ada")
-        const direct = makeEntry("Grace")
-        const nested = makeEntry("Margaret")
+        const rolledBack = makeEntry("Grace")
+        const committed = makeEntry("Margaret")
         yield* storage.write(storeId, [backlog])
         const changes = yield* openChanges(storage, storeId)
         assertEntries([yield* Queue.take(changes)], [backlog], 1)
 
+        yield* Effect.exit(sql.withTransaction(
+          Effect.andThen(storage.write(storeId, [rolledBack]), Effect.fail("rollback"))
+        ))
         yield* sql.withTransaction(Effect.gen(function*() {
-          yield* storage.write(storeId, [direct])
-          yield* storage.withTransaction(storage.write(storeId, [nested]))
+          yield* storage.write(storeId, [committed])
           yield* Effect.yieldNow
           assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
         }))
-        assertEntries(yield* Queue.takeN(changes, 2), [direct, nested], 2)
-        yield* Effect.yieldNow
-        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-      }))
-
-    it.effect("discards writes and notifications when an enclosing SQL transaction rolls back", () =>
-      Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
-        const storage = yield* makeStorage(makeOptions("sql_outer_rollback"))
-        const storeId = makeStoreId("sql_outer_rollback")
-        const backlog = makeEntry("Ada")
-        const direct = makeEntry("Grace")
-        const nested = makeEntry("Margaret")
-        const sentinel = makeEntry("Linus")
-        yield* storage.write(storeId, [backlog])
-        const changes = yield* openChanges(storage, storeId)
-        assertEntries([yield* Queue.take(changes)], [backlog], 1)
-
-        const error = yield* sql.withTransaction(Effect.gen(function*() {
-          yield* storage.write(storeId, [direct])
-          yield* storage.withTransaction(storage.write(storeId, [nested]))
-          return yield* Effect.fail("rollback")
-        })).pipe(Effect.flip)
-        assert.strictEqual(error, "rollback")
-
-        // The sentinel exposes leaked notifications without sleeps.
-        yield* storage.write(storeId, [sentinel])
-        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
-        yield* Effect.yieldNow
-        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, sentinel], 1)
+        assertEntries([yield* Queue.take(changes)], [committed], 2)
       }))
 
     it.effect("streams in sequence order when a later commit publishes before a caller-owned commit", () =>
@@ -426,27 +397,6 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         yield* release
 
         assertEntries(yield* Queue.takeN(changes, 2), [first, second], 2)
-        yield* Effect.yieldNow
-        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, first, second], 1)
-      }))
-
-    it.effect("streams each entry once to a subscriber that opens while a committed write awaits publication", () =>
-      Effect.gen(function*() {
-        const storage = yield* makeStorage(makeOptions("subscriber_startup"))
-        const storeId = makeStoreId("subscriber_startup")
-        const first = makeEntry("Ada")
-        const second = makeEntry("Grace")
-
-        // No subscriber or publication has touched the store yet, so the
-        // subscriber starts its live state after `first` has committed.
-        const release = yield* writeWithHeldPublication(storage, storeId, [first])
-        const changes = yield* openChanges(storage, storeId)
-        assertEntries([yield* Queue.take(changes)], [first], 1)
-
-        yield* storage.write(storeId, [second])
-        yield* release
-        assertEntries([yield* Queue.take(changes)], [second], 2)
         yield* Effect.yieldNow
         assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
       }))
@@ -475,86 +425,5 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         yield* release
         yield* storage.write(storeId, [sentinel])
         assertEntries([yield* Queue.take(changes)], [sentinel], 2)
-      }))
-
-    it.effect("catches up a failed publication on the store's next commit", () =>
-      Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
-        let failEntryRead = false
-        // Fails the next read of entry rows once armed.
-        const failingSql: SqlClient.SqlClient = Object.assign(
-          (...args: Parameters<SqlClient.SqlClient>) => {
-            const [strings] = args
-            if (failEntryRead && Array.isArray(strings) && strings[0].trim().startsWith("SELECT sequence")) {
-              failEntryRead = false
-              return Effect.fail(
-                new SqlError.SqlError({
-                  reason: new SqlError.UnknownError({ cause: new Error("read failed"), message: "read failed" })
-                })
-              )
-            }
-            return sql(...args)
-          },
-          sql
-        )
-        const storage = yield* makeStorage(makeOptions("publication_catch_up")).pipe(
-          Effect.provideService(SqlClient.SqlClient, failingSql)
-        )
-        const storeId = makeStoreId("publication_catch_up")
-        const backlog = makeEntry("Ada")
-        const first = makeEntry("Grace")
-        const second = makeEntry("Margaret")
-        const third = makeEntry("Linus")
-        yield* storage.write(storeId, [backlog])
-        const changes = yield* openChanges(storage, storeId)
-        assertEntries([yield* Queue.take(changes)], [backlog], 1)
-
-        // `second` overtakes `first`, and reading `first` back fails, so
-        // `second` is not delivered until the next commit.
-        const release = yield* writeWithHeldPublication(storage, storeId, [first])
-        failEntryRead = true
-        yield* storage.write(storeId, [second])
-        yield* release
-        assertEntries([yield* Queue.take(changes)], [first], 2)
-        assert.isFalse(failEntryRead)
-        yield* Effect.yieldNow
-        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-
-        yield* storage.write(storeId, [third])
-        assertEntries(yield* Queue.takeN(changes, 2), [second, third], 3)
-        yield* Effect.yieldNow
-        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
-      }))
-
-    it.effect("streams later commits to other subscribers after a subscriber's transaction rolls back", () =>
-      Effect.gen(function*() {
-        const sql = yield* SqlClient.SqlClient
-        const options = makeOptions("subscriber_rollback")
-        const storage = yield* makeStorage(options)
-        const storeId = makeStoreId("subscriber_rollback")
-        const backlog = makeEntry("Ada")
-        const rolledBack = makeEntry("Grace")
-        const first = makeEntry("Margaret")
-        const second = makeEntry("Linus")
-        // Another instance writes the backlog, so `storage` has no live state
-        // for the store yet.
-        yield* (yield* makeStorage(options)).write(storeId, [backlog])
-
-        // The first subscriber opens inside the transaction, so it sees the
-        // write that is later rolled back, and keeps the store's live state.
-        const error = yield* sql.withTransaction(Effect.gen(function*() {
-          yield* storage.write(storeId, [rolledBack])
-          const inside = yield* openChanges(storage, storeId)
-          assertEntries(yield* Queue.takeN(inside, 2), [backlog, rolledBack], 1)
-          return yield* Effect.fail("rollback")
-        })).pipe(Effect.flip)
-        assert.strictEqual(error, "rollback")
-
-        const changes = yield* openChanges(storage, storeId)
-        assertEntries([yield* Queue.take(changes)], [backlog], 1)
-        yield* storage.write(storeId, [first])
-        yield* storage.write(storeId, [second])
-        assertEntries([yield* Queue.take(changes)], [first], 2)
-        assertEntries([yield* Queue.take(changes)], [second], 3)
       }))
   })

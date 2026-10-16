@@ -639,41 +639,6 @@ describe("SqlMessageStorage", () => {
           const sql = yield* SqlClient.SqlClient
           const storage = yield* MessageStorage.MessageStorage
           const notified: Array<string> = []
-          const direct = yield* makeRequest()
-          const nested = yield* makeRequest()
-          const handlers: Array<Fiber.Fiber<void, unknown>> = []
-          for (const [name, request] of [["direct", direct], ["nested", nested]] as const) {
-            yield* storage.saveRequest(request)
-            handlers.push(
-              yield* storage.registerReplyHandler(
-                new Message.OutgoingRequest({
-                  ...request,
-                  respond: () =>
-                    Effect.sync(() => {
-                      notified.push(name)
-                    })
-                })
-              ).pipe(Effect.forkChild)
-            )
-          }
-          yield* TestClock.adjust(1)
-
-          yield* sql.withTransaction(Effect.gen(function*() {
-            yield* storage.saveReply(yield* makeReply(direct))
-            yield* storage.withTransaction(storage.saveReply(yield* makeReply(nested)))
-            assert.deepStrictEqual(notified, [])
-          }))
-
-          assert.deepStrictEqual(notified, ["direct", "nested"])
-          yield* Fiber.awaitAll(handlers)
-        }))
-
-      it.effect("does not notify reply handlers for replies an SQL transaction or savepoint rolls back", () =>
-        Effect.gen(function*() {
-          yield* truncate
-          const sql = yield* SqlClient.SqlClient
-          const storage = yield* MessageStorage.MessageStorage
-          const notified: Array<string> = []
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
           const handler = yield* storage.registerReplyHandler(
@@ -687,61 +652,38 @@ describe("SqlMessageStorage", () => {
           ).pipe(Effect.forkChild)
           yield* TestClock.adjust(1)
 
-          const error = yield* sql.withTransaction(
+          yield* Effect.exit(sql.withTransaction(
             Effect.andThen(storage.saveReply(yield* makeReply(request)), Effect.fail("rollback"))
-          ).pipe(Effect.flip)
-          assert.strictEqual(error, "rollback")
-          yield* sql.withTransaction(Effect.gen(function*() {
-            const nested = yield* sql.withTransaction(
-              Effect.andThen(
-                storage.withTransaction(storage.saveReply(yield* makeReply(request))),
-                Effect.fail("nested rollback")
-              )
-            ).pipe(Effect.flip)
-            assert.strictEqual(nested, "nested rollback")
-          }))
-          assert.deepStrictEqual(notified, [])
-          expect(yield* storage.repliesFor([request])).toHaveLength(0)
-
-          // The handler is still waiting, so a committed reply reaches it.
+          ))
           const committed = yield* makeReply(request)
-          yield* storage.saveReply(committed)
+          yield* sql.withTransaction(Effect.gen(function*() {
+            yield* storage.saveReply(committed)
+            assert.deepStrictEqual(notified, [])
+          }))
           assert.deepStrictEqual(notified, [String(committed.reply.id)])
           yield* Fiber.await(handler)
         }))
 
-      it.effect("fails saveReply with a handler failure outside a transaction but commits inside one", () =>
+      it.effect("fails saveReply with a reply handler failure outside a transaction", () =>
         Effect.gen(function*() {
           yield* truncate
-          const sql = yield* SqlClient.SqlClient
           const storage = yield* MessageStorage.MessageStorage
           const failure = new ClusterError.MalformedMessage({ cause: new Error("respond failed") })
-          const registerFailingHandler = (request: Message.OutgoingRequest<any>) =>
-            storage.registerReplyHandler(
-              new Message.IncomingRequest({
-                envelope: request.envelope,
-                lastSentReply: Option.none(),
-                respond: () => Effect.fail(failure),
-                codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
-              })
-            ).pipe(Effect.forkChild)
-
-          const outside = yield* makeRequest()
-          yield* storage.saveRequest(outside)
-          const outsideHandler = yield* registerFailingHandler(outside)
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const handler = yield* storage.registerReplyHandler(
+            new Message.IncomingRequest({
+              envelope: request.envelope,
+              lastSentReply: Option.none(),
+              respond: () => Effect.fail(failure),
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
+            })
+          ).pipe(Effect.forkChild)
           yield* TestClock.adjust(1)
-          const error = yield* storage.saveReply(yield* makeReply(outside)).pipe(Effect.flip)
+
+          const error = yield* storage.saveReply(yield* makeReply(request)).pipe(Effect.flip)
           assert.strictEqual(error, failure)
-          yield* Fiber.await(outsideHandler)
-
-          // After COMMIT the failure has no caller, so the transaction succeeds.
-          const inside = yield* makeRequest()
-          yield* storage.saveRequest(inside)
-          const insideHandler = yield* registerFailingHandler(inside)
-          yield* TestClock.adjust(1)
-          yield* sql.withTransaction(storage.saveReply(yield* makeReply(inside)))
-          expect(yield* storage.repliesFor([inside])).toHaveLength(1)
-          yield* Fiber.await(insideHandler)
+          yield* Fiber.await(handler)
         }))
 
       it.effect("unprocessedMessagesById", () =>

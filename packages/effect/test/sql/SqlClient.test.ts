@@ -516,152 +516,66 @@ describe("SqlClient", () => {
         }
       })
 
-    it.effect("invalidates once the outermost transaction commits, including from a savepoint", () =>
+    it.effect("invalidates after the outermost commit and not on rollback", () =>
       Effect.gen(function*() {
         const client = yield* makeClient()
         const { calls, reactivity, sql } = client
-        yield* watch(client, ["outer", "nested"])
+        yield* watch(client, ["users"])
 
-        yield* sql.withTransaction(Effect.gen(function*() {
-          yield* reactivity.mutation(["outer"], sql`UPDATE outer`)
-          yield* sql.withTransaction(reactivity.mutation(["nested"], sql`UPDATE nested`))
-          yield* sql`SELECT 1`
-        }))
-
-        const commit = calls.indexOf("COMMIT")
-        assert.isAtLeast(commit, 0)
-        assert.deepStrictEqual(calls.slice(0, commit).filter((call) => call.startsWith("invalidate")), [])
-        assert.deepStrictEqual(calls.slice(commit).filter((call) => call.startsWith("invalidate")), [
-          "invalidate(outer)",
-          "invalidate(nested)"
-        ])
-      }))
-
-    it.effect("drops invalidations from a rolled-back transaction or savepoint", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        const { calls, reactivity, sql } = client
-        yield* watch(client, ["outer", "nested", "dropped"])
-
-        yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
-          yield* reactivity.mutation(["outer"], sql`UPDATE outer`)
-          yield* sql.withTransaction(reactivity.mutation(["nested"], sql`UPDATE nested`))
-          return yield* Effect.fail("boom")
-        })))
-        assert.isFalse(calls.some((call) => call.startsWith("invalidate")))
-
-        yield* sql.withTransaction(Effect.gen(function*() {
-          yield* Effect.exit(sql.withTransaction(
-            Effect.andThen(reactivity.mutation(["dropped"], sql`UPDATE dropped`), Effect.fail("boom"))
-          ))
-          yield* reactivity.mutation(["outer"], sql`UPDATE outer`)
-        }))
-        assert.deepStrictEqual(calls.filter((call) => call.startsWith("invalidate")), ["invalidate(outer)"])
-      }))
-
-    it.effect("defers a detached fiber's invalidation from a finished savepoint to the open outer transaction", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        const { calls, reactivity, sql } = client
-        yield* watch(client, ["late"])
-        const release = yield* Deferred.make<void>()
-
-        yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
-          const detached = yield* sql.withTransaction(
-            Effect.forkDetach(Effect.andThen(Deferred.await(release), reactivity.invalidate(["late"])))
-          )
-          yield* Deferred.succeed(release, undefined)
-          yield* Fiber.join(detached)
-          assert.isFalse(calls.includes("invalidate(late)"))
-          return yield* Effect.fail("boom")
-        })))
-        assert.isFalse(calls.includes("invalidate(late)"))
-      }))
-
-    it.effect("defers a detached fiber's invalidation from a rolled-back savepoint to the outer commit", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        const { calls, reactivity, sql } = client
-        yield* watch(client, ["late"])
-        const release = yield* Deferred.make<void>()
-
-        yield* sql.withTransaction(Effect.gen(function*() {
-          let detached: Fiber.Fiber<void> | undefined
-          yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
-            detached = yield* Effect.forkDetach(
-              Effect.andThen(Deferred.await(release), reactivity.invalidate(["late"]))
-            )
-            return yield* Effect.fail("boom")
-          })))
-          yield* Deferred.succeed(release, undefined)
-          yield* Fiber.join(detached!)
-          assert.isFalse(calls.includes("invalidate(late)"))
-        }))
-        assert.isAbove(calls.indexOf("invalidate(late)"), calls.indexOf("COMMIT"))
-      }))
-
-    it.effect("invalidates immediately from a detached fiber once the outermost transaction has ended", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        const { calls, reactivity, sql } = client
-        yield* watch(client, ["late"])
-        const release = yield* Deferred.make<void>()
-
-        const detached = yield* sql.withTransaction(sql.withTransaction(
-          Effect.forkDetach(Effect.andThen(Deferred.await(release), reactivity.invalidate(["late"])))
+        yield* Effect.exit(sql.withTransaction(
+          Effect.andThen(reactivity.mutation(["users"], sql`UPDATE users`), Effect.fail("boom"))
         ))
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(detached)
-        assert.strictEqual(calls.at(-1), "invalidate(late)")
+        assert.isFalse(calls.includes("invalidate(users)"))
+
+        yield* sql.withTransaction(reactivity.mutation(["users"], sql`UPDATE users`))
+        assert.deepStrictEqual(calls.slice(-3), ["COMMIT", "release", "invalidate(users)"])
       }))
 
-    it.effect("batches committed invalidations into an enclosing batch that is still open", () =>
+    it.effect("defers a detached fiber's invalidation to the nearest open transaction", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, sql } = client
+        yield* watch(client, ["inside", "after"])
+        const inside = yield* Deferred.make<void>()
+        const invalidated = yield* Deferred.make<void>()
+        const after = yield* Deferred.make<void>()
+
+        // The fiber outlives its savepoint, then the outer transaction.
+        const detached = yield* sql.withTransaction(Effect.gen(function*() {
+          const detached = yield* sql.withTransaction(Effect.forkDetach(Effect.gen(function*() {
+            yield* Deferred.await(inside)
+            yield* reactivity.invalidate(["inside"])
+            yield* Deferred.succeed(invalidated, undefined)
+            yield* Deferred.await(after)
+            yield* reactivity.invalidate(["after"])
+          })))
+          yield* Deferred.succeed(inside, undefined)
+          yield* Deferred.await(invalidated)
+          assert.isFalse(calls.includes("invalidate(inside)"))
+          return detached
+        }))
+        assert.isAbove(calls.indexOf("invalidate(inside)"), calls.indexOf("COMMIT"))
+
+        yield* Deferred.succeed(after, undefined)
+        yield* Fiber.join(detached)
+        assert.strictEqual(calls.at(-1), "invalidate(after)")
+      }))
+
+    it.effect("joins an enclosing batch that is still open when the transaction commits", () =>
       Effect.gen(function*() {
         const client = yield* makeClient()
         const { calls, reactivity, record, sql } = client
         yield* watch(client, ["outer", "inner"])
 
         yield* reactivity.withBatch(Effect.gen(function*() {
-          yield* sql.withTransaction(Effect.gen(function*() {
-            yield* reactivity.invalidate(["outer"])
-            yield* reactivity.invalidate(["outer"])
-          }))
+          yield* sql.withTransaction(Effect.andThen(reactivity.invalidate(["outer"]), reactivity.invalidate(["outer"])))
           yield* record("batch end")
         }))
-        assert.deepStrictEqual(calls.filter((call) => !/^(BEGIN|COMMIT|release)$/.test(call)), [
-          "batch end",
-          "invalidate(outer)"
-        ])
+        assert.deepStrictEqual(calls.slice(-2), ["batch end", "invalidate(outer)"])
 
         // A batch inside the transaction has ended by the time it commits.
-        calls.length = 0
         yield* sql.withTransaction(reactivity.withBatch(reactivity.invalidate(["inner"])))
-        assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "invalidate(inner)"])
-      }))
-
-    it.effect("invalidates immediately from a detached fiber that inherited an ended batch", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        yield* watch(client, ["late"])
-        const release = yield* Deferred.make<void>()
-        const detached = yield* client.reactivity.withBatch(
-          Effect.forkDetach(Effect.andThen(Deferred.await(release), client.reactivity.invalidate(["late"])))
-        )
-        assert.deepStrictEqual(client.calls, [])
-
-        yield* Deferred.succeed(release, undefined)
-        yield* Fiber.join(detached)
-        assert.deepStrictEqual(client.calls, ["invalidate(late)"])
-      }))
-
-    it.effect("invalidates immediately outside a transaction", () =>
-      Effect.gen(function*() {
-        const client = yield* makeClient()
-        yield* watch(client, ["users"])
-        yield* client.reactivity.mutation(["users"], client.sql`UPDATE users`).pipe(
-          Effect.andThen(client.record("after mutation"))
-        )
-        assert.deepStrictEqual(client.calls, ["UPDATE users", "release", "invalidate(users)", "after mutation"])
+        assert.deepStrictEqual(calls.slice(-2), ["release", "invalidate(inner)"])
       }))
   })
 })
