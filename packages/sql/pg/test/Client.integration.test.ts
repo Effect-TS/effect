@@ -384,19 +384,20 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
     Effect.gen(function*() {
       const sql = yield* PgClient.PgClient
       yield* sql`CREATE TABLE after_commit_visibility (value INTEGER)`
-      const seen = yield* Deferred.make<ReadonlyArray<{ readonly count: number }>>()
+      let seen: ReadonlyArray<{ readonly count: number }> = []
 
       yield* sql.withTransaction(Effect.gen(function*() {
         yield* sql`INSERT INTO after_commit_visibility VALUES (1)`
         yield* sql.afterCommit(
           sql<{ count: number }>`SELECT count(*)::integer AS count FROM after_commit_visibility`.pipe(
-            Effect.flatMap((rows) => Deferred.succeed(seen, rows)),
-            Effect.orDie
+            Effect.map((rows) => {
+              seen = rows
+            })
           )
         )
       }))
 
-      assert.deepStrictEqual(yield* Deferred.await(seen), [{ count: 1 }])
+      assert.deepStrictEqual(seen, [{ count: 1 }])
     }))
 })
 
