@@ -51,29 +51,24 @@ export interface DehydratedAtomValue extends DehydratedAtom {
 
 const Skipped = Symbol.for("effect/reactivity/Hydration/Skipped")
 
-const releaseInitial = (registry: AtomRegistry.AtomRegistry, node: AtomRegistry.Node<any>): void => {
-  let target = node.atom
-  while (target.initialValueTarget) {
-    target = target.initialValueTarget
-  }
-  if (target !== node.atom) {
-    const targetNode = registry.ensureNode(target) as any
-    // Hydration may have seeded the target before its first build.
-    targetNode.preserveInitialValueOnBuild = false
-    targetNode.invalidate()
-  }
-
-  // Derived atoms may not have read their source yet, so invalidate them directly too.
-  const hydratedNode = node as any
-  hydratedNode.invalidate()
-}
-
 const encodeOrSkip = (
   atom: Atom.Atom<any> & Atom.Serializable<any>,
   value: unknown
 ): unknown => {
   try {
     return atom[Atom.SerializableTypeId].encode(value)
+  } catch (error) {
+    if (Schema.isSchemaError(error)) return Skipped
+    throw error
+  }
+}
+
+const decodeOrSkip = (
+  atom: Atom.Serializable<any>,
+  value: unknown
+): unknown => {
+  try {
+    return atom[Atom.SerializableTypeId].decode(value)
   } catch (error) {
     if (Schema.isSchemaError(error)) return Skipped
     throw error
@@ -180,34 +175,37 @@ export const hydrate = (
     if (!datom.resultPromise) continue
     datom.resultPromise.then((resolvedValue) => {
       // Try to update the existing node directly instead of using setSerializable
-      const nodes = registry.getNodes()
-      const node = nodes.get(datom.key)
-      if (resolvedValue === Skipped) {
-        // Release the preloaded Initial even if the client has not read the atom yet.
-        registry.preloadedSerializable.delete(datom.key)
-        if (node) releaseInitial(registry, node)
-        return
-      }
-      if (node) {
-        // Decode the resolved value using the node's atom serializable decoder
-        const atom = node.atom as any
-        if (atom[Atom.SerializableTypeId]) {
-          let decoded: unknown
-          try {
-            decoded = atom[Atom.SerializableTypeId].decode(resolvedValue)
-          } catch (error) {
-            if (!Schema.isSchemaError(error)) throw error
-            releaseInitial(registry, node)
-            return
-          }
+      const node = registry.getNodes().get(datom.key)
+      if (resolvedValue !== Skipped) {
+        if (node === undefined) {
+          // Fallback to setSerializable if node doesn't exist yet
+          registry.setSerializable(datom.key, resolvedValue)
+          return
+        }
+        const decoded = decodeOrSkip(node.atom as any, resolvedValue)
+        if (decoded !== Skipped) {
           if (shouldHydrate(Option.getOrUndefined(node.valueOption()), decoded)) {
             ;(node as any).setValue(decoded)
           }
+          return
         }
-      } else {
-        // Fallback to setSerializable if node doesn't exist yet
-        registry.setSerializable(datom.key, resolvedValue)
       }
+
+      // The result is unusable, so release the hydrated Initial and compute on the client
+      registry.preloadedSerializable.delete(datom.key)
+      if (node === undefined) return
+      let target = node.atom
+      while (target.initialValueTarget) {
+        target = target.initialValueTarget
+      }
+      if (target !== node.atom) {
+        const targetNode = registry.ensureNode(target) as any
+        // Hydration may have seeded the target before its first build
+        targetNode.preserveInitialValueOnBuild = false
+        targetNode.invalidate()
+      } // Derived atoms may not have read their source yet, so invalidate them directly too
+
+      ;(node as any).invalidate()
     })
   }
 }
