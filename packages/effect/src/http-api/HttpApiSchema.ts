@@ -19,6 +19,7 @@ import * as Predicate from "../Predicate.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 
 declare module "../Schema.ts" {
@@ -455,6 +456,95 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
  */
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
+
+const UpgradeTypeId = "~effect/http-api/HttpApiSchema/Upgrade"
+
+/**
+ * Schema for a success response that switches the connection to another
+ * protocol with an HTTP/1.1 upgrade.
+ *
+ * **Details**
+ *
+ * Created with {@link Upgrade}. The response is `101 Switching Protocols`, and
+ * the connection then carries raw bytes in both directions as a `Socket`.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Upgrade extends
+  Schema.Bottom<
+    Socket.Socket,
+    Socket.Socket,
+    never,
+    never,
+    SchemaAST.Declaration,
+    Upgrade
+  >
+{
+  readonly "Rebuild": Upgrade
+  readonly [UpgradeTypeId]: typeof UpgradeTypeId
+  readonly protocol: string
+}
+
+const upgradeSchema = Schema.declare(Socket.isSocket).pipe(status(101))
+
+/**
+ * Declares an endpoint success that upgrades the connection to `protocol`,
+ * such as Docker's `tcp` for container attach.
+ *
+ * **When to use**
+ *
+ * Use as the only success schema of an endpoint that hands over its
+ * connection as a raw byte stream after `101 Switching Protocols`. For
+ * WebSocket, upgrade the request with `HttpServerRequest.upgrade` and
+ * connect with `Socket.makeWebSocket` instead.
+ *
+ * **Details**
+ *
+ * The handler receives the connection as `socket`. The `101` response is
+ * sent when the handler acquires the socket's reader, so a handler can still
+ * fail with a declared error before then. Requests that do not ask for
+ * `protocol` get `426 Upgrade Required`.
+ *
+ * The client sends `Connection: Upgrade` and `Upgrade: protocol`, and returns
+ * the response headers with the connection. Other responses are decoded as
+ * the endpoint's errors.
+ *
+ * The endpoint cannot declare a payload or other success schemas.
+ *
+ * **Example** (Declaring an attach endpoint)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/http-api"
+ *
+ * const attach = HttpApiEndpoint.post("attach", "/containers/:id/attach", {
+ *   params: { id: Schema.String },
+ *   success: HttpApiSchema.Upgrade({ protocol: "tcp" })
+ * })
+ * ```
+ *
+ * @stability unstable
+ * @category constructors
+ * @since 4.0.6
+ */
+export const Upgrade = (options: {
+  readonly protocol: string
+}): Upgrade => {
+  if (options.protocol.toLowerCase() === "websocket") {
+    throw new Error("Upgrade does not support WebSocket")
+  }
+  return Schema.make<Upgrade>(upgradeSchema.ast, {
+    [UpgradeTypeId]: UpgradeTypeId,
+    protocol: options.protocol
+  })
+}
+
+/**
+ * @internal
+ */
+export const isUpgrade = (u: unknown): u is Upgrade => Schema.isSchema(u) && Predicate.hasProperty(u, UpgradeTypeId)
 
 function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {

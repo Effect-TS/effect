@@ -17,6 +17,7 @@ import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Sse from "../encoding/Sse.ts"
 import { identity } from "../Function.ts"
+import type * as Headers from "../http/Headers.ts"
 import * as HttpBody from "../http/HttpBody.ts"
 import * as HttpClient from "../http/HttpClient.ts"
 import * as HttpClientError from "../http/HttpClientError.ts"
@@ -31,6 +32,7 @@ import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
 import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaTransformation from "../SchemaTransformation.ts"
+import type * as Socket from "../socket/Socket.ts"
 import * as Stream from "../Stream.ts"
 import type { Simplify } from "../Types.ts"
 import * as UndefinedOr from "../UndefinedOr.ts"
@@ -96,8 +98,28 @@ export type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
       never
     >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
+  : S extends HttpApiSchema.Upgrade ? Upgraded
   : S extends Schema.Constraint ? S["Type"]
   : never
+
+/**
+ * The value a client method returns for an endpoint declared with
+ * `HttpApiSchema.Upgrade`: the headers of the `101 Switching Protocols`
+ * response and the upgraded connection.
+ *
+ * **Details**
+ *
+ * See `HttpClientResponse.upgrade` for how the connection behaves and when it
+ * closes.
+ *
+ * @stability unstable
+ * @category models
+ * @since 4.0.6
+ */
+export interface Upgraded {
+  readonly headers: Headers.Headers
+  readonly socket: Socket.Socket
+}
 
 type SuccessDecodingServices<S> = S extends HttpApiSchema.StreamSse<
   infer _Events,
@@ -412,6 +434,11 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         for (const [status, alternatives] of successAlternatives.entries()) {
           decodeMap[status] = makeResponseDecoder(alternatives)
         }
+        const upgrade = getUpgradeSuccessSchema(endpoint)
+        if (upgrade !== undefined) {
+          decodeMap[101] = (response) =>
+            Effect.map(response.upgrade, (socket): Upgraded => ({ headers: response.headers, socket }))
+        }
 
         const encodeParams = UndefinedOr.map(
           endpoint.params,
@@ -484,6 +511,10 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
               const query = (yield* encodeQuery(request.query)) as Record<string, string>
               httpRequest = HttpClientRequest.appendUrlParams(httpRequest, query)
             }
+          }
+
+          if (upgrade !== undefined) {
+            httpRequest = HttpClientRequest.upgrade(httpRequest, upgrade.protocol)
           }
 
           const response = yield* executeMiddleware(
@@ -931,6 +962,12 @@ type StreamSuccessSchema =
 const isWithHeadersStreamSuccess = (
   schema: StreamSuccessSchema
 ): schema is HttpApiSchema.WithHeaders<HttpApiSchema.StreamSchema, Schema.Top> => HttpApiSchema.isWithHeaders(schema)
+
+function getUpgradeSuccessSchema(endpoint: HttpApiEndpoint.Top): HttpApiSchema.Upgrade | undefined {
+  for (const schema of endpoint.success) {
+    if (HttpApiSchema.isUpgrade(schema)) return schema
+  }
+}
 
 function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<StreamSuccessSchema> {
   const schemas: Array<StreamSuccessSchema> = []
