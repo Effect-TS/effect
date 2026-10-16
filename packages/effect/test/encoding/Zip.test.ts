@@ -217,6 +217,9 @@ describe("Zip", () => {
         const invalid: Array<Zip.Entry> = [
           Zip.directory(""),
           Zip.file("/etc/passwd", "x"),
+          // libarchive and Windows tools read backslashes as separators, and drive letters as roots
+          Zip.file("..\\x", "x"),
+          Zip.file("C:x", "x"),
           Zip.file("a\0b", "x"),
           Zip.file("dir/", "x"),
           { ...directory, header: { ...directory.header, path: "d" } },
