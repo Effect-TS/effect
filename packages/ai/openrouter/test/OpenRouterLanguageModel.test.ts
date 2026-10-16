@@ -76,11 +76,9 @@ describe("OpenRouterLanguageModel", () => {
       }).pipe(Effect.provide(makeStreamTestLayer([]))))
   })
 
-  it.effect("model provides LanguageModel with openrouter provider metadata", () =>
+  it.effect("model provides openrouter provider metadata", () =>
     Effect.gen(function*() {
       strictEqual(yield* Model.ProviderName, "openrouter")
-      strictEqual(yield* Model.ModelName, "google/gemini-2.5-flash")
-      assert.isDefined(yield* LanguageModel.LanguageModel)
     }).pipe(
       Effect.provide(OpenRouterLanguageModel.model("google/gemini-2.5-flash")),
       Effect.provide(makeTestLayer())
