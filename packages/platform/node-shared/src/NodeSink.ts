@@ -88,15 +88,10 @@ export const pullIntoWritable = <A, IE, E>(options: {
   Effect.suspend(() => {
     const completion = Deferred.makeUnsafe<void>()
     const failure = Deferred.makeUnsafe<never, E>()
-    const onError = (error: unknown) => {
-      if (!Deferred.isDoneUnsafe(failure)) {
-        Deferred.doneUnsafe(failure, Effect.fail(options.onError(error)))
-      }
-    }
-    // finished() is one-shot; keep observing errors if upstream writes after finish.
+    const onError = (error: unknown) => Deferred.doneUnsafe(failure, Effect.failSync(() => options.onError(error)))
+    // finished() only reports once, so keep listening for errors from writes
+    // made after the writable has finished.
     options.writable.on("error", onError)
-    // Observe only the writable side, including streams already destroyed before
-    // this pull starts. Node distinguishes premature close from completed writes.
     const cleanup = finished(options.writable, { readable: false }, (error) => {
       if (error) {
         onError(error)
@@ -137,10 +132,9 @@ export const pullIntoWritable = <A, IE, E>(options: {
       options.endOnDone !== false ?
         Pull.catchDone((_) => {
           options.writable.end()
-          return Effect.flatMap(Deferred.await(completion), () => Cause.done(_))
+          return Effect.andThen(Deferred.await(completion), Cause.done(_))
         }) :
         identity,
-      // Successful completion must not discard the upstream done value.
       Effect.raceFirst(Deferred.await(failure)),
       Effect.ensuring(Effect.sync(() => {
         cleanup()
