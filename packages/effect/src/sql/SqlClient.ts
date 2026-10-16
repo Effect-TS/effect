@@ -97,9 +97,12 @@ export interface SqlClient extends Constructor {
    * After a successful `COMMIT`, callbacks run once releasing the connection
    * has been attempted, before `withTransaction` returns. They run
    * uninterruptibly, even if the fiber was interrupted or releasing the
-   * connection failed, in the context of the outermost `withTransaction` call
-   * without the transaction, so a callback that queries uses a new
-   * connection. A callback that dies is logged and the rest still run.
+   * connection failed.
+   *
+   * A callback runs with the services that were in scope when it was
+   * registered, minus this client's transaction, so a callback that queries
+   * uses a new connection. A callback that fails or dies is logged, both when
+   * it is deferred and when it runs immediately, and the rest still run.
    *
    * Callbacks run in registration order within a transaction or savepoint,
    * and a savepoint's callbacks follow those already registered in the
@@ -117,7 +120,7 @@ export interface SqlClient extends Constructor {
    * Transactions that don't go through `makeWithTransaction`, such as those
    * of `@effect/sql-sqlite-do`, run callbacks immediately.
    */
-  readonly afterCommit: (effect: Effect.Effect<void>) => Effect.Effect<void>
+  readonly afterCommit: <E, R>(effect: Effect.Effect<void, E, R>) => Effect.Effect<void, never, R>
 
   /**
    * Use the Reactivity service to create a reactive query.
@@ -274,7 +277,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
   })
 
   const afterCommitBuffer = AfterCommitBuffer(transactionService)
-  const afterCommit = (effect: Effect.Effect<void>): Effect.Effect<void> =>
+  const afterCommit = <E, R>(effect: Effect.Effect<void, E, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
       const transaction = Context.getOrUndefined(fiber.context, transactionService)
       const buffer = Context.getOrUndefined(fiber.context, afterCommitBuffer)
@@ -287,7 +290,11 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
           return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
         }
       }
-      buffer.callbacks.push(effect)
+      // Runs later with the services in scope now, without the transaction.
+      buffer.callbacks.push(Effect.provideContext(
+        effect,
+        Context.omit(transactionService, afterCommitBuffer)(fiber.context) as Context.Context<R>
+      ))
       return Effect.void
     })
 
@@ -463,7 +470,7 @@ const failuresToDefects = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
  * level runs them after it commits.
  */
 interface AfterCommitBuffer {
-  readonly callbacks: Array<Effect.Effect<void>>
+  readonly callbacks: Array<Effect.Effect<void, unknown>>
   readonly parent: AfterCommitBuffer | undefined
   open: boolean
 }
@@ -475,7 +482,7 @@ interface AfterCommitBuffer {
 const AfterCommitBuffer = (transactionService: Context.Key<any, any>) =>
   Context.Service<AfterCommitBuffer>(`${transactionService.key}/AfterCommit`)
 
-const runAfterCommit = (effect: Effect.Effect<void>): Effect.Effect<void> =>
+const runAfterCommit = <E, R>(effect: Effect.Effect<void, E, R>): Effect.Effect<void, never, R> =>
   Effect.catchCause(effect, (cause) => Effect.logError("SqlClient.afterCommit callback failed", cause))
 
 /**
