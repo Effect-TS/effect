@@ -193,14 +193,24 @@ describe("Schema.toJsonSchemaDocument", () => {
     })
   })
 
-  it("emits JSON content media types after encoded projection", () => {
+  it("emits the JSON content schema after encoded and JSON codec projection", () => {
     const schema = Schema.fromJsonString(Schema.Struct({
-      value: Schema.FiniteFromString
+      value: Schema.FiniteFromString,
+      date: Schema.Date
     }))
 
     assert.deepStrictEqual(Schema.toJsonSchemaDocument(schema).schema, {
       type: "string",
-      contentMediaType: "application/json"
+      contentMediaType: "application/json",
+      contentSchema: {
+        type: "object",
+        properties: {
+          value: { type: "string" },
+          date: { type: "string" }
+        },
+        required: ["value", "date"],
+        additionalProperties: true
+      }
     })
   })
 

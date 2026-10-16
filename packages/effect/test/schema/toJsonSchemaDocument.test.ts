@@ -3997,9 +3997,18 @@ describe("toJsonSchemaDocument", () => {
             "$ref": "#/$defs/MyWireEvent"
           },
           definitions: {
+            "MyEvent": {
+              "type": "object",
+              "properties": {
+                "value": { "type": "string" }
+              },
+              "required": ["value"],
+              "additionalProperties": false
+            },
             "MyWireEvent": {
               "type": "string",
-              "contentMediaType": "application/json"
+              "contentMediaType": "application/json",
+              "contentSchema": { "$ref": "#/$defs/MyEvent" }
             }
           }
         }
