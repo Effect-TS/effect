@@ -275,6 +275,17 @@ describe("OpenAiDecisionModel", () => {
       answers[2]
     ])))))
 
+  it.effect("a refusal outranks a later answer with the same name", () =>
+    Effect.gen(function*() {
+      const error = yield* Effect.flip(DecisionModel.decide(Urgency, { input: "Checkout is down" }))
+      assert.strictEqual(error.reason._tag, "ContentPolicyError")
+      const { outcomes } = yield* DecisionModel.decideSettled(Urgency, { input: "Checkout is down" })
+      assert.isTrue(Result.isFailure(outcomes.urgent) && outcomes.urgent.failure.reason === "Refused")
+    }).pipe(Effect.provide(layer(response([
+      { name: "urgent", type: "refusal" },
+      { name: "urgent", type: "predicate", probability: 0.99 }
+    ])))))
+
   it.effect("sends string and JSON state with byte array, base64 string, and data URL images", () => {
     const dataUrl = "data:image/webp;base64,UklGRg=="
     const images = [
