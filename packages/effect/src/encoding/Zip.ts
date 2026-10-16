@@ -955,9 +955,8 @@ class Writer {
 
   // Writes an entry whose content is known, with its sizes in the local header
   entry(header: Header, content: Uint8Array, data: Uint8Array): void {
-    if (header.size !== undefined && header.size !== content.length) {
-      throw sizeMismatch(header.path, content.length, header.size)
-    }
+    const size = header.type === "Directory" ? 0 : header.size
+    if (size !== undefined && size !== content.length) throw sizeMismatch(header.path, content.length, size)
     const record = this.record(header, 0)
     record.crc = crc32(0, content)
     record.size = content.length
