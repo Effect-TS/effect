@@ -308,9 +308,7 @@ export const make: (
     }
   })
 
-  // With `readNow` false, the first replies are left to the next poll, which
-  // reads all waiting requests at once.
-  const replyFromStorage = (message: Message.OutgoingRequest<any>, readNow = true) =>
+  const replyFromStorage = (message: Message.OutgoingRequest<any>) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         const requestId = message.envelope.requestId
@@ -327,10 +325,10 @@ export const make: (
         }
         const current = entry
         current.messages.add(message)
-        // A reply committed without a notification may already be in storage,
-        // which a waiter that joins a parked entry would otherwise only see
-        // on the next poll.
-        if (readNow) storageLatch.openUnsafe()
+        // A waiter that joins an existing entry, such as a duplicate, reads
+        // now. A reply committed without a notification would otherwise wait
+        // for the next poll.
+        storageLatch.openUnsafe()
         return yield* restore(Fiber.join(current.pump)).pipe(
           Effect.ensuring(Effect.suspend(() => {
             current.messages.delete(message)
@@ -368,29 +366,16 @@ export const make: (
   }
 
   // A request can be processed as soon as it is saved, so its reply handler is
-  // registered first. A fresh request then gets its reply from the handler,
-  // without reading it back from storage.
-  //
-  // `registerReplyHandler` can suspend before it registers, for example in a
-  // storage wrapper, so a reply may still be saved first. The request also
-  // waits for the next poll, which finds such a reply.
+  // registered first. `registerReplyHandler` registers as soon as it starts,
+  // so a fresh request gets its reply from the handler without reading it
+  // back from storage.
   const notifyLocalRequest = (
     message: Message.OutgoingRequest<any>,
     notifyEntity: (message: Message.Outgoing<any>) => Effect.Effect<void>
   ) =>
     Effect.gen(function*() {
-      let replied = false
-      const request = new Message.OutgoingRequest({
-        ...message,
-        respond(reply) {
-          // The storage fallback must not repeat a reply the handler delivered.
-          if (replied) return Effect.void
-          if (reply._tag === "WithExit") replied = true
-          return message.respond(reply)
-        }
-      })
-      const handler = yield* Effect.forkScoped(storage.registerReplyHandler(request), { startImmediately: true })
-      return yield* notifyWith(request, (message, duplicate) => {
+      const handler = yield* Effect.forkScoped(storage.registerReplyHandler(message), { startImmediately: true })
+      return yield* notifyWith(message, (message, duplicate) => {
         const outgoing = message as Message.OutgoingRequest<any>
         // A duplicate is answered under its original request id.
         if (duplicate) {
@@ -399,14 +384,11 @@ export const make: (
             Effect.andThen(replyFromStorageWithWake(outgoing))
           )
         }
-        // The storage waiter registers first, so a handler that is dropped,
-        // for example when its shard moves or a commit error hides the
-        // notification, can have the reply read back right away.
+        // The handler can be dropped, for example when its shard moves or a
+        // commit error hides the notification. The reply is then in storage.
         return notifyEntity(message).pipe(
-          Effect.andThen(Effect.raceFirst(
-            replyFromStorage(outgoing, false),
-            Effect.catch(Fiber.join(handler), () => Effect.andThen(storageLatch.open, Effect.never))
-          ))
+          Effect.andThen(Fiber.join(handler)),
+          Effect.catchTag("EntityNotAssignedToRunner", () => replyFromStorage(outgoing))
         )
       })
     }).pipe(Effect.scoped)
