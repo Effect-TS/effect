@@ -1,3 +1,4 @@
+import * as Bytes from "../../../Bytes.ts"
 import * as ByteSize from "../../../ByteSize.ts"
 import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
@@ -117,18 +118,10 @@ export function make({
           if (state.isFile) {
             state.onChunk(null)
           } else {
-            if (state.fieldChunks.length === 1) {
-              onField(state.info, state.fieldChunks[0])
-            } else {
-              const buf = new Uint8Array(state.fieldSize)
-              let offset = 0
-              for (let i = 0; i < state.fieldChunks.length; i++) {
-                const chunk = state.fieldChunks[i]
-                buf.set(chunk, offset)
-                offset += chunk.length
-              }
-              onField(state.info, buf)
-            }
+            onField(
+              state.info,
+              state.fieldChunks.length === 1 ? state.fieldChunks[0] : Bytes.concat(state.fieldChunks)
+            )
             state.fieldSize = 0
             state.fieldChunks = []
           }

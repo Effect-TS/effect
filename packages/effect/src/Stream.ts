@@ -11536,7 +11536,7 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
  * @category destructors
  * @since 4.0.0
  */
-export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<Uint8Array, E, R> =>
+export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<Uint8Array<ArrayBuffer>, E, R> =>
   Channel.mkUint8Array(self.channel)
 
 /**
