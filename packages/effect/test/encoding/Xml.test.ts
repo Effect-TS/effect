@@ -305,6 +305,31 @@ describe("Xml", () => {
         ])
       }))
 
+    it.effect("decodes tokens split into hundreds of chunks", () =>
+      Effect.gen(function*() {
+        // The chunks of an incomplete token are joined in runs, which must not affect references, line endings or
+        // positions that span the runs
+        const part = "a&amp;\r\nb".repeat(300)
+        const valid = `<a b="${part}"><!--${part}--><?p ${part}?><![CDATA[${part}]]>${part}</a>`
+        const invalid = `<a>${part}&b;</a>`
+        const split = (xml: string, size: number) =>
+          Array.from({ length: Math.ceil(xml.length / size) }, (_, i) => xml.slice(i * size, i * size + size))
+        for (const size of [1, 2, 3, 5]) {
+          assert.deepStrictEqual(yield* decodeString(split(valid, size)), [
+            start("a", { b: "a& b".repeat(300) }),
+            comment("a&amp;\nb".repeat(300)),
+            pi("p", "a&amp;\nb".repeat(300)),
+            text("a&amp;\nb".repeat(300) + "a&\nb".repeat(300)),
+            end("a")
+          ])
+          assert.deepStrictEqual(yield* failure(decodeString(split(invalid, size))), ["Syntax", 301, 2])
+          assert.deepStrictEqual(
+            yield* failure(decodeString(split(valid, size), { maxTokenSize: part.length })),
+            ["Limit", 1, 1]
+          )
+        }
+      }))
+
     it.effect.skipIf(process.versions.bun !== undefined || process.versions.deno !== undefined)(
       "does not keep the input of open elements in memory",
       () =>
