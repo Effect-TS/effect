@@ -6862,10 +6862,9 @@ export const splitLines = <Err, Done>(): Channel<
  * **Details**
  *
  * Input chunks are decoded with streaming enabled so multi-byte characters may
- * span `Uint8Array` boundaries. When the input ends partway through a
- * character, the remaining bytes are decoded as one more string, so they
- * become U+FFFD or, with `fatal`, an error. The optional `encoding` and
- * `options` are passed to `TextDecoder`.
+ * span `Uint8Array` boundaries. On normal completion, incomplete trailing
+ * characters become U+FFFD or, with `fatal: true`, a defect. The optional
+ * `encoding` and `options` are passed to `TextDecoder`.
  *
  * @stability stable
  * @category decoding
@@ -6890,7 +6889,6 @@ export const decodeText = <Err, Done>(
         Effect.map(Arr.map((bytes) => decoder.decode(bytes, streamOptions))),
         Pull.catchDone((leftover) => {
           pull = Cause.done(leftover as Done)
-          // Decode bytes held back for an incomplete character at the end.
           const last = decoder.decode()
           return last.length > 0 ? Effect.succeed(Arr.of(last)) : pull
         })
