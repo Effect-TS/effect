@@ -51,6 +51,9 @@ describe("DevToolsClient", () => {
         })
       const socket = Socket.make({
         reader: Effect.gen(function*() {
+          // Model asynchronous connection setup so TestClock tracks the response
+          // and the layer startup work it resumes before returning from adjust.
+          yield* Effect.sleep("1 millis")
           yield* Effect.addFinalizer(() =>
             Queue.fail(responses, new Socket.SocketError({ reason: new Socket.SocketCloseError({ code: 1000 }) }))
           )
