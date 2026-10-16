@@ -1,4 +1,5 @@
 // <reference types="@testing-library/jest-dom" />
+import { assert } from "@effect/vitest"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { Cause, Context, Effect, Latch, Layer } from "effect"
 import * as AsyncResult from "effect/reactivity/AsyncResult"
@@ -347,6 +348,59 @@ describe("atom-react", { concurrent: false }, () => {
   })
 
   describe("hydration", () => {
+    test.each([
+      { serverTime: 1000, clientTime: 2000, expected: "client", expectedTimestamp: 2000 },
+      { serverTime: 2000, clientTime: 1000, expected: "server", expectedTimestamp: 2000 }
+    ])("HydrationBoundary keeps the freshest result (server: $serverTime, client: $clientTime)", ({
+      clientTime,
+      expected,
+      expectedTimestamp,
+      serverTime
+    }) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      let remote = "server"
+      const profile = Atom.make(Effect.sync(() => remote)).pipe(
+        Atom.serializable({ key: "existing-profile", schema: AsyncResult.Schema({ success: Schema.String }) })
+      )
+      const server = AtomRegistry.make()
+      const client = AtomRegistry.make()
+      let view: ReturnType<typeof render> | undefined
+      try {
+        vi.setSystemTime(serverTime)
+        server.mount(profile)
+        // Dehydration time is not the time the value was produced.
+        vi.setSystemTime(3000)
+        const state = JSON.parse(JSON.stringify(Hydration.dehydrate(server)))
+        vi.setSystemTime(clientTime)
+        remote = "client"
+        client.mount(profile)
+
+        function Reader() {
+          const value = useAtomValue(profile, AsyncResult.getOrThrow)
+          return <div data-testid="existing-profile">{value}</div>
+        }
+
+        view = render(
+          <RegistryContext.Provider value={client}>
+            <HydrationBoundary state={state}>
+              <Reader />
+            </HydrationBoundary>
+          </RegistryContext.Provider>
+        )
+        // Existing values are queued after commit and applied on the next read.
+        act(() => {
+          client.get(profile)
+        })
+        assert.deepStrictEqual(client.get(profile), AsyncResult.success(expected, { timestamp: expectedTimestamp }))
+        assert.strictEqual(screen.getByTestId("existing-profile").textContent, expected)
+      } finally {
+        view?.unmount()
+        server.dispose()
+        client.dispose()
+        vi.useRealTimers()
+      }
+    })
+
     test("basic hydration with number atom and result atoms", () => {
       const atomBasic = Atom.make(0).pipe(
         Atom.serializable({
