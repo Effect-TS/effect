@@ -350,6 +350,28 @@ it.effect.prop(
 )
 
 describe("property failures", () => {
+  // Erase the return types to exercise JavaScript/untyped callers as well.
+  it.prop(
+    "rejects Effect returns from synchronous properties",
+    [Schema.Int],
+    () => Effect.fail("must not silently pass") as unknown as void,
+    { fails: true, arbitrary: { runs: 1 } }
+  )
+
+  it.prop(
+    "rejects Promise returns from synchronous properties",
+    { value: Schema.Int },
+    () => Promise.resolve() as unknown as void,
+    { fails: true, arbitrary: { runs: 1 } }
+  )
+
+  it.prop(
+    "false falsifies synchronous properties",
+    [Schema.Int],
+    () => false,
+    { fails: true, arbitrary: { runs: 1 } }
+  )
+
   const Input = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 1_000 }))
   const pureDefectValues: Array<number> = []
   const effectDefectValues: Array<number> = []

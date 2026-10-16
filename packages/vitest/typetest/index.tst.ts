@@ -76,6 +76,17 @@ describe("layer", () => {
 })
 
 describe("property testing", () => {
+  test("synchronous properties reject Effect and Promise callbacks", () => {
+    expect(it.prop).type.not.toBeCallableWith("effect", [Schema.Int], () => Effect.void)
+    expect(it.prop).type.not.toBeCallableWith("promise", { value: Schema.Int }, async () => {})
+  })
+
+  test("synchronous properties accept boolean and void callbacks", () => {
+    expect(it.prop).type.toBeCallableWith("boolean", [Schema.Int], () => true)
+    expect(it.prop).type.toBeCallableWith("void", { value: Schema.Int }, () => {})
+    expect(it.prop).type.toBeCallableWith("boolean or void", [Schema.Int], (): boolean | void => {})
+  })
+
   test("infers Schema tuple values and accepts Arbitrary options", () => {
     it.effect.prop(
       "schema tuple",
