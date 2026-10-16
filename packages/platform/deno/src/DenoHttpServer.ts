@@ -87,7 +87,12 @@ export const make = Effect.fnUntraced(function*(
   } = options
   const server = Deno.serve(
     serveOptions as Deno.ServeTcpOptions,
-    (request, info) => currentHandler(request, info)
+    // The HTTP interface has no tunnel API, so a 2xx would leave a dead tunnel
+    // (RFC 9110 §9.3.6); answer 501 before the app sees it (§15.6.2).
+    (request, info) =>
+      request.method === "CONNECT"
+        ? Promise.resolve(new Response(null, { status: 501 }))
+        : currentHandler(request, info)
   ) as Deno.HttpServer<Deno.NetAddr | Deno.UnixAddr>
 
   const shutdown = yield* Effect.promise(() => server.shutdown()).pipe(Effect.cached)
