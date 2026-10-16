@@ -433,9 +433,10 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * - A body that produces a byte count other than a set `header.size` fails with
  *   a `SizeMismatch` `ZipError`.
  * - Directories are always stored, whatever their `method`.
- * - Empty paths, paths starting with `/` or containing NUL, `File` paths
- *   ending with `/`, `Directory` paths not ending with `/`, and invalid modes,
- *   sizes or times fail with an `InvalidHeader` `ZipError`.
+ * - Empty paths, paths starting with `/` or a drive letter such as `C:`, paths
+ *   containing `\` or NUL, `File` paths ending with `/`, `Directory` paths not
+ *   ending with `/`, and invalid modes, sizes or times fail with an
+ *   `InvalidHeader` `ZipError`.
  * - A directory whose body produces bytes fails with a `SizeMismatch`
  *   `ZipError`.
  *
@@ -735,6 +736,10 @@ const validate = (header: Header): void => {
   if (path === "") throw invalidHeader("path is empty")
   const quoted = JSON.stringify(path)
   if (path.startsWith("/")) throw invalidHeader(`path ${quoted} is absolute`)
+  // The zip format forbids these, and tools such as libarchive read them as
+  // separators and roots
+  if (path.includes("\\")) throw invalidHeader(`path ${quoted} contains a backslash`)
+  if (/^[A-Za-z]:/.test(path)) throw invalidHeader(`path ${quoted} starts with a drive letter`)
   if (path.includes("\0")) throw invalidHeader(`path ${quoted} contains a NUL character`)
   if (type === "File") {
     if (path.endsWith("/")) throw invalidHeader(`file path ${quoted} ends with "/"`)
