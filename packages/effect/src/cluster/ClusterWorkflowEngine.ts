@@ -24,7 +24,7 @@ import * as Rpc from "../rpc/Rpc.ts"
 import { ClientAbort } from "../rpc/RpcSchema.ts"
 import * as Schedule from "../Schedule.ts"
 import * as Schema from "../Schema.ts"
-import type * as Scope from "../Scope.ts"
+import * as Scope from "../Scope.ts"
 import * as Semaphore from "../Semaphore.ts"
 import * as Activity from "../workflow/Activity.ts"
 import * as DurableClock from "../workflow/DurableClock.ts"
@@ -139,6 +139,8 @@ export const make = Effect.gen(function*() {
     readonly workflowName: string
     readonly executionId: string
     readonly results: Map<string, Exit.Exit<unknown, unknown>>
+    readonly instances: Set<WorkflowEngine.WorkflowInstance["Service"]>
+    scope: Scope.Closeable | undefined
   }>()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
@@ -465,7 +467,17 @@ export const make = Effect.gen(function*() {
                   (decoded.exit._tag === "Success" ? decoded.exit.value : decoded.exit) as Exit.Exit<unknown, unknown>
                 )
               }
-              pending = { workflowName: workflow._tag, executionId, results }
+              pending = { workflowName: workflow._tag, executionId, results, instances: new Set(), scope: undefined }
+              const state = pending
+              yield* Scope.addFinalizer(
+                activation,
+                Effect.suspend(() => {
+                  // Losing the activation releases owner-local resources, but must
+                  // not run durable finalizers belonging to suspended attempts.
+                  for (const instance of state.instances) instance.abandoned = true
+                  return state.scope ? Scope.close(state.scope, Exit.void) : Effect.void
+                })
+              )
               pendingByActivation.set(activation, pending)
             }
             // Retain awaited names through reply persistence, including suspension.
@@ -493,7 +505,13 @@ export const make = Effect.gen(function*() {
               )
             return {
               run: (request: Entity.Request<any>) => {
-                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
+                // Handler rebuilds within this activation retain earlier runs'
+                // scopes until completion, without sharing replay compensations.
+                const scope = pending.scope ??= Scope.makeUnsafe()
+                const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId, {
+                  scope: Scope.forkUnsafe(scope)
+                })
+                pending.instances.add(instance)
                 currentRun = { request, instance, activityAwaits: new Map() }
                 const parent = (request.payload as any)[payloadParentKey] as
                   | { workflowName: string; executionId: string; detached?: boolean }
@@ -533,6 +551,19 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
+                  Effect.onExit((exit) => {
+                    if (Exit.isSuccess(exit) && exit.value._tag === "Suspended") return Effect.void
+                    if (instance.abandoned) {
+                      for (const previous of pending.instances) previous.abandoned = true
+                    }
+                    // The latest run closed with its real exit in intoResult.
+                    // Earlier finalizers observe success, skipping superseded
+                    // compensations while still releasing their resources.
+                    return Scope.close(scope, Exit.void).pipe(Effect.ensuring(Effect.sync(() => {
+                      pending.instances.clear()
+                      pending.scope = undefined
+                    })))
+                  }),
                   (effect) => deferredState.trackRun(instance, effect),
                   // Request middleware and local callers may carry another entity's context.
                   Effect.provideService(CurrentActivationScope, activation)
