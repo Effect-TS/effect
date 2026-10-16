@@ -320,48 +320,32 @@ const validateAnswer = (
   switch (decision._tag) {
     case "Classify": {
       const labels = Object.keys(decision.criteria)
-      if (!Predicate.isString(answer.label) || !labels.includes(answer.label)) {
+      const label = answer.label
+      if (!Predicate.isString(label) || !labels.includes(label)) {
         return invalid(`Provider returned an unknown label for decision "${key}"`)
       }
-      const confidence = validateConfidence(key, answer)
-      if (Result.isFailure(confidence)) {
-        return Result.fail(confidence.failure)
-      }
-      const probabilities = validateDistribution(key, labels, answer, roundingError)
-      if (Result.isFailure(probabilities)) {
-        return Result.fail(probabilities.failure)
-      }
-      return Result.succeed({
-        label: answer.label,
-        probabilities: probabilities.success,
-        ...(confidence.success === undefined ? undefined : { confidence: confidence.success })
+      return Result.gen(function*() {
+        const confidence = yield* validateConfidence(key, answer)
+        const probabilities = yield* validateDistribution(key, labels, answer, roundingError)
+        return { label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
       })
     }
     case "Rate": {
       const levels = decision.criteria.map((level) => level.label)
-      if (!isFiniteNumber(answer.rating) || answer.rating < 0 || answer.rating > levels.length - 1) {
+      const rating = answer.rating
+      if (!isFiniteNumber(rating) || rating < 0 || rating > levels.length - 1) {
         return invalid(`Provider returned a rating outside [0, ${levels.length - 1}] for decision "${key}"`)
       }
-      const confidence = validateConfidence(key, answer)
-      if (Result.isFailure(confidence)) {
-        return Result.fail(confidence.failure)
-      }
-      const validated = validateDistribution(key, levels, answer, roundingError)
-      if (Result.isFailure(validated)) {
-        return Result.fail(validated.failure)
-      }
-      const probabilities = validated.success
-      let label = levels[0]
-      for (let i = 1; i < levels.length; i++) {
-        if (probabilities[levels[i]] > probabilities[label]) {
-          label = levels[i]
+      return Result.gen(function*() {
+        const confidence = yield* validateConfidence(key, answer)
+        const probabilities = yield* validateDistribution(key, levels, answer, roundingError)
+        let label = levels[0]
+        for (let i = 1; i < levels.length; i++) {
+          if (probabilities[levels[i]] > probabilities[label]) {
+            label = levels[i]
+          }
         }
-      }
-      return Result.succeed({
-        rating: answer.rating,
-        label,
-        probabilities,
-        ...(confidence.success === undefined ? undefined : { confidence: confidence.success })
+        return { rating, label, probabilities, ...(confidence === undefined ? undefined : { confidence }) }
       })
     }
     case "Probability": {
