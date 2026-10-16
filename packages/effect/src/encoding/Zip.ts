@@ -677,14 +677,6 @@ const CP437 = "ÇüéâäàåçêëèïîìÄÅ" +
 
 const decodeName = (bytes: Uint8Array, utf8: boolean): string => {
   if (utf8) return textDecoder.decode(bytes)
-  let ascii = true
-  for (let i = 0; i < bytes.length; i++) {
-    if (bytes[i] >= 0x80) {
-      ascii = false
-      break
-    }
-  }
-  if (ascii) return textDecoder.decode(bytes)
   try {
     return strictTextDecoder.decode(bytes)
   } catch {
@@ -734,7 +726,7 @@ const crc32 = (crc: number, bytes: Uint8Array): number => {
 
 const validate = (header: Header): void => {
   const { method, mode, mtime, path, size, type } = header
-  if (typeof path !== "string" || path === "") throw invalidHeader("path is empty")
+  if (path === "") throw invalidHeader("path is empty")
   const quoted = JSON.stringify(path)
   if (path.startsWith("/")) throw invalidHeader(`path ${quoted} is absolute`)
   if (path.includes("\0")) throw invalidHeader(`path ${quoted} contains a NUL character`)
@@ -1311,10 +1303,10 @@ class Decoder {
   }
 
   private check(current: Current, crc: number, compressedSize: number, size: number): void {
-    const path = JSON.stringify(current.header.path)
     if (current.actualCrc === crc && current.actualCompressedSize === compressedSize && current.actualSize === size) {
       return
     }
+    const path = JSON.stringify(current.header.path)
     // The entry was read to its end, so the next one can still be found
     this.current = undefined
     this.recoverable = true
@@ -1324,13 +1316,11 @@ class Decoder {
         message: `CRC-32 of ${path} is ${hex(current.actualCrc)}, but the archive records ${hex(crc)}`
       })
     }
-    if (current.actualCompressedSize !== compressedSize || current.actualSize !== size) {
-      throw new ZipError({
-        kind: "SizeMismatch",
-        message: `${path} has ${current.actualSize} bytes (${current.actualCompressedSize} compressed), ` +
-          `but the archive records ${size} (${compressedSize} compressed)`
-      })
-    }
+    throw new ZipError({
+      kind: "SizeMismatch",
+      message: `${path} has ${current.actualSize} bytes (${current.actualCompressedSize} compressed), ` +
+        `but the archive records ${size} (${compressedSize} compressed)`
+    })
   }
 
   // Reads a data descriptor. Its signature is optional, and its sizes have
@@ -1682,7 +1672,6 @@ const FIXED_DISTANCES = huffman(new Uint8Array(32).fill(5), false)
 class Inflater {
   private buffer = new Uint8Array(OUTPUT_SIZE)
   private position = 0
-  private done = false
   private readonly generator: Generator<number, void, void>
 
   constructor(queue: ByteQueue) {
@@ -1691,11 +1680,8 @@ class Inflater {
 
   // Returns decompressed bytes, `NeedInput`, or `undefined` once the stream has ended
   pull(): Uint8Array | undefined | typeof NeedInput {
-    if (!this.done) {
-      const result = this.generator.next()
-      if (result.done) this.done = true
-      else if (result.value === NEED && this.position === 0) return NeedInput
-    }
+    const result = this.generator.next()
+    if (!result.done && result.value === NEED && this.position === 0) return NeedInput
     if (this.position === 0) return undefined
     let out: Uint8Array
     if (this.position === OUTPUT_SIZE) {
