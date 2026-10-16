@@ -578,7 +578,7 @@ const upgradeSocket = (
   return Effect.fail(
     new Error.HttpClientError({
       reason: response.status === 101
-        // Bun's node:http reports a 101 as a plain response and keeps the connection
+        // Bun before 1.4 reports a 101 as a plain response and keeps the connection
         ? new Error.UpgradeNotSupportedError({
           request: response.request,
           description: "the runtime did not hand over the connection of the upgrade"

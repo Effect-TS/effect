@@ -5,6 +5,8 @@ import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
 import * as NodeSocket from "../NodeSocket.ts"
 
+const isDeno = "Deno" in globalThis
+
 /**
  * Takes over the connection of an HTTP upgrade. Bytes received past the HTTP
  * head are pushed back so the socket reader sees them first, and the
@@ -15,7 +17,9 @@ import * as NodeSocket from "../NodeSocket.ts"
  */
 export const takeOver = (conn: Duplex, head: Uint8Array | undefined): void => {
   if (head !== undefined && head.length > 0) conn.unshift(head)
-  conn.pause()
+  // Deno's node:net compatibility layer stops emitting `readable` after an
+  // explicit pause, like in `NodeSocket.fromDuplex`.
+  if (!isDeno) conn.pause()
   conn.on("error", constVoid)
 }
 
