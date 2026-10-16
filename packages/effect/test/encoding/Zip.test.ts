@@ -661,23 +661,33 @@ describe("Zip", () => {
         assert.strictEqual(rest, 1900)
       }))
 
-    it.effect("reads archives that arrive as many small chunks in one pull", () =>
+    it.effect("reads archives that arrive as many small chunks per pull", () =>
       Effect.gen(function*() {
+        const first = "a".repeat(2000)
         const contents = Array.from({ length: 30 }, (_, i) => "abc".repeat(i * 20) + i)
         const last = textEncoder.encode(contents[29])
         const bytes = yield* encode([
+          Zip.file("a", first, { method: "Store" }),
           ...contents.map((content, i) => Zip.file(`${i}`, content)),
           Zip.fileStream("s", Stream.make(last), { method: "Store", size: last.length })
         ])
+        // The first pull ends inside the second local header, after a 40-byte
+        // header and the data of "a", so that the second pull adds chunks to a
+        // queue that holds thousands of consumed ones
+        const split = 40 + first.length + 10
+        const chunks = (from: number, to: number, size: number) =>
+          Array.from({ length: Math.ceil((to - from) / size) }, (_, i) =>
+            bytes.subarray(from + i * size, Math.min(from + (i + 1) * size, to)))
         for (const chunkSize of [1, 7]) {
-          const chunks: Array<Uint8Array> = []
-          for (let i = 0; i < bytes.length; i += chunkSize) chunks.push(bytes.subarray(i, i + chunkSize))
-          const output = yield* Stream.fromArray(chunks).pipe(
+          const output = yield* Stream.fromArray(chunks(0, split, chunkSize)).pipe(
+            Stream.concat(Stream.fromArray(chunks(split, bytes.length, chunkSize))),
             Stream.pipeThroughChannel(Zip.decode()),
-            Stream.mapEffect((entry) => Effect.map(Stream.mkUint8Array(entry.body), text)),
+            Stream.mapEffect((entry) =>
+              Effect.map(Stream.mkUint8Array(entry.body), text)
+            ),
             Stream.runCollect
           )
-          assert.deepStrictEqual(output, [...contents, contents[29]])
+          assert.deepStrictEqual(output, [first, ...contents, contents[29]])
         }
       }))
 

@@ -1079,18 +1079,22 @@ class ByteQueue {
 
   push(chunk: Uint8Array): void {
     if (chunk.length === 0) return
+    // Compacting only once half of the slots are free keeps the copies linear
+    // in the number of chunks
+    if (this.head >= 1024 && this.head * 2 >= this.chunks.length) {
+      this.chunks = this.chunks.slice(this.head)
+      this.head = 0
+    }
     this.chunks.push(chunk)
     this.length += chunk.length
   }
 
+  // Frees the slot of the first chunk, so that `unread` can fill it
   private advance(): void {
     this.chunks[this.head++] = undefined
     this.offset = 0
     if (this.head === this.chunks.length) {
       this.chunks = []
-      this.head = 0
-    } else if (this.head >= 1024) {
-      this.chunks = this.chunks.slice(this.head)
       this.head = 0
     }
   }
@@ -1148,7 +1152,8 @@ class ByteQueue {
     while (n > 0) n -= this.takeSome(n).length
   }
 
-  // Puts back the end of a chunk that the last `takeSome` returned whole
+  // Puts back the end of a chunk that the last `takeSome` returned whole, into
+  // the slot that it freed or the empty queue
   unread(bytes: Uint8Array): void {
     if (bytes.length === 0) return
     if (this.head > 0) this.chunks[--this.head] = bytes
