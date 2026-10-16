@@ -122,10 +122,15 @@ export const make = Effect.fnUntraced(function*(
         if (upgradedSources.has(denoRequest.source)) {
           return Effect.as(cancelResponseBody(response.body), upgradedResponse)
         }
-        return Effect.flatMap(
-          makeResponse(request, response, services, scope),
-          (response) => Effect.sync(() => denoRequest.resolve(response))
-        )
+        return Effect.matchCauseEffect(makeResponse(request, response, services, scope), {
+          onSuccess: (webResponse) => Effect.sync(() => denoRequest.resolve(webResponse)),
+          // `Response` throws on input it rejects, e.g. a status outside 200–599
+          onFailure: (cause) =>
+            Effect.suspend(() => {
+              denoRequest.resolve(new Response(undefined, { status: 500 }))
+              return Effect.andThen(cancelResponseBody(response.body), Effect.failCause(cause))
+            })
+        })
       }, middleware)
 
       function handler(
@@ -197,17 +202,22 @@ const makeResponse = Effect.fnUntraced(function*(
     }
     case "FormData":
       return new Response(body.formData as any, fields)
-    case "Stream":
-      return new Response(
-        Stream.toReadableStreamWith(
-          Stream.unwrap(Effect.withFiber((fiber) => {
-            Fiber.runIn(fiber, scope)
-            return Effect.succeed(body.stream)
-          })),
-          context
-        ),
-        fields
+    case "Stream": {
+      const stream = Stream.toReadableStreamWith(
+        Stream.unwrap(Effect.withFiber((fiber) => {
+          Fiber.runIn(fiber, scope)
+          return Effect.succeed(body.stream)
+        })),
+        context
       )
+      try {
+        return new Response(stream, fields)
+      } catch (defect) {
+        // The body already runs and owns the request scope, so stop it
+        yield* Effect.promise(() => stream.cancel())
+        throw defect
+      }
+    }
   }
 })
 
