@@ -1026,8 +1026,8 @@ class Parser {
     return this.error("Syntax", message, this.base + i)
   }
 
-  private limit(message: string, at: number): XmlError {
-    return this.error("Limit", message, at)
+  private tokenLimit(at: number): XmlError {
+    return this.error("Limit", `token exceeds maxTokenSize of ${this.maxTokenSize}`, at)
   }
 
   private consume(chunk: string, force = false): void {
@@ -1052,11 +1052,16 @@ class Parser {
     this.base = base
   }
 
+  // Fails an incomplete token that exceeds maxTokenSize, with the error in the
+  // first maxTokenSize + 1 characters of markup if there is one, as in parse
   private checkPending(): void {
-    const text = this.scanner.state === S_TEXT ? this.textSize : 0
-    if (this.pendingLength + text > this.maxTokenSize) {
-      throw this.limit(`token exceeds maxTokenSize of ${this.maxTokenSize}`, this.pendingStart)
+    const text = this.scanner.state === S_TEXT
+    if (this.pendingLength + (text ? this.textSize : 0) <= this.maxTokenSize) return
+    if (!text) {
+      this.load(this.pending!.join("").slice(0, this.maxTokenSize + 1), this.pendingStart)
+      this.markup(this.buf, 0)
     }
+    throw this.tokenLimit(this.pendingStart)
   }
 
   private parse(final: boolean): void {
@@ -1090,8 +1095,12 @@ class Parser {
         i = j
         continue
       }
-      const end = this.markup(s, i)
+      // Markup is parsed from at most maxTokenSize + 1 characters, so that its
+      // errors do not depend on how the input is chunked
+      const long = n - i > this.maxTokenSize
+      const end = this.markup(long ? s.slice(0, i + this.maxTokenSize + 1) : s, i)
       if (end === -1) {
+        if (long) throw this.tokenLimit(this.base + i)
         if (final) throw this.syntax(`unterminated ${describeToken(s, i)}`, i)
         break
       }
@@ -1124,7 +1133,7 @@ class Parser {
   private addText(i: number, size: number): void {
     this.textSize += size
     if (this.textSize > this.maxTokenSize) {
-      throw this.limit(`text exceeds maxTokenSize of ${this.maxTokenSize}`, this.base + i)
+      throw this.tokenLimit(this.base + i)
     }
   }
 
@@ -1199,7 +1208,7 @@ class Parser {
 
   private checkSize(i: number, end: number): void {
     if (end - i > this.maxTokenSize) {
-      throw this.limit(`token exceeds maxTokenSize of ${this.maxTokenSize}`, this.base + i)
+      throw this.tokenLimit(this.base + i)
     }
   }
 
@@ -1266,7 +1275,7 @@ class Parser {
     }
     this.checkSize(i, j)
     if (this.stack.length >= this.maxDepth) {
-      throw this.limit(`element nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
+      throw this.error("Limit", `element nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
     }
     this.flushText()
     this.out.push({ _tag: "StartElement", name, attributes: attributes ?? emptyAttributes })
@@ -1540,7 +1549,7 @@ class Parser {
   // Checks a choice or sequence after its "(", and returns the index after it
   private contentGroup(s: string, i: number, end: number, depth: number): number {
     if (depth > this.maxDepth) {
-      throw this.limit(`content model nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
+      throw this.error("Limit", `content model nesting exceeds maxDepth of ${this.maxDepth}`, this.base + i)
     }
     let separator = 0
     while (true) {
