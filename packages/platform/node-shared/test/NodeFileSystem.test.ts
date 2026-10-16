@@ -11,7 +11,7 @@ import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import type * as NFS from "node:fs"
 import { afterEach, beforeEach, vi } from "vitest"
-import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
+import { testGlob, testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = <E, R>(
   fs: FileSystem.FileSystem,
@@ -57,7 +57,7 @@ const untypedLayer = Layer.effect(
 ).pipe(Layer.provide(NodeFileSystem.layer))
 
 describe("FileSystem without typed directory listings", { concurrent: false }, () => {
-  testLayer(untypedLayer, { noFollow: process.platform !== "win32" })
+  testGlob(untypedLayer)
 })
 
 describe("FileSystem", { concurrent: false }, () => {
