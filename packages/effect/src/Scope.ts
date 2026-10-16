@@ -80,7 +80,8 @@ export interface Closeable extends Scope {
 
 /**
  * Scope states: `Empty` has no finalizers, `Open` has at least one, and
- * `Closed` holds the exit value.
+ * `Closed` holds the exit value. A scope is `Closed` as soon as closing
+ * starts, while its finalizers may still be running.
  *
  * **Example** (Checking scope states)
  *
@@ -159,8 +160,13 @@ export declare namespace State {
     finalizers: Map<{}, (exit: Exit<any, any>) => Effect<void>> | undefined
   }
   /**
-   * Represents a closed scope state where finalizers have been executed
-   * and the scope is no longer accepting new resources.
+   * Represents a closed scope state where the scope is no longer accepting
+   * new resources.
+   *
+   * **Details**
+   *
+   * The scope enters this state when closing starts, before its finalizers
+   * run. Use `close` to wait for the finalizers to complete.
    *
    * **Example** (Inspecting a closed scope state)
    *
@@ -481,6 +487,13 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  * By default, finalizers run uninterruptibly, so interrupting the closing fiber
  * waits for them to finish; a finalizer can explicitly restore interruptibility.
  *
+ * Closing a scope whose finalizers are still running waits for them to
+ * complete, ignoring the supplied `Exit`. Interrupting a fiber that is waiting
+ * for another close stops the wait without affecting the finalizers. A close
+ * that the finalizers depend on, such as one from a finalizer of the same scope
+ * or from a fiber that the close interrupts, returns immediately instead of
+ * waiting for itself.
+ *
  * **Example** (Running scope finalizers)
  *
  * ```ts import.meta.vitest
@@ -518,7 +531,9 @@ export const close: <A, E>(self: Closeable, exit: Exit<A, E>) => Effect<void> = 
  * **Details**
  *
  * Returns an effect that runs registered finalizers, or `undefined` when the
- * scope was already closed or no finalizers need to run.
+ * scope was already closed or no finalizers need to run. When another close is
+ * still running the scope's finalizers, returns an effect that waits for them
+ * like `close`.
  *
  * **Gotchas**
  *
