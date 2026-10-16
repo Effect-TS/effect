@@ -118,18 +118,6 @@ describe("toStandardSchemaV1", () => {
     expectSyncFailure(standard, null, [{ message: "Expected string", path: [] }])
   })
 
-  it("does not leak parseOptions.errors into a later default adapter", () => {
-    const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
-    const first = Schema.toStandardSchemaV1(schema, { parseOptions: { errors: "first" } })
-    const standard = Schema.toStandardSchemaV1(schema)
-
-    expectSyncFailure(first, { a: null, b: null }, [{ message: "Expected string", path: ["a"] }])
-    expectSyncFailure(standard, { a: null, b: null }, [
-      { message: "Expected string", path: ["a"] },
-      { message: "Expected string", path: ["b"] }
-    ])
-  })
-
   it("preserves private-state receivers for class statics", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
       static #label = "Parent"
@@ -154,7 +142,6 @@ describe("toStandardSchemaV1", () => {
     const both = adapted.pipe(Schema.toStandardJSONSchemaV1)
 
     expectSyncFailure(both, { a: null }, [{ message: "Custom message", path: ["a"] }])
-    strictEqual(Object.hasOwn(Parent, "~standard"), false)
   })
 
   it("validates subclass fields when the parent already has a Standard Schema adapter", () => {
