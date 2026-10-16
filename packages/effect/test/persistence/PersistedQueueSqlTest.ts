@@ -1,12 +1,12 @@
 import { assert } from "@effect/vitest"
 import type { Vitest } from "@effect/vitest"
-import { Clock, Effect, Layer, Schema } from "effect"
+import { Clock, type Duration, Effect, Fiber, Layer, Option, Schema } from "effect"
 import { PersistedQueue } from "effect/persistence"
 import { SqlClient } from "effect/sql"
 import { TestClock } from "effect/testing"
 
-const makeQueue = Effect.fnUntraced(function*(tableName: string) {
-  const store = yield* PersistedQueue.makeStoreSql({ tableName, pollInterval: "10 millis" })
+const makeQueue = Effect.fnUntraced(function*(tableName: string, pollInterval: Duration.Input = "10 millis") {
+  const store = yield* PersistedQueue.makeStoreSql({ tableName, pollInterval })
   const factory = yield* PersistedQueue.makeFactory.pipe(
     Effect.provideService(PersistedQueue.PersistedQueueStore, store)
   )
@@ -55,5 +55,24 @@ export const suiteWith = (testApi: Vitest.MethodsNonLive<SqlClient.SqlClient>) =
         yield* queue.take(Effect.succeed)
 
         assert.isAtLeast((yield* Clock.currentTimeMillis) - offeredAt, 3000)
+      }).pipe(TestClock.withLive), { timeout: 30000 })
+
+    it.effect("wakes a waiting taker once an offer made inside a transaction commits", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        // no test waits out this poll interval: only the offer's wake-up can
+        // deliver the element
+        const queue = yield* makeQueue("effect_queue_commit_wake", "1 hour")
+        const taken = yield* queue.take(Effect.succeed).pipe(Effect.forkScoped)
+
+        // the transaction stays open after the offer, long enough for a wake-up
+        // sent before the commit to find nothing
+        yield* queue.offer("committed").pipe(
+          Effect.andThen(Effect.sleep("500 millis")),
+          sql.withTransaction
+        )
+
+        const value = yield* Fiber.join(taken).pipe(Effect.timeoutOption("5 seconds"))
+        assert.deepStrictEqual(value, Option.some("committed"))
       }).pipe(TestClock.withLive), { timeout: 30000 })
   })

@@ -379,6 +379,27 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
       assert.strictEqual(error.reason._tag, "UnknownError")
       assert.strictEqual(error.reason.operation, "commit")
     }))
+
+  it.effect("afterCommit runs once other connections see the transaction's rows", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      yield* sql`CREATE TABLE after_commit_visibility (value INTEGER)`
+      let seen: ReadonlyArray<{ readonly count: number }> = []
+
+      yield* sql.withTransaction(Effect.gen(function*() {
+        yield* sql`INSERT INTO after_commit_visibility VALUES (1)`
+        yield* sql.afterCommit(
+          sql<{ count: number }>`SELECT count(*)::integer AS count FROM after_commit_visibility`.pipe(
+            Effect.map((rows) => {
+              seen = rows
+            }),
+            Effect.orDie
+          )
+        )
+      }))
+
+      assert.deepStrictEqual(seen, [{ count: 1 }])
+    }))
 })
 
 it.layer(PgContainer.layerMakeClientUnprepared, { timeout: "30 seconds" })(

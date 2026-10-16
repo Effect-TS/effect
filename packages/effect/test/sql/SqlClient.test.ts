@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Exit, Option, Scope } from "effect"
-import { SqlClient, SqlError } from "effect/sql"
+import { Cause, Context, Deferred, Effect, Exit, Fiber, Logger, Option, Scope, Stream } from "effect"
+import { Reactivity } from "effect/reactivity"
+import { SqlClient, SqlError, Statement } from "effect/sql"
+import type { SqlConnection } from "effect/sql"
 
 interface StubConnection {
   readonly id: string
@@ -112,6 +114,45 @@ const makeHarness = (options: {
   })
 
   return { calls, withTransaction } as const
+}
+
+/**
+ * Builds a client over a stub connection that records the transaction control
+ * statements, the connection release, and `after(name)` for each callback
+ * registered with `after`.
+ */
+const makeClient = (options: {
+  readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
+  readonly release?: Effect.Effect<void> | undefined
+} = {}) => {
+  const calls: Array<string> = []
+  const record = (call: string) =>
+    Effect.sync(() => {
+      calls.push(call)
+    })
+  const execute = (sql: string) => Effect.as(record(sql), [])
+  const connection: SqlConnection.Connection = {
+    execute,
+    executeRaw: execute,
+    executeValues: execute,
+    executeUnprepared: execute,
+    executeValuesUnprepared: execute,
+    executeStream: (sql) => Stream.fromEffect(execute(sql))
+  }
+  const commit = options.commit
+  return SqlClient.make({
+    driver: "test",
+    acquirer: Effect.as(
+      Effect.addFinalizer(() => Effect.andThen(record("release"), options.release ?? Effect.void)),
+      connection
+    ),
+    compiler: Statement.makeCompilerSqlite(),
+    spanAttributes: [],
+    commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
+  }).pipe(
+    Effect.map((sql) => ({ sql, calls, record, after: (name: string) => sql.afterCommit(record(`after(${name})`)) })),
+    Effect.provide(Reactivity.layer)
+  )
 }
 
 const assertTypedFailure = <A, E>(exit: Exit.Exit<A, E>, error: E) => {
@@ -306,6 +347,150 @@ describe("SqlClient", () => {
 
         assert.strictEqual(result, 1)
         assert.deepStrictEqual(harness.calls, ["acquireConnection", "begin", "commit", "closeConnection"])
+      }))
+  })
+
+  describe("afterCommit", () => {
+    it.effect("runs callbacks in order after commit and release, with the services they were registered with", () =>
+      Effect.gen(function*() {
+        const { after, calls, record, sql } = yield* makeClient()
+        const Caller = Context.Service<string>("test/afterCommit/Caller")
+        const seen: Array<unknown> = []
+
+        const result = yield* sql.withTransaction(
+          Effect.gen(function*() {
+            yield* after("1")
+            yield* sql.afterCommit(Effect.gen(function*() {
+              seen.push(yield* Effect.serviceOption(sql.transactionService))
+              seen.push(yield* Caller)
+              yield* record("after(2)")
+            }))
+            return "body"
+          }).pipe(Effect.provideService(Caller, "body"))
+        ).pipe(Effect.provideService(Caller, "caller"))
+
+        assert.strictEqual(result, "body")
+        assert.deepStrictEqual(seen, [Option.none(), "body"])
+        assert.deepStrictEqual(calls, ["BEGIN", "COMMIT", "release", "after(1)", "after(2)"])
+      }))
+
+    it.effect("runs nothing when the transaction rolls back or COMMIT fails", () =>
+      Effect.gen(function*() {
+        const rolledBack = yield* makeClient()
+        yield* Effect.exit(rolledBack.sql.withTransaction(Effect.andThen(rolledBack.after("1"), Effect.fail("boom"))))
+        assert.deepStrictEqual(rolledBack.calls, ["BEGIN", "ROLLBACK", "release"])
+
+        const failedCommit = yield* makeClient({ commit: Effect.fail(sqlError("commit rejected")) })
+        yield* Effect.exit(failedCommit.sql.withTransaction(failedCommit.after("1")))
+        assert.deepStrictEqual(failedCommit.calls, ["BEGIN", "COMMIT", "release"])
+      }))
+
+    it.effect("drops a rolled-back savepoint's callbacks and keeps a committed savepoint's until the outer level ends", () =>
+      Effect.gen(function*() {
+        const { after, calls, sql } = yield* makeClient()
+        yield* sql.withTransaction(Effect.gen(function*() {
+          yield* after("1")
+          yield* sql.withTransaction(after("2"))
+          yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+            yield* after("dropped")
+            yield* sql.withTransaction(after("nested dropped"))
+            return yield* Effect.fail("boom")
+          })))
+          yield* after("3")
+        }))
+        assert.deepStrictEqual(calls.filter((call) => call.startsWith("after")), ["after(1)", "after(2)", "after(3)"])
+
+        const rolledBack = yield* makeClient()
+        yield* Effect.exit(rolledBack.sql.withTransaction(Effect.gen(function*() {
+          yield* rolledBack.sql.withTransaction(rolledBack.after("inner"))
+          return yield* Effect.fail("boom")
+        })))
+        assert.isFalse(rolledBack.calls.includes("after(inner)"))
+      }))
+
+    it.effect("runs immediately outside a transaction and after the transaction service is omitted", () =>
+      Effect.gen(function*() {
+        const { after, calls, sql } = yield* makeClient()
+        yield* after("outside")
+        assert.deepStrictEqual(calls, ["after(outside)"])
+
+        yield* Effect.exit(sql.withTransaction(Effect.gen(function*() {
+          yield* after("omitted").pipe(
+            Effect.updateContext((context: Context.Context<never>) => Context.omit(sql.transactionService)(context))
+          )
+          return yield* Effect.fail("boom")
+        })))
+        assert.deepStrictEqual(calls, ["after(outside)", "BEGIN", "after(omitted)", "ROLLBACK", "release"])
+      }))
+
+    it.effect("runs callbacks when the fiber is interrupted during COMMIT or the release fails", () =>
+      Effect.gen(function*() {
+        const committing = yield* Deferred.make<void>()
+        const resume = yield* Deferred.make<void>()
+        const interrupted = yield* makeClient({
+          commit: Effect.andThen(Deferred.succeed(committing, undefined), Deferred.await(resume))
+        })
+        const fiber = yield* Effect.forkChild(interrupted.sql.withTransaction(interrupted.after("1")))
+        yield* Deferred.await(committing)
+        const interrupting = yield* Effect.forkChild(Fiber.interrupt(fiber))
+        yield* Effect.yieldNow
+        yield* Deferred.succeed(resume, undefined)
+        yield* Fiber.join(interrupting)
+        assert.deepStrictEqual(interrupted.calls, ["BEGIN", "COMMIT", "release", "after(1)"])
+
+        const failedRelease = yield* makeClient({ release: Effect.die("release defect") })
+        yield* Effect.exit(failedRelease.sql.withTransaction(failedRelease.after("1")))
+        assert.deepStrictEqual(failedRelease.calls, ["BEGIN", "COMMIT", "release", "after(1)"])
+      }))
+
+    it.effect("logs a callback that dies and runs the rest", () =>
+      Effect.gen(function*() {
+        const { after, calls, sql } = yield* makeClient()
+        const logged: Array<string> = []
+        const logger = Logger.make<unknown, void>((options) => {
+          logged.push(Cause.pretty(options.cause))
+        })
+
+        const result = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* sql.afterCommit(Effect.die("callback defect"))
+          yield* after("3")
+          return "body"
+        })).pipe(Effect.provide(Logger.layer([logger])))
+
+        assert.strictEqual(result, "body")
+        assert.isTrue(calls.includes("after(3)"))
+        assert.strictEqual(logged.length, 1)
+        assert.include(logged[0], "callback defect")
+      }))
+
+    it.effect("dies when a detached fiber registers after the transaction has ended", () =>
+      Effect.gen(function*() {
+        const { after, calls, sql } = yield* makeClient()
+        const register = yield* Deferred.make<void>()
+        const late = yield* sql.withTransaction(
+          Effect.forkDetach(Effect.andThen(Deferred.await(register), after("late")))
+        )
+        yield* Deferred.succeed(register, undefined)
+        const exit = yield* Fiber.await(late)
+        assert.isTrue(Exit.isFailure(exit) && Cause.pretty(exit.cause).includes("the transaction has already ended"))
+
+        const entered = yield* Deferred.make<void>()
+        const registerNested = yield* Deferred.make<void>()
+        const nested = yield* sql.withTransaction(Effect.gen(function*() {
+          const child = yield* Effect.forkDetach(sql.withTransaction(Effect.gen(function*() {
+            yield* Deferred.succeed(entered, undefined)
+            yield* Deferred.await(registerNested)
+            yield* after("late nested")
+          })))
+          yield* Deferred.await(entered)
+          return child
+        }))
+        yield* Deferred.succeed(registerNested, undefined)
+        const nestedExit = yield* Fiber.await(nested)
+        assert.isTrue(
+          Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
+        )
+        assert.isFalse(calls.some((call) => call.startsWith("after")))
       }))
   })
 })

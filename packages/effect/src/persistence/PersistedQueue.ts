@@ -1829,10 +1829,11 @@ export const makeStoreSql: (
             })
           )
       ).pipe(
+        // Wake takers once the offer is committed.
         Effect.tap(() =>
-          Effect.sync(() => {
+          sql.afterCommit(Effect.sync(() => {
             queueStates.peek(name)?.nudge.openUnsafe()
-          })
+          }))
         )
       ),
     take: (options) => {
