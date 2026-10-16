@@ -36,9 +36,9 @@ import * as Tracer from "effect/Tracer"
 import * as Buffer from "node:buffer"
 import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
+import { createReadStream } from "node:fs"
 import * as Http from "node:http"
 import * as Net from "node:net"
-import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -794,15 +794,25 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
-  it.live.each([204, 205, 304])("sends no body for status %d", (status) =>
+  it.live.each([
+    { method: "GET", status: 204 },
+    { method: "GET", status: 205 },
+    { method: "GET", status: 304 },
+    { method: "HEAD", status: 204 },
+    { method: "HEAD", status: 205 }
+  ])("sends no body for $method with status $status", ({ method, status }) =>
     Effect.gen(function*() {
       yield* HttpServer.serveEffect(Effect.succeed(HttpServerResponse.text("x", { status })))
       const server = yield* HttpServer.HttpServer
-      const received = yield* rawGet((server.address as NetAddress.InetAddress).port, ["/"])
+      const received = yield* rawGet((server.address as NetAddress.InetAddress).port, ["/"], method)
       assert.match(received, new RegExp(`^HTTP/1.1 ${status} `))
       assert.isTrue(received.endsWith("\r\n\r\n"))
       // 304 describes the representation, 204 and 205 have no content.
-      assert.strictEqual(received.toLowerCase().includes("content-length: 1\r\n"), status === 304)
+      if (status === 304) {
+        assert.match(received, /\r\ncontent-length: 1\r\n/i)
+      } else {
+        assert.notMatch(received, /\r\ncontent-length:/i)
+      }
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.live.each([
@@ -812,9 +822,19 @@ describe("HttpServer", () => {
       response: () => HttpServerResponse.text("hello").pipe(HttpServerResponse.setHeader("content-length", "3"))
     },
     {
-      body: "Raw Readable",
+      body: "Raw file Readable",
       contentLength: 3,
-      response: () => HttpServerResponse.raw(Readable.from([Buffer.Buffer.from("hello")]), { contentLength: 3 })
+      response: () =>
+        HttpServerResponse.raw(createReadStream(new URL("./fixtures/text.txt", import.meta.url)), { contentLength: 3 })
+    },
+    {
+      body: "FormData",
+      contentLength: 3,
+      response: () => {
+        const formData = new FormData()
+        formData.append("text", "hello")
+        return HttpServerResponse.formData(formData, { headers: { "content-length": "3" } })
+      }
     },
     {
       body: "Stream",
@@ -1450,12 +1470,14 @@ const tcpPort = (server: Http.Server): number => {
 }
 
 // Sends the requests pipelined on one connection and returns everything received until the connection closes.
-const rawGet = (port: number, paths: ReadonlyArray<string>) =>
+const rawGet = (port: number, paths: ReadonlyArray<string>, method = "GET") =>
   Effect.callback<string>((resume) => {
     const socket = Net.connect({ port, host: "127.0.0.1" }, () => {
       socket.write(
         paths.map((path, index) =>
-          `GET ${path} HTTP/1.1\r\nHost: 127.0.0.1\r\n${index === paths.length - 1 ? "Connection: close\r\n" : ""}\r\n`
+          `${method} ${path} HTTP/1.1\r\nHost: 127.0.0.1\r\n${
+            index === paths.length - 1 ? "Connection: close\r\n" : ""
+          }\r\n`
         ).join("")
       )
     })
