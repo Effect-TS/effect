@@ -97,11 +97,13 @@ export const make = Effect.sync(() => {
   const handlers = new Map<number | string, Set<() => void>>()
 
   const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
+    const pending = new Set<() => void>()
     keysToHashes(keys, (hash) => {
       const set = handlers.get(hash)
       if (set === undefined) return
-      set.forEach((run) => run())
+      set.forEach((run) => pending.add(run))
     })
+    pending.forEach((run) => run())
   }
 
   const invalidate = (
@@ -215,11 +217,13 @@ export const make = Effect.sync(() => {
         Effect.provideService(PendingInvalidation, pending),
         Effect.onExit((_) =>
           Effect.sync(() => {
+            const pendingHandlers = new Set<() => void>()
             pending.forEach((hash) => {
               const set = handlers.get(hash)
               if (set === undefined) return
-              set.forEach((run) => run())
+              set.forEach((run) => pendingHandlers.add(run))
             })
+            pendingHandlers.forEach((run) => run())
           })
         )
       )
