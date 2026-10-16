@@ -565,10 +565,14 @@ const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.C
       let done: Pull.Pull<never, never, Done> | undefined
       let failure: XmlError | undefined
 
+      // Pushes the inputs to the machine, or ends it when there are none.
       // Output completed before an error is emitted before the failure.
-      const emit = (run: () => void): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
+      const emit = (
+        inputs: ReadonlyArray<In> | undefined
+      ): Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> => {
         try {
-          run()
+          if (inputs === undefined) machine.end()
+          else for (const input of inputs) machine.push(input)
         } catch (error) {
           if (!isXmlError(error)) throw error
           failure = error
@@ -581,21 +585,18 @@ const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.C
         return pull
       }
 
-      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> = Effect.suspend(() => {
-        if (failure !== undefined) return Effect.fail(failure)
-        if (done !== undefined) return done
-        return Pull.matchEffect(upstream, {
-          onSuccess: (inputs) =>
-            emit(() => {
-              for (const input of inputs) machine.push(input)
-            }),
-          onFailure: Effect.failCause,
-          onDone: (value) => {
-            done = Cause.done(value)
-            return emit(() => machine.end())
-          }
-        })
+      // Built once rather than on each pull
+      const step = Pull.matchEffect(upstream, {
+        onSuccess: emit,
+        onFailure: Effect.failCause,
+        onDone: (value) => {
+          done = Cause.done(value)
+          return emit(undefined)
+        }
       })
+      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<Out>, XmlError | IE, Done> = Effect.suspend(() =>
+        failure !== undefined ? Effect.fail(failure) : done ?? step
+      )
       return pull
     })
   )
