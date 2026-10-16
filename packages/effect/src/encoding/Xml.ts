@@ -1907,15 +1907,17 @@ class Collector implements Machine<Event, Element> {
   private grow(size: number): void {
     this.size += size
     if (this.size > this.maxElementSize) {
-      throw new XmlError({
-        kind: "Limit",
-        message: `element <${this.stack[0].name}> exceeds maxElementSize of ${this.maxElementSize}`
-      })
+      throw positionless("Limit", `element <${this.stack[0].name}> exceeds maxElementSize of ${this.maxElementSize}`)
     }
   }
 }
 
-const invalidEvent = (message: string) => new XmlError({ kind: "InvalidEvent", message })
+// JavaScriptCore gives every Error its own source `line` and `column`, which
+// would pass for an XML position, so errors without one set both
+const positionless = (kind: XmlError["kind"], message: string) =>
+  new XmlError({ kind, message, line: undefined, column: undefined })
+
+const invalidEvent = (message: string) => positionless("InvalidEvent", message)
 
 const textEscapes: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\r": "&#13;" }
 const attributeEscapes: Record<string, string> = {
