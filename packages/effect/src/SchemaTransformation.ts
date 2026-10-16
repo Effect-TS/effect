@@ -1818,7 +1818,7 @@ export const stringFromHexString: Transformation<string, string> = new Transform
  * **When to use**
  *
  * Use when you need a schema transformation to store structured data in URL
- * query parameters or fragments, such as composing with `Schema.parseJson` to
+ * query parameters or fragments, such as composing with `Schema.fromJsonString` to
  * round-trip JSON through a URL.
  *
  * **Details**

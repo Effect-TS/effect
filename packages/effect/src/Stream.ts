@@ -1434,6 +1434,11 @@ export interface EventListener<A = unknown> {
 /**
  * Creates a stream from an event listener.
  *
+ * **Gotchas**
+ *
+ * Event listeners cannot backpressure the source. When a bounded `bufferSize`
+ * is full, additional events are dropped rather than suspending the listener.
+ *
  * **Example** (Creating a stream from an event listener)
  *
  * ```ts import.meta.vitest
@@ -10412,7 +10417,8 @@ export const ensuring: {
 /**
  * Provides a layer or context to the stream, removing the corresponding
  * service requirements. Use `options.local` to build the layer every time; by
- * default, layers are shared between provide calls.
+ * default, a layer already built by an enclosing provide or runtime is reused;
+ * sibling provide calls build their own copies.
  *
  * **Example** (Providing stream requirements)
  *

@@ -4274,8 +4274,8 @@ export const retryOrElse: {
  * **Details**
  *
  * Use `sandbox` when downstream error handling needs to distinguish typed
- * failures, defects, and interruptions. Use `unsandbox` to restore the original
- * typed error channel after cause-level handling.
+ * failures, defects, and interruptions. Use `Effect.catch(Effect.failCause)` to
+ * restore the original typed error channel after cause-level handling.
  *
  * **Example** (Exposing failures as causes)
  *
@@ -5976,9 +5976,9 @@ export const contextWith: <R, A, E, R2>(
 ) => Effect<A, E, R | R2> = internal.contextWith
 
 /**
- * Provides dependencies to an effect using layers or a context. Use `options.local`
- * to build the layer every time; by default, layers are shared between provide
- * calls.
+ * Provides dependencies to an effect using layers or a context. A layer already
+ * built by an enclosing `provide` or runtime is reused. Sibling `provide` calls
+ * build their own copies. Use `options.local` to build a fresh layer subtree.
  *
  * **Example** (Providing dependencies with a layer)
  *
@@ -9390,9 +9390,10 @@ export const runPromiseExitWith: <R>(
  *
  * **Details**
  *
- * If the effect fails, dies, is interrupted, or performs asynchronous work,
- * `runSync` throws a `FiberFailure` instead of returning a value. Use
- * `runSyncExit` when you want the failure captured as an `Exit`.
+ * If the effect fails, dies, or is interrupted, `runSync` throws the squashed
+ * cause instead of returning a value. Typed errors can be thrown directly,
+ * including non-Error values. Asynchronous work throws `Cause.AsyncFiberError`.
+ * Use `runSyncExit` when you want the failure captured as an `Exit`.
  *
  * **Example** (Running a synchronous effect)
  *
@@ -15354,7 +15355,7 @@ type EffectifyArgs<F extends (...args: Array<any>) => any> = Parameters<F> exten
  * **Details**
  *
  * The original function is called with the supplied arguments plus a final
- * callback. A non-null callback error fails the returned effect, while a
+ * callback. A truthy callback error fails the returned effect, while a
  * successful callback value becomes the effect success. Use `onError` to map
  * callback errors and `onSyncError` to turn synchronous throws into typed
  * failures; otherwise synchronous throws become defects.

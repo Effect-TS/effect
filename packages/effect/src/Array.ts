@@ -2620,7 +2620,7 @@ export const rotate: {
  * **When to use**
  *
  * Use when checking membership with caller-provided equality instead of
- * `Equal.equivalence()`.
+ * `Equal.asEquivalence()`.
  *
  * **Example** (Checking with custom equality)
  *
@@ -2632,7 +2632,7 @@ export const rotate: {
  * pipe([1, 2, 3, 4], containsNumber(3)) // => true
  * ```
  *
- * @see {@link contains} for the `Equal.equivalence()` variant
+ * @see {@link contains} for the `Equal.asEquivalence()` variant
  *
  * @stability stable
  * @category predicates
@@ -2652,7 +2652,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
   })
 
 /**
- * Checks whether an array contains a value, using `Equal.equivalence()` for
+ * Checks whether an array contains a value, using `Equal.asEquivalence()` for
  * comparison.
  *
  * **When to use**
@@ -3086,7 +3086,7 @@ export const window: {
  * ) // => [["a", "a"], ["b", "b", "b"], ["c"], ["a"]]
  * ```
  *
- * @see {@link group} for grouping adjacent elements with `Equal.equivalence()`
+ * @see {@link group} for grouping adjacent elements with `Equal.asEquivalence()`
  * @see {@link groupBy} for grouping all elements into a record by key, regardless of adjacency
  *
  * @stability stable
@@ -3116,7 +3116,7 @@ export const groupWith: {
 )
 
 /**
- * Groups consecutive equal elements using `Equal.equivalence()`.
+ * Groups consecutive equal elements using `Equal.asEquivalence()`.
  *
  * **When to use**
  *
@@ -3258,7 +3258,7 @@ const hashBucketsHas = (buckets: HashBuckets, value: unknown): boolean => {
  * **When to use**
  *
  * Use when you need the union of two arrays but duplicate detection must use a
- * custom equivalence instead of the default `Equal.equivalence()`.
+ * custom equivalence instead of the default `Equal.asEquivalence()`.
  *
  * **Example** (Computing unions with custom equality)
  *
@@ -3268,7 +3268,7 @@ const hashBucketsHas = (buckets: HashBuckets, value: unknown): boolean => {
  * Array.unionWith([1, 2], [2, 3], (a, b) => a === b) // => [1, 2, 3]
  * ```
  *
- * @see {@link union} for the `Equal.equivalence()` variant
+ * @see {@link union} for the `Equal.asEquivalence()` variant
  * @see {@link intersectionWith} for keeping elements present in both arrays
  * @see {@link differenceWith} for keeping elements present only in the first array
  *
@@ -3307,7 +3307,7 @@ export const unionWith: {
 
 /**
  * Computes the union of two arrays, removing duplicates using
- * `Equal.equivalence()`.
+ * `Equal.asEquivalence()`.
  *
  * **Example** (Computing array unions)
  *
@@ -3367,7 +3367,7 @@ export const union: {
  * Array.intersectionWith(isEquivalent)(array2)(array1) // => [{ id: 1 }, { id: 3 }]
  * ```
  *
- * @see {@link intersection} for the `Equal.equivalence()` variant
+ * @see {@link intersection} for the `Equal.asEquivalence()` variant
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link differenceWith} for keeping values only from the first array with custom equality
  *
@@ -3390,7 +3390,7 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
 }
 
 /**
- * Computes the intersection of two arrays using `Equal.equivalence()`. Order is
+ * Computes the intersection of two arrays using `Equal.asEquivalence()`. Order is
  * determined by the first array.
  *
  * **When to use**
@@ -3444,7 +3444,7 @@ export const intersection: {
  * Array.differenceWith<number>((a, b) => a === b)([1, 2, 3], [2, 3, 4]) // => [1]
  * ```
  *
- * @see {@link difference} for the `Equal.equivalence()` variant
+ * @see {@link difference} for the `Equal.asEquivalence()` variant
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link intersectionWith} for keeping values present in both arrays with custom equality
  *
@@ -3468,12 +3468,12 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
 
 /**
  * Computes elements in the first array that are not in the second, using
- * `Equal.equivalence()`.
+ * `Equal.asEquivalence()`.
  *
  * **When to use**
  *
  * Use when you need to keep values from the first array that are absent from
- * the second and the default `Equal.equivalence()` comparison is appropriate.
+ * the second and the default `Equal.asEquivalence()` comparison is appropriate.
  *
  * **Example** (Computing array differences)
  *
@@ -4642,7 +4642,7 @@ export const dedupeWith: {
 )
 
 /**
- * Removes duplicates using `Equal.equivalence()`, preserving the order of the
+ * Removes duplicates using `Equal.asEquivalence()`, preserving the order of the
  * first occurrence.
  *
  * **When to use**
@@ -4726,7 +4726,7 @@ export const dedupeAdjacentWith: {
 })
 
 /**
- * Removes consecutive duplicate elements using `Equal.equivalence()`.
+ * Removes consecutive duplicate elements using `Equal.asEquivalence()`.
  *
  * **When to use**
  *
