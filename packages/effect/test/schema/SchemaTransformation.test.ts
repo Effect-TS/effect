@@ -1,8 +1,21 @@
-import { SchemaGetter, SchemaTransformation } from "effect"
+import { assert } from "@effect/vitest"
+import { Cause, Exit, Schema, SchemaGetter, SchemaTransformation } from "effect"
 import { describe, it } from "vitest"
 import { assertFalse, assertTrue, strictEqual } from "../utils/assert.ts"
 
 describe("SchemaTransformation", () => {
+  it.each(["abc", "1.5", "1e3"])("bigintFromString rejects %j with a typed failure", (input) => {
+    const schema = Schema.Struct({
+      value: Schema.String.pipe(Schema.decodeTo(Schema.BigInt, SchemaTransformation.bigintFromString))
+    })
+
+    const exit = Schema.decodeUnknownExit(schema)({ value: input })
+
+    assert(Exit.isFailure(exit))
+    assert.isFalse(Cause.hasDies(exit.cause))
+    assert.isTrue(Cause.hasFails(exit.cause))
+  })
+
   it("isTransformation", () => {
     assertTrue(SchemaTransformation.isTransformation(SchemaTransformation.passthrough()))
     assertFalse(SchemaTransformation.isTransformation({ "~effect/SchemaTransformation/Transformation": false }))
