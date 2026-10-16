@@ -661,6 +661,26 @@ describe("Zip", () => {
         assert.strictEqual(rest, 1900)
       }))
 
+    it.effect("reads archives that arrive as many small chunks in one pull", () =>
+      Effect.gen(function*() {
+        const contents = Array.from({ length: 30 }, (_, i) => "abc".repeat(i * 20) + i)
+        const last = textEncoder.encode(contents[29])
+        const bytes = yield* encode([
+          ...contents.map((content, i) => Zip.file(`${i}`, content)),
+          Zip.fileStream("s", Stream.make(last), { method: "Store", size: last.length })
+        ])
+        for (const chunkSize of [1, 7]) {
+          const chunks: Array<Uint8Array> = []
+          for (let i = 0; i < bytes.length; i += chunkSize) chunks.push(bytes.subarray(i, i + chunkSize))
+          const output = yield* Stream.fromArray(chunks).pipe(
+            Stream.pipeThroughChannel(Zip.decode()),
+            Stream.mapEffect((entry) => Effect.map(Stream.mkUint8Array(entry.body), text)),
+            Stream.runCollect
+          )
+          assert.deepStrictEqual(output, [...contents, contents[29]])
+        }
+      }))
+
     it.effect("skips unread bodies when moving to the next entry", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([

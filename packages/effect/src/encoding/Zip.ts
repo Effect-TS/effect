@@ -1095,17 +1095,6 @@ class ByteQueue {
     }
   }
 
-  // Returns the next byte, or -1 when the queue is empty
-  readByte(): number {
-    if (this.length === 0) return -1
-    const chunk = this.chunks[this.head]!
-    const byte = chunk[this.offset++]
-    this.length--
-    this.consumed++
-    if (this.offset === chunk.length) this.advance()
-    return byte
-  }
-
   takeSome(max: number): Uint8Array {
     const chunk = this.chunks[this.head]!
     const available = chunk.length - this.offset
@@ -1157,6 +1146,15 @@ class ByteQueue {
 
   skip(n: number): void {
     while (n > 0) n -= this.takeSome(n).length
+  }
+
+  // Puts back the end of a chunk that the last `takeSome` returned whole
+  unread(bytes: Uint8Array): void {
+    if (bytes.length === 0) return
+    if (this.head > 0) this.chunks[--this.head] = bytes
+    else this.chunks.unshift(bytes)
+    this.length += bytes.length
+    this.consumed -= bytes.length
   }
 
   clear(): void {
@@ -1744,17 +1742,24 @@ class Inflater {
     // Matches cannot reach before this index: until the buffer is first full,
     // the window holds no output of this stream
     let floor = WINDOW_SIZE
+    // Input is read from a chunk taken from the queue, and what is left of it
+    // is put back at the end
+    let input: Uint8Array = emptyBody
+    let inputPosition = 0
     let bitBuffer = 0
     let bitCount = 0
     let final = 0
     do {
       while (bitCount < 3) {
-        const byte = queue.readByte()
-        if (byte < 0) {
-          yield position
-          continue
+        if (inputPosition === input.length) {
+          if (queue.length === 0) {
+            yield position
+            continue
+          }
+          input = queue.takeSome(queue.length)
+          inputPosition = 0
         }
-        bitBuffer |= byte << bitCount
+        bitBuffer |= input[inputPosition++] << bitCount
         bitCount += 8
       }
       final = bitBuffer & 1
@@ -1762,23 +1767,41 @@ class Inflater {
       bitBuffer >>>= 3
       bitCount -= 3
       if (type === 0) {
-        // Stored block: drop the bits up to the byte boundary
+        // Stored block: drop the bits up to the byte boundary, then read the
+        // length and its complement
         bitBuffer = 0
         bitCount = 0
-        while (queue.length < 4) yield position
-        const length = queue.readByte() | (queue.readByte() << 8)
-        const inverse = queue.readByte() | (queue.readByte() << 8)
-        if (length !== (~inverse & 0xffff)) throw invalidData("stored block length is corrupt")
+        while (bitCount < 32) {
+          if (inputPosition === input.length) {
+            if (queue.length === 0) {
+              yield position
+              continue
+            }
+            input = queue.takeSome(queue.length)
+            inputPosition = 0
+          }
+          bitBuffer |= input[inputPosition++] << bitCount
+          bitCount += 8
+        }
+        const length = bitBuffer & 0xffff
+        if (length !== (~bitBuffer >>> 16)) throw invalidData("stored block length is corrupt")
+        bitBuffer = 0
+        bitCount = 0
         let left = length
         while (left > 0) {
-          if (queue.length === 0) {
-            yield position
-            continue
+          if (inputPosition === input.length) {
+            if (queue.length === 0) {
+              yield position
+              continue
+            }
+            input = queue.takeSome(queue.length)
+            inputPosition = 0
           }
-          const chunk = queue.takeSome(Math.min(left, INFLATE_BUFFER_SIZE - position))
-          buffer.set(chunk, position)
-          position += chunk.length
-          left -= chunk.length
+          const n = Math.min(left, input.length - inputPosition, INFLATE_BUFFER_SIZE - position)
+          buffer.set(input.subarray(inputPosition, inputPosition + n), position)
+          inputPosition += n
+          position += n
+          left -= n
           if (position === INFLATE_BUFFER_SIZE) {
             yield position
             position = WINDOW_SIZE
@@ -1794,12 +1817,15 @@ class Inflater {
         distances = FIXED_DISTANCES
       } else if (type === 2) {
         while (bitCount < 14) {
-          const byte = queue.readByte()
-          if (byte < 0) {
-            yield position
-            continue
+          if (inputPosition === input.length) {
+            if (queue.length === 0) {
+              yield position
+              continue
+            }
+            input = queue.takeSome(queue.length)
+            inputPosition = 0
           }
-          bitBuffer |= byte << bitCount
+          bitBuffer |= input[inputPosition++] << bitCount
           bitCount += 8
         }
         const literalCount = (bitBuffer & 31) + 257
@@ -1811,12 +1837,15 @@ class Inflater {
         const codeLengths = new Uint8Array(19)
         for (let i = 0; i < codeLengthCount; i++) {
           while (bitCount < 3) {
-            const byte = queue.readByte()
-            if (byte < 0) {
-              yield position
-              continue
+            if (inputPosition === input.length) {
+              if (queue.length === 0) {
+                yield position
+                continue
+              }
+              input = queue.takeSome(queue.length)
+              inputPosition = 0
             }
-            bitBuffer |= byte << bitCount
+            bitBuffer |= input[inputPosition++] << bitCount
             bitCount += 8
           }
           codeLengths[CODE_LENGTH_ORDER[i]] = bitBuffer & 7
@@ -1833,12 +1862,15 @@ class Inflater {
             const length = entry & 15
             if (length !== 0 && length <= bitCount) break
             if (bitCount >= lengthCodes.bits) throw invalidData("invalid code length code")
-            const byte = queue.readByte()
-            if (byte < 0) {
-              yield position
-              continue
+            if (inputPosition === input.length) {
+              if (queue.length === 0) {
+                yield position
+                continue
+              }
+              input = queue.takeSome(queue.length)
+              inputPosition = 0
             }
-            bitBuffer |= byte << bitCount
+            bitBuffer |= input[inputPosition++] << bitCount
             bitCount += 8
           }
           bitBuffer >>>= entry & 15
@@ -1850,12 +1882,15 @@ class Inflater {
           }
           const extra = symbol === 16 ? 2 : symbol === 17 ? 3 : 7
           while (bitCount < extra) {
-            const byte = queue.readByte()
-            if (byte < 0) {
-              yield position
-              continue
+            if (inputPosition === input.length) {
+              if (queue.length === 0) {
+                yield position
+                continue
+              }
+              input = queue.takeSome(queue.length)
+              inputPosition = 0
             }
-            bitBuffer |= byte << bitCount
+            bitBuffer |= input[inputPosition++] << bitCount
             bitCount += 8
           }
           const repeat = (symbol === 18 ? 11 : 3) + (bitBuffer & ((1 << extra) - 1))
@@ -1887,12 +1922,15 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(literals, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          const byte = queue.readByte()
-          if (byte < 0) {
-            yield position
-            continue
+          if (inputPosition === input.length) {
+            if (queue.length === 0) {
+              yield position
+              continue
+            }
+            input = queue.takeSome(queue.length)
+            inputPosition = 0
           }
-          bitBuffer |= byte << bitCount
+          bitBuffer |= input[inputPosition++] << bitCount
           bitCount += 8
         }
         if (entry === 0) throw invalidData("invalid literal or length code")
@@ -1915,12 +1953,15 @@ class Inflater {
         const lengthExtra = LENGTH_EXTRA[lengthIndex]
         if (lengthExtra > 0) {
           while (bitCount < lengthExtra) {
-            const byte = queue.readByte()
-            if (byte < 0) {
-              yield position
-              continue
+            if (inputPosition === input.length) {
+              if (queue.length === 0) {
+                yield position
+                continue
+              }
+              input = queue.takeSome(queue.length)
+              inputPosition = 0
             }
-            bitBuffer |= byte << bitCount
+            bitBuffer |= input[inputPosition++] << bitCount
             bitCount += 8
           }
           length += bitBuffer & ((1 << lengthExtra) - 1)
@@ -1934,12 +1975,15 @@ class Inflater {
             if (entry === LONG) entry = decodeLong(distances, bitBuffer, bitCount)
             if (entry !== LONG) break
           }
-          const byte = queue.readByte()
-          if (byte < 0) {
-            yield position
-            continue
+          if (inputPosition === input.length) {
+            if (queue.length === 0) {
+              yield position
+              continue
+            }
+            input = queue.takeSome(queue.length)
+            inputPosition = 0
           }
-          bitBuffer |= byte << bitCount
+          bitBuffer |= input[inputPosition++] << bitCount
           bitCount += 8
         }
         if (entry === 0) throw invalidData("invalid distance code")
@@ -1951,12 +1995,15 @@ class Inflater {
         const distanceExtra = DISTANCE_EXTRA[distanceIndex]
         if (distanceExtra > 0) {
           while (bitCount < distanceExtra) {
-            const byte = queue.readByte()
-            if (byte < 0) {
-              yield position
-              continue
+            if (inputPosition === input.length) {
+              if (queue.length === 0) {
+                yield position
+                continue
+              }
+              input = queue.takeSome(queue.length)
+              inputPosition = 0
             }
-            bitBuffer |= byte << bitCount
+            bitBuffer |= input[inputPosition++] << bitCount
             bitCount += 8
           }
           distance += bitBuffer & ((1 << distanceExtra) - 1)
@@ -1978,6 +2025,7 @@ class Inflater {
         }
       }
     } while (final === 0)
+    queue.unread(input.subarray(inputPosition))
     return position
   }
 }
