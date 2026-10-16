@@ -360,21 +360,12 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         WHERE store_id = ${storeId}
       `
 
-  const selectEntriesAfter = (storeId: string, startSequence: number) =>
+  const selectEntries = (storeId: string, startSequence: number, endSequence?: number) =>
     sql`
         SELECT sequence, entry_id, event, primary_key, payload
         FROM ${entriesTableSql}
         WHERE store_id = ${storeId} AND sequence >= ${startSequence}
-        ORDER BY sequence ASC
-      `.pipe(
-      Effect.flatMap(decodeRemoteEntries)
-    )
-
-  const selectEntriesBetween = (storeId: string, startSequence: number, endSequence: number) =>
-    sql`
-        SELECT sequence, entry_id, event, primary_key, payload
-        FROM ${entriesTableSql}
-        WHERE store_id = ${storeId} AND sequence >= ${startSequence} AND sequence < ${endSequence}
+        ${endSequence === undefined ? sql.literal("") : sql`AND sequence < ${endSequence}`}
         ORDER BY sequence ASC
       `.pipe(
       Effect.flatMap(decodeRemoteEntries)
@@ -485,7 +476,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       function*({ storeId, startSequence, compactors }) {
         const pubsub = yield* RcMap.get(pubsubs, storeId)
         const subscription = yield* PubSub.subscribe(pubsub)
-        const remoteEntries = yield* selectEntriesAfter(storeId, startSequence)
+        const remoteEntries = yield* selectEntries(storeId, startSequence)
         const backlog = yield* EventLogServerUnencrypted.compactBacklog({ compactors, remoteEntries })
         let delivered = remoteEntries.length > 0
           ? remoteEntries[remoteEntries.length - 1]!.remoteSequence
@@ -495,11 +486,12 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         const deliver = (entry: RemoteEntry): Effect.Effect<ReadonlyArray<RemoteEntry>> => {
           if (entry.remoteSequence <= delivered) {
             return Effect.succeed([])
-          } else if (entry.remoteSequence === delivered + 1) {
+          }
+          if (entry.remoteSequence === delivered + 1) {
             delivered = entry.remoteSequence
             return Effect.succeed([entry])
           }
-          return selectEntriesBetween(storeId, delivered + 1, entry.remoteSequence).pipe(
+          return selectEntries(storeId, delivered + 1, entry.remoteSequence).pipe(
             Effect.map((missing) => {
               delivered = entry.remoteSequence
               return [...missing, entry]

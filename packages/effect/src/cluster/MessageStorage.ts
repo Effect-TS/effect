@@ -531,9 +531,12 @@ export type EncodedRepliesOptions<A> = {
   readonly cursor: Option.Option<A>
 }
 
-const TransactionNotifications = Context.Reference<
-  Array<Effect.Effect<void, PersistenceError | MalformedMessage>> | undefined
->("effect/cluster/MessageStorage/TransactionNotifications", { defaultValue: () => undefined })
+type Notification = Effect.Effect<void, PersistenceError | MalformedMessage>
+
+const TransactionNotifications = Context.Reference<Array<Notification> | undefined>(
+  "effect/cluster/MessageStorage/TransactionNotifications",
+  { defaultValue: () => undefined }
+)
 
 /**
  * Wraps a concrete message storage implementation with reply-handler management.
@@ -588,12 +591,20 @@ export const make = (
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
     const { afterCommit, ...service } = storage
+    // Without a storage hook, terminal reply notifications wait for this
+    // storage's outermost `withTransaction`.
+    const notifyAfterCommit = afterCommit ?? ((notify: Notification) =>
+      TransactionNotifications.use((notifications) =>
+        notifications === undefined ? notify : Effect.sync(() => {
+          notifications.push(notify)
+        })
+      ))
     return MessageStorage.of({
       ...service,
-      withTransaction: afterCommit ? storage.withTransaction : (effect) =>
+      withTransaction: afterCommit ? service.withTransaction : (effect) =>
         TransactionNotifications.use((outer) => {
-          const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
-          return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
+          const notifications: Array<Notification> = []
+          return service.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
             Effect.tap(() =>
               outer
                 ? Effect.sync(() => {
@@ -683,13 +694,7 @@ export const make = (
               ? handlers[0].respond(persisted)
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
-          if (persisted.reply._tag !== "WithExit") return notify
-          if (afterCommit) return afterCommit(notify)
-          return TransactionNotifications.use((notifications) =>
-            notifications === undefined ? notify : Effect.sync(() => {
-              notifications.push(notify)
-            })
-          )
+          return persisted.reply._tag === "WithExit" ? notifyAfterCommit(notify) : notify
         })
       }
     })

@@ -97,19 +97,22 @@ export const Reactivity: Context.Service<Reactivity, Reactivity> = Context.Servi
 export const make = Effect.sync(() => {
   const handlers = new Map<number | string, Set<() => void>>()
 
+  const runHandlers = (hash: string | number): void => {
+    const set = handlers.get(hash)
+    if (set === undefined) return
+    set.forEach((run) => run())
+  }
+
   const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
-    keysToHashes(keys, (hash) => {
-      const set = handlers.get(hash)
-      if (set === undefined) return
-      set.forEach((run) => run())
-    })
+    keysToHashes(keys, runHandlers)
   }
 
   const invalidate = (
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): Effect.Effect<void> =>
     Effect.contextWith((services) => {
-      const run = () => {
+      // A captured batch collects the keys only while it is still open.
+      const run = Effect.sync(() => {
         const pending = Context.getOrUndefined(services, PendingInvalidation)
         if (pending?.open) {
           keysToHashes(keys, (hash) => {
@@ -118,13 +121,9 @@ export const make = Effect.sync(() => {
         } else {
           invalidateUnsafe(keys)
         }
-      }
+      })
       const defer = Context.get(services, DeferInvalidation)
-      if (defer) {
-        return defer(Effect.sync(run))
-      }
-      run()
-      return Effect.void
+      return defer ? defer(run) : run
     })
 
   const mutation = <A, E, R>(
@@ -217,11 +216,7 @@ export const make = Effect.sync(() => {
         Effect.onExit((_) =>
           Effect.sync(() => {
             pending.open = false
-            pending.hashes.forEach((hash) => {
-              const set = handlers.get(hash)
-              if (set === undefined) return
-              set.forEach((run) => run())
-            })
+            pending.hashes.forEach(runHandlers)
           })
         )
       )
