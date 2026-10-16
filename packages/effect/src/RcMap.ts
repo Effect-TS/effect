@@ -285,7 +285,8 @@ export const make: {
             Effect.sync(() => {
               MutableHashMap.clear(map)
             })
-          )
+          ),
+          Effect.flatMap(Exit.asVoidAll)
         )
       }),
       self
