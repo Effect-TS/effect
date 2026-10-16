@@ -25,6 +25,14 @@ describe("Lexer", () => {
     ])
   })
 
+  it("treats --=value as a plain value instead of a flag with an empty name", () => {
+    const result = Lexer.lex(["--=value"])
+
+    assert.deepStrictEqual(result.tokens, [
+      { _tag: "Value", value: "--=value" }
+    ])
+  })
+
   it("still lexes short options that are not negative numbers", () => {
     const result = Lexer.lex(["-1a", "-e"])
 

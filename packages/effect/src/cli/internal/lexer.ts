@@ -58,8 +58,12 @@ const lexTokens = (args: ReadonlyArray<string>): ReadonlyArray<Token> => {
       const equalIndex = arg.indexOf("=")
       if (equalIndex !== -1) {
         const name = arg.slice(2, equalIndex)
-        const value = arg.slice(equalIndex + 1)
-        tokens.push({ _tag: "LongOption", name, raw: arg, value })
+        if (name === "") {
+          tokens.push({ _tag: "Value", value: arg })
+        } else {
+          const value = arg.slice(equalIndex + 1)
+          tokens.push({ _tag: "LongOption", name, raw: arg, value })
+        }
       } else {
         tokens.push({ _tag: "LongOption", name: arg.slice(2), raw: arg })
       }
