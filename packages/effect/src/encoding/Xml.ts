@@ -323,7 +323,10 @@ export const decodeString = <IE = never, Done = unknown>(options?: DecodeOptions
   Arr.NonEmptyReadonlyArray<string>,
   IE,
   Done
-> => makeDecoder<string, IE, Done>(options, false)
+> => {
+  const parser = makeParser(options, false)
+  return makeChannel<string, Event, IE, Done>(() => new TextInput(parser()))
+}
 
 /**
  * Creates a channel that decodes UTF-8 XML bytes into events.
@@ -354,7 +357,10 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
   Arr.NonEmptyReadonlyArray<Uint8Array>,
   IE,
   Done
-> => makeDecoder<Uint8Array, IE, Done>(options, true)
+> => {
+  const parser = makeParser(options, true)
+  return makeChannel<Uint8Array, Event, IE, Done>(() => new Utf8Input(parser()))
+}
 
 /**
  * Creates a channel that collects the elements at a path into trees.
@@ -592,23 +598,11 @@ const makeChannel = <In, Out, IE, Done>(make: () => Machine<In, Out>): Channel.C
     })
   )
 
-const makeDecoder = <In extends string | Uint8Array, IE, Done>(
-  options: DecodeOptions | undefined,
-  bytes: boolean
-): Channel.Channel<
-  Arr.NonEmptyReadonlyArray<Event>,
-  XmlError | IE,
-  Done,
-  Arr.NonEmptyReadonlyArray<In>,
-  IE,
-  Done
-> => {
+// Checks the options, and returns a function that makes a parser for each run
+const makeParser = (options: DecodeOptions | undefined, bytes: boolean): () => Parser => {
   const maxTokenSize = checkLimit("maxTokenSize", options?.maxTokenSize, defaultMaxTokenSize)
   const maxDepth = checkLimit("maxDepth", options?.maxDepth, defaultMaxDepth)
-  return makeChannel<In, Event, IE, Done>(() => {
-    const parser = new Parser(maxTokenSize, maxDepth, bytes)
-    return bytes ? new Utf8Input(parser) as Machine<In, Event> : new TextInput(parser) as Machine<In, Event>
-  })
+  return () => new Parser(maxTokenSize, maxDepth, bytes)
 }
 
 const textEncoder = new TextEncoder()
