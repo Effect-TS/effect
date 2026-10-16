@@ -349,7 +349,7 @@ const makeFnRuntime = (
         const effect = arg(a, get)
         return Effect.isEffect(effect)
           ? Reactivity.mutation(effect, options.reactivityKeys!)
-          : Stream.ensuring(effect, Reactivity.invalidate(options.reactivityKeys!))
+          : Stream.onEnd(effect, Reactivity.invalidate(options.reactivityKeys!))
       }) as any :
       arg,
     options
