@@ -119,7 +119,7 @@ const makeHarness = (options: {
 /**
  * Builds a client over a stub connection that records the transaction control
  * statements, the connection release, and `after(name)` for each callback
- * registered with `after`.
+ * registered with `after`, along with the `Reactivity` service the client uses.
  */
 const makeClient = (options: {
   readonly commit?: Effect.Effect<void, SqlError.SqlError> | undefined
@@ -150,7 +150,15 @@ const makeClient = (options: {
     spanAttributes: [],
     commit: commit === undefined ? undefined : () => Effect.andThen(record("COMMIT"), commit)
   }).pipe(
-    Effect.map((sql) => ({ sql, calls, record, after: (name: string) => sql.afterCommit(record(`after(${name})`)) })),
+    Effect.flatMap((sql) =>
+      Effect.map(Effect.service(Reactivity.Reactivity), (reactivity) => ({
+        sql,
+        reactivity,
+        calls,
+        record,
+        after: (name: string) => sql.afterCommit(record(`after(${name})`))
+      }))
+    ),
     Effect.provide(Reactivity.layer)
   )
 }
@@ -491,6 +499,75 @@ describe("SqlClient", () => {
           Exit.isFailure(nestedExit) && Cause.pretty(nestedExit.cause).includes("the transaction has already ended")
         )
         assert.isFalse(calls.some((call) => call.startsWith("after")))
+      }))
+  })
+
+  describe("Reactivity.mutation", () => {
+    // Records `invalidate(key)` when a mutation invalidates one of `keys`.
+    const watch = (
+      client: Effect.Success<ReturnType<typeof makeClient>>,
+      keys: ReadonlyArray<string>
+    ) =>
+      Effect.sync(() => {
+        for (const key of keys) {
+          client.reactivity.registerUnsafe([key], () => {
+            client.calls.push(`invalidate(${key})`)
+          })
+        }
+      })
+
+    it.effect("invalidates once the outermost transaction commits, including from a savepoint", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        const { calls, reactivity, sql } = client
+        yield* watch(client, ["outer", "nested"])
+
+        yield* sql.withTransaction(Effect.gen(function*() {
+          yield* Reactivity.mutation(sql`UPDATE outer`, ["outer"])
+          yield* sql.withTransaction(Reactivity.mutation(sql`UPDATE nested`, ["nested"]))
+          yield* sql`SELECT 1`
+        })).pipe(Effect.provideService(Reactivity.Reactivity, reactivity))
+
+        const commit = calls.indexOf("COMMIT")
+        assert.isAtLeast(commit, 0)
+        assert.deepStrictEqual(calls.slice(0, commit).filter((call) => call.startsWith("invalidate")), [])
+        assert.deepStrictEqual(calls.slice(commit).filter((call) => call.startsWith("invalidate")), [
+          "invalidate(outer)",
+          "invalidate(nested)"
+        ])
+      }))
+
+    it.effect("drops invalidations from a rolled-back transaction or savepoint", () =>
+      Effect.gen(function*() {
+        const rolledBack = yield* makeClient()
+        yield* watch(rolledBack, ["outer", "nested"])
+        yield* Effect.exit(rolledBack.sql.withTransaction(Effect.gen(function*() {
+          yield* Reactivity.mutation(rolledBack.sql`UPDATE outer`, ["outer"])
+          yield* rolledBack.sql.withTransaction(Reactivity.mutation(rolledBack.sql`UPDATE nested`, ["nested"]))
+          return yield* Effect.fail("boom")
+        }))).pipe(Effect.provideService(Reactivity.Reactivity, rolledBack.reactivity))
+        assert.isFalse(rolledBack.calls.some((call) => call.startsWith("invalidate")))
+
+        const savepoint = yield* makeClient()
+        yield* watch(savepoint, ["outer", "dropped"])
+        yield* savepoint.sql.withTransaction(Effect.gen(function*() {
+          yield* Effect.exit(savepoint.sql.withTransaction(
+            Effect.andThen(Reactivity.mutation(savepoint.sql`UPDATE dropped`, ["dropped"]), Effect.fail("boom"))
+          ))
+          yield* Reactivity.mutation(savepoint.sql`UPDATE outer`, ["outer"])
+        })).pipe(Effect.provideService(Reactivity.Reactivity, savepoint.reactivity))
+        assert.deepStrictEqual(savepoint.calls.filter((call) => call.startsWith("invalidate")), ["invalidate(outer)"])
+      }))
+
+    it.effect("invalidates immediately outside a transaction", () =>
+      Effect.gen(function*() {
+        const client = yield* makeClient()
+        yield* watch(client, ["users"])
+        yield* Reactivity.mutation(client.sql`UPDATE users`, ["users"]).pipe(
+          Effect.andThen(client.record("after mutation")),
+          Effect.provideService(Reactivity.Reactivity, client.reactivity)
+        )
+        assert.deepStrictEqual(client.calls, ["UPDATE users", "release", "invalidate(users)", "after mutation"])
       }))
   })
 })

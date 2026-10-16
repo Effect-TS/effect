@@ -631,6 +631,83 @@ describe("SqlMessageStorage", () => {
           yield* Fiber.await(fiber)
         }))
 
+      it.effect("notifies reply handlers only after an enclosing SQL transaction commits", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const notified: Array<string> = []
+          const direct = yield* makeRequest()
+          const nested = yield* makeRequest()
+          const handlers: Array<Fiber.Fiber<void, unknown>> = []
+          for (const [name, request] of [["direct", direct], ["nested", nested]] as const) {
+            yield* storage.saveRequest(request)
+            handlers.push(
+              yield* storage.registerReplyHandler(
+                new Message.OutgoingRequest({
+                  ...request,
+                  respond: () =>
+                    Effect.sync(() => {
+                      notified.push(name)
+                    })
+                })
+              ).pipe(Effect.forkChild)
+            )
+          }
+          yield* TestClock.adjust(1)
+
+          yield* sql.withTransaction(Effect.gen(function*() {
+            yield* storage.saveReply(yield* makeReply(direct))
+            yield* storage.withTransaction(storage.saveReply(yield* makeReply(nested)))
+            assert.deepStrictEqual(notified, [])
+          }))
+
+          assert.deepStrictEqual(notified, ["direct", "nested"])
+          yield* Fiber.awaitAll(handlers)
+        }))
+
+      it.effect("does not notify reply handlers for replies an SQL transaction or savepoint rolls back", () =>
+        Effect.gen(function*() {
+          yield* truncate
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const notified: Array<string> = []
+          const request = yield* makeRequest()
+          yield* storage.saveRequest(request)
+          const handler = yield* storage.registerReplyHandler(
+            new Message.OutgoingRequest({
+              ...request,
+              respond: (reply) =>
+                Effect.sync(() => {
+                  notified.push(String(reply.id))
+                })
+            })
+          ).pipe(Effect.forkChild)
+          yield* TestClock.adjust(1)
+
+          const error = yield* sql.withTransaction(
+            Effect.andThen(storage.saveReply(yield* makeReply(request)), Effect.fail("rollback"))
+          ).pipe(Effect.flip)
+          assert.strictEqual(error, "rollback")
+          yield* sql.withTransaction(Effect.gen(function*() {
+            const nested = yield* sql.withTransaction(
+              Effect.andThen(
+                storage.withTransaction(storage.saveReply(yield* makeReply(request))),
+                Effect.fail("nested rollback")
+              )
+            ).pipe(Effect.flip)
+            assert.strictEqual(nested, "nested rollback")
+          }))
+          assert.deepStrictEqual(notified, [])
+          expect(yield* storage.repliesFor([request])).toHaveLength(0)
+
+          // The handler is still waiting, so a committed reply reaches it.
+          const committed = yield* makeReply(request)
+          yield* storage.saveReply(committed)
+          assert.deepStrictEqual(notified, [String(committed.reply.id)])
+          yield* Fiber.await(handler)
+        }))
+
       it.effect("unprocessedMessagesById", () =>
         Effect.gen(function*() {
           yield* truncate

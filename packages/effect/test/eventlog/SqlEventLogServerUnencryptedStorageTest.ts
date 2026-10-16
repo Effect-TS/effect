@@ -336,4 +336,55 @@ export const suite = (name: string, layer: Layer.Layer<SqlClient.SqlClient, unkn
         const persisted = yield* Queue.takeAll(yield* openChanges(storage, storeId))
         assertEntries(persisted, [backlog, sentinel], 1)
       }))
+
+    it.effect("publishes writes made inside an enclosing SQL transaction only after it commits", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storage = yield* makeStorage(makeOptions("sql_outer_commit"))
+        const storeId = makeStoreId("sql_outer_commit")
+        const backlog = makeEntry("Ada")
+        const direct = makeEntry("Grace")
+        const nested = makeEntry("Margaret")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        yield* sql.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [direct])
+          yield* storage.withTransaction(storage.write(storeId, [nested]))
+          yield* Effect.yieldNow
+          assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        }))
+        assertEntries(yield* Queue.takeN(changes, 2), [direct, nested], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+      }))
+
+    it.effect("discards writes and notifications when an enclosing SQL transaction rolls back", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const storage = yield* makeStorage(makeOptions("sql_outer_rollback"))
+        const storeId = makeStoreId("sql_outer_rollback")
+        const backlog = makeEntry("Ada")
+        const direct = makeEntry("Grace")
+        const nested = makeEntry("Margaret")
+        const sentinel = makeEntry("Linus")
+        yield* storage.write(storeId, [backlog])
+        const changes = yield* openChanges(storage, storeId)
+        assertEntries([yield* Queue.take(changes)], [backlog], 1)
+
+        const error = yield* sql.withTransaction(Effect.gen(function*() {
+          yield* storage.write(storeId, [direct])
+          yield* storage.withTransaction(storage.write(storeId, [nested]))
+          return yield* Effect.fail("rollback")
+        })).pipe(Effect.flip)
+        assert.strictEqual(error, "rollback")
+
+        // The sentinel exposes leaked notifications without sleeps.
+        yield* storage.write(storeId, [sentinel])
+        assertEntries([yield* Queue.take(changes)], [sentinel], 2)
+        yield* Effect.yieldNow
+        assert.strictEqual(Option.isNone(yield* Queue.poll(changes)), true)
+        assertEntries(yield* Queue.takeAll(yield* openChanges(storage, storeId)), [backlog, sentinel], 1)
+      }))
   })
