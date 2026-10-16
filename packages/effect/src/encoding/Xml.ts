@@ -1906,8 +1906,22 @@ const attributeEscapes: Record<string, string> = {
 
 const textSpecials = /[&<>\r]/g
 const attributeSpecials = /[&<"\t\n\r]/g
-const escapeText = (s: string): string => s.replace(textSpecials, (c) => textEscapes[c])
-const escapeAttribute = (s: string): string => s.replace(attributeSpecials, (c) => attributeEscapes[c])
+// Replaces the characters that `specials` matches with their escapes. Unlike
+// a replace callback, `test` finds each one without allocating a match.
+const escape = (s: string, specials: RegExp, escapes: Record<string, string>): string => {
+  // The expressions are shared, so a call that threw must not affect the next
+  specials.lastIndex = 0
+  let out = ""
+  let last = 0
+  while (specials.test(s)) {
+    const i = specials.lastIndex - 1
+    out += s.slice(last, i) + escapes[s[i]]
+    last = i + 1
+  }
+  return last === 0 ? s : out + s.slice(last)
+}
+const escapeText = (s: string): string => escape(s, textSpecials, textEscapes)
+const escapeAttribute = (s: string): string => escape(s, attributeSpecials, attributeEscapes)
 
 const checkChars = (what: string, s: string): void => {
   const invalid = s.search(invalidChar)
