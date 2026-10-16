@@ -4051,6 +4051,7 @@ const scopeCloseStart = <A, E>(
 const scopeAwaitClose = (state: ScopeClosed, fiber: FiberImpl): Effect.Effect<void> | undefined => {
   if (state.open === undefined || scopeCloseIsReentrant(state, fiber)) return
   return callback<void>((resume) => {
+    if (state.open === undefined) return resume(void_)
     const waiter = () => resume(void_)
     ;(state.waiters ??= []).push(waiter)
     return sync(() => {
