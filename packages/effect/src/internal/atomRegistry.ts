@@ -22,7 +22,5 @@ export const trackFinalizer = (registry: object, fiber: Fiber.Fiber<unknown, unk
 export const awaitFinalizers = (registry: object): Effect.Effect<void> =>
   Effect.suspend(() => {
     const fibers = pendingFinalizers.get(registry)
-    if (fibers === undefined || fibers.size === 0) return Effect.void
-    // Awaited cleanup can start more cleanup, so check again once it is done.
-    return Effect.flatMap(Fiber.awaitAll(Array.from(fibers)), () => awaitFinalizers(registry))
+    return fibers === undefined ? Effect.void : Effect.asVoid(Fiber.awaitAll(Array.from(fibers)))
   })

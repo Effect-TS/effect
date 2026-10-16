@@ -166,7 +166,11 @@ export const AtomRegistry = Context.Service<AtomRegistry>(TypeId)
  *
  * **Details**
  *
- * The registry is disposed when the layer scope is finalized.
+ * The registry is disposed when the layer scope is finalized. Closing the scope
+ * waits for atom cleanup to finish, including `Atom.runtime` layer releases,
+ * runtime builds, and uninterruptible atom effects that are still running, so an
+ * uninterruptible effect that never completes keeps the scope from closing.
+ * `registry.dispose()` itself is synchronous and does not wait for cleanup.
  *
  * @stability unstable
  * @category layers
@@ -199,6 +203,8 @@ export const layerOptions = (options?: {
 
 /**
  * The default layer that provides a fresh `AtomRegistry`.
+ *
+ * Closing its scope waits for atom cleanup, as described in `layerOptions`.
  *
  * @stability unstable
  * @category layers

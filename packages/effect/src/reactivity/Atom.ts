@@ -1268,7 +1268,12 @@ function makeResultFn<Arg, E, A>(
   const fibersAtom = options?.concurrent
     ? removeTtl(readable((get) => {
       const fibers = new Set<Fiber.Fiber<any, any>>()
-      get.addFinalizer(() => fibers.forEach((f) => f.interruptUnsafe()))
+      get.addFinalizer(() =>
+        fibers.forEach((f) => {
+          f.interruptUnsafe()
+          trackFinalizer(get.registry, f)
+        })
+      )
       return fibers
     }))
     : undefined
