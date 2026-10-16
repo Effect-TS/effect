@@ -5,6 +5,7 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import {
   HttpBody,
   HttpClient,
@@ -23,6 +24,7 @@ import * as Stream from "effect/Stream"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, openAsBlob, rmSync, truncateSync, writeFileSync } from "node:fs"
 import * as Http from "node:http"
+import type { AddressInfo, Socket } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -51,6 +53,97 @@ describe("failing FormData file streams (isolated)", { concurrent: false, timeou
     assert.strictEqual(result.lockedStreams, 0, diagnostic)
     assert.strictEqual(result.openSockets, 0, diagnostic)
   })
+})
+
+describe("FormData upload cancellation", () => {
+  for (
+    const [name, layer] of [
+      ["node:http", NodeClient.layerNodeHttp],
+      ["undici", NodeClient.layerUndici]
+    ] as const
+  ) {
+    it.live.each(["early response", "pending read"] as const)(
+      `${name} cancels and unlocks the file after %s`,
+      (scenario) =>
+        Effect.gen(function*() {
+          let reading!: () => void
+          const readStarted = new Promise<void>((resolve) => {
+            reading = resolve
+          })
+          let cancelled = false
+          let fileStream!: ReadableStream<Uint8Array<ArrayBuffer>>
+          class PendingFile extends File {
+            override stream() {
+              fileStream = new ReadableStream<Uint8Array<ArrayBuffer>>({
+                pull() {
+                  reading()
+                  // No data or EOF: cancellation must interrupt reader.read().
+                },
+                cancel() {
+                  cancelled = true
+                }
+              })
+              return fileStream
+            }
+          }
+          const data = new FormData()
+          data.append("file", new PendingFile(["contents"], "pending.txt"))
+          const sockets = new Set<Socket>()
+          const server = yield* Effect.acquireRelease(
+            Effect.promise(() =>
+              new Promise<Http.Server>((resolve) => {
+                const server = Http.createServer((request, response) => {
+                  request.on("error", () => {})
+                  request.resume()
+                  if (scenario === "early response") {
+                    response.writeHead(200)
+                    response.flushHeaders()
+                  }
+                })
+                server.on("connection", (socket) => {
+                  sockets.add(socket)
+                  socket.on("close", () => sockets.delete(socket))
+                })
+                server.listen(0, "127.0.0.1", () => resolve(server))
+              })
+            ),
+            (server) =>
+              Effect.promise(() =>
+                new Promise<void>((resolve) => {
+                  server.closeAllConnections()
+                  server.close(() => resolve())
+                })
+              )
+          )
+          const client = yield* HttpClient.HttpClient
+          const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`
+          if (scenario === "early response") {
+            yield* Effect.scoped(Effect.gen(function*() {
+              const response = yield* HttpClient.withScope(client).post(url, { body: HttpBody.formData(data) })
+              assert.strictEqual(response.status, 200)
+              yield* Effect.promise(() => readStarted)
+              // Receiving headers alone must not cancel the still-active upload.
+              assert.isFalse(cancelled)
+              assert.isTrue(fileStream.locked)
+            }))
+          } else {
+            const fiber = yield* client.post(url, { body: HttpBody.formData(data) }).pipe(Effect.forkChild)
+            yield* Effect.promise(() => readStarted)
+            assert.isTrue(fileStream.locked)
+            assert.isFalse(cancelled)
+            yield* Fiber.interrupt(fiber)
+          }
+          // Observe cleanup before the client layer/agent is finalized.
+          yield* Effect.sleep(10).pipe(
+            Effect.repeat({ while: () => !cancelled || fileStream.locked || sockets.size > 0 }),
+            Effect.timeout("1 second")
+          )
+          assert.isTrue(cancelled)
+          assert.isFalse(fileStream.locked)
+          assert.strictEqual(sockets.size, 0)
+        }).pipe(Effect.provide(layer), Effect.timeout("3 seconds"))
+    )
+  }
 })
 
 const Todo = Schema.Struct({
