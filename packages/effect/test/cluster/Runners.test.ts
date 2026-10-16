@@ -514,7 +514,8 @@ describe.concurrent("Runners.makeRpc", () => {
       yield* TestClock.adjust("1 second")
       assert.isTrue(Option.isSome(yield* Fiber.join(storageOnly)), "the storage-only caller must complete")
       assert.isTrue(Option.isSome(yield* Fiber.join(fresh)), "the fresh caller must complete")
-      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+      // both callers share `respond`, and each waiter receives the reply once
+      assert.deepStrictEqual(replies, [Exit.succeed(42), Exit.succeed(42)])
     }).pipe(Effect.provide(layerLocalRunners((storage) => ({
       ...storage,
       saveRequest: (message) =>

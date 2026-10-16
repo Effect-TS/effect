@@ -251,8 +251,6 @@ export const make: (
     readonly messages: Set<Message.OutgoingRequest<any>>
     readonly pump: Fiber.Fiber<void>
     replies: Array<Reply.Reply<any>>
-    // false while only polls may read the first replies
-    readNow: boolean
   }
   const storageRequests = new Map<Snowflake.Snowflake, StorageRequestEntry>()
   const waitingStorageRequests = new Map<Snowflake.Snowflake, Message.OutgoingRequest<any>>()
@@ -267,18 +265,15 @@ export const make: (
 
   // The pump is owned by the shared entry rather than the first caller, so any
   // waiter can be interrupted without stopping delivery to the others.
+  //
+  // `replyFromStorage` registers the request with the storage loop before the
+  // pump starts, so the pump only re-registers after a stream chunk is acked.
   const pumpReplies = Effect.fnUntraced(function*(
     requestId: Snowflake.Snowflake,
     entry: Omit<StorageRequestEntry, "pump">
   ) {
     while (true) {
       // wait for the storage loop to notify us
-      entry.latch.closeUnsafe()
-      const message = entry.messages.values().next().value
-      if (!message) return
-      waitingStorageRequests.set(requestId, message)
-      if (entry.readNow) storageLatch.openUnsafe()
-      entry.readNow = true
       yield* entry.latch.await
 
       // send the replies back
@@ -303,41 +298,39 @@ export const make: (
         yield* entry.latch.await
       }
       entry.replies = []
+
+      // ask the storage loop for the next chunk
+      entry.latch.closeUnsafe()
+      const message = entry.messages.values().next().value
+      if (!message) return
+      waitingStorageRequests.set(requestId, message)
+      storageLatch.openUnsafe()
     }
   })
 
-  // Wakes the storage loop for a request, including one that so far only
-  // waited for polls.
-  const readStorageRequest = (requestId: Snowflake.Snowflake) => {
-    const entry = storageRequests.get(requestId)
-    if (entry) entry.readNow = true
-    storageLatch.openUnsafe()
-  }
-
-  // With `readNow: false`, the first replies are left to the next poll, which
+  // With `readNow` false, the first replies are left to the next poll, which
   // reads all waiting requests at once.
-  const replyFromStorage = (message: Message.OutgoingRequest<any>, options?: { readonly readNow?: boolean }) =>
+  const replyFromStorage = (message: Message.OutgoingRequest<any>, readNow = true) =>
     Effect.uninterruptibleMask((restore) =>
       Effect.gen(function*() {
         const requestId = message.envelope.requestId
-        const readNow = options?.readNow ?? true
         let entry = storageRequests.get(requestId)
         if (!entry) {
           const state = {
             latch: Latch.makeUnsafe(false),
             messages: new Set<Message.OutgoingRequest<any>>(),
-            replies: [] as Array<Reply.Reply<any>>,
-            readNow
+            replies: [] as Array<Reply.Reply<any>>
           }
           entry = Object.assign(state, { pump: yield* Effect.forkIn(pumpReplies(requestId, state), runnersScope) })
           storageRequests.set(requestId, entry)
-        } else if (readNow) {
-          // The pump may already be parked, and a reply committed without a
-          // notification would otherwise wait for the next poll.
-          readStorageRequest(requestId)
+          waitingStorageRequests.set(requestId, message)
         }
         const current = entry
         current.messages.add(message)
+        // A reply committed without a notification may already be in storage,
+        // which a waiter that joins a parked entry would otherwise only see
+        // on the next poll.
+        if (readNow) storageLatch.openUnsafe()
         return yield* restore(Fiber.join(current.pump)).pipe(
           Effect.ensuring(Effect.suspend(() => {
             current.messages.delete(message)
@@ -383,7 +376,7 @@ export const make: (
   // waits for the next poll, which finds such a reply.
   const notifyLocalRequest = (
     message: Message.OutgoingRequest<any>,
-    notify: (message: Message.IncomingLocal<any>) => Effect.Effect<void, EntityNotAssignedToRunner>
+    notifyEntity: (message: Message.Outgoing<any>) => Effect.Effect<void>
   ) =>
     Effect.gen(function*() {
       let replied = false
@@ -396,34 +389,24 @@ export const make: (
           return message.respond(reply)
         }
       })
-      const handler = yield* storage.registerReplyHandler(request).pipe(
-        Effect.forkScoped({ startImmediately: true })
-      )
+      const handler = yield* Effect.forkScoped(storage.registerReplyHandler(request), { startImmediately: true })
       return yield* notifyWith(request, (message, duplicate) => {
-        const notifyEntity = Effect.catchTag(
-          notify(Message.incomingLocalFromOutgoing(message)),
-          "EntityNotAssignedToRunner",
-          () => Effect.void
-        )
         const outgoing = message as Message.OutgoingRequest<any>
         // A duplicate is answered under its original request id.
         if (duplicate) {
           return Fiber.interrupt(handler).pipe(
-            Effect.andThen(notifyEntity),
+            Effect.andThen(notifyEntity(message)),
             Effect.andThen(replyFromStorageWithWake(outgoing))
           )
         }
-        // The handler can be dropped, for example when its shard moves or a
-        // commit error hides the notification. The reply is then in storage.
-        const awaitHandler = Effect.flatMap(Fiber.await(handler), (exit) => {
-          if (Exit.isSuccess(exit)) return Effect.void
-          readStorageRequest(outgoing.envelope.requestId)
-          return Effect.never
-        })
-        // The storage waiter starts first, so a handler that has already failed
-        // finds its entry to read.
-        return notifyEntity.pipe(
-          Effect.andThen(Effect.raceFirst(replyFromStorage(outgoing, { readNow: false }), awaitHandler))
+        // The storage waiter registers first, so a handler that is dropped,
+        // for example when its shard moves or a commit error hides the
+        // notification, can have the reply read back right away.
+        return notifyEntity(message).pipe(
+          Effect.andThen(Effect.raceFirst(
+            replyFromStorage(outgoing, false),
+            Effect.catch(Fiber.join(handler), () => Effect.andThen(storageLatch.open, Effect.never))
+          ))
         )
       })
     }).pipe(Effect.scoped)
@@ -524,23 +507,22 @@ export const make: (
     },
     notifyLocal(options) {
       const message = options.message
-      if (
-        message._tag === "OutgoingRequest" && !options.discard && options.storageOnly !== true &&
-        canReplyLocally(message)
-      ) {
-        return notifyLocalRequest(message, options.notify)
+      const notifyEntity = (message: Message.Outgoing<any>) =>
+        Effect.catchTag(
+          options.notify(Message.incomingLocalFromOutgoing(message)),
+          "EntityNotAssignedToRunner",
+          () => Effect.void
+        )
+      if (message._tag === "OutgoingRequest" && !options.discard && !options.storageOnly && canReplyLocally(message)) {
+        return notifyLocalRequest(message, notifyEntity)
       }
       return notifyWith(message, (message) => {
         if (options.discard || message._tag === "OutgoingEnvelope") {
-          return Effect.catchTag(
-            options.notify(Message.incomingLocalFromOutgoing(message)),
-            "EntityNotAssignedToRunner",
-            () => Effect.void
-          )
+          return notifyEntity(message)
         }
-        return options.notify(Message.incomingLocalFromOutgoing(message)).pipe(
-          Effect.catchTag("EntityNotAssignedToRunner", () => Effect.void),
-          Effect.andThen(options.storageOnly ? replyFromStorage(message) : replyFromStorageWithWake(message))
+        return Effect.andThen(
+          notifyEntity(message),
+          options.storageOnly ? replyFromStorage(message) : replyFromStorageWithWake(message)
         )
       })
     }
