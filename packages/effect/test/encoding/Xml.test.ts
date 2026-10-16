@@ -263,6 +263,20 @@ describe("Xml", () => {
             )
           }
         }
+        // Errors do not depend on chunking: a malformed token longer than the limit fails at an error in its first
+        // maxTokenSize + 1 characters, and otherwise with a Limit error
+        const errors: ReadonlyArray<readonly [string, number, Xml.XmlError["kind"], number]> = [
+          ["<a b='1' b='2'/>", 13, "Syntax", 10],
+          ["<a b='1' b='2'/>", 12, "Limit", 1],
+          ["<a>0123456789</a>", 9, "Limit", 4]
+        ]
+        for (const [xml, maxTokenSize, kind, column] of errors) {
+          const { message } = yield* Effect.flip(decodeString([xml], { maxTokenSize }))
+          for (const chunks of splits(xml)) {
+            const error = yield* Effect.flip(decodeString(chunks, { maxTokenSize }))
+            assert.deepStrictEqual([error.kind, error.line, error.column, error.message], [kind, 1, column, message])
+          }
+        }
         // Text made of several parts fails at the part that exceeds the limit
         for (const chunks of splits("<a>\n\n<![CDATA[\n]]>&amp;</a>")) {
           assert.deepStrictEqual(yield* failure(decodeString(chunks, { maxTokenSize: 14 })), ["Limit", 3, 1])
