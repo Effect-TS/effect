@@ -181,31 +181,22 @@ describe("Zip", () => {
         }
       }))
 
-    it.effect("deflates in-memory content that the compressor outputs in several chunks", () =>
+    it.effect("deflates in-memory entries that arrive over several pulls", () =>
       Effect.gen(function*() {
         let x = 1
+        // Noise, which the compressor outputs in several chunks, is too large
+        // to deflate ahead of the entries before it
         const noise = Uint8Array.from({ length: 100_000 }, () => {
           x ^= x << 13
           x ^= x >>> 17
           x ^= x << 5
           return x & 0xff
         })
-        // Deflates start ahead of the entries being written, except for large content
-        const output = yield* decode(yield* encode([Zip.file("a", "a"), Zip.file("noise", noise), Zip.file("b", "b")]))
-        assert.deepStrictEqual(output.map(({ body }) => body), [
-          textEncoder.encode("a"),
-          noise,
-          textEncoder.encode("b")
-        ])
-      }))
-
-    it.effect("deflates in-memory entries that arrive over several pulls", () =>
-      Effect.gen(function*() {
-        const contents = Array.from({ length: 20 }, (_, i) => `${i},`.repeat(i + 1))
+        const contents = [...Array.from({ length: 20 }, (_, i) => textEncoder.encode(`${i},`.repeat(i + 1))), noise]
         const bytes = yield* Stream.fromIterable(contents.map((content, i) => Zip.file(`${i}`, content)), {
           chunkSize: 3
         }).pipe(Stream.pipeThroughChannel(Zip.encode()), Stream.mkUint8Array)
-        assert.deepStrictEqual((yield* decode(bytes)).map(({ body }) => text(body)), contents)
+        assert.deepStrictEqual((yield* decode(bytes)).map(({ body }) => body), contents)
       }))
 
     it.effect("deflates content held in a SharedArrayBuffer", () =>
