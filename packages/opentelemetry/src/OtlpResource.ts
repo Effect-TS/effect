@@ -5,6 +5,7 @@ import * as Arr from "effect/Array"
 import * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Inspectable from "effect/Inspectable"
+import * as Record from "effect/Record"
 
 const ATTR_SERVICE_NAME = "service.name"
 const ATTR_SERVICE_VERSION = "service.version"
@@ -90,10 +91,15 @@ export const fromConfig: (
     (yield* Config.string("OTEL_SERVICE_NAME"))
   const serviceVersion = options?.serviceVersion ?? attributes[ATTR_SERVICE_VERSION] as string ??
     (yield* Config.string("OTEL_SERVICE_VERSION").pipe(Config.withDefault(undefined)))
+  // service.name and service.version are added explicitly by `make`, so filter
+  // them out of the attributes record to avoid duplicate entries.
   return make({
     serviceName,
     serviceVersion,
-    attributes
+    attributes: Record.filter(
+      attributes,
+      (_, key) => key !== ATTR_SERVICE_NAME && key !== ATTR_SERVICE_VERSION
+    )
   })
 }, Effect.orDie)
 
