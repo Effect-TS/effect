@@ -511,6 +511,35 @@ describe("Zip", () => {
         assert.strictEqual(yield* failure(read(corrupt)), "InvalidData")
       }))
 
+    it.effect("stops a body that grows past its size and the archive with it", () =>
+      Effect.gen(function*() {
+        const content = new Uint8Array(1_000_000)
+        const data = deflateRawSync(content)
+        const archive = concat(
+          localHeader(textEncoder.encode("a"), {
+            method: 8,
+            crc: crc32(content),
+            compressedSize: data.length,
+            size: 10
+          }),
+          data,
+          storedEntry(textEncoder.encode("b"), textEncoder.encode("b")),
+          endRecord
+        )
+        let read = 0
+        const output = entries(archive, 4096).pipe(
+          Stream.mapEffect((entry) =>
+            Effect.match(Stream.runForEach(entry.body, (chunk) => Effect.sync(() => read += chunk.length)), {
+              onFailure: (error) => Zip.isZipError(error) ? error.kind : "defect",
+              onSuccess: () => "read"
+            })
+          ),
+          Stream.runCollect
+        )
+        assert.strictEqual(yield* failure(output), "SizeMismatch")
+        assert.isAtMost(read, 10)
+      }))
+
     it.effect("emits body bytes before the rest of the archive arrives", () =>
       Effect.gen(function*() {
         const bytes = yield* encode([Zip.file("f", "z".repeat(2000), { method: "Store" })])
