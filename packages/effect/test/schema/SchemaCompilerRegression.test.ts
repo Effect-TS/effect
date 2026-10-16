@@ -297,6 +297,13 @@ describe("compiler regression contracts", () => {
     assert.isUndefined(Codegen.generate(schema.ast, "decode"))
   })
 
+  it("bounds the walk over nested encoding sources", () => {
+    let schema: Schema.Codec<string, string> = Schema.String
+    for (let i = 0; i < 5000; i++) schema = schema.pipe(Schema.decodeTo(Schema.String))
+    assert.isUndefined(Codegen.generate(schema.ast, "decode"))
+    assert.isUndefined(Codegen.generate(Schema.Struct({ n: schema }).ast, "decode"))
+  })
+
   it("generates a synchronous decoder for StringTree codec Structs", () => {
     const schema = Schema.toCodecStringTree(
       Schema.Struct({ id: Schema.Number, ok: Schema.Boolean, name: Schema.String })

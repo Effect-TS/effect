@@ -271,6 +271,15 @@ const cases: ReadonlyArray<Case> = [
     (f) => f.Digits.pipe(Schema.decodeTo(Schema.Number, SchemaTransformation.numberFromString)),
     values
   ),
+  ...inLayouts(
+    "library conversion from a Union source with encoding checks",
+    (f) =>
+      Schema.flip(
+        Schema.Union([Schema.String, Schema.Number]).check(f.countedFilter<string | number>(() => true, "any"))
+      )
+        .pipe(Schema.decodeTo(Schema.Number.check(Schema.isGreaterThan(0)), SchemaTransformation.numberFromString)),
+    ["1", "-1", "x", 1, null]
+  ),
   {
     name: "StringTree Struct",
     schema: (f) =>
