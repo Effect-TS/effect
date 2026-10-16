@@ -13,7 +13,6 @@ import { dual } from "./Function.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
 import * as internal from "./internal/glob.ts"
 import { type Pipeable, pipeArguments } from "./Pipeable.ts"
-import { hasProperty } from "./Predicate.ts"
 
 const TypeId = "~effect/Glob"
 
@@ -37,7 +36,9 @@ export interface Glob extends Pipeable, Inspectable {
   readonly dot: boolean
 }
 
-const compiled = new WeakMap<Glob, internal.Compiled>()
+interface GlobImpl extends Glob {
+  readonly compiled: internal.Compiled
+}
 
 const GlobProto = {
   [TypeId]: TypeId,
@@ -56,15 +57,6 @@ const GlobProto = {
 }
 
 /**
- * Checks whether a value is a `Glob`.
- *
- * @stability experimental
- * @category guards
- * @since 4.0.0
- */
-export const isGlob = (u: unknown): u is Glob => hasProperty(u, TypeId)
-
-/**
  * Compiles a glob pattern into a reusable `Glob`.
  *
  * **Details**
@@ -80,12 +72,13 @@ export const isGlob = (u: unknown): u is Glob => hasProperty(u, TypeId)
  *
  * Wildcards and `**` skip names that start with `.` unless the pattern segment
  * itself starts with `.` or `dot` is `true`; they never match `.` or `..`.
- * Wildcards never match an empty segment, and the empty pattern matches
- * nothing, as does any pattern with a `.` or `..` segment after a `**` and
- * any UNC pattern or path such as `//server/share`. Extended globs such as `!(a)` and leading `!` negation are not
- * supported and match literally. Malformed syntax, such as an unclosed `[`, and
- * patterns whose braces expand to more than 10,000 alternatives also match
- * literally instead of failing.
+ * `x/.` is the same as `x/`, and a `.` or `..` segment after `**` makes the
+ * pattern match nothing, as does the empty pattern. UNC patterns and paths
+ * such as `//server/share` are not supported and never match. Braces and
+ * commas inside `[...]` are class members. Extended globs such as `!(a)` and
+ * leading `!` negation are not supported and match literally. Malformed
+ * syntax, such as an unclosed `[`, also matches literally, as do braces that
+ * would expand to more than 10,000 alternatives.
  *
  * **Example** (Matching source files)
  *
@@ -112,7 +105,7 @@ export const make = (pattern: string, options?: {
   const self = Object.create(GlobProto)
   self.pattern = pattern
   self.dot = dot
-  compiled.set(self, internal.compile(pattern, dot))
+  self.compiled = internal.compile(pattern, dot)
   return self
 }
 
@@ -143,7 +136,7 @@ export const make = (pattern: string, options?: {
 export const match: {
   (path: string): (self: Glob) => boolean
   (self: Glob, path: string): boolean
-} = dual(2, (self: Glob, path: string): boolean => internal.match(compiled.get(self)!, path))
+} = dual(2, (self: Glob, path: string): boolean => internal.match((self as GlobImpl).compiled, path))
 
 /**
  * Escapes glob syntax so a string matches only itself.

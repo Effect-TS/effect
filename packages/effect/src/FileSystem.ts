@@ -142,8 +142,7 @@ export interface FileSystem {
    * `/`-separated paths relative to `root` (or absolute for an absolute
    * pattern), visited depth-first with each directory's entries sorted by
    * name. `**` does not traverse symbolic links to directories, but a link
-   * named by another segment is followed, and `.` or `..` segments after a
-   * `**` match nothing. Paths that match an `exclude`
+   * named by another segment is followed. Paths that match an `exclude`
    * pattern are dropped, and excluded directories are not read. Directories
    * that are missing or unreadable are treated as empty, and entries whose
    * type cannot be determined, such as broken links, are treated as files.
