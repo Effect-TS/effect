@@ -952,7 +952,6 @@ class Parser {
   private line = 1
   private lineStart = 0
   private counted = 0
-  private afterCR = false
 
   private state = PROLOG
   private readonly stack: Array<string> = []
@@ -1017,11 +1016,11 @@ class Parser {
   }
 
   // Advances the line count from `counted` to `to`, an index of `s`, which
-  // starts at document offset `base`
+  // starts at document offset `base`. Counting resumes only where parsing
+  // stopped, which is never between a CR and an LF.
   private count(s: string, base: number, to: number): void {
     let i = this.counted - base
     if (i >= to) return
-    if (this.afterCR && s.charCodeAt(i) === LF) this.lineStart = base + ++i
     const cr = s.indexOf("\r", i)
     if (cr === -1 || cr >= to) {
       let lf = s.indexOf("\n", i)
@@ -1041,7 +1040,6 @@ class Parser {
         }
       }
     }
-    this.afterCR = s.charCodeAt(to - 1) === CR
     this.counted = base + to
   }
 
