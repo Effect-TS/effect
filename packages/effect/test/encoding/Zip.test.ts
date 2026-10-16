@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import { type Cause, Effect, Exit, FileSystem, Path, Queue, Stream } from "effect"
 import * as Zip from "effect/encoding/Zip"
+import { runInNewContext } from "node:vm"
 import { deflateRawSync } from "node:zlib"
 
 const textEncoder = new TextEncoder()
@@ -201,6 +202,13 @@ describe("Zip", () => {
           "2107-12-31T23:59:58.000Z",
           "1980-01-01T00:00:00.000Z"
         ])
+      }))
+
+    it.effect("accepts dates from another realm", () =>
+      Effect.gen(function*() {
+        const mtime: Date = runInNewContext(`new Date("2001-02-03T04:05:06Z")`)
+        const [entry] = yield* decode(yield* encode([Zip.file("f", "", { mtime })]))
+        assert.strictEqual(entry.header.mtime.toISOString(), "2001-02-03T04:05:06.000Z")
       }))
 
     it.effect("fails on entries that cannot be written", () =>
