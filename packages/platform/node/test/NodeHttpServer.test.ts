@@ -1393,6 +1393,10 @@ describe("HttpServer", () => {
           yield* rawRequest(port, "GET http://abs.test/x?y=1 HTTP/1.1\r\nHost: other.test"),
           "abs.test /x?y=1 http://abs.test/x?y=1"
         )
+        assert.strictEqual(
+          yield* rawRequest(port, "GET http://abs.test//other.test/x?y=1 HTTP/1.1\r\nHost: other.test"),
+          "abs.test //other.test/x?y=1 http://abs.test//other.test/x?y=1"
+        )
       }))
 
     it.effect("searchParamsParser parses the query", () =>
@@ -1413,11 +1417,11 @@ describe("HttpServer", () => {
 const tlsCert = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/cert.pem", import.meta.url)))
 const tlsKey = Fs.readFileSync(fileURLToPath(new URL("./fixtures/tls/key.pem", import.meta.url)))
 
-// Serves `GET /x`, answering with the request's host header, url and `toURL`.
+// Answers GET requests with the request's host header, url and `toURL`.
 const serveUrlEcho = Effect.fnUntraced(function*(server: Http.Server) {
   yield* HttpRouter.add(
     "GET",
-    "/x",
+    "*",
     HttpServerRequest.HttpServerRequest.use((request) =>
       Effect.succeed(HttpServerResponse.text(
         `${request.headers.host} ${request.url} ${Option.getOrThrow(HttpServerRequest.toURL(request)).href}`
