@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Cause, Deferred, Duration, Effect, Exit, Fiber, Scope } from "effect"
 import { TestClock } from "effect/testing"
 
@@ -112,6 +112,89 @@ describe("Scope", () => {
   })
 
   describe("overlapping close", () => {
+    it.effect("parallel finalizers can close their own scope", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe("parallel")
+        const events: Array<string> = []
+        for (const name of ["first", "second"]) {
+          yield* Scope.addFinalizer(
+            scope,
+            Scope.close(scope, Exit.void).pipe(Effect.andThen(Effect.sync(() => events.push(name))))
+          )
+        }
+        yield* Scope.close(scope, Exit.void)
+        assert.deepStrictEqual(events.sort(), ["first", "second"])
+      }))
+
+    it.effect("interrupting a waiting close leaves finalization running for later callers", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const events: Array<string> = []
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(release)
+            events.push("finalized")
+          })
+        )
+
+        const first = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+        yield* Deferred.await(started)
+        const waiting = yield* Effect.forkChild(Scope.close(scope, Exit.void), { startImmediately: true })
+        assert.isUndefined(waiting.pollUnsafe())
+        yield* Fiber.interrupt(waiting)
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(waiting)))
+        assert.isUndefined(first.pollUnsafe())
+        assert.deepStrictEqual(events, [])
+
+        const later = yield* Effect.forkChild(
+          Scope.close(scope, Exit.void).pipe(Effect.andThen(Effect.sync(() => events.push("later close done")))),
+          { startImmediately: true }
+        )
+        assert.isUndefined(later.pollUnsafe())
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(first)
+        yield* Fiber.join(later)
+        assert.deepStrictEqual(events, ["finalized", "later close done"])
+      }))
+
+    it.effect("a second closeUnsafe returns an effect that waits for in-progress finalizers", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        const started = yield* Deferred.make<void>()
+        const release = yield* Deferred.make<void>()
+        const events: Array<string> = []
+        yield* Scope.addFinalizer(
+          scope,
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, undefined)
+            yield* Deferred.await(release)
+            events.push("finalized")
+          })
+        )
+
+        const finalizers = Scope.closeUnsafe(scope, Exit.void)
+        assert.isDefined(finalizers)
+        if (finalizers === undefined) throw new Error("expected finalizers")
+        const first = yield* Effect.forkChild(Effect.uninterruptible(finalizers), { startImmediately: true })
+        yield* Deferred.await(started)
+        const wait = Scope.closeUnsafe(scope, Exit.void)
+        assert.isDefined(wait)
+        if (wait === undefined) throw new Error("expected a waiting effect")
+        const second = yield* Effect.forkChild(
+          wait.pipe(Effect.andThen(Effect.sync(() => events.push("second close done")))),
+          { startImmediately: true }
+        )
+        assert.isUndefined(second.pollUnsafe())
+        yield* Deferred.succeed(release, undefined)
+        yield* Fiber.join(first)
+        yield* Fiber.join(second)
+        assert.deepStrictEqual(events, ["finalized", "second close done"])
+      }))
+
     it.effect("a second close waits for in-progress finalizers", () =>
       Effect.gen(function*() {
         const scope = Scope.makeUnsafe()
