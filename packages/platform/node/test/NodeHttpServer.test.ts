@@ -1371,6 +1371,48 @@ describe("HttpServer", () => {
       assert.match(response, /^HTTP\/1\.1 426/)
       assert.match(response, /upgrade refused/)
     }).pipe(Effect.provide(layerTestWebsocket)))
+
+  it.effect("switches other protocols to the raw connection", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "POST",
+        "/attach",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* Effect.orDie(request.upgrade)
+          const reader = yield* socket.reader
+          const writer = yield* socket.writer
+          const decoder = new TextDecoder()
+          let received = ""
+          while (true) {
+            const chunks = yield* reader.pull.pipe(
+              Effect.catchReason("SocketError", "SocketCloseError", () => Effect.succeed(undefined))
+            )
+            if (chunks === undefined) break
+            for (const chunk of chunks) received += typeof chunk === "string" ? chunk : decoder.decode(chunk)
+          }
+          // the client half-closed, but the connection stays writable
+          yield* writer.write(`echo:${received}`)
+          return HttpServerResponse.empty()
+        }).pipe(Effect.scoped)
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as NetAddress.InetAddress).port
+      // The bytes after the request head arrive with it, before the 101.
+      const response = yield* Effect.promise(() =>
+        rawExchange(
+          port,
+          "POST /attach HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\nearly"
+        )
+      )
+      assert.strictEqual(
+        response,
+        "HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\necho:early"
+      )
+    }).pipe(Effect.provide(layerTestWebsocket)))
 })
 
 const layerTestWebsocket = HttpServer.layerTestClient.pipe(
@@ -1502,6 +1544,26 @@ const rawWebSocket = (
     socket.on("close", () => {
       clearTimeout(timer)
       resolve(parseWebSocketFrames(stream))
+    })
+  })
+
+// Writes `input`, half-closes, and resolves with everything the server sent.
+const rawExchange = (port: number, input: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const socket = Net.createConnection({ host: "127.0.0.1", port })
+    const timer = setTimeout(() => {
+      socket.destroy()
+      reject(new Error("the exchange did not finish in time"))
+    }, 5000)
+    let stream = Buffer.Buffer.alloc(0)
+    socket.on("connect", () => socket.end(input))
+    socket.on("data", (data) => {
+      stream = Buffer.Buffer.concat([stream, Buffer.Buffer.from(data)])
+    })
+    socket.on("error", constVoid)
+    socket.on("close", () => {
+      clearTimeout(timer)
+      resolve(stream.toString())
     })
   })
 

@@ -72,8 +72,11 @@ export const TypeId = "~effect/http/HttpServerRequest"
  * **Details**
  *
  * It extends `HttpIncomingMessage` with request metadata, parsed cookies,
- * multipart accessors, WebSocket upgrade support, and a `modify` method for
- * creating adjusted request views.
+ * multipart accessors, connection upgrades, and a `modify` method for
+ * creating adjusted request views. `upgrade` completes a WebSocket handshake
+ * for `Upgrade: websocket`. Platforms that can hand over the connection, such
+ * as Node, answer other protocols with `101 Switching Protocols` and expose
+ * the raw connection.
  *
  * @stability unstable
  * @category models
