@@ -3,6 +3,46 @@ import { Effect, Schema } from "effect"
 import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 
 describe("Hydration", () => {
+  it.each(["invalid", "skipped"] as const)(
+    "computes derived atoms on the client after %s streamed hydration",
+    async (kind) => {
+      const { promise, resolve } = Promise.withResolvers<number>()
+      const serverAtom = Atom.make(Effect.promise(() => promise)).pipe(
+        Atom.serializable({
+          key: "count",
+          schema: AsyncResult.Schema({ success: kind === "invalid" ? Schema.Number : Schema.Int })
+        })
+      )
+      const clientAtom = Atom.make(Effect.succeed(0)).pipe(
+        Atom.mapResult((n) => n + 1),
+        Atom.serializable({ key: "count", schema: AsyncResult.Schema({ success: Schema.Int }) })
+      )
+      const server = AtomRegistry.make()
+      const client = AtomRegistry.make()
+      try {
+        server.mount(serverAtom)
+        const state = Hydration.toValues(Hydration.dehydrate(server, { encodeInitialAs: "promise" }))
+        assert.strictEqual(state.length, 1)
+        assert(state[0].resultPromise !== undefined)
+        Hydration.hydrate(client, state)
+        client.mount(clientAtom)
+        assert.deepStrictEqual(client.get(clientAtom), AsyncResult.initial(true))
+
+        resolve(0.5)
+        await state[0].resultPromise
+        await Effect.runPromise(Effect.yieldNow)
+
+        const result = client.get(clientAtom)
+        assert(AsyncResult.isSuccess(result), `Expected client Success(1), got ${JSON.stringify(result)}`)
+        assert.strictEqual(result.value, 1)
+        assert.strictEqual(result.waiting, false)
+      } finally {
+        server.dispose()
+        client.dispose()
+      }
+    }
+  )
+
   it("falls back to the client value on the first read of invalid immediate hydration", () => {
     const user = Atom.make({ name: "default", email: "" }).pipe(
       Atom.serializable({
