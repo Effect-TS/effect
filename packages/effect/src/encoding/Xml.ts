@@ -1302,17 +1302,13 @@ class Parser {
   }
 
   private attributeValue(s: string, i: number, j: number): string {
+    let decode = false
     for (let k = i; k < j; k++) {
       const c = s.charCodeAt(k)
       if (c === LT) throw this.syntax("\"<\" is not allowed in attribute values", k)
-      if (c === AMPERSAND || c === TAB || c === LF || c === CR) {
-        for (let l = k + 1; l < j; l++) {
-          if (s.charCodeAt(l) === LT) throw this.syntax("\"<\" is not allowed in attribute values", l)
-        }
-        return this.decodeText(s.slice(i, j), i, true)
-      }
+      if (c === AMPERSAND || c === TAB || c === LF || c === CR) decode = true
     }
-    return s.slice(i, j)
+    return decode ? this.decodeText(s.slice(i, j), i, true) : s.slice(i, j)
   }
 
   private endTag(s: string, i: number): number {
