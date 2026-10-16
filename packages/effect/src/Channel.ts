@@ -6862,8 +6862,10 @@ export const splitLines = <Err, Done>(): Channel<
  * **Details**
  *
  * Input chunks are decoded with streaming enabled so multi-byte characters may
- * span `Uint8Array` boundaries. The optional `encoding` and `options` are
- * passed to `TextDecoder`.
+ * span `Uint8Array` boundaries. When the input ends partway through a
+ * character, the remaining bytes are decoded as one more string, so they
+ * become U+FFFD or, with `fatal`, an error. The optional `encoding` and
+ * `options` are passed to `TextDecoder`.
  *
  * @stability stable
  * @category decoding
@@ -6884,7 +6886,23 @@ export const decodeText = <Err, Done>(
     Effect.sync(() => {
       const decoder = new TextDecoder(encoding, options)
       const streamOptions = { stream: true }
-      return Effect.map(upstream, Arr.map((line) => decoder.decode(line, streamOptions)))
+      let done: Option.Option<Done> = Option.none()
+      const pull: Pull.Pull<Arr.NonEmptyReadonlyArray<string>, Err, Done> = Effect.suspend(() => {
+        if (done._tag === "Some") {
+          return Cause.done(done.value)
+        }
+        return Pull.matchEffect(upstream, {
+          onSuccess: (chunk) => Effect.succeed(Arr.map(chunk, (bytes) => decoder.decode(bytes, streamOptions))),
+          onFailure: Effect.failCause,
+          onDone: (leftover) => {
+            done = Option.some(leftover)
+            // Decode bytes held back for an incomplete character at the end.
+            const last = decoder.decode()
+            return last.length > 0 ? Effect.succeed(Arr.of(last)) : Cause.done(leftover)
+          }
+        })
+      })
+      return pull
     })
   )
 
