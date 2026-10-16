@@ -1,0 +1,6 @@
+version: v2
+plugins:
+  - local: ["node", "../../../src/bin.ts"]
+    out: gen-effect
+    opt:
+      - import_extension=ts

@@ -1,0 +1,42 @@
+{
+  "name": "@effect/protobuf",
+  "type": "module",
+  "version": "4.0.5",
+  "private": true,
+  "license": "MIT",
+  "description": "PROTOTYPE: Protocol Buffers and Connect RPC integration for Effect Schema",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/protobuf"
+  },
+  "sideEffects": [],
+  "bin": {
+    "protoc-gen-effect": "./src/bin.ts"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null,
+    "./index": null,
+    "./*/index": null
+  },
+  "scripts": {
+    "check": "tsc -b tsconfig.json",
+    "demo": "node examples/demo.ts",
+    "generate:fixtures": "cd test/fixtures && ../../node_modules/.bin/buf generate --template buf.gen.es.yaml && ../../node_modules/.bin/buf generate --template buf.gen.effect.yaml"
+  },
+  "peerDependencies": {
+    "effect": "workspace:^"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.74.0",
+    "@bufbuild/protobuf": "2.16.0",
+    "@bufbuild/protoc-gen-es": "2.16.0",
+    "@connectrpc/connect": "2.2.0",
+    "@connectrpc/connect-node": "2.2.0",
+    "@effect/platform-node": "workspace:^",
+    "effect": "workspace:^"
+  }
+}

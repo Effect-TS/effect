@@ -1,0 +1,54 @@
+// Covers proto2, cross-file references, and naming edge cases.
+syntax = "proto2";
+
+package acme.legacy.v1;
+
+import "acme/common/v1/common.proto";
+
+message Order {
+  enum Status {
+    STATUS_NEW = 1;
+    STATUS_DONE = 2;
+  }
+
+  // Mutually recursive with Order.
+  message Item {
+    optional string sku = 1;
+    repeated Item children = 2;
+    optional Order order = 3;
+    map<int32, Item> by_index = 4;
+  }
+
+  required string id = 1;
+  optional int32 quantity = 2 [default = 1];
+  repeated int32 unpacked = 3;
+  repeated sint64 packed = 4 [packed = true];
+  optional acme.common.v1.Money price = 5;
+  optional acme.common.v1.Level level = 6;
+  optional string display_name = 7 [json_name = "title"];
+  optional string field_1 = 8;
+  map<int64, string> notes = 9;
+  map<bool, acme.common.v1.Money> by_flag = 10;
+  // How the order is paid.
+  oneof payment {
+    string card_token = 11;
+  }
+  repeated Item items = 12;
+  optional Status status = 13;
+  optional string old = 14 [deprecated = true];
+}
+
+// Clashes with a global name.
+message Object {
+  option deprecated = true;
+
+  optional string class = 1;
+}
+
+service OrderService {
+  rpc Get(Order) returns (Order) {
+    option deprecated = true;
+  }
+  rpc Upload(stream Order) returns (acme.common.v1.Money);
+  rpc Chat(stream Order) returns (stream Order);
+}

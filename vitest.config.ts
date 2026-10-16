@@ -133,6 +133,7 @@ export default defineConfig({
         }
       }),
       ...project("@effect/opentelemetry", "packages/opentelemetry"),
+      ...project("@effect/protobuf", "packages/protobuf"),
       ...project("@effect/platform-browser", "packages/platform/browser", true, {
         test: {
           environment: "happy-dom",

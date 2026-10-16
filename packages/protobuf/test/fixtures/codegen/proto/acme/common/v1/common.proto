@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package acme.common.v1;
+
+// A money amount.
+message Money {
+  string currency_code = 1;
+  // Whole units.
+  int64 units = 2 [jstype = JS_NUMBER];
+}
+
+enum Level {
+  LEVEL_UNSPECIFIED = 0;
+  LEVEL_LOW = 1;
+  // Use LEVEL_LOW.
+  LEVEL_OLD = 2 [deprecated = true];
+}

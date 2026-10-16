@@ -49,6 +49,8 @@
       "@effect/atom-solid/*": ["./packages/atom/solid/src/*.ts"],
       "@effect/opentelemetry": ["./packages/opentelemetry/src/index.ts"],
       "@effect/opentelemetry/*": ["./packages/opentelemetry/src/*.ts"],
+      "@effect/protobuf": ["./packages/protobuf/src/index.ts"],
+      "@effect/protobuf/*": ["./packages/protobuf/src/*.ts"],
       "@effect/platform-browser": ["./packages/platform/browser/src/index.ts"],
       "@effect/platform-browser/*": ["./packages/platform/browser/src/*.ts"],
       "@effect/platform-bun": ["./packages/platform/bun/src/index.ts"],

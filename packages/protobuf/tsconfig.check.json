@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.tests.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": "../..",
+    "typeRoots": [
+      "../../node_modules/@types"
+    ]
+  },
+  "references": [],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ]
+}
