@@ -53,33 +53,36 @@ export function toStandardSchemaV1<S extends Schema.ConstraintDecoder<unknown>>(
       })
     })
   }
-  // Preserve class construction and statics as well as ordinary schema members,
-  // without attaching per-call validation options to the original schema.
-  const out = typeof self === "function" ? preserveClassReceiver(self) : Object.create(self)
-  return Object.defineProperty(out, "~standard", {
-    value: {
-      version: 1,
-      vendor: "effect",
-      // Inherited adapters may describe a parent class rather than this schema.
-      ...(Object.hasOwn(self, "~standard") ? (self as any)["~standard"] : undefined),
-      validate
-    },
-    writable: true,
-    enumerable: true,
-    configurable: true
-  })
+  return attach(self, { validate })
 }
 
-function preserveClassReceiver(self: any): any {
-  const methods = new WeakMap<object, unknown>()
+// Returns a fresh wrapper around `self` that owns its `~standard` object, so
+// per-call options never land on the shared schema. An adapter `self` already
+// owns is kept, letting the two converters compose in either order.
+function attach(self: any, members: object): any {
+  const standard = {
+    version: 1,
+    vendor: "effect",
+    // Only an own adapter describes `self`; an inherited one describes a parent class.
+    ...(Object.hasOwn(self, "~standard") ? self["~standard"] : undefined),
+    ...members
+  }
+  const out = typeof self === "function" ? extend(self) : Object.create(self)
+  return Object.assign(out, { "~standard": standard })
+}
+
+// Subclassing keeps `new` and the statics, but statics touching private state
+// need the original class as receiver. `pipe` is the exception: a pipeline must
+// receive the wrapper or the adapter is lost.
+function extend(self: any): any {
+  const bound = new WeakMap<Function, Function>()
   return new Proxy(class extends self {}, {
     get(target, key, receiver) {
-      // Metadata and pipelines belong to the wrapper; other statics belong to self.
       if (key === "pipe" || Object.hasOwn(target, key)) return Reflect.get(target, key, receiver)
       const value = Reflect.get(self, key, self)
       if (typeof value !== "function") return value
-      if (!methods.has(value)) methods.set(value, value.bind(self))
-      return methods.get(value)
+      if (!bound.has(value)) bound.set(value, value.bind(self))
+      return bound.get(value)
     }
   })
 }
@@ -117,25 +120,14 @@ function toBaseStandardJSONSchemaV1(
 export function toStandardJSONSchemaV1<S extends Schema.Constraint>(
   self: S
 ): StandardJSONSchemaV1<S["Encoded"], S["Type"]> & S {
-  const jsonSchema: StandardJSONSchemaV1.Props<S["Encoded"], S["Type"]>["jsonSchema"] = {
-    input(options) {
-      return toBaseStandardJSONSchemaV1(self.ast, options.target)
-    },
-    output(options) {
-      return toBaseStandardJSONSchemaV1(SchemaAST.toType(self.ast), options.target)
-    }
-  }
-  if (Object.hasOwn(self, "~standard")) {
-    const out = self as any
-    if ("jsonSchema" in out["~standard"]) return out
-    Object.assign(out["~standard"], { jsonSchema })
-    return out
-  }
-  return Object.assign(self, {
-    "~standard": {
-      version: 1,
-      vendor: "effect",
-      jsonSchema
-    } as const
+  return attach(self, {
+    jsonSchema: {
+      input(options) {
+        return toBaseStandardJSONSchemaV1(self.ast, options.target)
+      },
+      output(options) {
+        return toBaseStandardJSONSchemaV1(SchemaAST.toType(self.ast), options.target)
+      }
+    } satisfies StandardJSONSchemaV1.Props<S["Encoded"], S["Type"]>["jsonSchema"]
   })
 }
