@@ -1001,7 +1001,7 @@ export const fromOption: <
     (args) => args.length >= 2 || Option.isOption(args[0]),
     <A, E>(option: Option.Option<A>, onNone?: LazyArg<E>): Effect.Effect<A, Cause.NoSuchElementError | E> =>
       Option.isNone(option)
-        ? fail(onNone ? onNone() : new NoSuchElementError("Effect.fromOption: Option.none"))
+        ? onNone ? failSync(onNone) : fail(new NoSuchElementError("Effect.fromOption: Option.none"))
         : succeed(option.value)
   )
 
