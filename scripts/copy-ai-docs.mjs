@@ -8,7 +8,7 @@ const packageFiles = ["AGENTS.md", "CLAUDE.md", "ai-docs/**/*"]
 
 const includeAiDocs = (source) => {
   const [root] = Path.relative(aiDocsSource, source).split(Path.sep)
-  return root !== "dist" && root !== "node_modules"
+  return root !== "dist" && root !== "node_modules" && root !== "test"
 }
 
 for (const packageJsonPath of Glob.globSync("packages/{*,*/*}/package.json")) {
