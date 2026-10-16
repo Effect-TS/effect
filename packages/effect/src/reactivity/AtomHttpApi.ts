@@ -115,16 +115,14 @@ export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpA
         infer _R,
         infer _RE
       >
-    ] ? Simplify<
-        HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, ResponseMode> & {
-          readonly reactivityKeys?:
-            | ReadonlyArray<unknown>
-            | ReadonlyRecord<string, ReadonlyArray<unknown>>
-            | undefined
-          readonly timeToLive?: Duration.Input | undefined
-          readonly serializationKey?: string | undefined
-        }
-      >
+    ] ? HttpApiEndpoint.ClientRequest<_Params, _Query, _Payload, _Headers, ResponseMode> & {
+        readonly reactivityKeys?:
+          | ReadonlyArray<unknown>
+          | ReadonlyRecord<string, ReadonlyArray<unknown>>
+          | undefined
+        readonly timeToLive?: Duration.Input | undefined
+        readonly serializationKey?: string | undefined
+      }
       : never
   ) => [Endpoint] extends [
     HttpApiEndpoint.HttpApiEndpoint<
