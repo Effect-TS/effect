@@ -57,12 +57,25 @@ describe("TextDiff", () => {
       ])
     })
 
-    it("stays valid when maxCost is exceeded", () => {
-      const before = Array.from({ length: 50_000 }, (_, i) => i)
-      const after = before.map((i) => (i % 2 === 0 ? -i - 1 : i))
-      const edits = TextDiff.diff(before, after, { maxCost: 10_000 })
-      deepStrictEqual(TextDiff.apply(before, edits), after)
-      assertTrue(isCanonical(edits))
+    it("compares at most maxCost times and stays valid", () => {
+      let calls = 0
+      const diffCounted = TextDiff.diffWith<number>((a, b) => {
+        calls++
+        return a === b
+      })
+      const middle = Array.from({ length: 100_000 }, () => 1)
+      const interleaved = Array.from({ length: 50_000 }, (_, i) => i)
+      const cases: ReadonlyArray<readonly [ReadonlyArray<number>, ReadonlyArray<number>, number]> = [
+        [[0, ...middle, 3], [2, ...middle, 4], 10],
+        [interleaved, interleaved.map((i) => (i % 2 === 0 ? -i - 1 : i)), 10_000]
+      ]
+      for (const [before, after, maxCost] of cases) {
+        calls = 0
+        const edits = diffCounted(before, after, { maxCost })
+        assertTrue(calls <= maxCost)
+        deepStrictEqual(TextDiff.apply(before, edits), after)
+        assertTrue(isCanonical(edits))
+      }
     })
   })
 

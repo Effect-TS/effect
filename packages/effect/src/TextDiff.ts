@@ -75,10 +75,11 @@ export interface EditDelete<A> {
  */
 export interface DiffOptions {
   /**
-   * Upper bound on the search work, counted in item comparisons and search
-   * steps. When it is exhausted, unresolved regions are emitted as a deletion
-   * followed by an insertion, so the script stays valid but may not be
-   * minimal.
+   * Upper bound on the work, counted in item comparisons and search steps,
+   * so items are compared at most `maxCost` times. When it is exhausted,
+   * unresolved regions, including any common prefix or suffix not yet
+   * trimmed, are emitted as a deletion followed by an insertion, so the script
+   * stays valid but may not be minimal.
    *
    * @default Infinity
    */
@@ -558,7 +559,20 @@ const matchingBlocks = (
   const offset = n + m + 1
   const vf = new Int32Array(2 * offset + 1)
   const vb = new Int32Array(2 * offset + 1)
+  // Each comparison and search step spends one unit of the budget. Once it is
+  // spent nothing matches and searches give up, so `equals` runs at most
+  // `maxCost` times
   let budget = maxCost
+  let exhausted = false
+  const spend = (): boolean => {
+    if (budget >= 1) {
+      budget--
+      return true
+    }
+    exhausted = true
+    return false
+  }
+  const matches = (i: number, j: number): boolean => spend() && equals(i, j)
 
   // Sets `snake` to [x, y, u, v] in absolute coordinates, or returns false when
   // the budget runs out
@@ -573,17 +587,18 @@ const matchingBlocks = (
     vb[offset + 1] = 0
     for (let d = 0; d <= maxD; d++) {
       for (let k = -d; k <= d; k += 2) {
+        if (!spend()) return false
         let x = k === -d || (k !== d && vf[offset + k - 1] < vf[offset + k + 1])
           ? vf[offset + k + 1]
           : vf[offset + k - 1] + 1
         let y = x - k
         const x0 = x
         const y0 = y
-        while (x < N && y < M && equals(aLo + x, bLo + y)) {
+        while (x < N && y < M && matches(aLo + x, bLo + y)) {
           x++
           y++
         }
-        budget -= x - x0 + 1
+        if (exhausted) return false
         vf[offset + k] = x
         if (odd && k >= delta - (d - 1) && k <= delta + (d - 1) && x + vb[offset + delta - k] >= N) {
           snake[0] = aLo + x0
@@ -594,17 +609,18 @@ const matchingBlocks = (
         }
       }
       for (let k = -d; k <= d; k += 2) {
+        if (!spend()) return false
         let x = k === -d || (k !== d && vb[offset + k - 1] < vb[offset + k + 1])
           ? vb[offset + k + 1]
           : vb[offset + k - 1] + 1
         let y = x - k
         const x0 = x
         const y0 = y
-        while (x < N && y < M && equals(aHi - x - 1, bHi - y - 1)) {
+        while (x < N && y < M && matches(aHi - x - 1, bHi - y - 1)) {
           x++
           y++
         }
-        budget -= x - x0 + 1
+        if (exhausted) return false
         vb[offset + k] = x
         if (!odd && k >= delta - d && k <= delta + d && x + vf[offset + delta - k] >= N) {
           snake[0] = aHi - x
@@ -614,7 +630,6 @@ const matchingBlocks = (
           return true
         }
       }
-      if (budget < 0) return false
     }
     // Unreachable: an optimal path has at most N + M edits
     return false
@@ -622,18 +637,18 @@ const matchingBlocks = (
 
   const compare = (aLo: number, aHi: number, bLo: number, bHi: number): void => {
     const prefixStart = aLo
-    while (aLo < aHi && bLo < bHi && equals(aLo, bLo)) {
+    while (aLo < aHi && bLo < bHi && matches(aLo, bLo)) {
       aLo++
       bLo++
     }
     push(prefixStart, bLo - (aLo - prefixStart), aLo - prefixStart)
     let suffix = 0
-    while (aLo < aHi - suffix && bLo < bHi - suffix && equals(aHi - suffix - 1, bHi - suffix - 1)) suffix++
+    while (aLo < aHi - suffix && bLo < bHi - suffix && matches(aHi - suffix - 1, bHi - suffix - 1)) suffix++
     aHi -= suffix
     bHi -= suffix
     // With a common prefix and suffix removed, a non-empty side on both ends
     // means at least two edits, so both halves below are strictly smaller
-    if (aLo < aHi && bLo < bHi && budget >= 0 && middleSnake(aLo, aHi, bLo, bHi)) {
+    if (aLo < aHi && bLo < bHi && !exhausted && middleSnake(aLo, aHi, bLo, bHi)) {
       const [x, y, u, v] = snake
       compare(aLo, x, bLo, y)
       push(x, y, u - x)
