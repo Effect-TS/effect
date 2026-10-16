@@ -290,6 +290,9 @@ describe("Xml", () => {
         const groups = "<!DOCTYPE a [<!ELEMENT a (b,(c|d)*)>]><a/>"
         assert.strictEqual((yield* decodeString([groups], { maxDepth: 2 })).length, 3)
         assert.deepStrictEqual(yield* failure(decodeString([groups], { maxDepth: 1 })), ["Limit", 1, 30])
+        // Without a limit, groups nested deeper than the call stack allows are still checked
+        const deepGroups = `<!DOCTYPE a [<!ELEMENT a ${"(".repeat(100_000)}b${")".repeat(100_000)}>]><a/>`
+        assert.strictEqual((yield* decodeString([deepGroups], { maxDepth: Infinity })).length, 3)
         // The defaults are 10 MiB tokens and 1024 nested elements
         assert.deepStrictEqual(yield* failure(decodeString(["<a>".repeat(1025)])), ["Limit", 1, 3073])
         const large = "x".repeat(10 * 1024 * 1024 + 1)
