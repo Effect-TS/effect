@@ -30,6 +30,7 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import * as Queue from "effect/Queue"
 import type * as Schema from "effect/Schema"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 
 // =============================================================================
@@ -131,9 +132,22 @@ export class XMLHttpRequest extends Context.Service<
 
 const makeXhrRequest = () => new globalThis.XMLHttpRequest()
 
+const upgradeNotSupported = (request: HttpClientRequest.HttpClientRequest) =>
+  new HttpClientError.HttpClientError({
+    reason: new HttpClientError.UpgradeNotSupportedError({
+      request,
+      description: "XMLHttpRequest cannot perform an HTTP upgrade"
+    })
+  })
+
 const makeXmlHttpRequest = HttpClient.make(
   (request, url, signal, fiber) =>
     Effect.suspend(() => {
+      if (request.headers.upgrade !== undefined) {
+        // XMLHttpRequest drops the `Upgrade` header, so the request would not
+        // reach the server as written.
+        return Effect.fail(upgradeNotSupported(request))
+      }
       const xhr = Context.getOrElse(
         fiber.context,
         XMLHttpRequest,
@@ -426,6 +440,10 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
         try: () => new globalThis.Response(body, { headers: this.headers }).formData(),
         catch: this.onError
       }))
+  }
+
+  get upgrade(): Effect.Effect<Socket.Socket, HttpClientError.HttpClientError> {
+    return Effect.fail(upgradeNotSupported(this.request))
   }
 
   override toString(): string {

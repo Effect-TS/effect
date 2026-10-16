@@ -1922,6 +1922,10 @@ class InterruptibleResponse implements HttpClientResponse.HttpClientResponse, Pi
     return this.applyInterrupt(this.original.arrayBuffer)
   }
 
+  get upgrade() {
+    return this.applyInterrupt(this.original.upgrade)
+  }
+
   get stream() {
     return Stream.suspend(() => {
       responseRegistry.unregister(this.original)
