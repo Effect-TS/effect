@@ -344,9 +344,8 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   work on untrusted archives, check `size`, count the bytes of bodies
  *   without one, and end the stream at an entry that is too large rather than
  *   skip it.
- * - A `Checksum` or `SizeMismatch` `ZipError` raised when a body ends leaves
- *   the decoder at the next entry if the data ended at its recorded compressed
- *   size; other errors end the archive.
+ * - Every `ZipError` ends the archive: later entry and body reads fail with
+ *   the same error.
  * - The channel completes only when its input ends: input after the central
  *   directory is read and discarded, so that the upstream done value can be
  *   passed on.
@@ -843,14 +842,12 @@ interface EntryRecord {
   size: number
 }
 
+// An entry whose data is being written; `record` counts its bytes
 interface Streaming {
   readonly header: Header
   readonly record: EntryRecord
   readonly zip64: boolean
   readonly descriptor: boolean
-  crc: number
-  size: number
-  compressedSize: number
 }
 
 const timestampLength = (record: EntryRecord): number => record.seconds === undefined ? 0 : 9
@@ -1053,40 +1050,40 @@ class Writer {
     }
     const zip64 = size !== undefined && size >= MAX32
     this.push(localHeader(record, zip64))
-    this.current = { header, record, zip64, descriptor, crc: 0, size: 0, compressedSize: 0 }
+    record.size = 0
+    record.compressedSize = 0
+    this.current = { header, record, zip64, descriptor }
   }
 
   // Accounts for uncompressed body bytes
   update(chunks: ReadonlyArray<Uint8Array>): void {
-    const current = this.current!
+    const { record } = this.current!
     for (const chunk of chunks) {
-      current.crc = crc32(current.crc, chunk)
-      current.size += chunk.length
+      record.crc = crc32(record.crc, chunk)
+      record.size += chunk.length
     }
   }
 
   // Writes stored or compressed body bytes
   data(chunks: ReadonlyArray<Uint8Array>): void {
-    const current = this.current!
+    const { header, record } = this.current!
     for (const chunk of chunks) {
       this.push(chunk)
-      current.compressedSize += chunk.length
+      record.compressedSize += chunk.length
     }
-    const { header } = current
-    if (header.type === "Directory" && current.size > 0) throw sizeMismatch(header.path, current.size, 0)
-    if (header.size !== undefined && current.size > header.size) {
-      throw sizeMismatch(header.path, current.size, header.size)
-    }
+    const size = header.type === "Directory" ? 0 : header.size
+    if (size !== undefined && record.size > size) throw sizeMismatch(header.path, record.size, size)
   }
 
   end(): void {
-    const { compressedSize, crc, descriptor, header, record, size, zip64 } = this.current!
+    const { descriptor, header, record, zip64 } = this.current!
     this.current = undefined
-    if (header.size !== undefined && size !== header.size) throw sizeMismatch(header.path, size, header.size)
-    record.crc = crc
-    record.size = size
-    record.compressedSize = compressedSize
-    if (descriptor) this.push(dataDescriptor(record, zip64 || size >= MAX32 || compressedSize >= MAX32))
+    if (header.size !== undefined && record.size !== header.size) {
+      throw sizeMismatch(header.path, record.size, header.size)
+    }
+    if (descriptor) {
+      this.push(dataDescriptor(record, zip64 || record.size >= MAX32 || record.compressedSize >= MAX32))
+    }
     this.records.push(record)
   }
 
@@ -1257,11 +1254,8 @@ class Decoder {
   generation = 0
   private current: Current | undefined
   private inflateMemory: InflateMemory | undefined
-  // An error after which entry boundaries are lost, repeated by every call
+  // The error that ended the archive, repeated by every later call
   private failure: ZipError | undefined
-  // Set when an entry fails its checks but its data ended at its compressed
-  // size, so the next entry can still be read
-  private recoverable = false
 
   push(chunk: Uint8Array): void {
     if (!this.finished) this.queue.push(chunk)
@@ -1284,14 +1278,12 @@ class Decoder {
     return this.guard(() => this.advance())
   }
 
-  // Remembers errors that leave the decoder without entry boundaries
   private guard<A>(f: () => A): A {
     if (this.failure !== undefined) throw this.failure
     try {
       return f()
     } catch (error) {
-      if (isZipError(error) && !this.recoverable) this.failure = error
-      this.recoverable = false
+      if (isZipError(error)) this.failure = error
       throw error
     }
   }
@@ -1390,10 +1382,6 @@ class Decoder {
       return
     }
     const path = JSON.stringify(current.header.path)
-    this.current = undefined
-    // Corrupt data can end elsewhere, where the next entry would be read from
-    // the content of this one
-    this.recoverable = current.actualCompressedSize === compressedSize
     if (current.actualCrc !== crc) {
       throw new ZipError({
         kind: "Checksum",
@@ -1564,102 +1552,24 @@ const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
 const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
 
-const LENGTH_BASE = [
-  3,
-  4,
-  5,
-  6,
-  7,
-  8,
-  9,
-  10,
-  11,
-  13,
-  15,
-  17,
-  19,
-  23,
-  27,
-  31,
-  35,
-  43,
-  51,
-  59,
-  67,
-  83,
-  99,
-  115,
-  131,
-  163,
-  195,
-  227,
-  258
-]
-const LENGTH_EXTRA = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0]
-const DISTANCE_BASE = [
-  1,
-  2,
-  3,
-  4,
-  5,
-  7,
-  9,
-  13,
-  17,
-  25,
-  33,
-  49,
-  65,
-  97,
-  129,
-  193,
-  257,
-  385,
-  513,
-  769,
-  1025,
-  1537,
-  2049,
-  3073,
-  4097,
-  6145,
-  8193,
-  12289,
-  16385,
-  24577
-]
-const DISTANCE_EXTRA = [
-  0,
-  0,
-  0,
-  0,
-  1,
-  1,
-  2,
-  2,
-  3,
-  3,
-  4,
-  4,
-  5,
-  5,
-  6,
-  6,
-  7,
-  7,
-  8,
-  8,
-  9,
-  9,
-  10,
-  10,
-  11,
-  11,
-  12,
-  12,
-  13,
-  13
-]
+// Extra bits of the length codes 257 to 285 and of the distance codes, and the
+// base values that they are added to (RFC 1951, section 3.2.5)
+const LENGTH_EXTRA = Array.from({ length: 29 }, (_, i) => i < 8 || i === 28 ? 0 : (i >> 2) - 1)
+const DISTANCE_EXTRA = Array.from({ length: 30 }, (_, i) => i < 2 ? 0 : (i >> 1) - 1)
+
+const bases = (first: number, extra: ReadonlyArray<number>): Array<number> => {
+  let base = first
+  return extra.map((bits) => {
+    const value = base
+    base += 1 << bits
+    return value
+  })
+}
+
+// The last length code is 258, not the 259 that its predecessor would give
+const LENGTH_BASE = [...bases(3, LENGTH_EXTRA.slice(0, 28)), 258]
+const DISTANCE_BASE = bases(1, DISTANCE_EXTRA)
+
 const CODE_LENGTH_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
 
 // Codes of up to `bits` bits are found with one lookup in `table`, indexed by
