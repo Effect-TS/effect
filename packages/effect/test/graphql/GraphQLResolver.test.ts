@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Context, Effect, Layer, Ref, Schema } from "effect"
+import { Cause, Context, Effect, Layer, Ref, RequestResolver, Schema } from "effect"
 import { GraphQL, GraphQLClient, GraphQLGroup, GraphQLMiddleware, GraphQLResolver } from "effect/graphql"
 import { GraphQLClientError, type ResponseError } from "effect/graphql/GraphQLClientError"
 import * as GraphQLProtocol from "effect/graphql/GraphQLProtocol"
@@ -266,7 +266,7 @@ describe("GraphQLResolver", () => {
   })
 
   describe("batchKey", () => {
-    it.effect("splits a batch by key and calls each group with its own services", () =>
+    it.effect("applies batchN per key for interleaved lookups and calls each group with its own services", () =>
       Effect.gen(function*() {
         const requests = yield* Ref.make<Array<GraphQLProtocol.GraphQLRequest>>([])
         const layer = protocolLayer({
@@ -279,24 +279,29 @@ describe("GraphQLResolver", () => {
         const client = yield* GraphQLClient.make(GraphQLGroup.make(RepoNodes).middleware(Auth)).pipe(
           Effect.provide([layer, AuthLive])
         )
-        const get = GraphQLResolver.request(GraphQLResolver.ordered(client.RepoNodes, {
-          variables: (ids: ReadonlyArray<string>) => ({ ids }),
-          path: ["nodes"],
-          batchKey: (context) => Context.get(context, CurrentUser).tenant
-        }))
+        const get = GraphQLResolver.request(
+          GraphQLResolver.ordered(client.RepoNodes, {
+            variables: (ids: ReadonlyArray<string>) => ({ ids }),
+            path: ["nodes"],
+            batchKey: (context) => Context.get(context, CurrentUser).tenant
+          }).pipe(RequestResolver.batchN(2))
+        )
         const getAs = (tenant: string, id: string) => Effect.provideService(get(id), CurrentUser, { tenant })
 
-        const results = yield* Effect.all([getAs("a", "R_1"), getAs("b", "R_2"), getAs("a", "R_3")], {
-          concurrency: "unbounded"
-        })
+        const results = yield* Effect.all(
+          [getAs("a", "R_1"), getAs("b", "R_2"), getAs("a", "R_3"), getAs("b", "R_4")],
+          {
+            concurrency: "unbounded"
+          }
+        )
 
-        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3")])
+        assert.deepStrictEqual(results, [repo("R_1"), repo("R_2"), repo("R_3"), repo("R_4")])
         const sent = yield* Ref.get(requests)
         assert.deepStrictEqual(
           sent.map((request) =>
             `${request.headers["authorization"]}: ${[...(request.variables as { ids: Array<string> }).ids].sort()}`
           ).sort(),
-          ["Bearer a: R_1,R_3", "Bearer b: R_2"]
+          ["Bearer a: R_1,R_3", "Bearer b: R_2,R_4"]
         )
       }))
   })
