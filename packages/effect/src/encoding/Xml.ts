@@ -793,7 +793,8 @@ const S_AFTER_SUBSET = 17
 // malformed; the parser then reads the complete token from a single string.
 class Scanner {
   state = S_START
-  // A count of trailing "-", "]" or "?" characters, or an open quote
+  // A count of matched keyword characters or trailing "-", "]" or "?"
+  // characters, or an open quote
   aux = 0
   keyword = ""
 
@@ -1461,7 +1462,7 @@ class Parser {
     const end = scanner.scan(s, i + 9)
     if (end === -1) return -1
     this.checkSize(i, end)
-    // Entity references in the internal subset are unsupported, as in content
+    // Entity references in attribute defaults are unsupported, as in content
     this.doctype = true
     let j = this.space(s, i + 9, end)
     const nameEnd = this.name(s, j, end)
