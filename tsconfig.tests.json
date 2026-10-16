@@ -12,7 +12,8 @@
     "./packages/**/test/**/*.ts",
     "./packages/**/test/**/*.json",
     "./packages/**/typetest/**/*.ts",
-    "./packages/**/benchmark/**/*.ts"
+    "./packages/**/benchmark/**/*.ts",
+    "./packages/*/codegen/**/*.ts"
   ],
   "exclude": ["**/node_modules/**", "**/dist/**", "./packages/platform/deno/**"],
   "compilerOptions": {

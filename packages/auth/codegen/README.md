@@ -10,6 +10,7 @@ From the repository root:
 ```sh
 pnpm --filter @effect/auth codegen:providers
 pnpm --filter @effect/auth codegen:providers:check
+pnpm --filter @effect/auth exec node codegen/bin.ts --help
 ```
 
 Generation is offline. `check` verifies the pinned local inputs and compares the
@@ -17,10 +18,14 @@ three generated modules without writing files. Root `pnpm codegen` also regenera
 them. Output lives under `src/oauth/providers/internal/generated/`, behind the
 package's existing private export boundary.
 
+The Effect CLI runs through `NodeRuntime` with `NodeServices`, `NodeHttpClient`
+and `NodeCrypto` layers for file access, scoped formatter processes, downloads
+and digests. Root `pnpm check` also checks the maintenance command's TypeScript.
+
 ## Updating upstream inputs
 
 `sources.json` records immutable upstream URLs, full-source SHA-256 digests and
-licenses. To reproduce the local excerpts from those sources:
+licenses. To reproduce the local inputs from those sources:
 
 ```sh
 pnpm --filter @effect/auth codegen:providers:import
@@ -28,17 +33,23 @@ pnpm --filter @effect/auth codegen:providers
 ```
 
 Only `import` uses the network. It verifies both full-source digests before
-writing the excerpts and their digests. For an upstream update, review the new
+writing the inputs and their digests. For an upstream update, review the new
 commit, license and full-source digest, change `sources.json`, then run these
-commands. Review the input and output diffs together. Do not edit the excerpts
+commands. Review the input and output diffs together. Do not edit the inputs
 or generated modules by hand.
 
-The importer keeps GitHub's selected `private-user` fields and Linear's selected
-`Query.viewer` / `User` fields. Linear interface metadata and descriptions are
-irrelevant to this concrete query and are omitted. Its operation is authored in
-`src/oauth/providers/internal/generated/linear.graphql`. Selecting fields
-explicitly prevents an upstream addition from silently expanding the public
-profile.
+The importer takes GitHub's complete `private-user` schema, including nested
+fields. The upstream schema is the field inventory; no local allowlist duplicates
+it. Updating the pin makes upstream field additions visible in the generated diff.
+Unknown response fields outside the pinned schema are still omitted at runtime.
+
+For Linear, the complete upstream SDL is a development input. The operation in
+`src/oauth/providers/internal/generated/linear.graphql` is the sole selection of
+fields requested from the API. The GraphQL generator validates it against the pinned schema and
+emits only the types it uses. Keeping the full schema lets query edits work
+without synchronizing a second field list. Neither input ships in the package.
+The local inputs grew from 7,110 to 1,357,440 bytes when the pruned Linear input
+was replaced with its complete schema.
 
 ## Auth policy remains local
 
@@ -59,8 +70,9 @@ retries an authorization-code exchange or exposes raw profile data in errors.
 
 ## Measured result
 
-Compared with the pre-spike commit `0aa7f1ba3cc5d8b19b22ed74392456308dc1a0f4`,
-using the repository's `bundle-compare-selected` workflow and the built
+The initial spike at `93349c3ba45a0b3ee30451e114a35a7da0ef3be9` was compared with
+the pre-spike commit `0aa7f1ba3cc5d8b19b22ed74392456308dc1a0f4`, using the
+repository's `bundle-compare-selected` workflow and the built
 `Client`, `layer`, `make`, and `Profile` exports for each provider:
 
 | Provider | Before (gzip) | After (gzip) | Change            |
@@ -73,17 +85,18 @@ not the incremental cost in an application that already imports Effect. The
 fixtures imported the built provider modules directly because the scratchpad
 workspace does not depend on `@effect/auth`.
 
-The two pinned excerpts total 7,110 bytes. Unminified provider JavaScript plus its
-generated modules grows from 11,263 to 20,831 bytes for GitHub and from 4,469 to
-6,224 bytes for Linear. GitHub's generated checks repeat annotations and bounds;
-Linear adds a generated operation and shared scalar module. Neither generator
-ships to consumers.
+In that measurement, unminified provider JavaScript plus its generated modules
+grew from 11,263 to 20,831 bytes for GitHub and from 4,469 to 6,224 bytes for
+Linear. GitHub's generated checks repeat annotations and bounds; Linear adds a
+generated operation and shared scalar module. Neither generator ships to consumers.
 
 An ad hoc comparison against the previous decoders matched 1,507 GitHub and 194
 Linear boundary cases. Committed provider tests cover the compatibility policy,
-and type tests preserve the consumer profile shapes. The maintenance command was
-also checked against a modified input, stale output and missing query: each
-failed without overwriting output.
+and type tests preserve the consumer profile shapes. Isolated CLI probes verified
+that invalid local/upstream digests, stale output, invalid queries and formatter
+failures leave files unchanged. Additional probes generated new top-level and
+nested GitHub fields and a new Linear query field without updating another field
+list.
 
 Generation is most useful for larger profiles with maintained official schemas.
 For Linear's six fields, the benefit is checking the query against the upstream
