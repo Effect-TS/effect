@@ -1246,8 +1246,9 @@ export const makeProtocolWithHttpEffect: (
 
     yield* writeRequest(id, constEof)
 
+    // Allow request aborts during response waits without unmasking response construction.
     if (!includesFraming) {
-      const responses = yield* Queue.collect(queue)
+      const responses = yield* Effect.interruptible(Queue.collect(queue))
       // Notification-only batches encode without a response body.
       const encoded = parser.encode(responses)
       return HttpServerResponse.text(encoded === undefined ? "" : encoded as string, {
@@ -1255,10 +1256,10 @@ export const makeProtocolWithHttpEffect: (
       })
     }
 
-    const initialChunk = yield* Pull.catchDone(
+    const initialChunk = yield* Effect.interruptible(Pull.catchDone(
       Queue.takeAll(queue as Queue.Dequeue<Uint8Array, Cause.Done>),
       () => Effect.succeed([])
-    )
+    ))
     if (queue.state._tag === "Done") {
       return HttpServerResponse.uint8Array(mergeUint8Arrays(initialChunk), {
         contentType: serialization.contentType

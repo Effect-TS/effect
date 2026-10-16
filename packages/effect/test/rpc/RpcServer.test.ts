@@ -68,6 +68,52 @@ describe("RpcServer", () => {
   for (
     const [name, serialization] of [
       ["ndjson", RpcSerialization.layerNdjson],
+      ["json", RpcSerialization.layerJson]
+    ] as const
+  ) {
+    it.live(`finalizes an aborted ${name} HTTP RPC before output`, () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        const finalized = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        const group = RpcGroup.make(
+          Rpc.make("events", { payload: Schema.Struct({}), success: Schema.Number, stream: true })
+        )
+        const httpEffect = yield* RpcServer.toHttpEffect(group).pipe(
+          Effect.provide(Layer.mergeAll(
+            group.toLayer({
+              events: () =>
+                Stream.fromEffect(Effect.gen(function*() {
+                  yield* Effect.addFinalizer((exit) => Deferred.succeed(finalized, exit))
+                  yield* Deferred.succeed(started, undefined)
+                  return yield* Effect.never
+                }))
+            }),
+            serialization
+          ))
+        )
+        const handler = HttpEffect.toWebHandler(httpEffect)
+        const controller = new AbortController()
+        yield* Effect.addFinalizer(() => Effect.sync(() => controller.abort()))
+        const request = yield* Effect.promise(() =>
+          handler(
+            new Request("http://test/rpc", {
+              method: "POST",
+              body: `{"_tag":"Request","id":1,"tag":"events","payload":{},"headers":[]}\n`,
+              signal: controller.signal
+            })
+          )
+        ).pipe(Effect.forkScoped)
+        yield* Deferred.await(started).pipe(Effect.timeout("2 seconds"))
+        controller.abort()
+        const exit = yield* Deferred.await(finalized).pipe(Effect.timeout("2 seconds"))
+        assert.isTrue(Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+        yield* Fiber.join(request).pipe(Effect.timeout("2 seconds"))
+      }))
+  }
+
+  for (
+    const [name, serialization] of [
+      ["ndjson", RpcSerialization.layerNdjson],
       ["ndJsonRpc", RpcSerialization.layerNdJsonRpc()],
       ["schemaBinary", RpcSerialization.layerSchemaBinary()]
     ] as const
