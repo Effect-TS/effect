@@ -2401,9 +2401,9 @@ export const Do: Option<{}> = some({})
  *
  * **Gotchas**
  *
- * A yielded `None` closes the generator before that `None` is returned, so
- * `finally` and `using` run. A `return` in `finally` replaces the `None`,
- * including `return undefined`. `catch` does not run for that `None`.
+ * A yielded `None` skips `catch` blocks but still runs `finally` blocks and
+ * `using` disposal. If a `finally` block returns, even `undefined`, the result
+ * is `Some` of that value instead of `None`.
  *
  * **Example** (Sequencing Option computations with generator syntax)
  *
@@ -2439,8 +2439,7 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
   return state.value === genCloseSentinel ? none() : some(state.value)
 }
 
-// Passed to `iterator.return` on `None`. Reaching completion unchanged means no
-// `finally` returned; any other value, including `undefined`, is a `finally` return.
+// Tells an unchanged short-circuit apart from a `finally` that returns, even `undefined`
 const genCloseSentinel = Symbol("~effect/Option/gen/CloseSentinel")
 
 /**

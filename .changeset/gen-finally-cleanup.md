@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-`Option.gen` and `Result.gen` now close the generator when a yielded value short-circuits, so `finally` and `using` run. A `return` in `finally` replaces that `None` or failure, including `return undefined`.
+Fix `Option.gen` and `Result.gen` skipping `finally` blocks and `using` disposal when a yielded `None` or failure short-circuits. A `finally` block that returns now replaces the short-circuit result.

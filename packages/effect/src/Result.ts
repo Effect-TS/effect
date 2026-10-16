@@ -1510,9 +1510,10 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
  *
  * **Gotchas**
  *
- * A yielded failure closes the generator before that failure is returned, so
- * `finally` and `using` run. A `return` in `finally` replaces the failure,
- * including `return undefined`. `catch` does not run for that failure.
+ * A yielded failure skips `catch` blocks but still runs `finally` blocks and
+ * `using` disposal. A failure yielded during cleanup replaces the original one.
+ * If a `finally` block returns, even `undefined`, the result is a `Success` of
+ * that value.
  *
  * **Example** (Composing multiple Results)
  *
@@ -1550,8 +1551,7 @@ export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
   return (state.value === genCloseSentinel ? failure : succeed(state.value)) as any
 }
 
-// Passed to `iterator.return` on a failure. Reaching completion unchanged means no
-// `finally` returned; any other value, including `undefined`, is a `finally` return.
+// Tells an unchanged short-circuit apart from a `finally` that returns, even `undefined`
 const genCloseSentinel = Symbol("~effect/Result/gen/CloseSentinel")
 
 // -------------------------------------------------------------------------------------
