@@ -573,7 +573,10 @@ const handleResponse = (
     return writeResponse(request, response, nodeResponse, headers)
   } catch (defect) {
     // `writeHead` throws synchronously on headers Node rejects and on non-final statuses
-    return handleCause(nodeResponse, response)(Cause.die(defect))
+    return Effect.andThen(
+      cancelResponseBody(response.body),
+      handleCause(nodeResponse, response)(Cause.die(defect))
+    )
   }
 }
 
