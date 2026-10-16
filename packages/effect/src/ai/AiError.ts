@@ -279,8 +279,8 @@ export class NetworkError extends Schema.Error<NetworkError>(
  */
 export const ProviderMetadata: Schema.$Record<
   Schema.String,
-  Schema.NullOr<Schema.Codec<Schema.MutableJson>>
-> = Schema.Record(Schema.String, Schema.NullOr(Schema.MutableJson))
+  Schema.UndefinedOr<Schema.NullOr<Schema.Codec<Schema.MutableJson>>>
+> = Schema.Record(Schema.String, Schema.UndefinedOr(Schema.NullOr(Schema.MutableJson)))
 
 /**
  * Type of provider-specific metadata attached to AI error reasons.

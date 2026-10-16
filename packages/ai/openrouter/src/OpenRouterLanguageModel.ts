@@ -64,7 +64,7 @@ export class Config extends Context.Service<
   Simplify<
     & Partial<
       Omit<
-        typeof Generated.ChatRequest.Encoded,
+        Generated.ChatRequest,
         "messages" | "response_format" | "tools" | "tool_choice" | "stream" | "stream_options"
       >
     >

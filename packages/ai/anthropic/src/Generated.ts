@@ -4019,8 +4019,7 @@ export type BetaTool = {
     readonly "properties"?: { readonly [x: string]: Schema.Json } | null
     readonly "required"?: ReadonlyArray<string> | null
     readonly "type": "object"
-    readonly [x: string]: Schema.Json
-  }
+  } & { readonly [x: string]: Schema.Json }
   readonly "cache_control"?: BetaCacheControlEphemeral | null
   readonly "strict"?: boolean
   readonly "eager_input_streaming"?: boolean | null
@@ -5714,8 +5713,7 @@ export type Tool = {
     readonly "properties"?: { readonly [x: string]: Schema.Json } | null
     readonly "required"?: ReadonlyArray<string> | null
     readonly "type": "object"
-    readonly [x: string]: Schema.Json
-  }
+  } & { readonly [x: string]: Schema.Json }
   readonly "cache_control"?: CacheControlEphemeral | null
   readonly "strict"?: boolean
   readonly "eager_input_streaming"?: boolean | null

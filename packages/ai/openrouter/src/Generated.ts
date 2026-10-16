@@ -155,11 +155,9 @@ export type AnthropicCacheControlTtl = "5m" | "1h"
 export const AnthropicCacheControlTtl = Schema.Literals(["5m", "1h"]).annotate({
   "identifier": "AnthropicCacheControlTtl"
 })
-export type Objects_ = {
-  readonly "ephemeral_1h_input_tokens": number
-  readonly "ephemeral_5m_input_tokens": number
-  readonly [x: string]: Schema.Json
-}
+export type Objects_ =
+  & { readonly "ephemeral_1h_input_tokens": number; readonly "ephemeral_5m_input_tokens": number }
+  & { readonly [x: string]: Schema.Json }
 export const Objects_ = Schema.StructWithRest(
   Schema.Struct({
     "ephemeral_1h_input_tokens": Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
@@ -269,7 +267,7 @@ export const AnthropicCitationPageLocationParam = Schema.Struct({
   "start_page_number": Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" })),
   "type": Schema.Literal("page_location")
 }).annotate({ "identifier": "AnthropicCitationPageLocationParam" })
-export type Objects_1 = { readonly "enabled": boolean; readonly [x: string]: Schema.Json }
+export type Objects_1 = { readonly "enabled": boolean } & { readonly [x: string]: Schema.Json }
 export const Objects_1 = Schema.StructWithRest(Schema.Struct({ "enabled": Schema.Boolean }), [
   Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))
 ])
@@ -363,11 +361,9 @@ export const AnthropicCompactionBlock = Schema.Struct({
   "content": Schema.Union([Schema.String, Schema.Null]),
   "type": Schema.Literal("compaction")
 }).annotate({ "identifier": "AnthropicCompactionBlock" })
-export type AnthropicContainer = {
-  readonly "expires_at": string
-  readonly "id": string
-  readonly [x: string]: Schema.Json
-} | null
+export type AnthropicContainer =
+  | ({ readonly "expires_at": string; readonly "id": string } & { readonly [x: string]: Schema.Json })
+  | null
 export const AnthropicContainer = Schema.Union([
   Schema.StructWithRest(Schema.Struct({ "expires_at": Schema.String, "id": Schema.String }), [
     Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))
@@ -390,7 +386,9 @@ export type AnthropicImageMimeType = "image/jpeg" | "image/png" | "image/gif" | 
 export const AnthropicImageMimeType = Schema.Literals(["image/jpeg", "image/png", "image/gif", "image/webp"]).annotate({
   "identifier": "AnthropicImageMimeType"
 })
-export type Objects_2 = { readonly "type": "input_tokens"; readonly "value": number; readonly [x: string]: Schema.Json }
+export type Objects_2 = { readonly "type": "input_tokens"; readonly "value": number } & {
+  readonly [x: string]: Schema.Json
+}
 export const Objects_2 = Schema.StructWithRest(
   Schema.Struct({
     "type": Schema.Literal("input_tokens"),
@@ -403,11 +401,9 @@ export const AnthropicInputTokensTrigger = Schema.Struct({
   "type": Schema.Literal("input_tokens"),
   "value": Schema.Number.check(Schema.isInt().annotate({ "expected": "an integer" }))
 }).annotate({ "identifier": "AnthropicInputTokensTrigger" })
-export type Objects_3 = {
-  readonly "ephemeral_1h_input_tokens"?: number
-  readonly "ephemeral_5m_input_tokens"?: number
-  readonly [x: string]: Schema.Json
-}
+export type Objects_3 =
+  & { readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number }
+  & { readonly [x: string]: Schema.Json }
 export const Objects_3 = Schema.StructWithRest(
   Schema.Struct({
     "ephemeral_1h_input_tokens": Schema.optionalKey(
@@ -420,7 +416,7 @@ export const Objects_3 = Schema.StructWithRest(
   [Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))]
 )
 export type AnthropicOutputTokensDetails =
-  | { readonly "thinking_tokens": number; readonly [x: string]: Schema.Json }
+  | ({ readonly "thinking_tokens": number } & { readonly [x: string]: Schema.Json })
   | null
 export const AnthropicOutputTokensDetails = Schema.Union([
   Schema.StructWithRest(
@@ -444,12 +440,12 @@ export const AnthropicRedactedThinkingBlock = Schema.Struct({
   "data": Schema.String,
   "type": Schema.Literal("redacted_thinking")
 }).annotate({ "identifier": "AnthropicRedactedThinkingBlock" })
-export type AnthropicRefusalStopDetails = {
-  readonly "category": "cyber" | "bio" | null
-  readonly "explanation": string | null
-  readonly "type": "refusal"
-  readonly [x: string]: Schema.Json
-} | null
+export type AnthropicRefusalStopDetails =
+  | (
+    & { readonly "category": "cyber" | "bio" | null; readonly "explanation": string | null; readonly "type": "refusal" }
+    & { readonly [x: string]: Schema.Json }
+  )
+  | null
 export const AnthropicRefusalStopDetails = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -472,11 +468,11 @@ export const AnthropicServerToolErrorCode = Schema.Literals([
   "too_many_requests",
   "execution_time_exceeded"
 ]).annotate({ "identifier": "AnthropicServerToolErrorCode" })
-export type AnthropicServerToolUsage = {
-  readonly "web_fetch_requests": number
-  readonly "web_search_requests": number
-  readonly [x: string]: Schema.Json
-} | null
+export type AnthropicServerToolUsage =
+  | ({ readonly "web_fetch_requests": number; readonly "web_search_requests": number } & {
+    readonly [x: string]: Schema.Json
+  })
+  | null
 export const AnthropicServerToolUsage = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -686,8 +682,7 @@ export type Objects_4 = {
   readonly "region"?: string | null
   readonly "timezone"?: string | null
   readonly "type": "approximate"
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_4 = Schema.StructWithRest(
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -1609,7 +1604,7 @@ export const ChatServerToolChoice = Schema.Struct({
     "OpenRouter extension: force a specific server tool by naming it directly in `tool_choice.type` instead of wrapping it in `{ type: \"function\", function: { name } }`.",
   "identifier": "ChatServerToolChoice"
 })
-export type Objects_6 = { readonly "include_usage"?: boolean; readonly [x: string]: Schema.Json }
+export type Objects_6 = { readonly "include_usage"?: boolean } & { readonly [x: string]: Schema.Json }
 export const Objects_6 = Schema.StructWithRest(
   Schema.Struct({
     "include_usage": Schema.optionalKey(
@@ -1680,13 +1675,14 @@ export const ChatToolCall = Schema.Struct({
   "id": Schema.String.annotate({ "description": "Tool call identifier" }),
   "type": Schema.Literal("function")
 }).annotate({ "description": "Tool call made by the assistant", "identifier": "ChatToolCall" })
-export type Union_ = {
-  readonly "accepted_prediction_tokens"?: number | null
-  readonly "audio_tokens"?: number | null
-  readonly "reasoning_tokens"?: number | null
-  readonly "rejected_prediction_tokens"?: number | null
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_ =
+  | ({
+    readonly "accepted_prediction_tokens"?: number | null
+    readonly "audio_tokens"?: number | null
+    readonly "reasoning_tokens"?: number | null
+    readonly "rejected_prediction_tokens"?: number | null
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const Union_ = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -1711,13 +1707,14 @@ export const Union_ = Schema.Union([
   ),
   Schema.Null
 ]).annotate({ "description": "Detailed completion token usage" })
-export type Union_1 = {
-  readonly "audio_tokens"?: number
-  readonly "cache_write_tokens"?: number
-  readonly "cached_tokens"?: number
-  readonly "video_tokens"?: number
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_1 =
+  | ({
+    readonly "audio_tokens"?: number
+    readonly "cache_write_tokens"?: number
+    readonly "cached_tokens"?: number
+    readonly "video_tokens"?: number
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const Union_1 = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -1904,8 +1901,7 @@ export type Objects_8 = {
   readonly "upstream_inference_completions_cost": number
   readonly "upstream_inference_cost"?: number | null
   readonly "upstream_inference_prompt_cost": number
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_8 = Schema.StructWithRest(
   Schema.Struct({
     "upstream_inference_completions_cost": Schema.Number.annotate({ "format": "double" }).check(
@@ -2799,12 +2795,13 @@ export type ImageGenerationStatus = "in_progress" | "completed" | "generating" |
 export const ImageGenerationStatus = Schema.Literals(["in_progress", "completed", "generating", "failed"]).annotate({
   "identifier": "ImageGenerationStatus"
 })
-export type Union_6 = {
-  readonly "audio_tokens"?: number | null
-  readonly "image_tokens"?: number | null
-  readonly "reasoning_tokens"?: number | null
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_6 =
+  | ({
+    readonly "audio_tokens"?: number | null
+    readonly "image_tokens"?: number | null
+    readonly "reasoning_tokens"?: number | null
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const Union_6 = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -2825,14 +2822,15 @@ export const Union_6 = Schema.Union([
   ),
   Schema.Null
 ])
-export type Union_8 = {
-  readonly "audio_tokens"?: number | null
-  readonly "cache_write_tokens"?: number | null
-  readonly "cached_tokens"?: number | null
-  readonly "file_tokens"?: number | null
-  readonly "video_tokens"?: number | null
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_8 =
+  | ({
+    readonly "audio_tokens"?: number | null
+    readonly "cache_write_tokens"?: number | null
+    readonly "cached_tokens"?: number | null
+    readonly "file_tokens"?: number | null
+    readonly "video_tokens"?: number | null
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const Union_8 = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -2864,12 +2862,13 @@ export const Union_8 = Schema.Union([
   ),
   Schema.Null
 ]).annotate({ "description": "Breakdown of tokens used in the prompt." })
-export type Union_9 = {
-  readonly "tool_calls_executed"?: number | null
-  readonly "tool_calls_requested"?: number | null
-  readonly "web_search_requests"?: number | null
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_9 =
+  | ({
+    readonly "tool_calls_executed"?: number | null
+    readonly "tool_calls_requested"?: number | null
+    readonly "web_search_requests"?: number | null
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const Union_9 = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -2996,10 +2995,9 @@ export const ImagePricingEntry = Schema.Struct({
   "unit": Schema.Literals(["image", "megapixel", "token"]),
   "variant": Schema.optionalKey(Schema.String)
 }).annotate({ "description": "One billable pricing line for an image provider.", "identifier": "ImagePricingEntry" })
-export type IncompleteDetails = {
-  readonly "reason"?: "max_output_tokens" | "content_filter"
-  readonly [x: string]: Schema.Json
-} | null
+export type IncompleteDetails =
+  | ({ readonly "reason"?: "max_output_tokens" | "content_filter" } & { readonly [x: string]: Schema.Json })
+  | null
 export const IncompleteDetails = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({ "reason": Schema.optionalKey(Schema.Literals(["max_output_tokens", "content_filter"])) }),
@@ -3329,7 +3327,7 @@ export const MessagesFallbackParam = Schema.Struct({ "model": Schema.String }).a
   "identifier": "MessagesFallbackParam"
 })
 export type Union_10 =
-  | { readonly "schema": {}; readonly "type": "json_schema"; readonly [x: string]: Schema.Json }
+  | ({ readonly "schema": {}; readonly "type": "json_schema" } & { readonly [x: string]: Schema.Json })
   | null
 export const Union_10 = Schema.Union([
   Schema.StructWithRest(Schema.Struct({ "schema": Schema.Struct({}), "type": Schema.Literal("json_schema") }), [
@@ -3340,12 +3338,11 @@ export const Union_10 = Schema.Union([
   "description":
     "A schema to specify Claude's output format in responses. See [structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)."
 })
-export type Union_11 = {
-  readonly "remaining"?: number | null
-  readonly "total": number
-  readonly "type": "tokens"
-  readonly [x: string]: Schema.Json
-} | null
+export type Union_11 =
+  | ({ readonly "remaining"?: number | null; readonly "total": number; readonly "type": "tokens" } & {
+    readonly [x: string]: Schema.Json
+  })
+  | null
 export const Union_11 = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -4020,13 +4017,11 @@ export const PercentileLatencyCutoffs = Schema.Struct({
   "description": "Percentile-based latency cutoffs. All specified cutoffs must be met for an endpoint to be preferred.",
   "identifier": "PercentileLatencyCutoffs"
 })
-export type PercentileStats = {
-  readonly "p50": number
-  readonly "p75": number
-  readonly "p90": number
-  readonly "p99": number
-  readonly [x: string]: Schema.Json
-} | null
+export type PercentileStats =
+  | ({ readonly "p50": number; readonly "p75": number; readonly "p90": number; readonly "p99": number } & {
+    readonly [x: string]: Schema.Json
+  })
+  | null
 export const PercentileStats = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -4079,11 +4074,9 @@ export const PercentileThroughputCutoffs = Schema.Struct({
     "Percentile-based throughput cutoffs. All specified cutoffs must be met for an endpoint to be preferred.",
   "identifier": "PercentileThroughputCutoffs"
 })
-export type PerRequestLimits = {
-  readonly "completion_tokens": number
-  readonly "prompt_tokens": number
-  readonly [x: string]: Schema.Json
-} | null
+export type PerRequestLimits =
+  | ({ readonly "completion_tokens": number; readonly "prompt_tokens": number } & { readonly [x: string]: Schema.Json })
+  | null
 export const PerRequestLimits = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -4115,17 +4108,18 @@ export const PredictionContentText = Schema.Struct({ "text": Schema.String, "typ
   "description": "Text content part for a predicted output.",
   "identifier": "PredictionContentText"
 })
-export type PresetDesignatedVersion = {
-  readonly "config": {}
-  readonly "created_at": string
-  readonly "creator_id": string
-  readonly "id": string
-  readonly "preset_id": string
-  readonly "system_prompt": string | null
-  readonly "updated_at": string
-  readonly "version": number
-  readonly [x: string]: Schema.Json
-} | null
+export type PresetDesignatedVersion =
+  | ({
+    readonly "config": {}
+    readonly "created_at": string
+    readonly "creator_id": string
+    readonly "id": string
+    readonly "preset_id": string
+    readonly "system_prompt": string | null
+    readonly "updated_at": string
+    readonly "version": number
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const PresetDesignatedVersion = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -4156,8 +4150,7 @@ export type Objects_18 = {
   readonly "region"?: string | null
   readonly "timezone"?: string | null
   readonly "type": "approximate"
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_18 = Schema.StructWithRest(
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -4227,13 +4220,11 @@ export const PricingOverride = Schema.Struct({
     "A conditional override of the base pricing. An entry applies only when all of its condition fields (e.g. min_prompt_tokens, or the utc_start/utc_end time window) match the request; among applicable entries, later entries win per price key; price keys absent from an entry inherit the base price.",
   "identifier": "PricingOverride"
 })
-export type Objects_19 = { readonly "mode": "explicit"; readonly [x: string]: Schema.Json }
+export type Objects_19 = { readonly "mode": "explicit" } & { readonly [x: string]: Schema.Json }
 export const Objects_19 = Schema.StructWithRest(Schema.Struct({ "mode": Schema.Literal("explicit") }), [
   Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" }))
 ])
-export type Objects_20 = {
-  readonly "mode": "explicit"
-  readonly "ttl"?: string | null
+export type Objects_20 = { readonly "mode": "explicit"; readonly "ttl"?: string | null } & {
   readonly [x: string]: Schema.Json
 }
 export const Objects_20 = Schema.StructWithRest(
@@ -5292,30 +5283,31 @@ export const ResponseIncludesEnum = Schema.Literals([
   "reasoning.encrypted_content",
   "code_interpreter_call.outputs"
 ]).annotate({ "identifier": "ResponseIncludesEnum" })
-export type ResponsesErrorField = {
-  readonly "code":
-    | "server_error"
-    | "rate_limit_exceeded"
-    | "invalid_prompt"
-    | "vector_store_timeout"
-    | "invalid_image"
-    | "invalid_image_format"
-    | "invalid_base64_image"
-    | "invalid_image_url"
-    | "image_too_large"
-    | "image_too_small"
-    | "image_parse_error"
-    | "image_content_policy_violation"
-    | "invalid_image_mode"
-    | "image_file_too_large"
-    | "unsupported_image_media_type"
-    | "empty_image_file"
-    | "failed_to_download_image"
-    | "image_file_not_found"
-    | "bio_policy"
-  readonly "message": string
-  readonly [x: string]: Schema.Json
-} | null
+export type ResponsesErrorField =
+  | ({
+    readonly "code":
+      | "server_error"
+      | "rate_limit_exceeded"
+      | "invalid_prompt"
+      | "vector_store_timeout"
+      | "invalid_image"
+      | "invalid_image_format"
+      | "invalid_base64_image"
+      | "invalid_image_url"
+      | "image_too_large"
+      | "image_too_small"
+      | "image_parse_error"
+      | "image_content_policy_violation"
+      | "invalid_image_mode"
+      | "image_file_too_large"
+      | "unsupported_image_media_type"
+      | "empty_image_file"
+      | "failed_to_download_image"
+      | "image_file_not_found"
+      | "bio_policy"
+    readonly "message": string
+  } & { readonly [x: string]: Schema.Json })
+  | null
 export const ResponsesErrorField = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -5418,8 +5410,7 @@ export type Objects_150 = {
   readonly "tool_calls_executed"?: number | null
   readonly "tool_calls_requested"?: number | null
   readonly "web_search_requests"?: number | null
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_150 = Schema.StructWithRest(
   Schema.Struct({
     "tool_calls_executed": Schema.optionalKey(
@@ -5991,11 +5982,9 @@ export const UnauthorizedResponseErrorData = Schema.Struct({
     Schema.Union([Schema.Record(Schema.String, Schema.Json.annotate({ "expected": "JSON value" })), Schema.Null])
   )
 }).annotate({ "description": "Error data for UnauthorizedResponse", "identifier": "UnauthorizedResponseErrorData" })
-export type UnifiedBenchmarkPricing = {
-  readonly "completion": string
-  readonly "prompt": string
-  readonly [x: string]: Schema.Json
-} | null
+export type UnifiedBenchmarkPricing =
+  | ({ readonly "completion": string; readonly "prompt": string } & { readonly [x: string]: Schema.Json })
+  | null
 export const UnifiedBenchmarkPricing = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -6436,8 +6425,7 @@ export const Arrays_16 = Schema.Array(Schema.String).annotate({
 export type Objects_152 = {
   readonly "allowed_domains"?: ReadonlyArray<string> | null
   readonly "excluded_domains"?: ReadonlyArray<string> | null
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_152 = Schema.StructWithRest(
   Schema.Struct({
     "allowed_domains": Schema.optionalKey(Schema.Union([Schema.Array(Schema.String), Schema.Null])),
@@ -6481,8 +6469,7 @@ export type Objects_153 = {
   readonly "region"?: string | null
   readonly "timezone"?: string | null
   readonly "type"?: "approximate"
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_153 = Schema.StructWithRest(
   Schema.Struct({
     "city": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null])),
@@ -7062,8 +7049,7 @@ export const ChatStreamOptions = Schema.Union([Objects_6, Schema.Null]).annotate
 export type Objects_7 = {
   readonly "content": ReadonlyArray<ChatTokenLogprob> | null
   readonly "refusal"?: ReadonlyArray<ChatTokenLogprob> | null
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_7 = Schema.StructWithRest(
   Schema.Struct({
     "content": Schema.Union([Schema.Array(ChatTokenLogprob), Schema.Null]).annotate({
@@ -7492,11 +7478,11 @@ export const NotFoundResponse = Schema.Struct({
   ),
   "user_id": Schema.optionalKey(Schema.Union([Schema.String, Schema.Null]))
 }).annotate({ "description": "Not Found - Resource does not exist", "identifier": "NotFoundResponse" })
-export type ObservabilityFilterRulesConfig = {
-  readonly "enabled"?: boolean
-  readonly "groups": ReadonlyArray<ObservabilityFilterRuleGroup>
-  readonly [x: string]: Schema.Json
-} | null
+export type ObservabilityFilterRulesConfig =
+  | ({ readonly "enabled"?: boolean; readonly "groups": ReadonlyArray<ObservabilityFilterRuleGroup> } & {
+    readonly [x: string]: Schema.Json
+  })
+  | null
 export const ObservabilityFilterRulesConfig = Schema.Union([
   Schema.StructWithRest(
     Schema.Struct({
@@ -7513,8 +7499,7 @@ export const ObservabilityFilterRulesConfig = Schema.Union([
 export type Objects_10 = {
   readonly "enabled"?: boolean
   readonly "groups": ReadonlyArray<ObservabilityFilterRuleGroup>
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_10 = Schema.StructWithRest(
   Schema.Struct({
     "enabled": Schema.optionalKey(Schema.Boolean),
@@ -7643,8 +7628,7 @@ export const PipelineStage = Schema.Struct({
 export type Objects_17 = {
   readonly "content": string | ReadonlyArray<PredictionContentText>
   readonly "type": "content"
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_17 = Schema.StructWithRest(
   Schema.Struct({
     "content": Schema.Union([Schema.String, Schema.Array(PredictionContentText)]),
@@ -8708,8 +8692,7 @@ export type Objects_5 = {
   readonly "effort"?: ReasoningEffort
   readonly "mode"?: ReasoningMode
   readonly "summary"?: ReasoningSummaryVerbosity
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_5 = Schema.StructWithRest(
   Schema.Struct({
     "context": Schema.optionalKey(ReasoningContext),
@@ -9845,8 +9828,7 @@ export type WebSearchPlugin = {
     readonly "region"?: string | null
     readonly "timezone"?: string | null
     readonly "type": "approximate"
-    readonly [x: string]: Schema.Json
-  }
+  } & { readonly [x: string]: Schema.Json }
 }
 export const WebSearchPlugin = Schema.Struct({
   "enabled": Schema.optionalKey(
@@ -11951,7 +11933,9 @@ export type CustomToolCallOutputItem = {
     | string
     | ReadonlyArray<
       {
-        readonly "prompt_cache_breakpoint"?: { readonly "mode": "explicit"; readonly [x: string]: Schema.Json } | null
+        readonly "prompt_cache_breakpoint"?:
+          | ({ readonly "mode": "explicit" } & { readonly [x: string]: Schema.Json })
+          | null
         readonly "text": string
         readonly "type": "input_text"
       } | {
@@ -12129,7 +12113,9 @@ export type FunctionCallOutputItem = {
     | string
     | ReadonlyArray<
       {
-        readonly "prompt_cache_breakpoint"?: { readonly "mode": "explicit"; readonly [x: string]: Schema.Json } | null
+        readonly "prompt_cache_breakpoint"?:
+          | ({ readonly "mode": "explicit" } & { readonly [x: string]: Schema.Json })
+          | null
         readonly "text": string
         readonly "type": "input_text"
       } | {
@@ -13543,7 +13529,7 @@ export const AnthropicWebFetchBlock = Schema.Struct({
 }).annotate({ "identifier": "AnthropicWebFetchBlock" })
 export type AnthropicDocumentBlockParam = {
   readonly "cache_control"?: AnthropicCacheControlDirective
-  readonly "citations"?: { readonly "enabled"?: boolean; readonly [x: string]: Schema.Json } | null
+  readonly "citations"?: ({ readonly "enabled"?: boolean } & { readonly [x: string]: Schema.Json }) | null
   readonly "context"?: string | null
   readonly "source":
     | AnthropicBase64PdfSource
@@ -13873,7 +13859,7 @@ export const ChatSystemMessage = Schema.Struct({
   "role": Schema.Literal("system")
 }).annotate({ "description": "System message for setting behavior", "identifier": "ChatSystemMessage" })
 export type AgentMessageItem = {
-  readonly "agent"?: { readonly "agent_name": string; readonly [x: string]: Schema.Json } | null
+  readonly "agent"?: ({ readonly "agent_name": string } & { readonly [x: string]: Schema.Json }) | null
   readonly "author": string
   readonly "content": ReadonlyArray<
     InputText | {
@@ -14050,8 +14036,7 @@ export const OpenAIResponseInputMessageItem = Schema.Struct({
 export type Objects_151 = {
   readonly "id": string
   readonly "variables"?: { readonly [x: string]: string | InputText | InputImage | InputFile } | null
-  readonly [x: string]: Schema.Json
-}
+} & { readonly [x: string]: Schema.Json }
 export const Objects_151 = Schema.StructWithRest(
   Schema.Struct({
     "id": Schema.String,
@@ -14571,11 +14556,11 @@ export type MessagesDeltaEvent = {
     readonly "iterations"?: ReadonlyArray<AnthropicUsageIteration>
     readonly "output_tokens": number
     readonly "output_tokens_details": AnthropicOutputTokensDetails
-    readonly "server_tool_use": {
-      readonly "web_fetch_requests": number
-      readonly "web_search_requests": number
-      readonly [x: string]: Schema.Json
-    } | null
+    readonly "server_tool_use":
+      | ({ readonly "web_fetch_requests": number; readonly "web_search_requests": number } & {
+        readonly [x: string]: Schema.Json
+      })
+      | null
   }
 }
 export const MessagesDeltaEvent = Schema.Struct({
@@ -15229,27 +15214,28 @@ export const AnthropicWebFetchToolResult = Schema.Struct({
 }).annotate({ "identifier": "AnthropicWebFetchToolResult" })
 export type MessagesRequest = {
   readonly "cache_control"?: AnthropicCacheControlDirective
-  readonly "context_management"?: {
-    readonly "edits"?: ReadonlyArray<
-      {
-        readonly "clear_at_least"?: AnthropicInputTokensClearAtLeast
-        readonly "clear_tool_inputs"?: boolean | ReadonlyArray<string> | null
-        readonly "exclude_tools"?: ReadonlyArray<string> | null
-        readonly "keep"?: AnthropicToolUsesKeep
-        readonly "trigger"?: AnthropicInputTokensTrigger | AnthropicToolUsesTrigger
-        readonly "type": "clear_tool_uses_20250919"
-      } | {
-        readonly "keep"?: AnthropicThinkingTurns | { readonly "type": "all" } | "all"
-        readonly "type": "clear_thinking_20251015"
-      } | {
-        readonly "instructions"?: string | null
-        readonly "pause_after_compaction"?: boolean
-        readonly "trigger"?: { readonly "type": "input_tokens"; readonly "value": number } | null
-        readonly "type": "compact_20260112"
-      }
-    >
-    readonly [x: string]: Schema.Json
-  } | null
+  readonly "context_management"?:
+    | ({
+      readonly "edits"?: ReadonlyArray<
+        {
+          readonly "clear_at_least"?: AnthropicInputTokensClearAtLeast
+          readonly "clear_tool_inputs"?: boolean | ReadonlyArray<string> | null
+          readonly "exclude_tools"?: ReadonlyArray<string> | null
+          readonly "keep"?: AnthropicToolUsesKeep
+          readonly "trigger"?: AnthropicInputTokensTrigger | AnthropicToolUsesTrigger
+          readonly "type": "clear_tool_uses_20250919"
+        } | {
+          readonly "keep"?: AnthropicThinkingTurns | { readonly "type": "all" } | "all"
+          readonly "type": "clear_thinking_20251015"
+        } | {
+          readonly "instructions"?: string | null
+          readonly "pause_after_compaction"?: boolean
+          readonly "trigger"?: { readonly "type": "input_tokens"; readonly "value": number } | null
+          readonly "type": "compact_20260112"
+        }
+      >
+    } & { readonly [x: string]: Schema.Json })
+    | null
   readonly "fallbacks"?: ReadonlyArray<MessagesFallbackParam> | null
   readonly "max_tokens"?: number
   readonly "messages": ReadonlyArray<MessagesMessageParam> | null
@@ -25949,41 +25935,43 @@ export type MessagesResult = {
   readonly "stop_sequence": string | null
   readonly "type": "message"
   readonly "usage": {
-    readonly "cache_creation": {
-      readonly "ephemeral_1h_input_tokens": number
-      readonly "ephemeral_5m_input_tokens": number
-      readonly [x: string]: Schema.Json
-    } | null
+    readonly "cache_creation":
+      | ({ readonly "ephemeral_1h_input_tokens": number; readonly "ephemeral_5m_input_tokens": number } & {
+        readonly [x: string]: Schema.Json
+      })
+      | null
     readonly "cache_creation_input_tokens": number | null
     readonly "cache_read_input_tokens": number | null
     readonly "inference_geo": string | null
     readonly "input_tokens": number
     readonly "output_tokens": number
-    readonly "output_tokens_details": { readonly "thinking_tokens": number; readonly [x: string]: Schema.Json } | null
-    readonly "server_tool_use": {
-      readonly "web_fetch_requests": number
-      readonly "web_search_requests": number
-      readonly [x: string]: Schema.Json
-    } | null
+    readonly "output_tokens_details":
+      | ({ readonly "thinking_tokens": number } & { readonly [x: string]: Schema.Json })
+      | null
+    readonly "server_tool_use":
+      | ({ readonly "web_fetch_requests": number; readonly "web_search_requests": number } & {
+        readonly [x: string]: Schema.Json
+      })
+      | null
     readonly "service_tier": "standard" | "priority" | "batch" | null
     readonly "iterations"?: ReadonlyArray<
       {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
         readonly "output_tokens"?: number
         readonly "type": "compaction"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -25991,11 +25979,11 @@ export type MessagesResult = {
         readonly "model"?: string
         readonly "type": never
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26003,22 +25991,22 @@ export type MessagesResult = {
         readonly "model": string
         readonly "type": never
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
         readonly "output_tokens"?: number
         readonly "type": "compaction"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26026,11 +26014,11 @@ export type MessagesResult = {
         readonly "type": never
         readonly "model"?: string
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26038,11 +26026,11 @@ export type MessagesResult = {
         readonly "model"?: string
         readonly "type": "message"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26050,11 +26038,11 @@ export type MessagesResult = {
         readonly "model": string
         readonly "type": never
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26062,11 +26050,11 @@ export type MessagesResult = {
         readonly "type": "message"
         readonly "model"?: string
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26074,11 +26062,11 @@ export type MessagesResult = {
         readonly "type": never
         readonly "model": string
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26086,11 +26074,11 @@ export type MessagesResult = {
         readonly "model": string
         readonly "type": never
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26098,11 +26086,11 @@ export type MessagesResult = {
         readonly "model": string
         readonly "type": "advisor_message"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26110,22 +26098,22 @@ export type MessagesResult = {
         readonly "type": "advisor_message"
         readonly "model": string
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
         readonly "output_tokens"?: number
         readonly "type": "compaction"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26133,11 +26121,11 @@ export type MessagesResult = {
         readonly "model"?: string
         readonly "type": "message"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26145,11 +26133,11 @@ export type MessagesResult = {
         readonly "model": string
         readonly "type": "advisor_message"
       } | {
-        readonly "cache_creation"?: {
-          readonly "ephemeral_1h_input_tokens"?: number
-          readonly "ephemeral_5m_input_tokens"?: number
-          readonly [x: string]: Schema.Json
-        } | null
+        readonly "cache_creation"?:
+          | ({ readonly "ephemeral_1h_input_tokens"?: number; readonly "ephemeral_5m_input_tokens"?: number } & {
+            readonly [x: string]: Schema.Json
+          })
+          | null
         readonly "cache_creation_input_tokens"?: number
         readonly "cache_read_input_tokens"?: number
         readonly "input_tokens"?: number
@@ -26162,10 +26150,9 @@ export type MessagesResult = {
     readonly "cost_details"?: CostDetails
     readonly "is_byok"?: boolean
   }
-  readonly "context_management"?: {
-    readonly "applied_edits": ReadonlyArray<{ readonly "type": string }>
-    readonly [x: string]: Schema.Json
-  } | null
+  readonly "context_management"?:
+    | ({ readonly "applied_edits": ReadonlyArray<{ readonly "type": string }> } & { readonly [x: string]: Schema.Json })
+    | null
   readonly "openrouter_metadata"?: OpenRouterMetadata
   readonly "provider"?: ProviderName
 }
