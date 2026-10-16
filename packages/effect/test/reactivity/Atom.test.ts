@@ -2849,6 +2849,25 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   describe("Reactivity", () => {
+    it.effect("query stops rerunning its effect after a failure ends the queue", () =>
+      Effect.gen(function*() {
+        const reactivity = yield* Reactivity.make
+        let runs = 0
+        const failed = yield* reactivity.query(
+          ["todos"],
+          Effect.suspend(() => {
+            runs++
+            return Effect.fail("boom")
+          })
+        )
+        const live = yield* reactivity.query(["todos"], Effect.succeed(42))
+        assert.strictEqual(yield* Effect.flip(Queue.take(failed)), "boom")
+        assert.strictEqual(yield* Queue.take(live), 42)
+        yield* reactivity.invalidate(["todos"])
+        assert.strictEqual(yield* Queue.take(live), 42)
+        assert.strictEqual(runs, 1)
+      }))
+
     it.effect("cleans up queries with duplicate keys", () =>
       Effect.gen(function*() {
         const reactivity = yield* Reactivity.make
