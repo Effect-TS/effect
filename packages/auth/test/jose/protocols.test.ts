@@ -1,4 +1,4 @@
-import { Jwe, Jwk, Jws } from "@effect/auth/Jose"
+import { Jwe, Jwk, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
 import { SecureRandom } from "effect/crypto"

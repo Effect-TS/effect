@@ -1,10 +1,132 @@
-import { Jwks, Jws } from "@effect/auth/Jose"
+import { Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
-import { Clock, Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scheduler, Scope } from "effect"
+import { Cause, Clock, Context, Deferred, Effect, Exit, Fiber, Layer, Redacted, Scheduler, Scope } from "effect"
 import { HttpClient, HttpClientError, HttpClientResponse } from "effect/http"
 import { TestClock } from "effect/testing"
 import * as jose from "jose"
 import { cryptoLayer, privateJwk, publicJwk, utf8 } from "./fixtures.ts"
+
+for (const phase of ["initial lookup", "missing-key refresh"] as const) {
+  it.effect(`preserves JWKS mixed transport failures during ${phase}`, () =>
+    Effect.gen(function*() {
+      const defect = { cleanup: phase }
+      let requests = 0
+      const http = HttpClient.make((request) =>
+        Effect.suspend(() => {
+          requests++
+          if (phase === "missing-key refresh" && requests === 1) {
+            return Effect.succeed(HttpClientResponse.fromWeb(
+              request,
+              Response.json({ keys: [{ ...publicJwk, kid: "cached" }] })
+            ))
+          }
+          return Effect.fail(
+            new HttpClientError.HttpClientError({
+              reason: new HttpClientError.TransportError({ request, cause: "private-transport-canary" })
+            })
+          ).pipe(Effect.ensuring(Effect.die(defect)))
+        })
+      )
+      const context = yield* Layer.build(
+        Jwks.layerRemote({
+          url: "https://issuer.example/keys",
+          cooldown: 0
+        }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, http)))
+      )
+      const keys = Context.get(context, Jwks.Jwks)
+      if (phase === "missing-key refresh") yield* keys.resolve({ algorithm: "ES256", kid: "cached" })
+
+      const exit = yield* keys.resolve({ algorithm: "ES256", kid: "missing" }).pipe(Effect.exit)
+      assert.isTrue(Exit.isFailure(exit))
+      if (Exit.isFailure(exit)) {
+        assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === defect))
+        const failures = exit.cause.reasons.filter(Cause.isFailReason).map((reason) => reason.error)
+        assert.deepStrictEqual(failures.map((error): object => ({ ...error })), [{
+          _tag: "JoseJwksUnavailable",
+          reason: "transport"
+        }])
+        assert.notInclude(JSON.stringify(failures), "private-transport-canary")
+      }
+      assert.strictEqual(requests, phase === "missing-key refresh" ? 2 : 1)
+    }).pipe(Effect.provide(cryptoLayer)))
+}
+
+it.effect("preserves JWKS cleanup failures when the refresh times out", () =>
+  Effect.gen(function*() {
+    const defect = { cleanup: "timeout" }
+    const entered = yield* Deferred.make<void>()
+    let requests = 0
+    const http = HttpClient.make(() =>
+      Effect.sync(() => {
+        requests++
+      }).pipe(
+        Effect.andThen(Deferred.succeed(entered, undefined)),
+        Effect.andThen(Effect.never),
+        Effect.ensuring(Effect.die(defect))
+      )
+    )
+    const context = yield* Layer.build(
+      Jwks.layerRemote({
+        url: "https://issuer.example/keys",
+        timeout: 10
+      }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, http)))
+    )
+    const active = yield* Effect.forkChild(Context.get(context, Jwks.Jwks).resolve({ algorithm: "ES256" }))
+    yield* Deferred.await(entered)
+    yield* TestClock.adjust(10)
+    const exit = yield* Fiber.await(active)
+
+    assert.isTrue(Exit.isFailure(exit))
+    if (Exit.isFailure(exit)) {
+      assert.isTrue(exit.cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect === defect))
+      assert.isTrue(exit.cause.reasons.some((reason) =>
+        Cause.isFailReason(reason) && reason.error._tag === "JoseJwksUnavailable" && reason.error.reason === "transport"
+      ))
+    }
+    assert.strictEqual(requests, 1)
+  }).pipe(Effect.provide(cryptoLayer)))
+
+it.effect("surfaces JWKS refresh cleanup failures through the closing owner", () =>
+  Effect.gen(function*() {
+    const defect = { cleanup: "owner" }
+    const entered = yield* Deferred.make<void>()
+    const owner = yield* Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void))
+    let requests = 0
+    const http = HttpClient.make(() =>
+      Effect.sync(() => {
+        requests++
+      }).pipe(
+        Effect.andThen(Deferred.succeed(entered, undefined)),
+        Effect.andThen(Effect.never),
+        Effect.ensuring(Effect.die(defect))
+      )
+    )
+    const context = yield* Layer.buildWithScope(
+      Jwks.layerRemote({
+        url: "https://issuer.example/keys"
+      }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, http))),
+      owner
+    )
+    const active = yield* Effect.forkChild(Context.get(context, Jwks.Jwks).resolve({ algorithm: "ES256" }))
+    yield* Deferred.await(entered)
+    const closing = yield* Scope.close(owner, Exit.void).pipe(Effect.exit)
+    const lookup = yield* Fiber.await(active)
+
+    assert.isTrue(Exit.isFailure(closing))
+    if (Exit.isFailure(closing)) {
+      assert.isTrue(closing.cause.reasons.some((reason) =>
+        Cause.isDieReason(reason) && Cause.isCause(reason.defect) &&
+        reason.defect.reasons.some((inner) => Cause.isDieReason(inner) && inner.defect === defect)
+      ))
+    }
+    assert.isTrue(Exit.isFailure(lookup))
+    if (Exit.isFailure(lookup)) {
+      assert.isTrue(lookup.cause.reasons.some((reason) =>
+        Cause.isFailReason(reason) && reason.error._tag === "JoseJwksUnavailable" && reason.error.reason === "closed"
+      ))
+    }
+    assert.strictEqual(requests, 1)
+  }).pipe(Effect.provide(cryptoLayer)))
 
 // Selection/snapshot and failed-response cases adapt panva/jose's
 // test/jwks/{local,remote}.test.ts. Effect-specific lifetime cases exercise the

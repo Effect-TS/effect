@@ -3,7 +3,7 @@ import * as Effect from "effect/Effect"
 import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
-import { CryptoUnavailable, InvalidInput, type OperationError, UnsupportedAlgorithm } from "../JoseError.ts"
+import { CryptoUnavailable, InvalidInput, type OperationError, UnsupportedAlgorithm } from "../jose/JoseError.ts"
 
 /** @internal */
 export function decode<A>(

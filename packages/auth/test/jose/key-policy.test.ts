@@ -1,5 +1,4 @@
-import { JoseError } from "@effect/auth"
-import { Jwe, Jwk, Jwks, Jws } from "@effect/auth/Jose"
+import { JoseError, Jwe, Jwk, Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema } from "effect"
 import * as jose from "jose"

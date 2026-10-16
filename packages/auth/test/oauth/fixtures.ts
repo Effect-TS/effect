@@ -5,7 +5,7 @@ import type * as HttpClientRequest from "effect/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/http/HttpClientResponse"
 import * as Redacted from "effect/Redacted"
 
-import type { OAuth } from "@effect/auth"
+import type { OAuth } from "@effect/auth/oauth"
 
 export { cryptoLayer } from "../utils/crypto.ts"
 

@@ -7,27 +7,34 @@ upstream snapshots below, along with the attributed form-encoding adaptation.
 The runtime uses Effect's native services; no upstream SDK is a runtime dependency.
 The npm `jose` package is used only for tests and independent interoperation.
 
-Public failures are exposed through [JoseError](src/JoseError.ts) and
-[OAuthError](src/OAuthError.ts).
+Public failures are exposed through [JoseError](src/jose/JoseError.ts) and
+[OAuthError](src/oauth/OAuthError.ts).
 
 ## Yielded Auth provider integrations
 
-Provider configuration, profile schemas, GitHub receipt rules, and Microsoft's
-discovery supplement are adapted from
+Provider configuration, profile schemas, receipt handling, client-secret signing,
+discovery supplements, and shared failure propagation are adapted from
 [yielded-dev/auth](https://github.com/yielded-dev/auth/tree/cb09bb198773a7994add1dbfaa67d93a0918ddb9),
 commit `cb09bb198773a7994add1dbfaa67d93a0918ddb9`.
-The source files under `packages/auth/src/oauth/providers/` are
-`github/{provider,protocol,profile}.ts`, `google/{provider,profile}.ts`,
-`microsoft/{provider,profile}.ts`, and `shared/{preset,profile,discovery}.ts`.
+The source files under `packages/auth/src/oauth/providers/` include the provider
+and profile modules for `apple`, `atlassian`, `auth0`, `cognito`, `dropbox`, `figma`,
+`github`, `gitlab`, `google`, `huggingface`, `keycloak`, `kick`, `line`, `linear`,
+`microsoft`, `notion`, `okta`, `railway`, `roblox`, `slack`, `strava`, `vercel`, `x`,
+`zitadel`, and `zoom`; GitHub and Strava's `protocol.ts`; and
+`shared/{configuration,discovery,models,oidcTenant,preset,privateKeyJwt,profile,protocol}.ts`.
+Shared cancellation fixes and regressions are adapted from
+`packages/oauth/src/internal/{ownership,transport}.ts` and
+`packages/oauth/test/failure-propagation.test.ts` in the same snapshot.
 
-The local adaptation is in `src/GitHub.ts`, `src/Google.ts`, `src/Microsoft.ts`,
-`src/OAuthProvider.ts`, and `src/internal/provider.ts`, with contract coverage in
-`test/oauth/providers.test.ts` and `typetest/Providers.tst.ts`. It uses the local
-OAuth and signed OIDC implementations, with scoped Effect services and private
-typed profiles. Durable transactions, sessions, account linking, persistence,
-and other provider integrations are not included. Microsoft subjects consistently
-use `oid:tid` alongside the verified concrete issuer; the source's multitenant
-durable subject prefix is not part of this API.
+The local adaptation is in `src/oauth/providers/`, `src/oauth/OAuthProvider.ts`,
+and `src/internal/{ownership,transport}.ts`, with coverage in
+`test/oauth/providers/`, `test/oauth/failure-propagation.test.ts`, and
+`typetest/oauth/providers/`. It uses the local OAuth and signed OIDC implementations,
+with scoped Effect services and private typed profiles. Durable transactions,
+sessions, account linking, persistence, registration rotation, and connected-grant
+refresh workflows are not included. Microsoft subjects consistently use `oid:tid`
+alongside the verified concrete issuer; the source's multitenant durable subject
+prefix is not part of this API.
 
 ### yielded-dev/auth — MIT
 
@@ -77,8 +84,8 @@ policy capture, scoped cancellation and bounded-waiter regressions. This is not
 a full upstream suite port or a claim of full upstream compatibility.
 
 The source implementation informs claim validation, protected-header policy, and
-key selection in `src/Jose/Jwt.ts`, `src/Jose/Jws.ts`, `src/Jose/Jwk.ts`, `src/Jose/Jwks.ts`, and
-`src/Jose/Jwe.ts`; these implementations are written for Effect services and Schema.
+key selection in `src/jose/Jwt.ts`, `src/jose/Jws.ts`, `src/jose/Jwk.ts`, `src/jose/Jwks.ts`, and
+`src/jose/Jwe.ts`; these implementations are written for Effect services and Schema.
 No panva/jose runtime implementation is bundled or required.
 
 The wire formats follow RFC 7515, RFC 7516, RFC 7517, RFC 7518, RFC 7519,
@@ -156,7 +163,7 @@ Version: **3.8.8**. Commit: **`916b97952dbf431d8b72f369840de54f5a286e4d`**.
 
 Runtime adaptation: [src/index.ts, `formUrlEncode`](https://github.com/panva/oauth4webapi/blob/916b97952dbf431d8b72f369840de54f5a286e4d/src/index.ts#L1867),
 used by upstream `ClientSecretBasic`, is adapted as
-[src/OAuth.ts, `basicComponent`](src/OAuth.ts). It form-encodes each credential
+[src/oauth/OAuth.ts, `basicComponent`](src/oauth/OAuth.ts). It form-encodes each credential
 component before joining them with a colon, including escaped punctuation and
 `+` for spaces. The MIT license below covers this adaptation as well as the
 selected test contracts.

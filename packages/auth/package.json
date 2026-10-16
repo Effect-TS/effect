@@ -39,11 +39,14 @@
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
-    "./Jose": "./src/Jose/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
     "./index": null,
-    "./*/index": null
+    "./*/index": null,
+    "./jose": "./src/jose/index.ts",
+    "./oauth": "./src/oauth/index.ts",
+    "./oauth/providers": "./src/oauth/providers/index.ts",
+    "./oauth/providers/internal/*": null
   },
   "files": [
     "src/**/*.ts",
@@ -62,11 +65,14 @@
     "exports": {
       "./package.json": "./package.json",
       ".": "./dist/index.js",
-      "./Jose": "./dist/Jose/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
       "./index": null,
-      "./*/index": null
+      "./*/index": null,
+      "./jose": "./dist/jose/index.js",
+      "./oauth": "./dist/oauth/index.js",
+      "./oauth/providers": "./dist/oauth/providers/index.js",
+      "./oauth/providers/internal/*": null
     }
   },
   "scripts": {

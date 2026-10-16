@@ -1,4 +1,4 @@
-import { Oidc } from "@effect/auth"
+import { Oidc } from "@effect/auth/oauth"
 import { assert, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import * as HttpClient from "effect/http/HttpClient"

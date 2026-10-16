@@ -3,7 +3,7 @@ import * as Base64Url from "effect/encoding/Base64Url"
 import * as Redacted from "effect/Redacted"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
-import { InvalidToken } from "../JoseError.ts"
+import { InvalidToken } from "../jose/JoseError.ts"
 
 /** @internal */
 export const JsonObject = Schema.Record(Schema.String, Schema.Json)

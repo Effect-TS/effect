@@ -3,7 +3,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 
-import { ConfigurationError, Unavailable } from "../OAuthError.ts"
+import { ConfigurationError, Unavailable } from "../oauth/OAuthError.ts"
 import * as DurationInput from "./duration.ts"
 
 /** @internal */

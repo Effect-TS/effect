@@ -1,4 +1,4 @@
-import { Jwk, Jwt } from "@effect/auth/Jose"
+import { Jwk, Jwt } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Context, Effect, Redacted, Schema, SchemaGetter } from "effect"
 import { TestClock } from "effect/testing"

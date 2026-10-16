@@ -1,5 +1,5 @@
-import type { JoseError } from "@effect/auth"
-import { Jwks, Jws } from "@effect/auth/Jose"
+import type { JoseError } from "@effect/auth/jose"
+import { Jwks, Jws } from "@effect/auth/jose"
 import { assert, it } from "@effect/vitest"
 import { Context, Deferred, Duration, Effect, Exit, Fiber, Layer, Redacted, Scope } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"

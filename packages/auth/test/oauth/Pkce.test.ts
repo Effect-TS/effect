@@ -1,4 +1,4 @@
-import { Pkce } from "@effect/auth"
+import { Pkce } from "@effect/auth/oauth"
 import { assert, it } from "@effect/vitest"
 import * as Digest from "effect/crypto/Digest"
 import * as SecureRandom from "effect/crypto/SecureRandom"
