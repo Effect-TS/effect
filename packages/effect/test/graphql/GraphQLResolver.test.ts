@@ -330,9 +330,9 @@ describe("GraphQLResolver", () => {
         )
 
         const results = yield* Effect.all([
-          Effect.provideService(get("R_1"), GitHubHost, "api.github.com"),
+          get("R_1"),
           Effect.provideService(get("R_2"), GitHubHost, "api.acme.ghe.com"),
-          Effect.provideService(get("R_3"), GitHubHost, "api.github.com"),
+          get("R_3"),
           Effect.provideService(get("R_4"), GitHubHost, "api.acme.ghe.com")
         ], { concurrency: "unbounded" })
 
@@ -363,7 +363,7 @@ describe("GraphQLResolver", () => {
         }))
     }
 
-    it.effect("applies batchN per asynchronous URL without evaluating the URL again when sending", () =>
+    it.effect("applies batchN per asynchronous URL with an implicit default host and evaluates each URL once", () =>
       Effect.gen(function*() {
         let evaluations = 0
         const sent = yield* lookUpOnTwoHosts(
