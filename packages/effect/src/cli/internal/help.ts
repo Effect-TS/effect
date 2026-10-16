@@ -116,8 +116,6 @@ const getInheritedFlagsForCommandPath = (
         if (seen.has(single.name)) {
           continue
         }
-        // Hidden ancestor flags are excluded from inherited flags, the same
-        // way they're excluded from the owning command's own help output.
         if (single.hidden) {
           continue
         }
@@ -178,8 +176,7 @@ export const getHelpForCommandPath = <Name extends string, Input, E, R, ContextI
       }
     }
 
-    // The deepest command on the path that declares global flags lists every
-    // global active here, since globals only accumulate along the path
+    // Globals accumulate along the path, so the deepest declaring scope lists them all.
     let scopeLength = 1
     for (let i = commands.length - 1; i > 0; i--) {
       if (toImpl(commands[i]).globalFlags.length > 0) {

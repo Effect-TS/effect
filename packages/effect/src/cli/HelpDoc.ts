@@ -82,19 +82,18 @@ export interface HelpDoc {
   readonly flags: ReadonlyArray<FlagDoc>
 
   /**
-   * Flags declared on ancestor commands with `Command.withSharedFlags` that
-   * are also accepted by this command.
+   * Shared flags inherited from ancestor commands.
    */
   readonly inheritedFlags?: ReadonlyArray<FlagDoc>
 
   /**
-   * Global flags available to all commands (e.g., --help, --version).
+   * Global flags active at this command, including built-ins (e.g., --help).
    */
   readonly globalFlags?: ReadonlyArray<FlagDoc>
 
   /**
-   * Command path of the nearest command, from this command up to the root,
-   * that declares global flags. Its help lists every global flag active here.
+   * Root-to-command path of the nearest ancestor (or this command) declaring
+   * global flags. Defaults to the root for built-ins.
    */
   readonly globalFlagsScope?: ReadonlyArray<string>
 

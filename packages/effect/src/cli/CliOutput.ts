@@ -302,7 +302,7 @@ const escapeControlCharacters = (text: string): string =>
  * // Auto-detect colors based on terminal support (default behavior)
  * const autoFormatter = CliOutput.defaultFormatter()
  *
- * // Point subcommand help at the root help for global flags
+ * // Point subcommand help at the declaring scope for global flags
  * const compactFormatter = CliOutput.defaultFormatter({ globalFlags: "summary" })
  *
  * const error = new CliError.InvalidValue({
@@ -605,7 +605,7 @@ const formatHelpDocImpl = (doc: HelpDoc, colors: ColorFunctions, options: HelpOp
 
   const commandPath = doc.commandPath
   renderFlagSection("INHERITED FLAGS", doc.inheritedFlags, options.inheritedFlags, commandPath?.slice(0, -1))
-  // Global flags are always listed in full where they are declared, so they stay discoverable
+  // Keep globals discoverable on their declaring command, even in "none" mode.
   const globalFlagsScope = doc.globalFlagsScope ?? commandPath?.slice(0, 1)
   const declaresGlobalFlags = commandPath === undefined || globalFlagsScope?.length === commandPath.length
   renderFlagSection(
