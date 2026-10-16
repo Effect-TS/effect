@@ -151,6 +151,16 @@ describe("Xml", () => {
           start("r"),
           end("r")
         ])
+        for (const chunks of splits("<!DOCTYPE a [text]><a/>")) {
+          assert.deepStrictEqual(yield* decodeString(chunks), [
+            { _tag: "Doctype", name: "a" },
+            start("a"),
+            end("a")
+          ])
+        }
+        for (const chunks of splits("<!DOCTYPE a [>]><a/>")) {
+          assert.deepStrictEqual(yield* failure(decodeString(chunks)), ["Syntax", 1, 14])
+        }
       }))
 
     it.effect("decodes UTF-8 bytes", () =>
@@ -305,18 +315,24 @@ describe("Xml", () => {
           assert.strictEqual(error.kind, "InvalidEvent", JSON.stringify(events))
           assert.deepStrictEqual([error.line, error.column], [undefined, undefined])
         }
-        // Byte output can only declare UTF-8 or US-ASCII
-        const latin1 = Stream.make<ReadonlyArray<Xml.Event>>(
-          { _tag: "Declaration", version: "1.0", encoding: "ISO-8859-1" },
-          start("a"),
-          end("a")
-        )
-        assert.strictEqual(
-          yield* latin1.pipe(Stream.pipeThroughChannel(Xml.encodeString()), Stream.mkString),
-          "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a/>"
-        )
-        const error = yield* latin1.pipe(Stream.pipeThroughChannel(Xml.encode()), Stream.runDrain, Effect.flip)
-        assert.strictEqual(error.kind, "InvalidEvent")
+        // Byte output can only declare UTF-8; string output preserves other encoding labels
+        for (const encoding of ["ISO-8859-1", "US-ASCII"]) {
+          const events = Stream.make<ReadonlyArray<Xml.Event>>(
+            { _tag: "Declaration", version: "1.0", encoding },
+            start("a"),
+            end("a")
+          )
+          assert.strictEqual(
+            yield* events.pipe(Stream.pipeThroughChannel(Xml.encodeString()), Stream.mkString),
+            `<?xml version="1.0" encoding="${encoding}"?><a/>`
+          )
+          const result = yield* events.pipe(
+            Stream.pipeThroughChannel(Xml.encode()),
+            Stream.runDrain,
+            Effect.match({ onFailure: (error) => error.kind, onSuccess: () => "success" })
+          )
+          assert.strictEqual(result, "InvalidEvent", encoding)
+        }
         // Each input chunk is written as one string, and output written before an invalid event is emitted first
         const results = yield* Stream.make(start("a"), text("x"), end("b")).pipe(
           Stream.pipeThroughChannel(Xml.encodeString()),
