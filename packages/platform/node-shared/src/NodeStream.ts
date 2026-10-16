@@ -48,8 +48,8 @@ export class MaxBytesError extends Error {
 
 /**
  * Converts a Node readable stream into an Effect `Stream`, reading chunks with
- * an optional chunk size, mapping stream errors with `onError`, and destroying
- * the readable on completion unless `closeOnDone` is `false`.
+ * independent read sizes and batch limits, mapping stream errors with `onError`,
+ * and destroying the readable on completion unless `closeOnDone` is `false`.
  *
  * @stability unstable
  * @category constructors
@@ -58,7 +58,15 @@ export class MaxBytesError extends Error {
 export const fromReadable = <A = Uint8Array, E = Cause.UnknownError>(options: {
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
+  /**
+   * Maximum number of Node reads per pull (default 4096). Set to Infinity
+   * for unbounded batching. Does not control the size of each Node read.
+   */
   readonly chunkSize?: number | undefined
+  /**
+   * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+   */
+  readonly readSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Stream.Stream<A, E> => Stream.fromChannel(fromReadableChannel<A, E>(options))
 
@@ -74,7 +82,15 @@ export const fromReadable = <A = Uint8Array, E = Cause.UnknownError>(options: {
 export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(options: {
   readonly evaluate: LazyArg<Readable | NodeJS.ReadableStream>
   readonly onError?: (error: unknown) => E
+  /**
+   * Maximum number of Node reads per pull (default 4096). Set to Infinity
+   * for unbounded batching. Does not control the size of each Node read.
+   */
   readonly chunkSize?: number | undefined
+  /**
+   * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+   */
+  readonly readSize?: number | undefined
   readonly closeOnDone?: boolean | undefined
 }): Channel.Channel<Arr.NonEmptyReadonlyArray<A>, E> =>
   Channel.fromTransform((_, scope) =>
@@ -83,6 +99,7 @@ export const fromReadableChannel = <A = Uint8Array, E = Cause.UnknownError>(opti
       readable: options.evaluate(),
       onError: options.onError ?? defaultOnError as any,
       chunkSize: options.chunkSize,
+      readSize: options.readSize,
       closeOnDone: options.closeOnDone
     })
   )
@@ -100,7 +117,15 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
   options: {
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E
+    /**
+     * Maximum number of Node reads per pull (default 4096). Set to Infinity
+     * for unbounded batching. Does not control the size of each Node read.
+     */
     readonly chunkSize?: number | undefined
+    /**
+     * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+     */
+    readonly readSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
   }
@@ -131,7 +156,8 @@ export const fromDuplex = <IE, I = Uint8Array, O = Uint8Array, E = Cause.Unknown
           latch,
           readable: duplex,
           onError: options.onError ?? defaultOnError as any,
-          chunkSize: options.chunkSize
+          chunkSize: options.chunkSize,
+          readSize: options.readSize
         })
       )
     )
@@ -150,7 +176,15 @@ export const pipeThroughDuplex: {
     options: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
+      /**
+       * Maximum number of Node reads per pull (default 4096). Set to Infinity
+       * for unbounded batching. Does not control the size of each Node read.
+       */
       readonly chunkSize?: number | undefined
+      /**
+       * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+       */
+      readonly readSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
     }
@@ -160,7 +194,15 @@ export const pipeThroughDuplex: {
     options: {
       readonly evaluate: LazyArg<Duplex>
       readonly onError?: (error: unknown) => E2
+      /**
+       * Maximum number of Node reads per pull (default 4096). Set to Infinity
+       * for unbounded batching. Does not control the size of each Node read.
+       */
       readonly chunkSize?: number | undefined
+      /**
+       * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+       */
+      readonly readSize?: number | undefined
       readonly endOnDone?: boolean | undefined
       readonly encoding?: BufferEncoding | undefined
     }
@@ -170,7 +212,15 @@ export const pipeThroughDuplex: {
   options: {
     readonly evaluate: LazyArg<Duplex>
     readonly onError?: (error: unknown) => E2
+    /**
+     * Maximum number of Node reads per pull (default 4096). Set to Infinity
+     * for unbounded batching. Does not control the size of each Node read.
+     */
     readonly chunkSize?: number | undefined
+    /**
+     * Size passed to Node's `read(size)`. Omit to use Node's unsized reads.
+     */
+    readonly readSize?: number | undefined
     readonly endOnDone?: boolean | undefined
     readonly encoding?: BufferEncoding | undefined
   }
@@ -387,9 +437,11 @@ const readableToPullUnsafe = <A, E>(options: {
   readonly readable: Readable | NodeJS.ReadableStream
   readonly onError: (error: unknown) => E
   readonly chunkSize: number | undefined
+  readonly readSize: number | undefined
   readonly closeOnDone?: boolean | undefined
 }) => {
   const readable = options.readable as Readable
+  const chunkSize = options.chunkSize ?? 4096
 
   const closeOnDone = options.closeOnDone ?? true
   const exit = options.exit ?? MutableRef.make(undefined)
@@ -404,7 +456,7 @@ const readableToPullUnsafe = <A, E>(options: {
   })
 
   const pull = Effect.suspend(function loop(): Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E> {
-    let item = options.readable.read(options.chunkSize) as A | null
+    let item = options.readable.read(options.readSize) as A | null
     if (item === null) {
       if (exit.current) {
         return exit.current
@@ -416,8 +468,9 @@ const readableToPullUnsafe = <A, E>(options: {
       return Effect.flatMap(latch.await, loop)
     }
     const chunk = Arr.of(item as A)
-    while (true) {
-      item = options.readable.read(options.chunkSize)
+    // read() can synchronously refill the buffer, so null is not a batch bound.
+    while (chunk.length < chunkSize) {
+      item = options.readable.read(options.readSize)
       if (item === null) break
       chunk.push(item)
     }
