@@ -1,8 +1,5 @@
 /**
- * Works with raw bytes stored in `Uint8Array` values.
- *
- * This module collects the small byte helpers that protocol, encoding, and
- * parsing code keeps needing: joining chunks and comparing byte sequences.
+ * Joins and compares byte sequences stored in `Uint8Array` values.
  *
  * Byte-to-text conversions live in `TextEncoder` / `TextDecoder`, and hex or
  * base64 conversions live in the `Encoding` modules.
