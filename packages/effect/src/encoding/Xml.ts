@@ -1712,11 +1712,12 @@ const validUtf8 = (bytes: Uint8Array): number => {
   return i
 }
 
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+
 // Decodes UTF-8 without streaming state, so that the position of invalid bytes
 // is known: an incomplete sequence at the end of a chunk is carried over.
 class Utf8Input implements Machine<Uint8Array, Event> {
   private readonly parser: Parser
-  private readonly decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
   private carry: Uint8Array | undefined
 
   constructor(parser: Parser) {
@@ -1767,9 +1768,9 @@ class Utf8Input implements Machine<Uint8Array, Event> {
   private decode(bytes: Uint8Array): void {
     let text: string
     try {
-      text = this.decoder.decode(bytes)
+      text = utf8Decoder.decode(bytes)
     } catch {
-      this.parser.feed(this.decoder.decode(bytes.subarray(0, validUtf8(bytes))))
+      this.parser.feed(utf8Decoder.decode(bytes.subarray(0, validUtf8(bytes))))
       throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
     }
     this.parser.feed(text)
