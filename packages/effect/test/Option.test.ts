@@ -74,6 +74,88 @@ describe("Option", () => {
     assertSome(g, "testContext")
   })
 
+  it("gen closes nested try/catch/finally and using on none", () => {
+    const order: Array<string> = []
+    const result = Option.gen(function*() {
+      using resource = {
+        [Symbol.dispose]() {
+          order.push("dispose")
+        }
+      }
+      void resource
+      try {
+        try {
+          yield* Option.some(1)
+        } finally {
+          order.push("entered")
+        }
+        try {
+          try {
+            yield* Option.none()
+          } catch {
+            order.push("inner-catch")
+            return 1
+          } finally {
+            order.push("inner")
+            yield* Option.none()
+            order.push("after-inner")
+          }
+        } catch {
+          order.push("outer-catch")
+          return 2
+        } finally {
+          order.push("outer")
+        }
+        try {
+          yield* Option.some(2)
+        } finally {
+          order.push("after")
+        }
+      } finally {
+        order.push("root")
+      }
+    })
+    assertNone(result)
+    deepStrictEqual(order, ["entered", "inner", "outer", "root", "dispose"])
+  })
+
+  it("gen finally yield and return undefined replaces none", () => {
+    const result = Option.gen(function*() {
+      try {
+        return yield* Option.none()
+      } finally {
+        const value = yield* Option.some(1)
+        // oxlint-disable-next-line no-unsafe-finally
+        return value === 1 ? undefined : value
+      }
+    })
+    assertSome(result, undefined)
+  })
+
+  it("gen catch recovers a throw and using disposes on some", () => {
+    const recovered = Option.gen(function*() {
+      try {
+        throw "boom"
+      } catch {
+        return 2
+      }
+    })
+    assertSome(recovered, 2)
+
+    let disposed = false
+    const completed = Option.gen(function*() {
+      using resource = {
+        [Symbol.dispose]() {
+          disposed = true
+        }
+      }
+      yield* Option.some(resource)
+      return 1
+    })
+    assertSome(completed, 1)
+    assertTrue(disposed)
+  })
+
   it("toString", () => {
     strictEqual(
       String(Option.none()),

@@ -20,6 +20,7 @@ import { constNull, constUndefined, dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
+import { closeOnShortCircuit } from "./internal/generator.ts"
 import * as option from "./internal/option.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
@@ -2399,6 +2400,12 @@ export const Do: Option<{}> = some({})
  * - The return value is wrapped in `Some`
  * - No `Effect` runtime is needed
  *
+ * **Gotchas**
+ *
+ * A yielded `None` closes the generator before that `None` is returned, so
+ * `finally` and `using` run. A `return` in `finally` replaces the `None`,
+ * including `return undefined`. `catch` does not run for that `None`.
+ *
  * **Example** (Sequencing Option computations with generator syntax)
  *
  * ```ts import.meta.vitest
@@ -2427,7 +2434,13 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
   while (!state.done) {
     const current = state.value
     if (isNone(current)) {
-      return current
+      return closeOnShortCircuit(
+        iterator,
+        current,
+        isNone,
+        (yielded) => yielded.value,
+        some
+      )
     }
     state = iterator.next(current.value as never)
   }

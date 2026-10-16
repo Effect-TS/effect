@@ -498,6 +498,88 @@ describe("Result", () => {
       assertFailure(f, "err")
       assertSuccess(g, "testContext")
     })
+
+    it("gen closes nested try/catch/finally and using on failure", () => {
+      const order: Array<string> = []
+      const result = Result.gen(function*() {
+        using resource = {
+          [Symbol.dispose]() {
+            order.push("dispose")
+          }
+        }
+        void resource
+        try {
+          try {
+            yield* Result.succeed(1)
+          } finally {
+            order.push("entered")
+          }
+          try {
+            try {
+              yield* Result.fail("boom")
+            } catch {
+              order.push("inner-catch")
+              return 1
+            } finally {
+              order.push("inner")
+              yield* Result.fail("from-finally")
+              order.push("after-inner")
+            }
+          } catch {
+            order.push("outer-catch")
+            return 2
+          } finally {
+            order.push("outer")
+          }
+          try {
+            yield* Result.succeed(2)
+          } finally {
+            order.push("after")
+          }
+        } finally {
+          order.push("root")
+        }
+      })
+      assertFailure(result, "from-finally")
+      deepStrictEqual(order, ["entered", "inner", "outer", "root", "dispose"])
+    })
+
+    it("gen finally yield and return undefined replaces a failure", () => {
+      const result = Result.gen(function*() {
+        try {
+          return yield* Result.fail("boom")
+        } finally {
+          const value = yield* Result.succeed(1)
+          // oxlint-disable-next-line no-unsafe-finally
+          return value === 1 ? undefined : value
+        }
+      })
+      assertSuccess(result, undefined)
+    })
+
+    it("gen catch recovers a throw and using disposes on success", () => {
+      const recovered = Result.gen(function*() {
+        try {
+          throw "boom"
+        } catch {
+          return 2
+        }
+      })
+      assertSuccess(recovered, 2)
+
+      let disposed = false
+      const completed = Result.gen(function*() {
+        using resource = {
+          [Symbol.dispose]() {
+            disposed = true
+          }
+        }
+        yield* Result.succeed(resource)
+        return 1
+      })
+      assertSuccess(completed, 1)
+      assertTrue(disposed)
+    })
   })
 
   describe("Transposing", () => {

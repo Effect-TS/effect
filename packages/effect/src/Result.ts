@@ -17,6 +17,7 @@ import { constNull, constUndefined, dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
+import { closeOnShortCircuit } from "./internal/generator.ts"
 import * as option_ from "./internal/option.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
@@ -1508,6 +1509,12 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
  * - The return value of the generator is wrapped in `Success`
  * - Evaluated eagerly and synchronously (unlike `Effect.gen`)
  *
+ * **Gotchas**
+ *
+ * A yielded failure closes the generator before that failure is returned, so
+ * `finally` and `using` run. A `return` in `finally` replaces the failure,
+ * including `return undefined`. `catch` does not run for that failure.
+ *
  * **Example** (Composing multiple Results)
  *
  * ```ts import.meta.vitest
@@ -1534,7 +1541,13 @@ export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
   while (!state.done) {
     const current = state.value
     if (isFailure(current)) {
-      return current
+      return closeOnShortCircuit(
+        iterator,
+        current,
+        isFailure,
+        (yielded) => yielded.success,
+        succeed
+      )
     }
     state = iterator.next(current.success as never)
   }
