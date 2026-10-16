@@ -1058,7 +1058,7 @@ export const toURL = (self: HttpServerRequest): Option.Option<URL> => {
     ? "https"
     : "http"
   try {
-    return Option.some(new URL(self.url, `${protocol}://${host}`))
+    return Option.some(new URL(self.url.startsWith("/") ? `.${self.url}` : self.url, `${protocol}://${host}`))
   } catch {
     return Option.none()
   }
