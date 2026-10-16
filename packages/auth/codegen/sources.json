@@ -13,5 +13,91 @@
     "url": "https://raw.githubusercontent.com/linear/linear/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/packages/sdk/src/schema.graphql",
     "sha256": "3a98f6dcca0140d7d50c3989dbcf8fb73485714f7ef2345e31044fd9d3775f0e",
     "license": "https://github.com/linear/linear/blob/9dd2ed80f93ae596f4f7fa21aa7cf80895c58514/LICENSE"
+  },
+  "openid": {
+    "project": "openid/connect",
+    "commit": "ba6bbf1dc37d7ce207028d1dc7b14f5082f7c471",
+    "url": "https://raw.githubusercontent.com/openid/connect/ba6bbf1dc37d7ce207028d1dc7b14f5082f7c471/openid-connect-core-1_0.xml",
+    "sha256": "a937c863f4dc87155a24dfffd4830241ebf1baf319c56eb51d1f1497271ad764",
+    "license": "https://github.com/openid/connect/blob/ba6bbf1dc37d7ce207028d1dc7b14f5082f7c471/openid-connect-core-1_0.xml"
+  },
+  "figma": {
+    "project": "figma/rest-api-spec",
+    "commit": "7ec6254f6b8b49eb13136349ff4d83bf69bd7e72",
+    "url": "https://raw.githubusercontent.com/figma/rest-api-spec/7ec6254f6b8b49eb13136349ff4d83bf69bd7e72/openapi/openapi.yaml",
+    "sha256": "8afa2b1680b5244316778c91aa35b4fa544460c76ea772ed0ea33140535ac1b8",
+    "license": "https://github.com/figma/rest-api-spec/blob/7ec6254f6b8b49eb13136349ff4d83bf69bd7e72/LICENSE"
+  },
+  "dropbox": {
+    "project": "dropbox/dropbox-sdk-js",
+    "commit": "969f919d5055ad6e666f19e09d1ab00082040d64",
+    "url": "https://raw.githubusercontent.com/dropbox/dropbox-sdk-js/969f919d5055ad6e666f19e09d1ab00082040d64/types/dropbox_types.d.ts",
+    "sha256": "5416bb36d257897c3da135bd8c4de2b5bb67a3595d3cbd7c0314d84a97a2d98a",
+    "license": "https://github.com/dropbox/dropbox-sdk-js/blob/969f919d5055ad6e666f19e09d1ab00082040d64/LICENSE"
+  },
+  "notion-common": {
+    "project": "makenotion/notion-sdk-js",
+    "commit": "0ffdbba3004b27438ca72df769412268e4fdede1",
+    "url": "https://raw.githubusercontent.com/makenotion/notion-sdk-js/0ffdbba3004b27438ca72df769412268e4fdede1/src/api-endpoints/common.ts",
+    "sha256": "57ecc5178c3b104b60eecf8ac10e831b3656ca1fad911ca662675b65f0e2efd4",
+    "license": "https://github.com/makenotion/notion-sdk-js/blob/0ffdbba3004b27438ca72df769412268e4fdede1/LICENSE"
+  },
+  "notion-oauth": {
+    "project": "makenotion/notion-sdk-js",
+    "commit": "0ffdbba3004b27438ca72df769412268e4fdede1",
+    "url": "https://raw.githubusercontent.com/makenotion/notion-sdk-js/0ffdbba3004b27438ca72df769412268e4fdede1/src/api-endpoints/oauth.ts",
+    "sha256": "04df0c94ec021b6f892c691b32543ade897eefd82f9b11d6db816de6c53df789",
+    "license": "https://github.com/makenotion/notion-sdk-js/blob/0ffdbba3004b27438ca72df769412268e4fdede1/LICENSE"
+  },
+  "google": {
+    "project": "googleapis/google-auth-library-nodejs",
+    "commit": "a95b8272197f35453d1647eed85be475d51474c9",
+    "url": "https://raw.githubusercontent.com/googleapis/google-auth-library-nodejs/a95b8272197f35453d1647eed85be475d51474c9/src/auth/loginticket.ts",
+    "sha256": "9d990e50025833845063a78ce46943175cd7a87bfb0a4c8eef64b52ba4da88d1",
+    "license": "https://github.com/googleapis/google-auth-library-nodejs/blob/a95b8272197f35453d1647eed85be475d51474c9/LICENSE"
+  },
+  "microsoft": {
+    "project": "AzureAD/microsoft-authentication-library-for-js",
+    "commit": "4d1e6f9516df2d0d21b8537010bbd8afd5bffe4c",
+    "url": "https://raw.githubusercontent.com/AzureAD/microsoft-authentication-library-for-js/4d1e6f9516df2d0d21b8537010bbd8afd5bffe4c/lib/msal-common/src/account/TokenClaims.ts",
+    "sha256": "f8ba5be96d73a95fcad75285d42491716259f0b5ff631d94af9f020985f92d5c",
+    "license": "https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/4d1e6f9516df2d0d21b8537010bbd8afd5bffe4c/LICENSE"
+  },
+  "slack": {
+    "project": "slackapi/node-slack-sdk",
+    "commit": "1fabb452808d6c643a779c7fa8af36a34077c9ac",
+    "url": "https://raw.githubusercontent.com/slackapi/node-slack-sdk/1fabb452808d6c643a779c7fa8af36a34077c9ac/packages/web-api/src/types/response/OpenIDConnectUserInfoResponse.ts",
+    "sha256": "493d9e6c2d1a5913e340d6b7846502ca0e712173d83f5f5468cd4f38cd6ddaa2",
+    "license": "https://github.com/slackapi/node-slack-sdk/blob/1fabb452808d6c643a779c7fa8af36a34077c9ac/LICENSE"
+  },
+  "slack-client": {
+    "project": "slackapi/node-slack-sdk",
+    "commit": "1fabb452808d6c643a779c7fa8af36a34077c9ac",
+    "url": "https://raw.githubusercontent.com/slackapi/node-slack-sdk/1fabb452808d6c643a779c7fa8af36a34077c9ac/packages/web-api/src/WebClient.ts",
+    "sha256": "47c5fa21b35e6a9fc10e107bb442187c9ed2c356b0a0be8babe8e14621a9d0f4",
+    "license": "https://github.com/slackapi/node-slack-sdk/blob/1fabb452808d6c643a779c7fa8af36a34077c9ac/LICENSE"
+  },
+  "kick": {
+    "project": "Kick Public API",
+    "version": "1.0.0",
+    "url": "https://api.kick.com/swagger/doc.json",
+    "sha256": "553eec3faac2620f2b67a408e76d51172d474c51918493ccec2d48f6644cb38f",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0"
+  },
+  "strava": {
+    "project": "Strava API",
+    "version": "3.0.0",
+    "url": "https://developers.strava.com/swagger/athlete.json",
+    "sha256": "3830a4ff618404e015f53f502ccc89bd2420b745c5026c22562a2333c15dd7b6",
+    "license": "https://www.strava.com/legal/api"
+  },
+  "x": {
+    "project": "xdevplatform/xdk",
+    "version": "2.167",
+    "commit": "84c26540df30c0b798e50e34151c56d5d262ba1c",
+    "url": "https://raw.githubusercontent.com/xdevplatform/xdk/84c26540df30c0b798e50e34151c56d5d262ba1c/specs/openapi.json",
+    "sha256": "ddaf2f44b19c63dc5550811bc2df893d6dafb44049c9064c8a4161e0da47c9b6",
+    "license": "https://github.com/xdevplatform/xdk/blob/84c26540df30c0b798e50e34151c56d5d262ba1c/LICENSE",
+    "terms": "https://docs.x.com/developer-terms/agreement"
   }
 }

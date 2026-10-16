@@ -88,7 +88,11 @@
     "@effect/openapi-generator": "workspace:^",
     "@effect/platform-node": "workspace:^",
     "effect": "workspace:^",
-    "jose": "6.2.12"
+    "jose": "6.2.12",
+    "saxes": "^6.0.0",
+    "typescript": "^7.0.2",
+    "typescript-compiler": "npm:typescript@6.0.3",
+    "yaml": "^2.9.1"
   },
   "peerDependencies": {
     "effect": "workspace:^"

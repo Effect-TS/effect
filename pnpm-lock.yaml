@@ -358,6 +358,18 @@ importers:
       jose:
         specifier: 6.2.12
         version: 6.2.12
+      saxes:
+        specifier: ^6.0.0
+        version: 6.0.0
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      typescript-compiler:
+        specifier: npm:typescript@6.0.3
+        version: typescript@6.0.3
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
 
   packages/effect:
     devDependencies:

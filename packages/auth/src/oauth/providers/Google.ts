@@ -18,6 +18,7 @@ import type * as OAuth from "../OAuth.ts"
 import { ConfigurationError, type Rejected, type Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
+import * as Generated from "./internal/generated/google.ts"
 import * as Provider from "./internal/provider.ts"
 
 /**
@@ -30,7 +31,7 @@ import * as Provider from "./internal/provider.ts"
  */
 export const Profile = Schema.Struct({
   ...OAuthProvider.StandardProfile.fields,
-  hd: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(253)))
+  hd: Schema.optionalKey(Generated.Claims_hd.check(Schema.isMaxLength(253)))
 })
 
 /**

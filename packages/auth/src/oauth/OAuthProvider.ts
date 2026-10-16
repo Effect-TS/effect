@@ -8,9 +8,9 @@
  */
 import type * as Duration from "effect/Duration"
 import type * as Redacted from "effect/Redacted"
-import * as Schema from "effect/Schema"
 
 import type * as OAuth from "./OAuth.ts"
+import * as Generated from "./providers/internal/generated/openid.ts"
 
 /**
  * Client credentials, one exact registered callback, and request bounds for a provider client.
@@ -115,9 +115,6 @@ export interface ExchangeResult<Profile> {
   readonly identity: Identity<Profile>
 }
 
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
-
 /**
  * Schema for standard OpenID Connect profile claims, without protocol claims or credentials.
  * Decoding this schema alone does not verify a token or authenticate an identity.
@@ -126,34 +123,7 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @category schemas
  * @since 4.1.0
  */
-export const StandardProfile = Schema.Struct({
-  name: Schema.optionalKey(text),
-  given_name: Schema.optionalKey(text),
-  family_name: Schema.optionalKey(text),
-  middle_name: Schema.optionalKey(text),
-  nickname: Schema.optionalKey(text),
-  preferred_username: Schema.optionalKey(text),
-  profile: Schema.optionalKey(url),
-  picture: Schema.optionalKey(url),
-  website: Schema.optionalKey(url),
-  email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320))),
-  email_verified: Schema.optionalKey(Schema.Boolean),
-  gender: Schema.optionalKey(text),
-  birthdate: Schema.optionalKey(text),
-  zoneinfo: Schema.optionalKey(text),
-  locale: Schema.optionalKey(text),
-  phone_number: Schema.optionalKey(text),
-  phone_number_verified: Schema.optionalKey(Schema.Boolean),
-  address: Schema.optionalKey(Schema.Struct({
-    formatted: Schema.optionalKey(url),
-    street_address: Schema.optionalKey(url),
-    locality: Schema.optionalKey(text),
-    region: Schema.optionalKey(text),
-    postal_code: Schema.optionalKey(text),
-    country: Schema.optionalKey(text)
-  })),
-  updated_at: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: Number.MAX_SAFE_INTEGER })))
-})
+export const StandardProfile = Generated.Profile
 
 /**
  * Value described by the StandardProfile schema.
