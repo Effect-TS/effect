@@ -245,15 +245,17 @@ export interface ManagedRuntime<in R, out ER> {
   readonly disposeEffect: Effect.Effect<void, never, never>
 }
 
-// The runtime whose disposal the current fiber is running. Finalizers and their
-// parallel fibers inherit it from the disposing fiber. It is not provided to the
-// layer build, because finalizers of layers shared through a MemoMap run with
-// the build context of the runtime that built them, which may not be the
-// runtime disposing them.
-const DisposingRuntime = Context.Reference<ManagedRuntime<any, any> | undefined>(
-  "effect/ManagedRuntime/DisposingRuntime",
+// The runtimes whose disposal the current fiber is running. A disposal adds its
+// runtime to the set it inherits, so a finalizer that disposes another runtime
+// still belongs to the outer disposals. Finalizers and their parallel fibers
+// inherit the set from the disposing fiber. It is not provided to the layer
+// build, because finalizers of layers shared through a MemoMap run with the
+// build context of the runtime that built them, which may not be the runtime
+// disposing them.
+const DisposingRuntimes = Context.Reference<ReadonlySet<ManagedRuntime<any, any>>>(
+  "effect/ManagedRuntime/DisposingRuntimes",
   {
-    defaultValue: () => undefined
+    defaultValue: () => new Set()
   }
 )
 
@@ -381,7 +383,7 @@ export const make = <R, ER>(
     },
     disposeEffect: Effect.withFiber((fiber) => {
       if (disposed !== undefined) {
-        if (fiber.getRef(DisposingRuntime) === self) return Effect.void
+        if (fiber.getRef(DisposingRuntimes).has(self)) return Effect.void
         for (let current = fiber as FiberImpl<any, any> | undefined; current; current = current._parent) {
           if (managedFibers.has(current)) return Effect.void
         }
@@ -398,7 +400,7 @@ export const make = <R, ER>(
       ;(self as Mutable<ManagedRuntime<R, ER>>).contextEffect = Effect.die("ManagedRuntime disposed")
       self.cachedContext = undefined
       return Scope.close(self.scope, Exit.void).pipe(
-        Effect.provideService(DisposingRuntime, self),
+        Effect.provideService(DisposingRuntimes, new Set(fiber.getRef(DisposingRuntimes)).add(self)),
         Effect.ensuring(Deferred.done(done, Exit.void))
       )
     }),
