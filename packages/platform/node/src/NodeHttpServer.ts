@@ -59,7 +59,7 @@ import * as Stream from "effect/Stream"
 import * as Http from "node:http"
 import type * as Net from "node:net"
 import type { Duplex } from "node:stream"
-import { Readable } from "node:stream"
+import { Readable, Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeHttpPlatform from "./NodeHttpPlatform.ts"
@@ -559,9 +559,12 @@ const handleResponse = (
     return Effect.void
   }
 
-  const omitsBody = Response.omitsBody(response)
-  let headers: Record<string, string | Array<string>> = (omitsBody ? Response.withoutBody(response) : response)
-    .headers
+  let headers: Record<string, string | Array<string>> = response.headers
+  // 204 and 205 have no content, so `content-length` could only describe the omitted body
+  if (response.status === 204 || response.status === 205) {
+    const { "content-length": _, ...rest } = headers
+    headers = rest
+  }
   if (!Cookies.isEmpty(response.cookies)) {
     headers = { ...headers }
     const toSet = Cookies.toSetCookieHeaders(response.cookies)
@@ -588,13 +591,13 @@ const handleResponse = (
       })
     )
   }
-  if (omitsBody) {
+  if (Response.omitsBody(response)) {
     nodeResponse.writeHead(response.status, response.statusText, headers)
     nodeResponse.end()
     return cancelResponseBody(response.body)
   }
   // A body that doesn't match `content-length` would desync a keep-alive
-  // connection, so Node throws `ERR_HTTP_CONTENT_LENGTH_MISMATCH` instead.
+  // connection, so Node throws `ERR_HTTP_CONTENT_LENGTH_MISMATCH` instead
   nodeResponse.strictContentLength = true
   const body = response.body
   switch (body._tag) {
@@ -609,7 +612,7 @@ const handleResponse = (
         typeof body.body.pipe === "function"
       ) {
         return Effect.tryPromise({
-          try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
+          try: (signal) => pipeTo(body.body as Readable, nodeResponse, headers, signal),
           catch: (cause) =>
             new HttpServerError({
               reason: new ResponseError({
@@ -642,27 +645,18 @@ const handleResponse = (
     case "FormData": {
       return Effect.suspend(() => {
         const r = new globalThis.Response(body.formData)
-        nodeResponse.writeHead(response.status, response.statusText, {
-          ...headers,
-          ...Object.fromEntries(r.headers)
-        })
-        return Effect.callback<void, HttpServerError>((resume, signal) => {
-          Readable.fromWeb(r.body as any, { signal })
-            .pipe(nodeResponse)
-            .on("error", (cause) => {
-              resume(Effect.fail(
-                new HttpServerError({
-                  reason: new ResponseError({
-                    request,
-                    response,
-                    description: "Error writing FormData response",
-                    cause
-                  })
-                })
-              ))
-            })
-            .once("finish", () => {
-              resume(Effect.void)
+        const formHeaders = { ...headers, ...Object.fromEntries(r.headers) }
+        nodeResponse.writeHead(response.status, response.statusText, formHeaders)
+        return Effect.tryPromise({
+          try: (signal) => pipeTo(Readable.fromWeb(r.body as any), nodeResponse, formHeaders, signal),
+          catch: (cause) =>
+            new HttpServerError({
+              reason: new ResponseError({
+                request,
+                response,
+                description: "Error writing FormData response",
+                cause
+              })
             })
         }).pipe(
           Effect.interruptible,
@@ -712,6 +706,36 @@ const end = (
   } catch (defect) {
     return handleCause(nodeResponse, response)(Cause.die(defect))
   }
+}
+
+// `pipeline` would rethrow a `strictContentLength` error from an event handler,
+// so a mismatch is caught before Node sees the bytes and fails the pipeline
+const pipeTo = (
+  readable: Readable,
+  nodeResponse: Http.ServerResponse,
+  headers: Record<string, string | Array<string>>,
+  signal: AbortSignal
+): Promise<void> => {
+  const contentLength = headers["content-length"]
+  if (typeof contentLength !== "string") {
+    return pipeline(readable, nodeResponse, { signal })
+  }
+  let remaining = Number(contentLength)
+  const mismatch = () => new Error(`Response body doesn't match content-length of ${contentLength}`)
+  return pipeline(
+    readable,
+    new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        remaining -= chunk.length
+        callback(remaining < 0 ? mismatch() : null, chunk)
+      },
+      flush(callback) {
+        callback(remaining > 0 ? mismatch() : null)
+      }
+    }),
+    nodeResponse,
+    { signal }
+  )
 }
 
 const handleCause = (
