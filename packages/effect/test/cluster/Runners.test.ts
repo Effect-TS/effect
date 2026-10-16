@@ -475,6 +475,55 @@ describe.concurrent("Runners.makeRpc", () => {
       assert.deepStrictEqual(replies, [Exit.succeed(42)])
     }).pipe(Effect.provide(layerLocalRunners())))
 
+  it.effect("reads storage when a storage-only waiter joins a poll-only local request", () => {
+    let onDuplicate: Effect.Effect<void> = Effect.void
+    return Effect.gen(function*() {
+      const runners = yield* Runners.Runners
+      const driver = yield* MessageStorage.MemoryDriver
+      const snowflake = yield* Snowflake.Generator
+      const replies: Array<Exit.Exit<number>> = []
+      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+        Effect.sync(() => {
+          if (reply._tag === "WithExit") replies.push(reply.exit)
+        }))
+      const fresh = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+        Effect.timeoutOption("1 second"),
+        Effect.forkScoped
+      )
+      yield* TestClock.adjust(0)
+      // The reply commits after the storage-only caller saw a duplicate without
+      // it, and no handler is notified.
+      onDuplicate = Reply.serialize(
+        new Reply.ReplyWithContext({
+          reply: new Reply.WithExit<SendRpc>({
+            id: snowflake.nextUnsafe(),
+            requestId: message.envelope.requestId,
+            exit: Exit.succeed(42)
+          }),
+          rpc: message.rpc,
+          context: message.context
+        }),
+        Schema.toCodecJson as RpcSerialization.CodecFor
+      ).pipe(Effect.flatMap(driver.encoded.saveReply), Effect.orDie)
+      const storageOnly = yield* runners.notifyLocal({
+        message,
+        discard: false,
+        notify: () => Effect.void,
+        storageOnly: true
+      }).pipe(Effect.timeoutOption("1 second"), Effect.forkScoped)
+      yield* TestClock.adjust("1 second")
+      assert.isTrue(Option.isSome(yield* Fiber.join(storageOnly)), "the storage-only caller must complete")
+      assert.isTrue(Option.isSome(yield* Fiber.join(fresh)), "the fresh caller must complete")
+      assert.deepStrictEqual(replies, [Exit.succeed(42)])
+    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+      ...storage,
+      saveRequest: (message) =>
+        storage.saveRequest(message).pipe(
+          Effect.tap((result) => result._tag === "Duplicate" ? onDuplicate : Effect.void)
+        )
+    }))))
+  })
+
   it.effect("keeps a duplicate local waiter alive when the first caller cancels", () =>
     Effect.gen(function*() {
       const runners = yield* Runners.Runners
