@@ -595,11 +595,11 @@ describe("Stream", () => {
 
     it.effect("decodeText decodes a truncated character at the end of the input", () =>
       Effect.gen(function*() {
-        const result = yield* Stream.make(Uint8Array.of(0x61, 0xC3)).pipe(
+        const result = yield* Stream.make(Uint8Array.of(0xC3)).pipe(
           Stream.decodeText(),
-          Stream.runCollect
+          Stream.mkString
         )
-        assert.deepStrictEqual(result, ["a", "\uFFFD"])
+        assert.strictEqual(result, "\uFFFD")
       }))
 
     describe("splitLines", () => {

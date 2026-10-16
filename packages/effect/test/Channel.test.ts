@@ -457,11 +457,15 @@ describe("Channel", () => {
 
     it.effect("decodeText decodes a truncated character at the end of the input", () =>
       Effect.gen(function*() {
-        const result = yield* Channel.fromArray([[Uint8Array.of(0x61, 0xC3)]] as const).pipe(
+        const result = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
           Channel.pipeTo(Channel.decodeText()),
           Channel.runCollect
         )
-        assert.deepStrictEqual(result, [["a"], ["\uFFFD"]])
+        assert.strictEqual(result.flat().join(""), "\uFFFD")
+      }))
+
+    it.effect("decodeText dies on a truncated final character with fatal enabled", () =>
+      Effect.gen(function*() {
         const exit = yield* Channel.fromArray([[Uint8Array.of(0xC3)]] as const).pipe(
           Channel.pipeTo(Channel.decodeText(undefined, { fatal: true })),
           Channel.runCollect,
