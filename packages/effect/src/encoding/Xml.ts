@@ -1099,6 +1099,7 @@ class Parser {
           j = n
         }
         if (this.state !== CONTENT) {
+          this.checkSize(i, j)
           this.whitespace(s, i, j)
         } else {
           this.addText(i, j - i)
@@ -1377,6 +1378,7 @@ class Parser {
   }
 
   private declaration(s: string, i: number, t: number, end: number): number {
+    this.checkSize(i, end + 2)
     const match = declarationPattern.exec(s.slice(t, end))
     if (match === null) throw this.syntax("invalid XML declaration", i)
     const encoding = match[3] ?? match[4]
