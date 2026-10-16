@@ -234,6 +234,10 @@ export const file = (path: string, content: string | Uint8Array, options?: FileO
 // Key by body identity so replacing an entry body bypasses the encode fast path.
 const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, Uint8Array>()
 
+// Directories and in-memory files have nothing to stream
+const inMemoryContent = (body: Stream.Stream<Uint8Array, unknown, unknown>): Uint8Array | undefined =>
+  body === Stream.empty ? emptyBody : inMemoryBodies.get(body)
+
 /**
  * Creates a file entry whose content is streamed from `body`.
  *
@@ -511,10 +515,11 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
           if (deflates[i] !== undefined) continue
           const { body, header } = entries[i]
           if (header.type !== "File" || header.method !== "Deflate") continue
-          const bytes = body === Stream.empty ? emptyBody : inMemoryBodies.get(body)
+          const bytes = inMemoryContent(body)
           if (bytes === undefined || (i > from && bytes.length > DEFLATE_AHEAD_SIZE)) continue
           const deflate = deflateBytes(bytes)
-          // Failures are reported when the entry is written
+          // Failures are reported when the entry is written. Deflates left by a
+          // failed or interrupted encode finish on their own.
           deflate.catch(() => {})
           deflates[i] = deflate
         }
@@ -547,8 +552,7 @@ export const encode = <IE = never, Done = unknown, In extends Entry<any, any> = 
             const { body: content, header } = entries[index++]
             yield* write(() => validate(header))
             const compress = header.type === "File" && header.method === "Deflate"
-            // Directories and in-memory files have nothing to stream
-            const bytes = content === Stream.empty ? emptyBody : inMemoryBodies.get(content)
+            const bytes = inMemoryContent(content)
             if (bytes !== undefined) {
               let data = bytes
               if (compress) {
@@ -619,7 +623,8 @@ const deflate = <E, R>(input: Stream.Stream<Uint8Array, E, R>): Stream.Stream<Ui
 const compressible = (bytes: Uint8Array): Uint8Array<ArrayBuffer> =>
   bytes.buffer instanceof ArrayBuffer ? bytes as Uint8Array<ArrayBuffer> : bytes.slice()
 
-// In-memory entries deflated ahead, and the largest content deflated ahead
+// How many in-memory entries are deflated at once, and the largest content
+// deflated ahead of the entry being written
 const DEFLATE_AHEAD = 16
 const DEFLATE_AHEAD_SIZE = 64 * 1024
 
