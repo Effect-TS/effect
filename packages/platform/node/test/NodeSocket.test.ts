@@ -191,6 +191,49 @@ describe("Socket", { concurrent: false }, () => {
       assert.strictEqual(text, "HelloWorld")
     }))
 
+  for (const chunkSize of [undefined, 2, Infinity]) {
+    it.effect(`batches synchronous duplex drains and completes in order (${chunkSize ?? "default 4096"})`, () =>
+      Effect.gen(function*() {
+        const input = "abcdefghij".repeat(1000)
+        let reads = 0
+        const duplex = yield* Effect.acquireRelease(
+          Effect.sync(() =>
+            new Duplex({
+              readableObjectMode: true,
+              readableHighWaterMark: 1,
+              read() {
+                const offset = reads++
+                this.push(offset === input.length ? null : Buffer.from(input[offset]))
+              },
+              write(_chunk, _encoding, callback) {
+                callback()
+              }
+            })
+          ),
+          (duplex) => Effect.sync(() => duplex.destroy())
+        )
+        const socket = yield* NodeSocket.fromDuplex(Effect.succeed(duplex), { chunkSize })
+        const { pull } = yield* socket.reader
+        const limit = chunkSize === Infinity ? input.length : chunkSize ?? 4096
+        const first = yield* pull
+        assert.strictEqual(first.length, limit)
+        // Node may prefetch one object into its own buffer.
+        assert.isAtMost(reads, limit + 1)
+        let received = decode(first)
+        while (received.length < input.length) {
+          const batch = yield* pull
+          assert.isAtMost(batch.length, limit)
+          received += decode(batch)
+        }
+        assert.strictEqual(received, input)
+        const error = yield* Effect.flip(pull)
+        assert.strictEqual(error.reason._tag, "SocketCloseError")
+        if (error.reason._tag === "SocketCloseError") {
+          assert.strictEqual(error.reason.code, 1000)
+        }
+      }))
+  }
+
   it.effect("pull drains every buffered duplex chunk", () =>
     Effect.gen(function*() {
       const first = Buffer.from("aa")
