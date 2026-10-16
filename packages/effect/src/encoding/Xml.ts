@@ -949,8 +949,8 @@ class Parser {
     this.bytes = bytes
   }
 
-  feed(chunk: string): void {
-    if (chunk.length === 0) return
+  feed(chunk: string, force = false): void {
+    if (chunk.length === 0 && !force) return
     if (!this.started) {
       this.started = true
       if (chunk.charCodeAt(0) === 0xFEFF) chunk = chunk.slice(1)
@@ -963,7 +963,7 @@ class Parser {
       const code = chunk.codePointAt(invalid)!.toString(16).toUpperCase().padStart(4, "0")
       throw this.error("Syntax", `invalid character U+${code}`, this.received)
     }
-    this.consume(chunk)
+    this.consume(chunk, force)
   }
 
   end(): void {
@@ -1578,7 +1578,10 @@ class Utf8Input implements Machine<Uint8Array, Event> {
 
   end(): void {
     // The carried bytes may also be an invalid sequence, such as a single 0xFF
-    if (this.carry !== undefined) throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
+    if (this.carry !== undefined) {
+      this.parser.feed("", true)
+      throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
+    }
     this.parser.end()
   }
 
@@ -1587,7 +1590,7 @@ class Utf8Input implements Machine<Uint8Array, Event> {
     try {
       text = utf8Decoder.decode(bytes)
     } catch {
-      this.parser.feed(utf8Decoder.decode(bytes.subarray(0, validUtf8(bytes))))
+      this.parser.feed(utf8Decoder.decode(bytes.subarray(0, validUtf8(bytes))), true)
       throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
     }
     this.parser.feed(text)
