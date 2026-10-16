@@ -1212,6 +1212,36 @@ describe("SchemaParser", () => {
         deepStrictEqual(calls, ["bad", "good"])
         strictEqual(factories, 2)
       })
+
+      for (const kind of ["Declaration", "Suspend"] as const) {
+        it(`${operation} retries failed child ${kind} factories inside Option callbacks`, () => {
+          const factoryDefect = new Error("factory defect")
+          let factories = 0
+          const child = kind === "Declaration"
+            ? Schema.declareConstructor<unknown>()([], () => {
+              if (++factories === 1) throw factoryDefect
+              return (input) => Effect.succeed(input)
+            })
+            : Schema.suspend(() => {
+              if (++factories === 1) throw factoryDefect
+              return Schema.String
+            })
+          const schema = Schema.Option(child)
+          const parse = operation === "decode"
+            ? SchemaParser.decodeUnknownExit(schema)
+            : SchemaParser.encodeUnknownExit(schema)
+
+          strictEqual(factories, 0)
+          const failure = parse(Option.some("value"))
+          assertTrue(Exit.isFailure(failure))
+          const defect = Cause.findDefect(failure.cause)
+          assertTrue(Result.isSuccess(defect))
+          strictEqual(defect.success, factoryDefect)
+          strictEqual(factories, 1)
+          deepStrictEqual(parse(Option.some("value")), Exit.succeed(Option.some("value")))
+          strictEqual(factories, 2)
+        })
+      }
     }
 
     it("retries lazy Suspend parser compilation after a synchronous thunk failure", () => {
