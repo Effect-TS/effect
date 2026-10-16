@@ -44,6 +44,63 @@ import {
 } from "effect/workflow/WorkflowEngine"
 
 describe.concurrent("ClusterWorkflowEngine", () => {
+  for (const suspend of [false, true]) {
+    it.effect(`releases all workflow scopes on completion ${suspend ? "after suspension" : "without suspension"}`, () =>
+      Effect.gen(function*() {
+        const gate = DurableDeferred.make("WorkflowScopeCleanup/Gate")
+        const workflow = Workflow.make("WorkflowScopeCleanup", {
+          payload: {},
+          idempotencyKey: () => "one"
+        })
+        const acquired: Array<number> = []
+        const released: Array<number> = []
+        const finalized: Array<number> = []
+        const layer = workflow.toLayer(() =>
+          Effect.gen(function*() {
+            const run = acquired.length + 1
+            yield* Workflow.addFinalizer(() =>
+              Effect.sync(() => {
+                finalized.push(run)
+              })
+            )
+            yield* Effect.acquireRelease(
+              Effect.sync(() => {
+                acquired.push(run)
+                return run
+              }),
+              (run) =>
+                Effect.sync(() => {
+                  released.push(run)
+                })
+            ).pipe(Workflow.provideScope)
+            if (suspend) yield* DurableDeferred.await(gate)
+          })
+        ).pipe(Layer.provideMerge(makeTestWorkflowEngine()))
+
+        yield* Effect.gen(function*() {
+          const executionId = yield* workflow.execute({}, { discard: true })
+          if (suspend) {
+            yield* pollUntil(workflow, executionId, "Suspended")
+            // Suspension retains resources for replay; it is not abandonment.
+            assert.deepStrictEqual({ acquired, released, finalized }, { acquired: [1], released: [], finalized: [] })
+            yield* DurableDeferred.succeed(gate, {
+              token: DurableDeferred.tokenFromExecutionId(gate, { workflow, executionId }),
+              value: undefined
+            })
+          }
+          assert.deepStrictEqual(
+            yield* pollUntil(workflow, executionId, "Complete"),
+            new Workflow.Complete({ exit: Exit.void })
+          )
+          const expected = suspend ? [1, 2] : [1]
+          assert.deepStrictEqual(
+            { acquired, released: released.toSorted(), finalized: finalized.toSorted() },
+            { acquired: expected, released: expected, finalized: expected }
+          )
+        }).pipe(Effect.provide(layer))
+      }))
+  }
+
   it.effect("wakes an activity deferred completed before a parallel sibling lets the workflow suspend", () =>
     Effect.gen(function*() {
       const gate = DurableDeferred.make("EarlyActivityWake/Gate", { success: Schema.String })
