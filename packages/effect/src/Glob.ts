@@ -81,7 +81,8 @@ export const isGlob = (u: unknown): u is Glob => hasProperty(u, TypeId)
  * Wildcards and `**` skip names that start with `.` unless the pattern segment
  * itself starts with `.` or `dot` is `true`; they never match `.` or `..`.
  * Wildcards never match an empty segment, and the empty pattern matches
- * nothing, as does any pattern with a `.` or `..` segment after a `**`. Extended globs such as `!(a)` and leading `!` negation are not
+ * nothing, as does any pattern with a `.` or `..` segment after a `**` and
+ * any UNC pattern or path such as `//server/share`. Extended globs such as `!(a)` and leading `!` negation are not
  * supported and match literally. Malformed syntax, such as an unclosed `[`, and
  * patterns whose braces expand to more than 10,000 alternatives also match
  * literally instead of failing.
