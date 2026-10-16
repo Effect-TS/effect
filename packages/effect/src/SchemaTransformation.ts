@@ -973,7 +973,19 @@ export const numberFromString = new Transformation(
  * @since 4.0.0
  */
 export const bigintFromString = new Transformation(
-  SchemaGetter.BigInt(),
+  SchemaGetter.transformEffect<bigint, string>((input, options) => {
+    try {
+      return Effect.succeed(globalThis.BigInt(input))
+    } catch {
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a valid bigint string" },
+          input,
+          options
+        )
+      )
+    }
+  }),
   SchemaGetter.String()
 )
 
