@@ -29,11 +29,14 @@ import * as Option from "effect/Option"
 import { type Pipeable, pipeArguments } from "effect/Pipeable"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
+import type * as Socket from "effect/socket/Socket"
 import * as Stream from "effect/Stream"
 import * as Http from "node:http"
 import * as Https from "node:https"
-import { Readable } from "node:stream"
+import { type Duplex, Readable } from "node:stream"
+import * as Consumers from "node:stream/consumers"
 import { pipeline } from "node:stream/promises"
+import * as Upgrade from "./internal/upgrade.ts"
 import { NodeHttpIncomingMessage } from "./NodeHttpIncomingMessage.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -206,34 +209,144 @@ export const makeUndici = Effect.gen(function*() {
   const dispatcher = yield* Dispatcher
   return Client.make((request, url, signal, fiber) =>
     convertBody(request.body).pipe(
-      Effect.flatMap((body) =>
-        Effect.tryPromise({
-          try: () =>
-            dispatcher.request({
-              ...fiber.getRef(UndiciOptions),
-              signal,
-              method: request.method,
-              headers: request.headers,
-              origin: url.origin,
-              path: url.pathname + url.search,
-              body,
-              // leave timeouts to Effect.timeout etc
-              headersTimeout: 60 * 60 * 1000,
-              bodyTimeout: 0
-            }),
-          catch: (cause) =>
-            new Error.HttpClientError({
-              reason: new Error.TransportError({
-                request,
-                cause
+      Effect.flatMap((body): Effect.Effect<UndiciResponseSource, Error.HttpClientError> =>
+        request.headers.upgrade !== undefined ?
+          dispatchUpgrade(dispatcher, request, signal, {
+            ...fiber.getRef(UndiciOptions),
+            method: request.method,
+            // undici writes the upgrade headers itself and rejects them here
+            headers: Headers.removeMany(request.headers, ["connection", "upgrade"]),
+            origin: url.origin,
+            path: url.pathname + url.search,
+            body,
+            upgrade: request.headers.upgrade,
+            headersTimeout: 60 * 60 * 1000,
+            bodyTimeout: 0
+          }) :
+          Effect.tryPromise({
+            try: () =>
+              dispatcher.request({
+                ...fiber.getRef(UndiciOptions),
+                signal,
+                method: request.method,
+                headers: request.headers,
+                origin: url.origin,
+                path: url.pathname + url.search,
+                body,
+                // leave timeouts to Effect.timeout etc
+                headersTimeout: 60 * 60 * 1000,
+                bodyTimeout: 0
+              }),
+            catch: (cause) =>
+              new Error.HttpClientError({
+                reason: new Error.TransportError({
+                  request,
+                  cause
+                })
               })
-            })
-        })
+          })
       ),
       Effect.map((response) => new UndiciResponse(request, response, url.href.split("#")[0]))
     )
   )
 })
+
+interface UndiciResponseSource {
+  readonly statusCode: number
+  readonly headers: Http.IncomingHttpHeaders
+  readonly body: Readable & { arrayBuffer(): Promise<ArrayBuffer> }
+  readonly upgraded?: Duplex | undefined
+}
+
+// `Dispatcher.request` cannot upgrade and `Dispatcher.upgrade` fails on any
+// other response, so dispatch directly to hand over either one.
+const dispatchUpgrade = (
+  dispatcher: Undici.Dispatcher,
+  request: HttpClientRequest,
+  signal: AbortSignal,
+  options: Undici.Dispatcher.DispatchOptions
+) =>
+  Effect.callback<UndiciResponseSource, Error.HttpClientError>((resume) => {
+    let controller: Undici.Dispatcher.DispatchController | undefined
+    let body: UpgradeResponseBody | undefined
+    let abortReason: globalThis.Error | undefined
+    function abort(reason: globalThis.Error) {
+      abortReason ??= reason
+      if (body !== undefined) body.destroy(reason)
+      else controller?.abort(reason)
+    }
+    function onAbort() {
+      abort(signal.reason instanceof globalThis.Error ? signal.reason : new globalThis.Error("aborted"))
+    }
+    function fail(cause: unknown) {
+      signal.removeEventListener("abort", onAbort)
+      resume(Effect.fail(
+        new Error.HttpClientError({
+          reason: new Error.TransportError({ request, cause })
+        })
+      ))
+    }
+    if (signal.aborted) onAbort()
+    else signal.addEventListener("abort", onAbort, { once: true })
+    try {
+      dispatcher.dispatch(options, {
+        onRequestStart(c) {
+          controller = c
+          if (abortReason !== undefined) c.abort(abortReason)
+        },
+        onRequestUpgrade(_, statusCode, headers, socket) {
+          signal.removeEventListener("abort", onAbort)
+          Upgrade.takeOver(socket, undefined)
+          Upgrade.destroyOnAbort(socket, signal)
+          const body = new UpgradeResponseBody(undefined)
+          body.push(null)
+          resume(Effect.succeed({ statusCode, headers, body, upgraded: socket }))
+        },
+        onResponseStart(c, statusCode, headers) {
+          if (statusCode < 200) return
+          body = new UpgradeResponseBody(c)
+          resume(Effect.succeed({ statusCode, headers, body }))
+        },
+        onResponseData(c, chunk) {
+          if (body !== undefined && !body.push(chunk)) c.pause()
+        },
+        onResponseEnd() {
+          signal.removeEventListener("abort", onAbort)
+          body?.push(null)
+        },
+        onResponseError(_, cause) {
+          if (body === undefined) return fail(cause)
+          signal.removeEventListener("abort", onAbort)
+          body.destroy(cause)
+        }
+      })
+    } catch (cause) {
+      fail(cause)
+    }
+    return Effect.sync(() => {
+      signal.removeEventListener("abort", onAbort)
+      abort(new globalThis.Error("interrupted"))
+    })
+  })
+
+// The body of a response to an upgrade request that did not switch protocols.
+class UpgradeResponseBody extends Readable {
+  readonly controller: Undici.Dispatcher.DispatchController | undefined
+  constructor(controller: Undici.Dispatcher.DispatchController | undefined) {
+    super()
+    this.controller = controller
+  }
+  override _read() {
+    this.controller?.resume()
+  }
+  override _destroy(error: globalThis.Error | null, callback: (error?: globalThis.Error | null) => void) {
+    if (!this.readableEnded) this.controller?.abort(error ?? new globalThis.Error("aborted"))
+    callback(error)
+  }
+  arrayBuffer(): Promise<ArrayBuffer> {
+    return Consumers.arrayBuffer(this)
+  }
+}
 
 function convertBody(
   body: Body.HttpBody
@@ -261,12 +374,12 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
   readonly [IncomingMessage.TypeId]: typeof IncomingMessage.TypeId
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
-  readonly source: Undici.Dispatcher.ResponseData
+  readonly source: UndiciResponseSource
   readonly url: string
 
   constructor(
     request: HttpClientRequest,
-    source: Undici.Dispatcher.ResponseData,
+    source: UndiciResponseSource,
     url: string
   ) {
     super()
@@ -392,6 +505,11 @@ class UndiciResponse extends Inspectable.Class implements HttpClientResponse, Pi
     return this.arrayBufferBody
   }
 
+  private upgradeEffect?: Effect.Effect<Socket.Socket, Error.HttpClientError>
+  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
+    return this.upgradeEffect ??= upgradeSocket(this, this.source.upgraded)
+  }
+
   toJSON(): unknown {
     return IncomingMessage.inspect(this, {
       _id: "effect/http/HttpClientResponse",
@@ -449,6 +567,30 @@ export const layerUndici: Layer.Layer<Client.HttpClient> = Layer.provide(layerUn
  */
 export const layerUndiciOptions = (options?: Undici.Agent.Options | undefined): Layer.Layer<Client.HttpClient> =>
   Layer.provide(layerUndiciNoDispatcher, layerDispatcherOptions(options))
+
+const upgradeSocket = (
+  response: HttpClientResponse,
+  upgraded: Duplex | undefined
+): Effect.Effect<Socket.Socket, Error.HttpClientError> => {
+  if (upgraded !== undefined) {
+    return Effect.runSync(Effect.cached(Upgrade.toSocket(upgraded)))
+  }
+  return Effect.fail(
+    new Error.HttpClientError({
+      reason: response.status === 101
+        // Bun's node:http reports a 101 as a plain response and keeps the connection
+        ? new Error.UpgradeNotSupportedError({
+          request: response.request,
+          description: "the runtime did not hand over the connection of the upgrade"
+        })
+        : new Error.StatusCodeError({
+          request: response.request,
+          response,
+          description: "expected 101 Switching Protocols"
+        })
+    })
+  )
+}
 
 // -----------------------------------------------------------------------------
 // node:http
@@ -563,11 +705,11 @@ export const makeNodeHttp = Effect.gen(function*() {
         signal
       })
     return Effect.raceFirst(
-      waitForResponse(nodeRequest, request),
+      waitForResponse(nodeRequest, request, signal),
       sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
     ).pipe(
       Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
-      Effect.map((_) => new NodeHttpResponse(request, _, url.href.split("#")[0]))
+      Effect.map(([response, upgraded]) => new NodeHttpResponse(request, response, url.href.split("#")[0], upgraded))
     )
   })
 })
@@ -630,8 +772,8 @@ const sendBody = (
     }
   })
 
-const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest) =>
-  Effect.callback<Http.IncomingMessage, Error.HttpClientError>((resume) => {
+const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientRequest, signal: AbortSignal) =>
+  Effect.callback<readonly [Http.IncomingMessage, Duplex?], Error.HttpClientError>((resume) => {
     function onError(cause: Error) {
       resume(Effect.fail(
         new Error.HttpClientError({
@@ -646,14 +788,21 @@ const waitForResponse = (nodeRequest: Http.ClientRequest, request: HttpClientReq
 
     function onResponse(response: Http.IncomingMessage) {
       nodeRequest.off("error", onError)
-      resume(Effect.succeed(response))
+      resume(Effect.succeed([response]))
     }
-    nodeRequest.on("upgrade", onResponse)
     nodeRequest.on("response", onResponse)
+
+    function onUpgrade(response: Http.IncomingMessage, socket: Duplex, head: Buffer) {
+      nodeRequest.off("error", onError)
+      Upgrade.takeOver(socket, head)
+      Upgrade.destroyOnAbort(socket, signal)
+      resume(Effect.succeed([response, socket]))
+    }
+    nodeRequest.on("upgrade", onUpgrade)
 
     return Effect.sync(() => {
       nodeRequest.off("error", onError)
-      nodeRequest.off("upgrade", onResponse)
+      nodeRequest.off("upgrade", onUpgrade)
       nodeRequest.off("response", onResponse)
     })
   })
@@ -688,11 +837,13 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
   readonly [Response.TypeId]: typeof Response.TypeId
   readonly request: HttpClientRequest
   readonly url: string
+  readonly upgraded: Duplex | undefined
 
   constructor(
     request: HttpClientRequest,
     source: Http.IncomingMessage,
-    url: string
+    url: string,
+    upgraded: Duplex | undefined
   ) {
     super(source, (cause) =>
       new Error.HttpClientError({
@@ -705,10 +856,16 @@ class NodeHttpResponse extends NodeHttpIncomingMessage<Error.HttpClientError> im
     this[Response.TypeId] = Response.TypeId
     this.request = request
     this.url = url
+    this.upgraded = upgraded
   }
 
   get status() {
     return this.source.statusCode!
+  }
+
+  private upgradeEffect?: Effect.Effect<Socket.Socket, Error.HttpClientError>
+  get upgrade(): Effect.Effect<Socket.Socket, Error.HttpClientError> {
+    return this.upgradeEffect ??= upgradeSocket(this, this.upgraded)
   }
 
   cachedCookies?: Cookies.Cookies
