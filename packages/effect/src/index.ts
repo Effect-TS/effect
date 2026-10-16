@@ -777,6 +777,12 @@ export * as Take from "./Take.ts"
 export * as Terminal from "./Terminal.ts"
 
 /**
+ * @stability unstable
+ * @since 4.0.6
+ */
+export * as TextDiff from "./TextDiff.ts"
+
+/**
  * @stability stable
  * @since 2.0.0
  */
