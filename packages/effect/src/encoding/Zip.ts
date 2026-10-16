@@ -1201,8 +1201,7 @@ class Decoder {
   // Incremented whenever the current body is invalidated
   generation = 0
   private current: Current | undefined
-  // Shared by the inflaters of deflated entries
-  private inflateBuffer: Uint8Array | undefined
+  private inflateMemory: InflateMemory | undefined
   // An error after which entry boundaries are lost, repeated by every call
   private failure: ZipError | undefined
   // Set when the current entry was read to its end but failed its checks
@@ -1470,7 +1469,7 @@ class Decoder {
     return {
       header,
       inflater: method === 8
-        ? new Inflater(this.queue, this.inflateBuffer ??= new Uint8Array(INFLATE_BUFFER_SIZE))
+        ? new Inflater(this.queue, this.inflateMemory ??= new InflateMemory())
         : undefined,
       descriptor,
       zip64,
@@ -1510,7 +1509,6 @@ const isHeaderSignature = (signature: number): boolean =>
 
 const OUTPUT_SIZE = 64 * 1024
 const WINDOW_SIZE = 32 * 1024
-// The window of earlier output, followed by up to OUTPUT_SIZE bytes of new output
 const INFLATE_BUFFER_SIZE = WINDOW_SIZE + OUTPUT_SIZE
 
 const LENGTH_BASE = [
@@ -1618,8 +1616,8 @@ const CODE_LENGTH_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2
 // `decodeLong`, so a table never costs more than 2^PRIMARY_BITS entries to build.
 interface Huffman {
   readonly table: Int32Array
-  readonly bits: number
-  readonly mask: number
+  bits: number
+  mask: number
   readonly counts: Uint16Array
   readonly symbols: Uint16Array
 }
@@ -1627,12 +1625,27 @@ interface Huffman {
 const PRIMARY_BITS = 10
 const LONG = -1
 
-// As in zlib, code length codes must be complete, and other codes may only be
-// incomplete when they have a single code of one bit or no codes at all
-const huffman = (lengths: Uint8Array, complete: boolean): Huffman => {
-  const counts = new Uint16Array(16)
+const makeHuffman = (): Huffman => ({
+  table: new Int32Array(1 << PRIMARY_BITS),
+  bits: 0,
+  mask: 0,
+  counts: new Uint16Array(16),
+  symbols: new Uint16Array(288)
+})
+
+// Scratch space of `huffman`, which returns before any other call can use it
+const nextCodes = new Uint16Array(16)
+const offsets = new Uint16Array(16)
+
+// Builds the code of the symbols with lengths `lengths[start..end)` into the
+// arrays of `codes`. As in zlib, code length codes must be complete, and other
+// codes may only be incomplete when they have a single code of one bit or no
+// codes at all.
+const huffman = (codes: Huffman, lengths: Uint8Array, start: number, end: number, complete: boolean): Huffman => {
+  const { counts, symbols, table } = codes
+  counts.fill(0)
   let maxLength = 0
-  for (let i = 0; i < lengths.length; i++) {
+  for (let i = start; i < end; i++) {
     counts[lengths[i]]++
     if (lengths[i] > maxLength) maxLength = lengths[i]
   }
@@ -1643,22 +1656,21 @@ const huffman = (lengths: Uint8Array, complete: boolean): Huffman => {
     if (left < 0) throw invalidData("over-subscribed Huffman code")
   }
   if (left > 0 && maxLength > 0 && (complete || maxLength !== 1)) throw invalidData("incomplete Huffman code")
-  const next = new Uint16Array(16)
-  const offsets = new Uint16Array(16)
+  offsets[1] = 0
   for (let length = 1, code = 0; length <= 15; length++) {
     code = (code + counts[length - 1]) << 1
-    next[length] = code
+    nextCodes[length] = code
     if (length < 15) offsets[length + 1] = offsets[length] + counts[length]
   }
   const bits = Math.min(Math.max(maxLength, 1), PRIMARY_BITS)
   const size = 1 << bits
-  const table = new Int32Array(size)
-  const symbols = new Uint16Array(lengths.length)
-  for (let symbol = 0; symbol < lengths.length; symbol++) {
-    const length = lengths[symbol]
+  // Unused codes read as zero
+  table.fill(0, 0, size)
+  for (let symbol = 0; symbol < end - start; symbol++) {
+    const length = lengths[start + symbol]
     if (length === 0) continue
     symbols[offsets[length]++] = symbol
-    let code = next[length]++
+    let code = nextCodes[length]++
     let reversed = 0
     for (let i = 0; i < length; i++) {
       reversed = (reversed << 1) | (code & 1)
@@ -1671,7 +1683,9 @@ const huffman = (lengths: Uint8Array, complete: boolean): Huffman => {
     const entry = (symbol << 4) | length
     for (let i = reversed; i < size; i += 1 << length) table[i] = entry
   }
-  return { table, bits, mask: size - 1, counts, symbols }
+  codes.bits = bits
+  codes.mask = size - 1
+  return codes
 }
 
 // Returns the table entry of the code in the low `bitCount` bits of
@@ -1698,23 +1712,35 @@ const FIXED_LITERALS = (() => {
   lengths.fill(9, 144, 256)
   lengths.fill(7, 256, 280)
   lengths.fill(8, 280, 288)
-  return huffman(lengths, false)
+  return huffman(makeHuffman(), lengths, 0, 288, false)
 })()
 
 // Distance codes 30 and 31 complete the fixed code but are invalid
-const FIXED_DISTANCES = huffman(new Uint8Array(32).fill(5), false)
+const FIXED_DISTANCES = huffman(makeHuffman(), new Uint8Array(32).fill(5), 0, 32, false)
 
-// Decompresses one deflate stream from the queue, reading no byte past its end.
-// A decoder passes the same buffer to each of its inflaters, as only one runs
-// at a time.
+// The arrays of an inflater, which a decoder reuses for each of its entries, as
+// only one is inflated at a time
+class InflateMemory {
+  // The window of earlier output, followed by up to OUTPUT_SIZE bytes of new output
+  readonly buffer = new Uint8Array(INFLATE_BUFFER_SIZE)
+  readonly codeLengths = new Uint8Array(19)
+  readonly lengthCodes = makeHuffman()
+  readonly lengths = new Uint8Array(286 + 30)
+  readonly literals = makeHuffman()
+  readonly distances = makeHuffman()
+}
+
+// Decompresses one deflate stream from the queue, reading no byte past its end
 class Inflater {
+  private readonly memory: InflateMemory
   private readonly buffer: Uint8Array
   // Start of the output not handed out yet
   private start = WINDOW_SIZE
   private readonly generator: Generator<number, number, void>
 
-  constructor(queue: ByteQueue, buffer: Uint8Array) {
-    this.buffer = buffer
+  constructor(queue: ByteQueue, memory: InflateMemory) {
+    this.memory = memory
+    this.buffer = memory.buffer
     this.generator = this.run(queue)
   }
 
@@ -1839,7 +1865,7 @@ class Inflater {
         bitBuffer >>>= 14
         bitCount -= 14
         if (literalCount > 286 || distanceCount > 30) throw invalidData("too many length or distance codes")
-        const codeLengths = new Uint8Array(19)
+        const codeLengths = this.memory.codeLengths.fill(0)
         for (let i = 0; i < codeLengthCount; i++) {
           while (bitCount < 3) {
             if (inputPosition === input.length) {
@@ -1857,10 +1883,11 @@ class Inflater {
           bitBuffer >>>= 3
           bitCount -= 3
         }
-        const lengthCodes = huffman(codeLengths, true)
-        const lengths = new Uint8Array(literalCount + distanceCount)
+        const lengthCodes = huffman(this.memory.lengthCodes, codeLengths, 0, 19, true)
+        const lengths = this.memory.lengths
+        const count = literalCount + distanceCount
         let i = 0
-        while (i < lengths.length) {
+        while (i < count) {
           let entry = 0
           while (true) {
             entry = lengthCodes.table[bitBuffer & lengthCodes.mask]
@@ -1902,13 +1929,13 @@ class Inflater {
           bitBuffer >>>= extra
           bitCount -= extra
           if (symbol === 16 && i === 0) throw invalidData("repeated code length without a previous length")
-          if (i + repeat > lengths.length) throw invalidData("too many code lengths")
+          if (i + repeat > count) throw invalidData("too many code lengths")
           lengths.fill(symbol === 16 ? lengths[i - 1] : 0, i, i + repeat)
           i += repeat
         }
         if (lengths[256] === 0) throw invalidData("missing end-of-block code")
-        literals = huffman(lengths.subarray(0, literalCount), false)
-        distances = huffman(lengths.subarray(literalCount), false)
+        literals = huffman(this.memory.literals, lengths, 0, literalCount, false)
+        distances = huffman(this.memory.distances, lengths, literalCount, count, false)
       } else {
         throw invalidData("invalid block type")
       }

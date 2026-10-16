@@ -558,6 +558,65 @@ describe("Zip", () => {
         }
       }))
 
+    it.effect("does not decode unused codes with the codes of earlier entries", () =>
+      Effect.gen(function*() {
+        // Fields are written least significant bit first, and Huffman codes
+        // most significant bit first
+        const bits = (fields: ReadonlyArray<readonly [value: number, length: number, code?: boolean]>) => {
+          const bytes: Array<number> = []
+          let count = 0
+          for (const [value, length, code] of fields) {
+            for (let i = 0; i < length; i++) {
+              if (count % 8 === 0) bytes.push(0)
+              bytes[bytes.length - 1] |= ((value >> (code ? length - 1 - i : i)) & 1) << (count++ % 8)
+            }
+          }
+          return Uint8Array.from(bytes)
+        }
+        // A dynamic block with 2-bit codes for "x", "y", the end and a 3-byte
+        // copy, which writes "xy" and copies them from the distance of
+        // `distanceCode`
+        const block = (distanceLengths: ReadonlyArray<number>, distanceCode: number) =>
+          bits([
+            [1, 1],
+            [2, 2],
+            [258 - 257, 5],
+            [distanceLengths.length - 1, 5],
+            [18 - 4, 4],
+            // Code length codes: "0" for 0, "10" for 1 and "11" for 2
+            ...[0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2].map((length) => [length, 3] as const),
+            ...[
+              ...Array.from({ length: 258 }, (_, symbol) => [120, 121, 256, 257].includes(symbol) ? 2 : 0),
+              ...distanceLengths
+            ].map((length) => length === 0 ? [0, 1, true] as const : [length + 1, 2, true] as const),
+            [0, 2, true],
+            [1, 2, true],
+            [3, 2, true],
+            [distanceCode, 1, true],
+            [2, 2, true]
+          ])
+        const content = textEncoder.encode("xyxyx")
+        const entry = (name: string, data: Uint8Array) =>
+          concat(
+            localHeader(textEncoder.encode(name), {
+              method: 8,
+              crc: crc32(content),
+              compressedSize: data.length,
+              size: content.length
+            }),
+            data
+          )
+        // The distance code of "b" has only the code "0", so its code "1" is
+        // invalid rather than the distance 2 that it is in "a"
+        const archive = concat(entry("a", block([1, 1], 1)), entry("b", block([1], 1)), endRecord)
+        const output = yield* entries(archive, 4096).pipe(
+          Stream.mapEffect((entry) => Effect.map(Stream.mkUint8Array(entry.body), text)),
+          Stream.catch((error) => Stream.succeed(Zip.isZipError(error) ? error.kind : "defect")),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(output, ["xyxyx", "InvalidData"])
+      }))
+
     it.effect("re-encodes deflated directories as stored", () =>
       Effect.gen(function*() {
         // Java's ZipOutputStream deflates directories
