@@ -167,6 +167,9 @@ describe("Xml", () => {
             assert.deepStrictEqual(yield* failure(decodeBytes(chunks)), ["Syntax", line, column])
           }
         }
+        // A byte at the end of the input that cannot start a sequence is invalid, not incomplete
+        const trailing = yield* Effect.flip(decodeBytes([Uint8Array.of(...textEncoder.encode("<a/>"), 0xFF)]))
+        assert.include(trailing.message, "invalid UTF-8")
         // Byte input accepts only UTF-8 and US-ASCII encoding declarations
         const latin1 = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><a/>"
         assert.deepStrictEqual(yield* failure(decodeBytes([textEncoder.encode(latin1)])), ["Unsupported", 1, 1])
