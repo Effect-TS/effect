@@ -280,6 +280,9 @@ const unanswered = (
 
 const invalid = (description: string) => unanswered("Invalid", description)
 
+const aiError = (method: "decide" | "decideSettled", reason: AiError.AiErrorReason): AiError.AiError =>
+  AiError.make({ module: "DecisionModel", method, reason })
+
 const isFiniteNumber = (value: unknown): value is number => Predicate.isNumber(value) && Number.isFinite(value)
 
 const isUnitInterval = (value: unknown): value is number => isFiniteNumber(value) && value >= 0 && value <= 1
@@ -405,29 +408,26 @@ const settleAnswers = <Decisions extends Record<string, Decision.Any>>(
 const requireAnswers = <Decisions extends Record<string, Decision.Any>>(
   outcomes: Decision.Outcomes<Decisions>
 ): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
-  const entries = Object.entries(outcomes) as Array<[string, Decision.Outcome<Decision.Any>]>
-  const refused = entries.flatMap(([key, outcome]) =>
-    Result.isFailure(outcome) && outcome.failure.reason === "Refused" ? [`"${key}"`] : []
-  )
-  if (refused.length > 0) {
-    return Effect.fail(AiError.make({
-      module: "DecisionModel",
-      method: "decide",
-      reason: new AiError.ContentPolicyError({
-        description: `Provider refused to answer decisions ${refused.join(", ")}`
-      })
-    }))
-  }
   const answers: Record<string, Decision.Answer<Decision.Any>> = Object.create(null)
-  for (const [key, outcome] of entries) {
-    if (Result.isFailure(outcome)) {
-      return Effect.fail(AiError.make({
-        module: "DecisionModel",
-        method: "decide",
-        reason: new AiError.InvalidOutputError({ description: outcome.failure.description })
-      }))
+  const refused: Array<string> = []
+  let firstUnanswered: Decision.Unanswered | undefined
+  for (const [key, outcome] of Object.entries(outcomes) as Array<[string, Decision.Outcome<Decision.Any>]>) {
+    if (Result.isSuccess(outcome)) {
+      answers[key] = outcome.success
+    } else if (outcome.failure.reason === "Refused") {
+      refused.push(`"${key}"`)
+    } else {
+      firstUnanswered ??= outcome.failure
     }
-    answers[key] = outcome.success
+  }
+  if (refused.length > 0) {
+    return Effect.fail(aiError(
+      "decide",
+      new AiError.ContentPolicyError({ description: `Provider refused to answer decisions ${refused.join(", ")}` })
+    ))
+  }
+  if (firstUnanswered !== undefined) {
+    return Effect.fail(aiError("decide", new AiError.InvalidOutputError({ description: firstUnanswered.description })))
   }
   return Effect.succeed(answers as Decision.Answers<Decisions>)
 }
@@ -472,24 +472,15 @@ export const make = (params: {
       options: DecideOptions<Input>
     ): Effect.Effect<DecideSettledResponse<Decisions>, AiError.AiError, Input["EncodingServices"]> =>
       Schema.encodeEffect(Schema.toCodecJson(definition.input))(options.input).pipe(
-        Effect.mapError((error) =>
-          AiError.make({
-            module: "DecisionModel",
-            method,
-            reason: new AiError.InvalidUserInputError({ description: error.message })
-          })
-        ),
+        Effect.mapError((error) => aiError(method, new AiError.InvalidUserInputError({ description: error.message }))),
         Effect.flatMap((state) => {
           const images = options.images?.length ? options.images : undefined
           if (images !== undefined && params.supportsImages !== true) {
             return Effect.fail(
-              AiError.make({
-                module: "DecisionModel",
+              aiError(
                 method,
-                reason: new AiError.InvalidUserInputError({
-                  description: "This decision model does not accept images"
-                })
-              })
+                new AiError.InvalidUserInputError({ description: "This decision model does not accept images" })
+              )
             )
           }
           return params.decide({
