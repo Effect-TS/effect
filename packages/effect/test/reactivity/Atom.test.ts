@@ -2849,6 +2849,41 @@ describe("Atom", { concurrent: false }, () => {
   })
 
   describe("Reactivity", () => {
+    it.effect("reruns a query once per invalidation with matching collection and member keys", () =>
+      Effect.gen(function*() {
+        const reactivity = yield* Reactivity.make
+        let runs = 0
+        const results = yield* reactivity.query({ users: [1] }, Effect.sync(() => ++runs))
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [1])
+
+        yield* reactivity.invalidate({ users: [1] })
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [2])
+
+        yield* reactivity.invalidate({ users: [1] })
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [3])
+      }))
+
+    it.effect("reruns a query once per batch with multiple matching array keys", () =>
+      Effect.gen(function*() {
+        const reactivity = yield* Reactivity.make
+        let runs = 0
+        const results = yield* reactivity.query(["a", "b"], Effect.sync(() => ++runs))
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [1])
+
+        const batch = reactivity.withBatch(Effect.gen(function*() {
+          yield* reactivity.invalidate(["a"])
+          yield* reactivity.invalidate(["b"])
+          yield* reactivity.invalidate(["a", "b"])
+          assert.strictEqual(yield* Queue.size(results), 0)
+        }))
+
+        yield* batch
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [2])
+
+        yield* batch
+        assert.deepStrictEqual(yield* Queue.takeAll(results), [3])
+      }))
+
     it.effect("cleans up queries with duplicate keys", () =>
       Effect.gen(function*() {
         const reactivity = yield* Reactivity.make
