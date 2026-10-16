@@ -18,6 +18,32 @@ describe("Stream", () => {
     })
   const errorCode = (error: unknown) => (error as NodeJS.ErrnoException).code
 
+  for (const chunkSize of [undefined, 2]) {
+    it.effect(`fromReadable bounds synchronous draining (${chunkSize ?? "default 4096"})`, () =>
+      Effect.gen(function*() {
+        let reads = 0
+        const readable = new Readable({
+          objectMode: true,
+          highWaterMark: 1,
+          read() {
+            reads++
+            this.push(reads > 10_000 ? null : reads)
+          }
+        })
+        const chunks = yield* NodeStream.fromReadable<number>({
+          evaluate: () => readable,
+          ...(chunkSize === undefined ? {} : { chunkSize })
+        }).pipe(Stream.chunks, Stream.take(1), Stream.runCollect)
+
+        const expectedSize = chunkSize ?? 4096
+        assert.strictEqual(chunks.length, 1)
+        assert.strictEqual(chunks[0].length, expectedSize)
+        assert.deepEqual(chunks, [Array.range(1, expectedSize)])
+        // Node may prefetch one object into its own buffer.
+        assert.isAtMost(reads, expectedSize + 1)
+      }))
+  }
+
   it.effect("fromReadable fails on premature close", () =>
     Effect.gen(function*() {
       const code = yield* NodeStream.fromReadable({ evaluate: destroyedOnRead, onError: errorCode }).pipe(
