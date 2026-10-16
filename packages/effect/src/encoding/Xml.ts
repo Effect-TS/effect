@@ -384,7 +384,9 @@ export const decode = <IE = never, Done = unknown>(options?: DecodeOptions): Cha
  * - Whitespace between child elements, such as indentation, is kept as string
  *   children.
  * - A collected element larger than `maxElementSize` fails with a `Limit`
- *   `XmlError`.
+ *   `XmlError`. The size counts characters, not memory: an element with many
+ *   small children can take many times its size in memory, so use a lower
+ *   limit for untrusted input.
  * - Events that end inside an element, or end an element that was never
  *   started, fail with an `InvalidEvent` `XmlError`.
  * - A path that is empty or contains an invalid name throws when the channel is
