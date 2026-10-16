@@ -30,7 +30,7 @@ import type * as Equivalence from "./Equivalence.ts"
 import * as Exit_ from "./Exit.ts"
 import type { Formatter } from "./Formatter.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
-import { identity } from "./Function.ts"
+import { constTrue, identity } from "./Function.ts"
 import type * as Graph_ from "./Graph.ts"
 import * as HashMap_ from "./HashMap.ts"
 import * as HashSet_ from "./HashSet.ts"
@@ -9836,25 +9836,34 @@ const JsonString = String.annotate({
  * @since 4.0.6
  */
 export function isJsonContent(schema: Constraint, annotations?: Annotations.Filter) {
-  // Projected on first use, so content without a JSON form fails only when documentation is requested.
-  let schemas: ReadonlyArray<SchemaAST.AST> | undefined
-  return makeFilter<string>(
-    () => true,
-    {
-      representation: {
-        id: "effect/schema/isJsonContent",
-        payload: null,
-        get schemas() {
-          return schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(schema.ast)))]
-        }
-      },
-      toJsonSchema: ({ schemas, type }) =>
-        type === "string" ? { contentSchema: schemas[0] } : [{ contentSchema: schemas[0] }, true],
-      toCode: ({ schemas }) => ({ runtime: `Schema.isJsonContent(${schemas[0].runtime})` }),
-      ...annotations
-    }
-  )
+  return makeFilter<string>(constTrue, {
+    representation: new JsonContentRepresentation(schema.ast),
+    toJsonSchema: jsonContentToJsonSchema,
+    toCode: jsonContentToCode,
+    ...annotations
+  })
 }
+
+// Projects the content on first use, so content without a JSON form fails only when documentation is requested.
+class JsonContentRepresentation {
+  readonly id = "effect/schema/isJsonContent"
+  readonly payload = null
+  #ast: SchemaAST.AST
+  #schemas: ReadonlyArray<SchemaAST.AST> | undefined
+  constructor(ast: SchemaAST.AST) {
+    this.#ast = ast
+  }
+  get schemas(): ReadonlyArray<SchemaAST.AST> {
+    return this.#schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(this.#ast)))]
+  }
+}
+
+const jsonContentToJsonSchema: SchemaRepresentation.ToJsonSchema.Check = ({ schemas, type }) =>
+  type === "string" ? { contentSchema: schemas[0] } : [{ contentSchema: schemas[0] }, true]
+
+const jsonContentToCode: SchemaRepresentation.Generation.Check = ({ schemas }) => ({
+  runtime: `Schema.isJsonContent(${schemas[0].runtime})`
+})
 
 // Repeated `fromJsonString` calls with the same schema share one encoded AST, so representations deduplicate it.
 const jsonContentStrings = new WeakMap<SchemaAST.AST, String>()
