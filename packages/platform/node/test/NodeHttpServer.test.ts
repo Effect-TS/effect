@@ -883,6 +883,26 @@ describe("HttpServer", () => {
       }))
   })
 
+  it.live.each([100, 103, 600])(
+    "answers a handler response with status %i with a 500 and reports the failure",
+    (status) =>
+      Effect.gen(function*() {
+        const server = Http.createServer()
+        const observed = yield* Deferred.make<Exit.Exit<unknown, unknown>>()
+        yield* HttpServer.serve(
+          Effect.succeed(HttpServerResponse.empty({ status })),
+          (app) => Effect.onExit(app, (exit) => Deferred.succeed(observed, exit))
+        ).pipe(
+          Layer.provide(NodeHttpServer.layer(() => server, { port: 0 })),
+          Layer.build
+        )
+
+        const answer = yield* requestStatus(tcpPort(server), "GET").pipe(Effect.timeout("2 seconds"))
+        assert.strictEqual(answer, 500)
+        assert.isTrue(Exit.isFailure(yield* Deferred.await(observed)))
+      })
+  )
+
   it.live("answers keep-alive requests while graceful shutdown drains an existing connection", () => {
     const requestStarted = Latch.makeUnsafe()
     const releaseResponse = Latch.makeUnsafe()
