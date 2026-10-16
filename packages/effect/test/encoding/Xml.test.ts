@@ -175,6 +175,8 @@ describe("Xml", () => {
         }
         // Invalid UTF-8 and invalid characters, with columns in UTF-16 code units
         const invalid: ReadonlyArray<readonly [Uint8Array, number, number]> = [
+          [Uint8Array.of(0x3C, 0x31, 0xFF, ...textEncoder.encode("></a>")), 1, 2],
+          [Uint8Array.of(0x3C, 0x31, 0xE2), 1, 2],
           [Uint8Array.of(...textEncoder.encode("<a>\né"), 0xFF, ...textEncoder.encode("</a>")), 2, 2],
           [Uint8Array.of(...textEncoder.encode("<a>"), 0xED, 0xA0, 0x80, ...textEncoder.encode("</a>")), 1, 4],
           [textEncoder.encode("<a/>€").subarray(0, -1), 1, 5],
