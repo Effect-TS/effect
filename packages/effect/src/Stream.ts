@@ -11606,15 +11606,18 @@ export const toReadableStreamWith: {
     return new ReadableStream<A>({
       start(controller) {
         fiber = Effect.runFork(Effect.provideContext(
-          runForEachArray(self, (chunk) =>
-            latch.whenOpen(Effect.sync(() => {
-              latch.closeUnsafe()
-              for (let i = 0; i < chunk.length; i++) {
-                controller.enqueue(chunk[i])
-              }
-              currentResolve!()
-              currentResolve = undefined
-            }))),
+          Channel.runForEach(
+            Channel.transformPull(self.channel, (pull) => Effect.succeed(latch.whenOpen(pull))),
+            (chunk) =>
+              Effect.sync(() => {
+                latch.closeUnsafe()
+                for (let i = 0; i < chunk.length; i++) {
+                  controller.enqueue(chunk[i])
+                }
+                currentResolve!()
+                currentResolve = undefined
+              })
+          ),
           context
         ))
         fiber.addObserver((exit) => {
