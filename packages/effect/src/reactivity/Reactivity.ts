@@ -97,23 +97,14 @@ export const make = Effect.sync(() => {
   const handlers = new Map<number | string, Set<() => void>>()
 
   const runHandlers = (hashes: Iterable<string | number>): void => {
-    const pending = new Map<() => void, Array<Set<() => void>>>()
+    const ran = new Set<() => void>()
     for (const hash of hashes) {
-      const set = handlers.get(hash)
-      if (set === undefined) continue
-      set.forEach((run) => {
-        const sets = pending.get(run)
-        if (sets === undefined) {
-          pending.set(run, [set])
-        } else {
-          sets.push(set)
-        }
+      handlers.get(hash)?.forEach((run) => {
+        if (ran.has(run)) return
+        ran.add(run)
+        run()
       })
     }
-    pending.forEach((sets, run) => {
-      // Earlier handlers may cancel registrations during this dispatch.
-      if (sets.some((set) => set.has(run))) run()
-    })
   }
 
   const invalidateUnsafe = (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): void => {
