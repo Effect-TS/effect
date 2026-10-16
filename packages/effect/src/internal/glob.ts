@@ -248,7 +248,14 @@ export const normalizeSegments = (raw: ReadonlyArray<string>): Array<string> => 
   return out
 }
 
+// A UNC root such as `//server/share` is not supported and must not collapse
+// into the absolute path `/server/share`.
+const isUnc = (path: string): boolean => path.startsWith("//") && path[2] !== undefined && path[2] !== "/"
+
 const compilePattern = (pattern: string): CompiledPattern | undefined => {
+  if (isUnc(pattern)) {
+    return undefined
+  }
   let raw = markDrive(splitSegments(pattern))
   let directoryOnly = false
   while (raw.length > 1 && raw[raw.length - 1] === "") {
@@ -562,7 +569,7 @@ const needsDirectory = (compiled: Compiled, states: States): boolean => {
 
 /** @internal */
 export const match = (compiled: Compiled, path: string): boolean => {
-  if (path === "") {
+  if (path === "" || isUnc(path)) {
     return false
   }
   let raw = markDrive(path.split("/"))
