@@ -15,6 +15,7 @@ import * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
 import * as Exit from "../Exit.ts"
 import { identity } from "../Function.ts"
+import { DeferInvalidation } from "../internal/reactivity.ts"
 import * as Option from "../Option.ts"
 import { hasProperty } from "../Predicate.ts"
 import type * as Queue from "../Queue.ts"
@@ -278,16 +279,13 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
 
   const afterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
     Effect.withFiber((fiber) => {
-      const transaction = Context.getOrUndefined(fiber.context, transactionService)
-      const buffer = transaction && afterCommitBuffers.get(transaction)
+      const buffer = currentAfterCommitBuffer(fiber.context, transactionService)
       // Outside a transaction, or in one that doesn't buffer callbacks.
       if (buffer === undefined) {
         return runAfterCommit(effect)
       }
-      for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
-        if (!current.open) {
-          return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
-        }
+      if (buffer === false) {
+        return Effect.die(new Error("SqlClient.afterCommit: the transaction has already ended"))
       }
       // Runs later with the services in scope now, without the transaction.
       buffer.callbacks.push(
@@ -480,6 +478,25 @@ interface AfterCommitBuffer {
  */
 const afterCommitBuffers = new WeakMap<object, AfterCommitBuffer>()
 
+/**
+ * The buffer of the innermost transaction level of `transactionService` in
+ * `context`: `undefined` outside a transaction or in one that doesn't buffer
+ * callbacks, and `false` once that level or an enclosing one has ended.
+ */
+const currentAfterCommitBuffer = (
+  context: Context.Context<never>,
+  transactionService: Context.Key<any, any>
+): AfterCommitBuffer | false | undefined => {
+  const transaction = Context.getOrUndefined(context, transactionService)
+  const buffer = transaction && afterCommitBuffers.get(transaction)
+  for (let current: AfterCommitBuffer | undefined = buffer; current !== undefined; current = current.parent) {
+    if (!current.open) {
+      return false
+    }
+  }
+  return buffer
+}
+
 const runAfterCommit = <R>(effect: Effect.Effect<void, never, R>): Effect.Effect<void, never, R> =>
   Effect.catchCause(effect, (cause) =>
     Effect.withFiber((fiber) => {
@@ -521,6 +538,17 @@ export const makeWithTransaction = <I, S>(options: {
   const transactionSemaphore = Context.Service<Semaphore.Semaphore>(
     `effect/sql/SqlClient/TransactionSemaphore/${transactionSemaphoreIdCounter++}`
   )
+  // Holds Reactivity invalidations until the outermost transaction commits.
+  const deferInvalidation = (invalidate: Effect.Effect<void>): Effect.Effect<void> =>
+    Effect.withFiber((fiber) => {
+      const buffer = currentAfterCommitBuffer(fiber.context, options.transactionService)
+      // Once the transaction has ended, such as in a detached fiber, invalidate now.
+      if (!buffer) {
+        return invalidate
+      }
+      buffer.callbacks.push(invalidate)
+      return Effect.void
+    })
   return <R, E, A>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | SqlError, R> =>
     Effect.uninterruptibleMask((restore) =>
       Effect.useSpan(
@@ -558,6 +586,7 @@ export const makeWithTransaction = <I, S>(options: {
                         restore(effect),
                         services.pipe(
                           Context.add(options.transactionService, level),
+                          Context.add(DeferInvalidation, deferInvalidation),
                           Context.add(transactionSemaphore, Semaphore.makeUnsafe(1)),
                           Context.add(Tracer.ParentSpan, span)
                         )

@@ -16,6 +16,7 @@ import type * as Exit from "../Exit.ts"
 import * as Fiber from "../Fiber.ts"
 import { dual, flow } from "../Function.ts"
 import * as Hash from "../Hash.ts"
+import { DeferInvalidation } from "../internal/reactivity.ts"
 import * as Layer from "../Layer.ts"
 import * as Queue from "../Queue.ts"
 import type { ReadonlyRecord } from "../Record.ts"
@@ -108,6 +109,10 @@ export const make = Effect.sync(() => {
     keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>
   ): Effect.Effect<void> =>
     Effect.contextWith((services) => {
+      const defer = Context.get(services, DeferInvalidation)
+      if (defer) {
+        return defer(Effect.sync(() => invalidateUnsafe(keys)))
+      }
       const pending = Context.getOrUndefined(services, PendingInvalidation)
       if (pending) {
         keysToHashes(keys, (hash) => {
@@ -239,7 +244,9 @@ class PendingInvalidation extends Context.Service<PendingInvalidation, Set<strin
  *
  * **Gotchas**
  *
- * If the effect fails, the keys are not invalidated.
+ * If the effect fails, the keys are not invalidated. Inside a SQL transaction,
+ * the keys are invalidated once the outermost transaction commits, and not at
+ * all if it rolls back.
  *
  * @stability unstable
  * @category accessors
@@ -321,7 +328,9 @@ export const stream: {
  * **Details**
  *
  * Registered queries for matching keys are rerun immediately, or collected until
- * the enclosing reactivity batch completes.
+ * the enclosing reactivity batch completes. Inside a SQL transaction, they are
+ * rerun once the outermost transaction commits, and not at all if it rolls
+ * back.
  *
  * @stability unstable
  * @category accessors

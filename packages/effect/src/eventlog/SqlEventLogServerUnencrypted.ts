@@ -245,8 +245,10 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
     const pubsub = yield* RcMap.get(pubsubs, storeId)
     return yield* PubSub.publishAll(pubsub, entries)
   }, Effect.scoped)
-  // Merge nested buffers on success; publish only after the outer commit.
-  // Hold the outer permit through publication to prevent later commits from overtaking it.
+  // Merge nested buffers on success; publish only after the outermost SQL
+  // commit, which may belong to a transaction the caller opened. Without one,
+  // the outer permit is held through publication to prevent later commits from
+  // overtaking it.
   const withTransaction = Effect.fnUntraced(function*<A, E, R>(
     effect: Effect.Effect<A, E, R>
   ): Effect.fn.Return<A, E | SqlError.SqlError, Exclude<R, PendingWrites>> {
@@ -259,7 +261,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
       )
       if (parent._tag === "Some") {
         parent.value.push(...writes)
-      } else {
+      } else if (writes.length > 0) {
         const stores = new Map<string, Array<RemoteEntry>>()
         for (const [storeId, entries] of writes) {
           const existing = stores.get(storeId)
@@ -273,7 +275,7 @@ export const makeStorage = Effect.fnUntraced(function*(options?: StorageOptions)
         for (const entries of stores.values()) {
           entries.sort((a, b) => a.remoteSequence - b.remoteSequence)
         }
-        yield* Effect.forEach(stores, publish, { discard: true })
+        yield* sql.afterCommit(Effect.forEach(stores, publish, { discard: true }))
       }
       return result
     }))

@@ -480,6 +480,16 @@ export type Encoded = {
   readonly withTransaction: <A, E, R>(
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, R>
+
+  /**
+   * Runs `effect` once the outermost transaction the storage participates in
+   * commits, or immediately, failures included, outside one. Failures of a
+   * deferred effect become defects, as no caller is waiting for them.
+   *
+   * When omitted, reply notifications wait only for the outermost
+   * `withTransaction` of this storage.
+   */
+  readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
 }
 
 /**
@@ -551,6 +561,16 @@ export const make = (
       readonly saveReply: <R extends Rpc.Any>(
         reply: Reply.ReplyWithContext<R>
       ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
+
+      /**
+       * Runs `effect` once the outermost transaction the storage participates
+       * in commits, or immediately, failures included, outside one.
+       *
+       * When provided, reply notifications use it instead of waiting for the
+       * outermost `withTransaction` of this storage, so they also wait for
+       * transactions opened outside the storage.
+       */
+      readonly afterCommit?: (<E>(effect: Effect.Effect<void, E>) => Effect.Effect<void, E>) | undefined
     }
 ): Effect.Effect<MessageStorage["Service"]> =>
   Effect.sync(() => {
@@ -562,10 +582,11 @@ export const make = (
     }
     const replyHandlers = new Map<Snowflake.Snowflake, Array<ReplyHandler>>()
     const replyHandlersShard = new Map<string, Set<ReplyHandler>>()
+    const { afterCommit, ...service } = storage
     return MessageStorage.of({
-      ...storage,
+      ...service,
       // Nested transactions defer notifications to the outermost commit.
-      withTransaction: (effect) =>
+      withTransaction: afterCommit ? storage.withTransaction : (effect) =>
         TransactionNotifications.use((outer) => {
           const notifications: Array<Effect.Effect<void, PersistenceError | MalformedMessage>> = []
           return storage.withTransaction(Effect.provideService(effect, TransactionNotifications, notifications)).pipe(
@@ -659,6 +680,7 @@ export const make = (
               : Effect.forEach(handlers, (handler) => handler.respond(persisted), { discard: true })
           })
           if (persisted.reply._tag !== "WithExit") return notify
+          if (afterCommit) return afterCommit(notify)
           return TransactionNotifications.use((notifications) =>
             notifications === undefined ? notify : Effect.sync(() => {
               notifications.push(notify)
@@ -795,7 +817,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       if (!Arr.isArrayNonEmpty(shards)) return Effect.void
       return encoded.resetShards(shards)
     },
-    withTransaction: encoded.withTransaction
+    withTransaction: encoded.withTransaction,
+    afterCommit: encoded.afterCommit
   })
 
   const decodeMessages = (

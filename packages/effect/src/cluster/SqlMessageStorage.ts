@@ -791,6 +791,13 @@ const makeEncodedStorage = Effect.fnUntraced(function*(
     withTransaction: (effect) =>
       sql.withTransaction(effect).pipe(
         Effect.catchIf(isSqlError, Effect.die)
+      ),
+
+    // Outside a transaction, run now so failures reach the caller.
+    afterCommit: (effect) =>
+      Effect.flatMap(
+        Effect.serviceOption(sql.transactionService),
+        (transaction) => transaction._tag === "None" ? effect : sql.afterCommit(Effect.orDie(effect))
       )
   }
   return encoded
