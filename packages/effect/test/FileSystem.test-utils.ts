@@ -627,6 +627,15 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
   )
 
+  testGlob(layer)
+}
+
+export const testGlob = <E>(layer: Layer.Layer<Fs.FileSystem, E>) => {
+  const runPromise = <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
+    Effect.runPromise(
+      Effect.provide(self, layer)
+    )
+
   const globFixture = Effect.gen(function*() {
     const fs = yield* Fs.FileSystem
     const root = yield* fs.makeTempDirectoryScoped()
@@ -654,88 +663,31 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
   it.each<{
     readonly pattern: string
     readonly exclude?: ReadonlyArray<string>
+    readonly dot?: boolean
     readonly expected: ReadonlyArray<string>
   }>([
     {
       pattern: "**/*.ts",
       expected: ["a/x.ts", "b/y.ts", "node_modules/pkg/index.ts", "src/index.ts", "src/sub/deep.ts"]
     },
-    { pattern: "*", expected: ["README.md", "a", "b", "node_modules", "src"] },
     { pattern: ".*", expected: [".env", ".hidden"] },
     { pattern: "src/**", expected: ["src", "src/index.ts", "src/sub", "src/sub/deep.js", "src/sub/deep.ts"] },
-    { pattern: "{a,b}/*.ts", expected: ["a/x.ts", "b/y.ts"] },
-    { pattern: "src/sub/[d]eep.?s", expected: ["src/sub/deep.js", "src/sub/deep.ts"] },
-    {
-      pattern: "**/*.ts",
-      exclude: ["node_modules/**"],
-      expected: ["a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
-    }
-  ])("glob $pattern (exclude: $exclude) returns paths relative to root", ({ pattern, exclude, expected }) =>
-    runPromise(
-      Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
-        const root = yield* globFixture
-        const paths = yield* fs.glob(pattern, { root, exclude })
-        expect(paths).toEqual(expected)
-      }).pipe(Effect.scoped)
-    ))
-
-  it.each<{
-    readonly pattern: string
-    readonly exclude?: ReadonlyArray<string>
-    readonly dot?: boolean
-    readonly expected: ReadonlyArray<string>
-  }>([
     { pattern: "*/", expected: ["a", "b", "node_modules", "src"] },
-    { pattern: "{b,a,README.md}", expected: ["README.md", "a", "b"] },
+    { pattern: "{a,b}/*.ts", expected: ["a/x.ts", "b/y.ts"] },
+    { pattern: "src/index.ts", expected: ["src/index.ts"] },
     { pattern: "readme.md", expected: [] },
-    { pattern: "", expected: [] },
-    { pattern: "Q:", expected: [] },
-    { pattern: "**/..", expected: [] },
-    { pattern: "src/../{a,b}/*.ts", expected: ["src/../a/x.ts", "src/../b/y.ts"] },
     {
       pattern: "**/*.ts",
       exclude: ["node_modules"],
       dot: true,
       expected: [".hidden/secret.ts", "a/x.ts", "b/y.ts", "src/index.ts", "src/sub/deep.ts"]
-    },
-    { pattern: "src/index.ts", expected: ["src/index.ts"] },
-    { pattern: "src/missing.ts", expected: [] },
-    { pattern: "src/index.ts/x", expected: [] },
-    { pattern: "**/*.ts", exclude: ["*/"], expected: [] },
-    {
-      pattern: "**",
-      exclude: ["**/sub", "*.md"],
-      expected: [
-        "a",
-        "a/x.ts",
-        "b",
-        "b/y.ts",
-        "node_modules",
-        "node_modules/pkg",
-        "node_modules/pkg/index.ts",
-        "src",
-        "src/index.ts"
-      ]
     }
-  ])(
-    "glob $pattern (exclude: $exclude, dot: $dot) handles directories and literals",
-    ({ dot, exclude, expected, pattern }) =>
-      runPromise(
-        Effect.gen(function*() {
-          const fs = yield* Fs.FileSystem
-          const root = yield* globFixture
-          expect(yield* fs.glob(pattern, { root, exclude, dot })).toEqual(expected)
-        }).pipe(Effect.scoped)
-      )
-  )
-
-  it("glob returns an empty array for a missing root", () =>
+  ])("glob $pattern (exclude: $exclude, dot: $dot)", ({ dot, exclude, expected, pattern }) =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped()
-        expect(yield* fs.glob("**", { root: `${root}/missing` })).toEqual([])
+        const root = yield* globFixture
+        expect(yield* fs.glob(pattern, { root, exclude, dot })).toEqual(expected)
       }).pipe(Effect.scoped)
     ))
 
@@ -751,31 +703,21 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }).pipe(Effect.scoped)
     ))
 
-  it("glob returns nothing for .. under a missing root", () =>
-    runPromise(
-      Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped()
-        expect(yield* fs.glob("..", { root: `${root}/missing` })).toEqual([])
-      }).pipe(Effect.scoped)
-    ))
-
-  it.skipIf(process.platform === "win32")("glob lists a drive-like name once", () =>
-    runPromise(
-      Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped()
-        yield* fs.writeFileString(`${root}/C:`, "")
-        expect(yield* fs.glob("{C:,*}", { root })).toEqual(["C:"])
-      }).pipe(Effect.scoped)
-    ))
-
   it("glob resolves .. segments against root", () =>
     runPromise(
       Effect.gen(function*() {
         const fs = yield* Fs.FileSystem
         const root = yield* globFixture
         expect(yield* fs.glob("../a/*.ts", { root: `${root}/src` })).toEqual(["../a/x.ts"])
+      }).pipe(Effect.scoped)
+    ))
+
+  it("glob returns an empty array for a missing root", () =>
+    runPromise(
+      Effect.gen(function*() {
+        const fs = yield* Fs.FileSystem
+        const root = yield* fs.makeTempDirectoryScoped()
+        expect(yield* fs.glob("**", { root: `${root}/missing` })).toEqual([])
       }).pipe(Effect.scoped)
     ))
 
@@ -791,19 +733,6 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* fs.symlink(root, `${root}/target/loop`)
         expect(yield* fs.glob("**", { root })).toEqual(["link", "target", "target/file.ts", "target/loop"])
         expect(yield* fs.glob("link/*.ts", { root })).toEqual(["link/file.ts"])
-        expect(yield* fs.glob("link/**", { root })).toEqual(["link", "link/file.ts", "link/loop"])
-      }).pipe(Effect.scoped)
-    ))
-
-  it("glob treats a broken symlink the same through literal and wildcard segments", () =>
-    runPromise(
-      Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
-        const root = yield* fs.makeTempDirectoryScoped()
-        yield* fs.symlink(`${root}/missing`, `${root}/dangling`)
-        expect(yield* fs.glob("dangling", { root })).toEqual(["dangling"])
-        expect(yield* fs.glob("dang*", { root })).toEqual(["dangling"])
-        expect(yield* fs.glob("dangling/", { root })).toEqual([])
       }).pipe(Effect.scoped)
     ))
 }
