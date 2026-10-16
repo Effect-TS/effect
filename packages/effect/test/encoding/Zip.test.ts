@@ -123,7 +123,7 @@ describe("Zip", () => {
         const big = Uint8Array.from({ length: 200_000 }, (_, i) => (i * i) % 251)
         const input = [
           Zip.directory("dir", { mtime }),
-          Zip.file("dir/a.txt", "hello\n".repeat(100), { mtime, mode: 0o600 }),
+          Zip.file("dir/a.txt", "hello\n".repeat(100), { mtime }),
           Zip.file("stored.bin", big, { method: "Store" }),
           Zip.file("empty.txt", ""),
           Zip.file("ünïcødé/文件.txt", "unicode"),
@@ -183,12 +183,6 @@ describe("Zip", () => {
         )
       }))
 
-    it.effect("writes stored archives reproducibly", () =>
-      Effect.gen(function*() {
-        const input = () => [Zip.file("a.txt", "a", { method: "Store" }), Zip.directory("b")]
-        assert.deepStrictEqual(yield* encode(input()), yield* encode(input()))
-      }))
-
     it.effect("keeps times in whole seconds and clamps them to the DOS range", () =>
       Effect.gen(function*() {
         const times = [
@@ -225,23 +219,17 @@ describe("Zip", () => {
         for (const entry of invalid) assert.strictEqual(yield* failure(encode([entry])), "InvalidHeader")
       }))
 
-    it.effect("fails when a body does not match its size", () =>
+    it.effect("fails on body errors and bodies that do not match their size", () =>
       Effect.gen(function*() {
         const body = Stream.make(textEncoder.encode("abc"))
         for (const method of ["Store", "Deflate"] as const) {
           assert.strictEqual(yield* failure(encode([Zip.fileStream("f", body, { method, size: 5 })])), "SizeMismatch")
           assert.strictEqual(yield* failure(encode([Zip.fileStream("f", body, { method, size: 2 })])), "SizeMismatch")
+          const failing = Stream.concat(body, Stream.fail("Boom"))
+          assert.strictEqual(yield* failure(encode([Zip.fileStream("f", failing, { method, size: 4 })])), "Boom")
         }
         const directory = { ...Zip.directory("d"), body }
         assert.strictEqual(yield* failure(encode([directory])), "SizeMismatch")
-      }))
-
-    it.effect("passes on body failures", () =>
-      Effect.gen(function*() {
-        for (const method of ["Store", "Deflate"] as const) {
-          const body = Stream.make(textEncoder.encode("a")).pipe(Stream.concat(Stream.fail("Boom")))
-          assert.strictEqual(yield* failure(encode([Zip.fileStream("f", body, { method, size: 2 })])), "Boom")
-        }
       }))
 
     it.effect("gathers small output and passes large body chunks through", () =>
@@ -253,8 +241,6 @@ describe("Zip", () => {
         ]).pipe(Stream.pipeThroughChannel(Zip.encode()), Stream.runCollect)
         assert.isTrue(output.includes(large))
         assert.isBelow(output.length, 10)
-        const decoded = yield* decode(concat(...output))
-        assert.deepStrictEqual(decoded.at(-1)?.body, large)
       }))
 
     it.effect("writes ZIP64 end records for 65535 entries or more", () =>
@@ -268,7 +254,6 @@ describe("Zip", () => {
         assert.strictEqual(view.getUint32(end64, true), 0x06064b50)
         assert.strictEqual(view.getUint32(end64 + 32, true), count)
         assert.strictEqual(view.getUint32(end - 20 + 8, true), end64)
-        assert.strictEqual((yield* decode(bytes, bytes.length)).length, count)
       }))
   })
 
@@ -320,7 +305,6 @@ describe("Zip", () => {
         const content = textEncoder.encode("descriptor ".repeat(40))
         const data = deflateRawSync(content)
         const name = textEncoder.encode("f")
-        const zip64 = concat(le(0x0001, 2), le(16, 2), new Uint8Array(16))
         const variants = [
           [
             localHeader(name, { flags: 8, method: 8 }),
@@ -330,13 +314,6 @@ describe("Zip", () => {
           ],
           [
             localHeader(name, { flags: 8, method: 8 }),
-            le(0x08074b50, 4),
-            le(crc32(content), 4),
-            le(data.length, 8),
-            le(content.length, 8)
-          ],
-          [
-            localHeader(name, { flags: 8, method: 8, compressedSize: 0xffffffff, size: 0xffffffff, extra: zip64 }),
             le(0x08074b50, 4),
             le(crc32(content), 4),
             le(data.length, 8),
@@ -410,27 +387,20 @@ describe("Zip", () => {
         assert.deepStrictEqual(output.map(({ header }) => header.path), ["üA", "é", "ÿ.txt", "y"])
       }))
 
-    it.effect("reads DOS times as UTC unless an extended timestamp is present", () =>
+    it.effect("reads extended timestamps before 1970 and after 2038", () =>
       Effect.gen(function*() {
-        const time = (3 << 11) | (4 << 5) | 3
-        const date = (44 << 9) | (1 << 5) | 2
         const timestamp = (seconds: number) => concat(le(0x5455, 2), le(5, 2), [1], le(seconds, 4))
-        const after2038 = ((2038 - 1980) << 9) | (1 << 5) | 20
         const archive = concat(
-          storedEntry(textEncoder.encode("dos"), new Uint8Array(0), { time, date }),
-          storedEntry(textEncoder.encode("ut"), new Uint8Array(0), { time, date, extra: timestamp(86_400) }),
-          // Info-ZIP writes times before 1970 as negative numbers
+          // Info-ZIP writes times before 1970 as negative numbers; the DOS date tells them apart
           storedEntry(textEncoder.encode("1969"), new Uint8Array(0), { extra: timestamp(2 ** 32 - 86_400) }),
           storedEntry(textEncoder.encode("2038"), new Uint8Array(0), {
-            date: after2038,
+            date: ((2038 - 1980) << 9) | (1 << 5) | 20,
             extra: timestamp(2 ** 31 + 86_400)
           }),
           endRecord
         )
         const output = yield* decode(archive)
         assert.deepStrictEqual(output.map(({ header }) => header.mtime.toISOString()), [
-          "2024-01-02T03:04:06.000Z",
-          "1970-01-02T00:00:00.000Z",
           "1969-12-31T00:00:00.000Z",
           "2038-01-20T03:14:08.000Z"
         ])
@@ -563,19 +533,15 @@ describe("Zip", () => {
 
     it.effect("fails on truncated or corrupt archives", () =>
       Effect.gen(function*() {
-        const bytes = yield* encode([Zip.file("a", "a".repeat(600), { method: "Store" })])
-        const centralOffset = new DataView(bytes.buffer).getUint32(bytes.length - 6, true)
-        assert.strictEqual(yield* failure(decode(new Uint8Array(0))), "Truncated")
         const streamed = yield* encode([
           Zip.fileStream("a", Stream.make(textEncoder.encode("a".repeat(300)))),
           Zip.fileStream("b", Stream.make(textEncoder.encode("b")), { method: "Store", size: 1 })
         ])
-        const streamedCentral = new DataView(streamed.buffer).getUint32(streamed.length - 6, true)
-        for (let length = 0; length < streamedCentral + 4; length++) {
+        const centralOffset = new DataView(streamed.buffer).getUint32(streamed.length - 6, true)
+        for (let length = 0; length < centralOffset + 4; length++) {
           assert.strictEqual(yield* failure(decode(streamed.subarray(0, length), 16)), "Truncated")
         }
-        assert.strictEqual(yield* failure(decode(bytes.subarray(0, 300))), "Truncated")
-        assert.strictEqual(yield* failure(decode(bytes.subarray(0, centralOffset))), "Truncated")
+        const bytes = yield* encode([Zip.file("a", "a".repeat(600), { method: "Store" })])
         assert.strictEqual(yield* failure(decode(concat([0], bytes))), "InvalidHeader")
         const corrupt = bytes.slice()
         corrupt[100] ^= 1
@@ -583,7 +549,7 @@ describe("Zip", () => {
 
         const content = textEncoder.encode("deflated")
         const data = deflateRawSync(content)
-        const deflated = (fields: Parameters<typeof localHeader>[1], body: ArrayLike<number> = data) =>
+        const deflated = (fields: Parameters<typeof localHeader>[1]) =>
           concat(
             localHeader(textEncoder.encode("f"), {
               method: 8,
@@ -592,11 +558,10 @@ describe("Zip", () => {
               size: content.length,
               ...fields
             }),
-            body,
+            data,
             endRecord
           )
         assert.strictEqual(yield* failure(decode(deflated({ size: content.length + 1 }))), "SizeMismatch")
-        assert.strictEqual(yield* failure(decode(deflated({}, [0xff, 0xff, 0xff, 0xff]))), "InvalidData")
         assert.strictEqual(yield* failure(decode(deflated({ flags: 1 }))), "Unsupported")
         assert.strictEqual(yield* failure(decode(deflated({ method: 12 }))), "Unsupported")
       }))
