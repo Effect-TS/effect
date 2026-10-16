@@ -188,7 +188,7 @@ describe("Tar", () => {
 
     it.effect("keeps a leading byte order mark in a USTAR name", () =>
       Effect.gen(function*() {
-        // A USTAR name field holding the BOM bytes, with its checksum recomputed
+        // Writes the BOM bytes over the name and recomputes the checksum
         const ustar = yield* encode([Tar.file("___/etc/passwd", "")])
         ustar.set([0xef, 0xbb, 0xbf], 0)
         ustar.fill(0x20, 148, 156)
