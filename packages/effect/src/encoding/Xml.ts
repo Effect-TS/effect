@@ -293,6 +293,10 @@ export interface ElementsOptions {
  *   declarations are ordinary attributes.
  * - Tokens longer than `maxTokenSize` and elements nested deeper than
  *   `maxDepth` fail with a `Limit` `XmlError`.
+ * - Strings in events can share memory with the input chunk they were read
+ *   from, so keeping short strings, such as an id from each record, can keep
+ *   whole chunks in memory. Copy strings that are kept for long, for example
+ *   with `structuredClone`.
  *
  * **Example** (Decoding events)
  *
