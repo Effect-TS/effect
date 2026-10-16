@@ -102,6 +102,76 @@ const AsyncString = Schema.String.pipe(Schema.decode({
 const AsyncNonEmptyString = AsyncString.check(Schema.isNonEmpty())
 
 describe("toStandardSchemaV1", () => {
+  describe("per-call options", () => {
+    for (const customFirst of [false, true]) {
+      const order = customFirst ? "custom first" : "default first"
+
+      it.each(["leafHook", "checkHook"] as const)(`isolates %s (${order})`, (hook) => {
+        const schema = Schema.String.check(Schema.isNonEmpty())
+        const options = { [hook]: () => "Custom message" }
+        const first = Schema.toStandardSchemaV1(schema, customFirst ? options : undefined)
+        const second = Schema.toStandardSchemaV1(schema, customFirst ? undefined : options)
+        const custom = customFirst ? first : second
+        const standard = customFirst ? second : first
+        const input = hook === "leafHook" ? null : ""
+
+        expectSyncFailure(custom, input, [{ message: "Custom message", path: [] }])
+        expectSyncFailure(standard, input, [{
+          message: hook === "leafHook" ? "Expected string" : "Expected a value with a length of at least 1",
+          path: []
+        }])
+      })
+
+      it(`isolates parseOptions.errors (${order})`, () => {
+        const schema = Schema.Struct({ a: Schema.String, b: Schema.String })
+        const options = { parseOptions: { errors: "first" as const } }
+        const first = Schema.toStandardSchemaV1(schema, customFirst ? options : undefined)
+        const second = Schema.toStandardSchemaV1(schema, customFirst ? undefined : options)
+        const custom = customFirst ? first : second
+        const standard = customFirst ? second : first
+
+        expectSyncFailure(custom, { a: null, b: null }, [{ message: "Expected string", path: ["a"] }])
+        expectSyncFailure(standard, { a: null, b: null }, [
+          { message: "Expected string", path: ["a"] },
+          { message: "Expected string", path: ["b"] }
+        ])
+      })
+    }
+  })
+
+  it("preserves class construction, fields, extension and custom statics", () => {
+    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {
+      static label() {
+        return "Parent"
+      }
+    }
+    const adapted = Schema.toStandardSchemaV1(Parent)
+    strictEqual(adapted.fields.a, Schema.String)
+    strictEqual(adapted.label(), "Parent")
+    assertTrue(new adapted({ a: "a" }) instanceof Parent)
+    expectSyncSuccess(adapted, { a: "a" }, new Parent({ a: "a" }))
+
+    class Child extends adapted.extend<Child>("Child")({ b: Schema.Number }) {}
+    expectSyncSuccess(Schema.toStandardSchemaV1(Child), { a: "a", b: 1 }, new Child({ a: "a", b: 1 }))
+    expectSyncFailure(Schema.toStandardSchemaV1(Child), { a: "a" }, [{ message: "Missing key", path: ["b"] }])
+  })
+
+  it.each([false, true])("preserves both standards when composing adapters (JSON first: %s)", (jsonFirst) => {
+    const schema = Schema.String.annotate({})
+    const both = jsonFirst
+      ? Schema.toStandardSchemaV1(Schema.toStandardJSONSchemaV1(schema))
+      : Schema.toStandardJSONSchemaV1(Schema.toStandardSchemaV1(schema))
+    const custom = Schema.toStandardSchemaV1(both, { leafHook: () => "Custom message" })
+
+    for (const adapter of [both, custom]) {
+      deepStrictEqual(adapter["~standard"].jsonSchema.input({ target: "draft-2020-12" }), { type: "string" })
+      deepStrictEqual(adapter["~standard"].jsonSchema.output({ target: "draft-2020-12" }), { type: "string" })
+      expectSyncSuccess(adapter, "a", "a")
+    }
+    expectSyncFailure(custom, null, [{ message: "Custom message", path: [] }])
+    expectSyncFailure(both, null, [{ message: "Expected string", path: [] }])
+  })
+
   it("validates subclass fields when the parent already has a Standard Schema adapter", () => {
     class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
     const parent = Schema.toStandardSchemaV1(Parent)
