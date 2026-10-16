@@ -23,6 +23,7 @@ import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
 import * as InternalParser from "./internal/schema/parser.ts"
+import { markReplaySafe } from "./internal/schema/replaySafe.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Result from "./Result.ts"
@@ -1415,9 +1416,11 @@ export const Enum: new(
       return replaceEncoding(this, [
         new Link(
           new Union(Object.keys(coercions).map((k) => new Literal(k))),
-          new SchemaTransformation.Transformation(
-            SchemaGetter.transform((s) => coercions[s]),
-            SchemaGetter.String()
+          markReplaySafe(
+            new SchemaTransformation.Transformation(
+              SchemaGetter.transform((s) => coercions[s]),
+              SchemaGetter.String()
+            )
           )
         )
       ])
@@ -1826,9 +1829,11 @@ function literalToString(ast: Literal): Literal {
   return replaceEncoding(ast, [
     new Link(
       new Literal(literalAsString),
-      new SchemaTransformation.Transformation(
-        SchemaGetter.transform(() => ast.literal),
-        SchemaGetter.transform(() => literalAsString)
+      markReplaySafe(
+        new SchemaTransformation.Transformation(
+          SchemaGetter.transform(() => ast.literal),
+          SchemaGetter.transform(() => literalAsString)
+        )
       )
     )
   ])
@@ -4940,7 +4945,7 @@ const isStringNumberRegExp = new globalThis.RegExp(`^(?:${FINITE_PATTERN}|Infini
 
 /** @internal */
 export function isStringFinite(annotations?: Schema.Annotations.Filter) {
-  return isPattern(
+  return markReplaySafe(isPattern(
     isStringFiniteRegExp,
     {
       expected: "a string representing a finite number",
@@ -4951,7 +4956,7 @@ export function isStringFinite(annotations?: Schema.Annotations.Filter) {
       toJsonSchema: () => ({ pattern: isStringFiniteRegExp.source }),
       ...annotations
     }
-  )
+  ))
 }
 
 const finiteString = appendChecks(string, [isStringFinite()])

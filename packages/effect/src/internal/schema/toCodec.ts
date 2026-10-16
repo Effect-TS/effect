@@ -7,6 +7,7 @@ import * as SchemaGetter from "../../SchemaGetter.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
 import * as InternalTransformation from "../../SchemaTransformation.ts"
 import * as InternalMake from "./make.ts"
+import { markReplaySafe } from "./replaySafe.ts"
 
 /** @internal */
 export function toCodecJson<S extends PublicSchema.Constraint>(schema: S): PublicSchema.toCodecJson<S> {
@@ -243,9 +244,11 @@ const nullToString = new SchemaAST.Link(
 
 const booleanToString = new SchemaAST.Link(
   new SchemaAST.Union([new SchemaAST.Literal("true"), new SchemaAST.Literal("false")]),
-  new InternalTransformation.Transformation(
-    SchemaGetter.transform((s) => s === "true"),
-    SchemaGetter.String()
+  markReplaySafe(
+    new InternalTransformation.Transformation(
+      SchemaGetter.transform((s) => s === "true"),
+      SchemaGetter.String()
+    )
   )
 )
 

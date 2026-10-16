@@ -20,6 +20,7 @@ import * as Duration from "./Duration.ts"
 import * as Effect from "./Effect.ts"
 import { format, formatDate, formatJson } from "./Formatter.ts"
 import { dual } from "./Function.ts"
+import { markReplaySafe } from "./internal/schema/replaySafe.ts"
 import * as Option from "./Option.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -934,9 +935,11 @@ export function passthroughSubtype<T>(): Transformation<T, T> {
  * @category converting
  * @since 4.0.0
  */
-export const numberFromString = new Transformation(
-  SchemaGetter.Number(),
-  SchemaGetter.String()
+export const numberFromString = markReplaySafe(
+  new Transformation(
+    SchemaGetter.Number(),
+    SchemaGetter.String()
+  )
 )
 
 /**
