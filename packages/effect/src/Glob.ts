@@ -75,9 +75,10 @@ const GlobProto = {
  * `x/.` is the same as `x/`, and a `.` or `..` segment after `**` makes the
  * pattern match nothing, as does the empty pattern. UNC patterns and paths
  * such as `//server/share` are not supported and never match. Braces and
- * commas inside `[...]` are class members. Extended globs such as `!(a)` and
- * leading `!` negation are not supported and match literally. Malformed
- * syntax, such as an unclosed `[`, also matches literally, as do braces that
+ * commas inside `[...]` are class members. Extended glob syntax and leading
+ * `!` negation are not interpreted, but ordinary wildcards still apply within
+ * them (for example, `?(a)` matches `x(a)`). Malformed syntax, such as an
+ * unclosed `[`, matches literally, as do braces that
  * would expand to more than 10,000 alternatives.
  *
  * **Example** (Matching source files)
