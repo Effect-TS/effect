@@ -377,6 +377,33 @@ describe("Atom", { concurrent: false }, () => {
       assert.deepStrictEqual(events, ["layer released", "scope closed"])
     }))
 
+  it.effect("registry layer scope waits for runtime layers still building", () => {
+    const build = Latch.makeUnsafe()
+    return Effect.gen(function*() {
+      const events: Array<string> = []
+      const runtime = Atom.runtime(Layer.effectDiscard(Effect.acquireRelease(
+        build.await.pipe(Effect.andThen(Effect.sync(() => events.push("layer acquired")))),
+        () => Effect.sync(() => events.push("layer released"))
+      )))
+      const scope = yield* Scope.make()
+      const registry = Context.get(yield* Layer.buildWithScope(AtomRegistry.layer, scope), AtomRegistry.AtomRegistry)
+      registry.mount(runtime.atom(Effect.void))
+
+      const closing = yield* Scope.close(scope, Exit.void).pipe(
+        Effect.andThen(Effect.sync(() => events.push("scope closed"))),
+        Effect.forkChild
+      )
+      yield* Effect.yieldNow
+      yield* build.open
+      yield* Fiber.join(closing)
+
+      assert.deepStrictEqual(events, ["layer acquired", "layer released", "scope closed"])
+    }).pipe(
+      // Closing the scope is uninterruptible, so the build must always finish.
+      Effect.ensuring(build.open)
+    )
+  })
+
   it("default runtime factories build layers once per registry", () => {
     const Service = Context.Service<number>("Atom.test/DefaultRegistryScopedService")
     let builds = 0
