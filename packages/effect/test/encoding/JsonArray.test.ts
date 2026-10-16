@@ -147,6 +147,16 @@ describe("JsonArray", () => {
   })
 
   describe("decode", () => {
+    it.effect("rejects truncated UTF-8 after a complete array at EOF", () =>
+      Effect.gen(function*() {
+        const error = yield* Stream.make(new Uint8Array([0x5b, 0x31, 0x5d, 0xc3])).pipe(
+          Stream.pipeThroughChannel(JsonArray.decode()),
+          Stream.runCollect,
+          Effect.flip
+        )
+        assert.strictEqual(error.kind, "Syntax")
+      }))
+
     it.effect("decodes UTF-8 split at every byte", () =>
       Effect.gen(function*() {
         const encoded = bytes("\uFEFF[\"é\", \"😀\", {\"ключ\": \"値\"}]")

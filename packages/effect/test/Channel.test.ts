@@ -441,6 +441,22 @@ describe("Channel", () => {
   })
 
   describe("encoding", () => {
+    it.effect("decodeText flushes truncated UTF-8 at EOF and preserves the done value", () =>
+      Effect.gen(function*() {
+        const upstream = Channel.fromIterable((function*() {
+          yield [new Uint8Array([0x61, 0xe2, 0x82])] as const
+          return "done"
+        })())
+        const output: Array<string> = []
+        const done = yield* upstream.pipe(
+          Channel.pipeTo(Channel.decodeText()),
+          Channel.tap((chunk) => Effect.sync(() => output.push(...chunk))),
+          Channel.runDrain
+        )
+        assert.strictEqual(done, "done")
+        assert.strictEqual(output.join(""), "a�")
+      }))
+
     it.effect("decodeText handles multi-byte characters split across Uint8Array boundaries", () =>
       Effect.gen(function*() {
         const bytes = new TextEncoder().encode("a🌍b")
