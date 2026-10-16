@@ -59,6 +59,9 @@ describe("Csv", () => {
 
   it.effect("limits record size across chunks", () =>
     Effect.gen(function*() {
+      assert.deepStrictEqual(yield* run(["ab", "c", "\n"], Csv.decodeString({ maxRecordSize: 3 })), [["abc"]])
+      const boundaryError = yield* Effect.flip(run(["ab", "c", "d\n"], Csv.decodeString({ maxRecordSize: 3 })))
+      assert.deepStrictEqual([boundaryError.kind, boundaryError.record, boundaryError.line], ["RecordSize", 1, 1])
       const error = yield* Effect.flip(run("abc\nabcd\n".split(""), Csv.decodeString({ maxRecordSize: 3 })))
       assert.deepStrictEqual([error.kind, error.record, error.line], ["RecordSize", 2, 2])
       const large = "a".repeat(1_048_577)
@@ -116,6 +119,11 @@ describe("Csv", () => {
       assert.deepStrictEqual(yield* run([["a;b", "c,d"]], Csv.encodeString({ delimiter: ";", newline: "\n" })), [
         "\"a;b\";c,d\n"
       ])
+      for (const delimiter of ["]", "[", "^", "-", "\\"]) {
+        assert.deepStrictEqual(yield* run([["a" + delimiter + "b", "c"]], Csv.encodeString({ delimiter })), [
+          "\"a" + delimiter + "b\"" + delimiter + "c\r\n"
+        ])
+      }
       const records = [{ a: "1", b: "2", c: "ignored" }, { a: undefined }, {}]
       assert.strictEqual(
         (yield* run(records, Csv.encodeString({ columns: ["b", "a"], headers: true }))).join(""),
@@ -125,14 +133,18 @@ describe("Csv", () => {
 
   it.effect("decodes and encodes UTF-8 bytes", () =>
     Effect.gen(function*() {
-      const bytes = new TextEncoder().encode("\"Zoë\",東京\r\n")
+      const bytes = new TextEncoder().encode("\"Zoë\",東京\r\n\"a,b\",é\r\n")
       const rows = yield* Stream.fromArray(Array.from(bytes, (byte) => Uint8Array.of(byte))).pipe(
         Stream.pipeThroughChannel(Csv.decode()),
         Stream.runCollect
       )
-      assert.deepStrictEqual(rows, [["Zoë", "東京"]])
+      assert.deepStrictEqual(rows, [["Zoë", "東京"], ["a,b", "é"]])
       const encoded = yield* Stream.fromArray(rows).pipe(Stream.pipeThroughChannel(Csv.encode()), Stream.runCollect)
-      assert.strictEqual(new TextDecoder().decode(encoded[0]), "Zoë,東京\r\n")
+      const decoder = new TextDecoder()
+      assert.strictEqual(
+        encoded.map((chunk) => decoder.decode(chunk, { stream: true })).join("") + decoder.decode(),
+        "Zoë,東京\r\n\"a,b\",é\r\n"
+      )
       const boms = new TextEncoder().encode("\uFEFF\uFEFFa\n")
       assert.deepStrictEqual(yield* run([boms.subarray(0, 2), boms.subarray(2, 4), boms.subarray(4)], Csv.decode()), [[
         "\uFEFFa"
