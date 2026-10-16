@@ -21,7 +21,9 @@ export class ConfigurationError extends Schema.TaggedError<ConfigurationError>()
 ) {}
 
 /**
- * A definite, authenticated claim rejection or a complete HTTP 400 invalid_grant response.
+ * A definite rejection of authenticated claims or an authorization grant.
+ * Generic OAuth receipts require a complete HTTP 400 invalid_grant response;
+ * provider clients may recognize additional documented grant rejection responses.
  *
  * @stability unstable
  * @category errors

@@ -104,7 +104,6 @@ it.effect("captures every operation slot before a getter can shorten its array",
     )
   }).pipe(Effect.provide(cryptoLayer)))
 
-// Reject oversized arrays before reading any slot, including accessor properties.
 it.effect.each(["JWK", "JWKS"] as const)(
   "rejects oversized sparse %s metadata before reading its slots",
   (boundary) =>

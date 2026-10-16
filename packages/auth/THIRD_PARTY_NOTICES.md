@@ -10,6 +10,51 @@ The npm `jose` package is used only for tests and independent interoperation.
 Public failures are exposed through [JoseError](src/JoseError.ts) and
 [OAuthError](src/OAuthError.ts).
 
+## Yielded Auth provider integrations
+
+Provider configuration, profile schemas, GitHub receipt rules, and Microsoft's
+discovery supplement are adapted from
+[yielded-dev/auth](https://github.com/yielded-dev/auth/tree/cb09bb198773a7994add1dbfaa67d93a0918ddb9),
+commit `cb09bb198773a7994add1dbfaa67d93a0918ddb9`.
+The source files under `packages/auth/src/oauth/providers/` are
+`github/{provider,protocol,profile}.ts`, `google/{provider,profile}.ts`,
+`microsoft/{provider,profile}.ts`, and `shared/{preset,profile,discovery}.ts`.
+
+The local adaptation is in `src/GitHub.ts`, `src/Google.ts`, `src/Microsoft.ts`,
+`src/OAuthProvider.ts`, and `src/internal/provider.ts`, with contract coverage in
+`test/oauth/providers.test.ts` and `typetest/Providers.tst.ts`. It uses the local
+OAuth and signed OIDC implementations, with scoped Effect services and private
+typed profiles. Durable transactions, sessions, account linking, persistence,
+and other provider integrations are not included. Microsoft subjects consistently
+use `oid:tid` alongside the verified concrete issuer; the source's multitenant
+durable subject prefix is not part of this API.
+
+### yielded-dev/auth — MIT
+
+```text
+MIT License
+
+Copyright (c) 2026 Daniel van der Merwe
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## JOSE contracts
 
 Selected public contract tests and the P-256 fixture in [test/jose/](test/jose/) are adapted from

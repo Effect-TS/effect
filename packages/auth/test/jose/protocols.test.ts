@@ -122,7 +122,6 @@ it.effect("rejects payload tampering and disallowed algorithms", () =>
     )
   }).pipe(Effect.provide(cryptoLayer)))
 
-// Random-source diagnostics must not escape the JOSE error boundary.
 it.effect("classifies JWE RNG failures without exposing native causes", () =>
   Effect.gen(function*() {
     const key = yield* Jwk.importSecret(Redacted.make(secretJwk), "dir")
