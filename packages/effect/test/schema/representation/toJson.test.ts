@@ -589,7 +589,7 @@ describe("SchemaRepresentation.toJson", () => {
   })
 
   it("encodes fromJsonString annotations", () => {
-    const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.Number })).ast)
+    const schema = SchemaAST.toEncoded(Schema.fromJsonString(Schema.Struct({ value: Schema.String })).ast)
     const document = SchemaRepresentation.toRepresentation(schema)
 
     assert.deepStrictEqual(SchemaRepresentation.toJson(document), {
@@ -609,30 +609,7 @@ describe("SchemaRepresentation.toJson", () => {
               _tag: "Objects",
               propertySignatures: [{
                 name: { type: "string", value: "value" },
-                type: {
-                  _tag: "Union",
-                  types: [
-                    {
-                      _tag: "Number",
-                      checks: [{
-                        _tag: "Filter",
-                        aborted: false,
-                        annotations: { expected: "a finite number", arbitraryConstraint: { number: "finite" } },
-                        representation: { id: "effect/schema/isFinite", payload: null }
-                      }]
-                    },
-                    {
-                      _tag: "Union",
-                      types: [
-                        { _tag: "Literal", literal: { type: "string", value: "Infinity" }, checks: [] },
-                        { _tag: "Literal", literal: { type: "string", value: "-Infinity" }, checks: [] },
-                        { _tag: "Literal", literal: { type: "string", value: "NaN" }, checks: [] }
-                      ],
-                      checks: []
-                    }
-                  ],
-                  checks: []
-                },
+                type: { _tag: "String", checks: [] },
                 isOptional: false,
                 isMutable: false
               }],

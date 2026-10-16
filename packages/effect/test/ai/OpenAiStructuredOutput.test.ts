@@ -658,12 +658,9 @@ describe("toCodecOpenAI", () => {
     const MyEvent = Schema.Struct({ value: Schema.String }).annotate({ identifier: "MyEvent" })
     assert.deepStrictEqual(toCodecOpenAI(Schema.Struct({ payload: Schema.fromJsonString(MyEvent) })).jsonSchema, {
       type: "object",
-      properties: { payload: { $ref: "#/$defs/MyEventEncoded" } },
+      properties: { payload: { type: "string", description: "a string that will be decoded as JSON" } },
       required: ["payload"],
-      additionalProperties: false,
-      $defs: {
-        MyEventEncoded: { type: "string", description: "a string that will be decoded as JSON" }
-      }
+      additionalProperties: false
     })
   })
 

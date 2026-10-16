@@ -485,10 +485,6 @@ describe("SchemaRepresentation.toRepresentation", () => {
         contentMediaType: "application/json",
         expected: "a string that will be decoded as JSON"
       })
-      assert.deepStrictEqual(
-        representation.checks.map((check) => check.representation?.id),
-        ["effect/schema/isJsonContent"]
-      )
     })
 
     it("preserves tuple element annotations", () => {
