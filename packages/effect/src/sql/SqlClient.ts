@@ -57,6 +57,24 @@ export interface SqlClient extends Constructor {
   readonly reserve: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
 
   /**
+   * Opens a connection whose session belongs to the caller until the scope
+   * closes.
+   *
+   * **When to use**
+   *
+   * Use to hold session state that outlives a single transaction, such as
+   * advisory locks, without taking capacity from the client's other
+   * statements.
+   *
+   * **Details**
+   *
+   * Drivers that can open a connection outside their pool do so, so the
+   * session is not counted against `maxConnections`. Other drivers fall back
+   * to `reserve`.
+   */
+  readonly reserveSession: Effect.Effect<Connection.Connection, SqlError, Scope.Scope>
+
+  /**
    * Identifies the driver that created this client.
    *
    * **Details**
@@ -181,6 +199,11 @@ export declare namespace SqlClient {
     readonly borrower?: Connection.Borrower | undefined
     readonly compiler: Compiler
     readonly transactionAcquirer?: Connection.Acquirer
+    /**
+     * Opens a connection outside the client's pool for `reserveSession`.
+     * Defaults to the `transactionAcquirer`.
+     */
+    readonly sessionAcquirer?: Connection.Acquirer | undefined
     /**
      * Identifies the driver creating the client, exposed as `SqlClient.driver`.
      */
@@ -317,6 +340,7 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
       transactionService,
       afterCommit,
       reserve: transactionAcquirer,
+      reserveSession: options.sessionAcquirer ?? transactionAcquirer,
       driver: options.driver,
       withoutTransforms(): any {
         if (options.transformRows === undefined) {

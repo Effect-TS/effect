@@ -172,6 +172,11 @@ export interface PgPoolConfig extends PgClientConfig {
 /**
  * Creates a scoped PostgreSQL client backed by a connection pool.
  *
+ * **Details**
+ *
+ * `reserveSession` opens a separate connection that does not count against
+ * `maxConnections`.
+ *
  * @stability unstable
  * @category constructors
  * @since 4.0.0
@@ -182,12 +187,18 @@ export const make = (options: PgPoolConfig): Effect.Effect<PgClient, SqlError, S
       acquirer: Effect.map(pool.get, makeConnection),
       borrower: (f) => pool.use((connection) => f(makeConnection(connection))),
       transactionAcquirer: Effect.map(pool.reserve, makeConnection),
+      sessionAcquirer: sessionAcquirer(options),
       listenAcquirer: pool.reserve,
       config: options
     }))
 
 /**
  * Creates a scoped PostgreSQL client backed by one connection.
+ *
+ * **Details**
+ *
+ * `reserveSession` opens a second connection, so holding a session does not
+ * block the client's other statements.
  *
  * @stability unstable
  * @category constructors
@@ -208,6 +219,7 @@ export const makeClient = (
         options.acquireForStream ? PgConnection.make(options) : undefined
       )),
       transactionAcquirer: Effect.map(connection.pin, makeConnection),
+      sessionAcquirer: sessionAcquirer(options),
       listenAcquirer: options.acquireForStream ? PgConnection.make(options) : connection.pin,
       config: options
     }))
@@ -220,6 +232,7 @@ const makeImpl = Effect.fnUntraced(function*(
     readonly acquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly borrower?: Borrower | undefined
     readonly transactionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
+    readonly sessionAcquirer: Effect.Effect<Connection, SqlError, Scope.Scope>
     readonly listenAcquirer: Effect.Effect<PgConnection.PgConnection, SqlError, Scope.Scope>
     readonly config: PgClientConfig
   }
@@ -252,6 +265,7 @@ const makeImpl = Effect.fnUntraced(function*(
       commit,
       releaseSavepoint: (name) => `RELEASE SAVEPOINT ${name}`,
       transactionAcquirer: options.transactionAcquirer,
+      sessionAcquirer: options.sessionAcquirer,
       compiler,
       spanAttributes: [
         ...(config.spanAttributes ? Object.entries(config.spanAttributes) : []),
@@ -358,6 +372,11 @@ const commit = (conn: Connection): Effect.Effect<void, SqlError> =>
         )
         : Effect.void
   )
+
+// A new connection with the client's settings, outside any pool, pinned like
+// a reserved one.
+const sessionAcquirer = (options: PgConnection.Config): Effect.Effect<Connection, SqlError, Scope.Scope> =>
+  Effect.map(Effect.flatMap(PgConnection.make(options), (connection) => connection.pin), makeConnection)
 
 const makeConnection = (
   connection: PgConnection.PgConnection,
