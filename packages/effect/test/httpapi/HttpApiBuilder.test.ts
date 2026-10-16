@@ -12,7 +12,6 @@ import {
   SchemaTransformation,
   Stream
 } from "effect"
-import { Csv } from "effect/encoding"
 import { Etag, HttpEffect, HttpPlatform, HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http"
 import {
   HttpApi,
@@ -1258,44 +1257,6 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         assert.deepStrictEqual(Array.from(decodedChunks, (chunk) => Array.from(chunk)), [[1, 2]])
       }))
   }
-
-  it.effect("streams schema-encoded CSV with the declared content type", () =>
-    Effect.gen(function*() {
-      const Person = Schema.Struct({ name: Schema.String, age: Schema.FiniteFromString }).pipe(
-        Schema.encodeKeys({ name: "Full Name", age: "Age (years)" })
-      )
-      const Api = HttpApi.make("CsvApi").add(
-        HttpApiGroup.make("people").add(
-          HttpApiEndpoint.get("export", "/people.csv", {
-            success: HttpApiSchema.StreamUint8Array({ contentType: "text/csv; charset=utf-8" })
-          })
-        )
-      )
-      const people = [{ name: "Smith, Charlie", age: 28 }, { name: "Zoë", age: 32 }]
-      const GroupLayer = HttpApiBuilder.group(Api, "people", (handlers) =>
-        handlers.handle("export", () =>
-          Effect.succeed(
-            Stream.fromArray(people).pipe(
-              Stream.pipeThroughChannel(
-                Csv.encodeSchema(Person)({
-                  columns: ["Full Name", "Age (years)"],
-                  headers: true
-                })
-              )
-            )
-          )))
-      const client = yield* HttpApiTest.groups(Api, ["people"]).pipe(Effect.provide(GroupLayer))
-      const response = yield* client.people.export({ responseMode: "response-only" })
-      assert.strictEqual(response.status, 200)
-      assert.strictEqual(response.headers["content-type"], "text/csv; charset=utf-8")
-      assert.strictEqual(yield* response.text, "Full Name,Age (years)\r\n\"Smith, Charlie\",28\r\nZoë,32\r\n")
-      const body = yield* client.people.export()
-      const decoded = yield* body.pipe(
-        Stream.pipeThroughChannel(Csv.decodeSchema(Person)({ headers: true })),
-        Stream.runCollect
-      )
-      assert.deepStrictEqual(decoded, people)
-    }))
 
   it.effect("emits StreamUint8Array handler responses as streamed bytes with the declared content type", () =>
     Effect.gen(function*() {

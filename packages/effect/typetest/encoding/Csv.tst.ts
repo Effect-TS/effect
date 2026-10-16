@@ -1,48 +1,96 @@
-import { type Channel, Schema, SchemaGetter } from "effect"
+import { type Array as Arr, type Channel, Schema, SchemaGetter } from "effect"
 import { Csv } from "effect/encoding"
 import { describe, expect, it } from "tstyche"
+
+type HeaderRecord = { readonly [x: string]: string }
 
 describe("Csv", () => {
   const person = Schema.Struct({ name: Schema.String, age: Schema.NumberFromString }).pipe(
     Schema.encodeKeys({ name: "Full Name", age: "Age (years)" })
   )
 
-  it("accepts only encoded column names", () => {
-    const encode = Csv.encodeSchemaString(person)
-    expect(encode).type.toBeCallableWith({ columns: ["Full Name", "Age (years)"], headers: true })
-    expect(encode).type.not.toBeCallableWith({ columns: ["name", "age"], headers: true })
-    expect(encode).type.not.toBeCallableWith({ columns: [] })
-    expect(encode).type.not.toBeCallableWith({ headers: true })
-    expect(Csv.encodeSchema(person)).type.not.toBeCallableWith({ columns: ["name"] })
+  it("selects decoded rows from literal headers", () => {
+    expect(Csv.decodeString()).type.toBe<
+      Channel.Channel<
+        Arr.NonEmptyReadonlyArray<Csv.Row>,
+        Csv.CsvError,
+        unknown,
+        Arr.NonEmptyReadonlyArray<string>,
+        never,
+        unknown
+      >
+    >()
+    expect(Csv.decodeString({ headers: true })).type.toBe<
+      Channel.Channel<
+        Arr.NonEmptyReadonlyArray<HeaderRecord>,
+        Csv.CsvError,
+        unknown,
+        Arr.NonEmptyReadonlyArray<string>,
+        never,
+        unknown
+      >
+    >()
+    const headers = true as boolean
+    expect(Csv.decode({ headers })).type.toBe<
+      Channel.Channel<
+        Arr.NonEmptyReadonlyArray<Csv.Row | HeaderRecord>,
+        Csv.CsvError,
+        unknown,
+        Arr.NonEmptyReadonlyArray<Uint8Array>,
+        never,
+        unknown
+      >
+    >()
   })
 
-  it("uses positional encoding for transformed tuples", () => {
+  it("selects encoded input from literal columns", () => {
+    expect(Csv.encodeString()).type.toBe<
+      Channel.Channel<
+        Arr.NonEmptyReadonlyArray<string>,
+        never,
+        unknown,
+        Arr.NonEmptyReadonlyArray<Csv.Row>,
+        never,
+        unknown
+      >
+    >()
+    expect(Csv.encode({ columns: ["a"], headers: true })).type.toBe<
+      Channel.Channel<
+        Arr.NonEmptyReadonlyArray<Uint8Array>,
+        never,
+        unknown,
+        Arr.NonEmptyReadonlyArray<{ readonly [x: string]: string | undefined }>,
+        never,
+        unknown
+      >
+    >()
+  })
+
+  it("accepts only encoded column names", () => {
+    const encode = Csv.encodeSchemaString(person)
+    expect(encode).type.toBeCallableWith()
+    expect(encode).type.toBeCallableWith({ headers: true })
+    expect(encode).type.toBeCallableWith({ columns: ["Age (years)"], headers: true })
+    expect(encode).type.not.toBeCallableWith({ columns: ["name"] })
+  })
+
+  it("accepts any column names for positional schemas", () => {
     const schema = Schema.Tuple([Schema.String, Schema.NumberFromString]).pipe(
       Schema.decodeTo(Schema.Struct({ name: Schema.String, age: Schema.Number }), {
         decode: SchemaGetter.transform(([name, age]) => ({ name, age })),
         encode: SchemaGetter.transform(({ name, age }) => [name, age] as const)
       })
     )
-    expect(Csv.encodeSchemaString(schema)).type.toBeCallableWith({})
-    expect(Csv.encodeSchemaString(schema)).type.not.toBeCallableWith({ columns: ["name"] })
-    expect(Csv.encodeSchemaString(schema)).type.not.toBeCallableWith({ headers: true })
-    expect(Csv.decodeSchemaString(schema)()).type.toBe<
-      Channel.Channel<
-        readonly [
-          { readonly name: string; readonly age: number },
-          ...Array<{ readonly name: string; readonly age: number }>
-        ],
-        Csv.CsvError,
-        unknown,
-        readonly [string, ...Array<string>],
-        never,
-        unknown,
-        never
-      >
-    >()
+    expect(Csv.encodeSchemaString(schema)).type.toBeCallableWith({ columns: ["name", "age"], headers: true })
   })
 
-  it("preserves independent decoding and encoding services", () => {
+  it("rejects schemas with non-string encoded cells", () => {
+    const schema = Schema.Struct({ age: Schema.Number })
+    expect(Csv.decodeSchemaString).type.not.toBeCallableWith(schema)
+    expect(Csv.encodeSchemaString).type.not.toBeCallableWith(schema)
+  })
+
+  it("keeps SchemaError and independent services", () => {
     interface DecodeService {
       readonly decode: unique symbol
     }
@@ -55,23 +103,23 @@ describe("Csv", () => {
       DecodeService,
       EncodeService
     >
-    expect(Csv.decodeSchemaString(schema)()).type.toBe<
+    expect(Csv.decodeSchemaString(schema)({ headers: true })).type.toBe<
       Channel.Channel<
-        readonly [{ readonly name: string }, ...Array<{ readonly name: string }>],
-        Csv.CsvError,
+        Arr.NonEmptyReadonlyArray<{ readonly name: string }>,
+        Csv.CsvError | Schema.SchemaError,
         unknown,
-        readonly [string, ...Array<string>],
+        Arr.NonEmptyReadonlyArray<string>,
         never,
         unknown,
         DecodeService
       >
     >()
-    expect(Csv.encodeSchemaString(schema)({ columns: ["csv_name"] })).type.toBe<
+    expect(Csv.encodeSchema(schema)({ columns: ["csv_name"] })).type.toBe<
       Channel.Channel<
-        readonly [string, ...Array<string>],
-        Csv.CsvError,
+        Arr.NonEmptyReadonlyArray<Uint8Array>,
+        Schema.SchemaError,
         unknown,
-        readonly [{ readonly name: string }, ...Array<{ readonly name: string }>],
+        Arr.NonEmptyReadonlyArray<{ readonly name: string }>,
         never,
         unknown,
         EncodeService
