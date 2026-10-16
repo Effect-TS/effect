@@ -76,6 +76,10 @@ export interface Options {
   readonly headers?: Headers.Input | undefined
   readonly cookies?: Cookies.Cookies | undefined
   readonly contentType?: string | undefined
+  /**
+   * The exact byte length of the body, sent as `content-length`. Like a
+   * `content-length` header, it must match the body.
+   */
   readonly contentLength?: number | undefined
 }
 
@@ -1021,12 +1025,42 @@ export const setStatus: {
  * Returns whether a response must omit its body because its status is 204, 205,
  * or 304, or `withoutBody` is true.
  *
+ * @see {@link withoutBody} for the response that is sent in that case
+ *
  * @stability unstable
  * @category predicates
  * @since 4.0.0
  */
 export const omitsBody = (response: HttpServerResponse, withoutBody = false): boolean =>
   withoutBody || response.status === 204 || response.status === 205 || response.status === 304
+
+// 204 and 205 have no content, so `content-length` could only describe the
+// omitted body. RFC 9110 §8.6 forbids it on 204, and HTTP/2 clients reset the
+// stream. 304 and HEAD keep it, because there it describes the representation.
+const omitsContentLength = (status: number): boolean => status === 204 || status === 205
+
+/**
+ * Returns the response as it is sent when its body is omitted.
+ *
+ * **Details**
+ *
+ * The body is removed. For statuses 204 and 205, `content-length` is removed
+ * too, because it could only describe the omitted body (RFC 9110 §8.6). Other
+ * statuses, such as 304 or the status of a HEAD response, keep it, because
+ * there it describes the selected representation.
+ *
+ * @see {@link omitsBody} for when the body is omitted
+ *
+ * @stability unstable
+ * @category combinators
+ * @since 4.0.6
+ */
+export const withoutBody = (self: HttpServerResponse): HttpServerResponse =>
+  makeResponse({
+    ...self,
+    headers: omitsContentLength(self.status) ? Headers.remove(self.headers, "content-length") : self.headers,
+    body: Body.empty
+  })
 
 const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): globalThis.Headers => {
   for (const [key, value] of headers as any) {
@@ -1048,8 +1082,9 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
  * the supplied context, and are interrupted when `signal` aborts.
  *
  * Bodies are omitted for statuses 204, 205, and 304, or when `withoutBody` is true
- * (for example, for HEAD responses). Omitted raw `ReadableStream` bodies are
- * cancelled without awaiting completion, and cancellation errors are ignored.
+ * (for example, for HEAD responses), as described by {@link withoutBody}.
+ * Omitted raw `ReadableStream` bodies are cancelled without awaiting
+ * completion, and cancellation errors are ignored.
  *
  * A raw `Response` is returned as-is when there are no outer headers or cookies
  * to merge. Otherwise, they are merged into a copy without modifying the raw
@@ -1093,16 +1128,19 @@ export const toWeb = (
     // A bodyless outer status is what the caller chose to send; otherwise the
     // body is only omitted for HEAD and the raw Response describes the resource.
     const source = outerOmitsBody ? response : raw
+    const merged = mergeHeaders(new globalThis.Headers(raw.headers), headers)
+    if (omitsContentLength(source.status)) merged.delete("content-length")
     return new Response(undefined, {
       status: source.status,
       statusText: source.statusText as string,
-      headers: mergeHeaders(new globalThis.Headers(raw.headers), headers)
+      headers: merged
     })
   }
   if (withoutBody) {
     if (body._tag === "Raw" && isReadableStream(body.body)) {
       body.body.cancel().catch(constVoid)
     }
+    if (omitsContentLength(response.status)) headers.delete("content-length")
     return new Response(undefined, {
       status: response.status,
       statusText: response.statusText as string,
@@ -1485,6 +1523,13 @@ const makeResponse = (options: {
  *
  * `Set-Cookie` headers are parsed into the response cookie collection and removed
  * from the header map. A present Web body is exposed as a stream body.
+ *
+ * **Gotchas**
+ *
+ * The `content-length` header is kept and must match the body. A proxied
+ * `fetch` response can break this: `fetch` decodes a compressed body but keeps
+ * the upstream `content-length`. Remove that header from a copy of the Web
+ * `Response` (`new Response(response.body, response)`) before converting it.
  *
  * @stability unstable
  * @category converting

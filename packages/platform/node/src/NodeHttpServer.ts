@@ -559,7 +559,9 @@ const handleResponse = (
     return Effect.void
   }
 
-  let headers: Record<string, string | Array<string>> = response.headers
+  const omitsBody = Response.omitsBody(response)
+  let headers: Record<string, string | Array<string>> = (omitsBody ? Response.withoutBody(response) : response)
+    .headers
   if (!Cookies.isEmpty(response.cookies)) {
     headers = { ...headers }
     const toSet = Cookies.toSetCookieHeaders(response.cookies)
@@ -586,12 +588,19 @@ const handleResponse = (
       })
     )
   }
+  if (omitsBody) {
+    nodeResponse.writeHead(response.status, response.statusText, headers)
+    nodeResponse.end()
+    return cancelResponseBody(response.body)
+  }
+  // A body that doesn't match `content-length` would desync a keep-alive
+  // connection, so Node throws `ERR_HTTP_CONTENT_LENGTH_MISMATCH` instead.
+  nodeResponse.strictContentLength = true
   const body = response.body
   switch (body._tag) {
     case "Empty": {
       nodeResponse.writeHead(response.status, response.statusText, headers)
-      nodeResponse.end()
-      return Effect.void
+      return end(nodeResponse, response)
     }
     case "Raw": {
       nodeResponse.writeHead(response.status, response.statusText, headers)
@@ -617,19 +626,18 @@ const handleResponse = (
       }
       return Effect.callback<void>((resume) => {
         nodeResponse.end(body.body, () => resume(Effect.void))
-      })
+      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "Uint8Array": {
       nodeResponse.writeHead(response.status, response.statusText, headers)
       // If the body is less than 1MB, we skip the callback
       if (body.contentLength < 1024 * 1024) {
         // Writing text directly lets Node flush headers and body together.
-        nodeResponse.end(body.text ?? body.body)
-        return Effect.void
+        return end(nodeResponse, response, body.text ?? body.body)
       }
       return Effect.callback<void>((resume) => {
         nodeResponse.end(body.text ?? body.body, () => resume(Effect.void))
-      })
+      }).pipe(Effect.tapCause(handleCause(nodeResponse, response)))
     }
     case "FormData": {
       return Effect.suspend(() => {
@@ -676,7 +684,7 @@ const handleResponse = (
         }),
         Effect.interruptible,
         Effect.matchCauseEffect({
-          onSuccess: () => Effect.sync(() => nodeResponse.end()),
+          onSuccess: () => end(nodeResponse, response),
           onFailure: handleCause(nodeResponse, response)
         })
       )
@@ -690,6 +698,20 @@ const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<voi
     return Effect.sync(() => stream.destroy())
   }
   return Effect.void
+}
+
+// With `strictContentLength`, `end` throws when the body doesn't match `content-length`
+const end = (
+  nodeResponse: Http.ServerResponse,
+  response: HttpServerResponse,
+  chunk?: string | Uint8Array
+): Effect.Effect<void> => {
+  try {
+    nodeResponse.end(chunk)
+    return Effect.void
+  } catch (defect) {
+    return handleCause(nodeResponse, response)(Cause.die(defect))
+  }
 }
 
 const handleCause = (

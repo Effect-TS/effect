@@ -138,6 +138,21 @@ describe("HttpServerResponse", () => {
       }
     )
 
+    for (const status of [204, 205]) {
+      it.each([
+        { name: "text", response: HttpServerResponse.text("body", { status }) },
+        {
+          name: "raw Response",
+          response: HttpServerResponse.raw(new Response("body", { headers: { "content-length": "4" } }), { status })
+        }
+      ])(`drops content-length for $name bodies with status ${status}`, ({ response }) => {
+        const web = HttpServerResponse.toWeb(response)
+
+        assert.strictEqual(web.status, status)
+        assert.strictEqual(web.headers.get("content-length"), null)
+      })
+    }
+
     it.each([
       { status: 200, withoutBody: true },
       { status: 204, withoutBody: false },

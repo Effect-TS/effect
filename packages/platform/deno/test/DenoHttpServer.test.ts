@@ -84,6 +84,25 @@ describe("DenoHttpServer", () => {
       }
     }
 
+    // Deno strips the header itself over HTTP/1.1, so only HTTP/2 shows it.
+    for (const status of [204, 205]) {
+      it.live(`drops content-length for status ${status} over HTTP/2`, () =>
+        Effect.gen(function*() {
+          const client = Deno.createHttpClient({ http1: false, http2: true })
+          yield* Effect.addFinalizer(() => Effect.sync(() => client.close()))
+          yield* HttpServer.serveEffect(Effect.succeed(HttpServerResponse.text("body", { status })))
+          const response = yield* HttpClient.get("/").pipe(
+            Effect.provideService(FetchHttpClient.RequestInit, { client } as RequestInit)
+          )
+          assert.strictEqual(response.status, status)
+          assert.strictEqual(response.headers["content-length"], undefined)
+          assert.strictEqual(yield* response.text, "")
+        }).pipe(
+          Effect.timeout("2 seconds"),
+          Effect.provide(DenoHttpServer.layerTest)
+        ), 5000)
+    }
+
     for (const [method, status] of [["HEAD", 200], ["GET", 204], ["GET", 205], ["GET", 304]] as const) {
       it.live(`cancels raw streams for ${method} status ${status}`, () =>
         Effect.gen(function*() {

@@ -38,6 +38,7 @@ import { randomBytes } from "node:crypto"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
 import * as Net from "node:net"
+import { Readable } from "node:stream"
 import * as Zlib from "node:zlib"
 
 const Todo = Schema.Struct({
@@ -793,6 +794,70 @@ describe("HttpServer", () => {
       assert.strictEqual(writeCount, 1)
     }))
 
+  it.effect.each([
+    { status: 204, contentLength: undefined },
+    { status: 205, contentLength: undefined },
+    { status: 304, contentLength: "1" }
+  ])("sends no body for status $status", ({ status, contentLength }) =>
+    Effect.gen(function*() {
+      yield* HttpServer.serveEffect(Effect.succeed(HttpServerResponse.text("x", { status })))
+      const server = yield* HttpServer.HttpServer
+      const response = yield* nodeGet((server.address as NetAddress.InetAddress).port)
+      assert.strictEqual(response.status, status)
+      assert.strictEqual(response.headers["content-length"], contentLength)
+      assert.strictEqual(response.body, "")
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  describe("when the body doesn't match content-length", () => {
+    const hello = () => new TextEncoder().encode("hello")
+
+    it.live.each([
+      {
+        body: "an Empty",
+        contentLength: 3,
+        response: () => HttpServerResponse.empty({ status: 200, headers: { "content-length": "3" } })
+      },
+      {
+        body: "a Uint8Array",
+        contentLength: 3,
+        response: () => HttpServerResponse.text("hello").pipe(HttpServerResponse.setHeader("content-length", "3"))
+      },
+      { body: "a Raw", contentLength: 3, response: () => HttpServerResponse.raw("hello", { contentLength: 3 }) },
+      {
+        body: "a Raw Readable",
+        contentLength: 3,
+        response: () => HttpServerResponse.raw(Readable.from([hello()]), { contentLength: 3 })
+      },
+      {
+        body: "a longer Stream",
+        contentLength: 3,
+        response: () => HttpServerResponse.stream(Stream.make(hello()), { contentLength: 3 })
+      },
+      {
+        body: "a shorter Stream",
+        contentLength: 10,
+        response: () => HttpServerResponse.stream(Stream.make(hello()), { contentLength: 10 })
+      }
+    ])("aborts the keep-alive connection for $body body", ({ contentLength, response }) =>
+      Effect.gen(function*() {
+        yield* Layer.mergeAll(
+          HttpRouter.add("GET", "/mismatch", Effect.sync(response)),
+          HttpRouter.add("GET", "/next", HttpServerResponse.text("next"))
+        ).pipe(
+          HttpRouter.serve,
+          Layer.build
+        )
+        const server = yield* HttpServer.HttpServer
+        const received = yield* pipelinedGet((server.address as NetAddress.InetAddress).port, ["/mismatch", "/next"])
+
+        // The connection closes before the declared body is complete, so the
+        // client neither waits for it nor reads the next response as body bytes.
+        const headEnd = received.indexOf("\r\n\r\n")
+        const body = headEnd === -1 ? "" : received.slice(headEnd + 4)
+        assert.isBelow(Buffer.Buffer.byteLength(body), contentLength)
+      }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+  })
+
   it.effect("aborts the response when a streamed body fails after it started", () =>
     Effect.gen(function*() {
       const received = yield* Latch.make()
@@ -1400,6 +1465,39 @@ const tcpPort = (server: Http.Server): number => {
   assert(address !== null && typeof address !== "string")
   return address.port
 }
+
+const nodeGet = (port: number) =>
+  Effect.callback<
+    { readonly status: number | undefined; readonly headers: Http.IncomingHttpHeaders; readonly body: string },
+    Error
+  >((resume) => {
+    const request = Http.get({ hostname: "127.0.0.1", port, agent: false }, (response) => {
+      let body = ""
+      response.setEncoding("utf8")
+      response.on("data", (chunk) => body += chunk)
+      response.on("end", () => resume(Effect.succeed({ status: response.statusCode, headers: response.headers, body })))
+    })
+    request.on("error", (error) => resume(Effect.fail(error)))
+    return Effect.sync(() => request.destroy())
+  })
+
+// Sends the requests pipelined on one connection and returns everything received until the connection closes.
+const pipelinedGet = (port: number, paths: ReadonlyArray<string>) =>
+  Effect.callback<string>((resume) => {
+    const socket = Net.connect({ port, host: "127.0.0.1" }, () => {
+      socket.write(
+        paths.map((path, index) =>
+          `GET ${path} HTTP/1.1\r\nHost: 127.0.0.1\r\n${index === paths.length - 1 ? "Connection: close\r\n" : ""}\r\n`
+        ).join("")
+      )
+    })
+    let received = ""
+    socket.setEncoding("latin1")
+    socket.on("data", (chunk) => received += chunk)
+    socket.on("error", constVoid)
+    socket.on("close", () => resume(Effect.succeed(received)))
+    return Effect.sync(() => socket.destroy())
+  }).pipe(Effect.timeout("2 seconds"))
 
 interface WebSocketFrame {
   readonly opcode: number
