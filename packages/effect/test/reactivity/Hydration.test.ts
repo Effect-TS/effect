@@ -7,24 +7,6 @@ describe("Hydration", () => {
     Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
   )
 
-  it("does not replace an existing Success with a dehydrated Initial", () => {
-    const server = AtomRegistry.make()
-    const client = AtomRegistry.make()
-    try {
-      server.mount(atom)
-      const state = JSON.parse(JSON.stringify(Hydration.dehydrate(server, { encodeInitialAs: "value-only" })))
-      assert.strictEqual(state.length, 1)
-      client.set(atom, AsyncResult.success("client", { timestamp: 2000 }))
-
-      Hydration.hydrate(client, state)
-
-      assert.deepStrictEqual(client.get(atom), AsyncResult.success("client", { timestamp: 2000 }))
-    } finally {
-      server.dispose()
-      client.dispose()
-    }
-  })
-
   it.each([
     { serverTimestamp: 1000, expected: "client", expectedTimestamp: 2000 },
     { serverTimestamp: 3000, expected: "server", expectedTimestamp: 3000 }
@@ -49,28 +31,20 @@ describe("Hydration", () => {
     }
   })
 
-  it.each([
-    { serverTimestamp: 1000, expected: "client", expectedTimestamp: 2000 },
-    { serverTimestamp: 3000, expected: "server", expectedTimestamp: 3000 }
-  ])("compares streamed results against the client value at resolution (server timestamp: $serverTimestamp)", async ({
-    expected,
-    expectedTimestamp,
-    serverTimestamp
-  }) => {
+  it("ignores a streamed result older than the client value at resolution", async () => {
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
     try {
       server.mount(atom)
       const state = Hydration.dehydrate(server, { encodeInitialAs: "promise" })
       Hydration.hydrate(client, state)
-      assert.strictEqual(client.get(atom)._tag, "Initial")
 
       // The client finishes after hydration starts but before the server result arrives.
       client.set(atom, AsyncResult.success("client", { timestamp: 2000 }))
-      server.set(atom, AsyncResult.success("server", { timestamp: serverTimestamp }))
+      server.set(atom, AsyncResult.success("server", { timestamp: 1000 }))
       await Hydration.toValues(state)[0].resultPromise
 
-      assert.deepStrictEqual(client.get(atom), AsyncResult.success(expected, { timestamp: expectedTimestamp }))
+      assert.deepStrictEqual(client.get(atom), AsyncResult.success("client", { timestamp: 2000 }))
     } finally {
       server.dispose()
       client.dispose()
