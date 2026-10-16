@@ -8,6 +8,7 @@ import * as Cause from "effect/Cause"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Metric from "effect/Metric"
+import * as Scope from "effect/Scope"
 
 const findMetric = (metrics: any, name: string) =>
   metrics.resourceMetrics.scopeMetrics[0].metrics.find((_: any) => _.descriptor.name === name)
@@ -63,6 +64,20 @@ describe("Metrics", () => {
       }).pipe(Effect.scoped)
 
       assert.deepStrictEqual([first.shutdowns, second.shutdowns], [1, 1])
+    }))
+
+  it.effect("shuts down readers registered with an already closed scope", () =>
+    Effect.gen(function*() {
+      const services = yield* Effect.context<never>()
+      const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services)
+      const reader = new ShutdownTrackingReader()
+      const scope = yield* Scope.make()
+      yield* Scope.close(scope, Exit.void)
+
+      yield* OtelMetrics.registerProducer(producer, () => reader).pipe(Scope.provide(scope))
+      yield* Scope.close(scope, Exit.void)
+
+      assert.strictEqual(reader.shutdowns, 1)
     }))
 
   it.effect("gauge", () =>
@@ -395,19 +410,10 @@ describe("Metrics", () => {
 
   it.effect("reports the same delta to every registered reader", () =>
     Effect.gen(function*() {
-      class Reader extends MetricReader {
-        protected onShutdown(): Promise<void> {
-          return Promise.resolve()
-        }
-        protected onForceFlush(): Promise<void> {
-          return Promise.resolve()
-        }
-      }
-
       const services = yield* Effect.context<never>()
       const producer = new internal.MetricProducerImpl(resourceFromAttributes({}), services, "delta")
-      const first = new Reader()
-      const second = new Reader()
+      const first = new ShutdownTrackingReader()
+      const second = new ShutdownTrackingReader()
       yield* OtelMetrics.registerProducer(producer, () => [first, second])
       yield* Metric.update(Metric.counter("requests", { incremental: true }), 1)
 
