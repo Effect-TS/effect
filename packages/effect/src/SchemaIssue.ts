@@ -720,8 +720,8 @@ export const InvalidType: new(
  *
  * **When to use**
  *
- * Use when you need to detect constraint violations from `Schema.filter`,
- * `Schema.minLength`, `Schema.greaterThan`, or similar checks.
+ * Use when you need to detect constraint violations from `Schema.check` with
+ * `Schema.isMinLength`, `Schema.isGreaterThan`, or similar checks.
  *
  * **Details**
  *

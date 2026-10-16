@@ -11699,7 +11699,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Layer.matchCause` -> `Layer.fromBuild with Effect.matchCauseEffect over Layer.buildWithMemoMap`: Fold the source acquisition cause, then build the selected failure or success layer.
 
-- `Layer.memoize` -> `automatic shared memoization under Effect.provide`: Reuse the same Layer value; use { local: true } or Layer.fresh to opt out, or MemoMap APIs for manual control.
+- `Layer.memoize` -> `enclosing Effect.provide or explicit MemoMap APIs`: A layer already built by an enclosing provide or runtime is reused; sibling provide calls build their own copies. Use { local: true } or Layer.fresh for fresh builds, or MemoMap APIs for manual sharing.
 
 - `Layer.orElse` -> `Layer.catch(self, () => fallback())`: Expand the removed lazy fallback alias with Layer.catch.
 

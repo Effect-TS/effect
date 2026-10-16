@@ -5634,8 +5634,8 @@ export interface compose<To extends Constraint, From extends Constraint> extends
  * **Gotchas**
  *
  * In a custom transformation, `decode` maps `From["Type"]` to `To["Encoded"]`
- * and is used on the encoding path, while `encode` maps `To["Encoded"]` to
- * `From["Type"]` and is used on the decoding path.
+ * and is used on the decoding path, while `encode` maps `To["Encoded"]` to
+ * `From["Type"]` and is used on the encoding path.
  *
  * **Example** (Transforming strings to numbers with a schema transformation)
  *
@@ -17682,7 +17682,7 @@ export declare namespace Annotations {
     readonly "~sentinels"?: ReadonlyArray<SchemaAST.Sentinel> | undefined
   }
   /**
-   * Annotations for filter schema nodes (created via `Schema.filter`). Extends
+   * Annotations for filter checks (created via `Schema.makeFilter`). Extends
    * {@link Augment} with an optional error message, identifier, and metadata.
    * Filters are intentionally non-parametric to keep them covariant.
    *

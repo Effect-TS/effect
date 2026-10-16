@@ -872,7 +872,7 @@ export function context(options?: {
 export const runtime: RegistryRuntimeFactory = context()
 
 /**
- * Returns `Rx.runtime.withReactivity` for refreshing an atom whenever the
+ * Alias for `Atom.runtime.withReactivity` for refreshing an atom whenever the
  * keys change in the `Reactivity` service.
  *
  * **When to use**
