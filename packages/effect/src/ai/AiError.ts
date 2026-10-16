@@ -911,10 +911,10 @@ export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
     error: Schema.SchemaError,
     options?: { readonly retryable?: boolean | undefined }
   ): InvalidOutputError {
-    return new InvalidOutputError({
-      description: error.message,
-      retryable: options?.retryable
-    })
+    const description = error.message
+    return new InvalidOutputError(
+      options?.retryable === undefined ? { description } : { description, retryable: options.retryable }
+    )
   }
 
   override get message(): string {
