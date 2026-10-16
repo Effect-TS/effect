@@ -252,9 +252,13 @@ const inMemoryBodies = new WeakMap<Stream.Stream<Uint8Array, unknown, unknown>, 
  * - A stored entry without `size` fails with an `InvalidHeader` `ZipError`.
  * - When `size` is set, `encode` fails with a `SizeMismatch` `ZipError` if the
  *   body produces fewer or more bytes.
- * - Some readers that do not use the central directory, such as Java's
- *   `ZipInputStream`, reject stored entries followed by a data descriptor. Use
- *   `Deflate` or an in-memory `file` for those readers.
+ * - Non-empty stored entries are followed by a data descriptor, which readers
+ *   that do not use the central directory can mishandle: Java's
+ *   `ZipInputStream` rejects them, and libarchive, as in `bsdtar` reading from
+ *   a pipe, ends them at the first descriptor in the data that matches the
+ *   bytes before it, so content can cut the entry short and add entries. Use
+ *   `Deflate` or an in-memory `file` for untrusted content and for those
+ *   readers.
  *
  * @see {@link file} for in-memory content
  * @see {@link encode} for writing entries to an archive
@@ -321,7 +325,7 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   previous run stopped.
  * - The central directory is not read, so `mode`, comments and entries that
  *   only the central directory lists are not reported. Tools that read the
- *   central directory can see a different set of entries, for example in
+ *   central directory can see other entries and paths, for example in
  *   archives updated by appending.
  * - Archives that do not start with an entry or a central directory, such as
  *   self-extracting archives, fail with an `InvalidHeader` `ZipError`.
@@ -332,15 +336,21 @@ export const directory = (path: string, options?: EntryOptions): Entry => ({
  *   entry forge the entries after it.
  * - A body that grows past its `size` fails with a `SizeMismatch` `ZipError`
  *   before the extra bytes are emitted, so `size` can be checked before reading.
+ * - Deflated data can expand about a thousand times, and pulling the next
+ *   entry inflates the rest of the current body to find its end. To bound the
+ *   work on untrusted archives, check `size`, count the bytes of bodies
+ *   without one, and end the stream at an entry that is too large rather than
+ *   skip it.
  * - A `Checksum` or `SizeMismatch` `ZipError` raised when a body ends leaves
  *   the decoder at the next entry; other errors end the archive.
  * - The channel completes only when its input ends: input after the central
  *   directory is read and discarded, so that the upstream done value can be
  *   passed on.
- * - Paths are returned as written in the archive, so they can be absolute or
- *   contain `..`. Validate them before writing entries to disk.
- * - Paths with a NUL character, which other tools take as the end of the name,
- *   fail with an `InvalidHeader` `ZipError`.
+ * - Paths are returned as written in the archive: they can be absolute,
+ *   contain `..`, drive letters, control characters or backslashes, which some
+ *   tools read as separators, and can repeat. Validate them before writing
+ *   entries to disk. Paths with a NUL character, which other tools take as the
+ *   end of the name, fail with an `InvalidHeader` `ZipError`.
  *
  * @see {@link encode} for the inverse operation
  *
@@ -436,7 +446,8 @@ export const decode = <IE = never, Done = unknown>(): Channel.Channel<
  * - Empty paths, paths starting with `/` or a drive letter such as `C:`, paths
  *   containing `\` or NUL, `File` paths ending with `/`, `Directory` paths not
  *   ending with `/`, and invalid modes, sizes or times fail with an
- *   `InvalidHeader` `ZipError`.
+ *   `InvalidHeader` `ZipError`. Other paths are written as given, including
+ *   `..` segments, so validate untrusted paths before encoding them.
  * - A directory whose body produces bytes fails with a `SizeMismatch`
  *   `ZipError`.
  *
