@@ -59,9 +59,16 @@ describe("OpenApi representation v2 consumer", () => {
     const spec = OpenApi.fromApi(Api)
 
     assert.deepStrictEqual(spec.components.schemas, {
+      "Tool.Content": {
+        type: "object",
+        properties: { text: { type: "string" } },
+        required: ["text"],
+        additionalProperties: false
+      },
       "Tool.ContentEncoded": {
         type: "string",
-        contentMediaType: "application/json"
+        contentMediaType: "application/json",
+        contentSchema: { $ref: "#/components/schemas/Tool.Content" }
       }
     })
     assert.deepStrictEqual(
