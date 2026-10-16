@@ -128,7 +128,10 @@ export const make = Effect.fnUntraced(function*(
           onFailure: (cause) =>
             Effect.suspend(() => {
               denoRequest.resolve(new Response(undefined, { status: 500 }))
-              return Effect.andThen(cancelResponseBody(response.body), Effect.failCause(cause))
+              if (response.body._tag === "Raw" && response.body.body instanceof ReadableStream) {
+                cancelFailedResponseBody(response.body.body)
+              }
+              return Effect.failCause(cause)
             })
         })
       }, middleware)
@@ -214,7 +217,7 @@ const makeResponse = Effect.fnUntraced(function*(
         return new Response(stream, fields)
       } catch (defect) {
         // The body already runs and owns the request scope, so stop it
-        yield* Effect.promise(() => stream.cancel())
+        cancelFailedResponseBody(stream)
         throw defect
       }
     }
@@ -584,6 +587,12 @@ const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
     return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void
+}
+
+const cancelFailedResponseBody = (stream: ReadableStream): void => {
+  try {
+    void stream.cancel().catch(() => {})
+  } catch {}
 }
 
 const emptyReadableStream = new ReadableStream<Uint8Array>({
