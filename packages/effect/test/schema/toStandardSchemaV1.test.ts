@@ -146,17 +146,34 @@ describe("toStandardSchemaV1", () => {
       static label() {
         return this.#label
       }
+
+      static get privateLabel() {
+        return this.#label
+      }
     }
     strictEqual(Parent.label(), "Parent")
+    strictEqual(Parent.privateLabel, "Parent")
     const adapted = Schema.toStandardSchemaV1(Parent)
     strictEqual(adapted.fields.a, Schema.String)
     strictEqual(adapted.label(), "Parent")
+    strictEqual(adapted.privateLabel, "Parent")
     assertTrue(new adapted({ a: "a" }) instanceof Parent)
     expectSyncSuccess(adapted, { a: "a" }, new Parent({ a: "a" }))
 
     class Child extends adapted.extend<Child>("Child")({ b: Schema.Number }) {}
     expectSyncSuccess(Schema.toStandardSchemaV1(Child), { a: "a", b: 1 }, new Child({ a: "a", b: 1 }))
     expectSyncFailure(Schema.toStandardSchemaV1(Child), { a: "a" }, [{ message: "Missing key", path: ["b"] }])
+  })
+
+  it("preserves validation and the original class when piping into the JSON-schema adapter", () => {
+    class Parent extends Schema.Class<Parent>("Parent")({ a: Schema.String }) {}
+    const adapted = Schema.toStandardSchemaV1(Parent, { leafHook: () => "Custom message" })
+    const both = adapted.pipe(Schema.toStandardJSONSchemaV1)
+
+    strictEqual(typeof both["~standard"].validate, "function")
+    strictEqual(Object.hasOwn(Parent, "~standard"), false)
+    expectSyncSuccess(both, { a: "a" }, new Parent({ a: "a" }))
+    expectSyncFailure(both, { a: null }, [{ message: "Custom message", path: ["a"] }])
   })
 
   it.each([false, true])("preserves both standards when composing adapters (JSON first: %s)", (jsonFirst) => {
