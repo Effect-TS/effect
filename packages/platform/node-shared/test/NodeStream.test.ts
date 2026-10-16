@@ -43,6 +43,31 @@ describe("Stream", () => {
       }))
   }
 
+  for (
+    const [options, expected] of [
+      [{ chunkSize: 2, readSize: 3 }, [["abc", "def"], ["ghi", "jk"]]],
+      [{ chunkSize: 2 }, [["abcdefghijk"]]],
+      [{ readSize: 3 }, [["abc", "def", "ghi", "jk"]]],
+      [{ chunkSize: Infinity, readSize: 3 }, [["abc", "def", "ghi", "jk"]]]
+    ] as const
+  ) {
+    it.effect(`fromReadable separates read size from batching (chunkSize=${"chunkSize" in options ? options.chunkSize : "default"}, readSize=${"readSize" in options ? options.readSize : "default"})`, () =>
+      Effect.gen(function*() {
+        const readable = new Readable({ read() {} })
+        readable.push(Buffer.from("abcdefghijk"))
+        readable.push(null)
+        const chunks = yield* NodeStream.fromReadable({
+          evaluate: () => readable,
+          ...options
+        }).pipe(Stream.chunks, Stream.runCollect)
+
+        assert.deepEqual(
+          chunks.map((batch) => batch.map((bytes) => Buffer.from(bytes).toString())),
+          expected.map((batch) => [...batch])
+        )
+      }))
+  }
+
   it.effect("fromReadable fails on premature close", () =>
     Effect.gen(function*() {
       const code = yield* NodeStream.fromReadable({ evaluate: destroyedOnRead, onError: errorCode }).pipe(
@@ -150,7 +175,7 @@ describe("Stream", () => {
                 if (offset === input.length) {
                   this.push(null)
                 } else {
-                  const next = Math.min(offset + 2, input.length)
+                  const next = Math.min(offset + 3, input.length)
                   this.push(input.subarray(offset, next))
                   offset = next
                 }
@@ -159,7 +184,8 @@ describe("Stream", () => {
                 callback()
               }
             }),
-          chunkSize: 2
+          chunkSize: 2,
+          readSize: 3
         }
         const stream = adapter === "fromDuplex"
           ? Stream.empty.pipe(Stream.pipeThroughChannelOrFail(NodeStream.fromDuplex(options)))
@@ -171,7 +197,7 @@ describe("Stream", () => {
             Effect.sync(() => {
               assert.isAtMost(batch.length, 2)
               if (batches++ === 0) {
-                assert.deepEqual(batch.map((bytes) => Buffer.from(bytes).toString()), ["ab", "cd"])
+                assert.deepEqual(batch.map((bytes) => Buffer.from(bytes).toString()), ["abc", "def"])
                 // Allow one Node-prefetched buffer, but not the entire source.
                 assert.isAtMost(reads, 3)
               }
@@ -181,7 +207,7 @@ describe("Stream", () => {
         )
         assert.isAbove(batches, 1)
         const bytes = chunks.flat()
-        assert.deepEqual(bytes.map((chunk) => chunk.length), [2, 2, 2, 2, 2, 1])
+        assert.deepEqual(bytes.map((chunk) => chunk.length), [3, 3, 3, 2])
         assert.strictEqual(Buffer.concat(bytes).toString(), "abcdefghijk")
       }))
   }
