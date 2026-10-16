@@ -106,7 +106,9 @@ export class Registry extends Context.Service<Registry, {
     readonly events: ReadonlyArray<string>
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
-      readonly write: (entry: Entry) => Effect.Effect<void>
+      // Pass an input entry as source to anchor replacements during remote replay.
+      // Without it, matching IDs retain their position; new IDs use the group start.
+      readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }) => Effect.Effect<void, never, Scope.Scope>
 
@@ -114,7 +116,7 @@ export class Registry extends Context.Service<Registry, {
     readonly events: ReadonlySet<string>
     readonly effect: (options: {
       readonly entries: ReadonlyArray<Entry>
-      readonly write: (entry: Entry) => Effect.Effect<void>
+      readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
     }) => Effect.Effect<void>
   }>
 
@@ -142,7 +144,7 @@ export const layerRegistry = Layer.effect(
       readonly events: ReadonlySet<string>
       readonly effect: (options: {
         readonly entries: ReadonlyArray<Entry>
-        readonly write: (entry: Entry) => Effect.Effect<void>
+        readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
       }) => Effect.Effect<void>
     }>()
 
@@ -704,20 +706,20 @@ export const groupCompaction = <Events extends Event.Any, R>(
               Effect.updateContext((input) => Context.merge(services, input))
             ) as unknown as Effect.Effect<Event.PayloadWithTag<Events, Tag>, Schema.SchemaError>
           const writePayload = Effect.fnUntraced(function*<Tag extends Event.Tag<Events>>(
-            timestamp: number,
+            source: Entry,
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
           ): Effect.fn.Return<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]> {
             const event = Object.hasOwn(group.events, tag) ? group.events[tag] : undefined!
             const entry = new Entry({
-              id: makeEntryIdUnsafe({ msecs: timestamp }),
+              id: makeEntryIdUnsafe({ msecs: source.createdAtMillis }),
               event: tag,
               payload: yield* Schema.encodeUnknownEffect(event.payloadSchemaBinary)(payload).pipe(
                 Effect.orDie
               ) as any,
               primaryKey: event.primaryKey(payload)
             }, { disableChecks: true })
-            yield* write(entry)
+            yield* write(entry, source)
           })
 
           const byPrimaryKey = new Map<
@@ -758,7 +760,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
                 entries,
                 events: taggedPayloads,
                 write(tag, payload) {
-                  return Effect.orDie(writePayload(entries[0].createdAtMillis, tag, payload))
+                  return Effect.orDie(writePayload(entries[0], tag, payload))
                 }
               }).pipe(
                 Effect.updateContext((input) => Context.merge(services, input))
@@ -924,43 +926,48 @@ const make = Effect.gen(function*() {
             entries: entries.flat(),
             compact: registry.compactors.size > 0
               ? Effect.fnUntraced(function*(remoteEntries) {
-                const finalEntries: Array<Entry> = []
+                const finalEntries: Array<Array<Entry>> = remoteEntries.map(() => [])
+                const sourcePositions = new Map<string, number>()
                 const compactable = new Map<
                   (options: {
                     readonly entries: ReadonlyArray<Entry>
-                    readonly write: (entry: Entry) => Effect.Effect<void>
+                    readonly write: (entry: Entry, source?: Entry) => Effect.Effect<void>
                   }) => Effect.Effect<void>,
-                  Array<Entry>
+                  { readonly entries: Array<Entry>; readonly position: number }
                 >()
 
                 for (let i = 0; i < remoteEntries.length; i++) {
                   const remoteEntry = remoteEntries[i]
                   const entry = remoteEntry.entry
+                  sourcePositions.set(entry.idString, i)
                   const compactor = registry.compactors.get(entry.event)
                   if (!compactor) {
-                    finalEntries.push(entry)
+                    finalEntries[i].push(entry)
                     continue
                   }
-                  let arr = compactable.get(compactor.effect)
-                  if (!arr) {
-                    arr = []
-                    compactable.set(compactor.effect, arr)
+                  let group = compactable.get(compactor.effect)
+                  if (!group) {
+                    group = { entries: [], position: i }
+                    compactable.set(compactor.effect, group)
                   }
-                  arr.push(entry)
+                  group.entries.push(entry)
                 }
 
-                for (const [compact, entries] of compactable) {
+                for (const [compact, { entries, position }] of compactable) {
                   yield* compact({
                     entries,
-                    write(entry) {
+                    write(entry, source) {
                       return Effect.sync(() => {
-                        finalEntries.push(entry)
+                        // Anchor replacements to their source, preserving write order
+                        // without sorting generated IDs. Forwarded entries stay in place.
+                        const index = sourcePositions.get((source ?? entry).idString) ?? position
+                        finalEntries[index].push(entry)
                       })
                     }
                   })
                 }
 
-                return finalEntries.sort(Entry.Order)
+                return finalEntries.flat()
               })
               : undefined,
             effect: (batch) => handlerTransaction(Effect.forEach(batch, replayFromRemote, { discard: true }))
