@@ -5758,7 +5758,9 @@ console.log(JSON.stringify(document, null, 2))
 
 #### The fromJsonString combinator
 
-With `fromJsonString`, the generated schema uses `contentSchema` to embed the JSON Schema of the decoded value.
+With `fromJsonString`, the generated schema uses `contentSchema` to embed the JSON Schema of the JSON value inside the string. It describes the encoded side of the provided schema in its canonical JSON form. A schema with an `identifier` is emitted as a definition and referenced with `$ref`, so OpenAPI documents include it in `components.schemas`.
+
+To attach the same metadata to a string schema built by hand, use the `Schema.isJsonContent` check. Like `contentSchema` itself, it describes the content and does not validate it.
 
 **Example** (Embedding `contentSchema` for JSON string content)
 
