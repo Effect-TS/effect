@@ -13,6 +13,7 @@
  */
 import * as Arr from "../Array.ts"
 import * as Clock from "../Clock.ts"
+import * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Data from "../Data.ts"
 import * as Duration from "../Duration.ts"
@@ -286,6 +287,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
   }> = []
   const currentClock = yield* Clock.clockWith(Effect.succeed)
   const liveClock = liveClocks.get(currentClock) ?? currentClock
+  const liveConsole = yield* Console.Console
   const warningSemaphore = yield* Semaphore.make(1)
   const parentScheduler = yield* Scheduler.Scheduler
 
@@ -322,6 +324,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
     Effect.suspend(() => {
       if (warningState._tag === "Start") {
         return Effect.logWarning(warningMessage).pipe(
+          Effect.provideService(Console.Console, liveConsole),
           Effect.delay(config.warningDelay),
           withLive,
           Effect.forkChild,
@@ -447,7 +450,7 @@ const makeWithScheduler = Effect.fnUntraced(function*(
       }).pipe(
         Effect.timeoutOrElse({
           duration: config.warningDelay,
-          orElse: () => Effect.logWarning(busyWarningMessage)
+          orElse: () => Effect.provideService(Effect.logWarning(busyWarningMessage), Console.Console, liveConsole)
         }),
         withLive,
         Effect.andThen(Effect.yieldNow)
