@@ -4,7 +4,7 @@
  * @stability unstable
  * @since 4.0.0
  */
-import { copy as denoCopy, expandGlob, walk } from "@std/fs"
+import { copy as denoCopy, walk } from "@std/fs"
 import { relative } from "@std/path"
 import * as ByteSize from "effect/ByteSize"
 import * as Effect from "effect/Effect"
@@ -76,16 +76,6 @@ const chmod: FileSystem.FileSystem["chmod"] = (path, mode) => tryPromise("chmod"
 
 const chown: FileSystem.FileSystem["chown"] = (path, uid, gid) =>
   tryPromise("chown", path, () => Deno.chown(path, uid, gid))
-
-const glob: FileSystem.FileSystem["glob"] = (pattern, options) =>
-  Effect.map(
-    collectAsyncIterable("glob", pattern, () =>
-      expandGlob(pattern, {
-        root: options?.root ?? Deno.cwd(),
-        exclude: options?.exclude ? [...options.exclude] : []
-      })),
-    (entries) => entries.map((entry) => entry.path)
-  )
 
 const link: FileSystem.FileSystem["link"] = (existingPath, newPath) =>
   tryPromise("link", existingPath, () => Deno.link(existingPath, newPath))
@@ -412,6 +402,16 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
   )
 }
 
+const readDirectoryEntries = (path: string) =>
+  Effect.map(
+    collectAsyncIterable("readDirectory", path, () => Deno.readDir(path)),
+    (entries) =>
+      entries.map((entry): FileSystem.DirectoryEntry => ({
+        name: entry.name,
+        type: entry.isFile ? "File" : entry.isDirectory ? "Directory" : entry.isSymlink ? "SymbolicLink" : "Unknown"
+      }))
+  )
+
 const readFile: FileSystem.FileSystem["readFile"] = (path) =>
   tryPromise("readFile", path, (signal) => Deno.readFile(path, { signal }))
 
@@ -519,7 +519,6 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     chown,
     copy,
     copyFile,
-    glob,
     link,
     makeDirectory,
     makeTempDirectory,
@@ -528,6 +527,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     makeTempFileScoped,
     open,
     readDirectory,
+    readDirectoryEntries,
     readFile,
     readLink,
     realPath,

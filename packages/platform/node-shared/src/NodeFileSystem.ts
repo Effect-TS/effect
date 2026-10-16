@@ -129,21 +129,6 @@ const chown = (() => {
   return (path: string, uid: number, gid: number) => nodeChown(path, uid, gid)
 })()
 
-// == glob
-
-const glob = ((): FileSystem.FileSystem["glob"] => {
-  const nodeGlob = effectify(
-    NFS.glob,
-    handleErrnoException("FileSystem", "glob"),
-    handleBadArgument("glob")
-  )
-  return (pattern: string, options) =>
-    nodeGlob(pattern, {
-      cwd: options?.root,
-      exclude: options?.exclude
-    })
-})()
-
 // == link
 
 const link = (() => {
@@ -318,6 +303,8 @@ const makeFile = (() => {
     handleBadArgument("sync")
   )
 
+  // Bun ignores the position unless the offset and length are passed explicitly:
+  // https://github.com/oven-sh/bun/pull/37647
   const nodeWriteFactory = (method: string) =>
     effectify(
       NFS.write,
@@ -440,7 +427,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "write"),
           (nodePosition) =>
             Effect.map(
-              nodeWrite(this.fd, buffer, undefined, undefined, nodePosition),
+              nodeWrite(this.fd, buffer, 0, buffer.length, nodePosition),
               (bytesWritten) => {
                 if (!this.append) {
                   this.position = position + BigInt(bytesWritten)
@@ -459,7 +446,7 @@ const makeFile = (() => {
           this.append ? Effect.succeed(undefined) : positionToNumber(position, "writeAll"),
           (nodePosition) =>
             Effect.flatMap(
-              nodeWriteAll(this.fd, buffer, undefined, undefined, nodePosition),
+              nodeWriteAll(this.fd, buffer, 0, buffer.length, nodePosition),
               (bytesWritten) => {
                 if (bytesWritten === 0) {
                   return Effect.fail(
@@ -526,6 +513,16 @@ const readDirectory: FileSystem.FileSystem["readDirectory"] = (path, options) =>
     catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
   })
 
+const readDirectoryEntries = (path: string) =>
+  Effect.tryPromise({
+    try: () => NFS.promises.readdir(path, { withFileTypes: true }),
+    catch: (err) => handleErrnoException("FileSystem", "readDirectory")(err as any, [path])
+  }).pipe(
+    Effect.map((entries) =>
+      entries.map((entry): FileSystem.DirectoryEntry => ({ name: entry.name, type: fileType(entry) }))
+    )
+  )
+
 // == readFile
 
 const readFile = (path: string) =>
@@ -578,24 +575,27 @@ const rename = (() => {
 
 // == stat
 
+const fileType = (stat: NFS.BigIntStats | NFS.Dirent): FileSystem.File.Type =>
+  stat.isFile() ?
+    "File" :
+    stat.isDirectory() ?
+    "Directory" :
+    stat.isSymbolicLink() ?
+    "SymbolicLink" :
+    stat.isBlockDevice() ?
+    "BlockDevice" :
+    stat.isCharacterDevice() ?
+    "CharacterDevice" :
+    stat.isFIFO() ?
+    "FIFO" :
+    stat.isSocket() ?
+    "Socket" :
+    "Unknown"
+
 const makeFileInfo = (stat: NFS.BigIntStats): Effect.Effect<FileSystem.File.Info, Error.PlatformError> =>
   Effect.try({
     try: (): FileSystem.File.Info => ({
-      type: stat.isFile() ?
-        "File" :
-        stat.isDirectory() ?
-        "Directory" :
-        stat.isSymbolicLink() ?
-        "SymbolicLink" :
-        stat.isBlockDevice() ?
-        "BlockDevice" :
-        stat.isCharacterDevice() ?
-        "CharacterDevice" :
-        stat.isFIFO() ?
-        "FIFO" :
-        stat.isSocket() ?
-        "Socket" :
-        "Unknown",
+      type: fileType(stat),
       mtime: Option.fromNullishOr(stat.mtime),
       atime: Option.fromNullishOr(stat.atime),
       birthtime: Option.fromNullishOr(stat.birthtime),
@@ -745,7 +745,6 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     chown,
     copy,
     copyFile,
-    glob,
     link,
     makeDirectory,
     makeTempDirectory,
@@ -754,6 +753,7 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     makeTempFileScoped,
     open,
     readDirectory,
+    readDirectoryEntries,
     readFile,
     readLink,
     realPath,
