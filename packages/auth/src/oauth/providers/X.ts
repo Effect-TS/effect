@@ -18,10 +18,8 @@ import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, type Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/x.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
 
 /**
  * Schema for an X user. The id identifies the account; confirmed_email requires the users.email scope.
@@ -31,11 +29,11 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  id: Validation.text(64),
-  name: Schema.optionalKey(text),
-  username: Schema.optionalKey(text),
-  profile_image_url: Schema.optionalKey(url),
-  confirmed_email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320)))
+  id: Generated.User_id.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  name: Schema.optionalKey(Generated.User_name.check(Schema.isMaxLength(256))),
+  username: Schema.optionalKey(Generated.User_username.check(Schema.isMaxLength(256))),
+  profile_image_url: Schema.optionalKey(Generated.User_profile_image_url.check(Schema.isMaxLength(2048))),
+  confirmed_email: Schema.optionalKey(Generated.User_confirmed_email.check(Schema.isMaxLength(320)))
 })
 
 /**

@@ -18,10 +18,8 @@ import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, type Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/kick.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
 
 /**
  * Schema for a Kick user. The numeric user_id identifies the account.
@@ -31,10 +29,10 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  user_id: Validation.integer(1, Number.MAX_SAFE_INTEGER),
-  name: Schema.optionalKey(text),
-  email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320))),
-  profile_picture: Schema.optionalKey(url)
+  user_id: Generated.User_user_id.check(Schema.isBetween({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
+  name: Schema.optionalKey(Generated.User_name.check(Schema.isMaxLength(256))),
+  email: Schema.optionalKey(Generated.User_email.check(Schema.isMaxLength(320))),
+  profile_picture: Schema.optionalKey(Generated.User_profile_picture.check(Schema.isMaxLength(2048)))
 })
 
 /**
@@ -86,7 +84,7 @@ const OptionsSchema = Schema.Struct({
 
 const Response = Schema.Struct({
   data: Schema.Array(Profile).check(Schema.isMinLength(1), Schema.isMaxLength(16)),
-  message: Schema.optionalKey(text)
+  message: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256)))
 })
 
 /**

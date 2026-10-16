@@ -18,10 +18,10 @@ import type * as OAuth from "../OAuth.ts"
 import { ConfigurationError, type Rejected, type Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
+import * as Generated from "./internal/generated/slack.ts"
 import * as Provider from "./internal/provider.ts"
 
 const issuer = "https://slack.com"
-const identifier = Schema.String.check(Schema.isMaxLength(256))
 
 /**
  * Schema for Slack profile claims and namespaced workspace and user identifiers.
@@ -33,8 +33,12 @@ const identifier = Schema.String.check(Schema.isMaxLength(256))
  */
 export const Profile = Schema.Struct({
   ...OAuthProvider.StandardProfile.fields,
-  "https://slack.com/team_id": Schema.optionalKey(identifier),
-  "https://slack.com/user_id": Schema.optionalKey(identifier)
+  "https://slack.com/team_id": Schema.optionalKey(
+    Generated.Claims_https___slack_com_team_id.check(Schema.isMaxLength(256))
+  ),
+  "https://slack.com/user_id": Schema.optionalKey(
+    Generated.Claims_https___slack_com_user_id.check(Schema.isMaxLength(256))
+  )
 })
 
 /**

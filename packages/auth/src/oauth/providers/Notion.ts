@@ -19,26 +19,28 @@ import * as Validation from "../../internal/validation.ts"
 import * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/notion.ts"
 import * as Provider from "./internal/provider.ts"
 
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
-const id = Validation.text(64)
 const User = Schema.Struct({
-  object: Schema.optionalKey(Schema.Literal("user")),
-  id,
-  name: Schema.optionalKey(Schema.NullOr(text)),
-  avatar_url: Schema.optionalKey(Schema.NullOr(url)),
-  type: Schema.optionalKey(Schema.Literals(["person", "bot"])),
+  object: Schema.optionalKey(Generated.User_object),
+  id: Generated.User_id.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  name: Schema.optionalKey(Schema.NullOr(Generated.User_name.members[0].check(Schema.isMaxLength(256)))),
+  avatar_url: Schema.optionalKey(Schema.NullOr(Generated.User_avatar_url.members[0].check(Schema.isMaxLength(2048)))),
+  type: Schema.optionalKey(Schema.Union([Generated.Person_type, Generated.Bot_type])),
   person: Schema.optionalKey(Schema.Struct({
-    email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320)))
+    email: Schema.optionalKey(Generated.Person_person.fields.email.schema.check(Schema.isMaxLength(320)))
   }))
 })
 const workspace = {
-  workspace_id: Schema.optionalKey(id),
-  workspace_name: Schema.optionalKey(Schema.NullOr(text)),
-  workspace_icon: Schema.optionalKey(Schema.NullOr(url)),
-  bot_id: Schema.optionalKey(id)
+  workspace_id: Schema.optionalKey(Generated.Token_workspace_id.check(Schema.isMinLength(1), Schema.isMaxLength(64))),
+  workspace_name: Schema.optionalKey(
+    Schema.NullOr(Generated.Token_workspace_name.members[0].check(Schema.isMaxLength(256)))
+  ),
+  workspace_icon: Schema.optionalKey(
+    Schema.NullOr(Generated.Token_workspace_icon.members[0].check(Schema.isMaxLength(2048)))
+  ),
+  bot_id: Schema.optionalKey(Generated.Token_bot_id.check(Schema.isMinLength(1), Schema.isMaxLength(64)))
 }
 
 /**

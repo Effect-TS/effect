@@ -17,10 +17,8 @@ import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, type Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/dropbox.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
 
 /**
  * Schema for a Dropbox account response. The account_id identifies the account; email_verified is a provider claim.
@@ -30,20 +28,20 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  account_id: Validation.text(256),
+  account_id: Generated.Account_account_id.check(Schema.isMinLength(1), Schema.isMaxLength(256)),
   name: Schema.optionalKey(Schema.Struct({
-    given_name: Schema.optionalKey(text),
-    surname: Schema.optionalKey(text),
-    familiar_name: Schema.optionalKey(text),
-    display_name: Schema.optionalKey(text),
-    abbreviated_name: Schema.optionalKey(text)
+    given_name: Schema.optionalKey(Generated.Account_name.fields.given_name.check(Schema.isMaxLength(256))),
+    surname: Schema.optionalKey(Generated.Account_name.fields.surname.check(Schema.isMaxLength(256))),
+    familiar_name: Schema.optionalKey(Generated.Account_name.fields.familiar_name.check(Schema.isMaxLength(256))),
+    display_name: Schema.optionalKey(Generated.Account_name.fields.display_name.check(Schema.isMaxLength(256))),
+    abbreviated_name: Schema.optionalKey(Generated.Account_name.fields.abbreviated_name.check(Schema.isMaxLength(256)))
   })),
-  email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320))),
-  email_verified: Schema.optionalKey(Schema.Boolean),
-  disabled: Schema.optionalKey(Schema.Boolean),
-  profile_photo_url: Schema.optionalKey(url),
-  country: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(16))),
-  locale: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(32)))
+  email: Schema.optionalKey(Generated.Account_email.check(Schema.isMaxLength(320))),
+  email_verified: Schema.optionalKey(Generated.Account_email_verified),
+  disabled: Schema.optionalKey(Generated.Account_disabled),
+  profile_photo_url: Schema.optionalKey(Generated.Account_profile_photo_url.check(Schema.isMaxLength(2048))),
+  country: Schema.optionalKey(Generated.Account_country.check(Schema.isMaxLength(16))),
+  locale: Schema.optionalKey(Generated.Account_locale.check(Schema.isMaxLength(32)))
 })
 
 /**

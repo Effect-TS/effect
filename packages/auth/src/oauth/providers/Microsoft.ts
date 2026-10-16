@@ -18,11 +18,11 @@ import type * as OAuth from "../OAuth.ts"
 import { ConfigurationError, Rejected, type Unavailable } from "../OAuthError.ts"
 import * as OAuthProvider from "../OAuthProvider.ts"
 import * as Oidc from "../Oidc.ts"
+import * as Generated from "./internal/generated/microsoft.ts"
 import * as Provider from "./internal/provider.ts"
 
-const tenantId = Schema.String.check(
-  Schema.isPattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u)
-)
+const guid = Schema.isPattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u)
+const tenantId = Schema.String.check(guid)
 const personalTenant = "9188040d-6c67-4c5b-b112-36a304b66dad"
 const origin = "https://login.microsoftonline.com"
 
@@ -36,8 +36,8 @@ const origin = "https://login.microsoftonline.com"
  */
 export const Profile = Schema.Struct({
   ...OAuthProvider.StandardProfile.fields,
-  oid: tenantId,
-  tid: tenantId
+  oid: Generated.Claims_oid.check(guid),
+  tid: Generated.Claims_tid.check(guid)
 })
 
 /**

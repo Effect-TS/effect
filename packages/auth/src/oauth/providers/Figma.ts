@@ -17,10 +17,8 @@ import * as Validation from "../../internal/validation.ts"
 import type * as OAuth from "../OAuth.ts"
 import type { ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/figma.ts"
 import * as Provider from "./internal/provider.ts"
-
-const text = Schema.String.check(Schema.isMaxLength(256))
-const url = Schema.String.check(Schema.isMaxLength(2048))
 
 /**
  * Schema for Figma's /v1/me response. The string id identifies the account.
@@ -30,10 +28,10 @@ const url = Schema.String.check(Schema.isMaxLength(2048))
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  id: Validation.text(64),
-  email: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(320))),
-  handle: Schema.optionalKey(text),
-  img_url: Schema.optionalKey(url)
+  id: Generated.User_id.check(Schema.isMinLength(1), Schema.isMaxLength(64)),
+  email: Schema.optionalKey(Generated.User_email.check(Schema.isMaxLength(320))),
+  handle: Schema.optionalKey(Generated.User_handle.check(Schema.isMaxLength(256))),
+  img_url: Schema.optionalKey(Generated.User_img_url.check(Schema.isMaxLength(2048)))
 })
 
 /**

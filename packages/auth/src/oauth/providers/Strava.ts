@@ -21,6 +21,7 @@ import * as Validation from "../../internal/validation.ts"
 import * as OAuth from "../OAuth.ts"
 import { type ConfigurationError, Rejected, Unavailable } from "../OAuthError.ts"
 import type * as OAuthProvider from "../OAuthProvider.ts"
+import * as Generated from "./internal/generated/strava.ts"
 import * as Provider from "./internal/provider.ts"
 
 /**
@@ -32,10 +33,10 @@ import * as Provider from "./internal/provider.ts"
  * @since 4.1.0
  */
 export const Profile = Schema.Struct({
-  id: Validation.integer(1, Number.MAX_SAFE_INTEGER),
-  firstname: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
-  lastname: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(256))),
-  profile: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2048)))
+  id: Generated.Athlete_id.check(Schema.isBetween({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })),
+  firstname: Schema.optionalKey(Generated.Athlete_firstname.check(Schema.isMaxLength(256))),
+  lastname: Schema.optionalKey(Generated.Athlete_lastname.check(Schema.isMaxLength(256))),
+  profile: Schema.optionalKey(Generated.Athlete_profile.check(Schema.isMaxLength(2048)))
 })
 
 /**
