@@ -718,7 +718,7 @@ const declarationPattern =
 
 const pubidPattern = /^[ \r\na-zA-Z0-9\-'()+,./:=?;!*#@$_%]*$/
 
-const predefinedEntities: Record<string, string> = { lt: "<", gt: ">", amp: "&", apos: "'", quot: "\"" }
+const predefinedEntities = new Map([["lt", "<"], ["gt", ">"], ["amp", "&"], ["apos", "'"], ["quot", "\""]])
 
 // -----------------------------------------------------------------------------
 // Token scanner
@@ -1163,8 +1163,8 @@ class Parser {
       return String.fromCodePoint(code)
     }
     const name = raw.slice(amp + 1, semicolon)
-    const value = predefinedEntities[name]
-    if (value !== undefined && Object.hasOwn(predefinedEntities, name)) return value
+    const value = predefinedEntities.get(name)
+    if (value !== undefined) return value
     if (!isName(name)) throw this.syntax("invalid reference", offset + amp)
     if (this.doctype) {
       throw this.error(
