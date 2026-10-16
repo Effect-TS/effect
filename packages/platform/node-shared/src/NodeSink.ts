@@ -89,9 +89,14 @@ export const pullIntoWritable = <A, IE, E>(options: {
     const completion = Deferred.makeUnsafe<void>()
     const failure = Deferred.makeUnsafe<never, E>()
     const onError = (error: unknown) => Deferred.doneUnsafe(failure, Effect.failSync(() => options.onError(error)))
+    let errorEmitted = false
+    const onStreamError = (error: unknown) => {
+      errorEmitted = true
+      onError(error)
+    }
     // finished() only reports once, so keep listening for errors from writes
     // made after the writable has finished.
-    options.writable.on("error", onError)
+    options.writable.on("error", onStreamError)
     const cleanup = finished(options.writable, { readable: false }, (error) => {
       if (error) {
         onError(error)
@@ -114,8 +119,8 @@ export const pullIntoWritable = <A, IE, E>(options: {
                 return
               }
               const success = options.writable.write(chunk[i++], options.encoding as any, (error) => {
-                // Node may emit the same error after invoking the callback. Let
-                // that event run before failure can remove our error listener.
+                // Let Node initiate auto-destruction before failure cleanup
+                // checks whether an error event is still pending.
                 if (error) queueMicrotask(() => onError(error))
               })
               if (!success) {
@@ -150,7 +155,20 @@ export const pullIntoWritable = <A, IE, E>(options: {
       Effect.raceFirst(Deferred.await(failure)),
       Effect.ensuring(Effect.sync(() => {
         cleanup()
-        options.writable.off("error", onError)
+        const removeErrorListener = () => {
+          options.writable.off("error", onStreamError)
+          options.writable.off("error", removeErrorListener)
+          options.writable.off("close", removeErrorListener)
+        }
+        if (options.writable.errored && !options.writable.closed && !errorEmitted) {
+          // A write callback can fail before asynchronous _destroy completes.
+          // Keep handling Node's pending error until it is emitted (or closed),
+          // without delaying failure for callback-only errors on closed streams.
+          options.writable.once("error", removeErrorListener)
+          options.writable.once("close", removeErrorListener)
+        } else {
+          removeErrorListener()
+        }
       }))
     )
   })
