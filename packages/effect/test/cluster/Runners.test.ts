@@ -339,30 +339,41 @@ describe.concurrent("Runners.makeRpc", () => {
       })
     )
 
-  it.effect("delivers a persisted local reply completed before saveRequest returns", () => {
-    let complete: Effect.Effect<void> = Effect.void
-    return Effect.gen(function*() {
-      const runners = yield* Runners.Runners
-      const storage = yield* MessageStorage.MessageStorage
-      const snowflake = yield* Snowflake.Generator
-      const replies: Array<Exit.Exit<number>> = []
-      const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
-        Effect.sync(() => {
-          if (reply._tag === "WithExit") replies.push(reply.exit)
-        }))
-      complete = saveReply(storage, message, snowflake.nextUnsafe()).pipe(Effect.orDie)
-      const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
-        Effect.timeoutOption("1 second"),
-        Effect.forkScoped
-      )
-      yield* TestClock.adjust("1 second")
-      assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
-      assert.deepStrictEqual(replies, [Exit.succeed(42)])
-    }).pipe(Effect.provide(layerLocalRunners((storage) => ({
-      ...storage,
-      saveRequest: (message) => storage.saveRequest(message).pipe(Effect.tap(() => complete))
-    }))))
-  })
+  for (
+    const { delayRegistration, name, wait } of [
+      { name: "", delayRegistration: false, wait: "1 second" },
+      // Registration can suspend in a storage wrapper; one poll may recover it.
+      { name: " and handler registration is delayed", delayRegistration: true, wait: "2 hours" }
+    ] as const
+  ) {
+    it.effect(`delivers a persisted local reply completed before saveRequest returns${name}`, () => {
+      let complete: Effect.Effect<void> = Effect.void
+      return Effect.gen(function*() {
+        const runners = yield* Runners.Runners
+        const storage = yield* MessageStorage.MessageStorage
+        const snowflake = yield* Snowflake.Generator
+        const replies: Array<Exit.Exit<number>> = []
+        const message = makeOutgoingRequest(TestRpcPersisted, snowflake.nextUnsafe(), (reply) =>
+          Effect.sync(() => {
+            if (reply._tag === "WithExit") replies.push(reply.exit)
+          }))
+        complete = saveReply(storage, message, snowflake.nextUnsafe()).pipe(Effect.orDie)
+        const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
+          Effect.timeoutOption(wait),
+          Effect.forkScoped
+        )
+        yield* TestClock.adjust(wait)
+        assert.isTrue(Option.isSome(yield* Fiber.join(pending)), "the caller must complete")
+        assert.deepStrictEqual(replies, [Exit.succeed(42)])
+      }).pipe(Effect.provide(layerLocalRunners((storage) => ({
+        ...storage,
+        saveRequest: (message) => storage.saveRequest(message).pipe(Effect.tap(() => complete)),
+        registerReplyHandler: delayRegistration
+          ? (message) => Effect.andThen(Effect.sleep("50 millis"), storage.registerReplyHandler(message))
+          : storage.registerReplyHandler
+      }))))
+    })
+  }
 
   it.effect("answers a fresh local request from its saved reply without a storage readback", () =>
     Effect.gen(function*() {
@@ -408,11 +419,13 @@ describe.concurrent("Runners.makeRpc", () => {
         }))
       save = saveReply(storage, message, snowflake.nextUnsafe()).pipe(Effect.orDie)
       const pending = yield* runners.notifyLocal({ message, discard: false, notify: () => Effect.void }).pipe(
-        Effect.timeoutOption("1 second"),
+        Effect.timeoutOption("4 hours"),
         Effect.forkScoped
       )
-      yield* TestClock.adjust(0)
-      // Implementations without a readback still need the reply.
+      // Reach the first poll, which reads storage while the handler is registered.
+      yield* TestClock.adjust("90 minutes")
+      // An implementation that never reads storage for this request only
+      // checks direct delivery here.
       yield* saveOnce
       // Later polls must not deliver the stored reply again.
       yield* TestClock.adjust("3 hours")
