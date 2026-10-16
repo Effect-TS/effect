@@ -1218,7 +1218,10 @@ class Parser {
     let j = scanName(s, i + 1, n)
     if (j === i + 1) throw this.syntax("invalid element name", i + 1)
     if (j >= n) return -1
-    const name = s.slice(i + 1, j)
+    // In V8, a slice of 13 or more characters keeps the whole input chunk
+    // alive, which an open element would do until its end tag, so long names
+    // are copied
+    const name = j - i - 1 < 13 ? s.slice(i + 1, j) : (" " + s.slice(i + 1, j)).slice(1)
     let attributes: Record<string, string> | undefined
     let selfClosing = false
     while (true) {
