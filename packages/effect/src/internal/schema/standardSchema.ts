@@ -68,7 +68,12 @@ function attach(self: any, members: object): any {
     ...members
   }
   const out = typeof self === "function" ? extend(self) : Object.create(self)
-  return Object.assign(out, { "~standard": standard })
+  return Object.defineProperty(out, "~standard", {
+    value: standard,
+    writable: true,
+    enumerable: true,
+    configurable: true
+  })
 }
 
 // Subclassing keeps `new` and the statics, but statics touching private state
