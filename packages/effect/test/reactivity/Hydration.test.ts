@@ -3,10 +3,11 @@ import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/reactivity"
 import * as Schema from "effect/Schema"
 
 describe("Hydration", () => {
+  const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
+    Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
+  )
+
   it("does not replace an existing Success with a dehydrated Initial", () => {
-    const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
-      Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
-    )
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
     try {
@@ -32,9 +33,6 @@ describe("Hydration", () => {
     expectedTimestamp,
     serverTimestamp
   }) => {
-    const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
-      Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
-    )
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
     try {
@@ -59,9 +57,6 @@ describe("Hydration", () => {
     expectedTimestamp,
     serverTimestamp
   }) => {
-    const atom = Atom.make<AsyncResult.AsyncResult<string>>(AsyncResult.initial()).pipe(
-      Atom.serializable({ key: "profile", schema: AsyncResult.Schema({ success: Schema.String }) })
-    )
     const server = AtomRegistry.make()
     const client = AtomRegistry.make()
     try {

@@ -480,13 +480,11 @@ class RegistryImpl implements AtomRegistry {
       while (target.initialValueTarget) {
         target = target.initialValueTarget
       }
-      if (target === atom) {
-        if (shouldHydrate(node._value, decoded)) {
+      const targetNode = target === atom ? node : this.ensureNode(target)
+      if (shouldHydrate(targetNode._value, decoded)) {
+        if (target === atom) {
           node.setValue(decoded)
-        }
-      } else {
-        const targetNode = this.ensureNode(target)
-        if (shouldHydrate(targetNode._value, decoded)) {
+        } else {
           targetNode.setInitialValue(decoded)
         }
       }
