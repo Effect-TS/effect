@@ -17,8 +17,7 @@
   "exclude": [
     "**/node_modules/**",
     "**/dist/**",
-    "./packages/platform/deno/**",
-    "./packages/effect/test/fixtures/JSONTestSuite/**"
+    "./packages/platform/deno/**"
   ],
   "compilerOptions": {
     "rootDir": ".",
