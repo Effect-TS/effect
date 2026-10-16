@@ -5630,6 +5630,12 @@ export const forkIn: {
     }
   ): Effect.Effect<Fiber.Fiber<A, E>, never, R> =>
     withFiber((parent) => {
+      const state = scope.state
+      if (state._tag === "Closed") {
+        const fiber = new FiberImpl<A, E>(parent.context, true)
+        fiber.interruptUnsafe(parent.id, fiberStackAnnotations(parent))
+        return succeed(fiber)
+      }
       const fiber = forkUnsafe(parent, self, options?.startImmediately, true, options?.uninterruptible)
       if (!(fiber as FiberImpl<any, any>)._exit) {
         if (scope.state._tag !== "Closed") {
