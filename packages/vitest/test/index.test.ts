@@ -38,7 +38,6 @@ it.scopedLive.each([1, 2, 3])(
 )
 
 // skip
-
 it.live.skip(
   "live skipped",
   () => Effect.die("skipped anyway")
@@ -65,6 +64,12 @@ it.effect.skipIf(false)("effect skipIf (false)", () => Effect.sync(() => expect(
 
 it.effect.runIf(true)("effect runIf (true)", () => Effect.sync(() => expect(1).toEqual(1)))
 it.effect.runIf(false)("effect runIf (false)", () => Effect.die("not run anyway"))
+
+describe("runIf.only", () => {
+  it.effect.runIf(true)("is not executed", () => Effect.sync(() => expect(true).toBe(false)))
+  it.effect.runIf(true).only("is executed", () => Effect.sync(() => expect(true).toBe(true)))
+  it.effect.runIf(true)("is not executed", () => Effect.sync(() => expect(true).toBe(false)))
+})
 
 // The following test is expected to fail because it simulates a test timeout.
 // Be aware that eventual "failure" of the test is only logged out.
