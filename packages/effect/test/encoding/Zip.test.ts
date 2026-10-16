@@ -244,6 +244,8 @@ describe("Zip", () => {
         assert.strictEqual(yield* failure(encode([{ ...file, header: { ...file.header, size: 5 } }])), "SizeMismatch")
         const directory = { ...Zip.directory("d"), body }
         assert.strictEqual(yield* failure(encode([directory])), "SizeMismatch")
+        const inMemory = { ...Zip.file("f", "abc"), header: { ...Zip.directory("d").header, size: undefined } }
+        assert.strictEqual(yield* failure(encode([inMemory])), "SizeMismatch")
       }))
 
     it.effect("gathers small output and passes large body chunks through", () =>
