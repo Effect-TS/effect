@@ -136,6 +136,38 @@ describe("Stream", () => {
         assert.strictEqual(offered, 4)
         assert.isFalse(done)
       }))
+
+    it.effect("register effect has run when the stream starts pulling", () =>
+      Effect.gen(function*() {
+        let emit: ((n: number) => void) | undefined
+        const fiber = yield* Stream.callback<number>((queue) =>
+          Effect.sync(() => {
+            emit = (n) => Queue.offerUnsafe(queue, n)
+          })
+        ).pipe(
+          Stream.take(1),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isUndefined(fiber.pollUnsafe())
+        assert.isDefined(emit, "register effect has not run")
+        emit!(1)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [1])
+      }))
+
+    it.effect("register effect is not awaited before pulling", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.callback<number>((queue) =>
+          Effect.andThen(
+            Queue.offer(queue, 1),
+            Effect.never
+          )
+        ).pipe(
+          Stream.take(1),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(result, [1])
+      }))
   })
 
   describe("destructors", () => {
@@ -5908,6 +5940,29 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [1])
+      }))
+
+    it.effect("installs the listener before the stream starts pulling", () =>
+      Effect.gen(function*() {
+        let listener: ((event: number) => void) | undefined
+        const target: Stream.EventListener<number> = {
+          addEventListener(_event, f) {
+            listener = f
+          },
+          removeEventListener() {
+            listener = undefined
+          }
+        }
+        const fiber = yield* Stream.fromEventListener<number>(target, "data").pipe(
+          Stream.take(1),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        assert.isUndefined(fiber.pollUnsafe())
+        assert.isDefined(listener, "listener has not been installed")
+        listener!(1)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [1])
+        assert.isUndefined(listener)
       }))
   })
 })
