@@ -1940,8 +1940,15 @@ class Writer implements Machine<Event, string> {
   private write(event: Event): string {
     if (event._tag === "EndElement") {
       const open = this.stack.length > 0 ? this.stack[this.stack.length - 1] : undefined
-      if (open === undefined) throw invalidEvent(`end tag </${event.name}> without a start tag`)
-      if (event.name !== open) throw invalidEvent(`end tag </${event.name}> does not match <${open}>`)
+      if (open === undefined || event.name !== open) {
+        // Only valid names are written into messages
+        checkName("element name", event.name)
+        throw invalidEvent(
+          open === undefined
+            ? `end tag </${event.name}> without a start tag`
+            : `end tag </${event.name}> does not match <${open}>`
+        )
+      }
       this.stack.pop()
       if (this.stack.length === 0) this.state = EPILOG
       if (this.open) {
@@ -1954,8 +1961,8 @@ class Writer implements Machine<Event, string> {
     this.open = false
     switch (event._tag) {
       case "StartElement": {
-        if (this.state === EPILOG) throw invalidEvent(`second root element <${event.name}>`)
         checkName("element name", event.name)
+        if (this.state === EPILOG) throw invalidEvent(`second root element <${event.name}>`)
         let tag = prefix + "<" + event.name
         for (const name in event.attributes) {
           if (!Object.hasOwn(event.attributes, name)) continue
@@ -1999,11 +2006,13 @@ class Writer implements Machine<Event, string> {
       }
       case "Declaration": {
         if (this.state !== NOTHING_WRITTEN) throw invalidEvent("the XML declaration must be the first event")
-        if (!versionPattern.test(event.version)) throw invalidEvent(`invalid XML version ${event.version}`)
+        if (!versionPattern.test(event.version)) {
+          throw invalidEvent(`invalid XML version ${JSON.stringify(event.version)}`)
+        }
         let declaration = `<?xml version="${event.version}"`
         if (event.encoding !== undefined) {
           if (!encodingPattern.test(event.encoding)) {
-            throw invalidEvent(`invalid encoding name ${event.encoding}`)
+            throw invalidEvent(`invalid encoding name ${JSON.stringify(event.encoding)}`)
           }
           if (this.bytes && !isUtf8(event.encoding)) {
             throw invalidEvent(`encoding ${event.encoding} cannot be declared for UTF-8 output`)
@@ -2024,7 +2033,9 @@ class Writer implements Machine<Event, string> {
           if (event.systemId === undefined) {
             throw invalidEvent("a DOCTYPE with a public identifier needs a system identifier")
           }
-          if (!pubidPattern.test(event.publicId)) throw invalidEvent(`invalid public identifier ${event.publicId}`)
+          if (!pubidPattern.test(event.publicId)) {
+            throw invalidEvent(`invalid public identifier ${JSON.stringify(event.publicId)}`)
+          }
           doctype += ` PUBLIC "${event.publicId}"`
         }
         if (event.systemId !== undefined) {
