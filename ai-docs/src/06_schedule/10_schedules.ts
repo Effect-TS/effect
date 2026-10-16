@@ -6,7 +6,7 @@
 import { Duration, Effect, Random, Schedule, Schema } from "effect"
 
 // Production pattern: capped exponential backoff with jitter and at most 5 retries (6 attempts).
-// Delays start at 250ms, grow exponentially with jitter, and are capped at 10s.
+// Base delays start at 250ms and grow exponentially, capped at 10s before jitter.
 export const productionRetrySchedule = Schedule.min([
   Schedule.exponential("250 millis"),
   // Cap the delay at 10 seconds to avoid excessively long waits.

@@ -84,9 +84,9 @@ than arbitrary version strings. This release supports `McpProtocol.v2024_11_05`,
 `McpProtocol.v2026_07_28`. Both `layerStdio` and `layerHttp` support all five adapters;
 `layerHttpRequestScoped` supports only the stateless `v2026_07_28` adapter.
 The `v2024_11_05` adapter implements that revision's RPC schemas and stdio framing, including its
-batch policy. It does not implement the
-historical two-endpoint HTTP+SSE transport. `McpServer.layerHttp` instead offers the 2024 RPC schema
-through the same single-endpoint HTTP compatibility transport used by the 2025 adapters. Because of
+batch policy. It does not implement the historical two-endpoint HTTP+SSE transport.
+`McpServer.layerHttp` instead offers the 2024 RPC schema through the same single-endpoint HTTP
+compatibility transport used by the newer adapters. Because of
 the layer architecture the server implementation can be easily exchanged with this HTTP-based
 implementation. Finally, a logging layer is added with
 `Layer.succeed(Logger.LogToStderr, true)`, ensuring logs are written to `stderr`.
