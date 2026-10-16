@@ -206,10 +206,11 @@ class Parser {
   readonly maxRecordSize: number
   readonly ignoreEmptyLines: boolean
 
-  state: number = FIELD_START
+  state = FIELD_START
   // The partial field, carried across chunks.
   field = ""
   cells: Array<string> = []
+  // The size of the current record before the current chunk.
   size = 0
   record = 1
   line = 1
@@ -236,36 +237,26 @@ class Parser {
     })
   }
 
-  grow(n: number): void {
-    this.size += n
-    if (this.size > this.maxRecordSize) {
+  checkSize(size: number): void {
+    if (size > this.maxRecordSize) {
       throw this.fail("RecordSize", `CSV record exceeds maxRecordSize of ${this.maxRecordSize}`)
     }
   }
 
-  endField(): void {
-    this.cells.push(this.field)
-    this.field = ""
-    this.state = FIELD_START
+  // A record that is already too large reports its size, not the syntax error.
+  failSyntax(size: number, message: string): CsvError {
+    this.checkSize(size)
+    return this.fail("Syntax", message)
   }
 
-  endRecord(out: Array<Parsed>): void {
-    this.endField()
-    if (this.size > 0 || !this.ignoreEmptyLines) {
+  endRecord(size: number, out: Array<Parsed>): void {
+    this.checkSize(size)
+    if (size > 0 || !this.ignoreEmptyLines) {
       out.push({ cells: this.cells, record: this.record, line: this.recordLine })
     }
     this.cells = []
     this.size = 0
     this.record++
-  }
-
-  // Ends the record at a line break and moves past it.
-  lineBreak(text: string, i: number, out: Array<Parsed>): number {
-    this.endRecord(out)
-    this.line++
-    this.recordLine = this.line
-    this.skipLF = text.charCodeAt(i) === CR
-    return i + 1
   }
 
   countLines(text: string, start: number, end: number): void {
@@ -285,86 +276,109 @@ class Parser {
       this.started = true
       if (text.charCodeAt(0) === 0xFEFF) i = 1
     }
+    // The current record starts at `start` in this chunk, so its size at `i`
+    // is `this.size + i - start`.
+    let start = i
+    let state = this.state
+    let field = this.field
     while (i < length) {
-      switch (this.state) {
-        case FIELD_START: {
-          if (this.skipLF) {
-            this.skipLF = false
-            if (text.charCodeAt(i) === LF) {
-              i++
-              continue
-            }
-          }
-          if (text.charCodeAt(i) === QUOTE) {
-            this.grow(1)
-            this.state = QUOTED
-            this.quotedCR = false
-            i++
+      if (state === FIELD_START) {
+        if (this.skipLF) {
+          this.skipLF = false
+          if (text.charCodeAt(i) === LF) {
+            start = ++i
             continue
           }
-          this.state = UNQUOTED
+        }
+        if (text.charCodeAt(i) === QUOTE) {
+          state = QUOTED
+          this.quotedCR = false
+          i++
           continue
         }
-        case UNQUOTED: {
-          let j = i
-          let c = 0
-          while (j < length) {
-            c = text.charCodeAt(j)
-            if (c === delimiter || c === CR || c === LF || c === QUOTE) break
-            j++
-          }
-          if (j > i) {
-            this.grow(j - i)
-            this.field += text.slice(i, j)
-          }
-          if (j === length) return
-          if (c === QUOTE) throw this.fail("Syntax", "Unexpected quote in an unquoted field")
-          if (c === delimiter) {
-            this.grow(1)
-            this.endField()
-            i = j + 1
-          } else {
-            i = this.lineBreak(text, j, out)
-          }
-          continue
+        state = UNQUOTED
+      }
+      if (state === UNQUOTED) {
+        let j = i
+        let c = 0
+        while (j < length) {
+          c = text.charCodeAt(j)
+          if (c === delimiter || c === CR || c === LF || c === QUOTE) break
+          j++
         }
-        case QUOTED: {
-          const end = text.indexOf("\"", i)
-          const j = end === -1 ? length : end
-          this.grow(j - i + (end === -1 ? 0 : 1))
-          this.field += text.slice(i, j)
+        if (j > i) field = field === "" ? text.slice(i, j) : field + text.slice(i, j)
+        if (j === length) {
+          i = j
+          break
+        }
+        if (c === QUOTE) {
+          throw this.failSyntax(this.size + j - start, "Unexpected quote in an unquoted field")
+        }
+        this.cells.push(field)
+        field = ""
+        state = FIELD_START
+        i = j + 1
+        if (c !== delimiter) {
+          this.endRecord(this.size + j - start, out)
+          this.line++
+          this.recordLine = this.line
+          this.skipLF = c === CR
+          start = i
+        }
+        continue
+      }
+      if (state === QUOTED) {
+        const end = text.indexOf("\"", i)
+        const j = end === -1 ? length : end
+        if (j > i) {
+          field += text.slice(i, j)
           this.countLines(text, i, j)
-          if (end === -1) return
-          this.state = QUOTE_IN_QUOTED
-          i = j + 1
-          continue
         }
-        case QUOTE_IN_QUOTED: {
-          const c = text.charCodeAt(i)
-          if (c === QUOTE) {
-            this.grow(1)
-            this.field += "\""
-            this.state = QUOTED
-            this.quotedCR = false
-            i++
-          } else if (c === delimiter) {
-            this.grow(1)
-            this.endField()
-            i++
-          } else if (c === CR || c === LF) {
-            i = this.lineBreak(text, i, out)
-          } else {
-            throw this.fail("Syntax", "Expected a delimiter or line break after a closing quote")
-          }
-          continue
+        if (end === -1) {
+          i = j
+          break
         }
+        state = QUOTE_IN_QUOTED
+        i = j + 1
+        continue
+      }
+      // QUOTE_IN_QUOTED
+      const c = text.charCodeAt(i)
+      if (c === QUOTE) {
+        field += "\""
+        state = QUOTED
+        this.quotedCR = false
+        i++
+      } else if (c === delimiter || c === CR || c === LF) {
+        this.cells.push(field)
+        field = ""
+        state = FIELD_START
+        i++
+        if (c !== delimiter) {
+          this.endRecord(this.size + i - 1 - start, out)
+          this.line++
+          this.recordLine = this.line
+          this.skipLF = c === CR
+          start = i
+        }
+      } else {
+        throw this.failSyntax(this.size + i - start, "Expected a delimiter or line break after a closing quote")
       }
     }
+    this.state = state
+    this.field = field
+    this.size += length - start
+    this.checkSize(this.size)
   }
 
   end(out: Array<Parsed>): void {
     if (this.state === QUOTED) throw this.fail("Syntax", "Unterminated quoted field")
-    if (this.size > 0 || this.cells.length > 0) this.endRecord(out)
+    if (this.size > 0 || this.cells.length > 0) {
+      this.cells.push(this.field)
+      this.field = ""
+      this.state = FIELD_START
+      this.endRecord(this.size, out)
+    }
   }
 }
 
@@ -575,10 +589,31 @@ const rebaseIssue = (error: Schema.SchemaError, record: (index: number) => numbe
   )
 }
 
+// Derived codecs are new ASTs, and schema parsers are cached per AST, so they
+// are memoized to avoid recompiling parsers for every channel.
+const stringTreeCodecs = new WeakMap<Schema.Constraint, Schema.Constraint>()
+const arrayCodecs = new WeakMap<Schema.Constraint, Schema.Constraint>()
+
 // The schema used for CSV cells. `toCodecStringTree` keeps the decoded type and
 // services and only changes the encoded side, which is treated as unknown here.
-const toCodec = <S extends Schema.Constraint>(schema: S, disableCodecs: boolean | undefined): S =>
-  disableCodecs === true ? schema : Schema.toCodecStringTree(schema) as Schema.Constraint as S
+const toCodec = <S extends Schema.Constraint>(schema: S, disableCodecs: boolean | undefined): S => {
+  if (disableCodecs === true) return schema
+  let codec = stringTreeCodecs.get(schema)
+  if (codec === undefined) {
+    codec = Schema.toCodecStringTree(schema)
+    stringTreeCodecs.set(schema, codec)
+  }
+  return codec as S
+}
+
+const toArrayCodec = <S extends Schema.Constraint>(codec: S): Schema.NonEmptyArray<S> => {
+  let array = arrayCodecs.get(codec)
+  if (array === undefined) {
+    array = Schema.NonEmptyArray(codec)
+    arrayCodecs.set(codec, array)
+  }
+  return array as Schema.NonEmptyArray<S>
+}
 
 const isStringLeaf = (ast: SchemaAST.AST): boolean => {
   switch (ast._tag) {
@@ -715,7 +750,7 @@ export const decodeSchemaString =
       }
       return value
     }
-    const decode = Schema.decodeUnknownEffect(Schema.NonEmptyArray(codec), parseOptions)
+    const decode = Schema.decodeUnknownEffect(toArrayCodec(codec), parseOptions)
     return Channel.mapEffect(decodeRecords<IE, Done>(options), (records) =>
       Effect.mapError(
         decode(Arr.map(records, input)),
@@ -749,8 +784,6 @@ export const decodeSchema =
 
 const textEncoder = new TextEncoder()
 
-const needsQuotes = /["\r\n]/
-
 const makeWriter = (options: EncodeOptions | undefined) => {
   const delimiter = checkDelimiter(options?.delimiter ?? ",")
   const newline = options?.newline ?? "\r\n"
@@ -761,18 +794,23 @@ const makeWriter = (options: EncodeOptions | undefined) => {
   if (options?.headers === true && columns === undefined) {
     throw new Error("Csv: headers requires columns")
   }
+  // Characters that require a cell to be quoted.
+  const special = new RegExp(`[${delimiter.replace(/[\\\]^-]/g, "\\$&")}"\\r\\n]`)
   const cell = (value: unknown): string => {
     if (value === undefined) return ""
     if (typeof value !== "string") throw new TypeError(`Csv: expected a string cell, got ${typeof value}`)
     // A leading BOM is quoted so that decoders do not strip it.
-    return value.includes(delimiter) || needsQuotes.test(value) || value.charCodeAt(0) === 0xFEFF
+    return special.test(value) || value.charCodeAt(0) === 0xFEFF
       ? "\"" + value.replaceAll("\"", "\"\"") + "\""
       : value
   }
-  const write = (cells: ReadonlyArray<unknown>): string =>
+  const write = (cells: ReadonlyArray<unknown>): string => {
     // A single empty cell is quoted so that it is not read back as an empty line.
-    (cells.length === 1 && (cells[0] === "" || cells[0] === undefined) ? "\"\"" : cells.map(cell).join(delimiter)) +
-    newline
+    if (cells.length === 1 && (cells[0] === "" || cells[0] === undefined)) return "\"\"" + newline
+    let line = cell(cells[0])
+    for (let i = 1; i < cells.length; i++) line += delimiter + cell(cells[i])
+    return line + newline
+  }
   const header = options?.headers === true ? write(columns!) : undefined
   const writeRecord = (value: unknown): string => {
     if (Array.isArray(value)) return write(value)
@@ -943,7 +981,7 @@ const encodeSchemaRecords = <S extends Schema.Constraint, IE, Done>(
   const codec = toCodec(schema, options?.disableCodecs)
   const columns = schemaColumns(SchemaAST.toEncoded(codec.ast), options)
   const writer = encodeRecords<S["Encoded"], IE | Schema.SchemaError, Done>({ ...options, columns })
-  const encode = Schema.encodeEffect(Schema.NonEmptyArray(codec))
+  const encode = Schema.encodeEffect(toArrayCodec(codec))
   const firstRecord = options?.headers === true ? 2 : 1
   const values = Channel.fromTransform((
     upstream: Pull.Pull<Arr.NonEmptyReadonlyArray<S["Type"]>, IE, Done>,
