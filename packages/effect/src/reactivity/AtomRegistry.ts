@@ -204,6 +204,8 @@ export const layerOptions = (options?: {
 /**
  * The default layer that provides a fresh `AtomRegistry`.
  *
+ * **Details**
+ *
  * Closing its scope waits for atom cleanup, as described in `layerOptions`.
  *
  * @stability unstable
