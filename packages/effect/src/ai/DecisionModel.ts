@@ -104,8 +104,7 @@ export interface DecideResponse<Decisions extends Record<string, Decision.Any>> 
 }
 
 /**
- * Settled outcomes for every decision in a definition together with usage
- * metadata.
+ * Per-decision outcomes and token usage for the whole request.
  *
  * @see {@link decideSettled} for producing this response
  *
@@ -135,9 +134,7 @@ export interface ProviderOptions {
 }
 
 /**
- * Provider answer for a classify decision.
- * Leave `probabilities` undefined when the provider returned no distribution;
- * the core reports the decision as unanswered.
+ * Provider classify answer. Omit `probabilities` when no distribution is available.
  *
  * @stability unstable
  * @category models
@@ -151,10 +148,8 @@ export interface ProviderClassifyAnswer {
 }
 
 /**
- * Provider answer for a rate decision.
- * The core derives the label from the highest probability, choosing the
- * first criteria entry on ties. Leave `probabilities` undefined when the
- * provider returned no distribution.
+ * Provider rate answer. The highest probability determines the label, with
+ * ties going to the first criterion. Omit `probabilities` when unavailable.
  *
  * @stability unstable
  * @category models
@@ -180,7 +175,7 @@ export interface ProviderProbabilityAnswer {
 }
 
 /**
- * Provider answer for a decision the provider declined to answer.
+ * Provider refusal to answer a decision.
  *
  * @stability unstable
  * @category models
@@ -369,10 +364,6 @@ const settleAnswers = <Decisions extends Record<string, Decision.Any>>(
   return outcomes as Decision.Outcomes<Decisions>
 }
 
-/**
- * Refusals fail first, with `ContentPolicyError`. Otherwise the first
- * unanswered decision in definition order fails with `InvalidOutputError`.
- */
 const requireAnswers = <Decisions extends Record<string, Decision.Any>>(
   outcomes: Decision.Outcomes<Decisions>
 ): Effect.Effect<Decision.Answers<Decisions>, AiError.AiError> => {
@@ -541,19 +532,15 @@ export const decide = <Input extends Schema.Constraint, Decisions extends Record
   DecisionModel.use((model) => model.decide(definition, options))
 
 /**
- * Answers a decision definition using the current `DecisionModel` service,
- * keeping valid answers when others are missing, refused, or invalid.
- * Each decision settles to `Result.succeed(answer)` or to
- * `Result.fail(unanswered)`, where `unanswered.reason` says why. Input encoding
- * and provider failures, such as transport, authentication, or response
- * decoding errors, still fail the effect. `usage` covers the whole call.
+ * Answers each decision with a `Result` containing a validated answer or a
+ * `Decision.Unanswered` reason. Input encoding and provider failures still
+ * fail the effect. Token usage covers the whole call.
  *
  * **Details**
  *
- * Settlement covers answers that reach the core. A provider whose response
- * schema rejects a malformed answer still fails the whole call. Reasons
- * reflect the first failed check, so `"NoDistribution"` is only reported for
- * an answer that is otherwise valid.
+ * Provider response decoding errors fail the whole call. Per-decision reasons
+ * reflect the first failed validation check; `"NoDistribution"` requires an
+ * otherwise valid answer.
  *
  * **Example** (Falling back for unanswered decisions)
  *

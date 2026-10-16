@@ -42,10 +42,9 @@ export const model = (
   Model.make("openrouter", model, layer({ model, config }))
 
 /**
- * Creates a decision service that requires full choice and score distributions.
- * Choice and score answers without a distribution are passed to the core,
- * which reports them as `"NoDistribution"` from `decideSettled` and fails
- * `decide` with `AiError.InvalidOutputError`.
+ * Creates a decision service that validates full choice and score distributions.
+ * Missing distributions yield `"NoDistribution"` with `decideSettled` or
+ * `AiError.InvalidOutputError` with `decide`.
  * Score indices map to criteria labels; cost, id, and provider metadata are omitted.
  * Probabilities arrive rounded to two decimals, so small sum drift is rescaled.
  *
