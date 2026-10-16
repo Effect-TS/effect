@@ -4,7 +4,7 @@
 
 Base: `e730f59d29db5f1e312be6476a95d07bcad45788` (`e730f59d29db5f1e312be6476a95d07bcad45788`)
 
-Head: `13cfe3da866713f244a1e116b9184bb3cdd7b768` (`13cfe3da866713f244a1e116b9184bb3cdd7b768`)
+Head: `4839c601bdda845d9a54d77f578f64372475ab04` (`4839c601bdda845d9a54d77f578f64372475ab04`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -11008,8 +11008,6 @@ Depend on fast-check and import it directly. Pass the former character arbitrary
 FastCheck.string({ ...constraints, unit: arbitrary })
 ```
 
-- `FastCheck.stringify`: TODO: needs guidance
-
 - `FastCheck.subarray`: TODO: needs guidance
 
 - `FastCheck.toStringMethod`: TODO: needs guidance
@@ -15713,7 +15711,7 @@ Schema.toFormatter(schema)
 
 - `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
-- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect, which is started before the stream starts pulling and runs synchronously until its first async boundary. Unlike v3 asyncEffect, registration is not awaited: asynchronous setup may still be in progress when pulling starts. Use a readiness handshake when needed, and signal end/failure through the provided Queue.
+- `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect, covering asyncEffect. Unlike v3, it is started before the stream pulls but not awaited: it runs synchronously until its first async boundary, so asynchronous setup may still be in progress when pulling begins. Signal end/failure through the provided Queue.
 
 - `Stream.asyncPush` -> `Stream.callback`: Stream.callback's register effect can use Scope for acquire/release of the external subscription, replacing asyncPush; the Emit ops helpers become plain Queue operations.
 

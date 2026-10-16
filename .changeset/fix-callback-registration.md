@@ -3,4 +3,4 @@
 "@effect/platform-browser": patch
 ---
 
-Start stream and channel callback registration effects before the first pull, preventing lost early events during synchronous listener setup without awaiting asynchronous registration. Keep browser HTTP response stream listeners installed until the stream is finalized.
+Start `Stream.callback` and `Channel.callback` registration before the first pull, so synchronous listener setup no longer misses early events. Browser HTTP response stream listeners now stay installed until the stream is finalized.
