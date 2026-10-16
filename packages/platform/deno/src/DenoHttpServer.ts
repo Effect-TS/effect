@@ -188,8 +188,7 @@ const makeResponse = Effect.fnUntraced(function*(
     case "Uint8Array":
     case "Raw": {
       if (body.body instanceof Response) {
-        for (const [key, value] of fields.headers.entries()) body.body.headers.set(key, value)
-        return body.body
+        return ServerResponse.toWeb(response)
       }
       return new Response(body.body as any, fields)
     }
