@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix `Channel.decodeText` and `Stream.decodeText` dropping truncated characters by flushing the decoder when input completes.
+Flush `Channel.decodeText` and `Stream.decodeText` at the end of input, so a truncated trailing character is emitted as U+FFFD instead of dropped.

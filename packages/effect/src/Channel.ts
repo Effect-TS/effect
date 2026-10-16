@@ -6862,8 +6862,9 @@ export const splitLines = <Err, Done>(): Channel<
  * **Details**
  *
  * Input chunks are decoded with streaming enabled so multi-byte characters may
- * span `Uint8Array` boundaries. The optional `encoding` and `options` are
- * passed to `TextDecoder`.
+ * span `Uint8Array` boundaries. The decoder is flushed when the input ends, so
+ * a truncated trailing character is emitted as U+FFFD instead of dropped. The
+ * optional `encoding` and `options` are passed to `TextDecoder`.
  *
  * @stability stable
  * @category decoding
