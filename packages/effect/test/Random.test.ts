@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Array, Cause, Chunk, Data, Effect, Random } from "effect"
+import { PCGRandom } from "effect/Utils"
 
 describe("Random", () => {
   it.effect("integer is correctly distributed", () =>
@@ -12,6 +13,28 @@ describe("Random", () => {
       }
       assertTrue(lastRandom >= tenYearsMillis / 2)
     }))
+
+  it.effect("nextIntBetween produces values within bounds for small ranges", () =>
+    Effect.gen(function*() {
+      const ranges: ReadonlyArray<readonly [number, number]> = [[0, 2], [0, 3], [5, 8], [0, 100]]
+      for (const [min, max] of ranges) {
+        const values = yield* Effect.all(Array.replicate(Random.nextIntBetween(min, max), 500))
+        for (const v of values) {
+          assertTrue(v >= min && v < max)
+        }
+      }
+    }))
+
+  it("PCGRandom.integer produces values in [0, max) and is deterministic", () => {
+    const prng = new PCGRandom(42)
+    const results = globalThis.Array.from({ length: 20 }, () => prng.integer(10))
+    assertTrue(results.every((v) => v >= 0 && v < 10))
+    deepStrictEqual(results, [6, 9, 5, 5, 7, 6, 0, 1, 4, 3, 5, 5, 8, 4, 3, 5, 8, 4, 1, 8])
+
+    const prng2 = new PCGRandom(42)
+    const ones = globalThis.Array.from({ length: 10 }, () => prng2.integer(1))
+    assertTrue(ones.every((v) => v === 0))
+  })
   it.effect("shuffle", () =>
     Effect.gen(function*() {
       const start = Array.range(0, 100)
