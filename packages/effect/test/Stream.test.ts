@@ -190,6 +190,34 @@ describe("Stream", () => {
         assert.deepStrictEqual(seen, [1, 2, 3])
       }))
 
+    it.effect.each([0, 1])(
+      "toReadableStream - respects upstream demand with highWaterMark %i",
+      (highWaterMark) =>
+        Effect.gen(function*() {
+          const pulled: Array<number> = []
+          const reader = yield* Effect.acquireRelease(
+            Effect.sync(() =>
+              Stream.range(1, 3, 1).pipe(
+                Stream.tap((n) => Effect.sync(() => pulled.push(n))),
+                Stream.toReadableStream({ strategy: { highWaterMark } })
+              ).getReader()
+            ),
+            (reader) => Effect.promise(() => reader.cancel())
+          )
+          // Let the Web Stream and its producer process all currently scheduled work.
+          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+          const beforeRead = [...pulled]
+          const result = yield* Effect.promise(() => reader.read())
+          yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+
+          assert.deepStrictEqual(result, { done: false, value: 1 })
+          assert.deepStrictEqual(
+            [beforeRead, pulled],
+            highWaterMark === 0 ? [[], [1]] : [[1], [1, 2]]
+          )
+        })
+    )
+
     it.effect("toAsyncIterable - return interrupts an in-flight pull", () =>
       Effect.gen(function*() {
         const started = yield* Deferred.make<void>()
