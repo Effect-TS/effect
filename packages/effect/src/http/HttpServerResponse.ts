@@ -1062,7 +1062,8 @@ const mergeHeaders = (target: globalThis.Headers, headers: globalThis.Headers): 
  * awaiting completion, and cancellation errors are ignored.
  *
  * A raw `Response` is returned as-is when there are no outer headers or cookies
- * to merge. Otherwise, they are merged into a copy without modifying the raw
+ * to merge and no `content-length` to remove. Otherwise, headers are normalized
+ * in a copy without modifying the raw
  * response: outer headers replace native ones, and cookies are appended. When
  * its body is omitted, the bodyless `Response` keeps those merged
  * headers and uses the outer status for 204, 205 and 304, or the raw `Response`
@@ -1093,11 +1094,13 @@ export const toWeb = (
   if (body._tag === "Raw" && body.body instanceof Response) {
     const raw = body.body
     if (!withoutBody) {
-      if (headers.keys().next().done) {
+      const omitContentLength = omitsContentLength(raw.status)
+      if (headers.keys().next().done && !(omitContentLength && raw.headers.has("content-length"))) {
         return raw
       }
       const copy = new Response(raw.body, raw)
       mergeHeaders(copy.headers, headers)
+      if (omitContentLength) copy.headers.delete("content-length")
       return copy
     }
     // A bodyless outer status is what the caller chose to send; otherwise the
