@@ -18,6 +18,12 @@ export * as Base64 from "./Base64.ts"
 export * as Base64Url from "./Base64Url.ts"
 
 /**
+ * @stability unstable
+ * @since 4.1.0
+ */
+export * as Csv from "./Csv.ts"
+
+/**
  * @stability stable
  * @since 4.0.0
  */
