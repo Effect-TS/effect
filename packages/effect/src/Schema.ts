@@ -9810,7 +9810,10 @@ const JsonString = String.annotate({
  * by hand.
  *
  * The recorded schema is the canonical JSON codec of the encoded side of
- * `schema`, which describes the parsed JSON value.
+ * `schema`, which describes the parsed JSON value. It is derived when a
+ * consumer first reads it, so constructing the check never fails; generating
+ * documentation fails if the content has no JSON form, such as an object with
+ * symbol keys.
  *
  * JSON Schema:
  * This check corresponds to `contentSchema` in JSON Schema. Like that keyword,
@@ -9833,14 +9836,17 @@ const JsonString = String.annotate({
  * @since 4.0.6
  */
 export function isJsonContent(schema: Constraint, annotations?: Annotations.Filter) {
-  const content = SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(schema.ast)))
+  // Projected on first use, so content without a JSON form fails only when documentation is requested.
+  let schemas: ReadonlyArray<SchemaAST.AST> | undefined
   return makeFilter<string>(
     () => true,
     {
       representation: {
         id: "effect/schema/isJsonContent",
         payload: null,
-        schemas: [content]
+        get schemas() {
+          return schemas ??= [SchemaAST.toEncoded(InternalToCodec.toCodecJsonAST(SchemaAST.toEncoded(schema.ast)))]
+        }
       },
       toJsonSchema: ({ schemas, type }) =>
         type === "string" ? { contentSchema: schemas[0] } : [{ contentSchema: schemas[0] }, true],

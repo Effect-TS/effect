@@ -317,8 +317,10 @@ function optionalToNullable(type: SchemaAST.AST): SchemaAST.AST {
 
 function prepareChecks(checks: SchemaAST.Checks | undefined): SchemaAST.Checks | undefined {
   if (checks === undefined) return undefined
-  const out = SchemaAST.mapOrSame(checks, prepareCheck)
-  return out as SchemaAST.Checks
+  // Providers drop `contentSchema`, so drop the check that would emit its dependency as an unreachable definition.
+  const kept = checks.filter((check) => check.annotations?.representation?.id !== "effect/schema/isJsonContent")
+  if (!Arr.isArrayNonEmpty(kept)) return undefined
+  return SchemaAST.mapOrSame(kept, prepareCheck) as SchemaAST.Checks
 }
 
 function prepareCheck(check: SchemaAST.Check<any>): SchemaAST.Check<any> {
@@ -466,45 +468,6 @@ export function walkJsonSchema(
     }
   }
   return visitor(out)
-}
-
-/**
- * Rewrites the definitions reachable from the rewritten root and from the definition the root resolved to. Definitions
- * referenced only through keywords the rewrite drops, such as `contentSchema`, are omitted.
- *
- * @internal
- */
-export function rewriteReachableDefinitions(
-  rootReference: unknown,
-  root: JsonSchema.JsonSchema,
-  definitions: JsonSchema.Definitions,
-  rewrite: (schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema
-): JsonSchema.Definitions | undefined {
-  const rewritten = new Map<string, JsonSchema.JsonSchema>()
-  const references: Array<unknown> = [rootReference]
-  const collect = (schema: JsonSchema.JsonSchema): void => {
-    walkJsonSchema(schema, (node) => {
-      references.push(node.$ref)
-      return node
-    })
-  }
-  collect(root)
-  while (references.length > 0) {
-    const reference = references.pop()
-    if (typeof reference !== "string") continue
-    const key = JsonSchema.getReferenceKey(reference)
-    if (key === undefined || rewritten.has(key) || !Object.hasOwn(definitions, key)) continue
-    const schema = rewrite(definitions[key])
-    rewritten.set(key, schema)
-    collect(schema)
-  }
-  if (rewritten.size === 0) return undefined
-  const out: Record<string, JsonSchema.JsonSchema> = {}
-  for (const key of Object.keys(definitions)) {
-    const schema = rewritten.get(key)
-    if (schema !== undefined) InternalRecord.assignProperty(out, key, schema)
-  }
-  return out
 }
 
 /**

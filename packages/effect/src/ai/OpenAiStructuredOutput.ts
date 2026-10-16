@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import type * as JsonSchema from "../JsonSchema.ts"
+import * as Rec from "../Record.ts"
 import * as Schema from "../Schema.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 
@@ -63,24 +64,21 @@ export function toCodecOpenAI<T, E, RD, RE>(
   jsonSchema: JsonSchema.JsonSchema
 } {
   const codec = InternalStructuredOutput.toCodec(schema)
-  const unresolvedDocument = Schema.toJsonSchemaDocument(codec, {
-    generateDescriptions: true,
-    onExcessProperty: "error"
-  })
-  const document = InternalStructuredOutput.resolveTopLevelReference(unresolvedDocument)
+  const document = InternalStructuredOutput.resolveTopLevelReference(
+    Schema.toJsonSchemaDocument(codec, {
+      generateDescriptions: true,
+      onExcessProperty: "error"
+    })
+  )
   const jsonSchema = rewriteOpenAI(document.schema)
   if (jsonSchema.type !== "object" || jsonSchema.anyOf !== undefined) {
     throw new Error(
       `OpenAiStructuredOutput: Root JSON Schema must have type "object" and must not use "anyOf"`
     )
   }
-  const $defs = InternalStructuredOutput.rewriteReachableDefinitions(
-    unresolvedDocument.schema.$ref,
-    jsonSchema,
-    document.definitions,
-    rewriteOpenAI
-  )
-  if ($defs !== undefined) jsonSchema.$defs = $defs
+  if (Object.keys(document.definitions).length > 0) {
+    jsonSchema.$defs = Rec.map(document.definitions, rewriteOpenAI)
+  }
   return { codec, jsonSchema }
 }
 

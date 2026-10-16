@@ -11,6 +11,7 @@
  * @since 4.0.0
  */
 import type * as JsonSchema from "../JsonSchema.ts"
+import * as Rec from "../Record.ts"
 import * as Schema from "../Schema.ts"
 import * as InternalStructuredOutput from "./internal/structured-output.ts"
 import type * as LanguageModel from "./LanguageModel.ts"
@@ -68,13 +69,9 @@ export function toCodecAnthropic<T, E, RD, RE>(
   }
   const document = InternalStructuredOutput.resolveTopLevelReference(unresolvedDocument)
   const jsonSchema = rewriteAnthropic(document.schema)
-  const $defs = InternalStructuredOutput.rewriteReachableDefinitions(
-    unresolvedDocument.schema.$ref,
-    jsonSchema,
-    document.definitions,
-    rewriteAnthropic
-  )
-  if ($defs !== undefined) jsonSchema.$defs = $defs
+  if (Object.keys(document.definitions).length > 0) {
+    jsonSchema.$defs = Rec.map(document.definitions, rewriteAnthropic)
+  }
   return { codec, jsonSchema }
 }
 
