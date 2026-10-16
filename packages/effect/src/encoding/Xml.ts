@@ -914,16 +914,6 @@ const describeToken = (s: string, i: number): string =>
     "end tag" :
     "start tag"
 
-// Returns 1 when `s` has `keyword` at `i`, 0 when `s` ends with a prefix of it,
-// and -1 otherwise
-const matchKeyword = (s: string, i: number, keyword: string): number => {
-  for (let k = 0; k < keyword.length; k++) {
-    if (i + k >= s.length) return 0
-    if (s.charCodeAt(i + k) !== keyword.charCodeAt(k)) return -1
-  }
-  return 1
-}
-
 const emptyAttributes: Readonly<Record<string, string>> = Object.freeze({})
 
 class Parser {
@@ -933,7 +923,7 @@ class Parser {
   private buf = ""
   private base = 0
   // Number of characters received, excluding a byte order mark
-  private received = 0
+  received = 0
   private started = false
 
   // A token that continues in the next chunk
@@ -963,11 +953,6 @@ class Parser {
     this.maxTokenSize = maxTokenSize
     this.maxDepth = maxDepth
     this.bytes = bytes
-  }
-
-  // Document offset of the end of the input received so far
-  get offset(): number {
-    return this.received
   }
 
   feed(chunk: string): void {
@@ -1201,9 +1186,10 @@ class Parser {
     if (c !== BANG) return this.startTag(s, i)
     if (i + 2 >= n) return -1
     const keyword = s.charCodeAt(i + 2) === DASH ? "<!--" : s.charCodeAt(i + 2) === LBRACKET ? "<![CDATA[" : "<!DOCTYPE"
-    const match = matchKeyword(s, i, keyword)
-    if (match === 0) return -1
-    if (match < 0) throw this.syntax("invalid markup", i)
+    if (!s.startsWith(keyword, i)) {
+      if (n - i < keyword.length && keyword.startsWith(s.slice(i))) return -1
+      throw this.syntax("invalid markup", i)
+    }
     return keyword === "<!--"
       ? this.comment(s, i)
       : keyword === "<!DOCTYPE"
@@ -1764,7 +1750,7 @@ class Utf8Input implements Machine<Uint8Array, Event> {
 
   end(): void {
     if (this.carry !== undefined) {
-      throw this.parser.error("Syntax", "incomplete UTF-8 sequence at the end of the input", this.parser.offset)
+      throw this.parser.error("Syntax", "incomplete UTF-8 sequence at the end of the input", this.parser.received)
     }
     this.parser.end()
   }
@@ -1775,7 +1761,7 @@ class Utf8Input implements Machine<Uint8Array, Event> {
       text = this.decoder.decode(bytes)
     } catch {
       this.parser.feed(this.decoder.decode(bytes.subarray(0, validUtf8(bytes))))
-      throw this.parser.error("Syntax", "invalid UTF-8", this.parser.offset)
+      throw this.parser.error("Syntax", "invalid UTF-8", this.parser.received)
     }
     this.parser.feed(text)
   }
